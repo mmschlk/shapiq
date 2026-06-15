@@ -17,7 +17,8 @@ from typing import Any
 import numpy as np
 import torch
 
-from ..base import PhysicalMask, SpatialLayout
+from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
+
 from . import register_segmenter
 from .base import Segmenter, SegmenterConfig
 

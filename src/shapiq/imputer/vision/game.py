@@ -6,9 +6,17 @@ VisionImputer. The Game only handles Shapley scheduling concerns.
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ...game import Game
+from shapiq.game import Game
+
+if TYPE_CHECKING:
+    from transformers import ProcessorMixin
+
+    from shapiq.imputer.vision.imputer import VisionImputer
 
 
 class VisionLanguageGame(Game):
@@ -21,10 +29,18 @@ class VisionLanguageGame(Game):
 
     def __init__(
         self,
-        imputer,  # VisionImputer
+        imputer: VisionImputer,
         batch_size: int = 64,
+        *,
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialize the vision-language game.
+
+        Args:
+            imputer: Configured VisionImputer instance.
+            batch_size: Batch size for model forward passes.
+            verbose: Whether to log normalisation values.
+        """
         self._imputer = imputer
         self._batch_size = batch_size
 
@@ -39,7 +55,9 @@ class VisionLanguageGame(Game):
         self.full_value = float(game_output[1])
 
         if verbose:
-            print(f"Similarity: {self.full_value} (empty={self.empty_value})")
+            logging.getLogger(__name__).info(
+                "Similarity: %s (empty=%s)", self.full_value, self.empty_value
+            )
 
         super().__init__(
             n_players=self.n_players_image + self.n_players_text,
@@ -48,20 +66,32 @@ class VisionLanguageGame(Game):
         )
 
     @property
-    def inputs(self):
+    def inputs(self) -> dict:
         """Raw HuggingFace processor output (BatchEncoding)."""
         return self._imputer.inputs_raw
 
     @property
-    def processor(self):
+    def processor(self) -> ProcessorMixin:
+        """The HuggingFace processor used by the imputer."""
         return self._imputer.processor
 
-    def value_function(self, coalitions, batch_size=None):
+    def value_function(
+        self,
+        coalitions: np.ndarray,
+        batch_size: int | None = None,
+    ) -> np.ndarray:
+        """Evaluate the game for a set of 1D coalitions."""
         if batch_size is None:
             batch_size = self._batch_size
         return self._imputer.forward_1d(coalitions, batch_size=batch_size)
 
-    def value_function_crossmodal(self, coalitions_image, coalitions_text, batch_size=None):
+    def value_function_crossmodal(
+        self,
+        coalitions_image: np.ndarray,
+        coalitions_text: np.ndarray,
+        batch_size: int | None = None,
+    ) -> np.ndarray:
+        """Evaluate the game for cross-modal (2D) coalitions."""
         if batch_size is None:
             batch_size = self._batch_size
         return self._imputer.forward_crossmodal(

@@ -6,12 +6,17 @@ since their vision encoders natively operate on patches.
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
+
 import torch
 
-from ..base import PhysicalMask, SpatialLayout
-from ..segmenters.base import Segmenter, SegmenterConfig
+from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
+from shapiq.imputer.vision.segmenters.base import Segmenter, SegmenterConfig
+
 from . import register_segmenter
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 @register_segmenter("patch")
@@ -24,7 +29,8 @@ class PatchSegmenter(Segmenter):
             by the Factory.
     """
 
-    def __init__(self, config: SegmenterConfig):
+    def __init__(self, config: SegmenterConfig) -> None:
+        """Initialize the patch segmenter."""
         super().__init__(config)
         self.image_size = config.image_size
         self.patch_size = config.patch_size
@@ -48,6 +54,7 @@ class PatchSegmenter(Segmenter):
         )
 
     def get_layout(self) -> SpatialLayout:
+        """Return the spatial layout for this segmenter."""
         return self._layout
 
     def generate_masks(
@@ -56,6 +63,7 @@ class PatchSegmenter(Segmenter):
         coalitions_text: np.ndarray | None = None,
         device: torch.device | None = None,
     ) -> PhysicalMask:
+        """Generate physical masks from coalition arrays."""
         mask = PhysicalMask()
         if coalitions_image is not None:
             mask.image_binary_mask = self._generate_image_mask(coalitions_image, device=device)

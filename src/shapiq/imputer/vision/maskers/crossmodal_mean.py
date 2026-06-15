@@ -6,8 +6,12 @@ and delegates image/text occlusion respectively.
 
 from __future__ import annotations
 
-from ..base import PhysicalMask, ProcessorOutput
-from ..maskers.base import Masker, MaskerConfig
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
+from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig
+
 from . import register_masker
 from .text_attention import TextAttentionMasker
 from .vision_mean import VisionMeanMasker
@@ -22,7 +26,8 @@ class CrossModalMeanMasker(Masker):
         - Text occlusion  → TextAttentionMasker (``"text_attn"``)
     """
 
-    def __init__(self, config: MaskerConfig | None = None):
+    def __init__(self, config: MaskerConfig | None = None) -> None:
+        """Initialize the cross-modal mean masker."""
         super().__init__(config)
         self._vision_masker = VisionMeanMasker(config=config)
         self._text_masker = TextAttentionMasker(config=config)
@@ -32,6 +37,6 @@ class CrossModalMeanMasker(Masker):
         processor_output: ProcessorOutput,
         physical_mask: PhysicalMask,
     ) -> ProcessorOutput:
+        """Apply cross-modal mean occlusion (image mean + text attention)."""
         masked = self._vision_masker.apply(processor_output, physical_mask)
-        masked = self._text_masker.apply(masked, physical_mask)
-        return masked
+        return self._text_masker.apply(masked, physical_mask)

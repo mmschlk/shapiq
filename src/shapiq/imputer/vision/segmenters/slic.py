@@ -14,19 +14,28 @@ content boundaries.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
-from ..base import PhysicalMask, SpatialLayout
-from ..segmenters.base import Segmenter, SegmenterConfig
+from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
+from shapiq.imputer.vision.segmenters.base import Segmenter, SegmenterConfig
+
 from . import register_segmenter
+
+if TYPE_CHECKING:
+    import PIL.Image
 
 try:
     from skimage.segmentation import slic as _skimage_slic
 except ImportError:
     _skimage_slic = None
+
+try:
+    from PIL import Image as PILImage
+except ImportError:
+    PILImage = None  # type: ignore[assignment]
 
 
 @register_segmenter("slic")
@@ -44,10 +53,16 @@ class SLICSegmenter(Segmenter):
         sigma (float): pre-smoothing Gaussian sigma (default 0.0).
     """
 
-    def __init__(self, config: SegmenterConfig, image_array: Any = None):
+    def __init__(
+        self,
+        config: SegmenterConfig,
+        image_array: PIL.Image.Image | np.ndarray | None = None,
+    ) -> None:
+        """Initialize the SLIC segmenter."""
         super().__init__(config)
         if _skimage_slic is None:
-            raise ImportError("SLICSegmenter requires scikit-image.")
+            msg = "SLICSegmenter requires scikit-image."
+            raise ImportError(msg)
 
         self.image_size = config.image_size
         self.n_channels = config.n_channels
@@ -56,7 +71,8 @@ class SLICSegmenter(Segmenter):
         self.text_total_length = config.text_total_length
 
         if image_array is None:
-            raise ValueError("SLICSegmenter requires image_array.")
+            msg = "SLICSegmenter requires image_array."
+            raise ValueError(msg)
 
         n_segments = int(config.slic.n_segments)
         compactness = float(config.slic.compactness)
@@ -91,6 +107,7 @@ class SLICSegmenter(Segmenter):
         )
 
     def get_layout(self) -> SpatialLayout:
+        """Return the spatial layout for this segmenter."""
         return self._layout
 
     def generate_masks(
@@ -99,6 +116,7 @@ class SLICSegmenter(Segmenter):
         coalitions_text: np.ndarray | None = None,
         device: torch.device | None = None,
     ) -> PhysicalMask:
+        """Generate physical masks from coalition arrays."""
         mask = PhysicalMask()
         if coalitions_image is not None:
             mask.image_binary_mask = self._scatter_image_mask(coalitions_image, device=device)
@@ -128,13 +146,8 @@ class SLICSegmenter(Segmenter):
         return cached
 
     @staticmethod
-    def _coerce_rgb_uint8(image, target_size: int) -> np.ndarray:
+    def _coerce_rgb_uint8(image: PIL.Image.Image | np.ndarray, target_size: int) -> np.ndarray:
         """Normalise PIL.Image / ndarray inputs to (H, W, 3) uint8 at target_size."""
-        try:
-            from PIL import Image as PILImage
-        except ImportError:
-            PILImage = None
-
         if PILImage is not None and isinstance(image, PILImage.Image):
             return np.asarray(
                 image.convert("RGB").resize((target_size, target_size)), dtype=np.uint8
@@ -148,7 +161,8 @@ class SLICSegmenter(Segmenter):
             arr = (arr * 255 if arr_max <= 1.0 else arr).clip(0, 255).astype(np.uint8)
         if arr.shape[:2] != (target_size, target_size):
             if PILImage is None:
-                raise ImportError("PIL is required to resize ndarray inputs for SLIC.")
+                msg = "PIL is required to resize ndarray inputs for SLIC."
+                raise ImportError(msg)
             arr = np.asarray(
                 PILImage.fromarray(arr).resize((target_size, target_size)), dtype=np.uint8
             )

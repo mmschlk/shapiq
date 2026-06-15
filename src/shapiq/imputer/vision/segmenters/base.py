@@ -1,5 +1,4 @@
-"""
-Segmenter base — abstract contract and configuration for spatial division strategies.
+"""Segmenter base — abstract contract and configuration for spatial division strategies.
 
 Defines:
     - Per-strategy parameter dataclasses: PatchParams, SlicParams,
@@ -12,12 +11,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 
-from ..base import PhysicalMask, SpatialLayout
+if TYPE_CHECKING:
+    import numpy as np
 
+    from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
 
 # ═══════════════════════════════════════════════════════════════════════
 # Per-strategy parameter dataclasses
@@ -34,7 +35,7 @@ class SlicParams:
     """SLIC superpixel segmentation parameters.
 
     Attributes:
-        n_segments: Target superpixel count (default 49, ≈ 7×7 grid).
+        n_segments: Target superpixel count (default 49, ~ 7x7 grid).
         compactness: SLIC compactness factor (higher = more regular shapes).
         sigma: Pre-segmentation Gaussian blur sigma.
     """
@@ -96,7 +97,8 @@ class SegmenterConfig:
     text_total_length: int = 0
 
     @property
-    def active_params(self):
+    def active_params(self) -> object:
+        """Return the active configuration dataclass based on strategy name."""
         return getattr(self, self.strategy, None)
 
 
@@ -113,7 +115,8 @@ class Segmenter(ABC):
     PhysicalMask tensors.
     """
 
-    def __init__(self, config: SegmenterConfig):
+    def __init__(self, config: SegmenterConfig) -> None:
+        """Initialize the segmenter with its configuration."""
         self.config = config
 
     @abstractmethod
@@ -136,6 +139,7 @@ class Segmenter(ABC):
         Args:
             coalitions_image: (N_img, n_players_image) bool.
             coalitions_text: (N_txt, n_players_text) bool.
+            device: Target device for the generated masks.
 
         Returns:
             PhysicalMask with image_binary_mask and/or text_attention_mask.
@@ -153,11 +157,14 @@ class Segmenter(ABC):
         coalitions: np.ndarray,
         device: torch.device | None = None,
     ) -> torch.Tensor:
-        """Convert token-level coalitions to an attention mask matching the
-        model's expected total length.
+        """Convert token-level coalitions to attention masks.
+
+        Builds an attention mask matching the model's expected total length
+        based on model_type (CLIP: bos/eos padding, SigLIP: trailing ones).
 
         Args:
             coalitions: (N, n_players_text) bool.
+            device: Target device for the generated mask.
 
         Returns:
             (N, text_total_length) int — 1=attend, 0=ignore.
@@ -184,4 +191,5 @@ class Segmenter(ABC):
                 ),
                 dim=1,
             ).int()
-        raise ValueError(f"Unsupported model_type: {cfg.model_type}")
+        msg = f"Unsupported model_type: {cfg.model_type}"
+        raise ValueError(msg)

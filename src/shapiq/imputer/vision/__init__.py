@@ -14,23 +14,6 @@ Core pipeline::
 """
 
 from .base import PhysicalMask, ProcessorOutput, SpatialLayout
-from .maskers.base import (
-    CrossModalBlurParams,
-    CrossModalMeanParams,
-    Masker,
-    MaskerConfig,
-    TextAttentionParams,
-    VisionBlurParams,
-    VisionMeanParams,
-)
-from .segmenters.base import (
-    CustomSegmenterParams,
-    GradientGuidedParams,
-    PatchParams,
-    Segmenter,
-    SegmenterConfig,
-    SlicParams,
-)
 from .factory import VisionImputerFactory
 from .game import VisionLanguageGame
 from .imputer import VisionImputer
@@ -41,7 +24,24 @@ from .maskers import (
     VisionBlurMasker,
     VisionMeanMasker,
 )
+from .maskers.base import (
+    CrossModalBlurParams,
+    CrossModalMeanParams,
+    Masker,
+    MaskerConfig,
+    TextAttentionParams,
+    VisionBlurParams,
+    VisionMeanParams,
+)
 from .segmenters import CustomSegmenter, PatchSegmenter
+from .segmenters.base import (
+    CustomSegmenterParams,
+    GradientGuidedParams,
+    PatchParams,
+    Segmenter,
+    SegmenterConfig,
+    SlicParams,
+)
 
 __all__ = [
     "VisionImputer",

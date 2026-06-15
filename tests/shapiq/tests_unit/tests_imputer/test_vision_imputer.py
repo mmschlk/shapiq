@@ -753,7 +753,7 @@ class TestVisionImputerForward:
         assert result.shape == (3,)
 
     def test_forward_crossmodal_shape(self, model, segmenter, masker, inputs_original):
-        """forward_crossmodal with 4 img × 3 txt coalitions (equal batches)."""
+        """forward_crossmodal with 4 img x 3 txt coalitions (equal batches)."""
         proc = MagicMock()
         proc.return_value = {
             "pixel_values": torch.randn(1, 3, 224, 224),
@@ -775,7 +775,7 @@ class TestVisionImputerForward:
         assert result.shape == (4, 3)
 
     def test_forward_crossmodal_equal_batches(self, model, segmenter, masker, inputs_original):
-        """forward_crossmodal with 3 img × 3 txt coalitions, equal batches."""
+        """forward_crossmodal with 3 img x 3 txt coalitions, equal batches."""
         proc = MagicMock()
         proc.return_value = {
             "pixel_values": torch.randn(1, 3, 224, 224),

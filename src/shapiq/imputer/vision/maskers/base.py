@@ -1,5 +1,4 @@
-"""
-Masker base — abstract contract and configuration for feature occlusion strategies.
+"""Masker base — abstract contract and configuration for feature occlusion strategies.
 
 Defines:
     - Per-strategy parameter dataclasses: CrossModalMeanParams,
@@ -12,9 +11,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from ..base import PhysicalMask, ProcessorOutput
-
+if TYPE_CHECKING:
+    from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
 
 # ═══════════════════════════════════════════════════════════════════════
 # Per-strategy parameter dataclasses
@@ -69,7 +69,8 @@ class MaskerConfig:
     text_attn: TextAttentionParams = field(default_factory=TextAttentionParams)
 
     @property
-    def active_params(self):
+    def active_params(self) -> object:
+        """Return the active parameter dataclass based on strategy name."""
         return getattr(self, self.strategy, None)
 
 
@@ -85,7 +86,8 @@ class Masker(ABC):
     and returns modified inputs ready for model.forward().
     """
 
-    def __init__(self, config: MaskerConfig | None = None):
+    def __init__(self, config: MaskerConfig | None = None) -> None:
+        """Initialize the masker with an optional configuration."""
         self.config = config or MaskerConfig()
 
     @abstractmethod

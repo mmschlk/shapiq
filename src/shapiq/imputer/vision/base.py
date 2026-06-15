@@ -1,5 +1,4 @@
-"""
-Base module for the vision imputer sub-package — data transfer protocol.
+"""Base module for the vision imputer sub-package — data transfer protocol.
 
 Defines data types shared by all sub-modules:
     - SpatialLayout — describes how input is divided into players
@@ -14,9 +13,10 @@ Segmenter and Masker abstract contracts now live in:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-import torch
-
+if TYPE_CHECKING:
+    import torch
 
 # ═══════════════════════════════════════════════════════════════════════
 # Spatial Layout
@@ -71,10 +71,12 @@ class PhysicalMask:
 
     @property
     def batch_size_img(self) -> int:
+        """Number of image masks in the current batch."""
         return self.image_binary_mask.shape[0] if self.image_binary_mask is not None else 0
 
     @property
     def batch_size_txt(self) -> int:
+        """Number of text masks in the current batch."""
         return self.text_attention_mask.shape[0] if self.text_attention_mask is not None else 0
 
 
@@ -113,6 +115,7 @@ class ProcessorOutput:
         )
 
     def to_dict(self) -> dict:
+        """Convert processor output to a plain dict."""
         return {
             "pixel_values": self.pixel_values,
             "input_ids": self.input_ids,
@@ -120,10 +123,12 @@ class ProcessorOutput:
         }
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
+        """Device on which the tensors are stored."""
         return self.pixel_values.device
 
-    def to(self, device):
+    def to(self, device: torch.device) -> ProcessorOutput:
+        """Move all tensors to the given device."""
         self.pixel_values = self.pixel_values.to(device)
         self.input_ids = self.input_ids.to(device)
         self.attention_mask = self.attention_mask.to(device)

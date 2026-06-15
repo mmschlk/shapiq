@@ -6,14 +6,24 @@ selects components, and returns a fully wired VisionImputer.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import ProcessorOutput
-from .maskers.base import MaskerConfig
-from .segmenters.base import SegmenterConfig
 from .imputer import VisionImputer
 from .maskers import get_masker
+from .maskers.base import MaskerConfig
 from .segmenters import get_segmenter
+from .segmenters.base import SegmenterConfig
+
+if TYPE_CHECKING:
+    import numpy as np
+    import PIL.Image
+    from transformers import ProcessorMixin
+
+    from shapiq.typing import Model
+
+    from .maskers.base import Masker
+    from .segmenters.base import Segmenter
 
 
 class VisionImputerFactory:
@@ -35,15 +45,31 @@ class VisionImputerFactory:
 
     def build(
         self,
-        model: Any,
-        processor: Any,
-        input_image: Any,
+        model: Model,
+        processor: ProcessorMixin,
+        input_image: PIL.Image.Image | np.ndarray,
         input_text: str,
         segmenter_config: SegmenterConfig | None = None,
         masker_config: MaskerConfig | None = None,
+        *,
         use_amp: bool = False,
-        **segmenter_kwargs,
+        **segmenter_kwargs: Any,
     ) -> VisionImputer:
+        """Assemble the VisionImputer pipeline from typed configs.
+
+        Args:
+            model: HuggingFace VLM model.
+            processor: HuggingFace processor for the model.
+            input_image: Input image (PIL, ndarray, or path).
+            input_text: Input text.
+            segmenter_config: Segmenter configuration (default: PatchSegmenter).
+            masker_config: Masker configuration (default: cross-modal mean).
+            use_amp: Enable mixed-precision inference on CUDA.
+            **segmenter_kwargs: Extra kwargs forwarded to the segmenter.
+
+        Returns:
+            A fully wired VisionImputer instance.
+        """
         if segmenter_config is None:
             segmenter_config = SegmenterConfig()
         if masker_config is None:
@@ -116,7 +142,7 @@ class VisionImputerFactory:
     # ─── Internal helpers ─────────────────────────────────────────────────
 
     @staticmethod
-    def _infer_model_type(model) -> str:
+    def _infer_model_type(model: Model) -> str:
         config = getattr(model, "config", None)
         candidates = [
             getattr(model, "name_or_path", ""),
@@ -134,7 +160,7 @@ class VisionImputerFactory:
         return "clip"
 
     @staticmethod
-    def _extract_vision_dims(model) -> tuple:
+    def _extract_vision_dims(model: Model) -> tuple:
         vision = model.vision_model
         embeddings = getattr(vision, "embeddings", None)
         if embeddings is not None and hasattr(embeddings, "patch_size"):
@@ -149,8 +175,13 @@ class VisionImputerFactory:
         return (image_size, 0, n_channels)
 
     @staticmethod
-    def _preprocess(processor, image, text, model_type: str) -> dict:
-        kwargs = dict(images=image, text=text, return_tensors="pt")
+    def _preprocess(
+        processor: ProcessorMixin,
+        image: PIL.Image.Image | np.ndarray | str,
+        text: str,
+        model_type: str,
+    ) -> dict:
+        kwargs: dict[str, Any] = {"images": image, "text": text, "return_tensors": "pt"}
         if model_type in ("siglip", "siglip2"):
             kwargs["padding"] = "max_length"
             kwargs["max_length"] = 64
@@ -173,11 +204,11 @@ class VisionImputerFactory:
         return 0
 
     @staticmethod
-    def _create_segmenter(config: SegmenterConfig, **extra_kwargs):
+    def _create_segmenter(config: SegmenterConfig, **extra_kwargs: Any) -> Segmenter:
         cls = get_segmenter(config.strategy)
         return cls(config=config, **extra_kwargs)
 
     @staticmethod
-    def _create_masker(config: MaskerConfig):
+    def _create_masker(config: MaskerConfig) -> Masker:
         cls = get_masker(config.strategy)
         return cls(config=config)

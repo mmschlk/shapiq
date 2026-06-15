@@ -20,14 +20,15 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..base import PhysicalMask, ProcessorOutput
-from ..maskers.base import Masker, MaskerConfig
+from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
+from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig
+
 from . import register_masker
 
 try:
     from skimage.filters import gaussian as _gaussian_blur
 except ImportError:
-    _gaussian_blur = None
+    _gaussian_blur = None  # type: ignore[assignment]
 
 
 @register_masker("vision_blur")
@@ -53,12 +54,12 @@ class VisionBlurMasker(Masker):
         self,
         config: MaskerConfig | None = None,
         sigma: float = 3.0,
-    ):
+    ) -> None:
+        """Initialize the vision blur masker."""
         super().__init__(config)
         if _gaussian_blur is None:
-            raise ImportError(
-                "VisionBlurMasker requires scikit-image. Install with: pip install scikit-image"
-            )
+            msg = "VisionBlurMasker requires scikit-image. Install with: pip install scikit-image"
+            raise ImportError(msg)
 
         # Resolve sigma: typed config overrides constructor default
         if config is not None:

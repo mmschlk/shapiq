@@ -6,8 +6,9 @@ attention_mask.
 
 from __future__ import annotations
 
-from ..base import PhysicalMask, ProcessorOutput
-from ..maskers.base import Masker
+from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
+from shapiq.imputer.vision.maskers.base import Masker
+
 from . import register_masker
 
 
@@ -26,6 +27,7 @@ class VisionMeanMasker(Masker):
         processor_output: ProcessorOutput,
         physical_mask: PhysicalMask,
     ) -> ProcessorOutput:
+        """Apply vision mean occlusion (binary mask on pixel values)."""
         pixel_values = processor_output.pixel_values
         if physical_mask.image_binary_mask is not None:
             pixel_values = pixel_values * physical_mask.image_binary_mask.to(pixel_values.device)

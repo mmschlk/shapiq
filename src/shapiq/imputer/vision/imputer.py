@@ -6,14 +6,26 @@ Handles batching, device placement, and post-processing.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
 import torch
 
 from .base import PhysicalMask, ProcessorOutput, SpatialLayout
-from .maskers.base import Masker
-from .segmenters.base import Segmenter
+
+if TYPE_CHECKING:
+    from typing import Protocol
+
+    import numpy as np
+    import PIL.Image
+    from transformers import ProcessorMixin
+
+    from shapiq.typing import Model
+
+    from .maskers.base import Masker
+    from .segmenters.base import Segmenter
+
+    class _ModelOutput(Protocol):
+        logits_per_image: torch.Tensor
 
 
 class VisionImputer:
@@ -27,16 +39,30 @@ class VisionImputer:
 
     def __init__(
         self,
-        model: Any,
-        processor: Any,
+        model: Model,
+        processor: ProcessorMixin,
         segmenter: Segmenter,
         masker: Masker,
         inputs_original: ProcessorOutput,
         inputs_raw: dict | None = None,
-        input_image: Any = None,
+        *,
+        input_image: PIL.Image.Image | np.ndarray | None = None,
         input_text: str = "",
         use_amp: bool = False,
-    ):
+    ) -> None:
+        """Initialize the vision-language imputer.
+
+        Args:
+            model: HuggingFace VLM model (CLIP, SigLIP, etc.).
+            processor: HuggingFace processor for the model.
+            segmenter: Spatial division strategy.
+            masker: Feature occlusion strategy.
+            inputs_original: Preprocessed original inputs.
+            inputs_raw: Raw processor output dict.
+            input_image: Original PIL image or ndarray.
+            input_text: Original input text.
+            use_amp: Enable mixed-precision inference on CUDA.
+        """
         self.model = model
         self.processor = processor
         self.segmenter = segmenter
@@ -57,14 +83,17 @@ class VisionImputer:
 
     @property
     def n_players_image(self) -> int:
+        """Number of image players (patches/superpixels)."""
         return self.layout.n_players_image
 
     @property
     def n_players_text(self) -> int:
+        """Number of text players (tokens)."""
         return self.layout.n_players_text
 
     @property
     def n_players(self) -> int:
+        """Total number of players (image + text)."""
         return self.n_players_image + self.n_players_text
 
     # ─── Public API ───────────────────────────────────────────────────────
@@ -106,7 +135,7 @@ class VisionImputer:
         coalitions_text: np.ndarray,
         batch_size: int | None = None,
     ) -> np.ndarray:
-        """Evaluate cross-modal coalitions (2D: image × text)."""
+        """Evaluate cross-modal coalitions (2D: image x text)."""
         if batch_size is None:
             batch_size = max(coalitions_image.shape[0], coalitions_text.shape[0])
 
@@ -142,11 +171,11 @@ class VisionImputer:
                     img_only = PhysicalMask(image_binary_mask=img_slice_mask.image_binary_mask)
                     masked_img = self.masker.apply(inputs_img_masked, img_only)
 
-                    kwargs = dict(
-                        images=[self.input_image] * txt_bs,
-                        text=[self.input_text] * txt_bs,
-                        return_tensors="pt",
-                    )
+                    kwargs: dict[str, Any] = {
+                        "images": [self.input_image] * txt_bs,
+                        "text": [self.input_text] * txt_bs,
+                        "return_tensors": "pt",
+                    }
                     if self.model_type in ("siglip", "siglip2"):
                         kwargs["padding"] = "max_length"
                         kwargs["max_length"] = 64
@@ -191,7 +220,7 @@ class VisionImputer:
             model_type=inputs.model_type,
         )
 
-    def _model_forward(self, inputs: ProcessorOutput):
+    def _model_forward(self, inputs: ProcessorOutput) -> _ModelOutput:
         device = next(self.model.parameters()).device
         inputs_dict = {k: v.to(device) for k, v in inputs.to_dict().items()}
         use_amp = self.use_amp and device.type == "cuda"
@@ -203,5 +232,5 @@ class VisionImputer:
                 outputs = self.model(**inputs_dict)
         return outputs
 
-    def _extract_diagonal(self, outputs) -> torch.Tensor:
+    def _extract_diagonal(self, outputs: _ModelOutput) -> torch.Tensor:
         return torch.diagonal(outputs.logits_per_image).cpu()

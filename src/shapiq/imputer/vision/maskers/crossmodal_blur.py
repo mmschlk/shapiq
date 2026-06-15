@@ -1,5 +1,4 @@
-"""CrossModalBlurMasker — Composite masker with Gaussian-blur image occlusion
-for Vision-Language Models.
+"""CrossModalBlurMasker — composite masker with Gaussian-blur image occlusion.
 
 Follows the Composite Pattern: internally instantiates two atomic maskers
 (VisionBlurMasker + TextAttentionMasker) and delegates image/text occlusion
@@ -17,8 +16,12 @@ Registered as ``"crossmodal_blur"`` in the masker registry.
 
 from __future__ import annotations
 
-from ..base import PhysicalMask, ProcessorOutput
-from ..maskers.base import Masker, MaskerConfig
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
+from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig
+
 from . import register_masker
 from .text_attention import TextAttentionMasker
 from .vision_blur import VisionBlurMasker
@@ -44,7 +47,8 @@ class CrossModalBlurMasker(Masker):
     Registered as ``"crossmodal_blur"``.
     """
 
-    def __init__(self, config: MaskerConfig | None = None):
+    def __init__(self, config: MaskerConfig | None = None) -> None:
+        """Initialize the cross-modal blur masker."""
         super().__init__(config)
         self._vision_masker = VisionBlurMasker(config=config)
         self._text_masker = TextAttentionMasker(config=config)
@@ -72,6 +76,4 @@ class CrossModalBlurMasker(Masker):
 
         # 2. Delegate text occlusion to TextAttentionMasker
         #    (swaps attention_mask, passes pixel_values through)
-        masked = self._text_masker.apply(masked, physical_mask)
-
-        return masked
+        return self._text_masker.apply(masked, physical_mask)

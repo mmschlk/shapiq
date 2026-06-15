@@ -1,4 +1,4 @@
-"""Tests for VisionExplainer, ExactComputer correctness, and Player×Masker matrix."""
+"""Tests for VisionExplainer, ExactComputer correctness, and Player x Masker matrix."""
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def _make_mock_processor():
 class TestExactComputerCorrectness:
     """Verify that VisionLanguageGame + ExactComputer produce correct values.
 
-    Uses a tiny 8×8 image with grid_size=2 (4 patch players). The mock model
+    Uses a tiny 8x8 image with grid_size=2 (4 patch players). The mock model
     computes a deterministic additive function, so ExactComputer order=2
     values should match brute-force computation.
     """
@@ -160,7 +160,7 @@ class TestExactComputerCorrectness:
         """SV values match exact mathematical computation for 2-player game.
 
         Setup:
-            - 4×4 image, 1 patch (grid_size=1) → 1 image player
+            - 4x4 image, 1 patch (grid_size=1) → 1 image player
             - 3 input_ids tokens, CLIP (BOS+EOS removed) → 1 text player
             - pixel_values = 0.5 (constant), input_ids = [1, 5, 1]
             - Model: logits[i,j] = mean(pixels[i]) + sum(masked_ids[j])
@@ -209,7 +209,7 @@ class TestExactComputerCorrectness:
         game = VisionLanguageGame(imputer, batch_size=4)
 
         # Verify coalition values match manual computation
-        n = game.n_players
+        _n = game.n_players
         all_coalitions = np.array([[False, False], [True, False], [False, True], [True, True]])
         values = game.value_function(all_coalitions)
         np.testing.assert_allclose(values[0], 2.0, rtol=1e-5)  # empty
@@ -229,12 +229,12 @@ class TestExactComputerCorrectness:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Player×Masker matrix test
+# PlayerxMasker matrix test
 # ═══════════════════════════════════════════════════════════════════════
 
 
 class TestPlayerMaskerMatrix:
-    """Verify every Segmenter × Masker combination produces valid outputs.
+    """Verify every Segmenter x Masker combination produces valid outputs.
 
     Tests both forward_1d shape and that the explain pipeline produces
     valid InteractionValues for each combo. Blur combos require skimage.
@@ -279,7 +279,7 @@ class TestPlayerMaskerMatrix:
         coalitions = np.ones((n_coalitions, imputer.n_players), dtype=bool)
         result = imputer.forward_1d(coalitions, batch_size=2)
         assert result.shape == (n_coalitions,), (
-            f"{segmenter_name} × {masker_name}: expected ({n_coalitions},), got {result.shape}"
+            f"{segmenter_name} x {masker_name}: expected ({n_coalitions},), got {result.shape}"
         )
         assert np.isfinite(result).all()
 
@@ -334,7 +334,7 @@ class TestPlayerMaskerMatrix:
                 np.ones((2, imputer.n_players), dtype=bool),
                 batch_size=2,
             )
-            assert result.shape == (2,), f"{segmenter_name} × {masker_name} failed"
+            assert result.shape == (2,), f"{segmenter_name} x {masker_name} failed"
 
     # ── Helpers ──────────────────────────────────────────────────────────
 
