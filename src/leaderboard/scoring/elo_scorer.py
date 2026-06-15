@@ -432,52 +432,6 @@ class EloScorer(LeaderboardScorer):
         stats[match.approximator_a]["losses"] += 1
         stats[match.approximator_b]["wins"] += 1
 
-    def _build_leaderboard_rows(
-        self,
-        ratings: dict[str, float],
-        stats: dict[str, dict[str, int]],
-    ) -> list[LeaderboardRow]:
-        """Build ranked leaderboard rows from Elo ratings.
-
-        Args:
-            ratings: Final Elo ratings per approximator.
-            stats: Match statistics per approximator.
-
-        Returns:
-            Ranked leaderboard rows sorted by Elo rating in descending order.
-        """
-        leaderboard_rows = []
-
-        for approximator, rating in ratings.items():
-            approximator_stats = stats[approximator]
-
-            leaderboard_row = LeaderboardRow(
-                approximator_name=approximator,
-                score=rating,
-                higher_is_better=True,
-                rank=None,
-                metadata={
-                    "n_matches": approximator_stats["n_matches"],
-                    "wins": approximator_stats["wins"],
-                    "losses": approximator_stats["losses"],
-                    "ties": approximator_stats["ties"],
-                },
-            )
-            leaderboard_rows.append(leaderboard_row)
-
-        leaderboard_rows.sort(key=lambda row: row.score, reverse=True)
-
-        return [
-            LeaderboardRow(
-                approximator_name=row.approximator_name,
-                score=row.score,
-                higher_is_better=row.higher_is_better,
-                rank=rank,
-                metadata=row.metadata,
-            )
-            for rank, row in enumerate(leaderboard_rows, start=1)
-        ]
-
     def _get_used_metric_names(self, matches: list[PairwiseMatch]) -> list[str]:
         """Return selected metric names that actually produced matches."""
         used_metric_names = {match.metric_name for match in matches}
