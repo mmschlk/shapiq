@@ -6,8 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from random import Random
-
-from numpy.random import permutation
+from statistics import mean, stdev
 
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
@@ -123,8 +122,12 @@ class EloScorer(LeaderboardScorer):
         groups = group_records(selected_records, self.group_keys)
         matches = self._build_pairwise_matches(groups)
 
-        ratings, stats = self._compute_elo(matches)
-        leaderboard_rows = self._build_leaderboard_rows(ratings, stats)
+        match_stats = self._compute_match_stats(matches)
+        approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
+        leaderboard_rows = self._build_leaderboard_rows_from_rating_samples(
+            approximator_ratings_map=approximator_ratings_map,
+            match_stats=match_stats,
+        )
 
         used_metric_names = self._get_used_metric_names(matches)
 
@@ -521,5 +524,80 @@ class EloScorer(LeaderboardScorer):
 
         return dict(approximator_ratings_map)
 
+    def _build_leaderboard_rows_from_rating_samples(
+            self,
+            approximator_ratings_map: dict[str, list[float]],
+            match_stats: dict[str, dict[str, int]],
+    ) -> list[LeaderboardRow]:
+        """Build ranked leaderboard rows from Elo rating samples.
 
+        Args:
+            approximator_ratings_map: Mapping from approximator name to the Elo ratings
+                obtained from different match orderings.
+            match_stats: Mapping from approximator name to match statistics. Expected
+                keys per approximator are ``n_matches``, ``wins``, ``losses``,
+                and ``ties``.
+
+        Returns:
+            Ranked leaderboard rows sorted by mean Elo rating in descending order.
+            Approximators without rating samples are skipped.
+            """
+        leaderboard_rows: list[LeaderboardRow] = []
+
+        for approximator, ratings in approximator_ratings_map.items():
+            if not ratings:
+                continue
+
+            approximator_stats = match_stats.get(
+                approximator,
+                {
+                    "n_matches": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "ties": 0,
+                },
+            )
+
+            score_mean = float(mean(ratings))
+            score_std = float(stdev(ratings)) if len(ratings) > 1 else 0.0
+
+            leaderboard_rows.append(
+                LeaderboardRow(
+                    approximator_name=approximator,
+                    score=score_mean,
+                    higher_is_better=True,
+                    rank=None,
+                    metadata={
+                        "score_std": score_std,
+                        "n_rating_samples": len(ratings),
+                        "n_matches": approximator_stats["n_matches"],
+                        "wins": approximator_stats["wins"],
+                        "losses": approximator_stats["losses"],
+                        "ties": approximator_stats["ties"],
+                    },
+                )
+            )
+
+        leaderboard_rows.sort(key=lambda row: row.score, reverse=True)
+
+        return [
+            LeaderboardRow(
+                approximator_name=row.approximator_name,
+                score=row.score,
+                higher_is_better=row.higher_is_better,
+                rank=rank,
+                metadata=row.metadata,
+            )
+            for rank, row in enumerate(leaderboard_rows, start=1)
+        ]
+
+    def _compute_match_stats(
+            self,
+            matches: list[PairwiseMatch],
+    ) -> dict[str, dict[str, int]]:
+        """Compute match statistics independent of Elo ordering."""
+        stats = self._initialize_match_stats(matches)
+        for match in matches:
+            self._update_match_stats(stats, match)
+        return stats
 
