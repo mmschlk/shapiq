@@ -165,8 +165,11 @@ def get_predict_function_and_model_type(
         _model_type = "tree"
 
     # HuggingFace vision-language models (CLIP, SigLIP, SigLIP2)
-    _is_hf_vlm = hasattr(model, "vision_model") and not model_class.startswith("torch.nn.")
-    if _is_hf_vlm:
+    if (
+        hasattr(model, "vision_model")
+        and not (model_class or "").startswith("torch.nn.")
+        and _model_type == "tabular"
+    ):
         _model_type = "vision"
         _predict_function = _predict_hf_vlm
 
