@@ -721,34 +721,35 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     approx_checkboxes = {}
     metric_plots = {}
 
-    for metric in available_metrics:
-        with gr.Tab(f"{metric.upper()} across Budgets"):
-            game_dropdowns[metric] = gr.Dropdown(
-                choices=df_agg["game_name"].unique().tolist(),
-                value=df_agg["game_name"].iloc[0],
-                label="Game",
-            )
-            approx_checkboxes[metric] = gr.CheckboxGroup(
-                choices=df_agg["approximator_name"].unique().tolist(),
-                value=df_agg["approximator_name"].unique().tolist(),
-                label="Approximatoren",
-            )
-            metric_plots[metric] = gr.Plot(
-                value=get_plot(
-                    df_agg,
-                    df_agg["game_name"].iloc[0],
-                    metric,
-                    df_agg["approximator_name"].unique().tolist(),
+    with gr.Tab("Metrics across Budgets"):
+        for metric in available_metrics:
+            with gr.Tab(f"{metric.upper()} across Budgets"):
+                game_dropdowns[metric] = gr.Dropdown(
+                    choices=df_agg["game_name"].unique().tolist(),
+                    value=df_agg["game_name"].iloc[0],
+                    label="Game",
                 )
-            )
+                approx_checkboxes[metric] = gr.CheckboxGroup(
+                    choices=df_agg["approximator_name"].unique().tolist(),
+                    value=df_agg["approximator_name"].unique().tolist(),
+                    label="Approximatoren",
+                )
+                metric_plots[metric] = gr.Plot(
+                    value=get_plot(
+                        df_agg,
+                        df_agg["game_name"].iloc[0],
+                        metric,
+                        df_agg["approximator_name"].unique().tolist(),
+                    )
+                )
 
-            # metric als default-Argument binden, sonst nimmt die Lambda immer den letzten Wert
-            for component in [game_dropdowns[metric], approx_checkboxes[metric]]:
-                component.change(
-                    fn=lambda g, df, a, m=metric: get_plot(df, g, m, a),
-                    inputs=[game_dropdowns[metric], df_state, approx_checkboxes[metric]],
-                    outputs=metric_plots[metric],
-                )
+                # metric als default-Argument binden, sonst nimmt die Lambda immer den letzten Wert
+                for component in [game_dropdowns[metric], approx_checkboxes[metric]]:
+                    component.change(
+                        fn=lambda g, df, a, m=metric: get_plot(df, g, m, a),
+                        inputs=[game_dropdowns[metric], df_state, approx_checkboxes[metric]],
+                        outputs=metric_plots[metric],
+                    )
 
     with gr.Tab("Compare Approximators"):
         gr.Markdown("## Side-by-side Approximator Comparison")
