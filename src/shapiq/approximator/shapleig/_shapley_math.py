@@ -1,4 +1,4 @@
-"""Shapley-value math core for ShaplEIG (ESP-accelerated, tensor-in/tensor-out).
+r"""Shapley-value math core for ShaplEIG (ESP-accelerated, tensor-in/tensor-out).
 
 Maintainer note: this module is a controlled copy of the validated reference
 implementation from the ShaplEIG research codebase (the code accompanying the
@@ -14,12 +14,13 @@ players regardless of the 2^p coalition space.
 
 Notation (paper: "ShaplEIG: Bayesian Experimental Design for Shapley Value
 Estimation"):
-    p   number of players;  t  number of queried coalitions (training points)
-    A   the (p × 2^p) Shapley affine operator (implicit)
-    K   weighted Hamming product kernel over binary coalitions
-    A_KZW   = A · K(Z, W)            (p × |W|), computed via ESP
-    AKZZA   = A · K(Z, Z) · Aᵀ       (p × p),   computed via ESP
-    AEA     = A · Σ_ν · Aᵀ (unscaled posterior property covariance)
+
+- ``p``: number of players; ``t``: number of queried coalitions (training points).
+- :math:`A`: the (:math:`p \times 2^p`) Shapley affine operator (implicit).
+- :math:`K`: weighted Hamming product kernel over binary coalitions.
+- ``A_KZW`` :math:`= A K(Z, W)` (:math:`p \times |W|`), computed via ESP.
+- ``AKZZA`` :math:`= A K(Z, Z) A^\top` (:math:`p \times p`), computed via ESP.
+- ``AEA`` :math:`= A \Sigma_\nu A^\top` (unscaled posterior property covariance).
 """
 
 from __future__ import annotations
@@ -119,11 +120,13 @@ class GPTensors:
 def kernel_alpha_beta(
     lengthscales: torch.Tensor, outputscale: torch.Tensor, dtype: torch.dtype = DTYPE
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Per-player match/mismatch kernel factors of the Hamming product kernel.
+    r"""Per-player match/mismatch kernel factors of the Hamming product kernel.
 
-    The weighted Hamming kernel k(z, w) = s · exp(-mean_d 1[z_d ≠ w_d]/ℓ_d)
-    factorizes as prod_d f_d with f_d = α_d if z_d = w_d else β_d, where the
-    outputscale s is distributed evenly across players (α_d = s^{1/p}).
+    The weighted Hamming kernel
+    :math:`k(z, w) = s \exp(-\mathrm{mean}_d\, \mathbb{1}[z_d \neq w_d]/\ell_d)`
+    factorizes as :math:`\prod_d f_d` with :math:`f_d = \alpha_d` if
+    :math:`z_d = w_d` else :math:`\beta_d`, where the outputscale :math:`s` is
+    distributed evenly across players (:math:`\alpha_d = s^{1/p}`).
     """
     ls = lengthscales.detach().reshape(-1).to(dtype)
     p = ls.numel()
@@ -140,7 +143,7 @@ def hamming_kernel(
     lengthscales: torch.Tensor,
     outputscale: torch.Tensor,
 ) -> torch.Tensor:
-    """Dense weighted Hamming product kernel matrix s · exp(-mean(δ/ℓ)).
+    r"""Dense weighted Hamming product kernel matrix :math:`s \exp(-\mathrm{mean}(\delta/\ell))`.
 
     Pure-tensor counterpart of the surrogate's kernel module (botorch's
     ``CategoricalKernel``): the math core takes plain lengthscale/outputscale
@@ -164,12 +167,13 @@ def a_kzw(
     outputscale: torch.Tensor,
     chunk_size: int = 1024,
 ) -> torch.Tensor:
-    """Compute A · K(Z, W) for binary coalitions ``W`` (shape (T, p)) → (p, T).
+    r"""Compute :math:`A K(Z, W)` for binary coalitions ``W`` (shape (T, p)), giving (p, T).
 
-    **Vanilla (paper) ESP route, in coefficient representation**: for each w,
-    the generating polynomial ∏_r (γ_r + δ_r ζ) is built incrementally as
-    prefix and suffix coefficient tables (max-normalized per step, log-scale
-    tracked); per player j the prefix(j)·suffix(j+1) product is formed by
+    **Vanilla (paper) ESP route, in coefficient representation**: for each
+    :math:`w`, the generating polynomial :math:`\prod_r (\gamma_r + \delta_r \zeta)`
+    is built incrementally as prefix and suffix coefficient tables
+    (max-normalized per step, log-scale tracked); per player :math:`j` the
+    :math:`\mathrm{prefix}(j)\,\mathrm{suffix}(j+1)` product is formed by
     convolution and contracted with the Shapley size weights (Theorem B.1).
     This is the variant published with the paper.
     """
@@ -255,7 +259,7 @@ def _shapley_weights_signed(
 
 
 def _shapley_w_in_out(p: int, dtype: torch.dtype, device) -> tuple[torch.Tensor, torch.Tensor]:
-    """Unsigned Shapley size weights without the 1/p factor (applied as 1/p² outside)."""
+    r"""Unsigned Shapley size weights without the :math:`1/p` factor (applied as :math:`1/p^2` outside)."""
     w_in = torch.zeros(p + 1, dtype=dtype, device=device)
     w_out = torch.zeros(p + 1, dtype=dtype, device=device)
     for a in range(1, p + 1):
@@ -267,12 +271,14 @@ def _shapley_w_in_out(p: int, dtype: torch.dtype, device) -> tuple[torch.Tensor,
 
 @torch.no_grad()
 def akzza(lengthscales: torch.Tensor, outputscale: torch.Tensor) -> torch.Tensor:
-    """Compute A · K(Z, Z) · Aᵀ (p × p) via bivariate generating polynomials.
+    r"""Compute :math:`A K(Z, Z) A^\top` (:math:`p \times p`) via bivariate generating polynomials.
 
-    For each player pair (i, j) the double sum over coalition pairs collapses
-    into a contraction of prefix/suffix coefficient tables of the bivariate
-    generating polynomial ∏_r (α_r + β_r ζ₁ + β_r ζ₂ + α_r ζ₁ζ₂); tables are
-    max-normalized per step with log-scale tracking for numerical stability.
+    For each player pair :math:`(i, j)` the double sum over coalition pairs
+    collapses into a contraction of prefix/suffix coefficient tables of the
+    bivariate generating polynomial
+    :math:`\prod_r (\alpha_r + \beta_r \zeta_1 + \beta_r \zeta_2 + \alpha_r \zeta_1\zeta_2)`;
+    tables are max-normalized per step with log-scale tracking for numerical
+    stability.
     """
     alpha, beta = kernel_alpha_beta(lengthscales, outputscale)
     p = alpha.numel()
@@ -420,7 +426,7 @@ _psd_chol = psd_chol
 
 
 def noisy_train_kernel(gp_tensors: GPTensors) -> torch.Tensor:
-    """K(X, X) + σ² I on the training coalitions (standardized space)."""
+    r"""Noisy train kernel :math:`K(X, X) + \sigma^2 I` on the training coalitions (standardized space)."""
     K = hamming_kernel(
         gp_tensors.train_X,
         gp_tensors.train_X,
@@ -436,10 +442,10 @@ def a_sigma_w(
     K_XX_noisy_chol: torch.Tensor,
     K_XW: torch.Tensor,
 ) -> torch.Tensor:
-    """A · Σ_ν · 1_W = A_KZW − A_KZX · (K_XX + σ²I)⁻¹ · K_XW (unscaled).
+    r"""Unscaled :math:`A \Sigma_\nu 1_W = A\_KZW - A\_KZX\,(K_{XX} + \sigma^2 I)^{-1} K_{XW}`.
 
-    The second term is evaluated as ``(K_XWᵀ @ sol)ᵀ`` — the same accumulation
-    order linear_operator's lazy matmul uses — for bit-parity with the legacy
+    The second term is evaluated as ``(K_XW.T @ sol).T`` -- the same accumulation
+    order linear_operator's lazy matmul uses -- for bit-parity with the legacy
     implementation.
     """
     sol = torch.cholesky_solve(A_KZX.T, K_XX_noisy_chol, upper=False)
@@ -447,7 +453,7 @@ def a_sigma_w(
 
 
 def aea(AKA: torch.Tensor, A_KZX: torch.Tensor, K_XX_noisy_chol: torch.Tensor) -> torch.Tensor:
-    """A · Σ_ν · Aᵀ (unscaled): AKZZA − A_KZX (K+σ²I)⁻¹ A_KZXᵀ, symmetrized."""
+    r"""Unscaled :math:`A \Sigma_\nu A^\top`: :math:`AKZZA - A\_KZX\,(K+\sigma^2 I)^{-1} A\_KZX^\top`, symmetrized."""
     Y = torch.linalg.solve_triangular(K_XX_noisy_chol, A_KZX.T, upper=False)
     out = AKA - Y.T @ Y
     return 0.5 * (out + out.T)
@@ -456,10 +462,12 @@ def aea(AKA: torch.Tensor, A_KZX: torch.Tensor, K_XX_noisy_chol: torch.Tensor) -
 def affine_posterior_mean(
     A_KZX: torch.Tensor, gp_tensors: GPTensors, K_XX_noisy_chol: torch.Tensor
 ) -> torch.Tensor:
-    """Posterior property mean A μ_ν in the original output scale.
+    r"""Posterior property mean :math:`A \mu_\nu` in the original output scale.
 
-    The constant-mean / row-sum-zero structure of A makes all prior-mean terms
-    vanish, leaving A_KZX (K+σ²I)⁻¹ (y_std − m) rescaled by the empirical std.
+    The constant-mean / row-sum-zero structure of :math:`A` makes all
+    prior-mean terms vanish, leaving
+    :math:`A\_KZX\,(K+\sigma^2 I)^{-1}\,(y_\mathrm{std} - m)` rescaled by the
+    empirical std.
     """
     resid = (gp_tensors.train_y_std - gp_tensors.mean_const).reshape(-1, 1)
     sol = torch.cholesky_solve(resid, K_XX_noisy_chol, upper=False).reshape(-1)
@@ -488,7 +496,7 @@ def shapleig_utilities(
     noisy_var_diag: torch.Tensor,
     emp_std: torch.Tensor,
 ) -> torch.Tensor:
-    """Closed-form GOODE EIG per candidate: −log(1 − qᵀ(AΣAᵀ)⁻¹q / Var[y])."""
+    r"""Closed-form GOODE EIG per candidate: :math:`-\log(1 - q^\top (A\Sigma A^\top)^{-1} q / \mathrm{Var}[y])`."""
     L = _psd_chol(AEA_unscaled)
     Y = torch.linalg.solve_triangular(L, B_unscaled, upper=False)
     Q_diag = Y.square().sum(dim=0) * emp_std**2

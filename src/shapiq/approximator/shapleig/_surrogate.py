@@ -75,23 +75,34 @@ class HammingGP:
         }
         self.amount_restarts = amount_restarts
 
-        # The model must be CONSTRUCTED under a float64 default dtype: torch
-        # creates parameters, prior/constraint buffers, and the constraints'
-        # initial values in the default dtype before botorch casts the model
-        # to the (float64) data. Under a float32 default these starting
-        # values are truncated and L-BFGS converges to (slightly) different
-        # hyperparameters, changing the coalition selections. The default is
-        # restored right after construction; all downstream computations are
-        # float64 because the data and parameters are.
-        previous_dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64)
+        torch_default_dtype = torch.get_default_dtype()
         try:
+            # The model must be CONSTRUCTED under a float64 default dtype: torch
+            # creates parameters, prior/constraint buffers, and the constraints'
+            # initial values in the default dtype before botorch casts the model
+            # to the (float64) data. Under a float32 default these starting
+            # values are truncated and L-BFGS converges to (slightly) different
+            # hyperparameters, changing the coalition selections. The default is
+            # restored right after construction; all downstream computations are
+            # float64 because the data and parameters are
+            torch.set_default_dtype(torch.float64)
             self._build(train_X, train_Y)
         finally:
-            torch.set_default_dtype(previous_dtype)
+            torch.set_default_dtype(torch_default_dtype)
 
     def _build(self, train_X: torch.Tensor, train_Y: torch.Tensor) -> None:
         """Construct the botorch model (called under float64 default dtype)."""
+        if torch.get_default_dtype() is not torch.float64:
+            msg = (
+                "HammingGP._build must run under a float64 default dtype "
+                f"(found {torch.get_default_dtype()}); it is invoked from "
+                "__init__ inside a torch.set_default_dtype(torch.float64) "
+                "context. Constructing under float32 truncates the model's "
+                "parameter/prior/constraint initial values and silently "
+                "changes the fitted hyperparameters."
+            )
+            raise RuntimeError(msg)
+
         fixed_noise_level = self._init_kwargs["fixed_noise_level"]
         min_lengthscale = self._init_kwargs["min_lengthscale"]
         min_inferred_noise_level = self._init_kwargs["min_inferred_noise_level"]

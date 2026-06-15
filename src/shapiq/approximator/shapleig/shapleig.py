@@ -43,6 +43,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
     generating polynomials, so the full ``2^n`` coalition space is never
     enumerated and each iteration costs only polynomial time in ``n``.
     (``n``, shapiq's number of players, is denoted ``p`` in the paper.)
+    For more information, see Rundel et al. (2026) :cite:t:`rundel2026shapleig`.
 
     The returned :class:`~shapiq.interaction_values.InteractionValues` contain
     the posterior-mean Shapley value estimates (order 1, index ``"SV"``).
@@ -60,10 +61,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         >>> values = approximator.approximate(budget=50, game=game)
         >>> values.index, values.max_order
         ('SV', 1)
-
-    References:
-        Rundel, D., et al. (2026). ShaplEIG: Bayesian Experimental Design for
-        Shapley Value Estimation.
     """
 
     valid_indices: tuple[ValidShaplEIGIndices, ...] = ("SV",)
@@ -377,12 +374,12 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         no_refit_step: bool,
         prev_selected_idx: int | None,
     ) -> torch.Tensor:
-        """EIG utilities of the candidates under the current surrogate.
+        r"""EIG utilities of the candidates under the current surrogate.
 
         In a no-refit step the hyperparameters are unchanged: the cached
-        A·K(Z,Z)·Aᵀ is reused, the column of the last queried coalition is
-        appended to A·K(Z,X), and the selected candidate's column is dropped
-        from A·K(Z,W).
+        :math:`A K(Z, Z) A^\top` is reused, the column of the last queried
+        coalition is appended to :math:`A K(Z, X)`, and the selected
+        candidate's column is dropped from :math:`A K(Z, W)`.
         """
         gp_tensors = gp.tensors()
         K_chol = sm.psd_chol(sm.noisy_train_kernel(gp_tensors))
