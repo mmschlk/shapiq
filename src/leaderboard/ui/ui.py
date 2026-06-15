@@ -110,7 +110,9 @@ def format_value[T](col: str, x: T, runtime_cols: list[str]) -> str:
 
 def _build_leaderboard(df: pd.DataFrame, selected_metrics: list[str]) -> pd.DataFrame:
     """Builds the leaderboard DataFrame with formatted and ordered columns."""
-    avail_metrics = [m for m in selected_metrics if f"{m}_mean" in df.columns]
+    avail_metrics = sorted(
+        [m for m in selected_metrics if f"{m}_mean" in df.columns]
+    )
 
     # Dynamic rename-Map
     rename_map = {
