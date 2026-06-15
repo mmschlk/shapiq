@@ -149,9 +149,9 @@ class EloScorer(LeaderboardScorer):
                 "k_factor": self.k_factor,
                 "tie_tolerance": self.tie_tolerance,
                 "seed_aggregation": "mean",
-                "ordering_strategy": "deterministic" if self.n_permutations == 1 else "permutated",
+                "ordering_strategy": "deterministic" if self.n_permutations == 1 else "permuted",
                 "n_permutations": self.n_permutations,
-                "permutation_random_state": self.permutations_random_state,
+                "permutations_random_state": self.permutations_random_state,
             },
         )
 
@@ -390,7 +390,7 @@ class EloScorer(LeaderboardScorer):
               including ``n_matches``, ``wins``, ``losses``, and ``ties``.
         """
         stats = self._initialize_match_stats(matches)
-        ratings = {approximator: self.initial_elo for approximator in stats}
+        ratings = dict.fromkeys(stats, self.initial_elo)
 
         for match in matches:
             rating_a = ratings[match.approximator_a]
@@ -487,8 +487,8 @@ class EloScorer(LeaderboardScorer):
         ]
 
     def _generate_match_orderings(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> list[list[PairwiseMatch]]:
         """Generate match orderings for deterministic or permuted Elo scoring."""
         permutations: list[list[PairwiseMatch]] = []
@@ -497,7 +497,6 @@ class EloScorer(LeaderboardScorer):
             message = "n_permutations must be at least 1."
             raise ValueError(message)
         if self.n_permutations == 1:
-            permutations.append(matches)
             return [list(matches)]
         for _ in range(self.n_permutations):
             shuffled_matches = list(matches)
@@ -506,8 +505,8 @@ class EloScorer(LeaderboardScorer):
         return permutations
 
     def _compute_elo_ratings_per_sample(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> dict[str, list[float]]:
         """Compute Elo rating samples across match orderings.
 
@@ -525,9 +524,9 @@ class EloScorer(LeaderboardScorer):
         return dict(approximator_ratings_map)
 
     def _build_leaderboard_rows_from_rating_samples(
-            self,
-            approximator_ratings_map: dict[str, list[float]],
-            match_stats: dict[str, dict[str, int]],
+        self,
+        approximator_ratings_map: dict[str, list[float]],
+        match_stats: dict[str, dict[str, int]],
     ) -> list[LeaderboardRow]:
         """Build ranked leaderboard rows from Elo rating samples.
 
@@ -541,7 +540,7 @@ class EloScorer(LeaderboardScorer):
         Returns:
             Ranked leaderboard rows sorted by mean Elo rating in descending order.
             Approximators without rating samples are skipped.
-            """
+        """
         leaderboard_rows: list[LeaderboardRow] = []
 
         for approximator, ratings in approximator_ratings_map.items():
@@ -592,12 +591,11 @@ class EloScorer(LeaderboardScorer):
         ]
 
     def _compute_match_stats(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> dict[str, dict[str, int]]:
         """Compute match statistics independent of Elo ordering."""
         stats = self._initialize_match_stats(matches)
         for match in matches:
             self._update_match_stats(stats, match)
         return stats
-
