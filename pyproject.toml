@@ -21,6 +21,7 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "torch-geometric>=2.8.0",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
