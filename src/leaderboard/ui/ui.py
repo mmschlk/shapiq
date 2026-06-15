@@ -637,6 +637,28 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             outputs=[elo_bucket_label, elo_table, elo_plot],
         )
 
+        gr.Markdown("---\n## All Budget Buckets — Side-by-Side Overview")
+
+        all_bucket_tables = []
+        all_bucket_plots = []
+
+        with gr.Row():
+            for bucket in BUDGET_BUCKETS:
+                with gr.Column():
+                    gr.Markdown(f"### {bucket['label']}")
+                    _t, _f = compute_elo_for_bucket(_elo_init_records, int(bucket["budget"]))
+                    all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False))
+                    all_bucket_plots.append(gr.Plot(value=_f))
+
+
+        def update_all_buckets(df: pd.DataFrame, selected_approxs: list[str]) -> tuple:
+            records = [r for r in _elo_init_records if r["approximator_name"] in selected_approxs]
+            outputs = []
+            for bucket in BUDGET_BUCKETS:
+                t, f = compute_elo_for_bucket(records, int(bucket["budget"]))
+                outputs.extend([t, f])
+            return tuple(outputs)
+
     with gr.Tab("Leaderboard"):
         gr.Markdown("## Global Leaderboard (all games)")
 
