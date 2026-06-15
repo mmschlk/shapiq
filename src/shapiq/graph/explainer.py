@@ -12,14 +12,14 @@ from tqdm.auto import tqdm
 from shapiq.explainer.base import Explainer
 from shapiq.graph.l_shapley import LShapley
 from shapiq.interaction_values import InteractionValues
-from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
 
+from .base import GraphGame
 from .graphshapiq import GraphSHAPIQ
 
 if TYPE_CHECKING:
     from torch import nn
 
-    from shapiq.explainer.custom_types import ExplainerIndices
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
 
 SPARSIFY_THRESHOLD = 1e-8
 
@@ -48,8 +48,8 @@ class GraphExplainer(Explainer):
         self,
         model: nn.Module,
         l_shapley_max_budget: int = 20000,
-        index: ExplainerIndices = "k-SII",
-        baseline_strategy: str = "max",
+        index: ValidMoebiusConverterIndices = "k-SII",
+        baseline_strategy: str = "average",
         max_order: int = 2,
         class_index: int | None = None,
         *,
@@ -203,11 +203,11 @@ class GraphExplainer(Explainer):
         self,
         game: GraphGame,
         explainer: GraphSHAPIQ,
-        index: str = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
     ) -> InteractionValues:
         """Approximate Shapley Interactions using grapshapiq."""
         moebius, _ = explainer.explain(
-            max_interaction_size=explainer.max_size_neighbors,
+            max_subset_size=explainer.max_size_neighbors,
             order=game.n_players,
             efficiency_routine=True,
             index=index,
@@ -227,7 +227,7 @@ class GraphExplainer(Explainer):
         game: GraphGame,
         explainer: GraphSHAPIQ,
         max_interaction_size: int,
-        index: str,
+        index: ValidMoebiusConverterIndices,
     ) -> InteractionValues:
         """Run the L-Shapley approximation.
 
