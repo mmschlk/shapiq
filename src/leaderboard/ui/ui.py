@@ -462,7 +462,7 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
         go.Bar(
             x=approx_names,
             y=elo_scores,
-            marker_color=bar_colors,
+            marker={"color": bar_colors},
             text=[f"{s:.1f}" for s in elo_scores],
             textposition="outside",
             hovertemplate="<b>%{x}</b><br>ELO: %{y:.1f}<extra></extra>",
@@ -769,7 +769,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     if f"{m}_mean" in df_agg.columns and not pd.isna(_row.get(f"{m}_mean"))
                 },
             })
-        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, BUDGET_BUCKETS[2]["budget"])
+        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, int(BUDGET_BUCKETS[2]["budget"]))
 
         with gr.Row():
             with gr.Column(scale=1):
@@ -814,7 +814,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 }
                 raw_records.append(record)
 
-            table_df, fig = compute_elo_for_bucket(raw_records, bucket["budget"])
+            table_df, fig = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
             label_md = f"### {bucket['label']}"
             return label_md, table_df, fig
 
