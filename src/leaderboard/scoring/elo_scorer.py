@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
+from random import Random
+
+from numpy.random import permutation
 
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
@@ -66,6 +70,8 @@ class EloScorer(LeaderboardScorer):
         initial_elo: float = 1000.0,
         k_factor: float = 16.0,
         tie_tolerance: float = 0.0,
+        n_permutations: int = 1,
+        permutations_random_state: int | None = 0,
         group_keys: list[str] | None = None,
         metric_names: list[str] | None = None,
         game_names: list[str] | None = None,
@@ -82,6 +88,8 @@ class EloScorer(LeaderboardScorer):
             initial_elo: Starting Elo value for each approximator.
             k_factor: Multiplication factor determining Elo gain and loss per match.
             tie_tolerance: Tolerance for treating small metric differences as ties.
+            n_permutations: The number of match order permutations to guarantee stable results.
+            permutations_random_state: The random state which can be used to make permutations reproducible
             group_keys: Record keys used to form comparable benchmark groups.
             metric_names: Optional metric names to include. ``None`` means all metrics.
             game_names: Optional game names to include. ``None`` means all games.
@@ -91,6 +99,8 @@ class EloScorer(LeaderboardScorer):
         self.initial_elo = initial_elo
         self.k_factor = k_factor
         self.tie_tolerance = tie_tolerance
+        self.n_permutations = n_permutations
+        self.permutations_random_state = permutations_random_state
         self.group_keys = group_keys or [
             "game_id",
             "game_name",
@@ -136,7 +146,9 @@ class EloScorer(LeaderboardScorer):
                 "k_factor": self.k_factor,
                 "tie_tolerance": self.tie_tolerance,
                 "seed_aggregation": "mean",
-                "ordering_strategy": "deterministic",
+                "ordering_strategy": "deterministic" if self.n_permutations == 1 else "permutated",
+                "n_permutations": self.n_permutations,
+                "permutation_random_state": self.permutations_random_state,
             },
         )
 
@@ -470,3 +482,44 @@ class EloScorer(LeaderboardScorer):
         return [
             metric_name for metric_name in self.metric_names if metric_name in used_metric_names
         ]
+
+    def _generate_match_orderings(
+            self,
+            matches: list[PairwiseMatch],
+    ) -> list[list[PairwiseMatch]]:
+        """Generate match orderings for deterministic or permuted Elo scoring."""
+        permutations: list[list[PairwiseMatch]] = []
+        random_instance = Random(self.permutations_random_state)
+        if self.n_permutations < 1:
+            message = "n_permutations must be at least 1."
+            raise ValueError(message)
+        if self.n_permutations == 1:
+            permutations.append(matches)
+            return [list(matches)]
+        for _ in range(self.n_permutations):
+            shuffled_matches = list(matches)
+            random_instance.shuffle(shuffled_matches)
+            permutations.append(shuffled_matches)
+        return permutations
+
+    def _compute_elo_ratings_per_sample(
+            self,
+            matches: list[PairwiseMatch],
+    ) -> dict[str, list[float]]:
+        """Compute Elo rating samples across match orderings.
+
+        Returns:
+            A dictionary mapping each approximator to a list of Elo ratings.
+        """
+        approximator_ratings_map: defaultdict[str, list[float]] = defaultdict(list)
+
+        for ordered_matches in self._generate_match_orderings(matches):
+            elo_ratings_map, _ = self._compute_elo(ordered_matches)
+
+            for approximator, rating in elo_ratings_map.items():
+                approximator_ratings_map[approximator].append(rating)
+
+        return dict(approximator_ratings_map)
+
+
+
