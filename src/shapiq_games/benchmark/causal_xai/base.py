@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from shapiq.game import Game
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from tabpfn import TabPFNRegressor
+
 _TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
 
 
-def _make_tabpfn(device: str, n_estimators: int = 1):
+def _make_tabpfn(device: str, n_estimators: int = 1) -> TabPFNRegressor:
     from tabpfn import TabPFNRegressor
 
     return TabPFNRegressor(
@@ -22,7 +27,7 @@ def _make_tabpfn(device: str, n_estimators: int = 1):
     )
 
 
-def _constant_predictor(y: np.ndarray):
+def _constant_predictor(y: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
     mean = float(np.mean(y))
     return lambda X: np.full(X.shape[0], mean, dtype=float)
 
@@ -34,7 +39,7 @@ def _fit_s_learner(
     *,
     device: str,
     n_estimators: int,
-) -> tuple:
+) -> tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]:
     """Fit m_S(x_S, a) = E[Y | X_S, A=a]; return (predict_m1, predict_m0)."""
     XA = np.concatenate([X_S, A.reshape(-1, 1)], axis=1)
     model = _make_tabpfn(device, n_estimators)
@@ -61,7 +66,7 @@ def _fit_tau_projection(
     *,
     device: str,
     n_estimators: int,
-):
+) -> Callable[[np.ndarray], np.ndarray]:
     """Fit g_S(x_S) = E[tau_hat | X_S]; return a predictor."""
     if X_S.shape[1] == 0:
         return _constant_predictor(tau_hat)
@@ -84,9 +89,7 @@ def _aggregate(bias: np.ndarray, mode: str) -> float:
 
 def _empty_coalition_value(Y: np.ndarray, A: np.ndarray, tau_hat: np.ndarray, mode: str) -> float:
     """Coalition value for S={}: constant predictions for all observations."""
-    empty_bias = (float(np.mean(Y[A == 1])) - float(np.mean(Y[A == 0]))) - float(
-        np.mean(tau_hat)
-    )
+    empty_bias = (float(np.mean(Y[A == 1])) - float(np.mean(Y[A == 0]))) - float(np.mean(tau_hat))
     return _aggregate(np.array([empty_bias]), mode)
 
 
@@ -169,9 +172,7 @@ class GlobalConfoundingXAI(Game):
 
             if self.mode == "signed":
                 # E[g_S(X_S)] = E[tau_hat] by iterated expectations; skip tau projection.
-                value = float(
-                    np.mean(self.tau_hat) - np.mean(predict_m1(X_S) - predict_m0(X_S))
-                )
+                value = float(np.mean(self.tau_hat) - np.mean(predict_m1(X_S) - predict_m0(X_S)))
             else:
                 predict_tau_S = _fit_tau_projection(
                     X_S, self.tau_hat, device=self.device, n_estimators=self.n_estimators
@@ -231,7 +232,7 @@ class LocalConfoundingXAI(Game):
         self.n_estimators = n_estimators
         self._cache: dict[tuple[int, ...], float] = {}
 
-        if isinstance(x_i, (int, np.integer)):
+        if isinstance(x_i, int | np.integer):
             self.x_i = self.X[int(x_i)].copy()
         else:
             self.x_i = np.asarray(x_i, dtype=float).reshape(-1)
@@ -271,9 +272,7 @@ class LocalConfoundingXAI(Game):
                 X_S, self.tau_hat, device=self.device, n_estimators=self.n_estimators
             )
 
-            bias_i = float(
-                (predict_m1(x_i_S)[0] - predict_m0(x_i_S)[0]) - predict_tau_S(x_i_S)[0]
-            )
+            bias_i = float((predict_m1(x_i_S)[0] - predict_m0(x_i_S)[0]) - predict_tau_S(x_i_S)[0])
             value = _aggregate(np.array([bias_i]), self.mode)
 
             self._cache[key] = value

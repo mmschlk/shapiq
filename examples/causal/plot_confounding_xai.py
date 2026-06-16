@@ -25,9 +25,9 @@ largest absolute attribution.
 from __future__ import annotations
 
 import numpy as np
-import shapiq
 from tabpfn import TabPFNRegressor
 
+import shapiq
 from shapiq_games.benchmark.causal_xai import GlobalConfoundingXAI
 from shapiq_games.datasets import load_curthvds_synthetic
 
@@ -39,15 +39,15 @@ _TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
 # The Curth-VDS dataset is a synthetic observational study with four covariates.
 # Treatment assignment is confounded by the Confounder variable.
 
-df = load_curthvds_synthetic(n=200, d=4, seed=42)
-print(df.head())
-print(f"\nDataset shape: {df.shape}")
-print(f"Treatment rate: {df['Treatment'].mean():.2f}")
+curthvds_data = load_curthvds_synthetic(n=200, d=4, seed=42)
+print(curthvds_data.head())
+print(f"\nDataset shape: {curthvds_data.shape}")
+print(f"Treatment rate: {curthvds_data['Treatment'].mean():.2f}")
 
-feature_cols = [c for c in df.columns if c not in {"Treatment", "Outcome"}]
-X = df[feature_cols].to_numpy()
-A = df["Treatment"].to_numpy()
-Y = df["Outcome"].to_numpy()
+feature_cols = [c for c in curthvds_data.columns if c not in {"Treatment", "Outcome"}]
+X = curthvds_data[feature_cols].to_numpy()
+A = curthvds_data["Treatment"].to_numpy()
+Y = curthvds_data["Outcome"].to_numpy()
 
 # %%
 # Estimate CATE with an S-Learner

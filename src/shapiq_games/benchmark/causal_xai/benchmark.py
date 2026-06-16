@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from .base import GlobalConfoundingXAI, _fit_s_learner
 from shapiq_games.datasets import load_curthvds_synthetic
+
+from .base import GlobalConfoundingXAI, _fit_s_learner
 
 
 class CurthVDS(GlobalConfoundingXAI):
@@ -37,11 +38,11 @@ class CurthVDS(GlobalConfoundingXAI):
             device: Device for TabPFN. Defaults to ``'cpu'``.
             n_estimators: Number of TabPFN estimators. Defaults to ``1``.
         """
-        df = load_curthvds_synthetic(n=n, d=d, seed=seed, setting=setting)
-        feature_cols = [c for c in df.columns if c not in {"Treatment", "Outcome"}]
-        X = df[feature_cols].to_numpy(dtype=float)
-        A = df["Treatment"].to_numpy(dtype=float)
-        Y = df["Outcome"].to_numpy(dtype=float)
+        curthvds_data = load_curthvds_synthetic(n=n, d=d, seed=seed, setting=setting)
+        feature_cols = [c for c in curthvds_data.columns if c not in {"Treatment", "Outcome"}]
+        X = curthvds_data[feature_cols].to_numpy(dtype=float)
+        A = curthvds_data["Treatment"].to_numpy(dtype=float)
+        Y = curthvds_data["Outcome"].to_numpy(dtype=float)
 
         predict_m1, predict_m0 = _fit_s_learner(X, A, Y, device=device, n_estimators=n_estimators)
         tau_hat = predict_m1(X) - predict_m0(X)
