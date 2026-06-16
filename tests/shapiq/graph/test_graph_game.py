@@ -5,10 +5,14 @@ This module contains tests for the GraphGame class, which is used to compute
 Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-IQ algorithm.
 """
 
-import torch
+from __future__ import annotations
+
 import numpy as np
 import pytest
+import torch
+
 from shapiq.graph import GraphGame
+
 
 class TestGraphGame:
     """Test class for GraphGame."""
@@ -36,26 +40,26 @@ class TestGraphGame:
 
     def test_init_strategies(self, gcn_model, simple_graph):
         game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="min")
-        assert np.allclose(game.baseline, torch.amin(game.x_graph.x, dim=0)) #type: ignore
+        assert np.allclose(game.baseline, torch.amin(game.x_graph.x, dim=0))  # type: ignore
         game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="max")
-        assert np.allclose(game.baseline, torch.amax(game.x_graph.x, dim=0)) #type: ignore
+        assert np.allclose(game.baseline, torch.amax(game.x_graph.x, dim=0))  # type: ignore
         with pytest.raises(NotImplementedError, match="is not supported."):
             game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="invalid")
         with pytest.raises(ValueError, match="Baseline tensor must have shape"):
-            game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy=torch.zeros(2,3)) #type: ignore
+            game = GraphGame(
+                model=gcn_model, x_graph=simple_graph, baseline_strategy=torch.zeros(2, 3)
+            )  # type: ignore
 
     def test_init_sanity_checks(self, gcn_model, simple_graph, empty_graph):
         with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
-            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid") #type: ignore
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid")  # type: ignore
         with pytest.raises(ValueError, match="class_index cannot be set for regression tasks."):
-            GraphGame(model=gcn_model, x_graph=simple_graph, task="regression", class_index = 42)
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="regression", class_index=42)
         with pytest.raises(ValueError, match="x_graph must have node features"):
             GraphGame(model=gcn_model, x_graph=empty_graph)
-        with pytest.raises(AttributeError, match="The GNN needs a num_layers attribute"):  
-            delattr(gcn_model,"num_layers")
+        with pytest.raises(AttributeError, match="The GNN needs a num_layers attribute"):
+            delattr(gcn_model, "num_layers")
             GraphGame(model=gcn_model, x_graph=simple_graph)
-
-
 
     def test_init_normalize_true(self, gcn_model, simple_graph):
         """Test that normalization_value is set correctly when normalize=True."""
@@ -79,7 +83,7 @@ class TestGraphGame:
         masked_graph = gcn_graph_game.mask_input(coalition)
         assert torch.allclose(masked_graph.x, gcn_graph_game.x_graph.x)
 
-    def test_mask_input_all_inactive(self,gcn_graph_game):
+    def test_mask_input_all_inactive(self, gcn_graph_game):
         """Empty coalition should replace all features with baseline."""
         coalition = np.zeros(gcn_graph_game.n_players, dtype=bool)
 
@@ -99,7 +103,7 @@ class TestGraphGame:
 
         assert np.allclose(v1, v2)
 
-    def test_baseline_shape(self,gcn_graph_game):
+    def test_baseline_shape(self, gcn_graph_game):
         """Baseline must match feature dimension."""
         assert gcn_graph_game.baseline.shape[0] == gcn_graph_game.x_graph.x.shape[1]
 
@@ -111,13 +115,7 @@ class TestGraphGame:
         assert isinstance(v[0], float)
 
     # Normalization value tests
-    def test_normalization_value(self,gcn_graph_game):
+    def test_normalization_value(self, gcn_graph_game):
         """Test that normalization_value is the value of the empty coalition."""
         empty_coalition_value = gcn_graph_game.value_function(np.zeros(gcn_graph_game.n_players))
         assert np.isclose(gcn_graph_game.normalization_value, empty_coalition_value)
-
-
-
-
-
-

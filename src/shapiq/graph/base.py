@@ -105,7 +105,7 @@ class GraphGame(Game):
                     f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
                 )
             return strategy.to(dtype=torch.float32, device=x.device)
-        if isinstance(strategy, (float, int)):
+        if isinstance(strategy, float):
             return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
         if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
