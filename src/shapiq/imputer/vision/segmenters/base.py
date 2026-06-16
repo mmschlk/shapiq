@@ -2,7 +2,7 @@
 
 Defines:
     - Per-strategy parameter dataclasses: PatchParams, SlicParams,
-      GradientGuidedParams, CustomSegmenterParams
+      CustomSegmenterParams
     - SegmenterConfig — caller-provided + factory-populated metadata
     - Segmenter(ABC) — abstract base for all segmenters
 """
@@ -46,18 +46,6 @@ class SlicParams:
 
 
 @dataclass
-class GradientGuidedParams:
-    """Gradient-guided saliency segmentation parameters.
-
-    Attributes:
-        n_segments: Target superpixel count. None means derive from
-            grid_size (ViT) or fall back to 49.
-    """
-
-    n_segments: int | None = None
-
-
-@dataclass
 class CustomSegmenterParams:
     """User-provided binary mask segmenter parameters.
 
@@ -75,7 +63,7 @@ class CustomSegmenterParams:
 class SegmenterConfig:
     """Complete configuration for a Segmenter.
 
-    Caller-provided: strategy + per-strategy params (patch / slic / gradient_guided).
+    Caller-provided: strategy + per-strategy params (patch / slic ).
     Factory-populated: model metadata (image_size, patch_size, model_type, ...).
     Default strategy is ``"patch"``.
     """
@@ -83,7 +71,6 @@ class SegmenterConfig:
     strategy: str = "patch"
     patch: PatchParams = field(default_factory=PatchParams)
     slic: SlicParams = field(default_factory=SlicParams)
-    gradient_guided: GradientGuidedParams = field(default_factory=GradientGuidedParams)
     custom_segmenter: CustomSegmenterParams = field(default_factory=CustomSegmenterParams)
 
     # Factory-populated (model metadata)

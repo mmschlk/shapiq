@@ -82,33 +82,30 @@ class VisionImputerFactory:
         image_size, patch_size, n_channels = self._extract_vision_dims(model)
         is_vit = patch_size > 0
         grid_size = image_size // patch_size if is_vit else 0
-        n_players_image = grid_size**2 if is_vit else 0
 
         # 3. Preprocess once to determine text players
         inputs_dict = self._preprocess(processor, input_image, input_text, model_type)
         n_players_text = self._count_text_players(inputs_dict, model_type)
         text_total_length = inputs_dict["input_ids"].shape[1]
 
-        # 4. Enrich SegmenterConfig with model metadata
+        # 4. Enrich SegmenterConfig with model metadata (common fields)
         segmenter_config.model_type = model_type
         segmenter_config.image_size = image_size
-        segmenter_config.patch_size = patch_size
         segmenter_config.n_channels = n_channels
-        segmenter_config.grid_size = grid_size
-        segmenter_config.n_players_image = n_players_image
         segmenter_config.n_players_text = n_players_text
         segmenter_config.text_total_length = text_total_length
 
         # 5. Create Segmenter
         strategy = segmenter_config.strategy
+
+        # Patch-specific enrichment
+        if strategy == "patch":
+            segmenter_config.patch_size = patch_size
+            segmenter_config.grid_size = grid_size
+            segmenter_config.n_players_image = grid_size**2 if grid_size > 0 else 0
+        # Create segmenter
         if strategy == "slic":
             segmenter_kwargs.setdefault("image_array", input_image)
-            segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)
-        elif strategy == "gradient_guided":
-            segmenter_kwargs.setdefault("model", model)
-            segmenter_kwargs.setdefault("processor", processor)
-            segmenter_kwargs.setdefault("image", input_image)
-            segmenter_kwargs.setdefault("text", input_text)
             segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)
         else:
             segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)

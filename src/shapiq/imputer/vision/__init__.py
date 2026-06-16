@@ -36,7 +36,6 @@ from .maskers.base import (
 from .segmenters import CustomSegmenter, PatchSegmenter
 from .segmenters.base import (
     CustomSegmenterParams,
-    GradientGuidedParams,
     PatchParams,
     Segmenter,
     SegmenterConfig,
@@ -53,7 +52,6 @@ __all__ = [
     "MaskerConfig",
     "PatchParams",
     "SlicParams",
-    "GradientGuidedParams",
     "CrossModalMeanParams",
     "CrossModalBlurParams",
     "VisionMeanParams",
