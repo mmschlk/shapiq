@@ -40,9 +40,9 @@ class TestGraphGame:
 
     def test_init_strategies(self, gcn_model, simple_graph):
         game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="min")
-        assert np.allclose(game.baseline, torch.amin(game.x_graph.x, dim=0))  # type: ignore
+        assert np.allclose(game.baseline, torch.amin(game.x_graph.x, dim=0))
         game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="max")
-        assert np.allclose(game.baseline, torch.amax(game.x_graph.x, dim=0))  # type: ignore
+        assert np.allclose(game.baseline, torch.amax(game.x_graph.x, dim=0))
         with pytest.raises(NotImplementedError, match="is not supported."):
             game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="invalid")
         with pytest.raises(ValueError, match="Baseline tensor must have shape"):

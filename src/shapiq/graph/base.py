@@ -35,19 +35,25 @@ class GraphGame(Game):
 
         # Validierungen
         if task not in ("classification", "regression"):
-            raise ValueError(f"task must be 'classification' or 'regression', got {task!r}")
+            msg = f"task must be 'classification' or 'regression', got {task!r}"
+            raise ValueError(msg)
         if task == "regression" and class_index is not None:
-            raise ValueError("class_index cannot be set for regression tasks.")
+            msg = "class_index cannot be set for regression tasks."
+            raise ValueError(msg)
         if self.x_graph.x is None:
-            raise ValueError("x_graph must have node features (x_graph.x must not be None).")
+            msg = "x_graph must have node features (x_graph.x must not be None)."
+            raise ValueError(msg)
         if not hasattr(model, "num_layers"):
-            raise AttributeError("The GNN needs a num_layers attribute")
+            msg = "The GNN needs a num_layers attribute"
+            raise AttributeError(msg)
 
         self.task = task
         self.model = model
         self.model.eval()
         self.edge_index = self.x_graph.edge_index.detach().numpy()
-        assert isinstance(model.num_layers, int), "model.num_layers must be an int"
+        if not isinstance(model.num_layers, int):
+            msg = "model.num_layers must be an int"
+            raise TypeError(msg)
         self.max_neighborhood_size = model.num_layers
         self.output_dim = output_dim
         self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
@@ -101,9 +107,10 @@ class GraphGame(Game):
         x = self.x_graph.x
         if isinstance(strategy, torch.Tensor):
             if strategy.shape != (x.shape[1],):
-                raise ValueError(
+                msg = (
                     f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
                 )
+                raise ValueError(msg)
             return strategy.to(dtype=torch.float32, device=x.device)
         if isinstance(strategy, float):
             return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
@@ -115,7 +122,8 @@ class GraphGame(Game):
             return torch.amin(x, dim=0)
         if strategy == "max":
             return torch.amax(x, dim=0)
-        raise NotImplementedError(f"Baseline strategy '{strategy}' is not supported.")
+        msg = f"Baseline strategy '{strategy}' is not supported."
+        raise NotImplementedError(msg)
 
     @property
     def normalize(self) -> bool:

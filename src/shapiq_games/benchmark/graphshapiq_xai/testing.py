@@ -49,11 +49,11 @@ coalitions_to_test = [
 
 for coalition in coalitions_to_test:
     masked_graph = game.mask_input(coalition)
-    logger.info(f"\nCoalition: {coalition}")
-    logger.info(f"Masked Graph Features:\n{masked_graph.x}")
+    logger.info("\nCoalition: %s, coalition")
+    logger.info("Masked Graph Features:\n%s, masked_graph.x")
 
     coalition_value = game.value_function(coalition)
-    logger.info(f"value_function Res: {coalition_value}")
+    logger.info("value_function Res: %s, coalition_value")
 
     with torch.no_grad():
         model_output = game.model(
@@ -61,4 +61,4 @@ for coalition in coalitions_to_test:
             edge_index=masked_graph.edge_index,
             batch=getattr(masked_graph, "batch", None),
         )
-    logger.info(f"Outpur (roh):\n{model_output}")
+    logger.info("Outpur (roh):\n%s, model_output")

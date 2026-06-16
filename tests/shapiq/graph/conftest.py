@@ -27,10 +27,7 @@ class SimpleGCN(nn.Module):
         for conv in self.convs:
             x = conv(x, edge_index).relu()
 
-        if batch is not None:
-            x = global_mean_pool(x, batch)
-        else:
-            x = x.mean(dim=0, keepdim=True)
+        x = global_mean_pool(x, batch) if batch is not None else x.mean(dim=0, keepdim=True)
 
         return self.lin(x)
 
@@ -54,10 +51,7 @@ class SimpleGIN(nn.Module):
         for conv in self.convs:
             x = conv(x, edge_index)
 
-        if batch is not None:
-            x = global_mean_pool(x, batch)
-        else:
-            x = x.mean(dim=0, keepdim=True)
+        x = global_mean_pool(x, batch) if batch is not None else x.mean(dim=0, keepdim=True)
 
         return self.lin(x)
 
@@ -77,10 +71,7 @@ class SimpleGAT(nn.Module):
     def forward(self, x, edge_index, batch=None):
         for conv in self.convs:
             x = conv(x, edge_index).relu()
-        if batch is not None:
-            x = global_mean_pool(x, batch)
-        else:
-            x = x.mean(dim=0, keepdim=True)
+        x = global_mean_pool(x, batch) if batch is not None else x.mean(dim=0, keepdim=True)
         return self.lin(x)
 
 
