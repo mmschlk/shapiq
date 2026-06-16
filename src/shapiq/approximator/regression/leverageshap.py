@@ -215,17 +215,16 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         if target <= 0:
             return 0.0  # nothing left to sample beyond empty + grand
 
-        binoms = [float(math.comb(n, s)) for s in range(1, n)]  # C(n,s) for each interior size
-        max_binom = max(binoms)  # largest binomial coefficient (≈ middle size)
+        binoms = [math.comb(n, s) for s in range(1, n)]  # keep as int to avoid float overflow
 
         def total(c_: float) -> float:  # expected sample count for a given c
             two_c = 2.0 * c_
-            return sum(min(b, two_c) for b in binoms)  # sum of min(C(n,s), 2c)
+            return float(sum((min(b, two_c)) for b in binoms))
 
-        # Upper bound: 2c >= max_binom guarantees full inclusion of every size.
-        hi = max_binom / 2.0 + 1.0  # upper bound: covers every size fully
-        if total(hi) < target:
-            return hi  # even max c can't reach target → return it
+        # Find an upper bound without relying on float(max_binom), which can overflow for large n.
+        hi = 1.0
+        while total(hi) < target:
+            hi *= 2.0
         lo = 0.0  # lower bound for binary search
         for _ in range(200):  # bisect up to 200 iterations
             mid = 0.5 * (lo + hi)  # midpoint
@@ -320,13 +319,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         """
         if k >= total:
             return list(range(total))  # asking for everything → return all indices
-        if total < 10**6:
-            return py_rng.sample(range(total), k)  # small pool: use built-in sampler
-        seen: set[int] = set()  # track unique picks
-        # Rejection sampling: collisions are rare when total >> k.
-        while len(seen) < k:
-            seen.add(py_rng.randrange(total))  # pick a random index, dedupe via set
-        return list(seen)  # return as list
+        # random.sample supports range objects efficiently without materializing them and is
+        # robust even when k is a large fraction of total.
+        return py_rng.sample(range(total), k)
 
     @staticmethod
     def _combo(n: int, s: int, i: int) -> np.ndarray:
