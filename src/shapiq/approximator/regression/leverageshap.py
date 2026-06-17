@@ -175,23 +175,27 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         Z_pairs, sizes = self._bernoulli_sample(n, c)  # draw the (z, z̄) coalition pairs
 
-        # IS weights (Algorithm 1 line 7) computed in log space to stay numerically
-        # stable for large n where C(n, n/2) easily exceeds 1e300.
+        # IS weights (Algorithm 1 line 7)
         if Z_pairs.shape[0] > 0:  # if any pairs were sampled
-            log_2c = math.log(2.0 * c) if c > 0 else -math.inf  # log(2c) for log-space math
-            log_weights = np.empty(Z_pairs.shape[0], dtype=float)  # buffer for log IS weights
-            for i, s in enumerate(sizes):  # for each sampled coalition of size s
-                log_w = (
-                    math.lgamma(s) + math.lgamma(n - s) - math.lgamma(n + 1)
-                )  # log Shapley kernel w(s)
-                log_C = (
-                    math.lgamma(n + 1) - math.lgamma(s + 1) - math.lgamma(n - s + 1)
-                )  # log C(n,s)
-                log_p = log_2c - log_C  # log(2c * l_z) = log(2c / C(n,s))
-                log_min_p = min(0.0, log_p)  # cap probability at 1 (log 1 = 0)
-                log_weights[i] = log_w - log_min_p  # IS weight = w(s) / min(1, 2c*l_z)
-            log_weights -= log_weights.max()  # shift so exp doesn't overflow
-            weights_pairs = np.exp(log_weights)  # back to linear space
+            weights_pairs = np.empty(Z_pairs.shape[0], dtype=float)
+
+            # Precompute factorial of n to save cycles, Python handles this as huge int
+            fact_n = math.factorial(n)
+
+            for i, s in enumerate(sizes):
+                # Exact Shapley kernel weight: w(s) = (s-1)!(n-s-1)! / n!
+                # Computed entirely in native Python big-int space before converting to float
+                w_s = (math.factorial(s - 1) * math.factorial(n - s - 1)) / fact_n
+
+                # Leverage score: l_z = 1 / C(n, s)
+                l_z = 1.0 / math.comb(n, s)
+
+                # Cap probability at 1
+                p = min(1.0, 2.0 * c * l_z)
+
+                # IS weight = w(s) / min(1, 2c * l_z)
+                weights_pairs[i] = w_s / p
+
             Z = np.vstack(
                 [z_empty[None, :], z_grand[None, :], Z_pairs]
             )  # stack empty + grand + pairs
