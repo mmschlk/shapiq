@@ -80,8 +80,8 @@ class GraphExplainer(Explainer):
             baseline_strategy: The node masking strategy.
             **kwargs: Additional keyword arguments are ignored.
         """
-        super().__init__(model, class_index=class_index, index=index, max_order=max_order)  # type: ignore[arg-type]
-        self._model: nn.Module = cast("nn.Module", self.model)
+        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
+        self._model: nn.Module = model
         self._class_index = class_index
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
@@ -139,8 +139,8 @@ class GraphExplainer(Explainer):
     @override
     def explain_function(
         self,
-        x: Data,
-        *,
+        x: np.ndarray | Data | None,
+        *args: Any,
         l_shapley: bool = False,
         max_interaction_size: int | None = None,
         **kwargs: Any,
@@ -149,6 +149,7 @@ class GraphExplainer(Explainer):
 
         Args:
             x: The input graph to explain.
+            *args: Unused; present only to match the base class signature
             l_shapley: If ``True``, run the L-Shapley approximation; if ``False`` (default),
                 run the exact GraphSHAP-IQ computation.
             max_interaction_size: Maximum k-hop neighbourhood size for the L-Shapley
@@ -160,10 +161,13 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values for the instance.
         """
+        if not isinstance(x, Data):
+            msg = f"GraphExplainer requires a torch_geometric.data.Data object, got {type(x).__name__!r}."
+            raise TypeError(msg)
         index = kwargs.get("index", self._index)
 
         game = GraphGame(
-            model=cast("nn.Module", self._model),
+            model=self._model,
             x_graph=x,
             baseline_strategy=self._baseline_strategy,
             normalize=self._normalize,

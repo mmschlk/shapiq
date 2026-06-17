@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import networkx as nx
 import numpy as np
@@ -220,7 +220,9 @@ class GraphSHAPIQ:
             InteractionValues containing the gap correction terms for each incomplete
             neighborhood, with baseline_value=0.0 and index="Moebius".
         """
-        incomplete_neighborhoods_sorted = sorted(incomplete_neighborhoods, key=len)
+        incomplete_neighborhoods_sorted = cast(
+            "list[tuple[int, ...]]", sorted(incomplete_neighborhoods, key=len)
+        )
         n_incomplete_neighborhoods = len(incomplete_neighborhoods_lookup)
         additional_values = np.zeros(n_incomplete_neighborhoods, dtype=float)
         additional_lookup: dict[tuple[int, ...], int] = {}

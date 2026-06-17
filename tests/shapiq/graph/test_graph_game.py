@@ -48,11 +48,11 @@ class TestGraphGame:
         with pytest.raises(ValueError, match="Baseline tensor must have shape"):
             game = GraphGame(
                 model=gcn_model, x_graph=simple_graph, baseline_strategy=torch.zeros(2, 3)
-            )  # type: ignore
+            )
 
     def test_init_sanity_checks(self, gcn_model, simple_graph, empty_graph):
         with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
-            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid")  # type: ignore
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid")
         with pytest.raises(ValueError, match="class_index cannot be set for regression tasks."):
             GraphGame(model=gcn_model, x_graph=simple_graph, task="regression", class_index=42)
         with pytest.raises(ValueError, match="x_graph must have node features"):
