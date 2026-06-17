@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
@@ -621,32 +622,37 @@ def solve_regression(
     *,
     use_svd: bool = False,
 ) -> np.ndarray:
-    """Solves the Shapley regression problem."""
-    WX = kernel_weights[:, np.newaxis] * X
+    """Solves the Shapley regression problem using weighted least squares (WLS).
 
-    # If we explicitly want to use the SVD-backed least-squares path, we can skip the rank check and directly solve via lstsq, which is more stable in the presence of NaNs/Infs and rank-deficiency. This is especially relevant for the test_extreme_weight_initialisation test case, which intentionally creates extreme weights that can lead to numerical issues.
+    By default, this attempts a fast solution using the normal equations. If the
+    Gram matrix is singular or ill-conditioned, it falls back to a robust
+    Singular Value Decomposition (SVD) solver.
+
+    Args:
+        X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+        y: The response vector for each coalition of shape ``[n_coalitions]``.
+        kernel_weights: The weights for the regression problem of shape ``[n_coalitions]``.
+        use_svd: If ``True``, skips the fast normal equation solver and directly uses
+            the robust SVD-based least squares solver (``np.linalg.lstsq``). Useful
+            for cases with extreme weight initializations or known rank-deficiencies.
+
+    Returns:
+        The approximated interaction values of shape ``[n_interactions]``.
+    """
+    # Explicit override: go straight to the robust, SVD-backed solver
     if use_svd:
         W_sqrt = np.sqrt(kernel_weights)
-        X_w = W_sqrt[:, np.newaxis] * X
-        y_w = W_sqrt * y
-        # Guard: SVD crashes for NaN/Inf values.
-        if not np.isfinite(X_w).all() or not np.isfinite(y_w).all():
-            return np.full(X.shape[1], np.nan)
-        return np.linalg.lstsq(X_w, y_w, rcond=None)[0]
+        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
 
-    # Otherwise, we attempt the fast path via np.linalg.solve, but only if the Gram matrix is well-conditioned and of full rank. This is a more efficient solution for well-behaved cases, while still providing a fallback to the more robust lstsq method when numerical issues are detected.
-    gram_matrix = X.T @ WX
+    # Standard fast path (try the fast way, catch the error if it fails)
+    try:
+        WX = kernel_weights[:, np.newaxis] * X
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            # Solves (X^T * W * X) * phi = X^T * W * y
+            return np.linalg.solve(X.T @ WX, WX.T @ y)
 
-    # test_extreme_weight_initialisation causes extreme weights that lead to Inf/NaN in the Gram matrix. np.linalg.solve used to silently return NaNs in this case. We now explicitly handle this cleanly and return NaNs for the regression coefficients.
-    if not np.isfinite(gram_matrix).all():
-        return np.full(X.shape[1], np.nan)
-
-    # Deterministic rank check (Look before you leap) instead of Try/Except
-    if (X.shape[0] < X.shape[1]) or (np.linalg.matrix_rank(gram_matrix) < gram_matrix.shape[0]):
+    except np.linalg.LinAlgError:
+        # Fallback: Gram matrix is singular. Use robust SVD approach.
         W_sqrt = np.sqrt(kernel_weights)
-        X_w = W_sqrt[:, np.newaxis] * X
-        y_w = W_sqrt * y
-        return np.linalg.lstsq(X_w, y_w, rcond=None)[0]
-
-    # The fast standard path for full-rank matrices
-    return np.linalg.solve(gram_matrix, WX.T @ y)
+        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]

@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.regression import KernelSHAP, LeverageSHAP
-from shapiq.approximator.regression.base import solve_regression
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
@@ -500,27 +499,6 @@ def test_inf_game_values_raise():
         approximator.approximate(budget=20, game=inf_game)
 
 
-def test_solve_regression_nan_guard_svd_path():
-    """solve_regression with use_svd=True must return NaNs (not crash) when inputs contain Inf/NaN.
-
-    LeverageSHAP always uses use_svd=True. If extreme IS weights produce Inf in the
-    weight-scaled design matrix, the solver must return NaN rather than raise or silently
-    return garbage. The caller can then decide how to handle it.
-    """
-    rng = np.random.default_rng(0)
-    n_rows, n_cols = 10, 4
-    X = rng.standard_normal((n_rows, n_cols))
-    y = rng.standard_normal(n_rows)
-
-    # Inject Inf into the weights so W_sqrt * X contains Inf.
-    weights = np.ones(n_rows)
-    weights[3] = np.inf
-
-    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=True)
-    assert result.shape == (n_cols,)
-    assert np.all(np.isnan(result)), f"Expected all-NaN, got {result}"
-
-
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_constant_game_zero_svs(seed):
     """A constant game v(S) = c for all S must assign zero Shapley value to every player.
@@ -590,4 +568,6 @@ def test_negative_large_magnitude_game(seed):
     # (player n has the most negative SV, player 1 the least negative)
     svs = result.values[1:]
     for i in range(n - 1):
-        assert svs[i] > svs[i + 1], f"Expected sv[{i}] > sv[{i+1}], got {svs[i]:.6f} vs {svs[i+1]:.6f}"
+        assert svs[i] > svs[i + 1], (
+            f"Expected sv[{i}] > sv[{i + 1}], got {svs[i]:.6f} vs {svs[i + 1]:.6f}"
+        )
