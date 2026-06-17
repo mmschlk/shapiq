@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import random as _py_random
+import sys
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -319,6 +320,16 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         """
         if k >= total:
             return list(range(total))  # asking for everything → return all indices
+        
+        # Fallback for astronomically large binomial pools (e.g. n=101) where 
+        # range(total) exceeds C ssize_t (sys.maxsize) and crashes random.sample.
+        # Since k is tiny compared to total, rejection collisions are practically impossible.
+        if total > sys.maxsize:
+            seen: set[int] = set()
+            while len(seen) < k:
+                seen.add(py_rng.randrange(total))
+            return list(seen)
+
         # random.sample supports range objects efficiently without materializing them and is
         # robust even when k is a large fraction of total.
         return py_rng.sample(range(total), k)
