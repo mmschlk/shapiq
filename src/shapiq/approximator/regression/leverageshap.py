@@ -320,8 +320,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         """
         if k >= total:
             return list(range(total))  # asking for everything → return all indices
-        
-        # Fallback for astronomically large binomial pools (e.g. n=101) where 
+
+        # Fallback for astronomically large binomial pools (e.g. n=101) where
         # range(total) exceeds C ssize_t (sys.maxsize) and crashes random.sample.
         # Since k is tiny compared to total, rejection collisions are practically impossible.
         if total > sys.maxsize:
