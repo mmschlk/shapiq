@@ -11,7 +11,6 @@ from nltk.corpus import wordnet as wn
 from nltk.tree import Tree
 
 from transformers import AutoModelForMaskedLM, AutoTokenizer
-from shapiq.imputer.text_imputer_attention import attention_mask_value_function
 
 nltk.download("punkt")
 nltk.download("wordnet")
@@ -757,6 +756,113 @@ class MLMInfillingPerturbation(BaseStringPerturbationStrategy):
 # =============================================================================
 # ATTENTION PERTURBATION
 # =============================================================================
+def build_attention_mask_for_coalition(
+    base_attention_mask: torch.Tensor,
+    player_spans: list[tuple[int, int]],
+    coalition: np.ndarray,
+) -> torch.Tensor:
+    """Build an attention mask for one coalition."""
+    coalition = np.asarray(coalition, dtype=bool)
+
+    if len(coalition) != len(player_spans):
+        msg = (
+            f"Coalition length {len(coalition)} does not match "
+            f"number of player spans {len(player_spans)}."
+        )
+        raise ValueError(msg)
+
+    attention_mask = base_attention_mask.clone()
+
+    for keep, (start, end) in zip(coalition, player_spans, strict=False):
+        if not keep:
+            attention_mask[..., start:end] = 0
+
+    return attention_mask
+
+
+def build_tokenized_players(
+    players: list[str],
+    tokenizer: PreTrainedTokenizerBase,
+) -> tuple[dict[str, torch.Tensor], list[tuple[int, int]]]:
+    """Tokenize players, suffix, and target text into one sequence."""
+    all_token_ids: list[int] = []
+    player_spans: list[tuple[int, int]] = []
+
+    for player_idx, player in enumerate(players):
+
+        token_ids = tokenizer.encode(
+            player,
+            add_special_tokens=False,
+        )
+
+        start = len(all_token_ids)
+        all_token_ids.extend(token_ids)
+        end = len(all_token_ids)
+
+        player_spans.append((start, end))
+
+    input_ids = torch.tensor(
+        [all_token_ids],
+        dtype=torch.long,
+    )
+
+    attention_mask = torch.ones_like(input_ids)
+    return (
+        {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        },
+        player_spans,
+    )
+
+
+def attention_mask_value_function(
+    tokenizer: PreTrainedTokenizerBase,
+    players: list[str],
+    coalitions: np.ndarray,
+) -> np.ndarray:
+    """Evaluate coalition values using attention masking.
+
+    Args:
+        tokenizer: HuggingFace tokenizer.
+        players: Text players to explain.
+        coalitions: Coalition matrix of shape ``(n_coalitions, n_players)``.
+
+    Returns:
+        input_ids: Encoded Text
+        attention_mask: attention_mask for llm
+    """
+    coalitions = np.asarray(coalitions, dtype=bool)
+
+    if coalitions.ndim == 1:
+        coalitions = coalitions.reshape(1, -1)
+
+    encoded, player_spans = build_tokenized_players(
+        players=players,
+        tokenizer=tokenizer,
+    )
+
+    if coalitions.shape[1] != len(player_spans):
+        msg = f"Expected coalition width {len(player_spans)}, got {coalitions.shape[1]}."
+        raise ValueError(msg)
+
+    masked_inputs: list[dict[str, torch.Tensor]] = []
+
+    for coalition in coalitions:
+        attention_mask = build_attention_mask_for_coalition(
+            base_attention_mask=encoded["attention_mask"],
+            player_spans=player_spans,
+            coalition=coalition,
+        )
+
+        masked_inputs.append(
+            {
+                "input_ids": encoded["input_ids"],
+                "attention_mask": attention_mask,
+            },
+        )
+
+    return masked_inputs
 class AttentionMaskPerturbation(BaseAttentionMaskPerturbationStrategy):
     """Evaluate missing players by masking their attention.
 
@@ -767,22 +873,10 @@ class AttentionMaskPerturbation(BaseAttentionMaskPerturbationStrategy):
 
     def __init__(
         self,
-        model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
-        device: str,
-        *,
-        prompt_suffix: str = "",
-        target_text: str,
-        player_separator: str = " ",
     ) -> None:
         """Initialize attention-mask perturbation."""
-        self.model = model
         self.tokenizer = tokenizer
-        self.device = device
-        self.prompt_suffix = prompt_suffix
-        self.target_text = target_text
-        self.player_separator = player_separator
-
     def evaluate(
         self,
         players: list[str],
@@ -790,14 +884,9 @@ class AttentionMaskPerturbation(BaseAttentionMaskPerturbationStrategy):
     ) -> np.ndarray:
         """Evaluate coalition values using attention masking."""
         return attention_mask_value_function(
-            model=self.model,
             tokenizer=self.tokenizer,
             players=players,
             coalitions=coalitions,
-            device=self.device,
-            prompt_suffix=self.prompt_suffix,
-            target_text=self.target_text,
-            player_separator=self.player_separator,
         )
 
 
@@ -819,12 +908,6 @@ PERTURBATION_STRATEGIES = {
 def create_perturbation_strategy(
     strategy: str,
     tokenizer: PreTrainedTokenizerBase,
-    *,
-    model: PreTrainedModel | None = None,
-    device: str = "cpu",
-    attention_prompt_suffix: str = "",
-    attention_target_text: str | None = None,
-    player_separator: str = " ",
 ) -> BasePerturbationStrategy:
     """Create a perturbation strategy from a string identifier."""
     if strategy not in PERTURBATION_STRATEGIES:
@@ -837,29 +920,11 @@ def create_perturbation_strategy(
 
     strategy_cls = PERTURBATION_STRATEGIES[strategy]
 
-    if strategy in {"mask", "pad"}:
+    if strategy in {"mask", "pad", "attention_mask"}:
         return strategy_cls(tokenizer)
 
     if strategy == "mlm_infilling":
         return strategy_cls()
-
-    if strategy == "attention_mask":
-        if model is None:
-            msg = "model must be provided for attention_mask perturbation."
-            raise ValueError(msg)
-
-        if attention_target_text is None:
-            msg = "attention_target_text must be provided for attention_mask perturbation."
-            raise ValueError(msg)
-
-        return strategy_cls(
-            model=model,
-            tokenizer=tokenizer,
-            device=device,
-            prompt_suffix=attention_prompt_suffix,
-            target_text=attention_target_text,
-            player_separator=player_separator,
-        )
 
     return strategy_cls()
 
@@ -1064,12 +1129,6 @@ class TextImputer:
         target_label: str = "good",
         prompt_template: str = ("Review: {text}\n\nSentiment:"),
         # ---------------------------------------------------------------------
-        # attention mask settings
-        # ---------------------------------------------------------------------
-        attention_prompt_suffix: str = "",
-        attention_target_text: str | None = None,
-        player_separator: str = " ",
-        # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
         player_level: str = "word",
@@ -1124,11 +1183,6 @@ class TextImputer:
             perturbation_strategy = create_perturbation_strategy(
                 strategy=perturbation_type,
                 tokenizer=tokenizer,
-                model=self.model,
-                device=self.device,
-                attention_prompt_suffix=attention_prompt_suffix,
-                attention_target_text=attention_target_text,
-                player_separator=player_separator,
             )
 
         self.perturbation_type = perturbation_type
