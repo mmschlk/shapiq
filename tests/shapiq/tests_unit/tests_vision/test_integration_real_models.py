@@ -121,7 +121,7 @@ class TestResNetIntegration:
 class TestViTIntegration:
     @staticmethod
     def _small_vit_and_processor():
-        transformers = pytest.importorskip("transformers")
+        pytest.importorskip("transformers")
         from transformers import ViTConfig, ViTForImageClassification, ViTImageProcessor
 
         # image_size=96, patch_size=16 -> grid_size=6, compatible with n_players=9.

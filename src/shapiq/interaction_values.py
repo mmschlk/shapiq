@@ -1074,7 +1074,7 @@ class InteractionValues:
         cmap: Colormap | str | None = None,
         show: bool = True,
         heatmap_only: bool = True,
-    ) -> tuple[Figure, tuple[Axes, Axes]] | None:
+    ) -> tuple[Figure, Axes] | tuple[Figure, tuple[Axes, Axes]] | None:
         """Visualize first-order attributions as a heatmap overlaid on the original image.
 
         Args:
@@ -1087,9 +1087,11 @@ class InteractionValues:
             cmap: Matplotlib colormap or name. ``None`` uses shapiq's BLUE→white→RED
                 diverging palette. Defaults to ``None``.
             show: Whether to display the plot. Defaults to ``True``.
+            heatmap_only: Whether to show only the heatmap. Defaults to ``True``.
 
         Returns:
-            If ``show`` is ``False``, returns ``(figure, (ax_heatmap, ax_bar))``.
+            If ``show`` is ``False`` and ``heatmap_only`` is ``True``, returns
+            ``(figure, ax_heatmap)``. Otherwise returns ``(figure, (ax_heatmap, ax_bar))``.
 
         """
         from shapiq.plot.vision import image_attribution_plot

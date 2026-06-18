@@ -86,7 +86,7 @@ def image_attribution_plot(
     ax_heatmap.set_title("First-order attributions")
     ax_heatmap.axis("off")
 
-    if not heatmap_only:
+    if ax_bar is not None:
         n_players = len(first_order)
         bar_colors = [cmap(norm(v)) for v in first_order]
         ax_bar.bar(range(n_players), first_order, color=bar_colors)
@@ -96,7 +96,7 @@ def image_attribution_plot(
         ax_bar.set_title(f"First-order values per {region_label.lower()}")
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    if heatmap_only:
+    if ax_bar is None:
         cbar = fig.colorbar(sm, ax=ax_heatmap, fraction=0.02, pad=0.04)
     else:
         cbar = fig.colorbar(sm, ax=[ax_heatmap, ax_bar], fraction=0.02, pad=0.04)
@@ -106,6 +106,6 @@ def image_attribution_plot(
     if show:
         plt.show()
         return None
-    if heatmap_only:
+    if ax_bar is None:
         return fig, ax_heatmap
     return fig, (ax_heatmap, ax_bar)

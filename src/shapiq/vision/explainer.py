@@ -144,3 +144,8 @@ class ImageExplainer(Explainer):
     def baseline_value(self) -> float:
         """Return the model prediction for the empty coalition."""
         return self._imputer.empty_prediction
+
+    @property
+    def imputer(self) -> ImageImputer:
+        """The image imputer used by this explainer."""
+        return self._imputer
