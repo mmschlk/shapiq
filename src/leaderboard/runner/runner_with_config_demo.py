@@ -30,6 +30,7 @@ class ExpandedRunConfig(TypedDict):
     budget: int
     seeds: list[int]
     game_seed: int
+    ground_truth_method: str
 
 
 def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]:
@@ -50,6 +51,7 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
             "budget": budget,
             "seeds": list(config_obj.seeds),
             "game_seed": config_obj.game_seed,
+            "ground_truth_method": config_obj.ground_truth.method,
         }
         for approx in config_obj.approximators
         for budget in config_obj.budgets
@@ -133,6 +135,7 @@ def main() -> None:
             budget=run_config["budget"],
             index=cast(InteractionIndex, run_config["index"]),
             approximator_class=approximator_class,
+            ground_truth_method=run_config["ground_truth_method"],
         )
 
         # Insert in local JSONL file

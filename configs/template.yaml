@@ -13,7 +13,7 @@
 # - local_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing", "Mushroom", ...
 # - global_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing"
 # - synthetic: "SOUM"
-game: "CaliforniaHousing"
+game: "Soybean"
 
 # Choose the game family: `local_xai` or `global_xai`.
 # local_xai uses a specific sample x and an imputer (needs `x`, `imputer`).
@@ -67,7 +67,7 @@ budget_policy:
 ground_truth:
   # "compute" (on-the-fly) or "lookup" (read from cache)
   strategy: "compute"
-  # "ExactComputer", "TreeExplainer", or "InterventionalTreeExplainer"
+  # "ExactComputer", "TreeExplainer"
   method: "ExactComputer"
   storage_path: "data/gt_cache.json"
 

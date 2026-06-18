@@ -1,36 +1,30 @@
-# Default Benchmark Configuration
-# Minimal fast verification configuration provided for Runner testing
-game: "CaliforniaHousing"
+game: "Zoo"
 game_family: "local_xai"
-index: "SII"
-max_order: 2
-n_players: 14
+index: "SV"
+max_order: 1
 
 game_params:
   model_name: "decision_tree"
   imputer: "marginal"
-  x: 0
-
-# For n=14, valid budgets satisfy 15 <= budget < 16384.
-# budget_policy (optional): use when you want runner to generate budgets based on game size
-#budget_policy:
-#  strategy: "range"
-#  start: "n+1"
-#  end: "2^n-1"
-#  steps: 10
+  x: 0  # 解释测试集中的第 0 个样本
 
 ground_truth:
   strategy: "compute"
-  method: "ExactComputer"
+  method: "TreeExplainer"  # 对于 n=8 的游戏，暴力硬算真值毫无压力，非常安全！
 
 approximators:
-  - "SHAPIQ"
-  - "KernelSHAPIQ"
+  - "KernelSHAP"
+  - "PermutationSamplingSV"
+  - "StratifiedSamplingSV"
+  - "OwenSamplingSV"  # 如果框架有分组逻辑则可保留，或保留前三个最稳健的黑盒算法
 
-
+# 对于 n=8，2^n = 256。
+# 设定 100 和 200 的预算非常符合你们“低预算(250以下)”的性能基准测试需求
 budgets:
+  - 100
   - 200
-  - 1000
 
 seeds:
-  - 42
+  - 0
+  - 1
+  - 2

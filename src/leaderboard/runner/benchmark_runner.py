@@ -32,6 +32,7 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
+    ground_truth_method: str = "ExactComputer",
     ground_truth_fn: Callable[..., InteractionValues] = compute_ground_truth,
     experiment_fn: Callable[..., list[dict[str, Any]]] = run_experiment,
     aggregate_fn: Callable[[list[dict[str, Any]]], dict[str, Any]] = aggregate_run_records,
@@ -52,6 +53,7 @@ def run_benchmark(
         budget: The evaluation budget available to the approximator in each run.
         index: The interaction index to approximate.
         approximator_class: The approximator class used for the benchmark.
+        ground_truth_method: The method used to compute the ground truth.
         ground_truth_fn: Function used to compute the ground truth.
         experiment_fn: Function used to run the experiment.
         aggregate_fn: Function used to aggregate the raw records.
@@ -67,7 +69,9 @@ def run_benchmark(
     # Define the values
 
     # Compute ground truth
-    ground_truth = ground_truth_fn(game=game, index=index, max_order=max_order)
+    ground_truth = ground_truth_fn(
+        game=game, index=index, max_order=max_order, method=ground_truth_method
+    )
 
     # approximate values [n times]
     results = experiment_fn(
@@ -81,6 +85,10 @@ def run_benchmark(
         budget=budget,
         approx_seeds=approx_seeds,
     )
+
+    # Override the hardcoded 'ExactComputer' in raw records with the actual method used
+    for record in results:
+        record["ground_truth_method"] = ground_truth_method
 
     # debugging
     for record in results:
