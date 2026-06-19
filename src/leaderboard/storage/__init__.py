@@ -10,7 +10,6 @@ from .connection import (
     UnsupportedDatabaseBackendError,
 )
 from .data_classes import RunConfig
-from .metrics.metrics import MetricsLoader
 
 __all__ = [
     "DatabaseBackend",
@@ -19,7 +18,6 @@ __all__ = [
     "DBClientError",
     "DBConnectionError",
     "RunConfig",
-    "MetricsLoader",
     "MissingMongoURIError",
     "UnsupportedDatabaseBackendError",
 ]
