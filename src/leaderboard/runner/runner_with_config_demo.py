@@ -10,7 +10,7 @@ from typing import Any, TypedDict, cast
 
 import yaml
 
-from config_manager import MVPRunConfig, load_and_validate_config
+from leaderboard.config_manager import MVPRunConfig, load_and_validate_config
 from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.custom_types import InteractionIndex
@@ -142,7 +142,7 @@ def main() -> None:
         local_db.insert_many(benchmark_result["raw_results"])
 
         # Insert in MongoDB
-        mongo_db.insert_many(benchmark_result["raw_results"])
+        # mongo_db.insert_many(benchmark_result["raw_results"])
 
         logging.info("Stored raw results:")
         logging.info(len(benchmark_result["raw_results"]))

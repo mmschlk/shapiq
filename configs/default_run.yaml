@@ -1,25 +1,23 @@
-game: "Zoo"
+game: "AdultCensus"
 game_family: "local_xai"
 index: "SV"
 max_order: 1
 
 game_params:
   model_name: "decision_tree"
-  imputer: "marginal"
-  x: 0  # 解释测试集中的第 0 个样本
+  imputer: "conditional"
+  x: 0
 
 ground_truth:
   strategy: "compute"
-  method: "TreeExplainer"  # 对于 n=8 的游戏，暴力硬算真值毫无压力，非常安全！
+  method: "ExactComputer"
 
 approximators:
   - "KernelSHAP"
   - "PermutationSamplingSV"
   - "StratifiedSamplingSV"
-  - "OwenSamplingSV"  # 如果框架有分组逻辑则可保留，或保留前三个最稳健的黑盒算法
+  - "OwenSamplingSV"
 
-# 对于 n=8，2^n = 256。
-# 设定 100 和 200 的预算非常符合你们“低预算(250以下)”的性能基准测试需求
 budgets:
   - 100
   - 200
