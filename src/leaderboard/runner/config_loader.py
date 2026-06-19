@@ -8,7 +8,7 @@ from typing import Any, TypeVar
 
 import yaml
 
-from config_manager import (
+from leaderboard.config_manager import (
     InvalidConfigMissingApproximatorsError,
     InvalidConfigMissingBudgetsError,
     InvalidYAMLTypeError,

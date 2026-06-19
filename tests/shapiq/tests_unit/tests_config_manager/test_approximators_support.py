@@ -4,8 +4,8 @@ from pydantic import ValidationError
 
 # Import the approximator module to access class objects and SUPPORT lists
 import shapiq.approximator as appr
-from config_manager import GroundTruthConfig, MVPRunConfig
-from config_manager.constants import ALL_SUPPORTED_APPROXIMATORS
+from leaderboard.config_manager import GroundTruthConfig, MVPRunConfig
+from leaderboard.config_manager.constants import ALL_SUPPORTED_APPROXIMATORS
 
 # Mapping of indices to their respective registry lists in shapiq
 INDEX_LISTS = {

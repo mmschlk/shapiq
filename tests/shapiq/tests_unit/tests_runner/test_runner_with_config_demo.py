@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from config_manager import GroundTruthConfig, MVPRunConfig
+from leaderboard.config_manager import GroundTruthConfig, MVPRunConfig
 from leaderboard.runner.runner_with_config_demo import expand_validated_config
 
 

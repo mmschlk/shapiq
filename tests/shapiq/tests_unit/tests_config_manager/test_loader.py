@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from config_manager import GroundTruthConfig, MVPRunConfig
-from config_manager.loader import load_and_validate_config
+from leaderboard.config_manager import GroundTruthConfig, MVPRunConfig, load_and_validate_config
 from leaderboard.runner.runner_with_config_demo import expand_validated_config
 
 
