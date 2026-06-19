@@ -6,9 +6,9 @@ from __future__ import annotations
 class DBClientError(Exception):
     """Base exception for database client errors."""
 
-    def __init__(self) -> None:
+    def __init__(self, message: str = "Database client error occurred.") -> None:
         """Initialize with a custom error message."""
-        super().__init__("Database client error occurred.")
+        super().__init__(message)
 
 
 class MissingMongoURIError(DBClientError):
