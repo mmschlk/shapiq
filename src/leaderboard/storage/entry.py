@@ -83,7 +83,9 @@ def cmd_investigate(db: DatabaseClient, _args: argparse.Namespace) -> None:
 
         duplicates = {s: c for s, c in seed_counts.items() if c > 1}
         if duplicates:
-            logging.info("Config [%s] has %s duplicate seed(s): %s", _i, len(duplicates), duplicates)
+            logging.info(
+                "Config [%s] has %s duplicate seed(s): %s", _i, len(duplicates), duplicates
+            )
             logging.info("Config details: %s", cfg)
 
 
