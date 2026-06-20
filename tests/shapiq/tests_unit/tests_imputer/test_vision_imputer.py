@@ -667,6 +667,30 @@ class TestSLICSegmenter:
         assert mask.image_binary_mask.shape[2:] == (64, 64)
         assert mask.text_attention_mask is not None
 
+    def test_slic_coerce_ndarray_input(self, config):
+        """ndarray path of _coerce_rgb_uint8: >3 channels, float dtype, resize."""
+        try:
+            from shapiq.imputer.vision.segmenters.slic import SLICSegmenter
+        except ImportError:
+            pytest.skip("scikit-image not available")
+        # (32, 32, 4) float RGBA in [0, 1], smaller than config.image_size (64)
+        rng = np.random.default_rng(0)
+        img = rng.random((32, 32, 4))
+        seg = SLICSegmenter(config, image_array=img)
+        assert seg.get_layout().n_players_image > 0
+
+    def test_slic_label_map_device_cache(self, config, image):
+        """_label_map_for caches per device (cache-miss branch, lines 144-145)."""
+        try:
+            from shapiq.imputer.vision.segmenters.slic import SLICSegmenter
+        except ImportError:
+            pytest.skip("scikit-image not available")
+        seg = SLICSegmenter(config, image_array=image)
+        meta = torch.device("meta")          # a device not yet cached
+        lm = seg._label_map_for(meta)
+        assert lm.device.type == "meta"
+        assert meta in seg._label_map_by_device
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # VisionImputer orchestration tests (mock model)

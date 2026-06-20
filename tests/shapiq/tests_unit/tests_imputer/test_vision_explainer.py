@@ -445,6 +445,17 @@ class TestVisionExplainer:
         assert isinstance(game, VisionLanguageGame)
         assert game.n_players > 0
 
+    def test_infer_processor_raises_without_model_id(self):
+        """_infer_processor raises ValueError when no model id is available."""
+        from shapiq.explainer.vision import VisionExplainer
+
+        class _Bare:  # no name_or_path, no config
+            pass
+
+        explainer = VisionExplainer.__new__(VisionExplainer)  # skip __init__
+        with pytest.raises(ValueError, match="Could not infer processor"):
+            explainer._infer_processor(_Bare())
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Explainer auto-dispatch test
