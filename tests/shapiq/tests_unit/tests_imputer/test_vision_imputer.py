@@ -686,7 +686,7 @@ class TestSLICSegmenter:
         except ImportError:
             pytest.skip("scikit-image not available")
         seg = SLICSegmenter(config, image_array=image)
-        meta = torch.device("meta")          # a device not yet cached
+        meta = torch.device("meta")  # a device not yet cached
         lm = seg._label_map_for(meta)
         assert lm.device.type == "meta"
         assert meta in seg._label_map_by_device
