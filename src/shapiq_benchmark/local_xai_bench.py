@@ -61,7 +61,7 @@ class LocalXAIBench(Benchmark[IndexType]):
         **kwargs: object,
     ) -> tuple[int | None, Literal["classification", "regression"]]:
         """Load and set dataset and model based on the provided arguments.
-        
+
         Args:
             data: Dataset identifier or a NumPy array containing the data.
             model: Model identifier or a fitted model object.
