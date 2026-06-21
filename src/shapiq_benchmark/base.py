@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING
 
 from shapiq.typing import IndexType
 
@@ -13,10 +13,7 @@ if TYPE_CHECKING:
     from .computers import GroundTruthComputer
 
 
-T_Index_contra = TypeVar("T_Index_contra", bound=IndexType, contravariant=True)
-
-
-class Benchmark(ABC, Generic[T_Index_contra]):
+class Benchmark[T_Index: IndexType](ABC):
     """Protocol for benchmark implementations."""
 
     @property
@@ -27,13 +24,13 @@ class Benchmark(ABC, Generic[T_Index_contra]):
 
     @property
     @abstractmethod
-    def computer(self) -> GroundTruthComputer[T_Index_contra]:
+    def computer(self) -> GroundTruthComputer[T_Index]:
         """Return the ground truth computer used by the benchmark."""
         ...
 
     @abstractmethod
     def exact_values(
-        self, index: T_Index_contra, order: int, **kwargs: object
+        self, index: T_Index, order: int, **kwargs: object
     ) -> InteractionValues:
         """Compute exact interaction values for the given index and order."""
         ...

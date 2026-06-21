@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from shapiq.tree.interventional.game import InterventionalGame
 
@@ -14,8 +14,7 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq import InteractionValues
-    from shapiq.typing import IndexType, Model
+    from shapiq.typing import Model
 
 
 class InterventionalBench(LocalXAIBench):
@@ -25,6 +24,7 @@ class InterventionalBench(LocalXAIBench):
         self,
         data: str | np.ndarray,
         model: str | Model | Callable[[np.ndarray], np.ndarray],
+        data_type: Literal["classification", "regression"] | None = None,
         *,
         x_explain: int | None = 0,
         class_index: int | None = 1,
@@ -36,14 +36,16 @@ class InterventionalBench(LocalXAIBench):
         Args:
             data: Dataset identifier (e.g. "adult_census") or a NumPy array containing the data.
             model: Model identifier (e.g. "decision_tree") or a fitted model object.
+            data_type: Type of data ("classification" or "regression"), or None to infer. Must be provided if data is a NumPy array.
             x_explain: Instance to explain.
             class_index: Class index for classification models.
             random_state: Random state used for data split and model init.
             **kwargs: Additional keyword arguments for model building.
         """
-        class_index, _ = self._load_dataset_and_model(
+        class_index, _ = self._load_and_set_dataset_and_model(
             data,
             model,
+            data_type=data_type,
             benchmark_type="interventional",
             random_state=random_state,
             class_index=class_index,
@@ -59,26 +61,3 @@ class InterventionalBench(LocalXAIBench):
             class_index=class_index,
         )
         self._computer = InterventionalComputer(self._game)
-
-    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
-        """Compute exact interaction values using the InterventionalBench computer.
-
-        Args:
-            index: The index for which to compute interaction values.
-            order: The order of interactions to compute.
-            **kwargs: Additional keyword arguments for computation.
-
-        Returns:
-            InteractionValues: The computed interaction values.
-        """
-        return self._computer.exact_values(index=index, order=order, **kwargs)
-
-    @property
-    def game(self) -> InterventionalGame:
-        """Game instance used by the Interventioanl Benchmark."""
-        return self._game
-
-    @property
-    def computer(self) -> InterventionalComputer[IndexType]:
-        """Ground truth computer used by the Interventioanl Benchmark."""
-        return self._computer

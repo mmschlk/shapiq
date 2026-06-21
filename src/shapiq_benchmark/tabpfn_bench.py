@@ -18,8 +18,6 @@ from .setup import load_from_str
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq import InteractionValues
-
     from .bench_types import BenchmarkDataset
 
 
@@ -96,6 +94,8 @@ class TabPFNBench(Benchmark[IndexType]):
         predict_function, _ = get_predict_function_and_model_type(
             self.model, class_index=class_index
         )
+        if isinstance(predict_function, RuntimeError):
+            raise predict_function
 
         imputer = TabPFNImputer(
             model=self.model,
@@ -108,26 +108,3 @@ class TabPFNBench(Benchmark[IndexType]):
 
         self._game = imputer
         self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
-
-    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
-        """Compute exact interaction values using the TabPFNComputer.
-
-        Args:
-            index: The index for which to compute interaction values.
-            order: The order of interactions to compute.
-            **kwargs: Additional keyword arguments for computation.
-
-        Returns:
-            InteractionValues: The computed interaction values.
-        """
-        return self._computer.exact_values(index=index, order=order, **kwargs)
-
-    @property
-    def game(self) -> TabPFNImputer:
-        """Game instance used by the TabPFN Benchmark."""
-        return self._game
-
-    @property
-    def computer(self) -> GroundTruthComputer[IndexType]:
-        """Ground truth computer used by the TabPFN Benchmark."""
-        return self._computer

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 from shapiq import ExactComputer, Game
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
@@ -29,14 +29,14 @@ class GroundTruthComputer(Protocol[T_Index_contra]):
     """
 
     def exact_values(
-        self, index: T_Index_contra, order: int, budget: int | None = None
+        self, index: T_Index_contra, order: int, **kwargs: object
     ) -> InteractionValues:
         """Compute the exact interaction values for a given index and order.
 
         Args:
             index: The index type for which to compute the interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation.
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values for the specified index and order.
@@ -70,7 +70,7 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_index,
         )
 
-    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: Any) -> InteractionValues:
         """Compute exact interaction values using the InterventionalTreeExplainer.
 
         Args:
@@ -124,12 +124,13 @@ class LocalXAIComputer(GroundTruthComputer[IndexType]):
         self.game = game
         self._computer = ExactComputer(game=game, n_players=game.n_players, evaluate_game=False)
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: Any) -> InteractionValues:
         """Compute exact interaction values using the ExactComputer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
@@ -137,6 +138,7 @@ class LocalXAIComputer(GroundTruthComputer[IndexType]):
         return self._computer(
             index=index,
             order=order,
+            **kwargs,
         )
 
 
