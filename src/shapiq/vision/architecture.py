@@ -11,10 +11,17 @@ from typing import TYPE_CHECKING
 
 from .masking import MaskTokenStrategy, MeanColorMasking
 from .players import PatchStrategy, SuperpixelStrategy
+from .utils import get_torch_device, to_tensor_chw
+
+try:
+    import torch
+except ImportError as err:
+    from ._error import _vision_import_error
+
+    raise _vision_import_error from err
 
 if TYPE_CHECKING:
     import numpy as np
-    import torch
 
     from shapiq.typing import Model
 
@@ -134,10 +141,6 @@ class CNNArchitecture(ModelArchitectureStrategy):
         Args:
             image: Input image as a ``(H, W, C)`` numpy array.
         """
-        import torch
-
-        from .utils import get_torch_device, to_tensor_chw
-
         device = get_torch_device(self._model)
         self._image_tensor = to_tensor_chw(image, device=device)
         self._player_masks = torch.from_numpy(self._player_strategy.get_masks(image)).to(device)
@@ -159,8 +162,6 @@ class CNNArchitecture(ModelArchitectureStrategy):
             Float tensor of shape ``(n_coalitions,)`` with the logit for the
             predicted class for each coalition.
         """
-        import torch
-
         with torch.no_grad():
             masked_batch = self._masking_strategy.apply(
                 self._image_tensor, self._player_masks, coalitions
@@ -243,10 +244,6 @@ class TransformerArchitecture(ModelArchitectureStrategy):
         Args:
             image: Input image as a ``(H, W, C)`` numpy array.
         """
-        import torch
-
-        from .utils import get_torch_device
-
         device = get_torch_device(self._model)
         inputs = self.processor(images=image, return_tensors="pt")
         self._pixel_values = inputs["pixel_values"].to(device)
@@ -273,8 +270,6 @@ class TransformerArchitecture(ModelArchitectureStrategy):
             Float tensor of shape ``(n_coalitions,)`` with the softmax
             probability for the predicted class for each coalition.
         """
-        import torch
-
         with torch.no_grad():
             token_mask = self._masking_strategy.apply(coalitions, self._token_masks)
             batch = self._pixel_values.repeat(token_mask.shape[0], 1, 1, 1)

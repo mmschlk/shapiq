@@ -6,8 +6,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
+try:
     import torch
+except ImportError as err:
+    from ._error import _vision_import_error
+
+    raise _vision_import_error from err
+
+if TYPE_CHECKING:
     from PIL.Image import Image as PILImage
 
     ImageLike = np.ndarray | torch.Tensor | PILImage
@@ -115,8 +121,6 @@ def to_tensor_chw(
         TypeError: If the input cannot be converted by :func:`as_hwc_array`.
         ValueError: If the resulting array does not represent a valid image.
     """
-    import torch
-
     arr = as_hwc_array(image)  # (H, W, C) numpy
     arr = arr.astype(np.float32) / 255.0 if arr.dtype == np.uint8 else arr.astype(np.float32)
 
@@ -145,12 +149,6 @@ def get_torch_device(obj: object) -> torch.device:
     Raises:
         ImportError: If PyTorch is not installed.
     """
-    try:
-        import torch
-    except ImportError as exc:
-        msg = "PyTorch is required to resolve a torch device"
-        raise ImportError(msg) from exc
-
     if isinstance(obj, torch.Tensor):
         return obj.device
 
@@ -174,11 +172,6 @@ def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
         A numpy array with the same shape and dtype as ``tensor``.
     """
     return tensor.detach().cpu().numpy()
-
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
 
 
 def _try_convert_pil_image(image: object) -> np.ndarray | None:
@@ -223,10 +216,6 @@ def _try_convert_torch_tensor(image: object) -> np.ndarray | None:
     Raises:
         ValueError: If the tensor has an unsupported number of dimensions.
     """
-    try:
-        import torch
-    except ImportError:
-        return None
     if not isinstance(image, torch.Tensor):
         return None
 

@@ -10,6 +10,13 @@ from shapiq.imputer.base import Imputer
 
 from .utils import ImageLike, as_hwc_array, tensor_to_numpy
 
+try:
+    import torch
+except ImportError as err:
+    from ._error import _vision_import_error
+
+    raise _vision_import_error from err
+
 if TYPE_CHECKING:
     from .architecture import ModelArchitectureStrategy
 
@@ -97,8 +104,6 @@ class ImageImputer(Imputer):
             :attr:`architecture`) for each coalition.
 
         """
-        import torch
-
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape(1, -1)
 

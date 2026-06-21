@@ -3692,6 +3692,10 @@ sparse = [
     { name = "galois" },
     { name = "sparse-transform" },
 ]
+vision = [
+    { name = "scikit-image" },
+    { name = "torch" },
+]
 
 [package.dev-dependencies]
 all-ml = [
@@ -3776,15 +3780,17 @@ requires-dist = [
     { name = "pandas" },
     { name = "pillow" },
     { name = "requests" },
+    { name = "scikit-image", marker = "extra == 'vision'", specifier = ">=0.26.0" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "smac", marker = "extra == 'proxy'" },
     { name = "sparse-transform", marker = "extra == 'sparse'" },
     { name = "torch", marker = "extra == 'shapleig'", specifier = ">=2.9.1" },
+    { name = "torch", marker = "extra == 'vision'", specifier = ">=2.9.1" },
     { name = "tqdm" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
-provides-extras = ["sparse", "proxy", "shapleig"]
+provides-extras = ["sparse", "proxy", "shapleig", "vision"]
 
 [package.metadata.requires-dev]
 all-ml = [

@@ -82,6 +82,11 @@ shapleig = [
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
+vision = [
+    # required by shapiq.vision (ImageExplainer and related classes)
+    "torch>=2.9.1",
+    "scikit-image>=0.26.0",
+]
 
 [tool.coverage.report]
 exclude_also = [

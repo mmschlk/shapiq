@@ -10,9 +10,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+try:
     import torch
+except ImportError as err:
+    from ._error import _vision_import_error
 
+    raise _vision_import_error from err
+
+if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
@@ -79,8 +84,6 @@ class MeanColorMasking(CNNMaskingStrategy):
         self, image: torch.Tensor, player_masks: torch.Tensor, coalitions: torch.Tensor
     ) -> torch.Tensor:
         """Apply mean color masking to absent player regions."""
-        import torch
-
         pixel_mask = self._build_pixel_mask(player_masks, coalitions)  # (n_coalitions, H, W)
         mean_color = image.mean(dim=(1, 2))  # (C,)
 
@@ -106,8 +109,6 @@ class ZeroMasking(CNNMaskingStrategy):
         self, image: torch.Tensor, player_masks: torch.Tensor, coalitions: torch.Tensor
     ) -> torch.Tensor:
         """Apply zero (or constant) masking to absent player regions."""
-        import torch
-
         pixel_mask = self._build_pixel_mask(player_masks, coalitions)  # (n_coalitions, H, W)
 
         return torch.where(
@@ -167,8 +168,6 @@ class TransformerMaskingStrategy(ABC):
             Boolean tensor of shape ``(n_coalitions, n_tokens)`` on the same
             device as ``coalitions``.
         """
-        import torch
-
         n_players = token_masks.shape[0]
         n_tokens = int(token_masks.max()) + 1
 
@@ -209,8 +208,6 @@ class MaskTokenStrategy(TransformerMaskingStrategy):
 
     def apply(self, coalitions: torch.Tensor, token_masks: torch.Tensor) -> torch.Tensor:
         """Apply masking by setting the model's mask_token embedding to zero."""
-        import torch
-
         self._model.vit.embeddings.mask_token = torch.nn.Parameter(
             torch.zeros(1, 1, self._model.config.hidden_size)
         )
