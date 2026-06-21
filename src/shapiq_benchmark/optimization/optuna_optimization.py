@@ -36,7 +36,7 @@ DATASET_TASKS = {
 }
 
 
-def _subset(data: Any, indices: IndexArray) -> Any: # noqa: ANN401
+def _subset(data: Any, indices: IndexArray) -> Any:  # noqa: ANN401
     """Return a subset of data for the provided indices."""
     if hasattr(data, "iloc"):
         return data.iloc[indices]
@@ -106,7 +106,7 @@ def get_hyperparameters(
     return params
 
 
-def get_model_instance(model_name: str, task: str, params: dict[str, Any]) -> Any: # noqa: ANN401
+def get_model_instance(model_name: str, task: str, params: dict[str, Any]) -> Any:  # noqa: ANN401
     """Instantiate the correct model class based on name and task.
 
     Args:
