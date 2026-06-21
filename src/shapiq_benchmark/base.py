@@ -32,4 +32,3 @@ class Benchmark[T_Index: IndexType](ABC):
     def exact_values(self, index: T_Index, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values for the given index and order."""
         return self.computer.exact_values(index=index, order=order, **kwargs)
-    
