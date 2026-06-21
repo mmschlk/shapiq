@@ -7,7 +7,7 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
-from scipy.special import binom
+from scipy.special import binom, gammaln
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
@@ -18,6 +18,7 @@ __all__ = [
     "count_interactions",
     "generate_interaction_lookup",
     "get_explicit_subsets",
+    "log_binom",
     "pair_subset_sizes",
     "powerset",
     "split_subsets_budget",
@@ -26,6 +27,36 @@ __all__ = [
 ]
 
 T = TypeVar("T", int, str)
+
+
+def log_binom(n: int, k: int | np.ndarray) -> float | np.ndarray:
+    """Natural logarithm of the binomial coefficient ``log(binom(n, k))``.
+
+    Computed via :func:`scipy.special.gammaln` as
+    ``gammaln(n + 1) - gammaln(k + 1) - gammaln(n - k + 1)``. This stays finite for large ``n``
+    where :func:`scipy.special.binom` overflows to ``inf`` (the central coefficient
+    ``binom(n, n/2)`` exceeds the float64 range already at ``n`` of roughly ``1029``). Keeping the
+    binomial in log-space lets the Shapley/SII weights and the sampling probabilities -- whose
+    ratios stay well-scaled even when the individual coefficients are astronomically large -- be
+    combined without intermediate overflow/underflow.
+
+    Args:
+        n: The number of elements (a non-negative integer).
+        k: The number of chosen elements. May be a scalar or a numpy array. Entries outside
+            ``[0, n]`` yield ``-inf`` (i.e. ``binom(n, k) == 0``).
+
+    Returns:
+        ``log(binom(n, k))`` as a float (scalar ``k``) or a numpy array (array ``k``).
+
+    """
+    k_arr = np.asarray(k, dtype=np.float64)
+    valid = (k_arr >= 0) & (k_arr <= n)
+    with np.errstate(invalid="ignore"):
+        result = gammaln(n + 1) - gammaln(k_arr + 1) - gammaln(n - k_arr + 1)
+    result = np.where(valid, result, -np.inf)
+    if np.ndim(k) == 0:
+        return float(result)
+    return result
 
 
 def powerset(

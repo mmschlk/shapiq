@@ -1,6 +1,36 @@
 # Changelog
 
-## v1.5.0 (2026-05-26)
+## Unreleased
+
+### New Features
+
+- adds the `ShaplEIG` approximator in `shapiq.approximator.shapleig` for Shapley value estimation via Bayesian experimental design: a Gaussian process surrogate with a weighted Hamming kernel is fit on the queried coalition values, and the next coalition is selected by maximizing the closed-form expected information gain about the Shapley values. Requires the new optional `shapleig` dependency group (`pip install shapiq[shapleig]` — torch, gpytorch, botorch, linear-operator); the optional dependencies are imported lazily in the constructor.
+
+## v1.5.2 (2026-06-12)
+
+### Highlights of new Features
+
+- Added `'baseline'` imputer support (`BaselineImputer`) to the `shapiq_games` `LocalExplanation` benchmark games.
+- Added `ProxySHAP` and `ProxySPEX` as approximator options for the `TabularExplainer`, `TabPFNExplainer`, and `AgnosticExplainer` in `shapiq.explainer`. All three resolve approximators through the shared `setup_approximator` configuration, so `proxyshap` and `proxyspex` are selectable wherever that configuration is used.
+- Added support for linear surrogate models and HPO-informed proxies in `ProxySHAP` and `RegressionMSR`. The extraction route (linear coefficient read-out vs. exact tree read-out) is selected automatically from the proxy's base estimator type, and hyperparameter-search wrappers (scikit-learn's `GridSearchCV`, `RandomizedSearchCV`, `HalvingGridSearchCV`, or SMAC) are fitted and their `best_estimator_` read out, for both linear and tree proxies.
+- Made `ProxySPEX`'s `proxy_model` configurable: it now also accepts the string tags `"lightgbm"` (default), `"xgboost"`, and `"tree"`, as well as custom tree estimators and HPO wrappers. The default remains the HPO-informed LightGBM proxy.
+- `ProxySHAP`, `ProxySPEX`, and `RegressionMSR` no longer require LightGBM, XGBoost, or SMAC to be installed. When an optional backend is unavailable they warn and fall back to a scikit-learn `DecisionTreeRegressor`, so the proxy approximators always import and run.
+- Added log-space weight computation for the regression-based (`KernelSHAP`, `KernelSHAPIQ`, `RegressionFSII`, `RegressionFBII`, `kADDSHAP`) and Monte Carlo (`SHAPIQ`, `SVARMIQ`) approximators, supporting Shapley approximation for feature counts beyond 1000.
+
+
+### Bugfix
+
+- Fixes `InterventionalTreeExplainer` routing the explain point at float64 precision while tree thresholds and the reference data are float32. The explain point is now cast to float32 to match the model's evaluation.
+- Fixes `ProxySHAP` and `RegressionMSR` alignment of sampled coalitions between the approximator and its adjustment method (`random_state` now defaults to a fixed seed so both samplers reproduce identical coalitions).
+- Fixes `ProxySPEX` passing `initialize_dict=True` to its sampler, which was unnecessary since `ProxySPEX` does not return all possible interactions (now `False`).
+
+## v1.5.1 (2026-05-30)
+
+### Bugfix
+
+- Fixes segfaults on macOS when using shapiq alongside XGBoost or LightGBM by static-linking the OpenMP runtime instead of vendoring a dynamic `libomp.dylib`. No API changes. [#536](https://github.com/mmschlk/shapiq/issues/536)
+
+## v1.5.0 (2026-05-29)
 
 ### Highlights of new Features
 
@@ -11,6 +41,7 @@
 - adds `InterventionalTreeExplainer` in `shapiq.tree.interventional`
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
 - changes the default for all user-facing `Explainer` classes to `index="SV"`, `max_order=1` (Shapley values) — see Breaking Changes below
+- adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
 
 
 ### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501), [Preprint](https://arxiv.org/abs/2605.22738)
@@ -101,7 +132,7 @@ The conversion of the tree methods has been moved to C++ giving at least 2x up t
 - fixes `min_order` in `TreeExplainer` so that it now actually restricts the returned `InteractionValues` to interactions of order ``min_order..max_order`` (``min_order=0`` continues to include the empty interaction at the baseline value); invalid values now raise a clear `ValueError`. [#325](https://github.com/mmschlk/shapiq/issues/325)
 - fixes tree conversion breaking when the `LC_NUMERIC` locale is not set to the standard `"C"` value. [#515](https://github.com/mmschlk/shapiq/pull/515)
 - fixes a segfault in the `ProxySHAP` C++ extension code. [#506](https://github.com/mmschlk/shapiq/pull/506)
-
+- fixes a Out Of Memory (OOM) when values is an dictionary and n_players is large.  [#531](https://github.com/mmschlk/shapiq/issues/531)
 
 ## v1.4.1 (2025-11-10)
 

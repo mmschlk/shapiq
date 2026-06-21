@@ -59,7 +59,10 @@ class LocalExplanation(Game):
         model: Callable[[np.ndarray], np.ndarray],
         *,
         x: np.ndarray | int | None = None,
-        imputer: MarginalImputer | GenerativeConditionalImputer | str = "marginal",
+        imputer: MarginalImputer
+        | GenerativeConditionalImputer
+        | BaselineImputer
+        | str = "marginal",
         normalize: bool = True,
         random_state: int | None = 42,
         verbose: bool = False,
@@ -75,7 +78,7 @@ class LocalExplanation(Game):
                 ``(n_samples, n_features)`` and the output a 1d matrix of shape ``(n_samples,)``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             x: The data point to explain. Can be an index of the background data or a 1d matrix of
                 shape ``(n_features,)``. Defaults to ``None`` which will select a random data point
@@ -94,10 +97,9 @@ class LocalExplanation(Game):
         self.x = get_x_explain(x, data)
 
         # init the imputer which serves as the workhorse of this Game
-        self._imputer = imputer
         if isinstance(imputer, str):
             if imputer == "marginal":
-                self._imputer = MarginalImputer(
+                imputer = MarginalImputer(
                     model=model,
                     data=data,
                     x=self.x,
@@ -112,7 +114,7 @@ class LocalExplanation(Game):
                     replace=False,
                 )
                 data_background = data[random_indices]
-                self._imputer = GenerativeConditionalImputer(
+                imputer = GenerativeConditionalImputer(
                     model=model,
                     # give only first 2_000 samples to the GenerativeConditionalImputer
                     data=data_background,
@@ -121,19 +123,18 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             elif imputer == "baseline":
-                baseline = np.mean(data, axis=0, keepdims=True)
-                # use the model as a baseline imputer
-                self._imputer = BaselineImputer(
+                imputer = BaselineImputer(
                     model=model,
-                    data=baseline,
+                    data=data,
                     x=self.x,
                     random_state=random_state,
                     normalize=False,
                 )
             else:
-                msg = f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                msg = f"Imputer {imputer} not available. Choose from {'marginal', 'conditional', 'baseline'}."
                 raise ValueError(msg)
 
+        self._imputer = imputer
         self.empty_prediction_value: float = self._imputer.empty_prediction
 
         # init the base game

@@ -35,12 +35,8 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      # libomp is installed via conda inside build_wheels.sh — see that
-      # script for the rationale (mirrors scikit-learn's wheel build).
-      - uses: conda-incubator/setup-miniconda@v3
-        if: startsWith(matrix.os, 'macos')
-        with:
-          miniforge-version: latest
+      # libomp is installed via `brew install libomp` inside build_wheels.sh and
+      # static-linked into the extension — see that script for the rationale.
       - name: Build wheels
         shell: bash -el {0}
         run: bash build_tools/wheels/build_wheels.sh

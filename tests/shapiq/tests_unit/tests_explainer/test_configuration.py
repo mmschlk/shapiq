@@ -83,6 +83,23 @@ class TestAutomaticSelection:
         approx = setup_approximator_automatically(index=index, max_order=order, n_players=n_players)
         assert isinstance(approx, expected_approx)
 
+    def test_spex_unavailable_warns_and_falls_through(self, monkeypatch):
+        """When SPEX would be selected but the ``sparse`` extra is missing, warn and fall back.
+
+        Simulates the placeholder case by forcing ``_spex_available`` to ``False`` for a large
+        problem where ``choose_spex`` returns ``True``; the result must be a working (dense)
+        approximator rather than an ``ImportError`` from the placeholder ``SPEX``.
+        """
+        from shapiq.approximator import SPEX
+        from shapiq.explainer import configuration
+
+        monkeypatch.setattr(configuration, "_spex_available", lambda: False)
+        with pytest.warns(UserWarning, match="sparse"):
+            approx = configuration.setup_approximator_automatically(
+                index="k-SII", max_order=2, n_players=100
+            )
+        assert not isinstance(approx, SPEX)
+
 
 class TestSetupApproximator:
     """Tests the setup of the approximator with different configurations."""
