@@ -29,8 +29,6 @@ class Benchmark[T_Index: IndexType](ABC):
         ...
 
     @abstractmethod
-    def exact_values(
-        self, index: T_Index, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: T_Index, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values for the given index and order."""
         ...
