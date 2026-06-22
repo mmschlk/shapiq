@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
+from random import Random
+from statistics import mean, stdev
+
+import numpy as np
 
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
@@ -15,6 +20,10 @@ from leaderboard.scoring.scorer_utils import (
     get_metric_value,
     group_records,
 )
+
+type EloScore = float
+type ApproximatorRatingsMap = dict[str, list[EloScore]]
+type MatchStats = dict[str, dict[str, int]]
 
 
 @dataclass(frozen=True)
@@ -55,6 +64,30 @@ class PairwiseMatch:
     group_key: dict[str, object]
 
 
+@dataclass(frozen=True)
+class ComparableGroup:
+    """One comparable benchmark group used for Elo match construction.
+
+    A comparable group contains all benchmark records that may be compared
+    directly with each other. Records inside one comparable group share the same
+    benchmark context, for example the same game, index, max order, budget, and
+    ground-truth method. Different approximators and different seeds can occur
+    inside the same comparable group. The seeds are aggregated later on.
+
+    Attributes:
+        key: An order-preserving tuple containing the concrete values of the
+            scorer's group keys for this comparable group.
+        records: Raw benchmark records that belong to this comparable group.
+    """
+
+    key: tuple[object, ...]
+    records: list[dict[str, object]]
+
+
+type BootstrapSample = list[ComparableGroup]
+type BootstrapSamples = list[BootstrapSample]
+
+
 class EloScorer(LeaderboardScorer):
     """Scorer based on the Elo system using pairwise approximator comparisons."""
 
@@ -63,9 +96,14 @@ class EloScorer(LeaderboardScorer):
 
     def __init__(
         self,
-        initial_elo: float = 1000.0,
+        initial_elo: EloScore = 1000.0,
         k_factor: float = 16.0,
         tie_tolerance: float = 0.0,
+        n_permutations: int = 1,
+        permutations_random_state: int | None = 0,
+        n_bootstrap_samples: int = 0,
+        bootstrap_random_state: int | None = 0,
+        confidence_level: float = 0.95,
         group_keys: list[str] | None = None,
         metric_names: list[str] | None = None,
         game_names: list[str] | None = None,
@@ -82,15 +120,37 @@ class EloScorer(LeaderboardScorer):
             initial_elo: Starting Elo value for each approximator.
             k_factor: Multiplication factor determining Elo gain and loss per match.
             tie_tolerance: Tolerance for treating small metric differences as ties.
+            n_permutations: The number of match order permutations to foster stable results.
+            permutations_random_state: The random state which can be used to make permutations reproducible
+            n_bootstrap_samples: The number of bootstrap samples over comparable groups. ``0`` disables bootstrapping.
+            bootstrap_random_state: The random state which can be used to make bootstrapping reproducible
+            confidence_level: The confidence level used for bootstrap confidence intervals.
             group_keys: Record keys used to form comparable benchmark groups.
             metric_names: Optional metric names to include. ``None`` means all metrics.
             game_names: Optional game names to include. ``None`` means all games.
             indices: Optional interaction indices to include. ``None`` means all indices.
             budgets: Optional budgets to include. ``None`` means all budgets.
         """
+        if n_permutations < 1:
+            message = "n_permutations must be at least 1."
+            raise ValueError(message)
+
+        if n_bootstrap_samples < 0:
+            message = "n_bootstrap_samples must be at least 0."
+            raise ValueError(message)
+
+        if not 0.0 < confidence_level < 1.0:
+            message = "confidence_level must be between 0.0 and 1.0."
+            raise ValueError(message)
+
         self.initial_elo = initial_elo
         self.k_factor = k_factor
         self.tie_tolerance = tie_tolerance
+        self.n_permutations = n_permutations
+        self.permutations_random_state = permutations_random_state
+        self.n_bootstrap_samples = n_bootstrap_samples
+        self.bootstrap_random_state = bootstrap_random_state
+        self.confidence_level = confidence_level
         self.group_keys = group_keys or [
             "game_id",
             "game_name",
@@ -111,12 +171,58 @@ class EloScorer(LeaderboardScorer):
         selected_records = self._filter_records_by_context(valid_records)
 
         groups = group_records(selected_records, self.group_keys)
-        matches = self._build_pairwise_matches(groups)
+        comparable_groups = self._build_comparable_groups(groups)
+        matches = self._build_pairwise_matches(comparable_groups)
 
-        ratings, stats = self._compute_elo(matches)
-        leaderboard_rows = self._build_leaderboard_rows(ratings, stats)
+        if self.n_bootstrap_samples > 0:
+            approximator_ratings_map = self._compute_bootstrap_elo_ratings(comparable_groups)
+        else:
+            approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
+
+        match_stats = self._compute_match_stats(matches)
+        leaderboard_rows = self._build_leaderboard_rows_from_rating_samples(
+            approximator_ratings_map=approximator_ratings_map,
+            match_stats=match_stats,
+        )
 
         used_metric_names = self._get_used_metric_names(matches)
+
+        metadata = {
+            "n_input_records": len(records),
+            "n_valid_records": len(valid_records),
+            "n_selected_records": len(selected_records),
+            "n_groups": len(groups),
+            "n_matches": len(matches),
+            "initial_elo": self.initial_elo,
+            "k_factor": self.k_factor,
+            "tie_tolerance": self.tie_tolerance,
+            "seed_aggregation": "mean",
+            "ordering_strategy": "deterministic" if self.n_permutations == 1 else "permuted",
+            "n_permutations": self.n_permutations,
+            "permutations_random_state": self.permutations_random_state,
+            "n_bootstrap_samples": self.n_bootstrap_samples,
+            "bootstrap_random_state": self.bootstrap_random_state,
+        }
+
+        if self.n_bootstrap_samples > 0:
+            metadata.update(
+                {
+                    "rating_sample_method": (
+                        "group_bootstrap"
+                        if self.n_permutations == 1
+                        else "permutation_averaged_group_bootstrap"
+                    ),
+                    "confidence_level": self.confidence_level,
+                    "confidence_interval_method": "bootstrap_quantile",
+                    "n_rating_samples": self.n_bootstrap_samples,
+                    "n_permutations_per_bootstrap_sample": self.n_permutations,
+                    "n_total_elo_runs": self.n_bootstrap_samples * self.n_permutations,
+                }
+            )
+        else:
+            metadata["rating_sample_method"] = (
+                "deterministic" if self.n_permutations == 1 else "match_order_permutation"
+            )
 
         return ScoringResult(
             scorer_name=self.name,
@@ -126,30 +232,22 @@ class EloScorer(LeaderboardScorer):
             ),
             rows=leaderboard_rows,
             group_results=[],
-            metadata={
-                "n_input_records": len(records),
-                "n_valid_records": len(valid_records),
-                "n_selected_records": len(selected_records),
-                "n_groups": len(groups),
-                "n_matches": len(matches),
-                "initial_elo": self.initial_elo,
-                "k_factor": self.k_factor,
-                "tie_tolerance": self.tie_tolerance,
-                "seed_aggregation": "mean",
-                "ordering_strategy": "deterministic",
-            },
+            metadata=metadata,
         )
 
     def _build_pairwise_matches(
         self,
-        groups: dict[tuple[object, ...], list[dict[str, object]]],
+        comparable_groups: list[ComparableGroup],
     ) -> list[PairwiseMatch]:
         """Build pairwise matches from selected comparable groups and metrics."""
         matches: list[PairwiseMatch] = []
 
-        for group_key_tuple, records_in_group in groups.items():
-            group_key = dict(zip(self.group_keys, group_key_tuple, strict=True))
-            aggregated_records = aggregate_seeds_in_group(records_in_group, self.group_keys)
+        for comparable_group in comparable_groups:
+            group_key = dict(zip(self.group_keys, comparable_group.key, strict=True))
+            aggregated_records = aggregate_seeds_in_group(
+                comparable_group.records,
+                self.group_keys,
+            )
 
             for metric_name in self.metric_names:
                 metric_spec = METRIC_SPECS[metric_name]
@@ -299,18 +397,18 @@ class EloScorer(LeaderboardScorer):
             group_keys=context.group_keys,
         )
 
-    def _expected_score(self, rating_a: float, rating_b: float) -> float:
+    def _expected_score(self, rating_a: EloScore, rating_b: EloScore) -> float:
         """Compute expected Elo score for A against B."""
         return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
 
     def _update_ratings(
         self,
         *,
-        rating_a: float,
-        rating_b: float,
+        rating_a: EloScore,
+        rating_b: EloScore,
         score_a: float,
         score_b: float,
-    ) -> tuple[float, float]:
+    ) -> tuple[EloScore, EloScore]:
         """Update two Elo ratings after one pairwise match."""
         expected_a = self._expected_score(rating_a, rating_b)
         expected_b = self._expected_score(rating_b, rating_a)
@@ -323,7 +421,7 @@ class EloScorer(LeaderboardScorer):
     def _initialize_match_stats(
         self,
         matches: list[PairwiseMatch],
-    ) -> dict[str, dict[str, int]]:
+    ) -> MatchStats:
         """Initialize match counters for all approximators occurring in matches.
 
         Args:
@@ -353,7 +451,7 @@ class EloScorer(LeaderboardScorer):
     def _compute_elo(
         self,
         matches: list[PairwiseMatch],
-    ) -> tuple[dict[str, float], dict[str, dict[str, int]]]:
+    ) -> tuple[dict[str, EloScore], MatchStats]:
         """Compute Elo ratings and match statistics from pairwise matches.
 
         The method starts every approximator at ``self.initial_elo`` and applies
@@ -375,7 +473,7 @@ class EloScorer(LeaderboardScorer):
               including ``n_matches``, ``wins``, ``losses``, and ``ties``.
         """
         stats = self._initialize_match_stats(matches)
-        ratings = {approximator: self.initial_elo for approximator in stats}
+        ratings: dict[str, EloScore] = {approximator: self.initial_elo for approximator in stats}
 
         for match in matches:
             rating_a = ratings[match.approximator_a]
@@ -397,7 +495,7 @@ class EloScorer(LeaderboardScorer):
 
     def _update_match_stats(
         self,
-        stats: dict[str, dict[str, int]],
+        stats: MatchStats,
         match: PairwiseMatch,
     ) -> None:
         """Update win, loss, tie, and match counters for one pairwise match."""
@@ -417,38 +515,115 @@ class EloScorer(LeaderboardScorer):
         stats[match.approximator_a]["losses"] += 1
         stats[match.approximator_b]["wins"] += 1
 
-    def _build_leaderboard_rows(
-        self,
-        ratings: dict[str, float],
-        stats: dict[str, dict[str, int]],
-    ) -> list[LeaderboardRow]:
-        """Build ranked leaderboard rows from Elo ratings.
+    def _get_used_metric_names(self, matches: list[PairwiseMatch]) -> list[str]:
+        """Return selected metric names that actually produced matches."""
+        used_metric_names = {match.metric_name for match in matches}
 
-        Args:
-            ratings: Final Elo ratings per approximator.
-            stats: Match statistics per approximator.
+        return [
+            metric_name for metric_name in self.metric_names if metric_name in used_metric_names
+        ]
+
+    def _generate_match_orderings(
+        self,
+        matches: list[PairwiseMatch],
+    ) -> list[list[PairwiseMatch]]:
+        """Generate match orderings for deterministic or permuted Elo scoring."""
+        permutations: list[list[PairwiseMatch]] = []
+        # pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
+        random_instance = Random(self.permutations_random_state)  # noqa: S311
+        if self.n_permutations == 1:
+            return [list(matches)]
+        for _ in range(self.n_permutations):
+            shuffled_matches = list(matches)
+            random_instance.shuffle(shuffled_matches)
+            permutations.append(shuffled_matches)
+        return permutations
+
+    def _compute_elo_ratings_per_sample(
+        self,
+        matches: list[PairwiseMatch],
+    ) -> ApproximatorRatingsMap:
+        """Compute Elo rating samples across match orderings.
 
         Returns:
-            Ranked leaderboard rows sorted by Elo rating in descending order.
+            A dictionary mapping each approximator to a list of Elo ratings.
         """
-        leaderboard_rows = []
+        approximator_ratings_map: defaultdict[str, list[EloScore]] = defaultdict(list)
 
-        for approximator, rating in ratings.items():
-            approximator_stats = stats[approximator]
+        for ordered_matches in self._generate_match_orderings(matches):
+            elo_ratings_map, _ = self._compute_elo(ordered_matches)
 
-            leaderboard_row = LeaderboardRow(
-                approximator_name=approximator,
-                score=rating,
-                higher_is_better=True,
-                rank=None,
-                metadata={
-                    "n_matches": approximator_stats["n_matches"],
-                    "wins": approximator_stats["wins"],
-                    "losses": approximator_stats["losses"],
-                    "ties": approximator_stats["ties"],
+            for approximator, rating in elo_ratings_map.items():
+                approximator_ratings_map[approximator].append(rating)
+
+        return dict(approximator_ratings_map)
+
+    def _build_leaderboard_rows_from_rating_samples(
+        self,
+        approximator_ratings_map: ApproximatorRatingsMap,
+        match_stats: MatchStats,
+    ) -> list[LeaderboardRow]:
+        """Build ranked leaderboard rows from Elo rating samples.
+
+        Args:
+            approximator_ratings_map: Mapping from approximator name to the Elo ratings
+                obtained from different match orderings.
+            match_stats: Mapping from approximator name to match statistics. Expected
+                keys per approximator are ``n_matches``, ``wins``, ``losses``,
+                and ``ties``.
+
+        Returns:
+            Ranked leaderboard rows sorted by mean Elo rating in descending order.
+            Approximators without rating samples are skipped.
+        """
+        leaderboard_rows: list[LeaderboardRow] = []
+
+        for approximator, ratings in approximator_ratings_map.items():
+            if not ratings:
+                continue
+
+            approximator_stats = match_stats.get(
+                approximator,
+                {
+                    "n_matches": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "ties": 0,
                 },
             )
-            leaderboard_rows.append(leaderboard_row)
+
+            score_mean = float(mean(ratings))
+            score_std = float(stdev(ratings)) if len(ratings) > 1 else 0.0
+
+            metadata = {
+                "score_std": score_std,
+                "n_rating_samples": len(ratings),
+                "n_matches": approximator_stats["n_matches"],
+                "wins": approximator_stats["wins"],
+                "losses": approximator_stats["losses"],
+                "ties": approximator_stats["ties"],
+            }
+
+            if self.n_bootstrap_samples > 0:
+                ci_lower, ci_upper = self._confidence_interval(ratings)
+                metadata.update(
+                    {
+                        "ci_lower": ci_lower,
+                        "ci_upper": ci_upper,
+                        "ci_minus": score_mean - ci_lower,
+                        "ci_plus": ci_upper - score_mean,
+                    }
+                )
+
+            leaderboard_rows.append(
+                LeaderboardRow(
+                    approximator_name=approximator,
+                    score=score_mean,
+                    higher_is_better=True,
+                    rank=None,
+                    metadata=metadata,
+                )
+            )
 
         leaderboard_rows.sort(key=lambda row: row.score, reverse=True)
 
@@ -463,10 +638,136 @@ class EloScorer(LeaderboardScorer):
             for rank, row in enumerate(leaderboard_rows, start=1)
         ]
 
-    def _get_used_metric_names(self, matches: list[PairwiseMatch]) -> list[str]:
-        """Return selected metric names that actually produced matches."""
-        used_metric_names = {match.metric_name for match in matches}
+    def _compute_match_stats(
+        self,
+        matches: list[PairwiseMatch],
+    ) -> MatchStats:
+        """Compute match statistics independent of Elo ordering."""
+        stats = self._initialize_match_stats(matches)
+        for match in matches:
+            self._update_match_stats(stats, match)
+        return stats
 
+    def _build_comparable_groups(
+        self,
+        groups: dict[tuple[object, ...], list[dict[str, object]]],
+    ) -> list[ComparableGroup]:
+        """Convert grouped benchmark records into comparable group objects.
+
+        Args:
+            groups: Mapping from group-key tuples to raw benchmark records.
+
+        Returns:
+            Comparable groups preserving each group key and its associated records.
+            The returned list representation is suitable for bootstrap sampling with
+            replacement, because the same comparable group can appear multiple times
+            in a sampled list.
+        """
         return [
-            metric_name for metric_name in self.metric_names if metric_name in used_metric_names
+            ComparableGroup(
+                key=group_key_tuple,
+                records=records_in_group,
+            )
+            for group_key_tuple, records_in_group in groups.items()
         ]
+
+    def _generate_bootstrap_group_samples(
+        self,
+        comparable_groups: list[ComparableGroup],
+    ) -> BootstrapSamples:
+        """Generate bootstrap samples of comparable groups.
+
+        Args:
+            comparable_groups: Comparable benchmark groups from which bootstrap
+                samples are drawn. Each group represents one comparable benchmark
+                context, such as one game/index/budget combination.
+
+        Returns:
+            A list of bootstrap samples. Each bootstrap sample is a list of
+            comparable groups drawn with replacement and has the same length as the
+            input list. If bootstrapping is disabled, a single sample containing the
+            original comparable groups is returned.
+        """
+        if not comparable_groups:
+            return [[]]
+
+        if self.n_bootstrap_samples == 0:
+            return [list(comparable_groups)]
+
+        # pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
+        random_instance = Random(self.bootstrap_random_state)  # noqa: S311
+        bootstrap_samples: BootstrapSamples = []
+
+        for _ in range(self.n_bootstrap_samples):
+            sample: BootstrapSample = [
+                random_instance.choice(comparable_groups) for _ in range(len(comparable_groups))
+            ]
+            bootstrap_samples.append(sample)
+
+        return bootstrap_samples
+
+    def _compute_bootstrap_elo_ratings(
+        self,
+        comparable_groups: list[ComparableGroup],
+    ) -> ApproximatorRatingsMap:
+        """Compute permutation-averaged Elo ratings across bootstrap samples.
+
+        For each bootstrap sample, pairwise matches are built from the sampled
+        comparable groups. Elo is then computed across the configured match
+        orderings. The ratings from those match orderings are averaged per
+        approximator, so each bootstrap sample contributes one stabilized Elo rating
+        per approximator.
+
+        Args:
+            comparable_groups: Comparable benchmark groups used as the population
+                for bootstrap sampling.
+
+        Returns:
+            Mapping from approximator name to Elo ratings collected across bootstrap
+            samples.
+        """
+        approximator_ratings_map: defaultdict[str, list[EloScore]] = defaultdict(list)
+
+        bootstrap_samples = self._generate_bootstrap_group_samples(comparable_groups)
+
+        for bootstrap_sample in bootstrap_samples:
+            matches = self._build_pairwise_matches(bootstrap_sample)
+            sample_ratings_map = self._compute_elo_ratings_per_sample(matches)
+
+            for approximator, ratings in sample_ratings_map.items():
+                approximator_ratings_map[approximator].append(float(mean(ratings)))
+
+        return dict(approximator_ratings_map)
+
+    def _confidence_interval(
+        self,
+        values: list[EloScore],
+    ) -> tuple[EloScore, EloScore]:
+        """Compute a quantile-based confidence interval for rating samples.
+
+        The confidence interval is derived from the configured
+        ``self.confidence_level`` and describes the
+        central part of the bootstrap score distribution.
+
+        Args:
+            values: Bootstrap Elo rating samples for one approximator.
+
+        Returns:
+            A tuple ``(ci_lower, ci_upper)`` containing the lower and upper
+            confidence interval bounds.
+
+        Raises:
+            ValueError: If ``values`` is empty.
+        """
+        if not values:
+            message = "Cannot compute confidence interval of empty values."
+            raise ValueError(message)
+
+        alpha = 1.0 - self.confidence_level
+        lower_q = alpha / 2.0
+        upper_q = 1.0 - lower_q
+
+        return (
+            float(np.quantile(values, lower_q)),
+            float(np.quantile(values, upper_q)),
+        )
