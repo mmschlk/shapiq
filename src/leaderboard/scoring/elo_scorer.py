@@ -529,8 +529,8 @@ class EloScorer(LeaderboardScorer):
     ) -> list[list[PairwiseMatch]]:
         """Generate match orderings for deterministic or permuted Elo scoring."""
         permutations: list[list[PairwiseMatch]] = []
-        #pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
-        random_instance = Random(self.permutations_random_state) # noqa: S311
+        # pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
+        random_instance = Random(self.permutations_random_state)  # noqa: S311
         if self.n_permutations == 1:
             return [list(matches)]
         for _ in range(self.n_permutations):
@@ -694,7 +694,7 @@ class EloScorer(LeaderboardScorer):
         if self.n_bootstrap_samples == 0:
             return [list(comparable_groups)]
 
-        #pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
+        # pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
         random_instance = Random(self.bootstrap_random_state)  # noqa: S311
         bootstrap_samples: BootstrapSamples = []
 
