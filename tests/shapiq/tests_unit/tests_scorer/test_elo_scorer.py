@@ -459,7 +459,197 @@ def test_elo_scorer_rejects_negative_bootstrap_sample_count():
         EloScorer(n_bootstrap_samples=-1)
 
 
-def test_elo_scorer_rejects_invalid_confidence_level():
-    """Test that confidence levels must be between zero and one."""
-    with pytest.raises(ValueError, match="confidence_level must be between 0.0 and 1.0"):
-        EloScorer(confidence_level=1.0)
+def _make_comparable_groups(scorer: EloScorer, records: list[dict[str, object]]):
+    groups = group_records(records, scorer.group_keys)
+    return scorer._build_comparable_groups(groups)
+
+@pytest.mark.parametrize("confidence_level", [0.0, 1.0, -0.1, 1.1])
+def test_elo_scorer_rejects_invalid_confidence_level(confidence_level: float):
+    """Test that confidence levels must be strictly between zero and one."""
+    with pytest.raises(
+        ValueError,
+        match="confidence_level must be between 0.0 and 1.0",
+    ):
+        EloScorer(confidence_level=confidence_level)
+
+
+def test_build_comparable_groups_preserves_group_count():
+    """Test that grouped records are converted into comparable group objects."""
+    scorer = EloScorer(metric_names=["mse"])
+    records = _make_two_budget_records()
+
+    comparable_groups = _make_comparable_groups(scorer, records)
+
+    assert len(comparable_groups) == 2
+    assert all(comparable_group.records for comparable_group in comparable_groups)
+
+
+def test_generate_bootstrap_group_samples_disabled_returns_original_sample():
+    """Test that disabled bootstrapping returns one copy of the original groups."""
+    scorer = EloScorer(metric_names=["mse"], n_bootstrap_samples=0)
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+
+    bootstrap_samples = scorer._generate_bootstrap_group_samples(comparable_groups)
+
+    assert len(bootstrap_samples) == 1
+    assert bootstrap_samples[0] == comparable_groups
+    assert bootstrap_samples[0] is not comparable_groups
+
+
+def test_generate_bootstrap_group_samples_returns_requested_number_of_samples():
+    """Test that bootstrapping creates the requested number of group samples."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=7,
+        bootstrap_random_state=0,
+    )
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+
+    bootstrap_samples = scorer._generate_bootstrap_group_samples(comparable_groups)
+
+    assert len(bootstrap_samples) == 7
+    assert all(len(sample) == len(comparable_groups) for sample in bootstrap_samples)
+
+
+def test_generate_bootstrap_group_samples_is_reproducible():
+    """Test that the same bootstrap random state creates the same samples."""
+    records = _make_two_budget_records()
+
+    scorer_a = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=10,
+        bootstrap_random_state=42,
+    )
+    scorer_b = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=10,
+        bootstrap_random_state=42,
+    )
+
+    comparable_groups_a = _make_comparable_groups(scorer_a, records)
+    comparable_groups_b = _make_comparable_groups(scorer_b, records)
+
+    samples_a = scorer_a._generate_bootstrap_group_samples(comparable_groups_a)
+    samples_b = scorer_b._generate_bootstrap_group_samples(comparable_groups_b)
+
+    assert samples_a == samples_b
+
+
+def test_generate_bootstrap_group_samples_handles_empty_groups():
+    """Test that empty comparable-group input is handled explicitly."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=5,
+        bootstrap_random_state=0,
+    )
+
+    bootstrap_samples = scorer._generate_bootstrap_group_samples([])
+
+    assert bootstrap_samples == [[]]
+
+
+def test_compute_bootstrap_elo_ratings_collects_one_rating_per_bootstrap_sample():
+    """Test that each bootstrap sample contributes one rating per approximator."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=5,
+        bootstrap_random_state=0,
+    )
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+
+    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(comparable_groups)
+
+    assert set(approximator_ratings_map) == {"ApproximatorA", "ApproximatorB"}
+    assert len(approximator_ratings_map["ApproximatorA"]) == 5
+    assert len(approximator_ratings_map["ApproximatorB"]) == 5
+
+
+def test_compute_bootstrap_elo_ratings_combines_bootstrap_and_permutations():
+    """Test that bootstrap samples and match-order permutations both add ratings."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=5,
+        bootstrap_random_state=0,
+        n_permutations=3,
+        permutations_random_state=0,
+    )
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+
+    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(comparable_groups)
+
+    assert set(approximator_ratings_map) == {"ApproximatorA", "ApproximatorB"}
+    assert len(approximator_ratings_map["ApproximatorA"]) == 15
+    assert len(approximator_ratings_map["ApproximatorB"]) == 15
+
+
+def test_confidence_interval_uses_configured_confidence_level():
+    """Test that confidence intervals use the configured quantile bounds."""
+    scorer = EloScorer(confidence_level=0.5)
+    values = [0.0, 10.0, 20.0, 30.0]
+
+    ci_lower, ci_upper = scorer._confidence_interval(values)
+
+    assert ci_lower == pytest.approx(7.5)
+    assert ci_upper == pytest.approx(22.5)
+
+
+def test_confidence_interval_rejects_empty_values():
+    """Test that confidence intervals cannot be computed from empty samples."""
+    scorer = EloScorer()
+
+    with pytest.raises(
+        ValueError,
+        match="Cannot compute confidence interval of empty values",
+    ):
+        scorer._confidence_interval([])
+
+
+def test_elo_scorer_with_bootstrap_adds_confidence_metadata():
+    """Test that score results contain bootstrap confidence interval metadata."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=10,
+        bootstrap_random_state=0,
+        confidence_level=0.95,
+    )
+
+    result = scorer.score(_make_two_budget_records())
+
+    assert result.metadata["rating_sample_method"] == "group_bootstrap"
+    assert result.metadata["n_bootstrap_samples"] == 10
+    assert result.metadata["bootstrap_random_state"] == 0
+    assert result.metadata["confidence_level"] == 0.95
+    assert result.metadata["confidence_interval_method"] == "bootstrap_quantile"
+    assert result.metadata["n_total_rating_samples"] == 10
+
+    assert len(result.rows) == 2
+
+    for row in result.rows:
+        assert row.metadata["n_rating_samples"] == 10
+        assert "ci_lower" in row.metadata
+        assert "ci_upper" in row.metadata
+        assert "ci_minus" in row.metadata
+        assert "ci_plus" in row.metadata
+        assert row.metadata["ci_lower"] <= row.metadata["ci_upper"]
+
+
+def test_elo_scorer_with_bootstrap_and_permutations_adds_combined_metadata():
+    """Test metadata when group bootstrap and match-order permutations are combined."""
+    scorer = EloScorer(
+        metric_names=["mse"],
+        n_bootstrap_samples=10,
+        bootstrap_random_state=0,
+        n_permutations=3,
+        permutations_random_state=0,
+    )
+
+    result = scorer.score(_make_two_budget_records())
+
+    assert (
+        result.metadata["rating_sample_method"]
+        == "group_bootstrap_with_match_order_permutation"
+    )
+    assert result.metadata["n_total_rating_samples"] == 30
+
+    for row in result.rows:
+        assert row.metadata["n_rating_samples"] == 30
