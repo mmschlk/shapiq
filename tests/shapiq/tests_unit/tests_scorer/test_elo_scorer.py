@@ -572,8 +572,8 @@ def test_compute_bootstrap_elo_ratings_collects_one_rating_per_bootstrap_sample(
     assert len(approximator_ratings_map["ApproximatorB"]) == 5
 
 
-def test_compute_bootstrap_elo_ratings_combines_bootstrap_and_permutations():
-    """Test that bootstrap samples and match-order permutations both add ratings."""
+def test_compute_bootstrap_elo_ratings_averages_permutations_per_bootstrap_sample():
+    """Test that each bootstrap sample contributes one permutation-averaged rating."""
     scorer = EloScorer(
         metric_names=["mse"],
         n_bootstrap_samples=5,
@@ -586,8 +586,8 @@ def test_compute_bootstrap_elo_ratings_combines_bootstrap_and_permutations():
     approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(comparable_groups)
 
     assert set(approximator_ratings_map) == {"ApproximatorA", "ApproximatorB"}
-    assert len(approximator_ratings_map["ApproximatorA"]) == 15
-    assert len(approximator_ratings_map["ApproximatorB"]) == 15
+    assert len(approximator_ratings_map["ApproximatorA"]) == 5
+    assert len(approximator_ratings_map["ApproximatorB"]) == 5
 
 
 def test_confidence_interval_uses_configured_confidence_level():
@@ -628,8 +628,9 @@ def test_elo_scorer_with_bootstrap_adds_confidence_metadata():
     assert result.metadata["bootstrap_random_state"] == 0
     assert result.metadata["confidence_level"] == 0.95
     assert result.metadata["confidence_interval_method"] == "bootstrap_quantile"
-    assert result.metadata["n_total_rating_samples"] == 10
-
+    assert result.metadata["n_rating_samples"] == 10
+    assert result.metadata["n_permutations_per_bootstrap_sample"] == 1
+    assert result.metadata["n_total_elo_runs"] == 10
     assert len(result.rows) == 2
 
     for row in result.rows:
@@ -653,8 +654,10 @@ def test_elo_scorer_with_bootstrap_and_permutations_adds_combined_metadata():
 
     result = scorer.score(_make_two_budget_records())
 
-    assert result.metadata["rating_sample_method"] == "group_bootstrap_with_match_order_permutation"
-    assert result.metadata["n_total_rating_samples"] == 30
+    assert result.metadata["rating_sample_method"] == "permutation_averaged_group_bootstrap"
+    assert result.metadata["n_rating_samples"] == 10
+    assert result.metadata["n_permutations_per_bootstrap_sample"] == 3
+    assert result.metadata["n_total_elo_runs"] == 30
 
     for row in result.rows:
-        assert row.metadata["n_rating_samples"] == 30
+        assert row.metadata["n_rating_samples"] == 10

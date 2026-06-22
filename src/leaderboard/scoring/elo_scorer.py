@@ -210,11 +210,13 @@ class EloScorer(LeaderboardScorer):
                     "rating_sample_method": (
                         "group_bootstrap"
                         if self.n_permutations == 1
-                        else "group_bootstrap_with_match_order_permutation"
+                        else "permutation_averaged_group_bootstrap"
                     ),
                     "confidence_level": self.confidence_level,
                     "confidence_interval_method": "bootstrap_quantile",
-                    "n_total_rating_samples": self.n_bootstrap_samples * self.n_permutations,
+                    "n_rating_samples": self.n_bootstrap_samples,
+                    "n_permutations_per_bootstrap_sample": self.n_permutations,
+                    "n_total_elo_runs": self.n_bootstrap_samples * self.n_permutations,
                 }
             )
         else:
@@ -706,7 +708,13 @@ class EloScorer(LeaderboardScorer):
         self,
         comparable_groups: list[ComparableGroup],
     ) -> ApproximatorRatingsMap:
-        """Compute Elo rating samples across bootstrap samples of comparable groups.
+        """Compute permutation-averaged Elo ratings across bootstrap samples.
+
+        For each bootstrap sample, pairwise matches are built from the sampled
+        comparable groups. Elo is then computed across the configured match
+        orderings. The ratings from those match orderings are averaged per
+        approximator, so each bootstrap sample contributes one stabilized Elo rating
+        per approximator.
 
         Args:
             comparable_groups: Comparable benchmark groups used as the population
@@ -714,8 +722,7 @@ class EloScorer(LeaderboardScorer):
 
         Returns:
             Mapping from approximator name to Elo ratings collected across bootstrap
-            samples. If match-order permutations are enabled, each bootstrap sample
-            contributes one rating per permutation.
+            samples.
         """
         approximator_ratings_map: defaultdict[str, list[EloScore]] = defaultdict(list)
 
@@ -726,7 +733,7 @@ class EloScorer(LeaderboardScorer):
             sample_ratings_map = self._compute_elo_ratings_per_sample(matches)
 
             for approximator, ratings in sample_ratings_map.items():
-                approximator_ratings_map[approximator].extend(ratings)
+                approximator_ratings_map[approximator].append(float(mean(ratings)))
 
         return dict(approximator_ratings_map)
 
