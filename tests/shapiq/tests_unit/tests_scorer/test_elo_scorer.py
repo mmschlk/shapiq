@@ -117,7 +117,8 @@ def test_elo_scorer_filters_matches_by_metric_and_budget():
     valid_records = filter_valid_records(records)
     selected_records = scorer._filter_records_by_context(valid_records)
     groups = group_records(selected_records, scorer.group_keys)
-    matches = scorer._build_pairwise_matches(groups)
+    comparable_groups = scorer._build_comparable_groups(groups)
+    matches = scorer._build_pairwise_matches(comparable_groups)
 
     assert matches
     assert len(matches) == 1
@@ -447,9 +448,18 @@ def test_build_leaderboard_rows_from_rating_samples_adds_sample_metadata():
     assert rows_by_approximator["ApproximatorB"].rank == 2
 
 
-def test_generate_match_orderings_rejects_non_positive_permutation_count():
+def test_elo_scorer_rejects_non_positive_permutation_count():
     """Test that invalid permutation counts are rejected."""
-    scorer = EloScorer(n_permutations=0)
-
     with pytest.raises(ValueError, match="n_permutations must be at least 1"):
-        scorer._generate_match_orderings(_make_cyclic_matches())
+        EloScorer(n_permutations=0)
+
+def test_elo_scorer_rejects_negative_bootstrap_sample_count():
+    """Test that negative bootstrap sample counts are rejected."""
+    with pytest.raises(ValueError, match="n_bootstrap_samples must be at least 0"):
+        EloScorer(n_bootstrap_samples=-1)
+
+
+def test_elo_scorer_rejects_invalid_confidence_level():
+    """Test that confidence levels must be between zero and one."""
+    with pytest.raises(ValueError, match="confidence_level must be between 0.0 and 1.0"):
+        EloScorer(confidence_level=1.0)

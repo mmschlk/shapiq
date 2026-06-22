@@ -57,6 +57,23 @@ class PairwiseMatch:
     score_b: float
     group_key: dict[str, object]
 
+@dataclass(frozen=True)
+class ComparableGroup:
+    """One comparable benchmark group used for Elo match construction.
+
+    A comparable group contains all benchmark records that may be compared
+    directly with each other. Records inside one comparable group share the same
+    benchmark context, for example the same game, index, max order, budget, and
+    ground-truth method. Different approximators and different seeds can occur
+    inside the same comparable group. The seeds are aggregated later on.
+
+    Attributes:
+        key: An order-preserving tuple containing the concrete values of ``self.group_keys`` for
+            this comparable group.
+        records: Raw benchmark records that belong to this comparable group.
+    """
+    key: tuple[object, ...]
+    records: list[dict[str, object]]
 
 class EloScorer(LeaderboardScorer):
     """Scorer based on the Elo system using pairwise approximator comparisons."""
@@ -71,6 +88,9 @@ class EloScorer(LeaderboardScorer):
         tie_tolerance: float = 0.0,
         n_permutations: int = 1,
         permutations_random_state: int | None = 0,
+        n_bootstrap_samples: int = 0,
+        bootstrap_random_state: int | None = 0,
+        confidence_level: float = 0.95,
         group_keys: list[str] | None = None,
         metric_names: list[str] | None = None,
         game_names: list[str] | None = None,
@@ -89,17 +109,35 @@ class EloScorer(LeaderboardScorer):
             tie_tolerance: Tolerance for treating small metric differences as ties.
             n_permutations: The number of match order permutations to foster stable results.
             permutations_random_state: The random state which can be used to make permutations reproducible
+            n_bootstrap_samples: The number of bootstrap samples over comparable groups. ``0`` disables bootstrapping.
+            bootstrap_random_state: The random state which can be used to make bootstrapping reproducible
+            confidence_level: The confidence level used for bootstrap confidence intervals.
             group_keys: Record keys used to form comparable benchmark groups.
             metric_names: Optional metric names to include. ``None`` means all metrics.
             game_names: Optional game names to include. ``None`` means all games.
             indices: Optional interaction indices to include. ``None`` means all indices.
             budgets: Optional budgets to include. ``None`` means all budgets.
         """
+        if n_permutations < 1:
+            message = "n_permutations must be at least 1."
+            raise ValueError(message)
+
+        if n_bootstrap_samples < 0:
+            message = "n_bootstrap_samples must be at least 0."
+            raise ValueError(message)
+
+        if not 0.0 < confidence_level < 1.0:
+            message = "confidence_level must be between 0.0 and 1.0."
+            raise ValueError(message)
+
         self.initial_elo = initial_elo
         self.k_factor = k_factor
         self.tie_tolerance = tie_tolerance
         self.n_permutations = n_permutations
         self.permutations_random_state = permutations_random_state
+        self.n_bootstrap_samples = n_bootstrap_samples
+        self.bootstrap_random_state = bootstrap_random_state
+        self.confidence_level = confidence_level
         self.group_keys = group_keys or [
             "game_id",
             "game_name",
@@ -120,7 +158,8 @@ class EloScorer(LeaderboardScorer):
         selected_records = self._filter_records_by_context(valid_records)
 
         groups = group_records(selected_records, self.group_keys)
-        matches = self._build_pairwise_matches(groups)
+        comparable_groups = self._build_comparable_groups(groups)
+        matches = self._build_pairwise_matches(comparable_groups)
 
         match_stats = self._compute_match_stats(matches)
         approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
@@ -156,15 +195,18 @@ class EloScorer(LeaderboardScorer):
         )
 
     def _build_pairwise_matches(
-        self,
-        groups: dict[tuple[object, ...], list[dict[str, object]]],
+            self,
+            comparable_groups: list[ComparableGroup],
     ) -> list[PairwiseMatch]:
         """Build pairwise matches from selected comparable groups and metrics."""
         matches: list[PairwiseMatch] = []
 
-        for group_key_tuple, records_in_group in groups.items():
-            group_key = dict(zip(self.group_keys, group_key_tuple, strict=True))
-            aggregated_records = aggregate_seeds_in_group(records_in_group, self.group_keys)
+        for comparable_group in comparable_groups:
+            group_key = dict(zip(self.group_keys, comparable_group.key, strict=True))
+            aggregated_records = aggregate_seeds_in_group(
+                comparable_group.records,
+                self.group_keys,
+            )
 
             for metric_name in self.metric_names:
                 metric_spec = METRIC_SPECS[metric_name]
@@ -553,3 +595,61 @@ class EloScorer(LeaderboardScorer):
         for match in matches:
             self._update_match_stats(stats, match)
         return stats
+
+    def _build_comparable_groups(
+            self,
+            groups: dict[tuple[object, ...], list[dict[str, object]]],
+    ) -> list[ComparableGroup]:
+        """Convert grouped benchmark records into comparable group objects.
+
+        Args:
+            groups: Mapping from group-key tuples to raw benchmark records.
+
+        Returns:
+            Comparable groups preserving each group key and its associated records.
+            The returned list representation is suitable for bootstrap sampling with
+            replacement, because the same comparable group can appear multiple times
+            in a sampled list.
+        """
+        return [
+            ComparableGroup(
+                key=group_key_tuple,
+                records=records_in_group,
+            )
+            for group_key_tuple, records_in_group in groups.items()
+        ]
+
+    def _generate_bootstrap_group_samples(
+            self,
+            comparable_groups: list[ComparableGroup],
+    ) -> list[list[ComparableGroup]]:
+        """Generate bootstrap samples of comparable groups.
+
+        Args:
+            comparable_groups: Comparable benchmark groups from which bootstrap
+                samples are drawn. Each group represents one comparable benchmark
+                context, such as one game/index/budget combination.
+
+        Returns:
+            A list of bootstrap samples. Each bootstrap sample is a list of
+            comparable groups drawn with replacement and has the same length as the
+            input list. If bootstrapping is disabled, a single sample containing the
+            original comparable groups is returned.
+        """
+        if not comparable_groups:
+            return [[]]
+
+        if self.n_bootstrap_samples == 0:
+            return [list(comparable_groups)]
+
+        random_instance = Random(self.bootstrap_random_state)
+        bootstrap_samples: list[list[ComparableGroup]] = []
+
+        for _ in range(self.n_bootstrap_samples):
+            sample = [
+                random_instance.choice(comparable_groups)
+                for _ in range(len(comparable_groups))
+            ]
+            bootstrap_samples.append(sample)
+
+        return bootstrap_samples
