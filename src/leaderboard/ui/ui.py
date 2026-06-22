@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -917,7 +919,9 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         det_table = gr.Dataframe(interactive=False)
 
 
-        def query_raw(games, approxs, budgets, indices, only_failed):
+        async def query_raw(games, approxs, budgets, indices, only_failed):
+            yield "", gr.update(visible=False)
+
             all_records = db_client.get_all()
 
             filtered = []
@@ -938,17 +942,25 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 yield "**0 Runs gefunden.**", gr.update(value=pd.DataFrame(), visible=True)
                 return
 
-            # Metriken aus nested dict flach machen
             rows = []
             for r in filtered:
-                row = {k: v for k, v in r.items() if k != "metrics"}
+                row = {}
+                for k, v in r.items():
+                    if k == "metrics":
+                        continue
+                    row[k] = json.dumps(v) if isinstance(v, (dict, list)) else v
                 metrics = r.get("metrics") or {}
                 for m_key, m_val in metrics.items():
                     row[m_key] = m_val
                 rows.append(row)
 
             df = pd.DataFrame(rows)
+
             yield f"**{len(df)} Runs gefunden.**", gr.update(value=df, visible=True)
+            await asyncio.sleep(0.05)
+            yield gr.update(), gr.update(visible=False)
+            await asyncio.sleep(0.05)
+            yield gr.update(), gr.update(value=df, visible=True)
 
 
         det_search_btn.click(
