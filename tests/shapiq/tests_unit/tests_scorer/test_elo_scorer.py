@@ -312,6 +312,7 @@ def test_compute_elo_returns_expected_rating_after_three_matches():
         "ties": 0,
     }
 
+
 def _make_cyclic_matches() -> list[PairwiseMatch]:
     """Create matches where order can affect final Elo ratings."""
     return [
@@ -347,6 +348,7 @@ def _make_cyclic_matches() -> list[PairwiseMatch]:
         ),
     ]
 
+
 def test_generate_match_orderings_with_one_permutation_returns_one_ordering():
     """Test that n_permutations=1 returns exactly one deterministic ordering."""
     scorer = EloScorer(n_permutations=1)
@@ -357,6 +359,7 @@ def test_generate_match_orderings_with_one_permutation_returns_one_ordering():
     assert len(orderings) == 1
     assert orderings[0] == matches
     assert orderings[0] is not matches
+
 
 def test_generate_match_orderings_with_multiple_permutations():
     """Test that multiple match orderings are generated."""
@@ -372,6 +375,7 @@ def test_generate_match_orderings_with_multiple_permutations():
     assert all(len(ordering) == len(matches) for ordering in orderings)
     assert all(sorted(ordering, key=repr) == sorted(matches, key=repr) for ordering in orderings)
     assert any(ordering != matches for ordering in orderings)
+
 
 def test_generate_match_orderings_is_reproducible_with_same_random_state():
     """Test that the same random state produces the same match orderings."""
@@ -391,6 +395,7 @@ def test_generate_match_orderings_is_reproducible_with_same_random_state():
 
     assert orderings_a == orderings_b
 
+
 def test_compute_elo_ratings_per_sample_collects_one_rating_per_permutation():
     """Test that each approximator receives one Elo rating per permutation."""
     scorer = EloScorer(
@@ -408,6 +413,7 @@ def test_compute_elo_ratings_per_sample_collects_one_rating_per_permutation():
         "ApproximatorC",
     }
     assert all(len(ratings) == 7 for ratings in approximator_ratings_map.values())
+
 
 def test_build_leaderboard_rows_from_rating_samples_adds_sample_metadata():
     """Test that leaderboard rows include rating sample metadata."""
@@ -453,6 +459,7 @@ def test_elo_scorer_rejects_non_positive_permutation_count():
     with pytest.raises(ValueError, match="n_permutations must be at least 1"):
         EloScorer(n_permutations=0)
 
+
 def test_elo_scorer_rejects_negative_bootstrap_sample_count():
     """Test that negative bootstrap sample counts are rejected."""
     with pytest.raises(ValueError, match="n_bootstrap_samples must be at least 0"):
@@ -462,6 +469,7 @@ def test_elo_scorer_rejects_negative_bootstrap_sample_count():
 def _make_comparable_groups(scorer: EloScorer, records: list[dict[str, object]]):
     groups = group_records(records, scorer.group_keys)
     return scorer._build_comparable_groups(groups)
+
 
 @pytest.mark.parametrize("confidence_level", [0.0, 1.0, -0.1, 1.1])
 def test_elo_scorer_rejects_invalid_confidence_level(confidence_level: float):
@@ -645,10 +653,7 @@ def test_elo_scorer_with_bootstrap_and_permutations_adds_combined_metadata():
 
     result = scorer.score(_make_two_budget_records())
 
-    assert (
-        result.metadata["rating_sample_method"]
-        == "group_bootstrap_with_match_order_permutation"
-    )
+    assert result.metadata["rating_sample_method"] == "group_bootstrap_with_match_order_permutation"
     assert result.metadata["n_total_rating_samples"] == 30
 
     for row in result.rows:

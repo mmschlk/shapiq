@@ -1,4 +1,5 @@
 """Elo-based leaderboard scorer."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -62,6 +63,7 @@ class PairwiseMatch:
     score_b: float
     group_key: dict[str, object]
 
+
 @dataclass(frozen=True)
 class ComparableGroup:
     """One comparable benchmark group used for Elo match construction.
@@ -77,11 +79,14 @@ class ComparableGroup:
             scorer's group keys for this comparable group.
         records: Raw benchmark records that belong to this comparable group.
     """
+
     key: tuple[object, ...]
     records: list[dict[str, object]]
 
+
 type BootstrapSample = list[ComparableGroup]
 type BootstrapSamples = list[BootstrapSample]
+
 
 class EloScorer(LeaderboardScorer):
     """Scorer based on the Elo system using pairwise approximator comparisons."""
@@ -192,9 +197,7 @@ class EloScorer(LeaderboardScorer):
             "k_factor": self.k_factor,
             "tie_tolerance": self.tie_tolerance,
             "seed_aggregation": "mean",
-            "ordering_strategy": "deterministic"
-            if self.n_permutations == 1
-            else "permuted",
+            "ordering_strategy": "deterministic" if self.n_permutations == 1 else "permuted",
             "n_permutations": self.n_permutations,
             "permutations_random_state": self.permutations_random_state,
             "n_bootstrap_samples": self.n_bootstrap_samples,
@@ -211,15 +214,12 @@ class EloScorer(LeaderboardScorer):
                     ),
                     "confidence_level": self.confidence_level,
                     "confidence_interval_method": "bootstrap_quantile",
-                    "n_total_rating_samples": self.n_bootstrap_samples
-                                              * self.n_permutations,
+                    "n_total_rating_samples": self.n_bootstrap_samples * self.n_permutations,
                 }
             )
         else:
             metadata["rating_sample_method"] = (
-                "deterministic"
-                if self.n_permutations == 1
-                else "match_order_permutation"
+                "deterministic" if self.n_permutations == 1 else "match_order_permutation"
             )
 
         return ScoringResult(
@@ -234,8 +234,8 @@ class EloScorer(LeaderboardScorer):
         )
 
     def _build_pairwise_matches(
-            self,
-            comparable_groups: list[ComparableGroup],
+        self,
+        comparable_groups: list[ComparableGroup],
     ) -> list[PairwiseMatch]:
         """Build pairwise matches from selected comparable groups and metrics."""
         matches: list[PairwiseMatch] = []
@@ -417,8 +417,8 @@ class EloScorer(LeaderboardScorer):
         return new_rating_a, new_rating_b
 
     def _initialize_match_stats(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> MatchStats:
         """Initialize match counters for all approximators occurring in matches.
 
@@ -471,10 +471,7 @@ class EloScorer(LeaderboardScorer):
               including ``n_matches``, ``wins``, ``losses``, and ``ties``.
         """
         stats = self._initialize_match_stats(matches)
-        ratings: dict[str, EloScore] = {
-            approximator: self.initial_elo
-            for approximator in stats
-        }
+        ratings: dict[str, EloScore] = {approximator: self.initial_elo for approximator in stats}
 
         for match in matches:
             rating_a = ratings[match.approximator_a]
@@ -540,8 +537,8 @@ class EloScorer(LeaderboardScorer):
         return permutations
 
     def _compute_elo_ratings_per_sample(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> ApproximatorRatingsMap:
         """Compute Elo rating samples across match orderings.
 
@@ -559,9 +556,9 @@ class EloScorer(LeaderboardScorer):
         return dict(approximator_ratings_map)
 
     def _build_leaderboard_rows_from_rating_samples(
-            self,
-            approximator_ratings_map: ApproximatorRatingsMap,
-            match_stats: MatchStats,
+        self,
+        approximator_ratings_map: ApproximatorRatingsMap,
+        match_stats: MatchStats,
     ) -> list[LeaderboardRow]:
         """Build ranked leaderboard rows from Elo rating samples.
 
@@ -649,8 +646,8 @@ class EloScorer(LeaderboardScorer):
         return stats
 
     def _build_comparable_groups(
-            self,
-            groups: dict[tuple[object, ...], list[dict[str, object]]],
+        self,
+        groups: dict[tuple[object, ...], list[dict[str, object]]],
     ) -> list[ComparableGroup]:
         """Convert grouped benchmark records into comparable group objects.
 
@@ -672,8 +669,8 @@ class EloScorer(LeaderboardScorer):
         ]
 
     def _generate_bootstrap_group_samples(
-            self,
-            comparable_groups: list[ComparableGroup],
+        self,
+        comparable_groups: list[ComparableGroup],
     ) -> BootstrapSamples:
         """Generate bootstrap samples of comparable groups.
 
@@ -699,16 +696,15 @@ class EloScorer(LeaderboardScorer):
 
         for _ in range(self.n_bootstrap_samples):
             sample: BootstrapSample = [
-                random_instance.choice(comparable_groups)
-                for _ in range(len(comparable_groups))
+                random_instance.choice(comparable_groups) for _ in range(len(comparable_groups))
             ]
             bootstrap_samples.append(sample)
 
         return bootstrap_samples
 
     def _compute_bootstrap_elo_ratings(
-            self,
-            comparable_groups: list[ComparableGroup],
+        self,
+        comparable_groups: list[ComparableGroup],
     ) -> ApproximatorRatingsMap:
         """Compute Elo rating samples across bootstrap samples of comparable groups.
 
@@ -735,8 +731,8 @@ class EloScorer(LeaderboardScorer):
         return dict(approximator_ratings_map)
 
     def _confidence_interval(
-            self,
-            values: list[EloScore],
+        self,
+        values: list[EloScore],
     ) -> tuple[EloScore, EloScore]:
         """Compute a quantile-based confidence interval for rating samples.
 
