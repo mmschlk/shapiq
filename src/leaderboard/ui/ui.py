@@ -328,6 +328,16 @@ def get_plot_single(
 
 # --- Daten laden ---
 df_agg = load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
+
+# Raw DB client for details tab
+db_client = DatabaseClientFactory.create_client(
+    LOADING_METHOD, db_args={"LOCAL_DB_PATH": str(RESULTS_PATH)} if LOADING_METHOD == "local" else {}
+)
+_all_games = db_client.get_games()
+_all_approxs = db_client.get_approximators()
+_all_budgets = sorted({c.budget for c in db_client.get_unique_configs()})
+_all_indices = sorted({c.index for c in db_client.get_unique_configs()})
+
 update_global_styles(df_agg)
 
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
@@ -891,6 +901,61 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             component.change(
                 fn=update_compare_plots, inputs=[*all_inputs, n_cols_state], outputs=plot_outputs
             )
+
+    with gr.Tab("Raw Data Explorer"):
+        gr.Markdown("## Raw Run Explorer\nDirekte MongoDB-Abfrage einzelner Runs.")
+
+        with gr.Row():
+            det_game = gr.Dropdown(choices=_all_games, label="Game", multiselect=True)
+            det_approx = gr.Dropdown(choices=_all_approxs, label="Approximator", multiselect=True)
+            det_budget = gr.Dropdown(choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True)
+            det_index = gr.Dropdown(choices=_all_indices, label="Index", multiselect=True)
+            det_failed = gr.Checkbox(label="Nur failed runs", value=False)
+
+        det_search_btn = gr.Button("Suchen", variant="primary")
+        det_count = gr.Markdown("")
+        det_table = gr.Dataframe(interactive=False)
+
+
+        def query_raw(games, approxs, budgets, indices, only_failed):
+            all_records = db_client.get_all()
+
+            filtered = []
+            for r in all_records:
+                if games and r.get("game_name") not in games:
+                    continue
+                if approxs and r.get("approximator_name") not in approxs:
+                    continue
+                if budgets and str(r.get("budget")) not in budgets:
+                    continue
+                if indices and r.get("index") not in indices:
+                    continue
+                if only_failed and not r.get("run_failed", False):
+                    continue
+                filtered.append(r)
+
+            if not filtered:
+                yield "**0 Runs gefunden.**", gr.update(value=pd.DataFrame(), visible=True)
+                return
+
+            # Metriken aus nested dict flach machen
+            rows = []
+            for r in filtered:
+                row = {k: v for k, v in r.items() if k != "metrics"}
+                metrics = r.get("metrics") or {}
+                for m_key, m_val in metrics.items():
+                    row[m_key] = m_val
+                rows.append(row)
+
+            df = pd.DataFrame(rows)
+            yield f"**{len(df)} Runs gefunden.**", gr.update(value=df, visible=True)
+
+
+        det_search_btn.click(
+            fn=query_raw,
+            inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+            outputs=[det_count, det_table],
+        )
 
 
     def on_reload() -> tuple[Any, ...]:
