@@ -230,6 +230,8 @@ def test_elo_scorer_filters_by_metric_and_budget():
     assert rows_by_approximator["ApproximatorA"].rank == 1
     assert rows_by_approximator["ApproximatorA"].score > 1000.0
     assert rows_by_approximator["ApproximatorA"].metadata["wins"] == 1
+    assert rows_by_approximator["ApproximatorA"].metadata["score_std"] == pytest.approx(0.0)
+    assert rows_by_approximator["ApproximatorA"].metadata["n_rating_samples"] == 1
 
     assert rows_by_approximator["ApproximatorB"].rank == 2
     assert rows_by_approximator["ApproximatorB"].score < 1000.0
@@ -308,3 +310,146 @@ def test_compute_elo_returns_expected_rating_after_three_matches():
         "losses": 3,
         "ties": 0,
     }
+
+def _make_cyclic_matches() -> list[PairwiseMatch]:
+    """Create matches where order can affect final Elo ratings."""
+    return [
+        PairwiseMatch(
+            approximator_a="ApproximatorA",
+            approximator_b="ApproximatorB",
+            metric_name="mse",
+            metric_value_a=0.01,
+            metric_value_b=0.05,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 100},
+        ),
+        PairwiseMatch(
+            approximator_a="ApproximatorB",
+            approximator_b="ApproximatorC",
+            metric_name="mse",
+            metric_value_a=0.01,
+            metric_value_b=0.05,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 500},
+        ),
+        PairwiseMatch(
+            approximator_a="ApproximatorC",
+            approximator_b="ApproximatorA",
+            metric_name="mse",
+            metric_value_a=0.01,
+            metric_value_b=0.05,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 1000},
+        ),
+    ]
+
+def test_generate_match_orderings_with_one_permutation_returns_one_ordering():
+    """Test that n_permutations=1 returns exactly one deterministic ordering."""
+    scorer = EloScorer(n_permutations=1)
+    matches = _make_cyclic_matches()
+
+    orderings = scorer._generate_match_orderings(matches)
+
+    assert len(orderings) == 1
+    assert orderings[0] == matches
+    assert orderings[0] is not matches
+
+def test_generate_match_orderings_with_multiple_permutations():
+    """Test that multiple match orderings are generated."""
+    scorer = EloScorer(
+        n_permutations=5,
+        permutations_random_state=0,
+    )
+    matches = _make_cyclic_matches()
+
+    orderings = scorer._generate_match_orderings(matches)
+
+    assert len(orderings) == 5
+    assert all(len(ordering) == len(matches) for ordering in orderings)
+    assert all(sorted(ordering, key=repr) == sorted(matches, key=repr) for ordering in orderings)
+    assert any(ordering != matches for ordering in orderings)
+
+def test_generate_match_orderings_is_reproducible_with_same_random_state():
+    """Test that the same random state produces the same match orderings."""
+    matches = _make_cyclic_matches()
+
+    scorer_a = EloScorer(
+        n_permutations=10,
+        permutations_random_state=42,
+    )
+    scorer_b = EloScorer(
+        n_permutations=10,
+        permutations_random_state=42,
+    )
+
+    orderings_a = scorer_a._generate_match_orderings(matches)
+    orderings_b = scorer_b._generate_match_orderings(matches)
+
+    assert orderings_a == orderings_b
+
+def test_compute_elo_ratings_per_sample_collects_one_rating_per_permutation():
+    """Test that each approximator receives one Elo rating per permutation."""
+    scorer = EloScorer(
+        n_permutations=7,
+        permutations_random_state=0,
+        k_factor=16.0,
+    )
+    matches = _make_cyclic_matches()
+
+    approximator_ratings_map = scorer._compute_elo_ratings_per_sample(matches)
+
+    assert set(approximator_ratings_map) == {
+        "ApproximatorA",
+        "ApproximatorB",
+        "ApproximatorC",
+    }
+    assert all(len(ratings) == 7 for ratings in approximator_ratings_map.values())
+
+def test_build_leaderboard_rows_from_rating_samples_adds_sample_metadata():
+    """Test that leaderboard rows include rating sample metadata."""
+    scorer = EloScorer()
+
+    approximator_ratings_map = {
+        "ApproximatorA": [1000.0, 1010.0, 1020.0],
+        "ApproximatorB": [990.0, 995.0, 1000.0],
+    }
+    match_stats = {
+        "ApproximatorA": {
+            "n_matches": 3,
+            "wins": 2,
+            "losses": 1,
+            "ties": 0,
+        },
+        "ApproximatorB": {
+            "n_matches": 3,
+            "wins": 1,
+            "losses": 2,
+            "ties": 0,
+        },
+    }
+
+    rows = scorer._build_leaderboard_rows_from_rating_samples(
+        approximator_ratings_map=approximator_ratings_map,
+        match_stats=match_stats,
+    )
+
+    rows_by_approximator = {row.approximator_name: row for row in rows}
+
+    assert rows_by_approximator["ApproximatorA"].score == pytest.approx(1010.0)
+    assert rows_by_approximator["ApproximatorA"].metadata["score_std"] == pytest.approx(10.0)
+    assert rows_by_approximator["ApproximatorA"].metadata["n_rating_samples"] == 3
+    assert rows_by_approximator["ApproximatorA"].metadata["wins"] == 2
+
+    assert rows_by_approximator["ApproximatorA"].rank == 1
+    assert rows_by_approximator["ApproximatorB"].rank == 2
+
+
+def test_generate_match_orderings_rejects_non_positive_permutation_count():
+    """Test that invalid permutation counts are rejected."""
+    scorer = EloScorer(n_permutations=0)
+
+    with pytest.raises(ValueError, match="n_permutations must be at least 1"):
+        scorer._generate_match_orderings(_make_cyclic_matches())

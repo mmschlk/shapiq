@@ -87,7 +87,7 @@ class EloScorer(LeaderboardScorer):
             initial_elo: Starting Elo value for each approximator.
             k_factor: Multiplication factor determining Elo gain and loss per match.
             tie_tolerance: Tolerance for treating small metric differences as ties.
-            n_permutations: The number of match order permutations to guarantee stable results.
+            n_permutations: The number of match order permutations to foster stable results.
             permutations_random_state: The random state which can be used to make permutations reproducible
             group_keys: Record keys used to form comparable benchmark groups.
             metric_names: Optional metric names to include. ``None`` means all metrics.
