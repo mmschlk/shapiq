@@ -161,8 +161,12 @@ class EloScorer(LeaderboardScorer):
         comparable_groups = self._build_comparable_groups(groups)
         matches = self._build_pairwise_matches(comparable_groups)
 
+        if self.n_bootstrap_samples > 0:
+            approximator_ratings_map = self._compute_bootstrap_elo_ratings(comparable_groups)
+        else:
+            approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
+
         match_stats = self._compute_match_stats(matches)
-        approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
         leaderboard_rows = self._build_leaderboard_rows_from_rating_samples(
             approximator_ratings_map=approximator_ratings_map,
             match_stats=match_stats,
@@ -653,3 +657,34 @@ class EloScorer(LeaderboardScorer):
             bootstrap_samples.append(sample)
 
         return bootstrap_samples
+
+
+    def _compute_bootstrap_elo_ratings(
+            self,
+            comparable_groups: list[ComparableGroup],
+    ) -> dict[str, list[float]]:
+        """Compute Elo rating samples across bootstrap samples of comparable groups.
+
+        Args:
+            comparable_groups: Comparable benchmark groups used as the population
+                for bootstrap sampling.
+
+        Returns:
+            Mapping from approximator name to Elo ratings collected across bootstrap
+            samples. If match-order permutations are enabled, each bootstrap sample
+            contributes one rating per permutation.
+        """
+        approximator_ratings_map: defaultdict[str, list[float]] = defaultdict(list)
+
+        bootstrap_samples = self._generate_bootstrap_group_samples(comparable_groups)
+
+        for bootstrap_sample in bootstrap_samples:
+            matches = self._build_pairwise_matches(bootstrap_sample)
+            sample_ratings_map = self._compute_elo_ratings_per_sample(matches)
+
+            for approximator, ratings in sample_ratings_map.items():
+                approximator_ratings_map[approximator].extend(ratings)
+
+        return dict(approximator_ratings_map)
+
+
