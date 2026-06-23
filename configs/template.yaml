@@ -6,29 +6,30 @@
 # ---------------------------------------------------------------------
 # 1) Game (Target Dataset) selection
 # ---------------------------------------------------------------------
-# Supported examples: "SOUM", "BikeSharing", "CaliforniaHousing", "AdultCensus", "Mushroom",
-# "Soybean", "Thyroid", "Annealing", "Arrhythmia", "BreastCancer", "Hepatitis",
-# "Ionosphere", "Nursery", "Zoo"
+# Supported examples (sorted by player count):
+# "CaliforniaHousing" (8), "Nursery" (8), "SOUM" (10), "BikeSharing" (12), "AdultCensus" (14),
+# "Zoo" (16), "Hepatitis" (19), "Thyroid" (21), "Mushroom" (22), "BreastCancer" (30),
+# "Ionosphere" (34), "Soybean" (35), "Annealing" (38), "Arrhythmia" (279)
 
 # - local_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing", "Mushroom", ...
 # - global_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing"
 # - synthetic: "SOUM"
-game: "Soybean"
+game: "Mushroom"
 
 # Choose the game family: `local_xai` or `global_xai`.
-# local_xai uses a specific sample x and an imputer (needs `x`, `imputer`).
-# global_xai explains the full dataset/model behavior (uses loss_function, n_samples_eval, ...).
 game_family: "local_xai"
-
-
-# Current project convention: n_players = 14.
-# Budgets must satisfy: 15 <= budget < 16384.
-n_players: 14
 
 # ---------------------------------------------------------------------
 # 2) Index / interaction order
 # ---------------------------------------------------------------------
+# Info source src/shapiq/approximator/base.py
 # Supported indices: "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
+#
+# NOTE ON RUNNER SUPPORT:
+# While all indices above are valid types in base.py, the current benchmark runner
+# ONLY supports indices that have dedicated algorithm lists in __init__.py.
+# - FULLY SUPPORTED: "SV", "SII", "STII", "FSII", "FBII" (and "k-SII" via SII mapping)
+# - NOT SUPPORTED BY RUNNER CURRENTLY: "BV", "BII", "kADD-SHAP", "CHII" (no active runner setup)
 index: "SV"
 
 # Max interaction order.
@@ -38,29 +39,34 @@ index: "SV"
 max_order: 1
 
 # ---------------------------------------------------------------------
-# 3) Game-specific parameters
+# 3) Game-specific parameters (Universal Configuration Template)
 # ---------------------------------------------------------------------
-# local_xai games typically use: x, model_name, imputer
-# classification games may also use class_to_explain
-# Supported imputers: "marginal", "conditional", "baseline"
-# For CaliforniaHousing (local_xai), supported models are:
-#   - "decision_tree"
-#   - "random_forest"
-#   - "gradient_boosting"
-#   - "neural_network"
+# This "All-in-One" dictionary holds parameters for all game families.
+# Thanks to the Pydantic validator layer (models.py), family-incompatible
+# fields will be automatically purged at runtime before instantiation.
+# You can safely leave unused parameters as they are.
 game_params:
-  model_name: "decision_tree"
-  imputer: "marginal"
-  x: 0
+  # --- Universal Game Control ---
+  model_name: "decision_tree"      # Supported ML models: "decision_tree", "random_forest", "gradient_boosting"
+  normalize: true                  # Center game values to be 0 for the empty feature set. Recommended: true (except for SOUM)
+  verbose: false                   # Enable internal game-level debugging logs. Defaults to false.
 
-# Optional budget generation policy.
-# Budgets should be chosen per-game from roughly n+1 to <2^n.
-budget_policy:
-  strategy: "range"
-  start: "n+1"
-  end: "2^n-1"
-  steps: 10
+  # === Local XAI Game Setup (Active only when game_family: "local_xai") ===
+  imputer: "marginal"              # Missing feature handling strategy. Supported: "marginal", "conditional"
+  x: 0                             # The specific sample instance index (row index of the dataset) to explain.
+  class_to_explain: 1              # [Classification game Only] Integer index of the target class probability to explain.
 
+  # === Global XAI Game Setup (Active only when game_family: "global_xai") ===
+  # Note: For classification games (e.g., "AdultCensus"), use "accuracy_score" or "cross_entropy".
+  # For regression games (e.g., "BikeSharing", "CaliforniaHousing"), use "mean_absolute_error" or "mean_squared_error".
+  loss_function: "accuracy_score"
+  n_samples_eval: 10               # Number of background rows sampled per coalition to shuffle missing features.
+  n_samples_empty: 200             # Background dataset sample size used to calculate the base empty-set loss value.
+
+  # === Synthetic Game Setup (Active only when game: "SOUM") ===
+  n: 10                            # Dynamically sets the total number of players (features) for the SOUM game.
+  n_basis_games: 20                # Number of underlying mathematical unanimity sub-games to combine. Controls complexity.
+  min_interaction_size: 1          # Lower bound for interaction tuple sizes in the synthetic game. Defaults to 1.
 # ---------------------------------------------------------------------
 # 4) Ground truth
 # ---------------------------------------------------------------------
@@ -68,31 +74,103 @@ ground_truth:
   # "compute" (on-the-fly) or "lookup" (read from cache)
   strategy: "compute"
   # "ExactComputer", "TreeExplainer"
-  method: "ExactComputer"
+  method: "TreeExplainer"
   storage_path: "data/gt_cache.json"
 
 # ---------------------------------------------------------------------
 # 5) Approximator Algorithms to Compare (List)
 # ---------------------------------------------------------------------
-# Make sure the selected approximators are compatible with the chosen index.
+# CHOOSE THE APPROXIMATORS ACCORDING TO THE SELECTED INDEX ABOVE!
+# Each index has a strict whitelist of supported algorithms.
+# An incompatible combination will trigger a configuration validation error.
 #
-# Please ensure the selected approximator supports the index configured above.
-#
-# SV only/common: "KernelSHAP", "SVARM", "UnbiasedKernelSHAP", "StratifiedSamplingSV", "PermutationSamplingSV", "OwenSamplingSV", "kADDSHAP"
-# Versatile (SV, SII, STII, FSII): "KernelSHAPIQ", "SVARMIQ", "SHAPIQ", "ProxySHAP", "SPEX", "ProxySPEX", "MSRBiased", "InconsistentKernelSHAPIQ"
-# Interaction only: "PermutationSamplingSII", "PermutationSamplingSTII", "RegressionFSII", "RegressionFBII"
 approximators:
-  - "PermutationSamplingSV"
+  - "OwenSamplingSV"
   - "StratifiedSamplingSV"
+# --- WHITELIST PER INDEX ---
+#
+# If index: "SV"
+#  - "OwenSamplingSV"
+#  - "StratifiedSamplingSV"
+#  - "SVARM"
+#  - "UnbiasedKernelSHAP"
+#  - "PermutationSamplingSV"
+#  - "KernelSHAP"
+#  - "kADDSHAP"
+#  # - "SPEX"
+#  # - "ProxySPEX"
+#  - "ProxySHAP"
+#  - "MSRBiased"
+#
+# If index: "SII"
+#  - "PermutationSamplingSII"
+#  - "KernelSHAPIQ"
+#  - "InconsistentKernelSHAPIQ"
+#  #   - "SVARMIQ"
+#  #   - "SHAPIQ"
+#  #   - "SPEX"
+#  #   - "ProxySPEX"
+#  - "ProxySHAP"
+#  - "MSRBiased"
+#
+# If index: "k-SII"
+#  #  - "PermutationSamplingSII" # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
+#  - "KernelSHAPIQ"
+#  - "InconsistentKernelSHAPIQ"
+#  #   - "SVARMIQ"
+#  #   - "SHAPIQ"
+#  #   - "SPEX"
+#  #   - "ProxySPEX"
+#  #  - "ProxySHAP" # Unsupported index type: k-SII
+#  #  - "MSRBiased" # Unsupported index type: k-SII
+#
+# If index: "STII"
+#  - "PermutationSamplingSTII"
+#  #  - "KernelSHAPIQ"  # Unsupported index type: STII
+#  #  - "InconsistentKernelSHAPIQ"  # Unsupported index type: STII
+#  #  - "SVARMIQ"
+#  #  - "SHAPIQ"
+#  #  - "SPEX"
+#  #  - "ProxySPEX"
+#  - "ProxySHAP"
+#  - "MSRBiased"
+#
+# If index: "FSII"
+#   - "RegressionFSII"
+#   - "KernelSHAPIQ"  # Valid indices are: ('k-SII', 'SII', 'SV').
+#   - "InconsistentKernelSHAPIQ" # Valid indices are: ('k-SII', 'SII', 'SV').
+#   - "SVARMIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0. for GT
+#   - "SHAPIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
+#   - "SPEX"     # Low Budget, Interaction keys do not match
+#   - "ProxySPEX" # Interaction keys do not match
+#   - "ProxySHAP"
+#   - "MSRBiased"
+#
+# If index: "FBII"
+#  - "RegressionFBII"
+#  #  - "SPEX"
+#  #  - "ProxySPEX"
+#  - "ProxySHAP"
+#  - "MSRBiased"
+#
+# Note: "BV" and "CHII" are currently not supported by the runner pipeline!
+# ---------------------------------------------------------------------
 
 # ---------------------------------------------------------------------
-# 6) Budgets
+# 6) Budgets should be chosen per-game from roughly n+1 to <2^n.
+#- low: 250
+#- low-medium: 500
+#- medium: 1000
+#- medium-high: 5k
+#- high: 10k
 # ---------------------------------------------------------------------
-# Example smoke-test budgets (valid for n=14): 15 <= budget < 16384.
+# Example for Game AdultCensus budgets (valid for n=14): 15 <= budget < 16384.
 budgets:
-  - 100
+  - 250
   - 500
   - 1000
+  - 5000
+  - 10000
 
 # ---------------------------------------------------------------------
 # 7) Random seeds
@@ -103,3 +181,28 @@ seeds:
   - 2
   - 3
   - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 17
+  - 18
+  - 19
+  - 20
+  - 21
+  - 22
+  - 23
+  - 24
+  - 25
+  - 26
+  - 27
+  - 28
+  - 29
