@@ -20,9 +20,17 @@ PROJECT_APPROXIMATOR_NAMES: tuple[str, ...] = (
     "LeverageSHAP",
     "PolySHAPKAdd",
     "PolySHAPPartial",
-    "PolySHAPPrior",
     "OddSHAP",
 )
+
+
+# Approximators that are registered in ``SV_APPROXIMATORS`` but deliberately
+# kept out of the cross-method benchmark/conformance suite. ``PolySHAPPrior``
+# needs a handcrafted ``q_prior`` (per-game prior interaction knowledge), so a
+# generic budget-vs-error sweep does not give it a meaningful, comparable input.
+EXCLUDED_APPROXIMATOR_NAMES: frozenset[str] = frozenset({
+    "PolySHAPPrior",
+})
 
 
 # Method-specific construction overrides for classes whose constructor needs
@@ -31,7 +39,6 @@ PROJECT_APPROXIMATOR_NAMES: tuple[str, ...] = (
 _SV_CONSTRUCT_OVERRIDES: dict[str, Any] = {
     "PolySHAPKAdd": lambda _n: {"max_order": 1},
     "PolySHAPPartial": lambda n: {"n_explanation_terms": n + 1},
-    "PolySHAPPrior": lambda n: {"q_prior": [(i,) for i in range(n)]},
 }
 
 
@@ -42,12 +49,14 @@ def discover_sv_approximator_names() -> list[str]:
     - ``shapiq.approximator.SV_APPROXIMATORS`` (the canonical registry).
     - Project-specific additions from ``PROJECT_APPROXIMATOR_NAMES``.
 
-    Duplicates removed while preserving registry order.
+    Names in ``EXCLUDED_APPROXIMATOR_NAMES`` are dropped. Duplicates removed
+    while preserving registry order.
     """
     module = importlib.import_module("shapiq.approximator")
     registry = getattr(module, "SV_APPROXIMATORS", [])
     existing = [cls.__name__ for cls in registry]
-    return list(dict.fromkeys(existing + list(PROJECT_APPROXIMATOR_NAMES)))
+    names = dict.fromkeys(existing + list(PROJECT_APPROXIMATOR_NAMES))
+    return [n for n in names if n not in EXCLUDED_APPROXIMATOR_NAMES]
 
 
 def load_approximator(name: str):
@@ -69,7 +78,7 @@ def construct_for_sv(
 
     1. A method-specific override from ``_SV_CONSTRUCT_OVERRIDES`` (covers
        classes like ``PolySHAPKAdd`` whose constructor requires
-       ``max_order``, ``n_explanation_terms``, or ``q_prior``).
+       ``max_order`` or ``n_explanation_terms``).
     2. The multi-index signature
        ``Approx(n=n, index='SV', max_order=1, random_state=...)`` —
        covers ``SPEX / ProxySPEX / ProxySHAP / MSRBiased / kADDSHAP``
