@@ -1,6 +1,6 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "k-SII"
+index: "SII"
 max_order: 2
 
 game_params:
