@@ -756,6 +756,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     metric_plots = {}
 
     with gr.Tab("Metrics across Budgets"):
+        jump_buttons = {}
         for metric in available_metrics:
             with gr.Tab(f"{metric.upper()} across Budgets"):
                 game_dropdowns[metric] = gr.Dropdown(
@@ -776,6 +777,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                         df_agg["approximator_name"].unique().tolist(),
                     )
                 )
+
+                with gr.Row():
+                    jump_buttons[metric] = gr.Button(
+                        "🔍 Open in Raw Data Explorer",
+                        size="sm",
+                        variant="secondary"
+                    )
 
                 # metric als default-Argument binden, sonst nimmt die Lambda immer den letzten Wert
                 for component in [game_dropdowns[metric], approx_checkboxes[metric]]:
@@ -905,7 +913,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             )
 
     with gr.Tab("Raw Data Explorer"):
-        gr.Markdown("## Raw Run Explorer\nDirekte MongoDB-Abfrage einzelner Runs.")
+        gr.Markdown("## Raw Run Explorer\nDirect MongoDB query of individual runs.")
 
         with gr.Row():
             det_game = gr.Dropdown(choices=_all_games, label="Game", multiselect=True)
@@ -1015,6 +1023,35 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 for comp in [game_dropdowns[m], approx_checkboxes[m], metric_plots[m]]
             ],
         ],
+    )
+
+    for metric in available_metrics:
+        jump_buttons[metric].click(
+            fn=lambda game, approxs: (
+                [game] if game else [],
+                approxs if approxs else [],
+            ),
+            inputs=[game_dropdowns[metric], approx_checkboxes[metric]],
+            outputs=[det_game, det_approx],
+        ).then(
+            fn=query_raw,
+            inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+            outputs=[det_count, det_table],
+        ).then(
+            fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
+            inputs=[],
+            outputs=[],
+        )
+
+    tab_switch_btn = gr.Button(visible=False, elem_id="tab-switch-btn")
+    tab_switch_btn.click(
+        fn=None,
+        js="""
+        () => {
+            const tabs = document.querySelectorAll('.tab-nav button');
+            tabs.forEach(t => { if (t.textContent.trim() === 'Raw Data Explorer') t.click(); });
+        }
+        """
     )
 
 demo.launch()
