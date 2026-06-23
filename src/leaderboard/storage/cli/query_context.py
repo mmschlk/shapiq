@@ -25,7 +25,15 @@ eoc
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
+
+
+class _StorageClient(Protocol):
+    """Minimal protocol for a storage client usable by QueryContext."""
+
+    def get_all(self) -> list[dict[str, Any]]:
+        """Return all documents in the storage."""
+        ...
 
 
 class QueryContext:
@@ -34,7 +42,7 @@ class QueryContext:
     def __init__(self, storage_id: str) -> None:
         """Initialize a new QueryContext for the given *storage_id*."""
         self.storage_id = storage_id
-        self._rows: list[dict[str, Any]] | None = None   # None = not yet fetched
+        self._rows: list[dict[str, Any]] | None = None  # None = not yet fetched
         self._commands: list[tuple[str, list[str]]] = []
 
     # ------------------------------------------------------------------
@@ -53,7 +61,7 @@ class QueryContext:
     # Execution
     # ------------------------------------------------------------------
 
-    def execute(self, client: Any) -> list[str]:
+    def execute(self, client: _StorageClient) -> list[str]:
         """Run accumulated commands against *client*.
 
         Returns a list of output lines to display.
@@ -61,15 +69,15 @@ class QueryContext:
         output: list[str] = []
         rows: list[dict[str, Any]] = list(client.get_all())
 
-        for verb, args in self._commands:
-            verb = verb.lower()
+        for verb_user, args in self._commands:
+            verb = verb_user.lower()
 
             if verb == "get":
                 if len(args) < 2:
-                    output.append(f"  [error] get requires <field> <value>")
+                    output.append("  [error] get requires <field> <value>")
                     continue
                 field = args[0]
-                raw_value: Any = _coerce(args[1])
+                raw_value = _coerce(args[1])
                 before = len(rows)
                 rows = [r for r in rows if str(r.get(field, "")) == str(raw_value)]
                 output.append(
@@ -83,8 +91,7 @@ class QueryContext:
                 field = args[0]
                 values = sorted({str(r.get(field, "")) for r in rows})
                 output.append(f"  list {field!r}  ({len(values)} distinct value(s)):")
-                for v in values:
-                    output.append(f"    • {v}")
+                output.extend(f"    • {v}" for v in values)
 
             elif verb == "count":
                 output.append(f"  count  →  {len(rows)} entries")
@@ -116,7 +123,8 @@ class QueryContext:
 # Helpers
 # ------------------------------------------------------------------
 
-def _coerce(value: str) -> Any:
+
+def _coerce(value: str) -> int | float | str:
     """Try to cast a CLI string argument to int or float; fall back to str."""
     try:
         return int(value)

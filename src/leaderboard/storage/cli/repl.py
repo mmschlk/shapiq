@@ -36,24 +36,27 @@ Top-level command grammar
 
 from __future__ import annotations
 
-import sys
-from typing import Any
 import shlex
+import sys
+from pathlib import Path
+from typing import Any
 
-from leaderboard.storage.connection import DatabaseClient, DBClientError, DatabaseClientFactory
+from leaderboard.storage.connection import (
+    DatabaseClient,
+    DatabaseClientFactory,
+    DBClientError,
+    UnsupportedDatabaseBackendError,
+)
 
 from . import formatting as fmt
 from .query_context import QueryContext
 from .registry import StorageRegistry
-
-
 
 # ---------------------------------------------------------------------------
 # Parameter prompts per backend
 # ---------------------------------------------------------------------------
 
 _BACKEND_PARAMS: dict[str, list[tuple[str, str, str]]] = {
-    # (env_var_name, prompt_label, default_hint)
     "local": [
         ("LOCAL_DB_PATH", "Database file path", "~/.leaderboard/db.jsonl"),
     ],
@@ -76,9 +79,9 @@ _ALIAS_MAP = {"hf": "huggingface"}
 class StorageREPL:
     """Interactive Read-Eval-Print Loop for the Storage Interaction Language."""
 
-    def __init__(self, use_color: bool = True) -> None:
+    def __init__(self, *, use_color: bool = True) -> None:
         """Initialize a new REPL instance."""
-        fmt.set_color(use_color)
+        fmt.set_color(enabled=use_color)
         self._registry = StorageRegistry()
         self._in_sequence = False
         self._seq_ctx: QueryContext | None = None
@@ -117,26 +120,26 @@ class StorageREPL:
 
     def print_ok(self, msg: str) -> None:
         """Print a success message."""
-        print(fmt.ok(msg))
+        print(fmt.ok(msg))  # noqa: T201
 
     def print_warn(self, msg: str) -> None:
         """Print a warning message."""
-        print(fmt.warn(msg))
+        print(fmt.warn(msg))  # noqa: T201
 
     def print_error(self, msg: str) -> None:
         """Print an error message."""
-        print(fmt.error(msg))
+        print(fmt.error(msg))  # noqa: T201
 
     def print_info(self, msg: str) -> None:
         """Print an informational message."""
-        print(fmt.info(msg))
+        print(fmt.info(msg))  # noqa: T201
 
     def _banner(self) -> None:
         """Print the REPL banner and usage hint."""
-        print()
-        print(fmt.header("  Storage Interaction Language (SIL)"))
-        print(fmt.dim("  Type 'help' for available commands, 'exit' to quit."))
-        print()
+        print()  # noqa: T201
+        print(fmt.header("  Storage Interaction Language (SIL)"))  # noqa: T201
+        print(fmt.dim("  Type 'help' for available commands, 'exit' to quit."))  # noqa: T201
+        print()  # noqa: T201
 
     def _readline(self) -> str:
         """Read a line of input from the user, with prompt."""
@@ -154,7 +157,7 @@ class StorageREPL:
 
     def _dispatch(self, line: str) -> None:
         """Parse and dispatch a top-level command line.
-        
+
         Args:
             line (str): The command line to parse and dispatch.
         """
@@ -188,38 +191,45 @@ class StorageREPL:
 
     def _help_top(self) -> None:
         """Print the top-level help message."""
-        print()
-        print(fmt.header("  Active Storage Management"))
+        print()  # noqa: T201
+        print(fmt.header("  Active Storage Management"))  # noqa: T201
         _hline("list storages", "List all open connections with their IDs.")
-        _hline("add <backend>", "Open a new connection. backends: local | mongodb | huggingface")
+        _hline(
+            "add <backend>",
+            "Open a new connection. backends: local | mongodb | huggingface",
+        )
         _hline("close <id>", "Close a connection (e.g. close local1).")
         _hline("close all", "Close every open connection.")
-        print()
-        print(fmt.header("  Storage Transfer & Mutation"))
+        print()  # noqa: T201
+        print(fmt.header("  Storage Transfer & Mutation"))  # noqa: T201
         _hline("insert <src> to <dst>", "Copy all documents from src to dst.")
-        _hline("insert safe <src> to <dst> [using <mode>]",
-               "Copy without duplicates. mode: merge | replace | skip  (default: merge)")
+        _hline(
+            "insert safe <src> to <dst> [using <mode>]",
+            "Copy without duplicates. mode: merge | replace | skip  (default: merge)",
+        )
         _hline("delete from <id>", "Interactively delete entries from a storage.")
-        _hline("delete entries <src> from <dst> ",
-               "Delete every entry in dst that also appears in src. Matching by document ID (default) or exact content.")
-        print()
-        print(fmt.header("  Custom Sequence"))
-        _hline("sequence [<id>]",
-               "Start a multi-command sequence against a storage (default: first active).")
-        print()
-        print(fmt.header("  General"))
+        _hline(
+            "delete entries <src> from <dst> ",
+            "Delete every entry in dst that also appears in src. Matching by document ID (default) or exact content.",
+        )
+        print()  # noqa: T201
+        print(fmt.header("  Custom Sequence"))  # noqa: T201
+        _hline(
+            "sequence [<id>]",
+            "Start a multi-command sequence against a storage (default: first active).",
+        )
+        print()  # noqa: T201
+        print(fmt.header("  General"))  # noqa: T201
         _hline("help", "Show this message.")
         _hline("exit / quit", "Close all connections and exit.")
-        print()
+        print()  # noqa: T201
 
     def _cmd_list(self, list_args: list[str]) -> None:
-        """Handle the 'list' command, which lists the active storages.
-        If no subcommand is given, defaults to 'list storages'.
-        
+        """Handle the 'list' command, which lists the active storages. If no subcommand is given, defaults to 'list storages'.
+
         Args:
             list_args: List of command arguments (excluding the 'list' verb).
         """
-
         sub = list_args[0].lower() if list_args else "storages"
         if sub in ("storage", "storages", "connections"):
             self._list_storages()
@@ -232,28 +242,28 @@ class StorageREPL:
         if not ids:
             self.print_warn("No active storage connections. Use 'add <backend>' to open one.")
             return
-        print()
-        print(fmt.header(f"  Active connections ({len(ids)})"))
+        print()  # noqa: T201
+        print(fmt.header(f"  Active connections ({len(ids)})"))  # noqa: T201
         for sid in ids:
             meta = self._registry.meta(sid)
             backend = meta.get("backend", "?")
             args = meta.get("args", {})
             args_str = "  ".join(f"{k}={v!r}" for k, v in args.items() if v)
-            print(f"    {fmt.storage_id(sid)}  {fmt.dim(backend)}  {fmt.dim(args_str)}")
-        print()
+            print(f"    {fmt.storage_id(sid)}  {fmt.dim(backend)}  {fmt.dim(args_str)}")  # noqa: T201
+        print()  # noqa: T201
 
     def cmd_add(self, backend: str | None) -> None:
         """Prompt for backend if not given, then prompt for params and connect.
-        
+
         Args:
             backend: The backend to connect to.
         """
         if backend is None:
-            print()
-            print(fmt.header("  Available backends:"))
+            print()  # noqa: T201
+            print(fmt.header("  Available backends:"))  # noqa: T201
             for b in ("local", "mongodb", "huggingface"):
-                print(f"    {fmt.cyan(b)}")
-            print()
+                print(f"    {fmt.cyan(b)}")  # noqa: T201
+            print()  # noqa: T201
             backend = input(f"  {fmt.bold('Backend')}> ").strip().lower()
 
         backend = _ALIAS_MAP.get(backend, backend)
@@ -264,27 +274,34 @@ class StorageREPL:
             return
 
         param_defs = _BACKEND_PARAMS[backend]
-        print()
-        print(fmt.dim(f"  Leave blank to use .env defaults for each parameter."))
+        print()  # noqa: T201
+        print(fmt.dim("  Leave blank to use .env defaults for each parameter."))  # noqa: T201
         db_args: dict[str, str] = {}
         for env_key, label, hint in param_defs:
             val = input(f"  {fmt.bold(label)} {fmt.dim(f'[{hint}]')}> ").strip()
             if val:
                 db_args[env_key] = val
 
-        print(fmt.dim(f"  Connecting to {backend}..."))
-        print(fmt.dim(f"\t\tParameters: {db_args}"))
+        print(fmt.dim(f"  Connecting to {backend}..."))  # noqa: T201
+        print(fmt.dim(f"\t\tParameters: {db_args}"))  # noqa: T201
 
-        # if it is a local client, allow the user to add --create flag to create the database if it does not exist
-        if backend == "local" and "LOCAL_DB_PATH" in db_args:
-            import os
-            if not os.path.exists(db_args["LOCAL_DB_PATH"]):
-                create = input(f"  Database file {db_args['LOCAL_DB_PATH']} does not exist. Create it? (y/n)> ").strip().lower()
-                if create == "y":
-                    db_args["CREATE"] = True
-                else:
-                    self.print_warn("Aborted. Database file does not exist.")
-                    return
+        if (
+            backend == "local"
+            and "LOCAL_DB_PATH" in db_args
+            and not Path(db_args["LOCAL_DB_PATH"]).exists()
+        ):
+            create = (
+                input(
+                    f"  Database file {db_args['LOCAL_DB_PATH']} does not exist. Create it? (y/n)> "
+                )
+                .strip()
+                .lower()
+            )
+            if create == "y":
+                db_args["CREATE"] = True
+            else:
+                self.print_warn("Aborted. Database file does not exist.")
+                return
 
         try:
             client = DatabaseClientFactory.create_client(backend, db_args)
@@ -303,7 +320,7 @@ class StorageREPL:
 
     def _cmd_close(self, close_args: list[str]) -> None:
         """Handle the 'close' command, which closes a storage connection.
-        
+
         Args:
             close_args: List of command arguments (excluding the 'close' verb).
         """
@@ -328,9 +345,10 @@ class StorageREPL:
     # ------------------------------------------------------------------
 
     def _cmd_insert(self, insert_args: list[str]) -> None:
-        """
-        Handle the 'insert' command, which transfers documents from one storage to another.
-        insert [safe] <src> to <dst> [using <mode>]
+        """Handle the 'insert' command, which transfers documents from one storage to another.
+
+        Usage:
+            insert [safe] <src> to <dst> [using <mode>]
 
         Args:
             insert_args: List of command arguments (excluding the 'insert' verb).
@@ -353,7 +371,7 @@ class StorageREPL:
             return
 
         src_id = rest[to_idx - 1] if to_idx >= 1 else None
-        after_to = rest[to_idx + 1:]
+        after_to = rest[to_idx + 1 :]
 
         # <dst> [using <mode>]
         mode = "merge"
@@ -378,7 +396,7 @@ class StorageREPL:
             self.print_error(f"Unknown mode {mode!r}. Choose from: merge, replace, skip.")
             return
 
-        print(fmt.dim(f"  Fetching documents from {src_id}..."))
+        print(fmt.dim(f"  Fetching documents from {src_id}..."))  # noqa: T201
         try:
             docs = src.get_all()
         except DBClientError as exc:
@@ -389,7 +407,7 @@ class StorageREPL:
             self.print_warn(f"No documents found in {fmt.storage_id(src_id)}.")
             return
 
-        print(fmt.dim(f"  Inserting {len(docs)} document(s) into {dst_id}..."))
+        print(fmt.dim(f"  Inserting {len(docs)} document(s) into {dst_id}..."))  # noqa: T201
         try:
             if safe:
                 inserted = dst.safe_insert_many(docs, mode=mode)
@@ -411,8 +429,8 @@ class StorageREPL:
     # ------------------------------------------------------------------
 
     def _cmd_delete(self, args: list[str]) -> None:
-        """
-        Handle the 'delete' command, which can either delete from a storage or delete entries from one storage that exist in another.
+        """Handle the 'delete' command, which can either delete from a storage or delete entries from one storage that exist in another.
+
         Usage:
             delete from <id>
             delete entries <src> from <dst>
@@ -433,7 +451,7 @@ class StorageREPL:
             self._delete_interactive(args[1])
 
         elif sub == "entries":
-            # delete entries <src> from <dst> 
+            # delete entries <src> from <dst>
             try:
                 from_idx = [t.lower() for t in args].index("from")
             except ValueError:
@@ -452,6 +470,7 @@ class StorageREPL:
 
     def _delete_interactive(self, sid: str) -> None:
         """Prompt the user for what to delete from a storage.
+
         Args:
             sid: The storage ID to delete from.
         """
@@ -461,12 +480,12 @@ class StorageREPL:
             self.print_error(f"Failed to resolve storage: {exc}")
             return
 
-        print()
-        print(fmt.header(f"  Delete from {fmt.storage_id(sid)}"))
-        print(fmt.dim("  Options:"))
+        print()  # noqa: T201
+        print(fmt.header(f"  Delete from {fmt.storage_id(sid)}"))  # noqa: S608, T201 -- CLI header, not query
+        print(fmt.dim("  Options:"))  # noqa: T201
         _hline("all", "Delete every document.")
         _hline("by config", "Delete documents matching a specific config.")
-        print()
+        print()  # noqa: T201
         choice = input(f"  {fmt.bold('Delete what')}> ").strip().lower()
 
         if choice == "all":
@@ -480,11 +499,11 @@ class StorageREPL:
             try:
                 n = client.delete_all()
                 self.print_ok(f"Deleted {n} document(s) from {fmt.storage_id(sid)}.")
-            except Exception as exc:
+            except DBClientError as exc:
                 self.print_error(f"Delete failed: {exc}")
 
         elif choice in ("by config", "config"):
-            print(fmt.dim("  Enter config fields (blank line to finish):"))
+            print(fmt.dim("  Enter config fields (blank line to finish):"))  # noqa: T201
             config_fields: dict[str, Any] = {}
             while True:
                 kv = input("    field=value> ").strip()
@@ -502,14 +521,14 @@ class StorageREPL:
             try:
                 n = client.delete_by_config(config_fields)  # type: ignore[arg-type]
                 self.print_ok(f"Deleted {n} document(s) from {fmt.storage_id(sid)}.")
-            except Exception as exc:
+            except DBClientError as exc:
                 self.print_error(f"Delete failed: {exc}")
         else:
             self.print_warn(f"Unknown option {choice!r}. Aborted.")
-        
 
     def _delete_entries(self, src_id: str, dst_id: str) -> None:
         """Delete entries from dst that also exist in src, matching by document ID.
+
         Args:
             src_id: The source storage ID to fetch entries from.
             dst_id: The destination storage ID to delete entries from.
@@ -520,8 +539,8 @@ class StorageREPL:
         except DBClientError as exc:
             self.print_error(f"Failed to resolve storage: {exc}")
             return
-        
-        print(fmt.dim(f"  Fetching entry IDs from {src_id}..."))
+
+        print(fmt.dim(f"  Fetching entry IDs from {src_id}..."))  # noqa: T201
         try:
             src_docs = src.get_all()
         except DBClientError as exc:
@@ -530,32 +549,28 @@ class StorageREPL:
 
         deleted = 0
         failed = 0
-        print(fmt.dim(f"  Deleting {len(src_docs)} matching entries from {dst_id}..."))
+        print(fmt.dim(f"  Deleting {len(src_docs)} matching entries from {dst_id}..."))  # noqa: T201
         for doc in src_docs:
             doc_id = doc.get("run_id")
             if doc_id:
                 try:
                     deleted += dst.delete_by_id(str(doc_id))
-                except Exception:
+                except DBClientError:
                     failed += 1
             else:
                 failed += 1
 
-        self.print_ok(
-            f"Deleted {deleted} / {len(src_docs)} entries from {fmt.storage_id(dst_id)}."
-        )
+        self.print_ok(f"Deleted {deleted} / {len(src_docs)} entries from {fmt.storage_id(dst_id)}.")
         if failed:
             self.print_warn(f"{failed} entries could not be matched (no ID field).")
-        
 
-        
     # ------------------------------------------------------------------
     # Sequence command
     # ------------------------------------------------------------------
 
     def _cmd_sequence(self, seq_args: list[str]) -> None:
         """Handle the 'sequence' command, which starts a multi-command sequence.
-        
+
         Args:
             seq_args: List of command arguments (excluding the 'sequence' verb).
         """
@@ -584,8 +599,8 @@ class StorageREPL:
 
         self._in_sequence = True
         self._seq_ctx = QueryContext(sid)
-        print()
-        print(
+        print()  # noqa: T201
+        print(  # noqa: T201
             fmt.dim(
                 f"  Sequence started on {fmt.storage_id(sid)}. "
                 "Type 'help' for commands, 'eoc' to run, 'abort' to cancel."
@@ -594,6 +609,7 @@ class StorageREPL:
 
     def _handle_sequence_input(self, line: str) -> None:
         """Handle input while inside a sequence.
+
         Args:
             line: The input line to process.
         """
@@ -611,17 +627,20 @@ class StorageREPL:
         elif verb == "eoc":
             self._execute_sequence()
         elif verb in ("get", "list", "count", "sort", "show"):
-            assert self._seq_ctx is not None
+            if self._seq_ctx is None:
+                self.print_error("No active sequence context. This should not happen.")
+                return
             self._seq_ctx.add_command(verb, tokens[1:])
-            print(fmt.dim(f"  + {line}"))
+            print(fmt.dim(f"  + {line}"))  # noqa: T201
         else:
-            self.print_error(
-                f"Unknown sequence command: {verb!r}. Type 'help' or 'abort'."
-            )
+            self.print_error(f"Unknown sequence command: {verb!r}. Type 'help' or 'abort'.")
 
     def _execute_sequence(self) -> None:
         """Execute the accumulated sequence of commands and display results."""
-        assert self._seq_ctx is not None
+        if self._seq_ctx is None:
+            self.print_error("No active sequence to execute.")
+            return
+
         ctx = self._seq_ctx
         self._in_sequence = False
         self._seq_ctx = None
@@ -632,35 +651,36 @@ class StorageREPL:
 
         client = self._registry.get(ctx.storage_id)
         if client is None:
-            self.print_error(
-                f"Storage {fmt.storage_id(ctx.storage_id)} is no longer active."
-            )
+            self.print_error(f"Storage {fmt.storage_id(ctx.storage_id)} is no longer active.")
             return
 
-        print()
-        print(fmt.header(f"  Executing sequence on {fmt.storage_id(ctx.storage_id)}"))
+        print()  # noqa: T201
+        print(fmt.header(f"  Executing sequence on {fmt.storage_id(ctx.storage_id)}"))  # noqa: T201
         try:
             output_lines = ctx.execute(client)
-        except Exception as exc:
+        except (DBClientError, ValueError, KeyError) as exc:
             self.print_error(f"Sequence execution failed: {exc}")
             return
 
         for line in output_lines:
-            print(line)
-        print()
+            print(line)  # noqa: T201
+        print()  # noqa: T201
 
     def _help_sequence(self) -> None:
         """Print help for sequence commands."""
-        print()
-        print(fmt.header("  Sequence commands"))
-        _hline("get <field> <value>", 'Filter entries where field == value. e.g. get game_name "SOUM"')
+        print()  # noqa: T201
+        print(fmt.header("  Sequence commands"))  # noqa: T201
+        _hline(
+            "get <field> <value>",
+            'Filter entries where field == value. e.g. get game_name "SOUM"',
+        )
         _hline("list <field>", "Print distinct values of field across current result set.")
         _hline("count", "Print number of entries currently in the result set.")
         _hline("sort <field> [asc|desc]", "Sort result set by field.")
         _hline("show [n]", "Print first n entries (default: 10).")
         _hline("eoc", "End of commands - execute and show results.")
         _hline("abort", "Cancel the sequence without executing.")
-        print()
+        print()  # noqa: T201
 
     # ------------------------------------------------------------------
     # Exit
@@ -672,7 +692,7 @@ class StorageREPL:
         if n:
             self.print_info(f"Closing {n} connection(s)...")
         self.shutdown()
-        print(fmt.dim("  Goodbye."))
+        print(fmt.dim("  Goodbye."))  # noqa: T201
         sys.exit(0)
 
     # ------------------------------------------------------------------
@@ -689,14 +709,16 @@ class StorageREPL:
             )
 
         if client is None:
-            raise DBClientError(f"Storage {sid} not found.")
-        
+            supported_backends = ", ".join(sorted(_BACKEND_PARAMS.keys()))
+            raise UnsupportedDatabaseBackendError(sid, supported_backends)
+
         return client
 
 
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def _tokenise(line: str) -> list[str]:
     """Split a line into tokens, respecting quoted strings."""
@@ -707,4 +729,4 @@ def _tokenise(line: str) -> list[str]:
 
 
 def _hline(cmd: str, desc: str) -> None:
-    print(f"    {fmt.cyan(cmd):<48}  {fmt.dim(desc)}")
+    print(f"    {fmt.cyan(cmd):<48}  {fmt.dim(desc)}")  # noqa: T201

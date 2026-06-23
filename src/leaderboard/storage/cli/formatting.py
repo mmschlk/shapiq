@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-_USE_COLOR = True
+
+class _ColorConfig:
+    """Mutable holder for the color-enabled flag."""
+
+    enabled: bool = True
 
 
-def set_color(enabled: bool) -> None:
+_cfg = _ColorConfig()
+
+
+def set_color(*, enabled: bool) -> None:
     """Enable or disable ANSI color output for terminal formatting."""
-    global _USE_COLOR
-    _USE_COLOR = enabled
+    _cfg.enabled = enabled
 
 
 def _c(code: str, text: str) -> str:
     """Apply ANSI color code *code* to *text* if color is enabled."""
-    if not _USE_COLOR:
+    if not _cfg.enabled:
         return text
     return f"\033[{code}m{text}\033[0m"
 

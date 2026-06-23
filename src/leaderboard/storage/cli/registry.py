@@ -9,7 +9,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from leaderboard.storage.connection.client import DatabaseClient, DBClientError
+    from leaderboard.storage.connection.client import DatabaseClient
 
 
 class StorageRegistry:
@@ -21,15 +21,16 @@ class StorageRegistry:
     """
 
     def __init__(self) -> None:
-        self._clients: dict[str, DatabaseClient] = {}   # id -> client
-        self._meta: dict[str, dict] = {}                # id -> {backend, args}
+        """Initialize a new StorageRegistry."""
+        self._clients: dict[str, DatabaseClient] = {}  # id -> client
+        self._meta: dict[str, dict] = {}  # id -> {backend, args}
         self._counters: dict[str, int] = defaultdict(int)
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def add(self, backend: str, client: "DatabaseClient", args: dict) -> str:
+    def add(self, backend: str, client: DatabaseClient, args: dict) -> str:
         """Register *client* and return its assigned ID."""
         self._counters[backend] += 1
         sid = f"{backend}{self._counters[backend]}"
@@ -42,10 +43,7 @@ class StorageRegistry:
         client = self._clients.pop(sid, None)
         self._meta.pop(sid, None)
         if client is not None:
-            try:
-                client.close()
-            except DBClientError:
-                pass
+            client.close()
 
     def close_all(self) -> None:
         """Close all clients and clear the registry."""
@@ -56,7 +54,7 @@ class StorageRegistry:
     # Queries
     # ------------------------------------------------------------------
 
-    def get(self, sid: str) -> "DatabaseClient | None":
+    def get(self, sid: str) -> DatabaseClient | None:
         """Return the DatabaseClient for *sid*, or None if not found."""
         return self._clients.get(sid)
 

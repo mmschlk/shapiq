@@ -20,7 +20,6 @@ from .repl import StorageREPL
 
 def main() -> None:
     """Entry point for the Storage Interaction Language CLI."""
-
     parser = argparse.ArgumentParser(
         prog="sil",
         description="Storage Interaction Language - interactive CLI for leaderboard database backends.",
