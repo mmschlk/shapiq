@@ -24,7 +24,7 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
+/wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -177,8 +177,8 @@ cython_debug/
 
 illustration_sources/
 
-# remove the files that will be downloaded
-shapiq/datasets/data
+# cached TabArena datasets — regenerated on demand by the loaders from OpenML
+src/shapiq_games/datasets/data/tabarena_*.csv
 
 shapiq/games/benchmark/precomputed/
 benchmark/results/*
@@ -198,5 +198,3 @@ src/shapiq/_version.py
 docs/source/auto_examples/
 docs/source/sg_execution_times.rst
 docs/source/generated/
-
-.claude

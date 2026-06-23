@@ -6,6 +6,11 @@ the well established Shapley value and its generalization to interaction.
 
 from __future__ import annotations
 
+try:
+    from ._version import __version__
+except ImportError:  # pragma: no cover - _version.py is generated at build time
+    __version__ = "0.0.0"
+
 # approximator classes
 from .approximator import (
     SHAPIQ,
@@ -19,9 +24,11 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    ProxySHAP,
     ProxySPEX,
     RegressionFBII,
     RegressionFSII,
+    RegressionMSR,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
@@ -63,6 +70,7 @@ from .plot import (
     beeswarm_plot,
     force_plot,
     network_plot,
+    scatter_plot,
     sentence_plot,
     si_graph_plot,
     stacked_bar_plot,
@@ -80,6 +88,8 @@ from .utils import (  # sets.py  # tree.py
 )
 
 __all__ = [
+    # version
+    "__version__",
     # base
     "InteractionValues",
     "ExactComputer",
@@ -100,8 +110,10 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
-    "ProxySPEX",
     "SPEX",
+    "ProxySHAP",
+    "ProxySPEX",
+    "RegressionMSR",
     # explainers
     "Explainer",
     "TabularExplainer",
@@ -125,6 +137,7 @@ __all__ = [
     "sentence_plot",
     "upset_plot",
     "beeswarm_plot",
+    "scatter_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",
