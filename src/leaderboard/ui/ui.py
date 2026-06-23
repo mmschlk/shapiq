@@ -1230,7 +1230,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             budgets: list[str],
             indices: list[str],
             metrics: list[str],
-            only_failed: bool = False,
+            only_failed: bool = False,  # noqa: FBT001, FBT002
         ) -> AsyncGenerator[tuple[Any, Any], None]:
             """Query and display raw benchmark records with optional filters.
 
@@ -1272,13 +1272,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 yield "**0 Runs gefunden.**", gr.update(value=pd.DataFrame(), visible=True)
                 return
 
-            df = _records_to_df(filtered, metrics or None)
+            result_df = _records_to_df(filtered, metrics or None)
 
-            yield f"**{len(df)} Runs gefunden.**", gr.update(value=df, visible=True)
+            yield f"**{len(result_df)} Runs gefunden.**", gr.update(value=result_df, visible=True)
             await asyncio.sleep(0.05)
             yield gr.update(), gr.update(visible=False)
             await asyncio.sleep(0.05)
-            yield gr.update(), gr.update(value=df, visible=True)
+            yield gr.update(), gr.update(value=result_df, visible=True)
 
         det_search_btn.click(
             fn=query_raw,
