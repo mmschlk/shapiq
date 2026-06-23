@@ -28,6 +28,27 @@ def _kadd_frontier_size(n: int, max_order: int) -> int:
     return int(sum(binom(n, k) for k in range(max_order + 1)))
 
 
+def _true_sv_dummy_game(n: int, interaction: tuple) -> np.ndarray:
+    """Exact Shapley values for ``DummyGame(n, interaction)``.
+
+    ``v(S) = |S| / n + 1[interaction ⊆ S]``.  The additive ``|S| / n`` term gives
+    every player ``1 / n``; a pairwise interaction term splits its unit worth equally
+    among its members, so each member additionally receives ``1 / |interaction|``.
+    """
+    sv = np.full(n, 1.0 / n)
+    for i in interaction:
+        sv[i] += 1.0 / len(interaction)
+    return sv
+
+
+def _generate_seeds(rng_seed: int = 20260617, count: int = 50) -> list[int]:
+    """Generate a fixed, reproducible list of seeds spanning a wide value range."""
+    return [int(s) for s in np.random.default_rng(rng_seed).integers(0, 2**31 - 1, size=count)]
+
+
+PARTIAL_SEEDS: list[int] = _generate_seeds()
+
+
 # ---------------------------------------------------------------------------
 # PolySHAP base-class: frontier validation
 # ---------------------------------------------------------------------------
@@ -195,9 +216,9 @@ def test_kadd_estimated_when_budget_small():
 @pytest.mark.parametrize(
     ("n", "n_terms"),
     [
-        (7, 8),   # exactly empty + singletons, no higher-order extension
-        (7, 12),  # singletons + 4 pairs
-        (7, 25),  # singletons + some triples (when pairs exhausted earlier)
+        (7, 8),   # empty + singletons only, no higher-order extension
+        (7, 12),  # empty + singletons + 4 pairs
+        (7, 25),  # empty + singletons + 17 pairs (only 21 pairs exist, so no triples)
     ],
 )
 def test_partial_frontier_size(n, n_terms):
@@ -269,6 +290,67 @@ def test_partial_extended_frontier_approximates_correctly():
     sv = approx.approximate(budget, game)
     assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
     assert sv[(2,)] == pytest.approx(0.6429, abs=0.15)
+
+
+# ---------------------------------------------------------------------------
+# PolySHAPPartial – seeded reproducibility & variance (fixed list of 50 seeds)
+# ---------------------------------------------------------------------------
+
+_SEEDED_N = 12
+_SEEDED_INTERACTION = (1, 2)
+_SEEDED_N_TERMS = 30
+_SEEDED_BUDGET = 400
+
+
+def test_partial_seed_list_is_deterministic():
+    """The fixed seed list must be regenerable and contain 50 unique seeds."""
+    assert _generate_seeds() == PARTIAL_SEEDS
+    assert len(PARTIAL_SEEDS) == 50
+    assert len(set(PARTIAL_SEEDS)) == 50
+
+
+def test_partial_seeded_runs_are_reproducible():
+    """For every seed in the fixed list, two independent runs must be bit-identical."""
+    for seed in PARTIAL_SEEDS:
+        sv1 = PolySHAPPartial(
+            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
+        ).approximate(_SEEDED_BUDGET, DummyGame(_SEEDED_N, _SEEDED_INTERACTION))
+        sv2 = PolySHAPPartial(
+            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
+        ).approximate(_SEEDED_BUDGET, DummyGame(_SEEDED_N, _SEEDED_INTERACTION))
+        np.testing.assert_array_equal(
+            sv1.values, sv2.values, err_msg=f"non-reproducible result for seed {seed}"
+        )
+
+
+def test_partial_seeded_estimates_have_low_variance_vs_true_sv():
+    """Across the 50 fixed seeds the estimates must cluster tightly around the true SVs.
+
+    Aggregates one PolySHAPPartial run per seed and checks, per player, that the
+    mean estimate is close to the exact Shapley value and that the spread over
+    seeds is small.
+    """
+    true_sv = _true_sv_dummy_game(_SEEDED_N, _SEEDED_INTERACTION)
+
+    estimates = np.empty((len(PARTIAL_SEEDS), _SEEDED_N))
+    for row, seed in enumerate(PARTIAL_SEEDS):
+        game = DummyGame(_SEEDED_N, _SEEDED_INTERACTION)
+        sv = PolySHAPPartial(
+            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
+        ).approximate(_SEEDED_BUDGET, game)
+        estimates[row] = [sv[(i,)] for i in range(_SEEDED_N)]
+
+    mean_estimate = estimates.mean(axis=0)
+    std_estimate = estimates.std(axis=0)
+
+    # The mean over 50 seeds must be (near-)unbiased w.r.t. the true Shapley value.
+    np.testing.assert_allclose(mean_estimate, true_sv, atol=0.02)
+
+    # The per-seed spread around the true value must be small.
+    assert std_estimate.max() < 0.05
+
+    # Efficiency must hold on average: sum of SVs ≈ v(N) - v({}) = 2.0.
+    assert estimates.sum(axis=1).mean() == pytest.approx(2.0, abs=0.01)
 
 
 # ---------------------------------------------------------------------------
