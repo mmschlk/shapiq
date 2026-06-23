@@ -90,20 +90,19 @@ def _empty_dataframe() -> pd.DataFrame:
 
 def _get_seed(document: dict[str, Any]) -> int | None:
     """Extract the 'seed' field from *document*, if present and an integer."""
-    seed = document.get("seed", None)
+    seed = document.get("seed")
 
     if seed is None:
-        seed = document.get("approx_seed", None)
-    
+        seed = document.get("approx_seed")
+
     if seed is None or not isinstance(seed, int):
         raise ValueError from None
 
     return seed
 
 
-def _matches_config(document: dict[str, Any], config: RunConfig, debug=False) -> bool:
+def _matches_config(document: dict[str, Any], config: RunConfig) -> bool:
     """Return True if *document* contains all key/value pairs in *config*."""
-
     comparisons = {
         "game_name": document.get("game_name") == config.game_name,
         "n_players": document.get("n_players") == config.n_players,
@@ -111,24 +110,11 @@ def _matches_config(document: dict[str, Any], config: RunConfig, debug=False) ->
         "index": document.get("index") == config.index,
         "max_order": document.get("max_order") == config.max_order,
         "budget": document.get("budget") == config.budget,
-        "ground_truth_method": (
-            document.get("ground_truth_method") == config.ground_truth_method
-        ),
+        "ground_truth_method": (document.get("ground_truth_method") == config.ground_truth_method),
     }
 
-    # debugging
-    if debug:
-        for key, matches in comparisons.items():
-            if not matches:
-                print(
-                    key,
-                    repr(document.get(key)),
-                    type(document.get(key)),
-                    repr(getattr(config, key)),
-                    type(getattr(config, key)),
-                )
-
     return all(comparisons.values())
+
 
 def _matches_config_with_seed(document: dict[str, Any], other_document: dict[str, Any]) -> bool:
     """Return True if *document* matches *config* on all fields including 'seed'."""

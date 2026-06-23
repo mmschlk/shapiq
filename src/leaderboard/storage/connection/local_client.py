@@ -75,6 +75,11 @@ class LocalClient(DatabaseClient):
             else os.getenv("LOCAL_DB_PATH", "data/runs.jsonl")
         )
 
+        # if args["CREATE"] is set to True, create an empty file if it doesn't exist
+        if args.get("CREATE", False):
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            Path(path).touch(exist_ok=True)
+
         return cls(path=path)
 
     # ------------------------------------------------------------------
@@ -144,7 +149,7 @@ class LocalClient(DatabaseClient):
             # No existing document matches the config, safe to insert
             self.insert_one(document)
             return True
-        
+
         to_be_inserted = document.copy()  # Start with the new document
 
         # Check for matching seed
@@ -155,8 +160,10 @@ class LocalClient(DatabaseClient):
                     merged_doc = existing_doc.copy()
                     merged_doc.update(document)  # New document's fields override existing ones
 
-                    to_be_inserted.update(merged_doc)  # Update the document to be inserted with merged data
-                    
+                    to_be_inserted.update(
+                        merged_doc
+                    )  # Update the document to be inserted with merged data
+
                     # delete only if duplicate
                     self.delete_by_id(
                         existing_doc.get("run_id")
