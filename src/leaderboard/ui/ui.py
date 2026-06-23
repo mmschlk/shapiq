@@ -536,12 +536,15 @@ def compute_elo_for_bucket(
     return leaderboard_df, fig, info_md
 
 
-def _records_to_df(records: list[dict]) -> pd.DataFrame:
+def _records_to_df(records: list[dict], metric_filter: list[str] | None = None) -> pd.DataFrame:
     rows = []
     for r in records:
         row = {k: json.dumps(v) if isinstance(v, (dict, list)) else v
                for k, v in r.items() if k != "metrics"}
-        row.update(r.get("metrics") or {})
+        r_metrics = r.get("metrics") or {}
+        for k, v in r_metrics.items():
+            if metric_filter is None or k in metric_filter:
+                row[k] = v
         rows.append(row)
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
@@ -976,6 +979,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         with gr.Row():
             det_game = gr.Dropdown(choices=_all_games, label="Game", multiselect=True)
             det_approx = gr.Dropdown(choices=_all_approxs, label="Approximator", multiselect=True)
+            det_metric = gr.Dropdown(choices=available_metrics, label="Metrics", multiselect=True)
             det_budget = gr.Dropdown(choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True)
             det_index = gr.Dropdown(choices=_all_indices, label="Index", multiselect=True)
             det_failed = gr.Checkbox(label="Nur failed runs", value=False)
@@ -985,7 +989,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         det_table = gr.Dataframe(value=_records_to_df(raw_records), interactive=False)
 
 
-        async def query_raw(games, approxs, budgets, indices, only_failed):
+        async def query_raw(games, approxs, budgets, indices, only_failed, metrics):
             yield "", gr.update(visible=False)
 
             all_records = db_client.get_all()
@@ -1008,7 +1012,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 yield "**0 Runs gefunden.**", gr.update(value=pd.DataFrame(), visible=True)
                 return
 
-            df = _records_to_df(filtered)
+            df = _records_to_df(filtered, metrics if metrics else None)
 
             yield f"**{len(df)} Runs gefunden.**", gr.update(value=df, visible=True)
             await asyncio.sleep(0.05)
@@ -1019,7 +1023,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         det_search_btn.click(
             fn=query_raw,
-            inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+            inputs=[det_game, det_approx, det_budget, det_index, det_failed, det_metric],
             outputs=[det_count, det_table],
         )
 
@@ -1076,15 +1080,12 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
     for metric in available_metrics:
         jump_buttons[metric].click(
-            fn=lambda game, approxs: (
-                [game] if game else [],
-                approxs if approxs else [],
-            ),
+            fn=lambda game, approxs: ([game] if game else [], approxs if approxs else [], []),
             inputs=[game_dropdowns[metric], approx_checkboxes[metric]],
-            outputs=[det_game, det_approx],
+            outputs=[det_game, det_approx, det_metric],
         ).then(
             fn=query_raw,
-            inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+            inputs=[det_game, det_approx, det_budget, det_index, det_failed, det_metric],
             outputs=[det_count, det_table],
         ).then(
             fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
@@ -1096,12 +1097,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         fn=lambda n, *vals: (
             list(set(vals[MAX_COLS:MAX_COLS + n])),
             list(set(vals[:n])),
+            [],
         ),
         inputs=[n_cols_state, *compare_approx_dropdowns, *compare_game_dropdowns],
-        outputs=[det_game, det_approx],
+        outputs=[det_game, det_approx, det_metric],
     ).then(
         fn=query_raw,
-        inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+        inputs=[det_game, det_approx, det_budget, det_index, det_failed, det_metric],
         outputs=[det_count, det_table],
     ).then(
         fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
