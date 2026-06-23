@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import AsyncGenerator, Iterator
 
 import gradio as gr
 import numpy as np
@@ -68,10 +68,13 @@ DEFAULT_COLS = 2
 
 
 def update_global_styles(df: pd.DataFrame) -> None:
-    """Fills the global mapping based on ALL approximators in the dataset.
+    """Fill the global approximator-style mapping from the full dataset.
 
-    This ensures that each approximator retains a unique and stable color and
-    dash style across all plots.
+    Assigns a unique, stable color and dash style to every approximator so
+    that each retains consistent visual identity across all plots.
+
+    Args:
+        df: Aggregated DataFrame containing at least an ``approximator_name`` column.
     """
     all_approxs = sorted(df["approximator_name"].unique().tolist())
 
@@ -85,12 +88,27 @@ def update_global_styles(df: pd.DataFrame) -> None:
 
 
 def reload_data() -> pd.DataFrame:
-    """Reloads the raw data and re-aggregates it, returning the updated aggregated DataFrame."""
+    """Reload the raw data from the configured source and re-aggregate it.
+
+    Returns:
+        Updated aggregated DataFrame ready for the leaderboard UI.
+    """
     return load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 
 
 def load_and_aggregate(method: str = "mongodb", path: str | Path = RESULTS_PATH) -> pd.DataFrame:
-    """Loads raw run data from the specified source, processes it, and returns an aggregated DataFrame."""
+    """Load raw run records from the specified backend and return an aggregated DataFrame.
+
+    Args:
+        method: Database backend identifier (``"mongodb"`` or ``"local"``).
+        path: Path to the local JSONL file; only used when *method* is ``"local"``.
+
+    Returns:
+        Aggregated DataFrame with one row per (approximator, game, budget) combination.
+
+    Raises:
+        DBConnectionError: If the database connection test fails.
+    """
     db_client = DatabaseClientFactory.create_client(
         method, db_args={"LOCAL_DB_PATH": str(path)} if method == "local" else {}
     )
@@ -121,7 +139,18 @@ def format_value[T](col: str, x: T, runtime_cols: list[str]) -> str:
 
 
 def _build_leaderboard(df: pd.DataFrame, selected_metrics: list[str]) -> pd.DataFrame:
-    """Builds the leaderboard DataFrame with formatted and ordered columns."""
+    """Build a formatted leaderboard DataFrame with human-readable column names.
+
+    Selects the best budget per approximator (lowest MSE), orders and renames
+    columns, and formats all numeric values for display.
+
+    Args:
+        df: Aggregated DataFrame containing metric mean/std columns and runtime columns.
+        selected_metrics: Metric names to include (e.g. ``["mse", "mae"]``).
+
+    Returns:
+        Formatted leaderboard DataFrame sorted by ascending MSE.
+    """
     avail_metrics = sorted(
         [m for m in selected_metrics if f"{m}_mean" in df.columns]
     )
@@ -170,11 +199,18 @@ def _build_leaderboard(df: pd.DataFrame, selected_metrics: list[str]) -> pd.Data
 def get_leaderboard_global(
     df_agg: pd.DataFrame, selected_approxs: list[str], selected_metrics: list[str]
 ) -> pd.DataFrame:
-    """Computes the global leaderboard across all games and budgets.
+    """Compute the global leaderboard by aggregating metrics across all games.
 
-    Aggregates performance metrics by calculating the mean over all games
-    for each approximator and budget configuration, then structures the
-    leaderboard using the best configuration found.
+    Groups by approximator and budget, averages metric means and stds over all
+    games, then delegates to ``_build_leaderboard`` for formatting.
+
+    Args:
+        df_agg: Aggregated DataFrame produced by ``load_and_aggregate``.
+        selected_approxs: Approximator names to include.
+        selected_metrics: Metric names to display.
+
+    Returns:
+        Formatted leaderboard DataFrame covering all games.
     """
     df_filtered = df_agg[df_agg["approximator_name"].isin(selected_approxs)]
 
@@ -212,10 +248,16 @@ def get_leaderboard_game(
     selected_approxs: list[str],
     selected_metrics: list[str],
 ) -> pd.DataFrame:
-    """Computes the leaderboard for a specific game.
+    """Compute the leaderboard filtered to a single game.
 
-    Filters the data for the selected game and approximators, then determines
-    the best budget configuration based on the lowest MSE.
+    Args:
+        df_agg: Aggregated DataFrame produced by ``load_and_aggregate``.
+        selected_game: Name of the game to filter by.
+        selected_approxs: Approximator names to include.
+        selected_metrics: Metric names to display.
+
+    Returns:
+        Formatted leaderboard DataFrame for the selected game.
     """
     df_filtered = df_agg[
         (df_agg["game_name"] == selected_game)
@@ -232,10 +274,21 @@ def get_plot(
     selected_approximators: list[str],
     yaxis_range: list[float] | None = None,
 ) -> go.Figure:
-    """Generates a line plot of the specified metric across budgets.
+    """Generate a log-scale line plot of one metric across budgets.
 
-    Plots separate lines for each approximator and shaded areas representing
-    the standard deviation across seeds for the selected game.
+    Draws one line per approximator with a shaded ±1 std band. Missing values
+    are replaced with zero before plotting.
+
+    Args:
+        df_agg: Aggregated DataFrame produced by ``load_and_aggregate``.
+        selected_game: Name of the game to visualize.
+        metric: Metric column prefix (e.g. ``"mse"``); columns ``{metric}_mean``
+            and ``{metric}_std`` must exist in *df_agg*.
+        selected_approximators: Approximator names to include.
+        yaxis_range: Optional ``[log10_min, log10_max]`` range for the y-axis.
+
+    Returns:
+        Plotly Figure with one trace per approximator and a shaded std band.
     """
     df_filtered = df_agg[
         (df_agg["game_name"] == selected_game)
@@ -320,10 +373,20 @@ def get_plot_single(
     approximator: str,
     yaxis_range: list[float] | None = None,
 ) -> go.Figure:
-    """Generates a line plot for a single specified approximator.
+    """Generate a metric-across-budgets plot for a single approximator.
 
-    Wraps the generic get_plot function by encapsulating the single
-    approximator string into a list.
+    Convenience wrapper around :func:`get_plot` that accepts a single
+    approximator name instead of a list.
+
+    Args:
+        df_agg: Aggregated DataFrame produced by ``load_and_aggregate``.
+        selected_game: Name of the game to visualize.
+        metric: Metric column prefix (e.g. ``"mse"``).
+        approximator: Name of the approximator to plot.
+        yaxis_range: Optional ``[log10_min, log10_max]`` range for the y-axis.
+
+    Returns:
+        Plotly Figure for the single approximator.
     """
     return get_plot(df_agg, selected_game, metric, [approximator], yaxis_range)
 
@@ -348,10 +411,15 @@ available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
 
 
 def compute_yranges(g: str, approximators: list[str]) -> dict[str, list[float] | None]:
-    """Computes common y-axis ranges for a game and given approximators.
+    """Compute shared log-scale y-axis ranges for a game and approximator set.
 
-    Filters out values below the defined threshold to ensure clean log-scaling
-    across all available metrics.
+    Args:
+        g: Game name to filter by.
+        approximators: Approximator names to include in the range calculation.
+
+    Returns:
+        Dict mapping each metric name to a ``[log10_min, log10_max]`` range,
+        or ``None`` if no valid values exist for that metric.
     """
     df_filtered = df_agg[
         (df_agg["game_name"] == g) & (df_agg["approximator_name"].isin(approximators))
@@ -374,10 +442,18 @@ def compute_yranges(g: str, approximators: list[str]) -> dict[str, list[float] |
 
 
 def update_compare_plots(*args: Any) -> tuple[go.Figure, ...]:
-    """Updates all comparison plots dynamically based on selected configurations.
+    """Recompute all side-by-side comparison plots after a dropdown change.
 
-    Calculates common y-axis limits strictly using only the visible columns
-    and filters out extreme or zero-bound variations.
+    Expects ``args`` to be laid out as
+    ``[approx_0..approx_{MAX_COLS-1}, game_0..game_{MAX_COLS-1}, n_cols]``.
+
+    Args:
+        *args: Flattened sequence of approximator names, game names, and the
+            active column count as defined by the Compare-tab Gradio inputs.
+
+    Returns:
+        Tuple of Plotly Figures — one per (metric × column) combination,
+        in row-major order (all columns for metric 0, then metric 1, …).
     """
     # args enthält: [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
     approx_vals = list(args[:MAX_COLS])
@@ -444,12 +520,13 @@ def compute_elo_for_bucket(
     Returns:
         A tuple of (leaderboard DataFrame, Plotly bar chart Figure, info markdown string).
     """
-    """scorer = EloScorer(
-        budgets=[budget],
-        n_permutations=20,
-        n_bootstrap_samples=200,
-        tie_tolerance=1e-4,
-    )"""
+
+    # scorer = EloScorer(
+    #     budgets=[budget],
+    #     n_permutations=20,
+    #     n_bootstrap_samples=200,
+    #     tie_tolerance=1e-4,
+    # )
 
     scorer = EloScorer(
         budgets=[budget],
@@ -537,6 +614,21 @@ def compute_elo_for_bucket(
 
 
 def _records_to_df(records: list[dict], metric_filter: list[str] | None = None) -> pd.DataFrame:
+    """Flatten raw benchmark records into a tabular DataFrame.
+
+    Serializes nested dict/list fields to JSON strings, expands the ``metrics``
+    sub-dict into top-level columns, and optionally restricts which metric
+    columns are included.
+
+    Args:
+        records: Raw benchmark records as returned by the database client.
+        metric_filter: If given, only metric keys present in this list are
+            added as columns. ``None`` includes all metrics.
+
+    Returns:
+        DataFrame with one row per record and individual metric values as columns.
+        Returns an empty DataFrame if *records* is empty.
+    """
     rows = []
     for r in records:
         row = {k: json.dumps(v) if isinstance(v, (dict, list)) else v
@@ -623,8 +715,19 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 raw_records: list[dict],
                 selected_approxs: list[str],
                 metric: str = "all"
-        ) -> tuple[Any, ...]:
-            """Filter raw records by approximator and compute ELO leaderboard and plot for the given bucket index."""
+        ) -> tuple[str, pd.DataFrame, go.Figure, str]:
+            """Compute the ELO leaderboard for the given budget bucket.
+
+            Args:
+                bucket_idx: Index into ``BUDGET_BUCKETS`` for the target budget.
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Returns:
+                Tuple of (bucket label markdown, leaderboard DataFrame,
+                bar chart Figure, info markdown string).
+            """
             bucket = BUDGET_BUCKETS[bucket_idx]
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             table_df, fig, info_md = compute_elo_for_bucket(filtered, int(bucket["budget"]), metric)
@@ -638,7 +741,22 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 selected_approxs: list[str],
                 metric: str = "all"
         ) -> Iterator[Any]:
-            """Navigate between budget buckets, hiding the table first to force a size reset."""
+            """Navigate between budget buckets and stream UI updates.
+
+            Hides the leaderboard table first to force a size reset, then yields
+            the recomputed content for the new bucket.
+
+            Args:
+                current_idx: Current bucket index.
+                delta: Direction to move (``-1`` for lower, ``+1`` for higher budget).
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Yields:
+                Two partial Gradio update tuples: first hides the table,
+                second populates it with the new bucket's data.
+            """
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update()
             label_md, table_df, fig, info_md = update_elo_tab(new_idx, raw_records, selected_approxs, metric)
@@ -650,6 +768,17 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 selected_approxs: list[str],
                 metric: str = "all"
         ) -> Iterator[Any]:
+            """Navigate to the previous (lower) budget bucket.
+
+            Args:
+                idx: Current bucket index.
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Yields:
+                Gradio update tuples forwarded from :func:`elo_navigate`.
+            """
             yield from elo_navigate(idx, -1, raw_records, selected_approxs, metric)
 
         def elo_next(
@@ -658,6 +787,17 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 selected_approxs: list[str],
                 metric: str = "all"
         ) -> Iterator[Any]:
+            """Navigate to the next (higher) budget bucket.
+
+            Args:
+                idx: Current bucket index.
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Yields:
+                Gradio update tuples forwarded from :func:`elo_navigate`.
+            """
             yield from elo_navigate(idx, +1, raw_records, selected_approxs, metric)
 
         elo_prev_btn.click(
@@ -677,6 +817,20 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 selected_approxs: list[str],
                 metric: str = "all"
         ) -> Iterator[Any]:
+            """Recompute the ELO tab after an approximator or metric filter change.
+
+            Hides the table first to force a re-render, then yields the updated content.
+
+            Args:
+                idx: Current bucket index.
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Yields:
+                Two partial Gradio update tuples: first hides the table,
+                second populates it with the recomputed data.
+            """
             yield gr.update(), gr.update(visible=False), gr.update(), gr.update()
             label_md, table_df, fig, info_md = update_elo_tab(idx, raw_records, selected_approxs, metric)
             yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md
@@ -713,7 +867,18 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 raw_records: list[dict],
                 selected_approxs: list[str],
                 metric: str = "all"
-        ) -> tuple:
+        ) -> tuple[Any, ...]:
+            """Recompute ELO results for all budget buckets simultaneously.
+
+            Args:
+                raw_records: All raw benchmark records from the database.
+                selected_approxs: Approximator names to include.
+                metric: Metric to score by; ``"all"`` includes every metric.
+
+            Returns:
+                Flat tuple of ``(info_md, table_df, figure)`` repeated for each
+                bucket in ``BUDGET_BUCKETS`` order.
+            """
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
@@ -787,12 +952,21 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
         def force_global_dataframe_rerender(
-            df: pd.DataFrame, approxs: list[str], metrics: list[str]
+                df: pd.DataFrame, approxs: list[str], metrics: list[str]
         ) -> Iterator[Any]:
             """Forces a re-render of the global leaderboard dataframe.
 
             First hides the component to reset the UI state, then calculates the
             filtered leaderboard and displays it again.
+
+            Args:
+                df: Current aggregated DataFrame.
+                approxs: Selected approximator names.
+                metrics: Selected metric names.
+
+            Yields:
+                Two Gradio updates: first hides the component, then shows it
+                with the recalculated leaderboard data.
             """
             yield gr.update(visible=False)
             filtered_df = get_leaderboard_global(df, approxs, metrics)
@@ -805,6 +979,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
             First hides the component to reset the UI state, then calculates the
             game-specific leaderboard and displays it again.
+
+            Args:
+                game: Selected game name.
+                df: Current aggregated DataFrame.
+                approxs: Selected approximator names.
+                metrics: Selected metric names.
+
+            Yields:
+                Two Gradio updates: first hides the component, then shows it
+                with the recalculated leaderboard data.
             """
             yield gr.update(visible=False)
             filtered_df = get_leaderboard_game(df, game, approxs, metrics)
@@ -1019,7 +1203,32 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         det_table = gr.Dataframe(value=_records_to_df(raw_records), interactive=False)
 
 
-        async def query_raw(games, approxs, budgets, indices, only_failed, metrics):
+        async def query_raw(
+            games: list[str],
+            approxs: list[str],
+            budgets: list[str],
+            indices: list[str],
+            only_failed: bool,
+            metrics: list[str],
+        ) -> AsyncGenerator[tuple[Any, Any], None]:
+            """Query and display raw benchmark records with optional filters.
+
+            Fetches all records from the database, applies the active filter
+            selections, and streams progressive Gradio UI updates to display
+            results or an empty state.
+
+            Args:
+                games: Game names to include; empty list means no filter.
+                approxs: Approximator names to include; empty list means no filter.
+                budgets: Budget values (as strings) to include; empty list means no filter.
+                indices: Interaction index names to include; empty list means no filter.
+                only_failed: If ``True``, only records with ``run_failed=True`` are returned.
+                metrics: Metric columns to expand; empty list means all metrics.
+
+            Yields:
+                Gradio update tuples for the count label and the result table,
+                streaming intermediate hide/show states to force a re-render.
+            """
             yield "", gr.update(visible=False)
 
             all_records = db_client.get_all()
@@ -1063,6 +1272,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         Fetches the fresh data from the source, updates the global visualization
         styles, and rebuilds all tables and plots for the interface.
+
+        Returns:
+            Flat tuple consumed by the Gradio ``reload_btn`` outputs: updated
+            ``df_state``, ``raw_state``, global leaderboard DataFrame, game
+            dropdown update, per-game leaderboard DataFrame, and for each
+            available metric a game dropdown update, approximator checkbox
+            update, and plot Figure.
         """
         new_df = reload_data()
         new_raw = db_client.get_all()
