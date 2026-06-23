@@ -190,6 +190,7 @@ src/shapiq/_version.py
 
 # Claude
 .claude/
+.claude
 
 # C-Extension files
 *.so
@@ -199,4 +200,5 @@ docs/source/auto_examples/
 docs/source/sg_execution_times.rst
 docs/source/generated/
 
-.claude
+# Cache
+cache/
