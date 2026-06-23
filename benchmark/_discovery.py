@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-
 # Project-specific additions that may not yet be registered in
 # ``SV_APPROXIMATORS`` on every feature branch. Surfacing them by name lets
 # the runner report ``skipped:not_registered`` on branches that do not ship
@@ -20,6 +19,7 @@ from typing import Any
 # umbrella name is kept so each appears in ``--check`` independently.
 PROJECT_APPROXIMATOR_NAMES: tuple[str, ...] = (
     "LeverageSHAP",
+    "OptimizedKernelSHAP",
     "PolySHAP",
     "PolySHAPKAdd",
     "PolySHAPPartial",
@@ -56,6 +56,19 @@ def discover_sv_approximator_names() -> list[str]:
 def load_approximator(name: str):
     """Return the named class from ``shapiq.approximator`` or ``None``."""
     module = importlib.import_module("shapiq.approximator")
+
+    if name == "OptimizedKernelSHAP":
+        BaseKernelSHAP = getattr(module, "KernelSHAP", None)
+        if BaseKernelSHAP is None:
+            return None
+
+        class OptimizedKernelSHAP(BaseKernelSHAP):
+            def __init__(self, *args, **kwargs):
+                kwargs["pairing_trick"] = True
+                super().__init__(*args, **kwargs)
+
+        return OptimizedKernelSHAP
+
     return getattr(module, name, None)
 
 
@@ -92,11 +105,13 @@ def construct_for_sv(
     if override is not None:
         extra = override(n) if callable(override) else override
         candidate_kwargs.append({"n": n, "random_state": random_state, **extra})
-    candidate_kwargs.extend([
-        dict(n=n, index="SV", max_order=1, random_state=random_state),
-        dict(n=n, index="SV", random_state=random_state),
-        dict(n=n, random_state=random_state),
-    ])
+    candidate_kwargs.extend(
+        [
+            dict(n=n, index="SV", max_order=1, random_state=random_state),
+            dict(n=n, index="SV", random_state=random_state),
+            dict(n=n, random_state=random_state),
+        ]
+    )
 
     first_value_error: Exception | None = None
     last_exc: Exception | None = None
