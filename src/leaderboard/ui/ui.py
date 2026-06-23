@@ -596,6 +596,12 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 value=df_agg["approximator_name"].unique().tolist(),
                 label="Approximators",
             )
+            with gr.Column(scale=0, min_width=120):
+                elo_deselect_btn = gr.Button("Alle abwählen", size="sm")
+                elo_reset_btn = gr.Button("Zurücksetzen", size="sm")
+
+        elo_deselect_btn.click(fn=lambda: [], outputs=elo_approx_filter)
+        elo_reset_btn.click(fn=lambda: df_agg["approximator_name"].unique().tolist(), outputs=elo_approx_filter)
 
         # Pre-compute initial ELO display for Medium (1000) bucket
         _elo_init_table, _elo_init_fig, _elo_init_info = compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]))
@@ -733,16 +739,29 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         gr.Markdown("## Global Leaderboard (all games)")
 
         with gr.Row():
-            lb_approx_filter = gr.CheckboxGroup(
-                choices=df_agg["approximator_name"].unique().tolist(),
-                value=df_agg["approximator_name"].unique().tolist(),
-                label="Approximators",
-            )
-            lb_metric_filter = gr.CheckboxGroup(
-                choices=available_metrics,
-                value=available_metrics,
-                label="Metrics",
-            )
+            with gr.Row():
+                lb_approx_filter = gr.CheckboxGroup(
+                    choices=df_agg["approximator_name"].unique().tolist(),
+                    value=df_agg["approximator_name"].unique().tolist(),
+                    label="Approximators",
+                )
+                with gr.Column(scale=0, min_width=120):
+                    lb_approx_deselect = gr.Button("Alle abwählen", size="sm")
+                    lb_approx_reset = gr.Button("Zurücksetzen", size="sm")
+            with gr.Row():
+                lb_metric_filter = gr.CheckboxGroup(
+                    choices=available_metrics,
+                    value=available_metrics,
+                    label="Metrics",
+                )
+                with gr.Column(scale=0, min_width=120):
+                    lb_metric_deselect = gr.Button("Alle abwählen", size="sm")
+                    lb_metric_reset = gr.Button("Zurücksetzen", size="sm")
+
+        lb_approx_deselect.click(fn=lambda: [], outputs=lb_approx_filter)
+        lb_approx_reset.click(fn=lambda: df_agg["approximator_name"].unique().tolist(), outputs=lb_approx_filter)
+        lb_metric_deselect.click(fn=lambda: [], outputs=lb_metric_filter)
+        lb_metric_reset.click(fn=lambda: available_metrics, outputs=lb_metric_filter)
 
         global_leaderboard = gr.Dataframe(
             value=get_leaderboard_global(
@@ -822,11 +841,22 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     value=df_agg["game_name"].iloc[0],
                     label="Game",
                 )
-                approx_checkboxes[metric] = gr.CheckboxGroup(
-                    choices=df_agg["approximator_name"].unique().tolist(),
-                    value=df_agg["approximator_name"].unique().tolist(),
-                    label="Approximatoren",
+                with gr.Row():
+                    approx_checkboxes[metric] = gr.CheckboxGroup(
+                        choices=df_agg["approximator_name"].unique().tolist(),
+                        value=df_agg["approximator_name"].unique().tolist(),
+                        label="Approximatoren",
+                    )
+                    with gr.Column(scale=0, min_width=120):
+                        deselect_btn = gr.Button("Alle abwählen", size="sm")
+                        reset_btn = gr.Button("Zurücksetzen", size="sm")
+
+                deselect_btn.click(fn=lambda: [], outputs=approx_checkboxes[metric])
+                reset_btn.click(
+                    fn=lambda: df_agg["approximator_name"].unique().tolist(),
+                    outputs=approx_checkboxes[metric]
                 )
+
                 metric_plots[metric] = gr.Plot(
                     value=get_plot(
                         df_agg,
