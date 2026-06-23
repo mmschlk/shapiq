@@ -47,6 +47,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import xgboost as xgb
+from sklearn.datasets import fetch_california_housing, load_diabetes
+from sklearn.model_selection import train_test_split
 
 from shapiq import ExactComputer
 from shapiq_games.synthetic import SOUM
@@ -57,7 +60,6 @@ from ._discovery import (
     load_approximator,
     safe_approximate,
 )
-
 
 # -----------------------------------------------------------------------------
 # Metrics — operate on the full SV vector unless noted
@@ -81,7 +83,9 @@ def sum_absolute_error(estimated: np.ndarray, ground_truth: np.ndarray) -> float
 
 
 def precision_at_k(
-    estimated: np.ndarray, ground_truth: np.ndarray, k: int,
+    estimated: np.ndarray,
+    ground_truth: np.ndarray,
+    k: int,
 ) -> float:
     """Fraction of the top-k |truth| features also in the top-k estimate.
 
@@ -113,10 +117,15 @@ METRIC_FUNCTIONS: dict[str, Any] = {
     "Precision@5": lambda est, truth: precision_at_k(est, truth, k=5),
     "Precision@10": lambda est, truth: precision_at_k(est, truth, k=10),
     "KendallTau": kendall_tau,
+    "L2_Norm_Error": lambda est, truth: float(
+        np.sum((est[1:] - truth[1:]) ** 2) / np.sum(truth[1:] ** 2)
+    )
+    if np.sum(truth[1:] ** 2) > 1e-12
+    else 0.0,
 }
 
 # Metrics that read as "lower is better" — plotted on log-y.
-_LOWER_IS_BETTER = frozenset({"MSE", "MAE", "SSE", "SAE"})
+_LOWER_IS_BETTER = frozenset({"MSE", "MAE", "SSE", "SAE", "L2_Norm_Error"})
 
 
 def canonical_sv_vector(interaction_values, n: int) -> np.ndarray:
@@ -129,9 +138,7 @@ def canonical_sv_vector(interaction_values, n: int) -> np.ndarray:
     """
     dict_values = interaction_values.dict_values
     baseline = float(dict_values.get((), interaction_values.baseline_value))
-    return np.array(
-        [baseline] + [float(dict_values.get((i,), 0.0)) for i in range(n)], dtype=float
-    )
+    return np.array([baseline] + [float(dict_values.get((i,), 0.0)) for i in range(n)], dtype=float)
 
 
 # -----------------------------------------------------------------------------
@@ -144,6 +151,27 @@ class GameSpec:
     name: str
     n: int
     factory: Any  # callable(seed: int) -> Game
+
+
+def make_ml_game(dataset_name: str, seed: int):
+    if dataset_name == "California":
+        X, y = fetch_california_housing(return_X_y=True)
+    else:
+        X, y = load_diabetes(return_X_y=True)
+
+    X_train, X_test, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=seed)
+
+    model = xgb.XGBRegressor(n_estimators=100, max_depth=4, random_state=seed, verbosity=0)
+    model.fit(X_train, y_train)
+
+    bg_mean = X_train.mean(axis=0)
+    x_instance = X_test[0]
+
+    def game_fn(Z: np.ndarray) -> np.ndarray:
+        X_masked = np.where(Z, x_instance[np.newaxis, :], bg_mean[np.newaxis, :])
+        return model.predict(X_masked)
+
+    return game_fn
 
 
 def default_game_specs(n_values: list[int]) -> list[GameSpec]:
@@ -161,6 +189,12 @@ def default_game_specs(n_values: list[int]) -> list[GameSpec]:
                 ),
             )
         )
+    specs.append(
+        GameSpec(name="California(n=8)", n=8, factory=lambda seed: make_ml_game("California", seed))
+    )
+    specs.append(
+        GameSpec(name="Diabetes(n=10)", n=10, factory=lambda seed: make_ml_game("Diabetes", seed))
+    )
     return specs
 
 
@@ -192,19 +226,31 @@ def evaluate_cell(
     approx_cls = load_approximator(method_name)
     if approx_cls is None:
         return CellResult(
-            method=method_name, game=game_spec.name, n=game_spec.n,
-            budget=budget, seed=seed, metrics={}, runtime_seconds=0.0,
+            method=method_name,
+            game=game_spec.name,
+            n=game_spec.n,
+            budget=budget,
+            seed=seed,
+            metrics={},
+            runtime_seconds=0.0,
             status="skipped:not_registered",
         )
 
     estimator, construct_exc = construct_for_sv(
-        approx_cls, game_spec.n, random_state=seed,
+        approx_cls,
+        game_spec.n,
+        random_state=seed,
     )
     if estimator is None:
         reason = f"({type(construct_exc).__name__})" if construct_exc else ""
         return CellResult(
-            method=method_name, game=game_spec.name, n=game_spec.n,
-            budget=budget, seed=seed, metrics={}, runtime_seconds=0.0,
+            method=method_name,
+            game=game_spec.name,
+            n=game_spec.n,
+            budget=budget,
+            seed=seed,
+            metrics={},
+            runtime_seconds=0.0,
             status=f"skipped:incompatible_constructor{reason}",
         )
 
@@ -214,8 +260,12 @@ def evaluate_cell(
     runtime = time.perf_counter() - t0
     if iv is None:
         return CellResult(
-            method=method_name, game=game_spec.name, n=game_spec.n,
-            budget=budget, seed=seed, metrics={},
+            method=method_name,
+            game=game_spec.name,
+            n=game_spec.n,
+            budget=budget,
+            seed=seed,
+            metrics={},
             runtime_seconds=runtime,
             status=f"skipped:refused_regime({type(refuse_exc).__name__})",
         )
@@ -223,20 +273,26 @@ def evaluate_cell(
     estimate = canonical_sv_vector(iv, game_spec.n)
     if estimate.shape != ground_truth.shape:
         return CellResult(
-            method=method_name, game=game_spec.name, n=game_spec.n,
-            budget=budget, seed=seed, metrics={},
+            method=method_name,
+            game=game_spec.name,
+            n=game_spec.n,
+            budget=budget,
+            seed=seed,
+            metrics={},
             runtime_seconds=runtime,
             status=f"skipped:shape_mismatch({estimate.shape}vs{ground_truth.shape})",
         )
 
-    metrics = {
-        name: fn(estimate, ground_truth)
-        for name, fn in METRIC_FUNCTIONS.items()
-    }
+    metrics = {name: fn(estimate, ground_truth) for name, fn in METRIC_FUNCTIONS.items()}
     return CellResult(
-        method=method_name, game=game_spec.name, n=game_spec.n,
-        budget=budget, seed=seed, metrics=metrics,
-        runtime_seconds=runtime, status="ok",
+        method=method_name,
+        game=game_spec.name,
+        n=game_spec.n,
+        budget=budget,
+        seed=seed,
+        metrics=metrics,
+        runtime_seconds=runtime,
+        status="ok",
     )
 
 
@@ -251,6 +307,7 @@ def run_sweep(
     budget_pcts: list[float],
     seeds: list[int],
     verbose: bool = True,
+    budget_mults: list[float] | None = None,
 ) -> list[CellResult]:
     """Run the full cross product of (method, game, budget_pct, seed)."""
     results: list[CellResult] = []
@@ -265,22 +322,34 @@ def run_sweep(
             if key not in truth_cache:
                 truth_game = spec.factory(seed)
                 truth_cache[key] = canonical_sv_vector(
-                    ExactComputer(truth_game, n_players=spec.n)(index="SV"), spec.n,
+                    ExactComputer(truth_game, n_players=spec.n)(index="SV"),
+                    spec.n,
                 )
 
             ground_truth = truth_cache[key]
-            for budget_pct in budget_pcts:
-                budget = max(2, int(budget_pct * 2 ** spec.n))
+
+            budgets_to_run = []
+            if budget_mults is not None:
+                budgets_to_run = [int(mult * spec.n) for mult in budget_mults]
+            else:
+                budgets_to_run = [max(2, int(pct * 2**spec.n)) for pct in budget_pcts]
+
+            for budget in budgets_to_run:
                 for method in method_names:
                     cell = evaluate_cell(
-                        method, spec, budget, seed, ground_truth,
+                        method,
+                        spec,
+                        budget,
+                        seed,
+                        ground_truth,
                     )
                     results.append(cell)
                     done += 1
                     if verbose:
                         tag = (
                             f"MSE={cell.metrics.get('MSE'):.3e}"
-                            if cell.status == "ok" else cell.status
+                            if cell.status == "ok"
+                            else cell.status
                         )
                         print(
                             f"  [{done:>4}/{total}] {method:<24} "
@@ -300,23 +369,49 @@ def write_csv(results: list[CellResult], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "method", "game", "n", "budget", "seed",
-            "metric", "value", "runtime_seconds", "status",
-        ])
+        writer.writerow(
+            [
+                "method",
+                "game",
+                "n",
+                "budget",
+                "seed",
+                "metric",
+                "value",
+                "runtime_seconds",
+                "status",
+            ]
+        )
         for r in results:
             if r.status != "ok":
-                writer.writerow([
-                    r.method, r.game, r.n, r.budget, r.seed,
-                    "_", "", r.runtime_seconds, r.status,
-                ])
+                writer.writerow(
+                    [
+                        r.method,
+                        r.game,
+                        r.n,
+                        r.budget,
+                        r.seed,
+                        "_",
+                        "",
+                        r.runtime_seconds,
+                        r.status,
+                    ]
+                )
                 continue
             for metric_name, metric_value in r.metrics.items():
-                writer.writerow([
-                    r.method, r.game, r.n, r.budget, r.seed,
-                    metric_name, metric_value,
-                    r.runtime_seconds, r.status,
-                ])
+                writer.writerow(
+                    [
+                        r.method,
+                        r.game,
+                        r.n,
+                        r.budget,
+                        r.seed,
+                        metric_name,
+                        metric_value,
+                        r.runtime_seconds,
+                        r.status,
+                    ]
+                )
 
 
 # -----------------------------------------------------------------------------
@@ -325,9 +420,9 @@ def write_csv(results: list[CellResult], path: Path) -> None:
 
 
 def _aggregate_by_method(
-    results: list[CellResult], game_name: str, metric: str,
-) -> dict[str, tuple[list[int], list[float], list[float]]]:
-    """Group results by method; return (budgets, means, stds) per method."""
+    results: list[CellResult], game_name: str, metric: str, use_medians: bool = False
+) -> dict[str, tuple[list[int], list[float], list[float], list[float]]]:
+    """Group results by method; return (budgets, mid_vals, lower_vals, upper_vals)."""
     by_method: dict[str, dict[int, list[float]]] = {}
     for r in results:
         if r.status != "ok" or r.game != game_name:
@@ -337,52 +432,89 @@ def _aggregate_by_method(
             continue
         by_method.setdefault(r.method, {}).setdefault(r.budget, []).append(value)
 
-    aggregated: dict[str, tuple[list[int], list[float], list[float]]] = {}
+    aggregated: dict[str, tuple[list[int], list[float], list[float], list[float]]] = {}
     for method, budget_to_values in by_method.items():
         budgets = sorted(budget_to_values)
-        means, stds = [], []
+        mid_vals, lower_vals, upper_vals = [], [], []
+
         for b in budgets:
             vs = budget_to_values[b]
-            means.append(float(np.mean(vs)))
-            stds.append(float(statistics.pstdev(vs)) if len(vs) > 1 else 0.0)
-        aggregated[method] = (budgets, means, stds)
+
+            if use_medians:
+                vs_clipped = np.clip(vs, 1e-14, None)
+                mid_vals.append(float(np.median(vs_clipped)))
+                lower_vals.append(float(np.percentile(vs_clipped, 25)))
+                upper_vals.append(float(np.percentile(vs_clipped, 75)))
+            else:
+                mean = float(np.mean(vs))
+                std = float(statistics.pstdev(vs)) if len(vs) > 1 else 0.0
+                mid_vals.append(mean)
+                lower_vals.append(mean - std)
+                upper_vals.append(mean + std)
+
+        aggregated[method] = (budgets, mid_vals, lower_vals, upper_vals)
     return aggregated
 
 
 def _plot_one_metric(
-    results: list[CellResult], game_name: str, metric: str, out_path: Path,
+    results: list[CellResult],
+    game_name: str,
+    metric: str,
+    out_path: Path,
+    use_paper_style: bool = False,
 ) -> bool:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         return False
 
-    aggregated = _aggregate_by_method(results, game_name, metric)
+    aggregated = _aggregate_by_method(results, game_name, metric, use_medians=use_paper_style)
     if not aggregated:
         return False
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for method in sorted(aggregated):
-        budgets, means, stds = aggregated[method]
-        means_arr = np.array(means)
-        stds_arr = np.array(stds)
-        ax.plot(budgets, means_arr, marker="o", label=method)
-        if stds_arr.max() > 0:
-            ax.fill_between(
-                budgets, means_arr - stds_arr, means_arr + stds_arr,
-                alpha=0.15,
-            )
+    fig, ax = plt.subplots(figsize=(6, 4) if use_paper_style else (8, 5))
+
+    methods = sorted(aggregated.keys())
+    linestyles = ["-", "--", ":", "-."]
+
+    for i, method in enumerate(methods):
+        budgets, mid_vals, lower_vals, upper_vals = aggregated[method]
+
+        ls = linestyles[i % len(linestyles)]
+
+        line = ax.plot(
+            budgets,
+            mid_vals,
+            label=method,
+            linestyle=ls if use_paper_style else "-",
+            marker="" if use_paper_style else "o",
+            linewidth=2 if use_paper_style else 1.5,
+        )[0]
+
+        ax.fill_between(budgets, lower_vals, upper_vals, alpha=0.15, color=line.get_color())
 
     ax.set_xscale("log")
+
     if metric in _LOWER_IS_BETTER:
-        # symlog tolerates the machine-precision zeros that fully-exact methods reach
-        ax.set_yscale("symlog", linthresh=1e-12)
-    ax.set_xlabel("Budget (log scale)")
-    ax.set_ylabel(
-        f"{metric}{' (log scale)' if metric in _LOWER_IS_BETTER else ''}",
-    )
-    ax.set_title(f"{metric} vs budget — {game_name}")
-    ax.legend(fontsize=8, loc="best")
+        if use_paper_style:
+            ax.set_yscale("log")
+        else:
+            ax.set_yscale("symlog", linthresh=1e-12)
+
+    if use_paper_style:
+        game_n = next((r.n for r in results if r.game == game_name), 8)
+        ax.axvline(
+            x=2**game_n, color="red", linestyle="-", linewidth=1.5, label=f"$2^{{{game_n}}}$"
+        )
+        ax.set_xlabel("Sample size (m)")
+        ax.set_ylabel(f"Error in {metric.replace('_', ' ')}")
+        ax.set_title(f"{game_name.split('(')[0]} ($n={game_n}$)")
+    else:
+        ax.set_xlabel("Budget (log scale)")
+        ax.set_ylabel(f"{metric}{' (log scale)' if metric in _LOWER_IS_BETTER else ''}")
+        ax.set_title(f"{metric} vs budget — {game_name}")
+
+    ax.legend(fontsize=8, loc="best", framealpha=0.9 if use_paper_style else None)
     ax.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
@@ -401,7 +533,8 @@ def _plot_runtime(results: list[CellResult], game_name: str, out_path: Path) -> 
         if r.status != "ok" or r.game != game_name:
             continue
         by_method.setdefault(r.method, {}).setdefault(
-            r.budget, [],
+            r.budget,
+            [],
         ).append(r.runtime_seconds)
 
     if not by_method:
@@ -439,10 +572,16 @@ def plot_all_figures(results: list[CellResult], out_dir: Path) -> int:
     saved = 0
     for game in games:
         safe = game.replace("(", "_").replace(")", "").replace("=", "")
+        is_ml_dataset = "California" in game or "Diabetes" in game
+
         for metric in METRIC_FUNCTIONS:
             metric_safe = metric.replace("@", "_at_")
             if _plot_one_metric(
-                results, game, metric, out_dir / f"{metric_safe}_{safe}.png",
+                results,
+                game,
+                metric,
+                out_dir / f"{metric_safe}_{safe}.png",
+                use_paper_style=is_ml_dataset,
             ):
                 saved += 1
         if _plot_runtime(results, game, out_dir / f"runtime_{safe}.png"):
@@ -473,8 +612,7 @@ def check_compatibility(method_names: list[str], n: int = 6) -> int:
             if exc is not None:
                 short = str(exc).splitlines()[0]
                 print(
-                    f"{name:<25} {'yes':<11} {'no':<14} "
-                    f"{type(exc).__name__}: {short}",
+                    f"{name:<25} {'yes':<11} {'no':<14} {type(exc).__name__}: {short}",
                 )
             else:
                 print(
@@ -532,42 +670,62 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--methods", default="all", type=_parse_methods,
+        "--methods",
+        default="all",
+        type=_parse_methods,
         help="Comma-separated approximator names, or 'all' (default).",
     )
     parser.add_argument(
-        "--n", default="6,8,10", type=_parse_comma_int,
+        "--n",
+        default="6,8,10",
+        type=_parse_comma_int,
         help="Comma-separated player counts for SOUM games (default: 6,8,10).",
     )
     parser.add_argument(
-        "--budgets", default="0.05,0.25,0.5,1.0", type=_parse_comma_float,
+        "--budgets",
+        default="0.05,0.25,0.5,1.0",
+        type=_parse_comma_float,
         help="Comma-separated budget fractions of 2^n (default: 0.05,0.25,0.5,1.0).",
     )
     parser.add_argument(
-        "--seeds", default="0,42,1337", type=_parse_comma_int,
+        "--budget-mults",
+        default=None,
+        type=_parse_comma_float,
+        help="Comma-separated budget multipliers of n (e.g. 5,10,20,40). If set, this overrides --budgets.",
+    )
+    parser.add_argument(
+        "--seeds",
+        default="0,42,1337",
+        type=_parse_comma_int,
         help="Comma-separated seeds (default: 0,42,1337).",
     )
     parser.add_argument(
-        "--name", default=None,
+        "--name",
+        default=None,
         help=(
             "Run-folder name override. Default derived from --methods "
             "('<method>_bench' for a single method, else 'sv_sweep')."
         ),
     )
     parser.add_argument(
-        "--output-root", default="benchmark/results", type=Path,
+        "--output-root",
+        default="benchmark/results",
+        type=Path,
         help="Parent directory for run folders (default: benchmark/results).",
     )
     parser.add_argument(
-        "--plot", action="store_true",
+        "--plot",
+        action="store_true",
         help="Save figures (one per metric per game, plus runtime per game).",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-cell progress output.",
     )
     parser.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="Probe every discoverable method for interface compatibility and exit.",
     )
     args = parser.parse_args(argv)
@@ -583,12 +741,11 @@ def main(argv: list[str] | None = None) -> int:
     csv_path = run_dir / "results.csv"
 
     game_specs = default_game_specs(args.n)
-    total = (
-        len(method_names) * len(game_specs) * len(args.budgets) * len(args.seeds)
-    )
+    num_budgets = len(args.budget_mults) if args.budget_mults else len(args.budgets)
+    total = len(method_names) * len(game_specs) * num_budgets * len(args.seeds)
     print(
         f"Sweep: {len(method_names)} methods x {len(game_specs)} games "
-        f"x {len(args.budgets)} budgets x {len(args.seeds)} seeds = {total} cells",
+        f"x {num_budgets} budgets x {len(args.seeds)} seeds = {total} cells",
         file=sys.stderr,
     )
     print(f"Methods: {', '.join(method_names)}", file=sys.stderr)
@@ -600,6 +757,7 @@ def main(argv: list[str] | None = None) -> int:
         budget_pcts=args.budgets,
         seeds=args.seeds,
         verbose=not args.quiet,
+        budget_mults=args.budget_mults,
     )
     write_csv(results, csv_path)
     print(f"CSV written: {csv_path}", file=sys.stderr)
