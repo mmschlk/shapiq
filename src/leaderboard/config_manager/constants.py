@@ -29,9 +29,24 @@ SUPPORTED_GAMES = [
     "Nursery",
     "Zoo",
 ]
-
+GAME_PLAYER_COUNTS = {
+    "CaliforniaHousing": 8,
+    "Nursery": 8,
+    "BikeSharing": 12,
+    "AdultCensus": 14,
+    "Zoo": 16,
+    "Hepatitis": 19,
+    "Thyroid": 21,
+    "Mushroom": 22,
+    "BreastCancer": 30,
+    "Ionosphere": 34,
+    "Soybean": 35,
+    "Annealing": 38,
+    "SOUM": 10,
+    "Arrhythmia": 279,
+}
 # --- Supported Imputers Whitelist ---
-SUPPORTED_IMPUTERS = ["marginal", "conditional", "baseline"]
+SUPPORTED_IMPUTERS = ["marginal", "conditional"]
 
 # --- Family specific game lists ---
 # local_xai games (many tabular datasets)
@@ -54,6 +69,24 @@ LOCAL_GAMES = {
 # global_xai games (currently implemented global explanations)
 GLOBAL_GAMES = {"AdultCensus", "BikeSharing", "CaliforniaHousing"}
 
+REGRESSION_GAMES = {
+    "BikeSharing",
+    "CaliforniaHousing",
+}
+
+CLASSIFICATION_GAMES = {
+    "AdultCensus",
+    "Mushroom",
+    "Soybean",
+    "Thyroid",
+    "Annealing",
+    "Arrhythmia",
+    "BreastCancer",
+    "Hepatitis",
+    "Ionosphere",
+    "Nursery",
+    "Zoo",
+}
 # --- Supported Approximators Whitelist ---
 # Extracted from shapiq/approximator/__init__.py
 ALL_SUPPORTED_APPROXIMATORS = [
