@@ -529,6 +529,16 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
     return leaderboard_df, fig, info_md
 
 
+def _records_to_df(records: list[dict]) -> pd.DataFrame:
+    rows = []
+    for r in records:
+        row = {k: json.dumps(v) if isinstance(v, (dict, list)) else v
+               for k, v in r.items() if k != "metrics"}
+        row.update(r.get("metrics") or {})
+        rows.append(row)
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+
 # --- Gradio App ---
 with gr.Blocks(title="shapiq Leaderboard") as demo:
     gr.Markdown("""
@@ -580,6 +590,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     value=_elo_init_table,
                     interactive=False,
                     label="Rankings",
+                    max_height=1000,
                 )
             with gr.Column(scale=2):
                 elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
@@ -597,7 +608,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update()
             label_md, table_df, fig, info_md = update_elo_tab(new_idx, raw_records, selected_approxs)
-            yield new_idx, label_md, gr.update(value=table_df, visible=True), fig, info_md
+            yield new_idx, label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md
 
         def elo_prev(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             yield from elo_navigate(idx, -1, raw_records, selected_approxs)
@@ -619,7 +630,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         def elo_filter_update(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             yield gr.update(), gr.update(visible=False), gr.update(), gr.update()
             label_md, table_df, fig, info_md = update_elo_tab(idx, raw_records, selected_approxs)
-            yield label_md, gr.update(value=table_df, visible=True), fig, info_md
+            yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md
 
         elo_approx_filter.change(
             fn=elo_filter_update,
@@ -640,7 +651,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     _t, _f, _info = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
                     all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
-                    all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False))
+                    all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False, max_height=1000))
 
 
         def update_all_buckets(raw_records: list[dict], selected_approxs: list[str]) -> tuple:
@@ -910,8 +921,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             det_failed = gr.Checkbox(label="Nur failed runs", value=False)
 
         det_search_btn = gr.Button("Search", variant="primary")
-        det_count = gr.Markdown("")
-        det_table = gr.Dataframe(interactive=False)
+        det_count = gr.Markdown(f"**{len(raw_records)} Runs gefunden.**")
+        det_table = gr.Dataframe(value=_records_to_df(raw_records), interactive=False)
 
 
         async def query_raw(games, approxs, budgets, indices, only_failed):
@@ -937,19 +948,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 yield "**0 Runs gefunden.**", gr.update(value=pd.DataFrame(), visible=True)
                 return
 
-            rows = []
-            for r in filtered:
-                row = {}
-                for k, v in r.items():
-                    if k == "metrics":
-                        continue
-                    row[k] = json.dumps(v) if isinstance(v, (dict, list)) else v
-                metrics = r.get("metrics") or {}
-                for m_key, m_val in metrics.items():
-                    row[m_key] = m_val
-                rows.append(row)
-
-            df = pd.DataFrame(rows)
+            df = _records_to_df(filtered)
 
             yield f"**{len(df)} Runs gefunden.**", gr.update(value=df, visible=True)
             await asyncio.sleep(0.05)
