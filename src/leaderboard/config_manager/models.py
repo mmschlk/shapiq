@@ -26,8 +26,11 @@ from .config_exceptions import (
 )
 from .constants import (
     ALL_SUPPORTED_APPROXIMATORS,
+    CLASSIFICATION_GAMES,
+    GAME_PLAYER_COUNTS,
     GLOBAL_GAMES,
     LOCAL_GAMES,
+    REGRESSION_GAMES,
     SUPPORTED_GAMES,
     SUPPORTED_IMPUTERS,
     VALID_INDICES,
@@ -81,7 +84,10 @@ class MVPRunConfig(BaseModel):
         """Validate game name against the runner's supported game registry."""
         if self.game not in SUPPORTED_GAMES:
             raise UnsupportedGameError(self.game, SUPPORTED_GAMES) from None
-
+        if self.game in GAME_PLAYER_COUNTS:
+            self.n_players = GAME_PLAYER_COUNTS[self.game]
+        if self.game == "SOUM":
+            return self
         # verify membership according to declared family
         if (self.game_family == "local_xai" and self.game not in LOCAL_GAMES) or (
             self.game_family == "global_xai" and self.game not in GLOBAL_GAMES
@@ -89,62 +95,155 @@ class MVPRunConfig(BaseModel):
             raise InvalidGameFamilyError(self.game, self.game_family) from None
         return self
 
+    # @model_validator(mode="after")
+    # def validate_budgets(self) -> MVPRunConfig:
+    #     """Ensure all budgets satisfy the project range rule [n+1, 2^n)."""
+    #     min_allowed = self.n_players + 1
+    #     max_exclusive = 2**self.n_players
+    #     for b in self.budgets:
+    #         if b <= 0:
+    #             raise InvalidBudgetError(b) from None
+    #         if b < min_allowed or b >= max_exclusive:
+    #             raise BudgetRangeError(
+    #                 budget=b,
+    #                 n_players=self.n_players,
+    #                 min_allowed=min_allowed,
+    #                 max_exclusive=max_exclusive,
+    #             ) from None
+    #     return self
+
     @model_validator(mode="after")
     def validate_budgets(self) -> MVPRunConfig:
-        """Ensure all budgets satisfy the project range rule [n+1, 2^n)."""
+        """Filter out invalid budgets falling outside the allowed range [n+1, 2^n)"""
         min_allowed = self.n_players + 1
         max_exclusive = 2**self.n_players
+
+        cleaned_budgets = []
         for b in self.budgets:
-            if b <= 0:
-                raise InvalidBudgetError(b) from None
-            if b < min_allowed or b >= max_exclusive:
-                raise BudgetRangeError(
-                    budget=b,
-                    n_players=self.n_players,
-                    min_allowed=min_allowed,
-                    max_exclusive=max_exclusive,
-                ) from None
+            # Skip non-positive or out-of-range budgets silently
+            if b > 0 and min_allowed <= b < max_exclusive:
+                cleaned_budgets.append(b)
+
+        # If ALL budgets were invalid, we still need at least one fallback to prevent downstream crash
+        if not cleaned_budgets:
+            fallback_budget = min_allowed * 2
+            cleaned_budgets.append(fallback_budget)
+
+        # Re-assign back to the field permanently to update model_dump
+        self.budgets = cleaned_budgets
         return self
 
+    # @model_validator(mode="after")
+    # def validate_approximators(self) -> MVPRunConfig:
+    #     """Validate that approximators are supported and compatible with the chosen index.
+    #
+    #     Performs three checks:
+    #     1. Runnable Index check: block indices not supported by the runner setup
+    #     2. Whitelist check: approximator exists in supported list
+    #     3. Compatibility check: approximator supports the chosen index
+    #     """
+    #     # 1. Block indices that are theoretically valid in shapiq but not supported by this runner pipeline
+    #     NOT_RUNNABLE_INDICES = ["BV", "BII", "CHII"]
+    #     if self.index in NOT_RUNNABLE_INDICES:
+    #         raise ValueError(
+    #             f"Index '{self.index}' is valid in shapiq, but currently not supported "
+    #             f"by the benchmark runner pipeline. Please choose from fully supported ones."
+    #         )
+    #
+    #     for app in self.approximators:
+    #         # 2. Check if it's in the hardcoded whitelist
+    #         if app not in ALL_SUPPORTED_APPROXIMATORS:
+    #             raise UnsupportedApproximatorError(app, ALL_SUPPORTED_APPROXIMATORS) from None
+    #
+    #         # 3. Dynamic attribute check and Index matching
+    #         try:
+    #             app_class = getattr(shapiq.approximator, app)
+    #         except AttributeError:
+    #             raise ApproximatorNotFoundError(app) from None
+    #
+    #         # Validate against __init__.py categories with strict exceptions
+    #         if (
+    #             self.index in ["SV", "kADD-SHAP"]
+    #             and app_class not in shapiq.approximator.SV_APPROXIMATORS
+    #         ) or (
+    #             self.index in ["SII", "k-SII"]
+    #             and app_class not in shapiq.approximator.SII_APPROXIMATORS
+    #         ):
+    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
+    #
+    #         if self.index == "STII" and app_class not in shapiq.approximator.STII_APPROXIMATORS:
+    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
+    #
+    #         if self.index == "FSII" and app_class not in shapiq.approximator.FSII_APPROXIMATORS:
+    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
+    #
+    #         if self.index == "FBII":
+    #             # CRITICAL EXCEPTION: SPEX and ProxySPEX output sparse interaction values,
+    #             # which causes a fatal key-mismatch crash when evaluated against dense ground truth.
+    #             if app in ["SPEX", "ProxySPEX"]:
+    #                 raise ApproximatorIndexIncompatibleError(
+    #                     f"'{app}' is a sparse approximator and cannot be evaluated against "
+    #                     f"dense ground truth for FBII in this runner setup.",
+    #                     self.index,
+    #                 )
+    #             if app_class not in shapiq.approximator.FBII_APPROXIMATORS:
+    #                 raise ApproximatorIndexIncompatibleError(app, self.index) from None
+    #
+    #     return self
     @model_validator(mode="after")
     def validate_approximators(self) -> MVPRunConfig:
-        """Validate that approximators are supported and compatible with the chosen index.
-
-        Performs two checks:
-        1. Whitelist check: approximator exists in supported list
-        2. Compatibility check: approximator supports the chosen index
+        """Filter out un-runnable, unsupported, or index-incompatible approximators
+        instead of crashing the process.
         """
-        for app in self.approximators:
-            # 1. Check if it's in the hardcoded whitelist
-            if app not in ALL_SUPPORTED_APPROXIMATORS:
-                raise UnsupportedApproximatorError(app, ALL_SUPPORTED_APPROXIMATORS) from None
+        # 1. Block indices that are completely unsupported by the runner pipeline
+        NOT_RUNNABLE_INDICES = ["BV", "BII", "CHII"]
+        if self.index in NOT_RUNNABLE_INDICES:
+            # Index incompatibility is a structural error; we still allow a fallback index or empty apps
+            self.approximators = []
+            return self
 
-            # 2. Dynamic attribute check and Index matching
+        cleaned_apps = []
+        for app in self.approximators:
+            # Check 1: Whitelist membership
+            if app not in ALL_SUPPORTED_APPROXIMATORS:
+                continue
+
+            # Check 2: Existence inside shapiq core library
             try:
                 app_class = getattr(shapiq.approximator, app)
             except AttributeError:
-                raise ApproximatorNotFoundError(app) from None
+                continue
 
-            # Complete index validation against __init__.py categories
-            if (self.index == "SV" and app_class not in shapiq.approximator.SV_APPROXIMATORS) or (
+            # Check 3: Dynamic Index Compatibility Checks
+            if (
+                self.index in ["SV", "kADD-SHAP"]
+                and app_class not in shapiq.approximator.SV_APPROXIMATORS
+            ):
+                continue
+            if (
                 self.index in ["SII", "k-SII"]
                 and app_class not in shapiq.approximator.SII_APPROXIMATORS
             ):
-                raise ApproximatorIndexIncompatibleError(app, self.index) from None
-            if (
-                (self.index == "STII" and app_class not in shapiq.approximator.STII_APPROXIMATORS)
-                or (
-                    self.index == "FSII" and app_class not in shapiq.approximator.FSII_APPROXIMATORS
-                )
-                or (
-                    self.index == "FBII" and app_class not in shapiq.approximator.FBII_APPROXIMATORS
-                )
-            ):
-                raise ApproximatorIndexIncompatibleError(app, self.index) from None
-            if self.index in ["BV", "BII", "CHII"]:
-                # If shapiq doesn't have explicit lists for these yet, you can pass or define custom logic
-                pass
+                continue
+            if self.index == "STII" and app_class not in shapiq.approximator.STII_APPROXIMATORS:
+                continue
+            if self.index == "FSII" and app_class not in shapiq.approximator.FSII_APPROXIMATORS:
+                continue
+            if self.index == "FBII" and app_class not in shapiq.approximator.FBII_APPROXIMATORS:
+                continue
+            # if self.index == "FBII":
+            #     # Clean skip sparse approximators for dense FBII evaluations
+            #     if (
+            #         app in ["SPEX", "ProxySPEX"]
+            #         or app_class not in shapiq.approximator.FBII_APPROXIMATORS
+            #     ):
+            #         continue
 
+            # If all checks pass, keep the approximator
+            cleaned_apps.append(app)
+
+        # Re-assign the strictly cleaned/filtered whitelist back to the Pydantic instance
+        self.approximators = cleaned_apps
         return self
 
     @model_validator(mode="after")
@@ -157,16 +256,70 @@ class MVPRunConfig(BaseModel):
         """
         if self.index == "SV" and self.max_order != 1:
             raise InvalidOrderForIndexError(self.index, must_be_one=True) from None
-        if self.index in ["SII", "STII", "FSII"] and self.max_order < 2:
+        if self.index in ["SII", "k-SII", "STII", "FSII", "FBII"] and self.max_order < 2:
             raise InvalidOrderForIndexError(self.index) from None
         return self
 
     @model_validator(mode="after")
     def validate_game_params(self) -> MVPRunConfig:
-        """Validate optional game-specific parameters used by the game factory."""
-        imputer = self.game_params.get("imputer")
+        """Validate and dynamically purge family-incompatible parameters at the configuration layer.
+
+        Ensures the underlying game factory receives a strictly filtered and clean parameter dictionary.
+        """
+
+        # Create a mutable copy of game_params to ensure Pydantic registers the field mutation permanently
+        cleaned_params = dict(self.game_params)
+
+        # 1. For pure synthetic mathematical game (SOUM), purge all machine learning/tabular-specific parameters
+        if self.game == "SOUM":
+            soum_forbidden = [
+                "model_name",
+                "imputer",
+                "x",
+                "class_to_explain",
+                "normalize",
+                "verbose",
+                "loss_function",
+                "n_samples_eval",
+                "n_samples_empty",
+            ]
+            for key in soum_forbidden:
+                cleaned_params.pop(key, None)
+
+            # Sync back to persistence layer
+            self.game_params = cleaned_params
+            return self
+
+        if self.game != "SOUM":
+            soum_exclusive = ["n", "n_basis_games", "min_interaction_size", "max_interaction_size"]
+            for key in soum_exclusive:
+                cleaned_params.pop(key, None)
+
+        # 2. For global explanation games (global_xai), strictly purge parameters unique to local explanations
+        if self.game_family == "global_xai":
+            global_forbidden = ["imputer", "x", "class_to_explain"]
+            for key in global_forbidden:
+                cleaned_params.pop(key, None)
+
+            self.game_params = cleaned_params
+            return self
+
+        # 3. For local explanation games (local_xai), perform standard parameter validation and precise cleaning
+        if self.game_family == "local_xai":
+            local_forbidden = ["loss_function", "n_samples_eval", "n_samples_empty"]
+            for key in local_forbidden:
+                cleaned_params.pop(key, None)
+            # If it's a regression game, class_to_explain is completely illegal. Purge it dynamically!
+            if self.game in REGRESSION_GAMES:
+                cleaned_params.pop("class_to_explain", None)
+
+        # 3. For local explanation games (local_xai), perform standard parameter validation
+        imputer = cleaned_params.get("imputer")
         if imputer is not None and imputer not in SUPPORTED_IMPUTERS:
             raise UnsupportedImputerError(imputer, SUPPORTED_IMPUTERS) from None
+
+        # Sync back the cleaned state to the model object permanently
+        self.game_params = cleaned_params
         return self
 
     @model_validator(mode="after")
@@ -190,4 +343,43 @@ class MVPRunConfig(BaseModel):
             if steps_value <= 0:
                 raise InvalidBudgetStepsError(steps_input=steps_value, is_negative=True) from None
 
+        return self
+
+    @model_validator(mode="after")
+    def validate_gt_method_for_large_games(self) -> MVPRunConfig:
+        """Ensure ExactComputer is not used for large games (n > 14) to prevent freezing.
+        UNLESS it's SOUM which bypasses it.
+        """
+        if self.game == "SOUM":
+            return self
+        if self.n_players > 14 and self.ground_truth.strategy == "compute":
+            if self.ground_truth.method == "ExactComputer":
+                if self.game_family == "global_xai":
+                    raise ValueError(
+                        f"CRITICAL: Global SAGE games with n > 14 ({self.game}) cannot be evaluated exactly. "
+                        f"Please switch to an approximate fallback dataset reference or reduce n_players."
+                    )
+                raise ValueError(
+                    f"CRITICAL CONFIG ERROR: Game '{self.game}' has {self.n_players} players. "
+                    f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players}) "
+                    f"model evaluations, which will freeze or crash your machine.\n"
+                    f"SOLUTION: Please change 'ground_truth.method' to 'TreeExplainer' "
+                    f"in your configuration file to utilize polynomial-time exact computation."
+                )
+        return self
+
+    @model_validator(mode="after")
+    def validate_gt_method_for_global_games(self) -> MVPRunConfig:
+        """Ensure TreeExplainer is never used for global_xai games.
+
+        GlobalExplanation games return dataset-wide loss values rather than raw tree model
+        predictions, making polynomial-time tree conversion mathematically impossible.
+        """
+        if self.game_family == "global_xai" and self.ground_truth.strategy == "compute":
+            if self.ground_truth.method in ["TreeExplainer"]:
+                raise ValueError(
+                    f"CONFIG ERROR: Game '{self.game}' belongs to 'global_xai'. "
+                    f"Global XAI games wrap loss function logic (<class 'method'>) rather than "
+                    f"raw tree structures. You MUST use 'ExactComputer' as the ground_truth.method."
+                )
         return self

@@ -32,7 +32,7 @@ def compute_ground_truth(
         The exact interaction values.
     """
     if method == "TreeExplainer":
-        # Defensive check to fetch the wrapped tree model from the game setup
+        # Defensive check: fetch tree model from game directly or via game.setup
         model = getattr(game, "model", None)
         if model is None and hasattr(game, "setup"):
             model = getattr(game.setup, "model", None)
@@ -53,17 +53,20 @@ def compute_ground_truth(
         if getattr(game, "normalize", False):
             gt_values.baseline_value = 0.0
 
-        # For standard SV evaluation, align min_order and remove the baseline empty set ()
-        if index == "SV":
-            gt_values.min_order = 1
-            if () in gt_values.interactions:
-                del gt_values.interactions[()]
+        # 3. Dynamic Min-Order Alignment
+        # Standard benchmark interaction evaluation runs from order 1 up to max_order.
+        # TreeExplainer defaults to min_order=0; we force it to 1 and remove the empty set ().
+        gt_values.min_order = 1
+        if () in gt_values.interactions:
+            del gt_values.interactions[()]
 
-        # 💡 Pad missing interaction keys with 0.0 to match the full player set of the game.
-        # This resolves the mismatch caused by features that were never split on in the tree model.
-        for subset in powerset(
+        # 4. Universal Key Padding (Zero-Player Axiom Alignment)
+        # Pad any missing subsets (due to un-split tree features) with 0.0 to match the
+        # full player set dimension expected by black-box approximators.
+        expected_keys = powerset(
             range(game.n_players), min_size=gt_values.min_order, max_size=max_order
-        ):
+        )
+        for subset in expected_keys:
             if subset not in gt_values.interactions:
                 gt_values.interactions[subset] = 0.0
 
