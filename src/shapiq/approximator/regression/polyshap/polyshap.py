@@ -11,7 +11,7 @@ from ..base import Regression
 import numpy as np
 from scipy.special import binom
 
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 ValidRegressionPolySHAPIndices = Literal["SV"]
 
@@ -217,7 +217,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
 
         sv, sv_lookup = self._transform_to_shapley(interaction_representation)
 
-        result = InteractionValues(
+        return InteractionValues(
             values=sv,
             index="SV",
             interaction_lookup=sv_lookup,
@@ -227,6 +227,5 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
             n_players=self.n,
             estimated=not budget >= 2**self.n,
             estimation_budget=budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(result, target_index=self.index)
