@@ -429,7 +429,7 @@ def update_compare_plots(*args: Any) -> tuple[go.Figure, ...]:
     return tuple(outputs)
 
 
-def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.DataFrame, go.Figure]:
+def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.DataFrame, go.Figure, str]:
     """Run ELO scoring for a specific budget bucket and return table + plot.
 
     Args:
@@ -439,7 +439,16 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
     Returns:
         A tuple of (leaderboard DataFrame, Plotly bar chart Figure).
     """
-    scorer = EloScorer(budgets=[budget])
+    """scorer = EloScorer(
+        budgets=[budget],
+        n_permutations=20,
+        n_bootstrap_samples=200,
+        tie_tolerance=1e-4,
+    )"""
+
+    scorer = EloScorer(
+        budgets=[budget],
+    )
     result = scorer.score(df_raw_records)
 
     if not result.rows:
@@ -461,7 +470,7 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
                 "font": {"size": 16, "color": "gray"},
             }],
         )
-        return empty_df, fig
+        return empty_df, fig, "No data"
 
     rows_data = [
         {
@@ -512,7 +521,12 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
         margin={"t": 60, "b": 80},
     )
 
-    return leaderboard_df, fig
+    n_bs = result.metadata.get("n_bootstrap_samples", 0)
+    n_perm = result.metadata.get("n_permutations", 1)
+    assert isinstance(n_bs, int) and isinstance(n_perm, int)
+    info_md = f"Bootstrap samples: **{n_bs}** | Permutations: **{n_perm}**"
+
+    return leaderboard_df, fig, info_md
 
 
 # --- Gradio App ---
@@ -557,10 +571,11 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             )
 
         # Pre-compute initial ELO display for Medium (1000) bucket
-        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]))
+        _elo_init_table, _elo_init_fig, _elo_init_info = compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]))
 
         with gr.Row():
             with gr.Column(scale=3):
+                elo_info_md = gr.Markdown(value=_elo_init_info)
                 elo_table = gr.Dataframe(
                     value=_elo_init_table,
                     interactive=False,
@@ -573,16 +588,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             """Filter raw records by approximator and compute ELO leaderboard and plot for the given bucket index."""
             bucket = BUDGET_BUCKETS[bucket_idx]
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
-            table_df, fig = compute_elo_for_bucket(filtered, int(bucket["budget"]))
+            table_df, fig, info_md = compute_elo_for_bucket(filtered, int(bucket["budget"]))
             label_md = f"### {bucket['label']}"
-            return label_md, table_df, fig
+            return label_md, table_df, fig, info_md
 
         def elo_navigate(current_idx: int, delta: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             """Navigate between budget buckets, hiding the table first to force a size reset."""
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
-            yield new_idx, gr.update(), gr.update(visible=False), gr.update()
-            label_md, table_df, fig = update_elo_tab(new_idx, raw_records, selected_approxs)
-            yield new_idx, label_md, gr.update(value=table_df, visible=True), fig
+            yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update()
+            label_md, table_df, fig, info_md = update_elo_tab(new_idx, raw_records, selected_approxs)
+            yield new_idx, label_md, gr.update(value=table_df, visible=True), fig, info_md
 
         def elo_prev(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             yield from elo_navigate(idx, -1, raw_records, selected_approxs)
@@ -593,46 +608,55 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         elo_prev_btn.click(
             fn=elo_prev,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md],
         )
         elo_next_btn.click(
             fn=elo_next,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md],
         )
 
         def elo_filter_update(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
-            yield gr.update(), gr.update(visible=False), gr.update()
-            label_md, table_df, fig = update_elo_tab(idx, raw_records, selected_approxs)
-            yield label_md, gr.update(value=table_df, visible=True), fig
+            yield gr.update(), gr.update(visible=False), gr.update(), gr.update()
+            label_md, table_df, fig, info_md = update_elo_tab(idx, raw_records, selected_approxs)
+            yield label_md, gr.update(value=table_df, visible=True), fig, info_md
 
         elo_approx_filter.change(
             fn=elo_filter_update,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
-            outputs=[elo_bucket_label, elo_table, elo_plot],
+            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md],
         )
 
         gr.Markdown("---\n## All Budget Buckets — Side-by-Side Overview")
 
         all_bucket_tables = []
         all_bucket_plots = []
+        all_bucket_infos = []
 
         with gr.Row():
             for bucket in BUDGET_BUCKETS:
                 with gr.Column():
                     gr.Markdown(f"### {bucket['label']}")
-                    _t, _f = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
-                    all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False))
+                    _t, _f, _info = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
+                    all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
+                    all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False))
 
 
         def update_all_buckets(raw_records: list[dict], selected_approxs: list[str]) -> tuple:
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
-                t, f = compute_elo_for_bucket(filtered, int(bucket["budget"]))
-                outputs.extend([t, f])
+                t, f, info = compute_elo_for_bucket(filtered, int(bucket["budget"]))
+                outputs.extend([info, t, f])
             return tuple(outputs)
+
+        elo_approx_filter.change(
+            fn=update_all_buckets,
+            inputs=[raw_state, elo_approx_filter],
+            outputs=[item for i in range(len(BUDGET_BUCKETS)) for item in
+                     [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]],
+        )
 
     with gr.Tab("Leaderboard"):
         gr.Markdown("## Global Leaderboard (all games)")
