@@ -517,7 +517,6 @@ def compute_elo_for_bucket(
     Returns:
         A tuple of (leaderboard DataFrame, Plotly bar chart Figure, info markdown string).
     """
-
     scorer = EloScorer(
         budgets=[budget],
         metric_names=[str(metric)] if metric != "all" else None,
@@ -636,12 +635,14 @@ def _records_to_df(records: list[dict], metric_filter: list[str] | None = None) 
     rows = []
     for r in records:
         row = {
-            k: json.dumps(v) if isinstance(v, (dict, list)) else v
+            k: json.dumps(v) if isinstance(v, dict | list) else v
             for k, v in r.items()
             if k != "metrics"
         }
         r_metrics = r.get("metrics") or {}
-        row.update({k: v for k, v in r_metrics.items() if metric_filter is None or k in metric_filter})
+        row.update(
+            {k: v for k, v in r_metrics.items() if metric_filter is None or k in metric_filter}
+        )
         rows.append(row)
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
@@ -1223,14 +1224,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         det_count = gr.Markdown(f"**{len(raw_records)} Runs gefunden.**")
         det_table = gr.Dataframe(value=_records_to_df(raw_records), interactive=False)
 
-
         async def query_raw(
-                games: list[str],
-                approxs: list[str],
-                budgets: list[str],
-                indices: list[str],
-                metrics: list[str],
-                only_failed: bool = False,
+            games: list[str],
+            approxs: list[str],
+            budgets: list[str],
+            indices: list[str],
+            metrics: list[str],
+            only_failed: bool = False,
         ) -> AsyncGenerator[tuple[Any, Any], None]:
             """Query and display raw benchmark records with optional filters.
 
