@@ -144,6 +144,8 @@ class LocalClient(DatabaseClient):
             # No existing document matches the config, safe to insert
             self.insert_one(document)
             return True
+        
+        to_be_inserted = document.copy()  # Start with the new document
 
         # Check for matching seed
         for existing_doc in existing_docs:
@@ -153,17 +155,18 @@ class LocalClient(DatabaseClient):
                     merged_doc = existing_doc.copy()
                     merged_doc.update(document)  # New document's fields override existing ones
 
+                    to_be_inserted.update(merged_doc)  # Update the document to be inserted with merged data
+                    
                     # delete only if duplicate
                     self.delete_by_id(
                         existing_doc.get("run_id")
                     )  # Remove old document(s) by unique identifier
-
-                    self.insert_one(merged_doc)  # Insert merged document
                 elif mode == "replace":
                     self.delete_by_config(new_doc_config)  # Remove old document(s)
-                    self.insert_one(document)  # Insert new document
                 elif mode == "skip":
                     return False  # Do not insert, as a matching document already exists
+
+        self.insert_one(to_be_inserted)  # Insert the document to be inserted
 
         return True
 
