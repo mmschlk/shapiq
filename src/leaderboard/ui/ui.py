@@ -851,10 +851,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     with gr.Tab("Compare Approximators"):
         gr.Markdown("## Side-by-side Approximator Comparison")
 
+        gr.HTML("<style>.compare-jump-btn { margin-left: auto !important; }</style>")
         with gr.Row():
-            add_col_btn = gr.Button("+ Add Approximator", scale=0)
-            remove_col_btn = gr.Button("- Remove", scale=0)
+            add_col_btn = gr.Button("+ Add Approximator", scale=0, variant="primary")
+            remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary")
             n_cols_state = gr.State(value=DEFAULT_COLS)
+            compare_jump_btn = gr.Button("🔍 Open in Raw Data Explorer", scale=0, variant="secondary",
+                                         elem_classes=["compare-jump-btn"])
 
         # Pro Spalte: Approximator-Dropdown + Game-Dropdown
         compare_column_containers = []
@@ -1089,15 +1092,21 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             outputs=[],
         )
 
-    tab_switch_btn = gr.Button(visible=False, elem_id="tab-switch-btn")
-    tab_switch_btn.click(
-        fn=None,
-        js="""
-        () => {
-            const tabs = document.querySelectorAll('.tab-nav button');
-            tabs.forEach(t => { if (t.textContent.trim() === 'Raw Data Explorer') t.click(); });
-        }
-        """
+    compare_jump_btn.click(
+        fn=lambda n, *vals: (
+            list(set(vals[MAX_COLS:MAX_COLS + n])),
+            list(set(vals[:n])),
+        ),
+        inputs=[n_cols_state, *compare_approx_dropdowns, *compare_game_dropdowns],
+        outputs=[det_game, det_approx],
+    ).then(
+        fn=query_raw,
+        inputs=[det_game, det_approx, det_budget, det_index, det_failed],
+        outputs=[det_count, det_table],
+    ).then(
+        fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
+        inputs=[],
+        outputs=[],
     )
 
 demo.launch()
