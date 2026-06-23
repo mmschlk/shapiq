@@ -340,6 +340,8 @@ _all_approxs = db_client.get_approximators()
 _all_budgets = sorted({c.budget for c in db_client.get_unique_configs()})
 _all_indices = sorted({c.index for c in db_client.get_unique_configs()})
 
+raw_records = db_client.get_all()
+
 update_global_styles(df_agg)
 
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
@@ -523,6 +525,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     # Store df in gradio state to allow reloading
     df_state = gr.State(value=df_agg)
 
+    raw_state = gr.State(value=raw_records)
+
     with gr.Row():
         reload_btn = gr.Button("Reload Data", variant="secondary", scale=0)
 
@@ -553,25 +557,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             )
 
         # Pre-compute initial ELO display for Medium (1000) bucket
-        _elo_init_records = []
-        for _, _row in df_agg.iterrows():
-            _elo_init_records.append({
-                "run_id": f"{_row['game_name']}-{_row['approximator_name']}-{_row.get('budget', 0)}",
-                "game_id": _row["game_name"],
-                "game_name": _row["game_name"],
-                "index": _row.get("index", "SV"),
-                "max_order": _row.get("max_order", 1),
-                "budget": int(_row["budget"]) if not pd.isna(_row["budget"]) else 0,
-                "ground_truth_method": _row.get("ground_truth_method", ""),
-                "approximator_name": _row["approximator_name"],
-                "run_failed": False,
-                "metrics": {
-                    m: _row.get(f"{m}_mean")
-                    for m in available_metrics
-                    if f"{m}_mean" in df_agg.columns and not pd.isna(_row.get(f"{m}_mean"))
-                },
-            })
-        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, int(BUDGET_BUCKETS[2]["budget"]))
+        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]))
 
         with gr.Row():
             with gr.Column(scale=3):
@@ -583,69 +569,46 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             with gr.Column(scale=2):
                 elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
 
-        def update_elo_tab(bucket_idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> tuple[Any, ...]:
-            """Compute ELO leaderboard and plot for the given bucket index."""
+        def update_elo_tab(bucket_idx: int, raw_records: list[dict], selected_approxs: list[str]) -> tuple[Any, ...]:
+            """Filter raw records by approximator and compute ELO leaderboard and plot for the given bucket index."""
             bucket = BUDGET_BUCKETS[bucket_idx]
-            df = df[df["approximator_name"].isin(selected_approxs)]
-            # Convert aggregated df back to raw-record-like dicts for the ELO scorer.
-            # The ELO scorer expects raw records with nested "metrics" dict.
-            # We reconstruct minimal records from the aggregated data.
-            raw_records = []
-            for _, row in df.iterrows():
-                record = {
-                    "run_id": f"{row['game_name']}-{row['approximator_name']}-{row.get('budget', 0)}-{row.get('seed', 0)}",
-                    "game_id": row["game_name"],
-                    "game_name": row["game_name"],
-                    "index": row.get("index", "SV"),
-                    "max_order": row.get("max_order", 1),
-                    "budget": int(row["budget"]) if not pd.isna(row["budget"]) else 0,
-                    "ground_truth_method": row.get("ground_truth_method", ""),
-                    "approximator_name": row["approximator_name"],
-                    "run_failed": False,
-                    "metrics": {
-                        metric: row.get(f"{metric}_mean")
-                        for metric in available_metrics
-                        if f"{metric}_mean" in df.columns and not pd.isna(row.get(f"{metric}_mean"))
-                    },
-                }
-                raw_records.append(record)
-
-            table_df, fig = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
+            filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
+            table_df, fig = compute_elo_for_bucket(filtered, int(bucket["budget"]))
             label_md = f"### {bucket['label']}"
             return label_md, table_df, fig
 
-        def elo_navigate(current_idx: int, delta: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
+        def elo_navigate(current_idx: int, delta: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             """Navigate between budget buckets, hiding the table first to force a size reset."""
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update()
-            label_md, table_df, fig = update_elo_tab(new_idx, df, selected_approxs)
+            label_md, table_df, fig = update_elo_tab(new_idx, raw_records, selected_approxs)
             yield new_idx, label_md, gr.update(value=table_df, visible=True), fig
 
-        def elo_prev(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
-            yield from elo_navigate(idx, -1, df, selected_approxs)
+        def elo_prev(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
+            yield from elo_navigate(idx, -1, raw_records, selected_approxs)
 
-        def elo_next(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
-            yield from elo_navigate(idx, +1, df, selected_approxs)
+        def elo_next(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
+            yield from elo_navigate(idx, +1, raw_records, selected_approxs)
 
         elo_prev_btn.click(
             fn=elo_prev,
-            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],  # <-- elo_approx_filter neu
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
         )
         elo_next_btn.click(
             fn=elo_next,
-            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],  # <-- elo_approx_filter neu
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
         )
 
-        def elo_filter_update(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
+        def elo_filter_update(idx: int, raw_records: list[dict], selected_approxs: list[str]) -> Iterator[Any]:
             yield gr.update(), gr.update(visible=False), gr.update()
-            label_md, table_df, fig = update_elo_tab(idx, df, selected_approxs)
+            label_md, table_df, fig = update_elo_tab(idx, raw_records, selected_approxs)
             yield label_md, gr.update(value=table_df, visible=True), fig
 
         elo_approx_filter.change(
             fn=elo_filter_update,
-            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter],
             outputs=[elo_bucket_label, elo_table, elo_plot],
         )
 
@@ -658,16 +621,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             for bucket in BUDGET_BUCKETS:
                 with gr.Column():
                     gr.Markdown(f"### {bucket['label']}")
-                    _t, _f = compute_elo_for_bucket(_elo_init_records, int(bucket["budget"]))
+                    _t, _f = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
                     all_bucket_tables.append(gr.Dataframe(value=_t, interactive=False))
                     all_bucket_plots.append(gr.Plot(value=_f))
 
 
-        def update_all_buckets(df: pd.DataFrame, selected_approxs: list[str]) -> tuple:
-            records = [r for r in _elo_init_records if r["approximator_name"] in selected_approxs]
+        def update_all_buckets(raw_records: list[dict], selected_approxs: list[str]) -> tuple:
+            filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
-                t, f = compute_elo_for_bucket(records, int(bucket["budget"]))
+                t, f = compute_elo_for_bucket(filtered, int(bucket["budget"]))
                 outputs.extend([t, f])
             return tuple(outputs)
 
@@ -922,7 +885,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             det_index = gr.Dropdown(choices=_all_indices, label="Index", multiselect=True)
             det_failed = gr.Checkbox(label="Nur failed runs", value=False)
 
-        det_search_btn = gr.Button("Suchen", variant="primary")
+        det_search_btn = gr.Button("Search", variant="primary")
         det_count = gr.Markdown("")
         det_table = gr.Dataframe(interactive=False)
 
@@ -985,6 +948,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         styles, and rebuilds all tables and plots for the interface.
         """
         new_df = reload_data()
+        new_raw = db_client.get_all()
         update_global_styles(new_df)
 
         games = new_df["game_name"].unique().tolist()
@@ -993,6 +957,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         outputs: list[Any] = [
             new_df,
+            new_raw,
             get_leaderboard_global(new_df, approxs, available_metrics),
             gr.Dropdown(choices=games, value=first_game),
             get_leaderboard_game(new_df, first_game, approxs, available_metrics),
@@ -1014,6 +979,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         inputs=[],
         outputs=[
             df_state,
+            raw_state,
             global_leaderboard,
             game_dropdown_lb,
             game_leaderboard,

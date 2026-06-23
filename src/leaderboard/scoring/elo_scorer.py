@@ -152,7 +152,7 @@ class EloScorer(LeaderboardScorer):
         self.bootstrap_random_state = bootstrap_random_state
         self.confidence_level = confidence_level
         self.group_keys = group_keys or [
-            "game_id",
+            # "game_id",
             "game_name",
             "index",
             "max_order",
