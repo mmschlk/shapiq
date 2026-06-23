@@ -11,6 +11,8 @@
 # "Zoo" (16), "Hepatitis" (19), "Thyroid" (21), "Mushroom" (22), "BreastCancer" (30),
 # "Ionosphere" (34), "Soybean" (35), "Annealing" (38), "Arrhythmia" (279)
 
+# REGRESSION_GAMES: "BikeSharing","CaliforniaHousing"
+
 # - local_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing", "Mushroom", ...
 # - global_xai: "AdultCensus", "BikeSharing", "CaliforniaHousing"
 # - synthetic: "SOUM"
