@@ -95,15 +95,18 @@ def run_benchmark(
         logging.debug("failed: %s", record["run_failed"])
         logging.debug("error: %s\n", record["error_message"])
 
+        # logging.error("failed: %s", record["run_failed"])
+        # logging.error("error: %s\n", record["error_message"])
+
     # aggregation
     aggregated_result = aggregate_fn(results)
 
     # print-out
-    logging.info("number of raw results: %d", len(results))
-    logging.info("First raw run record:")
-    logging.info(json.dumps(results[0], indent=2))
-    logging.info("\nAggregated result:")
-    logging.info(json.dumps(aggregated_result, indent=2))
+    # logging.info("number of raw results: %d", len(results))
+    # logging.info("First raw run record:")
+    # logging.info(json.dumps(results[0], indent=2))
+    # logging.info("\nAggregated result:")
+    # logging.info(json.dumps(aggregated_result, indent=2))
 
     return {
         "raw_results": results,
