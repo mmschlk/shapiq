@@ -51,7 +51,6 @@ class GraphSHAPIQ:
         self.l_hop_distance = int(game.max_neighborhood_size)
         self._grand_coalition_set = game.grand_coalition_set
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
-        self.output_dim = game.output_dim
         self.game = game
         self._grand_coalition_prediction = game(np.ones(self.n_players, dtype=float))
         self.verbose = verbose

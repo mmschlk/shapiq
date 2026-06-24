@@ -24,7 +24,6 @@ class GraphGame(Game):
         *,
         task: Literal["classification", "regression"] = "classification",
         class_index: int | None = None,
-        output_dim: int = 1,
         baseline_strategy: str | float | None = None,
         normalize: bool = True,
         verbose: bool = False,
@@ -55,7 +54,6 @@ class GraphGame(Game):
             msg = "model.num_layers must be an int"
             raise TypeError(msg)
         self.max_neighborhood_size = model.num_layers
-        self.output_dim = output_dim
         self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
         self.grand_coalition_set = set(range(self.n_players))
 

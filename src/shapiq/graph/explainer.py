@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, Any, Literal, cast, override
 
 import joblib
 import numpy as np
@@ -52,7 +52,9 @@ class GraphExplainer(Explainer):
         baseline_strategy: str = "average",
         max_order: int = 2,
         class_index: int | None = None,
+        task: Literal["classification", "regression"] = "classification",
         *,
+        efficiency_routine: bool = True,
         normalize: bool = False,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -74,18 +76,24 @@ class GraphExplainer(Explainer):
                 which will set the class index to 1 per default for classification
                 models and is ignored for regression models. Note, it is important
                 to specify the class index for your classification model.
+            task: The prediction task type, either "classification" or "regression".
+                Defaults to "classification".
             max_order: The maximum interaction order to be computed.
-                Defaults to 2. Set to 1 for no interactions (single feature attribution)
-            normalize: Whether to normalize graphshapiq algorithm.
+                Defaults to 2. Set to 1 for no interactions (single feature attribution).
+            normalize: Whether to normalize the GraphSHAP-IQ algorithm.
             baseline_strategy: The node masking strategy.
+            efficiency_routine: Whether to enforce the efficiency axiom during the
+                GraphSHAP-IQ computation. Defaults to True.
             **kwargs: Additional keyword arguments are ignored.
         """
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._model: nn.Module = model
         self._class_index = class_index
+        self._task = task
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
         self._l_shapley_max_budget: int = l_shapley_max_budget
+        self._efficiency_routine = efficiency_routine
 
     @override
     def explain_X(
@@ -143,48 +151,70 @@ class GraphExplainer(Explainer):
         *args: Any,
         l_shapley: bool = False,
         max_interaction_size: int | None = None,
+        verbose: bool = False,
         **kwargs: Any,
     ) -> InteractionValues:
         """Computes the Shapley Interaction values for a single instance.
 
         Args:
             x: The input graph to explain.
-            *args: Unused; present only to match the base class signature
+            *args: Unused; present only to match the base class signature.
             l_shapley: If ``True``, run the L-Shapley approximation; if ``False`` (default),
                 run the exact GraphSHAP-IQ computation.
             max_interaction_size: Maximum k-hop neighbourhood size for the L-Shapley
-                approximation.  When ``None`` the full neighbourhood size reported by
-                :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used.  Ignored when
+                approximation. When ``None`` the full neighbourhood size reported by
+                :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used. Ignored when
                 *l_shapley* is ``False``.
-            **kwargs: Allows for passing and overriding ``index`` argument.
+            verbose: Whether to print debug information for the underlying game and
+                GraphSHAP-IQ explainer. Defaults to ``False``.
+            **kwargs: Allows for passing and overriding ``index``, ``efficiency_routine``,
+                and ``max_subset_size`` arguments.
 
         Returns:
             The interaction values for the instance.
         """
         if not isinstance(x, Data):
-            msg = f"GraphExplainer requires a torch_geometric.data.Data object, got {type(x).__name__!r}."
+            msg = (
+                f"GraphExplainer requires a torch_geometric.data.Data object, "
+                f"got {type(x).__name__!r}."
+            )
             raise TypeError(msg)
-        index = kwargs.get("index", self._index)
+
+        # Allow per-call overrides of explainer-level settings via kwargs.
+        index: ValidMoebiusConverterIndices = kwargs.get("index", self._index)
+        efficiency_routine: bool = kwargs.get("efficiency_routine", self._efficiency_routine)
+        max_subset_size: int | None = kwargs.get("max_subset_size")
 
         game = GraphGame(
             model=self._model,
             x_graph=x,
+            task=self._task,
+            class_index=self._class_index,
             baseline_strategy=self._baseline_strategy,
             normalize=self._normalize,
-            class_index=self._class_index,
-            verbose=True,
+            verbose=verbose,
         )
-        explainer = GraphSHAPIQ(game=game)
-        self._check_total_budget(explainer.total_budget)
+        explainer = GraphSHAPIQ(game=game, verbose=verbose)
 
         if l_shapley:
+            self._check_total_budget(explainer.total_budget)
             effective_size = (
                 max_interaction_size
                 if max_interaction_size is not None
                 else explainer.max_size_neighbors
             )
-            return self._run_l_shapley_approximation(game, explainer, effective_size, index)
-        return self._run_graph_shapiq_approximation(game, explainer, index)
+            return self._run_l_shapley_approximation(
+                game,
+                explainer,
+                effective_size,
+                index,
+            )
+        return self._run_graph_shapiq_approximation(
+            explainer,
+            index,
+            efficiency_routine=efficiency_routine,
+            max_subset_size=max_subset_size,
+        )
 
     @override
     def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
@@ -205,26 +235,42 @@ class GraphExplainer(Explainer):
 
     def _run_graph_shapiq_approximation(
         self,
-        game: GraphGame,
         explainer: GraphSHAPIQ,
         index: ValidMoebiusConverterIndices = "k-SII",
+        *,
+        efficiency_routine: bool = True,
+        max_subset_size: int | None = None,
     ) -> InteractionValues:
-        """Approximate Shapley Interactions using grapshapiq."""
-        moebius, _ = explainer.explain(
-            max_subset_size=explainer.max_size_neighbors,
-            order=game.n_players,
-            efficiency_routine=True,
+        """Approximate Shapley Interactions using GraphSHAP-IQ.
+
+        Args:
+            explainer: The GraphSHAPIQ explainer initialised from the game.
+            index: The type of Shapley interaction index to compute.
+            efficiency_routine: Whether to enforce the efficiency axiom. Defaults to ``True``.
+            max_subset_size: Maximum subset size for the Möbius transform. When ``None``,
+                the full neighbourhood size is used (i.e. ``explainer.max_size_neighbors``).
+                Passed per-call via ``explain(**kwargs)``; not stored on the explainer since
+                the appropriate value is graph-instance-specific.
+        """
+        moebius, interactions = explainer.explain(
+            max_subset_size=max_subset_size,
+            order=self._max_order,
+            efficiency_routine=efficiency_routine,
             index=index,
         )
 
         if not isinstance(moebius, InteractionValues):
             err_msg = f"Expected InteractionValues, got {type(moebius)}"
             raise TypeError(err_msg)
+
         moebius.estimation_budget = explainer.last_n_model_calls
         moebius.estimated = False
         moebius.sparsify(threshold=SPARSIFY_THRESHOLD)
+        interactions.estimation_budget = explainer.last_n_model_calls
+        interactions.estimated = False
+        interactions.sparsify(threshold=SPARSIFY_THRESHOLD)
 
-        return moebius
+        return interactions
 
     def _run_l_shapley_approximation(
         self,
@@ -232,27 +278,27 @@ class GraphExplainer(Explainer):
         explainer: GraphSHAPIQ,
         max_interaction_size: int,
         index: ValidMoebiusConverterIndices,
+        *,
+        break_on_exceeding_budget: bool = False,
     ) -> InteractionValues:
         """Run the L-Shapley approximation.
 
         Args:
             game: The constructed graph game for this instance.
             explainer: The GraphSHAPIQ explainer initialised from the game.
-            max_interaction_size: Maximum k-hop neighbourhood size to consider.  This value
-                comes from the caller and is passed directly into
-                :meth:`~shapiq.graph.l_shapley.LShapley.explain` so that
-                ``LShapley.max_size_neighbors`` (which is ``0`` before ``explain()`` runs)
-                is never used as the input.
+            max_interaction_size: Maximum k-hop neighbourhood size to consider. This value
+                is passed directly into :meth:`~shapiq.graph.l_shapley.LShapley.explain`.
             index: The type of the interaction values.
-
-        Returns:
-            The approximated Shapley values as an
-            :class:`~shapiq.interaction_values.InteractionValues` object.
+            break_on_exceeding_budget: If ``True``, raise a :class:`ValueError` when the
+                number of required model evaluations exceeds the budget; if ``False``
+                (default), set a flag and continue.
         """
         l_shapley_explainer = LShapley(game, max_budget=explainer.total_budget)
 
         shapley_values, _ = l_shapley_explainer.explain(
-            max_interaction_size=max_interaction_size, break_on_exceeding_budget=False, index=index
+            max_interaction_size=max_interaction_size,
+            break_on_exceeding_budget=break_on_exceeding_budget,
+            index=index,
         )
 
         shapley_values.estimation_budget = l_shapley_explainer.last_n_model_calls
