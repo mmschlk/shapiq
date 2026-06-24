@@ -189,6 +189,7 @@ def test_run_single_experiment_seed_creates_failed_record_on_error():
     assert record["approx_seed"] == 42
     assert record["metrics"] is None
 
+
 def test_align_interaction_values_rejects_missing_approx_keys_by_default():
     """Test that missing approximation keys fail in strict alignment mode."""
     ground_truth = MockInteractionValues(
