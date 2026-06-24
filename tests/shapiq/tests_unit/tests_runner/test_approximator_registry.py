@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
-from config_manager import UnsupportedApproximatorError
 from leaderboard.runner.approximator_registry import get_approximator_class
 from shapiq import KernelSHAPIQ, PermutationSamplingSV
 from shapiq.approximator import ProxySHAP

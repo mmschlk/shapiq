@@ -6,12 +6,12 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from shapiq.approximator.sparse import Sparse
 
 from leaderboard.metrics.evaluator import compute_all_metrics
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
+from shapiq.approximator.sparse import Sparse
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -265,6 +265,7 @@ def run_single_experiment_seed(
             notes="",
         )
     return run_record
+
 
 def _allows_sparse_interaction_output(
     approximator_class: type[Approximator],
