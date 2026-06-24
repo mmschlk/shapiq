@@ -1084,7 +1084,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     with gr.Tab("Compare Approximators"):
         gr.Markdown("## Side-by-side Approximator Comparison")
 
-        gr.HTML("<style>.compare-jump-btn { margin-left: auto !important; }</style>")
+        gr.HTML("<style>.compare-jump-btn { margin-left: auto !important; } .hidden-col { display: none !important; }</style>")
         with gr.Row():
             add_col_btn = gr.Button("+ Add Approximator", scale=0, variant="primary")
             remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary")
@@ -1106,7 +1106,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         with gr.Row():
             for i in range(MAX_COLS):
-                with gr.Column(visible=(i < DEFAULT_COLS)) as col:
+                with gr.Column(elem_classes=[] if i < DEFAULT_COLS else ["hidden-col"]) as col:
                     compare_column_containers.append(col)
                     compare_approx_dropdowns.append(
                         gr.Dropdown(
@@ -1134,12 +1134,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             with gr.Row():
                 plots = [
                     gr.Plot(
-                        value=get_plot(
-                            df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)
-                        )
-                        if i < DEFAULT_COLS
-                        else None,
-                        visible=(i < DEFAULT_COLS),
+                        value=get_plot(df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)),
+                        elem_classes=[] if i < DEFAULT_COLS else ["hidden-col"],
                     )
                     for i in range(MAX_COLS)
                 ]
@@ -1161,7 +1157,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             updates = []
 
             # Spalten-Container (Inklusive der darin liegenden Dropdowns) updaten
-            updates = [gr.update(visible=(c_idx < new_n)) for c_idx in range(MAX_COLS)]
+            updates = [gr.update(elem_classes=[] if c_idx < new_n else ["hidden-col"]) for c_idx in range(MAX_COLS)]
 
             # Gemeinsame Y-Range über alle aktiven Spalten berechnen
             active_approxs = [dropdown_values[i] for i in range(new_n)]
@@ -1178,9 +1174,9 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                         approx_val = dropdown_values[p_idx]
                         game_val = dropdown_values[MAX_COLS + p_idx]
                         plot_figure = get_plot_single(df_agg, game_val, m, approx_val, yr_shared)
-                        updates.append(gr.update(value=plot_figure, visible=True))
+                        updates.append(gr.update(value=plot_figure, elem_classes=[]))
                     else:
-                        updates.append(gr.update(visible=False))
+                        updates.append(gr.update(elem_classes=["hidden-col"]))
 
             return [new_n, *updates]
 
