@@ -46,10 +46,7 @@ def test_align_interaction_values_removes_empty_interaction_and_aligns_values():
         },
     )
 
-    gt_values_aligned, approx_values_aligned = align_interaction_values(
-        ground_truth,
-        approx_values,
-    )
+    gt_values_aligned, approx_values_aligned = align_interaction_values(ground_truth, approx_values)
 
     assert np.array_equal(gt_values_aligned, np.array([10.0, 20.0, 30.0]))
     assert np.array_equal(approx_values_aligned, np.array([100.0, 200.0, 300.0]))
@@ -95,10 +92,7 @@ def test_align_interaction_values_removes_empty_interaction():
         },
     )
 
-    gt_values_aligned, approx_values_aligned = align_interaction_values(
-        ground_truth,
-        approx_values,
-    )
+    gt_values_aligned, approx_values_aligned = align_interaction_values(ground_truth, approx_values)
 
     assert np.array_equal(gt_values_aligned, np.array([]))
     assert np.array_equal(approx_values_aligned, np.array([]))
@@ -117,7 +111,7 @@ def failing_approximate(**kwargs: Any) -> str:
 
 
 def fake_align(
-    ground_truth: InteractionValues, approx_values: Any
+    ground_truth: InteractionValues, approx_values: Any, **kwargs
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return fixed aligned ground truth and approximation arrays."""
     return np.array([1.0, 2.0]), np.array([1.1, 1.9])
