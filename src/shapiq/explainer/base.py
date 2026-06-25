@@ -36,8 +36,8 @@ def generic_to_specific_explainer(
     model: Model | Game | Callable[[np.ndarray], np.ndarray],
     data: np.ndarray | None = None,
     class_index: int | None = None,
-    index: ExplainerIndices = "k-SII",
-    max_order: int = 2,
+    index: ExplainerIndices = "SV",
+    max_order: int = 1,
     **kwargs: Any,
 ) -> None:
     """Transform the base Explainer instance into a specific explainer subclass.
@@ -51,8 +51,8 @@ def generic_to_specific_explainer(
         model: The model object to be explained.
         data: A background dataset to be used for imputation.
         class_index: The class index of the model to explain.
-        index: The type of Shapley interaction index to use.
-        max_order: The maximum interaction order to be computed.
+        index: The type of Shapley interaction index to use. Defaults to ``"SV"``.
+        max_order: The maximum interaction order to be computed. Defaults to ``1``.
         **kwargs: Additional keyword-only arguments passed to the specific explainer class.
     """
     generic_explainer.__class__ = explainer_cls
@@ -88,8 +88,8 @@ class Explainer:
         model: Model | Game | Callable[[np.ndarray], np.ndarray],
         data: np.ndarray | None = None,
         class_index: int | None = None,
-        index: ExplainerIndices = "k-SII",
-        max_order: int = 2,
+        index: ExplainerIndices = "SV",
+        max_order: int = 1,
         **kwargs: Any,
     ) -> None:
         """Initialize the Explainer class.
@@ -109,9 +109,9 @@ class Explainer:
                 for regression models. Note, it is important to specify the class index for your
                 classification model.
 
-            index: The type of Shapley interaction index to use. Defaults to ``"k-SII"``, which
-                computes the k-Shapley Interaction Index. If ``max_order`` is set to 1, this
-                corresponds to the Shapley value (``index="SV"``). Options are:
+            index: The type of Shapley interaction index to use. Defaults to ``"SV"``, which
+                computes the Shapley value. To compute interactions, pass an interaction index
+                explicitly and set ``max_order`` accordingly. Options are:
                 - ``"SV"``: Shapley value
                 - ``"k-SII"``: k-Shapley Interaction Index
                 - ``"FSII"``: Faithful Shapley Interaction Index
@@ -119,8 +119,8 @@ class Explainer:
                 - ``"STII"``: Shapley Taylor Interaction Index
                 - ``"SII"``: Shapley Interaction Index
 
-            max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to
-                ``1`` for no interactions (single feature attribution).
+            max_order: The maximum order of interactions to be computed. Set to ``1`` for no
+                interactions (i.e, for Shapley values ``"SV"`` or Banzhaf values ``"BV"``).
 
             **kwargs: Additional keyword-only arguments passed to the specific explainer classes.
 

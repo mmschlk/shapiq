@@ -41,13 +41,22 @@ class TabPFNExplainer(TabularExplainer):
         data: np.ndarray,
         labels: np.ndarray,
         *,
-        index: ExplainerIndices = "k-SII",
-        max_order: int = 2,
+        index: ExplainerIndices = "SV",
+        max_order: int = 1,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         class_index: int | None = None,
         approximator: Approximator
-        | Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"] = "auto",
+        | Literal[
+            "auto",
+            "spex",
+            "montecarlo",
+            "svarm",
+            "permutation",
+            "regression",
+            "proxyshap",
+            "proxyspex",
+        ] = "auto",
         verbose: bool = False,
     ) -> None:
         """Initialize the TabPFNExplainer.
@@ -63,23 +72,22 @@ class TabPFNExplainer(TabularExplainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "proxyshap", "proxyspex"]``. Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,
                 :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
                 :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
 
-            index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
-                k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
-                Shapley value (``index="SV"``). Options: ``"SV"`` (Shapley value), ``"k-SII"``
+            index: The index to explain the model with. Defaults to ``"SV"`` which computes the
+                Shapley value. Options: ``"SV"`` (Shapley value), ``"k-SII"``
                 (k-Shapley Interaction Index), ``"FSII"`` (Faithful Shapley Interaction Index),
                 ``"FBII"`` (Faithful Banzhaf Interaction Index, becomes ``BV`` for order 1),
                 ``"STII"`` (Shapley Taylor Interaction Index), ``"SII"`` (Shapley Interaction
                 Index).
 
-            max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to
-                ``1`` for no interactions (single feature importance).
+            max_order: The maximum order of interactions to be computed. Set to ``1`` for no
+                interactions (i.e, for Shapley values ``"SV"`` or Banzhaf values ``"BV"``).
 
             x_test: An optional test data set to compute the model's empty prediction (average
                 prediction) on. If no test data and ``empty_prediction`` is set to ``None`` the last

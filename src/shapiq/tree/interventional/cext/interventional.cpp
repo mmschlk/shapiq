@@ -1,11 +1,8 @@
 #include <string>
 #include <vector>
-#include <iostream>
-#include <cmath>
 #include <cstdint>
 #include <unordered_map>
 #include <stdexcept>
-#include <tuple>
 #include <algorithm>
 #include "weights.cpp"
 #include "utils.cpp"
@@ -22,9 +19,9 @@ namespace algorithms
         // For max_order=2: maps (i,j) pairs to compact indices:
         //   - Indices 0..n-1: main effects (i,i)
         //   - Indices n onwards: pairwise (i,j) where i < j in row-major upper triangle order
-        if (max_order > 2)
+        if (max_order > 3)
         {
-            throw std::invalid_argument("get_interaction_index only supports max_order 1 or 2");
+            throw std::invalid_argument("get_interaction_index only supports max_order 1, 2, or 3");
         }
         if (max_order == 1)
         {
@@ -111,6 +108,140 @@ namespace algorithms
                     continue; // Skip if the same feature is in both E and R, as this would correspond to a main effect, not an interaction.
                 int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, max_order);
                 interactions[idx] += value * wER;
+            }
+        }
+    }
+
+    // Compact index for order-3 triples (i < j < k):
+    //   index3(i,j,k,n) = n + n*(n-1)/2 + i + j*(j-1)/2 + k*(k-1)*(k-2)/6
+    inline int get_interaction_index3(int i, int j, int k, int num_features)
+    {
+        // Ensure i < j < k
+        if (i > j) std::swap(i, j);
+        if (j > k) std::swap(j, k);
+        if (i > j) std::swap(i, j);
+        int base = num_features + num_features * (num_features - 1) / 2;
+        return base + i + j * (j - 1) / 2 + k * (k - 1) * (k - 2) / 6;
+    }
+
+    void third_order_update(const StackFrame &frame,
+                             uint64_t *e_buffer, uint64_t *r_buffer,
+                             uint64_t e_count, uint64_t r_count,
+                             float value, double *interactions,
+                             inter_weights::WeightCache &weight_cache,
+                             int num_features, IndexType index, int max_order, int verbose)
+    {
+        // Precompute all 8 weight types at the top of the function to avoid repeated cache lookups.
+        // Order-1 weights
+        const float wE  = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const float wR  = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
+        // Order-2 weights
+        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
+        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
+        const float wER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
+        // Order-3 weights
+        const float wEEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 3, 0, 3, index, max_order));
+        const float wRRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 3, 3, index, max_order));
+        const float wEER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 1, 3, index, max_order));
+        const float wERR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 2, 3, index, max_order));
+
+        // Fill buffers
+        frame.E.fill_buffer(e_buffer);
+        frame.R.fill_buffer(r_buffer);
+
+        // === Order-1 contributions ===
+        for (size_t i = 0; i < e_count; i++)
+        {
+            int idx = static_cast<int>(e_buffer[i]);
+            interactions[idx] += value * wE;
+        }
+        for (size_t i = 0; i < r_count; i++)
+        {
+            int idx = static_cast<int>(r_buffer[i]);
+            interactions[idx] += value * wR;
+        }
+
+        // === Order-2 contributions ===
+        // EE pairs
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, 2);
+                interactions[idx] += value * wEE;
+            }
+        }
+        // RR pairs
+        for (size_t i = 0; i < r_count; i++)
+        {
+            for (size_t j = i + 1; j < r_count; j++)
+            {
+                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
+                interactions[idx] += value * wRR;
+            }
+        }
+        // ER cross pairs (skip if same feature appears in both E and R)
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = 0; j < r_count; j++)
+            {
+                if (e_buffer[i] == r_buffer[j]) continue;
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
+                interactions[idx] += value * wER;
+            }
+        }
+
+        // === Order-3 contributions ===
+        // EEE triples
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                for (size_t k = j + 1; k < e_count; k++)
+                {
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(e_buffer[k]), num_features);
+                    interactions[idx] += value * wEEE;
+                }
+            }
+        }
+        // RRR triples
+        for (size_t i = 0; i < r_count; i++)
+        {
+            for (size_t j = i + 1; j < r_count; j++)
+            {
+                for (size_t k = j + 1; k < r_count; k++)
+                {
+                    int idx = get_interaction_index3(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
+                    interactions[idx] += value * wRRR;
+                }
+            }
+        }
+        // EER triples: 2 from E, 1 from R — skip if any two features are the same
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                for (size_t k = 0; k < r_count; k++)
+                {
+                    uint64_t rk = r_buffer[k];
+                    if (e_buffer[i] == rk || e_buffer[j] == rk) continue;
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(rk), num_features);
+                    interactions[idx] += value * wEER;
+                }
+            }
+        }
+        // ERR triples: 1 from E, 2 from R — skip if any two features are the same
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = 0; j < r_count; j++)
+            {
+                if (e_buffer[i] == r_buffer[j]) continue;
+                for (size_t k = j + 1; k < r_count; k++)
+                {
+                    if (e_buffer[i] == r_buffer[k]) continue;
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
+                    interactions[idx] += value * wERR;
+                }
             }
         }
     }
@@ -327,6 +458,8 @@ namespace algorithms
                     algorithms::first_order_update(current_frame, leaf_value, interactions, weight_cache, num_features, index, max_order, verbose);
                 else if (max_order == 2)
                     algorithms::second_order_update(current_frame, e_buffer, r_buffer, e_count, r_count, leaf_value, interactions, weight_cache, num_features, index, max_order, verbose);
+                else if (max_order == 3)
+                    algorithms::third_order_update(current_frame, e_buffer, r_buffer, e_count, r_count, leaf_value, interactions, weight_cache, num_features, index, max_order, verbose);
                 else
                     throw std::invalid_argument("Unsupported max_order: " + std::to_string(max_order));
             }
@@ -487,6 +620,120 @@ namespace algorithms
                     continue; // Skip if the same feature is in both E and R, as this would correspond to a main effect, not an interaction.
                 int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
                 interactions[idx] += value * wER;
+            }
+        }
+    }
+
+    void third_order_bitset_update(const BitSet E, const BitSet R,
+        uint64_t *e_buffer, uint64_t *r_buffer,
+        uint64_t e_count, uint64_t r_count,
+        float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
+    {
+        // Precompute all weight types
+        const float wE   = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, max_order));
+        const float wR   = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, max_order));
+        const float wEE  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, max_order));
+        const float wRR  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, max_order));
+        const float wER  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, max_order));
+        const float wEEE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 3, 0, 3, index, max_order));
+        const float wRRR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 3, 3, index, max_order));
+        const float wEER = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 1, 3, index, max_order));
+        const float wERR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 2, 3, index, max_order));
+
+        E.fill_buffer(e_buffer);
+        R.fill_buffer(r_buffer);
+
+        // Order-1
+        for (size_t i = 0; i < e_count; i++)
+        {
+            int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[i]), num_features, 2);
+            interactions[idx] += value * wE;
+        }
+        for (size_t i = 0; i < r_count; i++)
+        {
+            int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[i]), num_features, 2);
+            interactions[idx] += value * wR;
+        }
+
+        // Order-2 EE
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, 2);
+                interactions[idx] += value * wEE;
+            }
+        }
+        // Order-2 RR
+        for (size_t i = 0; i < r_count; i++)
+        {
+            for (size_t j = i + 1; j < r_count; j++)
+            {
+                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
+                interactions[idx] += value * wRR;
+            }
+        }
+        // Order-2 ER
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = 0; j < r_count; j++)
+            {
+                if (e_buffer[i] == r_buffer[j]) continue;
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
+                interactions[idx] += value * wER;
+            }
+        }
+
+        // Order-3 EEE
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                for (size_t k = j + 1; k < e_count; k++)
+                {
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(e_buffer[k]), num_features);
+                    interactions[idx] += value * wEEE;
+                }
+            }
+        }
+        // Order-3 RRR
+        for (size_t i = 0; i < r_count; i++)
+        {
+            for (size_t j = i + 1; j < r_count; j++)
+            {
+                for (size_t k = j + 1; k < r_count; k++)
+                {
+                    int idx = get_interaction_index3(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
+                    interactions[idx] += value * wRRR;
+                }
+            }
+        }
+        // Order-3 EER
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = i + 1; j < e_count; j++)
+            {
+                for (size_t k = 0; k < r_count; k++)
+                {
+                    uint64_t rk = r_buffer[k];
+                    if (e_buffer[i] == rk || e_buffer[j] == rk) continue;
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(rk), num_features);
+                    interactions[idx] += value * wEER;
+                }
+            }
+        }
+        // Order-3 ERR
+        for (size_t i = 0; i < e_count; i++)
+        {
+            for (size_t j = 0; j < r_count; j++)
+            {
+                if (e_buffer[i] == r_buffer[j]) continue;
+                for (size_t k = j + 1; k < r_count; k++)
+                {
+                    if (e_buffer[i] == r_buffer[k]) continue;
+                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
+                    interactions[idx] += value * wERR;
+                }
             }
         }
     }

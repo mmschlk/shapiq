@@ -16,8 +16,6 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
-    "sparse-transform",  # for sparse approximators (spex, proxyspex)
-    "galois",            # for sparse approximators (spex, proxyspex)
     # plotting
     "matplotlib",
     "networkx",
@@ -26,13 +24,13 @@ dependencies = [
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
-    {name = "Hubert Baniecki"},
-    {name = "Fabian Fumagalli"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
+    {name = "Hubert Baniecki", email = "h.baniecki@uw.edu.pl"},
+    {name = "Fabian Fumagalli", email = "ffumagalli@techfak.de"},
 ]
 maintainers = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
 ]
 license = "MIT"
 classifiers = [
@@ -61,6 +59,30 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+
+[project.optional-dependencies]
+sparse = [
+    # required by shapiq.approximator.sparse (SPEX and the Sparse base class)
+    "sparse-transform",
+    "galois",
+]
+proxy = [
+    # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
+    "xgboost",   # default proxy model in ProxySHAP
+    "lightgbm",  # required by ProxySPEX
+    "catboost",
+    "smac", # SMAC HPO for proxy models
+]
+shapleig = [
+    # required by shapiq.approximator.shapleig (ShaplEIG)
+    # NOTE: lower bounds are the versions the reference implementation was
+    # developed and validated against.
+    "torch>=2.9.1",
+    "gpytorch>=1.14",
+    "botorch>=0.14.0",
+    "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
+]
+
 [tool.coverage.report]
 exclude_also = [
     'if TYPE_CHECKING:',
@@ -146,6 +168,19 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
+"src/shapiq/approximator/shapleig/_shapley_math.py" = [
+    # controlled verbatim copy of the validated reference implementation in
+    # the ShaplEIG research repository; kept in sync, not restyled
+    "ANN001", "ANN202",  # reference code is fully typed via annotations where it matters
+    "FBT001", "FBT002",  # boolean positional args of internal helpers
+    "N815",              # tensor names follow the paper notation (train_X, ...)
+    "PERF401",           # explicit loops mirror the published algorithm
+    "RUF002", "RUF003",  # mathematical notation in docstrings/comments
+    "S101",              # shape/consistency asserts of the math core
+]
+"src/shapiq/approximator/shapleig/_kernels.py" = [
+    "FBT001", "FBT002",  # signature dictated by gpytorch's Kernel.forward
+]
 "src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
     "D102",  # we don't need docstrings for protocol stubs
@@ -217,13 +252,14 @@ python-platform = "linux"
 build = ["cp312-*", "cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 build-frontend = "uv"
-test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; from shapiq.tree.linear import cext; print('C extensions OK')\""
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
-before-build = "brew install libomp || true"
+# libomp is installed by build_tools/wheels/build_wheels.sh (pinned conda-forge
+# tarball, not brew) so wheels can target an old MACOSX_DEPLOYMENT_TARGET.
 
 [tool.cibuildwheel.windows]
 # MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
@@ -245,6 +281,7 @@ all_ml = [
     "torch",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
+    "catboost",
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12

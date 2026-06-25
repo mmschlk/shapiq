@@ -81,7 +81,7 @@ def construct_for_sv(
        ``max_order`` or ``n_explanation_terms``).
     2. The multi-index signature
        ``Approx(n=n, index='SV', max_order=1, random_state=...)`` —
-       covers ``SPEX / ProxySPEX / ProxySHAP / MSRBiased / kADDSHAP``
+       covers ``SPEX / ProxySPEX / ProxySHAP / RegressionMSR / kADDSHAP``
        which default to ``index='FBII'`` with ``max_order=n``.
     3. The minimal SV-only signature ``Approx(n=n, random_state=...)`` —
        covers ``KernelSHAP / OwenSamplingSV / SVARM / etc.``

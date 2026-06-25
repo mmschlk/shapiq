@@ -11,7 +11,7 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
-from .proxy import MSRBiased, ProxySHAP
+from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -23,7 +23,34 @@ from .regression import (
     PolySHAPPartial,
     PolySHAPPrior,
 )
-from .sparse import SPEX, ProxySPEX
+
+try:
+    from .shapleig import ShaplEIG
+except ImportError as _e:
+
+    class ShaplEIG(Approximator):
+        """Placeholder raised when the optional ``shapleig`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            raise self._import_error
+
+
+try:
+    from .sparse import SPEX
+except ImportError as _e:
+
+    class SPEX(Approximator):
+        """Placeholder raised when the optional ``sparse`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            raise self._import_error
+
 
 
 # contains all SV approximators
@@ -36,9 +63,9 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     KernelSHAP,
     kADDSHAP,
     SPEX,
+    RegressionMSR,
     ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
+    ShaplEIG,
     PolySHAPKAdd,
     PolySHAPPartial,
     PolySHAPPrior,
@@ -53,8 +80,9 @@ SI_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     KernelSHAPIQ,
     RegressionFSII,
+    SPEX,
+    ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for SII
@@ -67,8 +95,8 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
+
 
 # contains all approximators that can be used for STII
 STII_APPROXIMATORS: list[Approximator.__class__] = [
@@ -79,8 +107,6 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for FSII
@@ -93,17 +119,11 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for FBII
-FBII_APPROXIMATORS: list[Approximator.__class__] = [
-    RegressionFBII,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
-]
+FBII_APPROXIMATORS: list[Approximator.__class__] = [RegressionFBII, SPEX, ProxySPEX, ProxySHAP]
+
 
 __all__ = [
     "Approximator",
@@ -119,7 +139,8 @@ __all__ = [
     "InconsistentKernelSHAPIQ",
     "ProxySPEX",
     "ProxySHAP",
-    "MSRBiased",
+    "RegressionMSR",
+    "ShaplEIG",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",
