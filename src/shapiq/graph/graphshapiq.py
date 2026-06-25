@@ -310,8 +310,6 @@ class GraphSHAPIQ:
             moebius_interactions
         )
 
-        print("Now evaluating:", len(moebius_interactions))
-
         # Evaluate all coalitions
         all_coalitions = np.vstack((moebius_coalition_matrix, incomplete_neighborhoods_matrix))
         masked_predictions = self.game(all_coalitions.astype(bool))
