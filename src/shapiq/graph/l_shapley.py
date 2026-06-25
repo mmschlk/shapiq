@@ -175,7 +175,7 @@ class LShapley:
         """Compute L-Shapley values for all players.
 
         Args:
-            max_interaction_size: Maximum k-hop neighborhood size (controls how many coalition
+            max_interaction_size: Maximum neighborhood size (controls how many coalition
                 subsets are enumerated per player).
             break_on_exceeding_budget: If True, raise a :class:`ValueError` when the number of
                 required model evaluations exceeds ``self.max_budget``; if False, set the
@@ -190,7 +190,7 @@ class LShapley:
         Raises:
             ValueError: If break_on_exceeding_budget is True and the budget is exceeded.
         """
-        self.l_hop_distance = max_interaction_size
+        self.l_hop_distance = self.game.l_hop_distance
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         max_interaction_size = min(self.max_size_neighbors, max_interaction_size)
 

@@ -53,7 +53,7 @@ class GraphGame(Game):
         if not isinstance(model.num_layers, int):
             msg = "model.num_layers must be an int"
             raise TypeError(msg)
-        self.max_neighborhood_size = model.num_layers
+        self.l_hop_distance = model.num_layers
         self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
         self.grand_coalition_set = set(range(self.n_players))
 

@@ -48,7 +48,7 @@ class GraphSHAPIQ:
         self.n_players = game.n_players
         self._graph: nx.Graph = self._build_graph()
         self.sparsify_threshold = 1e-10
-        self.l_hop_distance = int(game.max_neighborhood_size)
+        self.l_hop_distance = int(game.l_hop_distance)
         self._grand_coalition_set = game.grand_coalition_set
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         self.game = game
@@ -309,6 +309,8 @@ class GraphSHAPIQ:
         moebius_coalition_matrix, moebius_coalition_lookup = self._convert_to_coalition_matrix(
             moebius_interactions
         )
+
+        print("Now evaluating:", len(moebius_interactions))
 
         # Evaluate all coalitions
         all_coalitions = np.vstack((moebius_coalition_matrix, incomplete_neighborhoods_matrix))

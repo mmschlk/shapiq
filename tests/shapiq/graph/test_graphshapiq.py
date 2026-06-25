@@ -24,7 +24,7 @@ class TestGraphSHAPIQ:
         """Test that GraphSHAPIQ initializes correctly with a GCN model."""
         assert gcn_graphshapiq.n_players == gcn_graph_game.n_players
         assert gcn_graphshapiq.edge_index is gcn_graph_game.edge_index
-        assert gcn_graphshapiq.l_hop_distance == gcn_graph_game.max_neighborhood_size
+        assert gcn_graphshapiq.l_hop_distance == gcn_graph_game.model.num_layers
         assert gcn_graphshapiq.last_n_model_calls is None
         assert gcn_graphshapiq._grand_coalition_prediction is not None
         assert isinstance(gcn_graphshapiq.neighbors, dict)
