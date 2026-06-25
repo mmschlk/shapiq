@@ -5,6 +5,7 @@
 ### New Features
 
 - adds the `ShaplEIG` approximator in `shapiq.approximator.shapleig` for Shapley value estimation via Bayesian experimental design: a Gaussian process surrogate with a weighted Hamming kernel is fit on the queried coalition values, and the next coalition is selected by maximizing the closed-form expected information gain about the Shapley values. Requires the new optional `shapleig` dependency group (`pip install shapiq[shapleig]` — torch, gpytorch, botorch, linear-operator); the optional dependencies are imported lazily in the constructor.
+- adds the `PolySHAPKAdd`, `PolySHAPPartial`, and `PolySHAPPrior` approximators in `shapiq.approximator.regression.polyshap` for Shapley value estimation via interaction-informed polynomial regression (PolySHAP, [Fumagalli et al., ICLR 2026](https://arxiv.org/abs/2601.18608)). PolySHAP generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values: `PolySHAPKAdd` uses the full *k*-additive interaction frontier up to a chosen `max_order` (with `max_order=1` recovering `KernelSHAP`), `PolySHAPPartial` a budget-controlled partial frontier (`n_explanation_terms`), and `PolySHAPPrior` a user-supplied set of prior interaction terms (`q_prior`). All three are registered as Shapley-value (`SV`) approximators.
 
 ## v1.5.2 (2026-06-12)
 
