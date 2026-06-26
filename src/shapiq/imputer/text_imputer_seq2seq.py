@@ -1078,6 +1078,7 @@ class Seq2SeqCallable(BaseTargetCallable):
     ) -> None:
         super().__init__(model, tokenizer, device)
 
+        # Check if the input model is an Encoder-Decoder (Seq2Seq) model.
         if not getattr(model.config, "is_encoder_decoder", False):
             msg = (
                 "Seq2SeqCallable requires an encoder-decoder model with "
@@ -1118,9 +1119,11 @@ class Seq2SeqCallable(BaseTargetCallable):
         self.decoder_start_token_id = decoder_start_token_id
 
     def _build_prompt(self, text: str) -> str:
+        """ Wrap the original text into a prompt template. """
         return self.prompt_template.format(text=text)
 
     def _encode_inputs(self, texts: list[str]) -> dict[str, torch.Tensor]:
+        """ Encode a list of texts into encoder input tensors. """
         encoded = self.tokenizer(
             texts,
             padding=True,
@@ -1135,6 +1138,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         attention_mask: torch.Tensor,
         batch_size: int,
     ) -> np.ndarray:
+        """ Compute the log-probability of the decoder generating the target token sequence. """
         total_log_probs = torch.zeros(batch_size, device=self.device)
 
         decoder_input_ids = torch.full(
@@ -1169,6 +1173,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         return total_log_probs.cpu().numpy()
 
     def predict(self, texts: list[str]) -> np.ndarray:
+        """ Compute log-probability scores of the Seq2Seq target sequence for a batch of texts. """
         prompts = [self._build_prompt(text) for text in texts]
         encoder_inputs = self._encode_inputs(prompts)
 
