@@ -14,12 +14,20 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
+    from transformers.modeling_outputs import BaseModelOutput
 
 def _require_nltk_resource(resource_path: str, download_name: str) -> None:
     """Raise a helpful error if an NLTK resource is not installed."""
     try:
         nltk.data.find(resource_path)
     except LookupError as error:
+        try:
+            nltk.data.find(f"{resource_path}.zip")
+        except LookupError:
+            pass
+        else:
+            return
+
         msg = (
             f"Missing NLTK resource '{download_name}'. "
             "Install it once with:\n\n"
@@ -1049,19 +1057,146 @@ class CausalLMCallable(BaseTargetCallable):
         return np.asarray(scores,dtype=np.float32)
 
 # =============================================================================
-# Future:
 # seq2seq support
 # =============================================================================
 
 class Seq2SeqCallable(BaseTargetCallable):
+    """Score a fixed target sequence with an encoder-decoder model.
 
-    def predict(
+    For each input text, this callable computes the conditional log-probability
+    of generating ``target_label`` using teacher forcing:
+
+        log P(target_label | input_text)
+
+    A multi-token target is scored token by token. By default, the final score
+    is the mean token log-probability, so targets of different lengths are more
+    comparable.
+    """
+
+    def __init__(
         self,
-        texts: list[str],
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase,
+        device: str,
+        target_label: str = "positive",
+        prompt_template: str = "{text}",
+        *,
+        normalize: bool = True,
+    ) -> None:
+        super().__init__(model, tokenizer, device)
+
+        # Check if the input model is an Encoder-Decoder (Seq2Seq) model.
+        if not getattr(model.config, "is_encoder_decoder", False):
+            msg = (
+                "Seq2SeqCallable requires an encoder-decoder model with "
+                "model.config.is_encoder_decoder=True."
+            )
+            raise ValueError(
+                msg
+            )
+
+        self.target_label = target_label
+        self.prompt_template = prompt_template
+        self.normalize = normalize
+
+        self.target_token_ids: list[int] = tokenizer.encode(
+            target_label,
+            add_special_tokens=False,
+        )
+        if not self.target_token_ids:
+            msg_0 = f"Target label {target_label!r} produced no tokens after encoding."
+            raise ValueError(
+                msg_0
+            )
+
+        decoder_start_token_id = model.config.decoder_start_token_id
+        if decoder_start_token_id is None:
+            decoder_start_token_id = tokenizer.pad_token_id
+
+        if decoder_start_token_id is None:
+            msg_1 = (
+                "Cannot determine decoder_start_token_id: neither "
+                "model.config.decoder_start_token_id nor tokenizer.pad_token_id "
+                "is available."
+            )
+            raise ValueError(
+                msg_1
+            )
+
+        self.decoder_start_token_id = decoder_start_token_id
+
+    def _build_prompt(self, text: str) -> str:
+        """ Wrap the original text into a prompt template. """
+        return self.prompt_template.format(text=text)
+
+    def _encode_inputs(self, texts: list[str]) -> dict[str, torch.Tensor]:
+        """ Encode a list of texts into encoder input tensors. """
+        encoded = self.tokenizer(
+            texts,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
+        return {key: value.to(self.device) for key, value in encoded.items()}
+
+    def _compute_log_prob_for_target(
+        self,
+        encoder_outputs: BaseModelOutput,
+        attention_mask: torch.Tensor,
+        batch_size: int,
     ) -> np.ndarray:
-        """Placeholder for future seq2seq support."""
-        msg = "Seq2SeqCallable is not implemented yet."
-        raise NotImplementedError(msg)
+        """ Compute the log-probability of the decoder generating the target token sequence. """
+        total_log_probs = torch.zeros(batch_size, device=self.device)
+
+        decoder_input_ids = torch.full(
+            (batch_size, 1),
+            self.decoder_start_token_id,
+            dtype=torch.long,
+            device=self.device,
+        )
+
+        for target_token_id in self.target_token_ids:
+            with torch.no_grad():
+                outputs = self.model(
+                    encoder_outputs=encoder_outputs,
+                    attention_mask=attention_mask,
+                    decoder_input_ids=decoder_input_ids,
+                )
+
+            log_probs = torch.log_softmax(outputs.logits[:, -1, :], dim=-1)
+            total_log_probs += log_probs[:, target_token_id]
+
+            next_token = torch.full(
+                (batch_size, 1),
+                target_token_id,
+                dtype=torch.long,
+                device=self.device,
+            )
+            decoder_input_ids = torch.cat([decoder_input_ids, next_token], dim=1)
+
+        if self.normalize:
+            total_log_probs /= len(self.target_token_ids)
+
+        return total_log_probs.cpu().numpy()
+
+    def predict(self, texts: list[str]) -> np.ndarray:
+        """ Compute log-probability scores of the Seq2Seq target sequence for a batch of texts. """
+        prompts = [self._build_prompt(text) for text in texts]
+        encoder_inputs = self._encode_inputs(prompts)
+
+        encoder = self.model.get_encoder()
+        with torch.no_grad():
+            encoder_outputs = encoder(
+                input_ids=encoder_inputs["input_ids"],
+                attention_mask=encoder_inputs["attention_mask"],
+                return_dict=True,
+            )
+
+        return self._compute_log_prob_for_target(
+            encoder_outputs=encoder_outputs,
+            attention_mask=encoder_inputs["attention_mask"],
+            batch_size=len(prompts),
+        )
 
 # =============================================================================
 # TEXT IMPUTER
@@ -1123,6 +1258,11 @@ class TextImputer:
             "Review: {text}\n\n"
             "Sentiment:"
         ),
+
+        # ---------------------------------------------------------------------
+        # Seq2Seq settings
+        # ---------------------------------------------------------------------
+        normalize_target_logprob: bool = True,
 
         # ---------------------------------------------------------------------
         # architecture selection
@@ -1223,14 +1363,15 @@ class TextImputer:
                 output_type=output_type,
             )
 
-        elif model_type == "causal_lm":
+        elif model_type == "seq2seq":
 
-            self.target_callable = CausalLMCallable(
+            self.target_callable = Seq2SeqCallable(
                 model=model,
                 tokenizer=tokenizer,
-                device=device,
+                device=self.device,
                 target_label=target_label,
                 prompt_template=prompt_template,
+                normalize=normalize_target_logprob,
             )
 
         elif model_type == "seq2seq":

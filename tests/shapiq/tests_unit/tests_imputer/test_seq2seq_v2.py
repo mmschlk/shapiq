@@ -11,8 +11,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import numpy as np
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from shapiq.imputer.text_imputer_seq2seq import TextImputer
-from shapiq.imputer.text_imputer_seq2seq import Seq2SeqCallable
+from shapiq.imputer.text_imputer import TextImputer
+from shapiq.imputer.text_imputer import Seq2SeqCallable
 
 MODEL_NAME = "google/flan-t5-small"
 
