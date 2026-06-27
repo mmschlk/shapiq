@@ -23,7 +23,7 @@ from transformers import (
     AutoTokenizer,
 )
 
-from shapiq.imputer.text_imputer_seq2seq import Seq2SeqCallable, TextImputer
+from shapiq.imputer.text_imputer import Seq2SeqCallable, TextImputer
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

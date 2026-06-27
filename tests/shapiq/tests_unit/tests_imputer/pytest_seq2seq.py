@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import torch
 
-from shapiq.imputer.text_imputer_seq2seq import (
+from shapiq.imputer.text_imputer import (
     Seq2SeqCallable,
     TextImputer,
     NeutralPerturbation,
