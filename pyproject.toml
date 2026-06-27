@@ -21,6 +21,7 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "nltk>=3.9.4",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
