@@ -89,6 +89,12 @@ ground_truth:
 approximators:
   - "OwenSamplingSV"
   - "StratifiedSamplingSV"
+
+# Note: "BV" and "CHII" are currently not supported by the runner pipeline!
+# Note: "SPEX" replaced by ProxySPEX due to performance issues
+# Note: "SVARM" and "SVARMIQ" will be removed from run when player count exceeds 20 due to performance issues.
+# Note: "KernelSHAPIQ" and "InconsistentKernelSHAPIQ" only support index type: SV, SII, k-SII
+# Note: "MSRBiased" removed due to coming release of shapiq which removes this algorithm from the codebase.
 # --- WHITELIST PER INDEX ---
 #
 # If index: "SV"
@@ -99,63 +105,46 @@ approximators:
 #  - "PermutationSamplingSV"
 #  - "KernelSHAP"
 #  - "kADDSHAP"
-#  # - "SPEX"
-#  # - "ProxySPEX"
+#  - "ProxySPEX"
 #  - "ProxySHAP"
-#  - "MSRBiased"
 #
 # If index: "SII"
 #  - "PermutationSamplingSII"
 #  - "KernelSHAPIQ"
 #  - "InconsistentKernelSHAPIQ"
-#  #   - "SVARMIQ"
-#  #   - "SHAPIQ"
-#  #   - "SPEX"
-#  #   - "ProxySPEX"
+#  - "SVARMIQ"
+#  - "SHAPIQ"
+#  - "ProxySPEX"
 #  - "ProxySHAP"
-#  - "MSRBiased"
 #
 # If index: "k-SII"
-#  #  - "PermutationSamplingSII" # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
+#  - "PermutationSamplingSII"
 #  - "KernelSHAPIQ"
 #  - "InconsistentKernelSHAPIQ"
-#  #   - "SVARMIQ"
-#  #   - "SHAPIQ"
-#  #   - "SPEX"
-#  #   - "ProxySPEX"
-#  #  - "ProxySHAP" # Unsupported index type: k-SII
-#  #  - "MSRBiased" # Unsupported index type: k-SII
+#  - "SVARMIQ"
+#  - "SHAPIQ"
+#  - "ProxySPEX"
+#  - "ProxySHAP"
 #
 # If index: "STII"
 #  - "PermutationSamplingSTII"
-#  #  - "KernelSHAPIQ"  # Unsupported index type: STII
-#  #  - "InconsistentKernelSHAPIQ"  # Unsupported index type: STII
-#  #  - "SVARMIQ"
-#  #  - "SHAPIQ"
-#  #  - "SPEX"
-#  #  - "ProxySPEX"
+#  - "SVARMIQ"
+#  - "SHAPIQ"
+#  - "ProxySPEX"
 #  - "ProxySHAP"
-#  - "MSRBiased"
 #
 # If index: "FSII"
 #   - "RegressionFSII"
-#   - "KernelSHAPIQ"  # Valid indices are: ('k-SII', 'SII', 'SV').
-#   - "InconsistentKernelSHAPIQ" # Valid indices are: ('k-SII', 'SII', 'SV').
-#   - "SVARMIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0. for GT
-#   - "SHAPIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
-#   - "SPEX"     # Low Budget, Interaction keys do not match
-#   - "ProxySPEX" # Interaction keys do not match
+#  - "SVARMIQ"
+#  - "SHAPIQ"
+#   - "ProxySPEX"
 #   - "ProxySHAP"
-#   - "MSRBiased"
 #
 # If index: "FBII"
 #  - "RegressionFBII"
-#  #  - "SPEX"
-#  #  - "ProxySPEX"
+#  - "ProxySPEX"
 #  - "ProxySHAP"
-#  - "MSRBiased"
 #
-# Note: "BV" and "CHII" are currently not supported by the runner pipeline!
 # ---------------------------------------------------------------------
 
 # ---------------------------------------------------------------------

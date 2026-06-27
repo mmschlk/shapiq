@@ -95,9 +95,6 @@ def run_benchmark(
         logging.debug("failed: %s", record["run_failed"])
         logging.debug("error: %s\n", record["error_message"])
 
-        # logging.error("failed: %s", record["run_failed"])
-        # logging.error("error: %s\n", record["error_message"])
-
     # aggregation
     aggregated_result = aggregate_fn(results)
 
