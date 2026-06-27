@@ -95,23 +95,6 @@ class MVPRunConfig(BaseModel):
             raise InvalidGameFamilyError(self.game, self.game_family) from None
         return self
 
-    # @model_validator(mode="after")
-    # def validate_budgets(self) -> MVPRunConfig:
-    #     """Ensure all budgets satisfy the project range rule [n+1, 2^n)."""
-    #     min_allowed = self.n_players + 1
-    #     max_exclusive = 2**self.n_players
-    #     for b in self.budgets:
-    #         if b <= 0:
-    #             raise InvalidBudgetError(b) from None
-    #         if b < min_allowed or b >= max_exclusive:
-    #             raise BudgetRangeError(
-    #                 budget=b,
-    #                 n_players=self.n_players,
-    #                 min_allowed=min_allowed,
-    #                 max_exclusive=max_exclusive,
-    #             ) from None
-    #     return self
-
     @model_validator(mode="after")
     def validate_budgets(self) -> MVPRunConfig:
         """Filter out invalid budgets falling outside the allowed range [n+1, 2^n)"""
@@ -133,63 +116,6 @@ class MVPRunConfig(BaseModel):
         self.budgets = cleaned_budgets
         return self
 
-    # @model_validator(mode="after")
-    # def validate_approximators(self) -> MVPRunConfig:
-    #     """Validate that approximators are supported and compatible with the chosen index.
-    #
-    #     Performs three checks:
-    #     1. Runnable Index check: block indices not supported by the runner setup
-    #     2. Whitelist check: approximator exists in supported list
-    #     3. Compatibility check: approximator supports the chosen index
-    #     """
-    #     # 1. Block indices that are theoretically valid in shapiq but not supported by this runner pipeline
-    #     NOT_RUNNABLE_INDICES = ["BV", "BII", "CHII"]
-    #     if self.index in NOT_RUNNABLE_INDICES:
-    #         raise ValueError(
-    #             f"Index '{self.index}' is valid in shapiq, but currently not supported "
-    #             f"by the benchmark runner pipeline. Please choose from fully supported ones."
-    #         )
-    #
-    #     for app in self.approximators:
-    #         # 2. Check if it's in the hardcoded whitelist
-    #         if app not in ALL_SUPPORTED_APPROXIMATORS:
-    #             raise UnsupportedApproximatorError(app, ALL_SUPPORTED_APPROXIMATORS) from None
-    #
-    #         # 3. Dynamic attribute check and Index matching
-    #         try:
-    #             app_class = getattr(shapiq.approximator, app)
-    #         except AttributeError:
-    #             raise ApproximatorNotFoundError(app) from None
-    #
-    #         # Validate against __init__.py categories with strict exceptions
-    #         if (
-    #             self.index in ["SV", "kADD-SHAP"]
-    #             and app_class not in shapiq.approximator.SV_APPROXIMATORS
-    #         ) or (
-    #             self.index in ["SII", "k-SII"]
-    #             and app_class not in shapiq.approximator.SII_APPROXIMATORS
-    #         ):
-    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
-    #
-    #         if self.index == "STII" and app_class not in shapiq.approximator.STII_APPROXIMATORS:
-    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
-    #
-    #         if self.index == "FSII" and app_class not in shapiq.approximator.FSII_APPROXIMATORS:
-    #             raise ApproximatorIndexIncompatibleError(app, self.index) from None
-    #
-    #         if self.index == "FBII":
-    #             # CRITICAL EXCEPTION: SPEX and ProxySPEX output sparse interaction values,
-    #             # which causes a fatal key-mismatch crash when evaluated against dense ground truth.
-    #             if app in ["SPEX", "ProxySPEX"]:
-    #                 raise ApproximatorIndexIncompatibleError(
-    #                     f"'{app}' is a sparse approximator and cannot be evaluated against "
-    #                     f"dense ground truth for FBII in this runner setup.",
-    #                     self.index,
-    #                 )
-    #             if app_class not in shapiq.approximator.FBII_APPROXIMATORS:
-    #                 raise ApproximatorIndexIncompatibleError(app, self.index) from None
-    #
-    #     return self
     @model_validator(mode="after")
     def validate_approximators(self) -> MVPRunConfig:
         """Filter out un-runnable, unsupported, or index-incompatible approximators
@@ -231,13 +157,6 @@ class MVPRunConfig(BaseModel):
                 continue
             if self.index == "FBII" and app_class not in shapiq.approximator.FBII_APPROXIMATORS:
                 continue
-            # if self.index == "FBII":
-            #     # Clean skip sparse approximators for dense FBII evaluations
-            #     if (
-            #         app in ["SPEX", "ProxySPEX"]
-            #         or app_class not in shapiq.approximator.FBII_APPROXIMATORS
-            #     ):
-            #         continue
 
             # If all checks pass, keep the approximator
             cleaned_apps.append(app)

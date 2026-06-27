@@ -6,51 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 import shapiq_games.benchmark.global_xai.benchmark_tabular as global_tabular
 import shapiq_games.benchmark.local_xai.benchmark_tabular as local_tabular
+from leaderboard.config_manager.constants import (
+    GLOBAL_GAME_REGISTRY,
+    LOCAL_GAME_REGISTRY,
+)
 from leaderboard.runner.runner_exceptions import UnknownGameError
 from shapiq_games.synthetic import SOUM
 
 if TYPE_CHECKING:
     from shapiq import Game
-
-
-LOCAL_GAME_REGISTRY = {
-    "BikeSharing": local_tabular.BikeSharing,
-    "CaliforniaHousing": local_tabular.CaliforniaHousing,
-    "AdultCensus": local_tabular.AdultCensus,
-    "Mushroom": local_tabular.Mushroom,
-    "Soybean": local_tabular.Soybean,
-    "Thyroid": local_tabular.Thyroid,
-    "Annealing": local_tabular.Annealing,
-    "Arrhythmia": local_tabular.Arrhythmia,
-    "BreastCancer": local_tabular.BreastCancer,
-    "Hepatitis": local_tabular.Hepatitis,
-    "Ionosphere": local_tabular.Ionosphere,
-    "Nursery": local_tabular.Nursery,
-    "Zoo": local_tabular.Zoo,
-}
-GLOBAL_GAME_REGISTRY = {
-    "BikeSharing": global_tabular.BikeSharing,
-    "CaliforniaHousing": global_tabular.CaliforniaHousing,
-    "AdultCensus": global_tabular.AdultCensus,
-}
-# REGRESSION_GAMES = {
-#     "BikeSharing",
-#     "CaliforniaHousing",
-# }
-#
-# CLASSIFICATION_GAMES = {
-#     "AdultCensus",
-#     "Mushroom",
-#     "Soybean",
-#     "Thyroid",
-#     "Annealing",
-#     "Arrhythmia",
-#     "BreastCancer",
-#     "Hepatitis",
-#     "Ionosphere",
-#     "Nursery",
-#     "Zoo",
-# }
 
 
 def create_game_from_config(
@@ -79,45 +43,6 @@ def create_game_from_config(
     game_seed = run_config["game_seed"]
     max_order = run_config["max_order"]
     game_family = base_config.get("game_family", "local_xai")
-
-    # if game_name == "SOUM":
-    #     default_game_params = {
-    #         "n": 10,
-    #         "n_basis_games": 20,
-    #         "min_interaction_size": 1,
-    #         "max_interaction_size": max_order,
-    #         "random_state": game_seed,
-    #     }
-    #
-    # elif game_name in REGRESSION_GAMES:
-    #     default_game_params = {
-    #         "x": run_config.get("x", 0),
-    #         "model_name": "decision_tree",
-    #         "imputer": "marginal",
-    #         "normalize": True,
-    #         "verbose": False,
-    #         "random_state": game_seed,
-    #     }
-    #
-    # elif game_name in CLASSIFICATION_GAMES:
-    #     default_game_params = {
-    #         "x": run_config.get("x", 0),
-    #         "class_to_explain": run_config.get("class_to_explain"),
-    #         "model_name": "decision_tree",
-    #         "imputer": "marginal",
-    #         "normalize": True,
-    #         "verbose": False,
-    #         "random_state": game_seed,
-    #     }
-    #
-    # else:
-    #     all_known = set(LOCAL_GAME_REGISTRY.keys()) | {"SOUM"}
-    #     raise UnknownGameError(game_name, tuple(sorted(all_known)))
-    #
-    # game_params = {
-    #     **default_game_params,
-    #     **base_config.get("game_params", {}),
-    # }
 
     # 1. Build a streamlined fallback dictionary based ONLY on the family pipeline type
     if game_name == "SOUM":

@@ -7,6 +7,10 @@ from __future__ import annotations
 
 from typing import Literal
 
+import shapiq_games.benchmark.global_xai.benchmark_tabular as global_tabular
+import shapiq_games.benchmark.local_xai.benchmark_image as benchmark_image
+import shapiq_games.benchmark.local_xai.benchmark_tabular as local_tabular
+
 # --- Index Type Definition ---
 VALID_INDICES = Literal[
     "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
@@ -64,11 +68,36 @@ LOCAL_GAMES = {
     "Soybean",
     "Thyroid",
     "Zoo",
+    "ImageClassifier",
 }
 
 # global_xai games (currently implemented global explanations)
 GLOBAL_GAMES = {"AdultCensus", "BikeSharing", "CaliforniaHousing"}
 
+# local_xai games (many tabular datasets)
+LOCAL_GAME_REGISTRY = {
+    "BikeSharing": local_tabular.BikeSharing,
+    "CaliforniaHousing": local_tabular.CaliforniaHousing,
+    "AdultCensus": local_tabular.AdultCensus,
+    "Mushroom": local_tabular.Mushroom,
+    "Soybean": local_tabular.Soybean,
+    "Thyroid": local_tabular.Thyroid,
+    "Annealing": local_tabular.Annealing,
+    "Arrhythmia": local_tabular.Arrhythmia,
+    "BreastCancer": local_tabular.BreastCancer,
+    "Hepatitis": local_tabular.Hepatitis,
+    "Ionosphere": local_tabular.Ionosphere,
+    "Nursery": local_tabular.Nursery,
+    "Zoo": local_tabular.Zoo,
+    "ImageClassifier": benchmark_image.ImageClassifier,
+}
+
+# global_xai games (currently implemented global explanations)
+GLOBAL_GAME_REGISTRY = {
+    "BikeSharing": global_tabular.BikeSharing,
+    "CaliforniaHousing": global_tabular.CaliforniaHousing,
+    "AdultCensus": global_tabular.AdultCensus,
+}
 REGRESSION_GAMES = {
     "BikeSharing",
     "CaliforniaHousing",
@@ -86,6 +115,7 @@ CLASSIFICATION_GAMES = {
     "Ionosphere",
     "Nursery",
     "Zoo",
+    "ImageClassifier",
 }
 # --- Supported Approximators Whitelist ---
 # Extracted from shapiq/approximator/__init__.py
