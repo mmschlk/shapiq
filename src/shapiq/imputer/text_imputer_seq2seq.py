@@ -21,6 +21,13 @@ def _require_nltk_resource(resource_path: str, download_name: str) -> None:
     try:
         nltk.data.find(resource_path)
     except LookupError as error:
+        try:
+            nltk.data.find(f"{resource_path}.zip")
+        except LookupError:
+            pass
+        else:
+            return
+
         msg = (
             f"Missing NLTK resource '{download_name}'. "
             "Install it once with:\n\n"
