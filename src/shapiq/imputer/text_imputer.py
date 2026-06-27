@@ -10,18 +10,23 @@ import nltk
 from nltk.corpus import wordnet as wn
 from nltk.tree import Tree
 
-from transformers import AutoModelForMaskedLM,AutoTokenizer
-
-nltk.download("punkt")
-nltk.download("wordnet")
-nltk.download("averaged_perceptron_tagger")
-nltk.download("averaged_perceptron_tagger_eng")
-nltk.download("maxent_ne_chunker")
-nltk.download("words")
-nltk.download("maxent_ne_chunker_tab")
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
+
+def _require_nltk_resource(resource_path: str, download_name: str) -> None:
+    """Raise a helpful error if an NLTK resource is not installed."""
+    try:
+        nltk.data.find(resource_path)
+    except LookupError as error:
+        msg = (
+            f"Missing NLTK resource '{download_name}'. "
+            "Install it once with:\n\n"
+            "    import nltk\n"
+            f"    nltk.download('{download_name}')\n"
+        )
+        raise LookupError(msg) from error
 
 # =============================================================================
 # PLAYER STRATEGIES
@@ -29,8 +34,19 @@ if TYPE_CHECKING:
 
 
 class BasePlayerStrategy(ABC):
-    """Abstract interface for defining players."""
+    """Abstract interface for converting text into Shapley players.
 
+    A player strategy defines the feature granularity used for attribution.
+    For example, a text can be represented by subwords, words, named entities, syntactic chunks, or sentences.
+
+    Implementations must provide:
+    - ``get_players`` to expose the extracted text units;
+    - ``n_players`` to report the number of units;
+    - ``coalition_to_text`` to reconstruct a perturbed text for a coalition.
+
+    A coalition uses ``1`` for a kept player and ``0`` for a missing player.
+    Missing players are replaced by the supplied perturbation strategy.
+    """
     @abstractmethod
     def get_players(self) -> list[str]:
         """Return player list."""
@@ -41,26 +57,22 @@ class BasePlayerStrategy(ABC):
         coalition: np.ndarray,
         perturbation_strategy: BasePerturbationStrategy,
     ) -> str:
-        """Convert coalition into perturbed text."""
+        """Reconstruct text for a coalition using a perturbation strategy.
+
+        Parameters:
+        coalition:
+            One-dimensional binary vector. A value of ``1`` keeps the corresponding player; a value of ``0`` replaces it using ``perturbation_strategy``.
+        perturbation_strategy:
+            Strategy that determines how missing players are represented.
+
+        Returns:
+        str: The perturbed text corresponding to the coalition.
+        """
 
     @property
     @abstractmethod
     def n_players(self) -> int:
         """Return number of players."""
-
-
-# =============================================================================
-# TO DO:
-# Current implementation:
-# - sub-word-level players
-# - word-level players
-# - named-entity-level players
-# - chunk-level players
-# - sentence-level players
-
-# Future:
-# - additional player strategies
-# =============================================================================
 
 # =============================================================================
 # SUBWORD-LEVEL PLAYER STRATEGY
@@ -107,7 +119,7 @@ class SubwordPlayerStrategy(BasePlayerStrategy):
 
         output_tokens: list[str] = []
 
-        for idx, (keep, token) in enumerate(zip(coalition, self.subwords, strict=False) ):
+        for idx, (keep, token) in enumerate(zip(coalition, self.subwords, strict=False)):
             if keep:
                 output_tokens.append(token)
 
@@ -139,6 +151,7 @@ class WordPlayerStrategy(BasePlayerStrategy):
     ) -> None:
         """Initialize word-level player strategy."""
         self.text = text
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
         self.words = nltk.word_tokenize(text)
 
     def get_players(self) -> list[str]:
@@ -197,6 +210,11 @@ class NamedEntityPlayerStrategy(BasePlayerStrategy):
     ) -> None:
         """Initialize named-entity player strategy."""
         self.text = text
+
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
+        _require_nltk_resource("taggers/averaged_perceptron_tagger_eng", "averaged_perceptron_tagger_eng")
+        _require_nltk_resource("chunkers/maxent_ne_chunker_tab", "maxent_ne_chunker_tab")
+        _require_nltk_resource("corpora/words", "words")
 
         tokens = nltk.word_tokenize(text)
         pos_tags = nltk.pos_tag(tokens)
@@ -273,7 +291,8 @@ class ChunkPlayerStrategy(BasePlayerStrategy):
     ) -> None:
         """Initialize chunk-level player strategy."""
         self.text = text
-
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
+        _require_nltk_resource("taggers/averaged_perceptron_tagger_eng", "averaged_perceptron_tagger_eng")
         tokens = nltk.word_tokenize(text)
         pos_tags = nltk.pos_tag(tokens)
 
@@ -354,6 +373,7 @@ class SentencePlayerStrategy(BasePlayerStrategy):
     ) -> None:
         """Sentence-level player strategy using NLTK sentence splitting."""
         self.text = text
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
         self.sentences = nltk.sent_tokenize(text)
 
     def get_players(self) -> list[str]:
@@ -432,28 +452,35 @@ def create_player_strategy(
 # =============================================================================
 
 class BasePerturbationStrategy(ABC):
-    """Abstract perturbation strategy."""
+    """Abstract interface for representing missing text players.
 
+    A perturbation strategy receives one missing player and returns replacement text.
+    Simple strategies can ignore coalition-level context, whereas MLM infilling
+    requires it to generate replacements consistently.
+    """
     @abstractmethod
     def perturb(
         self,
         player: str,
-         *,
+        *,
         context: dict | None = None,
     ) -> str:
-        """Perturb a player representation."""
+        """Return a replacement for one missing player.
 
+        Parameters:
+        player:
+            Original text player that is absent from the coalition.
+        context:
+            Optional coalition-level information. When provided, it may contain
+            ``players``, ``coalition``, and ``mask_index``. MLM infilling requires
+            this context; simple replacement strategies ignore it.
+
+        Returns:
+        str:
+            Replacement text. Returning an empty string removes the player.
+        """
 
 # =============================================================================
-# TO DO:
-# Current implementation:
-# - [MASK] replacement
-# - [PAD] replacement
-# - removal perturbation
-# - neutral perturbation
-# - WordNet Neutral Perturbation
-# - MLM infilling
-
 # Future:
 # - Attention Masking
 # =============================================================================
@@ -463,13 +490,13 @@ class BasePerturbationStrategy(ABC):
 # =============================================================================
 
 class MaskTokenPerturbation(BasePerturbationStrategy):
-    """Replace missing words with [MASK]."""
+    """Replace a missing player with the tokenizer's mask token."""
 
     def __init__(
         self,
         tokenizer: PreTrainedTokenizerBase,
     ) -> None:
-        """Replace missing words with [MASK]."""
+        """Initialize mask-token replacement from the provided tokenizer."""
         self.mask_token = tokenizer.mask_token
 
         if self.mask_token is None:
@@ -559,7 +586,7 @@ class NeutralPerturbation(BasePerturbationStrategy):
 # =============================================================================
 
 def _penn_to_wn(tag: str) -> str | None:
-
+    """Map a Penn Treebank POS tag to a WordNet POS tag when available."""
     if tag.startswith("N"):
         return wn.NOUN
 
@@ -574,8 +601,13 @@ def _penn_to_wn(tag: str) -> str | None:
 
     return None
 
-def _get_neutral_replacement( word: str, pos_tag: str) -> str:
-    """Generate a semantic neutral replacement using WordNet hypernyms."""
+def _get_neutral_replacement(word: str, pos_tag: str) -> str:
+    """Return a broad WordNet hypernym or a neutral fallback.
+
+    The first WordNet synset and its first hypernym are used as a lightweight,
+    deterministic approximation of a semantically broader replacement.
+    If no suitable mapping exists, ``"something"`` is returned.
+    """
     wn_pos = _penn_to_wn(pos_tag)
 
     if wn_pos is None:
@@ -604,6 +636,8 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
         context: dict | None = None,  # noqa: ARG002
     ) -> str:
         """Replace a player with a semantic hypernym."""
+        _require_nltk_resource("corpora/wordnet", "wordnet")
+        _require_nltk_resource("taggers/averaged_perceptron_tagger_eng", "averaged_perceptron_tagger_eng")
         tag = nltk.pos_tag([_player])[0][1]
 
         return _get_neutral_replacement(_player, tag)
@@ -617,16 +651,36 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
 # =============================================================================
 
 class MLMInfillingPerturbation(BasePerturbationStrategy):
-    """Fill missing players using a masked language model."""
+    """Replace missing player spans with samples from a masked language model.
 
+    For a coalition, all missing players are masked simultaneously and an MLM predicts replacements conditioned on the remaining players.
+    Replacements are cached per coalition so that all missing players in the same coalition are generated from one MLM forward pass.
+    This strategy currently supports player strategies whose players represent contiguous text spans:
+    - ``WordPlayerStrategy``
+    - ``NamedEntityPlayerStrategy``
+    - ``ChunkPlayerStrategy``
+
+    It does not support subword or sentence players in the current version. Subword masking can produce invalid token fragments,
+    while sentence-level masking is not a suitable input representation for the current MLM setup.
+
+    Parameters:
+    model_name:
+        Hugging Face masked-language-model checkpoint used for infilling.
+    device:
+        Device on which the MLM is evaluated.
+    num_samples:
+        Number of independently sampled infillings used by ``TextImputer`` to estimate a coalition value by Monte Carlo averaging.
+
+    """
     def __init__(
         self,
         model_name: str = "bert-base-uncased",
         device: str = "cpu",
+        num_samples: int = 100,
     ) -> None:
         """Initialize MLM-based infilling strategy."""
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-
+        self.model_name = model_name
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
 
         self.device = device
@@ -641,12 +695,23 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
 
         self._cache: dict[tuple, dict[int, str]] = {}
 
+        self.num_samples = num_samples
+
+    def clear_cache(self) -> None:
+        """Discard cached replacements before generating a new MLM sample.
+
+        ``TextImputer`` calls this once per Monte Carlo sample.Within one sample,
+        the cache ensures that all missing players of the same coalitionuse replacements from the same MLM forward pass.
+
+        """
+        self._cache.clear()
+
     def _build_cache_key(
         self,
         players: list[str],
         coalition: np.ndarray,
     ) -> tuple:
-
+        """Create a stable cache key for one player sequence and coalition."""
         return (tuple(players), tuple(coalition.tolist()))
 
     def _predict_masks(
@@ -654,6 +719,14 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         players: list[str],
         coalition: np.ndarray,
     ) -> dict[int, str]:
+        """Predict one replacement for every missing player in a coalition.
+
+        All absent players are replaced by the MLM mask token at once. Candidate
+        tokens that decode to special tokens, empty strings, or WordPiece continuations
+        are rejected. If no valid candidate is sampled after a fixed number of attempts,
+        the neutral fallback ``"something"`` is used.
+
+        """
         masked_players = []
 
         for keep, player in zip(coalition, players, strict=False):
@@ -682,18 +755,24 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         replacements = {}
 
         for player_idx, token_pos in zip(np.where(coalition == 0)[0], mask_positions,strict=False):
-            top_k = 10
+            probs = torch.softmax(logits[0, token_pos], dim=-1)
 
-            candidate_ids = (
-                logits[0, token_pos]
-                .topk(top_k)
-                .indices
-                .tolist()
-            )
             replacement = "something"
+            max_sampling_attempts = 100
 
-            for candidate_id in candidate_ids:
-                token = self.tokenizer.convert_ids_to_tokens(candidate_id)
+            for _ in range(max_sampling_attempts):
+                candidate_id = torch.multinomial(
+                    probs,
+                    num_samples=1,
+                ).item()
+
+                token = self.tokenizer.decode(
+                    [candidate_id],
+                    skip_special_tokens=True,
+                ).strip()
+
+                if token == "":
+                    continue
 
                 if token in {
                     self.tokenizer.cls_token,
@@ -719,7 +798,13 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         *,
         context: dict | None = None,
     ) -> str:
-        """Generate an MLM-based replacement for a missing player."""
+        """Return the cached or newly generated MLM replacement for one player.
+
+        The ``context`` dictionary must contain the complete player list, the
+        coalition, and the index of the currently missing player. This allows one
+        coalition-level MLM prediction to be shared across all missing players.
+
+        """
         if context is None:
             msg = ("MLMInfillingPerturbation requires context.")
             raise ValueError(msg)
@@ -753,6 +838,8 @@ PERTURBATION_STRATEGIES = {
 def create_perturbation_strategy(
     strategy: str,
     tokenizer: PreTrainedTokenizerBase,
+    mlm_model_name: str = "bert-base-uncased",
+    mlm_num_samples: int = 10,
 ) -> BasePerturbationStrategy:
     """Create a perturbation strategy from a string identifier."""
     if strategy not in PERTURBATION_STRATEGIES:
@@ -772,7 +859,10 @@ def create_perturbation_strategy(
         return strategy_cls(tokenizer)
 
     if strategy == "mlm_infilling":
-        return strategy_cls()
+        return strategy_cls(
+            model_name=mlm_model_name,
+            num_samples=mlm_num_samples
+        )
 
     return strategy_cls()
 
@@ -806,7 +896,11 @@ class BaseTargetCallable(ABC):
 # =============================================================================
 
 class EncoderClassifierCallable(BaseTargetCallable):
-    """Encoder classifier scoring."""
+    """Score text with an encoder-only sequence-classification model.
+
+    The callable returns either the selected class logit or its softmax probability.
+    It is suitable for models such as BERT, RoBERTa, or DistilBERT with a sequence-classification head.
+    """
 
     def __init__(
         self,
@@ -830,7 +924,12 @@ class EncoderClassifierCallable(BaseTargetCallable):
         self,
         texts: list[str],
     ) -> np.ndarray:
-        """Run encoder classifier inference."""
+        """Return one score per text from the configured classifier output.
+
+        Texts are tokenized as a padded batch and evaluated in inference mode.
+        Depending on ``output_type``, the returned score is either the raw logit or
+        the softmax probability for ``class_idx``.
+        """
         encoded = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 
         encoded = {
@@ -859,7 +958,16 @@ class EncoderClassifierCallable(BaseTargetCallable):
 # =============================================================================
 
 class CausalLMCallable(BaseTargetCallable):
-    """Causal language model scoring."""
+    """Score text using the log-probability of a target causal-LM continuation.
+
+    Each input text is inserted into ``prompt_template``. The score is the
+    autoregressive log-probability of ``target_label`` after that prompt.
+    Multi-token target labels are scored token by token, conditioned on the
+    prompt and all preceding target tokens.
+
+    This supports decoder-only models such as Gemma, Llama, GPT, and Qwen,
+    provided their tokenizer defines either a padding token or an EOS token.
+    """
     def __init__(
         self,
         model: PreTrainedModel,
@@ -901,7 +1009,11 @@ class CausalLMCallable(BaseTargetCallable):
         self,
         prompt: str,
     ) -> float:
-        """Compute log-probability of target sequence."""
+        """Compute the autoregressive log-probability of the target label.
+
+        For each target token, the model receives the prompt followed by preceding target tokens.
+        The final-position distribution is then used to score the next target token.
+        """
         prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
         target_ids = self.target_token_ids
         total_log_prob = 0.0
@@ -937,12 +1049,11 @@ class CausalLMCallable(BaseTargetCallable):
         return np.asarray(scores,dtype=np.float32)
 
 # =============================================================================
-# TO DO:
+# Future:
 # seq2seq support
 # =============================================================================
 
 class Seq2SeqCallable(BaseTargetCallable):
-    """Placeholder for future seq2seq support."""
 
     def predict(
         self,
@@ -957,8 +1068,39 @@ class Seq2SeqCallable(BaseTargetCallable):
 # =============================================================================
 
 class TextImputer:
-    """Generalized text imputer."""
+    """Coalition-based text imputer for model-agnostic Shapley explanations.
 
+    ``TextImputer`` combines three independent components:
+    - a player strategy, which chooses the text features to explain;
+    - a perturbation strategy, which represents missing features;
+      - a target callable, which maps perturbed text to a scalar model score.
+
+    The resulting object is callable with a coalition matrix and can therefore
+    be passed directly to shapiq approximators. A coalition entry of ``1``
+    keeps a player; ``0`` marks it as missing.
+
+    For ordinary perturbation strategies, each coalition is evaluated once.
+    For ``MLMInfillingPerturbation``, the imputer evaluates multiple sampled
+    infillings and returns their average score, approximating ``E[f(X) | X_S]``.
+
+    Parameters:
+    model:
+        Hugging Face model whose output is explained.
+    tokenizer:
+        Tokenizer associated with ``model``.
+    text:
+        Original text instance to explain.
+
+    player_level: Player granularity
+        ``"subword"``, ``"word"``, ``"named_entity"``, ``"chunk"``, or ``"sentence"``.
+
+    perturbation_type: Missing-player strategy
+        ``"mask"``, ``"pad"``, ``"removal"``, ``"neutral"``, ``"wordnet_neutral"``, or ``"mlm_infilling"``.
+
+    model_type: Target-model interface
+        ``"encoder_classifier"``, ``"causal_lm"``, or ``"seq2seq"``. Seq2seq is currently a placeholder.
+
+    """
     def __init__(
         self,
         model: PreTrainedModel,
@@ -990,6 +1132,12 @@ class TextImputer:
 
         player_strategy: BasePlayerStrategy | None = None,
         perturbation_strategy: BasePerturbationStrategy | None = None,
+
+        # ---------------------------------------------------------------------
+        # MLM infilling settings
+        # ---------------------------------------------------------------------
+        mlm_model_name: str = "bert-base-uncased",
+        mlm_num_samples: int = 100,
 
         # ---------------------------------------------------------------------
         # Generalize target callable support.
@@ -1034,7 +1182,14 @@ class TextImputer:
         # =============================================================================
 
         if perturbation_strategy is None:
-            perturbation_strategy = (create_perturbation_strategy(strategy=perturbation_type, tokenizer=tokenizer))
+            perturbation_strategy = (
+                create_perturbation_strategy(
+                    strategy=perturbation_type,
+                    tokenizer=tokenizer,
+                    mlm_model_name=mlm_model_name,
+                    mlm_num_samples=mlm_num_samples,
+                )
+            )
 
         self.perturbation_type = perturbation_type
         self.perturbation_strategy = perturbation_strategy
@@ -1142,7 +1297,13 @@ class TextImputer:
         self,
         coalitions: np.ndarray,
     ) -> np.ndarray:
-        """Evaluate coalition values."""
+        """Evaluate one or more coalitions.
+
+        For standard perturbations, each coalition is converted to one perturbed text and scored once.
+        For MLM infilling, the process is repeated ``mlm_num_samples`` times with fresh sampled replacements;
+        the returned value
+        is the mean score across samples.
+        """
         coalitions = np.asarray(coalitions)
 
         if coalitions.ndim == 1:
@@ -1154,6 +1315,26 @@ class TextImputer:
                 f"got {coalitions.shape[1]}"
             )
             raise ValueError(msg)
+
+        if isinstance(
+            self.perturbation_strategy,
+            MLMInfillingPerturbation,
+        ):
+            num_samples = self.perturbation_strategy.num_samples
+            all_scores = []
+
+            # Stored for debugging and demonstrations of sampled MLM infillings.
+            self._last_generated_texts = []
+
+            for _ in range(num_samples):
+                self.perturbation_strategy.clear_cache()
+                texts = self._coalitions_to_texts(coalitions)
+                self._last_generated_texts.extend(texts)
+                scores = self._batched_predict(texts)
+                all_scores.append(scores)
+
+            all_scores = np.stack(all_scores, axis=0)
+            return np.mean(all_scores, axis=0)
 
         texts = self._coalitions_to_texts(coalitions)
         return self._batched_predict(texts)

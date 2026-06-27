@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.special import binom
 
-from shapiq.utils.sets import powerset
+from shapiq.utils.sets import log_binom, powerset
 
 if TYPE_CHECKING:
     from shapiq.typing import BoolVector, CoalitionTuple, FloatVector, IntVector
@@ -228,6 +228,34 @@ class CoalitionSampler:
         return self.coalitions_counter / (self.coalitions_probability * n_coalitions_total_samples)
 
     @property
+    def log_sampling_adjustment_weights(self) -> np.ndarray:
+        """Natural logarithm of :attr:`sampling_adjustment_weights`, stable for large ``n``.
+
+        Identical in value to ``log(sampling_adjustment_weights)`` but computed without ever
+        materialising ``1 / binom(n, size)`` (which underflows to ``0`` for many players and then
+        overflows to ``inf`` once divided by). The in-size probability is taken from
+        :attr:`coalitions_in_size_log_probability` (``-log_binom`` in log-space), so the result is
+        finite even when the individual coalition probability is astronomically small.
+
+        Returns:
+            The log adjusted weight for each coalition of shape ``(n_coalitions,)``.
+
+        """
+        coalitions_counter = self.coalitions_counter
+        is_coalition_sampled = self.is_coalition_sampled
+        n_total_samples = np.sum(coalitions_counter[is_coalition_sampled])
+        total_samples_values = np.array([1, n_total_samples])
+        n_coalitions_total_samples = total_samples_values[is_coalition_sampled.astype(int)]
+        log_coalitions_probability = (
+            np.log(self.coalitions_size_probability) + self.coalitions_in_size_log_probability
+        )
+        return (
+            np.log(coalitions_counter)
+            - log_coalitions_probability
+            - np.log(n_coalitions_total_samples)
+        )
+
+    @property
     def coalitions_matrix(self) -> np.ndarray:
         """Returns the binary matrix of sampled coalitions.
 
@@ -302,6 +330,22 @@ class CoalitionSampler:
 
         """
         return copy.deepcopy(self._sampled_coalitions_in_size_prob)
+
+    @property
+    def coalitions_in_size_log_probability(self) -> np.ndarray:
+        """Natural logarithm of :attr:`coalitions_in_size_probability`, stable for large ``n``.
+
+        For sampled coalitions the in-size probability is uniform, ``1 / binom(n, size)``, so its
+        log is ``-log_binom(n, size)``; this avoids the underflow of ``1 / binom`` to ``0`` once
+        ``binom(n, size)`` overflows (around ``n >= 1029``). Exhaustively computed (border-trick)
+        coalitions have probability ``1`` and therefore log ``0``.
+
+        Returns:
+            The log in-size probability for each coalition of shape ``(n_coalitions,)``.
+
+        """
+        log_prob = -log_binom(self.n, self.coalitions_size)
+        return np.where(self.is_coalition_sampled, log_prob, 0.0)
 
     @property
     def coalitions_size(self) -> np.ndarray:

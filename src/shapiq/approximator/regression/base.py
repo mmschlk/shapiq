@@ -11,7 +11,7 @@ from scipy.special import bernoulli, binom
 
 from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from shapiq.utils.sets import log_binom, powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -121,6 +121,45 @@ class Regression(Approximator[TIndices]):
         msg = f"Index {self.index} not available for Regression Approximator."
         raise ValueError(msg)  # pragma: no cover
 
+    def _init_log_kernel_weights(self, interaction_size: int) -> FloatVector:
+        """Natural logarithm of :meth:`_init_kernel_weights`, stable for large ``n``.
+
+        Returns the per-coalition-size kernel weights in log-space. This avoids materialising the
+        ``1 / binom`` weight (which underflows to ``0`` once ``binom`` overflows for many players);
+        combined in log-space with the sampler's log adjustment weight, whose binomial cancels the
+        one here, the resulting effective regression weight stays finite and ``O(1)`` for mid-size
+        coalitions instead of collapsing to ``0`` (or ``0 * inf = nan``).
+
+        Args:
+            interaction_size: The size of the interaction.
+
+        Returns:
+            The log kernel weights for coalition sizes ``0..n`` in shape ``(n + 1,)``.
+
+        """
+        log_weight_vector = np.full(shape=self.n + 1, fill_value=-np.inf)
+        if self.approximation_index == "FBII":
+            log_weight_vector[:] = -self.n * np.log(2)
+            return log_weight_vector
+        if self.approximation_index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
+            log_big_m = np.log(self._big_M)
+            for coalition_size in range(self.n + 1):
+                if (coalition_size < interaction_size) or (
+                    coalition_size > self.n - interaction_size
+                ):
+                    log_weight_vector[coalition_size] = log_big_m
+                else:
+                    log_weight_vector[coalition_size] = -(
+                        np.log(self.n - 2 * interaction_size + 1)
+                        + log_binom(
+                            self.n - 2 * interaction_size,
+                            coalition_size - interaction_size,
+                        )
+                    )
+            return log_weight_vector
+        msg = f"Index {self.index} not available for Regression Approximator."
+        raise ValueError(msg)  # pragma: no cover
+
     def approximate(
         self,
         budget: int,
@@ -151,10 +190,10 @@ class Regression(Approximator[TIndices]):
             The `InteractionValues` object containing the estimated interaction values.
 
         """
-        # initialize the kernel weights
+        # initialize the kernel weights (in log-space so they stay finite for many players)
         kernel_weights_dict = {}
         for interaction_size in range(1, self.max_order + 1):
-            kernel_weights_dict[interaction_size] = self._init_kernel_weights(interaction_size)
+            kernel_weights_dict[interaction_size] = self._init_log_kernel_weights(interaction_size)
 
         # get the coalitions
         self._sampler.sample(budget)
@@ -169,7 +208,7 @@ class Regression(Approximator[TIndices]):
             )
         else:
             shapley_interactions_values = self.regression_routine(
-                kernel_weights=kernel_weights_dict[1],
+                log_kernel_weights=kernel_weights_dict[1],
                 game_values=game_values,
                 index_approximation=self.approximation_index,
             )
@@ -212,7 +251,7 @@ class Regression(Approximator[TIndices]):
 
         """
         coalitions_matrix = self._sampler.coalitions_matrix
-        sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
+        log_sampling_adjustment_weights = self._sampler.log_sampling_adjustment_weights
         coalitions_size = np.sum(coalitions_matrix, axis=1)
 
         # set up the storage mechanisms
@@ -233,9 +272,9 @@ class Regression(Approximator[TIndices]):
             # for multiple weights currently, it is computed for each interaction size
             # however, the computation is not really a bottleneck anymore
             regression_matrix, regression_weights = _get_regression_matrices(
-                kernel_weights=kernel_weights_dict[interaction_size],
+                log_kernel_weights=kernel_weights_dict[interaction_size],
                 regression_coefficient_weight=regression_coefficient_weight,
-                sampling_adjustment_weights=sampling_adjustment_weights,
+                log_sampling_adjustment_weights=log_sampling_adjustment_weights,
                 coalitions_matrix=coalitions_matrix,
                 max_order=self.max_order,
                 n=self.n,
@@ -291,7 +330,7 @@ class Regression(Approximator[TIndices]):
 
     def regression_routine(
         self,
-        kernel_weights: FloatVector,
+        log_kernel_weights: FloatVector,
         game_values: FloatVector,
         index_approximation: str,
     ) -> FloatVector:
@@ -303,7 +342,7 @@ class Regression(Approximator[TIndices]):
         computes all interactions using a single regression problem.
 
         Args:
-            kernel_weights: An array of the regression weights associated with each coalition size.
+            log_kernel_weights: An array of the log regression weights per coalition size.
             game_values: The computed game values for the sampled coalitions.
             index_approximation: The current index that is approximated.
 
@@ -312,7 +351,7 @@ class Regression(Approximator[TIndices]):
 
         """
         coalitions_matrix = self._sampler.coalitions_matrix
-        sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
+        log_sampling_adjustment_weights = self._sampler.log_sampling_adjustment_weights
         empty_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == 0][0])
         regression_response = game_values - empty_coalition_value
         regression_coefficient_weight = self._get_regression_coefficient_weights(
@@ -321,9 +360,9 @@ class Regression(Approximator[TIndices]):
         )
 
         regression_matrix, regression_weights = _get_regression_matrices(
-            kernel_weights=kernel_weights,
+            log_kernel_weights=log_kernel_weights,
             regression_coefficient_weight=regression_coefficient_weight,
-            sampling_adjustment_weights=sampling_adjustment_weights,
+            log_sampling_adjustment_weights=log_sampling_adjustment_weights,
             coalitions_matrix=coalitions_matrix,
             max_order=self.max_order,
             n=self.n,
@@ -541,19 +580,25 @@ class Regression(Approximator[TIndices]):
 
 
 def _get_regression_matrices(
-    kernel_weights: FloatVector,
+    log_kernel_weights: FloatVector,
     regression_coefficient_weight: FloatVector,
-    sampling_adjustment_weights: FloatVector,
+    log_sampling_adjustment_weights: FloatVector,
     coalitions_matrix: CoalitionMatrix,
     max_order: int,
     n: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Constructs the regression matrix and regression weights for the regression problem.
 
+    The per-coalition regression weight is the product of the kernel weight (for the coalition
+    size) and the sampling-adjustment weight. Both are passed in log-space and combined as
+    ``exp(log_kernel_weight + log_sampling_adjustment_weight)`` so that, for many players, the
+    binomials in the two factors cancel before exponentiation -- avoiding the
+    ``0 (underflowed weight) * inf (overflowed adjustment) = nan`` that a direct product produces.
+
     Args:
-        kernel_weights: The weights for the regression problem for each coalition.
+        log_kernel_weights: The log regression weights per coalition size (shape ``(n + 1,)``).
         regression_coefficient_weight: The weights for the regression coefficients.
-        sampling_adjustment_weights: The weights for the sampling procedure.
+        log_sampling_adjustment_weights: The log sampling-adjustment weight per coalition.
         coalitions_matrix: The coalitions matrix.
         max_order: The maximum order of the approximation.
         n: The number of players.
@@ -582,11 +627,13 @@ def _get_regression_matrices(
     # use intersection sizes and interaction sizes to index regression_coefficient_weight
     regression_matrix = regression_coefficient_weight[interaction_sizes, intersection_sizes]
 
-    # compute regression weights
-    regression_weights = kernel_weights[np.sum(coalitions_matrix, axis=1)]
-
-    # adjust regression weights with the sampling weights
-    regression_weights *= sampling_adjustment_weights
+    # combine the (log) kernel weight per coalition size with the (log) sampling adjustment and
+    # exponentiate once -- the binomials inside the two factors cancel in the sum, so the effective
+    # weight stays finite even when each factor individually under-/overflows for many players
+    log_regression_weights = (
+        log_kernel_weights[np.sum(coalitions_matrix, axis=1)] + log_sampling_adjustment_weights
+    )
+    regression_weights = np.exp(log_regression_weights)
 
     return regression_matrix, regression_weights
 
