@@ -483,3 +483,44 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
                 game_interactions.get(interaction, 0),
                 atol=1e-6,
             )
+
+
+@pytest.mark.parametrize(("index", "order"), [("SV", 1), ("SII", 2)])
+def test_interventional_float64_point_matches_model(index, order):
+    """A float64 explain point must route identically to the float32 model it explains.
+
+    Regression test for a precision bug in the dense E/R path: tree thresholds and
+    the reference data are float32 (XGBoost evaluates splits in float32), but the
+    explain point was routed at its incoming float64 precision. A feature value
+    lying between the float32 and float64 representation of a split threshold then
+    flipped the routing, sending the explanation to the wrong leaf and disagreeing
+    with the true model (and the exact interventional game) by a whole leaf value.
+    """
+    xgboost = pytest.importorskip("xgboost")
+    from sklearn.datasets import make_regression
+
+    # Deep ensemble so root->leaf paths split the same feature repeatedly and
+    # produce thresholds prone to the float32/float64 boundary collision.
+    X, y = make_regression(n_samples=300, n_features=5, noise=0.1, random_state=2)
+    model = xgboost.XGBRegressor(n_estimators=10, max_depth=6, random_state=0).fit(X, y)
+
+    X_train = X[:25]
+    # float64 explain point that lands on the wrong leaf pre-fix.
+    point_to_explain = X[250].astype(np.float64)
+    assert point_to_explain.dtype == np.float64
+
+    explainer = InterventionalTreeExplainer(model, X_train, index=index, max_order=order)
+    own_interactions = explainer.explain_function(point_to_explain).interactions
+
+    game = InterventionalGame(model, X_train, point_to_explain)
+    exact_values = ExactComputer(game)(index, order)
+    game_interactions = exact_values.interactions
+
+    for interaction in own_interactions:
+        if len(interaction) == 0:
+            continue
+        assert np.isclose(
+            own_interactions[interaction],
+            game_interactions.get(interaction, 0),
+            atol=1e-4,
+        )

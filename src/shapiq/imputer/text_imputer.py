@@ -16,12 +16,18 @@ if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
     from transformers.modeling_outputs import BaseModelOutput
 
-
 def _require_nltk_resource(resource_path: str, download_name: str) -> None:
     """Raise a helpful error if an NLTK resource is not installed."""
     try:
         nltk.data.find(resource_path)
     except LookupError as error:
+        try:
+            nltk.data.find(f"{resource_path}.zip")
+        except LookupError:
+            pass
+        else:
+            return
+
         msg = (
             f"Missing NLTK resource '{download_name}'. "
             "Install it once with:\n\n"
@@ -51,6 +57,17 @@ class BasePlayerStrategy(ABC):
     Missing players are replaced by the supplied perturbation strategy.
     """
 
+    A player strategy defines the feature granularity used for attribution.
+    For example, a text can be represented by subwords, words, named entities, syntactic chunks, or sentences.
+
+    Implementations must provide:
+    - ``get_players`` to expose the extracted text units;
+    - ``n_players`` to report the number of units;
+    - ``coalition_to_text`` to reconstruct a perturbed text for a coalition.
+
+    A coalition uses ``1`` for a kept player and ``0`` for a missing player.
+    Missing players are replaced by the supplied perturbation strategy.
+    """
     @abstractmethod
     def get_players(self) -> list[str]:
         """Return player list."""
@@ -457,7 +474,6 @@ class BasePerturbationStrategy(ABC):
     Simple strategies can ignore coalition-level context, whereas MLM infilling
     requires it to generate replacements consistently.
     """
-
     @abstractmethod
     def perturb(
         self,
@@ -690,6 +706,7 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
 
     """
 
+    """
     def __init__(
         self,
         model_name: str = "bert-base-uncased",
@@ -1188,16 +1205,10 @@ def create_perturbation_strategy(
         return WordNetNeutralPerturbation()
 
     if strategy == "mlm_infilling":
-        return MLMInfillingPerturbation(
+        return strategy_cls(
             model_name=mlm_model_name,
-            num_samples=mlm_num_samples,
+            num_samples=mlm_num_samples
         )
-
-    msg = (
-        f"Unknown perturbation strategy: {strategy}. "
-        f"Available strategies: {list(PERTURBATION_STRATEGIES)}"
-    )
-    raise ValueError(msg)
 
 
 # =============================================================================
@@ -1543,9 +1554,11 @@ class Seq2SeqCallable(BaseTargetCallable):
         self.decoder_start_token_id = decoder_start_token_id
 
     def _build_prompt(self, text: str) -> str:
+        """ Wrap the original text into a prompt template. """
         return self.prompt_template.format(text=text)
 
     def _encode_inputs(self, texts: list[str]) -> dict[str, torch.Tensor]:
+        """ Encode a list of texts into encoder input tensors. """
         encoded = self.tokenizer(
             texts,
             padding=True,
@@ -1560,6 +1573,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         attention_mask: torch.Tensor,
         batch_size: int,
     ) -> np.ndarray:
+        """ Compute the log-probability of the decoder generating the target token sequence. """
         total_log_probs = torch.zeros(batch_size, device=self.device)
 
         decoder_input_ids = torch.full(
@@ -1594,7 +1608,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         return total_log_probs.cpu().numpy()
 
     def predict(self, texts: list[str]) -> np.ndarray:
-        """Score raw texts by target-label log probability."""
+        """ Compute log-probability scores of the Seq2Seq target sequence for a batch of texts. """
         prompts = [self._build_prompt(text) for text in texts]
         encoder_inputs = self._encode_inputs(prompts)
 
@@ -1682,7 +1696,6 @@ class TextImputer:
         ``"encoder_classifier"``, ``"causal_lm"``, or ``"seq2seq"``. Seq2seq is currently a placeholder.
 
     """
-
     def __init__(
         self,
         model: PreTrainedModel,
@@ -1706,6 +1719,11 @@ class TextImputer:
         # ---------------------------------------------------------------------
         normalize_target_logprob: bool = True,
         # ---------------------------------------------------------------------
+        # Seq2Seq settings
+        # ---------------------------------------------------------------------
+        normalize_target_logprob: bool = True,
+
+        # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
         player_level: str = "word",
@@ -1717,6 +1735,12 @@ class TextImputer:
         # ---------------------------------------------------------------------
         mlm_model_name: str = "bert-base-uncased",
         mlm_num_samples: int = 100,
+        # ---------------------------------------------------------------------
+        # MLM infilling settings
+        # ---------------------------------------------------------------------
+        mlm_model_name: str = "bert-base-uncased",
+        mlm_num_samples: int = 100,
+
         # ---------------------------------------------------------------------
         # Generalize target callable support.
         # ---------------------------------------------------------------------
