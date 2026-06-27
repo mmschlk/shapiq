@@ -862,7 +862,7 @@ class AttentionMaskPerturbation(BasePerturbationStrategy):
         self,
         player: str,
         *,
-        context: dict | None = None,    # noqa: ARG002
+        context: dict | None = None,  # noqa: ARG002
     ) -> str:
         """Return the original player.
 
@@ -1704,7 +1704,7 @@ class TextImputer:
         # ---------------------------------------------------------------------
         # Seq2Seq settings
         # ---------------------------------------------------------------------
-        normalize_target_logprob: bool = True,  # noqa: FBT001, FBT002
+        normalize_target_logprob: bool = True,
         # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
