@@ -39,7 +39,7 @@ game_params:
   x_explain_path: "src/shapiq_games/benchmark/imagenet_examples/ILSVRC2012_val_00000356.JPEG"
 
   # Configuration for ResNet-18 superpixel grouping (only active if model_name is "resnet_18")
-  n_superpixel_resnet: 14
+  #  n_superpixel_resnet: 14
 
   normalize: true
   verbose: false
