@@ -1,6 +1,6 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "SII"
+index: "k-SII"
 max_order: 2
 
 game_params:
@@ -34,12 +34,10 @@ approximators:
   - "PermutationSamplingSII"
   - "KernelSHAPIQ"
   - "InconsistentKernelSHAPIQ"
-  #   - "SVARMIQ"
-  #   - "SHAPIQ"
-  #   - "SPEX"
-  #   - "ProxySPEX"
+  - "SVARMIQ"
+  - "SHAPIQ"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250

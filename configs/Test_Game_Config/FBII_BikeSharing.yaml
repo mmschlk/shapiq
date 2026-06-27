@@ -1,6 +1,6 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "STII"
+index: "FBII"
 max_order: 2
 
 game_params:
@@ -31,15 +31,9 @@ ground_truth:
   method: "ExactComputer"
 
 approximators:
-  - "PermutationSamplingSTII"
-  #  - "KernelSHAPIQ"
-  #  - "InconsistentKernelSHAPIQ"
-  #  - "SVARMIQ"
-  #  - "SHAPIQ"
-  #  - "SPEX"
-  #  - "ProxySPEX"
+  - "RegressionFBII"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250

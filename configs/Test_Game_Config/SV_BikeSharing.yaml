@@ -1,7 +1,7 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "FSII"
-max_order: 2
+index: "SV"
+max_order: 1
 
 game_params:
   # --- Universal Game Control ---
@@ -31,15 +31,15 @@ ground_truth:
   method: "ExactComputer"
 
 approximators:
-  - "RegressionFSII"
-  #   - "KernelSHAPIQ"  # Valid indices are: ('k-SII', 'SII', 'SV').
-  #   - "InconsistentKernelSHAPIQ" # Valid indices are: ('k-SII', 'SII', 'SV').
-  #   - "SVARMIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0. for GT
-  #   - "SHAPIQ"   # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
-  #   - "SPEX"     # Low Budget, Interaction keys do not match
-  #   - "ProxySPEX" # Interaction keys do not match
+  - "OwenSamplingSV"
+  - "StratifiedSamplingSV"
+  - "SVARM"
+  - "UnbiasedKernelSHAP"
+  - "PermutationSamplingSV"
+  - "KernelSHAP"
+  - "kADDSHAP"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250

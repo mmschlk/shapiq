@@ -1,6 +1,6 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "k-SII"
+index: "FSII"
 max_order: 2
 
 game_params:
@@ -31,15 +31,11 @@ ground_truth:
   method: "ExactComputer"
 
 approximators:
-  #  - "PermutationSamplingSII" # Interaction keys do not match. Missing in approx: 12. Missing in ground truth: 0.
-  - "KernelSHAPIQ"
-  - "InconsistentKernelSHAPIQ"
-  #   - "SVARMIQ"
-  #   - "SHAPIQ"
-  #   - "SPEX"
-  #   - "ProxySPEX"
-  #  - "ProxySHAP" # Unsupported index type: k-SII
-  #  - "MSRBiased" # Unsupported index type: k-SII
+  - "RegressionFSII"
+  - "SVARMIQ"
+  - "SHAPIQ"
+  - "ProxySPEX"
+  - "ProxySHAP"
 
 budgets:
   - 250
