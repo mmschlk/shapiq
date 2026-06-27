@@ -57,17 +57,6 @@ class BasePlayerStrategy(ABC):
     Missing players are replaced by the supplied perturbation strategy.
     """
 
-    A player strategy defines the feature granularity used for attribution.
-    For example, a text can be represented by subwords, words, named entities, syntactic chunks, or sentences.
-
-    Implementations must provide:
-    - ``get_players`` to expose the extracted text units;
-    - ``n_players`` to report the number of units;
-    - ``coalition_to_text`` to reconstruct a perturbed text for a coalition.
-
-    A coalition uses ``1`` for a kept player and ``0`` for a missing player.
-    Missing players are replaced by the supplied perturbation strategy.
-    """
     @abstractmethod
     def get_players(self) -> list[str]:
         """Return player list."""
@@ -706,7 +695,6 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
 
     """
 
-    """
     def __init__(
         self,
         model_name: str = "bert-base-uncased",
@@ -1718,10 +1706,6 @@ class TextImputer:
         # Seq2Seq settings
         # ---------------------------------------------------------------------
         normalize_target_logprob: bool = True,
-        # ---------------------------------------------------------------------
-        # Seq2Seq settings
-        # ---------------------------------------------------------------------
-        normalize_target_logprob: bool = True,
 
         # ---------------------------------------------------------------------
         # architecture selection
@@ -1730,11 +1714,6 @@ class TextImputer:
         perturbation_type: str = "mask",
         player_strategy: BasePlayerStrategy | None = None,
         perturbation_strategy: BasePerturbationStrategy | None = None,
-        # ---------------------------------------------------------------------
-        # MLM infilling settings
-        # ---------------------------------------------------------------------
-        mlm_model_name: str = "bert-base-uncased",
-        mlm_num_samples: int = 100,
         # ---------------------------------------------------------------------
         # MLM infilling settings
         # ---------------------------------------------------------------------
