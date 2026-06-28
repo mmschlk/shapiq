@@ -38,10 +38,11 @@ def compute_ground_truth(
             model = getattr(game.setup, "model", None)
 
         if model is None:
-            raise AttributeError(
-                f"The current game '{game.__class__.__name__}' cannot provide a valid tree model for TreeExplainer!"
+            msg = (
+                f"The current game '{game.__class__.__name__}' cannot provide "
+                f"a valid tree model for TreeExplainer!"
             )
-
+            raise AttributeError(msg)
         # Initialize and run TreeExplainer on the target instance
         explainer = TreeExplainer(model=model, index=index, max_order=max_order)
         gt_values = explainer.explain(game.x)

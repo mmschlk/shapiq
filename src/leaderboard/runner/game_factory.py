@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import shapiq_games.benchmark.global_xai.benchmark_tabular as global_tabular
-import shapiq_games.benchmark.local_xai.benchmark_tabular as local_tabular
 from leaderboard.config_manager.constants import (
     GLOBAL_GAME_REGISTRY,
     LOCAL_GAME_REGISTRY,
@@ -67,7 +65,6 @@ def create_game_from_config(
         if game_family == "local_xai":
             default_game_params["x"] = run_config.get("x", 0)
             default_game_params["imputer"] = "marginal"
-            # default_game_params["class_to_explain"] = run_config.get("class_to_explain")
 
     # 2. Merge dictionaries. base_config (fully sanitized by Pydantic) has supreme priority!
     game_params = {
@@ -86,16 +83,18 @@ def create_game_from_config(
             game_params["x_explain_path"] = str(absolute_img_path)
 
             if not absolute_img_path.exists():
-                raise FileNotFoundError(f"Image not found at: {absolute_img_path}")
+                msg = f"Image not found at: {absolute_img_path}"
+                raise FileNotFoundError(msg)
 
     if game_name == "SOUM":
         game_class = SOUM
     elif game_family == "global_xai":
         if game_name not in GLOBAL_GAME_REGISTRY:
-            raise UnknownGameError(
+            msg = (
                 f"Game '{game_name}' is not supported in global_xai family. "
                 f"Available global games are: {tuple(GLOBAL_GAME_REGISTRY.keys())}"
             )
+            raise UnknownGameError(msg)
         game_class = GLOBAL_GAME_REGISTRY[game_name]
     else:
         game_class = LOCAL_GAME_REGISTRY[game_name]

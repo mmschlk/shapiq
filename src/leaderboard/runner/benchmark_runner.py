@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 import logging
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -90,20 +91,20 @@ def run_benchmark(
     for record in results:
         record["ground_truth_method"] = ground_truth_method
 
-    # debugging
+        # debugging
     for record in results:
-        logging.debug("failed: %s", record["run_failed"])
-        logging.debug("error: %s\n", record["error_message"])
+        logger.debug("failed: %s", record["run_failed"])
+        logger.debug("error: %s\n", record["error_message"])
 
-    # aggregation
+        # aggregation
     aggregated_result = aggregate_fn(results)
 
     # print-out
-    # logging.info("number of raw results: %d", len(results))
-    # logging.info("First raw run record:")
-    # logging.info(json.dumps(results[0], indent=2))
-    # logging.info("\nAggregated result:")
-    # logging.info(json.dumps(aggregated_result, indent=2))
+    logger.info("number of raw results: %d", len(results))
+    logger.info("First raw run record:")
+    logger.info(json.dumps(results[0], indent=2))
+    logger.info("\nAggregated result:")
+    logger.info(json.dumps(aggregated_result, indent=2))
 
     return {
         "raw_results": results,

@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import sys
+from pathlib import Path
 
 
 def get_hardware_info() -> dict:
@@ -22,14 +23,14 @@ def get_hardware_info() -> dict:
     if platform.system().lower() == "darwin":
         try:
             result = subprocess.run(
-                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                ["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
             if result.stdout.strip():
                 cpu_name = result.stdout.strip()
-        except Exception:
+        except (subprocess.SubprocessError, FileNotFoundError):
             pass
 
     # 2. Dynamically capture total system memory (alternative to psutil)
@@ -40,15 +41,16 @@ def get_hardware_info() -> dict:
         if sys_type == "darwin":
             # macOS: Use sysctl to get total memory in bytes
             result = subprocess.run(
-                ["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, check=True
+                ["/usr/sbin/sysctl", "-n", "hw.memsize"], capture_output=True, text=True, check=True
             )
             bytes_val = int(result.stdout.strip())
             ram_gb = round(bytes_val / (1024**3), 2)
 
         elif sys_type == "linux":
             # Linux: Read MemTotal from /proc/meminfo
-            if os.path.exists("/proc/meminfo"):
-                with open("/proc/meminfo", "r") as f:
+            meminfo_path = Path("/proc/meminfo")
+            if meminfo_path.exists():
+                with meminfo_path.open() as f:
                     for line in f:
                         if line.startswith("MemTotal:"):
                             # Format is usually: MemTotal:       16345300 kB
@@ -57,19 +59,27 @@ def get_hardware_info() -> dict:
                             break
 
         elif sys_type == "windows":
-            # Windows: Use wmic to get total physical memory in bytes
-            result = subprocess.run(
-                ["wmic", "computersystem", "get", "totalphysicalmemory"],
+            system_root = os.environ.get("SYSTEMROOT", "C:\\Windows")
+
+            wmic_path = Path(system_root) / "System32" / "wbem" / "wmic.exe"
+
+            cmd_executable = str(wmic_path) if wmic_path.exists() else "wmic"
+
+            result = subprocess.run(  # noqa: S603
+                [cmd_executable, "computersystem", "get", "totalphysicalmemory"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            # Output looks like: TotalPhysicalMemory\n 17179869184
+
             lines = result.stdout.strip().split("\n")
+
             if len(lines) > 1:
                 bytes_val = int(lines[1].strip())
+
                 ram_gb = round(bytes_val / (1024**3), 2)
-    except Exception:
+
+    except (subprocess.SubprocessError, ValueError, IndexError, OSError):
         ram_gb = None
 
     return {

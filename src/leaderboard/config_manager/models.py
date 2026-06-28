@@ -97,11 +97,7 @@ class MVPRunConfig(BaseModel):
         min_allowed = self.n_players + 1
         max_exclusive = 2**self.n_players
 
-        cleaned_budgets = []
-        for b in self.budgets:
-            # Skip non-positive or out-of-range budgets silently
-            if b > 0 and min_allowed <= b < max_exclusive:
-                cleaned_budgets.append(b)
+        cleaned_budgets = [b for b in self.budgets if b > 0 and min_allowed <= b < max_exclusive]
 
         # If ALL budgets were invalid, we still need at least one fallback to prevent downstream crash
         if not cleaned_budgets:
@@ -114,7 +110,8 @@ class MVPRunConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_approximators(self) -> MVPRunConfig:
-        """Filter out un-runnable, unsupported, or index-incompatible approximators
+        """Filter out un-runnable, unsupported, or index-incompatible approximators.
+
         instead of crashing the process.
         """
         # 1. Block indices that are completely unsupported by the runner pipeline
@@ -198,9 +195,7 @@ class MVPRunConfig(BaseModel):
             # Validation for model_name
             if model_name not in SUPPORTED_VISUAL_MODELS:
                 msg = f"Invalid visual model '{model_name}'. Supported models: {SUPPORTED_VISUAL_MODELS}"
-                raise ValueError(
-                    msg
-                )
+                raise ValueError(msg)
 
             # Validation for mandatory path parameter
             if "x_explain_path" not in cleaned_params:
@@ -287,9 +282,7 @@ class MVPRunConfig(BaseModel):
                 "CRITICAL: Visual games (ImageClassifier) are neural networks. "
                 "'TreeExplainer' is not applicable. Please use 'ExactComputer'."
             )
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         # 2. Enforce n_players consistency
         # Mismatches between n_players and model patch count will crash shapiq
@@ -311,9 +304,7 @@ class MVPRunConfig(BaseModel):
                 f"Configuration Mismatch: '{model_name}' requires n_players={expected_n}, "
                 f"but your config specifies n_players={self.n_players}. Please align them."
             )
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         return self
 
@@ -343,30 +334,31 @@ class MVPRunConfig(BaseModel):
     @model_validator(mode="after")
     def validate_gt_method_for_large_games(self) -> MVPRunConfig:
         """Ensure ExactComputer is not used for large games (n > 14) to prevent freezing.
+
         UNLESS it's SOUM which bypasses it.
         """
         if self.game == "SOUM":
             return self
-        if self.n_players > 14 and self.ground_truth.strategy == "compute":
-            if self.ground_truth.method == "ExactComputer":
-                if self.game_family == "global_xai":
-                    msg = (
-                        f"CRITICAL: Global SAGE games with n > 14 ({self.game}) cannot be evaluated exactly. "
-                        f"Please switch to an approximate fallback dataset reference or reduce n_players."
-                    )
-                    raise ValueError(
-                        msg
-                    )
+
+        if (
+            self.n_players > 14
+            and self.ground_truth.strategy == "compute"
+            and self.ground_truth.method == "ExactComputer"
+        ):
+            if self.game_family == "global_xai":
                 msg = (
-                    f"CRITICAL CONFIG ERROR: Game '{self.game}' has {self.n_players} players. "
-                    f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players}) "
-                    f"model evaluations, which will freeze or crash your machine.\n"
-                    f"SOLUTION: Please change 'ground_truth.method' to 'TreeExplainer' "
-                    f"in your configuration file to utilize polynomial-time exact computation."
+                    f"CRITICAL: Global SAGE games with n > 14 ({self.game}) cannot be evaluated exactly. "
+                    f"Please switch to an approximate fallback dataset reference or reduce n_players."
                 )
-                raise ValueError(
-                    msg
-                )
+                raise ValueError(msg)
+            msg = (
+                f"CRITICAL CONFIG ERROR: Game '{self.game}' has {self.n_players} players. "
+                f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players}) "
+                f"model evaluations, which will freeze or crash your machine.\n"
+                f"SOLUTION: Please change 'ground_truth.method' to 'TreeExplainer' "
+                f"in your configuration file to utilize polynomial-time exact computation."
+            )
+            raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
@@ -376,14 +368,15 @@ class MVPRunConfig(BaseModel):
         GlobalExplanation games return dataset-wide loss values rather than raw tree model
         predictions, making polynomial-time tree conversion mathematically impossible.
         """
-        if self.game_family == "global_xai" and self.ground_truth.strategy == "compute":
-            if self.ground_truth.method == "TreeExplainer":
-                msg = (
-                    f"CONFIG ERROR: Game '{self.game}' belongs to 'global_xai'. "
-                    f"Global XAI games wrap loss function logic (<class 'method'>) rather than "
-                    f"raw tree structures. You MUST use 'ExactComputer' as the ground_truth.method."
-                )
-                raise ValueError(
-                    msg
-                )
+        if (
+            self.game_family == "global_xai"
+            and self.ground_truth.strategy == "compute"
+            and self.ground_truth.method == "TreeExplainer"
+        ):
+            msg = (
+                f"CONFIG ERROR: Game '{self.game}' belongs to 'global_xai'. "
+                f"Global XAI games wrap loss function logic (<class 'method'>) rather than "
+                f"raw tree structures. You MUST use 'ExactComputer' as the ground_truth.method."
+            )
+            raise ValueError(msg)
         return self

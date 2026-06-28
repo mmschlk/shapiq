@@ -1,4 +1,7 @@
-"""Script to double check exact player (feature) counts for all tabular benchmark games."""
+"""Configuration Data Models and Validators.
+
+This module contains all Pydantic models and their associated validators for the benchmark configuration system.
+"""
 
 from __future__ import annotations
 
