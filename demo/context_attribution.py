@@ -1,11 +1,19 @@
-"""Context attribution demo：用 Gemma 和 TextImputer 分析检索上下文。
+﻿"""Context attribution demo: analyze retrieved context chunks with Gemma and TextImputer.
+Context attribution demo：用 Gemma 和 TextImputer 分析检索到的上下文片段。
 
-这个脚本研究哪些 context chunks 支持模型生成目标答案。每个 context chunk 被当作一个 player，coalition 决定哪些 chunks 会提供给模型。
+Each context chunk is treated as one span-level player.
+每个 context chunk 被当作一个 span-level player。
 
+For each coalition, selected chunks are kept and missing chunks are removed.
+对每个 coalition，被选中的 chunks 会保留，没有被选中的 chunks 会被移除。
+
+Value function:
 价值函数：
     v(S) = log P_Gemma(target_answer | question + context chunks in S)
 
-分数越高，表示 Gemma 在看到所选 context chunks 后，越倾向生成目标答案。"""
+A higher score means Gemma is more likely to produce the target answer.
+分数越高，表示 Gemma 越倾向生成目标答案。
+"""
 
 from __future__ import annotations
 
@@ -22,30 +30,54 @@ import shapiq
 from shapiq.imputer.text_imputer import TextImputer
 
 
-# 避免 tokenizer 并行 warning。
+# Avoid tokenizer parallelism warnings during repeated demo runs.
+# 避免多次运行 demo 时出现 tokenizer 并行 warning。
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-# 模型设置
+# Model setup.
+# 模型设置。
 # ---------------------------------------------------------------------------
 
 MODEL_NAME = "google/gemma-4-E2B-it"
 
+# Formal shapiq interaction index used for the main heatmap.
 # 主 heatmap 使用的正式 shapiq interaction index。
 INTERACTION_INDEX = "k-SII"
 INTERACTION_ORDER = 2
 
-# 优先使用已经下载到 HuggingFace cache 里的模型文件，避免每次运行都访问网络。
+# Prefer cached HuggingFace files to avoid network calls during demos.
+# 优先使用 HuggingFace 本地缓存，避免 demo 时重新联网下载模型。
 LOCAL_FILES_ONLY = True
 
-# CPU 模式更慢，但可以避免小机器上 accelerate 磁盘 offload 不稳定导致的崩溃。
+# CPU mode is slower but more stable on this machine.
+# CPU 模式慢一些，但在这台电脑上更稳定。
 DEVICE = "cpu"
+
+# Keep the causal LM prompt exactly as build_text() creates it.
+# 保持 causal LM 的 prompt 就是 build_text() 构造出来的内容。
+PROMPT_TEMPLATE = "{text}"
 
 
 class ContextCase(TypedDict):
-    """可复用的 context attribution 案例。
+    """Reusable context attribution case.
+    可复用的 context attribution 案例。
 
-    question 是 retrieved chunks 后面的问题。target_answer 是 value function 里要打分的目标答案。chunk_names 是画图使用的短标签。chunk_kinds 表示 supporting、irrelevant 或 misleading 类型。context_chunks 是作为 players 的 retrieved context chunks。"""
+    question: the question asked after the retrieved chunks.
+    question：放在 retrieved chunks 后面的具体问题。
+
+    target_answer: the answer scored by the value function.
+    target_answer：value function 要打分的目标答案。
+
+    chunk_names: short labels used in plots.
+    chunk_names：画图时使用的短标签。
+
+    chunk_kinds: supporting, irrelevant, or misleading labels.
+    chunk_kinds：标注每个 chunk 是 supporting、irrelevant 还是 misleading。
+
+    context_chunks: retrieved chunks used as players.
+    context_chunks：作为 players 的 retrieved context chunks。
+    """
 
     question: str
     target_answer: str
@@ -54,7 +86,8 @@ class ContextCase(TypedDict):
     context_chunks: list[str]
 
 
-# 每个 case 都混合了有用、无关和误导性的 context。
+# Each case mixes supporting, irrelevant, and misleading context.
+# 每个 case 都混合了支持、无关和误导性的 context。
 CASES: dict[str, ContextCase] = {
     "eiffel_tower": {
         "question": "Where is the Eiffel Tower located?",
@@ -62,16 +95,19 @@ CASES: dict[str, ContextCase] = {
         "chunk_names": [
             "support: tower",
             "mislead: vegas",
+            "irrelevant: berlin",
             "support: paris",
         ],
         "chunk_kinds": [
             "supporting",
             "misleading",
+            "irrelevant",
             "supporting",
         ],
         "context_chunks": [
             "The Eiffel Tower is located in Paris, France.",
             "A replica of the Eiffel Tower can be found in Las Vegas.",
+            "Berlin is the capital of Germany.",
             "Paris is the capital of France and is known for many landmarks.",
         ],
     },
@@ -128,15 +164,22 @@ CASES: dict[str, ContextCase] = {
 }
 
 
-# 改这里可以切换测试案例。
+# Change this value to run another test case.
+# 改这里就可以切换测试案例。
 CASE_NAME = "eiffel_tower"
 
-# 图片保存到这里，方便汇报使用。
+# Figures are saved here for reports and slides.
+# 图片会保存到这里，方便放进汇报和 slides。
 FIGURE_DIR = Path(__file__).resolve().parent / "figures"
 
 
 def get_case(case_name: str) -> ContextCase:
-    """返回当前选择的 context attribution 案例。想测试另一个例子，只需要修改 CASE_NAME。"""
+    """Return the selected context attribution case.
+    返回当前选择的 context attribution 案例。
+
+    To test another example, change CASE_NAME.
+    如果想测试另一个例子，只需要修改 CASE_NAME。
+    """
     if case_name not in CASES:
         available = ", ".join(CASES)
         msg = f"Unknown case {case_name!r}. Available cases: {available}"
@@ -145,7 +188,9 @@ def get_case(case_name: str) -> ContextCase:
 
 
 def build_text(case: ContextCase) -> str:
-    """把 context chunks、question 和 answer prefix 拼成完整 prompt。"""
+    """Build the full prompt from context chunks, question, and answer prefix.
+    把 context chunks、question 和 answer prefix 拼成完整 prompt。
+    """
     context = "\n".join(
         f"Context {idx + 1}: {chunk}"
         for idx, chunk in enumerate(case["context_chunks"])
@@ -154,22 +199,34 @@ def build_text(case: ContextCase) -> str:
 
 
 class ContextChunkPlayerStrategy:
-    """只把 retrieved context chunks 当成 players 的策略。
+    """Player strategy that only treats retrieved context chunks as players.
+    这个 player strategy 只把 retrieved context chunks 当成 players。
 
-    TextImputer 内置的 sentence strategy 会把 question 和 answer prefix 也当成 players。在 RAG attribution 里，我们希望 question 固定，只解释 retrieved chunks，所以这里自定义一个 player strategy。"""
+    TextImputer has built-in sentence-level strategies, but here the question should stay fixed.
+    TextImputer 有内置的 sentence-level strategy，但这里 question 应该保持固定。
+
+    Therefore, only retrieved chunks are explained as players.
+    因此，这里只解释 retrieved chunks 对答案的影响。
+    """
 
     def __init__(self, case: ContextCase) -> None:
-        """保存当前 context attribution 案例。"""
+        """Store the current context attribution case.
+        保存当前 context attribution 案例。
+        """
         self.case = case
         self.context_chunks = case["context_chunks"]
 
     def get_players(self) -> list[str]:
-        """返回作为 players 的 context chunks。"""
+        """Return context chunks as players.
+        返回作为 players 的 context chunks。
+        """
         return self.context_chunks
 
     @property
     def n_players(self) -> int:
-        """返回 context chunk players 的数量。"""
+        """Return the number of context chunk players.
+        返回 context chunk players 的数量。
+        """
         return len(self.context_chunks)
 
     def coalition_to_text(
@@ -177,7 +234,15 @@ class ContextChunkPlayerStrategy:
         coalition: np.ndarray,
         perturbation_strategy: object,  # noqa: ARG002
     ) -> str:
-        """根据选中的 context chunks 构造 prompt。没有选中的 chunks 会被删除。question 和 answer prefix 始终保留，因为它们不是要解释的 players。"""
+        """Build a prompt from selected context chunks.
+        根据选中的 context chunks 构造 prompt。
+
+        Missing chunks are removed from the prompt.
+        没有被选中的 chunks 会从 prompt 里移除。
+
+        The question and answer prefix are always kept because they are not players.
+        question 和 answer prefix 始终保留，因为它们不是要解释的 players。
+        """
         if len(coalition) != self.n_players:
             msg = (
                 f"Coalition length {len(coalition)} does not match "
@@ -200,7 +265,9 @@ class ContextChunkPlayerStrategy:
 
 
 def all_coalitions(n_players: int) -> np.ndarray:
-    """枚举所有二进制 coalitions。"""
+    """Enumerate all binary coalitions.
+    枚举所有二进制 coalitions。
+    """
     return np.array(
         list(itertools.product([0, 1], repeat=n_players)),
         dtype=bool,
@@ -208,7 +275,9 @@ def all_coalitions(n_players: int) -> np.ndarray:
 
 
 def _score_lookup(coalitions: np.ndarray, scores: np.ndarray) -> dict[tuple[int, ...], float]:
-    """创建 coalition 到 value function 分数的查询表。"""
+    """Create a lookup table from coalition to value-function score.
+    创建 coalition 到 value function 分数的查询表。
+    """
     return {
         tuple(coalition.astype(int)): float(score)
         for coalition, score in zip(coalitions, scores, strict=False)
@@ -219,7 +288,12 @@ def estimate_single_chunk_effects(
     coalitions: np.ndarray,
     scores: np.ndarray,
 ) -> np.ndarray:
-    """估计每个 context chunk 的单独影响。这里使用 v({i}) - v({}) 作为直观的 first-order prototype 指标。"""
+    """Estimate the individual effect of each context chunk.
+    估计每个 context chunk 的单独影响。
+
+    This prototype score uses v({i}) - v({}).
+    这里使用 v({i}) - v({}) 作为直观的 first-order prototype 指标。
+    """
     n_players = coalitions.shape[1]
     lookup = _score_lookup(coalitions, scores)
 
@@ -240,7 +314,15 @@ def estimate_pairwise_interactions(
     coalitions: np.ndarray,
     scores: np.ndarray,
 ) -> np.ndarray:
-    """估计简单的两两交互。这个 prototype 公式是 v({i,j}) - v({i}) - v({j}) + v({})。主结果仍然使用正式的 shapiq k-SII。"""
+    """Estimate simple prototype pairwise interactions.
+    估计简单的 prototype 两两交互。
+
+    The prototype formula is v({i,j}) - v({i}) - v({j}) + v({}).
+    prototype 公式是 v({i,j}) - v({i}) - v({j}) + v({})。
+
+    The main reported result still uses formal shapiq k-SII.
+    主要汇报结果仍然使用正式的 shapiq k-SII。
+    """
     n_players = coalitions.shape[1]
     interactions = np.zeros((n_players, n_players), dtype=float)
     lookup = _score_lookup(coalitions, scores)
@@ -275,7 +357,9 @@ def estimate_pairwise_interactions(
 def compute_shapiq_pairwise_interactions(
     imputer: TextImputer,
 ) -> tuple[np.ndarray, shapiq.InteractionValues]:
-    """用 shapiq 计算正式的二阶 interaction values。"""
+    """Compute formal second-order interaction values with shapiq.
+    用 shapiq 计算正式的二阶 interaction values。
+    """
     computer = shapiq.ExactComputer(
         n_players=imputer.n_players,
         game=imputer,
@@ -293,7 +377,9 @@ def plot_single_chunk_effects(
     case: ContextCase,
     effects: np.ndarray,
 ) -> Path:
-    """绘制并保存每个 context chunk 的单独影响图。"""
+    """Plot and save individual context chunk effects.
+    绘制并保存每个 context chunk 的单独影响图。
+    """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_single_chunk_effects.png"
 
@@ -319,7 +405,9 @@ def plot_pairwise_interactions(
     case: ContextCase,
     interactions: np.ndarray,
 ) -> Path:
-    """绘制并保存二阶 interaction heatmap。"""
+    """Plot and save the second-order interaction heatmap.
+    绘制并保存二阶 interaction heatmap。
+    """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_pairwise_interactions.png"
 
@@ -356,10 +444,13 @@ def print_automatic_summary(
     effects: np.ndarray,
     interactions: np.ndarray,
 ) -> None:
-    """打印最重要结果的简短自动总结。"""
+    """Print a short automatic summary of the most important results.
+    打印最重要结果的简短自动总结。
+    """
     top_positive_idx = int(np.argmax(effects))
     top_negative_idx = int(np.argmin(effects))
 
+    # Only summarize real pairs; ignore the diagonal.
     # 只总结真正的两两组合，不看对角线。
     pair_indices = np.triu_indices_from(interactions, k=1)
     pair_values = interactions[pair_indices]
@@ -408,9 +499,13 @@ def print_automatic_summary(
 
 
 def main() -> None:
-    """运行 context attribution demo。
+    """Run the context attribution demo.
+    运行 context attribution demo。
 
-    流程包括加载模型、创建 TextImputer、枚举 coalitions、计算 value function、计算 k-SII interaction、画图并保存结果。"""
+    The workflow loads the model, creates TextImputer, enumerates coalitions,
+    computes the value function, computes k-SII interactions, and saves figures.
+    流程包括加载模型、创建 TextImputer、枚举 coalitions、计算 value function、计算 k-SII interaction、画图并保存结果。
+    """
     case = get_case(CASE_NAME)
     text = build_text(case)
 
@@ -438,9 +533,10 @@ def main() -> None:
         text=text,
         model_type="causal_lm",
         target_label=case["target_answer"],
+        prompt_template=PROMPT_TEMPLATE,
         player_level="sentence",
         player_strategy=ContextChunkPlayerStrategy(case),
-        perturbation_type="mask",
+        perturbation_type="removal",
         device=DEVICE,
     )
 
@@ -502,3 +598,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
