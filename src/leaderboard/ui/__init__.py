@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 # Storage
-from .storage import (
+from leaderboard.storage import (
     DatabaseBackend,
     DatabaseClient,
     DatabaseClientFactory,
