@@ -1166,14 +1166,22 @@ PERTURBATION_STRATEGIES = {
     "attention_mask": AttentionMaskPerturbation,
 }
 
-
 def create_perturbation_strategy(
     strategy: str,
     tokenizer: PreTrainedTokenizerBase,
     mlm_model_name: str = "bert-base-uncased",
-    mlm_num_samples: int = 10,
+    mlm_num_samples: int = 100,
+    device: str = "cpu",
 ) -> BasePerturbationStrategy:
     """Create a perturbation strategy from a string identifier."""
+    if strategy not in PERTURBATION_STRATEGIES:
+
+        msg = (
+            f"Unknown perturbation strategy: {strategy}. "
+            f"Available strategies: {list(PERTURBATION_STRATEGIES)}"
+        )
+
+        raise ValueError(msg)
     if strategy == "mask":
         return MaskTokenPerturbation(tokenizer)
 
@@ -1193,11 +1201,13 @@ def create_perturbation_strategy(
         return WordNetNeutralPerturbation()
 
     if strategy == "mlm_infilling":
-        return strategy_cls(
+        return MLMInfillingPerturbation(
             model_name=mlm_model_name,
-            num_samples=mlm_num_samples
+            device=device,
+            num_samples=mlm_num_samples,
         )
-
+    msg_0 = f"Unhandled perturbation strategy: {strategy}"
+    raise RuntimeError(msg_0)
 
 # =============================================================================
 # TARGET CALLABLES
@@ -1770,6 +1780,7 @@ class TextImputer:
                 tokenizer=tokenizer,
                 mlm_model_name=mlm_model_name,
                 mlm_num_samples=mlm_num_samples,
+                device=self.device,
             )
 
         self.perturbation_type = perturbation_type

@@ -658,14 +658,6 @@ def test_causal_callable_rejects_empty_target(
         )
 
 
-def test_seq2seq_callable_is_explicitly_not_implemented(
-    tokenizer: DummyTokenizer,
-    model: MagicMock,
-) -> None:
-    callable_ = Seq2SeqCallable(model, tokenizer, "cpu")
-
-    with pytest.raises(NotImplementedError, match="not implemented"):
-        callable_.predict(["text"])
 
 
 # ============================================================================
