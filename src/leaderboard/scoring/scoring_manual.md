@@ -10,7 +10,7 @@ The `ScoringResult` describes which scorer was used, which benchmark context was
 
 ### How the EloScorer works
 
-The `EloScorer` is the primary scoring implementation used in the leaderboard. It compares approximators through pairwise matches within benchmark groups. A comparable group consists of run records that share the same benchmark context, such as game, index, maximum interaction order, budget, and ground truth method. Comparable groups are formed during scoring based on the configured group keys. 
+The `EloScorer` is the primary scoring implementation used in the leaderboard. It compares approximators through pairwise matches within benchmark groups. A comparable group consists of run records that share the same benchmark context, such as game, index, maximum interaction order, budget, and ground truth method. Comparable groups are formed during scoring based on the configured group keys.
 
 Within each comparable group, the scorer first aggregates repeated runs over approximation seeds and then constructs pairwise matches for the selected metrics. All approximators start with the same initial Elo rating (Default: 1000). Each pairwise match updates the ratings of the two involved approximators. The update depends on the match outcome and on the expected win probability, which is derived from the current rating difference between both approximators. A win against a stronger opponent leads to a larger Elo gain, while a win against a weaker opponent leads to a smaller gain. On the other hand, losing against a weaker opponent is penalized more strongly than losing against a stronger opponent.
 
