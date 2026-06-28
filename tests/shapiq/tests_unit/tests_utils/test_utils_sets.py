@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from scipy.special import binom
 
 from shapiq.utils import (
     count_interactions,
     generate_interaction_lookup,
     generate_interaction_lookup_from_coalitions,
     get_explicit_subsets,
+    log_binom,
     pair_subset_sizes,
     powerset,
     split_subsets_budget,
@@ -209,3 +211,52 @@ def test_count_interactions(n, max_order, min_order, expected):
     count = count_interactions(n, max_order, min_order)
     assert count == expected
     assert isinstance(count, int)
+
+
+@pytest.mark.parametrize("n", [0, 1, 5, 20])
+def test_log_binom_matches_scipy_binom(n):
+    """log_binom equals log(scipy.binom) across the full valid range of k."""
+    k = np.arange(0, n + 1)
+    expected = np.log(binom(n, k))
+    np.testing.assert_allclose(log_binom(n, k), expected, rtol=1e-12, atol=1e-12)
+
+
+def test_log_binom_scalar_returns_float():
+    """A scalar k yields a Python float; log(binom(n, 0)) == log(binom(n, n)) == 0."""
+    result = log_binom(10, 3)
+    assert isinstance(result, float)
+    assert result == pytest.approx(float(np.log(binom(10, 3))))
+    assert log_binom(10, 0) == pytest.approx(0.0)
+    assert log_binom(10, 10) == pytest.approx(0.0)
+
+
+def test_log_binom_array_returns_array():
+    """An array k yields a numpy array of matching shape."""
+    result = log_binom(8, np.array([0, 4, 8]))
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (3,)
+
+
+@pytest.mark.parametrize("k", [-1, -5, 6, 100])
+def test_log_binom_out_of_range_is_neg_inf(k):
+    """k outside [0, n] means binom(n, k) == 0, i.e. log_binom == -inf."""
+    assert log_binom(5, k) == -np.inf
+
+
+def test_log_binom_out_of_range_array():
+    """Out-of-range entries in an array k are individually set to -inf."""
+    result = log_binom(5, np.array([-1, 2, 6]))
+    assert result[0] == -np.inf
+    assert result[2] == -np.inf
+    assert np.isfinite(result[1])
+
+
+def test_log_binom_stays_finite_where_binom_overflows():
+    """For large n the central coefficient overflows binom but log_binom stays finite."""
+    n = 2000
+    assert np.isinf(binom(n, n // 2))  # scipy.binom overflows to inf
+    central = log_binom(n, n // 2)
+    assert np.isfinite(central)
+    # log(binom(n, n/2)) ~= n*log(2) - 0.5*log(pi*n/2) (Stirling); within 1% is plenty.
+    approx = n * np.log(2) - 0.5 * np.log(np.pi * n / 2)
+    assert central == pytest.approx(approx, rel=1e-2)
