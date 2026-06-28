@@ -347,16 +347,39 @@ class MVPRunConfig(BaseModel):
         ):
             if self.game_family == "global_xai":
                 msg = (
-                    f"CRITICAL: Global SAGE games with n > 14 ({self.game}) cannot be evaluated exactly. "
-                    f"Please switch to an approximate fallback dataset reference or reduce n_players."
+                    "\n"
+                    "################################################################################\n"
+                    "💥 CRITICAL CONFIG ERROR: GLOBAL SAGE EVALUATION LIMIT EXCEEDED\n"
+                    "################################################################################\n"
+                    f"Global SAGE games with n_players > 14 ('{self.game}' has {self.n_players}) CANNOT be computed exactly.\n"
+                    "\n"
+                    "💡 ACTIONABLE SOLUTIONS:\n"
+                    "  1. Change 'game' to a smaller reference dataset (n_players <= 14).\n"
+                    "  2. Switch 'ground_truth.strategy' to 'lookup' if pre-computed values exist.\n"
+                    "################################################################################\n"
                 )
                 raise ValueError(msg)
             msg = (
-                f"CRITICAL CONFIG ERROR: Game '{self.game}' has {self.n_players} players. "
-                f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players}) "
-                f"model evaluations, which will freeze or crash your machine.\n"
-                f"SOLUTION: Please change 'ground_truth.method' to 'TreeExplainer' "
-                f"in your configuration file to utilize polynomial-time exact computation."
+                "\n"
+                "################################################################################\n"
+                "💥 CRITICAL ERROR: COMBINATORIAL RUNTIME EXPLOSION IMMINENT\n"
+                "################################################################################\n"
+                f"Your configured game '{self.game}' scales to {self.n_players} players (features)!\n"
+                f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players:,}) black-box model evaluations.\n"
+                "This WILL instantly freeze your CPU or trigger an Out-Of-Memory (OOM) crash.\n"
+                "\n"
+                "================================================================================\n"
+                "📊 EXACT COMPUTER DIMENSION GUARD\n"
+                "================================================================================\n"
+                f"  🟢 SAFE BOUNDS         :  n_players <= 14\n"
+                f"  🔴 EXPLOSION RISK      :  n_players == {self.n_players} 👈 (Your current game)\n"
+                "================================================================================\n"
+                "\n"
+                "💡 ACTIONABLE SOLUTIONS FOR TABULAR GAMES:\n"
+                "  - Change 'ground_truth.method' to 'TreeExplainer' to switch from exponential\n"
+                "    time to fast polynomial-time tree traversal.\n"
+                "    (CRITICAL: TreeExplainer only supports ['SV', 'SII', 'k-SII'] indices!)\n"
+                "################################################################################\n"
             )
             raise ValueError(msg)
         return self
@@ -377,6 +400,42 @@ class MVPRunConfig(BaseModel):
                 f"CONFIG ERROR: Game '{self.game}' belongs to 'global_xai'. "
                 f"Global XAI games wrap loss function logic (<class 'method'>) rather than "
                 f"raw tree structures. You MUST use 'ExactComputer' as the ground_truth.method."
+            )
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def validate_shapiq_tree_bug_fix(self) -> MVPRunConfig:
+        """Intercept shapiq's upstream bugs for high-order indices and force fallback to ExactComputer."""
+        buggy_indices = ["STII", "FSII", "FBII"]
+
+        # Only intercept if we are actively computing ground truth for these problematic indices
+        if (
+            self.index in buggy_indices
+            and self.ground_truth.strategy == "compute"
+            and self.ground_truth.method == "TreeExplainer"
+        ):
+            msg = (
+                "\n"
+                "################################################################################\n"
+                "🚨 CRITICAL CONFIGURATION ERROR: SHAPIQ UPSTREAM BUG DETECTED\n"
+                "################################################################################\n"
+                f"You requested Index '{self.index}' via 'TreeExplainer'. This is globally BLOCKED!\n"
+                "Upstream shapiq v0.x contains internal broadcasting & matrix initialization bugs\n"
+                f"specifically for '{self.index}' under TreeExplainer.\n"
+                "\n"
+                "================================================================================\n"
+                "📊 SHAPIQ TREEEXPLAINER INDEX COMPATIBILITY MATRIX\n"
+                "================================================================================\n"
+                "  🟢 ALLOWED & STABLE     :  ['SV', 'SII', 'k-SII']\n"
+                "  🔴 BLOCKED (UPSTREAM)   :  ['STII', 'FSII', 'FBII'] 👈 (Your current choice)\n"
+                "================================================================================\n"
+                "\n"
+                "💡 ACTIONABLE SOLUTIONS:\n"
+                "  1. Change 'index' to 'SII' or 'SV' to stay on 'TreeExplainer' (Works for large games).\n"
+                "  2. Keep your index but change 'ground_truth.method' to 'ExactComputer'\n"
+                "     (CRITICAL: You must switch to a small dataset like 'AdultCensus' where n <= 14).\n"
+                "################################################################################\n"
             )
             raise ValueError(msg)
         return self
