@@ -8,84 +8,17 @@ from __future__ import annotations
 from typing import Literal
 
 import shapiq_games.benchmark.global_xai.benchmark_tabular as global_tabular
-import shapiq_games.benchmark.local_xai.benchmark_image as benchmark_image
 import shapiq_games.benchmark.local_xai.benchmark_tabular as local_tabular
+from shapiq_games.benchmark.local_xai import benchmark_image
 
 # --- Index Type Definition ---
 VALID_INDICES = Literal[
     "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
 ]
 
-# --- Supported Games Whitelist ---
-SUPPORTED_GAMES = [
-    "SOUM",
-    "BikeSharing",
-    "CaliforniaHousing",
-    "AdultCensus",
-    "ImageClassifier",
-    "Mushroom",
-    "Soybean",
-    "Thyroid",
-    "Annealing",
-    "Arrhythmia",
-    "BreastCancer",
-    "Hepatitis",
-    "Ionosphere",
-    "Nursery",
-    "Zoo",
-]
-GAME_PLAYER_COUNTS = {
-    "CaliforniaHousing": 8,
-    "Nursery": 8,
-    "BikeSharing": 12,
-    "AdultCensus": 14,
-    "Zoo": 16,
-    "Hepatitis": 19,
-    "Thyroid": 21,
-    "Mushroom": 22,
-    "BreastCancer": 30,
-    "Ionosphere": 34,
-    "Soybean": 35,
-    "Annealing": 38,
-    "SOUM": 10,
-    "Arrhythmia": 279,
-}
-# --- Supported Imputers Whitelist ---
-SUPPORTED_IMPUTERS = ["marginal", "conditional"]
+# --- 🎯 SINGLE SOURCE OF TRUTH: Registries First ---
 
-# --- Family specific game lists ---
-# local_xai games (many tabular datasets)
-LOCAL_GAMES = {
-    "AdultCensus",
-    "Annealing",
-    "Arrhythmia",
-    "BikeSharing",
-    "BreastCancer",
-    "CaliforniaHousing",
-    "Hepatitis",
-    "Ionosphere",
-    "Mushroom",
-    "Nursery",
-    "Soybean",
-    "Thyroid",
-    "Zoo",
-    "ImageClassifier",
-}
-
-# global_xai games (currently implemented global explanations)
-GLOBAL_GAMES = {"AdultCensus", "BikeSharing", "CaliforniaHousing"}
-
-# visual / image-local games
-VISUAL_GAMES = {"ImageClassifier"}
-
-# Supported model backends for visual games.
-SUPPORTED_VISUAL_MODELS = [
-    "vit_16_patches",
-    "vit_9_patches",
-    "resnet_18",
-]
-
-# local_xai games (many tabular datasets)
+# local_xai games registry (tabular datasets + visual games)
 LOCAL_GAME_REGISTRY = {
     "BikeSharing": local_tabular.BikeSharing,
     "CaliforniaHousing": local_tabular.CaliforniaHousing,
@@ -103,54 +36,81 @@ LOCAL_GAME_REGISTRY = {
     "ImageClassifier": benchmark_image.ImageClassifier,
 }
 
-# global_xai games (currently implemented global explanations)
+# global_xai games registry (currently implemented global explanations)
 GLOBAL_GAME_REGISTRY = {
     "BikeSharing": global_tabular.BikeSharing,
     "CaliforniaHousing": global_tabular.CaliforniaHousing,
     "AdultCensus": global_tabular.AdultCensus,
 }
+
+# --- 🧠 DYNAMIC DERIVATION: Automatically Synced Collections ---
+
+# Dynamically derive family specific game sets directly from registries!
+LOCAL_GAMES = set(LOCAL_GAME_REGISTRY.keys())
+GLOBAL_GAMES = set(GLOBAL_GAME_REGISTRY.keys())
+
+# Dynamically combine registries to build the supported games whitelist (+ synthetic SOUM)
+SUPPORTED_GAMES = ["SOUM", *list(LOCAL_GAMES | GLOBAL_GAMES)]
+
+# visual / image-local games
+VISUAL_GAMES = {"ImageClassifier"}
+
+# Supported model backends for visual games.
+SUPPORTED_VISUAL_MODELS = [
+    "vit_16_patches",
+    "vit_9_patches",
+    "resnet_18",
+]
+
+# Task classification mapping
 REGRESSION_GAMES = {
     "BikeSharing",
     "CaliforniaHousing",
 }
 
+# Classification games are derived dynamically by filtering out regressions from the supported pool
 CLASSIFICATION_GAMES = {
-    "AdultCensus",
-    "Mushroom",
-    "Soybean",
-    "Thyroid",
-    "Annealing",
-    "Arrhythmia",
-    "BreastCancer",
-    "Hepatitis",
-    "Ionosphere",
-    "Nursery",
-    "Zoo",
-    "ImageClassifier",
+    game for game in SUPPORTED_GAMES if game not in REGRESSION_GAMES and game != "SOUM"
 }
+
+# --- Hardcoded Dataset Properties (Bypasses instantiation requirement) ---
+GAME_PLAYER_COUNTS = {
+    "CaliforniaHousing": 8,
+    "Nursery": 8,
+    "BikeSharing": 12,
+    "AdultCensus": 14,
+    "Zoo": 16,
+    "Hepatitis": 19,
+    "Thyroid": 21,
+    "Mushroom": 22,
+    "BreastCancer": 30,
+    "Ionosphere": 34,
+    "Soybean": 35,
+    "Annealing": 38,
+    "SOUM": 10,
+    "Arrhythmia": 279,
+}
+
+# --- Supported Imputers Whitelist ---
+SUPPORTED_IMPUTERS = ["marginal", "conditional"]
+
 # --- Supported Approximators Whitelist ---
-# Extracted from shapiq/approximator/__init__.py
 ALL_SUPPORTED_APPROXIMATORS = [
-    # Sampling-based SV methods
     "OwenSamplingSV",
     "StratifiedSamplingSV",
     "PermutationSamplingSV",
-    # Sampling-based Interaction methods
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
-    # Monte Carlo / Stochastic methods
     "SVARM",
     "SVARMIQ",
     "SHAPIQ",
     "UnbiasedKernelSHAP",
-    # Regression methods
     "KernelSHAP",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "RegressionFSII",
     "RegressionFBII",
     "kADDSHAP",
-    # Proxy / Sparse methods
     "SPEX",
     "ProxySPEX",
     "ProxySHAP",

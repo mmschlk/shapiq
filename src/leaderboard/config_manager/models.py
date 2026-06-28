@@ -12,21 +12,15 @@ from pydantic import BaseModel, Field, model_validator
 import shapiq
 
 from .config_exceptions import (
-    ApproximatorIndexIncompatibleError,
-    ApproximatorNotFoundError,
-    BudgetRangeError,
-    InvalidBudgetError,
     InvalidBudgetStepsError,
     InvalidBudgetStrategyError,
     InvalidGameFamilyError,
     InvalidOrderForIndexError,
-    UnsupportedApproximatorError,
     UnsupportedGameError,
     UnsupportedImputerError,
 )
 from .constants import (
     ALL_SUPPORTED_APPROXIMATORS,
-    CLASSIFICATION_GAMES,
     GAME_PLAYER_COUNTS,
     GLOBAL_GAMES,
     LOCAL_GAMES,
@@ -99,7 +93,7 @@ class MVPRunConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_budgets(self) -> MVPRunConfig:
-        """Filter out invalid budgets falling outside the allowed range [n+1, 2^n)"""
+        """Filter out invalid budgets falling outside the allowed range [n+1, 2^n)."""
         min_allowed = self.n_players + 1
         max_exclusive = 2**self.n_players
 
@@ -134,6 +128,9 @@ class MVPRunConfig(BaseModel):
         for app in self.approximators:
             # Check 1: Whitelist membership
             if app not in ALL_SUPPORTED_APPROXIMATORS:
+                continue
+
+            if self.n_players >= 20 and app in ["SVARM", "SVARMIQ"]:
                 continue
 
             # Check 2: Existence inside shapiq core library
@@ -187,7 +184,6 @@ class MVPRunConfig(BaseModel):
 
         Ensures the underlying game factory receives a strictly filtered and clean parameter dictionary.
         """
-
         # Create a mutable copy of game_params to ensure Pydantic registers the field mutation permanently
         cleaned_params = dict(self.game_params)
 
@@ -201,13 +197,15 @@ class MVPRunConfig(BaseModel):
 
             # Validation for model_name
             if model_name not in SUPPORTED_VISUAL_MODELS:
+                msg = f"Invalid visual model '{model_name}'. Supported models: {SUPPORTED_VISUAL_MODELS}"
                 raise ValueError(
-                    f"Invalid visual model '{model_name}'. Supported models: {SUPPORTED_VISUAL_MODELS}"
+                    msg
                 )
 
             # Validation for mandatory path parameter
             if "x_explain_path" not in cleaned_params:
-                raise ValueError("Visual games require 'x_explain_path' in game_params.")
+                msg = "Visual games require 'x_explain_path' in game_params."
+                raise ValueError(msg)
 
             # Purge tabular-specific parameters
             tabular_forbidden = [
@@ -285,9 +283,12 @@ class MVPRunConfig(BaseModel):
 
         # 1. Enforce Ground Truth constraint: ExactComputer only
         if self.ground_truth.method != "ExactComputer":
-            raise ValueError(
+            msg = (
                 "CRITICAL: Visual games (ImageClassifier) are neural networks. "
                 "'TreeExplainer' is not applicable. Please use 'ExactComputer'."
+            )
+            raise ValueError(
+                msg
             )
 
         # 2. Enforce n_players consistency
@@ -306,9 +307,12 @@ class MVPRunConfig(BaseModel):
             expected_n = vit_patch_map.get(model_name)
 
         if expected_n is not None and self.n_players != expected_n:
-            raise ValueError(
+            msg = (
                 f"Configuration Mismatch: '{model_name}' requires n_players={expected_n}, "
                 f"but your config specifies n_players={self.n_players}. Please align them."
+            )
+            raise ValueError(
+                msg
             )
 
         return self
@@ -346,16 +350,22 @@ class MVPRunConfig(BaseModel):
         if self.n_players > 14 and self.ground_truth.strategy == "compute":
             if self.ground_truth.method == "ExactComputer":
                 if self.game_family == "global_xai":
-                    raise ValueError(
+                    msg = (
                         f"CRITICAL: Global SAGE games with n > 14 ({self.game}) cannot be evaluated exactly. "
                         f"Please switch to an approximate fallback dataset reference or reduce n_players."
                     )
-                raise ValueError(
+                    raise ValueError(
+                        msg
+                    )
+                msg = (
                     f"CRITICAL CONFIG ERROR: Game '{self.game}' has {self.n_players} players. "
                     f"Using 'ExactComputer' requires 2^{self.n_players} ({2**self.n_players}) "
                     f"model evaluations, which will freeze or crash your machine.\n"
                     f"SOLUTION: Please change 'ground_truth.method' to 'TreeExplainer' "
                     f"in your configuration file to utilize polynomial-time exact computation."
+                )
+                raise ValueError(
+                    msg
                 )
         return self
 
@@ -367,10 +377,13 @@ class MVPRunConfig(BaseModel):
         predictions, making polynomial-time tree conversion mathematically impossible.
         """
         if self.game_family == "global_xai" and self.ground_truth.strategy == "compute":
-            if self.ground_truth.method in ["TreeExplainer"]:
-                raise ValueError(
+            if self.ground_truth.method == "TreeExplainer":
+                msg = (
                     f"CONFIG ERROR: Game '{self.game}' belongs to 'global_xai'. "
                     f"Global XAI games wrap loss function logic (<class 'method'>) rather than "
                     f"raw tree structures. You MUST use 'ExactComputer' as the ground_truth.method."
+                )
+                raise ValueError(
+                    msg
                 )
         return self

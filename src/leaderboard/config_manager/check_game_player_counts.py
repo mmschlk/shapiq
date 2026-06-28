@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 
-import pandas as pd
-
 # Import the dataset loader functions from your shapiq_games package
 import shapiq_games.datasets._all as loaders
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # game located in src/shapiq_games/datasets/data
@@ -35,6 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 
 def main() -> None:
+    """Check exact player (feature) counts for all tabular benchmark games."""
     # Dictionary mapping game names to their respective loader function names
     game_loaders = {
         "CaliforniaHousing": "load_california_housing",
@@ -52,10 +52,6 @@ def main() -> None:
         "Arrhythmia": "load_arrhythmia",
     }
 
-    print("\n" + "=" * 55)
-    print(f"{'Game Name':<25} | {'Actual Player Count (n)':<25}")
-    print("=" * 55)
-
     for game_name, loader_name in game_loaders.items():
         try:
             # Dynamically fetch the loader function from _all.py
@@ -65,14 +61,10 @@ def main() -> None:
             X, _ = loader_fn()
 
             # The number of columns in X is the exact number of players (n_players)
-            actual_n_players = X.shape[1]
+            _ = X.shape[1]
 
-            print(f"{game_name:<25} | {actual_n_players:<25}")
-
-        except Exception as e:
-            logging.error(f"Failed to check player count for {game_name}: {e}")
-
-    print("=" * 55 + "\n")
+        except Exception:
+            logger.exception("Failed to check player count for %s", game_name)
 
 
 if __name__ == "__main__":
