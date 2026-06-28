@@ -168,11 +168,16 @@ def main() -> None:
     sanitized_seeds_list = base_config.get("seeds", [])
     seeds_count = len(sanitized_seeds_list)
 
+    model_name = config_obj.game_params.get("model_name", "N/A")
+    imputer_name = config_obj.game_params.get("imputer", "N/A")
+
     print("\n" + "=" * 80)
     print("🛡️  SHAPIQ RUNNER SWEEP CONFIGURATION AUDIT")
     print("-" * 80)
     print(f"  ▶️ Target Game          : '{config_obj.game}' (n_players={config_obj.n_players})")
     print(f"  ▶️ Active Pipeline Type: '{config_obj.game_family}'")
+    print(f"  ▶️ Game Model Backend   : '{model_name}'")
+    print(f"  ▶️ Feature Imputer      : '{imputer_name}'")
     print(f"  ▶️ Target Interaction  : '{config_obj.index}' (Max Order: {config_obj.max_order})")
     print("-" * 80)
 

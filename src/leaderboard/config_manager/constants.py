@@ -22,6 +22,7 @@ SUPPORTED_GAMES = [
     "BikeSharing",
     "CaliforniaHousing",
     "AdultCensus",
+    "ImageClassifier",
     "Mushroom",
     "Soybean",
     "Thyroid",
@@ -73,6 +74,16 @@ LOCAL_GAMES = {
 
 # global_xai games (currently implemented global explanations)
 GLOBAL_GAMES = {"AdultCensus", "BikeSharing", "CaliforniaHousing"}
+
+# visual / image-local games
+VISUAL_GAMES = {"ImageClassifier"}
+
+# Supported model backends for visual games.
+SUPPORTED_VISUAL_MODELS = [
+    "vit_16_patches",
+    "vit_9_patches",
+    "resnet_18",
+]
 
 # local_xai games (many tabular datasets)
 LOCAL_GAME_REGISTRY = {

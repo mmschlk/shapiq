@@ -33,7 +33,9 @@ from .constants import (
     REGRESSION_GAMES,
     SUPPORTED_GAMES,
     SUPPORTED_IMPUTERS,
+    SUPPORTED_VISUAL_MODELS,
     VALID_INDICES,
+    VISUAL_GAMES,
 )
 
 
@@ -189,6 +191,40 @@ class MVPRunConfig(BaseModel):
         # Create a mutable copy of game_params to ensure Pydantic registers the field mutation permanently
         cleaned_params = dict(self.game_params)
 
+        # Intercept visual games first to bypass tabular-specific validation
+        if self.game in VISUAL_GAMES:
+            model_name = cleaned_params.get("model_name")
+
+            # 💡 NEW: Logic to purge n_superpixel_resnet if not resnet_18
+            if model_name != "resnet_18":
+                cleaned_params.pop("n_superpixel_resnet", None)
+
+            # Validation for model_name
+            if model_name not in SUPPORTED_VISUAL_MODELS:
+                raise ValueError(
+                    f"Invalid visual model '{model_name}'. Supported models: {SUPPORTED_VISUAL_MODELS}"
+                )
+
+            # Validation for mandatory path parameter
+            if "x_explain_path" not in cleaned_params:
+                raise ValueError("Visual games require 'x_explain_path' in game_params.")
+
+            # Purge tabular-specific parameters
+            tabular_forbidden = [
+                "imputer",
+                "x",
+                "class_to_explain",
+                "loss_function",
+                "n_samples_eval",
+                "n_samples_empty",
+            ]
+            for key in tabular_forbidden:
+                cleaned_params.pop(key, None)
+
+            # Commit changes and exit early
+            self.game_params = cleaned_params
+            return self
+
         # 1. For pure synthetic mathematical game (SOUM), purge all machine learning/tabular-specific parameters
         if self.game == "SOUM":
             soum_forbidden = [
@@ -239,6 +275,42 @@ class MVPRunConfig(BaseModel):
 
         # Sync back the cleaned state to the model object permanently
         self.game_params = cleaned_params
+        return self
+
+    @model_validator(mode="after")
+    def validate_visual_game_constraints(self) -> MVPRunConfig:
+        """Enforce strict constraints for visual games defined in template_visual.yaml."""
+        if self.game != "ImageClassifier":
+            return self
+
+        # 1. Enforce Ground Truth constraint: ExactComputer only
+        if self.ground_truth.method != "ExactComputer":
+            raise ValueError(
+                "CRITICAL: Visual games (ImageClassifier) are neural networks. "
+                "'TreeExplainer' is not applicable. Please use 'ExactComputer'."
+            )
+
+        # 2. Enforce n_players consistency
+        # Mismatches between n_players and model patch count will crash shapiq
+        model_name = self.game_params.get("model_name")
+
+        # Define expected player counts per model
+        vit_patch_map = {
+            "vit_9_patches": 9,
+            "vit_16_patches": 16,
+        }
+
+        if model_name == "resnet_18":
+            expected_n = self.game_params.get("n_superpixel_resnet", 14)
+        else:
+            expected_n = vit_patch_map.get(model_name)
+
+        if expected_n is not None and self.n_players != expected_n:
+            raise ValueError(
+                f"Configuration Mismatch: '{model_name}' requires n_players={expected_n}, "
+                f"but your config specifies n_players={self.n_players}. Please align them."
+            )
+
         return self
 
     @model_validator(mode="after")

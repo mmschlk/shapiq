@@ -25,21 +25,21 @@ max_order: 1
 # 3) Image-specific parameters
 # ---------------------------------------------------------------------
 # n_players:
-# - For ViT models: Set to the number of patches (e.g., 9, 16, 36, 144)
+# - For ViT models: Set to the number of patches (e.g., 9, 16)
 # - For ResNet models: Set to the number of superpixels (e.g., 14)
 n_players: 9
 
 game_params:
   # Supported model_names:
-  #   - ViT: "vit_144_patches", "vit_36_patches", "vit_16_patches", "vit_9_patches"
+  #   - ViT: "vit_16_patches", "vit_9_patches"
   #   - ResNet: "resnet_18"
-  model_name: "vit_9_patches"
+  model_name: "resnet_18"
 
   # Path to the image file you want to explain (e.g., ./data/test_image.jpg)
   x_explain_path: "src/shapiq_games/benchmark/imagenet_examples/ILSVRC2012_val_00000356.JPEG"
 
   # Configuration for ResNet-18 superpixel grouping (only active if model_name is "resnet_18")
-  #  n_superpixel_resnet: 14
+  n_superpixel_resnet: 14
 
   normalize: true
   verbose: false
@@ -52,17 +52,18 @@ game_params:
 ground_truth:
   strategy: "compute"
   method: "ExactComputer"
-  storage_path: "src/leaderboard/data/image_gt_cache.json"
 
 # ---------------------------------------------------------------------
 # 5) Approximator Algorithms
 # ---------------------------------------------------------------------
 # Note: Ensure these are compatible with your index (e.g., SII/k-SII)
 approximators:
-  - "OwenSamplingSV"
-  #  - "PermutationSamplingSV"
-  #  - "KernelSHAP"
-  #  - "ProxySPEX"
+  - "PermutationSamplingSII"
+  - "KernelSHAPIQ"
+  - "InconsistentKernelSHAPIQ"
+  - "SVARMIQ"
+  - "SHAPIQ"
+  - "ProxySPEX"
   - "ProxySHAP"
 
 # ---------------------------------------------------------------------
@@ -71,9 +72,15 @@ approximators:
 # For images, computational cost per sample is high. Start with lower budgets.
 budgets:
   - 100
+  - 200
+  - 400
 
 # ---------------------------------------------------------------------
 # 7) Random seeds
 # ---------------------------------------------------------------------
 seeds:
   - 0
+  - 1
+  - 2
+  - 3
+  - 4

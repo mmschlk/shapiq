@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import shapiq_games.benchmark.global_xai.benchmark_tabular as global_tabular
@@ -73,6 +74,19 @@ def create_game_from_config(
         **default_game_params,
         **base_config.get("game_params", {}),
     }
+
+    # Centralized path resolution for visual games
+    if game_name == "ImageClassifier" and "x_explain_path" in game_params:
+        project_root = Path(__file__).resolve().parents[3]
+        raw_img_path = Path(game_params["x_explain_path"])
+
+        # If path is relative,then append project_root
+        if not raw_img_path.is_absolute():
+            absolute_img_path = project_root / raw_img_path
+            game_params["x_explain_path"] = str(absolute_img_path)
+
+            if not absolute_img_path.exists():
+                raise FileNotFoundError(f"Image not found at: {absolute_img_path}")
 
     if game_name == "SOUM":
         game_class = SOUM
