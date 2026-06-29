@@ -442,8 +442,6 @@ _with_spinner("Computing global styles...", lambda: update_global_styles(df_agg)
 
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
 
-print("\n✨ Ready!\n")
-
 
 def compute_yranges(g: str, approximators: list[str]) -> dict[str, list[float] | None]:
     """Compute shared log-scale y-axis ranges for a game and approximator set.
@@ -556,6 +554,8 @@ def compute_elo_for_bucket(
     scorer = EloScorer(
         budgets=[budget],
         metric_names=[str(metric)] if metric != "all" else None,
+        # n_bootstrap_samples=200,
+        # n_permutations=100,
     )
     result = scorer.score(df_raw_records)
 
@@ -740,9 +740,12 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
         # Pre-compute initial ELO display for Medium (1000) bucket
-        _elo_init_table, _elo_init_fig, _elo_init_info = compute_elo_for_bucket(
-            raw_records, int(BUDGET_BUCKETS[2]["budget"])
+        _elo_init_table, _elo_init_fig, _elo_init_info = _with_spinner(
+            f"Computing ELO ratings for initial bucket ({BUDGET_BUCKETS[2]['label']})...",
+            lambda: compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]))
         )
+
+        _elo_precomputed = {2: (_elo_init_table, _elo_init_fig, _elo_init_info)}
 
         with gr.Row():
             with gr.Column(scale=3):
@@ -903,15 +906,24 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         all_bucket_infos = []
 
         with gr.Row():
-            for bucket in BUDGET_BUCKETS:
+            for i, bucket in enumerate(BUDGET_BUCKETS):
                 with gr.Column():
                     gr.Markdown(f"### {bucket['label']}")
-                    _t, _f, _info = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
+                    if i in _elo_precomputed:
+                        _t, _f, _info = _elo_precomputed[i]
+                    else:
+                        budget_val = int(bucket["budget"])
+                        _t, _f, _info = _with_spinner(
+                            f"Computing ELO ratings for {bucket['label']}...",
+                            lambda bv=budget_val: compute_elo_for_bucket(raw_records, bv)
+                        )
                     all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
                     all_bucket_tables.append(
                         gr.Dataframe(value=_t, interactive=False, max_height=1000)
                     )
+
+        print("\n✨ Ready!\n")
 
         def update_all_buckets(
             raw_records: list[dict], selected_approxs: list[str], metric: str = "all"
