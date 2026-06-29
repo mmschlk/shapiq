@@ -22,7 +22,7 @@ def get_hardware_info() -> dict:
     # Get specific CPU brand name on macOS
     if platform.system().lower() == "darwin":
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603
                 ["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"],
                 capture_output=True,
                 text=True,
@@ -40,7 +40,7 @@ def get_hardware_info() -> dict:
     try:
         if sys_type == "darwin":
             # macOS: Use sysctl to get total memory in bytes
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603
                 ["/usr/sbin/sysctl", "-n", "hw.memsize"], capture_output=True, text=True, check=True
             )
             bytes_val = int(result.stdout.strip())
