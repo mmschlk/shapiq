@@ -768,16 +768,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 second populates it with the new bucket's data.
             """
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
-            yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update()
-            label_md, table_df, fig, info_md = update_elo_tab(
-                new_idx, raw_records, selected_approxs, metric
-            )
+            yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update()
+            label_md, table_df, fig, info_md = update_elo_tab(new_idx, raw_records, selected_approxs, metric)
             yield (
                 new_idx,
                 label_md,
                 gr.update(value=table_df, visible=True, max_height=1000),
                 fig,
                 info_md,
+                gr.update(interactive=(new_idx > 0)),
+                gr.update(interactive=(new_idx < len(BUDGET_BUCKETS) - 1)),
             )
 
         def elo_prev(
@@ -815,12 +815,14 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         elo_prev_btn.click(
             fn=elo_prev,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_prev_btn,
+                     elo_next_btn],
         )
         elo_next_btn.click(
             fn=elo_next,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_prev_btn,
+                     elo_next_btn],
         )
 
         def elo_filter_update(
@@ -1087,7 +1089,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         gr.HTML("<style>.compare-jump-btn { margin-left: auto !important; } .hidden-col { display: none !important; }</style>")
         with gr.Row():
             add_col_btn = gr.Button("+ Add Approximator", scale=0, variant="primary")
-            remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary")
+            remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary", interactive=False)
             n_cols_state = gr.State(value=DEFAULT_COLS)
             compare_jump_btn = gr.Button(
                 "🔍 Open in Raw Data Explorer",
@@ -1178,20 +1180,19 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     else:
                         updates.append(gr.update(elem_classes=["hidden-col"]))
 
-            return [new_n, *updates]
+            return [new_n, *updates, gr.update(interactive=(new_n < MAX_COLS)), gr.update(interactive=(new_n > 2))]
 
         click_inputs = [n_cols_state, *compare_approx_dropdowns, *compare_game_dropdowns]
 
         add_col_btn.click(
             fn=lambda n, *args: update_col_visibility(n, +1, *args),
             inputs=click_inputs,
-            outputs=[n_cols_state, *all_col_components],
+            outputs=[n_cols_state, *all_col_components, add_col_btn, remove_col_btn],
         )
-
         remove_col_btn.click(
             fn=lambda n, *args: update_col_visibility(n, -1, *args),
             inputs=click_inputs,
-            outputs=[n_cols_state, *all_col_components],
+            outputs=[n_cols_state, *all_col_components, add_col_btn, remove_col_btn],
         )
 
         # Plot Update bei Aenderung
