@@ -13,6 +13,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from .connection_exceptions import UnsupportedDatabaseBackendError
+from .huggingface_client import HuggingFaceClient
 from .local_client import LocalClient
 from .mongo_client import MongoDBClient
 
@@ -25,6 +26,7 @@ class DatabaseBackend(StrEnum):
 
     MONGODB = "mongodb"
     LOCAL = "local"
+    HUGGINGFACE = "huggingface"
 
 
 class DatabaseClientFactory:
@@ -35,6 +37,8 @@ class DatabaseClientFactory:
     >>> client = DatabaseClientFactory.create_client(DatabaseBackend.MONGODB)
     >>> client = DatabaseClientFactory.create_client(DatabaseBackend.LOCAL)
     >>> client = DatabaseClientFactory.create_client("local")  # string form also accepted
+    >>> client = DatabaseClientFactory.create_client("mongodb")  # string form also accepted
+    >>> client = DatabaseClientFactory.create_client("huggingface")  # string form also accepted
 
     Entry point for obtaining a database client instance.
     """
@@ -43,6 +47,7 @@ class DatabaseClientFactory:
     _registry: ClassVar[dict[DatabaseBackend, type[DatabaseClient]]] = {
         DatabaseBackend.MONGODB: MongoDBClient,
         DatabaseBackend.LOCAL: LocalClient,
+        DatabaseBackend.HUGGINGFACE: HuggingFaceClient,
     }
 
     @classmethod
@@ -75,4 +80,5 @@ class DatabaseClientFactory:
         client_class = cls._registry.get(backend)
         if client_class is None:
             raise UnsupportedDatabaseBackendError(str(backend), list(cls._registry)) from None
+
         return client_class.from_env(db_args)

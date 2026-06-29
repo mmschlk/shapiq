@@ -47,7 +47,7 @@ COLORS = [
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"]
 GLOBAL_APPROX_STYLES = {}
 
-LOADING_METHOD = "mongodb"  # "local" or "mongodb"
+LOADING_METHOD = "mongodb"  # "local" or "mongodb" or "huggingface"
 
 # ELO Leaderboard: Budget-Buckets
 BUDGET_BUCKETS = [

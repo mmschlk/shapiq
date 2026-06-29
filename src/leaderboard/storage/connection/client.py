@@ -85,10 +85,49 @@ class DatabaseClient(ABC):
         """Insert a single run document."""
 
     @abstractmethod
+    def safe_insert_one(self, document: dict[str, Any], mode: str = "merge") -> bool:
+        """Append a single run document only if no existing document matches its config and seed.
+
+        Args:
+            document: the run document to insert
+            mode: merge / replace / skip (default: merge)
+                - merge: if a matching document exists, override metrics that are different and keep the rest; update timestamp to newest document
+                - replace: if a matching document exists, replace it entirely with the new document
+                - skip: if a matching document exists, do not modify it
+
+        Returns True if the document was inserted, or False if a matching document already exists.
+        """
+
+    @abstractmethod
     def insert_many(self, documents: list[dict[str, Any]]) -> None:
         """Bulk-insert run documents (no-op for an empty list)."""
 
+    def safe_insert_many(self, documents: list[dict[str, Any]], mode: str = "merge") -> int:
+        """Bulk-insert run documents, ensuring no duplicates for the same config.
+
+        Args:
+            documents: the run documents to insert
+            mode: merge / replace / skip (default: merge)
+                - merge: if a matching document exists, override metrics that are different and keep the rest; update timestamp to newest document
+                - replace: if a matching document exists, replace it entirely with the new document
+                - skip: if a matching document exists, do not modify it
+        """
+        if not documents:
+            return 0
+
+        inserted_count = 0
+
+        for doc in documents:
+            if self.safe_insert_one(doc, mode=mode):
+                inserted_count += 1
+
+        return inserted_count
+
     # Delete
+
+    @abstractmethod
+    def delete_by_id(self, doc_id: str) -> int:
+        """Delete a document by its unique identifier. Returns 1 if deleted, 0 if not found."""
 
     @abstractmethod
     def delete_all(self) -> int:

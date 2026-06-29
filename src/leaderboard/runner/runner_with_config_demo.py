@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from leaderboard.config_manager import MVPRunConfig
     from leaderboard.runner.custom_types import InteractionIndex
 
-# Configure dedicated module logger to resolve LOG015
+# Configure dedicated module logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -118,7 +118,9 @@ def load_raw_config(path: Path) -> dict[str, Any]:
 
 def main() -> None:
     """Run benchmarks from a YAML config and store raw results in MongoDB."""
+    # Read system args
     argsv = sys.argv
+
     project_root = Path(__file__).resolve().parents[3]
 
     if len(argsv) > 1:
@@ -191,15 +193,20 @@ def main() -> None:
     sys.stdout.write("=" * 80 + "\n\n")
 
     run_configs = expand_validated_config(config_obj)
-    mongo_db = DatabaseClientFactory.create_client("mongodb", {})
+    mongo_db = DatabaseClientFactory.create_client("mongodb", db_args={})
 
+    # Create a local database client
     output_path = project_root / "data" / "results_raw.jsonl"
-    local_db = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(output_path)})
+    local_db = DatabaseClientFactory.create_client(
+        "local", db_args={"LOCAL_DB_PATH": str(output_path)}
+    )
 
+    # Test connection
     if not mongo_db.test_connection():
         raise ConnectionError from None
     logger.info("MongoDB connection successful.")
 
+    # Run benchmarks for each expanded run configuration
     for run_config in run_configs:
         logger.info("Running benchmark config:")
         logger.info(json.dumps(run_config, indent=2, default=str))
@@ -223,7 +230,10 @@ def main() -> None:
             ground_truth_method=run_config["ground_truth_method"],
         )
 
+        # Insert in local JSONL file
         local_db.insert_many(benchmark_result["raw_results"])
+
+        # Insert in MongoDB
         mongo_db.insert_many(benchmark_result["raw_results"])
 
         logger.info("Stored raw results:")
@@ -233,4 +243,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Note: We pass sys.argv to main() to allow config file path specification.
     main()
