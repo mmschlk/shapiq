@@ -390,7 +390,33 @@ def get_plot_single(
 
 
 # --- Daten laden ---
-df_agg = load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
+def _with_spinner(message: str, fn):
+    import threading
+    SPINNER = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+    done = threading.Event()
+
+    def spin():
+        i = 0
+        while not done.is_set():
+            print(f"\r{SPINNER[i % len(SPINNER)]}  {message}", end="", flush=True)
+            i += 1
+            done.wait(0.1)
+        print(f"\r✓  {message}")
+
+    t = threading.Thread(target=spin, daemon=True)
+    t.start()
+    result = fn()
+    done.set()
+    t.join()
+    return result
+
+print("\n🚀 Starting shapiq Leaderboard...\n")
+
+
+df_agg = _with_spinner(
+    "Connecting to database & loading records...",
+    lambda: load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH),
+)
 
 # Raw DB client for details tab
 db_client = DatabaseClientFactory.create_client(
@@ -398,23 +424,25 @@ db_client = DatabaseClientFactory.create_client(
     db_args={"LOCAL_DB_PATH": str(RESULTS_PATH)} if LOADING_METHOD == "local" else {},
 )
 
-raw_records = db_client.get_all()
-
+raw_records = _with_spinner("Loading raw records...", db_client.get_all)
 _all_games = db_client.get_games()
 _all_approxs = db_client.get_approximators()
-_all_budgets = sorted({c.budget for c in db_client.get_unique_configs()})
-_all_indices = sorted({c.index for c in db_client.get_unique_configs()})
-_all_n_players = sorted({c.n_players for c in db_client.get_unique_configs()})
-_all_max_orders = sorted({c.max_order for c in db_client.get_unique_configs()})
-_all_gt_methods = sorted({c.ground_truth_method for c in db_client.get_unique_configs()})
+_unique_configs = db_client.get_unique_configs()
+_all_budgets = sorted({c.budget for c in _unique_configs})
+_all_indices = sorted({c.index for c in _unique_configs})
+_all_n_players = sorted({c.n_players for c in _unique_configs})
+_all_max_orders = sorted({c.max_order for c in _unique_configs})
+_all_gt_methods = sorted({c.ground_truth_method for c in _unique_configs})
 _all_seeds = sorted({
     int(s) for r in raw_records
     if isinstance(s := r.get("approx_seed"), int | float | str)
 })
 
-update_global_styles(df_agg)
+_with_spinner("Computing global styles...", lambda: update_global_styles(df_agg) or True)
 
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
+
+print("\n✨ Ready!\n")
 
 
 def compute_yranges(g: str, approximators: list[str]) -> dict[str, list[float] | None]:
