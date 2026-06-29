@@ -271,6 +271,108 @@ class TestDatabaseClientWrite:
         assert data[0]["run_id"] == _PERM_100_SEED0["run_id"]
         assert data[1]["run_id"] == _PERM_100_SEED1["run_id"]
 
+    # Testing safe insert - MERGE mode
+
+    def test_safe_insert_one_inserts_when_no_match(self, empty_client: DatabaseClient) -> None:
+        result = empty_client.safe_insert_one(_PERM_100_SEED0, mode="merge")
+        assert result is True
+
+        data = empty_client.get_all()
+        assert len(data) == 1
+        assert data[0]["run_id"] == _PERM_100_SEED0["run_id"]
+
+    def test_safe_insert_many_inserts_only_one_when_equal_mode_skip(
+        self, empty_client: DatabaseClient
+    ) -> None:
+        result1 = empty_client.safe_insert_one(_PERM_100_SEED0, mode="skip")
+        result2 = empty_client.safe_insert_one(_PERM_100_SEED0, mode="skip")
+        assert result1 is True
+        assert result2 is False
+
+        data = empty_client.get_all()
+        assert len(data) == 1
+        assert data[0]["run_id"] == _PERM_100_SEED0["run_id"]
+
+    def test_safe_insert_many_inserts_only_one_when_equal_mode_merge(
+        self, empty_client: DatabaseClient
+    ) -> None:
+        modified = {
+            **_PERM_100_SEED0,
+            "run_id": "modified-run-id",
+            "timestamp": "2026-06-01T12:00:00.000000+00:00",
+        }
+
+        result1 = empty_client.safe_insert_one(_PERM_100_SEED0, mode="merge")
+        result2 = empty_client.safe_insert_one(modified, mode="merge")
+        assert result1 is True
+        assert (
+            result2 is True
+        )  # Merge mode should return True even if it's merging with an existing document
+
+        data = empty_client.get_all()
+        assert len(data) == 1
+        assert data[0]["run_id"] == modified["run_id"]
+
+    def test_safe_insert_one_merge_overrides_metrics(
+        self, populated_client: DatabaseClient
+    ) -> None:
+        modified = {
+            **_PERM_100_SEED0,
+            "metrics": {**_PERM_100_SEED0["metrics"], "mse": 0.12345},
+            "timestamp": "2026-06-01T12:00:00.000000+00:00",
+        }
+        result = populated_client.safe_insert_one(modified, mode="merge")
+        assert result is True
+
+        data = populated_client.get_all()
+        for d in data:
+            if d["run_id"] == _PERM_100_SEED0["run_id"]:
+                assert d["metrics"]["mse"] == 0.12345
+                assert d["timestamp"] == "2026-06-01T12:00:00.000000+00:00"
+                break
+        else:
+            pytest.fail("Modified document not found after safe_insert_one with merge")
+
+    def test_safe_insert_many_merge_overrides_metrics_only_on_match(
+        self, empty_client: DatabaseClient
+    ) -> None:
+        modified = {
+            **_PERM_100_SEED0,
+            "run_id": "modified-run-id",
+            "metrics": {**_PERM_100_SEED0["metrics"], "mse": 0.12345},
+            "timestamp": "2026-06-01T12:00:00.000000+00:00",
+        }
+
+        to_be_inserted = [_PERM_100_SEED0, modified]
+
+        result = empty_client.safe_insert_many(to_be_inserted, mode="merge")
+        assert result == 2  # Both documents should be processed (one inserted, one merged)
+
+        data = empty_client.get_all()
+        assert len(data) == 1
+        assert data[0]["run_id"] == modified["run_id"]
+        assert data[0]["metrics"]["mse"] == 0.12345
+
+    def test_safe_insert_skip_on_match(self, empty_client: DatabaseClient) -> None:
+        modified = {
+            **_PERM_100_SEED0,
+            "run_id": "modified-run-id",
+            "metrics": {**_PERM_100_SEED0["metrics"], "mse": 0.12345},
+            "timestamp": "2026-06-01T12:00:00.000000+00:00",
+        }
+
+        to_be_inserted = [_PERM_100_SEED0, modified]
+
+        result = empty_client.safe_insert_many(to_be_inserted, mode="skip")
+        assert (
+            result == 1
+        )  # Only the first document should be inserted (the second should be skipped)
+
+        data = empty_client.get_all()
+        assert len(data) == 1
+        assert data[0]["run_id"] == _PERM_100_SEED0["run_id"]
+        assert data[0]["metrics"]["mse"] == _PERM_100_SEED0["metrics"]["mse"]
+
 
 # ===========================================================================
 # TestDatabaseClientDelete
@@ -398,7 +500,9 @@ class TestDatabaseClientContract:
             "test_connection",
             "close",
             "insert_one",
+            "safe_insert_one",
             "insert_many",
+            "delete_by_id",
             "delete_all",
             "delete_by_config",
             "get_all",

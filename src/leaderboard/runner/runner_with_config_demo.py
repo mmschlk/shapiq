@@ -101,11 +101,13 @@ def main() -> None:
     base_config = config_obj.model_dump(exclude_none=True)
 
     # Connect to MongoDB
-    mongo_db = DatabaseClientFactory.create_client("mongodb", {})
+    mongo_db = DatabaseClientFactory.create_client("mongodb", db_args={})
 
     # Create a local database client
     output_path = project_root / "data" / "results_raw.jsonl"
-    local_db = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(output_path)})
+    local_db = DatabaseClientFactory.create_client(
+        "local", db_args={"LOCAL_DB_PATH": str(output_path)}
+    )
 
     # Test connection
     if not mongo_db.test_connection():

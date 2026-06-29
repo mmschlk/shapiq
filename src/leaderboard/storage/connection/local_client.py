@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from leaderboard.storage.data_classes import RunConfig
 
 from .client import DatabaseClient
+from .utilities import _matches_config, _matches_config_with_seed
 
 
 def _json_default(value: object) -> object:
@@ -29,19 +30,6 @@ def _json_default(value: object) -> object:
     if isinstance(value, np.ndarray):
         return value.tolist()
     return str(value)
-
-
-def _matches_config(document: dict[str, Any], config: RunConfig) -> bool:
-    """Return True if *document* contains all key/value pairs in *config*."""
-    return (
-        document.get("game_name") == config.game_name
-        and document.get("n_players") == config.n_players
-        and document.get("approximator_name") == config.approximator_name
-        and document.get("index") == config.index
-        and document.get("max_order") == config.max_order
-        and document.get("budget") == config.budget
-        and document.get("ground_truth_method") == config.ground_truth_method
-    )
 
 
 class LocalClient(DatabaseClient):
@@ -86,6 +74,11 @@ class LocalClient(DatabaseClient):
             if "LOCAL_DB_PATH" in args
             else os.getenv("LOCAL_DB_PATH", "data/runs.jsonl")
         )
+
+        # if args["CREATE"] is set to True, create an empty file if it doesn't exist
+        if args.get("CREATE", False):
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            Path(path).touch(exist_ok=True)
 
         return cls(path=path)
 
@@ -134,6 +127,56 @@ class LocalClient(DatabaseClient):
         """Append a single run document to the JSONL file."""
         self._append(document)
 
+    def safe_insert_one(self, document: dict[str, Any], mode: str = "merge") -> bool:
+        """Append a single run document only if no existing document matches its config and seed.
+
+        Args:
+            document: the run document to insert
+            mode: merge / replace / skip (default: merge)
+                - merge: if a matching document exists, override metrics that are different and keep the rest; update timestamp to newest document
+                - replace: if a matching document exists, replace it entirely with the new document
+                - skip: if a matching document exists, do not modify it
+
+        Returns True if the document was inserted, or False if a matching document already exists.
+        """
+        # Extract config from the new document
+        new_doc_config = RunConfig.from_dict(document)
+
+        # Load documents by config
+        existing_docs = self.get_by_config(new_doc_config)
+
+        if not existing_docs:
+            # No existing document matches the config, safe to insert
+            self.insert_one(document)
+            return True
+
+        to_be_inserted = document.copy()  # Start with the new document
+
+        # Check for matching seed
+        for existing_doc in existing_docs:
+            if _matches_config_with_seed(document, existing_doc):
+                if mode == "merge":
+                    # Merge metrics and update timestamp
+                    merged_doc = existing_doc.copy()
+                    merged_doc.update(document)  # New document's fields override existing ones
+
+                    to_be_inserted.update(
+                        merged_doc
+                    )  # Update the document to be inserted with merged data
+
+                    # delete only if duplicate
+                    self.delete_by_id(
+                        existing_doc.get("run_id")
+                    )  # Remove old document(s) by unique identifier
+                elif mode == "replace":
+                    self.delete_by_config(new_doc_config)  # Remove old document(s)
+                elif mode == "skip":
+                    return False  # Do not insert, as a matching document already exists
+
+        self.insert_one(to_be_inserted)  # Insert the document to be inserted
+
+        return True
+
     def insert_many(self, documents: list[dict[str, Any]]) -> None:
         """Append multiple run documents (no-op for an empty list)."""
         if not documents:
@@ -147,6 +190,15 @@ class LocalClient(DatabaseClient):
     # ------------------------------------------------------------------
     # Delete
     # ------------------------------------------------------------------
+
+    def delete_by_id(self, doc_id: str) -> int:
+        """Delete a document by its unique identifier. Returns 1 if deleted, 0 if not found."""
+        documents = self._load()
+        kept = [d for d in documents if d.get("run_id") != doc_id]
+        deleted = len(documents) - len(kept)
+        if deleted:
+            self._save(kept)
+        return deleted
 
     def delete_all(self) -> int:
         """Delete every document. Returns the number of deleted documents."""

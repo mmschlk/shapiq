@@ -9,7 +9,6 @@ from leaderboard.storage import (
     DatabaseClientFactory,
     DBClientError,
     DBConnectionError,
-    MetricsLoader,
     MissingMongoURIError,
     RunConfig,
     UnsupportedDatabaseBackendError,
@@ -22,7 +21,6 @@ __all__ = [
     "DBClientError",
     "DBConnectionError",
     "RunConfig",
-    "MetricsLoader",
     "MissingMongoURIError",
     "UnsupportedDatabaseBackendError",
 ]
