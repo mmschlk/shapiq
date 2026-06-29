@@ -46,10 +46,7 @@ def test_align_interaction_values_removes_empty_interaction_and_aligns_values():
         },
     )
 
-    gt_values_aligned, approx_values_aligned = align_interaction_values(
-        ground_truth,
-        approx_values,
-    )
+    gt_values_aligned, approx_values_aligned = align_interaction_values(ground_truth, approx_values)
 
     assert np.array_equal(gt_values_aligned, np.array([10.0, 20.0, 30.0]))
     assert np.array_equal(approx_values_aligned, np.array([100.0, 200.0, 300.0]))
@@ -95,10 +92,7 @@ def test_align_interaction_values_removes_empty_interaction():
         },
     )
 
-    gt_values_aligned, approx_values_aligned = align_interaction_values(
-        ground_truth,
-        approx_values,
-    )
+    gt_values_aligned, approx_values_aligned = align_interaction_values(ground_truth, approx_values)
 
     assert np.array_equal(gt_values_aligned, np.array([]))
     assert np.array_equal(approx_values_aligned, np.array([]))
@@ -117,7 +111,7 @@ def failing_approximate(**kwargs: Any) -> str:
 
 
 def fake_align(
-    ground_truth: InteractionValues, approx_values: Any
+    ground_truth: InteractionValues, approx_values: Any, **kwargs
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return fixed aligned ground truth and approximation arrays."""
     return np.array([1.0, 2.0]), np.array([1.1, 1.9])
@@ -194,3 +188,80 @@ def test_run_single_experiment_seed_creates_failed_record_on_error():
     assert record["run_failed"] is True
     assert record["approx_seed"] == 42
     assert record["metrics"] is None
+
+
+def test_align_interaction_values_rejects_missing_approx_keys_by_default():
+    """Test that missing approximation keys fail in strict alignment mode."""
+    ground_truth = MockInteractionValues(
+        values=np.array([10.0, 20.0, 30.0]),
+        interaction_lookup={
+            (0,): 0,
+            (1,): 1,
+            (0, 1): 2,
+        },
+    )
+
+    approx_values = MockInteractionValues(
+        values=np.array([100.0, 300.0]),
+        interaction_lookup={
+            (0,): 0,
+            (0, 1): 1,
+        },
+    )
+
+    with pytest.raises(InteractionKeyMismatchError):
+        align_interaction_values(ground_truth, approx_values)
+
+
+def test_align_interaction_values_fills_missing_approx_keys_when_allowed():
+    """Test that missing approximation keys are filled with zero when allowed."""
+    ground_truth = MockInteractionValues(
+        values=np.array([10.0, 20.0, 30.0]),
+        interaction_lookup={
+            (0,): 0,
+            (1,): 1,
+            (0, 1): 2,
+        },
+    )
+
+    approx_values = MockInteractionValues(
+        values=np.array([100.0, 300.0]),
+        interaction_lookup={
+            (0,): 0,
+            (0, 1): 1,
+        },
+    )
+
+    gt_values_aligned, approx_values_aligned = align_interaction_values(
+        ground_truth,
+        approx_values,
+        allow_missing_approx_keys=True,
+    )
+
+    assert np.array_equal(gt_values_aligned, np.array([10.0, 20.0, 30.0]))
+    assert np.array_equal(approx_values_aligned, np.array([100.0, 0.0, 300.0]))
+
+
+def test_align_interaction_values_rejects_extra_approx_keys_even_when_missing_allowed():
+    """Test that extra approximation keys are always rejected."""
+    ground_truth = MockInteractionValues(
+        values=np.array([10.0]),
+        interaction_lookup={
+            (0,): 0,
+        },
+    )
+
+    approx_values = MockInteractionValues(
+        values=np.array([100.0, 200.0]),
+        interaction_lookup={
+            (0,): 0,
+            (1,): 1,
+        },
+    )
+
+    with pytest.raises(InteractionKeyMismatchError):
+        align_interaction_values(
+            ground_truth,
+            approx_values,
+            allow_missing_approx_keys=True,
+        )

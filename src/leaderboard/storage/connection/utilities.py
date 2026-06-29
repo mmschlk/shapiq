@@ -7,9 +7,12 @@ Includes:
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from leaderboard.metrics import METRICS
+from leaderboard.storage.data_classes.run_config import RunConfig
 
 
 def _process(raw_runs: list[dict]) -> pd.DataFrame:
@@ -83,3 +86,41 @@ def _empty_dataframe() -> pd.DataFrame:
             }
         ]
     )
+
+
+def _get_seed(document: dict[str, Any]) -> int | None:
+    """Extract the 'seed' field from *document*, if present and an integer."""
+    seed = document.get("seed")
+
+    if seed is None:
+        seed = document.get("approx_seed")
+
+    if seed is None or not isinstance(seed, int):
+        raise ValueError from None
+
+    return seed
+
+
+def _matches_config(document: dict[str, Any], config: RunConfig) -> bool:
+    """Return True if *document* contains all key/value pairs in *config*."""
+    comparisons = {
+        "game_name": document.get("game_name") == config.game_name,
+        "n_players": document.get("n_players") == config.n_players,
+        "approximator_name": document.get("approximator_name") == config.approximator_name,
+        "index": document.get("index") == config.index,
+        "max_order": document.get("max_order") == config.max_order,
+        "budget": document.get("budget") == config.budget,
+        "ground_truth_method": (document.get("ground_truth_method") == config.ground_truth_method),
+    }
+
+    return all(comparisons.values())
+
+
+def _matches_config_with_seed(document: dict[str, Any], other_document: dict[str, Any]) -> bool:
+    """Return True if *document* matches *config* on all fields including 'seed'."""
+    document_config = RunConfig.from_dict(document)
+
+    matches_config = _matches_config(other_document, document_config)
+    does_match_seed = _get_seed(document) == _get_seed(other_document)
+
+    return matches_config and does_match_seed
