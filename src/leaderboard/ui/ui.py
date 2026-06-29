@@ -397,12 +397,20 @@ db_client = DatabaseClientFactory.create_client(
     LOADING_METHOD,
     db_args={"LOCAL_DB_PATH": str(RESULTS_PATH)} if LOADING_METHOD == "local" else {},
 )
+
+raw_records = db_client.get_all()
+
 _all_games = db_client.get_games()
 _all_approxs = db_client.get_approximators()
 _all_budgets = sorted({c.budget for c in db_client.get_unique_configs()})
 _all_indices = sorted({c.index for c in db_client.get_unique_configs()})
-
-raw_records = db_client.get_all()
+_all_n_players = sorted({c.n_players for c in db_client.get_unique_configs()})
+_all_max_orders = sorted({c.max_order for c in db_client.get_unique_configs()})
+_all_gt_methods = sorted({c.ground_truth_method for c in db_client.get_unique_configs()})
+_all_seeds = sorted({
+    int(s) for r in raw_records
+    if isinstance(s := r.get("approx_seed"), int | float | str)
+})
 
 update_global_styles(df_agg)
 
@@ -1054,6 +1062,9 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     with gr.Column(scale=0, min_width=120):
                         deselect_btn = gr.Button("Alle abwählen", size="sm")
                         reset_btn = gr.Button("Zurücksetzen", size="sm")
+                        jump_buttons[metric] = gr.Button(
+                            "🔍 Open in Detailed Data Tab", size="sm", variant="secondary",
+                        )
 
                 deselect_btn.click(fn=list, outputs=approx_checkboxes[metric])
                 reset_btn.click(
@@ -1069,11 +1080,6 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                         df_agg["approximator_name"].unique().tolist(),
                     )
                 )
-
-                with gr.Row():
-                    jump_buttons[metric] = gr.Button(
-                        "🔍 Open in Raw Data Explorer", size="sm", variant="secondary"
-                    )
 
                 # metric als default-Argument binden, sonst nimmt die Lambda immer den letzten Wert
                 for component in [game_dropdowns[metric], approx_checkboxes[metric]]:
@@ -1092,7 +1098,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary", interactive=False)
             n_cols_state = gr.State(value=DEFAULT_COLS)
             compare_jump_btn = gr.Button(
-                "🔍 Open in Raw Data Explorer",
+                "🔍 Open in Detailed Data Tab",
                 scale=0,
                 variant="secondary",
                 elem_classes=["compare-jump-btn"],
@@ -1204,20 +1210,26 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 fn=update_compare_plots, inputs=[*all_inputs, n_cols_state], outputs=plot_outputs
             )
 
-    with gr.Tab("Raw Data Explorer"):
-        gr.Markdown("## Raw Run Explorer\nDirect MongoDB query of individual runs.")
+    with gr.Tab("Detailed Data"):
+        gr.Markdown("## Detailed Data\nDirect MongoDB query of individual runs.")
 
         with gr.Row():
             det_game = gr.Dropdown(choices=_all_games, label="Game", multiselect=True)
             det_approx = gr.Dropdown(choices=_all_approxs, label="Approximator", multiselect=True)
-            det_metric = gr.Dropdown(choices=available_metrics, label="Metrics", multiselect=True)
-            det_budget = gr.Dropdown(
-                choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True
-            )
+            det_budget = gr.Dropdown(choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True)
             det_index = gr.Dropdown(choices=_all_indices, label="Index", multiselect=True)
-            det_failed = gr.Checkbox(label="Nur failed runs", value=False)
+            det_max_order = gr.Dropdown(choices=[str(o) for o in _all_max_orders], label="Max Order", multiselect=True)
 
-        det_search_btn = gr.Button("Search", variant="primary")
+        with gr.Row():
+            det_n_players = gr.Dropdown(choices=[str(n) for n in _all_n_players], label="N Players", multiselect=True)
+            det_gt_method = gr.Dropdown(choices=_all_gt_methods, label="Ground Truth Method", multiselect=True)
+            det_seed = gr.Dropdown(choices=[str(s) for s in _all_seeds], label="Approx Seed", multiselect=True)
+            det_metric = gr.Dropdown(choices=available_metrics, label="Metrics", multiselect=True)
+
+        with gr.Row():
+            det_search_btn = gr.Button("Search", variant="primary")
+            det_reset_btn = gr.Button("Filter zurücksetzen", variant="secondary")
+
         det_count = gr.Markdown(f"**{len(raw_records)} Runs gefunden.**")
         det_table = gr.Dataframe(value=_records_to_df(raw_records), interactive=False)
 
@@ -1227,7 +1239,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             budgets: list[str],
             indices: list[str],
             metrics: list[str],
-            only_failed: bool = False,  # noqa: FBT001, FBT002
+            n_players: list[str],
+            max_orders: list[str],
+            seeds: list[str],
+            gt_methods: list[str],
         ) -> AsyncGenerator[tuple[Any, Any], None]:
             """Query and display raw benchmark records with optional filters.
 
@@ -1241,7 +1256,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 budgets: Budget values (as strings) to include; empty list means no filter.
                 indices: Interaction index names to include; empty list means no filter.
                 metrics: Metric columns to expand; empty list means all metrics.
-                only_failed: If ``True``, only records with ``run_failed=True`` are returned.
+                n_players: Player counts to include; empty list means no filter.
+                max_orders: Max order values to include; empty list means no filter.
+                seeds: Approximator seed values to include; empty list means no filter.
+                gt_methods: Ground truth method names to include; empty list means no filter.
 
             Yields:
                 Gradio update tuples for the count label and the result table,
@@ -1261,7 +1279,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     continue
                 if indices and r.get("index") not in indices:
                     continue
-                if only_failed and not r.get("run_failed", False):
+                if n_players and str(r.get("n_players")) not in n_players:
+                    continue
+                if max_orders and str(r.get("max_order")) not in max_orders:
+                    continue
+                if seeds and str(r.get("approx_seed")) not in seeds:
+                    continue
+                if gt_methods and r.get("ground_truth_method") not in gt_methods:
                     continue
                 filtered.append(r)
 
@@ -1277,11 +1301,26 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             await asyncio.sleep(0.05)
             yield gr.update(), gr.update(value=result_df, visible=True)
 
+
+        _det_filters = [det_game, det_approx, det_budget, det_index, det_metric,
+                        det_n_players, det_max_order, det_seed, det_gt_method]
+
         det_search_btn.click(
             fn=query_raw,
-            inputs=[det_game, det_approx, det_budget, det_index, det_metric, det_failed],
+            inputs=_det_filters,
             outputs=[det_count, det_table],
         )
+
+        def reset_det_filters() -> tuple[list, ...]:
+            """Reset all Detailed Data Tab filters to their empty default state.
+
+            Returns:
+                Tuple of empty lists, one for each dropdown in ``_det_filters``.
+            """
+            return tuple([] for _ in _det_filters)
+
+
+        det_reset_btn.click(fn=reset_det_filters, outputs=_det_filters)
 
     def on_reload() -> tuple[Any, ...]:
         """Reloads the raw dataset and refreshes all UI components.
@@ -1347,10 +1386,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             outputs=[det_game, det_approx, det_metric],
         ).then(
             fn=query_raw,
-            inputs=[det_game, det_approx, det_budget, det_index, det_metric, det_failed],
+            inputs=_det_filters,
             outputs=[det_count, det_table],
         ).then(
-            fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
+            fn=lambda: gr.Info("Daten geladen — bitte zum 'Detailed Data' Tab wechseln"),
             inputs=[],
             outputs=[],
         )
@@ -1365,10 +1404,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         outputs=[det_game, det_approx, det_metric],
     ).then(
         fn=query_raw,
-        inputs=[det_game, det_approx, det_budget, det_index, det_metric, det_failed],
+        inputs=_det_filters,
         outputs=[det_count, det_table],
     ).then(
-        fn=lambda: gr.Info("Daten geladen — bitte zum 'Raw Data Explorer' Tab wechseln"),
+        fn=lambda: gr.Info("Daten geladen — bitte zum 'Detailed Data' Tab wechseln"),
         inputs=[],
         outputs=[],
     )
