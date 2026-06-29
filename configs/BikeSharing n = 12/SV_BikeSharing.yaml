@@ -38,10 +38,8 @@ approximators:
   - "PermutationSamplingSV"
   - "KernelSHAP"
   - "kADDSHAP"
-  # - "SPEX"
-  # - "ProxySPEX"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250

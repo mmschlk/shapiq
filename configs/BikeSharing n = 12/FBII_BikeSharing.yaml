@@ -1,7 +1,7 @@
 game: "BikeSharing"
 game_family: "local_xai"
-index: "SV"
-max_order: 1
+index: "FBII"
+max_order: 2
 
 game_params:
   # --- Universal Game Control ---
@@ -31,17 +31,9 @@ ground_truth:
   method: "ExactComputer"
 
 approximators:
-  - "OwenSamplingSV"
-  - "StratifiedSamplingSV"
-  - "SVARM"
-  - "UnbiasedKernelSHAP"
-  - "PermutationSamplingSV"
-  - "KernelSHAP"
-  - "kADDSHAP"
-  # - "SPEX"
-  # - "ProxySPEX"
+  - "RegressionFBII"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250

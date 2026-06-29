@@ -6,17 +6,25 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import yaml
+from sparse_transform.qsft.signals.input_signal_subsampled import (
+    SubsampledSignal as SubsampledSignalFourier,
+)
 
-from config_manager import MVPRunConfig, load_and_validate_config
+from leaderboard.config_manager import load_and_validate_config
 from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
-from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.game_factory import create_game_from_config
 from leaderboard.storage.connection import DatabaseClientFactory
 
+if TYPE_CHECKING:
+    from leaderboard.config_manager import MVPRunConfig
+    from leaderboard.runner.custom_types import InteractionIndex
+
+# Configure dedicated module logger
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -30,6 +38,7 @@ class ExpandedRunConfig(TypedDict):
     budget: int
     seeds: list[int]
     game_seed: int
+    ground_truth_method: str
 
 
 def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]:
@@ -41,21 +50,54 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
     Returns:
         List of expanded run configurations (one per approximator-budget combo).
     """
-    run_configs: list[ExpandedRunConfig] = [
-        {
-            "game": config_obj.game,
-            "index": config_obj.index,
-            "approximator": approx,
-            "max_order": config_obj.max_order,
-            "budget": budget,
-            "seeds": list(config_obj.seeds),
-            "game_seed": config_obj.game_seed,
-        }
-        for approx in config_obj.approximators
-        for budget in config_obj.budgets
-    ]
+    run_configs: list[ExpandedRunConfig] = []
 
-    logging.info("Expanded %s run configurations from validated config.", len(run_configs))
+    for approx in config_obj.approximators:
+        for budget in config_obj.budgets:
+            if approx == "SPEX":
+                # Default query parameters matching SPEX/__init__ setup
+                degree_parameter = 5
+                query_args = {
+                    "query_method": "complex",
+                    "num_subsample": 3,
+                    "delays_method_source": "joint-coded",
+                    "subsampling_method": "qsft",
+                    "delays_method_channel": "identity-siso",
+                    "num_repeat": 1,
+                    "t": degree_parameter,
+                }
+
+                # Dynamically calculate the safe lower-bound bit 'b' for the current n_players
+                calculated_b = SubsampledSignalFourier.get_b_for_sample_budget(
+                    budget, config_obj.n_players, degree_parameter, 2, query_args
+                )
+
+                # If b <= 2, SPEX is mathematically guaranteed to crash with an Insufficient Budget Error
+                if calculated_b <= 2:
+                    logger.warning(
+                        "⚠️  Skipping %s at budget %s: Calculated bits (b=%s) <= 2 "
+                        "is invalid for game '%s' (n=%s).",
+                        approx,
+                        budget,
+                        calculated_b,
+                        config_obj.game,
+                        config_obj.n_players,
+                    )
+                    continue
+
+            run_configs.append(
+                {
+                    "game": config_obj.game,
+                    "index": config_obj.index,
+                    "approximator": approx,
+                    "max_order": config_obj.max_order,
+                    "budget": budget,
+                    "seeds": list(config_obj.seeds),
+                    "game_seed": config_obj.game_seed,
+                    "ground_truth_method": config_obj.ground_truth.method,
+                }
+            )
+    logger.info("Expanded %s run configurations from validated config.", len(run_configs))
 
     return run_configs
 
@@ -82,25 +124,75 @@ def main() -> None:
     project_root = Path(__file__).resolve().parents[3]
 
     if len(argsv) > 1:
-        logging.info("Using config file: %s", argsv[1])
+        logger.info("Using config file: %s", argsv[1])
         config_path = Path(argsv[1])
     else:
         config_path = project_root / "configs" / "default_run.yaml"
 
-    # Load and validate config using config_manager interface
+    try:
+        yaml_content = Path(config_path).read_text(encoding="utf-8")
+        raw_yaml_config = yaml.safe_load(yaml_content) or {}
+    except (OSError, yaml.YAMLError) as e:
+        logger.warning("Could not read raw YAML configuration for audit: %s", e)
+        raw_yaml_config = {}
+
     config_obj = load_and_validate_config(config_path)
     if config_obj is None:
         raise FileNotFoundError from None
 
-    # Expand validated config to concrete run configurations
-    run_configs = expand_validated_config(config_obj)
-
-    # Load raw config for optional fields like game_params base_config = load_raw_config(config_path)
-
-    # Reuse validated config object so optional fields (e.g., game_params) stay typed.
     base_config = config_obj.model_dump(exclude_none=True)
 
-    # Connect to MongoDB
+    raw_apps = raw_yaml_config.get("approximators", [])
+    sanitized_apps = base_config.get("approximators", [])
+    purged_apps = [a for a in raw_apps if a not in sanitized_apps]
+
+    raw_budgets = raw_yaml_config.get("budgets", [])
+    sanitized_budgets = base_config.get("budgets", [])
+    purged_budgets = [b for b in raw_budgets if b not in sanitized_budgets]
+
+    sanitized_seeds_list = base_config.get("seeds", [])
+    seeds_count = len(sanitized_seeds_list)
+
+    model_name = config_obj.game_params.get("model_name", "N/A")
+    imputer_name = config_obj.game_params.get("imputer", "N/A")
+
+    sys.stdout.write("\n" + "=" * 80 + "\n")
+    sys.stdout.write("🛡️  SHAPIQ RUNNER SWEEP CONFIGURATION AUDIT\n")
+    sys.stdout.write("-" * 80 + "\n")
+    sys.stdout.write(
+        f"  ▶️ Target Game          : '{config_obj.game}' (n_players={config_obj.n_players})\n"
+    )
+    sys.stdout.write(f"  ▶️ Active Pipeline Type: '{config_obj.game_family}'\n")
+    sys.stdout.write(f"  ▶️ Game Model Backend   : '{model_name}'\n")
+    sys.stdout.write(f"  ▶️ Feature Imputer      : '{imputer_name}'\n")
+    sys.stdout.write(
+        f"  ▶️ Target Interaction  : '{config_obj.index}' (Max Order: {config_obj.max_order})\n"
+    )
+    sys.stdout.write("-" * 80 + "\n")
+
+    if purged_apps:
+        sys.stdout.write("⚠️  APPROXIMATOR FILTER NOTICE:\n")
+        sys.stdout.write(
+            f"  ❌ Removed incompatible algorithms for {config_obj.index}: {purged_apps}\n"
+        )
+        sys.stdout.write("-" * 80 + "\n")
+
+    if purged_budgets:
+        sys.stdout.write("⚠️  BUDGET RANGE FILTER NOTICE:\n")
+        sys.stdout.write(f"  ❌ Removed out-of-bounds budgets: {purged_budgets}\n")
+        sys.stdout.write("-" * 80 + "\n")
+
+    sys.stdout.write("🎯 GROUND TRUTH CONTROL PROFILE:\n")
+    sys.stdout.write(f"  ➡️ Strategy             : '{config_obj.ground_truth.strategy}'\n")
+    sys.stdout.write(f"  ➡️ Method               : '{config_obj.ground_truth.method}'\n")
+    sys.stdout.write("-" * 80 + "\n")
+    sys.stdout.write("📦 FINAL SANITIZED SWEEP EXECUTION LISTS:\n")
+    sys.stdout.write(f"  ✅ Run Approximators : {sanitized_apps}\n")
+    sys.stdout.write(f"  ✅ Run Budgets       : {sanitized_budgets}\n")
+    sys.stdout.write(f"  ✅ Run Seeds Total   : {seeds_count} (values: {sanitized_seeds_list})\n")
+    sys.stdout.write("=" * 80 + "\n\n")
+
+    run_configs = expand_validated_config(config_obj)
     mongo_db = DatabaseClientFactory.create_client("mongodb", db_args={})
 
     # Create a local database client
@@ -112,12 +204,12 @@ def main() -> None:
     # Test connection
     if not mongo_db.test_connection():
         raise ConnectionError from None
-    logging.info("MongoDB connection successful.")
+    logger.info("MongoDB connection successful.")
 
     # Run benchmarks for each expanded run configuration
     for run_config in run_configs:
-        logging.info("Running benchmark config:")
-        logging.info(json.dumps(run_config, indent=2, default=str))
+        logger.info("Running benchmark config:")
+        logger.info(json.dumps(run_config, indent=2, default=str))
 
         approximator_class = get_approximator_class(run_config["approximator"])
 
@@ -133,8 +225,9 @@ def main() -> None:
             max_order=run_config["max_order"],
             approx_seeds=run_config["seeds"],
             budget=run_config["budget"],
-            index=cast(InteractionIndex, run_config["index"]),
+            index=cast("InteractionIndex", run_config["index"]),
             approximator_class=approximator_class,
+            ground_truth_method=run_config["ground_truth_method"],
         )
 
         # Insert in local JSONL file
@@ -143,10 +236,10 @@ def main() -> None:
         # Insert in MongoDB
         mongo_db.insert_many(benchmark_result["raw_results"])
 
-        logging.info("Stored raw results:")
-        logging.info(len(benchmark_result["raw_results"]))
-        logging.info("First raw result:")
-        logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
+        logger.info("Stored raw results:")
+        logger.info(len(benchmark_result["raw_results"]))
+        logger.info("First raw result:")
+        logger.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 
 
 if __name__ == "__main__":

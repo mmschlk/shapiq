@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from config_manager import GroundTruthConfig, MVPRunConfig
+from leaderboard.config_manager import GroundTruthConfig, MVPRunConfig
 
 
 @pytest.fixture

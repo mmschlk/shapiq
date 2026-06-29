@@ -6,7 +6,7 @@ classes in shapiq.approximator. All 19 supported approximators are registered he
 
 from __future__ import annotations
 
-from config_manager.config_exceptions import (
+from leaderboard.config_manager.config_exceptions import (
     UnsupportedApproximatorError,
 )
 from shapiq.approximator import (
