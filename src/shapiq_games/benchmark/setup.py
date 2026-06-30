@@ -399,7 +399,7 @@ class GameBenchmarkSetup:
         self.dataset_name: str = dataset_name
 
         # prepare the data
-        x_data, y_data = x_data.values, y_data.values
+        x_data, y_data = x_data.to_numpy(), y_data.to_numpy()
         x_data, y_data = shuffle_data(x_data, y_data, random_state=random_state)
         self.x_data: np.ndarray = x_data
         self.y_data: np.ndarray = y_data

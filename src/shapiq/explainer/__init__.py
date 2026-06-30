@@ -17,6 +17,9 @@ from shapiq.tree.explainer import TreeExplainer
 
 from .agnostic import AgnosticExplainer
 from .base import Explainer
+from .nn.knn import KNNExplainer
+from .nn.threshold_nn import ThresholdNNExplainer
+from .nn.weighted_knn import WeightedKNNExplainer
 from .tabpfn import TabPFNExplainer
 from .tabular import TabularExplainer
 from .vision import VisionLanguageExplainer
@@ -28,4 +31,7 @@ __all__ = [
     "AgnosticExplainer",
     "TreeExplainer",
     "VisionLanguageExplainer",
+    "KNNExplainer",
+    "WeightedKNNExplainer",
+    "ThresholdNNExplainer",
 ]
