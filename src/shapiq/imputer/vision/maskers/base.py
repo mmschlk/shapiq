@@ -44,7 +44,6 @@ class VisionBlurParams:
     sigma: float = 3.0
 
 
-
 # Masker Configuration
 
 
@@ -57,7 +56,13 @@ class MaskerConfig:
     """
 
     strategy: str = "crossmodal_mean"
-    params: CrossModalMeanParams | CrossModalBlurParams | VisionMeanParams | VisionBlurParams | TextAttentionParams = field(default_factory=CrossModalMeanParams)
+    params: (
+        CrossModalMeanParams
+        | CrossModalBlurParams
+        | VisionMeanParams
+        | VisionBlurParams
+        | TextAttentionParams
+    ) = field(default_factory=CrossModalMeanParams)
 
 
 # Abstract Masker

@@ -26,9 +26,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import clip
-import matplotlib
+import matplotlib as mpl
 
-matplotlib.use("Agg")
+mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,8 +37,8 @@ from PIL import Image
 
 import shapiq
 from shapiq.imputer.vision import (
-    SegmenterConfig,
     MaskerConfig,
+    SegmenterConfig,
     SlicParams,
     VisionImputerFactory,
     VisionLanguageGame,
@@ -50,7 +50,7 @@ from shapiq.imputer.vision import (
 class OpenAIClipBatch(dict):
     """Small BatchEncoding-like dict with a .tokens() helper for plotting."""
 
-    def tokens(self):
+    def tokens(self) -> list[str]:
         n_text_players = int(self["input_ids"].shape[1]) - 2
         return ["<s>"] + [f"tok_{i}" for i in range(n_text_players)] + ["</s>"]
 
@@ -58,7 +58,7 @@ class OpenAIClipBatch(dict):
 class OpenAICLIPProcessorAdapter:
     """Processor adapter that returns pixel_values, input_ids, and attention_mask."""
 
-    def __init__(self, preprocess, context_length=77):
+    def __init__(self, preprocess: object, context_length: int = 77) -> None:
         self.preprocess = preprocess
         self.context_length = int(context_length)
         self.image_processor = SimpleNamespace(
@@ -71,21 +71,32 @@ class OpenAICLIPProcessorAdapter:
         )
 
     @staticmethod
-    def _as_list(value):
-        if isinstance(value, (list, tuple)):
+    def _as_list(value: object) -> list[object]:
+        if isinstance(value, list | tuple):
             return list(value)
         return [value]
 
-    def __call__(self, images, text, return_tensors="pt", padding=True, max_length=None):
+    def __call__(
+        self,
+        images,
+        text,
+        return_tensors="pt",  # noqa: ARG002
+        padding=True,  # noqa: ARG002, FBT002
+        max_length=None,  # noqa: ARG002
+    ) -> OpenAIClipBatch:
         images = self._as_list(images)
         texts = self._as_list(text)
 
-        pixel_values = torch.stack([
-            self.preprocess(
-                img.convert("RGB") if hasattr(img, "convert") else Image.fromarray(np.asarray(img)).convert("RGB")
-            )
-            for img in images
-        ])
+        pixel_values = torch.stack(
+            [
+                self.preprocess(
+                    img.convert("RGB")
+                    if hasattr(img, "convert")
+                    else Image.fromarray(np.asarray(img)).convert("RGB")
+                )
+                for img in images
+            ]
+        )
 
         full_tokens = clip.tokenize(texts, context_length=self.context_length, truncate=True)
         lengths = []
@@ -109,7 +120,7 @@ class OpenAICLIPProcessorAdapter:
 class OpenAICLIPModelAdapter(torch.nn.Module):
     """HF-like wrapper around an official OpenAI CLIP model."""
 
-    def __init__(self, clip_model, name_or_path):
+    def __init__(self, clip_model: object, name_or_path: str) -> None:
         super().__init__()
         self.clip_model = clip_model
         self.name_or_path = name_or_path
@@ -123,7 +134,7 @@ class OpenAICLIPModelAdapter(torch.nn.Module):
         # CNN-style signal for VisionImputerFactory: no embeddings.patch_size.
         self.vision_model = SimpleNamespace()
 
-    def forward(self, pixel_values, input_ids, attention_mask):
+    def forward(self, pixel_values, input_ids, attention_mask) -> SimpleNamespace:
         token_ids = input_ids.clone()
         token_ids = token_ids.masked_fill(attention_mask.to(token_ids.device) == 0, 0)
 
@@ -185,11 +196,11 @@ seg_cfg = SegmenterConfig(
 
 msk_cfg = MaskerConfig(strategy="crossmodal_mean")
 
-# from shapiq.imputer.vision import CrossModalBlurParams 
-# msk_cfg = MaskerConfig(strategy="crossmodal_blur", params=CrossModalBlurParams(sigma=6.0))
 
 factory = VisionImputerFactory()
-imputer = factory.build(model, processor, image, INPUT_TEXT, segmenter_config=seg_cfg, masker_config=msk_cfg)
+imputer = factory.build(
+    model, processor, image, INPUT_TEXT, segmenter_config=seg_cfg, masker_config=msk_cfg
+)
 
 game = VisionLanguageGame(imputer, batch_size=64)
 

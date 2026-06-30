@@ -51,7 +51,6 @@ class TestSegmenterConfig:
         assert cfg.strategy == "slic"
         assert cfg.params.n_segments == 60
 
-
     def test_factory_populated_metadata(self):
         cfg = SegmenterConfig()
         cfg.model_type = "clip"

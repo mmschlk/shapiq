@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from shapiq.explainer.vision import VisionLanguageExplainer  # noqa: F401
+from shapiq.explainer.vision import VisionLanguageExplainer
 from shapiq.imputer.vision import MaskerConfig, SegmenterConfig
 
 # %%
@@ -52,9 +52,9 @@ print(f"Image size: {image.size}")
 
 W, H = image.size
 masks = np.zeros((3, H, W), dtype=bool)
-masks[0, : H // 3, :] = True       # top third
+masks[0, : H // 3, :] = True  # top third
 masks[1, H // 3 : 2 * H // 3, :] = True  # middle third
-masks[2, 2 * H // 3 :, :] = True    # bottom third
+masks[2, 2 * H // 3 :, :] = True  # bottom third
 
 seg_cfg = SegmenterConfig(strategy="custom_segmenter")
 

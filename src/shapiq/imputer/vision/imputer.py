@@ -221,8 +221,7 @@ class VisionImputer:
         device = next(self.model.parameters()).device
         inputs_dict = {k: v.to(device) for k, v in inputs.to_dict().items()}
         with torch.no_grad():
-            outputs = self.model(**inputs_dict)
-        return outputs
+            return self.model(**inputs_dict)
 
     def _extract_diagonal(self, outputs: _ModelOutput) -> torch.Tensor:
         return torch.diagonal(outputs.logits_per_image).cpu()

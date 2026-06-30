@@ -66,7 +66,7 @@ print(f"Image size: {image.size}")
 # 3. Build the Imputer Pipeline
 # -------------------------------
 # :class:`~shapiq.imputer.vision.VisionImputerFactory` auto-detects the model type
-# (``clip``), extracts vision dimensions (image_size=224, patch_size=32 → 7×7 grid),
+# (``clip``), extracts vision dimensions (image_size=224, patch_size=32 → 7x7 grid),
 # preprocesses the text to count token players, and assembles the default pipeline:
 # **PatchSegmenter** + **CrossModalMeanMasker**.
 
@@ -105,7 +105,7 @@ print(sii)
 # %%
 # 5a. Patch Grid — Visualise Player Layout
 # ------------------------------------------
-# Show the 7×7 patch grid with player indices and the tokenized text.
+# Show the 7x7 patch grid with player indices and the tokenized text.
 
 grid_size = imputer.grid_size
 patch_size = imputer.patch_size
@@ -379,7 +379,7 @@ print("Saved: vision_clip_slic_force.png")
 # | Step | Component | What it does |
 # |---|---|---|
 # | Load model | ``transformers`` | CLIP ViT-B/32 |
-# | Segment | ``PatchSegmenter`` | 7×7 grid → 49 image players |
+# | Segment | ``PatchSegmenter`` | 7x7 grid → 49 image players |
 # | Mask | ``CrossModalMeanMasker`` | Zero-out pixels + text attention |
 # | Orchestrate | ``VisionImputer`` | Batches coalitions, runs model forward |
 # | Adapt | ``VisionLanguageGame`` | Thin :class:`~shapiq.Game` wrapper |

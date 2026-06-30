@@ -79,16 +79,18 @@ class VisionLanguageExplainer(Explainer):
     def __init__(
         self,
         model: Any,  # noqa: ANN401
-        data: Any = None,  # noqa: ANN401  # deprecated — use explain(x={...}) instead
+        data: Any = None,  # noqa: ANN401, ARG002  # deprecated — use explain(x={...}) instead
         *,
-        text: str | None = None,  # deprecated — pass via explain(x={"text": ...}) instead
+        text: str | None = None,  # noqa: ARG002  # deprecated — pass via explain(x={"text": ...}) instead
         processor: Any | None = None,  # noqa: ANN401
         segmenter_config: SegmenterConfig | None = None,
         masker_config: MaskerConfig | None = None,
         batch_size: int = 64,
         class_index: int | None = None,
         approximator: (
-            Literal["auto"] | TabularExplainerApproximators | Approximator[VisionLanguageExplainerIndices]
+            Literal["auto"]
+            | TabularExplainerApproximators
+            | Approximator[VisionLanguageExplainerIndices]
         ) = "auto",
         index: VisionLanguageExplainerIndices = "SV",
         max_order: int = 1,
@@ -134,7 +136,6 @@ class VisionLanguageExplainer(Explainer):
 
             verbose: Whether to print progress information.
         """
-
         # Resolve processor if not provided
         if processor is None:
             processor = self._infer_processor(model)
@@ -168,8 +169,7 @@ class VisionLanguageExplainer(Explainer):
 
     @property
     def game(self) -> VisionLanguageGame:
-        """The :class:`~shapiq.imputer.vision.VisionLanguageGame` from the
-        last ``explain()`` call.
+        """The VisionLanguageGame from the last ``explain()`` call.
 
         Raises:
             RuntimeError: If ``explain()`` has not been called yet.
@@ -184,8 +184,7 @@ class VisionLanguageExplainer(Explainer):
 
     @property
     def baseline_value(self) -> float:
-        """The baseline (empty coalition) value from the last ``explain()``
-        call.
+        """The baseline value from the last ``explain()`` call.
 
         Raises:
             RuntimeError: If ``explain()`` has not been called yet.
@@ -237,7 +236,7 @@ class VisionLanguageExplainer(Explainer):
             msg = "``x`` dict must contain both ``'image'`` and ``'text'`` keys."
             raise ValueError(msg)
 
-        custom_masks = kwargs.get("custom_masks", None)
+        custom_masks = kwargs.get("custom_masks")
 
         # Build the game (VisionImputer + VisionLanguageGame) for this input
         game = self._build_game(image=image, text=text, custom_masks=custom_masks)
@@ -265,10 +264,12 @@ class VisionLanguageExplainer(Explainer):
     # Internal helpers
 
     def _build_game(
-        self, image: Any, text: str, custom_masks: np.ndarray | None = None  # noqa: ANN401
+        self,
+        image: Any,  # noqa: ANN401
+        text: str,
+        custom_masks: np.ndarray | None = None,
     ) -> VisionLanguageGame:
-        """Build a :class:`~shapiq.imputer.vision.VisionLanguageGame` for
-        the given image and text.
+        """Build a VisionLanguageGame for the given image and text.
 
         Args:
             image: Input image (``PIL.Image``, ``np.ndarray``, or ``torch.Tensor``).
