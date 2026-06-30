@@ -2,72 +2,25 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from leaderboard.runner.runner_exceptions import UnknownGameError
-from shapiq_games.benchmark.local_xai.benchmark_tabular import (
-    AdultCensus,
-    Annealing,
-    Arrhythmia,
-    BikeSharing,
-    BreastCancer,
-    CaliforniaHousing,
-    Hepatitis,
-    Ionosphere,
-    Mushroom,
-    Nursery,
-    Soybean,
-    Thyroid,
-    Zoo,
+from leaderboard.config_manager.constants import (
+    GLOBAL_GAME_REGISTRY,
+    LOCAL_GAME_REGISTRY,
 )
+from leaderboard.runner.runner_exceptions import UnknownGameError
 from shapiq_games.synthetic import SOUM
 
 if TYPE_CHECKING:
     from shapiq import Game
 
 
-GAME_REGISTRY = {
-    "SOUM": SOUM,
-    "BikeSharing": BikeSharing,
-    "CaliforniaHousing": CaliforniaHousing,
-    "AdultCensus": AdultCensus,
-    "Mushroom": Mushroom,
-    "Soybean": Soybean,
-    "Thyroid": Thyroid,
-    "Annealing": Annealing,
-    "Arrhythmia": Arrhythmia,
-    "BreastCancer": BreastCancer,
-    "Hepatitis": Hepatitis,
-    "Ionosphere": Ionosphere,
-    "Nursery": Nursery,
-    "Zoo": Zoo,
-}
-
-REGRESSION_GAMES = {
-    "BikeSharing",
-    "CaliforniaHousing",
-}
-
-CLASSIFICATION_GAMES = {
-    "AdultCensus",
-    "Mushroom",
-    "Soybean",
-    "Thyroid",
-    "Annealing",
-    "Arrhythmia",
-    "BreastCancer",
-    "Hepatitis",
-    "Ionosphere",
-    "Nursery",
-    "Zoo",
-}
-
-
 def create_game_from_config(
     run_config: dict[str, Any],
     base_config: dict[str, Any],
 ) -> tuple[Game, dict[str, Any]]:
-    """Create a game instance from benchmark configuration dictionaries.
+    """Create a game instance from benchmark configuration dictionaries, routing between local and global XAI definitions.
 
     The function reads the selected game from ""run_config"" and uses
     ""base_config"" to override default game parameters if "game_params" is
@@ -88,7 +41,9 @@ def create_game_from_config(
     game_name = run_config["game"]
     game_seed = run_config["game_seed"]
     max_order = run_config["max_order"]
+    game_family = base_config.get("game_family", "local_xai")
 
+    # 1. Build a streamlined fallback dictionary based ONLY on the family pipeline type
     if game_name == "SOUM":
         default_game_params = {
             "n": 10,
@@ -97,37 +52,53 @@ def create_game_from_config(
             "max_interaction_size": max_order,
             "random_state": game_seed,
         }
-
-    elif game_name in REGRESSION_GAMES:
-        default_game_params = {
-            "x": run_config.get("x", 0),
-            "model_name": "decision_tree",
-            "imputer": "marginal",
-            "normalize": True,
-            "verbose": False,
-            "random_state": game_seed,
-        }
-
-    elif game_name in CLASSIFICATION_GAMES:
-        default_game_params = {
-            "x": run_config.get("x", 0),
-            "class_to_explain": run_config.get("class_to_explain"),
-            "model_name": "decision_tree",
-            "imputer": "marginal",
-            "normalize": True,
-            "verbose": False,
-            "random_state": game_seed,
-        }
-
     else:
-        raise UnknownGameError(game_name, tuple(sorted(GAME_REGISTRY)))
+        # Shared defaults by ALL tabular machine learning games
+        default_game_params = {
+            "model_name": "decision_tree",
+            "normalize": True,
+            "verbose": False,
+            "random_state": game_seed,
+        }
 
+        # Inject local runner pipeline defaults only if family is local_xai
+        if game_family == "local_xai":
+            default_game_params["x"] = run_config.get("x", 0)
+            default_game_params["imputer"] = "marginal"
+
+    # 2. Merge dictionaries. base_config (fully sanitized by Pydantic) has supreme priority!
     game_params = {
         **default_game_params,
         **base_config.get("game_params", {}),
     }
 
-    game_class = GAME_REGISTRY[game_name]
+    # Centralized path resolution for visual games
+    if game_name == "ImageClassifier" and "x_explain_path" in game_params:
+        project_root = Path(__file__).resolve().parents[3]
+        raw_img_path = Path(game_params["x_explain_path"])
+
+        # If path is relative,then append project_root
+        if not raw_img_path.is_absolute():
+            absolute_img_path = project_root / raw_img_path
+            game_params["x_explain_path"] = str(absolute_img_path)
+
+            if not absolute_img_path.exists():
+                msg = f"Image not found at: {absolute_img_path}"
+                raise FileNotFoundError(msg)
+
+    if game_name == "SOUM":
+        game_class = SOUM
+    elif game_family == "global_xai":
+        if game_name not in GLOBAL_GAME_REGISTRY:
+            msg = (
+                f"Game '{game_name}' is not supported in global_xai family. "
+                f"Available global games are: {tuple(GLOBAL_GAME_REGISTRY.keys())}"
+            )
+            raise UnknownGameError(msg)
+        game_class = GLOBAL_GAME_REGISTRY[game_name]
+    else:
+        game_class = LOCAL_GAME_REGISTRY[game_name]
+
     game = game_class(**game_params)
 
     return game, game_params

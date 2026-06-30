@@ -8,12 +8,13 @@ from typing import Any, TypeVar
 
 import yaml
 
-from config_manager import (
+from leaderboard.config_manager import (
     InvalidConfigMissingApproximatorsError,
     InvalidConfigMissingBudgetsError,
     InvalidYAMLTypeError,
 )
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -41,7 +42,7 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
     return config
 
 
-def as_list(value: T | list[T]) -> list[T]:
+def as_list[T](value: T | list[T]) -> list[T]:
     """Wrap a value inside a list if it is not already a list.
 
     Args:
@@ -104,6 +105,6 @@ def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
         for budget in budgets
     ]
 
-    logging.info("Expanded configuration into %d run configs", len(run_configs))
+    logger.info("Expanded configuration into %d run configs", len(run_configs))
 
     return run_configs

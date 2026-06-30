@@ -10,6 +10,7 @@ from leaderboard.storage.connection.client_factory import DatabaseClientFactory
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -42,7 +43,7 @@ def main() -> None:
     db = DatabaseClientFactory.create_client("mongodb", args={})
     db.insert_many(benchmark_result["raw_results"])
 
-    logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
+    logger.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 import logging
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -32,6 +33,7 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
+    ground_truth_method: str = "ExactComputer",
     ground_truth_fn: Callable[..., InteractionValues] = compute_ground_truth,
     experiment_fn: Callable[..., list[dict[str, Any]]] = run_experiment,
     aggregate_fn: Callable[[list[dict[str, Any]]], dict[str, Any]] = aggregate_run_records,
@@ -52,6 +54,7 @@ def run_benchmark(
         budget: The evaluation budget available to the approximator in each run.
         index: The interaction index to approximate.
         approximator_class: The approximator class used for the benchmark.
+        ground_truth_method: The method used to compute the ground truth.
         ground_truth_fn: Function used to compute the ground truth.
         experiment_fn: Function used to run the experiment.
         aggregate_fn: Function used to aggregate the raw records.
@@ -67,7 +70,9 @@ def run_benchmark(
     # Define the values
 
     # Compute ground truth
-    ground_truth = ground_truth_fn(game=game, index=index, max_order=max_order)
+    ground_truth = ground_truth_fn(
+        game=game, index=index, max_order=max_order, method=ground_truth_method
+    )
 
     # approximate values [n times]
     results = experiment_fn(
@@ -82,20 +87,24 @@ def run_benchmark(
         approx_seeds=approx_seeds,
     )
 
-    # debugging
+    # Override the hardcoded 'ExactComputer' in raw records with the actual method used
     for record in results:
-        logging.debug("failed: %s", record["run_failed"])
-        logging.debug("error: %s\n", record["error_message"])
+        record["ground_truth_method"] = ground_truth_method
 
-    # aggregation
+        # debugging
+    for record in results:
+        logger.debug("failed: %s", record["run_failed"])
+        logger.debug("error: %s\n", record["error_message"])
+
+        # aggregation
     aggregated_result = aggregate_fn(results)
 
     # print-out
-    logging.info("number of raw results: %d", len(results))
-    logging.info("First raw run record:")
-    logging.info(json.dumps(results[0], indent=2))
-    logging.info("\nAggregated result:")
-    logging.info(json.dumps(aggregated_result, indent=2))
+    logger.info("number of raw results: %d", len(results))
+    logger.info("First raw run record:")
+    logger.info(json.dumps(results[0], indent=2))
+    logger.info("\nAggregated result:")
+    logger.info(json.dumps(aggregated_result, indent=2))
 
     return {
         "raw_results": results,

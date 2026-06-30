@@ -6,7 +6,7 @@ from typing import Any, cast
 import numpy as np
 import pytest
 
-from config_manager import UnsupportedApproximatorError
+from leaderboard.config_manager import UnsupportedApproximatorError
 from leaderboard.runner.approximator_registry import APPROXIMATOR_REGISTRY
 from leaderboard.runner.experiment_runner import (
     align_interaction_values,

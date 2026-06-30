@@ -1,0 +1,86 @@
+# =====================================================================
+# shapiq Benchmark Runner - Visual Game Configuration Template
+# ---------------------------------------------------------------------
+# Use this template for ImageClassifier games (ViT, ResNet).
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 1) Game (Target Dataset) selection
+# ---------------------------------------------------------------------
+# For visual games, always set game to: "ImageClassifier"
+game: "ImageClassifier"
+
+# Visual games are currently categorized under 'local_xai' as they explain
+# specific image instances.
+game_family: "local_xai"
+
+# ---------------------------------------------------------------------
+# 2) Index / Interaction order
+# ---------------------------------------------------------------------
+# Supported indices: "SV", "SII", "k-SII", etc.
+index: "SV"
+max_order: 1
+
+# ---------------------------------------------------------------------
+# 3) Image-specific parameters
+# ---------------------------------------------------------------------
+# n_players:
+# - For ViT models: Set to the number of patches (e.g., 9, 16)
+# - For ResNet models: Set to the number of superpixels (e.g., 14)
+n_players: 9
+
+game_params:
+  # Supported model_names:
+  #   - ViT: "vit_16_patches", "vit_9_patches"
+  #   - ResNet: "resnet_18"
+  model_name: "resnet_18"
+
+  # Path to the image file you want to explain (e.g., ./data/test_image.jpg)
+  x_explain_path: "src/shapiq_games/benchmark/imagenet_examples/ILSVRC2012_val_00000356.JPEG"
+
+  # Configuration for ResNet-18 superpixel grouping (only active if model_name is "resnet_18")
+  n_superpixel_resnet: 14
+
+  normalize: true
+  verbose: false
+
+# ---------------------------------------------------------------------
+# 4) Ground truth
+# ---------------------------------------------------------------------
+# CRITICAL: Image models are complex neural networks.
+# "TreeExplainer" is NOT applicable. Must use "ExactComputer".
+ground_truth:
+  strategy: "compute"
+  method: "ExactComputer"
+
+# ---------------------------------------------------------------------
+# 5) Approximator Algorithms
+# ---------------------------------------------------------------------
+# Note: Ensure these are compatible with your index (e.g., SII/k-SII)
+approximators:
+  - "PermutationSamplingSII"
+  - "KernelSHAPIQ"
+  - "InconsistentKernelSHAPIQ"
+  - "SVARMIQ"
+  - "SHAPIQ"
+  - "ProxySPEX"
+  - "ProxySHAP"
+
+# ---------------------------------------------------------------------
+# 6) Budgets
+# ---------------------------------------------------------------------
+# For images, computational cost per sample is high. Start with lower budgets.
+budgets:
+  - 100
+  - 200
+  - 400
+
+# ---------------------------------------------------------------------
+# 7) Random seeds
+# ---------------------------------------------------------------------
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4

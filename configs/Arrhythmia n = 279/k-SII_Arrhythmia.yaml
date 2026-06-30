@@ -1,7 +1,7 @@
-game: "BikeSharing"
+game: "Arrhythmia"
 game_family: "local_xai"
-index: "SV"
-max_order: 1
+index: "k-SII"
+max_order: 2
 
 game_params:
   # --- Universal Game Control ---
@@ -28,27 +28,23 @@ game_params:
 
 ground_truth:
   strategy: "compute"
-  method: "ExactComputer"
+  method: "TreeExplainer"
 
 approximators:
-  - "OwenSamplingSV"
-  - "StratifiedSamplingSV"
-  - "SVARM"
-  - "UnbiasedKernelSHAP"
-  - "PermutationSamplingSV"
-  - "KernelSHAP"
-  - "kADDSHAP"
-  # - "SPEX"
-  # - "ProxySPEX"
+  - "PermutationSamplingSII"
+  - "KernelSHAPIQ"
+  - "InconsistentKernelSHAPIQ"
+  - "SVARMIQ"
+  - "SHAPIQ"
+  - "ProxySPEX"
   - "ProxySHAP"
-  - "MSRBiased"
 
 budgets:
   - 250
   - 500
   - 1000
   - 5000
-  - 10000
+#  - 10000
 
 seeds:
   - 0
@@ -56,28 +52,28 @@ seeds:
   - 2
   - 3
   - 4
-  - 5
-  - 6
-  - 7
-  - 8
-  - 9
-  - 10
-  - 11
-  - 12
-  - 13
-  - 14
-  - 15
-  - 16
-  - 17
-  - 18
-  - 19
-  - 20
-  - 21
-  - 22
-  - 23
-  - 24
-  - 25
-  - 26
-  - 27
-  - 28
-  - 29
+#  - 5
+#  - 6
+#  - 7
+#  - 8
+#  - 9
+#  - 10
+#  - 11
+#  - 12
+#  - 13
+#  - 14
+#  - 15
+#  - 16
+#  - 17
+#  - 18
+#  - 19
+#  - 20
+#  - 21
+#  - 22
+#  - 23
+#  - 24
+#  - 25
+#  - 26
+#  - 27
+#  - 28
+#  - 29
