@@ -5,6 +5,10 @@
 ### Added
 
 - Adds the `OddSHAP` approximator for first-order Shapley values (Fumagalli et al., 2026, arXiv:2602.01399): paired sampling, sparse odd-interaction screening via the ProxySPEX tree-to-Fourier extraction, and a constrained odd Fourier regression that enforces the efficiency axiom exactly. [#522](https://github.com/mmschlk/shapiq/pull/522)
+### New Features
+
+- adds the `ShaplEIG` approximator in `shapiq.approximator.shapleig` for Shapley value estimation via Bayesian experimental design: a Gaussian process surrogate with a weighted Hamming kernel is fit on the queried coalition values, and the next coalition is selected by maximizing the closed-form expected information gain about the Shapley values. Requires the new optional `shapleig` dependency group (`pip install shapiq[shapleig]` — torch, gpytorch, botorch, linear-operator); the optional dependencies are imported lazily in the constructor.
+
 ## v1.5.2 (2026-06-12)
 
 ### Highlights of new Features
