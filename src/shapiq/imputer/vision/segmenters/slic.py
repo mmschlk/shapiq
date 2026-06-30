@@ -47,7 +47,7 @@ class SLICSegmenter(Segmenter):
         image_array: Raw input image (PIL.Image or np.ndarray). The Factory
             passes this automatically when strategy="slic".
 
-    Strategy parameters (via config.slic):
+    Strategy parameters (via config.params):
         n_segments (int): target superpixel count (default 49).
         compactness (float): SLIC compactness (default 10.0).
         sigma (float): pre-smoothing Gaussian sigma (default 0.0).
@@ -74,9 +74,9 @@ class SLICSegmenter(Segmenter):
             msg = "SLICSegmenter requires image_array."
             raise ValueError(msg)
 
-        n_segments = int(config.slic.n_segments)
-        compactness = float(config.slic.compactness)
-        sigma = float(config.slic.sigma)
+        n_segments = int(config.params.n_segments)
+        compactness = float(config.params.compactness)
+        sigma = float(config.params.sigma)
 
         # CPU planning (once)
         image_rgb = self._coerce_rgb_uint8(image_array, self.image_size)

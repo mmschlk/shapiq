@@ -217,10 +217,6 @@ exclude = [
     "INP",  # docs can be an implicit package (does not need to be imported)
     "I002",  # benchmark code does not have to import required modules
 ]
-"docs/examples/*.ipynb" = [
-    "T201",  # Jupyter notebooks need print for tutorial output
-    "SLF001",  # Jupyter notebooks may access private members for demonstration
-]
 "benchmark/*.py" = [
     "INP", # imports can be different here
     "I002",  # benchmark code does not have to import required modules

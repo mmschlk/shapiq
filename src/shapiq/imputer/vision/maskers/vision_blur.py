@@ -3,16 +3,9 @@
 Operates exclusively on pixel_values. Must never touch input_ids or
 attention_mask.
 
-.. note::
-    Skeleton only. Implementation tracked as Team B task B3.2.
-    Currently passes through unchanged (no-op).
+Convert pixel_values to CPU numpy, apply skimage.filters.gaussian
+per-channel, blend with mask, convert back to GPU tensor.
 
-Design (CPU only, Phase 1):
-    Convert pixel_values to CPU numpy, apply skimage.filters.gaussian
-    per-channel, blend with mask, convert back to GPU tensor.
-
-Phase 2 (future GPU optimisation):
-    Replace with pre-computed torch.nn.functional.conv2d kernel.
 """
 
 from __future__ import annotations
@@ -44,7 +37,7 @@ class VisionBlurMasker(Masker):
 
     Args:
         config: Optional MaskerConfig. Sigma is read from
-            ``config.vision_blur.sigma`` when provided, falling back
+            ``config.params.sigma`` when provided, falling back
             to the constructor default.
         sigma: Default sigma (standard deviation) for the Gaussian
             kernel. Only used when ``config`` is ``None``.
@@ -63,11 +56,11 @@ class VisionBlurMasker(Masker):
 
         # Resolve sigma: typed config overrides constructor default
         if config is not None:
-            self._sigma = config.vision_blur.sigma
+            self._sigma = config.params.sigma
         else:
             self._sigma = sigma
 
-    # ─── Public API ───────────────────────────────────────────────────────
+    # Public API
 
     def apply(
         self,
@@ -103,7 +96,7 @@ class VisionBlurMasker(Masker):
         mask = physical_mask.image_binary_mask  # (N, C, H, W)
         device = pixel_values.device
 
-        # ── CPU-based per-channel Gaussian blur ──────────────────────────
+        # CPU-based per-channel Gaussian blur
         # skimage operates on numpy arrays, so we transfer to CPU once.
         im_np = pixel_values.detach().cpu().numpy()  # (N, C, H, W)
         mask_np = mask.detach().cpu().numpy()  # (N, C, H, W)

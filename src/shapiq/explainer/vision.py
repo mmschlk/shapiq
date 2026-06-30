@@ -1,14 +1,17 @@
-"""Vision Explainer for shapiq.
+"""Vision Language Explainer for shapiq.
 
-The :class:`VisionExplainer` explains vision-language model predictions using
+The :class:`VisionLanguageExplainer` explains vision-language model predictions using
 Shapley interaction values. It wraps the :mod:`shapiq.imputer.vision` pipeline
 (VisionImputerFactory → VisionLanguageGame) and exposes the standard
 ``Explainer`` API::
 
     from shapiq import Explainer
 
-    explainer = Explainer(model, data=image, text="a dog", processor=processor)
-    iv = explainer.explain(budget=1024)
+    explainer = Explainer(model, processor=processor)
+    iv = explainer.explain(
+        x={"image": image, "text": "a dog"},
+        budget=1024,
+    )
 """
 
 from __future__ import annotations
@@ -32,16 +35,19 @@ if TYPE_CHECKING:
 
     from .tabular import TabularExplainerApproximators
 
-VisionExplainerIndices = ExplainerIndices
-"""Valid index types for the VisionExplainer."""
+VisionLanguageExplainerIndices = ExplainerIndices
+"""Valid index types for the VisionLanguageExplainer."""
 
 
-class VisionExplainer(Explainer):
-    """Vision Explainer for HuggingFace vision-language models (CLIP, SigLIP).
+class VisionLanguageExplainer(Explainer):
+    """Vision Language Explainer for HuggingFace vision-language models (CLIP, SigLIP).
 
     Builds a :class:`~shapiq.imputer.vision.VisionLanguageGame` via the
     :class:`~shapiq.imputer.vision.VisionImputerFactory`, then uses a shapiq
     approximator to compute Shapley interaction values.
+
+    The image and text prompt are passed at **explain time** via the ``x``
+    parameter as a dict with keys ``"image"`` and ``"text"``.
 
     Usage via auto-dispatch::
 
@@ -49,54 +55,57 @@ class VisionExplainer(Explainer):
 
         explainer = Explainer(
             model=clip_model,
-            data=image,           # PIL Image
-            text="a black dog",   # required for VLMs
             processor=processor,
         )
-        iv = explainer.explain(budget=2048)
+        iv = explainer.explain(
+            x={"image": image, "text": "a black dog"},
+            budget=2048,
+        )
 
     Or directly::
 
-        from shapiq.explainer.vision import VisionExplainer
+        from shapiq.explainer.vision import VisionLanguageExplainer
 
-        explainer = VisionExplainer(
+        explainer = VisionLanguageExplainer(
             model=clip_model,
-            data=image,
-            text="a black dog",
             processor=processor,
+        )
+        iv = explainer.explain(
+            x={"image": image, "text": "a black dog"},
+            budget=2048,
         )
     """
 
     def __init__(
         self,
         model: Any,  # noqa: ANN401
-        data: Any = None,  # noqa: ANN401
+        data: Any = None,  # noqa: ANN401  # deprecated — use explain(x={...}) instead
         *,
-        text: str = "",
+        text: str | None = None,  # deprecated — pass via explain(x={"text": ...}) instead
         processor: Any | None = None,  # noqa: ANN401
         segmenter_config: SegmenterConfig | None = None,
         masker_config: MaskerConfig | None = None,
         batch_size: int = 64,
         class_index: int | None = None,
         approximator: (
-            Literal["auto"] | TabularExplainerApproximators | Approximator[VisionExplainerIndices]
+            Literal["auto"] | TabularExplainerApproximators | Approximator[VisionLanguageExplainerIndices]
         ) = "auto",
-        index: VisionExplainerIndices = "SV",
+        index: VisionLanguageExplainerIndices = "SV",
         max_order: int = 1,
         random_state: int | None = None,
         verbose: bool = False,
-        use_amp: bool = False,
     ) -> None:
-        """Initializes the VisionExplainer.
+        """Initializes the VisionLanguageExplainer.
 
         Args:
             model: A HuggingFace vision-language model (e.g. ``CLIPModel``,
                 ``SiglipModel``).
 
-            data: The input image. Accepted types: ``PIL.Image``,
-                ``np.ndarray``, or ``torch.Tensor``.
+            data: Deprecated. Ignored for VLM explainers. Pass the image via
+                ``explain(x={"image": img, "text": "..."})`` instead.
 
-            text: The text prompt for the VLM (e.g. ``"a photo of a dog"``).
+            text: Deprecated. Ignored for VLM explainers. Pass the text via
+                ``explain(x={"text": "..."})`` instead.
 
             processor: The HuggingFace processor corresponding to ``model``.
                 If ``None``, the explainer attempts to infer it from the model
@@ -111,8 +120,7 @@ class VisionExplainer(Explainer):
             batch_size: Number of coalitions evaluated per model call.
                 Defaults to ``64``.
 
-            class_index: The class index to explain. Ignored for VLMs
-                (similarity is a scalar), kept for API compatibility.
+            class_index: Deprecated. Ignored for VLMs (similarity is a scalar).
 
             approximator: The approximator to use. Defaults to ``"auto"``,
                 which auto-selects based on the index and max_order.
@@ -125,99 +133,175 @@ class VisionExplainer(Explainer):
             random_state: Random state for reproducibility.
 
             verbose: Whether to print progress information.
-
-            use_amp: Whether to use automatic mixed precision (FP16) on CUDA.
         """
-        from shapiq.imputer.vision import (
-            VisionImputerFactory,
-            VisionLanguageGame,
-        )
 
-        # 1. Build the VisionImputer pipeline
+        # Resolve processor if not provided
         if processor is None:
             processor = self._infer_processor(model)
 
-        factory = VisionImputerFactory()
-        imputer = factory.build(
-            model=model,
-            processor=processor,
-            input_image=data,
-            input_text=text,
-            segmenter_config=segmenter_config,
-            masker_config=masker_config,
-            use_amp=use_amp,
-        )
+        # Store configuration for lazy game building in explain_function
+        self._vision_model = model
+        self._vision_processor = processor
+        self._segmenter_config = segmenter_config
+        self._masker_config = masker_config
+        self._batch_size = batch_size
+        self._approximator_spec = approximator
+        self._verbose = verbose
+        self._random_state = random_state
 
-        # 2. Wrap as a shapiq Game
-        self._vision_game: VisionLanguageGame = VisionLanguageGame(
-            imputer,
-            batch_size=batch_size,
-            verbose=verbose,
-        )
+        # Cached game from the most recent explain() call
+        self._vision_game: VisionLanguageGame | None = None
 
-        # 3. Initialise base Explainer (pass the game as "model" — follows
-        #    the AgnosticExplainer pattern so the base class does not try
-        #    to call predict() on it).
+        # Initialise the base Explainer.
         super().__init__(
-            model=self._vision_game,
+            model=model,
             data=None,
             class_index=class_index,
             index=index,
             max_order=max_order,
         )
 
-        self._n_features: int = imputer.n_players
+        # Approximator is NOT built here — n_players depends on the image
+        # and is only known once explain() is called.
 
-        # 4. Set up the approximator
-        self._approximator = setup_approximator(
-            approximator=approximator,
-            index=self.index,
-            max_order=self._max_order,
-            n_players=self._n_features,
-            random_state=random_state,
-        )
-
-    # ─── Public API ───────────────────────────────────────────────────────
+    # Public API
 
     @property
     def game(self) -> VisionLanguageGame:
-        """The underlying VisionLanguageGame."""
+        """The :class:`~shapiq.imputer.vision.VisionLanguageGame` from the
+        last ``explain()`` call.
+
+        Raises:
+            RuntimeError: If ``explain()`` has not been called yet.
+        """
+        if self._vision_game is None:
+            msg = (
+                "No game available yet. Call ``explain(x={'image': ..., 'text': ...}, budget=...)`` "
+                "first."
+            )
+            raise RuntimeError(msg)
         return self._vision_game
 
     @property
     def baseline_value(self) -> float:
-        """The baseline (empty coalition) value of the game."""
-        return self._vision_game.empty_value
+        """The baseline (empty coalition) value from the last ``explain()``
+        call.
+
+        Raises:
+            RuntimeError: If ``explain()`` has not been called yet.
+        """
+        return self.game.empty_value
 
     def explain_function(  # type: ignore[override]
         self,
         budget: int,
         *,
-        x: np.ndarray | None = None,  # noqa: ARG002
+        x: dict | None = None,
         random_state: int | None = None,
-        **kwargs: Any,  # noqa: ARG002
+        **kwargs: Any,
     ) -> InteractionValues:
         """Explain the model's prediction with Shapley interaction values.
+
+        The ``x`` parameter must be a dict with ``"image"`` and ``"text"``
+        keys::
+
+            explainer.explain(
+                x={"image": PIL.Image.open("dog.jpg"), "text": "a black dog"},
+                budget=2048,
+            )
 
         Args:
             budget: Number of coalition evaluations for the approximator.
 
-            x: Ignored for vision models (the image is fixed at construction
-                time). Kept for API compatibility.
+            x: A dict with keys ``"image"`` (``PIL.Image``, ``np.ndarray``,
+                or ``torch.Tensor``) and ``"text"`` (``str``).
 
             random_state: Optional random state for reproducibility.
 
-            **kwargs: Additional keyword arguments (unused).
+            **kwargs: Additional keyword arguments. Supports ``custom_masks``
+                (``np.ndarray | None``) forwarded to ``CustomSegmenter``.
 
         Returns:
             InteractionValues containing the computed Shapley interactions.
         """
-        self.set_random_state(random_state=random_state)
-        interaction_values = self.approximator(budget=budget, game=self._vision_game)
-        interaction_values.baseline_value = self.baseline_value
+        if x is None or not isinstance(x, dict):
+            msg = (
+                "``x`` must be a dict with ``'image'`` and ``'text'`` keys, e.g. "
+                "``explain(x={'image': img, 'text': 'a dog'}, budget=...)``."
+            )
+            raise TypeError(msg)
+
+        image = x.get("image")
+        text = x.get("text")
+        if image is None or text is None:
+            msg = "``x`` dict must contain both ``'image'`` and ``'text'`` keys."
+            raise ValueError(msg)
+
+        custom_masks = kwargs.get("custom_masks", None)
+
+        # Build the game (VisionImputer + VisionLanguageGame) for this input
+        game = self._build_game(image=image, text=text, custom_masks=custom_masks)
+        self._vision_game = game
+
+        # Build the approximator — n_players depends on the image/text
+        n_players = game.n_players
+        _random_state = random_state if random_state is not None else self._random_state
+        approximator = setup_approximator(
+            approximator=self._approximator_spec,
+            index=self._index,
+            max_order=self._max_order,
+            n_players=n_players,
+            random_state=_random_state,
+        )
+        self._approximator = approximator
+
+        if _random_state is not None:
+            approximator.set_random_state(random_state=_random_state)
+
+        interaction_values = approximator(budget=budget, game=game)
+        interaction_values.baseline_value = game.empty_value
         return interaction_values
 
-    # ─── Internal helpers ─────────────────────────────────────────────────
+    # Internal helpers
+
+    def _build_game(
+        self, image: Any, text: str, custom_masks: np.ndarray | None = None  # noqa: ANN401
+    ) -> VisionLanguageGame:
+        """Build a :class:`~shapiq.imputer.vision.VisionLanguageGame` for
+        the given image and text.
+
+        Args:
+            image: Input image (``PIL.Image``, ``np.ndarray``, or ``torch.Tensor``).
+            text: Text prompt.
+            custom_masks: Optional binary masks of shape ``(N_players, H, W)``
+                for use with ``CustomSegmenter``.
+
+        Returns:
+            A fully wired ``VisionLanguageGame``.
+        """
+        from shapiq.imputer.vision import (
+            VisionImputerFactory,
+            VisionLanguageGame,
+        )
+
+        factory = VisionImputerFactory()
+        segmenter_kwargs: dict[str, Any] = {}
+        if custom_masks is not None:
+            segmenter_kwargs["masks"] = custom_masks
+        imputer = factory.build(
+            model=self._vision_model,
+            processor=self._vision_processor,
+            input_image=image,
+            input_text=text,
+            segmenter_config=self._segmenter_config,
+            masker_config=self._masker_config,
+            **segmenter_kwargs,
+        )
+        return VisionLanguageGame(
+            imputer,
+            batch_size=self._batch_size,
+            verbose=self._verbose,
+        )
 
     @staticmethod
     def _infer_processor(model: Any) -> Any:  # noqa: ANN401

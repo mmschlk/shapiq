@@ -13,14 +13,12 @@ Segmenter and Masker abstract contracts now live in:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import torch
 
-# ═══════════════════════════════════════════════════════════════════════
 # Spatial Layout
-# ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -50,9 +48,7 @@ class SpatialLayout:
     is_stateful: bool = False
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # Physical Mask
-# ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -80,9 +76,7 @@ class PhysicalMask:
         return self.text_attention_mask.shape[0] if self.text_attention_mask is not None else 0
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # Processor Output
-# ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -133,3 +127,39 @@ class ProcessorOutput:
         self.input_ids = self.input_ids.to(device)
         self.attention_mask = self.attention_mask.to(device)
         return self
+
+
+@dataclass
+class EmptyParams:
+    """Empty parameter placeholder — no configurable knobs for this strategy."""
+
+
+def safe_processor_call(processor: object, **kwargs: Any) -> dict:
+    """Call processor(**kwargs) with fallback for Fast processors (Transformers 4.51+).
+
+    ``CLIPProcessor.__call__`` accesses ``image_processor._valid_processor_keys``
+    which ``CLIPImageProcessorFast`` does not have, causing ``AttributeError``.
+
+    The fallback calls ``processor.image_processor(...)`` and
+    ``processor.tokenizer(...)`` separately.
+
+    Args:
+        processor: HuggingFace processor instance.
+        **kwargs: Keyword arguments forwarded to the processor.
+
+    Returns:
+        A dict with at least ``pixel_values``, ``input_ids``, and
+        ``attention_mask`` tensors.
+    """
+    try:
+        return processor(**kwargs)  # type: ignore[operator]
+    except AttributeError:
+        image_kwargs = {k: v for k, v in kwargs.items() if k in ("images", "return_tensors")}
+        text_kwargs = {
+            k: v
+            for k, v in kwargs.items()
+            if k in ("text", "return_tensors", "padding", "max_length")
+        }
+        image_outputs = processor.image_processor(**image_kwargs)  # type: ignore[operator]
+        text_outputs = processor.tokenizer(**text_kwargs)  # type: ignore[operator]
+        return {**image_outputs, **text_outputs}

@@ -44,16 +44,13 @@ class TestSegmenterConfig:
     def test_default_strategy(self):
         cfg = SegmenterConfig()
         assert cfg.strategy == "patch"
-        assert isinstance(cfg.patch, PatchParams)
+        assert isinstance(cfg.params, PatchParams)
 
     def test_slic_config(self):
-        cfg = SegmenterConfig(strategy="slic", slic=SlicParams(n_segments=60))
+        cfg = SegmenterConfig(strategy="slic", params=SlicParams(n_segments=60))
         assert cfg.strategy == "slic"
-        assert cfg.slic.n_segments == 60
+        assert cfg.params.n_segments == 60
 
-    def test_active_params(self):
-        cfg = SegmenterConfig(strategy="slic", slic=SlicParams(n_segments=60))
-        assert cfg.active_params is cfg.slic
 
     def test_factory_populated_metadata(self):
         cfg = SegmenterConfig()
@@ -71,20 +68,20 @@ class TestMaskerConfig:
     def test_default_strategy(self):
         cfg = MaskerConfig()
         assert cfg.strategy == "crossmodal_mean"
-        assert isinstance(cfg.crossmodal_mean, CrossModalMeanParams)
+        assert isinstance(cfg.params, CrossModalMeanParams)
 
     def test_blur_strategy(self):
-        cfg = MaskerConfig(strategy="crossmodal_blur")
+        cfg = MaskerConfig(strategy="crossmodal_blur", params=CrossModalBlurParams())
         assert cfg.strategy == "crossmodal_blur"
-        assert isinstance(cfg.crossmodal_blur, CrossModalBlurParams)
+        assert isinstance(cfg.params, CrossModalBlurParams)
 
     def test_vision_mean_params(self):
-        cfg = MaskerConfig(strategy="vision_mean")
-        assert isinstance(cfg.vision_mean, VisionMeanParams)
+        cfg = MaskerConfig(strategy="vision_mean", params=VisionMeanParams())
+        assert isinstance(cfg.params, VisionMeanParams)
 
     def test_vision_blur_params(self):
-        cfg = MaskerConfig(strategy="vision_blur")
-        assert isinstance(cfg.vision_blur, VisionBlurParams)
+        cfg = MaskerConfig(strategy="vision_blur", params=VisionBlurParams())
+        assert isinstance(cfg.params, VisionBlurParams)
 
 
 class TestSpatialLayout:
@@ -628,7 +625,7 @@ class TestSLICSegmenter:
     def config(self):
         return SegmenterConfig(
             strategy="slic",
-            slic=SlicParams(n_segments=9, compactness=10.0, sigma=0.0),
+            params=SlicParams(n_segments=9, compactness=10.0, sigma=0.0),
             model_type="clip",
             image_size=64,
             n_channels=3,
@@ -963,16 +960,15 @@ class TestVisionImputerFactoryBuild:
         assert imputer.model_type == "clip"
 
     def test_build_with_amp(self, mock_model, mock_processor):
-        """AMP flag is passed through."""
+        """AMP flag removed — forward_1d works without it."""
         factory = VisionImputerFactory()
         imputer = factory.build(
             mock_model,
             mock_processor,
             torch.randn(3, 224, 224),
             "test text",
-            use_amp=True,
         )
-        assert imputer.use_amp is True
+        assert imputer.n_players > 0
 
     def test_build_forward_1d(self, mock_model, mock_processor):
         """After build, forward_1d returns correct shape."""
@@ -1002,17 +998,15 @@ class TestVisionImputerFactoryBuild:
         assert result.shape == (1,)
 
     def test_build_with_amp_skip_on_cpu(self, mock_model, mock_processor):
-        """AMP flag accepted; if no CUDA the autocast context is a no-op."""
+        """AMP removed — forward 1d works correctly without it."""
         factory = VisionImputerFactory()
         imputer = factory.build(
             mock_model,
             mock_processor,
             torch.randn(3, 224, 224),
             "test text",
-            use_amp=True,
         )
-        assert imputer.use_amp is True
-        # Call with a tiny batch to ensure the AMP codepath doesn't crash
+        # Forward 1d works correctly without AMP
         result = imputer.forward_1d(
             np.ones((1, imputer.n_players), dtype=bool),
             batch_size=1,
@@ -1147,7 +1141,7 @@ class TestFactoryBuildWithSLIC:
 
         seg_cfg = SegmenterConfig(
             strategy="slic",
-            slic=SlicParams(n_segments=15, compactness=10.0, sigma=1.0),
+            params=SlicParams(n_segments=15, compactness=10.0, sigma=1.0),
         )
         factory = VisionImputerFactory()
         imputer = factory.build(
@@ -1175,11 +1169,11 @@ class TestFactoryBuildWithSLIC:
 
         seg_cfg_10 = SegmenterConfig(
             strategy="slic",
-            slic=SlicParams(n_segments=10, compactness=10.0, sigma=1.0),
+            params=SlicParams(n_segments=10, compactness=10.0, sigma=1.0),
         )
         seg_cfg_50 = SegmenterConfig(
             strategy="slic",
-            slic=SlicParams(n_segments=50, compactness=10.0, sigma=1.0),
+            params=SlicParams(n_segments=50, compactness=10.0, sigma=1.0),
         )
         factory = VisionImputerFactory()
         im1 = factory.build(

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
-from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig
+from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig, VisionBlurParams
 
 from . import register_masker
 from .text_attention import TextAttentionMasker
@@ -50,7 +50,13 @@ class CrossModalBlurMasker(Masker):
     def __init__(self, config: MaskerConfig | None = None) -> None:
         """Initialize the cross-modal blur masker."""
         super().__init__(config)
-        self._vision_masker = VisionBlurMasker(config=config)
+        cfg = config or MaskerConfig()
+        sigma = cfg.params.sigma if hasattr(cfg.params, "sigma") else 3.0
+        vision_cfg = MaskerConfig(
+            strategy="vision_blur",
+            params=VisionBlurParams(sigma=sigma),
+        )
+        self._vision_masker = VisionBlurMasker(config=vision_cfg)
         self._text_masker = TextAttentionMasker(config=config)
 
     def apply(

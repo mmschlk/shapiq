@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from .base import PhysicalMask, ProcessorOutput, SpatialLayout
+from .base import PhysicalMask, ProcessorOutput, SpatialLayout, safe_processor_call
 
 if TYPE_CHECKING:
     from typing import Protocol
@@ -48,7 +48,6 @@ class VisionImputer:
         *,
         input_image: PIL.Image.Image | np.ndarray | None = None,
         input_text: str = "",
-        use_amp: bool = False,
     ) -> None:
         """Initialize the vision-language imputer.
 
@@ -61,13 +60,11 @@ class VisionImputer:
             inputs_raw: Raw processor output dict.
             input_image: Original PIL image or ndarray.
             input_text: Original input text.
-            use_amp: Enable mixed-precision inference on CUDA.
         """
         self.model = model
         self.processor = processor
         self.segmenter = segmenter
         self.masker = masker
-        self.use_amp = use_amp
 
         self.inputs_original = inputs_original
         self.inputs_raw = inputs_raw or {}
@@ -96,7 +93,7 @@ class VisionImputer:
         """Total number of players (image + text)."""
         return self.n_players_image + self.n_players_text
 
-    # ─── Public API ───────────────────────────────────────────────────────
+    # Public API
 
     def forward_1d(
         self,
@@ -181,7 +178,7 @@ class VisionImputer:
                         kwargs["max_length"] = 64
                     else:
                         kwargs["padding"] = True
-                    text_raw = self.processor(**kwargs)
+                    text_raw = safe_processor_call(self.processor, **kwargs)
                     if "attention_mask" not in text_raw:
                         text_raw["attention_mask"] = (text_raw["input_ids"] != 1).long()
 
@@ -196,7 +193,7 @@ class VisionImputer:
 
         return torch.cat(all_rows, dim=0).cpu().numpy()
 
-    # ─── Internal helpers ─────────────────────────────────────────────────
+    # Internal helpers
 
     def _repeat_inputs(
         self,
@@ -223,13 +220,8 @@ class VisionImputer:
     def _model_forward(self, inputs: ProcessorOutput) -> _ModelOutput:
         device = next(self.model.parameters()).device
         inputs_dict = {k: v.to(device) for k, v in inputs.to_dict().items()}
-        use_amp = self.use_amp and device.type == "cuda"
         with torch.no_grad():
-            if use_amp:
-                with torch.autocast(device_type="cuda", dtype=torch.float16):
-                    outputs = self.model(**inputs_dict)
-            else:
-                outputs = self.model(**inputs_dict)
+            outputs = self.model(**inputs_dict)
         return outputs
 
     def _extract_diagonal(self, outputs: _ModelOutput) -> torch.Tensor:

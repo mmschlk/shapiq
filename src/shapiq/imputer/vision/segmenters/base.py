@@ -15,19 +15,17 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from shapiq.imputer.vision.base import EmptyParams
+
 if TYPE_CHECKING:
     import numpy as np
 
     from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
 
-# ═══════════════════════════════════════════════════════════════════════
 # Per-strategy parameter dataclasses
-# ═══════════════════════════════════════════════════════════════════════
 
 
-@dataclass
-class PatchParams:
-    """Rigid-grid patch segmenter parameters.  No configurable knobs."""
+PatchParams = EmptyParams
 
 
 @dataclass
@@ -45,18 +43,10 @@ class SlicParams:
     sigma: float = 0.0
 
 
-@dataclass
-class CustomSegmenterParams:
-    """User-provided binary mask segmenter parameters.
-
-    Each mask defines one player. Masks are supplied directly to
-    ``CustomSegmenter`` at construction time, not via this dataclass.
-    """
+CustomSegmenterParams = EmptyParams
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # Segmenter Configuration
-# ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -69,9 +59,7 @@ class SegmenterConfig:
     """
 
     strategy: str = "patch"
-    patch: PatchParams = field(default_factory=PatchParams)
-    slic: SlicParams = field(default_factory=SlicParams)
-    custom_segmenter: CustomSegmenterParams = field(default_factory=CustomSegmenterParams)
+    params: PatchParams | SlicParams | CustomSegmenterParams = field(default_factory=PatchParams)
 
     # Factory-populated (model metadata)
     model_type: str = ""
@@ -83,15 +71,8 @@ class SegmenterConfig:
     n_players_text: int = 0
     text_total_length: int = 0
 
-    @property
-    def active_params(self) -> object:
-        """Return the active configuration dataclass based on strategy name."""
-        return getattr(self, self.strategy, None)
 
-
-# ═══════════════════════════════════════════════════════════════════════
 # Abstract Segmenter
-# ═══════════════════════════════════════════════════════════════════════
 
 
 class Segmenter(ABC):
@@ -137,7 +118,7 @@ class Segmenter(ABC):
         """
         ...
 
-    # ── Shared text-mask helper for VLM segmenters ──────────────────────
+    # Shared text-mask helper for VLM segmenters
 
     def _build_text_attention_mask(
         self,

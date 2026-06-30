@@ -19,7 +19,7 @@ from .agnostic import AgnosticExplainer
 from .base import Explainer
 from .tabpfn import TabPFNExplainer
 from .tabular import TabularExplainer
-from .vision import VisionExplainer
+from .vision import VisionLanguageExplainer
 
 __all__ = [
     "Explainer",
@@ -27,5 +27,5 @@ __all__ = [
     "TabPFNExplainer",
     "AgnosticExplainer",
     "TreeExplainer",
-    "VisionExplainer",
+    "VisionLanguageExplainer",
 ]

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .base import ProcessorOutput
+from .base import ProcessorOutput, safe_processor_call
 from .imputer import VisionImputer
 from .maskers import get_masker
 from .maskers.base import MaskerConfig
@@ -51,8 +51,6 @@ class VisionImputerFactory:
         input_text: str,
         segmenter_config: SegmenterConfig | None = None,
         masker_config: MaskerConfig | None = None,
-        *,
-        use_amp: bool = False,
         **segmenter_kwargs: Any,
     ) -> VisionImputer:
         """Assemble the VisionImputer pipeline from typed configs.
@@ -64,7 +62,6 @@ class VisionImputerFactory:
             input_text: Input text.
             segmenter_config: Segmenter configuration (default: PatchSegmenter).
             masker_config: Masker configuration (default: cross-modal mean).
-            use_amp: Enable mixed-precision inference on CUDA.
             **segmenter_kwargs: Extra kwargs forwarded to the segmenter.
 
         Returns:
@@ -133,10 +130,9 @@ class VisionImputerFactory:
             inputs_raw=inputs_dict,
             input_image=input_image,
             input_text=input_text,
-            use_amp=use_amp,
         )
 
-    # ─── Internal helpers ─────────────────────────────────────────────────
+    # Internal helpers
 
     @staticmethod
     def _infer_model_type(model: Model) -> str:
@@ -184,7 +180,7 @@ class VisionImputerFactory:
             kwargs["max_length"] = 64
         elif model_type == "clip":
             kwargs["padding"] = True
-        outputs = processor(**kwargs)
+        outputs = safe_processor_call(processor, **kwargs)
         if "attention_mask" not in outputs:
             outputs["attention_mask"] = (outputs["input_ids"] != 1).long()
         return outputs

@@ -13,27 +13,28 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from shapiq.imputer.vision.base import EmptyParams
+
 if TYPE_CHECKING:
     from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
 
-# ═══════════════════════════════════════════════════════════════════════
 # Per-strategy parameter dataclasses
-# ═══════════════════════════════════════════════════════════════════════
 
 
-@dataclass
-class CrossModalMeanParams:
-    """Cross-modal occlusion (vision-mean + text-attention)."""
+CrossModalMeanParams = EmptyParams
+VisionMeanParams = EmptyParams
+TextAttentionParams = EmptyParams
 
 
 @dataclass
 class CrossModalBlurParams:
-    """Cross-modal occlusion (vision-blur + text-attention)."""
+    """Cross-modal occlusion (vision-blur + text-attention).
 
+    Attributes:
+        sigma: Gaussian blur sigma forwarded to VisionBlurMasker.
+    """
 
-@dataclass
-class VisionMeanParams:
-    """Pure image occlusion via multiplicative binary mask."""
+    sigma: float = 3.0
 
 
 @dataclass
@@ -43,14 +44,8 @@ class VisionBlurParams:
     sigma: float = 3.0
 
 
-@dataclass
-class TextAttentionParams:
-    """Pure text occlusion via attention_mask replacement."""
 
-
-# ═══════════════════════════════════════════════════════════════════════
 # Masker Configuration
-# ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass
@@ -62,21 +57,10 @@ class MaskerConfig:
     """
 
     strategy: str = "crossmodal_mean"
-    crossmodal_mean: CrossModalMeanParams = field(default_factory=CrossModalMeanParams)
-    crossmodal_blur: CrossModalBlurParams = field(default_factory=CrossModalBlurParams)
-    vision_mean: VisionMeanParams = field(default_factory=VisionMeanParams)
-    vision_blur: VisionBlurParams = field(default_factory=VisionBlurParams)
-    text_attn: TextAttentionParams = field(default_factory=TextAttentionParams)
-
-    @property
-    def active_params(self) -> object:
-        """Return the active parameter dataclass based on strategy name."""
-        return getattr(self, self.strategy, None)
+    params: CrossModalMeanParams | CrossModalBlurParams | VisionMeanParams | VisionBlurParams | TextAttentionParams = field(default_factory=CrossModalMeanParams)
 
 
-# ═══════════════════════════════════════════════════════════════════════
 # Abstract Masker
-# ═══════════════════════════════════════════════════════════════════════
 
 
 class Masker(ABC):

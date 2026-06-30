@@ -1,4 +1,4 @@
-"""Tests for VisionExplainer, ExactComputer correctness, and Player x Masker matrix."""
+"""Tests for VisionLanguageExplainer, ExactComputer correctness, and Player x Masker matrix."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import torch
 
-from shapiq.explainer.vision import VisionExplainer
+from shapiq.explainer.vision import VisionLanguageExplainer
 from shapiq.game_theory import ExactComputer
 from shapiq.imputer.vision import (
     MaskerConfig,
@@ -295,7 +295,7 @@ class TestPlayerMaskerMatrix:
     def test_explain_interaction_values(
         self, segmenter_name, masker_name, seg_kwargs, model, processor, custom_masks
     ):
-        """Each combination produces valid InteractionValues via VisionExplainer."""
+        """Each combination produces valid InteractionValues via VisionLanguageExplainer."""
         segmenter_kwargs = self._resolve_kwargs(seg_kwargs, custom_masks)
         imputer = self._build_imputer(
             segmenter_name, masker_name, model, processor, segmenter_kwargs
@@ -347,6 +347,8 @@ class TestPlayerMaskerMatrix:
 
     def _build_imputer(self, segmenter_name, masker_name, model, processor, segmenter_kwargs):
         """Build an imputer for the given segmenter/masker combo."""
+        from shapiq.imputer.vision import VisionBlurParams
+
         factory = VisionImputerFactory()
         seg_cfg = SegmenterConfig(
             strategy=segmenter_name,
@@ -359,13 +361,20 @@ class TestPlayerMaskerMatrix:
             n_players_text=2,
             text_total_length=6,
         )
+        # Pass matching params for strategies that read config.params
+        if masker_name in ("vision_blur", "crossmodal_blur"):
+            from shapiq.imputer.vision import VisionBlurParams
+
+            msk_cfg = MaskerConfig(strategy=masker_name, params=VisionBlurParams())
+        else:
+            msk_cfg = MaskerConfig(strategy=masker_name)
         return factory.build(
             model=model,
             processor=processor,
             input_image=torch.randn(3, 8, 8),
             input_text="test",
             segmenter_config=seg_cfg,
-            masker_config=MaskerConfig(strategy=masker_name),
+            masker_config=msk_cfg,
             **segmenter_kwargs,
         )
 
@@ -375,8 +384,8 @@ class TestPlayerMaskerMatrix:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestVisionExplainer:
-    """End-to-end tests for VisionExplainer with mock model."""
+class TestVisionLanguageExplainer:
+    """End-to-end tests for VisionLanguageExplainer with mock model."""
 
     @pytest.fixture
     def model(self):
@@ -387,17 +396,18 @@ class TestVisionExplainer:
         return _make_mock_processor()
 
     def test_explain_returns_interaction_values(self, model, processor):
-        """VisionExplainer.explain() returns InteractionValues with correct shape."""
-        explainer = VisionExplainer(
+        """VisionLanguageExplainer.explain() returns InteractionValues with correct shape."""
+        explainer = VisionLanguageExplainer(
             model=model,
-            data=torch.randn(3, 8, 8),
-            text="test",
             processor=processor,
             batch_size=4,
             index="SV",
             max_order=1,
         )
-        iv = explainer.explain(budget=16)
+        iv = explainer.explain(
+            x={"image": torch.randn(3, 8, 8), "text": "test"},
+            budget=16,
+        )
         assert iv.index == "SV"
         assert iv.max_order == 1
         assert iv.n_players == explainer.game.n_players
@@ -405,54 +415,104 @@ class TestVisionExplainer:
         assert len(iv.values) == iv.n_players + 1
 
     def test_explain_with_order_2(self, model, processor):
-        """VisionExplainer with k-SII, max_order=2 produces pairwise values."""
-        explainer = VisionExplainer(
+        """VisionLanguageExplainer with k-SII, max_order=2 produces pairwise values."""
+        explainer = VisionLanguageExplainer(
             model=model,
-            data=torch.randn(3, 8, 8),
-            text="test",
             processor=processor,
             batch_size=4,
             index="k-SII",
             max_order=2,
         )
-        iv = explainer.explain(budget=32)
+        iv = explainer.explain(
+            x={"image": torch.randn(3, 8, 8), "text": "test"},
+            budget=32,
+        )
         assert iv.max_order == 2
         assert iv.index == "k-SII"
         # At minimum has all n_players + interaction values
         assert len(iv.values) >= iv.n_players
 
     def test_baseline_value(self, model, processor):
-        """baseline_value matches the empty coalition."""
-        explainer = VisionExplainer(
+        """baseline_value matches the empty coalition after explain()."""
+        explainer = VisionLanguageExplainer(
             model=model,
-            data=torch.randn(3, 8, 8),
-            text="test",
             processor=processor,
             batch_size=4,
+        )
+        # Call explain() first so that the game is built
+        explainer.explain(
+            x={"image": torch.randn(3, 8, 8), "text": "test"},
+            budget=16,
         )
         assert np.isfinite(explainer.baseline_value)
 
     def test_game_property(self, model, processor):
-        """game property returns the VisionLanguageGame."""
-        explainer = VisionExplainer(
+        """game property returns the VisionLanguageGame after explain()."""
+        explainer = VisionLanguageExplainer(
             model=model,
-            data=torch.randn(3, 8, 8),
-            text="test",
             processor=processor,
             batch_size=4,
+        )
+        # game is not available before explain()
+        # Call explain() first so that the game is built
+        explainer.explain(
+            x={"image": torch.randn(3, 8, 8), "text": "test"},
+            budget=16,
         )
         game = explainer.game
         assert isinstance(game, VisionLanguageGame)
         assert game.n_players > 0
 
+    def test_game_raises_before_explain(self, model, processor):
+        """game property raises RuntimeError before explain() is called."""
+        explainer = VisionLanguageExplainer(
+            model=model,
+            processor=processor,
+            batch_size=4,
+        )
+        with pytest.raises(RuntimeError, match="No game available yet"):
+            _ = explainer.game
+
+    def test_baseline_raises_before_explain(self, model, processor):
+        """baseline_value raises RuntimeError before explain() is called."""
+        explainer = VisionLanguageExplainer(
+            model=model,
+            processor=processor,
+            batch_size=4,
+        )
+        with pytest.raises(RuntimeError, match="No game available yet"):
+            _ = explainer.baseline_value
+
+    def test_explain_without_x_raises(self, model, processor):
+        """explain() without x raises TypeError."""
+        explainer = VisionLanguageExplainer(
+            model=model,
+            processor=processor,
+            batch_size=4,
+        )
+        with pytest.raises(TypeError, match="dict with"):
+            explainer.explain(budget=16)
+
+    def test_explain_with_bad_x_raises(self, model, processor):
+        """explain() with incomplete x dict raises ValueError."""
+        explainer = VisionLanguageExplainer(
+            model=model,
+            processor=processor,
+            batch_size=4,
+        )
+        with pytest.raises(ValueError, match="both"):
+            explainer.explain(x={"image": torch.randn(3, 8, 8)}, budget=16)
+        with pytest.raises(ValueError, match="both"):
+            explainer.explain(x={"text": "test"}, budget=16)
+
     def test_infer_processor_raises_without_model_id(self):
         """_infer_processor raises ValueError when no model id is available."""
-        from shapiq.explainer.vision import VisionExplainer
+        from shapiq.explainer.vision import VisionLanguageExplainer
 
         class _Bare:  # no name_or_path, no config
             pass
 
-        explainer = VisionExplainer.__new__(VisionExplainer)  # skip __init__
+        explainer = VisionLanguageExplainer.__new__(VisionLanguageExplainer)  # skip __init__
         with pytest.raises(ValueError, match="Could not infer processor"):
             explainer._infer_processor(_Bare())
 
@@ -463,10 +523,10 @@ class TestVisionExplainer:
 
 
 class TestExplainerAutoDispatch:
-    """Verify that ``shapiq.Explainer(...)`` routes to VisionExplainer for HF VLMs."""
+    """Verify that ``shapiq.Explainer(...)`` routes to VisionLanguageExplainer for HF VLMs."""
 
     def test_dispatch_to_vision_explainer(self):
-        """Calling Explainer(model=mock_vlm, data=img, ...) returns VisionExplainer."""
+        """Calling Explainer(model=mock_vlm, data=img, ...) returns VisionLanguageExplainer."""
         from shapiq.explainer import Explainer
 
         model = _make_mock_vlm(image_size=8, patch_size=4)
@@ -481,6 +541,9 @@ class TestExplainerAutoDispatch:
             index="SV",
             max_order=1,
         )
-        assert isinstance(explainer, VisionExplainer)
-        iv = explainer.explain(budget=16)
+        assert isinstance(explainer, VisionLanguageExplainer)
+        iv = explainer.explain(
+            x={"image": torch.randn(3, 8, 8), "text": "test"},
+            budget=16,
+        )
         assert iv.n_players > 0
