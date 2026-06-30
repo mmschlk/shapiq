@@ -20,7 +20,7 @@ import numpy as np
 import torch
 
 from shapiq.imputer.vision.base import PhysicalMask, SpatialLayout
-from shapiq.imputer.vision.segmenters.base import Segmenter, SegmenterConfig
+from shapiq.imputer.vision.segmenters.base import Segmenter, SegmenterConfig, SlicParams
 
 from . import register_segmenter
 
@@ -74,9 +74,13 @@ class SLICSegmenter(Segmenter):
             msg = "SLICSegmenter requires image_array."
             raise ValueError(msg)
 
-        n_segments = int(config.params.n_segments)
-        compactness = float(config.params.compactness)
-        sigma = float(config.params.sigma)
+        slic_params = config.params
+        if not isinstance(slic_params, SlicParams):
+            msg = f"SLICSegmenter requires SlicParams, got {type(slic_params).__name__}"
+            raise TypeError(msg)
+        n_segments = int(slic_params.n_segments)
+        compactness = float(slic_params.compactness)
+        sigma = float(slic_params.sigma)
 
         # CPU planning (once)
         image_rgb = self._coerce_rgb_uint8(image_array, self.image_size)

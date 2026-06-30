@@ -14,7 +14,7 @@ import numpy as np
 import torch
 
 from shapiq.imputer.vision.base import PhysicalMask, ProcessorOutput
-from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig
+from shapiq.imputer.vision.maskers.base import Masker, MaskerConfig, VisionBlurParams
 
 from . import register_masker
 
@@ -55,7 +55,7 @@ class VisionBlurMasker(Masker):
             raise ImportError(msg)
 
         # Resolve sigma: typed config overrides constructor default
-        if config is not None:
+        if config is not None and isinstance(config.params, VisionBlurParams):
             self._sigma = config.params.sigma
         else:
             self._sigma = sigma
