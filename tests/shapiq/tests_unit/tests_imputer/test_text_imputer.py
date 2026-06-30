@@ -350,7 +350,16 @@ def test_mask_and_pad_require_special_tokens() -> None:
     ],
 )
 def test_penn_to_wordnet_mapping(tag: str, expected: str | None) -> None:
-    assert _penn_to_wn(tag) == expected
+
+    fake_wn = SimpleNamespace(
+        NOUN="n",
+        VERB="v",
+        ADJ="a",
+        ADV="r",
+    )
+
+    with patch(f"{MODULE}.wn", fake_wn):
+        assert _penn_to_wn(tag) == expected
 
 
 def test_get_neutral_replacement_uses_hypernym() -> None:
@@ -360,7 +369,14 @@ def test_get_neutral_replacement_uses_hypernym() -> None:
     synset = MagicMock()
     synset.hypernyms.return_value = [hypernym]
 
-    with patch(f"{MODULE}.wn.synsets", return_value=[synset]):
+    fake_wn = SimpleNamespace(
+        NOUN="n",
+        VERB="v",
+        ADJ="a",
+        ADV="r",
+        synsets=MagicMock(return_value=[synset]),
+    )
+    with patch(f"{MODULE}.wn", fake_wn):
         assert _get_neutral_replacement("cat", "NN") == "living"
 
 
@@ -369,7 +385,14 @@ def test_get_neutral_replacement_falls_back_to_something(tag: str) -> None:
     if tag == "IN":
         assert _get_neutral_replacement("of", tag) == "something"
     else:
-        with patch(f"{MODULE}.wn.synsets", return_value=[]):
+        fake_wn = SimpleNamespace(
+            NOUN="n",
+            VERB="v",
+            ADJ="a",
+            ADV="r",
+            synsets=MagicMock(return_value=[]),
+        )
+        with patch(f"{MODULE}.wn", fake_wn):
             assert _get_neutral_replacement("unknown", tag) == "something"
 
 

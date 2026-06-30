@@ -3,7 +3,7 @@
 from __future__ import annotations  # noqa: I001
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 import numpy as np
 import torch
 import nltk
@@ -15,6 +15,7 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
     from transformers.modeling_outputs import BaseModelOutput
+
 
 def _require_nltk_resource(resource_path: str, download_name: str) -> None:
     """Raise a helpful error if an NLTK resource is not installed."""
@@ -436,19 +437,31 @@ def create_player_strategy(
     tokenizer: PreTrainedTokenizerBase,
 ) -> BasePlayerStrategy:
     """Create a player strategy from a string identifier."""
-    if level not in PLAYER_STRATEGIES:
-        msg = f"Unknown player level: {level}. Available levels: {list(PLAYER_STRATEGIES)}"
-        raise ValueError(msg)
-
-    strategy_cls = PLAYER_STRATEGIES[level]
-
     if level == "subword":
-        return strategy_cls(
+        return SubwordPlayerStrategy(
             text=text,
             tokenizer=tokenizer,
         )
 
-    return strategy_cls(text=text)
+    if level == "word":
+        return WordPlayerStrategy(text=text)
+
+    if level == "named_entity":
+        return NamedEntityPlayerStrategy(text=text)
+
+    if level == "chunk":
+        return ChunkPlayerStrategy(text=text)
+
+    if level == "sentence":
+        return SentencePlayerStrategy(text=text)
+
+    msg = (
+        f"Unknown player level: {level}. "
+        "Available levels: "
+        "['subword', 'word', 'named_entity', 'chunk', 'sentence']"
+    )
+
+    raise ValueError(msg)
 
 
 # =============================================================================
@@ -463,6 +476,7 @@ class BasePerturbationStrategy(ABC):
     Simple strategies can ignore coalition-level context, whereas MLM infilling
     requires it to generate replacements consistently.
     """
+
     @abstractmethod
     def perturb(
         self,
@@ -515,11 +529,13 @@ class MaskTokenPerturbation(BasePerturbationStrategy):
 
     def perturb(
         self,
-        _player: str,
+        player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
         """Replace missing words with [MASK]."""
+        del player
+        del context
         return self.mask_token
 
 
@@ -544,11 +560,13 @@ class PadTokenPerturbation(BasePerturbationStrategy):
 
     def perturb(
         self,
-        _player: str,
+        player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
         """Return the PAD token."""
+        del player
+        del context
         return self.pad_token
 
 
@@ -562,10 +580,13 @@ class RemovalPerturbation(BasePerturbationStrategy):
 
     def perturb(
         self,
-        _player: str,
+        player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
+        """Remove a player by replacing it with an empty string."""
+        del player
+        del context
         """Return empty string."""
         return ""
 
@@ -587,11 +608,13 @@ class NeutralPerturbation(BasePerturbationStrategy):
 
     def perturb(
         self,
-        _player: str,
+        player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
         """Return neutral replacement text."""
+        del player
+        del context
         return self.neutral_text
 
 
@@ -649,18 +672,19 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
 
     def perturb(
         self,
-        _player: str,
+        player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
         """Replace a player with a semantic hypernym."""
+        del context
         _require_nltk_resource("corpora/wordnet", "wordnet")
         _require_nltk_resource(
             "taggers/averaged_perceptron_tagger_eng", "averaged_perceptron_tagger_eng"
         )
-        tag = nltk.pos_tag([_player])[0][1]
+        tag = nltk.pos_tag([player])[0][1]
 
-        return _get_neutral_replacement(_player, tag)
+        return _get_neutral_replacement(player, tag)
 
 
 # =============================================================================
@@ -702,12 +726,20 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         num_samples: int = 100,
     ) -> None:
         """Initialize MLM-based infilling strategy."""
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = cast(
+            "PreTrainedTokenizerBase",
+            AutoTokenizer.from_pretrained(model_name),
+        )
         self.model_name = model_name
-        self.model = AutoModelForMaskedLM.from_pretrained(model_name)
-
         self.device = device
-        self.model.to(device)
+        model = AutoModelForMaskedLM.from_pretrained(model_name)
+
+        model = model.to(device)
+
+        self.model = cast(
+            "PreTrainedModel",
+            model,
+        )
         self.model.eval()
 
         self.mask_token = self.tokenizer.mask_token
@@ -783,14 +815,19 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
             max_sampling_attempts = 100
 
             for _ in range(max_sampling_attempts):
-                candidate_id = torch.multinomial(
-                    probs,
-                    num_samples=1,
-                ).item()
+                candidate_id = int(
+                    torch.multinomial(
+                        probs,
+                        num_samples=1,
+                    ).item()
+                )
 
-                token = self.tokenizer.decode(
-                    [candidate_id],
-                    skip_special_tokens=True,
+                token = cast(
+                    "str",
+                    self.tokenizer.decode(
+                        [candidate_id],
+                        skip_special_tokens=True,
+                    ),
                 ).strip()
 
                 if token == "":
@@ -867,13 +904,14 @@ class AttentionMaskPerturbation(BasePerturbationStrategy):
         self,
         player: str,
         *,
-        context: dict | None = None,  # noqa: ARG002
+        context: dict | None = None,
     ) -> str:
         """Return the original player.
 
         This method is required by the perturbation-strategy interface but is not
         used by attention masking.
         """
+        del context
         return player
 
     @staticmethod
@@ -1166,6 +1204,7 @@ PERTURBATION_STRATEGIES = {
     "attention_mask": AttentionMaskPerturbation,
 }
 
+
 def create_perturbation_strategy(
     strategy: str,
     tokenizer: PreTrainedTokenizerBase,
@@ -1175,7 +1214,6 @@ def create_perturbation_strategy(
 ) -> BasePerturbationStrategy:
     """Create a perturbation strategy from a string identifier."""
     if strategy not in PERTURBATION_STRATEGIES:
-
         msg = (
             f"Unknown perturbation strategy: {strategy}. "
             f"Available strategies: {list(PERTURBATION_STRATEGIES)}"
@@ -1208,6 +1246,7 @@ def create_perturbation_strategy(
         )
     msg_0 = f"Unhandled perturbation strategy: {strategy}"
     raise RuntimeError(msg_0)
+
 
 # =============================================================================
 # TARGET CALLABLES
@@ -1552,11 +1591,11 @@ class Seq2SeqCallable(BaseTargetCallable):
         self.decoder_start_token_id = decoder_start_token_id
 
     def _build_prompt(self, text: str) -> str:
-        """ Wrap the original text into a prompt template. """
+        """Wrap the original text into a prompt template."""
         return self.prompt_template.format(text=text)
 
     def _encode_inputs(self, texts: list[str]) -> dict[str, torch.Tensor]:
-        """ Encode a list of texts into encoder input tensors. """
+        """Encode a list of texts into encoder input tensors."""
         encoded = self.tokenizer(
             texts,
             padding=True,
@@ -1571,7 +1610,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         attention_mask: torch.Tensor,
         batch_size: int,
     ) -> np.ndarray:
-        """ Compute the log-probability of the decoder generating the target token sequence. """
+        """Compute the log-probability of the decoder generating the target token sequence."""
         total_log_probs = torch.zeros(batch_size, device=self.device)
 
         decoder_input_ids = torch.full(
@@ -1606,7 +1645,7 @@ class Seq2SeqCallable(BaseTargetCallable):
         return total_log_probs.cpu().numpy()
 
     def predict(self, texts: list[str]) -> np.ndarray:
-        """ Compute log-probability scores of the Seq2Seq target sequence for a batch of texts. """
+        """Compute log-probability scores of the Seq2Seq target sequence for a batch of texts."""
         prompts = [self._build_prompt(text) for text in texts]
         encoder_inputs = self._encode_inputs(prompts)
 
@@ -1694,6 +1733,7 @@ class TextImputer:
         ``"encoder_classifier"``, ``"causal_lm"``, or ``"seq2seq"``. Seq2seq is currently a placeholder.
 
     """
+
     def __init__(
         self,
         model: PreTrainedModel,
@@ -1716,7 +1756,6 @@ class TextImputer:
         # Seq2Seq settings
         # ---------------------------------------------------------------------
         normalize_target_logprob: bool = True,
-
         # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
@@ -1729,7 +1768,6 @@ class TextImputer:
         # ---------------------------------------------------------------------
         mlm_model_name: str = "bert-base-uncased",
         mlm_num_samples: int = 100,
-
         # ---------------------------------------------------------------------
         # Generalize target callable support.
         # ---------------------------------------------------------------------
@@ -1935,10 +1973,9 @@ class TextImputer:
                 players=players,
                 coalitions=coalitions,
                 model_type=self.model_type,
-                prompt_template=(
-                    self.target_callable.prompt_template
-                    if hasattr(self.target_callable, "prompt_template")
-                    else None
+                prompt_template=cast(
+                    "str | None",
+                    getattr(self.target_callable, "prompt_template", None),
                 ),
                 player_separator="" if self.player_level == "subword" else " ",
             )
