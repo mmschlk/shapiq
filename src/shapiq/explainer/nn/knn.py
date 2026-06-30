@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, override
 
 import numpy as np
 
-from shapiq import InteractionValues
 from shapiq.explainer.nn.base import NNExplainerBase
+from shapiq.interaction_values import InteractionValues
 
 from ._util import (
     assert_valid_index_and_order,
