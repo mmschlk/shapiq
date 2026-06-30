@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from sklearn.neighbors import RadiusNeighborsClassifier
 
     from shapiq.explainer.custom_types import ValidNNExplainerIndices
-from shapiq import InteractionValues
+from shapiq.interaction_values import InteractionValues
 
 from ._util import (
     assert_valid_index_and_order,
