@@ -76,9 +76,7 @@ def _tree_to_fourier(tree_model: TreeModel) -> _FourierDict:
     Approximator instantiation required.
     """
 
-    def _combine(
-        left: _FourierDict, right: _FourierDict, feature: int
-    ) -> _FourierDict:
+    def _combine(left: _FourierDict, right: _FourierDict, feature: int) -> _FourierDict:
         combined: _FourierDict = {}
         for interaction in set(left) | set(right):
             left_val = left.get(interaction, 0.0)
