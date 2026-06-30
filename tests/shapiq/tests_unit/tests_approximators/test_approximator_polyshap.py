@@ -19,6 +19,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _singleton_prior(n: int) -> list[tuple]:
     """Minimal prior: empty set + all singletons (structurally identical to KernelSHAP frontier)."""
     return list(powerset(range(n), max_size=1))
@@ -53,6 +54,7 @@ PARTIAL_SEEDS: list[int] = _generate_seeds()
 # PolySHAP base-class: frontier validation
 # ---------------------------------------------------------------------------
 
+
 def test_polyshap_raises_when_singleton_missing():
     """PolySHAP must reject a frontier that omits any singleton."""
     n = 4
@@ -80,8 +82,9 @@ def test_polyshap_interaction_matrix_shape():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPKAdd – initialisation
+# PolySHAPKAdd - initialisation
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     ("n", "max_order"),
@@ -92,7 +95,7 @@ def test_kadd_init_attributes(n, max_order):
     approx = PolySHAPKAdd(n, max_order)
     expected_size = _kadd_frontier_size(n, max_order)
     assert approx.n == n
-    assert approx.max_order == 1       # PolySHAP always targets SVs
+    assert approx.max_order == 1  # PolySHAP always targets SVs
     assert approx.min_order == 0
     assert approx.top_order is False
     assert approx.iteration_cost == 1
@@ -131,8 +134,9 @@ def test_kadd_frontier_positions_are_unique():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPKAdd – approximation quality
+# PolySHAPKAdd - approximation quality
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(("n", "budget"), [(7, 500), (7, 100)])
 def test_kadd_approximate_sv_quality(n, budget):
@@ -210,13 +214,14 @@ def test_kadd_estimated_when_budget_small():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPartial – initialisation
+# PolySHAPPartial - initialisation
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     ("n", "n_terms"),
     [
-        (7, 8),   # empty + singletons only, no higher-order extension
+        (7, 8),  # empty + singletons only, no higher-order extension
         (7, 12),  # empty + singletons + 4 pairs
         (7, 25),  # empty + singletons + 17 pairs (only 21 pairs exist, so no triples)
     ],
@@ -261,8 +266,9 @@ def test_partial_sizes_to_exclude_omits_those_sizes():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPartial – approximation quality
+# PolySHAPPartial - approximation quality
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(("n", "budget"), [(7, 400), (7, 120)])
 def test_partial_approximate_sv_quality(n, budget):
@@ -293,7 +299,7 @@ def test_partial_extended_frontier_approximates_correctly():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPartial – seeded reproducibility & variance (fixed list of 50 seeds)
+# PolySHAPPartial - seeded reproducibility & variance (fixed list of 50 seeds)
 # ---------------------------------------------------------------------------
 
 _SEEDED_N = 12
@@ -354,8 +360,9 @@ def test_partial_seeded_estimates_have_low_variance_vs_true_sv():
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPrior – initialisation
+# PolySHAPPrior - initialisation
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("n", [3, 7, 10])
 def test_prior_init_attributes(n):
@@ -382,15 +389,16 @@ def test_prior_raises_when_singleton_missing():
 @pytest.mark.parametrize("n", [3, 7])
 def test_prior_frontier_positions_match_enumeration_order(n):
     """Each coalition's position in the frontier must match its index in q_prior."""
-    prior = _singleton_prior(n) + [(0, 1), (1, 2)]
+    prior = [*_singleton_prior(n), (0, 1), (1, 2)]
     approx = PolySHAPPrior(n, q_prior=prior)
     for pos, coalition in enumerate(prior):
         assert approx.explanation_frontier[coalition] == pos
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPrior – approximation quality
+# PolySHAPPrior - approximation quality
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(("n", "budget"), [(7, 500), (7, 100)])
 def test_prior_approximate_sv_quality(n, budget):
@@ -415,7 +423,7 @@ def test_prior_with_interaction_pairs_still_correct():
     """Adding interaction pairs to the prior must not break SV accuracy."""
     n, budget = 7, 400
     game = DummyGame(n, (1, 2))
-    prior = _singleton_prior(n) + [(1, 2), (0, 3), (2, 4)]
+    prior = [*_singleton_prior(n), (1, 2), (0, 3), (2, 4)]
     approx = PolySHAPPrior(n, q_prior=prior, random_state=42)
     sv = approx.approximate(budget, game)
     assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
@@ -426,12 +434,12 @@ def test_prior_agrees_exactly_with_kadd_order1():
     """PolySHAPPrior (singleton prior) and PolySHAPKAdd(max_order=1) share the same frontier
     and implementation path, so they must produce bit-identical SVs given the same random state."""
     n, budget, seed = 7, 200, 5
-    sv_prior = PolySHAPPrior(
-        n, q_prior=_singleton_prior(n), random_state=seed
-    ).approximate(budget, DummyGame(n, (1, 2)))
-    sv_kadd = PolySHAPKAdd(
-        n, max_order=1, random_state=seed
-    ).approximate(budget, DummyGame(n, (1, 2)))
+    sv_prior = PolySHAPPrior(n, q_prior=_singleton_prior(n), random_state=seed).approximate(
+        budget, DummyGame(n, (1, 2))
+    )
+    sv_kadd = PolySHAPKAdd(n, max_order=1, random_state=seed).approximate(
+        budget, DummyGame(n, (1, 2))
+    )
     np.testing.assert_array_almost_equal(sv_prior.values, sv_kadd.values, decimal=12)
 
 
@@ -439,11 +447,12 @@ def test_prior_agrees_exactly_with_kadd_order1():
 # Shared behaviour across approximators
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     ("ApproxClass", "kwargs"),
     [
-        (PolySHAPKAdd,  {"max_order": 1}),
-        (PolySHAPKAdd,  {"max_order": 2}),
+        (PolySHAPKAdd, {"max_order": 1}),
+        (PolySHAPKAdd, {"max_order": 2}),
         (PolySHAPPartial, {"n_explanation_terms": 10}),
         (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
     ],
@@ -459,8 +468,8 @@ def test_budget_never_exceeded(ApproxClass, kwargs):
 @pytest.mark.parametrize(
     ("ApproxClass", "kwargs"),
     [
-        (PolySHAPKAdd,  {"max_order": 1}),
-        (PolySHAPKAdd,  {"max_order": 2}),
+        (PolySHAPKAdd, {"max_order": 1}),
+        (PolySHAPKAdd, {"max_order": 2}),
         (PolySHAPPartial, {"n_explanation_terms": 10}),
         (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
     ],
@@ -476,7 +485,7 @@ def test_sv_efficiency_with_large_budget(ApproxClass, kwargs):
 @pytest.mark.parametrize(
     ("ApproxClass", "kwargs"),
     [
-        (PolySHAPKAdd,  {"max_order": 1}),
+        (PolySHAPKAdd, {"max_order": 1}),
         (PolySHAPPartial, {"n_explanation_terms": 8}),
         (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
     ],
@@ -491,7 +500,7 @@ def test_index_is_sv(ApproxClass, kwargs):
 @pytest.mark.parametrize(
     ("ApproxClass", "kwargs"),
     [
-        (PolySHAPKAdd,  {"max_order": 1}),
+        (PolySHAPKAdd, {"max_order": 1}),
         (PolySHAPPartial, {"n_explanation_terms": 8}),
         (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
     ],

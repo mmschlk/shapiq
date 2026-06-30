@@ -1,7 +1,14 @@
+"""k-additive PolySHAP approximator (:class:`PolySHAPKAdd`)."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from shapiq.approximator.regression.polyshap.polyshap import PolySHAP
 from shapiq.utils.sets import powerset
 
-import numpy as np
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class PolySHAPKAdd(PolySHAP):
@@ -38,11 +45,13 @@ class PolySHAPKAdd(PolySHAP):
         self,
         n: int,
         max_order: int,
+        *,
         sizes_to_exclude: set[int] | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
+        """Initialize the k-additive PolySHAP approximator."""
         explanation_frontier: dict[tuple, int] = {}
         pos = 0
         for S in powerset(range(n), max_size=max_order):

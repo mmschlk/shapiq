@@ -1,3 +1,7 @@
+"""Budget-controlled partial-frontier PolySHAP approximator (:class:`PolySHAPPartial`)."""
+
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.approximator.regression.polyshap.polyshap import PolySHAP
@@ -40,11 +44,13 @@ class PolySHAPPartial(PolySHAP):
         self,
         n: int,
         n_explanation_terms: int,
+        *,
         sizes_to_exclude: set[int] | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
+        """Initialize the partial-frontier PolySHAP approximator."""
         explanation_frontier: dict[tuple, int] = {}
         pos = 0
 
@@ -54,10 +60,9 @@ class PolySHAPPartial(PolySHAP):
             pos += 1
 
         # Extend with higher-order interactions in a reproducible random order.
-        if random_state is not None:
-            np.random.seed(random_state)
+        rng = np.random.default_rng(random_state)
         perm = list(range(n))
-        np.random.shuffle(perm)
+        rng.shuffle(perm)
 
         for S in powerset(range(n), min_size=2):
             if sizes_to_exclude is not None and len(S) in sizes_to_exclude:

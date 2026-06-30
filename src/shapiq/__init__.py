@@ -79,7 +79,6 @@ from .plot import (
     waterfall_plot,
 )
 from .tree import TreeExplainer
-from .tree.explainer import TreeExplainer
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py

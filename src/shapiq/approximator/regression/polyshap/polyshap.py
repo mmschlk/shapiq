@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable
-from typing import Any, Literal
-
-from ..base import Regression
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from scipy.special import binom
 
+from shapiq.approximator.regression.base import Regression
 from shapiq.interaction_values import InteractionValues
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 ValidRegressionPolySHAPIndices = Literal["SV"]
 
 
 class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
-    """Estimates Shapley values using the PolySHAP regression algorithm, generalising
-    KernelSHAP :cite:t:`Lundberg.2017`.  The algorithm is described in Fumagalli et al.
-    (2026) :cite:t:`Fumagalli.2026`.
+    """Estimate Shapley values using the PolySHAP regression algorithm.
+
+    Generalises KernelSHAP :cite:t:`Lundberg.2017`; the algorithm is described in
+    Fumagalli et al. (2026) :cite:t:`Fumagalli.2026`.
 
     The explanation frontier — the set of interactions used as basis functions in the
     regression — is supplied as a pre-built dictionary mapping each coalition tuple to
@@ -53,10 +55,12 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         self,
         n: int,
         explanation_frontier: dict,
+        *,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
+        """Initialize the PolySHAP approximator from a pre-built explanation frontier."""
         super().__init__(
             n,
             max_order=1,
@@ -71,7 +75,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         # Every singleton must be present so that Shapley values can be read off directly.
         for i in self._grand_coalition_set:
             if (i,) not in explanation_frontier:
-                raise ValueError("PolySHAP requires all main effects in the explanation frontier.")
+                msg = "PolySHAP requires all main effects in the explanation frontier."
+                raise ValueError(msg)
 
         # Build the binary indicator matrix: rows = frontier terms, cols = players.
         self.interaction_matrix_binary = np.zeros((len(explanation_frontier), self.n), dtype=bool)
@@ -119,7 +124,9 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 )
         return weight_vector
 
-    def _transform_to_shapley(self, input_values):
+    def _transform_to_shapley(
+        self, input_values: np.ndarray
+    ) -> tuple[np.ndarray, dict[tuple[int, ...], int]]:
         """Aggregate interaction-level values into Shapley values.
 
         Each interaction term's value is split equally among its members, so
@@ -149,7 +156,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximate Shapley values via weighted least-squares regression.
 
@@ -164,6 +171,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 grand coalition, which are always queried).
             game: Callable accepting a binary coalition matrix of shape
                 ``(budget, n)`` and returning a value array of shape ``(budget,)``.
+            **kwargs: Ignored; accepted for API compatibility with other approximators.
 
         Returns:
             :class:`~shapiq.interaction_values.InteractionValues` containing the

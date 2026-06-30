@@ -1,6 +1,15 @@
+"""User-prior PolySHAP approximator (:class:`PolySHAPPrior`)."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from shapiq.approximator.regression.polyshap.polyshap import PolySHAP
 
-import numpy as np
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import numpy as np
 
 
 class PolySHAPPrior(PolySHAP):
@@ -36,11 +45,13 @@ class PolySHAPPrior(PolySHAP):
     def __init__(
         self,
         n: int,
-        q_prior,
+        q_prior: Iterable[tuple[int, ...]],
+        *,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
+        """Initialize the user-prior PolySHAP approximator."""
         explanation_frontier: dict[tuple, int] = {S: pos for pos, S in enumerate(q_prior)}
 
         super().__init__(

@@ -16,12 +16,12 @@ from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
-    RegressionFBII,
-    RegressionFSII,
-    kADDSHAP,
     PolySHAPKAdd,
     PolySHAPPartial,
     PolySHAPPrior,
+    RegressionFBII,
+    RegressionFSII,
+    kADDSHAP,
 )
 
 try:
