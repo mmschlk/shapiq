@@ -161,17 +161,13 @@ rn50_model, preprocess = clip.load("RN50", jit=False)
 model = OpenAICLIPModelAdapter(rn50_model, name_or_path="openai/clip-rn50")
 processor = OpenAICLIPProcessorAdapter(preprocess, context_length=model.context_length)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-print(f"Using device: {device}")
-
 # %%
 # 2. Load Input Image & Text
 # ----------------------------
 # Uses the bundled sample image ``tests/shapiq/data/dog_and_hydrant.png``.
 # Replace with your own image path for other experiments.
 
-INPUT_TEXT = "black dog next to a yellow hydrant"
+INPUT_TEXT = "black dog"
 
 image_path = Path("tests") / "shapiq" / "data" / "dog_and_hydrant.png"
 if not image_path.exists():
@@ -207,7 +203,7 @@ explainer = VisionLanguageExplainer(
 
 iv = explainer.explain(
     x={"image": image, "text": INPUT_TEXT},
-    budget=2**12,
+    budget=2**9,
 )
 
 game = explainer.game

@@ -35,7 +35,7 @@ processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 # ----------------------------
 # Uses the bundled sample image. Replace with your own.
 
-INPUT_TEXT = "black dog next to a yellow hydrant"
+INPUT_TEXT = "black dog"
 
 image_path = Path("tests") / "shapiq" / "data" / "dog_and_hydrant.png"
 if not image_path.exists():
@@ -91,7 +91,7 @@ explainer = VisionLanguageExplainer(
 
 iv = explainer.explain(
     x={"image": image, "text": INPUT_TEXT},
-    budget=2**8,  # small budget for 5 players (3 image + 2 text)
+    budget=2**8,  # small budget for 5 players (3 image + 2 text from "black dog")
     custom_masks=masks,
 )
 

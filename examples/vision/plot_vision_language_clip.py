@@ -5,15 +5,17 @@ Vision-Language Model Explanation with shapiq
 This example shows how to explain a CLIP model's similarity between an image and a text
 description using the :class:`~shapiq.explainer.vision.VisionLanguageExplainer`.
 
+*Requires only CPU, typical runtime < 1 minute.*
+
 **Pipeline overview:**
 
-1. **Segmenter** divides the input into "players" (image patches, superpixels, text tokens).
+1. **Segmenter** divides the input into "players" (image patches, text tokens).
 2. **Masker** applies occlusion to a subset of those players.
 3. **VisionImputer** orchestrates Segmenter → Masker → Model forward pass.
 4. **VisionLanguageGame** adapts the imputer as a :class:`~shapiq.Game` for approximators.
 5. Any **shapiq approximator** (e.g. :class:`~shapiq.KernelSHAPIQ`) computes Shapley interaction values.
 
-**Model:** ``openai/clip-vit-base-patch32`` — 7x7 = 49 image patches, 8 text players (CLIP BOS+EOS stripped).
+**Model:** ``openai/clip-vit-base-patch32`` — 7x7 = 49 image patches, 2 text players.
 """
 
 from __future__ import annotations
@@ -22,16 +24,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
 import shapiq  # noqa: TC001
 from shapiq.explainer.vision import VisionLanguageExplainer
-from shapiq.imputer.vision import (
-    SegmenterConfig,
-    SlicParams,
-)
 
 # %%
 # 1. Load Model & Processor
@@ -40,9 +37,6 @@ from shapiq.imputer.vision import (
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-print(f"Using device: {device}")
 print(f"Image size: {model.config.vision_config.image_size}")
 print(f"Patch size: {model.vision_model.embeddings.patch_size}")
 
@@ -52,7 +46,7 @@ print(f"Patch size: {model.vision_model.embeddings.patch_size}")
 # Uses the bundled sample image ``tests/shapiq/data/dog_and_hydrant.png``.
 # Replace with your own image path for other experiments.
 
-INPUT_TEXT = "black dog next to a yellow hydrant"
+INPUT_TEXT = "black dog"
 
 image_path = Path("tests") / "shapiq" / "data" / "dog_and_hydrant.png"
 if not image_path.exists():
@@ -79,7 +73,7 @@ explainer = VisionLanguageExplainer(
 # Access the game and imputer built during explain()
 iv = explainer.explain(
     x={"image": image, "text": INPUT_TEXT},
-    budget=2**12,
+    budget=2**9,
 )
 
 game = explainer.game
@@ -256,117 +250,6 @@ plt.close()
 print("Saved: vision_clip_patch_overlay.png")
 
 # %%
-# 5. Try a Different Segmenter (SLIC Superpixels)
-# -------------------------------------------------
-# For CNN-based CLIP models (e.g. ``RN50``), rigid patches create OOD artifacts.
-# SLIC superpixels follow content boundaries. Pass a custom
-# :class:`~shapiq.imputer.vision.SegmenterConfig` to the explainer.
-
-seg_cfg = SegmenterConfig(
-    strategy="slic",
-    params=SlicParams(n_segments=49, compactness=10.0, sigma=1.0),
-)
-
-slic_explainer = VisionLanguageExplainer(
-    model=model,
-    processor=processor,
-    segmenter_config=seg_cfg,
-    batch_size=64,
-    index="k-SII",
-    max_order=2,
-    random_state=42,
-)
-
-slic_iv = slic_explainer.explain(
-    x={"image": image, "text": INPUT_TEXT},
-    budget=2**12,
-)
-
-slic_game = slic_explainer.game
-slic_imputer = slic_explainer.game.imputer
-
-print(f"SLIC segmenter — players: {slic_game.n_players_image}")
-print(f"Empty: {slic_game.empty_value:.4f}, Full: {slic_game.full_value:.4f}")
-
-# %%
-# 5a. SLIC Superpixel Visualisation
-# -----------------------------------
-
-from scipy.ndimage import distance_transform_edt
-from skimage.segmentation import find_boundaries
-
-# Read the SLIC label map from the segmenter
-slic_seg = slic_imputer.segmenter
-label_map = slic_seg._label_map.cpu().numpy()  # (H, W) int64
-n_segments = slic_game.n_players_image
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-# -- Left panel: superpixel boundaries with segment labels --
-image_np = np.array(image.resize((224, 224)))
-ax1.imshow(image_np)
-
-# Draw thin boundaries in white
-boundaries = find_boundaries(label_map, mode="outer")
-ax1.imshow(boundaries, cmap="gray", alpha=0.4)
-
-# Place each segment label at the interior point furthest from the boundary
-for seg_id in range(n_segments):
-    mask = label_map == seg_id
-    if mask.sum() == 0:
-        continue
-    dist = distance_transform_edt(mask)
-    interior_pt = np.unravel_index(dist.argmax(), dist.shape)
-    cy, cx = interior_pt
-    ax1.text(
-        cx,
-        cy,
-        str(seg_id),
-        ha="center",
-        va="center",
-        fontsize=7,
-        color="white",
-        fontweight="bold",
-        bbox={"boxstyle": "circle,pad=0.15", "facecolor": "black", "alpha": 0.6},
-    )
-
-ax1.set_title(f"SLIC Superpixels ({n_segments} segments)")
-ax1.axis("off")
-
-# -- Right panel: tokenized text display --
-ax2.axis("off")
-token_str = "\n".join([f"  [{i:2d}]  {tok}" for i, tok in enumerate(text_tokens)])
-ax2.text(
-    0.05,
-    0.5,
-    f"Text tokens ({game.n_players_text} players):\n\n{token_str}",
-    transform=ax2.transAxes,
-    fontsize=13,
-    verticalalignment="center",
-    family="monospace",
-    bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightyellow", "alpha": 0.9},
-)
-ax2.set_title("Tokenized Text (CLIP BOS/EOS stripped)")
-ax2.set_xlim(0, 1)
-ax2.set_ylim(0, 1)
-
-plt.tight_layout()
-plt.savefig("vision_clip_slic_segments.png", dpi=150, bbox_inches="tight")
-plt.close()
-print("Saved: vision_clip_slic_segments.png")
-
-# %%
-# 5b. SLIC Shapley Approximation
-# --------------------------------
-
-print(slic_iv)
-slic_fo = slic_iv.get_n_order(1)
-slic_fo.plot_force(feature_names=[f"S{i}" for i in range(slic_game.n_players_image)] + text_tokens)
-plt.savefig("vision_clip_slic_force.png", dpi=150, bbox_inches="tight")
-plt.close()
-print("Saved: vision_clip_slic_force.png")
-
-# %%
 # Summary
 # --------
 # This example demonstrated the :class:`~shapiq.explainer.vision.VisionLanguageExplainer`:
@@ -375,7 +258,7 @@ print("Saved: vision_clip_slic_force.png")
 # |---|---|---|
 # | Load model | ``transformers`` | CLIP ViT-B/32 |
 # | Explain | ``VisionLanguageExplainer`` | Wraps imputer + approximator |
-# | Segment | ``PatchSegmenter`` / ``SLICSegmenter`` | 49 players |
+# | Segment | ``PatchSegmenter`` | 49 image patches + text tokens |
 # | Mask | ``CrossModalMeanMasker`` | Zero-out pixels + text attention |
 # | Approximate | ``KernelSHAPIQ`` (k-SII) | First- and second-order attributions |
 #

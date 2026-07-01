@@ -958,17 +958,6 @@ class TestVisionImputerFactoryBuild:
         assert imputer.n_players == 55
         assert imputer.model_type == "clip"
 
-    def test_build_with_amp(self, mock_model, mock_processor):
-        """AMP flag removed — forward_1d works without it."""
-        factory = VisionImputerFactory()
-        imputer = factory.build(
-            mock_model,
-            mock_processor,
-            torch.randn(3, 224, 224),
-            "test text",
-        )
-        assert imputer.n_players > 0
-
     def test_build_forward_1d(self, mock_model, mock_processor):
         """After build, forward_1d returns correct shape."""
         factory = VisionImputerFactory()
@@ -992,22 +981,6 @@ class TestVisionImputerFactoryBuild:
         )
         result = imputer.forward_1d(
             np.zeros((1, imputer.n_players), dtype=bool),
-            batch_size=1,
-        )
-        assert result.shape == (1,)
-
-    def test_build_with_amp_skip_on_cpu(self, mock_model, mock_processor):
-        """AMP removed — forward 1d works correctly without it."""
-        factory = VisionImputerFactory()
-        imputer = factory.build(
-            mock_model,
-            mock_processor,
-            torch.randn(3, 224, 224),
-            "test text",
-        )
-        # Forward 1d works correctly without AMP
-        result = imputer.forward_1d(
-            np.ones((1, imputer.n_players), dtype=bool),
             batch_size=1,
         )
         assert result.shape == (1,)
