@@ -32,7 +32,9 @@ class CustomSegmenter(Segmenter):
         masks: Binary mask array of shape ``(n_players, H, W)``.
             Accepted types: ``np.ndarray``, ``torch.Tensor``, or any
             type that ``np.asarray`` can convert. Values are treated as
-            bool (non-zero = player pixel).
+            bool (non-zero = player pixel). Masks are automatically
+            resized to ``config.image_size`` via nearest-neighbour
+            interpolation if their spatial dimensions differ.
 
     Raises:
         ValueError: If ``masks`` is not 3D, or if the mask count does
@@ -53,6 +55,17 @@ class CustomSegmenter(Segmenter):
                 f"got shape {masks_arr.shape} and ndim={masks_arr.ndim}."
             )
             raise ValueError(msg)
+
+        # Resize masks to match model's expected image_size (e.g., processor outputs 224x224)
+        target_size = config.image_size
+        if target_size > 0 and (
+            masks_arr.shape[1] != target_size or masks_arr.shape[2] != target_size
+        ):
+            masks_t = torch.from_numpy(masks_arr).float().unsqueeze(1)  # (K, 1, H, W)
+            masks_t = torch.nn.functional.interpolate(
+                masks_t, size=(target_size, target_size), mode="nearest"
+            ).squeeze(1)  # (K, target_size, target_size)
+            masks_arr = masks_t.bool().numpy()
 
         self.n_players_image = int(masks_arr.shape[0])
         self.image_size = int(masks_arr.shape[1])

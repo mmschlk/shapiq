@@ -11,9 +11,8 @@ model's internal representations.
 
 1. **SLIC Segmenter** divides the image into perceptually meaningful superpixels.
 2. **CrossModalMeanMasker** applies zero-out occlusion to image + text players.
-3. **VisionImputer** orchestrates Segmenter → Masker → Model forward pass.
-4. **VisionLanguageGame** adapts the imputer as a :class:`~shapiq.Game`.
-5. :class:`~shapiq.KernelSHAPIQ` computes interaction values.
+3. :class:`~shapiq.explainer.vision.VisionLanguageExplainer` wraps the pipeline
+   and computes interaction values.
 
 **Model:** OpenAI CLIP RN50 — 49 SLIC superpixels.
 
@@ -35,13 +34,11 @@ import numpy as np
 import torch
 from PIL import Image
 
-import shapiq
+from shapiq.explainer.vision import VisionLanguageExplainer
 from shapiq.imputer.vision import (
     MaskerConfig,
     SegmenterConfig,
     SlicParams,
-    VisionImputerFactory,
-    VisionLanguageGame,
 )
 
 # ─── OpenAI CLIP adapters ─────────────────────────────────────────────
@@ -184,10 +181,11 @@ image = Image.open(image_path).convert("RGB")
 print(f"Image size: {image.size}")
 
 # %%
-# 3. Build the Imputer Pipeline with SLIC Segmenter
-# ---------------------------------------------------
+# 3. Build the Explainer with SLIC Segmenter
+# --------------------------------------------
 # CNN-backbone models use SLIC superpixels instead of rigid patch grids.
-# The factory passes ``image_array`` to the segmenter automatically.
+# :class:`~shapiq.explainer.vision.VisionLanguageExplainer` wraps the
+# full pipeline — image and text are passed at **explain time**.
 
 seg_cfg = SegmenterConfig(
     strategy="slic",
@@ -196,13 +194,24 @@ seg_cfg = SegmenterConfig(
 
 msk_cfg = MaskerConfig(strategy="crossmodal_mean")
 
-
-factory = VisionImputerFactory()
-imputer = factory.build(
-    model, processor, image, INPUT_TEXT, segmenter_config=seg_cfg, masker_config=msk_cfg
+explainer = VisionLanguageExplainer(
+    model=model,
+    processor=processor,
+    segmenter_config=seg_cfg,
+    masker_config=msk_cfg,
+    batch_size=64,
+    index="k-SII",
+    max_order=2,
+    random_state=42,
 )
 
-game = VisionLanguageGame(imputer, batch_size=64)
+iv = explainer.explain(
+    x={"image": image, "text": INPUT_TEXT},
+    budget=2**12,
+)
+
+game = explainer.game
+imputer = explainer.game.imputer
 
 print(f"Model type:           {imputer.model_type}")
 print(f"Image players:        {game.n_players_image}")
@@ -210,24 +219,10 @@ print(f"Text players:         {game.n_players_text}")
 print(f"Total players:        {game.n_players}")
 print(f"Empty coalition:      {game.empty_value:.4f}")
 print(f"Full coalition:       {game.full_value:.4f}")
+print(iv)
 
 # %%
-# 4. Compute Shapley Interaction Values
-# ---------------------------------------
-# We use :class:`~shapiq.KernelSHAPIQ` with ``k-SII`` index and ``max_order=2``.
-
-approx = shapiq.KernelSHAPIQ(
-    n=game.n_players,
-    max_order=2,
-    index="k-SII",
-    random_state=42,
-)
-
-sii = approx.approximate(budget=2**12, game=game)
-print(sii)
-
-# %%
-# 5a. SLIC Superpixel Visualisation
+# 4a. SLIC Superpixel Visualisation
 # -----------------------------------
 # Show the superpixel boundaries with segment labels and the tokenized text.
 
@@ -300,23 +295,23 @@ plt.close()
 print("Saved: vision_rn50_slic_segments.png")
 
 # %%
-# 5b. Force Plot (First-Order)
+# 4b. Force Plot (First-Order)
 # ------------------------------
 
 feature_names = [f"S{i}" for i in range(game.n_players_image)] + text_tokens
 
-sii_first_order = sii.get_n_order(1)
-sii_first_order.plot_force(feature_names=feature_names)
+iv_first_order = iv.get_n_order(1)
+iv_first_order.plot_force(feature_names=feature_names)
 plt.savefig("vision_rn50_slic_force.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_rn50_slic_force.png")
 
 # %%
-# 5c. Interaction Network (Second-Order)
+# 4c. Interaction Network (Second-Order)
 # ----------------------------------------
 # Blue edges = positive synergy, red edges = negative (diminishing).
 
-sii.plot_network(
+iv.plot_network(
     feature_names=feature_names,
     draw_threshold=0.0,
 )
@@ -327,16 +322,15 @@ print("Saved: vision_rn50_slic_network.png")
 # %%
 # Summary
 # --------
-# This example demonstrated the ``shapiq.imputer.vision`` pipeline with a
-# CNN-backbone CLIP model and SLIC superpixels:
+# This example demonstrated the :class:`~shapiq.explainer.vision.VisionLanguageExplainer`
+# with a CNN-backbone CLIP model and SLIC superpixels:
 #
 # | Step | Component | What it does |
 # |---|---|---|
 # | Load model | OpenAI ``clip`` | RN50 (ResNet-50) |
+# | Explain | ``VisionLanguageExplainer`` | Wraps imputer + approximator |
 # | Segment | ``SLICSegmenter`` | 49 superpixel players |
 # | Mask | ``CrossModalMeanMasker`` | Zero-out pixels + text attention |
-# | Orchestrate | ``VisionImputer`` | Batches coalitions, runs model forward |
-# | Adapt | ``VisionLanguageGame`` | Thin :class:`~shapiq.Game` wrapper |
 # | Approximate | ``KernelSHAPIQ`` (k-SII) | First- and second-order attributions |
 #
 # CNN-based CLIP models (RN50, RN101, RN50x4) benefit from SLIC superpixels
