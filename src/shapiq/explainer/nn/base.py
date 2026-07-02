@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
-from shapiq import Explainer
+from shapiq.explainer import Explainer
 
 if TYPE_CHECKING:
     import numpy.typing as npt
