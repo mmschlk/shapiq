@@ -14,9 +14,9 @@ authors:
   - family-names: H\"ullermeier
     given-names: Eyke
 title: 'shapiq: Shapley Interactions for Machine Learning'
-version: 1.2.0
+version: 1.5.0
 url: https://openreview.net/forum?id=knxGmi6SJi
-date-released: '2024-11-15'
+date-released: '2026-05-22'
 preferred-citation:
   authors:
   - family-names: Muschalik

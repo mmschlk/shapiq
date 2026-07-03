@@ -1,0 +1,19 @@
+{
+  "dataset": "adult_census",
+  "model": "lightgbm",
+  "metric": "accuracy",
+  "cv_folds": 5,
+  "n_trials": 50,
+  "best_accuracy": 0.8718558936867531,
+  "best_params": {
+    "n_estimators": 944,
+    "num_leaves": 47,
+    "learning_rate": 0.030338722763452043,
+    "max_depth": 4,
+    "min_child_samples": 9,
+    "subsample": 0.9396824635118503,
+    "colsample_bytree": 0.7155127263223596,
+    "reg_alpha": 0.00013816182430361382,
+    "reg_lambda": 0.0004958490081190707
+  }
+}
