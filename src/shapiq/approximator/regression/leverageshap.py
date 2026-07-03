@@ -33,9 +33,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
        (Algorithm 2): for each size ``s``, ``m_s ~ Binomial(C(n,s), min(1, 2c/C(n,s)))``
        pairs are included. Subsets of small sizes (where ``C(n,s) <= 2c``) are
        included deterministically; only larger sizes are subsampled.
-     3. Reweights each row by ``w(||z||) / min(1, 2c·l_z)`` where
+    3. Reweights each row by ``w(||z||) / min(1, 2c·l_z)`` where
        ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight and
-         ``l_z = 1/C(n,s)`` is its leverage score.
+       ``l_z = 1/C(n,s)`` is its leverage score.
     4. Solves the unconstrained centered regression (Lemma 3.1) and adds the
        efficiency offset.
 
