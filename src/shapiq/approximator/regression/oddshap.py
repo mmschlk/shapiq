@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from scipy import linalg as scipy_linalg
 from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
@@ -111,10 +112,18 @@ class OddSHAP(Approximator):
 
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
-        ``n * interaction_factor``, this implementation raises ``ValueError`` instead
+        ``interaction_factor``, this implementation raises ``ValueError`` instead
         (no silent downgrade to another estimator), unless the budget already covers
         the full coalition space (``budget >= 2**n``). It therefore does not reproduce
         the low-budget, high-dimension regime of the paper's Figure 2.
+
+        The active support's candidate budget (``ceil(budget / interaction_factor)``)
+        is shared between individuals and higher-order odd interactions: the most
+        relevant individuals (ranked by |Fourier coefficient|, all ``n`` of them
+        always considered) are screened first, and only the remaining candidate
+        budget is spent on higher-order odd interactions. Unlike the paper, low
+        budgets can therefore leave some individuals out of the active support
+        entirely (their Shapley value is then estimated as exactly 0).
     """
 
     valid_indices: tuple[str, ...] = ("SV",)
@@ -193,6 +202,7 @@ class OddSHAP(Approximator):
 
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
+        self.odd_interaction_matrix_float = np.zeros((0, self.n), dtype=np.float64)
         self.n_active_interactions: int = 0
 
     def approximate(
@@ -213,7 +223,7 @@ class OddSHAP(Approximator):
             Estimated first-order Shapley values.
 
         Raises:
-            ValueError: If ``budget < min(n * interaction_factor, 2**n)``, i.e. the
+            ValueError: If ``budget < min(interaction_factor, 2**n)``, i.e. the
                 budget is below the eta-based minimum and does not cover the full
                 coalition space either. Algorithm 1 of the paper falls back to TreeSHAP
                 in this regime; this implementation deliberately raises instead, so an
@@ -226,7 +236,7 @@ class OddSHAP(Approximator):
         # Fail fast before any (possibly expensive) game evaluation. A budget that
         # covers the full coalition space is always sufficient, even when 2**n is
         # smaller than the eta-based minimum (small n).
-        minimum_budget = min(self.n * self.interaction_factor, 2**self.n)
+        minimum_budget = min(self.interaction_factor, 2**self.n)
         if budget < minimum_budget:
             msg = (
                 "The budget is too small for OddSHAP. "
@@ -254,15 +264,15 @@ class OddSHAP(Approximator):
 
         full_set_value = float(game_values[np.where(full_mask)[0][0]])
 
-        # Higher-order odd support size |T_odd| = ceil(m / eta) - d (paper Alg. 1,
-        # p. 6): the total regression variable count is ceil(m/eta), of which d are
-        # singletons (always included), so only the remainder are screened from the
-        # surrogate's Fourier spectrum.  At full budget all coalitions are enumerated,
-        # so the candidate support is not truncated.
+        # Total active-support candidate budget = ceil(m / eta) (paper Alg. 1, p. 6).
+        # Individuals and higher-order odd interactions draw from this shared budget:
+        # individuals are screened first (see `_select_active_terms`), so only the
+        # remainder goes to higher-order odd interactions. At full budget all
+        # coalitions are enumerated, so the candidate support is not truncated.
         if budget >= 2**self.n:
-            n_candidate_interactions = 2**self.n
+            n_candidate_terms = 2**self.n
         else:
-            n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor) - self.n)
+            n_candidate_terms = max(0, math.ceil(budget / self.interaction_factor))
 
         return self._approximate_via_odd_regression(
             budget=budget,
@@ -270,7 +280,7 @@ class OddSHAP(Approximator):
             game_values=game_values,
             empty_set_value=empty_set_value,
             full_set_value=full_set_value,
-            n_candidate_interactions=n_candidate_interactions,
+            n_candidate_terms=n_candidate_terms,
         )
 
     def _approximate_via_odd_regression(
@@ -281,24 +291,25 @@ class OddSHAP(Approximator):
         game_values: np.ndarray,
         empty_set_value: float,
         full_set_value: float,
-        n_candidate_interactions: int,
+        n_candidate_terms: int,
     ) -> InteractionValues:
         """Run the OddSHAP odd-regression approximation.
 
         This branch:
         1. fits the tree surrogate
-        2. detects higher-order odd interactions
+        2. selects the active odd support (individuals first, then higher-order
+           odd interactions)
         3. builds the active odd support
         4. constructs the weighted Fourier regression problem
         5. solves the constrained odd regression
         6. transforms the fitted coefficients into Shapley values
         """
         surrogate_model = self._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
-        detected_interactions = self._select_odd_interactions(
-            n_candidate_interactions=n_candidate_interactions,
+        selected_individuals, selected_interactions = self._select_active_terms(
+            n_candidate_terms=n_candidate_terms,
             surrogate_model=surrogate_model,
         )
-        self._build_support(detected_interactions)
+        self._build_support(selected_individuals + selected_interactions)
 
         X_tilde, y_tilde = self._build_weighted_system(
             coalitions=coalitions,
@@ -344,39 +355,23 @@ class OddSHAP(Approximator):
 
     def _build_support(
         self,
-        selected_interactions: list[tuple[int, ...]] | None,
+        selected_terms: list[tuple[int, ...]] | None,
     ) -> None:
-        """Build the active OddSHAP support.
+        """Build the active OddSHAP support from a list of selected terms.
 
-        The support always contains:
-        - the empty interaction ()
-        - all singleton interactions (i,)
-        - selected higher-order odd interactions
-
-        The ordering is deterministic:
-        1. ()
-        2. (0,), (1,), ..., (n-1,)
-        3. sorted selected higher-order odd interactions
+        The support always contains the empty interaction ``()`` plus the given
+        terms (deduplicated and sorted by size then value). Unlike in Fumagalli et al. (20026),
+        singletons are *not* auto-injected here: relevance-based
+        individual selection now happens upstream in ``_select_active_terms``, so
+        only individuals that were actually selected end up in the support.
         """
-        if selected_interactions is None:
+        if selected_terms is None:
             normalized_selected: list[tuple[int, ...]] = []
         else:
-            normalized_set: set[tuple[int, ...]] = set()
+            normalized_set = {tuple(sorted(term)) for term in selected_terms if len(term) >= 1}
+            normalized_selected = sorted(normalized_set, key=lambda term: (len(term), term))
 
-            for interaction in selected_interactions:
-                normalized = tuple(sorted(interaction))
-
-                # skip empty or singleton terms because OddSHAP always includes them
-                if len(normalized) <= 1:
-                    continue
-
-                normalized_set.add(normalized)
-
-            normalized_selected = sorted(normalized_set)
-
-        active_interactions: list[tuple[int, ...]] = [()]
-        active_interactions.extend((player,) for player in range(self.n))
-        active_interactions.extend(normalized_selected)
+        active_interactions: list[tuple[int, ...]] = [(), *normalized_selected]
 
         self.odd_interaction_lookup = {
             interaction: position for position, interaction in enumerate(active_interactions)
@@ -389,7 +384,75 @@ class OddSHAP(Approximator):
                 interaction_matrix_binary[position, list(interaction)] = True
 
         self.odd_interaction_matrix_binary = interaction_matrix_binary
+        self.odd_interaction_matrix_float = interaction_matrix_binary.astype(np.float64)
         self.n_active_interactions = len(active_interactions)
+
+    @staticmethod
+    def _surrogate_to_fourier(surrogate_model: object) -> _FourierDict:
+        """Convert the fitted surrogate to its exact Fourier (Walsh) spectrum."""
+        tree_models = convert_tree_model(surrogate_model)
+        if not isinstance(tree_models, list):
+            tree_models = [tree_models]
+        return _ensemble_to_fourier(tree_models)
+
+    def _select_active_terms(
+        self,
+        *,
+        n_candidate_terms: int,
+        surrogate_model: object | None,
+    ) -> tuple[list[tuple[int, ...]], list[tuple[int, ...]]]:
+        """Split the shared candidate budget between individuals and interactions.
+
+        Implements the paper's "Controlling Higher-Order Terms" priority
+        (Fumagalli et al. 2026, Algorithm 1): the most relevant individuals are
+        screened first from the surrogate's Fourier spectrum (all ``n`` of them
+        are always ranked, whether or not the surrogate happened to split on
+        them), and only the remaining candidate budget is spent screening
+        higher-order odd interactions via ``_select_odd_interactions``.
+        """
+        if surrogate_model is None or n_candidate_terms <= 0:
+            return [], []
+
+        n_individual_terms = min(self.n, n_candidate_terms)
+        selected_individuals = self._select_individual_terms(
+            n_individual_terms=n_individual_terms,
+            surrogate_model=surrogate_model,
+        )
+
+        remaining_budget = n_candidate_terms - len(selected_individuals)
+        selected_interactions = self._select_odd_interactions(
+            n_candidate_interactions=remaining_budget,
+            surrogate_model=surrogate_model,
+        )
+
+        return selected_individuals, selected_interactions
+
+    def _select_individual_terms(
+        self,
+        *,
+        n_individual_terms: int,
+        surrogate_model: object | None = None,
+    ) -> list[tuple[int, ...]]:
+        """Rank all individuals by |Fourier coefficient| and keep the top ones.
+
+        Every player is ranked, including players the surrogate never split on
+        (their coefficient defaults to 0.0 and they rank last), so a scarce
+        budget always prefers players the surrogate found relevant over
+        arbitrary index order.
+        """
+        if surrogate_model is None or n_individual_terms <= 0:
+            return []
+
+        fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
+        singleton_coefficients = {
+            player: float(fourier_coefficients.get((player,), 0.0)) for player in range(self.n)
+        }
+        ranked_players = sorted(
+            singleton_coefficients,
+            key=lambda player: (-abs(singleton_coefficients[player]), player),
+        )
+
+        return [(player,) for player in ranked_players[:n_individual_terms]]
 
     def _select_odd_interactions(
         self,
@@ -407,10 +470,7 @@ class OddSHAP(Approximator):
         if surrogate_model is None or n_candidate_interactions <= 0:
             return []
 
-        tree_models = convert_tree_model(surrogate_model)
-        if not isinstance(tree_models, list):
-            tree_models = [tree_models]
-        fourier_coefficients = _ensemble_to_fourier(tree_models)
+        fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
 
         higher_order_odd: dict[tuple[int, ...], float] = {}
         for interaction, coefficient in fourier_coefficients.items():
@@ -427,19 +487,21 @@ class OddSHAP(Approximator):
         return [interaction for interaction, _ in selected]
 
     def _get_regression_row_weights(self) -> np.ndarray:
-        """Return square-root row weights for the OddSHAP regression problem.
+        """Return raw (non-square-root) row weights for the OddSHAP regression problem.
 
         The weights combine:
         - OddSHAP coalition-size kernel weights
         - sampling adjustment weights from the CoalitionSampler
 
+        Kept un-square-rooted because ``_pair_interior_rows`` combines pairs of
+        rows by doubling their raw weight; the square root is taken once, after
+        pairing, in ``_build_weighted_system``.
         """
         kernel_weights = self._kernel_weights
         coalition_sizes = self._sampler.coalitions_size
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
-        regression_weights = kernel_weights[coalition_sizes] * sampling_adjustment_weights
-        return np.sqrt(regression_weights)
+        return kernel_weights[coalition_sizes] * sampling_adjustment_weights
 
     def _build_weighted_system(
         self,
@@ -458,6 +520,12 @@ class OddSHAP(Approximator):
             beta_empty = (f(full) + f(empty)) / 2
 
         following Appendix C of the OddSHAP paper.
+
+        When ``drop_boundary_rows`` is set (the only path used by
+        ``approximate``), complementary coalition pairs (S, S^c) sampled by the
+        pairing trick are collapsed into a single combined row each (see
+        ``_pair_interior_rows``), halving the number of regression rows without
+        changing the least-squares solution.
         """
         if self.n_active_interactions == 0:
             msg = "OddSHAP support has not been built yet. Call _build_support(...) first."
@@ -468,46 +536,130 @@ class OddSHAP(Approximator):
 
         if drop_boundary_rows:
             coalition_sizes = np.sum(coalitions, axis=1)
-            inner_row_mask = (coalition_sizes > 0) & (coalition_sizes < self.n)
-
-            coalitions_used = coalitions[inner_row_mask]
-            row_weights_used = row_weights[inner_row_mask]
-            centered_values = (game_values - beta_empty)[inner_row_mask]
+            interior_mask = (coalition_sizes > 0) & (coalition_sizes < self.n)
+            coalitions_used, weights_used, targets_used = self._pair_interior_rows(
+                coalitions=coalitions,
+                game_values=game_values,
+                row_weights=row_weights,
+                interior_mask=interior_mask,
+                beta_empty=beta_empty,
+            )
         else:
             coalitions_used = coalitions
-            row_weights_used = row_weights
-            centered_values = game_values - beta_empty
+            weights_used = row_weights
+            targets_used = game_values - beta_empty
 
         # Drop the empty interaction column because beta_empty is fixed exactly
-        interaction_masks = self.odd_interaction_matrix_binary[1:, :]
-
-        coalitions_int = coalitions_used.astype(np.uint8)
-        interaction_masks_int = interaction_masks.astype(np.uint8)
-
-        parity_matrix = (coalitions_int @ interaction_masks_int.T) % 2
-        # Cast before the Fourier sign transform: uint8 would underflow
-        # 1 - 2 * 1 to 255 instead of -1.
-        design_matrix = 1.0 - 2.0 * parity_matrix.astype(float)
-        X_tilde = design_matrix * row_weights_used[:, np.newaxis]
-        y_tilde = centered_values * row_weights_used
+        interaction_masks = self.odd_interaction_matrix_float[1:, :]
+        parity_matrix = np.remainder(coalitions_used.astype(np.float64) @ interaction_masks.T, 2.0)
+        design_matrix = 1.0 - 2.0 * parity_matrix
+        row_weights_sqrt = np.sqrt(weights_used)
+        X_tilde = design_matrix * row_weights_sqrt[:, np.newaxis]
+        y_tilde = targets_used * row_weights_sqrt
 
         return X_tilde, y_tilde
+
+    def _pair_interior_rows(
+        self,
+        *,
+        coalitions: np.ndarray,
+        game_values: np.ndarray,
+        row_weights: np.ndarray,
+        interior_mask: np.ndarray,
+        beta_empty: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Collapse complementary coalition pairs into single combined rows.
+
+        For every active support column T, |T| is odd (singletons and
+        higher-order odd interactions only), so chi_T(S^c) = -chi_T(S). Paired
+        coalitions also share identical kernel*sampling weight (the pairing
+        trick guarantees the complement is sampled, and OddSHAP's symmetric
+        kernel/sampling weights make w(S) == w(S^c)). Under weighted least
+        squares, replacing the two rows
+
+            sqrt(w) * chi(S)  ~  sqrt(w) * (f(S)  - beta_empty)
+            sqrt(w) * chi(S^c) ~ sqrt(w) * (f(S^c) - beta_empty)
+
+        by the single row
+
+            sqrt(2w) * chi(S)  ~  sqrt(2w) * (f(S) - f(S^c)) / 2
+
+        changes the weighted sum-of-squares objective only by a
+        beta-independent constant, so the least-squares solution is identical
+        while using half the rows. Coalitions without a sampled complement (a
+        rare edge case when the sampling budget is exhausted mid-pair) keep
+        their original, beta_empty-centered single-row equation.
+        """
+        interior_idx = np.where(interior_mask)[0]
+        if interior_idx.size == 0:
+            return (
+                np.zeros((0, self.n), dtype=bool),
+                np.zeros(0, dtype=float),
+                np.zeros(0, dtype=float),
+            )
+
+        interior_coalitions = coalitions[interior_idx]
+        packed = np.packbits(interior_coalitions, axis=1)
+        packed_complement = np.packbits(~interior_coalitions, axis=1)
+        local_index_by_key = {row.tobytes(): local for local, row in enumerate(packed)}
+
+        n_interior = interior_idx.size
+        processed = np.zeros(n_interior, dtype=bool)
+        pair_a: list[int] = []
+        pair_b: list[int] = []
+        unpaired: list[int] = []
+        for local in range(n_interior):
+            if processed[local]:
+                continue
+            partner = local_index_by_key.get(packed_complement[local].tobytes())
+            if partner is None:
+                unpaired.append(local)
+            else:
+                pair_a.append(local)
+                pair_b.append(partner)
+                processed[partner] = True
+            processed[local] = True
+
+        idx_a = interior_idx[pair_a]
+        idx_b = interior_idx[pair_b]
+        idx_unpaired = interior_idx[unpaired]
+
+        paired_coalitions = coalitions[idx_a]
+        paired_weights = 2.0 * row_weights[idx_a]
+        paired_targets = 0.5 * (game_values[idx_a] - game_values[idx_b])
+
+        unpaired_coalitions = coalitions[idx_unpaired]
+        unpaired_weights = row_weights[idx_unpaired]
+        unpaired_targets = game_values[idx_unpaired] - beta_empty
+
+        coalitions_used = np.concatenate([paired_coalitions, unpaired_coalitions], axis=0)
+        weights_used = np.concatenate([paired_weights, unpaired_weights])
+        targets_used = np.concatenate([paired_targets, unpaired_targets])
+
+        return coalitions_used, weights_used, targets_used
 
     def _build_constraint_system(
         self,
         *,
         full_set_value: float,
         empty_set_value: float,
-    ) -> tuple[float, np.ndarray, np.ndarray]:
-        """Build the exact OddSHAP Fourier constraint system.
+    ) -> tuple[float, float]:
+        """Build the exact OddSHAP Fourier constraint scalars.
 
         Returns:
             beta_empty = (f(full) + f(empty)) / 2
                 Exact Fourier coefficient for the empty interaction.
-            projection_matrix:
-                Projection onto the orthogonal complement of the all-ones vector.
-            beta_const:
-                A feasible point satisfying the odd-coefficient sum constraint.
+            b = -(f(full) - f(empty)) / 2
+                The exact sum constraint on the non-empty odd coefficients:
+                ``sum(beta_nonempty) == b``.
+
+        Note:
+            The non-empty coefficients live on the hyperplane
+            ``sum(beta) == b``, whose normal is the all-ones vector. Projecting
+            onto (and off) that hyperplane is therefore just row-mean / global-mean
+            subtraction — see ``_solve_constrained_regression`` — so no K x K
+            projection matrix (K = number of non-empty active terms) is ever
+            built or multiplied.
         """
         n_nonempty_terms = self.n_active_interactions - 1
         if n_nonempty_terms <= 0:
@@ -515,17 +667,9 @@ class OddSHAP(Approximator):
             raise RuntimeError(msg)
 
         beta_empty = 0.5 * (full_set_value + empty_set_value)
-
-        # non-empty odd coefficients
         b = -0.5 * (full_set_value - empty_set_value)
 
-        a = np.ones(n_nonempty_terms, dtype=float)
-        denominator = float(a @ a)
-
-        projection_matrix = np.eye(n_nonempty_terms, dtype=float) - np.outer(a, a) / denominator
-        beta_const = (b / denominator) * a
-
-        return beta_empty, projection_matrix, beta_const
+        return beta_empty, b
 
     def _solve_constrained_regression(
         self,
@@ -540,21 +684,33 @@ class OddSHAP(Approximator):
         This solves the non-empty odd coefficients under the exact sum constraint
         from the OddSHAP paper, then assembles the full coefficient vector
         including the empty interaction coefficient.
+
+        The textbook derivation projects onto the ``sum(beta) == b`` hyperplane
+        via a dense K x K projection matrix ``I - ones(K,K)/K``. Because that
+        matrix's only structure is "subtract the mean", the projection reduces
+        algebraically to O(m*K) row-mean subtraction (for ``X_tilde @ projection``)
+        and O(K) global-mean subtraction (for reconstructing beta_nonempty),
+        which is what is implemented below instead of materializing the matrix.
         """
-        beta_empty, projection_matrix, beta_const = self._build_constraint_system(
+        beta_empty, b = self._build_constraint_system(
             full_set_value=full_set_value,
             empty_set_value=empty_set_value,
         )
+        n_nonempty_terms = self.n_active_interactions - 1
 
-        # Project the constrained problem into an unconstrained least-squares problem
-        X_projected = X_tilde @ projection_matrix
-        y_projected = y_tilde - X_tilde @ beta_const
+        # Project the constrained problem into an unconstrained least-squares problem:
+        # X_tilde @ (I - ones(K,K)/K) == X_tilde - row_mean(X_tilde), and
+        # X_tilde @ (b/K * ones(K)) == b * row_mean(X_tilde).
+        row_mean = X_tilde.mean(axis=1)
+        X_projected = X_tilde - row_mean[:, np.newaxis]
+        y_projected = y_tilde - b * row_mean
 
         # Solve for the free projected coordinates
         z_solution = np.linalg.lstsq(X_projected, y_projected, rcond=None)[0]
 
-        # Reconstruct the constrained non-empty coefficient vector
-        beta_nonempty = beta_const + projection_matrix @ z_solution
+        # Reconstruct the constrained non-empty coefficient vector:
+        # beta_const + (I - ones(K,K)/K) @ z_solution == b/K + z_solution - mean(z_solution).
+        beta_nonempty = z_solution + (b / n_nonempty_terms - z_solution.mean())
 
         # Assemble the full coefficient vector including the empty interaction
         beta_full = np.zeros(self.n_active_interactions, dtype=float)
@@ -599,11 +755,13 @@ class OddSHAP(Approximator):
         # The active support contains only () and odd-cardinality interactions
         # (singletons + detected higher-order odds), so the membership matrix
         # already encodes the correct containment and sizes.
-        interaction_sizes = self.odd_interaction_matrix_binary.sum(axis=1).astype(float)  # (K,)
+        interaction_sizes = self.odd_interaction_matrix_float.sum(axis=1)  # (K,)
         # position 0 is () with size 0 — skip it; singletons have size 1
         coeffs = odd_fourier_coefficients[1:]
         sizes = interaction_sizes[1:]
-        masks = self.odd_interaction_matrix_binary[1:]  # (K-1, n) bool
+        # float64 (BLAS-backed) matmul: an order of magnitude faster than the
+        # equivalent bool matmul for this binary membership matrix.
+        masks = self.odd_interaction_matrix_float[1:]  # (K-1, n) float64
 
         # phi_i = -2 * sum_{T: i in T} beta_T / |T|
         shares = coeffs / sizes  # (K-1,)

@@ -3,12 +3,15 @@
 OddSHAP estimates first-order Shapley values via paired sampling + odd-only
 Fourier regression. A LightGBM surrogate is fitted to the sampled coalitions
 and its exact Fourier spectrum (extracted via ProxySPEX's tree-to-Fourier
-routine) screens the top ``ceil(budget / interaction_factor)`` odd
-higher-order interactions; the active support is then solved with a
-constrained weighted Fourier regression and the odd coefficients are
-transformed into Shapley values. Budgets below ``n * interaction_factor``
-are rejected with a ``ValueError`` (there is deliberately no fallback to
-another estimator).
+routine) screens the active support: the shared candidate budget
+``ceil(budget / interaction_factor)`` is spent on the most relevant
+individuals first (all ``n`` of them ranked, even those the surrogate never
+split on), and only the remainder is spent screening higher-order odd
+interactions. The active support is then solved with a constrained weighted
+Fourier regression (row-paired for efficiency, see below) and the odd
+coefficients are transformed into Shapley values. Budgets below
+``interaction_factor`` are rejected with a ``ValueError`` (there is
+deliberately no fallback to another estimator).
 
 The constraint system enforces the exact identities
     beta_empty = (f(N) + f(empty)) / 2,
@@ -270,18 +273,18 @@ def test_different_seed_differs():
 
 
 def test_low_budget_raises_value_error():
-    """budget < n * interaction_factor must raise ValueError, not silently fall back."""
+    """budget < interaction_factor must raise ValueError, not silently fall back."""
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    budget = n * approx.interaction_factor - 1
+    budget = approx.interaction_factor - 1
     with pytest.raises(ValueError, match="too small"):
         approx.approximate(budget, game)
 
 
 def test_full_enumeration_bypasses_minimum_budget():
-    """budget >= 2**n is accepted even when 2**n < n * interaction_factor (small n)."""
-    n = 4  # 2**4 = 16 < 40 = n * eta
+    """budget >= 2**n is accepted even when 2**n < interaction_factor (small n)."""
+    n = 3  # 2**3 = 8 < 10 = interaction_factor (default)
     game = DummyGame(n=n, interaction=(1, 2))
     iv = OddSHAP(n=n, random_state=0).approximate(2**n, game)
     assert isinstance(iv, InteractionValues)
@@ -292,21 +295,20 @@ def test_full_enumeration_bypasses_minimum_budget():
 
 def test_small_budget_below_full_enumeration_still_raises():
     """Below both the eta-based minimum and 2**n the ValueError is kept, and the
-    message reports the effective minimum (16 = 2**4, not n * eta = 40)."""
+    message reports the effective minimum (10 = interaction_factor, not 2**4 = 16)."""
     n = 4
     game = DummyGame(n=n, interaction=(1, 2))
-    with pytest.raises(ValueError, match="at least 16 evaluations"):
-        OddSHAP(n=n, random_state=0).approximate(2**n - 1, game)
+    with pytest.raises(ValueError, match="at least 10 evaluations"):
+        OddSHAP(n=n, random_state=0).approximate(9, game)
 
 
 def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
-    """At budget = n * interaction_factor (the minimum permitted),
-    `_select_odd_interactions` should be called with the paper's
-    candidate count `ceil(budget / interaction_factor)`.
+    """At budget = interaction_factor (the minimum permitted), `_select_active_terms`
+    should be called with the paper's candidate count `ceil(budget / interaction_factor)`.
     """
     n = 8
     approx = OddSHAP(n=n, random_state=0)
-    budget = n * approx.interaction_factor
+    budget = approx.interaction_factor
     captured = {}
 
     def additive_game(coalitions):
@@ -315,18 +317,16 @@ def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
     def fake_fit_surrogate_model(*, coalitions, game_values):
         return object()
 
-    def fake_select_odd_interactions(**kwargs):
-        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
-        return []
+    def fake_select_active_terms(**kwargs):
+        captured["n_candidate_terms"] = kwargs["n_candidate_terms"]
+        return [(0,)], []
 
     monkeypatch.setattr(approx, "_fit_surrogate_model", fake_fit_surrogate_model)
-    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+    monkeypatch.setattr(approx, "_select_active_terms", fake_select_active_terms)
 
     approx.approximate(budget, additive_game)
 
-    assert captured["n_candidate_interactions"] == max(
-        0, math.ceil(budget / approx.interaction_factor) - n
-    )
+    assert captured["n_candidate_terms"] == math.ceil(budget / approx.interaction_factor)
 
 
 def test_candidate_interaction_count_matches_paper(monkeypatch):
@@ -341,18 +341,16 @@ def test_candidate_interaction_count_matches_paper(monkeypatch):
     def fake_fit_surrogate_model(*, coalitions, game_values):
         return object()
 
-    def fake_select_odd_interactions(**kwargs):
-        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
-        return []
+    def fake_select_active_terms(**kwargs):
+        captured["n_candidate_terms"] = kwargs["n_candidate_terms"]
+        return [(0,)], []
 
     monkeypatch.setattr(approx, "_fit_surrogate_model", fake_fit_surrogate_model)
-    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+    monkeypatch.setattr(approx, "_select_active_terms", fake_select_active_terms)
 
     approx.approximate(budget, additive_game)
 
-    assert captured["n_candidate_interactions"] == max(
-        0, math.ceil(budget / approx.interaction_factor) - n
-    )
+    assert captured["n_candidate_terms"] == math.ceil(budget / approx.interaction_factor)
 
 
 # -----------------------------------------------------------------------------
@@ -439,17 +437,17 @@ def test_full_budget_bypasses_candidate_truncation(monkeypatch):
     def additive_game(coalitions):
         return coalitions.astype(float).sum(axis=1)
 
-    def fake_select_odd_interactions(**kwargs):
-        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
-        return []
+    def fake_select_active_terms(**kwargs):
+        captured["n_candidate_terms"] = kwargs["n_candidate_terms"]
+        return [(0,)], []
 
     monkeypatch.setattr(approx, "_fit_surrogate_model", lambda **kw: object())
-    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+    monkeypatch.setattr(approx, "_select_active_terms", fake_select_active_terms)
 
     approx.approximate(2**n, additive_game)
 
-    assert captured["n_candidate_interactions"] == 2**n
-    assert captured["n_candidate_interactions"] > math.ceil(2**n / approx.interaction_factor)
+    assert captured["n_candidate_terms"] == 2**n
+    assert captured["n_candidate_terms"] > math.ceil(2**n / approx.interaction_factor)
 
 
 def test_select_odd_interactions_returns_full_support_for_large_k():
@@ -473,27 +471,125 @@ def test_select_odd_interactions_returns_full_support_for_large_k():
 
 
 # -----------------------------------------------------------------------------
+# Individual screening (_select_individual_terms) and budget orchestration
+# (_select_active_terms): individuals are ranked by relevance and take
+# priority over higher-order odd interactions for the shared candidate budget.
+# -----------------------------------------------------------------------------
+
+
+def test_select_individual_terms_handles_zero_budget():
+    n = 8
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    assert (
+        approx._select_individual_terms(n_individual_terms=0, surrogate_model=surrogate) == []
+    )
+
+
+def test_select_individual_terms_handles_missing_surrogate():
+    n = 8
+    approx = OddSHAP(n=n, random_state=0)
+    assert (
+        approx._select_individual_terms(n_individual_terms=3, surrogate_model=None) == []
+    )
+
+
+def test_select_individual_terms_respects_k_and_returns_singletons():
+    n = 10
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    k = 4
+    selected = approx._select_individual_terms(n_individual_terms=k, surrogate_model=surrogate)
+    assert len(selected) == k
+    assert all(isinstance(t, tuple) and len(t) == 1 for t in selected)
+    assert len(set(selected)) == k  # no duplicates
+
+
+def test_select_individual_terms_caps_at_n():
+    n = 5
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    selected = approx._select_individual_terms(n_individual_terms=100, surrogate_model=surrogate)
+    assert len(selected) == n
+    assert set(selected) == {(i,) for i in range(n)}
+
+
+def test_select_active_terms_prioritizes_individuals_over_interactions():
+    """With a budget smaller than n, all of it goes to individuals; nothing is
+    left for higher-order odd interactions."""
+    n = 10
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    individuals, interactions = approx._select_active_terms(
+        n_candidate_terms=4,
+        surrogate_model=surrogate,
+    )
+    assert len(individuals) == 4
+    assert interactions == []
+
+
+def test_select_active_terms_splits_budget_after_all_individuals():
+    """With a budget larger than n, all n individuals are selected and the
+    remainder is spent on higher-order odd interactions."""
+    n = 6
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    budget = n + 3
+    individuals, interactions = approx._select_active_terms(
+        n_candidate_terms=budget,
+        surrogate_model=surrogate,
+    )
+    assert len(individuals) == n
+    assert set(individuals) == {(i,) for i in range(n)}
+    assert len(interactions) <= 3
+
+
+def test_select_active_terms_handles_zero_budget():
+    n = 6
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+    assert approx._select_active_terms(n_candidate_terms=0, surrogate_model=surrogate) == ([], [])
+
+
+def test_select_active_terms_handles_missing_surrogate():
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    assert approx._select_active_terms(n_candidate_terms=10, surrogate_model=None) == ([], [])
+
+
+# -----------------------------------------------------------------------------
 # `_build_support` invariants
 # -----------------------------------------------------------------------------
 
 
-def test_build_support_always_includes_empty_and_singletons():
+def test_build_support_includes_only_given_terms():
+    """_build_support no longer force-injects singletons: only () plus the
+    given terms end up in the support (individual relevance-selection now
+    happens upstream, in `_select_active_terms`)."""
     n = 6
     approx = OddSHAP(n=n, random_state=0)
-    approx._build_support([(0, 1, 2)])
+    approx._build_support([(0, 1, 2), (0,), (3,)])
     assert () in approx.odd_interaction_lookup
-    for i in range(n):
-        assert (i,) in approx.odd_interaction_lookup
+    assert (0,) in approx.odd_interaction_lookup
+    assert (3,) in approx.odd_interaction_lookup
+    assert (1,) not in approx.odd_interaction_lookup
     assert (0, 1, 2) in approx.odd_interaction_lookup
+    assert approx.n_active_interactions == 4  # (), (0,), (3,), (0,1,2)
 
 
-def test_build_support_drops_singleton_inputs():
-    """_build_support skips singleton inputs because singletons are always included."""
+def test_build_support_keeps_singleton_inputs():
+    """Singleton terms passed to _build_support are respected (they are no
+    longer special-cased / dropped)."""
     n = 6
     approx = OddSHAP(n=n, random_state=0)
     approx._build_support([(0,), (0, 1, 2, 3, 4)])
-    higher_order = {t for t in approx.odd_interaction_lookup if len(t) >= 2}
-    assert higher_order == {(0, 1, 2, 3, 4)}
+    assert set(approx.odd_interaction_lookup) == {(), (0,), (0, 1, 2, 3, 4)}
 
 
 def test_build_support_normalizes_unsorted_tuples():
@@ -508,9 +604,13 @@ def test_build_support_n_active_interactions_consistent():
     n = 6
     approx = OddSHAP(n=n, random_state=0)
     approx._build_support([(0, 1, 2), (1, 3, 5)])
-    expected = 1 + n + 2  # empty + n singletons + 2 higher-order odd
+    expected = 1 + 2  # empty + 2 higher-order odd (no singletons auto-added anymore)
     assert approx.n_active_interactions == expected
     assert approx.odd_interaction_matrix_binary.shape == (expected, n)
+    assert approx.odd_interaction_matrix_float.shape == (expected, n)
+    np.testing.assert_array_equal(
+        approx.odd_interaction_matrix_float, approx.odd_interaction_matrix_binary.astype(float)
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -621,16 +721,18 @@ def test_tree_params_without_depth_keeps_paper_default():
 
 
 def test_build_support_with_none_yields_baseline_support():
-    """`_build_support(None)` produces the minimal support: () plus singletons."""
+    """`_build_support(None)` produces the minimal support: only ()."""
     n = 5
     approx = OddSHAP(n=n, random_state=0)
     approx._build_support(None)
-    assert approx.n_active_interactions == n + 1
-    assert list(approx.odd_interaction_lookup) == [()] + [(i,) for i in range(n)]
+    assert approx.n_active_interactions == 1
+    assert list(approx.odd_interaction_lookup) == [()]
 
 
 def test_build_weighted_system_keeps_boundary_rows_when_requested():
-    """`drop_boundary_rows=False` keeps the empty and grand coalition rows."""
+    """`drop_boundary_rows=False` keeps the empty and grand coalition rows;
+    `drop_boundary_rows=True` additionally halves the interior rows by
+    collapsing complementary coalition pairs (see `_pair_interior_rows`)."""
     n = 5
     game = DummyGame(n=n, interaction=(1, 2))
     approx = OddSHAP(n=n, random_state=0)
@@ -653,8 +755,52 @@ def test_build_weighted_system_keeps_boundary_rows_when_requested():
         drop_boundary_rows=False,
     )
     assert x_keep.shape[0] == coalitions.shape[0]
-    assert x_keep.shape[0] == x_drop.shape[0] + 2
+    assert x_keep.shape[0] == 2**n
+    # full enumeration: every interior coalition's complement is also present,
+    # so pairing exactly halves the (2**n - 2) interior rows.
+    assert x_drop.shape[0] == (2**n - 2) // 2
     assert y_keep.shape[0] == x_keep.shape[0]
+
+
+def test_build_weighted_system_pairing_matches_unpaired_lstsq_solution():
+    """The paired (halved-row) system must yield an algebraically identical
+    least-squares solution to a naive one-row-per-coalition reference system,
+    confirming the row-pairing optimization changes performance, not results."""
+    n = 6
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=1)
+    approx = OddSHAP(n=n, random_state=0)
+    approx._sampler.sample(2**n)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    approx._build_support([(i,) for i in range(n)] + [(0, 1, 2), (1, 2, 3, 4, 5)])
+
+    empty_set_value = float(game(np.zeros((1, n), dtype=bool))[0])
+    full_set_value = float(game(np.ones((1, n), dtype=bool))[0])
+
+    X_paired, y_paired = approx._build_weighted_system(
+        coalitions=coalitions,
+        game_values=game_values,
+        empty_set_value=empty_set_value,
+        full_set_value=full_set_value,
+        drop_boundary_rows=True,
+    )
+    beta_paired = np.linalg.lstsq(X_paired, y_paired, rcond=None)[0]
+
+    # naive reference: one row per interior coalition, no pairing
+    beta_empty = 0.5 * (full_set_value + empty_set_value)
+    coalition_sizes = coalitions.sum(axis=1)
+    interior_mask = (coalition_sizes > 0) & (coalition_sizes < n)
+    row_weights = approx._get_regression_row_weights()[interior_mask]
+    interaction_masks = approx.odd_interaction_matrix_float[1:, :]
+    parity = (coalitions[interior_mask].astype(float) @ interaction_masks.T) % 2
+    design = 1.0 - 2.0 * parity
+    sqrtw = np.sqrt(row_weights)
+    X_ref = design * sqrtw[:, None]
+    y_ref = (game_values[interior_mask] - beta_empty) * sqrtw
+    beta_ref = np.linalg.lstsq(X_ref, y_ref, rcond=None)[0]
+
+    assert X_paired.shape[0] == X_ref.shape[0] // 2
+    np.testing.assert_allclose(beta_paired, beta_ref, atol=1e-8)
 
 
 # -----------------------------------------------------------------------------
@@ -721,7 +867,7 @@ def test_transform_to_shapley_vectorized_matches_formula():
     """The vectorized Shapley transform matches the expected closed-form values."""
     n = 6
     approx = OddSHAP(n=n, random_state=0)
-    approx._build_support([(0, 1, 2)])
+    approx._build_support([(i,) for i in range(n)] + [(0, 1, 2)])
     coeffs = np.ones(approx.n_active_interactions)
     sv = approx._transform_to_shapley(coeffs, baseline_value=0.0)
     # singletons contribute -2 * 1/1 = -2; the triple contributes -2 * 1/3
@@ -729,4 +875,17 @@ def test_transform_to_shapley_vectorized_matches_formula():
         expected = -2.0 * 1.0  # singleton (i,)
         if i in (0, 1, 2):
             expected += -2.0 * (1.0 / 3.0)  # triple (0,1,2)
+        np.testing.assert_allclose(sv[i + 1], expected, atol=1e-12)
+
+
+def test_transform_to_shapley_zero_for_unselected_players():
+    """A player with no selected term in the active support gets a Shapley
+    value of exactly 0 (only relevant, selected terms are ever screened)."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    approx._build_support([(0, 1, 2)])  # no singletons selected at all
+    coeffs = np.ones(approx.n_active_interactions)
+    sv = approx._transform_to_shapley(coeffs, baseline_value=0.0)
+    for i in range(n):
+        expected = -2.0 * (1.0 / 3.0) if i in (0, 1, 2) else 0.0
         np.testing.assert_allclose(sv[i + 1], expected, atol=1e-12)
