@@ -7,15 +7,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, Protocol, cast, get_args
 
-from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from tabpfn import TabPFNClassifier, TabPFNRegressor
-from xgboost import XGBClassifier, XGBRegressor
 
 from shapiq_games.benchmark.setup import GameBenchmarkSetup
 
+from ._optional import require
 from .bench_types import BenchmarkDataset
 
 type AllSupportedDatasets = Literal[
@@ -109,20 +107,47 @@ def _get_literal_args(type_alias: object) -> tuple[str, ...]:
     return cast("tuple[str, ...]", get_args(value))
 
 
-_MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
+# scikit-learn models are always available (core shapiq dependency).
+_SKLEARN_MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
     ("decision_tree", "classification"): DecisionTreeClassifier,
     ("decision_tree", "regression"): DecisionTreeRegressor,
     ("random_forest", "classification"): RandomForestClassifier,
     ("random_forest", "regression"): RandomForestRegressor,
-    ("xgboost", "classification"): XGBClassifier,
-    ("xgboost", "regression"): XGBRegressor,
-    ("lightgbm", "classification"): LGBMClassifier,
-    ("lightgbm", "regression"): LGBMRegressor,
-    ("tabpfn", "classification"): TabPFNClassifier,
-    ("tabpfn", "regression"): TabPFNRegressor,
     ("mlp", "classification"): MLPClassifier,
     ("mlp", "regression"): MLPRegressor,
 }
+
+# Optional backends, resolved lazily via ``require`` so that importing this
+# module does not require the ``benchmark`` extras. Maps the model name to the
+# (import package, classifier attribute, regressor attribute) to look up.
+_OPTIONAL_MODEL_BACKENDS: dict[str, tuple[str, str, str]] = {
+    "xgboost": ("xgboost", "XGBClassifier", "XGBRegressor"),
+    "lightgbm": ("lightgbm", "LGBMClassifier", "LGBMRegressor"),
+    "tabpfn": ("tabpfn", "TabPFNClassifier", "TabPFNRegressor"),
+}
+
+# All supported (model, task) pairs, independent of whether the optional backend
+# is installed. Used for validation and error messages so the advertised set of
+# supported models does not silently shrink when an extra is missing.
+_SUPPORTED_MODEL_TASKS: frozenset[tuple[str, str]] = frozenset(_SKLEARN_MODEL_BUILDERS) | {
+    (name, task) for name in _OPTIONAL_MODEL_BACKENDS for task in ("classification", "regression")
+}
+
+
+def _resolve_model_builder(model_str: str, task: str) -> ModelBuilder:
+    """Return the model builder for a ``(model, task)`` pair.
+
+    scikit-learn models are returned directly. The optional backends
+    (``xgboost`` / ``lightgbm`` / ``tabpfn``) are imported lazily and raise a
+    helpful error pointing to the ``benchmark`` extra if they are not installed.
+    """
+    key = (model_str, task)
+    if key in _SKLEARN_MODEL_BUILDERS:
+        return _SKLEARN_MODEL_BUILDERS[key]
+    package, classifier_attr, regressor_attr = _OPTIONAL_MODEL_BACKENDS[model_str]
+    module = require(package)
+    attr = classifier_attr if task == "classification" else regressor_attr
+    return cast("ModelBuilder", getattr(module, attr))
 
 
 def load_data_from_str(
@@ -176,15 +201,16 @@ def load_and_fit_model_from_str(
             A fitted model instance.
     """
     key = (model_str.lower(), dataset.data_type.lower())
-    if key not in _MODEL_BUILDERS:
-        supported = sorted({name for name, _dtype in _MODEL_BUILDERS})
+    if key not in _SUPPORTED_MODEL_TASKS:
+        supported = sorted({name for name, _dtype in _SUPPORTED_MODEL_TASKS})
         msg = (
             f"Unsupported model '{model_str}' for data type '{dataset.data_type}'. "
             f"Supported models: {', '.join(supported)}"
         )
         raise ValueError(msg)
 
-    model = _MODEL_BUILDERS[key](**kwargs)
+    builder = _resolve_model_builder(*key)
+    model = builder(**kwargs)
     return model.fit(dataset.x_train, dataset.y_train)
 
 

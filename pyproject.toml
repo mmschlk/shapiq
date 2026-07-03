@@ -82,6 +82,17 @@ shapleig = [
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
+benchmark = [
+    # optional model backends for the shapiq_benchmark package. These are
+    # imported lazily (see shapiq_benchmark._optional), so a plain
+    # `pip install shapiq` still ships and imports shapiq_benchmark; the
+    # extras are only needed to build the corresponding models / run the
+    # Optuna hyperparameter optimization.
+    "optuna",     # shapiq_benchmark.optimization
+    "tabpfn",     # TabPFN benchmark models
+    "lightgbm",   # LightGBM benchmark models
+    "xgboost",    # XGBoost benchmark models
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -107,7 +118,8 @@ changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 [tool.pytest.ini_options]
 testpaths = [
   "tests/shapiq",
-  "tests/shapiq_games"
+  "tests/shapiq_games",
+  "tests/shapiq_benchmark"
 ]
 pythonpath = ["src"]
 minversion = "8.0"
