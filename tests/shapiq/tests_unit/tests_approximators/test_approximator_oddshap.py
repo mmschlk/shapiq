@@ -482,17 +482,13 @@ def test_select_individual_terms_handles_zero_budget():
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
     *_, surrogate = _fit_surrogate(approx, game, 2**n)
-    assert (
-        approx._select_individual_terms(n_individual_terms=0, surrogate_model=surrogate) == []
-    )
+    assert approx._select_individual_terms(n_individual_terms=0, surrogate_model=surrogate) == []
 
 
 def test_select_individual_terms_handles_missing_surrogate():
     n = 8
     approx = OddSHAP(n=n, random_state=0)
-    assert (
-        approx._select_individual_terms(n_individual_terms=3, surrogate_model=None) == []
-    )
+    assert approx._select_individual_terms(n_individual_terms=3, surrogate_model=None) == []
 
 
 def test_select_individual_terms_respects_k_and_returns_singletons():

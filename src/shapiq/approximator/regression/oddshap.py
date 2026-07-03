@@ -11,7 +11,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy import linalg as scipy_linalg
 from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
@@ -112,16 +111,17 @@ class OddSHAP(Approximator):
 
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
-        ``n * interaction_factor``, this implementation expands the selection of active terms also to individuals,
-          allowing a minimum budget of ``interaction_factor``. Below that, it returns ``ValueError``
+        ``n * interaction_factor``, this implementation expands the selection of
+        active terms also to individuals, allowing a minimum budget of
+        ``interaction_factor``. Below that, it raises ``ValueError``
         (no silent downgrade to another estimator), unless the budget already covers
         the full coalition space (``budget >= 2**n``). It therefore does not reproduce
         the low-budget, high-dimension regime of the paper's Figure 2.
 
         The active support's candidate budget (``ceil(budget / interaction_factor)``)
         is shared between individuals and higher-order odd interactions: the most
-        relevant individuals (ranked by |Fourier coefficient|, all ``n`` of them
-        always considered) are screened first, and only the remaining candidate
+        relevant individuals (ranked by absolute Fourier coefficient, all ``n`` of
+        them always considered) are screened first, and only the remaining candidate
         budget is spent on higher-order odd interactions. Unlike the paper, low
         budgets can therefore leave some individuals out of the active support
         entirely (their Shapley value is then estimated as exactly 0).
@@ -361,7 +361,7 @@ class OddSHAP(Approximator):
         """Build the active OddSHAP support from a list of selected terms.
 
         The support always contains the empty interaction ``()`` plus the given
-        terms (deduplicated and sorted by size then value). Unlike in Fumagalli et al. (20026),
+        terms (deduplicated and sorted by size then value). Unlike in Fumagalli et al. (2026),
         singletons are *not* auto-injected here: relevance-based
         individual selection now happens upstream in ``_select_active_terms``, so
         only individuals that were actually selected end up in the support.
@@ -434,7 +434,7 @@ class OddSHAP(Approximator):
         n_individual_terms: int,
         surrogate_model: object | None = None,
     ) -> list[tuple[int, ...]]:
-        """Rank all individuals by |Fourier coefficient| and keep the top ones.
+        """Rank all individuals by absolute Fourier coefficient and keep the top ones.
 
         Every player is ranked, including players the surrogate never split on
         (their coefficient defaults to 0.0 and they rank last), so a scarce
