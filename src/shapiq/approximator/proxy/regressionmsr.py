@@ -9,7 +9,7 @@ from .proxyshap import ProxySHAP
 if TYPE_CHECKING:
     import numpy as np
 
-    from shapiq.typing import Model
+    from shapiq.approximator.proxy._models import ProxyLiteral, ProxyModel, ProxyModelWithHPO
 
 
 ValidRegressionMSRIndices = Literal["SV", "BV"]
@@ -38,7 +38,7 @@ class RegressionMSR(ProxySHAP):
         n: int,
         index: ValidRegressionMSRIndices,
         *,
-        proxy_model: Model | None = None,
+        proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         sampling_weights: np.ndarray | None = None,
         pairing_trick: bool = True,
         random_state: int | None = None,
@@ -48,7 +48,9 @@ class RegressionMSR(ProxySHAP):
         Args:
             n: The number of players in the game.
             index: The index to be approximated. Must be a valid index for the chosen adjustment method.
-            proxy_model: The regression model to be used as the proxy. If None, a default regression model will be used.
+            proxy_model: The model used as the proxy. Either an estimator/HPO wrapper or a
+                string tag (``"xgboost"`` (default), ``"lightgbm"``, ``"tree"``, ``"linear"``);
+                see :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP` for details.
             sampling_weights: The sampling weights for the coalitions. If None, uniform weights will be used.
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
             random_state: The random state for reproducibility. Default is None.
