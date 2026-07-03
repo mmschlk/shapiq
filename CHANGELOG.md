@@ -11,7 +11,7 @@
 
 Adds [`OddSHAP`](src/shapiq/approximator/regression/oddshap.py), a first-order Shapley value estimator that exploits the *odd* structure of the Shapley value (Fumagalli et al., 2026, "An Odd Estimator for Shapley Values"). It combines **paired sampling**, **sparse odd-interaction screening** via a surrogate tree model whose exact Fourier (Walsh) coefficients are extracted, and a **constrained odd Fourier regression** that enforces the efficiency axiom exactly. The surrogate defaults to LightGBM (the paper's configuration) and transparently falls back to a scikit-learn `DecisionTreeRegressor` when LightGBM is unavailable. It is exported as `shapiq.OddSHAP` and restricted to `index="SV"`, `max_order=1`.
 
-> Note: where Algorithm 1 of the paper falls back to TreeSHAP for budgets below `n * interaction_factor`, this implementation raises `ValueError` instead — so an under-budgeted call never silently returns a different estimator's values — unless the budget already covers the full coalition space (`budget >= 2**n`).
+> Note: unlike Algorithm 1 of the paper, which falls back to TreeSHAP at low budgets, this implementation never silently downgrades to another estimator — below the minimum budget of `min(interaction_factor, 2**n)` it raises `ValueError` instead.
 
 ### Introducing ShaplEIG [#548](https://github.com/mmschlk/shapiq/pull/548), [Preprint](https://arxiv.org/abs/2606.02247)
 
