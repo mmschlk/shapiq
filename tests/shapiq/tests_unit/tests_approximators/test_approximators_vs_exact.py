@@ -47,7 +47,6 @@ if str(_REPO_ROOT) not in _sys.path:
 
 import numpy as np
 import pytest
-
 from benchmark._discovery import (  # noqa: E402  (sys.path manipulation above)
     PROJECT_APPROXIMATOR_NAMES,
     construct_for_sv,
@@ -55,6 +54,7 @@ from benchmark._discovery import (  # noqa: E402  (sys.path manipulation above)
     load_approximator,
     safe_approximate,
 )
+
 from shapiq import ExactComputer
 from shapiq_games.synthetic import SOUM
 
@@ -80,7 +80,8 @@ def _construct_or_skip(approx_cls, n: int, *, random_state: int):
     if estimator is None:
         pytest.skip(
             f"{approx_cls.__name__}: no compatible SV-mode constructor "
-            f"({type(exc).__name__}: {exc})" if exc
+            f"({type(exc).__name__}: {exc})"
+            if exc
             else f"{approx_cls.__name__}: no recognized SV-mode constructor"
         )
     return estimator
@@ -89,10 +90,7 @@ def _construct_or_skip(approx_cls, n: int, *, random_state: int):
 def _approximate_or_skip(estimator, budget: int, game):
     iv, exc = safe_approximate(estimator, budget, game)
     if iv is None:
-        pytest.skip(
-            f"{type(estimator).__name__} refused this regime "
-            f"(budget={budget}): {exc}"
-        )
+        pytest.skip(f"{type(estimator).__name__} refused this regime (budget={budget}): {exc}")
     return iv
 
 
@@ -127,7 +125,7 @@ def test_interface_conformance(approx_name, seeded_soum_game, budget_pct):
     Approx = _load_or_skip(approx_name)
     n = seeded_soum_game.n_players
     estimator = _construct_or_skip(Approx, n, random_state=0)
-    iv = _approximate_or_skip(estimator, int(budget_pct * 2 ** n), seeded_soum_game)
+    iv = _approximate_or_skip(estimator, int(budget_pct * 2**n), seeded_soum_game)
 
     assert iv.index == "SV"
     assert iv.n_players == n
@@ -174,7 +172,7 @@ def test_numerical_convergence_vs_exact(approx_name, seeded_soum_game, budget_pc
     Approx = _load_or_skip(approx_name)
     n = seeded_soum_game.n_players
     estimator = _construct_or_skip(Approx, n, random_state=0)
-    iv = _approximate_or_skip(estimator, int(budget_pct * 2 ** n), seeded_soum_game)
+    iv = _approximate_or_skip(estimator, int(budget_pct * 2**n), seeded_soum_game)
 
     exact = ExactComputer(seeded_soum_game, n_players=n)(index="SV")
 
@@ -198,9 +196,13 @@ def test_determinism(approx_name):
     Approx = _load_or_skip(approx_name)
     game = SOUM(n=8, n_basis_games=15, max_interaction_size=3, random_state=42)
     a = _approximate_or_skip(
-        _construct_or_skip(Approx, 8, random_state=42), 256, game,
+        _construct_or_skip(Approx, 8, random_state=42),
+        256,
+        game,
     )
     b = _approximate_or_skip(
-        _construct_or_skip(Approx, 8, random_state=42), 256, game,
+        _construct_or_skip(Approx, 8, random_state=42),
+        256,
+        game,
     )
     np.testing.assert_array_equal(a.values, b.values)
