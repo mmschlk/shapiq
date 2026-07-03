@@ -23,6 +23,8 @@ ShaplEIG requires the new optional `shapleig` dependency group (`pip install sha
 
 Adds the `shapiq_benchmark` package, a framework to configure and run approximation benchmarks from either string tags or objects. It ships benchmark types for local XAI, image, TabPFN, path-dependent, and interventional games, a set of approximation-quality metrics, and Optuna-based hyperparameter optimization scripts with pre-computed best-parameter configs.
 
+The package installs next to `shapiq` (like `shapiq_games`) and imports on a plain `pip install shapiq`. Its model backends are optional and imported lazily; install them with `pip install shapiq[benchmark]` (`optuna`, `tabpfn`, `lightgbm`, `xgboost`) to build the corresponding models or run the hyperparameter optimization.
+
 ### Documentation
 
 - includes the nearest-neighbor explainers (`KNNExplainer`, `WeightedKNNExplainer`, `ThresholdNNExplainer`) in the API documentation and the `shapiq.explainer` package exports [#558](https://github.com/mmschlk/shapiq/pull/558)
