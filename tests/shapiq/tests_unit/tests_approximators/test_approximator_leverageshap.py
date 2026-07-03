@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import random
+
 import numpy as np
 import pytest
 
@@ -517,6 +519,37 @@ def test_constant_game_zero_svs(seed):
 
     np.testing.assert_allclose(result.values[1:], 0.0, atol=1e-10)
     assert result.values[1:].sum() == pytest.approx(0.0, abs=1e-10)
+
+
+def test_sample_without_replacement_huge_pool_fallback(monkeypatch):
+    """Use the randrange/set fallback when total exceeds sys.maxsize."""
+    import shapiq.approximator.regression.leverageshap as leverageshap_module
+
+    py_rng = random.Random(123)
+
+    def _should_not_be_called(*args, **kwargs):
+        msg = "random.sample path should not be used in huge-pool fallback"
+        raise AssertionError(msg)
+
+    # Make any accidental call to random.sample fail, so this test proves the fallback branch.
+    monkeypatch.setattr(random.Random, "sample", _should_not_be_called)
+    monkeypatch.setattr(leverageshap_module.sys, "maxsize", 5)
+
+    sampled = LeverageSHAP._sample_without_replacement(total=10, k=3, py_rng=py_rng)
+
+    assert len(sampled) == 3
+    assert len(set(sampled)) == 3
+    assert all(0 <= idx < 10 for idx in sampled)
+
+
+def test_combo_empty_combination_returns_all_false():
+    """_combo should return an all-false vector when s == 0."""
+    z = LeverageSHAP._combo(n=7, s=0, i=0)
+
+    assert z.dtype == bool
+    assert z.shape == (7,)
+    assert z.sum() == 0
+    assert np.array_equal(z, np.zeros(7, dtype=bool))
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
