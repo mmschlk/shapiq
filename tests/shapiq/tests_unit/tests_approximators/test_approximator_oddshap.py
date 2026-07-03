@@ -559,6 +559,35 @@ def test_select_active_terms_handles_missing_surrogate():
     assert approx._select_active_terms(n_candidate_terms=10, surrogate_model=None) == ([], [])
 
 
+def test_select_active_terms_computes_fourier_spectrum_once(monkeypatch):
+    """The surrogate -> Fourier transform is shared between the individual and
+    higher-order screening steps: `_select_active_terms` computes it exactly
+    once instead of each screening step recomputing the full spectrum."""
+    n = 8
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
+
+    original_to_fourier = OddSHAP._surrogate_to_fourier
+    call_count = 0
+
+    def counting_to_fourier(model):
+        nonlocal call_count
+        call_count += 1
+        return original_to_fourier(model)
+
+    monkeypatch.setattr(approx, "_surrogate_to_fourier", counting_to_fourier)
+
+    # budget large enough that both screening steps run (all n individuals, then
+    # a non-empty remaining budget for higher-order odd interactions).
+    individuals, interactions = approx._select_active_terms(
+        n_candidate_terms=n + 3,
+        surrogate_model=surrogate,
+    )
+    assert len(individuals) == n  # both screening steps actually executed
+    assert call_count == 1
+
+
 # -----------------------------------------------------------------------------
 # `_build_support` invariants
 # -----------------------------------------------------------------------------
@@ -796,6 +825,70 @@ def test_build_weighted_system_pairing_matches_unpaired_lstsq_solution():
     beta_ref = np.linalg.lstsq(X_ref, y_ref, rcond=None)[0]
 
     assert X_paired.shape[0] == X_ref.shape[0] // 2
+    np.testing.assert_allclose(beta_paired, beta_ref, atol=1e-8)
+
+
+@pytest.mark.parametrize(("n", "budget"), [(8, 120), (10, 300), (8, 90), (12, 500)])
+def test_build_weighted_system_pairing_matches_unpaired_lstsq_at_sub_budget(n, budget):
+    """Row-pairing must stay exact in the sub-budget *sampled* regime, not only
+    at full enumeration.
+
+    The full-budget test above exercises pairing where every complement is
+    trivially present with unit sampling weights. Here coalitions are genuinely
+    sampled (``budget < 2**n``) -- the regime ``approximate`` actually runs in.
+    Two invariants are checked:
+
+    1. every sampled interior pair (S, S^c) carries identical regression row
+       weight (the assumption ``_pair_interior_rows`` relies on), and
+    2. the paired (halved-row) system yields the same least-squares solution as
+       a naive one-row-per-interior-coalition reference.
+    """
+    assert budget < 2**n  # genuinely sub-budget: coalitions are sampled, not enumerated
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    approx = OddSHAP(n=n, random_state=0)
+    approx._sampler.sample(budget)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    approx._build_support([(i,) for i in range(n)] + [(0, 1, 2)])
+
+    empty_set_value = float(game(np.zeros((1, n), dtype=bool))[0])
+    full_set_value = float(game(np.ones((1, n), dtype=bool))[0])
+
+    # (1) complementary interior pairs share the same regression row weight
+    row_weights = approx._get_regression_row_weights()
+    coalition_sizes = coalitions.sum(axis=1)
+    interior = np.where((coalition_sizes > 0) & (coalition_sizes < n))[0]
+    index_by_row = {coalitions[i].tobytes(): i for i in interior}
+    n_rows_with_partner = 0
+    for i in interior:
+        j = index_by_row.get((~coalitions[i]).tobytes())
+        if j is not None:
+            n_rows_with_partner += 1
+            assert row_weights[i] == pytest.approx(row_weights[j])
+    # the pairing trick samples every interior complement, so all interior rows
+    # are paired and the paired system holds exactly half of them
+    assert n_rows_with_partner == len(interior)
+
+    # (2) paired system matches the naive unpaired reference
+    X_paired, y_paired = approx._build_weighted_system(
+        coalitions=coalitions,
+        game_values=game_values,
+        empty_set_value=empty_set_value,
+        full_set_value=full_set_value,
+        drop_boundary_rows=True,
+    )
+    beta_paired = np.linalg.lstsq(X_paired, y_paired, rcond=None)[0]
+
+    beta_empty = 0.5 * (full_set_value + empty_set_value)
+    interaction_masks = approx.odd_interaction_matrix_float[1:, :]
+    parity = (coalitions[interior].astype(float) @ interaction_masks.T) % 2
+    design = 1.0 - 2.0 * parity
+    sqrtw = np.sqrt(row_weights[interior])
+    X_ref = design * sqrtw[:, None]
+    y_ref = (game_values[interior] - beta_empty) * sqrtw
+    beta_ref = np.linalg.lstsq(X_ref, y_ref, rcond=None)[0]
+
+    assert X_paired.shape[0] == len(interior) // 2
     np.testing.assert_allclose(beta_paired, beta_ref, atol=1e-8)
 
 

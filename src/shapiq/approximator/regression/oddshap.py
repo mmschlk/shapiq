@@ -414,16 +414,23 @@ class OddSHAP(Approximator):
         if surrogate_model is None or n_candidate_terms <= 0:
             return [], []
 
+        # Convert the surrogate to its Fourier spectrum once and reuse it for both
+        # screening steps; individuals and higher-order odds previously each
+        # recomputed the full surrogate -> Fourier transform.
+        fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
+
         n_individual_terms = min(self.n, n_candidate_terms)
         selected_individuals = self._select_individual_terms(
             n_individual_terms=n_individual_terms,
             surrogate_model=surrogate_model,
+            fourier_coefficients=fourier_coefficients,
         )
 
         remaining_budget = n_candidate_terms - len(selected_individuals)
         selected_interactions = self._select_odd_interactions(
             n_candidate_interactions=remaining_budget,
             surrogate_model=surrogate_model,
+            fourier_coefficients=fourier_coefficients,
         )
 
         return selected_individuals, selected_interactions
@@ -433,6 +440,7 @@ class OddSHAP(Approximator):
         *,
         n_individual_terms: int,
         surrogate_model: object | None = None,
+        fourier_coefficients: _FourierDict | None = None,
     ) -> list[tuple[int, ...]]:
         """Rank all individuals by absolute Fourier coefficient and keep the top ones.
 
@@ -440,11 +448,15 @@ class OddSHAP(Approximator):
         (their coefficient defaults to 0.0 and they rank last), so a scarce
         budget always prefers players the surrogate found relevant over
         arbitrary index order.
+
+        ``fourier_coefficients`` may be passed in to reuse an already-computed
+        spectrum; when omitted it is derived from ``surrogate_model``.
         """
         if surrogate_model is None or n_individual_terms <= 0:
             return []
 
-        fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
+        if fourier_coefficients is None:
+            fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
         singleton_coefficients = {
             player: float(fourier_coefficients.get((player,), 0.0)) for player in range(self.n)
         }
@@ -460,6 +472,7 @@ class OddSHAP(Approximator):
         *,
         n_candidate_interactions: int,
         surrogate_model: object | None = None,
+        fourier_coefficients: _FourierDict | None = None,
     ) -> list[tuple[int, ...]]:
         """Screen higher-order odd interactions from the surrogate's Fourier spectrum.
 
@@ -467,11 +480,15 @@ class OddSHAP(Approximator):
         Algorithm 1 / "Controlling Higher-Order Terms"): the fitted GBT is
         converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
         frequencies with the largest coefficient magnitudes are kept.
+
+        ``fourier_coefficients`` may be passed in to reuse an already-computed
+        spectrum; when omitted it is derived from ``surrogate_model``.
         """
         if surrogate_model is None or n_candidate_interactions <= 0:
             return []
 
-        fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
+        if fourier_coefficients is None:
+            fourier_coefficients = self._surrogate_to_fourier(surrogate_model)
 
         higher_order_odd: dict[tuple[int, ...], float] = {}
         for interaction, coefficient in fourier_coefficients.items():
