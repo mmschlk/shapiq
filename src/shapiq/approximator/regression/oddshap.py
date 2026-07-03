@@ -112,7 +112,8 @@ class OddSHAP(Approximator):
 
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
-        ``interaction_factor``, this implementation raises ``ValueError`` instead
+        ``n * interaction_factor``, this implementation expands the selection of active terms also to individuals,
+          allowing a minimum budget of ``interaction_factor``. Below that, it returns ``ValueError``
         (no silent downgrade to another estimator), unless the budget already covers
         the full coalition space (``budget >= 2**n``). It therefore does not reproduce
         the low-budget, high-dimension regime of the paper's Figure 2.
