@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -28,16 +28,14 @@ class GraphGame(Game):
     Attributes:
         model: The graph neural network used for prediction.
         x_graph: A cloned version of the input graph instance to explain.
-        task: The prediction task, either ``"classification"`` or
-            ``"regression"``.
+        class_index: Output index to explain. If ``None``, the model output is
+        expected to be scalar and is used directly.
         edge_index: The graph connectivity in COO format as a NumPy array.
         l_hop_distance: The number of message-passing layers of the GNN.
         n_players: The number of players in the game, equal to the number of
             nodes in ``x_graph``.
         grand_coalition_set: Set containing all node indices of the graph.
         baseline: Feature vector used to replace inactive node features.
-        y_index: Target class index for classification tasks, or ``None`` for
-            regression tasks.
         normalization_value: Value of the empty coalition used for
             normalization when ``normalize`` is enabled.
     """
@@ -47,7 +45,6 @@ class GraphGame(Game):
         model: torch.nn.Module,
         x_graph: Data,
         *,
-        task: Literal["classification", "regression"] = "classification",
         class_index: int | None = None,
         baseline_strategy: str | float | None = None,
         normalize: bool = True,
@@ -61,8 +58,6 @@ class GraphGame(Game):
                 layers.
             x_graph: Input graph instance to explain. The graph must contain node
                 features in ``x_graph.x`` and an ``edge_index`` attribute.
-            task: Prediction task. Use ``"classification"`` to explain a class logit
-                and ``"regression"`` to explain a scalar regression output.
             class_index: Class index to explain for classification tasks. If
                 ``None``, the predicted class of ``model`` on ``x_graph`` is used.
                 Must be ``None`` for regression tasks.
@@ -76,9 +71,6 @@ class GraphGame(Game):
                 :class:`shapiq.game.Game`.
 
         Raises:
-            ValueError: If ``task`` is invalid, ``class_index`` is set for
-                regression, ``x_graph.x`` is missing, or the baseline tensor has an
-                invalid shape.
             AttributeError: If ``model`` does not define ``num_layers``.
             TypeError: If ``model.num_layers`` is not an integer.
             NotImplementedError: If ``baseline_strategy`` is unsupported.
@@ -86,12 +78,6 @@ class GraphGame(Game):
         self._normalize = normalize
         self.x_graph = x_graph.clone()
 
-        if task not in ("classification", "regression"):
-            msg = f"task must be 'classification' or 'regression', got {task!r}"
-            raise ValueError(msg)
-        if task == "regression" and class_index is not None:
-            msg = "class_index cannot be set for regression tasks."
-            raise ValueError(msg)
         if self.x_graph.x is None:
             msg = "x_graph must have node features (x_graph.x must not be None)."
             raise ValueError(msg)
@@ -99,7 +85,6 @@ class GraphGame(Game):
             msg = "The GNN needs a num_layers attribute"
             raise AttributeError(msg)
 
-        self.task = task
         self.model = model
         self.model.eval()
         self.edge_index = self.x_graph.edge_index.detach().numpy()
@@ -112,19 +97,7 @@ class GraphGame(Game):
 
         self.baseline = self._calculate_baseline(baseline_strategy)
 
-        if task == "classification":
-            if class_index is None:
-                with torch.no_grad():
-                    model_output = self.model(
-                        x=self.x_graph.x,
-                        edge_index=self.x_graph.edge_index,
-                        batch=getattr(self.x_graph, "batch", None),
-                    )
-                self.y_index = int(model_output.argmax(dim=1)[0].item())
-            else:
-                self.y_index = int(class_index)
-        else:
-            self.y_index = None
+        self.class_index = class_index
 
         if normalize:
             empty_coalition_value = self.value_function(np.zeros(self.n_players))
@@ -235,10 +208,10 @@ class GraphGame(Game):
                     batch=getattr(masked_graph, "batch", None),
                 )
 
-            if self.task == "classification":
-                coalition_value = model_output[0, self.y_index]
-            else:
+            if self.class_index is None:
                 coalition_value = model_output.squeeze()
+            else:
+                coalition_value = model_output[0, self.class_index]
 
             if isinstance(coalition_value, torch.Tensor):
                 coalition_values.append(coalition_value.item())

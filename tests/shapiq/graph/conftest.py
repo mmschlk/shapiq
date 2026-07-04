@@ -142,7 +142,6 @@ def gcn_graph_game(gcn_model, simple_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -152,7 +151,6 @@ def gin_graph_game(gin_model, simple_graph):
     return GraphGame(
         model=gin_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -162,7 +160,6 @@ def gat_graph_game(gat_model, simple_graph):
     return GraphGame(
         model=gat_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -172,7 +169,6 @@ def gcn_graph_game_small(gcn_model, small_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=small_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -182,7 +178,6 @@ def gcn_graph_game_disconnected(gcn_model, disconnected_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=disconnected_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -192,7 +187,6 @@ def gcn_graph_game_single_node(gcn_model, single_node_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=single_node_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -202,7 +196,6 @@ def gcn_graph_game_classification(gcn_model_classification, simple_graph):
     return GraphGame(
         model=gcn_model_classification,
         x_graph=simple_graph,
-        task="classification",
         class_index=0,
         baseline_strategy="average",
     )
