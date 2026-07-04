@@ -53,6 +53,7 @@ from sklearn.model_selection import train_test_split
 
 from shapiq import ExactComputer
 from shapiq.datasets import load_adult_census, load_california_housing
+from shapiq.tree.explainer import TreeExplainer
 from shapiq_games.datasets import (
     load_communities_and_crime,
     load_corrgroups60,
@@ -203,6 +204,9 @@ def make_ml_game(dataset_name: str, seed: int):
     def game_fn(Z: np.ndarray) -> np.ndarray:
         X_masked = np.where(Z, x_instance[np.newaxis, :], bg_mean[np.newaxis, :])
         return model.predict(X_masked)
+
+    game_fn.model = model
+    game_fn.x_instance = x_instance
 
     return game_fn
 
@@ -369,7 +373,10 @@ def run_sweep(
     results: list[CellResult] = []
     truth_cache: dict[tuple[str, int], np.ndarray] = {}
 
-    total = len(method_names) * len(game_specs) * len(budget_pcts) * len(seeds)
+    total = 0
+    for spec in game_specs:
+        b_count = len(budget_mults) if budget_mults is not None else len(budget_pcts)
+        total += len(method_names) * b_count * len(seeds)
     done = 0
 
     for spec in game_specs:
@@ -377,10 +384,16 @@ def run_sweep(
             key = (spec.name, seed)
             if key not in truth_cache:
                 truth_game = spec.factory(seed)
-                truth_cache[key] = canonical_sv_vector(
-                    ExactComputer(truth_game, n_players=spec.n)(index="SV"),
-                    spec.n,
-                )
+
+                if spec.n <= 10:
+                    truth_cache[key] = canonical_sv_vector(
+                        ExactComputer(truth_game, n_players=spec.n)(index="SV"),
+                        spec.n,
+                    )
+                else:
+                    explainer = TreeExplainer(model=truth_game.model)
+                    iv_exact = explainer.explain(truth_game.x_instance, max_order=1)
+                    truth_cache[key] = canonical_sv_vector(iv_exact, spec.n)
 
             ground_truth = truth_cache[key]
 
@@ -798,7 +811,15 @@ def main(argv: list[str] | None = None) -> int:
 
     game_specs = default_game_specs(args.n)
     num_budgets = len(args.budget_mults) if args.budget_mults else len(args.budgets)
-    total = len(method_names) * len(game_specs) * num_budgets * len(args.seeds)
+
+    total = 0
+    for spec in game_specs:
+        if args.budget_mults is not None:
+            budgets_count = len(args.budget_mults)
+        else:
+            budgets_count = len(args.budgets)
+        total += len(method_names) * budgets_count * len(args.seeds)
+
     print(
         f"Sweep: {len(method_names)} methods x {len(game_specs)} games "
         f"x {num_budgets} budgets x {len(args.seeds)} seeds = {total} cells",
