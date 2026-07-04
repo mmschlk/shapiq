@@ -142,6 +142,22 @@ class GraphGame(Game):
             self.normalization_value = normalization_value
 
     def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
+        """Calculate the baseline feature vector for masked nodes.
+
+            Args:
+                strategy: Baseline strategy used for inactive nodes. If ``None``,
+                    ``"zeros"`` is used. Supported string strategies are ``"zeros"``,
+                    ``"average"``, ``"min"``, and ``"max"``. A float creates a constant
+                    baseline vector. A tensor is interpreted as a fixed feature-wise
+                    baseline.
+
+            Returns:
+                Baseline tensor with shape ``(n_features,)``.
+
+            Raises:
+                ValueError: If a provided tensor baseline has an invalid shape.
+                NotImplementedError: If the baseline strategy is unsupported.
+            """
         if strategy is None:
             warnings.warn(
                 "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
