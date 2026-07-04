@@ -53,7 +53,36 @@ class GraphGame(Game):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-        """Initialize the GraphGame."""
+        """Initialize the graph explanation game.
+
+        Args:
+            model: Graph neural network to explain. The model must define a
+                ``num_layers`` attribute indicating the number of message-passing
+                layers.
+            x_graph: Input graph instance to explain. The graph must contain node
+                features in ``x_graph.x`` and an ``edge_index`` attribute.
+            task: Prediction task. Use ``"classification"`` to explain a class logit
+                and ``"regression"`` to explain a scalar regression output.
+            class_index: Class index to explain for classification tasks. If
+                ``None``, the predicted class of ``model`` on ``x_graph`` is used.
+                Must be ``None`` for regression tasks.
+            baseline_strategy: Strategy used to replace inactive node features.
+                Supported values are ``None``, ``"zeros"``, ``"average"``,
+                ``"min"``, ``"max"``, a scalar float, or a baseline tensor with
+                one value per node feature.
+            normalize: Whether to normalize the game by subtracting the empty
+                coalition value.
+            verbose: Whether to print progress information inherited from
+                :class:`shapiq.game.Game`.
+
+        Raises:
+            ValueError: If ``task`` is invalid, ``class_index`` is set for
+                regression, ``x_graph.x`` is missing, or the baseline tensor has an
+                invalid shape.
+            AttributeError: If ``model`` does not define ``num_layers``.
+            TypeError: If ``model.num_layers`` is not an integer.
+            NotImplementedError: If ``baseline_strategy`` is unsupported.
+        """
         self._normalize = normalize
         self.x_graph = x_graph.clone()
 
