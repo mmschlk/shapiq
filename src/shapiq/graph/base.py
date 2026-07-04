@@ -199,7 +199,18 @@ class GraphGame(Game):
         return x_masked
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the GNN for each coalition by masking inactive node features."""
+        """Evaluate coalition values by running the GNN on masked graphs.
+
+            Args:
+                coalitions: Boolean or binary coalition matrix of shape
+                    ``(n_coalitions, n_players)``. A one-dimensional array of shape
+                    ``(n_players,)`` is interpreted as a single coalition.
+
+            Returns:
+                One-dimensional NumPy array with one scalar model output per coalition.
+                For classification, the selected class logit is returned. For
+                regression, the scalar model output is returned.
+            """
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape(1, -1)
 
