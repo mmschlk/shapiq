@@ -10,7 +10,6 @@ from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
-from shapiq.graph.l_shapley import LShapley
 from shapiq.interaction_values import InteractionValues
 
 from .base import GraphGame
@@ -44,7 +43,6 @@ class GraphExplainer(Explainer):
     def __init__(
         self,
         model: nn.Module,
-        l_shapley_max_budget: int = 20000,
         index: ValidMoebiusConverterIndices = "k-SII",
         baseline_strategy: str = "average",
         max_order: int = 2,
@@ -58,7 +56,6 @@ class GraphExplainer(Explainer):
 
         Args:
             model: A Graph-based model to explain.
-            l_shapley_max_budget: Maximum budget for LShapley approximation.
             index: The type of Shapley interaction index to use. Defaults to "k-SII",
                 which computes the k-Shapley Interaction Index. If max_order is set
                 to 1, this corresponds to the Shapley value (index="SV"). Options are:
@@ -85,7 +82,6 @@ class GraphExplainer(Explainer):
         self._class_index = class_index
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
-        self._l_shapley_max_budget: int = l_shapley_max_budget
         self._efficiency_routine = efficiency_routine
 
     @override
@@ -142,7 +138,6 @@ class GraphExplainer(Explainer):
         self,
         x: np.ndarray | Data | None,
         *args: Any,
-        l_shapley: bool = False,
         max_interaction_size: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -152,8 +147,6 @@ class GraphExplainer(Explainer):
         Args:
             x: The input graph to explain.
             *args: Unused; present only to match the base class signature.
-            l_shapley: If ``True``, run the L-Shapley approximation; if ``False`` (default),
-                run the exact GraphSHAP-IQ computation.
             max_interaction_size: Maximum k-hop neighbourhood size for the L-Shapley
                 approximation. When ``None`` the full neighbourhood size reported by
                 :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used. Ignored when
@@ -188,19 +181,6 @@ class GraphExplainer(Explainer):
         )
         explainer = GraphSHAPIQ(game=game, verbose=verbose)
 
-        if l_shapley:
-            self._check_total_budget(explainer.total_budget)
-            effective_size = (
-                max_interaction_size
-                if max_interaction_size is not None
-                else explainer.max_size_neighbors
-            )
-            return self._run_l_shapley_approximation(
-                game,
-                explainer,
-                effective_size,
-                index,
-            )
         return self._run_graph_shapiq_approximation(
             explainer,
             index,
@@ -263,46 +243,3 @@ class GraphExplainer(Explainer):
         interactions.sparsify(threshold=SPARSIFY_THRESHOLD)
 
         return interactions
-
-    def _run_l_shapley_approximation(
-        self,
-        game: GraphGame,
-        explainer: GraphSHAPIQ,
-        max_interaction_size: int,
-        index: ValidMoebiusConverterIndices,
-        *,
-        break_on_exceeding_budget: bool = False,
-    ) -> InteractionValues:
-        """Run the L-Shapley approximation.
-
-        Args:
-            game: The constructed graph game for this instance.
-            explainer: The GraphSHAPIQ explainer initialised from the game.
-            max_interaction_size: Maximum k-hop neighbourhood size to consider. This value
-                is passed directly into :meth:`~shapiq.graph.l_shapley.LShapley.explain`.
-            index: The type of the interaction values.
-            break_on_exceeding_budget: If ``True``, raise a :class:`ValueError` when the
-                number of required model evaluations exceeds the budget; if ``False``
-                (default), set a flag and continue.
-        """
-        l_shapley_explainer = LShapley(game, max_budget=explainer.total_budget)
-
-        shapley_values, _ = l_shapley_explainer.explain(
-            max_interaction_size=max_interaction_size,
-            break_on_exceeding_budget=break_on_exceeding_budget,
-            index=index,
-        )
-
-        shapley_values.estimation_budget = l_shapley_explainer.last_n_model_calls
-        shapley_values.estimated = True
-        shapley_values.sparsify(threshold=SPARSIFY_THRESHOLD)
-
-        return shapley_values
-
-    def _check_total_budget(self, total_budget: int) -> None:
-        """Check if total_budget is within the max budget."""
-        if total_budget > self._l_shapley_max_budget:
-            msg = (
-                f"Total budget of {total_budget} exceeds the limit of {self._l_shapley_max_budget}."
-            )
-            raise RuntimeError(msg)

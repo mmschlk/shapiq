@@ -178,22 +178,22 @@ class GraphSHAPIQ:
 
         The efficiency axiom states that the sum of all Möbius coefficients must equal
         the grand coalition prediction, i.e.,
-        :math:`\sum_{S \subseteq N} m(S) = v(N)`.
+        :math:`\\sum_{S \\subseteq N} m(S) = v(N)`.
 
         When neighborhoods are incomplete, that is, when their size exceeds
         ``max_subset_size``, the Möbius transform is truncated and the efficiency axiom
         is violated. This routine corrects for this by computing a gap term for each
         incomplete neighborhood:
 
-        :math:`gap(S) = v(S) - \sum_{T \subseteq S, |T| \leq k} m(T)
-        - \sum_{S' \subset S, S' \text{ incomplete}} gap(S')`
+        :math:`gap(S) = v(S) - \\sum_{T \\subseteq S, |T| \\leq k} m(T)
+        - \\sum_{S' \\subset S, S' \text{ incomplete}} gap(S')`
 
         where :math:`k` is ``max_subset_size``.
 
         Here, :math:`v(S)` is the game value of the incomplete neighborhood :math:`S`,
         :math:`m(T)` are the already-computed Möbius coefficients for subsets
-        :math:`T \subseteq S`, and :math:`gap(S')` are correction terms for smaller
-        incomplete neighborhoods :math:`S' \subset S`.
+        :math:`T \\subseteq S`, and :math:`gap(S')` are correction terms for smaller
+        incomplete neighborhoods :math:`S' \\subset S`.
 
         Note:
             This method should only be called when ``incomplete_neighborhoods`` is non-empty.

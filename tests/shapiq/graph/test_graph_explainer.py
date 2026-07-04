@@ -31,18 +31,6 @@ class TestGraphExplainerE2E:
         iv = expl.explain(simple_graph)
         assert isinstance(iv, InteractionValues)
 
-    def test_explain_function_l_shapley_and_graphshapiq_branches(self, gcn_model, simple_graph):
-        expl = GraphExplainer(
-            model=gcn_model, l_shapley_max_budget=1000000
-        )  # large budget so no runtime error
-        # GraphSHAPIQ branch
-        iv_exact = expl.explain_function(simple_graph, l_shapley=False)
-        assert isinstance(iv_exact, InteractionValues)
-        # L-Shapley branch
-        iv_l = expl.explain_function(simple_graph, l_shapley=True, max_interaction_size=1)
-        assert isinstance(iv_l, InteractionValues)
-        assert iv_l.estimated is True
-
     def test_explain_X_list_and_numpy_error(self, gcn_model, simple_graph):
         expl = GraphExplainer(model=gcn_model)
         # explain_X should raise when passed a numpy array
@@ -56,12 +44,6 @@ class TestGraphExplainerE2E:
         assert isinstance(result, list)
         assert all(isinstance(r, InteractionValues) for r in result)
 
-    def test__check_total_budget_raises_when_exceeds(self, gcn_model, simple_graph):
-        # Set zero budget so the check in explain_function will raise
-        expl = GraphExplainer(model=gcn_model, l_shapley_max_budget=0)
-        with pytest.raises(RuntimeError, match="exceeds the limit"):
-            expl.explain_function(simple_graph, l_shapley=True)
-
     def test_graphshapiq_estimated_flag_is_false(self, gcn_model, simple_graph):
         """GraphSHAP-IQ is exact so estimated must be False."""
         expl = GraphExplainer(model=gcn_model)
@@ -74,12 +56,6 @@ class TestGraphExplainerE2E:
         iv = expl.explain(simple_graph)
         assert iv.estimation_budget is not None
         assert iv.estimation_budget > 0
-
-    def test_l_shapley_estimated_flag_is_true(self, gcn_model, simple_graph):
-        """L-Shapley is an approximation so estimated must be True."""
-        expl = GraphExplainer(model=gcn_model, l_shapley_max_budget=10_000_000)
-        iv = expl.explain(simple_graph, l_shapley=True)
-        assert iv.estimated is True
 
     def test_graphshapiq_index_matches_explainer_setting(self, gcn_model, simple_graph):
         """Returned index should match the index set on the explainer."""
@@ -102,7 +78,7 @@ class TestGraphExplainerE2E:
 
     def test_kwargs_max_subset_size_reduces_model_calls(self, gcn_model, simple_graph):
         """max_subset_size kwarg should reduce the number of model calls vs the full run."""
-        expl = GraphExplainer(model=gcn_model, l_shapley_max_budget=10_000_000)
+        expl = GraphExplainer(model=gcn_model)
         iv_full = expl.explain(simple_graph)
         iv_restricted = expl.explain(simple_graph, max_subset_size=1)
         assert iv_restricted.estimation_budget < iv_full.estimation_budget
@@ -119,28 +95,6 @@ class TestGraphExplainerE2E:
         expl = GraphExplainer(model=gcn_model, max_order=2, index="k-SII")
         iv = expl.explain(simple_graph)
         assert any(len(interaction) == 2 for interaction in iv.interaction_lookup)
-
-    def test_l_shapley_and_graphshapiq_sv_node_count_matches(self, gcn_model, simple_graph):
-        """Both methods should return one value per node."""
-        expl = GraphExplainer(
-            model=gcn_model, index="SV", max_order=1, l_shapley_max_budget=10_000_000
-        )
-        iv_exact = expl.explain(simple_graph, l_shapley=False)
-        iv_approx = expl.explain(simple_graph, l_shapley=True)
-        assert iv_exact.n_players == iv_approx.n_players
-        assert len([k for k in iv_exact.interaction_lookup if len(k) == 1]) == iv_exact.n_players
-        assert len([k for k in iv_approx.interaction_lookup if len(k) == 1]) == iv_approx.n_players
-
-    def test_l_shapley_and_graphshapiq_sv_values_close(self, gcn_model, simple_graph):
-        """L-Shapley and GraphSHAP-IQ with index='SV' should produce close Shapley values."""
-        expl = GraphExplainer(
-            model=gcn_model, index="SV", max_order=1, l_shapley_max_budget=10_000_000
-        )
-        iv_exact = expl.explain(simple_graph, l_shapley=False)
-        iv_approx = expl.explain(simple_graph, l_shapley=True)
-        exact_vals = np.array([iv_exact[(i,)] for i in range(iv_exact.n_players)])
-        approx_vals = np.array([iv_approx[(i,)] for i in range(iv_approx.n_players)])
-        assert np.allclose(exact_vals, approx_vals, atol=1e-4)
 
     def test_explain_X_results_match_individual_explain(self, gcn_model, simple_graph):
         """explain_X should produce identical results to individual explain calls."""
