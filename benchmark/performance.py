@@ -158,7 +158,7 @@ def canonical_sv_vector(interaction_values, n: int) -> np.ndarray:
 class GameSpec:
     name: str
     n: int
-    factory: Any  # callable(seed: int) -> Game
+    factory: Any
 
 
 def make_ml_game(dataset_name: str, seed: int):
@@ -194,7 +194,6 @@ def make_ml_game(dataset_name: str, seed: int):
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
     X_train, X_test, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=seed)
-
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4, random_state=seed, verbosity=0)
     model.fit(X_train, y_train)
 
@@ -219,10 +218,7 @@ def default_game_specs(n_values: list[int]) -> list[GameSpec]:
                 name=f"SOUM(n={n})",
                 n=n,
                 factory=lambda seed, _n=n: SOUM(
-                    n=_n,
-                    n_basis_games=15,
-                    max_interaction_size=3,
-                    random_state=seed,
+                    n=_n, n_basis_games=15, max_interaction_size=3, random_state=seed
                 ),
             )
         )
@@ -272,15 +268,11 @@ class CellResult:
     seed: int
     metrics: dict[str, float]
     runtime_seconds: float
-    status: str  # "ok" | "skipped:<reason>" | "error:<reason>"
+    status: str
 
 
 def evaluate_cell(
-    method_name: str,
-    game_spec: GameSpec,
-    budget: int,
-    seed: int,
-    ground_truth: np.ndarray,
+    method_name: str, game_spec: GameSpec, budget: int, seed: int, ground_truth: np.ndarray
 ) -> CellResult:
     """Run one (method, game, budget, seed) cell and compute all metrics."""
     approx_cls = load_approximator(method_name)
@@ -318,6 +310,7 @@ def evaluate_cell(
     t0 = time.perf_counter()
     iv, refuse_exc = safe_approximate(estimator, budget, game)
     runtime = time.perf_counter() - t0
+
     if iv is None:
         return CellResult(
             method=method_name,
@@ -397,11 +390,11 @@ def run_sweep(
 
             ground_truth = truth_cache[key]
 
-            budgets_to_run = []
-            if budget_mults is not None:
-                budgets_to_run = [int(mult * spec.n) for mult in budget_mults]
-            else:
-                budgets_to_run = [max(2, int(pct * 2**spec.n)) for pct in budget_pcts]
+            budgets_to_run = (
+                [int(mult * spec.n) for mult in budget_mults]
+                if budget_mults is not None
+                else [max(2, int(pct * 2**spec.n)) for pct in budget_pcts]
+            )
 
             for budget in budgets_to_run:
                 for method in method_names:
@@ -484,7 +477,120 @@ def write_csv(results: list[CellResult], path: Path) -> None:
 
 
 # -----------------------------------------------------------------------------
-# Plots
+# Plot Styles Registry (Strategy Pattern)
+# -----------------------------------------------------------------------------
+
+
+class PlotStyle:
+    """Base strategy for plot styling. Defaults to generic visuals."""
+
+    figsize: tuple[float, float] = (8, 5)
+    use_medians: bool = False
+
+    def get_line_kwargs(self, method_name: str, index: int) -> dict[str, Any]:
+        """Return styling attributes for the method's line."""
+        return {"linestyle": "-", "marker": "o", "linewidth": 1.5}
+
+    def get_fill_alpha(self) -> float:
+        """Opacity of the standard deviation/quartile bands."""
+        return 0.15
+
+    def format_axes(
+        self, ax: Any, game_name: str, game_n: int, metric: str, is_lower_better: bool
+    ) -> None:
+        """Decorate the metric axes."""
+        if is_lower_better:
+            ax.set_yscale("symlog", linthresh=1e-12)
+        ax.set_xlabel("Budget (log scale)")
+        ax.set_ylabel(f"{metric}{' (log scale)' if is_lower_better else ''}")
+        ax.set_title(f"{metric} vs budget — {game_name}")
+        ax.grid(True, which="both", alpha=0.3)
+        ax.legend(fontsize=8, loc="best")
+
+    def format_runtime_axes(self, ax: Any, game_name: str, game_n: int) -> None:
+        """Decorate the runtime axes."""
+        ax.set_xlabel("Budget (log scale)")
+        ax.set_ylabel("Runtime (s, log scale)")
+        ax.set_title(f"Runtime vs budget — {game_name}")
+        ax.grid(True, which="both", alpha=0.3)
+        ax.legend(fontsize=8, loc="best")
+
+
+class MuscoWitterStyle(PlotStyle):
+    """Custom style replicating the visual aesthetic of Musco & Witter (2024)."""
+
+    figsize = (6, 4)
+    use_medians = True  # Paper uses quartiles (median), not mean + std
+
+    def get_line_kwargs(self, method_name: str, index: int) -> dict[str, Any]:
+        import matplotlib.pyplot as plt
+
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        linestyles = ["-", "--", ":", "-."]
+
+        c = colors[index % len(colors)]
+        ls = linestyles[index % len(linestyles)]
+
+        # Explicit method color mapping from the paper
+        if "LeverageSHAP" in method_name:
+            c, ls = "#2e8b57", "-"  # SeaGreen, solid
+        elif method_name in ["Optimized KernelSHAP", "Optimized Kernel SHAP"]:
+            c, ls = "#483d8b", "--"  # DarkSlateBlue, dashed
+        elif method_name == "KernelSHAP":
+            c, ls = "#87cefa", ":"  # LightSkyBlue, dotted
+
+        return {"color": c, "linestyle": ls, "marker": "", "linewidth": 1.5}
+
+    def get_fill_alpha(self) -> float:
+        return 0.2
+
+    def format_axes(
+        self, ax: Any, game_name: str, game_n: int, metric: str, is_lower_better: bool
+    ) -> None:
+        if is_lower_better:
+            ax.set_yscale("log")
+
+        # Red line at 2^n with robust text placement
+        ax.axvline(x=2**game_n, color="red", linestyle="-", linewidth=1.5)
+        trans = ax.get_xaxis_transform()
+        ax.text(2**game_n * 1.1, 0.95, "$2^n$", color="red", va="top", fontsize=10, transform=trans)
+
+        ax.set_xlabel("Sample Size ($m$)")
+        ylabel = (
+            r"Error in $\ell_2$-norm"
+            if metric == "L2_Norm_Error"
+            else f"Error in {metric.replace('_', ' ')}"
+        )
+        ax.set_ylabel(ylabel)
+
+        base_name = game_name.split("(")[0].strip()
+        ax.set_title(f"{base_name} ($n={game_n}$)")
+
+        # Paper aesthetic specifics
+        ax.tick_params(direction="in", which="both")
+        ax.grid(True, which="both", alpha=0.1)
+        ax.legend(fontsize=8, loc="best", framealpha=0.9)
+
+    def format_runtime_axes(self, ax: Any, game_name: str, game_n: int) -> None:
+        base_name = game_name.split("(")[0].strip()
+        ax.set_xlabel("Sample Size ($m$)")
+        ax.set_ylabel("Runtime (seconds)")
+        ax.set_title(f"Runtime — {base_name} ($n={game_n}$)")
+
+        ax.tick_params(direction="in", which="both")
+        ax.grid(True, which="both", alpha=0.1)
+        ax.legend(fontsize=8, loc="best", framealpha=0.9)
+
+
+# The global registry. To add a new style, subclass PlotStyle and add it here.
+STYLE_REGISTRY: dict[str, PlotStyle] = {
+    "default": PlotStyle(),
+    "musco_witter": MuscoWitterStyle(),
+}
+
+
+# -----------------------------------------------------------------------------
+# Plots Core Engine
 # -----------------------------------------------------------------------------
 
 
@@ -508,7 +614,6 @@ def _aggregate_by_method(
 
         for b in budgets:
             vs = budget_to_values[b]
-
             if use_medians:
                 vs_clipped = np.clip(vs, 1e-14, None)
                 mid_vals.append(float(np.median(vs_clipped)))
@@ -526,72 +631,46 @@ def _aggregate_by_method(
 
 
 def _plot_one_metric(
-    results: list[CellResult],
-    game_name: str,
-    metric: str,
-    out_path: Path,
-    use_paper_style: bool = False,
+    results: list[CellResult], game_name: str, metric: str, out_path: Path, style: PlotStyle
 ) -> bool:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         return False
 
-    aggregated = _aggregate_by_method(results, game_name, metric, use_medians=use_paper_style)
+    aggregated = _aggregate_by_method(results, game_name, metric, use_medians=style.use_medians)
     if not aggregated:
         return False
 
-    fig, ax = plt.subplots(figsize=(6, 4) if use_paper_style else (8, 5))
-
+    fig, ax = plt.subplots(figsize=style.figsize)
     methods = sorted(aggregated.keys())
-    linestyles = ["-", "--", ":", "-."]
 
     for i, method in enumerate(methods):
         budgets, mid_vals, lower_vals, upper_vals = aggregated[method]
 
-        ls = linestyles[i % len(linestyles)]
+        # Inject custom styling via the Strategy object
+        line_kwargs = style.get_line_kwargs(method, i)
+        line = ax.plot(budgets, mid_vals, label=method, **line_kwargs)[0]
 
-        line = ax.plot(
-            budgets,
-            mid_vals,
-            label=method,
-            linestyle=ls if use_paper_style else "-",
-            marker="" if use_paper_style else "o",
-            linewidth=2 if use_paper_style else 1.5,
-        )[0]
-
-        ax.fill_between(budgets, lower_vals, upper_vals, alpha=0.15, color=line.get_color())
+        ax.fill_between(
+            budgets, lower_vals, upper_vals, alpha=style.get_fill_alpha(), color=line.get_color()
+        )
 
     ax.set_xscale("log")
 
-    if metric in _LOWER_IS_BETTER:
-        if use_paper_style:
-            ax.set_yscale("log")
-        else:
-            ax.set_yscale("symlog", linthresh=1e-12)
+    # Delegate decoration to the Strategy object
+    game_n = next((r.n for r in results if r.game == game_name), 8)
+    style.format_axes(ax, game_name, game_n, metric, is_lower_better=metric in _LOWER_IS_BETTER)
 
-    if use_paper_style:
-        game_n = next((r.n for r in results if r.game == game_name), 8)
-        ax.axvline(
-            x=2**game_n, color="red", linestyle="-", linewidth=1.5, label=f"$2^{{{game_n}}}$"
-        )
-        ax.set_xlabel("Sample size (m)")
-        ax.set_ylabel(f"Error in {metric.replace('_', ' ')}")
-        ax.set_title(f"{game_name.split('(')[0]} ($n={game_n}$)")
-    else:
-        ax.set_xlabel("Budget (log scale)")
-        ax.set_ylabel(f"{metric}{' (log scale)' if metric in _LOWER_IS_BETTER else ''}")
-        ax.set_title(f"{metric} vs budget — {game_name}")
-
-    ax.legend(fontsize=8, loc="best", framealpha=0.9 if use_paper_style else None)
-    ax.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     return True
 
 
-def _plot_runtime(results: list[CellResult], game_name: str, out_path: Path) -> bool:
+def _plot_runtime(
+    results: list[CellResult], game_name: str, out_path: Path, style: PlotStyle
+) -> bool:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -601,59 +680,53 @@ def _plot_runtime(results: list[CellResult], game_name: str, out_path: Path) -> 
     for r in results:
         if r.status != "ok" or r.game != game_name:
             continue
-        by_method.setdefault(r.method, {}).setdefault(
-            r.budget,
-            [],
-        ).append(r.runtime_seconds)
+        by_method.setdefault(r.method, {}).setdefault(r.budget, []).append(r.runtime_seconds)
 
     if not by_method:
         return False
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for method in sorted(by_method):
+    fig, ax = plt.subplots(figsize=style.figsize)
+    for i, method in enumerate(sorted(by_method)):
         budgets = sorted(by_method[method])
         means = [float(np.mean(by_method[method][b])) for b in budgets]
-        ax.plot(budgets, means, marker="o", label=method)
+
+        line_kwargs = style.get_line_kwargs(method, i)
+        ax.plot(budgets, means, label=method, **line_kwargs)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Budget (log scale)")
-    ax.set_ylabel("Runtime (s, log scale)")
-    ax.set_title(f"Runtime vs budget — {game_name}")
-    ax.legend(fontsize=8, loc="best")
-    ax.grid(True, which="both", alpha=0.3)
+
+    game_n = next((r.n for r in results if r.game == game_name), 8)
+    style.format_runtime_axes(ax, game_name, game_n)
+
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     return True
 
 
-def plot_all_figures(results: list[CellResult], out_dir: Path) -> int:
-    """Save one figure per (game, metric) plus a runtime figure per game."""
+def plot_all_figures(results: list[CellResult], out_dir: Path, style_name: str = "default") -> int:
     try:
         import matplotlib  # noqa: F401
     except ImportError:
         print("matplotlib not installed; skipping plots.", file=sys.stderr)
         return 0
 
+    # Retrieve the requested Style Strategy (fallback to default if unknown)
+    plot_style = STYLE_REGISTRY.get(style_name, STYLE_REGISTRY["default"])
+
     out_dir.mkdir(parents=True, exist_ok=True)
     games = sorted({r.game for r in results if r.status == "ok"})
     saved = 0
     for game in games:
         safe = game.replace("(", "_").replace(")", "").replace("=", "")
-        is_ml_dataset = "California" in game or "Diabetes" in game
-
         for metric in METRIC_FUNCTIONS:
             metric_safe = metric.replace("@", "_at_")
             if _plot_one_metric(
-                results,
-                game,
-                metric,
-                out_dir / f"{metric_safe}_{safe}.png",
-                use_paper_style=is_ml_dataset,
+                results, game, metric, out_dir / f"{metric_safe}_{safe}.png", style=plot_style
             ):
                 saved += 1
-        if _plot_runtime(results, game, out_dir / f"runtime_{safe}.png"):
+        if _plot_runtime(results, game, out_dir / f"runtime_{safe}.png", style=plot_style):
             saved += 1
     return saved
 
@@ -664,37 +737,23 @@ def plot_all_figures(results: list[CellResult], out_dir: Path) -> int:
 
 
 def check_compatibility(method_names: list[str], n: int = 6) -> int:
-    """Probe every method for the conformance contract. Prints a table."""
-    print(
-        f"{'Method':<25} {'Registered':<11} {'Constructible':<14} Notes",
-    )
+    print(f"{'Method':<25} {'Registered':<11} {'Constructible':<14} Notes")
     print("-" * 80)
     for name in method_names:
         cls = load_approximator(name)
         if cls is None:
-            print(
-                f"{name:<25} {'no':<11} {'-':<14} not exported by shapiq.approximator",
-            )
+            print(f"{name:<25} {'no':<11} {'-':<14} not exported by shapiq.approximator")
             continue
         est, exc = construct_for_sv(cls, n, random_state=0)
         if est is None:
             if exc is not None:
                 short = str(exc).splitlines()[0]
-                print(
-                    f"{name:<25} {'yes':<11} {'no':<14} {type(exc).__name__}: {short}",
-                )
+                print(f"{name:<25} {'yes':<11} {'no':<14} {type(exc).__name__}: {short}")
             else:
-                print(
-                    f"{name:<25} {'yes':<11} {'no':<14} no recognized SV-mode signature",
-                )
+                print(f"{name:<25} {'yes':<11} {'no':<14} no recognized SV-mode signature")
             continue
         print(f"{name:<25} {'yes':<11} {'yes':<14} OK ({type(est).__name__})")
     return 0
-
-
-# -----------------------------------------------------------------------------
-# Output directory naming
-# -----------------------------------------------------------------------------
 
 
 def _slugify(name: str) -> str:
@@ -702,9 +761,6 @@ def _slugify(name: str) -> str:
 
 
 def derive_run_name(method_names: list[str], explicit: str | None) -> str:
-    """Pick a run-folder name. ``explicit`` overrides; otherwise use the
-    single method name (lower-cased + ``_bench``) or ``sv_sweep``.
-    """
     if explicit:
         return explicit
     if len(method_names) == 1:
@@ -733,70 +789,27 @@ def _parse_methods(value: str) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description=(
-            "Cross-method performance benchmark for SV approximators. "
-            "Auto-discovers all approximators in shapiq.approximator.SV_APPROXIMATORS."
-        ),
+        description="Cross-method performance benchmark for SV approximators."
     )
+    parser.add_argument("--methods", default="all", type=_parse_methods)
+    parser.add_argument("--n", default="6,8,10", type=_parse_comma_int)
+    parser.add_argument("--budgets", default="0.05,0.25,0.5,1.0", type=_parse_comma_float)
+    parser.add_argument("--budget-mults", default=None, type=_parse_comma_float)
+    parser.add_argument("--seeds", default="0,42,1337", type=_parse_comma_int)
+    parser.add_argument("--name", default=None)
+    parser.add_argument("--output-root", default="benchmark/results", type=Path)
+    parser.add_argument("--plot", action="store_true")
+
+    # The new dynamic plot style registry flag
     parser.add_argument(
-        "--methods",
-        default="all",
-        type=_parse_methods,
-        help="Comma-separated approximator names, or 'all' (default).",
+        "--plot-style",
+        default="default",
+        choices=list(STYLE_REGISTRY.keys()),
+        help="Visual style of the generated plots.",
     )
-    parser.add_argument(
-        "--n",
-        default="6,8,10",
-        type=_parse_comma_int,
-        help="Comma-separated player counts for SOUM games (default: 6,8,10).",
-    )
-    parser.add_argument(
-        "--budgets",
-        default="0.05,0.25,0.5,1.0",
-        type=_parse_comma_float,
-        help="Comma-separated budget fractions of 2^n (default: 0.05,0.25,0.5,1.0).",
-    )
-    parser.add_argument(
-        "--budget-mults",
-        default=None,
-        type=_parse_comma_float,
-        help="Comma-separated budget multipliers of n (e.g. 5,10,20,40). If set, this overrides --budgets.",
-    )
-    parser.add_argument(
-        "--seeds",
-        default="0,42,1337",
-        type=_parse_comma_int,
-        help="Comma-separated seeds (default: 0,42,1337).",
-    )
-    parser.add_argument(
-        "--name",
-        default=None,
-        help=(
-            "Run-folder name override. Default derived from --methods "
-            "('<method>_bench' for a single method, else 'sv_sweep')."
-        ),
-    )
-    parser.add_argument(
-        "--output-root",
-        default="benchmark/results",
-        type=Path,
-        help="Parent directory for run folders (default: benchmark/results).",
-    )
-    parser.add_argument(
-        "--plot",
-        action="store_true",
-        help="Save figures (one per metric per game, plus runtime per game).",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress per-cell progress output.",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Probe every discoverable method for interface compatibility and exit.",
-    )
+
+    parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
 
     method_names = args.methods
@@ -821,8 +834,7 @@ def main(argv: list[str] | None = None) -> int:
         total += len(method_names) * budgets_count * len(args.seeds)
 
     print(
-        f"Sweep: {len(method_names)} methods x {len(game_specs)} games "
-        f"x {num_budgets} budgets x {len(args.seeds)} seeds = {total} cells",
+        f"Sweep: {len(method_names)} methods x {len(game_specs)} games x {num_budgets} budgets x {len(args.seeds)} seeds = {total} cells",
         file=sys.stderr,
     )
     print(f"Methods: {', '.join(method_names)}", file=sys.stderr)
@@ -841,8 +853,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.plot:
         plot_dir = run_dir / "plots"
-        saved = plot_all_figures(results, plot_dir)
-        print(f"Plots written ({saved} figures): {plot_dir}", file=sys.stderr)
+        saved = plot_all_figures(results, plot_dir, style_name=args.plot_style)
+        print(
+            f"Plots written ({saved} figures, Style: {args.plot_style}): {plot_dir}",
+            file=sys.stderr,
+        )
 
     return 0
 
