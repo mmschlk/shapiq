@@ -15,7 +15,32 @@ from shapiq.game import Game
 
 
 class GraphGame(Game):
-    """A GraphSHAP-IQ explanation game for graph networks."""
+    """GraphSHAP-IQ explanation game for graph neural networks.
+
+    The game evaluates a graph neural network on masked versions of a given
+    input graph. Each node is treated as one player. For a coalition, nodes
+    inside the coalition keep their original node features, while nodes outside
+    the coalition are replaced by a baseline feature vector.
+
+    The resulting model output defines the value of the coalition and can be
+    used to compute Shapley interaction values for GraphSHAP-IQ.
+
+    Attributes:
+        model: The graph neural network used for prediction.
+        x_graph: A cloned version of the input graph instance to explain.
+        task: The prediction task, either ``"classification"`` or
+            ``"regression"``.
+        edge_index: The graph connectivity in COO format as a NumPy array.
+        l_hop_distance: The number of message-passing layers of the GNN.
+        n_players: The number of players in the game, equal to the number of
+            nodes in ``x_graph``.
+        grand_coalition_set: Set containing all node indices of the graph.
+        baseline: Feature vector used to replace inactive node features.
+        y_index: Target class index for classification tasks, or ``None`` for
+            regression tasks.
+        normalization_value: Value of the empty coalition used for
+            normalization when ``normalize`` is enabled.
+    """
 
     def __init__(
         self,
@@ -32,7 +57,6 @@ class GraphGame(Game):
         self._normalize = normalize
         self.x_graph = x_graph.clone()
 
-        # Validierungen
         if task not in ("classification", "regression"):
             msg = f"task must be 'classification' or 'regression', got {task!r}"
             raise ValueError(msg)
@@ -54,13 +78,11 @@ class GraphGame(Game):
             msg = "model.num_layers must be an int"
             raise TypeError(msg)
         self.l_hop_distance = model.num_layers
-        self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
+        self.n_players = self.x_graph.x.shape[0]
         self.grand_coalition_set = set(range(self.n_players))
 
-        # Baseline initialisieren
         self.baseline = self._calculate_baseline(baseline_strategy)
 
-        # y_index für Klassifizierung setzen
         if task == "classification":
             if class_index is None:
                 with torch.no_grad():
@@ -75,11 +97,8 @@ class GraphGame(Game):
         else:
             self.y_index = None
 
-        # Game-Klasse initialisieren
         if normalize:
-            # Berechne den Normalisierungswert (empty coalition)
             empty_coalition_value = self.value_function(np.zeros(self.n_players))
-            # Extrahiere den Scalar (value_function gibt jetzt Skalare zurück)
             normalization_value = float(empty_coalition_value[0])
             super().__init__(
                 n_players=self.n_players,
@@ -90,12 +109,10 @@ class GraphGame(Game):
         else:
             super().__init__(n_players=self.n_players, normalize=normalize, verbose=verbose)
 
-        # Aktualisiere normalization_value in der Instanz (falls nötig)
         if normalize:
             self.normalization_value = normalization_value
 
     def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
-        """Berechnet die Baseline für Masking basierend auf der Strategie."""
         if strategy is None:
             warnings.warn(
                 "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
@@ -158,10 +175,9 @@ class GraphGame(Game):
             else:
                 coalition_value = model_output.squeeze()
 
-            # Extrahiere den Scalar-Wert (für Tensoren oder NumPy-Arrays)
             if isinstance(coalition_value, torch.Tensor):
-                coalition_values.append(coalition_value.item())  # .item() für Tensoren
+                coalition_values.append(coalition_value.item())
             else:
-                coalition_values.append(float(coalition_value))  # float() für NumPy-Skalare
+                coalition_values.append(float(coalition_value))
 
         return np.array(coalition_values)
