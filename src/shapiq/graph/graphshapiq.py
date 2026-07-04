@@ -177,47 +177,48 @@ class GraphSHAPIQ:
         """Adjust Möbius coefficients to ensure efficiency.
 
         The efficiency axiom states that the sum of all Möbius coefficients must equal
-        the grand coalition prediction:
+        the grand coalition prediction, i.e.,
+        :math:`\sum_{S \subseteq N} m(S) = v(N)`.
 
-            sum_{S ⊆ N} m(S) = v(N)
+        When neighborhoods are incomplete, that is, when their size exceeds
+        ``max_subset_size``, the Möbius transform is truncated and the efficiency axiom
+        is violated. This routine corrects for this by computing a gap term for each
+        incomplete neighborhood:
 
-        When neighborhoods are incomplete (i.e. their size exceeds max_subset_size),
-        the Möbius transform is truncated and the efficiency axiom is violated. This
-        routine corrects for this by computing a gap term for each incomplete neighborhood:
+        :math:`gap(S) = v(S) - \sum_{T \subseteq S, |T| \leq k} m(T)
+        - \sum_{S' \subset S, S' \text{ incomplete}} gap(S')`
 
-            gap(S) = v(S) - sum_{T ⊆ S, |T| <= max_subset_size} m(T)
-                        - sum_{S' ⊂ S, S' incomplete} gap(S')
+        where :math:`k` is ``max_subset_size``.
 
-        Where:
-            - v(S) is the game value of the incomplete neighborhood S
-            - m(T) are the already-computed Möbius coefficients for subsets T of S
-            - gap(S') are the correction terms for smaller incomplete neighborhoods
-            that are subsets of S
+        Here, :math:`v(S)` is the game value of the incomplete neighborhood :math:`S`,
+        :math:`m(T)` are the already-computed Möbius coefficients for subsets
+        :math:`T \subseteq S`, and :math:`gap(S')` are correction terms for smaller
+        incomplete neighborhoods :math:`S' \subset S`.
 
         Note:
-            - This method should only be called when incomplete_neighborhoods is non-empty.
-            - The returned InteractionValues has baseline_value=0.0 since the corrections
-            are gap terms only; the empty coalition contribution is already captured
-            in the original moebius_coefficients.
+            This method should only be called when ``incomplete_neighborhoods`` is non-empty.
+            The returned ``InteractionValues`` has ``baseline_value=0.0`` since the
+            corrections are gap terms only; the empty coalition contribution is already
+            captured in the original ``moebius_coefficients``.
 
         Args:
             masked_predictions: Predictions for all coalitions, including incomplete
-                neighborhoods. Indices are given by incomplete_neighborhoods_lookup.
+                neighborhoods. Indices are given by ``incomplete_neighborhoods_lookup``.
             moebius_coefficients: Current Möbius coefficients computed from the
-                truncated powerset via compute_moebius_transform.
+                truncated powerset via ``compute_moebius_transform``.
             incomplete_neighborhoods: Set of neighborhood tuples whose size exceeds
-                max_subset_size and therefore were not fully covered by the Möbius
+                ``max_subset_size`` and therefore were not fully covered by the Möbius
                 transform.
             incomplete_neighborhoods_lookup: Mapping from incomplete neighborhood tuples
-                to their row indices in masked_predictions.
+                to their row indices in ``masked_predictions``.
             max_subset_size: Maximum subset size used in the Möbius transform. Subsets
                 larger than this were not evaluated.
-            grand_coalition_prediction_node: The model prediction for the grand coalition
-                (all nodes present), used to enforce the global efficiency constraint.
+            grand_coalition_prediction_node: The model prediction for the grand coalition,
+                that is, all nodes present, used to enforce the global efficiency constraint.
 
         Returns:
             InteractionValues containing the gap correction terms for each incomplete
-            neighborhood, with baseline_value=0.0 and index="Moebius".
+            neighborhood, with ``baseline_value=0.0`` and ``index="Moebius"``.
         """
         incomplete_neighborhoods_sorted = cast(
             "list[tuple[int, ...]]", sorted(incomplete_neighborhoods, key=len)
