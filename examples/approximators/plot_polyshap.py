@@ -3,7 +3,7 @@ PolySHAP
 ========
 
 Shapley value approximation with interaction-informed polynomial regression
-using :class:`~shapiq.approximator.PolySHAPKAdd` :footcite:t:`Fumagalli.2026`.
+using :class:`~shapiq.approximator.PolySHAPKAdd` :footcite:t:`Fumagalli.2026a`.
 
 PolySHAP extends KernelSHAP by fitting a *k-additive* surrogate of the game -- a
 polynomial of degree ``max_order`` over the players -- and reading the Shapley

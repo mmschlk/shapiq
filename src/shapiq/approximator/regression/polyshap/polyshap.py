@@ -21,7 +21,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     """Estimate Shapley values using the PolySHAP regression algorithm.
 
     Generalises KernelSHAP :cite:t:`Lundberg.2017`; the algorithm is described in
-    Fumagalli et al. (2026) :cite:t:`Fumagalli.2026`.
+    Fumagalli et al. (2026) :cite:t:`Fumagalli.2026a`.
 
     The explanation frontier — the set of interactions used as basis functions in the
     regression — is supplied as a pre-built dictionary mapping each coalition tuple to
@@ -164,7 +164,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         least-squares problem whose basis functions are the terms in the explanation
         frontier.  When the frontier contains only singletons the method reduces exactly
         to KernelSHAP :cite:t:`Lundberg.2017`.  For details see Fumagalli et al. (2026)
-        :cite:t:`Fumagalli.2026`.
+        :cite:t:`Fumagalli.2026a`.
 
         Args:
             budget: Total number of coalition evaluations (including the empty and
