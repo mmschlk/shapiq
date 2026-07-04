@@ -28,8 +28,8 @@ class GraphExplainer(Explainer):
     """The GraphExplainer class for graph-based models.
 
     The explainer for graph-based models using the
-    :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` algorithm. For details, refer to
-    `Muschalik et al. (2025)` [Mus25]_.
+    :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` algorithm.
+    The algorithm is described in:footcite:t:`muschalik2025exactcomputationanyordershapley`.
 
     GraphSHAP-IQ is an algorithm for computing Shapley Interaction values for graph-based models.
     It is based on the GraphSHAPIQ algorithm by `Muschalik et al. (2025)` [Mus25]_, which efficiently
@@ -39,9 +39,6 @@ class GraphExplainer(Explainer):
 
     The GraphExplainer can be used with a variety of graph-based models, including
     GCNs, GATs and GINS.
-
-    References:
-        .. [Mus25] Maximilian Muschalik and Fabian Fumagalli and Paolo Frazzetto and Janine Strotherm and Luca Hermes and Alessandro Sperduti and Eyke Hüllermeier and Barbara Hammer. Exact Computation of Any-Order Shapley Interactions for Graph Neural Networks. https://arxiv.org/abs/2501.16944
     """
 
     def __init__(
