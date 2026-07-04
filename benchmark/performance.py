@@ -48,10 +48,17 @@ from typing import Any
 
 import numpy as np
 import xgboost as xgb
-from sklearn.datasets import fetch_california_housing, load_diabetes
+from sklearn.datasets import load_diabetes, load_iris
 from sklearn.model_selection import train_test_split
 
 from shapiq import ExactComputer
+from shapiq.datasets import load_adult_census, load_california_housing
+from shapiq_games.datasets import (
+    load_communities_and_crime,
+    load_corrgroups60,
+    load_independentlinear60,
+    load_nhanesi,
+)
 from shapiq_games.synthetic import SOUM
 
 from ._discovery import (
@@ -155,9 +162,35 @@ class GameSpec:
 
 def make_ml_game(dataset_name: str, seed: int):
     if dataset_name == "California":
-        X, y = fetch_california_housing(return_X_y=True)
-    else:
+        X, y = load_california_housing(to_numpy=True)
+        X = X[:, :8]
+    elif dataset_name == "Diabetes":
         X, y = load_diabetes(return_X_y=True)
+        X = X[:, :10]
+    elif dataset_name == "IRIS":
+        X, y = load_iris(return_X_y=True)
+        X = X[:, :4]
+    elif dataset_name == "Adult":
+        X, y = load_adult_census(to_numpy=True)
+        X = X[:, :12]
+    elif dataset_name == "Independent":
+        X_df, y_ser = load_independentlinear60()
+        X, y = X_df.to_numpy(), y_ser.to_numpy()
+        X = X[:, :60]
+    elif dataset_name == "Correlated":
+        X_df, y_ser = load_corrgroups60()
+        X, y = X_df.to_numpy(), y_ser.to_numpy()
+        X = X[:, :60]
+    elif dataset_name == "NHANES":
+        X_df, y_ser = load_nhanesi()
+        X, y = X_df.to_numpy(), y_ser.to_numpy()
+        X = X[:, :79]
+    elif dataset_name == "Communities":
+        X_df, y_ser = load_communities_and_crime()
+        X, y = X_df.to_numpy(), y_ser.to_numpy()
+        X = X[:, :101]
+    else:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
 
     X_train, X_test, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=seed)
 
@@ -189,11 +222,34 @@ def default_game_specs(n_values: list[int]) -> list[GameSpec]:
                 ),
             )
         )
+    # Complete 8-dataset grid from Musco & Witter (2024)
+    specs.append(GameSpec(name="IRIS(n=4)", n=4, factory=lambda seed: make_ml_game("IRIS", seed)))
     specs.append(
         GameSpec(name="California(n=8)", n=8, factory=lambda seed: make_ml_game("California", seed))
     )
     specs.append(
         GameSpec(name="Diabetes(n=10)", n=10, factory=lambda seed: make_ml_game("Diabetes", seed))
+    )
+    specs.append(
+        GameSpec(name="Adult(n=12)", n=12, factory=lambda seed: make_ml_game("Adult", seed))
+    )
+    specs.append(
+        GameSpec(
+            name="Independent(n=60)", n=60, factory=lambda seed: make_ml_game("Independent", seed)
+        )
+    )
+    specs.append(
+        GameSpec(
+            name="Correlated(n=60)", n=60, factory=lambda seed: make_ml_game("Correlated", seed)
+        )
+    )
+    specs.append(
+        GameSpec(name="NHANES(n=79)", n=79, factory=lambda seed: make_ml_game("NHANES", seed))
+    )
+    specs.append(
+        GameSpec(
+            name="Communities(n=101)", n=101, factory=lambda seed: make_ml_game("Communities", seed)
+        )
     )
     return specs
 
