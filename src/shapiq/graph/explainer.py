@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 import joblib
 import numpy as np
@@ -49,7 +49,6 @@ class GraphExplainer(Explainer):
         baseline_strategy: str = "average",
         max_order: int = 2,
         class_index: int | None = None,
-        task: Literal["classification", "regression"] = "classification",
         *,
         efficiency_routine: bool = True,
         normalize: bool = False,
@@ -73,8 +72,6 @@ class GraphExplainer(Explainer):
                 which will set the class index to 1 per default for classification
                 models and is ignored for regression models. Note, it is important
                 to specify the class index for your classification model.
-            task: The prediction task type, either "classification" or "regression".
-                Defaults to "classification".
             max_order: The maximum interaction order to be computed.
                 Defaults to 2. Set to 1 for no interactions (single feature attribution).
             normalize: Whether to normalize the GraphSHAP-IQ algorithm.
@@ -86,7 +83,6 @@ class GraphExplainer(Explainer):
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._model: nn.Module = model
         self._class_index = class_index
-        self._task = task
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
         self._l_shapley_max_budget: int = l_shapley_max_budget
@@ -185,7 +181,6 @@ class GraphExplainer(Explainer):
         game = GraphGame(
             model=self._model,
             x_graph=x,
-            task=self._task,
             class_index=self._class_index,
             baseline_strategy=self._baseline_strategy,
             normalize=self._normalize,
