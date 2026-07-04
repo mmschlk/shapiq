@@ -191,7 +191,16 @@ class GraphGame(Game):
         return self._normalize
 
     def mask_input(self, coalition: np.ndarray) -> Data:
-        """Mask inactive node features with the baseline."""
+        """Create a masked graph for a coalition.
+
+            Args:
+                coalition: Boolean or binary array of shape ``(n_players,)`` indicating
+                    which nodes are active.
+
+            Returns:
+                A cloned graph where inactive node features are replaced by the
+                baseline feature vector.
+            """
         coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
         x_masked = self.x_graph.clone()
         baseline_reshaped = self.baseline.reshape(1, -1)
