@@ -77,7 +77,12 @@ class GraphExplainer(Explainer):
                 GraphSHAP-IQ computation. Defaults to True.
             **kwargs: Additional keyword arguments are ignored.
         """
-        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
+        super().__init__(
+            model,
+            class_index=class_index,
+            index=index,
+            max_order=max_order
+        )
         self._model: nn.Module = model
         self._class_index = class_index
         self._baseline_strategy = baseline_strategy
@@ -189,7 +194,11 @@ class GraphExplainer(Explainer):
         )
 
     @override
-    def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
+    def explain(
+            self,
+            x: np.ndarray | Data | None = None,
+            **kwargs: Any
+    ) -> InteractionValues:
         """Explain a single graph prediction.
 
         Args:
