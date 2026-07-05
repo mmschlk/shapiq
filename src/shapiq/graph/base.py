@@ -235,6 +235,8 @@ class GraphGame(Game):
 
             if self.class_index is None:
                 coalition_value = model_output.squeeze()
+                if coalition_value.numel() != 1:
+                    raise ValueError("Model output is not scalar; pass class_index to select an output.")
             else:
                 coalition_value = model_output[0, self.class_index]
 
