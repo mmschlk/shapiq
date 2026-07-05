@@ -81,11 +81,10 @@ def test_supported_model_set_is_backend_independent() -> None:
 
 def test_import_warns_when_a_backend_is_missing(monkeypatch) -> None:
     """Importing the package emits an ImportWarning listing the missing backends."""
-    # Make an (otherwise possibly installed) backend appear absent, then re-run
-    # the package __init__ via reload and capture the warning.
+    # make xgboost look absent, then re-run __init__ via reload to catch the warning
     monkeypatch.setitem(sys.modules, "xgboost", None)
     with pytest.warns(ImportWarning, match=r"shapiq\[benchmark\]"):
         importlib.reload(shapiq_benchmark)
-    # Restore a clean module state so ordering does not affect other tests.
+    # reload again with the backend restored so test ordering is unaffected
     monkeypatch.undo()
     importlib.reload(shapiq_benchmark)

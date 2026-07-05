@@ -117,18 +117,14 @@ _SKLEARN_MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
     ("mlp", "regression"): MLPRegressor,
 }
 
-# Optional backends, resolved lazily via ``require`` so that importing this
-# module does not require the ``benchmark`` extras. Maps the model name to the
-# (import package, classifier attribute, regressor attribute) to look up.
+# optional backends, imported lazily; model name -> (package, classifier, regressor)
 _OPTIONAL_MODEL_BACKENDS: dict[str, tuple[str, str, str]] = {
     "xgboost": ("xgboost", "XGBClassifier", "XGBRegressor"),
     "lightgbm": ("lightgbm", "LGBMClassifier", "LGBMRegressor"),
     "tabpfn": ("tabpfn", "TabPFNClassifier", "TabPFNRegressor"),
 }
 
-# All supported (model, task) pairs, independent of whether the optional backend
-# is installed. Used for validation and error messages so the advertised set of
-# supported models does not silently shrink when an extra is missing.
+# all supported (model, task) pairs, independent of which backends are installed
 _SUPPORTED_MODEL_TASKS: frozenset[tuple[str, str]] = frozenset(_SKLEARN_MODEL_BUILDERS) | {
     (name, task) for name in _OPTIONAL_MODEL_BACKENDS for task in ("classification", "regression")
 }

@@ -1,11 +1,4 @@
-"""Benchmark helpers for shapiq.
-
-The benchmark model backends (``optuna``, ``tabpfn``, ``lightgbm``, ``xgboost``)
-are optional and imported lazily. Install them with
-``pip install 'shapiq[benchmark]'``. The package still imports without them; the
-extras are only needed to build the corresponding models or to run the Optuna
-hyperparameter optimization.
-"""
+"""Benchmark helpers for shapiq."""
 
 import importlib.util
 import warnings

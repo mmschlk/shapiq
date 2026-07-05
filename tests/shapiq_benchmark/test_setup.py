@@ -59,5 +59,4 @@ def test_check_for_known_combination_reads_shipped_configs() -> None:
     known = check_for_known_combination("california_housing", "xgboost")
     assert isinstance(known, dict)
     assert "n_estimators" in known
-    # An unknown (dataset, model) pair resolves to None.
     assert check_for_known_combination("not_a_dataset", "not_a_model") is None
