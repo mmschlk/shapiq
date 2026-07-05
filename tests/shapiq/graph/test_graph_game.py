@@ -48,7 +48,7 @@ class TestGraphGame:
             GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="invalid")
 
         with pytest.raises(ValueError, match="Baseline tensor must have shape"):
-            GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy=torch.zeros(2, 3))
+            GraphGame(model=gcn_model, x_graph=simple_graph, baseline_value=torch.zeros(2, 3))
 
     def test_init_sanity_checks(self, gcn_model, simple_graph, empty_graph):
         with pytest.raises(ValueError, match="x_graph must have node features"):

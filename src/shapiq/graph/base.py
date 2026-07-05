@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
@@ -46,7 +46,8 @@ class GraphGame(Game):
         x_graph: Data,
         *,
         class_index: int | None = None,
-        baseline_strategy: str | float | None = None,
+        baseline_strategy: Literal["zeros", "average", "min", "max"] = "zeros",
+        baseline_value: float | torch.Tensor | None = None,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -61,10 +62,13 @@ class GraphGame(Game):
             class_index: Class index to explain for classification tasks. If
                 ``None``, the predicted class of ``model`` on ``x_graph`` is used.
                 Must be ``None`` for regression tasks.
-            baseline_strategy: Strategy used to replace inactive node features.
-                Supported values are ``None``, ``"zeros"``, ``"average"``,
-                ``"min"``, ``"max"``, a scalar float, or a baseline tensor with
-                one value per node feature.
+            baseline_strategy: Strategy used to compute the baseline feature vector for
+                inactive nodes. Supported values are ``"zeros"``, ``"average"``,
+                ``"min"``, and ``"max"``.
+            baseline_value: Explicit baseline used for inactive node features. If
+                provided, this overrides ``baseline_strategy``. A float creates a
+                constant baseline vector, while a tensor specifies one baseline value
+                per node feature.
             normalize: Whether to normalize the game by subtracting the empty
                 coalition value.
             verbose: Whether to print progress information inherited from
@@ -95,7 +99,10 @@ class GraphGame(Game):
         self.n_players = self.x_graph.x.shape[0]
         self.grand_coalition_set = set(range(self.n_players))
 
-        self.baseline = self._calculate_baseline(baseline_strategy)
+        self.baseline = self._calculate_baseline(
+            strategy=baseline_strategy,
+            value=baseline_value,
+        )
 
         self.class_index = class_index
 
@@ -109,44 +116,59 @@ class GraphGame(Game):
                 verbose=verbose,
             )
         else:
-            super().__init__(n_players=self.n_players, normalize=normalize, verbose=verbose)
+            super().__init__(
+                n_players=self.n_players,
+                normalize=normalize,
+                verbose=verbose)
 
         if normalize:
             self.normalization_value = normalization_value
 
-    def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
+    from typing import Literal
+
+    def _calculate_baseline(
+            self,
+            strategy: Literal["zeros", "average", "min", "max"],
+            value: float | torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Calculate the baseline feature vector for masked nodes.
 
-            Args:
-                strategy: Baseline strategy used for inactive nodes. If ``None``,
-                    ``"zeros"`` is used. Supported string strategies are ``"zeros"``,
-                    ``"average"``, ``"min"``, and ``"max"``. A float creates a constant
-                    baseline vector. A tensor is interpreted as a fixed feature-wise
-                    baseline.
+        Args:
+            strategy: Strategy used to compute the baseline when ``value`` is
+                ``None``.
+            value: Explicit baseline. If provided, this overrides ``strategy``.
+                A float creates a constant baseline vector. A tensor is interpreted
+                as a fixed feature-wise baseline.
 
-            Returns:
-                Baseline tensor with shape ``(n_features,)``.
+        Returns:
+            Baseline tensor with shape ``(n_features,)``.
 
-            Raises:
-                ValueError: If a provided tensor baseline has an invalid shape.
-                NotImplementedError: If the baseline strategy is unsupported.
-            """
-        if strategy is None:
-            warnings.warn(
-                "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
-            )
-            strategy = "zeros"
-
+        Raises:
+            ValueError: If a provided tensor baseline has an invalid shape.
+        """
         x = self.x_graph.x
-        if isinstance(strategy, torch.Tensor):
-            if strategy.shape != (x.shape[1],):
-                msg = (
-                    f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
+
+        if value is not None:
+            if isinstance(value, torch.Tensor):
+                if value.shape != (x.shape[1],):
+                    raise ValueError(
+                        f"Baseline tensor must have shape ({x.shape[1]},), "
+                        f"got {tuple(value.shape)}."
+                    )
+                return value.to(dtype=torch.float32, device=x.device)
+
+            if isinstance(value, float):
+                return torch.full(
+                    (x.shape[1],),
+                    value,
+                    dtype=torch.float32,
+                    device=x.device,
                 )
-                raise ValueError(msg)
-            return strategy.to(dtype=torch.float32, device=x.device)
-        if isinstance(strategy, float):
-            return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
+
+            raise TypeError(
+                "baseline_value must be a float, torch.Tensor, or None."
+            )
+
         if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
         if strategy == "average":
@@ -155,8 +177,9 @@ class GraphGame(Game):
             return torch.amin(x, dim=0)
         if strategy == "max":
             return torch.amax(x, dim=0)
-        msg = f"Baseline strategy '{strategy}' is not supported."
-        raise NotImplementedError(msg)
+
+        # Should never happen because of the Literal type.
+        raise RuntimeError(f"Unexpected baseline strategy: {strategy}")
 
     @property
     def normalize(self) -> bool:
@@ -174,7 +197,11 @@ class GraphGame(Game):
                 A cloned graph where inactive node features are replaced by the
                 baseline feature vector.
             """
-        coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
+        coalition_tensor = torch.tensor(
+            coalition,
+            dtype=torch.bool,
+            device=self.x_graph.x.device
+        )
         x_masked = self.x_graph.clone()
         baseline_reshaped = self.baseline.reshape(1, -1)
         x_masked.x[~coalition_tensor] = baseline_reshaped
