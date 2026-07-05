@@ -16,8 +16,6 @@ from shapiq.game_theory.exact import ExactComputer
 from shapiq.graph.graphshapiq import GraphSHAPIQ
 from shapiq.interaction_values import InteractionValues
 
-import torch
-from torch_geometric.data import Data
 
 from shapiq.graph import GraphGame
 
