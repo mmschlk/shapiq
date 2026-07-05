@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import logging
-import warnings
 from typing import TYPE_CHECKING, cast
 
 import networkx as nx
@@ -153,8 +153,8 @@ class GraphSHAPIQ:
         :meth:`compute_moebius_transform`, but delegates the hot double loop over
         coalitions and their subsets to the ``shapiq.graph.cext`` extension.
 
-        If the C++ extension has not been compiled, this method emits a warning
-        and transparently falls back to the Python implementation.
+        Requires the ``shapiq.graph.cext`` extension to be compiled (e.g. via
+        `uv pip install -e .`); otherwise an ``ImportError`` is raised.
 
         Args:
             coalitions: Set of coalitions (tuples of player indices).
@@ -164,47 +164,50 @@ class GraphSHAPIQ:
         Returns:
             InteractionValues object containing the Möbius values.
         """
-        try:
-            from .cext import (
-                compute_moebius_transform as _moebius_cpp,  # ty: ignore[unresolved-import]
-            )
-        except ImportError:
-            warnings.warn(
-                "shapiq.graph.cext is not compiled — falling back to the Python "
-                "implementation of compute_moebius_transform. Build the package "
-                "(e.g. `uv pip install -e .`) to enable the C++ acceleration.",
-                stacklevel=2,
-            )
-            return self.compute_moebius_transform(
-                coalitions, coalition_predictions, coalition_lookup
-            )
+        from .cext import (
+            compute_moebius_transform as _moebius_cpp,  # ty: ignore[unresolved-import]
+        )
 
         # Fix a stable iteration order for the coalitions; this defines both the
         # output index i and the moebius_lookup, matching the Python reference.
         coalition_list = list(coalitions)
 
-        # Build CSR arrays for the coalitions to evaluate.
-        members_flat: list[int] = []
+        # Build CSR arrays for the coalitions to evaluate. Sizes/offsets are
+        # computed vectorized via cumsum, and the flat member array is filled in
+        # one pass via fromiter — avoiding a Python-level list.extend() per
+        # coalition (see shapiq.tree.interventional.explainer for the same
+        # flatten-via-cumsum pattern).
+        sizes = np.fromiter(
+            (len(c) for c in coalition_list), dtype=np.int32, count=len(coalition_list)
+        )
         offsets = np.empty(len(coalition_list) + 1, dtype=np.int32)
         offsets[0] = 0
-        for i, coalition in enumerate(coalition_list):
-            members_flat.extend(coalition)
-            offsets[i + 1] = len(members_flat)
+        np.cumsum(sizes, out=offsets[1:])
+        members_flat = np.fromiter(
+            itertools.chain.from_iterable(coalition_list), dtype=np.int32, count=int(offsets[-1])
+        )
 
         # Build CSR arrays for coalition_lookup (keys + prediction row index).
-        lookup_members_flat: list[int] = []
-        lookup_offsets = np.empty(len(coalition_lookup) + 1, dtype=np.int32)
-        lookup_indices = np.empty(len(coalition_lookup), dtype=np.int32)
+        lookup_keys = list(coalition_lookup.keys())
+        lookup_sizes = np.fromiter(
+            (len(k) for k in lookup_keys), dtype=np.int32, count=len(lookup_keys)
+        )
+        lookup_offsets = np.empty(len(lookup_keys) + 1, dtype=np.int32)
         lookup_offsets[0] = 0
-        for j, (key, index) in enumerate(coalition_lookup.items()):
-            lookup_members_flat.extend(key)
-            lookup_offsets[j + 1] = len(lookup_members_flat)
-            lookup_indices[j] = index
+        np.cumsum(lookup_sizes, out=lookup_offsets[1:])
+        lookup_members_flat = np.fromiter(
+            itertools.chain.from_iterable(lookup_keys),
+            dtype=np.int32,
+            count=int(lookup_offsets[-1]),
+        )
+        lookup_indices = np.fromiter(
+            coalition_lookup.values(), dtype=np.int32, count=len(coalition_lookup)
+        )
 
         moebius_values = _moebius_cpp(
-            np.asarray(members_flat, dtype=np.int32),
+            members_flat,
             offsets,
-            np.asarray(lookup_members_flat, dtype=np.int32),
+            lookup_members_flat,
             lookup_offsets,
             lookup_indices,
             np.ascontiguousarray(coalition_predictions, dtype=np.float64),
@@ -369,8 +372,8 @@ class GraphSHAPIQ:
             efficiency_routine: If True, ensures efficiency by adjusting neighborhood interactions.
             index: The type of the interaction values.
             use_cpp: If True, use the C++-accelerated Möbius transform
-                (:meth:`compute_moebius_transform_cpp`). Falls back to the Python
-                implementation if the extension is not compiled. Defaults to ``False``.
+                (:meth:`compute_moebius_transform_cpp`). Requires the
+                ``shapiq.graph.cext`` extension to be compiled. Defaults to ``True``.
 
         Returns:
             Tuple of (moebius_coefficients, shapley_interactions).
