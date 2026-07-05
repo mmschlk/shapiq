@@ -16,6 +16,7 @@
 // member tuple.
 
 #include <cstdint>
+#include <omp.h>
 #include <unordered_map>
 #include <vector>
 
@@ -90,6 +91,15 @@ namespace moebius
 
         int missing = 0;
 
+        // Safe to parallelize as-is: each iteration writes only to out[i] (a gather,
+        // not a scatter -- see the write-up on GraphSHAPIQ's cpp porting candidates),
+        // and only reads from `map`/`predictions`, which are never modified inside the
+        // loop. `subset` is declared inside the loop body, so each iteration (and thus
+        // each thread) already gets its own instance. `missing` is the only shared
+        // mutable state, handled via `reduction(+:missing)`. schedule(dynamic) balances
+        // load across threads since coalition sizes k (and thus the 2^k inner loop)
+        // vary a lot between coalitions.
+#pragma omp parallel for reduction(+ : missing) schedule(dynamic)
         for (int i = 0; i < n_coalitions; ++i)
         {
             const int start = offsets[i];
