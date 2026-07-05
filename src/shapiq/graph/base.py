@@ -59,9 +59,8 @@ class GraphGame(Game):
                 layers.
             x_graph: Input graph instance to explain. The graph must contain node
                 features in ``x_graph.x`` and an ``edge_index`` attribute.
-            class_index: Class index to explain for classification tasks. If
-                ``None``, the predicted class of ``model`` on ``x_graph`` is used.
-                Must be ``None`` for regression tasks.
+            class_index: Output index to explain for multi-output models. If ``None``, the model
+                output is expected to be scalar and is used directly.
             baseline_strategy: Strategy used to compute the baseline feature vector for
                 inactive nodes. Supported values are ``"zeros"``, ``"average"``,
                 ``"min"``, and ``"max"``.
