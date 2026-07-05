@@ -105,6 +105,15 @@ def get_predict_function_and_model_type(
     if callable(model):
         _predict_function = predict_callable
 
+    # torch_geometric
+    if is_torch_geometric_model(model):
+        _model_type = "graph"
+        _predict_function = RuntimeError(
+            "Graph models do not use a generic NumPy predict function. "
+            "Use GraphExplainer.explain with a torch_geometric.data.Data object."
+        )
+        return _predict_function, "graph"
+
     # sklearn
     if model_class in [
         "sklearn.tree.DecisionTreeRegressor",
@@ -354,3 +363,16 @@ def print_class(obj: object) -> str:
     if not search:
         raise ValueError(msg)
     return search[0]
+
+def is_torch_geometric_model(model: object) -> bool:
+    """Return whether the model contains torch_geometric message-passing layers."""
+    try:
+        import torch
+        from torch_geometric.nn import MessagePassing
+    except ImportError:
+        return False
+
+    if not isinstance(model, torch.nn.Module):
+        return False
+
+    return any(isinstance(module, MessagePassing) for module in model.modules())
