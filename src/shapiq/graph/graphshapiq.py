@@ -247,13 +247,17 @@ class GraphSHAPIQ:
             additional_values[i] = gap
             additional_lookup[neighborhood] = i
 
-        # Adjust the largest neighborhood to maintain efficiency
+        # Maintain global efficiency only if an incomplete neighborhood is the grand coalition.
         if additional_lookup:
-            additional_values[-1] = (
-                grand_coalition_prediction_node
-                - np.sum(moebius_coefficients.values)
-                - np.sum(additional_values[:-1])
-            )
+            grand_coalition = tuple(sorted(self._grand_coalition_set))
+
+            if grand_coalition in additional_lookup:
+                grand_idx = additional_lookup[grand_coalition]
+                additional_values[grand_idx] = (
+                        grand_coalition_prediction_node
+                        - np.sum(moebius_coefficients.values)
+                        - (np.sum(additional_values) - additional_values[grand_idx])
+                )
 
         return InteractionValues(
             values=additional_values,
