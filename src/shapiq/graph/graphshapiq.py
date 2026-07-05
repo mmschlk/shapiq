@@ -254,9 +254,9 @@ class GraphSHAPIQ:
             if grand_coalition in additional_lookup:
                 grand_idx = additional_lookup[grand_coalition]
                 additional_values[grand_idx] = (
-                        grand_coalition_prediction_node
-                        - np.sum(moebius_coefficients.values)
-                        - (np.sum(additional_values) - additional_values[grand_idx])
+                    grand_coalition_prediction_node
+                    - np.sum(moebius_coefficients.values)
+                    - (np.sum(additional_values) - additional_values[grand_idx])
                 )
 
         return InteractionValues(
