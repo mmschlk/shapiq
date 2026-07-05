@@ -178,7 +178,7 @@ class GraphGame(Game):
             return torch.amax(x, dim=0)
 
         # Should never happen because of the Literal type.
-        raise RuntimeError(f"Unexpected baseline strategy: {strategy}")
+        raise NotImplementedError(f"Baseline strategy {strategy!r} is not supported.")
 
     @property
     def normalize(self) -> bool:
