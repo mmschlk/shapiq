@@ -34,24 +34,18 @@ KNN_WEIGHTS_TO_EXPLAINER = {
 
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
-    """Return a dictionary of all available explainer classes.
+    """Return a dictionary of all available explainer classes."""
 
-    Returns:
-        A dictionary of all available explainer classes.
-
-    """
     import shapiq.explainer.agnostic as ag
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
-    import shapiq.graph.explainer as gr
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
 
-    return {
+    explainers = {
         "tabular": tb.TabularExplainer,
         "tree": tr.TreeExplainer,
-        "graph": gr.GraphExplainer,
         "tabpfn": tp.TabPFNExplainer,
         "game": ag.AgnosticExplainer,
         "product_kernel": pk.ProductKernelExplainer,
@@ -59,6 +53,15 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "wknn": nn.WeightedKNNExplainer,
         "tnn": nn.ThresholdNNExplainer,
     }
+
+    try:
+        import shapiq.graph.explainer as gr
+    except ImportError:
+        pass
+    else:
+        explainers["graph"] = gr.GraphExplainer
+
+    return explainers
 
 
 def get_predict_function_and_model_type(
