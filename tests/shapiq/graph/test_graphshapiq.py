@@ -16,6 +16,11 @@ from shapiq.game_theory.exact import ExactComputer
 from shapiq.graph.graphshapiq import GraphSHAPIQ
 from shapiq.interaction_values import InteractionValues
 
+import torch
+from torch_geometric.data import Data
+
+from shapiq.graph import GraphGame
+
 
 class TestGraphSHAPIQ:
     """Test class for GraphSHAPIQ.__init__."""
@@ -791,6 +796,47 @@ class TestGraphSHAPIQ:
             assert interactions.values[idx] == pytest.approx(
                 exact_interactions[coalition], abs=1e-6
             )
+
+    def test_explain_matches_exact_computer_k_sii_receptive_field_truncation(
+            self,
+            gcn_model_one_layer,
+            receptive_field_graphs,
+    ):
+        """Test GraphSHAPIQ against ExactComputer on graphs with incomplete neighborhoods.
+
+        Uses several small synthetic graphs where ``max_size_neighbors < n_players`` to
+        exercise the receptive-field truncation of GraphSHAPIQ and verifies that the
+        computed k-SII values agree with ExactComputer.
+        """
+        for graph in receptive_field_graphs:
+            game = GraphGame(
+                model=gcn_model_one_layer,
+                x_graph=graph,
+                baseline_strategy="average",
+            )
+
+            graphshapiq = GraphSHAPIQ(game)
+
+            assert graphshapiq.max_size_neighbors < graphshapiq.n_players
+
+            _, interactions = graphshapiq.explain(
+                index="k-SII",
+                efficiency_routine=False,
+            )
+
+            exact = ExactComputer(game)
+            exact_interactions = exact(
+                index="k-SII",
+                order=graphshapiq.n_players,
+            )
+
+            assert graphshapiq.last_n_model_calls < 2 ** graphshapiq.n_players
+
+            for coalition, idx in interactions.interaction_lookup.items():
+                assert interactions.values[idx] == pytest.approx(
+                    exact_interactions[coalition],
+                    abs=1e-6,
+                )
 
     def test_explain_matches_exact_computer_sii(self, gcn_graphshapiq, gcn_graph_game):
         """Test that GraphSHAPIQ SII matches ExactComputer on simple graph (complete case)."""
