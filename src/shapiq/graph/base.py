@@ -59,9 +59,8 @@ class GraphGame(Game):
                 layers.
             x_graph: Input graph instance to explain. The graph must contain node
                 features in ``x_graph.x`` and an ``edge_index`` attribute.
-            class_index: Class index to explain for classification tasks. If
-                ``None``, the predicted class of ``model`` on ``x_graph`` is used.
-                Must be ``None`` for regression tasks.
+            class_index: Output index to explain for multi-output models. If ``None``, the model
+                output is expected to be scalar and is used directly.
             baseline_strategy: Strategy used to compute the baseline feature vector for
                 inactive nodes. Supported values are ``"zeros"``, ``"average"``,
                 ``"min"``, and ``"max"``.
@@ -124,7 +123,6 @@ class GraphGame(Game):
         if normalize:
             self.normalization_value = normalization_value
 
-    from typing import Literal
 
     def _calculate_baseline(
             self,
@@ -179,7 +177,7 @@ class GraphGame(Game):
             return torch.amax(x, dim=0)
 
         # Should never happen because of the Literal type.
-        raise RuntimeError(f"Unexpected baseline strategy: {strategy}")
+        raise NotImplementedError(f"Baseline strategy {strategy!r} is not supported.")
 
     @property
     def normalize(self) -> bool:
@@ -237,6 +235,8 @@ class GraphGame(Game):
 
             if self.class_index is None:
                 coalition_value = model_output.squeeze()
+                if coalition_value.numel() != 1:
+                    raise ValueError("Model output is not scalar; pass class_index to select an output.")
             else:
                 coalition_value = model_output[0, self.class_index]
 
