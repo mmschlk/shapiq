@@ -124,7 +124,6 @@ class GraphGame(Game):
         if normalize:
             self.normalization_value = normalization_value
 
-    from typing import Literal
 
     def _calculate_baseline(
             self,
