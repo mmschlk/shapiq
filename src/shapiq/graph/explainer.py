@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, cast, override
 
 import joblib
 import numpy as np
-from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
@@ -17,10 +16,26 @@ from .graphshapiq import GraphSHAPIQ
 
 if TYPE_CHECKING:
     from torch import nn
+    from torch_geometric.data import Data
 
     from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
+else:
+    Data = Any
 
 SPARSIFY_THRESHOLD = 1e-8
+
+def _check_import_torch_geometric() -> type:
+    """Import torch_geometric Data or raise a helpful optional-dependency error."""
+    try:
+        from torch_geometric.data import Data
+    except ImportError as error:
+        msg = (
+            "GraphExplainer requires the optional graph dependencies. "
+            "Install them with `pip install shapiq[graph]`."
+        )
+        raise ImportError(msg) from error
+
+    return Data
 
 
 class GraphExplainer(Explainer):
@@ -117,11 +132,17 @@ class GraphExplainer(Explainer):
         Raises:
             TypeError: If ``X`` is a NumPy array instead of a list of ``Data`` objects.
         """
+        Data = _check_import_torch_geometric()
+
         if isinstance(X, np.ndarray):
             msg = (
                 "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects, "
                 "not a NumPy array."
             )
+            raise TypeError(msg)
+
+        if not all(isinstance(x, Data) for x in X):
+            msg = "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects."
             raise TypeError(msg)
 
         if n_jobs:
@@ -164,9 +185,11 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values for the instance.
         """
+        Data = _check_import_torch_geometric()
+
         if not isinstance(x, Data):
             msg = (
-                f"GraphExplainer requires a torch_geometric.data.Data object, "
+                "GraphExplainer requires a torch_geometric.data.Data object, "
                 f"got {type(x).__name__!r}."
             )
             raise TypeError(msg)
@@ -209,8 +232,13 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values for the graph.
         """
+        Data = _check_import_torch_geometric()
+
         if not isinstance(x, Data):
-            msg = f"GraphExplainer requires a torch_geometric.data.Data object, got {type(x).__name__!r}."
+            msg = (
+                "GraphExplainer requires a torch_geometric.data.Data object, "
+                f"got {type(x).__name__!r}."
+            )
             raise TypeError(msg)
         return self.explain_function(x=x, **kwargs)
 
