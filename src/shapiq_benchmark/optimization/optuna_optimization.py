@@ -9,19 +9,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import optuna
-
-# Model imports
-from lightgbm import LGBMClassifier, LGBMRegressor
 from numpy.typing import NDArray
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.model_selection import KFold, StratifiedKFold
-from xgboost import XGBClassifier, XGBRegressor
 
+from shapiq_benchmark._optional import require
 from shapiq_benchmark.setup import load_data_from_str
 
 if TYPE_CHECKING:
+    import optuna
+
     from shapiq_benchmark.bench_types import BenchmarkDataset
 
 IndexArray = NDArray[np.integer]
@@ -115,7 +113,9 @@ def get_model_instance(model_name: str, task: str, params: dict[str, Any]) -> An
         params: Hyperparameters to initialize the model with.
     """
     if model_name == "lightgbm":
-        return LGBMClassifier(**params) if task == "classification" else LGBMRegressor(**params)
+        lightgbm = require("lightgbm")
+        builder = lightgbm.LGBMClassifier if task == "classification" else lightgbm.LGBMRegressor
+        return builder(**params)
     if model_name == "random_forest":
         return (
             RandomForestClassifier(**params)
@@ -123,7 +123,9 @@ def get_model_instance(model_name: str, task: str, params: dict[str, Any]) -> An
             else RandomForestRegressor(**params)
         )
     if model_name == "xgboost":
-        return XGBClassifier(**params) if task == "classification" else XGBRegressor(**params)
+        xgboost = require("xgboost")
+        builder = xgboost.XGBClassifier if task == "classification" else xgboost.XGBRegressor
+        return builder(**params)
     msg = f"Unsupported model: {model_name}"
     raise ValueError(msg)
 
@@ -215,6 +217,7 @@ def save_results(
 
 def main() -> None:
     """Run Optuna optimization dynamically based on arguments."""
+    optuna = require("optuna")
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Optimize ML models using Optuna.")
 
