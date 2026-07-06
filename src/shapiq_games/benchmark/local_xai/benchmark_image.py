@@ -8,6 +8,8 @@ from warnings import warn
 from shapiq.game import Game
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import numpy as np
 
 
@@ -58,7 +60,7 @@ class ImageClassifier(Game):
 
     def __init__(
         self,
-        model_name: str = "vit_16_patches",
+        model_name: str | Callable[[np.ndarray], np.ndarray] = "vit_16_patches",
         n_superpixel_resnet: int = 14,
         *,
         x_explain_path: str | None = None,
@@ -70,8 +72,8 @@ class ImageClassifier(Game):
 
         Args:
             model_name: The model used for the game. This can be either a callable that takes an
-                image in form of a numpy array or and returns the class probabilities, or a string
-                that specifies the pre-trained model to be used. The default models are
+                image in form of a numpy array and returns class probabilities, or a string that
+                specifies the pre-trained model to be used. The default models are
                 ``'vit_144_patches'``, ``'vit_36_patches'``, ``'vit_16_patches'``,
                 ``'vit_9_patches'``, and ``'resnet_18'``. Defaults to ``'vit_16_patches'``.
 
@@ -92,60 +94,114 @@ class ImageClassifier(Game):
             msg = "The image to be explained must be provided."
             raise ValueError(msg)
 
-        # validate inputs
-        valid_models = [
-            "vit_144_patches",
-            "vit_36_patches",
-            "vit_16_patches",
-            "vit_9_patches",
-            "resnet_18",
-        ]
-        if model_name.lower() not in valid_models:
-            msg = f"Invalid model {model_name}. The model must be one of {valid_models}"
-            raise ValueError(
-                msg,
-            )
+        if callable(model_name):
+            import numpy as np
+            from PIL import Image
 
-        # read image with PIL
-        from PIL import Image
-
-        self.x_explain = Image.open(x_explain_path)
-
-        # setup the models model
-        self.model_function = model_name
-        if "vit" in model_name:
-            from shapiq_games.benchmark._setup._vit_setup import ViTModel
-
-            # Extract the number of patches from the model name
-            patch_sizes = {
-                "vit_144_patches": 144,
-                "vit_36_patches": 36,
-                "vit_16_patches": 16,
-                "vit_9_patches": 9,
-            }
-            n_players = patch_sizes[model_name]
-
-            vit_model = ViTModel(n_patches=n_players, input_image=self.x_explain, verbose=verbose)
-            normalization_value = vit_model.empty_value
-            self.model_function = vit_model
-        else:
             from shapiq_games.benchmark._setup._resnet_setup import ResNetModel
 
-            n_sp = n_superpixel_resnet
-            resnet_model = ResNetModel(
-                input_image=self.x_explain,
-                verbose=verbose,
-                batch_size=50,
-                n_superpixels=n_sp,
+            self.x_explain = Image.open(x_explain_path)
+            image_array = np.asarray(self.x_explain)
+            n_players, superpixels = ResNetModel.get_superpixels(
+                image=image_array,
+                n_segments=n_superpixel_resnet,
             )
-            n_players = resnet_model.n_superpixels
-            # warn if not 14 superpixels
-            warn(
-                f"{n_players} superpixels found and not {n_sp}.",
-                stacklevel=2,
-            ) if n_players != n_sp else None
-            normalization_value = resnet_model.empty_value
-            self.model_function = resnet_model
+
+            if n_players != n_superpixel_resnet:
+                warn(
+                    f"{n_players} superpixels found and not {n_superpixel_resnet}.",
+                    stacklevel=2,
+                )
+
+            model_fn = model_name
+            original_probs = np.asarray(model_fn(image_array))
+            class_id = int(np.argmax(original_probs))
+
+            channel_mean = image_array.mean(axis=(0, 1))
+            background = np.zeros_like(image_array)
+            background[...] = channel_mean
+            empty_value = float(np.asarray(model_fn(background))[class_id])
+
+            def _coalition_to_prob(coalitions: np.ndarray) -> np.ndarray:
+                if len(coalitions.shape) == 1:
+                    coalitions = coalitions.reshape((1, -1))
+                outputs = np.zeros((coalitions.shape[0],), dtype=float)
+                for i, coalition in enumerate(coalitions):
+                    masked = image_array.copy()
+                    for sp_index, is_present in enumerate(coalition, start=1):
+                        if not is_present:
+                            masked[superpixels == sp_index] = channel_mean
+                    outputs[i] = float(np.asarray(model_fn(masked))[class_id])
+                return outputs
+
+            class _CallableImageModel:
+                def __init__(self) -> None:
+                    self.n_superpixels = n_players
+                    self.empty_value = empty_value
+
+                def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+                    return _coalition_to_prob(coalitions)
+
+            normalization_value = empty_value
+            self.model_function = _CallableImageModel()
+        else:
+            valid_models = [
+                "vit_144_patches",
+                "vit_36_patches",
+                "vit_16_patches",
+                "vit_9_patches",
+                "resnet_18",
+            ]
+            if model_name.lower() not in valid_models:
+                msg = f"Invalid model {model_name}. The model must be one of {valid_models}"
+                raise ValueError(
+                    msg,
+                )
+
+            from PIL import Image
+
+            self.x_explain = Image.open(x_explain_path)
+
+            self.model_function = model_name
+            if "vit" in model_name:
+                from shapiq_games.benchmark._setup._vit_setup import ViTModel
+
+                patch_sizes = {
+                    "vit_144_patches": 144,
+                    "vit_36_patches": 36,
+                    "vit_16_patches": 16,
+                    "vit_9_patches": 9,
+                }
+                n_players = patch_sizes[model_name]
+
+                vit_model = ViTModel(
+                    n_patches=n_players,
+                    input_image=self.x_explain,
+                    verbose=verbose,
+                )
+                normalization_value = vit_model.empty_value
+                self.model_function = vit_model
+            else:
+                from shapiq_games.benchmark._setup._resnet_setup import ResNetModel
+
+                n_sp = n_superpixel_resnet
+                resnet_model = ResNetModel(
+                    input_image=self.x_explain,
+                    verbose=verbose,
+                    batch_size=50,
+                    n_superpixels=n_sp,
+                )
+                n_players = resnet_model.n_superpixels
+                (
+                    warn(
+                        f"{n_players} superpixels found and not {n_sp}.",
+                        stacklevel=2,
+                    )
+                    if n_players != n_sp
+                    else None
+                )
+                normalization_value = resnet_model.empty_value
+                self.model_function = resnet_model
 
         super().__init__(
             n_players=n_players,
