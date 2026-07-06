@@ -205,6 +205,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 w_s = (math.factorial(s - 1) * math.factorial(n - s - 1)) / fact_n
 
                 # Leverage score: l_z = 1 / C(n, s)
+                # Note: Using math.comb instead of scipy's binom to ensure exact arbitrary-precision
+                # integer math and prevent 64-bit float overflows for large n.
                 l_z = 1.0 / math.comb(n, s)
 
                 # Cap probability at 1
