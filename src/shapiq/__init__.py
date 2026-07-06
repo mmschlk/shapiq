@@ -5,6 +5,7 @@ from shapiq.errors import (
     HistoryError,
     InsufficientSamplesError,
     SamplingError,
+    SamplingStallWarning,
     UnsupportedGameError,
 )
 from shapiq.explainers import (
@@ -36,6 +37,7 @@ from shapiq.interactions import (
 )
 from shapiq.sampling import (
     ApproximationState,
+    EmptyState,
     PermutationSIISampler,
     PermutationSTIISampler,
     PermutationWalkSampler,
@@ -55,6 +57,7 @@ __all__ = [
     "CoalitionArray",
     "DenseCoalitionArray",
     "DenseExplanationArray",
+    "EmptyState",
     "ExactExplainer",
     "Explainer",
     "ExplanationArray",
@@ -78,6 +81,7 @@ __all__ = [
     "PermutationWalkSampler",
     "Sampler",
     "SamplingError",
+    "SamplingStallWarning",
     "SamplingState",
     "SparseExplanationArray",
     "UnsupportedGameError",

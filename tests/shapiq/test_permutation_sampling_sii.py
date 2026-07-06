@@ -17,6 +17,7 @@ from shapiq import (
 
 N_PLAYERS = 5
 SII_QUANTUM = 2 * (N_PLAYERS - 1)
+SEEDS = 2
 N_PAIRS = N_PLAYERS * (N_PLAYERS - 1) // 2
 WEIGHTS = jnp.asarray([0.7, -1.3, 0.1, 2.0, -0.4])
 PAIRS = jnp.asarray(
@@ -74,8 +75,8 @@ def pair_attributions(explanation):
 
 def test_pair_estimates_are_exact_for_quadratic_games():
     explanation = (
-        PermutationSamplingSII.create(game_from(quadratic_from_masks), key=0)
-        .sample(50 * SII_QUANTUM)
+        PermutationSamplingSII(game_from(quadratic_from_masks), random_state=0)
+        .sample(SEEDS + 50 * SII_QUANTUM)
         .explain()
     )
     for (left, right), attribution in pair_attributions(explanation).items():
@@ -84,8 +85,8 @@ def test_pair_estimates_are_exact_for_quadratic_games():
 
 def test_pair_estimates_converge_to_brute_force_sii():
     explanation = (
-        PermutationSamplingSII.create(game_from(cubic_from_masks), key=1)
-        .sample(4000 * SII_QUANTUM)
+        PermutationSamplingSII(game_from(cubic_from_masks), random_state=1)
+        .sample(SEEDS + 4000 * SII_QUANTUM)
         .explain()
     )
     for pair, attribution in pair_attributions(explanation).items():
@@ -94,28 +95,28 @@ def test_pair_estimates_converge_to_brute_force_sii():
 
 def test_order_one_estimates_match_sv_approximator_exactly():
     n_walks = 30
-    sii = PermutationSamplingSII.create(game_from(cubic_from_masks), key=4)
-    sv = PermutationSamplingSV.create(game_from(cubic_from_masks), key=4)
-    sii_explanation = sii.sample(n_walks * SII_QUANTUM).explain()
-    sv_explanation = sv.sample(n_walks * (N_PLAYERS - 1)).explain()
+    sii = PermutationSamplingSII(game_from(cubic_from_masks), random_state=4)
+    sv = PermutationSamplingSV(game_from(cubic_from_masks), random_state=4)
+    sii_explanation = sii.sample(SEEDS + n_walks * SII_QUANTUM).explain()
+    sv_explanation = sv.sample(SEEDS + n_walks * (N_PLAYERS - 1)).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(sii_explanation((player,)), sv_explanation((player,)), atol=1e-6)
 
 
 def test_order_one_sii_matches_sv_approximator_exactly():
     n_walks = 25
-    sii = PermutationSamplingSII.create(game_from(cubic_from_masks), order=1, key=9)
-    sv = PermutationSamplingSV.create(game_from(cubic_from_masks), key=9)
-    sii_explanation = sii.sample(n_walks * (N_PLAYERS - 1)).explain()
-    sv_explanation = sv.sample(n_walks * (N_PLAYERS - 1)).explain()
+    sii = PermutationSamplingSII(game_from(cubic_from_masks), order=1, random_state=9)
+    sv = PermutationSamplingSV(game_from(cubic_from_masks), random_state=9)
+    sii_explanation = sii.sample(SEEDS + n_walks * (N_PLAYERS - 1)).explain()
+    sv_explanation = sv.sample(SEEDS + n_walks * (N_PLAYERS - 1)).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(sii_explanation((player,)), sv_explanation((player,)), atol=1e-6)
 
 
 def test_order_three_triples_are_exact_for_cubic_games():
     quantum = (N_PLAYERS - 1) + (N_PLAYERS - 1) * 1 + (N_PLAYERS - 2) * 4
-    approximator = PermutationSamplingSII.create(game_from(cubic_from_masks), order=3, key=3)
-    explanation = approximator.sample(100 * quantum).explain()
+    approximator = PermutationSamplingSII(game_from(cubic_from_masks), order=3, random_state=3)
+    explanation = approximator.sample(SEEDS + 100 * quantum).explain()
     assert explanation.order == 3
     for triple in combinations(range(N_PLAYERS), 3):
         expected = 1.5 if triple == (0, 1, 2) else 0.0
@@ -124,44 +125,44 @@ def test_order_three_triples_are_exact_for_cubic_games():
 
 def test_order_three_coverage_error_after_one_walk():
     quantum = (N_PLAYERS - 1) + (N_PLAYERS - 1) * 1 + (N_PLAYERS - 2) * 4
-    approximator = PermutationSamplingSII.create(game_from(quadratic_from_masks), order=3, key=0)
+    approximator = PermutationSamplingSII(game_from(quadratic_from_masks), order=3, random_state=0)
     with pytest.raises(InsufficientSamplesError):
-        approximator.sample(quantum).explain()
+        approximator.sample(SEEDS + quantum).explain()
 
 
 def test_explaining_before_pair_coverage_raises():
-    approximator = PermutationSamplingSII.create(game_from(quadratic_from_masks), key=0)
+    approximator = PermutationSamplingSII(game_from(quadratic_from_masks), random_state=0)
     with pytest.raises(InsufficientSamplesError):
-        approximator.sample(SII_QUANTUM - 1).explain()
+        approximator.sample(SEEDS + SII_QUANTUM - 1).explain()
     with pytest.raises(InsufficientSamplesError):
-        approximator.sample(SII_QUANTUM).explain()
+        approximator.sample(SEEDS + SII_QUANTUM).explain()
 
 
 def test_pending_samples_are_masked_until_their_walk_completes():
     def make():
-        return PermutationSamplingSII.create(game_from(quadratic_from_masks), key=5)
+        return PermutationSamplingSII(game_from(quadratic_from_masks), random_state=5)
 
-    complete = make().sample(40 * SII_QUANTUM)
-    with_pending = make().sample(40 * SII_QUANTUM + 5)
-    assert with_pending.sampler.n_pending == 5
+    complete = make().sample(SEEDS + 40 * SII_QUANTUM)
+    with_pending = make().sample(SEEDS + 40 * SII_QUANTUM + 5)
+    assert with_pending.sampler.n_pending_samples == 5
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(with_pending.explain()(pair), complete.explain()(pair), atol=1e-6)
 
 
 def test_sampling_is_invariant_to_budget_splits():
     def make():
-        return PermutationSamplingSII.create(game_from(quadratic_from_masks), key=11)
+        return PermutationSamplingSII(game_from(quadratic_from_masks), random_state=11)
 
     split = make().sample(13).sample(3).sample(30 * SII_QUANTUM - 16)
     whole = make().sample(30 * SII_QUANTUM)
     assert split.state == whole.state
-    assert split.sampler.n_pending == whole.sampler.n_pending
+    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
 
 
 def test_explanation_metadata_and_normalization():
     explanation = (
-        PermutationSamplingSII.create(game_from(quadratic_from_masks), key=0)
-        .sample(50 * SII_QUANTUM)
+        PermutationSamplingSII(game_from(quadratic_from_masks), random_state=0)
+        .sample(SEEDS + 50 * SII_QUANTUM)
         .explain()
     )
     assert explanation.order == 2
@@ -179,8 +180,8 @@ def test_shared_samples_across_scaled_targets():
         return scales[:, None] * quadratic_from_masks(masks)
 
     game = CallableGame(fn=scaled_quadratic, n_players=N_PLAYERS, target_shape=(3,))
-    approximator = PermutationSamplingSII.create(game, key=2, sample_sharing=True)
-    explanation = approximator.sample(50 * SII_QUANTUM).explain()
+    approximator = PermutationSamplingSII(game, random_state=2, share_samples=True)
+    explanation = approximator.sample(SEEDS + 50 * SII_QUANTUM).explain()
     assert explanation.shape == (3,)
     for (left, right), attribution in pair_attributions(explanation).items():
         assert attribution.shape == (3,)

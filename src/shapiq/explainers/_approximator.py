@@ -63,7 +63,7 @@ class Approximator[
         next_history = self._next_sampler_history(next_sampler)
         return self._replace(state=next_state, sampler=next_sampler, sampler_history=next_history)
 
-    def approximate(self, budget: int = 0) -> ExplanationArray[ValueT]:
+    def approximate(self, budget: int) -> ExplanationArray[ValueT]:
         """Sample a budget and return explanations."""
         return self.sample(budget).explain()
 
@@ -119,7 +119,7 @@ class Approximator[
 
     def _require_sampler_history(self) -> tuple[SamplerT, ...]:
         if not self.state.track_history or self._sampler_history is None:
-            msg = "history is not enabled"
+            msg = "history is not enabled; construct the approximator with track_history=True"
             raise HistoryError(msg)
         return self._sampler_history
 

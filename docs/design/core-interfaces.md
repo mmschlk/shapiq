@@ -30,16 +30,16 @@ Interaction lookup accepts one tuple interaction or an array-api-compatible inte
 
 `Sampler.sample(state, budget)` returns `(coalitions, next_sampler)`. `budget` is a non-negative integer number of new samples and is spent exactly; `budget=0` returns an empty coalition array and the same sampler.
 
-Samplers whose evidence arrives in units larger than one sample expose `sampling_quantum` and `n_pending`. Samples in an incomplete quantum stay pending in the state, are resumed by the next sampler, and are masked by `explain()` until their quantum completes; explaining before the first completed quantum raises `InsufficientSamplesError`.
+Samplers whose evidence arrives in units larger than one sample expose `sampling_quantum`, `n_seed_samples`, and `n_pending_samples`; approximators expose `min_budget`. Deterministic seed samples are emitted as a one-time prelude unit before sampled units; approximator constructors perform no game evaluations. Samples in an incomplete unit stay pending in the state, are resumed by the next sampler, and are masked by `explain()` until their unit completes; explaining before the first completed quantum raises `InsufficientSamplesError`.
 
-Samplers own sample sharing. `sample_sharing=None` preserves `target_shape`; `True` shares across all target axes; an integer or tuple of integers shares across selected axes by replacing those target dimensions with `1`; `False` is rejected.
+Samplers own sample sharing. `share_samples=False` (the default) preserves `target_shape`; `True` shares across all target axes; an integer or tuple of integers shares across selected axes by replacing those target dimensions with `1`.
 
 `Approximator.sample(budget)` validates public budget input, asks the sampler for coalitions, evaluates the game, updates its approximation state through the concrete approximator, and returns a new approximator. It does not revalidate sampler output shape on every call.
 
-`ApproximationState.history(reverse=False, include_self=True)` and `rollback(steps=1)` are available when history is enabled. `Approximator.history()` combines state history with aligned sampler snapshots.
+`ApproximationState.history(reverse=False, include_self=True)` and `rollback(steps=1)` are available when history is enabled. `Approximator.history()` combines state history with aligned sampler snapshots. Approximators start from an `EmptyState`; history begins at the first evidence state, which is where sampler snapshots reset.
 
 ## Public Method Names
 
 Explainers expose `explain()` as the canonical materialization method and are callable as an alias. The older `compute()` name is not part of the planned base interface.
 
-Approximators additionally expose `sample(budget)` and `approximate(budget=0)`.
+Approximators additionally expose `sample(budget)` and `approximate(budget)`.

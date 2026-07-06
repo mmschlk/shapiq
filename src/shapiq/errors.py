@@ -17,3 +17,14 @@ class SamplingError(RuntimeError):
 
 class HistoryError(IndexError):
     """Raised when approximation history is unavailable or invalid."""
+
+
+class SamplingStallWarning(UserWarning):
+    """Warned when deduplicated sampling cannot spend its remaining budget.
+
+    Issued during ``Approximator.sample`` when deduplication is enabled and
+    the sampler keeps producing only previously evaluated coalitions, which
+    happens once the budget approaches the number of distinct coalitions of
+    the game. The budget spent before the stall remains valid evidence, and
+    explanations stay available.
+    """

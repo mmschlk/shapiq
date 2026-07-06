@@ -154,7 +154,10 @@ def _slice_attributions(value: object, key: tuple[object, ...]) -> object:
 def _as_interaction_array(value: object) -> Array:
     array = jnp.asarray(value)
     if array.ndim < 1:
-        msg = "interaction arrays must have a final interaction axis"
+        msg = (
+            "interactions must be tuples of player indices, e.g. explanation((0,)) "
+            "for player 0; array lookups need a final interaction-members axis"
+        )
         raise TypeError(msg)
     if array.dtype == jnp.bool_ or not jnp.issubdtype(array.dtype, jnp.integer):
         msg = "interaction arrays must have integer dtype"

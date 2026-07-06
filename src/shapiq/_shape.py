@@ -10,12 +10,12 @@ type ShapeLike = int | Iterable[int]
 def normalize_shape(shape: ShapeLike = ()) -> Shape:
     """Return a canonical shape tuple."""
     if isinstance(shape, bool):
-        msg = "shape dimensions must be integers, not bools"
+        msg = "shape dimensions must be integers, got bool"
         raise TypeError(msg)
     dims = (shape,) if isinstance(shape, int) else tuple(shape)
     for dim in dims:
         if isinstance(dim, bool) or not isinstance(dim, int):
-            msg = "shape dimensions must be integers, not bools"
+            msg = f"shape dimensions must be integers, got {type(dim).__name__}"
             raise TypeError(msg)
         if dim < 0:
             msg = "shape dimensions must be non-negative"
@@ -26,7 +26,7 @@ def normalize_shape(shape: ShapeLike = ()) -> Shape:
 def validate_n_players(n_players: int) -> int:
     """Validate and return a player count."""
     if isinstance(n_players, bool) or not isinstance(n_players, int):
-        msg = "n_players must be an integer, not a bool"
+        msg = f"n_players must be an integer, got {type(n_players).__name__}"
         raise TypeError(msg)
     if n_players < 0:
         msg = "n_players must be non-negative"
@@ -37,7 +37,7 @@ def validate_n_players(n_players: int) -> int:
 def validate_int(name: str, value: int, *, minimum: int = 0) -> int:
     """Validate an integer argument excluding bool."""
     if isinstance(value, bool) or not isinstance(value, int):
-        msg = f"{name} must be an integer, not a bool"
+        msg = f"{name} must be an integer, got {type(value).__name__}"
         raise TypeError(msg)
     if value < minimum:
         msg = f"{name} must be at least {minimum}"

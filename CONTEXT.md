@@ -33,7 +33,7 @@ A component used by an **Approximator** to propose a **CoalitionArray** from an 
 _Avoid_: generator, coalition generator
 
 **Budget**:
-The exact number of new **Game** evaluations an **Approximator** spends when asked to sample. Budgets are spent exactly rather than floored, rejected, or redistributed to align with a **Sampling Quantum**.
+The exact number of new sampled **Coalitions** an **Approximator** evaluates on its **Game** when asked to sample. Budgets are spent exactly rather than floored, rejected, or redistributed to align with a **Sampling Quantum**.
 _Avoid_: permutation count, number of iterations
 
 **Sampling Quantum**:
@@ -43,6 +43,22 @@ _Avoid_: iteration cost, batch size
 **Pending Samples**:
 Sampled **Coalitions** and evaluated **Values** that belong to an incomplete **Sampling Quantum**. Pending samples remain in the **ApproximationState** and are completed by later sampling, but are masked when an **Explanation** is materialized to preserve unbiasedness.
 _Avoid_: wasted evaluations, partial batch, leftover budget
+
+**Seed Samples**:
+Deterministic evaluations an **Approximator** needs before sampled units can be interpreted, such as the empty and grand coalition. Seed samples are emitted first by the **Sampler** as a one-time prelude unit and are paid from the sample **Budget**; constructing an **Explainer** never evaluates the **Game**.
+_Avoid_: initialization cost, setup evaluations, create step
+
+**Empty State**:
+The **ApproximationState** of an **Approximator** that has not sampled yet. The first sampled batch replaces it with an evidence-bearing state; **Approximation History** begins at that first evidence state, and an empty state with history enabled lists only itself.
+_Avoid_: uninitialized state, null state
+
+**Deduplication**:
+An **Approximator** policy that evaluates each distinct **Coalition** on the **Game** at most once, reusing stored **Values** for repeats. Only novel evaluations count toward the **Budget**, and repeated coalitions become free evidence; the estimate is unchanged relative to sampling without deduplication.
+_Avoid_: without-replacement sampling, caching flag
+
+**SamplingStallWarning**:
+A warning issued when **Deduplication** leaves **Budget** unspent because the **Sampler** cannot produce novel **Coalitions**.
+_Avoid_: exhaustion error
 
 **InsufficientSamplesError**:
 An error raised when an **Approximator** cannot produce an **ExplanationArray** from its current **ApproximationState**.

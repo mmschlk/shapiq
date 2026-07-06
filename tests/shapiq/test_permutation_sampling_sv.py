@@ -8,6 +8,7 @@ import pytest
 from shapiq import (
     CallableGame,
     DenseCoalitionArray,
+    HistoryError,
     InsufficientSamplesError,
     PermutationSamplingSV,
     UnsupportedGameError,
@@ -15,6 +16,7 @@ from shapiq import (
 
 N_PLAYERS = 5
 QUANTUM = N_PLAYERS - 1
+SEEDS = 2
 WEIGHTS = jnp.asarray([0.7, -1.3, 0.1, 2.0, -0.4])
 PAIRS = jnp.asarray(
     [
@@ -47,33 +49,33 @@ def test_additive_game_is_exact_after_one_walk():
         fn=lambda c: jnp.asarray(c.to_dense(), dtype=jnp.float32) @ WEIGHTS,
         n_players=N_PLAYERS,
     )
-    explanation = PermutationSamplingSV.create(game, key=0).sample(QUANTUM).explain()
+    explanation = PermutationSamplingSV(game, random_state=0).sample(SEEDS + QUANTUM).explain()
     assert jnp.allclose(order_one_attributions(explanation), WEIGHTS, atol=1e-6)
 
 
-@pytest.mark.parametrize("budget", [QUANTUM, QUANTUM + 3, 7 * QUANTUM + 1, 100])
+@pytest.mark.parametrize("budget", [SEEDS + QUANTUM, SEEDS + QUANTUM + 3, SEEDS + 7 * QUANTUM + 1, 100])
 def test_efficiency_holds_for_any_budget(budget):
     game = quadratic_game()
     grand = game(DenseCoalitionArray(jnp.ones((N_PLAYERS,), dtype=bool)))
     empty = game(DenseCoalitionArray(jnp.zeros((N_PLAYERS,), dtype=bool)))
-    explanation = PermutationSamplingSV.create(game, key=3).sample(budget).explain()
+    explanation = PermutationSamplingSV(game, random_state=3).sample(budget).explain()
     assert jnp.allclose(jnp.sum(order_one_attributions(explanation)), grand - empty, atol=1e-4)
 
 
 def test_estimate_converges_to_exact_shapley_values():
-    approximator = PermutationSamplingSV.create(quadratic_game(), key=7)
-    explanation = approximator.sample(3000 * QUANTUM).explain()
+    approximator = PermutationSamplingSV(quadratic_game(), random_state=7)
+    explanation = approximator.sample(SEEDS + 3000 * QUANTUM).explain()
     assert jnp.allclose(order_one_attributions(explanation), EXACT_SV, atol=0.05)
 
 
 def test_sampling_is_invariant_to_budget_splits():
     def make():
-        return PermutationSamplingSV.create(quadratic_game(), key=11)
+        return PermutationSamplingSV(quadratic_game(), random_state=11)
 
     split = make().sample(7).sample(2).sample(3 * QUANTUM)
     whole = make().sample(7 + 2 + 3 * QUANTUM)
     assert split.state == whole.state
-    assert split.sampler.n_pending == whole.sampler.n_pending
+    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
     assert jnp.allclose(
         order_one_attributions(split.explain()),
         order_one_attributions(whole.explain()),
@@ -83,11 +85,11 @@ def test_sampling_is_invariant_to_budget_splits():
 
 def test_pending_samples_are_masked_until_their_walk_completes():
     def make():
-        return PermutationSamplingSV.create(quadratic_game(), key=5)
+        return PermutationSamplingSV(quadratic_game(), random_state=5)
 
-    complete = make().sample(2 * QUANTUM)
-    with_pending = make().sample(2 * QUANTUM + 3)
-    assert with_pending.sampler.n_pending == 3
+    complete = make().sample(SEEDS + 2 * QUANTUM)
+    with_pending = make().sample(SEEDS + 2 * QUANTUM + 3)
+    assert with_pending.sampler.n_pending_samples == 3
     assert with_pending.state.n_samples == complete.state.n_samples + 3
     assert jnp.allclose(
         order_one_attributions(with_pending.explain()),
@@ -97,7 +99,7 @@ def test_pending_samples_are_masked_until_their_walk_completes():
 
 
 def test_explaining_before_first_completed_walk_raises():
-    approximator = PermutationSamplingSV.create(quadratic_game(), key=0)
+    approximator = PermutationSamplingSV(quadratic_game(), random_state=0)
     with pytest.raises(InsufficientSamplesError):
         approximator.explain()
     with pytest.raises(InsufficientSamplesError):
@@ -105,29 +107,46 @@ def test_explaining_before_first_completed_walk_raises():
 
 
 def test_sampling_quantum_and_pending_are_observable():
-    approximator = PermutationSamplingSV.create(quadratic_game(), key=0)
+    approximator = PermutationSamplingSV(quadratic_game(), random_state=0)
     assert approximator.sampler.sampling_quantum == QUANTUM
-    assert approximator.sampler.n_pending == 0
-    assert approximator.sample(QUANTUM + 1).sampler.n_pending == 1
-    assert approximator.sample(QUANTUM + 1).sample(QUANTUM - 1).sampler.n_pending == 0
+    assert approximator.sampler.n_seed_samples == SEEDS
+    assert approximator.sampler.n_pending_samples == 0
+    assert approximator.sample(SEEDS + QUANTUM + 1).sampler.n_pending_samples == 1
+    assert approximator.sample(SEEDS + QUANTUM + 1).sample(QUANTUM - 1).sampler.n_pending_samples == 0
 
 
 def test_empty_interaction_returns_empty_coalition_value():
     game = quadratic_game()
     empty = game(DenseCoalitionArray(jnp.zeros((N_PLAYERS,), dtype=bool)))
-    explanation = PermutationSamplingSV.create(game, key=0).sample(QUANTUM).explain()
+    explanation = PermutationSamplingSV(game, random_state=0).sample(SEEDS + QUANTUM).explain()
     assert jnp.allclose(explanation(()), empty, atol=1e-6)
 
 
 def test_history_rollback_restores_earlier_estimates():
-    approximator = PermutationSamplingSV.create(quadratic_game(), key=13, track_history=True)
-    early = approximator.sample(2 * QUANTUM)
+    approximator = PermutationSamplingSV(quadratic_game(), random_state=13, track_history=True)
+    early = approximator.sample(SEEDS + 2 * QUANTUM)
     late = early.sample(3 * QUANTUM)
     assert jnp.allclose(
         order_one_attributions(late.rollback(1).explain()),
         order_one_attributions(early.explain()),
         atol=1e-6,
     )
+
+
+def test_history_begins_at_first_evidence_state():
+    approximator = PermutationSamplingSV(quadratic_game(), random_state=13, track_history=True)
+    unseeded_history = approximator.history()
+    assert len(unseeded_history) == 1
+    with pytest.raises(InsufficientSamplesError):
+        unseeded_history[0].explain()
+    sampled = approximator.sample(SEEDS + 2 * QUANTUM).sample(QUANTUM)
+    states = sampled.history()
+    assert [past.state.n_samples for past in states] == [
+        SEEDS + 2 * QUANTUM,
+        SEEDS + 3 * QUANTUM,
+    ]
+    with pytest.raises(HistoryError):
+        sampled.rollback(2)
 
 
 def test_batched_targets_with_independent_walks():
@@ -138,7 +157,7 @@ def test_batched_targets_with_independent_walks():
         return jnp.sum(per_target_weights[:, None, :] * masks, axis=-1)
 
     game = CallableGame(fn=additive_batched, n_players=N_PLAYERS, target_shape=(3,))
-    explanation = PermutationSamplingSV.create(game, key=2).sample(QUANTUM).explain()
+    explanation = PermutationSamplingSV(game, random_state=2).sample(SEEDS + QUANTUM).explain()
     assert explanation.shape == (3,)
     attributions = jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
     assert jnp.allclose(attributions, per_target_weights, atol=1e-6)
@@ -152,9 +171,9 @@ def test_shared_samples_across_targets():
         return jnp.sum(per_target_weights[:, None, :] * masks, axis=-1)
 
     game = CallableGame(fn=additive_batched, n_players=N_PLAYERS, target_shape=(3,))
-    approximator = PermutationSamplingSV.create(game, key=2, sample_sharing=True)
+    approximator = PermutationSamplingSV(game, random_state=2, share_samples=True)
     assert approximator.sampler.shared_target_shape == (1,)
-    explanation = approximator.sample(QUANTUM).explain()
+    explanation = approximator.sample(SEEDS + QUANTUM).explain()
     assert explanation.shape == (3,)
     attributions = jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
     assert jnp.allclose(attributions, per_target_weights, atol=1e-6)
@@ -167,4 +186,4 @@ def test_vector_valued_games_are_rejected():
 
     game = CallableGame(fn=vector_values, n_players=N_PLAYERS)
     with pytest.raises(UnsupportedGameError):
-        PermutationSamplingSV.create(game, key=0)
+        PermutationSamplingSV(game, random_state=0).sample(1)
