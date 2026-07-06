@@ -28,7 +28,9 @@ Interaction lookup accepts one tuple interaction or an array-api-compatible inte
 
 ## Sampling And Approximation
 
-`Sampler.sample(state, budget)` returns `(coalitions, next_sampler)`. `budget` is a non-negative integer number of new samples; `budget=0` returns an empty coalition array and the same sampler.
+`Sampler.sample(state, budget)` returns `(coalitions, next_sampler)`. `budget` is a non-negative integer number of new samples and is spent exactly; `budget=0` returns an empty coalition array and the same sampler.
+
+Samplers whose evidence arrives in units larger than one sample expose `sampling_quantum` and `n_pending`. Samples in an incomplete quantum stay pending in the state, are resumed by the next sampler, and are masked by `explain()` until their quantum completes; explaining before the first completed quantum raises `InsufficientSamplesError`.
 
 Samplers own sample sharing. `sample_sharing=None` preserves `target_shape`; `True` shares across all target axes; an integer or tuple of integers shares across selected axes by replacing those target dimensions with `1`; `False` is rejected.
 

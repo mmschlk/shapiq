@@ -32,6 +32,18 @@ _Avoid_: default state, raw sample cache
 A component used by an **Approximator** to propose a **CoalitionArray** from an **ApproximationState** and sample budget. Samplers may evolve during sampling by returning a next sampler together with sampled coalitions; mutable samplers must not be used with **Approximation History**. Shape policy is sampler-owned and normally trusted by approximators rather than revalidated on every sample.
 _Avoid_: generator, coalition generator
 
+**Budget**:
+The exact number of new **Game** evaluations an **Approximator** spends when asked to sample. Budgets are spent exactly rather than floored, rejected, or redistributed to align with a **Sampling Quantum**.
+_Avoid_: permutation count, number of iterations
+
+**Sampling Quantum**:
+The smallest number of additional samples after which an **Approximator** can incorporate new evidence into its estimate, such as one full permutation walk. Samplers own and expose their quantum; budgets do not need to align with it.
+_Avoid_: iteration cost, batch size
+
+**Pending Samples**:
+Sampled **Coalitions** and evaluated **Values** that belong to an incomplete **Sampling Quantum**. Pending samples remain in the **ApproximationState** and are completed by later sampling, but are masked when an **Explanation** is materialized to preserve unbiasedness.
+_Avoid_: wasted evaluations, partial batch, leftover budget
+
 **InsufficientSamplesError**:
 An error raised when an **Approximator** cannot produce an **ExplanationArray** from its current **ApproximationState**.
 _Avoid_: empty state error
