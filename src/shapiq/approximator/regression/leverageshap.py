@@ -47,6 +47,15 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         implementation uses the random Binomial form to match the paper's main
         figures.
 
+    Example:
+        >>> from shapiq.approximator.regression import LeverageSHAP
+        >>> from shapiq_games.synthetic import DummyGame
+        >>> n = 5
+        >>> game = DummyGame(n=n, interaction=(1, 2))
+        >>> approximator = LeverageSHAP(n=n, random_state=42)
+        >>> sv_estimates = approximator.approximate(budget=100, game=game)
+        >>> print(sv_estimates.values)
+        [0.  0.2 0.7 0.7 0.2 0.2]
     """
 
     valid_indices: tuple[ValidRegressionLeverageSHAPIndices, ...] = ("SV",)
