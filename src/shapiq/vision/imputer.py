@@ -35,6 +35,7 @@ class ImageImputer(Imputer):
         *,
         normalize: bool = True,
         batch_size: int = 32,
+        class_index: int | None = None,
     ) -> None:
         """Initialise the imputer for a specific image and model architecture.
 
@@ -47,13 +48,15 @@ class ImageImputer(Imputer):
                 the normalization baseline for interaction values.
             batch_size: Maximum number of coalitions to evaluate in a single
                 model forward pass.
+            class_index: Optional index of the class to explain. If not provided,
+            the class with the highest logit is used.
         """
         self.architecture = model_architecture
         self._batch_size = batch_size
         self._normalize = normalize
 
         self._image: np.ndarray = as_hwc_array(image)
-        self.architecture.prepare(self._image)
+        self.architecture.prepare(self._image, class_index)
         self.n_features = self.architecture.n_players
 
         dummy_data = np.zeros((1, self.n_features))
@@ -79,6 +82,12 @@ class ImageImputer(Imputer):
         self._image = as_hwc_array(x)
         self.architecture.prepare(self._image)
         self.n_features = self.architecture.n_players
+
+        self.n_players = self.n_features
+        self.empty_coalition = np.zeros(self.n_players, dtype=bool)
+        self.grand_coalition = np.ones(self.n_players, dtype=bool)
+        self._empty_coalition_value_property = None
+        self._grand_coalition_value_property = None
 
         self._x = np.zeros((1, self.n_features), dtype=bool)  # dummy data to satisfy base class
 

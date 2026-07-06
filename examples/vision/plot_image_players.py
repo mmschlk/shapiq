@@ -115,7 +115,7 @@ cnn_arch_grid = CNNArchitecture(
     player_strategy=grid_strategy,
 )
 explainer_grid = ImageExplainer(
-    model_architecture=cnn_arch_grid,
+    model=cnn_arch_grid,
     data=tensor_image,
     index="k-SII",
     max_order=2,
@@ -124,7 +124,9 @@ explainer_grid = ImageExplainer(
 
 iv_grid = explainer_grid.explain(budget=512)
 
-iv_grid.plot_image_attributions(image=image_np, explainer=explainer_grid, heatmap_only=False)
+iv_grid.plot_image_attributions(
+    image=image_np, player_masks=explainer_grid.imputer.player_masks, heatmap_only=False
+)
 
 
 # %%
@@ -191,7 +193,7 @@ cnn_arch_custom = CNNArchitecture(
     masking_strategy=MeanColorMasking(),
 )
 explainer_custom = ImageExplainer(
-    model_architecture=cnn_arch_custom,
+    model=cnn_arch_custom,
     data=tensor_image,
     index="k-SII",
     max_order=2,
@@ -200,4 +202,6 @@ explainer_custom = ImageExplainer(
 
 iv_custom = explainer_custom.explain(budget=512)
 
-iv_custom.plot_image_attributions(image=image_np, explainer=explainer_custom, heatmap_only=False)
+iv_custom.plot_image_attributions(
+    image=image_np, player_masks=explainer_custom.imputer.player_masks, heatmap_only=False
+)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib
 import re
+import subprocess
 import sys
 from unittest.mock import patch
 
@@ -51,3 +52,69 @@ class TestImportError:
             strategy = players_mod.SuperpixelStrategy(n_segments=4)
             with pytest.raises(ImportError, match=_INSTALL_HINT):
                 strategy.get_masks(dummy)
+
+
+class TestLazyImport:
+    """The vision subpackage is imported lazily (PEP 562) so torch loads only on use."""
+
+    def test_import_shapiq_does_not_load_vision_submodules(self):
+        """``import shapiq`` must not pull the torch-heavy vision submodules."""
+        code = (
+            "import sys, shapiq;"
+            "eager = sorted(m for m in sys.modules if m.startswith('shapiq.vision.'));"
+            "assert not eager, eager"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_attribute_access_resolves_real_classes(self):
+        import shapiq
+        from shapiq import vision
+        from shapiq.vision.players import PatchStrategy
+
+        assert vision.PatchStrategy is PatchStrategy
+        assert shapiq.ImageExplainer.__name__ == "ImageExplainer"
+
+    def test_dir_lists_public_names(self):
+        from shapiq import vision
+
+        listed = dir(vision)
+        assert "ImageExplainer" in listed
+        assert "PatchStrategy" in listed
+
+    def test_unknown_attribute_raises(self):
+        import shapiq
+        from shapiq import vision
+
+        with pytest.raises(AttributeError):
+            _ = vision.DefinitelyNotAThing
+        with pytest.raises(AttributeError):
+            _ = shapiq.DefinitelyNotAThing
+
+    def test_image_explainer_placeholder_when_torch_missing(self):
+        """With torch absent, ``ImageExplainer`` resolves to a placeholder that raises."""
+        from shapiq import vision
+
+        submodules = [
+            "shapiq.vision.explainer",
+            "shapiq.vision.imputer",
+            "shapiq.vision.architecture",
+            "shapiq.vision.masking",
+            "shapiq.vision.utils",
+        ]
+        saved = {name: sys.modules.pop(name, None) for name in submodules}
+        try:
+            with patch.dict(sys.modules, {"torch": None}):
+                placeholder = vision.__getattr__("ImageExplainer")
+                with pytest.raises(ImportError, match=_INSTALL_HINT):
+                    placeholder()
+                with pytest.raises(ImportError, match=_INSTALL_HINT):
+                    vision.__getattr__("CNNArchitecture")
+        finally:
+            for name, module in saved.items():
+                if module is not None:
+                    sys.modules[name] = module
+            for name in submodules:
+                importlib.import_module(name)

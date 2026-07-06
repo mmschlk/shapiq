@@ -24,7 +24,7 @@ WARNING_NO_CLASS_INDEX = (
 )
 
 ExplainerTypes = Literal[
-    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn"
+    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn", "image"
 ]
 
 KNN_WEIGHTS_TO_EXPLAINER = {
@@ -46,6 +46,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.tabular as tb
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
+    from shapiq.vision.explainer import ImageExplainer
 
     return {
         "tabular": tb.TabularExplainer,
@@ -56,6 +57,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "knn": nn.KNNExplainer,
         "wknn": nn.WeightedKNNExplainer,
         "tnn": nn.ThresholdNNExplainer,
+        "image": ImageExplainer,
     }
 
 
@@ -89,6 +91,7 @@ def get_predict_function_and_model_type(
     """
     from shapiq.game import Game
     from shapiq.tree import TreeModel
+    from shapiq.vision.architecture import ModelArchitectureStrategy
 
     if model_class is None:
         model_class = print_class(model)
@@ -99,6 +102,12 @@ def get_predict_function_and_model_type(
     if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
         _predict_function = RuntimeError("Games cannot be used for prediction.")
         return _predict_function, "game"
+
+    if isinstance(model, ModelArchitectureStrategy):
+        _predict_function = RuntimeError(
+            "Image models use ImageImputer directly, not a predict function."
+        )
+        return _predict_function, "image"
 
     if callable(model):
         _predict_function = predict_callable

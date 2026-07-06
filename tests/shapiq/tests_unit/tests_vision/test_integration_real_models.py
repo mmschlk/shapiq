@@ -77,7 +77,7 @@ class TestResNetIntegration:
             player_strategy=FixedMasksStrategy(masks),
         )
         explainer = ImageExplainer(
-            model_architecture=arch,
+            model=arch,
             data=image,
             index="k-SII",
             max_order=2,
@@ -167,7 +167,7 @@ class TestViTIntegration:
 
         arch = TransformerArchitecture(model=model, vit_processor=processor)
         explainer = ImageExplainer(
-            model_architecture=arch,
+            model=arch,
             data=image,
             index="k-SII",
             max_order=2,

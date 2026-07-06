@@ -55,11 +55,12 @@ class ModelArchitectureStrategy(ABC):
         ...
 
     @abstractmethod
-    def prepare(self, image: np.ndarray) -> None:
+    def prepare(self, image: np.ndarray, class_index: int | None = None) -> None:
         """Cache image-dependent state. Called before value_function.
 
         Args:
             image: Input image as a ``(H, W, C)`` numpy array.
+            class_index: Index of the class to explain.
         """
         ...
 
@@ -122,7 +123,7 @@ class CNNArchitecture(ModelArchitectureStrategy):
         self._player_strategy = player_strategy or self.default_player_strategy()
         self._player_masks: torch.Tensor
         self._image_tensor: torch.Tensor
-        self._class_id: int
+        self._class_id: int | None = None
 
     def default_player_strategy(self) -> SuperpixelStrategy:
         """Return a superpixel player strategy."""
@@ -132,7 +133,7 @@ class CNNArchitecture(ModelArchitectureStrategy):
         """Return a mean-color masking strategy."""
         return MeanColorMasking()
 
-    def prepare(self, image: np.ndarray) -> None:
+    def prepare(self, image: np.ndarray, class_index: int | None = None) -> None:
         """Cache the image tensor, player masks, and predicted class index.
 
         Runs one forward pass on the unmasked image to determine the class
@@ -140,14 +141,18 @@ class CNNArchitecture(ModelArchitectureStrategy):
 
         Args:
             image: Input image as a ``(H, W, C)`` numpy array.
+            class_index: Index of the class to explain.
         """
         device = get_torch_device(self._model)
         self._image_tensor = to_tensor_chw(image, device=device)
         self._player_masks = torch.from_numpy(self._player_strategy.get_masks(image)).to(device)
 
-        with torch.no_grad():
-            logits = self._model(self._image_tensor.unsqueeze(0))
+        if not self._class_id and not class_index:
+            with torch.no_grad():
+                logits = self._model(self._image_tensor.unsqueeze(0))
             self._class_id = int(logits.argmax(dim=1).item())
+        elif class_index is not None:
+            self._class_id = class_index
 
     def value_function(self, coalitions: torch.Tensor) -> torch.Tensor:
         """Evaluate the CNN for a batch of coalitions.
@@ -198,8 +203,8 @@ class TransformerArchitecture(ModelArchitectureStrategy):
         masking_strategy: Token-space masking strategy. Defaults to
             :class:`~shapiq.vision.masking.MaskTokenStrategy`.
         player_strategy: Player definition strategy. Defaults to
-            :class:`~shapiq.vision.players.PatchStrategy` with 9 players
-            derived from the model's patch grid.
+            :class:`~shapiq.vision.players.PatchStrategy` sized to the model's
+            patch grid.
     """
 
     def __init__(
@@ -217,12 +222,14 @@ class TransformerArchitecture(ModelArchitectureStrategy):
         self._pixel_values: torch.Tensor
         self._player_masks: torch.Tensor
         self._token_masks: torch.Tensor
-        self._class_id: int
+        self._class_id: int | None = None
 
     def default_player_strategy(self) -> PatchStrategy:
-        """Return a patch player strategy with a 3x3 grid."""
+        """Return a patch player strategy sized to the model's patch grid."""
         grid_size = self._model.config.image_size // self._model.config.patch_size
-        return PatchStrategy(grid_size=grid_size, n_players=9)
+        return PatchStrategy(
+            grid_size=grid_size, n_players=PatchStrategy.default_n_players(grid_size)
+        )
 
     def default_masking_strategy(self) -> MaskTokenStrategy:
         """Return a token-masking strategy.
@@ -233,7 +240,7 @@ class TransformerArchitecture(ModelArchitectureStrategy):
         """
         return MaskTokenStrategy(self._model)
 
-    def prepare(self, image: np.ndarray) -> None:
+    def prepare(self, image: np.ndarray, class_index: int | None = None) -> None:
         """Cache pixel values, token masks, pixel masks, and predicted class index.
 
         Passes ``image`` directly to the ViT processor (which expects
@@ -243,14 +250,18 @@ class TransformerArchitecture(ModelArchitectureStrategy):
 
         Args:
             image: Input image as a ``(H, W, C)`` numpy array.
+            class_index: Index of the class to explain.
         """
         device = get_torch_device(self._model)
         inputs = self.processor(images=image, return_tensors="pt")
         self._pixel_values = inputs["pixel_values"].to(device)
 
-        with torch.no_grad():
-            logits = self._model(pixel_values=self._pixel_values).logits
-        self._class_id = int(logits.argmax(-1).item())
+        if not self._class_id and not class_index:
+            with torch.no_grad():
+                logits = self._model(pixel_values=self._pixel_values).logits
+            self._class_id = int(logits.argmax(-1).item())
+        elif class_index is not None:
+            self._class_id = class_index
 
         self._player_masks = torch.from_numpy(self._player_strategy.get_pixel_masks(image)).to(
             device

@@ -360,7 +360,7 @@ class SuperpixelStrategy(CNNPlayerStrategy):
         16
     """
 
-    def __init__(self, n_segments: int, algorithm: Literal["slic", "slico"] = "slico") -> None:
+    def __init__(self, n_segments: int, algorithm: Literal["slic", "slico"] = "slic") -> None:
         """Initialize the strategy with the desired number of superpixels and algorithm."""
         if n_segments < 1:
             msg = "n_segments must be a positive integer."
@@ -462,6 +462,19 @@ class PatchStrategy(TransformerPlayerStrategy):
         self.side = side
         self._n_players = n_players
         self._token_masks = self._compute_token_masks()
+
+    @staticmethod
+    def default_n_players(grid_size: int) -> int:
+        """Return a default player count whose square root divides ``grid_size``.
+
+        Picks the divisor ``d`` of ``grid_size`` (preferring ``d >= 2``) whose square
+        is closest to nine, keeping the 3x3 default where the grid allows it and
+        adapting otherwise so :class:`PatchStrategy` never rejects the default.
+        """
+        divisors = [d for d in range(1, grid_size + 1) if grid_size % d == 0]
+        candidates = [d for d in divisors if d >= 2] or divisors
+        side = min(candidates, key=lambda d: (abs(d * d - 9), d))
+        return side * side
 
     def _compute_token_masks(self) -> np.ndarray:
         """Precompute token masks for each player consisting of the token indices corresponding to that player's patch.

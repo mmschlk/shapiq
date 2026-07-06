@@ -123,7 +123,7 @@ class TestBatchingPropagation:
             player_strategy=FixedMasksStrategy(masks),
         )
         explainer = ImageExplainer(
-            model_architecture=arch,
+            model=arch,
             data=image,
             batch_size=4,
             random_state=0,
@@ -144,7 +144,7 @@ class TestBatchingPropagation:
             player_strategy=FixedMasksStrategy(masks),
         )
         explainer = ImageExplainer(
-            model_architecture=arch,
+            model=arch,
             data=image,
             batch_size=3,
             max_order=2,

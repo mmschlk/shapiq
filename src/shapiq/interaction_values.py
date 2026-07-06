@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from shapiq.typing import InteractionScores, JSONType
-    from shapiq.vision.explainer import ImageExplainer
 
 
 class InteractionValues:
@@ -1067,7 +1066,7 @@ class InteractionValues:
     def plot_image_attributions(
         self,
         image: np.ndarray,
-        explainer: ImageExplainer,
+        player_masks: np.ndarray,
         *,
         region_label: str = "Region",
         alpha: float = 0.5,
@@ -1079,8 +1078,8 @@ class InteractionValues:
 
         Args:
             image: Original image as a ``(H, W, C)`` numpy array.
-            explainer: The ``ImageExplainer`` used to produce this object. Its imputer
-                provides the pixel-space player masks.
+            player_masks: Boolean ``(n_players, H, W)`` array mapping each player to its
+                pixel region, e.g. ``explainer.imputer.player_masks``.
             region_label: x-axis label for the bar chart, e.g. ``"Patch"`` or
                 ``"Superpixel"``. Defaults to ``"Region"``.
             alpha: Transparency of the heatmap overlay. Defaults to ``0.5``.
@@ -1099,7 +1098,7 @@ class InteractionValues:
         return image_attribution_plot(
             self,
             image,
-            explainer.imputer.player_masks,
+            player_masks,
             region_label=region_label,
             alpha=alpha,
             cmap=cmap,

@@ -72,6 +72,13 @@ class TestCNNArchitecture:
         # ChannelSumModel class-0 logit (positive sum) wins.
         assert arch._class_id == 0
 
+    def test_prepare_class_index_overrides_argmax(self, tiny_image, two_player_masks) -> None:
+        arch = CNNArchitecture(
+            model=ChannelSumModel(), player_strategy=FixedMasksStrategy(two_player_masks)
+        )
+        arch.prepare(tiny_image, class_index=1)
+        assert arch._class_id == 1
+
     def test_value_function_returns_value_per_coalition(self, tiny_image, two_player_masks) -> None:
         arch = CNNArchitecture(
             model=ChannelSumModel(),
@@ -141,26 +148,24 @@ class TestTransformerArchitecture:
         arch = TransformerArchitecture(model=MockViT(), vit_processor=MockViTProcessor())
         assert isinstance(arch.default_masking_strategy(), MaskTokenStrategy)
 
-    def test_init_fails_for_standard_vit_without_custom_players(self) -> None:
-        """ViT-B/16 uses a 14x14 token grid; default 9 macro-patches do not divide 14."""
+    def test_init_succeeds_for_standard_vit(self) -> None:
+        """ViT-B/16 uses a 14x14 token grid; construction must not raise on the default."""
         model = SimpleNamespace(
             config=SimpleNamespace(image_size=224, patch_size=16, hidden_size=768)
         )
-        with pytest.raises(ValueError, match="divisible"):
-            TransformerArchitecture(model=model, vit_processor=object())
+        arch = TransformerArchitecture(model=model, vit_processor=object())
+        assert isinstance(arch.default_player_strategy(), PatchStrategy)
 
-    def test_default_player_strategy_fails_for_standard_vit_grid(self) -> None:
-        """``default_player_strategy()`` is invalid for ViT-B/16's 14x14 token grid."""
+    def test_default_player_strategy_adapts_to_standard_vit_grid(self) -> None:
+        """``default_player_strategy()`` yields a valid grid for ViT-B/16's 14x14 tokens."""
         model = SimpleNamespace(
             config=SimpleNamespace(image_size=224, patch_size=16, hidden_size=768)
         )
-        arch = TransformerArchitecture(
-            model=model,
-            vit_processor=object(),
-            player_strategy=PatchStrategy(grid_size=6, n_players=4),
-        )
-        with pytest.raises(ValueError, match="divisible"):
-            arch.default_player_strategy()
+        arch = TransformerArchitecture(model=model, vit_processor=object())
+        strategy = arch.default_player_strategy()
+        assert strategy.grid_size == 14
+        assert strategy.n_players == 4
+        assert strategy.grid_size % strategy.side == 0
 
     def test_prepare_sets_class_id_and_caches_state(self, image_24x24) -> None:
         arch = TransformerArchitecture(
@@ -173,6 +178,15 @@ class TestTransformerArchitecture:
         assert arch._pixel_values is not None
         assert arch._pixel_values.shape == (1, 3, 24, 24)
         assert arch._token_masks is not None
+
+    def test_prepare_class_index_overrides_argmax(self, image_24x24) -> None:
+        arch = TransformerArchitecture(
+            model=MockViT(),
+            vit_processor=MockViTProcessor(),
+            masking_strategy=BoolMaskedPosStrategy(),
+        )
+        arch.prepare(image_24x24, class_index=1)
+        assert arch._class_id == 1
 
     def test_value_function_shape_and_monotonicity(self, image_24x24) -> None:
         arch = TransformerArchitecture(
