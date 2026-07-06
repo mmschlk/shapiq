@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
+from shapiq.approximator.regression.base import solve_regression
 from shapiq.interaction_values import InteractionValues
 
 from .base import Regression
@@ -126,7 +127,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             # the weighted least-squares step.
             A = Z_int - (s_int / n)[:, np.newaxis]
             b = (v_int - v0) - efficiency_shift * s_int
-            phi_perp = super().solve_regression(
+            phi_perp = solve_regression(
                 X=A,
                 y=b,
                 kernel_weights=w_is,

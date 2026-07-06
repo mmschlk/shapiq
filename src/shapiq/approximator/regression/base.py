@@ -228,27 +228,6 @@ class Regression(Approximator[TIndices]):
             target_index=self.index,
         )
 
-    def solve_regression(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-        kernel_weights: FloatVector,
-        *,
-        use_svd: bool = False,
-    ) -> np.ndarray:
-        """Solve the weighted regression system used by regression approximators.
-
-        Args:
-            X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-            y: The response vector for each coalition of shape ``[n_coalitions]``.
-            kernel_weights: The weights for the regression problem for each coalition.
-            use_svd: If ``True``, solve via the SVD-backed least-squares path directly.
-
-        Returns:
-            The solution to the regression problem.
-        """
-        return solve_regression(X=X, y=y, kernel_weights=kernel_weights, use_svd=use_svd)
-
     def kernel_shap_iq_routine(
         self,
         kernel_weights_dict: dict[int, FloatVector],
@@ -306,7 +285,7 @@ class Regression(Approximator[TIndices]):
 
             if interaction_size <= 2:
                 # get \phi_i via solving the regression problem
-                sii_values_current_size = self.solve_regression(
+                sii_values_current_size = solve_regression(
                     X=regression_matrix,
                     y=residual_game_values[interaction_size],
                     kernel_weights=regression_weights,
@@ -332,7 +311,7 @@ class Regression(Approximator[TIndices]):
                 game_values_plus[ground_truth_weights_indicator] = 0
 
                 # get \phi_i via solving the regression problem
-                sii_values_current_size_plus = self.solve_regression(
+                sii_values_current_size_plus = solve_regression(
                     X=regression_matrix,
                     y=game_values_plus,
                     kernel_weights=regression_weights,
@@ -391,7 +370,7 @@ class Regression(Approximator[TIndices]):
             n=self.n,
         )
 
-        shapley_interactions_values = self.solve_regression(
+        shapley_interactions_values = solve_regression(
             X=regression_matrix,
             y=regression_response,
             kernel_weights=regression_weights,
