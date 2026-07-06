@@ -20,6 +20,7 @@ from .approximator import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
+    OddSHAP,
     OwenSamplingSV,
     PermutationSamplingSII,
     PermutationSamplingSTII,
@@ -116,6 +117,7 @@ __all__ = [
     "ShaplEIG",
     "ProxySPEX",
     "RegressionMSR",
+    "OddSHAP",
     # explainers
     "Explainer",
     "TabularExplainer",
