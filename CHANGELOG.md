@@ -1,13 +1,37 @@
 # Changelog
 
-## Unreleased
+## v1.6.0 (2026-07-06)
 
-### Added
+### Highlights of new Features
 
-- Adds the `OddSHAP` approximator for first-order Shapley values (Fumagalli et al., 2026, arXiv:2602.01399): paired sampling, sparse odd-interaction screening via the ProxySPEX tree-to-Fourier extraction, and a constrained odd Fourier regression that enforces the efficiency axiom exactly. [#522](https://github.com/mmschlk/shapiq/pull/522)
-### New Features
+- adds the `OddSHAP` approximator in `shapiq.approximator.regression` for fast first-order Shapley value estimation via odd-only Fourier regression (Fumagalli et al., 2026) [#522](https://github.com/mmschlk/shapiq/pull/522)
+- adds the `ShaplEIG` approximator in `shapiq.approximator.shapleig` for Shapley value estimation via Bayesian experimental design (Rundel et al., 2026) [#548](https://github.com/mmschlk/shapiq/pull/548)
 
-- adds the `ShaplEIG` approximator in `shapiq.approximator.shapleig` for Shapley value estimation via Bayesian experimental design: a Gaussian process surrogate with a weighted Hamming kernel is fit on the queried coalition values, and the next coalition is selected by maximizing the closed-form expected information gain about the Shapley values. Requires the new optional `shapleig` dependency group (`pip install shapiq[shapleig]` — torch, gpytorch, botorch, linear-operator); the optional dependencies are imported lazily in the constructor.
+### Introducing OddSHAP [#522](https://github.com/mmschlk/shapiq/pull/522), [Preprint](https://arxiv.org/abs/2602.01399)
+
+Adds [`OddSHAP`](src/shapiq/approximator/regression/oddshap.py), a first-order Shapley value estimator that exploits the *odd* structure of the Shapley value (Fumagalli et al., 2026, "An Odd Estimator for Shapley Values"). It combines **paired sampling**, **sparse odd-interaction screening** via a surrogate tree model whose exact Fourier (Walsh) coefficients are extracted, and a **constrained odd Fourier regression** that enforces the efficiency axiom exactly. The surrogate defaults to LightGBM (the paper's configuration) and transparently falls back to a scikit-learn `DecisionTreeRegressor` when LightGBM is unavailable. It is exported as `shapiq.OddSHAP` and restricted to `index="SV"`, `max_order=1`.
+
+> Note: unlike Algorithm 1 of the paper, which falls back to TreeSHAP at low budgets, this implementation never silently downgrades to another estimator — below the minimum budget of `min(interaction_factor, 2**n)` it raises `ValueError` instead.
+
+### Introducing ShaplEIG [#548](https://github.com/mmschlk/shapiq/pull/548), [Preprint](https://arxiv.org/abs/2606.02247)
+
+Adds [`ShaplEIG`](src/shapiq/approximator/shapleig/shapleig.py), a **Bayesian experimental design** approximator for Shapley values (Rundel et al., 2026, "ShaplEIG: Bayesian Experimental Design for Shapley Value Estimation"). A Gaussian process surrogate with a weighted Hamming product kernel is fit on the queried coalition values, and the next coalition to evaluate is selected by maximizing the closed-form **expected information gain (EIG)** about the Shapley values. The Shapley structure is handled through elementary-symmetric-polynomial identities, so the full `2^n` coalition space is never enumerated and each iteration costs only polynomial time in `n`. The returned `InteractionValues` hold the posterior-mean Shapley value estimates; `approximate_with_variance` additionally returns their marginal posterior variances. It is exported as `shapiq.ShaplEIG`.
+
+ShaplEIG requires the new optional `shapleig` dependency group (`pip install shapiq[shapleig]` — `torch`, `gpytorch`, `botorch`, `linear_operator`); these optional dependencies are imported lazily in the constructor.
+
+### shapiq Benchmark [#521](https://github.com/mmschlk/shapiq/pull/521)
+
+Adds the `shapiq_benchmark` package, a framework to configure and run approximation benchmarks from either string tags or objects. It ships benchmark types for local XAI, image, TabPFN, path-dependent, and interventional games, a set of approximation-quality metrics, and Optuna-based hyperparameter optimization scripts with pre-computed best-parameter configs.
+
+The package installs next to `shapiq` (like `shapiq_games`) and imports on a plain `pip install shapiq`. Its model backends are optional and imported lazily; install them with `pip install shapiq[benchmark]` (`optuna`, `tabpfn`, `lightgbm`, `xgboost`) to build the corresponding models or run the hyperparameter optimization.
+
+### Documentation
+
+- includes the nearest-neighbor explainers (`KNNExplainer`, `WeightedKNNExplainer`, `ThresholdNNExplainer`) in the API documentation and the `shapiq.explainer` package exports [#558](https://github.com/mmschlk/shapiq/pull/558)
+
+### Maintenance
+
+- bumps `actions/checkout` from 6 to 7 [#555](https://github.com/mmschlk/shapiq/pull/555)
 
 ## v1.5.2 (2026-06-12)
 
