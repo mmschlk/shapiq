@@ -231,6 +231,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         ``m - 2 = sum_{s=1}^{n-1} min(C(n,s), 2c)``.
         """
+        MAX_BISECT_ITER = 200
+
         if n < 2:
             return 0.0  # trivial case: nothing to sample
         target = m - 2  # budget minus empty + grand
@@ -248,7 +250,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         while total(hi) < target:
             hi *= 2.0
         lo = 0.0  # lower bound for binary search
-        for _ in range(200):  # bisect up to 200 iterations
+        for _ in range(MAX_BISECT_ITER):  # bisect up to MAX_BISECT_ITER iterations
             mid = 0.5 * (lo + hi)  # midpoint
             if total(mid) >= target:
                 hi = mid  # too big, shrink upper bound
