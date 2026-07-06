@@ -157,7 +157,14 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         )
 
     def _sample(self, budget: int) -> tuple[np.ndarray, np.ndarray]:
-        """Algorithm 1, lines 1-7: BernoulliSample plus IS reweighting.
+        r"""Algorithm 1, lines 1-7: BernoulliSample plus IS reweighting.
+
+        This method implements the custom Bernoulli sampling logic required by
+        LeverageSHAP, bypassing the generic ``CoalitionSampler``. This is necessary
+        to strictly enforce the $2c$ threshold boundaries (Equation 12). By explicitly
+        oversampling and deterministically evaluating low-cardinality subsets
+        (where \binom{n}{s} \le 2c), this algorithm optimally captures high-leverage
+        main effects.
 
         Args:
             budget: Target number of evaluations ``m``.
