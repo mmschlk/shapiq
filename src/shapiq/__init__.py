@@ -7,7 +7,14 @@ from shapiq.errors import (
     SamplingError,
     UnsupportedGameError,
 )
-from shapiq.explainers import Approximator, ExactExplainer, Explainer
+from shapiq.explainers import (
+    Approximator,
+    ExactExplainer,
+    Explainer,
+    PermutationSamplingSII,
+    PermutationSamplingSTII,
+    PermutationSamplingSV,
+)
 from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
     CallableGame,
@@ -27,7 +34,14 @@ from shapiq.interactions import (
     normalize_interaction,
     validate_interaction_metadata,
 )
-from shapiq.sampling import ApproximationState, Sampler, SamplingState
+from shapiq.sampling import (
+    ApproximationState,
+    PermutationSIISampler,
+    PermutationSTIISampler,
+    PermutationWalkSampler,
+    Sampler,
+    SamplingState,
+)
 
 try:
     from ._version import __version__
@@ -56,6 +70,12 @@ __all__ = [
     "Masker",
     "Model",
     "ModelMaskedPredictor",
+    "PermutationSIISampler",
+    "PermutationSTIISampler",
+    "PermutationSamplingSII",
+    "PermutationSamplingSTII",
+    "PermutationSamplingSV",
+    "PermutationWalkSampler",
     "Sampler",
     "SamplingError",
     "SamplingState",

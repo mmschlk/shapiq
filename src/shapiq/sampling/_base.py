@@ -35,6 +35,16 @@ class Sampler[StateT: ApproximationState](ABC):
         """Return whether this sampler mutates in place."""
         return False
 
+    @property
+    def sampling_quantum(self) -> int:
+        """Return the smallest sample count after which new evidence is usable."""
+        return 1
+
+    @property
+    def n_pending(self) -> int:
+        """Return the number of sampled coalitions in an incomplete quantum."""
+        return 0
+
     def sample(self, state: StateT, budget: int) -> tuple[CoalitionArray, Self]:
         """Sample coalitions and return the evolved sampler."""
         validate_int("budget", budget)
