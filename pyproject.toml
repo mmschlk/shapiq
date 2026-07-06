@@ -14,8 +14,6 @@ dependencies = [
     "jax>=0.10.1",
     # plotting
     "matplotlib",
-    "colour",
-
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},

@@ -343,15 +343,6 @@ wheels = [
 ]
 
 [[package]]
-name = "colour"
-version = "0.1.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a0/d4/5911a7618acddc3f594ddf144ecd8a03c29074a540f4494670ad8f153efe/colour-0.1.5.tar.gz", hash = "sha256:af20120fefd2afede8b001fbef2ea9da70ad7d49fafdb6489025dae8745c3aee", size = 24776, upload-time = "2017-11-19T23:20:08.015Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/74/46/e81907704ab203206769dee1385dc77e1407576ff8f50a0681d0a6b541be/colour-0.1.5-py2.py3-none-any.whl", hash = "sha256:33f6db9d564fadc16e59921a56999b79571160ce09916303d35346dddc17978c", size = 23772, upload-time = "2017-11-19T23:20:04.56Z" },
-]
-
-[[package]]
 name = "comm"
 version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2922,7 +2913,6 @@ name = "shapiq"
 source = { editable = "." }
 dependencies = [
     { name = "array-api-compat" },
-    { name = "colour" },
     { name = "jax" },
     { name = "matplotlib" },
     { name = "numpy" },
@@ -2989,7 +2979,6 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "array-api-compat", specifier = ">=1.14.0" },
-    { name = "colour" },
     { name = "jax", specifier = ">=0.10.1" },
     { name = "matplotlib" },
     { name = "numpy" },
