@@ -18,10 +18,12 @@ import plotly.graph_objects as go
 from dotenv import load_dotenv
 
 from leaderboard.metrics import METRICS
+from leaderboard.scoring.cd_scorer import CriticalDifferenceScorer
 from leaderboard.scoring.elo_scorer import EloScorer
 from leaderboard.storage.connection import DatabaseClientFactory, DBConnectionError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
 T = TypeVar("T")
@@ -558,7 +560,7 @@ def compute_elo_for_bucket(
         metric_names=[str(metric)] if metric != "all" else None,
         indices=[str(index)] if index != "all" else None,
         n_bootstrap_samples=50,
-        n_permutations=30,
+        n_permutations=10,
     )
     result = scorer.score(df_raw_records)
 
@@ -656,6 +658,50 @@ def compute_elo_for_bucket(
     )
 
     return leaderboard_df, fig, info_md
+
+
+def compute_cd_for_bucket(
+    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all"
+) -> go.Figure:
+    """Run Critical Difference scoring for a specific budget bucket and return a Plotly figure.
+
+    Args:
+        df_raw_records: Raw benchmark records as a list of dicts.
+        budget: The budget value to filter by.
+        metric: Metric to score by. Use "all" to include all metrics.
+        index: Interaction index to filter by. Use "all" to include all indices.
+
+    Returns:
+        A Plotly Figure with the CD diagram.
+    """
+    scorer = CriticalDifferenceScorer(
+        budgets=[budget],
+        metric_names=[str(metric)] if metric != "all" else None,
+        indices=[str(index)] if index != "all" else None,
+    )
+    result = scorer.score(df_raw_records)
+    cd_result = result.metadata.get("cd_result")
+
+    if cd_result is None or len(cd_result.mean_ranks) < 2:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"CD Diagram — no data for budget {budget}",
+            xaxis={"visible": False},
+            yaxis={"visible": False},
+            annotations=[{
+                "text": "Not enough data for a CD diagram at this configuration.",
+                "xref": "paper", "yref": "paper",
+                "x": 0.5, "y": 0.5,
+                "showarrow": False,
+                "font": {"size": 14, "color": "gray"},
+            }],
+        )
+        return fig
+
+    return CriticalDifferenceScorer.plot_cd_diagram_plotly(
+        cd_result,
+        title=f"Critical Difference Diagram — Budget {budget}",
+    )
 
 
 def _records_to_df(records: list[dict], metric_filter: list[str] | None = None) -> pd.DataFrame:
@@ -757,8 +803,12 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             f"Computing ELO ratings for initial bucket ({BUDGET_BUCKETS[2]['label']})...",
             lambda: compute_elo_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]), "all", _default_index)
         )
+        _elo_init_cd_fig = _with_spinner(
+            f"Computing CD diagram for initial bucket ({BUDGET_BUCKETS[2]['label']})...",
+            lambda: compute_cd_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]), "all", _default_index)
+        )
 
-        _elo_precomputed = {2: (_elo_init_table, _elo_init_fig, _elo_init_info)}
+        _elo_precomputed = {2: (_elo_init_table, _elo_init_fig, _elo_init_info, _elo_init_cd_fig)}
 
         with gr.Row():
             with gr.Column(scale=3):
@@ -770,7 +820,11 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     max_height=1000,
                 )
             with gr.Column(scale=2):
-                elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
+                with gr.Tabs():
+                    with gr.TabItem("ELO Scores"):
+                        elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
+                    with gr.TabItem("CD Diagram"):
+                        elo_cd_plot = gr.Plot(value=_elo_init_cd_fig, label="CD Diagram")
 
         def update_elo_tab(
             bucket_idx: int,
@@ -778,8 +832,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             selected_approxs: list[str],
             metric: str = "all",
             index: str ="all",
-        ) -> tuple[str, pd.DataFrame, go.Figure, str]:
-            """Compute the ELO leaderboard for the given budget bucket.
+        ) -> tuple[str, pd.DataFrame, go.Figure, str, go.Figure]:
+            """Compute the ELO leaderboard and CD diagram for the given budget bucket.
 
             Args:
                 bucket_idx: Index into ``BUDGET_BUCKETS`` for the target budget.
@@ -790,13 +844,15 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
             Returns:
                 Tuple of (bucket label markdown, leaderboard DataFrame,
-                bar chart Figure, info markdown string).
+                ELO bar chart Figure, info markdown string, CD diagram Figure).
             """
             bucket = BUDGET_BUCKETS[bucket_idx]
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
-            table_df, fig, info_md = compute_elo_for_bucket(filtered, int(bucket["budget"]), metric, index)
+            budget = int(bucket["budget"])
+            table_df, fig, info_md = compute_elo_for_bucket(filtered, budget, metric, index)
+            cd_fig = compute_cd_for_bucket(filtered, budget, metric, index)
             label_md = f"### {bucket['label']}"
-            return label_md, table_df, fig, info_md
+            return label_md, table_df, fig, info_md, cd_fig
 
         def elo_navigate(
             current_idx: int,
@@ -824,14 +880,15 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 second populates it with the new bucket's data.
             """
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
-            yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update()
-            label_md, table_df, fig, info_md = update_elo_tab(new_idx, raw_records, selected_approxs, metric, index)
+            yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+            label_md, table_df, fig, info_md, cd_fig = update_elo_tab(new_idx, raw_records, selected_approxs, metric, index)
             yield (
                 new_idx,
                 label_md,
                 gr.update(value=table_df, visible=True, max_height=1000),
                 fig,
                 info_md,
+                cd_fig,
                 gr.update(interactive=(new_idx > 0)),
                 gr.update(interactive=(new_idx < len(BUDGET_BUCKETS) - 1)),
             )
@@ -873,14 +930,14 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         elo_prev_btn.click(
             fn=elo_prev,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_prev_btn,
-                     elo_next_btn],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
+                     elo_prev_btn, elo_next_btn],
         )
         elo_next_btn.click(
             fn=elo_next,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_prev_btn,
-                     elo_next_btn],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
+                     elo_prev_btn, elo_next_btn],
         )
 
         def elo_filter_update(
@@ -901,34 +958,35 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 Two partial Gradio update tuples: first hides the table,
                 second populates it with the recomputed data.
             """
-            yield gr.update(), gr.update(visible=False), gr.update(), gr.update()
-            label_md, table_df, fig, info_md = update_elo_tab(
+            yield gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update()
+            label_md, table_df, fig, info_md, cd_fig = update_elo_tab(
                 idx, raw_records, selected_approxs, metric, index,
             )
-            yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md
+            yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md, cd_fig
 
         elo_approx_filter.change(
             fn=elo_filter_update,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md],
+            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
         elo_metric_filter.change(
             fn=elo_filter_update,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md],
+            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
         elo_index_filter.change(
             fn=elo_filter_update,
             inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md],
+            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
         gr.Markdown("---\n## All Budget Buckets — Side-by-Side Overview")
 
         all_bucket_tables = []
         all_bucket_plots = []
+        all_bucket_cd_plots = []
         all_bucket_infos = []
 
         with gr.Row():
@@ -936,15 +994,20 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 with gr.Column():
                     gr.Markdown(f"### {bucket['label']}")
                     if i in _elo_precomputed:
-                        _t, _f, _info = _elo_precomputed[i]
+                        _t, _f, _info, _cd_f = _elo_precomputed[i]
                     else:
                         budget_val = int(bucket["budget"])
                         _t, _f, _info = _with_spinner(
                             f"Computing ELO ratings for {bucket['label']}...",
                             lambda bv=budget_val: compute_elo_for_bucket(raw_records, bv, "all", _default_index)
                         )
+                        _cd_f = _with_spinner(
+                            f"Computing CD diagram for {bucket['label']}...",
+                            lambda bv=int(bucket["budget"]): compute_cd_for_bucket(raw_records, bv, "all", _default_index)
+                        )
                     all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
+                    all_bucket_cd_plots.append(gr.Plot(value=_cd_f, label="CD Diagram"))
                     all_bucket_tables.append(
                         gr.Dataframe(value=_t, interactive=False, max_height=1000)
                     )
@@ -969,38 +1032,34 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
-                t, f, info = compute_elo_for_bucket(filtered, int(bucket["budget"]), metric, index)
-                outputs.extend([info, t, f])
+                budget_val = int(bucket["budget"])
+                t, f, info = compute_elo_for_bucket(filtered, budget_val, metric, index)
+                cd_f = compute_cd_for_bucket(filtered, budget_val, metric, index)
+                outputs.extend([info, t, f, cd_f])
             return tuple(outputs)
+
+        _all_bucket_outputs = [
+            item
+            for i in range(len(BUDGET_BUCKETS))
+            for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i], all_bucket_cd_plots[i]]
+        ]
 
         elo_approx_filter.change(
             fn=update_all_buckets,
             inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[
-                item
-                for i in range(len(BUDGET_BUCKETS))
-                for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]
-            ],
+            outputs=_all_bucket_outputs,
         )
 
         elo_metric_filter.change(
             fn=update_all_buckets,
             inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[
-                item
-                for i in range(len(BUDGET_BUCKETS))
-                for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]
-            ],
+            outputs=_all_bucket_outputs,
         )
 
         elo_index_filter.change(
             fn=update_all_buckets,
             inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
-            outputs=[
-                item
-                for i in range(len(BUDGET_BUCKETS))
-                for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]
-            ],
+            outputs=_all_bucket_outputs,
         )
 
     with gr.Tab("Leaderboard"):
