@@ -809,7 +809,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             lambda: compute_cd_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]), "all", _default_index)
         )
 
-        _elo_precomputed = {2: (_elo_init_table, _elo_init_fig, _elo_init_info, _elo_init_cd_fig)}
+        _elo_precomputed = {2: (_elo_init_table, _elo_init_fig, _elo_init_info)}
 
         with gr.Row():
             with gr.Column(scale=3):
@@ -985,7 +985,6 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         all_bucket_tables = []
         all_bucket_plots = []
-        all_bucket_cd_plots = []
         all_bucket_infos = []
 
         with gr.Row():
@@ -993,20 +992,15 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 with gr.Column():
                     gr.Markdown(f"### {bucket['label']}")
                     if i in _elo_precomputed:
-                        _t, _f, _info, _cd_f = _elo_precomputed[i]
+                        _t, _f, _info = _elo_precomputed[i]
                     else:
                         budget_val = int(bucket["budget"])
                         _t, _f, _info = _with_spinner(
                             f"Computing ELO ratings for {bucket['label']}...",
                             lambda bv=budget_val: compute_elo_for_bucket(raw_records, bv, "all", _default_index)
                         )
-                        _cd_f = _with_spinner(
-                            f"Computing CD diagram for {bucket['label']}...",
-                            lambda bv=int(bucket["budget"]): compute_cd_for_bucket(raw_records, bv, "all", _default_index)
-                        )
                     all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
-                    all_bucket_cd_plots.append(gr.Plot(value=_cd_f, label="CD Diagram"))
                     all_bucket_tables.append(
                         gr.Dataframe(value=_t, interactive=False, max_height=1000)
                     )
@@ -1030,7 +1024,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             # Erst alle Tabellen verstecken
             hide_outputs = []
             for _ in BUDGET_BUCKETS:
-                hide_outputs.extend([gr.update(), gr.update(visible=False), gr.update(), gr.update()])
+                hide_outputs.extend([gr.update(), gr.update(visible=False), gr.update()])
             yield tuple(hide_outputs)
 
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
@@ -1038,14 +1032,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             for bucket in BUDGET_BUCKETS:
                 budget_val = int(bucket["budget"])
                 t, f, info = compute_elo_for_bucket(filtered, budget_val, metric, index)
-                cd_f = compute_cd_for_bucket(filtered, budget_val, metric, index)
-                outputs.extend([info, gr.update(value=t, visible=True, max_height=1000), f, cd_f])
+                outputs.extend([info, gr.update(value=t, visible=True, max_height=1000), f])
             yield tuple(outputs)
 
         _all_bucket_outputs = [
             item
             for i in range(len(BUDGET_BUCKETS))
-            for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i], all_bucket_cd_plots[i]]
+            for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]
         ]
 
         elo_approx_filter.change(
