@@ -1,8 +1,9 @@
-"""Interaction index objects and their capability protocols."""
+"""Interaction index objects, their capability protocols, and generalizations."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 from math import comb
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
@@ -29,6 +30,8 @@ class InteractionIndex(Protocol):
     the order is explanation coverage (attributions of shared interactions
     are unchanged across orders, as for SII and BII) or part of the index
     identity (attributions change with the order, as for STII and FSII).
+    Indices that generalize a probabilistic value declare it: their order-1
+    restriction equals that value, and the declaration is tested numerically.
     """
 
     @property
@@ -37,8 +40,8 @@ class InteractionIndex(Protocol):
         ...
 
     @property
-    def order(self) -> int:
-        """Return the maximum interaction order of the explanation."""
+    def order(self) -> int | None:
+        """Return the maximum interaction order, or ``None`` for all orders."""
         ...
 
     @property
@@ -53,21 +56,46 @@ class InteractionIndex(Protocol):
 
     @property
     def includes_empty_interaction(self) -> bool:
-        """Return whether explanations carry ``v(empty)`` at order zero."""
+        """Return whether explanations carry an order-0 attribution."""
+        ...
+
+    @property
+    def generalizes(self) -> SV | BV | None:
+        """Return the probabilistic value this index restricts to at order 1."""
         ...
 
 
 @runtime_checkable
-class WeightedDerivativeIndex(InteractionIndex, Protocol):
-    """Capability: attributions are weighted sums of discrete derivatives."""
+class CardinalInteractionIndex(InteractionIndex, Protocol):
+    """Capability: attributions are cardinality-weighted discrete derivatives.
+
+    Cardinal interaction indices assign to an interaction ``S`` a weighted
+    sum of its discrete derivatives over outside coalitions ``T``, with
+    weights depending only on the cardinalities of ``S`` and ``T``.
+    """
 
     def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
-        """Return one weight per outside-coalition size ``0..n - s``.
+        """Return one weight per outside-coalition size ``0..n - s``."""
+        ...
 
-        The attribution of an interaction ``S`` with ``s`` players is the sum
-        of its discrete derivatives over all coalitions ``T`` of players
-        outside ``S``, weighted by the returned weight at ``|T|``.
-        """
+    @property
+    def min_interaction_size(self) -> int:
+        """Return the smallest represented interaction size (0 for transforms)."""
+        ...
+
+
+@runtime_checkable
+class GeneralizedValueIndex(InteractionIndex, Protocol):
+    """Capability: attributions are cardinality-weighted bloc marginals.
+
+    Generalized values assign to an interaction ``S`` a weighted sum of the
+    marginal contributions ``v(T | S) - v(T)`` of the whole interaction
+    joining outside coalitions ``T``, with weights depending only on
+    cardinalities.
+    """
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return one weight per outside-coalition size ``0..n - s``."""
         ...
 
 
@@ -92,6 +120,8 @@ class SV:
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[None] = None
 
     @property
     def order(self) -> int:
@@ -120,6 +150,8 @@ class BV:
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[None] = None
 
     @property
     def order(self) -> int:
@@ -133,7 +165,7 @@ class BV:
 
 @dataclass(frozen=True)
 class SII:
-    """The Shapley interaction index up to ``order``.
+    """The Shapley interaction index up to ``order``; generalizes SV.
 
     Order is explanation coverage: attributions of shared interactions are
     identical across orders, so a higher order only adds interactions.
@@ -145,6 +177,8 @@ class SII:
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
         """Validate the order."""
@@ -157,7 +191,7 @@ class SII:
 
 @dataclass(frozen=True)
 class BII:
-    """The Banzhaf interaction index up to ``order``.
+    """The Banzhaf interaction index up to ``order``; generalizes BV.
 
     Order is explanation coverage: attributions of shared interactions are
     identical across orders, so a higher order only adds interactions.
@@ -169,6 +203,8 @@ class BII:
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[BV] = BV()
 
     def __post_init__(self) -> None:
         """Validate the order."""
@@ -180,8 +216,35 @@ class BII:
 
 
 @dataclass(frozen=True)
+class CHII:
+    """The chaining interaction index up to ``order``; generalizes SV.
+
+    Order is explanation coverage: attributions of shared interactions are
+    identical across orders. The chaining weights treat the interaction as
+    the head of a chain of arrivals.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "CHII"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return chaining discrete-derivative weights per outside size."""
+        return _chaining_derivative_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
 class STII:
-    """The Shapley-Taylor interaction index of top order ``order``.
+    """The Shapley-Taylor interaction index of top order ``order``; generalizes SV.
 
     Order is part of the index identity: attributions of shared interactions
     change with the order. Interactions below the top order are discrete
@@ -195,6 +258,8 @@ class STII:
     order_semantics: ClassVar[OrderSemantics] = "identity"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
         """Validate the order."""
@@ -208,8 +273,31 @@ class STII:
 
 
 @dataclass(frozen=True)
+class KSII:
+    """The efficient k-Shapley interaction index of order ``order``; generalizes SV.
+
+    Order is part of the index identity: k-SII aggregates Shapley
+    interactions of all orders up to ``order`` into an efficient explanation
+    via Bernoulli numbers, so attributions of shared interactions change
+    with the order.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "k-SII"
+    order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+
+@dataclass(frozen=True)
 class FSII:
-    """The faithful Shapley interaction index of order ``order``.
+    """The faithful Shapley interaction index of order ``order``; generalizes SV.
 
     Order is part of the index identity: the index is the best
     ``order``-additive approximation of the game under the Shapley kernel,
@@ -222,6 +310,7 @@ class FSII:
     order_semantics: ClassVar[OrderSemantics] = "identity"
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
+    generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
         """Validate the order."""
@@ -230,6 +319,268 @@ class FSII:
     def regression_kernel(self, n_players: int) -> Array:
         """Return Shapley kernel weights per coalition size, zero at the ends."""
         return _shapley_regression_kernel(n_players)
+
+
+@dataclass(frozen=True)
+class FBII:
+    """The faithful Banzhaf interaction index of order ``order``; generalizes BV.
+
+    Order is part of the index identity: the index is the best
+    ``order``-additive approximation of the game under the uniform kernel.
+    The fit is unconstrained with a free intercept, so the order-0
+    attribution is the fitted intercept rather than the empty-coalition
+    value.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "FBII"
+    order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    generalizes: ClassVar[BV] = BV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+
+@dataclass(frozen=True)
+class KADDSHAP:
+    """The k-additive Shapley index of order ``order``; generalizes SV.
+
+    Order is part of the index identity: the index fits a ``order``-additive
+    game in the Bernoulli-weighted interaction basis under the Shapley
+    kernel, interpolating the grand coalition exactly, so its order-1
+    attributions remain Shapley values at every order.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "kADD-SHAP"
+    order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def regression_kernel(self, n_players: int) -> Array:
+        """Return Shapley kernel weights per coalition size, zero at the ends."""
+        return _shapley_regression_kernel(n_players)
+
+
+@dataclass(frozen=True)
+class Moebius:
+    """The Moebius transform: the game's interaction masses themselves.
+
+    A cardinal index anchored at the empty coalition; the default order
+    ``None`` represents every interaction up to the grand coalition. The
+    order-0 attribution is the empty-coalition value.
+    """
+
+    order: int | None = None
+
+    name: ClassVar[InteractionIndexName] = "Moebius"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    min_interaction_size: ClassVar[int] = 0
+    generalizes: ClassVar[None] = None
+
+    def __post_init__(self) -> None:
+        """Validate the order when one is given."""
+        if self.order is not None:
+            validate_int("order", self.order, minimum=1)
+
+    def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return discrete-derivative-at-empty weights per outside size."""
+        return _empty_anchor_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class CoMoebius:
+    """The Co-Moebius transform: derivatives anchored at the complement.
+
+    A cardinal index whose derivative of an interaction is taken at the
+    coalition of all remaining players; the default order ``None``
+    represents every interaction. The order-0 attribution is the
+    grand-coalition value.
+    """
+
+    order: int | None = None
+
+    name: ClassVar[InteractionIndexName] = "Co-Moebius"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    min_interaction_size: ClassVar[int] = 0
+    generalizes: ClassVar[None] = None
+
+    def __post_init__(self) -> None:
+        """Validate the order when one is given."""
+        if self.order is not None:
+            validate_int("order", self.order, minimum=1)
+
+    def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return discrete-derivative-at-complement weights per outside size."""
+        return _grand_anchor_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class SGV:
+    """The Shapley generalized value up to ``order``; generalizes SV.
+
+    Attributions weight the marginal contributions of whole interactions
+    joining outside coalitions with Shapley weights. Order is explanation
+    coverage.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "SGV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return Shapley bloc-marginal weights per outside size."""
+        return _shapley_derivative_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class BGV:
+    """The Banzhaf generalized value up to ``order``; generalizes BV.
+
+    Attributions weight the marginal contributions of whole interactions
+    joining outside coalitions uniformly. Order is explanation coverage.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "BGV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    generalizes: ClassVar[BV] = BV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return Banzhaf bloc-marginal weights per outside size."""
+        return _banzhaf_derivative_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class CHGV:
+    """The chaining generalized value up to ``order``; generalizes SV.
+
+    Attributions weight the marginal contributions of whole interactions
+    joining outside coalitions with chaining weights. Order is explanation
+    coverage.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "CHGV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return chaining bloc-marginal weights per outside size."""
+        return _chaining_derivative_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class IGV:
+    """The internal generalized value up to ``order``.
+
+    The attribution of an interaction is its stand-alone worth over the
+    empty coalition, ``v(S) - v(empty)``. Order is explanation coverage.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "IGV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    generalizes: ClassVar[None] = None
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return bloc-marginal weights anchored at the empty coalition."""
+        return _empty_anchor_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class EGV:
+    """The external generalized value up to ``order``.
+
+    The attribution of an interaction is its contribution on top of all
+    remaining players, ``v(N) - v(N without S)``. Order is explanation
+    coverage.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "EGV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = False
+    generalizes: ClassVar[None] = None
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return bloc-marginal weights anchored at the complement."""
+        return _grand_anchor_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True)
+class JointSV:
+    """The joint Shapley value of order ``order``; generalizes SV.
+
+    Attributions weight bloc marginal contributions with arrival-process
+    weights in which coalitions of up to ``order`` players arrive together,
+    so the explanation is efficient. Order is part of the index identity.
+    """
+
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "JointSV"
+    order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+    generalizes: ClassVar[SV] = SV()
+
+    def __post_init__(self) -> None:
+        """Validate the order."""
+        validate_int("order", self.order, minimum=1)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return joint-arrival bloc-marginal weights per outside size."""
+        return _joint_arrival_weights(n_players, self.order)[: n_players - interaction_size + 1]
 
 
 def _shapley_regression_kernel(n_players: int) -> Array:
@@ -252,9 +603,21 @@ def _banzhaf_derivative_weights(n_players: int, size: int) -> Array:
     return jnp.full(free + 1, 2.0**-free)
 
 
+def _chaining_derivative_weights(n_players: int, size: int) -> Array:
+    """Return CHII discrete-derivative weights per outside-coalition size."""
+    return jnp.asarray(
+        [size / ((size + t) * comb(n_players, size + t)) for t in range(n_players - size + 1)],
+    )
+
+
 def _empty_anchor_weights(n_players: int, size: int) -> Array:
     """Return discrete-derivative-at-empty weights per outside-coalition size."""
     return jnp.zeros(n_players - size + 1).at[0].set(1.0)
+
+
+def _grand_anchor_weights(n_players: int, size: int) -> Array:
+    """Return discrete-derivative-at-complement weights per outside-coalition size."""
+    return jnp.zeros(n_players - size + 1).at[-1].set(1.0)
 
 
 def _taylor_top_weights(n_players: int, size: int) -> Array:
@@ -262,3 +625,19 @@ def _taylor_top_weights(n_players: int, size: int) -> Array:
     return jnp.asarray(
         [size / (n_players * comb(n_players - 1, t)) for t in range(n_players - size + 1)],
     )
+
+
+@cache
+def _joint_arrival_weights(n_players: int, order: int) -> Array:
+    """Return joint Shapley weights per coalition size from the arrival recursion."""
+    weights = [0.0] * n_players
+    weights[0] = 1.0 / sum(comb(n_players, size) for size in range(1, order + 1))
+    for reached in range(1, n_players):
+        largest_step = min(order, n_players - reached)
+        smallest_origin = max(reached - order, 0)
+        denominator = sum(comb(n_players - reached, size) for size in range(1, largest_step + 1))
+        numerator = sum(
+            comb(reached, size) * weights[size] for size in range(smallest_origin, reached)
+        )
+        weights[reached] = numerator / denominator
+    return jnp.asarray(weights)

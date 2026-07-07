@@ -28,9 +28,10 @@ class Explainer[ValueT, GameT: Game](ABC):
                 f"got {type(index).__name__}"
             )
             raise TypeError(msg)
+        order = game.n_players if index.order is None else index.order
         validate_interaction_metadata(
             interaction_index=index.name,
-            order=index.order,
+            order=order,
             orientation=index.orientation,
             n_players=game.n_players,
         )
@@ -44,8 +45,13 @@ class Explainer[ValueT, GameT: Game](ABC):
 
     @property
     def order(self) -> int:
-        """Return the maximum interaction order of the explanation."""
-        return self.index.order
+        """Return the maximum interaction order of the explanation.
+
+        Indices with order ``None`` (the Moebius and Co-Moebius transforms)
+        resolve to the full number of players.
+        """
+        order = self.index.order
+        return self.game.n_players if order is None else order
 
     @property
     def orientation(self) -> InteractionOrientation:

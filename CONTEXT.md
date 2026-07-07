@@ -173,16 +173,28 @@ A **Value**-shaped contribution assigned to an **Interaction** within an **Expla
 _Avoid_: score, importance
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Initial names include SV, BV, SII, BII, STII, and FSII; k-SII is planned as an explanation-level transform of SII.
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
 _Avoid_: index string, metric, method
 
 **Order Semantics**:
-Whether an **InteractionIndex** treats its **Order** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII).
+Whether an **InteractionIndex** treats its **Order** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII). Transforms with no inherent order cap (Moebius, Co-Moebius) default their order to all players.
 _Avoid_: truncation flag, order mode
 
 **Index Capability**:
-A structural protocol an **InteractionIndex** implements to work with an **Explainer** family, such as providing discrete-derivative weights or a regression kernel with exact endpoint constraints.
+A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a kernel with exact endpoint constraints.
 _Avoid_: feature flag, supported-index list
+
+**Cardinal Interaction Index**:
+An **Index Capability** for indices whose **Attributions** are weighted sums of discrete derivatives over outside **Coalitions**, with weights depending only on cardinalities (SV, BV, SII, BII, CHII, STII, and the Moebius and Co-Moebius transforms).
+_Avoid_: derivative index, CII when a reader may not know the acronym
+
+**Generalized Value**:
+An **Index Capability** for indices whose **Attributions** weight the marginal contributions of whole **Interactions** joining outside **Coalitions** (SGV, BGV, CHGV, IGV, EGV, JointSV).
+_Avoid_: bloc value, group value
+
+**Value Generalization**:
+The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata and are verified numerically by tests.
+_Avoid_: reduction, order-1 equality when the declared relation is meant
 
 **Order**:
 The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions.
