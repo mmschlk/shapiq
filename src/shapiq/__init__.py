@@ -60,6 +60,7 @@ from shapiq.interactions import (
 )
 from shapiq.sampling import (
     ApproximationState,
+    BanzhafKernelSampler,
     EmptyState,
     PermutationSIISampler,
     PermutationSTIISampler,
@@ -76,6 +77,7 @@ except ImportError:  # pragma: no cover - _version.py is generated at build time
     __version__ = "0.0.0"
 
 __all__ = [
+    "BanzhafKernelSampler",
     "BGV",
     "CHGV",
     "CHII",
