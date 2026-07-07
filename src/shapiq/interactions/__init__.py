@@ -27,6 +27,7 @@ from shapiq.interactions._indices import (
     STII,
     SV,
     AggregationIndex,
+    ArgminIndex,
     CardinalInteractionIndex,
     CoMoebius,
     GeneralizedValueIndex,
@@ -36,6 +37,7 @@ from shapiq.interactions._indices import (
     RegressionIndex,
 )
 from shapiq.interactions._iteration import iter_interactions
+from shapiq.interactions._spec import ArgminSpecification, bernoulli_basis, membership_basis
 from shapiq.interactions._types import (
     Interaction,
     InteractionIndexName,
@@ -61,6 +63,8 @@ __all__ = [
     "STII",
     "SV",
     "AggregationIndex",
+    "ArgminIndex",
+    "ArgminSpecification",
     "CardinalInteractionIndex",
     "CoMoebius",
     "CoalitionFunctional",
@@ -74,11 +78,13 @@ __all__ = [
     "OrderSemantics",
     "RegressionIndex",
     "aggregate_supersets",
+    "bernoulli_basis",
     "define_cardinal_index",
     "define_generalized_value",
     "define_regression_index",
     "derive_functional",
     "iter_interactions",
+    "membership_basis",
     "normalize_interaction",
     "validate_interaction_metadata",
 ]

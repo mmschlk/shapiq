@@ -14,15 +14,18 @@ from math import comb
 from typing import TYPE_CHECKING, ClassVar
 
 import jax.numpy as jnp
+import numpy as np
 
 from shapiq._shape import ensure_bool, validate_int
 from shapiq.interactions._indices import (
     BV,
     SV,
+    ArgminIndex,
     CardinalInteractionIndex,
     GeneralizedValueIndex,
 )
 from shapiq.interactions._iteration import interaction_masks
+from shapiq.interactions._spec import ArgminSpecification, membership_basis
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -143,10 +146,22 @@ def derive_functional(
             for size in range(1, order + 1)
         }
         return CoalitionFunctional(n_players=n_players, tables=tables)
+    if isinstance(index, ArgminIndex):
+        specification = _checked_specification(
+            index,
+            index.argmin_specification(n_players),
+            n_players,
+            order,
+        )
+        return CoalitionFunctional(
+            n_players=n_players,
+            tables=_compiled_argmin_tables(specification, n_players, order),
+        )
     name = getattr(index, "name", type(index).__name__)
     msg = (
         f"no coalition functional is derivable for {name!r}: the index declares "
-        "neither discrete-derivative weights nor bloc-marginal weights"
+        "neither discrete-derivative weights, bloc-marginal weights, nor an "
+        "argmin specification"
     )
     raise TypeError(msg)
 
@@ -367,6 +382,15 @@ class _DefinedRegressionIndex:
         """Return the declared kernel weights per coalition size."""
         return jnp.asarray(self.kernel(n_players), dtype=jnp.float32)
 
+    def argmin_specification(self, n_players: int) -> ArgminSpecification:
+        """Return the declared-kernel membership fit interpolating both endpoints."""
+        return ArgminSpecification(
+            row_weights=self.regression_kernel(n_players),
+            basis_weights=membership_basis(self.order),
+            interpolate_empty=True,
+            interpolate_grand=True,
+        )
+
 
 def _validate_definition(
     name: InteractionIndexName,
@@ -401,6 +425,162 @@ def _checked_weights(
         )
         raise ValueError(msg)
     return profile
+
+
+def _checked_specification(
+    index: InteractionIndex,
+    specification: ArgminSpecification,
+    n_players: int,
+    order: int,
+) -> ArgminSpecification:
+    """Validate a declared argmin specification before compiling it."""
+    row_weights = jnp.asarray(specification.row_weights)
+    basis_weights = jnp.asarray(specification.basis_weights)
+    if row_weights.shape != (n_players + 1,):
+        msg = (
+            f"{index.name!r} declares row weights of shape {row_weights.shape}, "
+            f"expected one weight per coalition size 0..{n_players}"
+        )
+        raise ValueError(msg)
+    if basis_weights.shape != (order + 1, order + 1):
+        msg = (
+            f"{index.name!r} declares a basis of shape {basis_weights.shape}, "
+            f"expected one weight per interaction and intersection size 0..{order}"
+        )
+        raise ValueError(msg)
+    finite = bool(jnp.all(jnp.isfinite(row_weights)) & jnp.all(jnp.isfinite(basis_weights)))
+    if not finite or not bool(jnp.all(row_weights >= 0)):
+        msg = f"{index.name!r} declares negative or non-finite argmin weights"
+        raise ValueError(msg)
+    return specification
+
+
+def _compiled_argmin_tables(
+    specification: ArgminSpecification,
+    n_players: int,
+    order: int,
+) -> dict[int, Array]:
+    """Compile an argmin specification into coalition-functional tables.
+
+    The solution operator of the specified fit is linear in the game, so its
+    coefficient tables are the fitted coefficients on indicator probe games,
+    one probe per coalition size. Each probe problem is invariant under the
+    stabilizer of the probe coalition, which collapses the fit onto
+    cardinality classes: rows become (inside, outside) coalition profiles
+    with their multiplicities as weights, unknowns become (size,
+    intersection) interaction classes, and each probe is a small
+    equality-constrained weighted least squares solve.
+    """
+    kernel = np.asarray(specification.row_weights, dtype=np.float64)
+    basis = np.asarray(specification.basis_weights, dtype=np.float64)
+    tables = {size: np.zeros((size + 1, n_players + 1)) for size in range(order + 1)}
+    for probe in range(n_players + 1):
+        columns = [
+            (size, shared)
+            for size in range(order + 1)
+            for shared in range(max(0, size - (n_players - probe)), min(size, probe) + 1)
+        ]
+        rows = [(a, b) for a in range(probe + 1) for b in range(n_players - probe + 1)]
+        design = np.asarray(
+            [
+                [
+                    _collapsed_design_entry(a, b, probe, n_players, shared, size, basis[size])
+                    for size, shared in columns
+                ]
+                for a, b in rows
+            ],
+        )
+        weights = np.asarray(
+            [
+                kernel[a + b] * comb(probe, a) * comb(n_players - probe, b)
+                for a, b in rows
+            ],
+        )
+        response = np.asarray([1.0 if (a, b) == (probe, 0) else 0.0 for a, b in rows])
+        constraint_rows = []
+        constraint_values = []
+        if specification.interpolate_empty:
+            constraint_rows.append(design[rows.index((0, 0))])
+            constraint_values.append(response[rows.index((0, 0))])
+        if specification.interpolate_grand:
+            constraint_rows.append(design[rows.index((probe, n_players - probe))])
+            constraint_values.append(response[rows.index((probe, n_players - probe))])
+        constraints = (
+            np.asarray(constraint_rows)
+            if constraint_rows
+            else np.zeros((0, len(columns)))
+        )
+        solution = _constrained_weighted_lstsq(
+            design,
+            weights,
+            response,
+            constraints,
+            np.asarray(constraint_values),
+        )
+        for position, (size, shared) in enumerate(columns):
+            tables[size][shared, probe] = solution[position]
+    return {size: jnp.asarray(table) for size, table in tables.items()}
+
+
+def _collapsed_design_entry(
+    a: int,
+    b: int,
+    probe: int,
+    n_players: int,
+    shared: int,
+    size: int,
+    basis_row: np.ndarray,
+) -> float:
+    """Sum the basis values of one interaction class on one coalition class.
+
+    The coalition has ``a`` players inside and ``b`` outside the probe; the
+    interactions have ``shared`` players inside the probe and ``size`` in
+    total. The sum runs over how many of each part fall into the coalition.
+    """
+    outside = size - shared
+    total = 0.0
+    for p in range(max(0, shared - (probe - a)), min(a, shared) + 1):
+        for q in range(max(0, outside - (n_players - probe - b)), min(b, outside) + 1):
+            total += (
+                float(basis_row[p + q])
+                * comb(a, p)
+                * comb(probe - a, shared - p)
+                * comb(b, q)
+                * comb(n_players - probe - b, outside - q)
+            )
+    return total
+
+
+def _constrained_weighted_lstsq(
+    design: np.ndarray,
+    weights: np.ndarray,
+    response: np.ndarray,
+    constraints: np.ndarray,
+    constraint_values: np.ndarray,
+) -> np.ndarray:
+    """Solve a weighted least squares fit subject to exact equality constraints.
+
+    Constraints are eliminated through the nullspace of the constraint
+    matrix, so the constrained solution is the particular solution plus the
+    best fit within the remaining directions.
+    """
+    scaled = np.sqrt(weights / max(float(weights.max()), 1e-300))
+    if constraints.size:
+        particular, *_ = np.linalg.lstsq(constraints, constraint_values, rcond=None)
+        _, singular_values, right_vectors = np.linalg.svd(constraints)
+        cutoff = float(singular_values.max()) * 1e-12 if singular_values.size else 0.0
+        rank = int(np.sum(singular_values > cutoff))
+        nullspace = right_vectors[rank:].T
+        if nullspace.shape[1] == 0:
+            return particular
+        reduced, *_ = np.linalg.lstsq(
+            scaled[:, None] * (design @ nullspace),
+            scaled * (response - design @ particular),
+            rcond=None,
+        )
+        return particular + nullspace @ reduced
+    solution, *_ = np.linalg.lstsq(scaled[:, None] * design, scaled * response, rcond=None)
+    return solution
 
 
 def _cardinal_table(n_players: int, size: int, weights: Array) -> Array:
