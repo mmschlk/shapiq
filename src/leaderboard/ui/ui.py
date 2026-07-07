@@ -873,7 +873,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
         gr.Markdown("---\n## All Budget Buckets — Side-by-Side Overview")
-        gr.Markdown(value=_elo_init_info)
+        all_buckets_info_md = gr.Markdown(value=_elo_init_info)
 
         all_bucket_tables = []
         all_bucket_plots = []
@@ -912,23 +912,29 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 Iterator of two Gradio update tuples.
             """
             # Erst alle Tabellen verstecken
-            hide_outputs = []
+            hide_outputs = [gr.update()]
             for _ in BUDGET_BUCKETS:
                 hide_outputs.extend([gr.update(visible=False), gr.update()])
             yield tuple(hide_outputs)
 
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
+            first_info = None
             for bucket in BUDGET_BUCKETS:
                 budget_val = int(bucket["budget"])
-                t, f, _ = compute_elo_for_bucket(filtered, budget_val, metric, index, game)
+                t, f, info = compute_elo_for_bucket(filtered, budget_val, metric, index, game)
+                if first_info is None:
+                    first_info = info
                 outputs.extend([gr.update(value=t, visible=True, max_height=1000), f])
-            yield tuple(outputs)
+            yield tuple([first_info, *outputs])
 
         _all_bucket_outputs = [
-            item
-            for i in range(len(BUDGET_BUCKETS))
-            for item in [all_bucket_tables[i], all_bucket_plots[i]]
+            all_buckets_info_md,
+            *[
+                item
+                for i in range(len(BUDGET_BUCKETS))
+                for item in [all_bucket_tables[i], all_bucket_plots[i]]
+            ]
         ]
 
         elo_approx_filter.change(
