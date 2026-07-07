@@ -122,9 +122,9 @@ class PermutationSampling(EvidenceApproximator):
         """Estimate the configured index from completed permutation walks.
 
         Returns:
-            A dense explanation. SV and STII carry the empty-coalition value
-            as the order-0 attribution; SII represents orders one through
-            ``order``. Pending samples of an unfinished walk are excluded.
+            A dense explanation whose baseline is the empty-coalition value;
+            attributions cover orders one and above. Pending samples of an
+            unfinished walk are excluded.
 
         Raises:
             InsufficientSamplesError: If no permutation walk has completed,
@@ -215,7 +215,6 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
     n_value_axes = len(approximator.game.value_shape)
     return DenseExplanationArray(
         attributions_by_order={
-            0: to_trailing(evidence.value_empty[..., None], n_value_axes),
             1: to_trailing(sums / evidence.n_walks, n_value_axes),
         },
         n_players=approximator.game.n_players,
@@ -224,6 +223,7 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
         shape=approximator.game.target_shape,
         orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
+        baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
 
 
@@ -298,6 +298,7 @@ def _explain_interactions(approximator: PermutationSampling) -> DenseExplanation
         shape=approximator.game.target_shape,
         orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
+        baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
 
 
@@ -308,7 +309,7 @@ def _explain_taylor_interactions(
     n_players = approximator.game.n_players
     top_order = approximator.order
     evidence = approximator._completed_walks()  # noqa: SLF001
-    attributions: dict[int, Array] = {0: evidence.value_empty[..., None]}
+    attributions: dict[int, Array] = {}
     for size in range(1, top_order):
         attributions[size] = _taylor_exact_empty_derivatives(
             approximator,
@@ -336,6 +337,7 @@ def _explain_taylor_interactions(
         shape=approximator.game.target_shape,
         orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
+        baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
 
 

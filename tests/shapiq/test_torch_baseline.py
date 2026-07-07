@@ -64,7 +64,7 @@ def test_masked_linear_model_has_closed_form_shapley_values():
     expected = jnp.asarray(((X - BASELINE)[:, None] * weight).numpy())
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), expected[player], atol=1e-6)
-    assert jnp.allclose(explanation(()), jnp.asarray((BASELINE @ weight).numpy()), atol=1e-6)
+    assert jnp.allclose(explanation.baseline, jnp.asarray((BASELINE @ weight).numpy()), atol=1e-6)
 
 
 def test_sampled_masked_model_matches_the_exact_explainer():

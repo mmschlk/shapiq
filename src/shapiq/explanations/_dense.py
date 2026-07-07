@@ -33,6 +33,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"
     value_shape: Shape = ()
+    baseline: ValueT | None = None
 
     def __post_init__(self) -> None:
         """Normalize and validate metadata, then validate attribution blocks."""
@@ -60,6 +61,17 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
                     f"{expected} (targets, then interactions, then value_shape)"
                 )
                 raise ValueError(msg)
+        if self.baseline is not None:
+            expected = (*shape, *value_shape)
+            baseline_shape = getattr(self.baseline, "shape", None)
+            actual = (
+                tuple(baseline_shape)
+                if baseline_shape is not None
+                else jnp.shape(cast("Array", self.baseline))
+            )
+            if actual != expected:
+                msg = f"the baseline has shape {actual}, expected {expected}"
+                raise ValueError(msg)
 
     def __getitem__(self, key: object) -> DenseExplanationArray[ValueT]:
         """Index explanation target axes and preserve dense storage."""
@@ -72,6 +84,11 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             order: _slice_attributions(values, key_tuple)
             for order, values in self.attributions_by_order.items()
         }
+        new_baseline = (
+            None
+            if self.baseline is None
+            else cast("ValueT", cast("_Indexable", self.baseline)[(*key_tuple, Ellipsis)])
+        )
         return type(self)(
             new_values,
             n_players=self.n_players,
@@ -80,6 +97,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             shape=new_shape,
             orientation=self.orientation,
             value_shape=self.value_shape,
+            baseline=new_baseline,
         )
 
     def __iter__(self) -> object:

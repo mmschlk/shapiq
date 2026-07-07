@@ -157,7 +157,7 @@ A scalar element of an **ExplanationArray** for one **Explanation Target**, assi
 _Avoid_: explanation map, result dict
 
 **ExplanationArray**:
-An **Array-Like Data Type** whose elements are **Explanations** for the same fixed set of **Players**, represented by batched internal data rather than as a Python array of explanation objects. Its logical shape describes the array of explanation elements and excludes interactions and value dimensions. An **ExplanationArray** records the number of players, **InteractionIndex**, **Order**, and **Interaction Orientation** of the represented attributions, inherits player metadata from the explained **Game** when available, can be called with an **Interaction** to return its **Attribution**, and can report for which explanation elements an attribution is available.
+An **Array-Like Data Type** whose elements are **Explanations** for the same fixed set of **Players**, represented by batched internal data rather than as a Python array of explanation objects. Its logical shape describes the array of explanation elements and excludes interactions and value dimensions. An **ExplanationArray** records the number of players, **InteractionIndex**, **Order**, and **Interaction Orientation** of the represented attributions, carries the **Baseline** separately from attributions, inherits player metadata from the explained **Game** when available, can be called with an **Interaction** to return its **Attribution**, and can report for which explanation elements an attribution is available.
 _Avoid_: explanation batch, list of explanations
 
 **DenseExplanationArray**:
@@ -169,8 +169,12 @@ An **ExplanationArray** whose stored **Interactions** may differ across **Explan
 _Avoid_: sparse explanation
 
 **Attribution**:
-A **Value**-shaped contribution assigned to an **Interaction** within an **Explanation**.
+A **Value**-shaped contribution assigned to an **Interaction** within an **Explanation**. Attributions are defined on the centered game, following the game-theoretic convention that the empty **Coalition** has value zero.
 _Avoid_: score, importance
+
+**Baseline**:
+The **Value** of the **Game** at the empty **Coalition**, carried by an **ExplanationArray** separately from **Attributions**. An order-0 Attribution, where an **InteractionIndex** defines one on the centered game (FBII's fitted intercept, the Co-Moebius grand total), is conceptually distinct from the baseline.
+_Avoid_: expected value, offset, order-0 attribution
 
 **InteractionIndex**:
 A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.

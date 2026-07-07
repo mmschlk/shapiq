@@ -175,7 +175,7 @@ def test_exact_moebius_recovers_interaction_masses():
     explainer = ExactExplainer(game_from(cubic_from_masks), Moebius())
     assert explainer.order == N_PLAYERS
     explanation = explainer.explain()
-    assert jnp.allclose(explanation(()), 0.0, atol=1e-6)
+    assert jnp.allclose(explanation.baseline, 0.0, atol=1e-6)
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), WEIGHTS[player], atol=1e-4)
     for pair in combinations(range(N_PLAYERS), 2):
@@ -191,7 +191,9 @@ def test_exact_co_moebius_matches_derivatives_at_the_complement():
     mask_fn = random_table_game()
     explanation = ExactExplainer(game_from(mask_fn), CoMoebius(order=2)).explain()
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
-    assert jnp.allclose(explanation(()), grand, atol=1e-4)
+    empty = float(mask_fn(subset_mask(())))
+    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
+    assert jnp.allclose(explanation(()), grand - empty, atol=1e-4)
     for interaction in [(1,), (4,), (0, 2), (3, 4)]:
         complement = tuple(p for p in range(N_PLAYERS) if p not in interaction)
         expected = discrete_derivative(mask_fn, interaction, complement)
@@ -216,7 +218,7 @@ def test_exact_ksii_aggregates_sii_and_is_efficient():
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(ksii, 2), grand - empty, atol=1e-3)
-    assert jnp.allclose(ksii(()), empty, atol=1e-4)
+    assert jnp.allclose(ksii.baseline, empty, atol=1e-4)
 
 
 def test_exact_fbii_recovers_the_moebius_basis_of_quadratic_games():
@@ -271,4 +273,4 @@ def test_exact_jointsv_higher_orders_stay_efficient():
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(joint, 2), grand - empty, atol=1e-3)
-    assert jnp.allclose(joint(()), empty, atol=1e-4)
+    assert jnp.allclose(joint.baseline, empty, atol=1e-4)

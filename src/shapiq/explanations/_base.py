@@ -15,13 +15,19 @@ if TYPE_CHECKING:
 
 
 class ExplanationArray[ValueT](ABC):
-    """Array-like collection whose logical elements are explanations."""
+    """Array-like collection whose logical elements are explanations.
+
+    Attributions are defined on the centered game, following the
+    game-theoretic convention that the empty coalition has value zero; the
+    empty-coalition value itself travels separately as the ``baseline``.
+    """
 
     n_players: int
     shape: Shape
     interaction_index: str
     order: int
     orientation: InteractionOrientation
+    baseline: ValueT | None
 
     @property
     def ndim(self) -> int:

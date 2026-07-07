@@ -157,7 +157,7 @@ def test_exact_shapley_values_are_efficient():
     grand = cubic_from_masks(jnp.ones(N_PLAYERS, dtype=jnp.float32))
     empty = cubic_from_masks(jnp.zeros(N_PLAYERS, dtype=jnp.float32))
     assert jnp.allclose(jnp.sum(order_one(explanation)), grand - empty, atol=1e-4)
-    assert jnp.allclose(explanation(()), empty, atol=1e-6)
+    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
 
 
 def test_exact_explainer_agrees_with_permutation_sampling():

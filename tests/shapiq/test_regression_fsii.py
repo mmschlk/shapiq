@@ -132,4 +132,4 @@ def test_baseline_and_metadata():
     explanation = approximator.sample(SEEDS + 24).explain()
     assert explanation.interaction_index == "FSII"
     assert explanation.order == 2
-    assert jnp.allclose(explanation(()), empty, atol=1e-5)
+    assert jnp.allclose(explanation.baseline, empty, atol=1e-5)

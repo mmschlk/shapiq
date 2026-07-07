@@ -123,8 +123,9 @@ class ExtensionalEquality:
     Instances constructed at order one collapse onto the probabilistic value
     they generalize, so ``SII(order=1) == SV() == CHII(order=1)`` and hashes
     agree; all other instances compare by type and parameters. The equality
-    quantifies over nonempty interactions only — order-0 conventions (the
-    empty-coalition value, FBII's fitted intercept) remain per-index.
+    quantifies over nonempty interactions only — genuine order-0
+    attributions (FBII's fitted intercept, the Co-Moebius grand total)
+    remain per-index, and the baseline travels on explanations.
     Estimator dispatch is keyed on index types and is unaffected.
     """
 
@@ -154,7 +155,7 @@ class SV(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -185,7 +186,7 @@ class BV(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -297,7 +298,7 @@ class STII(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -328,7 +329,7 @@ class KSII(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
@@ -351,7 +352,7 @@ class FSII(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
@@ -370,8 +371,8 @@ class FBII(ExtensionalEquality):
     Order is part of the index identity: the index is the best
     ``order``-additive approximation of the game under the uniform kernel.
     The fit is unconstrained with a free intercept, so the order-0
-    attribution is the fitted intercept rather than the empty-coalition
-    value.
+    attribution is the fitted intercept of the centered game rather than
+    zero; the empty-coalition value itself is the explanation's baseline.
     """
 
     order: int = 2
@@ -404,7 +405,7 @@ class KADDSHAP(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:
@@ -421,8 +422,9 @@ class Moebius(ExtensionalEquality):
     """The Moebius transform: the game's interaction masses themselves.
 
     A cardinal index anchored at the empty coalition; the default order
-    ``None`` represents every interaction up to the grand coalition. The
-    order-0 attribution is the empty-coalition value.
+    ``None`` represents every interaction up to the grand coalition. On the
+    centered game the empty mass is zero, so the empty-coalition value is
+    carried as the explanation's baseline rather than as an attribution.
     """
 
     order: int | None = None
@@ -431,8 +433,8 @@ class Moebius(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
-    min_interaction_size: ClassVar[int] = 0
+    includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
     def __post_init__(self) -> None:
@@ -451,8 +453,8 @@ class CoMoebius(ExtensionalEquality):
 
     A cardinal index whose derivative of an interaction is taken at the
     coalition of all remaining players; the default order ``None``
-    represents every interaction. The order-0 attribution is the
-    grand-coalition value.
+    represents every interaction. Its order-0 attribution on the centered
+    game is the grand total ``v(N) - v(empty)``.
     """
 
     order: int | None = None
@@ -623,7 +625,7 @@ class JointSV(ExtensionalEquality):
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
-    includes_empty_interaction: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
     def __post_init__(self) -> None:

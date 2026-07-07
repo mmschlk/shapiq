@@ -60,8 +60,9 @@ def test_recovers_quadratic_games_exactly_once_identified():
     assert jnp.allclose(order_one(explanation), WEIGHTS, atol=1e-3)
     for left, right in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-3)
-    # a 2-additive game needs no intercept correction, so order 0 is v(empty)
+    # a 2-additive game's centered fit needs no intercept
     assert jnp.allclose(explanation(()), 0.0, atol=1e-3)
+    assert jnp.allclose(explanation.baseline, 0.0, atol=1e-5)
 
 
 def test_order_one_converges_to_the_banzhaf_value():

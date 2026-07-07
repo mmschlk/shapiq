@@ -145,11 +145,11 @@ class Regression(EvidenceApproximator):
         """Solve the kernel regression on the sampled evidence.
 
         Returns:
-            A dense explanation representing orders zero through ``order``.
-            The empty interaction carries the empty-coalition value (for
-            FBII, the fitted intercept); higher orders hold the solution of
-            the kernel least squares problem over all completed sampled
-            units. Pending samples of an unfinished unit are excluded.
+            A dense explanation whose baseline is the empty-coalition value.
+            Attributions hold the solution of the kernel least squares
+            problem on the centered game over all completed sampled units;
+            FBII additionally carries its fitted intercept at order zero.
+            Pending samples of an unfinished unit are excluded.
 
         Raises:
             InsufficientSamplesError: If no sampled unit has completed, or if
@@ -202,11 +202,9 @@ class Regression(EvidenceApproximator):
         if isinstance(self.index, FBII):
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
-            attributions: dict[int, Array] = {
-                0: to_trailing(value_empty[..., None] + intercept, n_value_axes),
-            }
+            attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}
         else:
-            attributions = {0: to_trailing(value_empty[..., None], n_value_axes)}
+            attributions = {}
         offset = 0
         for size in range(1, self.order + 1):
             n_interactions = comb(n_players, size)
@@ -224,4 +222,5 @@ class Regression(EvidenceApproximator):
             shape=target_shape,
             orientation=self.orientation,
             value_shape=value_shape,
+            baseline=to_trailing(value_empty, n_value_axes),
         )

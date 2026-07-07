@@ -125,7 +125,7 @@ if __name__ == "__main__":
             f" | max pair error: {jnp.max(errors):.4f}"
             f" | (0, 1) per class: {interaction.round(3)}"
         )
-    empty = exact_fsii(())
+    empty = exact_fsii.baseline
     totals = sum(
         (jnp.sum(exact_fsii.attributions_by_order[size], axis=-2) for size in (1, 2)),
         start=jnp.zeros(2),

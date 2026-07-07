@@ -72,8 +72,8 @@ def test_exact_vector_values_match_per_component_scalar_runs():
         assert attribution.shape == (2,)
         assert jnp.allclose(attribution[0], quadratic((player,)), atol=1e-6)
         assert jnp.allclose(attribution[1], cubic((player,)), atol=1e-6)
-    assert jnp.allclose(vector(())[0], quadratic(()), atol=1e-6)
-    assert jnp.allclose(vector(())[1], cubic(()), atol=1e-6)
+    assert jnp.allclose(vector.baseline[0], quadratic.baseline, atol=1e-6)
+    assert jnp.allclose(vector.baseline[1], cubic.baseline, atol=1e-6)
 
 
 def test_exact_vector_interactions_match_per_component_scalar_runs():
@@ -120,7 +120,7 @@ def test_sampled_vector_values_are_efficient_per_component():
     totals = jnp.sum(order_one(explanation), axis=-2)
     assert totals.shape == (2,)
     assert jnp.allclose(totals, grand - empty, atol=1e-5)
-    assert jnp.allclose(explanation(()), empty, atol=1e-6)
+    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
 
 
 def test_regression_fsii_vector_values_match_per_component_scalar_runs():

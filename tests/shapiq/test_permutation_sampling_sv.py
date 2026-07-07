@@ -119,11 +119,11 @@ def test_sampling_quantum_and_pending_are_observable():
     )
 
 
-def test_empty_interaction_returns_empty_coalition_value():
+def test_baseline_carries_the_empty_coalition_value():
     game = quadratic_game()
     empty = game(DenseCoalitionArray(jnp.zeros((N_PLAYERS,), dtype=bool)))
     explanation = PermutationSampling(game, SV(), random_state=0).sample(SEEDS + QUANTUM).explain()
-    assert jnp.allclose(explanation(()), empty, atol=1e-6)
+    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
 
 
 def test_history_rollback_restores_earlier_estimates():

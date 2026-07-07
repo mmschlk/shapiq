@@ -29,6 +29,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"
     default_attribution: Callable[[Sequence[int] | object], ValueT] | None = None
+    baseline: ValueT | None = None
 
     def __post_init__(self) -> None:
         """Normalize and validate metadata."""
@@ -62,6 +63,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
             shape=new_shape,
             orientation=self.orientation,
             default_attribution=self.default_attribution,
+            baseline=self.baseline,
         )
 
     def __iter__(self) -> object:

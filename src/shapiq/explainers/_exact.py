@@ -101,15 +101,17 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         """Compute the configured index exactly from all game values.
 
         Returns:
-            A dense explanation. Indices that declare an order-0 attribution
-            carry the empty-coalition value there — except FBII, whose
-            order-0 attribution is its fitted intercept, and the Co-Moebius
-            transform, whose order-0 attribution is the grand-coalition
-            value.
+            A dense explanation whose baseline is the empty-coalition value
+            and whose attributions are computed on the centered game. Only
+            indices with a genuine order-0 attribution carry one: FBII's is
+            its fitted intercept, the Co-Moebius transform's is the grand
+            total ``v(N) - v(empty)``.
         """
         n_players = self.game.n_players
         n_value_axes = len(self.game.value_shape)
         values = to_leading(self._game_values(), n_value_axes)
+        baseline = to_trailing(values[..., 0], n_value_axes)
+        values = values - values[..., :1]
         masks = _powerset_masks(n_players)
         index = self._exact_index
         order = self.order
@@ -141,8 +143,6 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             }
         else:
             attributions = _regression_attributions(values, masks, index, order)
-        if index.includes_empty_interaction and 0 not in attributions:
-            attributions[0] = values[..., :1]
         return DenseExplanationArray(
             attributions_by_order={
                 size: to_trailing(block, n_value_axes) for size, block in attributions.items()
@@ -153,6 +153,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             shape=self.game.target_shape,
             orientation=self.orientation,
             value_shape=self.game.value_shape,
+            baseline=baseline,
         )
 
     def _game_values(self) -> Array:
@@ -298,8 +299,7 @@ def _banzhaf_regression_attributions(
     response = (values - values[..., :1]).reshape(-1, n_coalitions).T
     solution, *_ = jnp.linalg.lstsq(design, response)
     attributions = _solution_blocks(solution[1:], values, n_players, order)
-    intercept = solution[0].T.reshape(*values.shape[:-1], 1)
-    attributions[0] = intercept + values[..., :1]
+    attributions[0] = solution[0].T.reshape(*values.shape[:-1], 1)
     return attributions
 
 
