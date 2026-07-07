@@ -8,7 +8,7 @@ from shapiq.interactions import InteractionIndex, validate_interaction_metadata
 
 if TYPE_CHECKING:
     from shapiq.explanations import ExplanationArray
-    from shapiq.interactions import InteractionIndexName, InteractionOrientation
+    from shapiq.interactions import InteractionOrientation
 
 
 def reject_common_index_mistakes(index: object) -> None:
@@ -50,7 +50,7 @@ class Explainer[ValueT, GameT: Game](ABC):
         self.index = index
 
     @property
-    def interaction_index(self) -> InteractionIndexName:
+    def interaction_index(self) -> str:
         """Return the name of the explained interaction index."""
         return self.index.name
 

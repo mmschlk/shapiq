@@ -193,8 +193,12 @@ An **Index Capability** for indices whose **Attributions** weight the marginal c
 _Avoid_: bloc value, group value
 
 **Value Generalization**:
-The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata and are verified numerically by tests.
-_Avoid_: reduction, order-1 equality when the declared relation is meant
+The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata and are verified numerically by tests. An index constructed at order one **equals** the value it generalizes: index objects compare extensionally over nonempty **Interactions**, so ``SII(order=1) == SV() == CHII(order=1)``; order-0 conventions remain per-index. A declared ``None`` means no shipped value object equals the restriction, not that none exists.
+_Avoid_: reduction, canonical form
+
+**Value Preservation**:
+Whether an **InteractionIndex** whose **Order Semantics** are identity still keeps its order-1 **Attributions** equal to its generalized value at every order. All coverage indices preserve trivially; kADD-SHAP preserves despite identity semantics; STII, k-SII, FSII, FBII, and JointSV do not — their order-1 attributions equal the value only when constructed at order one.
+_Avoid_: order stability, value consistency
 
 **Order**:
 The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions.

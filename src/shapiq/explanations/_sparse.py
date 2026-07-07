@@ -9,7 +9,6 @@ from shapiq._shape import Shape, normalize_shape, validate_n_players
 from shapiq.explanations._base import ExplanationArray
 from shapiq.interactions import (
     Interaction,
-    InteractionIndexName,
     InteractionOrientation,
     normalize_interaction,
     validate_interaction_metadata,
@@ -25,7 +24,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
 
     attributions: Mapping[Interaction, ValueT]
     n_players: int
-    interaction_index: InteractionIndexName
+    interaction_index: str
     order: int
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"

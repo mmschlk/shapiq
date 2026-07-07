@@ -6,30 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from shapiq.interactions._types import Interaction, InteractionIndexName, InteractionOrientation
-
-_INDEX_NAMES = frozenset(
-    {
-        "SV",
-        "BV",
-        "SII",
-        "BII",
-        "CHII",
-        "k-SII",
-        "STII",
-        "FSII",
-        "FBII",
-        "kADD-SHAP",
-        "SGV",
-        "BGV",
-        "CHGV",
-        "IGV",
-        "EGV",
-        "JointSV",
-        "Moebius",
-        "Co-Moebius",
-    },
-)
+    from shapiq.interactions._types import Interaction, InteractionOrientation
 
 
 def normalize_interaction(
@@ -53,7 +30,7 @@ def normalize_interaction(
 
 def validate_interaction_metadata(
     *,
-    interaction_index: InteractionIndexName,
+    interaction_index: str,
     order: int,
     orientation: InteractionOrientation,
     n_players: int,
@@ -62,8 +39,8 @@ def validate_interaction_metadata(
     if not isinstance(interaction_index, str):
         msg = "interaction_index must be a string"
         raise TypeError(msg)
-    if interaction_index not in _INDEX_NAMES:
-        msg = f"unsupported interaction index: {interaction_index!r}"
+    if not interaction_index:
+        msg = "interaction_index must be a non-empty string"
         raise ValueError(msg)
     if isinstance(order, bool) or not isinstance(order, int):
         msg = f"order must be an integer, got {type(order).__name__}"

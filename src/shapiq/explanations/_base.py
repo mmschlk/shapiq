@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Self
 from shapiq._shape import Shape, logical_size
 from shapiq.interactions import (
     Interaction,
-    InteractionIndexName,
     InteractionOrientation,
     iter_interactions,
 )
@@ -20,7 +19,7 @@ class ExplanationArray[ValueT](ABC):
 
     n_players: int
     shape: Shape
-    interaction_index: InteractionIndexName
+    interaction_index: str
     order: int
     orientation: InteractionOrientation
 

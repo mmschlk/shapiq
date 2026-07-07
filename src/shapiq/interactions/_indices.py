@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import cache
 from math import comb
-from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkable
 
 import jax.numpy as jnp
 
@@ -35,7 +35,7 @@ class InteractionIndex(Protocol):
     """
 
     @property
-    def name(self) -> InteractionIndexName:
+    def name(self) -> str:
         """Return the name recorded on explanations."""
         ...
 
@@ -62,6 +62,11 @@ class InteractionIndex(Protocol):
     @property
     def generalizes(self) -> SV | BV | None:
         """Return the probabilistic value this index restricts to at order 1."""
+        ...
+
+    @property
+    def preserves_value(self) -> bool:
+        """Return whether order-1 attributions stay the generalized value at every order."""
         ...
 
 
@@ -112,12 +117,42 @@ class RegressionIndex(InteractionIndex, Protocol):
         ...
 
 
-@dataclass(frozen=True)
-class SV:
+class ExtensionalEquality:
+    """Equality of interaction indices as attribution rules on nonempty interactions.
+
+    Instances constructed at order one collapse onto the probabilistic value
+    they generalize, so ``SII(order=1) == SV() == CHII(order=1)`` and hashes
+    agree; all other instances compare by type and parameters. The equality
+    quantifies over nonempty interactions only — order-0 conventions (the
+    empty-coalition value, FBII's fitted intercept) remain per-index.
+    Estimator dispatch is keyed on index types and is unaffected.
+    """
+
+    def _identity(self) -> tuple[object, ...]:
+        index = cast("InteractionIndex", self)
+        if index.generalizes is not None and index.order == 1:
+            return ExtensionalEquality._identity(index.generalizes)
+        params = tuple(getattr(self, field.name) for field in fields(cast("Any", self)))
+        return (type(self).__name__, *params)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare attribution rules, collapsing order-1 generalizations."""
+        if not isinstance(other, ExtensionalEquality):
+            return NotImplemented
+        return self._identity() == other._identity()
+
+    def __hash__(self) -> int:
+        """Hash consistently with extensional equality."""
+        return hash(self._identity())
+
+
+@dataclass(frozen=True, eq=False)
+class SV(ExtensionalEquality):
     """The Shapley value: the unique efficient attribution to single players."""
 
     name: ClassVar[InteractionIndexName] = "SV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
@@ -142,12 +177,13 @@ class SV:
         return _shapley_regression_kernel(n_players)
 
 
-@dataclass(frozen=True)
-class BV:
+@dataclass(frozen=True, eq=False)
+class BV(ExtensionalEquality):
     """The Banzhaf value: uniform-coalition attribution to single players."""
 
     name: ClassVar[InteractionIndexName] = "BV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
@@ -163,8 +199,8 @@ class BV:
         return _banzhaf_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class SII:
+@dataclass(frozen=True, eq=False)
+class SII(ExtensionalEquality):
     """The Shapley interaction index up to ``order``; generalizes SV.
 
     Order is explanation coverage: attributions of shared interactions are
@@ -175,6 +211,7 @@ class SII:
 
     name: ClassVar[InteractionIndexName] = "SII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
@@ -189,8 +226,8 @@ class SII:
         return _shapley_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class BII:
+@dataclass(frozen=True, eq=False)
+class BII(ExtensionalEquality):
     """The Banzhaf interaction index up to ``order``; generalizes BV.
 
     Order is explanation coverage: attributions of shared interactions are
@@ -201,6 +238,7 @@ class BII:
 
     name: ClassVar[InteractionIndexName] = "BII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
@@ -215,8 +253,8 @@ class BII:
         return _banzhaf_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class CHII:
+@dataclass(frozen=True, eq=False)
+class CHII(ExtensionalEquality):
     """The chaining interaction index up to ``order``; generalizes SV.
 
     Order is explanation coverage: attributions of shared interactions are
@@ -228,6 +266,7 @@ class CHII:
 
     name: ClassVar[InteractionIndexName] = "CHII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
@@ -242,8 +281,8 @@ class CHII:
         return _chaining_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class STII:
+@dataclass(frozen=True, eq=False)
+class STII(ExtensionalEquality):
     """The Shapley-Taylor interaction index of top order ``order``; generalizes SV.
 
     Order is part of the index identity: attributions of shared interactions
@@ -256,6 +295,7 @@ class STII:
 
     name: ClassVar[InteractionIndexName] = "STII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
@@ -272,8 +312,8 @@ class STII:
         return _taylor_top_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class KSII:
+@dataclass(frozen=True, eq=False)
+class KSII(ExtensionalEquality):
     """The efficient k-Shapley interaction index of order ``order``; generalizes SV.
 
     Order is part of the index identity: k-SII aggregates Shapley
@@ -286,6 +326,7 @@ class KSII:
 
     name: ClassVar[InteractionIndexName] = "k-SII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[SV] = SV()
@@ -295,8 +336,8 @@ class KSII:
         validate_int("order", self.order, minimum=1)
 
 
-@dataclass(frozen=True)
-class FSII:
+@dataclass(frozen=True, eq=False)
+class FSII(ExtensionalEquality):
     """The faithful Shapley interaction index of order ``order``; generalizes SV.
 
     Order is part of the index identity: the index is the best
@@ -308,6 +349,7 @@ class FSII:
 
     name: ClassVar[InteractionIndexName] = "FSII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[SV] = SV()
@@ -321,8 +363,8 @@ class FSII:
         return _shapley_regression_kernel(n_players)
 
 
-@dataclass(frozen=True)
-class FBII:
+@dataclass(frozen=True, eq=False)
+class FBII(ExtensionalEquality):
     """The faithful Banzhaf interaction index of order ``order``; generalizes BV.
 
     Order is part of the index identity: the index is the best
@@ -336,6 +378,7 @@ class FBII:
 
     name: ClassVar[InteractionIndexName] = "FBII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[BV] = BV()
@@ -345,8 +388,8 @@ class FBII:
         validate_int("order", self.order, minimum=1)
 
 
-@dataclass(frozen=True)
-class KADDSHAP:
+@dataclass(frozen=True, eq=False)
+class KADDSHAP(ExtensionalEquality):
     """The k-additive Shapley index of order ``order``; generalizes SV.
 
     Order is part of the index identity: the index fits a ``order``-additive
@@ -359,6 +402,7 @@ class KADDSHAP:
 
     name: ClassVar[InteractionIndexName] = "kADD-SHAP"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[SV] = SV()
@@ -372,8 +416,8 @@ class KADDSHAP:
         return _shapley_regression_kernel(n_players)
 
 
-@dataclass(frozen=True)
-class Moebius:
+@dataclass(frozen=True, eq=False)
+class Moebius(ExtensionalEquality):
     """The Moebius transform: the game's interaction masses themselves.
 
     A cardinal index anchored at the empty coalition; the default order
@@ -385,6 +429,7 @@ class Moebius:
 
     name: ClassVar[InteractionIndexName] = "Moebius"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 0
@@ -400,8 +445,8 @@ class Moebius:
         return _empty_anchor_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class CoMoebius:
+@dataclass(frozen=True, eq=False)
+class CoMoebius(ExtensionalEquality):
     """The Co-Moebius transform: derivatives anchored at the complement.
 
     A cardinal index whose derivative of an interaction is taken at the
@@ -414,6 +459,7 @@ class CoMoebius:
 
     name: ClassVar[InteractionIndexName] = "Co-Moebius"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 0
@@ -429,8 +475,8 @@ class CoMoebius:
         return _grand_anchor_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class SGV:
+@dataclass(frozen=True, eq=False)
+class SGV(ExtensionalEquality):
     """The Shapley generalized value up to ``order``; generalizes SV.
 
     Attributions weight the marginal contributions of whole interactions
@@ -442,6 +488,7 @@ class SGV:
 
     name: ClassVar[InteractionIndexName] = "SGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
@@ -455,8 +502,8 @@ class SGV:
         return _shapley_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class BGV:
+@dataclass(frozen=True, eq=False)
+class BGV(ExtensionalEquality):
     """The Banzhaf generalized value up to ``order``; generalizes BV.
 
     Attributions weight the marginal contributions of whole interactions
@@ -467,6 +514,7 @@ class BGV:
 
     name: ClassVar[InteractionIndexName] = "BGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[BV] = BV()
@@ -480,8 +528,8 @@ class BGV:
         return _banzhaf_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class CHGV:
+@dataclass(frozen=True, eq=False)
+class CHGV(ExtensionalEquality):
     """The chaining generalized value up to ``order``; generalizes SV.
 
     Attributions weight the marginal contributions of whole interactions
@@ -493,6 +541,7 @@ class CHGV:
 
     name: ClassVar[InteractionIndexName] = "CHGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
@@ -506,8 +555,8 @@ class CHGV:
         return _chaining_derivative_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class IGV:
+@dataclass(frozen=True, eq=False)
+class IGV(ExtensionalEquality):
     """The internal generalized value up to ``order``.
 
     The attribution of an interaction is its stand-alone worth over the
@@ -518,6 +567,7 @@ class IGV:
 
     name: ClassVar[InteractionIndexName] = "IGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[None] = None
@@ -531,8 +581,8 @@ class IGV:
         return _empty_anchor_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class EGV:
+@dataclass(frozen=True, eq=False)
+class EGV(ExtensionalEquality):
     """The external generalized value up to ``order``.
 
     The attribution of an interaction is its contribution on top of all
@@ -544,6 +594,7 @@ class EGV:
 
     name: ClassVar[InteractionIndexName] = "EGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[None] = None
@@ -557,8 +608,8 @@ class EGV:
         return _grand_anchor_weights(n_players, interaction_size)
 
 
-@dataclass(frozen=True)
-class JointSV:
+@dataclass(frozen=True, eq=False)
+class JointSV(ExtensionalEquality):
     """The joint Shapley value of order ``order``; generalizes SV.
 
     Attributions weight bloc marginal contributions with arrival-process
@@ -570,6 +621,7 @@ class JointSV:
 
     name: ClassVar[InteractionIndexName] = "JointSV"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
     orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[SV] = SV()

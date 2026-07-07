@@ -12,7 +12,6 @@ from shapiq._shape import Shape, normalize_shape, validate_n_players
 from shapiq.explanations._base import ExplanationArray
 from shapiq.interactions import (
     Interaction,
-    InteractionIndexName,
     InteractionOrientation,
     iter_interactions,
     normalize_interaction,
@@ -29,7 +28,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
 
     attributions_by_order: Mapping[int, ValueT]
     n_players: int
-    interaction_index: InteractionIndexName
+    interaction_index: str
     order: int
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"

@@ -71,6 +71,7 @@ class _ShortWeights:
     orientation: ClassVar = "undirected"
     includes_empty_interaction: ClassVar = False
     min_interaction_size: ClassVar = 1
+    preserves_value: ClassVar = True
     generalizes: ClassVar = None
 
     def derivative_weights(self, n_players: int, interaction_size: int):
