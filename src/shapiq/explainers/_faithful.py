@@ -8,8 +8,8 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
-from shapiq.interactions._indices import bernoulli_numbers
 from shapiq.interactions._iteration import interaction_masks
+from shapiq.interactions._spec import bernoulli_numbers
 
 
 def interaction_design(masks: Array, order: int) -> Array:
