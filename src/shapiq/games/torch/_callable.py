@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-import jax.dlpack
-import jax.numpy as jnp
 import torch
 
 from shapiq.games import CallableGame
+from shapiq.games.torch._convert import to_jax
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -54,10 +53,7 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
 
     def _torch_to_jax(self, value: object) -> ValueT:
         """Convert torch outputs to JAX arrays when possible."""
-        if isinstance(value, torch.Tensor):
-            tensor = value.detach() if self.detach else value
-            return cast("ValueT", jax.dlpack.from_dlpack(tensor))
-        return cast("ValueT", jnp.asarray(value))
+        return cast("ValueT", to_jax(value, detach=self.detach))
 
 
 def _coalitions_to_torch(coalitions: CoalitionArray) -> torch.Tensor:

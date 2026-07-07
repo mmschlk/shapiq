@@ -1,6 +1,6 @@
 # Issue 2 — Torch example with baseline masking
 
-Status: **not started** · Order: **third** (milestone A may start any time)
+Status: **done** (2026-07-07, milestones A and B) · Order: **third**
 
 ## Goal
 
@@ -47,29 +47,47 @@ test of the Masker/MaskedPredictor/LinkFunction language against a real model.
 
 ## Milestones
 
-- [ ] **A — scalar link.** Single scalar Value per Coalition; works on the current scalar-only
-  contract. No dependencies.
-- [ ] **B — vector link.** All class logits explained at once (per-class attributions from one
-  evidence set). Depends on issue 3.
+- [x] **A — scalar link.** Predicted class-1 probability; permutation-sampled SV converges to
+  the exact SV of the masked model with exact per-budget efficiency.
+- [x] **B — vector link.** Both class log-probabilities in one pass (`value_shape=(2,)`);
+  exact and sampled FSII find the planted x0·x1 interaction dominant for class 0.
 
 ## Work breakdown
 
-- [ ] Concrete `BaselineMasker` with tests (masking correctness, `target_shape` handling,
-  batched Explanation Targets).
-- [ ] LinkFunction implementation(s) for the torch boundary with tests.
-- [ ] `examples/torch_baseline.py` (milestone A), extended for milestone B after issue 3.
-- [ ] Record language/API friction; update `CONTEXT.md` and `docs/design/core-interfaces.md`
-  where the glossary needs new or sharper entries.
+- [x] Concrete `BaselineMasker` in `shapiq.games.torch` (decision 2026-07-07): frozen
+  dataclass deriving `n_players`/`target_shape` from the inputs; batched Explanation Targets
+  supported and tested.
+- [x] `to_jax` link helper in `shapiq.games.torch` (torch → JAX via DLPack); links themselves
+  stay plain callables in user code.
+- [x] `examples/torch_baseline.py` — trains a small MLP on synthetic tabular data with a
+  planted x0·x1 interaction, then runs both milestones with exact cross-checks and shows the
+  identification gate honestly.
+- [x] Tests: `tests/shapiq/test_torch_baseline.py` (masking correctness, batches, metadata
+  validation, closed-form SV of a masked linear model, sampled-vs-exact, scalar link).
+
+## Friction findings (recorded 2026-07-07)
+
+- **DLPack striding.** Link outputs are typically strided views (`predictions[..., class]`),
+  and JAX's DLPack import requires compact striding. `to_jax` makes tensors contiguous; the
+  same latent bug existed in `TorchCallableGame._torch_to_jax`, which now delegates to
+  `to_jax`.
+- **Masker authoring pattern.** The abstract `Masker` has no `__init__`; a frozen dataclass
+  deriving metadata in `__post_init__` worked cleanly and is the pattern to document for
+  masker authors.
+- **`LinkFunction` as a plain callable held up.** Lambdas sufficed for both links; the
+  game-side `value_shape` declaration (ADR 0006) kept links metadata-free, as intended.
+- **`min_budget` is necessary, not sufficient, for identification** under random kernel
+  samples (the example shows rank 34 of 35 at `min_budget + 20`). The gate plus its error
+  message carry the UX; a coverage-guaranteeing sampling refinement is a possible future
+  observation, not a task.
+- The pipeline classes (`ModelMaskedPredictor`, `MaskedGame`) composed without any changes;
+  no glossary edits were needed.
 
 ## Open decisions
 
-- Where `BaselineMasker` lives: `shapiq.games` vs `shapiq.games.torch`. The masking math is
-  backend-agnostic; producing torch tensors is not. (An option: a backend-agnostic masker core
-  plus a thin torch adapter.)
-- How the example uses batched **Explanation Targets** (`target_shape` + `share_samples`) —
-  explaining several instances at once is the natural showcase.
-- Which pieces graduate from the example into the library proper (masker and link likely do;
-  the training loop does not).
+- The example shows the single-instance story for readability; batched Explanation Targets
+  are exercised in the tests instead. Revisit if the example should also showcase
+  `share_samples`.
 
 ## Acceptance criteria
 
