@@ -142,7 +142,6 @@ def gcn_graph_game(gcn_model, simple_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -152,7 +151,6 @@ def gin_graph_game(gin_model, simple_graph):
     return GraphGame(
         model=gin_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -162,7 +160,6 @@ def gat_graph_game(gat_model, simple_graph):
     return GraphGame(
         model=gat_model,
         x_graph=simple_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -172,7 +169,6 @@ def gcn_graph_game_small(gcn_model, small_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=small_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -182,7 +178,6 @@ def gcn_graph_game_disconnected(gcn_model, disconnected_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=disconnected_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -192,7 +187,6 @@ def gcn_graph_game_single_node(gcn_model, single_node_graph):
     return GraphGame(
         model=gcn_model,
         x_graph=single_node_graph,
-        task="regression",
         baseline_strategy="average",
     )
 
@@ -202,7 +196,6 @@ def gcn_graph_game_classification(gcn_model_classification, simple_graph):
     return GraphGame(
         model=gcn_model_classification,
         x_graph=simple_graph,
-        task="classification",
         class_index=0,
         baseline_strategy="average",
     )
@@ -212,6 +205,63 @@ def gcn_graph_game_classification(gcn_model_classification, simple_graph):
 # GraphSHAPIQ fixtures
 # =========================================================
 
+def make_path_graph(n_nodes: int = 6) -> Data:
+    """Create a path graph with random node features."""
+    x = torch.randn(n_nodes, 3)
+
+    edges = []
+    for i in range(n_nodes - 1):
+        edges.extend([(i, i + 1), (i + 1, i)])
+
+    edge_index = torch.tensor(edges, dtype=torch.long).T
+    return Data(x=x, edge_index=edge_index)
+
+
+def make_cycle_graph(n_nodes: int = 6) -> Data:
+    """Create a cycle graph with random node features."""
+    x = torch.randn(n_nodes, 3)
+
+    edges = []
+    for i in range(n_nodes):
+        j = (i + 1) % n_nodes
+        edges.extend([(i, j), (j, i)])
+
+    edge_index = torch.tensor(edges, dtype=torch.long).T
+    return Data(x=x, edge_index=edge_index)
+
+
+def make_disconnected_graph() -> Data:
+    """Create a graph with two disconnected path components."""
+    x = torch.randn(6, 3)
+
+    edge_index = torch.tensor(
+        [
+            [0, 1, 1, 2, 3, 4, 4, 5],
+            [1, 0, 2, 1, 4, 3, 5, 4],
+        ],
+        dtype=torch.long,
+    )
+
+    return Data(x=x, edge_index=edge_index)
+
+@pytest.fixture
+def receptive_field_graphs():
+    """Return graphs whose 1-hop neighborhoods are smaller than the full graph."""
+    torch.manual_seed(0)
+
+    return [
+        make_path_graph(),
+        make_cycle_graph(),
+        make_disconnected_graph(),
+    ]
+
+@pytest.fixture
+def gcn_model_one_layer():
+    return SimpleGCN(
+        num_node_features=3,
+        output_dim=1,
+        num_layers=1,
+    )
 
 @pytest.fixture
 def gcn_graphshapiq_classification(gcn_graph_game_classification):

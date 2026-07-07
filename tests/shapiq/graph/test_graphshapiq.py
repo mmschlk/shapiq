@@ -15,6 +15,10 @@ import pytest
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.graph.graphshapiq import GraphSHAPIQ
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
+
+
+from shapiq.graph import GraphGame
 
 
 class TestGraphSHAPIQ:
@@ -792,6 +796,47 @@ class TestGraphSHAPIQ:
                 exact_interactions[coalition], abs=1e-6
             )
 
+    def test_explain_matches_exact_computer_k_sii_receptive_field_truncation(
+            self,
+            gcn_model_one_layer,
+            receptive_field_graphs,
+    ):
+        """Test GraphSHAPIQ against ExactComputer on graphs with incomplete neighborhoods.
+
+        Uses several small synthetic graphs where ``max_size_neighbors < n_players`` to
+        exercise the receptive-field truncation of GraphSHAPIQ and verifies that the
+        computed k-SII values agree with ExactComputer.
+        """
+        for graph in receptive_field_graphs:
+            game = GraphGame(
+                model=gcn_model_one_layer,
+                x_graph=graph,
+                baseline_strategy="average",
+            )
+
+            graphshapiq = GraphSHAPIQ(game)
+
+            assert graphshapiq.max_size_neighbors < graphshapiq.n_players
+
+            _, interactions = graphshapiq.explain(
+                index="k-SII",
+                efficiency_routine=False,
+            )
+
+            exact = ExactComputer(game)
+            exact_interactions = exact(
+                index="k-SII",
+                order=graphshapiq.n_players,
+            )
+
+            assert graphshapiq.last_n_model_calls < 2 ** graphshapiq.n_players
+
+            for coalition, idx in interactions.interaction_lookup.items():
+                assert interactions.values[idx] == pytest.approx(
+                    exact_interactions[coalition],
+                    abs=1e-6,
+                )
+
     def test_explain_matches_exact_computer_sii(self, gcn_graphshapiq, gcn_graph_game):
         """Test that GraphSHAPIQ SII matches ExactComputer on simple graph (complete case)."""
         _, interactions = gcn_graphshapiq.explain(index="SII", efficiency_routine=True)
@@ -978,3 +1023,167 @@ class TestGraphSHAPIQ:
             gcn_graphshapiq_small.game(np.zeros((1, gcn_graphshapiq_small.n_players)))[0]
         )
         assert np.sum(shapley_values) == pytest.approx(v_grand - v_empty, abs=1e-6)
+
+
+class TestGraphSHAPIQCpp:
+    """Tests for the C++-accelerated Möbius transform (compute_moebius_transform_cpp).
+
+    These mirror the pure-Python compute_moebius_transform tests and additionally
+    verify that the Python and C++ variants produce identical results, both when
+    called directly and through explain(use_cpp=...).
+    """
+
+    def test_cpp_simple(self, gcn_graphshapiq):
+        """Möbius transform with hand-crafted values for 2 players (C++)."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert result[()] == pytest.approx(0.0)
+        assert result[(0,)] == pytest.approx(1.0)
+        assert result[(1,)] == pytest.approx(2.0)
+        assert result[(0, 1)] == pytest.approx(1.0)
+
+    def test_cpp_returns_interaction_values(self, gcn_graphshapiq):
+        """Return type is InteractionValues with correct attributes (C++)."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert isinstance(result, InteractionValues)
+        assert result.n_players == gcn_graphshapiq.n_players
+        assert result.index == "Moebius"
+        assert result.min_order == 0
+        assert result.max_order == gcn_graphshapiq.n_players
+
+    def test_cpp_baseline_value(self, gcn_graphshapiq):
+        """baseline_value equals m(()) = v(()) (C++)."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.5, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert result.baseline_value == pytest.approx(0.5)
+
+    def test_cpp_empty_coalition_only(self, gcn_graphshapiq):
+        """Möbius transform with only the empty coalition (C++)."""
+        coalitions = {()}
+        coalition_predictions = np.array([3.0])
+        coalition_lookup = {(): 0}
+
+        result = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert result[()] == pytest.approx(3.0)
+        assert result.baseline_value == pytest.approx(3.0)
+
+    def test_cpp_three_players(self, gcn_graphshapiq):
+        """Möbius transform with three players and known values (C++)."""
+        coalitions = {(), (0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)}
+        coalition_predictions = np.array([0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 6.0])
+        coalition_lookup = {
+            (): 0,
+            (0,): 1,
+            (1,): 2,
+            (2,): 3,
+            (0, 1): 4,
+            (0, 2): 5,
+            (1, 2): 6,
+            (0, 1, 2): 7,
+        }
+
+        result = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert result[(0, 1)] == pytest.approx(0.0)
+        assert result[(0, 1, 2)] == pytest.approx(3.0)
+
+    def test_cpp_matches_python_random(self, gcn_graphshapiq):
+        """Python and C++ Möbius transforms agree on a random closed game."""
+        rng = np.random.default_rng(0)
+        m = 6  # players 0..5; full powerset is closed under subsets
+        coalitions = list(powerset(range(m)))
+        coalition_lookup = {c: i for i, c in enumerate(coalitions)}
+        coalition_predictions = rng.standard_normal(len(coalitions))
+
+        result_py = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=set(coalitions),
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+        result_cpp = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=set(coalitions),
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        for c in coalitions:
+            assert result_cpp[c] == pytest.approx(result_py[c], abs=1e-10)
+
+    def test_cpp_reconstruction_property(self, gcn_graphshapiq):
+        """sum_{T subseteq S} m(T) == v(S) for every coalition (C++)."""
+        rng = np.random.default_rng(1)
+        m = 5
+        coalitions = list(powerset(range(m)))
+        coalition_lookup = {c: i for i, c in enumerate(coalitions)}
+        coalition_predictions = rng.standard_normal(len(coalitions))
+
+        moebius = gcn_graphshapiq.compute_moebius_transform_cpp(
+            coalitions=set(coalitions),
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        for s in coalitions:
+            reconstructed = sum(moebius[t] for t in powerset(s))
+            assert reconstructed == pytest.approx(
+                coalition_predictions[coalition_lookup[s]], abs=1e-10
+            )
+
+    @pytest.mark.parametrize("index", ["SII", "k-SII", "SV"])
+    def test_explain_use_cpp_matches_python(self, gcn_graphshapiq, index):
+        """explain(use_cpp=True) matches explain(use_cpp=False) on the same instance."""
+        moebius_py, interactions_py = gcn_graphshapiq.explain(index=index, use_cpp=False)
+        moebius_cpp, interactions_cpp = gcn_graphshapiq.explain(index=index, use_cpp=True)
+
+        for key in moebius_py.interaction_lookup:
+            assert moebius_cpp[key] == pytest.approx(moebius_py[key], abs=1e-8)
+        for key in interactions_py.interaction_lookup:
+            assert interactions_cpp[key] == pytest.approx(interactions_py[key], abs=1e-8)
+
+    def test_explain_use_cpp_small_graph(self, gcn_graphshapiq_small):
+        """explain(use_cpp=True) matches Python on a graph with incomplete neighborhoods."""
+        moebius_py, interactions_py = gcn_graphshapiq_small.explain(
+            max_subset_size=1, efficiency_routine=True, use_cpp=False
+        )
+        moebius_cpp, interactions_cpp = gcn_graphshapiq_small.explain(
+            max_subset_size=1, efficiency_routine=True, use_cpp=True
+        )
+
+        for key in moebius_py.interaction_lookup:
+            assert moebius_cpp[key] == pytest.approx(moebius_py[key], abs=1e-8)
+        for key in interactions_py.interaction_lookup:
+            assert interactions_cpp[key] == pytest.approx(interactions_py[key], abs=1e-8)

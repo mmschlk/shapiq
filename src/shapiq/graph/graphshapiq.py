@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import logging
 from typing import TYPE_CHECKING, cast
 
@@ -140,6 +141,90 @@ class GraphSHAPIQ:
             baseline_value=float(moebius_values[moebius_lookup[()]]),
         )
 
+    def compute_moebius_transform_cpp(
+        self,
+        coalitions: set[tuple[int, ...]],
+        coalition_predictions: NDArray[np.floating],
+        coalition_lookup: dict[tuple[int, ...], int],
+    ) -> InteractionValues:
+        """C++-accelerated drop-in replacement for :meth:`compute_moebius_transform`.
+
+        Computes the exact same Möbius coefficients as the pure-Python
+        :meth:`compute_moebius_transform`, but delegates the hot double loop over
+        coalitions and their subsets to the ``shapiq.graph.cext`` extension.
+
+        Requires the ``shapiq.graph.cext`` extension to be compiled (e.g. via
+        `uv pip install -e .`); otherwise an ``ImportError`` is raised.
+
+        Args:
+            coalitions: Set of coalitions (tuples of player indices).
+            coalition_predictions: Predictions for each coalition.
+            coalition_lookup: Mapping from coalition tuples to their indices.
+
+        Returns:
+            InteractionValues object containing the Möbius values.
+        """
+        from .cext import (
+            compute_moebius_transform as _moebius_cpp,  # ty: ignore[unresolved-import]
+        )
+
+        # Fix a stable iteration order for the coalitions; this defines both the
+        # output index i and the moebius_lookup, matching the Python reference.
+        coalition_list = list(coalitions)
+
+        # Build CSR arrays for the coalitions to evaluate. Sizes/offsets are
+        # computed vectorized via cumsum, and the flat member array is filled in
+        # one pass via fromiter — avoiding a Python-level list.extend() per
+        # coalition (see shapiq.tree.interventional.explainer for the same
+        # flatten-via-cumsum pattern).
+        sizes = np.fromiter(
+            (len(c) for c in coalition_list), dtype=np.int32, count=len(coalition_list)
+        )
+        offsets = np.empty(len(coalition_list) + 1, dtype=np.int32)
+        offsets[0] = 0
+        np.cumsum(sizes, out=offsets[1:])
+        members_flat = np.fromiter(
+            itertools.chain.from_iterable(coalition_list), dtype=np.int32, count=int(offsets[-1])
+        )
+
+        # Build CSR arrays for coalition_lookup (keys + prediction row index).
+        lookup_keys = list(coalition_lookup.keys())
+        lookup_sizes = np.fromiter(
+            (len(k) for k in lookup_keys), dtype=np.int32, count=len(lookup_keys)
+        )
+        lookup_offsets = np.empty(len(lookup_keys) + 1, dtype=np.int32)
+        lookup_offsets[0] = 0
+        np.cumsum(lookup_sizes, out=lookup_offsets[1:])
+        lookup_members_flat = np.fromiter(
+            itertools.chain.from_iterable(lookup_keys),
+            dtype=np.int32,
+            count=int(lookup_offsets[-1]),
+        )
+        lookup_indices = np.fromiter(
+            coalition_lookup.values(), dtype=np.int32, count=len(coalition_lookup)
+        )
+
+        moebius_values = _moebius_cpp(
+            members_flat,
+            offsets,
+            lookup_members_flat,
+            lookup_offsets,
+            lookup_indices,
+            np.ascontiguousarray(coalition_predictions, dtype=np.float64),
+        )
+
+        moebius_lookup = {coalition: i for i, coalition in enumerate(coalition_list)}
+
+        return InteractionValues(
+            values=moebius_values,
+            interaction_lookup=moebius_lookup,
+            min_order=0,
+            max_order=self.n_players,
+            n_players=self.n_players,
+            index="Moebius",
+            baseline_value=float(moebius_values[moebius_lookup[()]]),
+        )
+
     def _convert_to_coalition_matrix(
         self,
         coalitions: set[tuple[int, ...]],
@@ -177,47 +262,48 @@ class GraphSHAPIQ:
         """Adjust Möbius coefficients to ensure efficiency.
 
         The efficiency axiom states that the sum of all Möbius coefficients must equal
-        the grand coalition prediction:
+        the grand coalition prediction, i.e.,
+        :math:`\\sum_{S \\subseteq N} m(S) = v(N)`.
 
-            sum_{S ⊆ N} m(S) = v(N)
+        When neighborhoods are incomplete, that is, when their size exceeds
+        ``max_subset_size``, the Möbius transform is truncated and the efficiency axiom
+        is violated. This routine corrects for this by computing a gap term for each
+        incomplete neighborhood:
 
-        When neighborhoods are incomplete (i.e. their size exceeds max_subset_size),
-        the Möbius transform is truncated and the efficiency axiom is violated. This
-        routine corrects for this by computing a gap term for each incomplete neighborhood:
+        :math:`gap(S) = v(S) - \\sum_{T \\subseteq S, |T| \\leq k} m(T)
+        - \\sum_{S' \\subset S, S' \text{ incomplete}} gap(S')`
 
-            gap(S) = v(S) - sum_{T ⊆ S, |T| <= max_subset_size} m(T)
-                        - sum_{S' ⊂ S, S' incomplete} gap(S')
+        where :math:`k` is ``max_subset_size``.
 
-        Where:
-            - v(S) is the game value of the incomplete neighborhood S
-            - m(T) are the already-computed Möbius coefficients for subsets T of S
-            - gap(S') are the correction terms for smaller incomplete neighborhoods
-            that are subsets of S
+        Here, :math:`v(S)` is the game value of the incomplete neighborhood :math:`S`,
+        :math:`m(T)` are the already-computed Möbius coefficients for subsets
+        :math:`T \\subseteq S`, and :math:`gap(S')` are correction terms for smaller
+        incomplete neighborhoods :math:`S' \\subset S`.
 
         Note:
-            - This method should only be called when incomplete_neighborhoods is non-empty.
-            - The returned InteractionValues has baseline_value=0.0 since the corrections
-            are gap terms only; the empty coalition contribution is already captured
-            in the original moebius_coefficients.
+            This method should only be called when ``incomplete_neighborhoods`` is non-empty.
+            The returned ``InteractionValues`` has ``baseline_value=0.0`` since the
+            corrections are gap terms only; the empty coalition contribution is already
+            captured in the original ``moebius_coefficients``.
 
         Args:
             masked_predictions: Predictions for all coalitions, including incomplete
-                neighborhoods. Indices are given by incomplete_neighborhoods_lookup.
+                neighborhoods. Indices are given by ``incomplete_neighborhoods_lookup``.
             moebius_coefficients: Current Möbius coefficients computed from the
-                truncated powerset via compute_moebius_transform.
+                truncated powerset via ``compute_moebius_transform``.
             incomplete_neighborhoods: Set of neighborhood tuples whose size exceeds
-                max_subset_size and therefore were not fully covered by the Möbius
+                ``max_subset_size`` and therefore were not fully covered by the Möbius
                 transform.
             incomplete_neighborhoods_lookup: Mapping from incomplete neighborhood tuples
-                to their row indices in masked_predictions.
+                to their row indices in ``masked_predictions``.
             max_subset_size: Maximum subset size used in the Möbius transform. Subsets
                 larger than this were not evaluated.
-            grand_coalition_prediction_node: The model prediction for the grand coalition
-                (all nodes present), used to enforce the global efficiency constraint.
+            grand_coalition_prediction_node: The model prediction for the grand coalition,
+                that is, all nodes present, used to enforce the global efficiency constraint.
 
         Returns:
             InteractionValues containing the gap correction terms for each incomplete
-            neighborhood, with baseline_value=0.0 and index="Moebius".
+            neighborhood, with ``baseline_value=0.0`` and ``index="Moebius"``.
         """
         incomplete_neighborhoods_sorted = cast(
             "list[tuple[int, ...]]", sorted(incomplete_neighborhoods, key=len)
@@ -246,13 +332,17 @@ class GraphSHAPIQ:
             additional_values[i] = gap
             additional_lookup[neighborhood] = i
 
-        # Adjust the largest neighborhood to maintain efficiency
+        # Maintain global efficiency only if an incomplete neighborhood is the grand coalition.
         if additional_lookup:
-            additional_values[-1] = (
-                grand_coalition_prediction_node
-                - np.sum(moebius_coefficients.values)
-                - np.sum(additional_values[:-1])
-            )
+            grand_coalition = tuple(sorted(self._grand_coalition_set))
+
+            if grand_coalition in additional_lookup:
+                grand_idx = additional_lookup[grand_coalition]
+                additional_values[grand_idx] = (
+                    grand_coalition_prediction_node
+                    - np.sum(moebius_coefficients.values)
+                    - (np.sum(additional_values) - additional_values[grand_idx])
+                )
 
         return InteractionValues(
             values=additional_values,
@@ -271,6 +361,7 @@ class GraphSHAPIQ:
         *,
         efficiency_routine: bool = True,
         index: ValidMoebiusConverterIndices = "k-SII",
+        use_cpp: bool = True,
     ) -> tuple[InteractionValues, InteractionValues]:
         """Compute Shapley interactions for the graph.
 
@@ -280,6 +371,9 @@ class GraphSHAPIQ:
             order: Maximum order of interactions to return. If None, uses n_players.
             efficiency_routine: If True, ensures efficiency by adjusting neighborhood interactions.
             index: The type of the interaction values.
+            use_cpp: If True, use the C++-accelerated Möbius transform
+                (:meth:`compute_moebius_transform_cpp`). Requires the
+                ``shapiq.graph.cext`` extension to be compiled. Defaults to ``True``.
 
         Returns:
             Tuple of (moebius_coefficients, shapley_interactions).
@@ -326,6 +420,7 @@ class GraphSHAPIQ:
             self._grand_coalition_prediction[0],
             index,
             efficiency_routine=efficiency_routine,
+            use_cpp=use_cpp,
         )
         return moebius_coefficients, shapley_interactions
 
@@ -342,6 +437,7 @@ class GraphSHAPIQ:
         index: ValidMoebiusConverterIndices = "k-SII",
         *,
         efficiency_routine: bool,
+        use_cpp: bool = False,
     ) -> tuple[InteractionValues, InteractionValues]:
         """Core routine for computing GraphSHAPIQ values.
 
@@ -356,15 +452,23 @@ class GraphSHAPIQ:
             max_subset_size: Maximum interaction size.
             order: Maximum order of interactions.
             grand_coalition_prediction_node: Prediction for the grand coalition.
+            use_cpp: If True, use the C++-accelerated Möbius transform.
 
         Returns:
             Tuple of (final Möbius coefficients, Shapley interactions).
         """
-        moebius_coefficients = self.compute_moebius_transform(
-            coalitions=moebius_interactions,
-            coalition_predictions=masked_predictions,
-            coalition_lookup=moebius_coalition_lookup,
-        )
+        if use_cpp:
+            moebius_coefficients = self.compute_moebius_transform_cpp(
+                coalitions=moebius_interactions,
+                coalition_predictions=masked_predictions,
+                coalition_lookup=moebius_coalition_lookup,
+            )
+        else:
+            moebius_coefficients = self.compute_moebius_transform(
+                coalitions=moebius_interactions,
+                coalition_predictions=masked_predictions,
+                coalition_lookup=moebius_coalition_lookup,
+            )
         moebius_coefficients.sparsify(self.sparsify_threshold)
 
         if efficiency_routine and incomplete_neighborhoods:

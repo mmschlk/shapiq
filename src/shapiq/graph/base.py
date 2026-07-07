@@ -15,30 +15,72 @@ from shapiq.game import Game
 
 
 class GraphGame(Game):
-    """A GraphSHAP-IQ explanation game for graph networks."""
+    """GraphSHAP-IQ explanation game for graph neural networks.
+
+    The game evaluates a graph neural network on masked versions of a given
+    input graph. Each node is treated as one player. For a coalition, nodes
+    inside the coalition keep their original node features, while nodes outside
+    the coalition are replaced by a baseline feature vector.
+
+    The resulting model output defines the value of the coalition and can be
+    used to compute Shapley interaction values for GraphSHAP-IQ.
+
+    Attributes:
+        model: The graph neural network used for prediction.
+        x_graph: A cloned version of the input graph instance to explain.
+        class_index: Output index to explain. If ``None``, the model output is
+        expected to be scalar and is used directly.
+        edge_index: The graph connectivity in COO format as a NumPy array.
+        l_hop_distance: The number of message-passing layers of the GNN.
+        n_players: The number of players in the game, equal to the number of
+            nodes in ``x_graph``.
+        grand_coalition_set: Set containing all node indices of the graph.
+        baseline: Feature vector used to replace inactive node features.
+        normalization_value: Value of the empty coalition used for
+            normalization when ``normalize`` is enabled.
+    """
 
     def __init__(
         self,
         model: torch.nn.Module,
         x_graph: Data,
         *,
-        task: Literal["classification", "regression"] = "classification",
         class_index: int | None = None,
-        baseline_strategy: str | float | None = None,
+        baseline_strategy: Literal["zeros", "average", "min", "max"] = "zeros",
+        baseline_value: float | torch.Tensor | None = None,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-        """Initialize the GraphGame."""
+        """Initialize the graph explanation game.
+
+        Args:
+            model: Graph neural network to explain. The model must define a
+                ``num_layers`` attribute indicating the number of message-passing
+                layers.
+            x_graph: Input graph instance to explain. The graph must contain node
+                features in ``x_graph.x`` and an ``edge_index`` attribute.
+            class_index: Output index to explain for multi-output models. If ``None``, the model
+                output is expected to be scalar and is used directly.
+            baseline_strategy: Strategy used to compute the baseline feature vector for
+                inactive nodes. Supported values are ``"zeros"``, ``"average"``,
+                ``"min"``, and ``"max"``.
+            baseline_value: Explicit baseline used for inactive node features. If
+                provided, this overrides ``baseline_strategy``. A float creates a
+                constant baseline vector, while a tensor specifies one baseline value
+                per node feature.
+            normalize: Whether to normalize the game by subtracting the empty
+                coalition value.
+            verbose: Whether to print progress information inherited from
+                :class:`shapiq.game.Game`.
+
+        Raises:
+            AttributeError: If ``model`` does not define ``num_layers``.
+            TypeError: If ``model.num_layers`` is not an integer.
+            NotImplementedError: If ``baseline_strategy`` is unsupported.
+        """
         self._normalize = normalize
         self.x_graph = x_graph.clone()
 
-        # Validierungen
-        if task not in ("classification", "regression"):
-            msg = f"task must be 'classification' or 'regression', got {task!r}"
-            raise ValueError(msg)
-        if task == "regression" and class_index is not None:
-            msg = "class_index cannot be set for regression tasks."
-            raise ValueError(msg)
         if self.x_graph.x is None:
             msg = "x_graph must have node features (x_graph.x must not be None)."
             raise ValueError(msg)
@@ -46,7 +88,6 @@ class GraphGame(Game):
             msg = "The GNN needs a num_layers attribute"
             raise AttributeError(msg)
 
-        self.task = task
         self.model = model
         self.model.eval()
         self.edge_index = self.x_graph.edge_index.detach().numpy()
@@ -54,32 +95,18 @@ class GraphGame(Game):
             msg = "model.num_layers must be an int"
             raise TypeError(msg)
         self.l_hop_distance = model.num_layers
-        self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
+        self.n_players = self.x_graph.x.shape[0]
         self.grand_coalition_set = set(range(self.n_players))
 
-        # Baseline initialisieren
-        self.baseline = self._calculate_baseline(baseline_strategy)
+        self.baseline = self._calculate_baseline(
+            strategy=baseline_strategy,
+            value=baseline_value,
+        )
 
-        # y_index für Klassifizierung setzen
-        if task == "classification":
-            if class_index is None:
-                with torch.no_grad():
-                    model_output = self.model(
-                        x=self.x_graph.x,
-                        edge_index=self.x_graph.edge_index,
-                        batch=getattr(self.x_graph, "batch", None),
-                    )
-                self.y_index = int(model_output.argmax(dim=1)[0].item())
-            else:
-                self.y_index = int(class_index)
-        else:
-            self.y_index = None
+        self.class_index = class_index
 
-        # Game-Klasse initialisieren
         if normalize:
-            # Berechne den Normalisierungswert (empty coalition)
             empty_coalition_value = self.value_function(np.zeros(self.n_players))
-            # Extrahiere den Scalar (value_function gibt jetzt Skalare zurück)
             normalization_value = float(empty_coalition_value[0])
             super().__init__(
                 n_players=self.n_players,
@@ -88,30 +115,58 @@ class GraphGame(Game):
                 verbose=verbose,
             )
         else:
-            super().__init__(n_players=self.n_players, normalize=normalize, verbose=verbose)
+            super().__init__(
+                n_players=self.n_players,
+                normalize=normalize,
+                verbose=verbose)
 
-        # Aktualisiere normalization_value in der Instanz (falls nötig)
         if normalize:
             self.normalization_value = normalization_value
 
-    def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
-        """Berechnet die Baseline für Masking basierend auf der Strategie."""
-        if strategy is None:
-            warnings.warn(
-                "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
-            )
-            strategy = "zeros"
 
+    def _calculate_baseline(
+            self,
+            strategy: Literal["zeros", "average", "min", "max"],
+            value: float | torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Calculate the baseline feature vector for masked nodes.
+
+        Args:
+            strategy: Strategy used to compute the baseline when ``value`` is
+                ``None``.
+            value: Explicit baseline. If provided, this overrides ``strategy``.
+                A float creates a constant baseline vector. A tensor is interpreted
+                as a fixed feature-wise baseline.
+
+        Returns:
+            Baseline tensor with shape ``(n_features,)``.
+
+        Raises:
+            ValueError: If a provided tensor baseline has an invalid shape.
+        """
         x = self.x_graph.x
-        if isinstance(strategy, torch.Tensor):
-            if strategy.shape != (x.shape[1],):
-                msg = (
-                    f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
+
+        if value is not None:
+            if isinstance(value, torch.Tensor):
+                if value.shape != (x.shape[1],):
+                    raise ValueError(
+                        f"Baseline tensor must have shape ({x.shape[1]},), "
+                        f"got {tuple(value.shape)}."
+                    )
+                return value.to(dtype=torch.float32, device=x.device)
+
+            if isinstance(value, float):
+                return torch.full(
+                    (x.shape[1],),
+                    value,
+                    dtype=torch.float32,
+                    device=x.device,
                 )
-                raise ValueError(msg)
-            return strategy.to(dtype=torch.float32, device=x.device)
-        if isinstance(strategy, float):
-            return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
+
+            raise TypeError(
+                "baseline_value must be a float, torch.Tensor, or None."
+            )
+
         if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
         if strategy == "average":
@@ -120,8 +175,9 @@ class GraphGame(Game):
             return torch.amin(x, dim=0)
         if strategy == "max":
             return torch.amax(x, dim=0)
-        msg = f"Baseline strategy '{strategy}' is not supported."
-        raise NotImplementedError(msg)
+
+        # Should never happen because of the Literal type.
+        raise NotImplementedError(f"Baseline strategy {strategy!r} is not supported.")
 
     @property
     def normalize(self) -> bool:
@@ -129,15 +185,39 @@ class GraphGame(Game):
         return self._normalize
 
     def mask_input(self, coalition: np.ndarray) -> Data:
-        """Mask inactive node features with the baseline."""
-        coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
+        """Create a masked graph for a coalition.
+
+            Args:
+                coalition: Boolean or binary array of shape ``(n_players,)`` indicating
+                    which nodes are active.
+
+            Returns:
+                A cloned graph where inactive node features are replaced by the
+                baseline feature vector.
+            """
+        coalition_tensor = torch.tensor(
+            coalition,
+            dtype=torch.bool,
+            device=self.x_graph.x.device
+        )
         x_masked = self.x_graph.clone()
         baseline_reshaped = self.baseline.reshape(1, -1)
         x_masked.x[~coalition_tensor] = baseline_reshaped
         return x_masked
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the GNN for each coalition by masking inactive node features."""
+        """Evaluate coalition values by running the GNN on masked graphs.
+
+            Args:
+                coalitions: Boolean or binary coalition matrix of shape
+                    ``(n_coalitions, n_players)``. A one-dimensional array of shape
+                    ``(n_players,)`` is interpreted as a single coalition.
+
+            Returns:
+                One-dimensional NumPy array with one scalar model output per coalition.
+                For classification, the selected class logit is returned. For
+                regression, the scalar model output is returned.
+            """
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape(1, -1)
 
@@ -153,15 +233,16 @@ class GraphGame(Game):
                     batch=getattr(masked_graph, "batch", None),
                 )
 
-            if self.task == "classification":
-                coalition_value = model_output[0, self.y_index]
-            else:
+            if self.class_index is None:
                 coalition_value = model_output.squeeze()
-
-            # Extrahiere den Scalar-Wert (für Tensoren oder NumPy-Arrays)
-            if isinstance(coalition_value, torch.Tensor):
-                coalition_values.append(coalition_value.item())  # .item() für Tensoren
+                if coalition_value.numel() != 1:
+                    raise ValueError("Model output is not scalar; pass class_index to select an output.")
             else:
-                coalition_values.append(float(coalition_value))  # float() für NumPy-Skalare
+                coalition_value = model_output[0, self.class_index]
+
+            if isinstance(coalition_value, torch.Tensor):
+                coalition_values.append(coalition_value.item())
+            else:
+                coalition_values.append(float(coalition_value))
 
         return np.array(coalition_values)

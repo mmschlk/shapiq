@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 import joblib
 import numpy as np
-from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
-from shapiq.graph.l_shapley import LShapley
 from shapiq.interaction_values import InteractionValues
 
 from .base import GraphGame
@@ -18,18 +16,34 @@ from .graphshapiq import GraphSHAPIQ
 
 if TYPE_CHECKING:
     from torch import nn
+    from torch_geometric.data import Data
 
     from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
+else:
+    Data = Any
 
 SPARSIFY_THRESHOLD = 1e-8
+
+def _check_import_torch_geometric() -> type:
+    """Import torch_geometric Data or raise a helpful optional-dependency error."""
+    try:
+        from torch_geometric.data import Data
+    except ImportError as error:
+        msg = (
+            "GraphExplainer requires the optional graph dependencies. "
+            "Install them with `pip install shapiq[graph]`."
+        )
+        raise ImportError(msg) from error
+
+    return Data
 
 
 class GraphExplainer(Explainer):
     """The GraphExplainer class for graph-based models.
 
     The explainer for graph-based models using the
-    :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` algorithm. For details, refer to
-    `Muschalik et al. (2025)` [Mus25]_.
+    :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` algorithm.
+    The algorithm is described in:footcite:t:`muschalik2025exactcomputationanyordershapley`.
 
     GraphSHAP-IQ is an algorithm for computing Shapley Interaction values for graph-based models.
     It is based on the GraphSHAPIQ algorithm by `Muschalik et al. (2025)` [Mus25]_, which efficiently
@@ -39,20 +53,15 @@ class GraphExplainer(Explainer):
 
     The GraphExplainer can be used with a variety of graph-based models, including
     GCNs, GATs and GINS.
-
-    References:
-        .. [Mus25] Maximilian Muschalik and Fabian Fumagalli and Paolo Frazzetto and Janine Strotherm and Luca Hermes and Alessandro Sperduti and Eyke Hüllermeier and Barbara Hammer. Exact Computation of Any-Order Shapley Interactions for Graph Neural Networks. https://arxiv.org/abs/2501.16944
     """
 
     def __init__(
         self,
         model: nn.Module,
-        l_shapley_max_budget: int = 20000,
         index: ValidMoebiusConverterIndices = "k-SII",
         baseline_strategy: str = "average",
         max_order: int = 2,
         class_index: int | None = None,
-        task: Literal["classification", "regression"] = "classification",
         *,
         efficiency_routine: bool = True,
         normalize: bool = False,
@@ -62,7 +71,6 @@ class GraphExplainer(Explainer):
 
         Args:
             model: A Graph-based model to explain.
-            l_shapley_max_budget: Maximum budget for LShapley approximation.
             index: The type of Shapley interaction index to use. Defaults to "k-SII",
                 which computes the k-Shapley Interaction Index. If max_order is set
                 to 1, this corresponds to the Shapley value (index="SV"). Options are:
@@ -76,8 +84,6 @@ class GraphExplainer(Explainer):
                 which will set the class index to 1 per default for classification
                 models and is ignored for regression models. Note, it is important
                 to specify the class index for your classification model.
-            task: The prediction task type, either "classification" or "regression".
-                Defaults to "classification".
             max_order: The maximum interaction order to be computed.
                 Defaults to 2. Set to 1 for no interactions (single feature attribution).
             normalize: Whether to normalize the GraphSHAP-IQ algorithm.
@@ -86,13 +92,16 @@ class GraphExplainer(Explainer):
                 GraphSHAP-IQ computation. Defaults to True.
             **kwargs: Additional keyword arguments are ignored.
         """
-        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
+        super().__init__(
+            model,
+            class_index=class_index,
+            index=index,
+            max_order=max_order
+        )
         self._model: nn.Module = model
         self._class_index = class_index
-        self._task = task
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
-        self._l_shapley_max_budget: int = l_shapley_max_budget
         self._efficiency_routine = efficiency_routine
 
     @override
@@ -123,11 +132,17 @@ class GraphExplainer(Explainer):
         Raises:
             TypeError: If ``X`` is a NumPy array instead of a list of ``Data`` objects.
         """
+        Data = _check_import_torch_geometric()
+
         if isinstance(X, np.ndarray):
             msg = (
                 "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects, "
                 "not a NumPy array."
             )
+            raise TypeError(msg)
+
+        if not all(isinstance(x, Data) for x in X):
+            msg = "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects."
             raise TypeError(msg)
 
         if n_jobs:
@@ -149,7 +164,6 @@ class GraphExplainer(Explainer):
         self,
         x: np.ndarray | Data | None,
         *args: Any,
-        l_shapley: bool = False,
         max_interaction_size: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -159,8 +173,6 @@ class GraphExplainer(Explainer):
         Args:
             x: The input graph to explain.
             *args: Unused; present only to match the base class signature.
-            l_shapley: If ``True``, run the L-Shapley approximation; if ``False`` (default),
-                run the exact GraphSHAP-IQ computation.
             max_interaction_size: Maximum k-hop neighbourhood size for the L-Shapley
                 approximation. When ``None`` the full neighbourhood size reported by
                 :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used. Ignored when
@@ -173,9 +185,11 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values for the instance.
         """
+        Data = _check_import_torch_geometric()
+
         if not isinstance(x, Data):
             msg = (
-                f"GraphExplainer requires a torch_geometric.data.Data object, "
+                "GraphExplainer requires a torch_geometric.data.Data object, "
                 f"got {type(x).__name__!r}."
             )
             raise TypeError(msg)
@@ -188,7 +202,6 @@ class GraphExplainer(Explainer):
         game = GraphGame(
             model=self._model,
             x_graph=x,
-            task=self._task,
             class_index=self._class_index,
             baseline_strategy=self._baseline_strategy,
             normalize=self._normalize,
@@ -196,19 +209,6 @@ class GraphExplainer(Explainer):
         )
         explainer = GraphSHAPIQ(game=game, verbose=verbose)
 
-        if l_shapley:
-            self._check_total_budget(explainer.total_budget)
-            effective_size = (
-                max_interaction_size
-                if max_interaction_size is not None
-                else explainer.max_size_neighbors
-            )
-            return self._run_l_shapley_approximation(
-                game,
-                explainer,
-                effective_size,
-                index,
-            )
         return self._run_graph_shapiq_approximation(
             explainer,
             index,
@@ -217,7 +217,11 @@ class GraphExplainer(Explainer):
         )
 
     @override
-    def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
+    def explain(
+            self,
+            x: np.ndarray | Data | None = None,
+            **kwargs: Any
+    ) -> InteractionValues:
         """Explain a single graph prediction.
 
         Args:
@@ -228,8 +232,13 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values for the graph.
         """
+        Data = _check_import_torch_geometric()
+
         if not isinstance(x, Data):
-            msg = f"GraphExplainer requires a torch_geometric.data.Data object, got {type(x).__name__!r}."
+            msg = (
+                "GraphExplainer requires a torch_geometric.data.Data object, "
+                f"got {type(x).__name__!r}."
+            )
             raise TypeError(msg)
         return self.explain_function(x=x, **kwargs)
 
@@ -271,46 +280,3 @@ class GraphExplainer(Explainer):
         interactions.sparsify(threshold=SPARSIFY_THRESHOLD)
 
         return interactions
-
-    def _run_l_shapley_approximation(
-        self,
-        game: GraphGame,
-        explainer: GraphSHAPIQ,
-        max_interaction_size: int,
-        index: ValidMoebiusConverterIndices,
-        *,
-        break_on_exceeding_budget: bool = False,
-    ) -> InteractionValues:
-        """Run the L-Shapley approximation.
-
-        Args:
-            game: The constructed graph game for this instance.
-            explainer: The GraphSHAPIQ explainer initialised from the game.
-            max_interaction_size: Maximum k-hop neighbourhood size to consider. This value
-                is passed directly into :meth:`~shapiq.graph.l_shapley.LShapley.explain`.
-            index: The type of the interaction values.
-            break_on_exceeding_budget: If ``True``, raise a :class:`ValueError` when the
-                number of required model evaluations exceeds the budget; if ``False``
-                (default), set a flag and continue.
-        """
-        l_shapley_explainer = LShapley(game, max_budget=explainer.total_budget)
-
-        shapley_values, _ = l_shapley_explainer.explain(
-            max_interaction_size=max_interaction_size,
-            break_on_exceeding_budget=break_on_exceeding_budget,
-            index=index,
-        )
-
-        shapley_values.estimation_budget = l_shapley_explainer.last_n_model_calls
-        shapley_values.estimated = True
-        shapley_values.sparsify(threshold=SPARSIFY_THRESHOLD)
-
-        return shapley_values
-
-    def _check_total_budget(self, total_budget: int) -> None:
-        """Check if total_budget is within the max budget."""
-        if total_budget > self._l_shapley_max_budget:
-            msg = (
-                f"Total budget of {total_budget} exceeds the limit of {self._l_shapley_max_budget}."
-            )
-            raise RuntimeError(msg)
