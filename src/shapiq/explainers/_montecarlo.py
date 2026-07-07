@@ -12,6 +12,7 @@ from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import (
     AggregationIndex,
+    ArgminIndex,
     CardinalInteractionIndex,
     GeneralizedValueIndex,
     aggregate_supersets,
@@ -24,23 +25,27 @@ if TYPE_CHECKING:
     from shapiq.games import Game
     from shapiq.sampling import ShareSamples
 
-type MonteCarloIndex = CardinalInteractionIndex | GeneralizedValueIndex | AggregationIndex
+type MonteCarloIndex = (
+    CardinalInteractionIndex | GeneralizedValueIndex | ArgminIndex | AggregationIndex
+)
 
 
 class MonteCarlo(EvidenceApproximator):
     """Unbiased sampled estimator derived from an index's coalition functional.
 
     Any index declaring discrete-derivative weights (cardinal interaction
-    index), bloc-marginal weights (generalized value), or a superset
-    aggregation of such an index is supported through its capability alone:
-    the index's coalition functional is derived mechanically, its coefficient
-    mass profile becomes the size distribution of the sampler, and every
-    sampled coalition enters the estimate with its coefficient divided by its
-    sampling probability. The empty and grand coalition are seed samples and
-    contribute their coefficients exactly, so the estimator is unbiased for
-    every supported index at any number of completed units — including
-    indices defined through ``define_cardinal_index`` or
-    ``define_generalized_value`` that shapiq has never heard of.
+    index), bloc-marginal weights (generalized value), an argmin
+    specification (compiled least squares solution operator, as for FSII,
+    FBII, and kADD-SHAP), or a superset aggregation of such an index is
+    supported through its capability alone: the index's coalition functional
+    is derived mechanically, its coefficient mass profile becomes the size
+    distribution of the sampler, and every sampled coalition enters the
+    estimate with its coefficient divided by its sampling probability. The
+    empty and grand coalition are seed samples and contribute their
+    coefficients exactly, so the estimator is unbiased for every supported
+    index at any number of completed units — including indices defined
+    through ``define_cardinal_index``, ``define_generalized_value``, or
+    ``define_regression_index`` that shapiq has never heard of.
 
     Example:
         >>> approximator = MonteCarlo(game, SII(order=2), random_state=0)
@@ -89,13 +94,13 @@ class MonteCarlo(EvidenceApproximator):
         """
         if not isinstance(
             index,
-            (AggregationIndex, CardinalInteractionIndex, GeneralizedValueIndex),
+            (AggregationIndex, CardinalInteractionIndex, GeneralizedValueIndex, ArgminIndex),
         ):
             name = getattr(index, "name", type(index).__name__)
             msg = (
                 f"MonteCarlo does not support {name!r}: the index declares neither "
-                "discrete-derivative weights, bloc-marginal weights, nor an "
-                "aggregation of an index declaring them"
+                "discrete-derivative weights, bloc-marginal weights, an argmin "
+                "specification, nor an aggregation of an index declaring them"
             )
             raise TypeError(msg)
         order = game.n_players if index.order is None else index.order
