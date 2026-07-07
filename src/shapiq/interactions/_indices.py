@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from fractions import Fraction
 from functools import cache
 from math import comb
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
@@ -11,6 +10,12 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 import jax.numpy as jnp
 
 from shapiq._shape import validate_int
+from shapiq.interactions._spec import (
+    ArgminSpecification,
+    bernoulli_basis,
+    bernoulli_numbers,
+    membership_basis,
+)
 
 if TYPE_CHECKING:
     from jax import Array
@@ -130,6 +135,22 @@ class RegressionIndex(InteractionIndex, Protocol):
         The empty and grand coalition carry weight zero; they are
         interpolated exactly as constraints rather than weighted.
         """
+        ...
+
+
+@runtime_checkable
+class ArgminIndex(InteractionIndex, Protocol):
+    """Capability: attributions are the solution of a symmetric least squares fit.
+
+    The solution operator of a symmetric weighted fit is linear in the game
+    and permutation-equivariant, so its coefficient on a coalition depends
+    only on cardinalities: the specification compiles to a coalition
+    functional, from which exact contraction and unbiased sampled
+    estimation are derived like for every other linear-functional index.
+    """
+
+    def argmin_specification(self, n_players: int) -> ArgminSpecification:
+        """Return the least squares fit whose solution the index is."""
         ...
 
 
@@ -350,6 +371,15 @@ class FSII:
         """Return Shapley kernel weights per coalition size, zero at the ends."""
         return _shapley_regression_kernel(n_players)
 
+    def argmin_specification(self, n_players: int) -> ArgminSpecification:
+        """Return the Shapley-kernel membership fit interpolating both endpoints."""
+        return ArgminSpecification(
+            row_weights=_shapley_regression_kernel(n_players),
+            basis_weights=membership_basis(self.order),
+            interpolate_empty=True,
+            interpolate_grand=True,
+        )
+
 
 @dataclass(frozen=True)
 class FBII:
@@ -373,6 +403,15 @@ class FBII:
     def __post_init__(self) -> None:
         """Validate the order."""
         validate_int("order", self.order, minimum=1)
+
+    def argmin_specification(self, n_players: int) -> ArgminSpecification:
+        """Return the unconstrained uniform membership fit with a free intercept."""
+        return ArgminSpecification(
+            row_weights=jnp.ones(n_players + 1),
+            basis_weights=membership_basis(self.order),
+            interpolate_empty=False,
+            interpolate_grand=False,
+        )
 
 
 @dataclass(frozen=True)
@@ -400,6 +439,15 @@ class KADDSHAP:
     def regression_kernel(self, n_players: int) -> Array:
         """Return Shapley kernel weights per coalition size, zero at the ends."""
         return _shapley_regression_kernel(n_players)
+
+    def argmin_specification(self, n_players: int) -> ArgminSpecification:
+        """Return the Shapley-kernel Bernoulli-basis fit interpolating both endpoints."""
+        return ArgminSpecification(
+            row_weights=_shapley_regression_kernel(n_players),
+            basis_weights=bernoulli_basis(self.order),
+            interpolate_empty=True,
+            interpolate_grand=True,
+        )
 
 
 @dataclass(frozen=True)
@@ -611,16 +659,6 @@ class JointSV:
     def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return joint-arrival bloc-marginal weights per outside size."""
         return _joint_arrival_weights(n_players, self.order)[: n_players - interaction_size + 1]
-
-
-@cache
-def bernoulli_numbers(order: int) -> tuple[float, ...]:
-    """Return the Bernoulli numbers up to ``order`` with the B(1) = -1/2 convention."""
-    numbers = [Fraction(1)]
-    for m in range(1, order + 1):
-        acc = sum((Fraction(comb(m + 1, j)) * numbers[j] for j in range(m)), Fraction(0))
-        numbers.append(-acc / (m + 1))
-    return tuple(float(number) for number in numbers)
 
 
 def _shapley_regression_kernel(n_players: int) -> Array:
