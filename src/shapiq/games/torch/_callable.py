@@ -29,6 +29,7 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
         *,
         coalition_converter: Callable[[CoalitionArray], object] | None = None,
         value_converter: Callable[[object], ValueT] | None = None,
+        value_shape: ShapeLike = (),
         no_grad: bool = True,
         detach: bool = True,
     ) -> None:
@@ -41,6 +42,7 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
             target_shape=target_shape,
             coalition_converter=coalition_converter or _coalitions_to_torch,
             value_converter=value_converter or self._torch_to_jax,
+            value_shape=value_shape,
         )
 
     def _call(self, coalitions: CoalitionArray) -> ValueT:

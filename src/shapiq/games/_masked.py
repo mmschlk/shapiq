@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from shapiq._shape import ShapeLike, normalize_shape
 from shapiq.games._base import Game, LinkFunction
 
 if TYPE_CHECKING:
@@ -13,10 +14,20 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class MaskedGame[PredictionT, ValueT](Game[ValueT]):
-    """Game composed from a masked predictor and a link function."""
+    """Game composed from a masked predictor and a link function.
+
+    The game owns the value-space declaration: ``value_shape`` states the
+    internal shape of the values the link function produces per coalition,
+    with the default declaring scalar values.
+    """
 
     masked_predictor: MaskedPredictor[PredictionT]
     link_function: LinkFunction[PredictionT, ValueT]
+    value_shape: ShapeLike = ()
+
+    def __post_init__(self) -> None:
+        """Normalize metadata."""
+        object.__setattr__(self, "value_shape", normalize_shape(self.value_shape))
 
     @property
     def n_players(self) -> int:

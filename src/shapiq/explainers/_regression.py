@@ -14,6 +14,7 @@ from shapiq.explainers._faithful import (
     require_identification,
     solve_faithful,
 )
+from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FSII
 from shapiq.sampling import EmptyState, SamplingState, ShapleyKernelSampler
@@ -138,8 +139,10 @@ class RegressionFSII(EvidenceApproximator):
             raise InsufficientSamplesError(msg)
         n_players = self.game.n_players
         target_shape = self.game.target_shape
+        value_shape = self.game.value_shape
+        n_value_axes = len(value_shape)
         masks = jnp.asarray(self.state.coalitions.to_dense())[..., :usable, :]
-        values = jnp.asarray(self.state.values)[..., :usable]
+        values = to_leading(jnp.asarray(self.state.values), n_value_axes)[..., :usable]
         value_empty = values[..., 0]
         value_grand = values[..., 1]
         n_rows = usable - n_seeds
@@ -150,33 +153,41 @@ class RegressionFSII(EvidenceApproximator):
         if flat_masks.shape[0] == 1:
             reduced, pivot = eliminate_constraint(interaction_design(flat_masks[0], self.order))
             require_identification(reduced)
-            solutions = solve_faithful(reduced, pivot, response, delta).T
+            solutions = solve_faithful(reduced, pivot, response, delta)
         else:
             broadcast_masks = jnp.broadcast_to(
                 sample_masks,
                 (*target_shape, n_rows, n_players),
             ).reshape(-1, n_rows, n_players)
-            columns = []
-            for target in range(response.shape[-1]):
+            n_targets = broadcast_masks.shape[0]
+            per_target = []
+            for target in range(n_targets):
                 reduced, pivot = eliminate_constraint(
                     interaction_design(broadcast_masks[target], self.order),
                 )
                 require_identification(reduced)
-                columns.append(
+                per_target.append(
                     solve_faithful(
                         reduced,
                         pivot,
-                        response[:, target : target + 1],
-                        delta[target : target + 1],
+                        response[:, target::n_targets],
+                        delta[target::n_targets],
                     ),
                 )
-            solutions = jnp.concatenate(columns, axis=1).T
-        attributions: dict[int, Array] = {0: value_empty[..., None]}
+            stacked = jnp.stack(per_target, axis=-1)
+            solutions = stacked.reshape(stacked.shape[0], -1)
+        coefficients = solutions.T
+        attributions: dict[int, Array] = {
+            0: to_trailing(value_empty[..., None], n_value_axes),
+        }
         offset = 0
         for size in range(1, self.order + 1):
             n_interactions = comb(n_players, size)
-            block = solutions[:, offset : offset + n_interactions]
-            attributions[size] = block.reshape(*target_shape, n_interactions)
+            block = coefficients[:, offset : offset + n_interactions]
+            attributions[size] = to_trailing(
+                block.reshape(*value_shape, *target_shape, n_interactions),
+                n_value_axes,
+            )
             offset += n_interactions
         return DenseExplanationArray(
             attributions_by_order=attributions,
@@ -184,4 +195,5 @@ class RegressionFSII(EvidenceApproximator):
             interaction_index=self.interaction_index,
             order=self.order,
             shape=target_shape,
+            value_shape=value_shape,
         )

@@ -93,7 +93,7 @@ The output assigned by a **Game** to a **Coalition**; it may be scalar-valued, v
 _Avoid_: payoff, prediction
 
 **ValueArray**:
-A scalar, array-like object, or specialized value container representing **Values** aligned with the relevant **CoalitionArray** shape, or with the broadcasted shape of explanation targets and coalitions. Its logical shape describes the array of value elements and excludes each value's internal shape; where possible, the value representation is tracked through **Game** and **Explainer** type parameters.
+A scalar, array-like object, or specialized value container representing **Values** aligned with the relevant **CoalitionArray** shape, or with the broadcasted shape of explanation targets and coalitions. Its logical shape describes the array of value elements and excludes each value's internal shape; where possible, the value representation is tracked through **Game** and **Explainer** type parameters. Dense value arrays store logical axes first, then the sample axis, then each value's internal axes; **Games** declare that internal value shape.
 _Avoid_: output batch, predictions
 
 **Array-Like Data Type**:

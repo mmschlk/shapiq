@@ -9,8 +9,9 @@ from jax import Array
 
 from shapiq._shape import ensure_bool, logical_size, validate_int
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.errors import InsufficientSamplesError, SamplingStallWarning, UnsupportedGameError
+from shapiq.errors import InsufficientSamplesError, SamplingStallWarning
 from shapiq.explainers._approximator import Approximator
+from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, Sampler, SamplingState
 
@@ -167,27 +168,29 @@ class EvidenceApproximator(
     ) -> Array:
         """Evaluate novel coalitions and fill duplicates from stored values."""
         target_shape = self.game.target_shape
+        value_shape = self.game.value_shape
+        n_value_axes = len(value_shape)
         novel_values: Array | None = None
         if novel_positions:
             novel_index = jnp.asarray(novel_positions)
-            novel_values = jnp.asarray(
-                self.game(DenseCoalitionArray(masks[..., novel_index, :])),
+            novel_values = to_leading(
+                jnp.asarray(self.game(DenseCoalitionArray(masks[..., novel_index, :]))),
+                n_value_axes,
             )
-            if novel_values.shape != (*target_shape, len(novel_positions)):
-                msg = (
-                    "sampling requires scalar game values per coalition: "
-                    f"expected shape {(*target_shape, len(novel_positions))}, "
-                    f"got {novel_values.shape}"
-                )
-                raise UnsupportedGameError(msg)
         state_values = None
         if isinstance(self.state, SamplingState):
-            state_values = jnp.asarray(cast("SamplingState[Array]", self.state).values)
+            state_values = to_leading(
+                jnp.asarray(cast("SamplingState[Array]", self.state).values),
+                n_value_axes,
+            )
         reference = novel_values if novel_values is not None else state_values
         if reference is None:  # unreachable: a first call always yields novel seeds
             msg = "deduplicated sampling produced neither novel nor stored values"
             raise RuntimeError(msg)
-        values = jnp.zeros((*target_shape, int(masks.shape[-2])), dtype=reference.dtype)
+        values = jnp.zeros(
+            (*value_shape, *target_shape, int(masks.shape[-2])),
+            dtype=reference.dtype,
+        )
         if novel_values is not None:
             values = values.at[..., jnp.asarray(novel_positions)].set(novel_values)
         if state_duplicates and state_values is not None:
@@ -198,18 +201,16 @@ class EvidenceApproximator(
             positions = jnp.asarray([position for position, _ in batch_duplicates])
             ranks = jnp.asarray([rank for _, rank in batch_duplicates])
             values = values.at[..., positions].set(novel_values[..., ranks])
-        return values
+        return to_trailing(values, n_value_axes)
 
     def _append_state(self, coalitions: CoalitionArray, values: Array) -> SamplingState[Array]:
-        """Append sampled coalitions, creating the evidence state on first use."""
+        """Append sampled coalitions, creating the evidence state on first use.
+
+        Value shapes are validated at the game boundary; states store values
+        with the sample axis at the target-shape position and any value axes
+        trailing.
+        """
         checked_values = jnp.asarray(values)
-        if checked_values.shape != (*self.game.target_shape, coalitions.shape[-1]):
-            msg = (
-                "sampling requires scalar game values per coalition: "
-                f"expected shape {(*self.game.target_shape, coalitions.shape[-1])}, "
-                f"got {checked_values.shape}"
-            )
-            raise UnsupportedGameError(msg)
         if isinstance(self.state, SamplingState):
             return cast("SamplingState[Array]", self.state).append(coalitions, checked_values)
         return SamplingState(

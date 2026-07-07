@@ -21,11 +21,13 @@ class CallableGame[ValueT](Game[ValueT]):
     target_shape: ShapeLike = ()
     coalition_converter: Callable[[CoalitionArray], object] | None = None
     value_converter: Callable[[object], ValueT] | None = None
+    value_shape: ShapeLike = ()
 
     def __post_init__(self) -> None:
         """Normalize metadata."""
         object.__setattr__(self, "n_players", validate_n_players(self.n_players))
         object.__setattr__(self, "target_shape", normalize_shape(self.target_shape))
+        object.__setattr__(self, "value_shape", normalize_shape(self.value_shape))
 
     def _call(self, coalitions: CoalitionArray) -> ValueT:
         """Evaluate the wrapped callable."""

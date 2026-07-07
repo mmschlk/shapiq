@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import repeat
+from math import comb
 from typing import TYPE_CHECKING, Protocol, cast
 
 import jax.numpy as jnp
@@ -32,19 +33,34 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
     order: int
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"
+    value_shape: Shape = ()
 
     def __post_init__(self) -> None:
-        """Normalize and validate metadata."""
+        """Normalize and validate metadata, then validate attribution blocks."""
         n_players = validate_n_players(self.n_players)
         shape = normalize_shape(self.shape)
+        value_shape = normalize_shape(self.value_shape)
         object.__setattr__(self, "n_players", n_players)
         object.__setattr__(self, "shape", shape)
+        object.__setattr__(self, "value_shape", value_shape)
         validate_interaction_metadata(
             interaction_index=self.interaction_index,
             order=self.order,
             orientation=self.orientation,
             n_players=n_players,
         )
+        for size, block in self.attributions_by_order.items():
+            expected = (*shape, comb(n_players, size), *value_shape)
+            block_shape = getattr(block, "shape", None)
+            actual = (
+                tuple(block_shape) if block_shape is not None else jnp.shape(cast("Array", block))
+            )
+            if actual != expected:
+                msg = (
+                    f"order-{size} attributions have shape {actual}, expected "
+                    f"{expected} (targets, then interactions, then value_shape)"
+                )
+                raise ValueError(msg)
 
     def __getitem__(self, key: object) -> DenseExplanationArray[ValueT]:
         """Index explanation target axes and preserve dense storage."""
@@ -64,6 +80,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             order=self.order,
             shape=new_shape,
             orientation=self.orientation,
+            value_shape=self.value_shape,
         )
 
     def __iter__(self) -> object:
@@ -86,7 +103,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         return (
             f"{type(self).__name__}(shape={self.shape!r}, n_players={self.n_players!r}, "
             f"interaction_index={self.interaction_index!r}, order={self.order!r}, "
-            f"orientation={self.orientation!r})"
+            f"orientation={self.orientation!r}, value_shape={self.value_shape!r})"
         )
 
     def attribution(self, interaction: Sequence[int] | object) -> ValueT:

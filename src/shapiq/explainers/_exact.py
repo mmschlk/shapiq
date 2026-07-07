@@ -8,7 +8,6 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._base import Explainer
 from shapiq.explainers._faithful import (
     eliminate_constraint,
@@ -16,6 +15,7 @@ from shapiq.explainers._faithful import (
     interaction_masks,
     solve_faithful,
 )
+from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.games import Game
 from shapiq.interactions import RegressionIndex, WeightedDerivativeIndex
@@ -83,7 +83,8 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             ``order``.
         """
         n_players = self.game.n_players
-        values = self._game_values()
+        n_value_axes = len(self.game.value_shape)
+        values = to_leading(self._game_values(), n_value_axes)
         masks = _powerset_masks(n_players)
         index = self._exact_index
         if isinstance(index, WeightedDerivativeIndex):
@@ -101,27 +102,21 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         if index.includes_empty_interaction:
             attributions[0] = values[..., :1]
         return DenseExplanationArray(
-            attributions_by_order=attributions,
+            attributions_by_order={
+                size: to_trailing(block, n_value_axes) for size, block in attributions.items()
+            },
             n_players=n_players,
             interaction_index=self.interaction_index,
             order=self.order,
             shape=self.game.target_shape,
+            value_shape=self.game.value_shape,
         )
 
     def _game_values(self) -> Array:
         """Evaluate the game on the full powerset once and reuse the values."""
         if self._powerset_values is None:
-            n_players = self.game.n_players
-            coalitions = DenseCoalitionArray(_powerset_masks(n_players))
-            values = jnp.asarray(self.game(coalitions))
-            if values.shape != (*self.game.target_shape, 2**n_players):
-                msg = (
-                    "exact explanation requires scalar game values per coalition: "
-                    f"expected shape {(*self.game.target_shape, 2**n_players)}, "
-                    f"got {values.shape}"
-                )
-                raise UnsupportedGameError(msg)
-            self._powerset_values = values
+            coalitions = DenseCoalitionArray(_powerset_masks(self.game.n_players))
+            self._powerset_values = jnp.asarray(self.game(coalitions))
         return self._powerset_values
 
 

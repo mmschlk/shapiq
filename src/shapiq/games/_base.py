@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
+
+import jax.numpy as jnp
 
 if TYPE_CHECKING:
+    from jax import Array
+
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
 
@@ -14,16 +18,44 @@ class Game[ValueT](ABC):
 
     n_players: int
     target_shape: Shape
+    value_shape: Shape = ()
 
     def __call__(self, coalitions: CoalitionArray) -> ValueT:
         """Evaluate values for coalitions."""
         self._validate_coalitions(coalitions)
-        return self._call(coalitions)
+        values = self._call(coalitions)
+        self._validate_values(values, coalitions)
+        return values
 
     def _validate_coalitions(self, coalitions: CoalitionArray) -> None:
         """Validate coalition compatibility at the game boundary."""
         if coalitions.n_players != self.n_players:
             msg = "coalitions use a different number of players"
+            raise ValueError(msg)
+
+    def _validate_values(self, values: ValueT, coalitions: CoalitionArray) -> None:
+        """Validate the declared value contract at the game boundary.
+
+        Dense values carry the broadcast of the target shape and the
+        coalition array's leading axes first, then the sample axis, then the
+        declared value shape.
+        """
+        if coalitions.shape == ():
+            return
+        expected = (
+            *jnp.broadcast_shapes(self.target_shape, coalitions.shape[:-1]),
+            coalitions.shape[-1],
+            *self.value_shape,
+        )
+        shape = getattr(values, "shape", None)
+        actual = tuple(shape) if shape is not None else jnp.shape(cast("Array", values))
+        if actual != expected:
+            msg = (
+                f"game values have shape {actual}, expected {expected} "
+                "(broadcast targets, then samples, then "
+                f"value_shape={self.value_shape}); declare value_shape on the "
+                "game if it returns vector values"
+            )
             raise ValueError(msg)
 
     @abstractmethod

@@ -8,6 +8,7 @@ from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._evidence import EvidenceApproximator
+from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.sampling import (
@@ -62,7 +63,7 @@ class _PermutationApproximator(EvidenceApproximator):
             )
             raise InsufficientSamplesError(msg)
         coalitions = jnp.asarray(self.state.coalitions.to_dense())
-        values = jnp.asarray(self.state.values)
+        values = to_leading(jnp.asarray(self.state.values), len(self.game.value_shape))
         stop = n_seeds + n_walks * quantum
         walk_masks = jnp.reshape(
             coalitions[..., n_seeds:stop, :],
@@ -158,15 +159,17 @@ class PermutationSamplingSV(_PermutationApproximator):
             evidence.value_empty,
             evidence.value_grand,
         )
+        n_value_axes = len(self.game.value_shape)
         return DenseExplanationArray(
             attributions_by_order={
-                0: evidence.value_empty[..., None],
-                1: sums / evidence.n_walks,
+                0: to_trailing(evidence.value_empty[..., None], n_value_axes),
+                1: to_trailing(sums / evidence.n_walks, n_value_axes),
             },
             n_players=self.game.n_players,
             interaction_index="SV",
             order=1,
             shape=self.game.target_shape,
+            value_shape=self.game.value_shape,
         )
 
 
@@ -303,12 +306,16 @@ class PermutationSamplingSII(_PermutationApproximator):
                     )
                     raise InsufficientSamplesError(msg)
                 attributions[size] = sums / counts
+        n_value_axes = len(self.game.value_shape)
         return DenseExplanationArray(
-            attributions_by_order=attributions,
+            attributions_by_order={
+                size: to_trailing(block, n_value_axes) for size, block in attributions.items()
+            },
             n_players=n_players,
             interaction_index="SII",
             order=self.order,
             shape=self.game.target_shape,
+            value_shape=self.game.value_shape,
         )
 
 
@@ -406,12 +413,16 @@ class PermutationSamplingSTII(_PermutationApproximator):
             attributions[1] = sums / evidence.n_walks
         else:
             attributions[top_order] = self._sampled_top_order(evidence)
+        n_value_axes = len(self.game.value_shape)
         return DenseExplanationArray(
-            attributions_by_order=attributions,
+            attributions_by_order={
+                size: to_trailing(block, n_value_axes) for size, block in attributions.items()
+            },
             n_players=n_players,
             interaction_index="STII",
             order=top_order,
             shape=self.game.target_shape,
+            value_shape=self.game.value_shape,
         )
 
     def _exact_empty_derivatives(self, seed_values: Array, size: int) -> Array:

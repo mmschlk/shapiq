@@ -11,7 +11,6 @@ from shapiq import (
     HistoryError,
     InsufficientSamplesError,
     PermutationSamplingSV,
-    UnsupportedGameError,
 )
 
 N_PLAYERS = 5
@@ -183,11 +182,11 @@ def test_shared_samples_across_targets():
     assert jnp.allclose(attributions, per_target_weights, atol=1e-6)
 
 
-def test_vector_valued_games_are_rejected():
+def test_undeclared_vector_values_are_rejected():
     def vector_values(coalitions):
         masks = jnp.asarray(coalitions.to_dense(), dtype=jnp.float32)
         return jnp.stack([masks @ WEIGHTS, masks @ WEIGHTS], axis=-1)
 
-    game = CallableGame(fn=vector_values, n_players=N_PLAYERS)
-    with pytest.raises(UnsupportedGameError):
+    game = CallableGame(fn=vector_values, n_players=N_PLAYERS)  # value_shape not declared
+    with pytest.raises(ValueError, match="declare value_shape"):
         PermutationSamplingSV(game, random_state=0).sample(1)

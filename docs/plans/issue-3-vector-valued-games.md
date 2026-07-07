@@ -1,6 +1,6 @@
 # Issue 3 — Vector-valued games (un-bake the scalar-only enforcement)
 
-Status: **not started** · Order: **second** · Expected outcome includes **ADR 0006**
+Status: **done** (2026-07-07, ADR 0006) · Order: **second**
 
 ## Problem
 
@@ -45,28 +45,33 @@ point: 100k samples × 1000-dim float32 logits ≈ 400 MB of evidence — see gu
 
 ## Work breakdown
 
-- [ ] ADR 0006: value-space layout contract (axis order, where value shape is declared, what is
-  validated where).
-- [ ] `Game` value-shape metadata (`games/_base.py`, `CallableGame`, `MaskedGame` /
-  `ModelMaskedPredictor` delegation).
-- [ ] Evidence layer: `SamplingState`, `_evidence.py` checks and scatters.
-- [ ] `ExactExplainer`: powerset evaluation and kernel einsums over trailing value axes.
-- [ ] Permutation family and `RegressionFSII` `explain()` paths (broadcast sums; multi-RHS
-  solve over flattened value axes).
-- [ ] Explanation-block validation in `DenseExplanationArray` (per the ADR decision).
-- [ ] Tests: a vector-valued `CallableGame` through `ExactExplainer`, `PermutationSamplingSV`,
-  and `RegressionFSII`; per-component efficiency; scalar regression suite untouched.
-- [ ] `CONTEXT.md`: sharpen **Value** / **ValueArray** entries if the layout language needs it.
+- [x] ADR 0006: value-space layout contract (declared `value_shape`, boundary validation in
+  `Game.__call__`, logical axes → sample axis → value axes, leading-value internal compute
+  form).
+- [x] `Game` value-shape metadata: base default, `CallableGame` field, `MaskedGame` field at
+  the composition site (the game owns the declaration; links stay plain callables),
+  `TorchCallableGame` pass-through.
+- [x] Evidence layer: `SamplingState` needed **zero changes** — its positional append and
+  Ellipsis slicing were already built for the layout; `_evidence.py` scalar checks removed in
+  favor of the boundary, dedup stitching made value-aware.
+- [x] `ExactExplainer` (leading-form einsums, multi-RHS faithful solve).
+- [x] Permutation family and `RegressionFSII` `explain()` paths (`explainers/_valueaxes.py`
+  holds the two axis moves).
+- [x] Explanation-block validation in `DenseExplanationArray` plus a recorded `value_shape`.
+- [x] Tests: `tests/shapiq/test_vector_values.py` — vector runs match per-component scalar
+  runs across all three families, per-component efficiency, pending masking, history slicing,
+  dedup, misdeclaration errors, block validation; scalar suite untouched (89 tests green).
+- [x] `CONTEXT.md`: **ValueArray** entry records the dense layout.
 
-## Open decisions
+## Decisions (settled 2026-07-07, recorded in ADR 0006)
 
-- Value shape declared up front on the game vs inferred from the first evaluation
-  (recommendation: declared — lazy seeding means the first evaluation may come late, and
-  validation without metadata degrades to trust).
-- Cost of the FSII solve scaling with value size (flatten value axes into RHS columns;
-  measure).
-- Does `ExplanationArray` record the value shape as metadata?
-- Confirm deduplication is unaffected (keys are coalition-side) — expected yes, add a test.
+- Value shape is **declared** on the game (not inferred); the game validates its own output at
+  the boundary.
+- `DenseExplanationArray` **records `value_shape`** and validates every attribution block.
+- Deduplication confirmed unaffected (keys are coalition-side; covered by the vector dedup
+  test).
+- Still open for issue 4's benchmark: cost of the FSII solve scaling with value size
+  (value axes flatten into right-hand-side columns; measure).
 
 ## Acceptance criteria
 
