@@ -77,7 +77,7 @@ iv = explainer.explain(
 )
 
 game = explainer.game
-imputer = explainer.game.imputer
+imputer = explainer.game._imputer
 
 print(f"Model type:           {imputer.model_type}")
 print(f"Image grid:           {imputer.grid_size}x{imputer.grid_size}")
@@ -172,7 +172,7 @@ print(f"Total players:           {game.n_players}")
 feature_names = [f"P{i}" for i in range(game.n_players_image)] + text_tokens
 
 iv_first_order = iv.get_n_order(1)
-iv_first_order.plot_force(feature_names=feature_names)
+iv_first_order.plot_force(feature_names=feature_names, show=False)
 plt.savefig("vision_clip_force.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_clip_force.png")
@@ -187,6 +187,7 @@ print("Saved: vision_clip_force.png")
 iv.plot_network(
     feature_names=feature_names,
     draw_threshold=0.0,
+    show=False
 )
 plt.savefig("vision_clip_network.png", dpi=150, bbox_inches="tight")
 plt.close()
@@ -221,7 +222,6 @@ def plot_patch_overlay(
     ax1.imshow(img_resized)
     ax1.set_title("Original Image")
     ax1.axis("off")
-
     ax2.imshow(img_resized)
     im = ax2.imshow(
         grid,
@@ -229,9 +229,8 @@ def plot_patch_overlay(
         cmap=cmap,
         vmin=-max_abs_val,
         vmax=max_abs_val,
-        alpha=alpha,
+        alpha=alpha
     )
-
     # Draw patch boundaries
     for i in range(grid_size + 1):
         ax2.axhline(i * patch_size, color="white", lw=0.5, alpha=0.3)

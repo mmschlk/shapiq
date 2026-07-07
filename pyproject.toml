@@ -284,6 +284,7 @@ all_ml = [
     "catboost",
     "transformers",
     "scikit-image",
+    "clip @ git+https://github.com/openai/CLIP.git",  # required by examples/vision/plot_vision_language_rn50.py
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]

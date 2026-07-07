@@ -107,13 +107,13 @@ feature_names = ["Top", "Middle", "Bottom", "Token_1", "Token_2"]
 
 # First-order (Shapley values)
 fo = iv.get_n_order(1)
-fo.plot_force(feature_names=feature_names)
+fo.plot_force(feature_names=feature_names, show=False)
 plt.savefig("vision_explainer_force.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_explainer_force.png")
 
 # Second-order interactions
-iv.plot_network(feature_names=feature_names)
+iv.plot_network(feature_names=feature_names, show=False)
 plt.savefig("vision_explainer_network.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_explainer_network.png")

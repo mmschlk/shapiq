@@ -188,8 +188,10 @@ seg_cfg = SegmenterConfig(
     params=SlicParams(n_segments=49, compactness=10.0, sigma=1.0),
 )
 
+print('model config:', model.config)
 msk_cfg = MaskerConfig(strategy="crossmodal_mean")
 
+print(f"Masker: {msk_cfg.strategy}")
 explainer = VisionLanguageExplainer(
     model=model,
     processor=processor,
@@ -200,14 +202,14 @@ explainer = VisionLanguageExplainer(
     max_order=2,
     random_state=42,
 )
-
+print("Explainer initialized.")
 iv = explainer.explain(
     x={"image": image, "text": INPUT_TEXT},
-    budget=2**9,
+    budget=2**4,
 )
 
 game = explainer.game
-imputer = explainer.game.imputer
+imputer = explainer.game._imputer
 
 print(f"Model type:           {imputer.model_type}")
 print(f"Image players:        {game.n_players_image}")
@@ -297,7 +299,7 @@ print("Saved: vision_rn50_slic_segments.png")
 feature_names = [f"S{i}" for i in range(game.n_players_image)] + text_tokens
 
 iv_first_order = iv.get_n_order(1)
-iv_first_order.plot_force(feature_names=feature_names)
+iv_first_order.plot_force(feature_names=feature_names, show=False)
 plt.savefig("vision_rn50_slic_force.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_rn50_slic_force.png")
@@ -310,6 +312,7 @@ print("Saved: vision_rn50_slic_force.png")
 iv.plot_network(
     feature_names=feature_names,
     draw_threshold=0.0,
+    show=False
 )
 plt.savefig("vision_rn50_slic_network.png", dpi=150, bbox_inches="tight")
 plt.close()
