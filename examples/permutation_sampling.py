@@ -35,18 +35,14 @@ if __name__ == "__main__":
     )
     EXACT_SV = WEIGHTS + 0.5 * jnp.sum(PAIRS, axis=1)
 
-
     def game_value(coalitions) -> Array:
         masks = jnp.asarray(coalitions.to_dense(), dtype=jnp.float32)
         return masks @ WEIGHTS + 0.5 * jnp.einsum("...i,ij,...j->...", masks, PAIRS, masks)
 
-
     game = CallableGame(fn=game_value, n_players=N_PLAYERS)
-
 
     def order_one(explanation) -> Array:
         return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)])
-
 
     print("=== Shapley values via permutation walks ===")
     approximator = PermutationSamplingSV(game, random_state=0)

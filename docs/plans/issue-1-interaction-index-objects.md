@@ -1,6 +1,6 @@
 # Issue 1 — Interaction indices become typed objects
 
-Status: **in progress** (design pass) · Order: **first** · Expected outcome includes **ADR 0005**
+Status: **done** (2026-07-07, ADR 0005) · Order: **first**
 
 ## Problem
 
@@ -46,17 +46,21 @@ provides its weights works with the exact explainer without shapiq changes.
 Sketch of the target grammar:
 
 ```python
-SV()                 # order-free: order 1 by definition
-SII()                # order-free: order is explanation coverage
-STII(order=3)        # order is part of the index identity
+SV()                 # no order field: order 1 by definition (SV(order=2) unrepresentable)
+SII(order=2)         # order = coverage; default 2
+STII(order=3)        # order = identity; default 2
 FSII(order=2)
 
 ExactExplainer(game, index)             # index: WeightedDerivativeIndex | RegressionIndex
-PermutationSamplingSII(game, order=2)   # stays a class: walk layout is bespoke
+PermutationSamplingSII(game, order=2)   # stays a class for now: builds SII(order) internally
 ```
 
 String **names stay** on the objects (for `ExplanationArray` metadata, `repr`, and
-serialization); objects replace strings only where behavior and validation are selected.
+serialization); objects replace strings only where behavior and validation are selected. The
+coverage-vs-identity distinction is carried as a machine-readable property on each index class
+(order semantics: coverage for SII/BII, identity for STII/FSII) so later tooling can warn on
+cross-order comparisons — grammar prevents errors, documentation plus the property teach
+interpretation.
 
 ## Current state
 
@@ -75,9 +79,11 @@ serialization); objects replace strings only where behavior and validation are s
 
 ## Design direction
 
-- Frozen dataclasses per index in `shapiq.interactions`: `SV()`, `BV()`, `SII()`, `BII()`
-  (no order field) and `STII(order)`, `FSII(order)`. Each carries its `name: str` and validates
-  its own intrinsic parameters at construction.
+- Frozen dataclasses per index in `shapiq.interactions`: `SV()` and `BV()` without an order
+  field; `SII(order=2)`, `BII(order=2)`, `STII(order=2)`, `FSII(order=2)` with a uniform,
+  defaulted order. Each carries its `name`, its order-semantics property, and validates its own
+  intrinsic parameters at construction. `Explainer.order` derives from the index — one source
+  of truth.
 - Capability protocols (structural typing):
   - `WeightedDerivativeIndex` — provides the cardinal weight profile `w(s, t)` used by the exact
     explainer's weighted-derivative kernel;
@@ -101,36 +107,46 @@ serialization); objects replace strings only where behavior and validation are s
 
 ## Work breakdown
 
-- [ ] Design pass: index objects + protocols, exact field/method names, where weight functions
+- [x] Design pass: index objects + protocols, exact field/method names, where weight functions
   live; write ADR 0005 (index representation and the coverage-vs-identity order semantics).
-- [ ] Implement index objects and protocols in `src/shapiq/interactions/`; per-index rules move
-  from `_validation.py` onto the objects.
-- [ ] Migrate `Explainer.__init__` and `ExactExplainer` (constructor takes an index object;
-  dispatch via protocol).
-- [ ] Numerics: replace numpy with `jnp` throughout `_exact.py` and the FSII solve in
-  `_regression.py`; adapt test tolerances to float32 where accumulation shows.
-- [ ] Migrate approximator constructors (`_permutation.py`, `_regression.py`) off strings.
-- [ ] Update `ExplanationArray` metadata validation; remove `"k-SII"` from the accepted set and
-  note the future transform.
-- [ ] Update exports, `CONTEXT.md` (**InteractionIndex** entry; new entries for the index-object
-  and capability language), and `docs/design/core-interfaces.md`.
-- [ ] Tests: constructor migrations; a typed-support check (e.g. a `ty`-checked snippet or test
-  asserting the protocol bounds); SV-at-order-2 unrepresentable.
+- [x] Implement index objects and protocols in `src/shapiq/interactions/_indices.py`; per-index
+  rules moved from `_validation.py` onto the objects.
+- [x] Migrate `Explainer.__init__` and `ExactExplainer` (constructor takes an index object;
+  dispatch via capability protocols).
+- [x] Numerics: numpy replaced with `jnp` throughout `_exact.py` and the FSII solve in
+  `_regression.py` (shared machinery in `explainers/_faithful.py`); no test tolerances needed
+  adapting — all existing atols held in float32.
+- [x] Migrate approximator constructors (`_permutation.py`, `_regression.py`) off strings.
+- [x] Update `ExplanationArray` metadata validation; `"k-SII"` removed from the accepted set
+  (returns later as an explanation-level transform).
+- [x] Update exports and `CONTEXT.md` (**InteractionIndex** rewritten; **Order Semantics** and
+  **Index Capability** added). `docs/design/core-interfaces.md` needed no change — it does not
+  describe index selection.
+- [x] Tests: constructor migrations; index-object semantics test; string and capability-free
+  indices rejected with teaching errors; SV-with-order unrepresentable (79 tests green).
+
+## Decisions (settled 2026-07-07, to be recorded in ADR 0005)
+
+- **Order lives uniformly on the index** with default 2 where it exists (`SII(order=2)`,
+  `STII(order=3)`); SV/BV have no order field, so `SV(order=2)` is unrepresentable. No
+  required-order asymmetry for identity indices — consistency wins; interpretation is taught by
+  documentation plus a machine-readable order-semantics property (coverage vs identity) on each
+  index class. `order` leaves `Explainer.__init__`; `Explainer.order` derives from the index.
+- **FSII solves use exact constraint elimination** in pure `jnp` (default float32): the ∅/N
+  equality constraints are substituted out, the big-M rows and `_CONSTRAINT_WEIGHT` disappear
+  from both `_exact.py` and `_regression.py`, and the reduced system is well conditioned.
+- **Weight functions migrate onto the index objects now** (capability methods), since
+  `_exact.py` is being rewritten for `jnp` anyway.
+- **`ExplanationArray` stores the name string** (serialization stays trivial); index typing is
+  constructor-side only, transforms check names at runtime.
+- **Internal dispatch is keyed on index types and capabilities, never name strings**, so issue
+  5's unified entry points become a thin step.
 
 ## Open decisions
 
-- Does `ExplanationArray` store the index object, the name string, or both? (Recommendation:
-  name string; keeps serialization trivial.)
-- Does `order` leave `Explainer.__init__` entirely (identity-orders live on the index; coverage
-  order becomes an `explain()`/constructor argument for SII/BII)?
-- Do weight functions migrate onto the index objects in this issue or in a follow-up (smaller
-  first step: objects wrap the existing private functions)?
-- How much index typing propagates into `ExplanationArray` (recommendation: constructor-side
-  static typing only; runtime name checks for transforms).
-- FSII solve numerics under default-float32 JAX: exact elimination of the ∅/N equality
-  constraints (drops the big-M rows and their ~1e7 conditioning, making float32 safe, and
-  removes `_CONSTRAINT_WEIGHT` from `_regression.py` as well) vs documenting an
-  `jax_enable_x64` requirement vs keeping a numpy-float64 island for the solves only.
+- Exact naming of the order-semantics property and its glossary entry.
+- Custom third-party index names vs the closed `InteractionIndexName` Literal on explanation
+  metadata (deferred: keep the closed Literal for now; note the limit in ADR 0005).
 
 ## Acceptance criteria
 

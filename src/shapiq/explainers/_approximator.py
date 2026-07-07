@@ -13,7 +13,7 @@ from shapiq.sampling import ApproximationState, Sampler
 if TYPE_CHECKING:
     from shapiq.coalitions import CoalitionArray
     from shapiq.explanations import ExplanationArray
-    from shapiq.interactions import InteractionIndexName, InteractionOrientation
+    from shapiq.interactions import InteractionIndex, InteractionOrientation
 
 
 class Approximator[
@@ -33,12 +33,11 @@ class Approximator[
         game: GameT,
         sampler: SamplerT,
         state: StateT,
-        interaction_index: InteractionIndexName,
-        order: int,
+        index: InteractionIndex,
         orientation: InteractionOrientation = "undirected",
     ) -> None:
         """Initialize an approximator."""
-        super().__init__(game, interaction_index, order, orientation)
+        super().__init__(game, index, orientation)
         if sampler.n_players != game.n_players:
             msg = "sampler and game use different numbers of players"
             raise ValueError(msg)
@@ -104,7 +103,9 @@ class Approximator[
                 sampler=sampler,
                 sampler_history=tuple(sampler_history[: index + 1]),
             )
-            for index, (state, sampler) in enumerate(zip(state_history, sampler_history, strict=True))
+            for index, (state, sampler) in enumerate(
+                zip(state_history, sampler_history, strict=True)
+            )
         ]
 
     @abstractmethod

@@ -38,7 +38,7 @@ def validate_interaction_metadata(
     if not isinstance(interaction_index, str):
         msg = "interaction_index must be a string"
         raise TypeError(msg)
-    if interaction_index not in {"SV", "BV", "SII", "BII", "k-SII", "STII", "FSII"}:
+    if interaction_index not in {"SV", "BV", "SII", "BII", "STII", "FSII"}:
         msg = f"unsupported interaction index: {interaction_index!r}"
         raise ValueError(msg)
     if isinstance(order, bool) or not isinstance(order, int):

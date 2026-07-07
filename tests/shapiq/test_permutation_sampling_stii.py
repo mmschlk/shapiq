@@ -109,7 +109,9 @@ def test_top_order_converges_to_brute_force_stii():
     approximator = PermutationSamplingSTII(game_from(cubic_from_masks), order=2, random_state=2)
     explanation = approximator.sample(seeds(2) + 1500 * quantum(2)).explain()
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation(pair), brute_force_top_stii(cubic_from_masks, pair), atol=0.1)
+        assert jnp.allclose(
+            explanation(pair), brute_force_top_stii(cubic_from_masks, pair), atol=0.1
+        )
 
 
 def test_order_one_stii_matches_sv_approximator_exactly():
@@ -126,7 +128,11 @@ def test_efficiency_holds_exactly_for_quadratic_games():
     game = game_from(quadratic_from_masks)
     grand = quadratic_from_masks(jnp.ones((N_PLAYERS,), dtype=jnp.float32))
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
-    explanation = PermutationSamplingSTII(game, order=2, random_state=3).sample(seeds(2) + quantum(2)).explain()
+    explanation = (
+        PermutationSamplingSTII(game, order=2, random_state=3)
+        .sample(seeds(2) + quantum(2))
+        .explain()
+    )
     total = sum(
         float(explanation(interaction))
         for order in (1, 2)
@@ -138,7 +144,11 @@ def test_efficiency_holds_exactly_for_quadratic_games():
 def test_empty_interaction_is_the_empty_coalition_value():
     game = game_from(quadratic_from_masks)
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
-    explanation = PermutationSamplingSTII(game, order=2, random_state=0).sample(seeds(2) + quantum(2)).explain()
+    explanation = (
+        PermutationSamplingSTII(game, order=2, random_state=0)
+        .sample(seeds(2) + quantum(2))
+        .explain()
+    )
     assert jnp.allclose(explanation(()), empty, atol=1e-6)
 
 

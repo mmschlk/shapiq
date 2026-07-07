@@ -62,7 +62,9 @@ def order_one_attributions(explanation):
 )
 def test_estimates_identical_to_plain_sampling(approximator_cls, kwargs):
     budget = 25
-    deduplicated = approximator_cls(quadratic_game(), random_state=1, deduplicate=True, **kwargs).sample(
+    deduplicated = approximator_cls(
+        quadratic_game(), random_state=1, deduplicate=True, **kwargs
+    ).sample(
         budget,
     )
     raw_samples = deduplicated.state.n_samples

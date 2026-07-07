@@ -196,10 +196,14 @@ class PermutationSTIISampler(PermutationWalkSampler):
         blocks = [chain]
         for pattern in nonempty_patterns(self.order):
             selected = members[:, jnp.asarray(pattern)]
-            pattern_mask = jnp.zeros(
-                (members.shape[0], self.n_players),
-                dtype=bool,
-            ).at[jnp.arange(members.shape[0])[:, None], selected].set(True)
+            pattern_mask = (
+                jnp.zeros(
+                    (members.shape[0], self.n_players),
+                    dtype=bool,
+                )
+                .at[jnp.arange(members.shape[0])[:, None], selected]
+                .set(True)
+            )
             blocks.append(predecessors | pattern_mask)
         return jnp.concatenate(blocks, axis=-2)
 
@@ -243,9 +247,7 @@ def nonempty_patterns(size: int) -> tuple[tuple[int, ...], ...]:
         lexicographically.
     """
     return tuple(
-        pattern
-        for length in range(1, size + 1)
-        for pattern in combinations(range(size), length)
+        pattern for length in range(1, size + 1) for pattern in combinations(range(size), length)
     )
 
 

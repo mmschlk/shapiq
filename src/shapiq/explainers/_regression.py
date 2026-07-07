@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-from itertools import combinations
 from math import comb
 from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
-import numpy as np
 from jax import Array
 
-from shapiq._shape import validate_int
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._evidence import EvidenceApproximator
+from shapiq.explainers._faithful import (
+    eliminate_constraint,
+    interaction_design,
+    require_identification,
+    solve_faithful,
+)
 from shapiq.explanations import DenseExplanationArray
+from shapiq.interactions import FSII
 from shapiq.sampling import EmptyState, SamplingState, ShapleyKernelSampler
 
 if TYPE_CHECKING:
     from shapiq.games import Game
     from shapiq.sampling import ShareSamples
-
-_CONSTRAINT_WEIGHT = 1e7
 
 
 class RegressionFSII(EvidenceApproximator):
@@ -29,9 +31,11 @@ class RegressionFSII(EvidenceApproximator):
     the empty and grand coalition fit exactly. The approximator estimates the
     kernel objective by Monte Carlo: the sampler draws coalitions with
     probability proportional to their kernel weight, so every sampled
-    coalition enters an ordinary least squares problem with unit weight, and
-    repeated coalitions contribute through their multiplicity. ``explain()``
-    solves the accumulated regression exactly.
+    coalition enters the least squares problem with unit weight, and repeated
+    coalitions contribute through their multiplicity. ``explain()`` solves
+    the accumulated regression exactly, substituting the empty- and
+    grand-coalition constraints out of the system, which keeps the solve well
+    conditioned in float32.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the regression
@@ -83,6 +87,7 @@ class RegressionFSII(EvidenceApproximator):
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
+        index = FSII(order=order)
         sampler = ShapleyKernelSampler(
             game.n_players,
             game.target_shape,
@@ -90,22 +95,20 @@ class RegressionFSII(EvidenceApproximator):
             paired=paired,
             random_state=random_state,
         )
-        validate_int("order", order, minimum=1)
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, interaction_index="FSII", order=order)
+        super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
 
     @property
     def min_budget(self) -> int:
         """Return the smallest total budget after which ``explain()`` can work.
 
-        Identification needs at least as many evidence rows as regression
-        columns, so the seed-plus-one-unit minimum is raised accordingly.
+        Identification of the eliminated regression needs one fewer
+        independent evidence row than interaction columns, on top of the
+        seed block.
         """
-        n_columns = 1 + sum(
-            comb(self.game.n_players, size) for size in range(1, self.order + 1)
-        )
-        return max(super().min_budget, n_columns)
+        n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
+        return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Solve the faithful regression on the sampled evidence.
@@ -113,7 +116,7 @@ class RegressionFSII(EvidenceApproximator):
         Returns:
             A dense explanation representing orders zero through ``order``.
             The empty interaction carries the empty-coalition value; higher
-            orders hold the solution of the weighted least squares problem
+            orders hold the solution of the constrained least squares problem
             over all completed sampled units. Pending samples of an
             unfinished unit are excluded.
 
@@ -135,76 +138,50 @@ class RegressionFSII(EvidenceApproximator):
             raise InsufficientSamplesError(msg)
         n_players = self.game.n_players
         target_shape = self.game.target_shape
-        masks = np.asarray(jnp.asarray(self.state.coalitions.to_dense()))[..., :usable, :]
-        values = np.asarray(jnp.asarray(self.state.values), dtype=np.float64)[..., :usable]
+        masks = jnp.asarray(self.state.coalitions.to_dense())[..., :usable, :]
+        values = jnp.asarray(self.state.values)[..., :usable]
         value_empty = values[..., 0]
-        response = (values - value_empty[..., None]).reshape(-1, usable)
-        row_weights = np.ones(usable)
-        # the constraint rows must outweigh the growing evidence, or the
-        # solution drifts to the unconstrained fit as samples accumulate
-        row_weights[:n_seeds] = _CONSTRAINT_WEIGHT * usable
-        sqrt_weights = np.sqrt(row_weights)
-        n_columns = 1 + sum(comb(n_players, size) for size in range(1, self.order + 1))
-        flat_masks = masks.reshape(-1, usable, n_players)
+        value_grand = values[..., 1]
+        n_rows = usable - n_seeds
+        response = (values[..., n_seeds:] - value_empty[..., None]).reshape(-1, n_rows).T
+        delta = (value_grand - value_empty).reshape(-1)
+        sample_masks = masks[..., n_seeds:, :]
+        flat_masks = sample_masks.reshape(-1, n_rows, n_players)
         if flat_masks.shape[0] == 1:
-            design = _design_matrix(flat_masks[0], self.order)
-            _require_identification(design, n_columns)
-            solution, *_ = np.linalg.lstsq(
-                sqrt_weights[:, None] * design,
-                sqrt_weights[:, None] * response.T,
-                rcond=None,
-            )
-            solutions = solution.T
+            reduced, pivot = eliminate_constraint(interaction_design(flat_masks[0], self.order))
+            require_identification(reduced)
+            solutions = solve_faithful(reduced, pivot, response, delta).T
         else:
-            broadcast_masks = np.broadcast_to(
-                masks,
-                (*target_shape, usable, n_players),
-            ).reshape(-1, usable, n_players)
-            solutions = np.zeros((response.shape[0], n_columns))
-            for target in range(response.shape[0]):
-                design = _design_matrix(broadcast_masks[target], self.order)
-                _require_identification(design, n_columns)
-                solutions[target], *_ = np.linalg.lstsq(
-                    sqrt_weights[:, None] * design,
-                    sqrt_weights * response[target],
-                    rcond=None,
+            broadcast_masks = jnp.broadcast_to(
+                sample_masks,
+                (*target_shape, n_rows, n_players),
+            ).reshape(-1, n_rows, n_players)
+            columns = []
+            for target in range(response.shape[-1]):
+                reduced, pivot = eliminate_constraint(
+                    interaction_design(broadcast_masks[target], self.order),
                 )
-        attributions: dict[int, Array] = {0: jnp.asarray(value_empty[..., None])}
-        offset = 1  # skip the empty-interaction column
+                require_identification(reduced)
+                columns.append(
+                    solve_faithful(
+                        reduced,
+                        pivot,
+                        response[:, target : target + 1],
+                        delta[target : target + 1],
+                    ),
+                )
+            solutions = jnp.concatenate(columns, axis=1).T
+        attributions: dict[int, Array] = {0: value_empty[..., None]}
+        offset = 0
         for size in range(1, self.order + 1):
             n_interactions = comb(n_players, size)
             block = solutions[:, offset : offset + n_interactions]
-            attributions[size] = jnp.asarray(block.reshape(*target_shape, n_interactions))
+            attributions[size] = block.reshape(*target_shape, n_interactions)
             offset += n_interactions
         return DenseExplanationArray(
             attributions_by_order=attributions,
             n_players=n_players,
-            interaction_index="FSII",
+            interaction_index=self.interaction_index,
             order=self.order,
             shape=target_shape,
         )
-
-
-def _require_identification(design: np.ndarray, n_columns: int) -> None:
-    """Raise when the sampled coalitions do not yet identify all coefficients."""
-    rank = int(np.linalg.matrix_rank(design))
-    if rank < n_columns:
-        msg = (
-            "the faithful regression is not yet identified: the sampled coalitions "
-            f"give rank {rank} of the {n_columns} required; sample more evaluations "
-            "(deduplicate=True reaches distinct coalitions with the fewest evaluations)"
-        )
-        raise InsufficientSamplesError(msg)
-
-
-def _design_matrix(masks: np.ndarray, order: int) -> np.ndarray:
-    """Return subset-membership columns for all interactions up to order."""
-    n_players = masks.shape[-1]
-    columns = [np.ones((masks.shape[0], 1))]
-    for size in range(1, order + 1):
-        member_masks = np.zeros((comb(n_players, size), n_players), dtype=bool)
-        for row, members in enumerate(combinations(range(n_players), size)):
-            member_masks[row, list(members)] = True
-        intersections = masks.astype(np.int64) @ member_masks.T.astype(np.int64)
-        columns.append((intersections == size).astype(np.float64))
-    return np.concatenate(columns, axis=1)

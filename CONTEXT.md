@@ -173,8 +173,16 @@ A **Value**-shaped contribution assigned to an **Interaction** within an **Expla
 _Avoid_: score, importance
 
 **InteractionIndex**:
-A uniquely named rule, referred to by a string name, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Initial names include SV, BV, SII, BII, k-SII, STII, and FSII.
-_Avoid_: index, metric, method
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, and **Order Semantics**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Initial names include SV, BV, SII, BII, STII, and FSII; k-SII is planned as an explanation-level transform of SII.
+_Avoid_: index string, metric, method
+
+**Order Semantics**:
+Whether an **InteractionIndex** treats its **Order** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII).
+_Avoid_: truncation flag, order mode
+
+**Index Capability**:
+A structural protocol an **InteractionIndex** implements to work with an **Explainer** family, such as providing discrete-derivative weights or a regression kernel with exact endpoint constraints.
+_Avoid_: feature flag, supported-index list
 
 **Order**:
 The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions.

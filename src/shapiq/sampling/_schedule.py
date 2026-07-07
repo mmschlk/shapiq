@@ -152,7 +152,6 @@ def _validate_random_state(random_state: Array | int) -> Array:
     ):
         return random_state
     msg = (
-        "random_state must be an integer seed or a JAX PRNG key, "
-        f"got {type(random_state).__name__}"
+        f"random_state must be an integer seed or a JAX PRNG key, got {type(random_state).__name__}"
     )
     raise TypeError(msg)

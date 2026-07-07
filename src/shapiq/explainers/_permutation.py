@@ -9,6 +9,7 @@ from jax import Array
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explanations import DenseExplanationArray
+from shapiq.interactions import SII, STII, SV
 from shapiq.sampling import (
     EmptyState,
     PermutationSIISampler,
@@ -135,7 +136,7 @@ class PermutationSamplingSV(_PermutationApproximator):
             random_state=random_state,
         )
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, interaction_index="SV", order=1)
+        super().__init__(game, sampler, state, index=SV())
         self._init_deduplication(deduplicate=deduplicate)
 
     def explain(self) -> DenseExplanationArray[Array]:
@@ -227,7 +228,7 @@ class PermutationSamplingSII(_PermutationApproximator):
             random_state=random_state,
         )
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, interaction_index="SII", order=order)
+        super().__init__(game, sampler, state, index=SII(order=order))
         self._init_deduplication(deduplicate=deduplicate)
 
     def explain(self) -> DenseExplanationArray[Array]:
@@ -277,7 +278,9 @@ class PermutationSamplingSII(_PermutationApproximator):
                 derivatives = jnp.zeros_like(prefix_values[..., :n_windows])
                 for length in range(size + 1):
                     sign = (-1) ** (size - length)
-                    derivatives = derivatives + sign * prefix_values[..., length : length + n_windows]
+                    derivatives = (
+                        derivatives + sign * prefix_values[..., length : length + n_windows]
+                    )
                 for pattern_index, pattern in enumerate(patterns):
                     sign = (-1) ** (size - len(pattern))
                     derivatives = derivatives + sign * off_values[..., pattern_index, :]
@@ -370,7 +373,7 @@ class PermutationSamplingSTII(_PermutationApproximator):
             random_state=random_state,
         )
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, interaction_index="STII", order=order)
+        super().__init__(game, sampler, state, index=STII(order=order))
         self._init_deduplication(deduplicate=deduplicate)
 
     def explain(self) -> DenseExplanationArray[Array]:

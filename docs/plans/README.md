@@ -29,10 +29,11 @@ delivers it.
 
 | # | File | Goal | Status |
 | --- | --- | --- | --- |
-| 1 | [Interaction index objects](issue-1-interaction-index-objects.md) | Interaction indices become typed objects; index support is visible to the type checker | in progress |
+| 1 | [Interaction index objects](issue-1-interaction-index-objects.md) | Interaction indices become typed objects; index support is visible to the type checker | done (ADR 0005) |
 | 2 | [Torch baseline example](issue-2-torch-baseline-example.md) | End-to-end example explaining a torch model with baseline masking | not started |
 | 3 | [Vector-valued games](issue-3-vector-valued-games.md) | Un-bake the scalar-values-only enforcement from the evidence layer | not started |
 | 4 | [Sampling performance](issue-4-sampling-performance.md) | Remove per-unit Python loops from the sampling path | not started |
+| 5 | [Index-dispatched entry points](issue-5-index-dispatched-entry-points.md) | One entry point per method family; the index object dispatches to concrete implementations | not started |
 
 ## Recommended order: 1 → 3 → 2 → 4
 
@@ -45,6 +46,10 @@ delivers it.
 
 Issues 3 and 4 both modify `src/shapiq/explainers/_evidence.py` — run them in sequence, not in
 parallel worktrees.
+
+**Issue 5** requires issue 1 and does not block the north star; it slots naturally either right
+after issue 1 or after issue 4. Issue 1 should anticipate it by dispatching on index types and
+capabilities internally, never on name strings.
 
 ## Working agreement
 

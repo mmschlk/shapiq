@@ -133,16 +133,23 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         return True
 
     def _position(self, interaction: Interaction) -> int:
-        return list(iter_interactions(
-            self.n_players,
-            len(interaction),
-            min_order=len(interaction),
-            orientation=self.orientation,
-        )).index(interaction)
+        return list(
+            iter_interactions(
+                self.n_players,
+                len(interaction),
+                min_order=len(interaction),
+                orientation=self.orientation,
+            )
+        ).index(interaction)
 
     def _positions(self, interactions: Array) -> Array:
         return jnp.reshape(
-            jnp.asarray([self._position(self._normalize_represented(tuple(row))) for row in _rows(interactions)]),
+            jnp.asarray(
+                [
+                    self._position(self._normalize_represented(tuple(row)))
+                    for row in _rows(interactions)
+                ]
+            ),
             interactions.shape[:-1],
         )
 

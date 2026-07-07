@@ -53,7 +53,9 @@ def test_additive_game_is_exact_after_one_walk():
     assert jnp.allclose(order_one_attributions(explanation), WEIGHTS, atol=1e-6)
 
 
-@pytest.mark.parametrize("budget", [SEEDS + QUANTUM, SEEDS + QUANTUM + 3, SEEDS + 7 * QUANTUM + 1, 100])
+@pytest.mark.parametrize(
+    "budget", [SEEDS + QUANTUM, SEEDS + QUANTUM + 3, SEEDS + 7 * QUANTUM + 1, 100]
+)
 def test_efficiency_holds_for_any_budget(budget):
     game = quadratic_game()
     grand = game(DenseCoalitionArray(jnp.ones((N_PLAYERS,), dtype=bool)))
@@ -112,7 +114,9 @@ def test_sampling_quantum_and_pending_are_observable():
     assert approximator.sampler.n_seed_samples == SEEDS
     assert approximator.sampler.n_pending_samples == 0
     assert approximator.sample(SEEDS + QUANTUM + 1).sampler.n_pending_samples == 1
-    assert approximator.sample(SEEDS + QUANTUM + 1).sample(QUANTUM - 1).sampler.n_pending_samples == 0
+    assert (
+        approximator.sample(SEEDS + QUANTUM + 1).sample(QUANTUM - 1).sampler.n_pending_samples == 0
+    )
 
 
 def test_empty_interaction_returns_empty_coalition_value():

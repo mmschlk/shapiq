@@ -7,7 +7,7 @@ from itertools import combinations
 import jax.numpy as jnp
 import pytest
 
-from shapiq import CallableGame, ExactExplainer, InsufficientSamplesError, RegressionFSII
+from shapiq import FSII, SV, CallableGame, ExactExplainer, InsufficientSamplesError, RegressionFSII
 
 N_PLAYERS = 5
 SEEDS = 2
@@ -43,7 +43,9 @@ def order_one(explanation):
 
 
 def test_recovers_quadratic_games_exactly_once_identified():
-    approximator = RegressionFSII(game_from(quadratic_from_masks), order=2, random_state=0, deduplicate=True)
+    approximator = RegressionFSII(
+        game_from(quadratic_from_masks), order=2, random_state=0, deduplicate=True
+    )
     explanation = approximator.sample(SEEDS + 24).explain()
     assert jnp.allclose(order_one(explanation), WEIGHTS, atol=1e-3)
     for left, right in combinations(range(N_PLAYERS), 2):
@@ -51,14 +53,14 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_order_one_converges_to_the_shapley_value():
-    exact = order_one(ExactExplainer(game_from(cubic_from_masks), "SV").explain())
+    exact = order_one(ExactExplainer(game_from(cubic_from_masks), SV()).explain())
     approximator = RegressionFSII(game_from(cubic_from_masks), order=1, random_state=1)
     estimate = order_one(approximator.sample(SEEDS + 3000).explain())
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_converges_to_the_exact_faithful_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), "FSII", order=2).explain()
+    exact = ExactExplainer(game_from(cubic_from_masks), FSII(order=2)).explain()
     approximator = RegressionFSII(game_from(cubic_from_masks), order=2, random_state=2)
     explanation = approximator.sample(SEEDS + 6000).explain()
     for player in range(N_PLAYERS):
