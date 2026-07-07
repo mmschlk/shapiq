@@ -38,11 +38,11 @@ def validate_interaction_metadata(
     if not isinstance(interaction_index, str):
         msg = "interaction_index must be a string"
         raise TypeError(msg)
-    if interaction_index not in {"SV", "SII", "k-SII", "STII", "FSII"}:
+    if interaction_index not in {"SV", "BV", "SII", "BII", "k-SII", "STII", "FSII"}:
         msg = f"unsupported interaction index: {interaction_index!r}"
         raise ValueError(msg)
     if isinstance(order, bool) or not isinstance(order, int):
-        msg = "order must be an integer, not a bool"
+        msg = f"order must be an integer, got {type(order).__name__}"
         raise TypeError(msg)
     if order < 0 or order > n_players:
         msg = "order must satisfy 0 <= order <= n_players"
@@ -50,10 +50,10 @@ def validate_interaction_metadata(
     if orientation not in {"undirected", "directed"}:
         msg = f"unsupported interaction orientation: {orientation!r}"
         raise ValueError(msg)
-    if interaction_index == "SV" and order != 1:
-        msg = "SV requires order == 1"
+    if interaction_index in {"SV", "BV"} and order != 1:
+        msg = f"{interaction_index} requires order == 1"
         raise ValueError(msg)
-    if interaction_index in {"SV", "SII", "k-SII", "STII", "FSII"} and orientation != "undirected":
+    if orientation != "undirected":
         msg = f"{interaction_index} currently supports only undirected interactions"
         raise ValueError(msg)
 

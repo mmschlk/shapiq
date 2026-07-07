@@ -1,43 +1,34 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from copy import copy
 from itertools import combinations
 from math import comb
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 import jax
 import jax.numpy as jnp
 from jax import Array
 
 from shapiq._shape import validate_int
-from shapiq.coalitions import DenseCoalitionArray
-from shapiq.sampling._base import Sampler
+from shapiq.sampling._schedule import UnitScheduleSampler
 
 if TYPE_CHECKING:
     from shapiq._shape import ShapeLike
-    from shapiq.coalitions import CoalitionArray
     from shapiq.sampling._base import ShareSamples
-    from shapiq.sampling._state import ApproximationState
 
 
-class PermutationWalkSampler(Sampler["ApproximationState"]):
+class PermutationWalkSampler(UnitScheduleSampler):
     """Base sampler for coalition walks derived from random permutations.
 
-    The emission schedule is a one-time deterministic seed block followed by
-    permutation walks; constructing a sampler or an approximator therefore
-    never evaluates a game. One walk is the coalition block derived from one
-    permutation, so the sampling quantum is the walk length. Every walk starts
-    with a block of proper permutation prefixes (the chain); order-specific
-    off-chain coalitions follow. Budgets are spent exactly: a unit cut short
-    by the budget stays pending and is resumed by the evolved sampler. Each
-    walk derives its permutation from ``fold_in(key, walk_index)``, so
-    sampling does not depend on how a budget is split across calls.
+    One walk is the coalition block derived from one permutation, so the
+    sampling quantum is the walk length. Every walk starts with a block of
+    proper permutation prefixes (the chain); order-specific off-chain
+    coalitions follow. Each walk derives its permutation from
+    ``fold_in(random_state, walk_index)``, so sampling does not depend on how
+    a budget is split across calls.
     """
 
     order: int
-    _units_started: int
-    _pending_pos: int
 
     def __init__(
         self,
@@ -70,83 +61,21 @@ class PermutationWalkSampler(Sampler["ApproximationState"]):
             TypeError: If ``order`` is not an integer, or if ``random_state``
                 is neither an integer nor a JAX PRNG key.
         """
-        super().__init__(n_players, target_shape, share_samples=share_samples)
-        if self.n_players < 2:
-            msg = "permutation walks require at least two players"
-            raise ValueError(msg)
+        super().__init__(
+            n_players,
+            target_shape,
+            share_samples=share_samples,
+            random_state=random_state,
+        )
         validate_int("order", order, minimum=1)
         if order > self.n_players:
             msg = "order must not exceed the number of players"
             raise ValueError(msg)
         self.order = order
-        self._key = _validate_random_state(random_state)
-        self._units_started = 0
-        self._pending_pos = 0
 
-    @property
-    def n_seed_samples(self) -> int:
-        """Return the length of the deterministic seed block."""
-        return 2
-
-    @property
-    def n_pending_samples(self) -> int:
-        """Return the number of emitted coalitions of the unfinished unit.
-
-        The unfinished unit is either the seed block or the current walk; its
-        already-emitted coalitions stay pending until a later sample call
-        completes the unit.
-        """
-        return self._pending_pos
-
-    def _sample(
-        self,
-        state: ApproximationState,  # noqa: ARG002 - permutation sampling is not adaptive
-        budget: int,
-    ) -> tuple[CoalitionArray, Self]:
-        """Emit exactly budget coalitions, resuming any pending unit."""
-        chunks: list[Array] = []
-        units = self._units_started
-        position = self._pending_pos
-        remaining = budget
-        if position > 0:
-            masks = self._unit_masks(units - 1)
-            length = masks.shape[-2]
-            take = min(length - position, remaining)
-            chunks.append(masks[..., position : position + take, :])
-            position = (position + take) % length
-            remaining -= take
-        while remaining > 0:
-            masks = self._unit_masks(units)
-            length = masks.shape[-2]
-            take = min(length, remaining)
-            chunks.append(masks[..., :take, :])
-            units += 1
-            position = take % length
-            remaining -= take
-        coalitions = DenseCoalitionArray(jnp.concatenate(chunks, axis=-2))
-        return coalitions, self._evolve(units_started=units, pending_pos=position)
-
-    def _evolve(self, *, units_started: int, pending_pos: int) -> Self:
-        """Return a sampler that resumes after the emitted coalitions."""
-        evolved = copy(self)
-        evolved._units_started = units_started  # noqa: SLF001 - evolving a copy of self
-        evolved._pending_pos = pending_pos  # noqa: SLF001 - evolving a copy of self
-        return evolved
-
-    def _unit_masks(self, unit_index: int) -> Array:
-        """Return the dense coalition masks of one schedule unit."""
-        if unit_index == 0:
-            return jnp.broadcast_to(
-                self._seed_masks(),
-                (*self.shared_target_shape, self.n_seed_samples, self.n_players),
-            )
-        return self._walk_masks(unit_index - 1)
-
-    def _seed_masks(self) -> Array:
-        """Return the deterministic seed block masks."""
-        return jnp.stack(
-            [jnp.zeros(self.n_players, dtype=bool), jnp.ones(self.n_players, dtype=bool)],
-        )
+    def _sampled_unit_masks(self, unit_index: int) -> Array:
+        """Return the walk masks of one sampled unit."""
+        return self._walk_masks(unit_index)
 
     @abstractmethod
     def _walk_masks(self, walk_index: int) -> Array:
@@ -273,25 +202,6 @@ class PermutationSTIISampler(PermutationWalkSampler):
             ).at[jnp.arange(members.shape[0])[:, None], selected].set(True)
             blocks.append(predecessors | pattern_mask)
         return jnp.concatenate(blocks, axis=-2)
-
-
-def _validate_random_state(random_state: Array | int) -> Array:
-    """Return a JAX PRNG key from an integer seed or an existing key."""
-    if isinstance(random_state, bool):
-        msg = "random_state must be an integer seed or a JAX PRNG key, got bool"
-        raise TypeError(msg)
-    if isinstance(random_state, int):
-        return jax.random.key(random_state)
-    if isinstance(random_state, jax.Array) and jnp.issubdtype(
-        random_state.dtype,
-        jax.dtypes.prng_key,
-    ):
-        return random_state
-    msg = (
-        "random_state must be an integer seed or a JAX PRNG key, "
-        f"got {type(random_state).__name__}"
-    )
-    raise TypeError(msg)
 
 
 def off_chain_patterns(size: int) -> tuple[tuple[int, ...], ...]:

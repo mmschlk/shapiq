@@ -37,7 +37,7 @@ The exact number of new sampled **Coalitions** an **Approximator** evaluates on 
 _Avoid_: permutation count, number of iterations
 
 **Sampling Quantum**:
-The smallest number of additional samples after which an **Approximator** can incorporate new evidence into its estimate, such as one full permutation walk. Samplers own and expose their quantum; budgets do not need to align with it.
+The smallest number of additional samples after which an **Approximator** can incorporate new evidence into its estimate, such as one full permutation walk. A completed quantum is also called a sampled unit. Samplers own and expose their quantum; budgets do not need to align with it.
 _Avoid_: iteration cost, batch size
 
 **Pending Samples**:
@@ -173,7 +173,7 @@ A **Value**-shaped contribution assigned to an **Interaction** within an **Expla
 _Avoid_: score, importance
 
 **InteractionIndex**:
-A uniquely named rule, referred to by a string name, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Initial names include SV, SII, k-SII, STII, and FSII.
+A uniquely named rule, referred to by a string name, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Initial names include SV, BV, SII, BII, k-SII, STII, and FSII.
 _Avoid_: index, metric, method
 
 **Order**:

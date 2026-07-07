@@ -10,11 +10,13 @@ from shapiq.errors import (
 )
 from shapiq.explainers import (
     Approximator,
+    EvidenceApproximator,
     ExactExplainer,
     Explainer,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    RegressionFSII,
 )
 from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
@@ -43,6 +45,8 @@ from shapiq.sampling import (
     PermutationWalkSampler,
     Sampler,
     SamplingState,
+    ShapleyKernelSampler,
+    UnitScheduleSampler,
 )
 
 try:
@@ -58,6 +62,7 @@ __all__ = [
     "DenseCoalitionArray",
     "DenseExplanationArray",
     "EmptyState",
+    "EvidenceApproximator",
     "ExactExplainer",
     "Explainer",
     "ExplanationArray",
@@ -79,11 +84,14 @@ __all__ = [
     "PermutationSamplingSTII",
     "PermutationSamplingSV",
     "PermutationWalkSampler",
+    "RegressionFSII",
     "Sampler",
     "SamplingError",
     "SamplingStallWarning",
     "SamplingState",
+    "ShapleyKernelSampler",
     "SparseExplanationArray",
+    "UnitScheduleSampler",
     "UnsupportedGameError",
     "__version__",
     "iter_interactions",
