@@ -982,10 +982,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
         gr.Markdown("---\n## All Budget Buckets — Side-by-Side Overview")
+        gr.Markdown(value=_elo_init_info)
 
         all_bucket_tables = []
         all_bucket_plots = []
-        all_bucket_infos = []
 
         with gr.Row():
             for i, bucket in enumerate(BUDGET_BUCKETS):
@@ -999,7 +999,6 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                             f"Computing ELO ratings for {bucket['label']}...",
                             lambda bv=budget_val: compute_elo_for_bucket(raw_records, bv, "all", _default_index)
                         )
-                    all_bucket_infos.append(gr.Markdown(value=_info))
                     all_bucket_plots.append(gr.Plot(value=_f))
                     all_bucket_tables.append(
                         gr.Dataframe(value=_t, interactive=False, max_height=1000)
@@ -1024,21 +1023,21 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             # Erst alle Tabellen verstecken
             hide_outputs = []
             for _ in BUDGET_BUCKETS:
-                hide_outputs.extend([gr.update(), gr.update(visible=False), gr.update()])
+                hide_outputs.extend([gr.update(visible=False), gr.update()])
             yield tuple(hide_outputs)
 
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
                 budget_val = int(bucket["budget"])
-                t, f, info = compute_elo_for_bucket(filtered, budget_val, metric, index)
-                outputs.extend([info, gr.update(value=t, visible=True, max_height=1000), f])
+                t, f, _ = compute_elo_for_bucket(filtered, budget_val, metric, index)
+                outputs.extend([gr.update(value=t, visible=True, max_height=1000), f])
             yield tuple(outputs)
 
         _all_bucket_outputs = [
             item
             for i in range(len(BUDGET_BUCKETS))
-            for item in [all_bucket_infos[i], all_bucket_tables[i], all_bucket_plots[i]]
+            for item in [all_bucket_tables[i], all_bucket_plots[i]]
         ]
 
         elo_approx_filter.change(
