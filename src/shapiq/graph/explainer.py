@@ -164,7 +164,6 @@ class GraphExplainer(Explainer):
         self,
         x: np.ndarray | Data | None,
         *args: Any,
-        max_interaction_size: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
     ) -> InteractionValues:
@@ -173,10 +172,6 @@ class GraphExplainer(Explainer):
         Args:
             x: The input graph to explain.
             *args: Unused; present only to match the base class signature.
-            max_interaction_size: Maximum k-hop neighbourhood size for the L-Shapley
-                approximation. When ``None`` the full neighbourhood size reported by
-                :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used. Ignored when
-                *l_shapley* is ``False``.
             verbose: Whether to print debug information for the underlying game and
                 GraphSHAP-IQ explainer. Defaults to ``False``.
             **kwargs: Allows for passing and overriding ``index``, ``efficiency_routine``,
