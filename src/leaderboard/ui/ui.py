@@ -792,6 +792,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             with gr.Column(scale=0, min_width=120):
                 elo_deselect_btn = gr.Button("Alle abwählen", size="sm")
                 elo_reset_btn = gr.Button("Zurücksetzen", size="sm")
+                elo_jump_btn = gr.Button("🔍 Open in Detailed Data Tab", size="sm", variant="secondary")
 
         elo_deselect_btn.click(fn=list, outputs=elo_approx_filter)
         elo_reset_btn.click(
@@ -1513,6 +1514,26 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 for comp in [game_dropdowns[m], approx_checkboxes[m], metric_plots[m]]
             ],
         ],
+    )
+
+    elo_jump_btn.click(
+        fn=lambda approxs, budget_idx, metric, index: (
+            [],
+            approxs or [],
+            [str(BUDGET_BUCKETS[budget_idx]["budget"])],
+            [index] if index != "all" else [],
+            [metric] if metric != "all" else [],
+        ),
+        inputs=[elo_approx_filter, elo_bucket_idx_state, elo_metric_filter, elo_index_filter],
+        outputs=[det_game, det_approx, det_budget, det_index, det_metric],
+    ).then(
+        fn=query_raw,
+        inputs=_det_filters,
+        outputs=[det_count, det_table],
+    ).then(
+        fn=lambda: gr.Info("Daten geladen — bitte zum 'Detailed Data' Tab wechseln"),
+        inputs=[],
+        outputs=[],
     )
 
     for metric in available_metrics:
