@@ -5,8 +5,8 @@ from .faithful import RegressionFBII, RegressionFSII
 from .kadd_shap import kADDSHAP
 from .kernelshap import KernelSHAP
 from .kernelshapiq import InconsistentKernelSHAPIQ, KernelSHAPIQ
-from .polyshap import PolySHAPKAdd, PolySHAPPartial, PolySHAPPrior
 from .oddshap import OddSHAP
+from .polyshap import PolySHAPKAdd, PolySHAPPartial, PolySHAPPrior
 
 __all__ = [
     "kADDSHAP",

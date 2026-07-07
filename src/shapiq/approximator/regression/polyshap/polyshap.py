@@ -14,6 +14,8 @@ from shapiq.interaction_values import InteractionValues
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.game import Game
+
 ValidRegressionPolySHAPIndices = Literal["SV"]
 
 
@@ -105,8 +107,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 stacklevel=3,
             )
 
-    def _init_kernel_weights(self) -> np.ndarray:
-        """Initialise the regression kernel weights indexed by coalition size.
+    def _init_sv_kernel_weights(self) -> np.ndarray:
+        """Initialise the order-1 (Shapley-value) regression kernel weights by coalition size.
 
         Weights are zero for the empty and grand coalitions (handled as hard
         constraints) and follow the KernelSHAP formula otherwise.
@@ -155,7 +157,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        *args: Any | None,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximate Shapley values via weighted least-squares regression.
@@ -171,13 +174,14 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 grand coalition, which are always queried).
             game: Callable accepting a binary coalition matrix of shape
                 ``(budget, n)`` and returning a value array of shape ``(budget,)``.
+            *args: Ignored; accepted for API compatibility with other approximators.
             **kwargs: Ignored; accepted for API compatibility with other approximators.
 
         Returns:
             :class:`~shapiq.interaction_values.InteractionValues` containing the
             estimated Shapley values.
         """
-        kernel_weights = self._init_kernel_weights()
+        kernel_weights = self._init_sv_kernel_weights()
         self.projection_matrix = np.identity(self.n_variables) - 1 / self.n_variables
 
         # Sample coalitions and query the game.

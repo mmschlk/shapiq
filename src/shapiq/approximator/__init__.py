@@ -16,10 +16,10 @@ from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
+    OddSHAP,
     PolySHAPKAdd,
     PolySHAPPartial,
     PolySHAPPrior,
-    OddSHAP,
     RegressionFBII,
     RegressionFSII,
     kADDSHAP,
@@ -51,7 +51,6 @@ except ImportError as _e:
         def __init__(self, *_args: object, **_kwargs: object) -> None:
             """Raise an informative ImportError pointing to the missing extra."""
             raise self._import_error
-
 
 
 # contains all SV approximators
