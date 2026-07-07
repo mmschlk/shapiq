@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from fractions import Fraction
 from functools import cache
 from itertools import combinations
 from math import comb
@@ -22,15 +21,23 @@ from shapiq.games import Game
 from shapiq.interactions import (
     FBII,
     KADDSHAP,
-    KSII,
-    SII,
+    AggregationIndex,
     CardinalInteractionIndex,
+    CoalitionFunctional,
     GeneralizedValueIndex,
     RegressionIndex,
+    aggregate_supersets,
+    derive_functional,
 )
+from shapiq.interactions._indices import bernoulli_numbers
 
 type ExactIndex = (
-    CardinalInteractionIndex | GeneralizedValueIndex | RegressionIndex | KSII | FBII | KADDSHAP
+    CardinalInteractionIndex
+    | GeneralizedValueIndex
+    | RegressionIndex
+    | AggregationIndex
+    | FBII
+    | KADDSHAP
 )
 
 
@@ -80,9 +87,9 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         if not isinstance(
             index,
             (
-                KSII,
                 FBII,
                 KADDSHAP,
+                AggregationIndex,
                 CardinalInteractionIndex,
                 GeneralizedValueIndex,
                 RegressionIndex,
@@ -115,32 +122,20 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         masks = _powerset_masks(n_players)
         index = self._exact_index
         order = self.order
-        if isinstance(index, KSII):
-            attributions = _aggregated_ksii_attributions(values, masks, order)
-        elif isinstance(index, FBII):
+        if isinstance(index, FBII):
             attributions = _banzhaf_regression_attributions(values, masks, order)
         elif isinstance(index, KADDSHAP):
             attributions = _kadd_regression_attributions(values, masks, index, order)
-        elif isinstance(index, CardinalInteractionIndex):
-            attributions = {
-                size: _weighted_derivatives(
-                    values,
-                    masks,
-                    size,
-                    index.derivative_weights(n_players, size),
-                )
-                for size in range(index.min_interaction_size, order + 1)
-            }
-        elif isinstance(index, GeneralizedValueIndex):
-            attributions = {
-                size: _weighted_marginals(
-                    values,
-                    masks,
-                    size,
-                    index.marginal_weights(n_players, size),
-                )
-                for size in range(1, order + 1)
-            }
+        elif isinstance(index, AggregationIndex):
+            functional = derive_functional(index.base_index, n_players, order)
+            attributions = aggregate_supersets(
+                _functional_attributions(values, masks, functional),
+                index.aggregation_coefficients(),
+                n_players,
+            )
+        elif isinstance(index, (CardinalInteractionIndex, GeneralizedValueIndex)):
+            functional = derive_functional(index, n_players, order)
+            attributions = _functional_attributions(values, masks, functional)
         else:
             attributions = _regression_attributions(values, masks, index, order)
         if index.includes_empty_interaction and 0 not in attributions:
@@ -177,79 +172,16 @@ def _powerset_masks(n_players: int) -> Array:
     )
 
 
-def _weighted_derivatives(
+def _functional_attributions(
     values: Array,
     masks: Array,
-    size: int,
-    weights: Array,
-) -> Array:
-    """Sum signed, weighted game values into per-interaction attributions."""
-    n_players = masks.shape[-1]
-    member_masks = interaction_masks(n_players, size)
-    intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
-    outside_sizes = jnp.sum(masks, axis=-1)[:, None] - intersections
-    signs = jnp.where((size - intersections) % 2 == 0, 1.0, -1.0)
-    kernel = signs * weights[outside_sizes]
-    return jnp.einsum("...c,ci->...i", values, kernel)
-
-
-def _weighted_marginals(
-    values: Array,
-    masks: Array,
-    size: int,
-    weights: Array,
-) -> Array:
-    """Sum weighted marginal contributions of whole interactions joining coalitions."""
-    n_players = masks.shape[-1]
-    member_masks = interaction_masks(n_players, size)
-    intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
-    coalition_sizes = jnp.sum(masks, axis=-1)[:, None]
-    largest = weights.shape[0] - 1
-    gains = jnp.where(
-        intersections == size,
-        weights[jnp.clip(coalition_sizes - size, 0, largest)],
-        0.0,
-    )
-    losses = jnp.where(
-        intersections == 0,
-        weights[jnp.clip(coalition_sizes, 0, largest)],
-        0.0,
-    )
-    return jnp.einsum("...c,ci->...i", values, gains - losses)
-
-
-def _aggregated_ksii_attributions(
-    values: Array,
-    masks: Array,
-    order: int,
+    functional: CoalitionFunctional,
 ) -> dict[int, Array]:
-    """Aggregate exact SII values into efficient k-SII values via Bernoulli numbers."""
-    n_players = masks.shape[-1]
-    shapley_interactions = SII(order=order)
-    sii = {
-        size: _weighted_derivatives(
-            values,
-            masks,
-            size,
-            shapley_interactions.derivative_weights(n_players, size),
-        )
-        for size in range(1, order + 1)
+    """Contract the derived coalition functional densely over all game values."""
+    return {
+        size: jnp.einsum("...c,ci->...i", values, functional.coefficient_matrix(masks, size))
+        for size in functional.interaction_sizes
     }
-    bernoulli = _bernoulli_numbers(order)
-    members = {size: interaction_masks(n_players, size) for size in range(1, order + 1)}
-    attributions: dict[int, Array] = {}
-    for size in range(1, order + 1):
-        block = sii[size]
-        for larger in range(size + 1, order + 1):
-            counts = members[size].astype(jnp.int32) @ members[larger].T.astype(jnp.int32)
-            subsets = 1.0 * (counts == size)
-            block = block + bernoulli[larger - size] * jnp.einsum(
-                "...j,ij->...i",
-                sii[larger],
-                subsets,
-            )
-        attributions[size] = block
-    return attributions
 
 
 def _regression_attributions(
@@ -337,15 +269,6 @@ def _solution_blocks(
     return attributions
 
 
-def _bernoulli_numbers(order: int) -> list[float]:
-    """Return the Bernoulli numbers up to ``order`` with the B(1) = -1/2 convention."""
-    numbers = [Fraction(1)]
-    for m in range(1, order + 1):
-        acc = sum((Fraction(comb(m + 1, j)) * numbers[j] for j in range(m)), Fraction(0))
-        numbers.append(-acc / (m + 1))
-    return [float(number) for number in numbers]
-
-
 def _bernoulli_design(masks: Array, order: int) -> Array:
     """Return Bernoulli-weighted intersection columns for all interactions up to order."""
     n_players = masks.shape[-1]
@@ -360,7 +283,7 @@ def _bernoulli_design(masks: Array, order: int) -> Array:
 
 def _bernoulli_weight_table(order: int) -> Array:
     """Return kADD-SHAP design weights per interaction and intersection size."""
-    bernoulli = _bernoulli_numbers(order)
+    bernoulli = bernoulli_numbers(order)
     table = [[0.0] * (order + 1) for _ in range(order + 1)]
     for size in range(1, order + 1):
         for intersection in range(1, size + 1):

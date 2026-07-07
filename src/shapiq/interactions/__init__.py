@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from shapiq.interactions._functional import (
+    CoalitionFunctional,
+    aggregate_supersets,
+    define_cardinal_index,
+    define_generalized_value,
+    derive_functional,
+)
 from shapiq.interactions._indices import (
     BGV,
     BII,
@@ -18,6 +25,7 @@ from shapiq.interactions._indices import (
     SII,
     STII,
     SV,
+    AggregationIndex,
     CardinalInteractionIndex,
     CoMoebius,
     GeneralizedValueIndex,
@@ -51,8 +59,10 @@ __all__ = [
     "SII",
     "STII",
     "SV",
+    "AggregationIndex",
     "CardinalInteractionIndex",
     "CoMoebius",
+    "CoalitionFunctional",
     "GeneralizedValueIndex",
     "Interaction",
     "InteractionIndex",
@@ -62,6 +72,10 @@ __all__ = [
     "Moebius",
     "OrderSemantics",
     "RegressionIndex",
+    "aggregate_supersets",
+    "define_cardinal_index",
+    "define_generalized_value",
+    "derive_functional",
     "iter_interactions",
     "normalize_interaction",
     "validate_interaction_metadata",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from functools import cache
 from math import comb
 from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
@@ -96,6 +97,26 @@ class GeneralizedValueIndex(InteractionIndex, Protocol):
 
     def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return one weight per outside-coalition size ``0..n - s``."""
+        ...
+
+
+@runtime_checkable
+class AggregationIndex(InteractionIndex, Protocol):
+    """Capability: attributions aggregate a base index over supersets.
+
+    The attribution of an interaction ``S`` sums the base attributions of
+    its supersets ``T`` up to the order, weighted by a coefficient that
+    depends only on ``|T| - |S|``. Aggregation is linear in the base index,
+    so exact and unbiased sampled estimators of the base carry over.
+    """
+
+    @property
+    def base_index(self) -> InteractionIndex:
+        """Return the index whose attributions are aggregated."""
+        ...
+
+    def aggregation_coefficients(self) -> tuple[float, ...]:
+        """Return one aggregation coefficient per superset size difference."""
         ...
 
 
@@ -293,6 +314,15 @@ class KSII:
     def __post_init__(self) -> None:
         """Validate the order."""
         validate_int("order", self.order, minimum=1)
+
+    @property
+    def base_index(self) -> SII:
+        """Return the Shapley interaction index the aggregation starts from."""
+        return SII(order=self.order)
+
+    def aggregation_coefficients(self) -> tuple[float, ...]:
+        """Return the Bernoulli numbers weighting supersets by size difference."""
+        return bernoulli_numbers(self.order)
 
 
 @dataclass(frozen=True)
@@ -581,6 +611,16 @@ class JointSV:
     def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return joint-arrival bloc-marginal weights per outside size."""
         return _joint_arrival_weights(n_players, self.order)[: n_players - interaction_size + 1]
+
+
+@cache
+def bernoulli_numbers(order: int) -> tuple[float, ...]:
+    """Return the Bernoulli numbers up to ``order`` with the B(1) = -1/2 convention."""
+    numbers = [Fraction(1)]
+    for m in range(1, order + 1):
+        acc = sum((Fraction(comb(m + 1, j)) * numbers[j] for j in range(m)), Fraction(0))
+        numbers.append(-acc / (m + 1))
+    return tuple(float(number) for number in numbers)
 
 
 def _shapley_regression_kernel(n_players: int) -> Array:

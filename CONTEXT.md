@@ -173,7 +173,7 @@ A **Value**-shaped contribution assigned to an **Interaction** within an **Expla
 _Avoid_: score, importance
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Shipped names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms; **Defined Indices** introduce their own names.
 _Avoid_: index string, metric, method
 
 **Order Semantics**:
@@ -181,7 +181,7 @@ Whether an **InteractionIndex** treats its **Order** as explanation coverage, le
 _Avoid_: truncation flag, order mode
 
 **Index Capability**:
-A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a kernel with exact endpoint constraints.
+A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the **Aggregation Index** capability declares a base index and superset-aggregation coefficients; the regression capability supplies a kernel with exact endpoint constraints.
 _Avoid_: feature flag, supported-index list
 
 **Cardinal Interaction Index**:
@@ -191,6 +191,26 @@ _Avoid_: derivative index, CII when a reader may not know the acronym
 **Generalized Value**:
 An **Index Capability** for indices whose **Attributions** weight the marginal contributions of whole **Interactions** joining outside **Coalitions** (SGV, BGV, CHGV, IGV, EGV, JointSV).
 _Avoid_: bloc value, group value
+
+**Aggregation Index**:
+An **Index Capability** for indices whose **Attributions** sum the attributions of a base **InteractionIndex** over supersets, weighted by coefficients depending only on the size difference (k-SII over SII via Bernoulli numbers). Aggregation is linear, so exact and unbiased sampled estimators of the base index carry over.
+_Avoid_: derived index, wrapper index
+
+**CoalitionFunctional**:
+The linear-functional representation of an **InteractionIndex** over a **Game**, derived mechanically from a declared **Index Capability**: one coefficient per (**Interaction**, **Coalition**) pair, factored through the cardinalities of the coalition and its intersection with the interaction. Exact explainers contract it densely; the **MonteCarlo** approximator importance-samples it.
+_Avoid_: kernel matrix, weight tensor
+
+**Defined Index**:
+An **InteractionIndex** declared through its weight formalism with `define_cardinal_index` or `define_generalized_value` rather than shipped with shapiq. Defined indices carry open names and work with every capability-dispatched **Explainer**.
+_Avoid_: custom subclass, plugin index
+
+**MonteCarlo**:
+An **Approximator** derived from an index's **CoalitionFunctional**: sampled **Coalitions** enter the estimate with their functional coefficient divided by their sampling probability, and the seed samples contribute their coefficients exactly, so the estimate is unbiased for any index with a derivable functional at any number of completed sampled units.
+_Avoid_: generic estimator, SHAP-IQ clone
+
+**CoalitionSizeSampler**:
+A **Sampler** drawing **Coalitions** whose size follows a nonnegative weight profile, uniform within each size, such as the coefficient mass of a **CoalitionFunctional**. Sizes without weight are never sampled; the empty and grand coalition are its seed block.
+_Avoid_: kernel sampler, distribution sampler
 
 **Value Generalization**:
 The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata and are verified numerically by tests.

@@ -10,10 +10,12 @@ from shapiq.sampling._permutation import (
     PermutationWalkSampler,
 )
 from shapiq.sampling._schedule import UnitScheduleSampler
+from shapiq.sampling._size import CoalitionSizeSampler
 from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState
 
 __all__ = [
     "ApproximationState",
+    "CoalitionSizeSampler",
     "EmptyState",
     "PermutationSIISampler",
     "PermutationSTIISampler",

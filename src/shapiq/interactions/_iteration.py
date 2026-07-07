@@ -1,12 +1,28 @@
 from __future__ import annotations
 
+from functools import cache
 from itertools import combinations, permutations
 from typing import TYPE_CHECKING
+
+import jax.numpy as jnp
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from jax import Array
+
     from shapiq.interactions._types import Interaction, InteractionOrientation
+
+
+@cache
+def interaction_masks(n_players: int, size: int) -> Array:
+    """Return dense member masks of all size-``size`` interactions, lexicographic."""
+    return jnp.asarray(
+        [
+            [player in members for player in range(n_players)]
+            for members in combinations(range(n_players), size)
+        ],
+    )
 
 
 def iter_interactions(

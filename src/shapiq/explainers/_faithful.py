@@ -2,24 +2,11 @@
 
 from __future__ import annotations
 
-from functools import cache
-from itertools import combinations
-
 import jax.numpy as jnp
 from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
-
-
-@cache
-def interaction_masks(n_players: int, size: int) -> Array:
-    """Return dense member masks of all size-``size`` interactions, lexicographic."""
-    return jnp.asarray(
-        [
-            [player in members for player in range(n_players)]
-            for members in combinations(range(n_players), size)
-        ],
-    )
+from shapiq.interactions._iteration import interaction_masks
 
 
 def interaction_design(masks: Array, order: int) -> Array:
