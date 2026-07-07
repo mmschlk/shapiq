@@ -876,9 +876,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 metric: Metric to score by; ``"all"`` includes every metric.
                 index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
 
-            Yields:
-                Two partial Gradio update tuples: first hides the table,
-                second populates it with the new bucket's data.
+            Returns:
+                Iterator of two Gradio update tuples.
             """
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
@@ -955,9 +954,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 metric: Metric to score by; ``"all"`` includes every metric.
                 index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
 
-            Yields:
-                Two partial Gradio update tuples: first hides the table,
-                second populates it with the recomputed data.
+            Returns:
+                Iterator of two Gradio update tuples.
             """
             yield gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update()
             label_md, table_df, fig, info_md, cd_fig = update_elo_tab(
@@ -1016,8 +1014,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         print("\n✨ Ready!\n")
 
         def update_all_buckets(
-            raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all",
-        ) -> tuple[Any, ...]:
+            raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str = "all",
+        ) -> Iterator[Any]:
             """Recompute ELO results for all budget buckets simultaneously.
 
             Args:
@@ -1027,17 +1025,22 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
 
             Returns:
-                Flat tuple of ``(info_md, table_df, figure)`` repeated for each
-                bucket in ``BUDGET_BUCKETS`` order.
+                Iterator of two Gradio update tuples.
             """
+            # Erst alle Tabellen verstecken
+            hide_outputs = []
+            for _ in BUDGET_BUCKETS:
+                hide_outputs.extend([gr.update(), gr.update(visible=False), gr.update(), gr.update()])
+            yield tuple(hide_outputs)
+
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             outputs = []
             for bucket in BUDGET_BUCKETS:
                 budget_val = int(bucket["budget"])
                 t, f, info = compute_elo_for_bucket(filtered, budget_val, metric, index)
                 cd_f = compute_cd_for_bucket(filtered, budget_val, metric, index)
-                outputs.extend([info, t, f, cd_f])
-            return tuple(outputs)
+                outputs.extend([info, gr.update(value=t, visible=True, max_height=1000), f, cd_f])
+            yield tuple(outputs)
 
         _all_bucket_outputs = [
             item
