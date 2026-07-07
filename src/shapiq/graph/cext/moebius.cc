@@ -44,6 +44,15 @@ namespace moebius
 
     // Build the coalition -> prediction-index map from CSR arrays describing
     // `coalition_lookup`.
+    //
+    // Args:
+    //     lookup_members_flat: Concatenated members of the lookup keys.
+    //     lookup_offsets: CSR offsets into lookup_members_flat, length n_lookup + 1.
+    //     lookup_indices: Prediction row index per lookup key.
+    //     n_lookup: Number of lookup keys.
+    //
+    // Returns:
+    //     A hash map from coalition (sorted member vector) to its prediction row index.
     inline LookupMap build_lookup(
         const int *lookup_members_flat,
         const int *lookup_offsets,
@@ -64,17 +73,22 @@ namespace moebius
 
     // Compute the Möbius coefficient for every coalition.
     //
-    // members_flat / offsets : CSR description of the coalitions to evaluate
-    //                          (offsets has length n_coalitions + 1). out[i]
-    //                          receives the coefficient for coalition i.
-    // lookup_*               : CSR description of coalition_lookup (keys + the
-    //                          prediction row index for each key).
-    // predictions            : coalition_predictions array.
-    // out                    : pre-allocated output buffer of length n_coalitions.
+    // Args:
+    //     members_flat: Concatenated members of the coalitions to evaluate.
+    //     offsets: CSR offsets into members_flat, length n_coalitions + 1.
+    //     n_coalitions: Number of coalitions to evaluate.
+    //     lookup_members_flat: Concatenated members of the coalition_lookup keys.
+    //     lookup_offsets: CSR offsets into lookup_members_flat, length n_lookup + 1.
+    //     lookup_indices: Prediction row index per coalition_lookup key.
+    //     n_lookup: Number of coalition_lookup keys.
+    //     predictions: coalition_predictions array.
+    //     out: Pre-allocated output buffer of length n_coalitions; out[i] receives
+    //         the coefficient for coalition i.
     //
-    // Returns the number of subset lookups that failed (0 on success). A
-    // non-zero value means a subset was missing from the lookup map, which
-    // indicates malformed input.
+    // Returns:
+    //     The number of subset lookups that failed (0 on success). A non-zero
+    //     value means a subset was missing from the lookup map, which indicates
+    //     malformed input.
     inline int compute(
         const int *members_flat,
         const int *offsets,

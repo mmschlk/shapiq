@@ -54,6 +54,20 @@ PyMODINIT_FUNC initcext(void)
 
 static PyObject *compute_moebius_transform(PyObject *self, PyObject *args)
 {
+    /**
+     * Compute Moebius coefficients for a set of coalitions (CSR input).
+     *
+     * The funcion has the following input parameters (in exact order):
+     * - members_flat: int32 numpy array, concatenated members of the coalitions.
+     * - offsets: int32 numpy array, CSR offsets, length n_coalitions + 1.
+     * - lookup_members_flat: int32 numpy array, concatenated members of the lookup keys.
+     * - lookup_offsets: int32 numpy array, CSR offsets, length n_lookup + 1.
+     * - lookup_indices: int32 numpy array, prediction row index per lookup key.
+     * - predictions: float64 numpy array, coalition_predictions.
+     *
+     * Returns a float64 numpy array of length n_coalitions containing the Moebius
+     * coefficient for every coalition, in the same order as the members_flat/offsets input.
+     */
     (void)self;
 
     PyObject *members_flat_obj;
@@ -63,13 +77,6 @@ static PyObject *compute_moebius_transform(PyObject *self, PyObject *args)
     PyObject *lookup_indices_obj;
     PyObject *predictions_obj;
 
-    // Inputs (in order):
-    //  - members_flat        int32   concatenated members of the coalitions
-    //  - offsets             int32   CSR offsets, length n_coalitions + 1
-    //  - lookup_members_flat int32   concatenated members of the lookup keys
-    //  - lookup_offsets      int32   CSR offsets, length n_lookup + 1
-    //  - lookup_indices      int32   prediction row index per lookup key
-    //  - predictions         float64 coalition_predictions
     if (!PyArg_ParseTuple(args, "OOOOOO",
                           &members_flat_obj,
                           &offsets_obj,
