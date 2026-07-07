@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy import stats
 
+import plotly.graph_objects as go
+
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
 from leaderboard.scoring.result import LeaderboardRow, ScoringContext
@@ -896,3 +898,141 @@ class CriticalDifferenceScorer(LeaderboardScorer):
         """Return configured metrics that produced at least one ranked group."""
         used = {rg.metric_name for rg in ranked_groups}
         return [m for m in self.metric_names if m in used]
+
+    @staticmethod
+    def plot_cd_diagram_plotly(
+        cd_result: CriticalDifferenceResult,
+        *,
+        title: str | None = None,
+    ) -> go.Figure:
+        """Render the CD diagram as a Plotly figure.
+
+        Approximators are placed along a horizontal rank axis (rank 1 = best,
+        left). Better half routes labels to the left margin, worse half to the
+        right. Cliques (not significantly different) are shown as thick bars
+        below the axis. A CD reference bar is drawn above.
+
+        Args:
+            cd_result: A fully computed :class:`CriticalDifferenceResult`.
+            title: Optional figure title.
+
+        Returns:
+            A ``plotly.graph_objects.Figure``.
+        """
+
+        mean_ranks = cd_result.mean_ranks
+        if len(mean_ranks) < 2:
+            fig = go.Figure()
+            fig.update_layout(title=title or "CD Diagram — not enough approximators")
+            return fig
+
+        approx_list = sorted(mean_ranks, key=mean_ranks.get)
+        n = len(approx_list)
+        cd = cd_result.critical_difference
+
+        half = (n + 1) // 2
+        left_names = approx_list[:half]
+        right_names = list(reversed(approx_list[half:]))
+
+        row_spacing = 1.0
+        left_rows: dict[str, float] = {name: row_spacing * (i + 1) for i, name in enumerate(left_names)}
+        right_rows: dict[str, float] = {name: row_spacing * (i + 1) for i, name in enumerate(right_names)}
+        max_row_y = row_spacing * max(len(left_names), len(right_names))
+
+        axis_y = 0.0
+        cd_y = max_row_y + 0.8
+        shapes: list[dict] = []
+        annotations: list[dict] = []
+        traces: list[go.BaseTraceType] = []
+
+        # ── Rank axis ──────────────────────────────────────────────────────────
+        shapes.append(dict(type="line", x0=1, x1=n, y0=axis_y, y1=axis_y,
+                           line=dict(color="black", width=1.5)))
+        for tick in range(1, n + 1):
+            shapes.append(dict(type="line", x0=tick, x1=tick,
+                               y0=axis_y - 0.06, y1=axis_y + 0.06,
+                               line=dict(color="black", width=1)))
+            annotations.append(dict(x=tick, y=axis_y - 0.18, text=str(tick),
+                                    showarrow=False, font=dict(size=11),
+                                    xanchor="center", yanchor="top"))
+
+        # ── CD reference bar ───────────────────────────────────────────────────
+        shapes.append(dict(type="line", x0=1, x1=1 + cd, y0=cd_y, y1=cd_y,
+                           line=dict(color="black", width=2)))
+        for x_end in [1, 1 + cd]:
+            shapes.append(dict(type="line", x0=x_end, x1=x_end,
+                               y0=cd_y - 0.08, y1=cd_y + 0.08,
+                               line=dict(color="black", width=1.5)))
+        annotations.append(dict(x=1, y=cd_y + 0.18,
+                                 text=f"CD = {cd:.3f}",
+                                 showarrow=False, font=dict(size=11),
+                                 xanchor="left", yanchor="bottom"))
+
+        # ── Clique crossbars ───────────────────────────────────────────────────
+        n_cliques = len(cd_result.cliques)
+        clique_spacing = 0.2 if n_cliques else 0
+        clique_y = 0.15
+        for clique in sorted(cd_result.cliques,
+                             key=lambda c: max(mean_ranks[a] for a in c) - min(mean_ranks[a] for a in c)):
+            ranks = [mean_ranks[a] for a in clique]
+            shapes.append(dict(type="line",
+                               x0=min(ranks), x1=max(ranks),
+                               y0=clique_y, y1=clique_y,
+                               line=dict(color="black", width=4)))
+            clique_y += clique_spacing
+
+        # ── Elbow lines + labels ───────────────────────────────────────────────
+        left_x = 1 - 0.3
+        right_x = n + 0.3
+
+        def _draw_elbow(name: str, row_y: float, label_x: float, anchor: str) -> None:
+            rank = mean_ranks[name]
+            label = f"{name} ({mean_ranks[name]:.2f})"
+            # dot on axis
+            traces.append(go.Scatter(x=[rank], y=[axis_y], mode="markers",
+                                     marker=dict(color="black", size=5),
+                                     showlegend=False, hoverinfo="skip"))
+            # elbow: vertical up, then horizontal to margin
+            traces.append(go.Scatter(x=[rank, rank, label_x],
+                                     y=[axis_y, row_y, row_y],
+                                     mode="lines",
+                                     line=dict(color="black", width=0.8),
+                                     showlegend=False, hoverinfo="skip"))
+            annotations.append(dict(x=label_x, y=row_y, text=label,
+                                    showarrow=False, font=dict(size=10),
+                                    xanchor=anchor, yanchor="middle"))
+
+        for name in left_names:
+            _draw_elbow(name, left_rows[name], left_x, "right")
+        for name in right_names:
+            _draw_elbow(name, right_rows[name], right_x, "left")
+
+        # ── Friedman annotation ────────────────────────────────────────────────
+        sig_text = "✓ significant" if cd_result.friedman_significant else "✗ not significant"
+        friedman_info = (
+            f"Friedman p={cd_result.friedman_p_value:.4g} ({sig_text})  |  "
+            f"n_groups={cd_result.n_groups}  |  α={cd_result.alpha}"
+        )
+
+        max_label_len = max((len(f"{a} ({mean_ranks[a]:.2f})") for a in approx_list), default=10)
+        label_padding = max(1.5, max_label_len * 0.12)
+
+        fig = go.Figure(data=traces)
+        fig.update_layout(
+            title=title or "Critical Difference Diagram",
+            shapes=shapes,
+            annotations=annotations,
+            xaxis=dict(visible=False, range=[left_x - label_padding, right_x + label_padding]),
+            yaxis=dict(visible=False, range=[-0.8 - n_cliques * clique_spacing, cd_y + 0.8]),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            showlegend=False,
+            margin=dict(l=150, r=150, t=60, b=60),
+            height=max(350, 150 + max(len(left_names), len(right_names)) * 40 + n_cliques * 20),
+        )
+        fig.add_annotation(
+            text=friedman_info, xref="paper", yref="paper",
+            x=0.5, y=-0.08, showarrow=False,
+            font=dict(size=9, color="gray"), xanchor="center",
+        )
+        return fig
