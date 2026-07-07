@@ -542,7 +542,7 @@ def update_compare_plots(*args: Any) -> tuple[go.Figure, ...]:
 
 
 def compute_elo_for_bucket(
-    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all"
+    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all", game: str = "all"
 ) -> tuple[pd.DataFrame, go.Figure, str]:
     """Run ELO scoring for a specific budget bucket and return table + plot.
 
@@ -559,6 +559,7 @@ def compute_elo_for_bucket(
         budgets=[budget],
         metric_names=[str(metric)] if metric != "all" else None,
         indices=[str(index)] if index != "all" else None,
+        game_names=[str(game)] if game != "all" else None,
         n_bootstrap_samples=50,
         n_permutations=10,
     )
@@ -653,7 +654,7 @@ def compute_elo_for_bucket(
     metric_label = metric or "all"
     index_label = index or "all"
     info_md = (
-        f"Metric: **{metric_label}** | Index: **{index_label}** | "
+        f"Metric: **{metric_label}** | Index: **{index_label}** | Game: **{game if game != 'all' else 'all'}** | "
         f"Bootstrap samples: **{n_bs}** | Permutations: **{n_perm}**"
     )
 
@@ -661,7 +662,7 @@ def compute_elo_for_bucket(
 
 
 def compute_cd_for_bucket(
-    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all"
+    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all", game: str = "all"
 ) -> go.Figure:
     """Run Critical Difference scoring for a specific budget bucket and return a Plotly figure.
 
@@ -678,6 +679,7 @@ def compute_cd_for_bucket(
         budgets=[budget],
         metric_names=[str(metric)] if metric != "all" else None,
         indices=[str(index)] if index != "all" else None,
+        game_names=[str(game)] if game != "all" else None,
     )
     result = scorer.score(df_raw_records)
     cd_result = result.metadata.get("cd_result")
@@ -772,6 +774,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             multiselect=False,
         )
 
+        elo_game_filter = gr.Dropdown(
+            choices=["all", *_all_games],
+            value="all",
+            label="Game (optional — default: all games)",
+            multiselect=False,
+        )
+
         # State: current bucket index (0-4), start with Medium (1000) = index 2
         elo_bucket_idx_state = gr.State(value=2)
 
@@ -833,6 +842,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             selected_approxs: list[str],
             metric: str = "all",
             index: str ="all",
+            game: str = "all",
         ) -> tuple[str, pd.DataFrame, go.Figure, str, go.Figure]:
             """Compute the ELO leaderboard and CD diagram for the given budget bucket.
 
@@ -850,8 +860,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             bucket = BUDGET_BUCKETS[bucket_idx]
             filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
             budget = int(bucket["budget"])
-            table_df, fig, info_md = compute_elo_for_bucket(filtered, budget, metric, index)
-            cd_fig = compute_cd_for_bucket(filtered, budget, metric, index)
+            table_df, fig, info_md = compute_elo_for_bucket(filtered, budget, metric, index, game)
+            cd_fig = compute_cd_for_bucket(filtered, budget, metric, index, game)
             label_md = f"### {bucket['label']}"
             return label_md, table_df, fig, info_md, cd_fig
 
@@ -862,6 +872,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             selected_approxs: list[str],
             metric: str = "all",
             index: str = "all",
+            game: str = "all"
         ) -> Iterator[Any]:
             """Navigate between budget buckets and stream UI updates.
 
@@ -881,7 +892,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             """
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
-            label_md, table_df, fig, info_md, cd_fig = update_elo_tab(new_idx, raw_records, selected_approxs, metric, index)
+            label_md, table_df, fig, info_md, cd_fig = update_elo_tab(new_idx, raw_records, selected_approxs, metric, index, game)
             yield (
                 new_idx,
                 label_md,
@@ -894,7 +905,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             )
 
         def elo_prev(
-            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all",
+            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
         ) -> Iterator[Any]:
             """Navigate to the previous (lower) budget bucket.
 
@@ -908,10 +919,10 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             Yields:
                 Gradio update tuples forwarded from :func:`elo_navigate`.
             """
-            yield from elo_navigate(idx, -1, raw_records, selected_approxs, metric, index)
+            yield from elo_navigate(idx, -1, raw_records, selected_approxs, metric, index, game)
 
         def elo_next(
-            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all",
+            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
         ) -> Iterator[Any]:
             """Navigate to the next (higher) budget bucket.
 
@@ -925,23 +936,23 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             Yields:
                 Gradio update tuples forwarded from :func:`elo_navigate`.
             """
-            yield from elo_navigate(idx, +1, raw_records, selected_approxs, metric, index)
+            yield from elo_navigate(idx, +1, raw_records, selected_approxs, metric, index, game)
 
         elo_prev_btn.click(
             fn=elo_prev,
-            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
                      elo_prev_btn, elo_next_btn],
         )
         elo_next_btn.click(
             fn=elo_next,
-            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
                      elo_prev_btn, elo_next_btn],
         )
 
         def elo_filter_update(
-            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all",
+            idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
         ) -> Iterator[Any]:
             """Recompute the ELO tab after an approximator or metric filter change.
 
@@ -959,25 +970,32 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             """
             yield gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update()
             label_md, table_df, fig, info_md, cd_fig = update_elo_tab(
-                idx, raw_records, selected_approxs, metric, index,
+                idx, raw_records, selected_approxs, metric, index, game,
             )
             yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md, cd_fig
 
         elo_approx_filter.change(
             fn=elo_filter_update,
-            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
         elo_metric_filter.change(
             fn=elo_filter_update,
-            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
         elo_index_filter.change(
             fn=elo_filter_update,
-            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+            outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
+        )
+
+        elo_game_filter.change(
+            fn=elo_filter_update,
+            inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter,
+                    elo_game_filter],
             outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
         )
 
@@ -1007,7 +1025,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         print("\n✨ Ready!\n")
 
         def update_all_buckets(
-            raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str = "all",
+            raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str = "all", game: str = "all",
         ) -> Iterator[Any]:
             """Recompute ELO results for all budget buckets simultaneously.
 
@@ -1030,7 +1048,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             outputs = []
             for bucket in BUDGET_BUCKETS:
                 budget_val = int(bucket["budget"])
-                t, f, _ = compute_elo_for_bucket(filtered, budget_val, metric, index)
+                t, f, _ = compute_elo_for_bucket(filtered, budget_val, metric, index, game)
                 outputs.extend([gr.update(value=t, visible=True, max_height=1000), f])
             yield tuple(outputs)
 
@@ -1042,19 +1060,25 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         elo_approx_filter.change(
             fn=update_all_buckets,
-            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=_all_bucket_outputs,
         )
 
         elo_metric_filter.change(
             fn=update_all_buckets,
-            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=_all_bucket_outputs,
         )
 
         elo_index_filter.change(
             fn=update_all_buckets,
-            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter],
+            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+            outputs=_all_bucket_outputs,
+        )
+
+        elo_game_filter.change(
+            fn=update_all_buckets,
+            inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
             outputs=_all_bucket_outputs,
         )
 
@@ -1512,14 +1536,14 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     )
 
     elo_jump_btn.click(
-        fn=lambda approxs, budget_idx, metric, index: (
-            [],
+        fn=lambda approxs, budget_idx, metric, index, game: (
+            [game] if game != "all" else [],
             approxs or [],
             [str(BUDGET_BUCKETS[budget_idx]["budget"])],
             [index] if index != "all" else [],
             [metric] if metric != "all" else [],
         ),
-        inputs=[elo_approx_filter, elo_bucket_idx_state, elo_metric_filter, elo_index_filter],
+        inputs=[elo_approx_filter, elo_bucket_idx_state, elo_metric_filter, elo_index_filter, elo_game_filter],
         outputs=[det_game, det_approx, det_budget, det_index, det_metric],
     ).then(
         fn=query_raw,
