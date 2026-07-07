@@ -28,8 +28,8 @@ from shapiq import (
     InsufficientSamplesError,
     MaskedGame,
     ModelMaskedPredictor,
-    PermutationSamplingSV,
-    RegressionFSII,
+    PermutationSampling,
+    Regression,
 )
 from shapiq.games.torch import BaselineMasker, to_jax
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     exact_values = jnp.stack([exact((player,)) for player in range(N_PLAYERS)])
     print(f"exact SV ({2**N_PLAYERS} evaluations): {exact_values.round(3)}")
 
-    approximator = PermutationSamplingSV(game, random_state=0, track_history=True)
+    approximator = PermutationSampling(game, SV(), random_state=0, track_history=True)
     payout = float(jnp.sum(exact_values))
     for budget in (9, 54, 700, 2000):
         approximator = approximator.sample(budget)
@@ -105,12 +105,9 @@ if __name__ == "__main__":
     print("strongest exact pairwise interactions per class:")
     for class_index in (0, 1):
         top = int(jnp.argmax(jnp.abs(strengths[:, class_index])))
-        print(
-            f"  class {class_index}: {pairs[top]} with "
-            f"{float(strengths[top, class_index]):+.3f}"
-        )
+        print(f"  class {class_index}: {pairs[top]} with {float(strengths[top, class_index]):+.3f}")
 
-    fsii = RegressionFSII(vector_game, order=2, random_state=0, deduplicate=True)
+    fsii = Regression(vector_game, FSII(order=2), random_state=0, deduplicate=True)
     print(f"min budget (identification): {fsii.min_budget}")
     for budget in (fsii.min_budget + 20, 60, 80):
         fsii = fsii.sample(budget)

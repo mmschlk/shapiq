@@ -7,10 +7,11 @@ import numpy as np
 import pytest
 
 from shapiq import (
+    SII,
+    STII,
+    SV,
     CallableGame,
-    PermutationSamplingSII,
-    PermutationSamplingSTII,
-    PermutationSamplingSV,
+    PermutationSampling,
     SamplingStallWarning,
 )
 
@@ -52,24 +53,17 @@ def order_one_attributions(explanation):
     return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
 
 
-@pytest.mark.parametrize(
-    ("approximator_cls", "kwargs"),
-    [
-        (PermutationSamplingSV, {}),
-        (PermutationSamplingSII, {"order": 2}),
-        (PermutationSamplingSTII, {"order": 2}),
-    ],
-)
-def test_estimates_identical_to_plain_sampling(approximator_cls, kwargs):
+@pytest.mark.parametrize("index", [SV(), SII(order=2), STII(order=2)])
+def test_estimates_identical_to_plain_sampling(index):
     budget = 25
-    deduplicated = approximator_cls(
-        quadratic_game(), random_state=1, deduplicate=True, **kwargs
+    deduplicated = PermutationSampling(
+        quadratic_game(), index, random_state=1, deduplicate=True
     ).sample(
         budget,
     )
     raw_samples = deduplicated.state.n_samples
     assert raw_samples > budget  # duplicates were appended as free evidence
-    plain = approximator_cls(quadratic_game(), random_state=1, **kwargs).sample(raw_samples)
+    plain = PermutationSampling(quadratic_game(), index, random_state=1).sample(raw_samples)
     assert deduplicated.state == plain.state
     assert jnp.allclose(
         order_one_attributions(deduplicated.explain()),
@@ -80,7 +74,7 @@ def test_estimates_identical_to_plain_sampling(approximator_cls, kwargs):
 
 def test_game_sees_each_coalition_exactly_once_and_budget_counts_novel():
     rows = []
-    approximator = PermutationSamplingSV(recording_game(rows), random_state=0, deduplicate=True)
+    approximator = PermutationSampling(recording_game(rows), SV(), random_state=0, deduplicate=True)
     approximator = approximator.sample(12).sample(8)
     evaluated = np.concatenate(rows, axis=0)
     assert evaluated.shape[0] == 12 + 8
@@ -89,7 +83,7 @@ def test_game_sees_each_coalition_exactly_once_and_budget_counts_novel():
 
 def test_sampling_is_invariant_to_budget_splits():
     def make():
-        return PermutationSamplingSV(quadratic_game(), random_state=11, deduplicate=True)
+        return PermutationSampling(quadratic_game(), SV(), random_state=11, deduplicate=True)
 
     split = make().sample(9).sample(2).sample(8)
     whole = make().sample(19)
@@ -99,7 +93,7 @@ def test_sampling_is_invariant_to_budget_splits():
 
 def test_stall_warns_and_leaves_budget_unspent():
     rows = []
-    approximator = PermutationSamplingSV(recording_game(rows), random_state=2, deduplicate=True)
+    approximator = PermutationSampling(recording_game(rows), SV(), random_state=2, deduplicate=True)
     with pytest.warns(SamplingStallWarning):
         approximator = approximator.sample(200)
     evaluated = np.concatenate(rows, axis=0)
@@ -114,11 +108,8 @@ def test_stall_warns_and_leaves_budget_unspent():
 
 
 def test_rollback_and_resample_are_consistent():
-    first = PermutationSamplingSV(
-        quadratic_game(),
-        random_state=3,
-        track_history=True,
-        deduplicate=True,
+    first = PermutationSampling(
+        quadratic_game(), SV(), random_state=3, track_history=True, deduplicate=True
     ).sample(15)
     second = first.sample(10)
     assert second.rollback(1).state == first.state
@@ -132,7 +123,7 @@ def test_deduplication_requires_shared_samples():
 
     game = CallableGame(fn=batched, n_players=N_PLAYERS, target_shape=(3,))
     with pytest.raises(ValueError, match="share_samples=True"):
-        PermutationSamplingSV(game, deduplicate=True)
+        PermutationSampling(game, SV(), deduplicate=True)
 
 
 def test_deduplication_works_with_shared_batched_targets():
@@ -143,13 +134,10 @@ def test_deduplication_works_with_shared_batched_targets():
         return scales[:, None] * quadratic_from_masks(masks)
 
     game = CallableGame(fn=scaled, n_players=N_PLAYERS, target_shape=(3,))
-    deduplicated = PermutationSamplingSV(
-        game,
-        random_state=4,
-        share_samples=True,
-        deduplicate=True,
+    deduplicated = PermutationSampling(
+        game, SV(), random_state=4, share_samples=True, deduplicate=True
     ).sample(20)
-    plain = PermutationSamplingSV(game, random_state=4, share_samples=True).sample(
+    plain = PermutationSampling(game, SV(), random_state=4, share_samples=True).sample(
         deduplicated.state.n_samples,
     )
     assert deduplicated.state == plain.state

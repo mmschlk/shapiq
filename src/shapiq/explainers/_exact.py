@@ -109,6 +109,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             interaction_index=self.interaction_index,
             order=self.order,
             shape=self.game.target_shape,
+            orientation=self.orientation,
             value_shape=self.game.value_shape,
         )
 

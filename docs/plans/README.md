@@ -33,7 +33,7 @@ delivers it.
 | 2 | [Torch baseline example](issue-2-torch-baseline-example.md) | End-to-end example explaining a torch model with baseline masking | done |
 | 3 | [Vector-valued games](issue-3-vector-valued-games.md) | Un-bake the scalar-values-only enforcement from the evidence layer | done (ADR 0006) |
 | 4 | [Sampling performance](issue-4-sampling-performance.md) | Remove per-unit Python loops from the sampling path | not started |
-| 5 | [Index-dispatched entry points](issue-5-index-dispatched-entry-points.md) | One entry point per method family; the index object dispatches to concrete implementations | not started |
+| 5 | [Index-dispatched entry points](issue-5-index-dispatched-entry-points.md) | One entry point per method family; the index object dispatches to concrete implementations | done (ADR 0007) |
 
 ## Recommended order: 1 → 3 → 2 → 4
 

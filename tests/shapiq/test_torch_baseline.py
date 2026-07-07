@@ -13,7 +13,7 @@ from shapiq import (  # noqa: E402
     ExactExplainer,
     MaskedGame,
     ModelMaskedPredictor,
-    PermutationSamplingSV,
+    PermutationSampling,
 )
 from shapiq.games.torch import BaselineMasker, to_jax  # noqa: E402
 
@@ -70,7 +70,7 @@ def test_masked_linear_model_has_closed_form_shapley_values():
 def test_sampled_masked_model_matches_the_exact_explainer():
     game, _ = linear_vector_game()
     exact = ExactExplainer(game, SV()).explain()
-    approximator = PermutationSamplingSV(game, random_state=0)
+    approximator = PermutationSampling(game, SV(), random_state=0)
     estimate = approximator.sample(approximator.min_budget).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(estimate((player,)), exact((player,)), atol=1e-5)

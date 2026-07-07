@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from shapiq import CallableGame, HistoryError, InsufficientSamplesError, PermutationSamplingSV
+from shapiq import SV, CallableGame, HistoryError, InsufficientSamplesError, PermutationSampling
 
 N_PLAYERS = 5
 QUANTUM = N_PLAYERS - 1
@@ -23,30 +23,30 @@ def additive_game():
 
 
 def test_random_state_accepts_int_and_prng_key():
-    from_int = PermutationSamplingSV(additive_game(), random_state=7)
-    from_key = PermutationSamplingSV(additive_game(), random_state=jax.random.key(7))
+    from_int = PermutationSampling(additive_game(), SV(), random_state=7)
+    from_key = PermutationSampling(additive_game(), SV(), random_state=jax.random.key(7))
     assert from_int.sample(SEEDS + QUANTUM).state == from_key.sample(SEEDS + QUANTUM).state
 
 
 @pytest.mark.parametrize("bad", [None, 1.5, True, np.random.default_rng(0), "7"])
 def test_random_state_rejects_other_types_at_construction(bad):
     with pytest.raises(TypeError, match="random_state must be an integer seed or a JAX PRNG key"):
-        PermutationSamplingSV(additive_game(), random_state=bad)
+        PermutationSampling(additive_game(), SV(), random_state=bad)
 
 
 def test_share_samples_accepts_false_and_rejects_none():
-    PermutationSamplingSV(additive_game(), share_samples=False)
+    PermutationSampling(additive_game(), SV(), share_samples=False)
     with pytest.raises(TypeError, match="share_samples must be a bool"):
-        PermutationSamplingSV(additive_game(), share_samples=None)
+        PermutationSampling(additive_game(), SV(), share_samples=None)
 
 
 def test_track_history_must_be_a_bool():
     with pytest.raises(TypeError, match="track_history must be a bool"):
-        PermutationSamplingSV(additive_game(), track_history=1)
+        PermutationSampling(additive_game(), SV(), track_history=1)
 
 
 def test_min_budget_matches_first_explainable_budget():
-    approximator = PermutationSamplingSV(additive_game())
+    approximator = PermutationSampling(additive_game(), SV())
     assert approximator.min_budget == SEEDS + QUANTUM
     with pytest.raises(InsufficientSamplesError):
         approximator.sample(approximator.min_budget - 1).explain()
@@ -54,7 +54,7 @@ def test_min_budget_matches_first_explainable_budget():
 
 
 def test_error_messages_teach_the_working_idiom():
-    approximator = PermutationSamplingSV(additive_game())
+    approximator = PermutationSampling(additive_game(), SV())
     with pytest.raises(InsufficientSamplesError, match=r"approximator = approximator\.sample"):
         approximator.explain()
     with pytest.raises(InsufficientSamplesError, match=r"sample at least \d+ evaluations"):
@@ -67,15 +67,15 @@ def test_error_messages_teach_the_working_idiom():
 
 
 def test_budget_type_errors_name_the_offending_type():
-    approximator = PermutationSamplingSV(additive_game())
+    approximator = PermutationSampling(additive_game(), SV())
     with pytest.raises(TypeError, match="budget must be an integer, got float"):
         approximator.sample(10.0)
 
 
 def test_fresh_approximator_is_observable():
-    approximator = PermutationSamplingSV(additive_game())
+    approximator = PermutationSampling(additive_game(), SV())
     assert approximator.state.n_samples == 0
     text = repr(approximator)
-    assert "PermutationSamplingSV" in text
+    assert "PermutationSampling" in text
     assert "n_samples=0" in text
     assert "n_pending_samples=0" in text

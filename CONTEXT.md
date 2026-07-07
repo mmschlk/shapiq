@@ -149,7 +149,7 @@ A subset or ordered tuple of distinct **Players**, depending on the **Interactio
 _Avoid_: explanation coalition, tuple key
 
 **Interaction Orientation**:
-Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order.
+Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order. Orientation is intrinsic to an **InteractionIndex**.
 _Avoid_: direction flag, orderedness
 
 **Explanation**:
@@ -173,7 +173,7 @@ A **Value**-shaped contribution assigned to an **Interaction** within an **Expla
 _Avoid_: score, importance
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, and **Order Semantics**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Initial names include SV, BV, SII, BII, STII, and FSII; k-SII is planned as an explanation-level transform of SII.
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Initial names include SV, BV, SII, BII, STII, and FSII; k-SII is planned as an explanation-level transform of SII.
 _Avoid_: index string, metric, method
 
 **Order Semantics**:

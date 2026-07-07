@@ -13,7 +13,11 @@ from shapiq._shape import validate_int
 if TYPE_CHECKING:
     from jax import Array
 
-    from shapiq.interactions._types import InteractionIndexName, OrderSemantics
+    from shapiq.interactions._types import (
+        InteractionIndexName,
+        InteractionOrientation,
+        OrderSemantics,
+    )
 
 
 @runtime_checkable
@@ -40,6 +44,11 @@ class InteractionIndex(Protocol):
     @property
     def order_semantics(self) -> OrderSemantics:
         """Return whether order is explanation coverage or index identity."""
+        ...
+
+    @property
+    def orientation(self) -> InteractionOrientation:
+        """Return whether the index attributes to sets or ordered tuples."""
         ...
 
     @property
@@ -81,6 +90,7 @@ class SV:
 
     name: ClassVar[InteractionIndexName] = "SV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
 
     @property
@@ -92,6 +102,15 @@ class SV:
         """Return Shapley discrete-derivative weights per outside size."""
         return _shapley_derivative_weights(n_players, interaction_size)
 
+    def regression_kernel(self, n_players: int) -> Array:
+        """Return Shapley kernel weights per coalition size, zero at the ends.
+
+        The Shapley value is also the constrained kernel regression of order
+        one (KernelSHAP), so SV satisfies both capabilities; explainers with
+        a cheaper discrete-derivative path prefer it.
+        """
+        return _shapley_regression_kernel(n_players)
+
 
 @dataclass(frozen=True)
 class BV:
@@ -99,6 +118,7 @@ class BV:
 
     name: ClassVar[InteractionIndexName] = "BV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
 
     @property
@@ -123,6 +143,7 @@ class SII:
 
     name: ClassVar[InteractionIndexName] = "SII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
 
     def __post_init__(self) -> None:
@@ -146,6 +167,7 @@ class BII:
 
     name: ClassVar[InteractionIndexName] = "BII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
 
     def __post_init__(self) -> None:
@@ -171,6 +193,7 @@ class STII:
 
     name: ClassVar[InteractionIndexName] = "STII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
 
     def __post_init__(self) -> None:
@@ -197,6 +220,7 @@ class FSII:
 
     name: ClassVar[InteractionIndexName] = "FSII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
+    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
 
     def __post_init__(self) -> None:
@@ -205,10 +229,15 @@ class FSII:
 
     def regression_kernel(self, n_players: int) -> Array:
         """Return Shapley kernel weights per coalition size, zero at the ends."""
-        interior = [
-            1.0 / ((n_players - 1) * comb(n_players - 2, size - 1)) for size in range(1, n_players)
-        ]
-        return jnp.asarray([0.0, *interior, 0.0])
+        return _shapley_regression_kernel(n_players)
+
+
+def _shapley_regression_kernel(n_players: int) -> Array:
+    """Return the Shapley kernel per coalition size with zero-weight endpoints."""
+    interior = [
+        1.0 / ((n_players - 1) * comb(n_players - 2, size - 1)) for size in range(1, n_players)
+    ]
+    return jnp.asarray([0.0, *interior, 0.0])
 
 
 def _shapley_derivative_weights(n_players: int, size: int) -> Array:

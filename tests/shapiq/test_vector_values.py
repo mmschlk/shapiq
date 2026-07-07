@@ -14,8 +14,8 @@ from shapiq import (
     CallableGame,
     DenseExplanationArray,
     ExactExplainer,
-    PermutationSamplingSV,
-    RegressionFSII,
+    PermutationSampling,
+    Regression,
 )
 
 N_PLAYERS = 5
@@ -96,14 +96,14 @@ def test_exact_vector_fsii_matches_per_component_scalar_runs():
 
 def test_sampled_vector_values_match_per_component_scalar_runs():
     budget = 2 + 20 * (N_PLAYERS - 1)
-    vector = PermutationSamplingSV(vector_game(), random_state=3).sample(budget).explain()
+    vector = PermutationSampling(vector_game(), SV(), random_state=3).sample(budget).explain()
     quadratic = (
-        PermutationSamplingSV(scalar_game(quadratic_from_masks), random_state=3)
+        PermutationSampling(scalar_game(quadratic_from_masks), SV(), random_state=3)
         .sample(budget)
         .explain()
     )
     cubic = (
-        PermutationSamplingSV(scalar_game(cubic_from_masks), random_state=3)
+        PermutationSampling(scalar_game(cubic_from_masks), SV(), random_state=3)
         .sample(budget)
         .explain()
     )
@@ -115,7 +115,7 @@ def test_sampled_vector_values_match_per_component_scalar_runs():
 def test_sampled_vector_values_are_efficient_per_component():
     grand = stacked_from_masks(jnp.ones(N_PLAYERS, dtype=jnp.float32))
     empty = stacked_from_masks(jnp.zeros(N_PLAYERS, dtype=jnp.float32))
-    approximator = PermutationSamplingSV(vector_game(), random_state=0)
+    approximator = PermutationSampling(vector_game(), SV(), random_state=0)
     explanation = approximator.sample(2 + 3 * (N_PLAYERS - 1)).explain()
     totals = jnp.sum(order_one(explanation), axis=-2)
     assert totals.shape == (2,)
@@ -126,17 +126,19 @@ def test_sampled_vector_values_are_efficient_per_component():
 def test_regression_fsii_vector_values_match_per_component_scalar_runs():
     budget = KERNEL_SEEDS + 24
     vector = (
-        RegressionFSII(vector_game(), order=2, random_state=0, deduplicate=True)
+        Regression(vector_game(), FSII(order=2), random_state=0, deduplicate=True)
         .sample(budget)
         .explain()
     )
     quadratic = (
-        RegressionFSII(scalar_game(quadratic_from_masks), order=2, random_state=0, deduplicate=True)
+        Regression(
+            scalar_game(quadratic_from_masks), FSII(order=2), random_state=0, deduplicate=True
+        )
         .sample(budget)
         .explain()
     )
     cubic = (
-        RegressionFSII(scalar_game(cubic_from_masks), order=2, random_state=0, deduplicate=True)
+        Regression(scalar_game(cubic_from_masks), FSII(order=2), random_state=0, deduplicate=True)
         .sample(budget)
         .explain()
     )
@@ -149,7 +151,7 @@ def test_regression_fsii_vector_values_match_per_component_scalar_runs():
 
 def test_pending_vector_samples_are_masked():
     def make():
-        return PermutationSamplingSV(vector_game(), random_state=5)
+        return PermutationSampling(vector_game(), SV(), random_state=5)
 
     complete = make().sample(2 + 4 * (N_PLAYERS - 1))
     with_pending = make().sample(2 + 4 * (N_PLAYERS - 1) + 1)
@@ -162,7 +164,7 @@ def test_pending_vector_samples_are_masked():
 
 
 def test_vector_history_slices_evidence_states():
-    approximator = PermutationSamplingSV(vector_game(), random_state=1, track_history=True)
+    approximator = PermutationSampling(vector_game(), SV(), random_state=1, track_history=True)
     approximator = approximator.sample(2 + (N_PLAYERS - 1)).sample(N_PLAYERS - 1)
     states = approximator.history()
     assert [state.state.n_samples for state in states] == [
@@ -179,7 +181,7 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
         n_players=N_PLAYERS,
     )
     with pytest.raises(ValueError, match="declare value_shape"):
-        PermutationSamplingSV(scalar_declared_vector_output, random_state=0).sample(1)
+        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).sample(1)
     vector_declared_scalar_output = CallableGame(
         fn=lambda c: quadratic_from_masks(jnp.asarray(c.to_dense(), dtype=jnp.float32)),
         n_players=N_PLAYERS,

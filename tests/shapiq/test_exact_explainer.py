@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from shapiq import BII, BV, FSII, SII, STII, SV, CallableGame, ExactExplainer, PermutationSamplingSV
+from shapiq import BII, BV, FSII, SII, STII, SV, CallableGame, ExactExplainer, PermutationSampling
 
 N_PLAYERS = 5
 WEIGHTS = jnp.asarray([0.7, -1.3, 0.1, 2.0, -0.4])
@@ -162,7 +162,7 @@ def test_exact_shapley_values_are_efficient():
 
 def test_exact_explainer_agrees_with_permutation_sampling():
     exact = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).explain())
-    sampled = PermutationSamplingSV(game_from(quadratic_from_masks), random_state=7)
+    sampled = PermutationSampling(game_from(quadratic_from_masks), SV(), random_state=7)
     estimate = order_one(sampled.sample(2 + 3000 * (N_PLAYERS - 1)).explain())
     assert jnp.allclose(estimate, exact, atol=0.05)
 

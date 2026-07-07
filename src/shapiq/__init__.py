@@ -13,10 +13,8 @@ from shapiq.explainers import (
     EvidenceApproximator,
     ExactExplainer,
     Explainer,
-    PermutationSamplingSII,
-    PermutationSamplingSTII,
-    PermutationSamplingSV,
-    RegressionFSII,
+    PermutationSampling,
+    Regression,
 )
 from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
@@ -98,11 +96,9 @@ __all__ = [
     "OrderSemantics",
     "PermutationSIISampler",
     "PermutationSTIISampler",
-    "PermutationSamplingSII",
-    "PermutationSamplingSTII",
-    "PermutationSamplingSV",
+    "PermutationSampling",
     "PermutationWalkSampler",
-    "RegressionFSII",
+    "Regression",
     "RegressionIndex",
     "Sampler",
     "SamplingError",

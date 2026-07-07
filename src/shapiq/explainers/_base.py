@@ -16,14 +16,8 @@ class Explainer[ValueT, GameT: Game](ABC):
 
     game: GameT
     index: InteractionIndex
-    orientation: InteractionOrientation
 
-    def __init__(
-        self,
-        game: GameT,
-        index: InteractionIndex,
-        orientation: InteractionOrientation = "undirected",
-    ) -> None:
+    def __init__(self, game: GameT, index: InteractionIndex) -> None:
         """Initialize shared explainer metadata."""
         if isinstance(index, str):
             msg = f"interaction indices are objects: pass shapiq.SII(order=2) instead of {index!r}"
@@ -37,12 +31,11 @@ class Explainer[ValueT, GameT: Game](ABC):
         validate_interaction_metadata(
             interaction_index=index.name,
             order=index.order,
-            orientation=orientation,
+            orientation=index.orientation,
             n_players=game.n_players,
         )
         self.game = game
         self.index = index
-        self.orientation = orientation
 
     @property
     def interaction_index(self) -> InteractionIndexName:
@@ -53,6 +46,11 @@ class Explainer[ValueT, GameT: Game](ABC):
     def order(self) -> int:
         """Return the maximum interaction order of the explanation."""
         return self.index.order
+
+    @property
+    def orientation(self) -> InteractionOrientation:
+        """Return the interaction orientation of the explained index."""
+        return self.index.orientation
 
     def __call__(self) -> ExplanationArray[ValueT]:
         """Alias explain()."""

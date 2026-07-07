@@ -1,6 +1,6 @@
 # Issue 5 — Index-dispatched estimator entry points
 
-Status: **not started** · Order: **after issue 1, timing flexible**
+Status: **done** (2026-07-07, ADR 0007) · Order: **after issue 1**
 
 ## Goal
 
@@ -40,19 +40,29 @@ detail. A later `shapiq.explain(...)` convenience factory rides on the same disp
 
 ## Work breakdown
 
-- [ ] `PermutationSampling(game, index)` dispatching to the SV/SII/STII strategies; behavior
-  bit-identical to the class-per-index constructors (stream-identity tests must not change).
-- [ ] Decide the fate of the class-per-index names (aliases vs removal); migrate tests/examples.
-- [ ] Same treatment for the regression family when it has a second index.
-- [ ] Update `CONTEXT.md`, `docs/design/core-interfaces.md`, and exports.
+- [x] `PermutationSampling(game, index)` dispatching to the SV/SII/STII strategies via a
+  type-keyed table; sampled streams bit-identical (state-equality tests and byte-identical
+  example output).
+- [x] Class-per-index names **removed** (v2 unreleased; one grammar beats two documented
+  ones); all 85 call sites across tests and examples migrated.
+- [x] Regression family unified immediately: `SV` gained the regression capability (the
+  KernelSHAP kernel is the order-1 faithful kernel up to constant scaling), so
+  `Regression(game, SV())` is KernelSHAP and `Regression(game, FSII(order=k))` covers the
+  faithful interactions.
+- [x] Rider (2026-07-07 discussion): **orientation moved onto the index objects** — the
+  `orientation` parameter left `Explainer.__init__`; `Explainer.orientation` derives from the
+  index.
+- [x] `CONTEXT.md` (InteractionIndex, Interaction Orientation), exports, ADR 0007.
 
-## Open decisions
+## Decisions (settled 2026-07-07, recorded in ADR 0007)
 
-- Aliases vs removal for `PermutationSamplingSV`/`SII`/`STII` and `RegressionFSII`.
-- Closed union vs overloads for the static support signature (overloads also let the return
-  type vary per index if that ever matters).
-- Whether the dispatch registry becomes public extension API now or stays private until a
-  third-party index family exists.
+- Removal over aliases for the class-per-index names.
+- Closed unions over open protocols for family signatures: Regression's unit-weight trick
+  requires the sampler distribution to match the index kernel, so an open bound would accept
+  silently-wrong custom kernels; permutation layouts are bespoke per index.
+- The dispatch tables stay private until a third-party index family exists.
+- BV stays derivative-only: its least squares form is unconstrained (Hammer–Holzman) and does
+  not match the constrained-regression capability.
 
 ## Acceptance criteria
 

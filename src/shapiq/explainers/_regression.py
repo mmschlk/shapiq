@@ -16,7 +16,7 @@ from shapiq.explainers._faithful import (
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import FSII
+from shapiq.interactions import FSII, SV
 from shapiq.sampling import EmptyState, SamplingState, ShapleyKernelSampler
 
 if TYPE_CHECKING:
@@ -24,29 +24,29 @@ if TYPE_CHECKING:
     from shapiq.sampling import ShareSamples
 
 
-class RegressionFSII(EvidenceApproximator):
-    """Faithful Shapley interaction approximator based on kernel regression.
+class Regression(EvidenceApproximator):
+    """Kernel-regression approximator dispatching on the interaction index.
 
-    The faithful Shapley interaction index of order ``k`` is the best
-    ``k``-additive approximation of the game under the Shapley kernel, with
-    the empty and grand coalition fit exactly. The approximator estimates the
-    kernel objective by Monte Carlo: the sampler draws coalitions with
-    probability proportional to their kernel weight, so every sampled
-    coalition enters the least squares problem with unit weight, and repeated
-    coalitions contribute through their multiplicity. ``explain()`` solves
-    the accumulated regression exactly, substituting the empty- and
-    grand-coalition constraints out of the system, which keeps the solve well
-    conditioned in float32.
+    The supported indices are defined by a constrained least squares fit
+    under the Shapley kernel: ``FSII(order=k)`` is the best ``k``-additive
+    approximation of the game with the empty and grand coalition fit
+    exactly, and ``SV()`` is its order-1 special case (KernelSHAP). The
+    sampler draws coalitions with probability proportional to the Shapley
+    kernel, so every sampled coalition enters the least squares problem with
+    unit weight and repeated coalitions contribute through their
+    multiplicity; support is therefore a closed set of indices whose kernel
+    matches the sampler. ``explain()`` solves the accumulated regression
+    exactly, substituting the empty- and grand-coalition constraints out of
+    the system, which keeps the solve well conditioned in float32.
 
     ``explain()`` requires the sampled coalitions to identify all
-    coefficients and raises ``InsufficientSamplesError`` while the regression
-    design is rank deficient; ``deduplicate=True`` reaches identification
-    with the fewest evaluations. For a game that is itself ``k``-additive
-    the estimate is exact from identification onward. With ``order=1`` the
-    estimate converges to the Shapley values (KernelSHAP).
+    coefficients and raises ``InsufficientSamplesError`` while the
+    regression design is rank deficient; ``deduplicate=True`` reaches
+    identification with the fewest evaluations. For a game that is itself
+    ``k``-additive the estimate is exact from identification onward.
 
     Example:
-        >>> approximator = RegressionFSII(game, order=2, random_state=0)
+        >>> approximator = Regression(game, FSII(order=2), random_state=0)
         >>> explanation = approximator.sample(500).explain()
         >>> pair_interaction = explanation((0, 1))
     """
@@ -54,8 +54,8 @@ class RegressionFSII(EvidenceApproximator):
     def __init__(
         self,
         game: Game[Array],
+        index: SV | FSII,
         *,
-        order: int = 2,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
         paired: bool = True,
@@ -65,10 +65,10 @@ class RegressionFSII(EvidenceApproximator):
         """Initialize without evaluating the game.
 
         Args:
-            game: Game to explain. Must produce scalar values per coalition
-                and have at least two players.
-            order: Maximum interaction order of the faithful approximation;
-                the explanation represents orders one through ``order``.
+            game: Game to explain. Must have at least two players.
+            index: The interaction index to estimate: ``SV()`` for Shapley
+                values via KernelSHAP, or ``FSII(order=k)`` for faithful
+                Shapley interactions.
             random_state: Integer seed or JAX PRNG key for drawing
                 coalitions.
             share_samples: Policy for sharing sampled coalitions across
@@ -84,11 +84,20 @@ class RegressionFSII(EvidenceApproximator):
                 count toward the budget. Requires shared samples.
 
         Raises:
-            ValueError: If the game has fewer than two players, if ``order``
+            TypeError: If the index has no Shapley-kernel regression
+                estimator.
+            ValueError: If the game has fewer than two players, if the order
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
-        index = FSII(order=order)
+        if not isinstance(index, (SV, FSII)):
+            name = getattr(index, "name", type(index).__name__)
+            msg = (
+                f"Regression does not support {name!r}: the sampler draws "
+                "coalitions from the Shapley kernel, so supported indices "
+                "are SV() and FSII(order=k)"
+            )
+            raise TypeError(msg)
         sampler = ShapleyKernelSampler(
             game.n_players,
             game.target_shape,
@@ -112,7 +121,7 @@ class RegressionFSII(EvidenceApproximator):
         return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
 
     def explain(self) -> DenseExplanationArray[Array]:
-        """Solve the faithful regression on the sampled evidence.
+        """Solve the constrained regression on the sampled evidence.
 
         Returns:
             A dense explanation representing orders zero through ``order``.
@@ -195,5 +204,6 @@ class RegressionFSII(EvidenceApproximator):
             interaction_index=self.interaction_index,
             order=self.order,
             shape=target_shape,
+            orientation=self.orientation,
             value_shape=value_shape,
         )
