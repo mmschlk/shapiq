@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -82,10 +83,15 @@ def validate_interaction_metadata(
 
 
 def _validate_player(player: int, *, n_players: int) -> int:
-    if isinstance(player, bool) or not isinstance(player, int):
+    if isinstance(player, bool):
         msg = "player indices must be integers, not bools"
         raise TypeError(msg)
-    if player < 0 or player >= n_players:
-        msg = "player index out of range"
+    try:
+        position = operator.index(player)
+    except TypeError:
+        msg = f"player indices must be integers, got {type(player).__name__}"
+        raise TypeError(msg) from None
+    if position < 0 or position >= n_players:
+        msg = f"player index {position} is out of range for {n_players} players"
         raise ValueError(msg)
-    return player
+    return position

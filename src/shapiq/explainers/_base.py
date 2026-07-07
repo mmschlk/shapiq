@@ -11,6 +11,19 @@ if TYPE_CHECKING:
     from shapiq.interactions import InteractionIndexName, InteractionOrientation
 
 
+def reject_common_index_mistakes(index: object) -> None:
+    """Raise teaching errors for strings and index classes passed as indices."""
+    if isinstance(index, str):
+        msg = f"interaction indices are objects: pass shapiq.SII(order=2) instead of {index!r}"
+        raise TypeError(msg)
+    if isinstance(index, type):
+        msg = (
+            f"pass an index instance such as {index.__name__}(order=2), "
+            f"not the {index.__name__} class"
+        )
+        raise TypeError(msg)
+
+
 class Explainer[ValueT, GameT: Game](ABC):
     """Base abstraction for objects that explain games."""
 
@@ -19,9 +32,7 @@ class Explainer[ValueT, GameT: Game](ABC):
 
     def __init__(self, game: GameT, index: InteractionIndex) -> None:
         """Initialize shared explainer metadata."""
-        if isinstance(index, str):
-            msg = f"interaction indices are objects: pass shapiq.SII(order=2) instead of {index!r}"
-            raise TypeError(msg)
+        reject_common_index_mistakes(index)
         if not isinstance(index, InteractionIndex):
             msg = (
                 "index must be an interaction index object such as shapiq.SII(order=2), "

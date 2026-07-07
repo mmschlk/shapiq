@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
+from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._faithful import (
     eliminate_constraint,
@@ -93,6 +94,7 @@ class Regression(EvidenceApproximator):
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
+        reject_common_index_mistakes(index)
         if not isinstance(index, (SV, FSII, FBII)):
             name = getattr(index, "name", type(index).__name__)
             msg = (
@@ -132,11 +134,11 @@ class Regression(EvidenceApproximator):
         design = interaction_design(masks, self.order)
         if isinstance(self.index, FBII):
             design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
-            require_identification(design)
+            require_identification(design, deduplicating=self.deduplicate)
             solution, *_ = jnp.linalg.lstsq(design, response)
             return solution
         reduced, pivot = eliminate_constraint(design)
-        require_identification(reduced)
+        require_identification(reduced, deduplicating=self.deduplicate)
         return solve_faithful(reduced, pivot, response, delta)
 
     def explain(self) -> DenseExplanationArray[Array]:

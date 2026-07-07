@@ -85,14 +85,19 @@ def solve_faithful(
     return jnp.concatenate([partial, last], axis=0)
 
 
-def require_identification(reduced: Array) -> None:
+def require_identification(reduced: Array, *, deduplicating: bool = False) -> None:
     """Raise when the sampled coalitions do not yet identify all attributions."""
     needed = int(reduced.shape[-1])
     rank = int(jnp.linalg.matrix_rank(reduced))
     if rank < needed:
+        hint = (
+            "sample more evaluations and retry"
+            if deduplicating
+            else "sample more evaluations (deduplicate=True reaches distinct "
+            "coalitions with the fewest evaluations)"
+        )
         msg = (
             "the faithful regression is not yet identified: the sampled coalitions "
-            f"give rank {rank} of the {needed} required; sample more evaluations "
-            "(deduplicate=True reaches distinct coalitions with the fewest evaluations)"
+            f"give rank {rank} of the {needed} required; {hint}"
         )
         raise InsufficientSamplesError(msg)

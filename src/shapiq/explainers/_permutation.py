@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
+from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
@@ -96,6 +97,7 @@ class PermutationSampling(EvidenceApproximator):
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
+        reject_common_index_mistakes(index)
         family = _FAMILIES.get(type(index))
         if family is None:
             supported = ", ".join(sorted(kind.__name__ for kind in _FAMILIES))

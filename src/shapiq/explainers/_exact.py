@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.explainers._base import Explainer
+from shapiq.explainers._base import Explainer, reject_common_index_mistakes
 from shapiq.explainers._faithful import (
     eliminate_constraint,
     interaction_design,
@@ -74,9 +74,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
                 no capability the exact explainer can compute.
             ValueError: If the index order is out of range for the game.
         """
-        if isinstance(index, str):
-            msg = f"interaction indices are objects: pass shapiq.SII(order=2) instead of {index!r}"
-            raise TypeError(msg)
+        reject_common_index_mistakes(index)
         if not isinstance(
             index,
             (
@@ -165,6 +163,18 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         return self._powerset_values
 
 
+def _require_weight_length(source: str, weights: Array, n_players: int, size: int) -> None:
+    """Reject weight vectors whose length would silently misindex under JAX."""
+    expected = n_players - size + 1
+    if weights.shape[-1] != expected:
+        msg = (
+            f"{source}(n_players={n_players}, interaction_size={size}) must return "
+            f"{expected} weights for outside-coalition sizes 0..{expected - 1}, "
+            f"got {weights.shape[-1]}"
+        )
+        raise ValueError(msg)
+
+
 @cache
 def _powerset_masks(n_players: int) -> Array:
     """Return all coalitions as dense masks, ordered by size then lexicographically."""
@@ -185,6 +195,7 @@ def _weighted_derivatives(
 ) -> Array:
     """Sum signed, weighted game values into per-interaction attributions."""
     n_players = masks.shape[-1]
+    _require_weight_length("derivative_weights", weights, n_players, size)
     member_masks = interaction_masks(n_players, size)
     intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
     outside_sizes = jnp.sum(masks, axis=-1)[:, None] - intersections
@@ -201,9 +212,11 @@ def _weighted_marginals(
 ) -> Array:
     """Sum weighted marginal contributions of whole interactions joining coalitions."""
     n_players = masks.shape[-1]
+    _require_weight_length("marginal_weights", weights, n_players, size)
     member_masks = interaction_masks(n_players, size)
     intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
     coalition_sizes = jnp.sum(masks, axis=-1)[:, None]
+    # the clamp only affects lanes discarded by the where masks below
     largest = weights.shape[0] - 1
     gains = jnp.where(
         intersections == size,
