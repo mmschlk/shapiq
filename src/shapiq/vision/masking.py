@@ -63,13 +63,15 @@ class CNNMaskingStrategy(ABC):
             Boolean tensor of shape ``(n_coalitions, H, W)`` where ``True``
             means the pixel belongs to an absent player and should be imputed.
         """
-        absent_players = ~coalitions  # (n_coalitions, n_players)
-
         n_players, H, W = player_masks.shape
         masks_flat = player_masks.view(n_players, -1).float()  # (n_players, H*W)
 
+        # Align coalitions to the masks' device (the model, and hence the player
+        # masks, may live on the GPU while the sampler emits coalitions on the CPU).
+        absent_players = (~coalitions).to(masks_flat.device).float()  # (n_coalitions, n_players)
+
         # Union pixel masks of all absent players per coalition
-        pixel_mask = (absent_players.float() @ masks_flat).bool()  # (n_coalitions, H*W)
+        pixel_mask = (absent_players @ masks_flat).bool()  # (n_coalitions, H*W)
         return pixel_mask.view(-1, H, W)  # (n_coalitions, H, W)
 
 
