@@ -7,6 +7,7 @@ from shapiq.interactions._functional import (
     aggregate_supersets,
     define_cardinal_index,
     define_generalized_value,
+    define_regression_index,
     derive_functional,
 )
 from shapiq.interactions._indices import (
@@ -75,6 +76,7 @@ __all__ = [
     "aggregate_supersets",
     "define_cardinal_index",
     "define_generalized_value",
+    "define_regression_index",
     "derive_functional",
     "iter_interactions",
     "normalize_interaction",

@@ -201,7 +201,7 @@ The linear-functional representation of an **InteractionIndex** over a **Game**,
 _Avoid_: kernel matrix, weight tensor
 
 **Defined Index**:
-An **InteractionIndex** declared through its weight formalism with `define_cardinal_index` or `define_generalized_value` rather than shipped with shapiq. Defined indices carry open names and work with every capability-dispatched **Explainer**.
+An **InteractionIndex** declared through its weight or kernel formalism with `define_cardinal_index`, `define_generalized_value`, or `define_regression_index` rather than shipped with shapiq. Defined indices carry open names and work with every capability-dispatched **Explainer**.
 _Avoid_: custom subclass, plugin index
 
 **MonteCarlo**:

@@ -9,15 +9,17 @@ from jax import Array
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._faithful import (
+    bernoulli_design,
     eliminate_constraint,
     interaction_design,
     require_identification,
     solve_faithful,
+    solve_pinned,
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import FSII, SV
-from shapiq.sampling import EmptyState, SamplingState, ShapleyKernelSampler
+from shapiq.interactions import KADDSHAP, RegressionIndex
+from shapiq.sampling import CoalitionSizeSampler, EmptyState, SamplingState
 
 if TYPE_CHECKING:
     from shapiq.games import Game
@@ -25,19 +27,21 @@ if TYPE_CHECKING:
 
 
 class Regression(EvidenceApproximator):
-    """Kernel-regression approximator dispatching on the interaction index.
+    """Kernel-regression approximator derived from the index's declared kernel.
 
-    The supported indices are defined by a constrained least squares fit
-    under the Shapley kernel: ``FSII(order=k)`` is the best ``k``-additive
-    approximation of the game with the empty and grand coalition fit
-    exactly, and ``SV()`` is its order-1 special case (KernelSHAP). The
-    sampler draws coalitions with probability proportional to the Shapley
-    kernel, so every sampled coalition enters the least squares problem with
-    unit weight and repeated coalitions contribute through their
-    multiplicity; support is therefore a closed set of indices whose kernel
-    matches the sampler. ``explain()`` solves the accumulated regression
-    exactly, substituting the empty- and grand-coalition constraints out of
-    the system, which keeps the solve well conditioned in float32.
+    Any index declaring a regression kernel is supported through the
+    capability alone: the sampler draws coalitions with probability
+    proportional to the declared kernel weight (size distribution
+    ``kernel(size) * comb(n, size)``, members uniform within a size), so
+    every sampled coalition enters the least squares problem with unit
+    weight and repeated coalitions contribute through their multiplicity.
+    The fit interpolates the empty and grand coalition exactly as
+    constraints; shapiq ships ``SV()`` (KernelSHAP), ``FSII(order=k)``, and
+    ``kADD-SHAP(order=k)`` — which dispatches to its Bernoulli basis — and
+    indices defined through ``define_regression_index`` work the same way.
+    ``explain()`` solves the accumulated regression exactly, substituting the
+    constraints out of the system, which keeps the solve well conditioned in
+    float32.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the
@@ -54,7 +58,7 @@ class Regression(EvidenceApproximator):
     def __init__(
         self,
         game: Game[Array],
-        index: SV | FSII,
+        index: RegressionIndex,
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
@@ -66,9 +70,11 @@ class Regression(EvidenceApproximator):
 
         Args:
             game: Game to explain. Must have at least two players.
-            index: The interaction index to estimate: ``SV()`` for Shapley
-                values via KernelSHAP, or ``FSII(order=k)`` for faithful
-                Shapley interactions.
+            index: The interaction index to estimate. Any index declaring a
+                regression kernel works: ``SV()`` for Shapley values via
+                KernelSHAP, ``FSII(order=k)`` for faithful Shapley
+                interactions, ``KADDSHAP(order=k)`` for the k-additive
+                Shapley fit, or a defined regression index.
             random_state: Integer seed or JAX PRNG key for drawing
                 coalitions.
             share_samples: Policy for sharing sampled coalitions across
@@ -76,7 +82,9 @@ class Regression(EvidenceApproximator):
                 target; ``True`` shares across all target axes; an integer or
                 tuple of integers shares across the selected axes.
             paired: Whether every sampled coalition is accompanied by its
-                complement, which reduces estimation variance.
+                complement, which reduces estimation variance. Requires a
+                size-symmetric kernel, since pairing must not change the
+                probability a coalition is sampled with.
             track_history: Whether to record value-equivalent history for
                 rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
@@ -84,23 +92,33 @@ class Regression(EvidenceApproximator):
                 count toward the budget. Requires shared samples.
 
         Raises:
-            TypeError: If the index has no Shapley-kernel regression
-                estimator.
+            TypeError: If the index declares no regression kernel.
             ValueError: If the game has fewer than two players, if the order
-                is out of range, or if ``deduplicate`` is enabled without
-                samples shared across explanation targets.
+                is out of range, if the declared kernel violates the
+                capability contract (nonnegative, finite, zero-weight
+                endpoints), if ``paired`` is enabled with a size-asymmetric
+                kernel, or if ``deduplicate`` is enabled without samples
+                shared across explanation targets.
         """
-        if not isinstance(index, (SV, FSII)):
+        if not isinstance(index, RegressionIndex):
             name = getattr(index, "name", type(index).__name__)
             msg = (
-                f"Regression does not support {name!r}: the sampler draws "
-                "coalitions from the Shapley kernel, so supported indices "
-                "are SV() and FSII(order=k)"
+                f"Regression does not support {name!r}: the index declares no "
+                "regression kernel with exact endpoint constraints"
             )
             raise TypeError(msg)
-        sampler = ShapleyKernelSampler(
+        kernel = _checked_kernel(index, game.n_players)
+        if paired and not bool(jnp.allclose(kernel, kernel[::-1])):
+            msg = (
+                f"paired sampling requires a size-symmetric kernel, but {index.name!r} "
+                "declares an asymmetric one; pass paired=False"
+            )
+            raise ValueError(msg)
+        counts = jnp.asarray([comb(game.n_players, size) for size in range(game.n_players + 1)])
+        sampler = CoalitionSizeSampler(
             game.n_players,
             game.target_shape,
+            size_weights=kernel * counts,
             share_samples=share_samples,
             paired=paired,
             random_state=random_state,
@@ -160,29 +178,21 @@ class Regression(EvidenceApproximator):
         sample_masks = masks[..., n_seeds:, :]
         flat_masks = sample_masks.reshape(-1, n_rows, n_players)
         if flat_masks.shape[0] == 1:
-            reduced, pivot = eliminate_constraint(interaction_design(flat_masks[0], self.order))
-            require_identification(reduced)
-            solutions = solve_faithful(reduced, pivot, response, delta)
+            solutions = self._solve(flat_masks[0], response, delta)
         else:
             broadcast_masks = jnp.broadcast_to(
                 sample_masks,
                 (*target_shape, n_rows, n_players),
             ).reshape(-1, n_rows, n_players)
             n_targets = broadcast_masks.shape[0]
-            per_target = []
-            for target in range(n_targets):
-                reduced, pivot = eliminate_constraint(
-                    interaction_design(broadcast_masks[target], self.order),
+            per_target = [
+                self._solve(
+                    broadcast_masks[target],
+                    response[:, target::n_targets],
+                    delta[target::n_targets],
                 )
-                require_identification(reduced)
-                per_target.append(
-                    solve_faithful(
-                        reduced,
-                        pivot,
-                        response[:, target::n_targets],
-                        delta[target::n_targets],
-                    ),
-                )
+                for target in range(n_targets)
+            ]
             stacked = jnp.stack(per_target, axis=-1)
             solutions = stacked.reshape(stacked.shape[0], -1)
         coefficients = solutions.T
@@ -207,3 +217,37 @@ class Regression(EvidenceApproximator):
             orientation=self.orientation,
             value_shape=value_shape,
         )
+
+    def _solve(self, mask_rows: Array, response: Array, delta: Array) -> Array:
+        """Solve the constrained fit of one target's evidence in the index basis."""
+        if isinstance(self.index, KADDSHAP):
+            design = bernoulli_design(mask_rows, self.order)
+            grand = jnp.ones((1, self.game.n_players), dtype=bool)
+            constraint = bernoulli_design(grand, self.order)[0]
+            return solve_pinned(design, constraint, response, delta, require_identified=True)
+        reduced, pivot = eliminate_constraint(interaction_design(mask_rows, self.order))
+        require_identification(reduced)
+        return solve_faithful(reduced, pivot, response, delta)
+
+
+def _checked_kernel(index: RegressionIndex, n_players: int) -> Array:
+    """Validate a declared regression kernel before sampling from it."""
+    kernel = jnp.asarray(index.regression_kernel(n_players), dtype=jnp.float32)
+    if kernel.shape != (n_players + 1,):
+        msg = (
+            f"{index.name!r} declares a regression kernel of shape {kernel.shape}, "
+            f"expected one weight per coalition size 0..{n_players}, "
+            f"shape ({n_players + 1},)"
+        )
+        raise ValueError(msg)
+    if not bool(jnp.all(jnp.isfinite(kernel)) & jnp.all(kernel >= 0)):
+        msg = f"{index.name!r} declares a regression kernel with negative or non-finite weights"
+        raise ValueError(msg)
+    if not bool(jnp.all(kernel[jnp.asarray([0, n_players])] == 0)):
+        msg = (
+            f"{index.name!r} declares nonzero kernel weight on the empty or grand "
+            "coalition; the regression capability interpolates them exactly as "
+            "constraints, so their kernel weight must be zero"
+        )
+        raise ValueError(msg)
+    return kernel

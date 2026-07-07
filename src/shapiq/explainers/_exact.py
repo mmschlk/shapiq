@@ -10,10 +10,11 @@ from jax import Array
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.explainers._base import Explainer
 from shapiq.explainers._faithful import (
+    bernoulli_design,
     eliminate_constraint,
     interaction_design,
-    interaction_masks,
     solve_faithful,
+    solve_pinned,
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
@@ -29,7 +30,6 @@ from shapiq.interactions import (
     aggregate_supersets,
     derive_functional,
 )
-from shapiq.interactions._indices import bernoulli_numbers
 
 type ExactIndex = (
     CardinalInteractionIndex
@@ -233,22 +233,10 @@ def _kadd_regression_attributions(
     n_coalitions = masks.shape[-2]
     sizes = jnp.sum(masks, axis=-1)
     sqrt_weights = jnp.sqrt(index.regression_kernel(n_players)[sizes])
-    design = _bernoulli_design(masks, order)
-    constraint = design[-1]
-    pivot_column = int(jnp.argmax(jnp.abs(constraint)))
-    anchor = constraint[pivot_column]
-    pivot = design[:, pivot_column : pivot_column + 1]
-    reduced = jnp.delete(design - pivot * (constraint / anchor)[None, :], pivot_column, axis=1)
+    design = bernoulli_design(masks, order)
     response = (values - values[..., :1]).reshape(-1, n_coalitions).T
     delta = (values[..., -1] - values[..., 0]).reshape(-1)
-    shifted = response - (pivot / anchor) * delta[None, :]
-    partial, *_ = jnp.linalg.lstsq(
-        sqrt_weights[:, None] * reduced,
-        sqrt_weights[:, None] * shifted,
-    )
-    others = jnp.delete(constraint, pivot_column)
-    back_substituted = (delta[None, :] - others[:, None].T @ partial) / anchor
-    solution = jnp.insert(partial, pivot_column, back_substituted[0], axis=0)
+    solution = solve_pinned(design, design[-1], response, delta, sqrt_weights=sqrt_weights)
     return _solution_blocks(solution, values, n_players, order)
 
 
@@ -267,28 +255,3 @@ def _solution_blocks(
         attributions[size] = block.reshape(*values.shape[:-1], n_interactions)
         offset += n_interactions
     return attributions
-
-
-def _bernoulli_design(masks: Array, order: int) -> Array:
-    """Return Bernoulli-weighted intersection columns for all interactions up to order."""
-    n_players = masks.shape[-1]
-    table = _bernoulli_weight_table(order)
-    columns = []
-    for size in range(1, order + 1):
-        member_masks = interaction_masks(n_players, size)
-        intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
-        columns.append(table[size][intersections])
-    return jnp.concatenate(columns, axis=1)
-
-
-def _bernoulli_weight_table(order: int) -> Array:
-    """Return kADD-SHAP design weights per interaction and intersection size."""
-    bernoulli = bernoulli_numbers(order)
-    table = [[0.0] * (order + 1) for _ in range(order + 1)]
-    for size in range(1, order + 1):
-        for intersection in range(1, size + 1):
-            table[size][intersection] = sum(
-                comb(intersection, top) * bernoulli[size - top]
-                for top in range(1, intersection + 1)
-            )
-    return jnp.asarray(table)

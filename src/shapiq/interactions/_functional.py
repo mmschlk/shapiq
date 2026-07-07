@@ -269,6 +269,50 @@ def define_generalized_value(
     )
 
 
+def define_regression_index(
+    name: InteractionIndexName,
+    *,
+    kernel: Callable[[int], Array],
+    order: int = 2,
+    order_semantics: OrderSemantics = "identity",
+    generalizes: SV | BV | None = None,
+) -> InteractionIndex:
+    """Define a new regression index from its kernel formalism.
+
+    The returned index is the best ``order``-additive approximation of the
+    game under the declared kernel, interpolating the empty and grand
+    coalition exactly as constraints. It works with every explainer that
+    consumes the regression capability: the exact solve and the
+    kernel-matched sampled ``Regression`` estimator come with the
+    definition. Its order-0 attribution is the empty-coalition value, as for
+    every constrained-interpolation regression index.
+
+    Args:
+        name: Name recorded on explanations produced for the index.
+        kernel: Function mapping ``n_players`` to one nonnegative kernel
+            weight per coalition size ``0..n_players``. The empty and grand
+            coalition must carry weight zero; they are interpolated exactly
+            as constraints rather than weighted.
+        order: Maximum interaction order of the index.
+        order_semantics: Whether order is explanation coverage or identity;
+            a best ``order``-additive fit changes with the order, so the
+            default is identity.
+        generalizes: Probabilistic value the order-1 restriction equals, when
+            the definition declares one.
+
+    Returns:
+        An immutable interaction index carrying the declared formalism.
+    """
+    _validate_definition(name, order=order, order_semantics=order_semantics)
+    return _DefinedRegressionIndex(
+        name=name,
+        order=order,
+        order_semantics=order_semantics,
+        generalizes=generalizes,
+        kernel=kernel,
+    )
+
+
 @dataclass(frozen=True)
 class _DefinedCardinalIndex:
     """A cardinal interaction index declared through its weight formalism."""
@@ -304,6 +348,24 @@ class _DefinedGeneralizedValue:
     def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return the declared bloc-marginal weights per outside size."""
         return jnp.asarray(self.weights(n_players, interaction_size), dtype=jnp.float32)
+
+
+@dataclass(frozen=True)
+class _DefinedRegressionIndex:
+    """A regression index declared through its kernel formalism."""
+
+    name: InteractionIndexName
+    order: int
+    order_semantics: OrderSemantics
+    generalizes: SV | BV | None
+    kernel: Callable[[int], Array] = field(repr=False)
+
+    orientation: ClassVar[InteractionOrientation] = "undirected"
+    includes_empty_interaction: ClassVar[bool] = True
+
+    def regression_kernel(self, n_players: int) -> Array:
+        """Return the declared kernel weights per coalition size."""
+        return jnp.asarray(self.kernel(n_players), dtype=jnp.float32)
 
 
 def _validate_definition(

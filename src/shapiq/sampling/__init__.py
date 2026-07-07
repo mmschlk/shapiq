@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from shapiq.sampling._base import Sampler, ShareSamples
-from shapiq.sampling._kernel import ShapleyKernelSampler
 from shapiq.sampling._permutation import (
     PermutationSIISampler,
     PermutationSTIISampler,
@@ -22,7 +21,6 @@ __all__ = [
     "PermutationWalkSampler",
     "Sampler",
     "SamplingState",
-    "ShapleyKernelSampler",
     "ShareSamples",
     "UnitScheduleSampler",
 ]

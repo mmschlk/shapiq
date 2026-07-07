@@ -60,6 +60,7 @@ from shapiq.interactions import (
     aggregate_supersets,
     define_cardinal_index,
     define_generalized_value,
+    define_regression_index,
     derive_functional,
     iter_interactions,
     normalize_interaction,
@@ -74,7 +75,6 @@ from shapiq.sampling import (
     PermutationWalkSampler,
     Sampler,
     SamplingState,
-    ShapleyKernelSampler,
     UnitScheduleSampler,
 )
 
@@ -143,7 +143,6 @@ __all__ = [
     "SamplingError",
     "SamplingStallWarning",
     "SamplingState",
-    "ShapleyKernelSampler",
     "SparseExplanationArray",
     "UnitScheduleSampler",
     "UnsupportedGameError",
@@ -151,6 +150,7 @@ __all__ = [
     "aggregate_supersets",
     "define_cardinal_index",
     "define_generalized_value",
+    "define_regression_index",
     "derive_functional",
     "iter_interactions",
     "normalize_interaction",

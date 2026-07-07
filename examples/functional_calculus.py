@@ -25,7 +25,9 @@ from shapiq import (
     ExactExplainer,
     Moebius,
     MonteCarlo,
+    Regression,
     define_cardinal_index,
+    define_regression_index,
     derive_functional,
 )
 
@@ -98,3 +100,19 @@ if __name__ == "__main__":
             f"{index.name:>8} {pair}: estimate {float(estimate(pair)):+.4f}"
             f" | exact {float(exact(pair)):+.4f}"
         )
+
+    print()
+    print("=== the regression primitive: declare a kernel, get the estimator ===")
+
+    # a best 2-additive fit under a center-heavy kernel: mid-size coalitions
+    # dominate the fit, the empty and grand coalition are exact constraints
+    def center_kernel(n_players: int) -> Array:
+        sizes = jnp.arange(n_players + 1, dtype=jnp.float32)
+        return sizes * (n_players - sizes)
+
+    center = define_regression_index("CenterFit", kernel=center_kernel, order=2)
+    exact = ExactExplainer(game, center).explain()
+    # the game is 2-additive, so the sampled fit is exact once identified
+    estimate = Regression(game, center, random_state=0, deduplicate=True).sample(2 + 24).explain()
+    pair = (0, 2)
+    print(f"CenterFit {pair}: sampled {float(estimate(pair)):+.4f} | exact {float(exact(pair)):+.4f}")
