@@ -19,6 +19,8 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq import (
+    FBII,
+    FSII,
     KSII,
     SII,
     CallableGame,
@@ -91,8 +93,12 @@ if __name__ == "__main__":
     print(f"Moebius(order=2) mass: {truncated.size_mass()}  <- sizes 3+ are never sampled")
 
     print()
-    print("=== one estimator, any linear-functional index ===")
-    for index in (SII(order=2), KSII(order=2), Moebius(order=2)):
+    print("=== one estimator, any symmetric linear index ===")
+    # cardinal weights, aggregations, transforms, and compiled argmin fits
+    # (FSII, FBII) are presentations of the same object: a coalition
+    # functional. FBII never had an unbiased estimator anywhere; here it
+    # falls out of the compiled table like everything else.
+    for index in (SII(order=2), KSII(order=2), Moebius(order=2), FSII(order=2), FBII(order=2)):
         exact = ExactExplainer(game, index).explain()
         estimate = MonteCarlo(game, index, random_state=1).sample(2000).explain()
         pair = (0, 2)
