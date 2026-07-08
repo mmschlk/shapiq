@@ -12,6 +12,8 @@ from nltk.tree import Tree
 
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
+from .base import Imputer
+
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
     from transformers.modeling_outputs import BaseModelOutput
@@ -1699,7 +1701,7 @@ class Seq2SeqCallable(BaseTargetCallable):
 # =============================================================================
 
 
-class TextImputer:
+class TextImputer(Imputer):
     """Coalition-based text imputer for model-agnostic Shapley explanations.
 
     ``TextImputer`` combines three independent components:
@@ -1803,6 +1805,10 @@ class TextImputer:
             player_strategy = create_player_strategy(
                 level=player_level, text=text, tokenizer=tokenizer
             )
+        super().__init__(
+            model=model,
+            data=np.empty((1, player_strategy.n_players)),
+        )
 
         self.player_level = player_level
         self.player_strategy = player_strategy
@@ -1872,11 +1878,6 @@ class TextImputer:
             msg = "model_type must be one of:\n- 'encoder_classifier'\n- 'causal_lm'\n- 'seq2seq'"
             raise ValueError(msg)
 
-    @property
-    def n_players(self) -> int:
-        """Return number of players."""
-        return self.player_strategy.n_players
-
     def coalition_to_text(
         self,
         coalition: np.ndarray,
@@ -1942,8 +1943,8 @@ class TextImputer:
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape(1, -1)
 
-        if coalitions.shape[1] != self.n_players:
-            msg = f"Expected coalition width {self.n_players}, got {coalitions.shape[1]}"
+        if coalitions.shape[1] != self.n_features:
+            msg = f"Expected coalition width {self.n_features}, got {coalitions.shape[1]}"
             raise ValueError(msg)
 
         if isinstance(
@@ -1985,15 +1986,8 @@ class TextImputer:
         texts = self._coalitions_to_texts(coalitions)
         return self._batched_predict(texts)
 
-    def __call__(
-        self,
-        coalitions: np.ndarray,
-    ) -> np.ndarray:
-        """Make TextImputer compatible with shapiq approximators."""
-        return self.value_function(coalitions)
-
     def full_prediction(self) -> float:
         """Score of original unperturbed text."""
-        full_coalition = np.ones((1, self.n_players), dtype=bool)
+        full_coalition = np.ones((1, self.n_features), dtype=bool)
         score = self.value_function(full_coalition)[0]
         return float(score)
