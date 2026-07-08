@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -115,19 +114,15 @@ class GraphGame(Game):
                 verbose=verbose,
             )
         else:
-            super().__init__(
-                n_players=self.n_players,
-                normalize=normalize,
-                verbose=verbose)
+            super().__init__(n_players=self.n_players, normalize=normalize, verbose=verbose)
 
         if normalize:
             self.normalization_value = normalization_value
 
-
     def _calculate_baseline(
-            self,
-            strategy: Literal["zeros", "average", "min", "max"],
-            value: float | torch.Tensor | None = None,
+        self,
+        strategy: Literal["zeros", "average", "min", "max"],
+        value: float | torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Calculate the baseline feature vector for masked nodes.
 
@@ -149,10 +144,11 @@ class GraphGame(Game):
         if value is not None:
             if isinstance(value, torch.Tensor):
                 if value.shape != (x.shape[1],):
-                    raise ValueError(
+                    msg = (
                         f"Baseline tensor must have shape ({x.shape[1]},), "
                         f"got {tuple(value.shape)}."
                     )
+                    raise ValueError(msg)
                 return value.to(dtype=torch.float32, device=x.device)
 
             if isinstance(value, float):
@@ -163,9 +159,8 @@ class GraphGame(Game):
                     device=x.device,
                 )
 
-            raise TypeError(
-                "baseline_value must be a float, torch.Tensor, or None."
-            )
+            msg = "baseline_value must be a float, torch.Tensor, or None."
+            raise TypeError(msg)
 
         if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
@@ -177,7 +172,8 @@ class GraphGame(Game):
             return torch.amax(x, dim=0)
 
         # Should never happen because of the Literal type.
-        raise NotImplementedError(f"Baseline strategy {strategy!r} is not supported.")
+        msg = f"Baseline strategy {strategy!r} is not supported."
+        raise NotImplementedError(msg)
 
     @property
     def normalize(self) -> bool:
@@ -187,19 +183,15 @@ class GraphGame(Game):
     def mask_input(self, coalition: np.ndarray) -> Data:
         """Create a masked graph for a coalition.
 
-            Args:
-                coalition: Boolean or binary array of shape ``(n_players,)`` indicating
-                    which nodes are active.
+        Args:
+            coalition: Boolean or binary array of shape ``(n_players,)`` indicating
+                which nodes are active.
 
-            Returns:
-                A cloned graph where inactive node features are replaced by the
-                baseline feature vector.
-            """
-        coalition_tensor = torch.tensor(
-            coalition,
-            dtype=torch.bool,
-            device=self.x_graph.x.device
-        )
+        Returns:
+            A cloned graph where inactive node features are replaced by the
+            baseline feature vector.
+        """
+        coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
         x_masked = self.x_graph.clone()
         baseline_reshaped = self.baseline.reshape(1, -1)
         x_masked.x[~coalition_tensor] = baseline_reshaped
@@ -208,16 +200,16 @@ class GraphGame(Game):
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Evaluate coalition values by running the GNN on masked graphs.
 
-            Args:
-                coalitions: Boolean or binary coalition matrix of shape
-                    ``(n_coalitions, n_players)``. A one-dimensional array of shape
-                    ``(n_players,)`` is interpreted as a single coalition.
+        Args:
+            coalitions: Boolean or binary coalition matrix of shape
+                ``(n_coalitions, n_players)``. A one-dimensional array of shape
+                ``(n_players,)`` is interpreted as a single coalition.
 
-            Returns:
-                One-dimensional NumPy array with one scalar model output per coalition.
-                For classification, the selected class logit is returned. For
-                regression, the scalar model output is returned.
-            """
+        Returns:
+            One-dimensional NumPy array with one scalar model output per coalition.
+            For classification, the selected class logit is returned. For
+            regression, the scalar model output is returned.
+        """
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape(1, -1)
 
@@ -236,7 +228,8 @@ class GraphGame(Game):
             if self.class_index is None:
                 coalition_value = model_output.squeeze()
                 if coalition_value.numel() != 1:
-                    raise ValueError("Model output is not scalar; pass class_index to select an output.")
+                    msg = "Model output is not scalar; pass class_index to select an output."
+                    raise ValueError(msg)
             else:
                 coalition_value = model_output[0, self.class_index]
 

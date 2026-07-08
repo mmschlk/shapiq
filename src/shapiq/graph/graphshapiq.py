@@ -259,7 +259,7 @@ class GraphSHAPIQ:
         max_subset_size: int,
         grand_coalition_prediction_node: NDArray[np.floating],
     ) -> InteractionValues:
-        """Adjust Möbius coefficients to ensure efficiency.
+        r"""Adjust Möbius coefficients to ensure efficiency.
 
         The efficiency axiom states that the sum of all Möbius coefficients must equal
         the grand coalition prediction, i.e.,

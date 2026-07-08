@@ -35,7 +35,6 @@ KNN_WEIGHTS_TO_EXPLAINER = {
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     """Return a dictionary of all available explainer classes."""
-
     import shapiq.explainer.agnostic as ag
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
@@ -43,7 +42,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
 
-    explainers = {
+    explainers: dict[ExplainerTypes, type[Explainer]] = {
         "tabular": tb.TabularExplainer,
         "tree": tr.TreeExplainer,
         "tabpfn": tp.TabPFNExplainer,
@@ -366,6 +365,7 @@ def print_class(obj: object) -> str:
     if not search:
         raise ValueError(msg)
     return search[0]
+
 
 def is_torch_geometric_model(model: object) -> bool:
     """Return whether the model contains torch_geometric message-passing layers."""

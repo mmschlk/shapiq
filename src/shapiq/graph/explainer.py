@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, Any, Literal, cast, override
 
 import joblib
 import numpy as np
@@ -24,7 +24,8 @@ else:
 
 SPARSIFY_THRESHOLD = 1e-8
 
-def _check_import_torch_geometric() -> type:
+
+def _check_import_torch_geometric() -> "type[Data]":  # noqa: UP037
     """Import torch_geometric Data or raise a helpful optional-dependency error."""
     try:
         from torch_geometric.data import Data
@@ -59,7 +60,7 @@ class GraphExplainer(Explainer):
         self,
         model: nn.Module,
         index: ValidMoebiusConverterIndices = "k-SII",
-        baseline_strategy: str = "average",
+        baseline_strategy: Literal["zeros", "average", "min", "max"] = "average",
         max_order: int = 2,
         class_index: int | None = None,
         *,
@@ -92,12 +93,7 @@ class GraphExplainer(Explainer):
                 GraphSHAP-IQ computation. Defaults to True.
             **kwargs: Additional keyword arguments are ignored.
         """
-        super().__init__(
-            model,
-            class_index=class_index,
-            index=index,
-            max_order=max_order
-        )
+        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._model: nn.Module = model
         self._class_index = class_index
         self._baseline_strategy = baseline_strategy
@@ -212,11 +208,7 @@ class GraphExplainer(Explainer):
         )
 
     @override
-    def explain(
-            self,
-            x: np.ndarray | Data | None = None,
-            **kwargs: Any
-    ) -> InteractionValues:
+    def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
         """Explain a single graph prediction.
 
         Args:

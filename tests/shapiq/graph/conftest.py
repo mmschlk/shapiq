@@ -205,6 +205,7 @@ def gcn_graph_game_classification(gcn_model_classification, simple_graph):
 # GraphSHAPIQ fixtures
 # =========================================================
 
+
 def make_path_graph(n_nodes: int = 6) -> Data:
     """Create a path graph with random node features."""
     x = torch.randn(n_nodes, 3)
@@ -244,6 +245,7 @@ def make_disconnected_graph() -> Data:
 
     return Data(x=x, edge_index=edge_index)
 
+
 @pytest.fixture
 def receptive_field_graphs():
     """Return graphs whose 1-hop neighborhoods are smaller than the full graph."""
@@ -255,6 +257,7 @@ def receptive_field_graphs():
         make_disconnected_graph(),
     ]
 
+
 @pytest.fixture
 def gcn_model_one_layer():
     return SimpleGCN(
@@ -262,6 +265,7 @@ def gcn_model_one_layer():
         output_dim=1,
         num_layers=1,
     )
+
 
 @pytest.fixture
 def gcn_graphshapiq_classification(gcn_graph_game_classification):

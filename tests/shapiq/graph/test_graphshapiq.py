@@ -13,12 +13,10 @@ import numpy as np
 import pytest
 
 from shapiq.game_theory.exact import ExactComputer
+from shapiq.graph import GraphGame
 from shapiq.graph.graphshapiq import GraphSHAPIQ
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
-
-
-from shapiq.graph import GraphGame
 
 
 class TestGraphSHAPIQ:
@@ -797,9 +795,9 @@ class TestGraphSHAPIQ:
             )
 
     def test_explain_matches_exact_computer_k_sii_receptive_field_truncation(
-            self,
-            gcn_model_one_layer,
-            receptive_field_graphs,
+        self,
+        gcn_model_one_layer,
+        receptive_field_graphs,
     ):
         """Test GraphSHAPIQ against ExactComputer on graphs with incomplete neighborhoods.
 
@@ -829,7 +827,7 @@ class TestGraphSHAPIQ:
                 order=graphshapiq.n_players,
             )
 
-            assert graphshapiq.last_n_model_calls < 2 ** graphshapiq.n_players
+            assert graphshapiq.last_n_model_calls < 2**graphshapiq.n_players
 
             for coalition, idx in interactions.interaction_lookup.items():
                 assert interactions.values[idx] == pytest.approx(
