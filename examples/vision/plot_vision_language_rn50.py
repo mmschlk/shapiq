@@ -188,7 +188,7 @@ seg_cfg = SegmenterConfig(
     params=SlicParams(n_segments=49, compactness=10.0, sigma=1.0),
 )
 
-print('model config:', model.config)
+print("model config:", model.config)
 msk_cfg = MaskerConfig(strategy="crossmodal_mean")
 
 print(f"Masker: {msk_cfg.strategy}")
@@ -309,11 +309,7 @@ print("Saved: vision_rn50_slic_force.png")
 # ----------------------------------------
 # Blue edges = positive synergy, red edges = negative (diminishing).
 
-iv.plot_network(
-    feature_names=feature_names,
-    draw_threshold=0.0,
-    show=False
-)
+iv.plot_network(feature_names=feature_names, draw_threshold=0.0, show=False)
 plt.savefig("vision_rn50_slic_network.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_rn50_slic_network.png")

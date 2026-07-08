@@ -31,6 +31,7 @@ from shapiq.imputer.vision import (
     MaskerConfig,
     SegmenterConfig,
     SlicParams,
+    VisionImputer,
     VisionImputerFactory,
 )
 
@@ -49,7 +50,7 @@ image = Image.open(image_path).convert("RGB")
 # Helpers
 
 
-def build_imputer(segmenter_strategy: str, masker_strategy: str):
+def build_imputer(segmenter_strategy: str, masker_strategy: str) -> VisionImputer:
     """Build a VisionImputer for a segmenter/masker combination."""
     seg_cfg = make_segmenter_config(segmenter_strategy)
     msk_cfg = MaskerConfig(strategy=masker_strategy)
@@ -169,12 +170,11 @@ for seg_strategy, msk_strategy in combos:
     labels = player_label_map(imputer)
     values = np.array([sv[(i,)] for i in range(imputer.n_players_image)])
     results.append((seg_strategy, msk_strategy, values[labels], runtime))
-    # print(f"{seg_strategy:>5} + {msk_strategy:<15} {runtime:5.1f}s")
 
 max_abs = max(np.abs(heatmap).max() for *_, heatmap, _ in results)
 
 fig, axes = plt.subplots(2, 2, figsize=(11, 10))
-for ax, (seg_strategy, msk_strategy, heatmap, runtime) in zip(axes.flat, results, strict=False):
+for ax, (seg_strategy, msk_strategy, heatmap, _runtime) in zip(axes.flat, results, strict=False):
     ax.imshow(model_input)
     im = ax.imshow(heatmap, cmap="RdYlGn", vmin=-max_abs, vmax=max_abs, alpha=0.6)
     ax.set_title(f"{seg_strategy} + {msk_strategy}")

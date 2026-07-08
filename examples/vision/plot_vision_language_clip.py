@@ -184,11 +184,7 @@ print("Saved: vision_clip_force.png")
 # Blue = positive synergy (regions amplify each other), red = negative
 # (they diminish each other).
 
-iv.plot_network(
-    feature_names=feature_names,
-    draw_threshold=0.0,
-    show=False
-)
+iv.plot_network(feature_names=feature_names, draw_threshold=0.0, show=False)
 plt.savefig("vision_clip_network.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_clip_network.png")
@@ -229,7 +225,7 @@ def plot_patch_overlay(
         cmap=cmap,
         vmin=-max_abs_val,
         vmax=max_abs_val,
-        alpha=alpha
+        alpha=alpha,
     )
     # Draw patch boundaries
     for i in range(grid_size + 1):
