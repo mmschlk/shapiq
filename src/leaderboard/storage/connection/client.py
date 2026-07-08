@@ -149,6 +149,17 @@ class DatabaseClient(ABC):
             Number of deleted documents.
         """
 
+    @abstractmethod
+    def delete_by_filter(self, filter_dict: dict[str, Any]) -> int:
+        """Delete all documents matching the given filter.
+
+        Args:
+            filter_dict: A dictionary representing the filter criteria.
+
+        Returns:
+            int: Number of deleted documents.
+        """
+
     # Read - generic
 
     @abstractmethod
