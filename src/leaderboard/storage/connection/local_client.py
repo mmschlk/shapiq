@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from leaderboard.storage.data_classes import RunConfig
 
 from .client import DatabaseClient
-from .utilities import _matches_config, _matches_config_with_seed
+from .utilities import _matches_config, _matches_config_with_seed, _matches_filter
 
 
 def _json_default(value: object) -> object:
@@ -211,6 +211,15 @@ class LocalClient(DatabaseClient):
         """Delete all documents matching *config*. Returns deleted count."""
         documents = self._load()
         kept = [d for d in documents if not _matches_config(d, config)]
+        deleted = len(documents) - len(kept)
+        if deleted:
+            self._save(kept)
+        return deleted
+
+    def delete_by_filter(self, filter_dict: dict[str, Any]) -> int:
+        """Delete all documents matching the given filter."""
+        documents = self._load()
+        kept = [d for d in documents if not _matches_filter(d, filter_dict)]
         deleted = len(documents) - len(kept)
         if deleted:
             self._save(kept)

@@ -101,6 +101,23 @@ def _get_seed(document: dict[str, Any]) -> int | None:
     return seed
 
 
+def _matches_filter(document: dict[str, Any], filter_dict: dict[str, Any]) -> bool:
+    """Return True if *document* matches all key/value pairs in *filter_dict*.
+
+    Args:
+        document: The run document to check.
+        filter_dict: A dictionary of key/value pairs to match against the document.
+
+    Returns:
+        True if the document matches all key/value pairs in the filter, False otherwise.
+    """
+    for key, value in filter_dict.items():
+        if str(document.get(key, "")).strip() != str(value).strip():
+            return False
+
+    return True
+
+
 def _matches_config(document: dict[str, Any], config: RunConfig) -> bool:
     """Return True if *document* contains all key/value pairs in *config*."""
     comparisons = {

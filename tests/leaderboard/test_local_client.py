@@ -505,6 +505,7 @@ class TestDatabaseClientContract:
             "delete_by_id",
             "delete_all",
             "delete_by_config",
+            "delete_by_filter",
             "get_all",
             "get_by_config",
             "get_unique_configs",

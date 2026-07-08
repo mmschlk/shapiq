@@ -519,7 +519,7 @@ class StorageREPL:
                 return
             # Build a minimal RunConfig-like object or pass as dict
             try:
-                n = client.delete_by_config(config_fields)  # type: ignore[arg-type]
+                n = client.delete_by_filter(config_fields)  # type: ignore[arg-type]
                 self.print_ok(f"Deleted {n} document(s) from {fmt.storage_id(sid)}.")
             except DBClientError as exc:
                 self.print_error(f"Delete failed: {exc}")

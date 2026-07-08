@@ -162,6 +162,10 @@ class MongoDBClient(DatabaseClient):
         """Delete all documents matching *config*. Returns deleted count."""
         return self.collection.delete_many(config.to_dict()).deleted_count
 
+    def delete_by_filter(self, filter_dict: dict[str, Any]) -> int:
+        """Delete all documents matching the given filter. Returns deleted count."""
+        return self.collection.delete_many(filter_dict).deleted_count
+
     # Read - generic
 
     def get_all(self) -> list[dict[str, Any]]:
