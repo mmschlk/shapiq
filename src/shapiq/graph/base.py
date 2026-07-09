@@ -45,7 +45,7 @@ class GraphGame(Game):
         x_graph: Data,
         *,
         class_index: int | None = None,
-        baseline_strategy: Literal["zeros", "average", "min", "max"] = "average",
+        baseline_strategy: Literal["zeros", "average", "min", "max"] = "zeros",
         baseline_value: float | torch.Tensor | None = None,
         normalize: bool = True,
         verbose: bool = False,
