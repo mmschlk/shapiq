@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from math import comb
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 import jax.numpy as jnp
 from jax import Array
 
+from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
@@ -14,6 +15,7 @@ from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.sampling import (
     EmptyState,
+    PairedSampler,
     PermutationSIISampler,
     PermutationSTIISampler,
     SamplingState,
@@ -70,6 +72,7 @@ class PermutationSampling(EvidenceApproximator):
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
+        paired: bool = False,
         track_history: bool = False,
         deduplicate: bool = False,
     ) -> None:
@@ -85,6 +88,9 @@ class PermutationSampling(EvidenceApproximator):
                 explanation-target axes. ``False`` samples independently per
                 target; ``True`` shares across all target axes; an integer or
                 tuple of integers shares across the selected axes.
+            paired: Whether every sampled unit also contains the walk of the
+                reversed permutation (antithetic sampling), which reduces
+                estimation variance and doubles the sampling quantum.
             track_history: Whether to record value-equivalent history for
                 rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
@@ -115,12 +121,13 @@ class PermutationSampling(EvidenceApproximator):
             )
             raise TypeError(msg)
         build_sampler, _ = family
-        sampler = build_sampler(
+        base_sampler = build_sampler(
             game,
             index,
             share_samples=share_samples,
             random_state=random_state,
         )
+        sampler = PairedSampler(base_sampler) if ensure_bool("paired", paired) else base_sampler
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
@@ -143,7 +150,10 @@ class PermutationSampling(EvidenceApproximator):
 
     def _completed_walks(self) -> _WalkEvidence:
         """Return seed values and completed walks, masking pending samples."""
-        quantum = self.sampler.sampling_quantum
+        # paired units hold two walks (the permutation's and its reversal's),
+        # so completed walks are cut by walk length, not by the quantum
+        walker = cast("PermutationSIISampler | PermutationSTIISampler", self.sampler)
+        quantum = walker.walk_length
         n_seeds = self.sampler.n_seed_samples
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()

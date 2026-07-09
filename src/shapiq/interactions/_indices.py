@@ -198,6 +198,7 @@ class SV(ExtensionalEquality):
         """
         return _shapley_regression_kernel(n_players)
 
+ShapleyValue = SV()
 
 @dataclass(frozen=True, eq=False)
 class BV(ExtensionalEquality):
@@ -230,6 +231,7 @@ class BV(ExtensionalEquality):
             raise ValueError(msg)
         return _banzhaf_derivative_weights(n_players, 1)
 
+BanzhafValue = BV()
 
 @dataclass(frozen=True, eq=False)
 class WeightedBV(ExtensionalEquality):

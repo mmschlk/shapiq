@@ -20,12 +20,13 @@ if TYPE_CHECKING:
 class PermutationWalkSampler(UnitScheduleSampler):
     """Base sampler for coalition walks derived from random permutations.
 
-    One walk is the coalition block derived from one permutation, so the
-    sampling quantum is the walk length. Every walk starts with a block of
-    proper permutation prefixes (the chain); order-specific off-chain
-    coalitions follow. Each walk derives its permutation from
-    ``fold_in(random_state, walk_index)``, so sampling does not depend on how
-    a budget is split across calls.
+    One walk is the coalition block derived from one permutation. Every walk
+    starts with a block of proper permutation prefixes (the chain);
+    order-specific off-chain coalitions follow. Each walk derives its
+    permutation from ``fold_in(random_state, walk_index)``, so sampling does
+    not depend on how a budget is split across calls. Wrap the sampler in
+    ``PairedSampler`` to add the walk of the reversed permutation - the
+    antithetic draw - to every unit.
     """
 
     order: int
@@ -73,23 +74,41 @@ class PermutationWalkSampler(UnitScheduleSampler):
             raise ValueError(msg)
         self.order = order
 
+    @property
+    def sampling_quantum(self) -> int:
+        """Return the unit length: one walk."""
+        return self.walk_length
+
+    @property
+    @abstractmethod
+    def walk_length(self) -> int:
+        """Return the number of coalitions one walk contains."""
+
     def _sampled_unit_masks(self, unit_index: int) -> Array:
         """Return the walk masks of one sampled unit."""
-        return self._walk_masks(unit_index)
+        return self.render_draw(self.unit_draw(unit_index))
 
-    @abstractmethod
-    def _walk_masks(self, walk_index: int) -> Array:
-        """Return the dense coalition masks of one full walk."""
-
-    def _player_positions(self, walk_index: int) -> Array:
+    def unit_draw(self, unit_index: int) -> Array:
         """Return each player's position in the permutation of a walk."""
         players = jnp.broadcast_to(
             jnp.arange(self.n_players),
             (*self.shared_target_shape, self.n_players),
         )
-        walk_key = jax.random.fold_in(self._key, walk_index)
+        walk_key = jax.random.fold_in(self._key, unit_index)
         permutation = jax.random.permutation(walk_key, players, axis=-1, independent=True)
         return jnp.argsort(permutation, axis=-1)
+
+    def antithetic_draw(self, draw: Array) -> Array:
+        """Return the positions of the reversed permutation.
+
+        This is the sampler's ``AntitheticDraws`` hook: pairing a walk means
+        walking the reversed permutation, not complementing walk rows.
+        """
+        return self.n_players - 1 - draw
+
+    @abstractmethod
+    def render_draw(self, draw: Array) -> Array:
+        """Return the dense coalition masks of one full walk."""
 
 
 class PermutationSIISampler(PermutationWalkSampler):
@@ -106,7 +125,7 @@ class PermutationSIISampler(PermutationWalkSampler):
     """
 
     @property
-    def sampling_quantum(self) -> int:
+    def walk_length(self) -> int:
         """Return the walk length in coalitions.
 
         A walk costs ``(n - 1)`` chain coalitions plus, for every window size
@@ -119,9 +138,9 @@ class PermutationSIISampler(PermutationWalkSampler):
             for size in range(2, self.order + 1)
         )
 
-    def _walk_masks(self, walk_index: int) -> Array:
+    def render_draw(self, draw: Array) -> Array:
         """Return chain masks followed by per-size, per-pattern window masks."""
-        positions = self._player_positions(walk_index)
+        positions = draw
         blocks = [positions[..., None, :] < jnp.arange(1, self.n_players)[:, None]]
         for size in range(2, self.order + 1):
             window_starts = jnp.arange(self.n_players - size + 1)
@@ -159,7 +178,7 @@ class PermutationSTIISampler(PermutationWalkSampler):
         return 2 + sum(comb(self.n_players, size) for size in range(1, self.order))
 
     @property
-    def sampling_quantum(self) -> int:
+    def walk_length(self) -> int:
         """Return the walk length in coalitions.
 
         A walk costs ``(n - order)`` chain coalitions plus
@@ -184,9 +203,9 @@ class PermutationSTIISampler(PermutationWalkSampler):
             blocks.append(block)
         return jnp.concatenate(blocks, axis=0)
 
-    def _walk_masks(self, walk_index: int) -> Array:
+    def render_draw(self, draw: Array) -> Array:
         """Return chain masks followed by per-pattern interaction masks."""
-        positions = self._player_positions(walk_index)
+        positions = draw
         if self.order == 1:
             return positions[..., None, :] < jnp.arange(1, self.n_players)[:, None]
         chain = positions[..., None, :] < jnp.arange(1, self.n_players - self.order + 1)[:, None]

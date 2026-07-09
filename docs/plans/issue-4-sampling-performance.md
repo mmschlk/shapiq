@@ -39,10 +39,17 @@ Captured from the code-review TODOs so the ideas survive their removal from the 
   range form (`start_unit`, `end_unit`, or an index array) so many units are generated per JAX
   dispatch; `fold_in(key, unit_index)` keeps the stream order-free, so a `vmap` over the index
   range must be bit-identical to the sequential loop.
-- **Pairing as a wrapper.** Complement pairing is currently baked into each kernel sampler
-  (`ShapleyKernelSampler`, `BanzhafKernelSampler._sampled_unit_masks`). Extract it into a
-  compositional layer that maps any sampled object (coalition, permutation) to itself plus its
-  complement, so new samplers get pairing for free and the quantum bookkeeping lives in one place.
+- **Pairing as a compositional layer — landed (2026-07-09).** `PairedSampler(sampler)` wraps
+  any `UnitScheduleSampler`: the wrapper owns the schedule (budgets, pending, seeds) and uses
+  the wrapped sampler purely as a unit renderer, so samplers carry zero pairing logic and new
+  samplers get pairing for free. The public `AntitheticDraws` hook (`unit_draw` /
+  `render_draw` / `antithetic_draw`) lets a sampler declare what pairing means (permutation
+  walks pair as the reversed permutation); hookless samplers pair by row complement. A mask-level
+  wrapper was rejected: complementing rendered walk rows corrupts permutation layouts, while
+  the draw-level antithesis (complement coalition, reversed permutation) renders bona-fide
+  units. Kernel streams stayed bit-identical; `PermutationSampling(..., paired=True)` gained
+  antithetic permutation walks as a new opt-in. Batching hook: `_unit_draw(unit_index)` is the
+  surface to vectorize over unit-index ranges.
 - **Growing evidence buffers.** `_append_coalitions` (`src/shapiq/sampling/_state.py`)
   concatenates full dense arrays per `sample()` call — quadratic over many small calls. The
   sampling state wants an amortized structure: a JAX-backed growing buffer (capacity doubling or

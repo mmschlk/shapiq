@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import jax.numpy as jnp
 from jax import Array
 
+from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
@@ -18,7 +19,13 @@ from shapiq.explainers._faithful import (
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FBII, FSII, SV
-from shapiq.sampling import BanzhafKernelSampler, EmptyState, SamplingState, ShapleyKernelSampler
+from shapiq.sampling import (
+    BanzhafKernelSampler,
+    EmptyState,
+    PairedSampler,
+    SamplingState,
+    ShapleyKernelSampler,
+)
 
 if TYPE_CHECKING:
     from shapiq.games import Game
@@ -112,13 +119,13 @@ class Regression(EvidenceApproximator):
             )
             raise TypeError(msg)
         sampler_type = BanzhafKernelSampler if type(index) is FBII else ShapleyKernelSampler
-        sampler = sampler_type(
+        base_sampler = sampler_type(
             game.n_players,
             game.target_shape,
             share_samples=share_samples,
-            paired=paired,
             random_state=random_state,
         )
+        sampler = PairedSampler(base_sampler) if ensure_bool("paired", paired) else base_sampler
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
