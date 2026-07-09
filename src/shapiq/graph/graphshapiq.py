@@ -49,7 +49,7 @@ class GraphSHAPIQ:
         Args:
             game: The game object representing the graph and prediction function.
             verbose: If True, additional logs are shown.
-            sparsify_threshold: #TODO
+            sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
         """
         self.last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
