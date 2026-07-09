@@ -4,12 +4,17 @@ from fractions import Fraction
 from functools import cache
 from itertools import combinations
 from math import comb
+from typing import cast
 
 import jax.numpy as jnp
 from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.explainers._base import Explainer, reject_common_index_mistakes
+from shapiq.explainers._base import (
+    Explainer,
+    missing_index_members,
+    reject_common_index_mistakes,
+)
 from shapiq.explainers._faithful import (
     eliminate_constraint,
     interaction_design,
@@ -75,6 +80,14 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             ValueError: If the index order is out of range for the game.
         """
         reject_common_index_mistakes(index)
+        for shipped in (KSII, FBII, KADDSHAP):
+            if isinstance(index, shipped) and type(index) is not shipped:
+                msg = (
+                    f"{type(index).__name__} subclasses {shipped.__name__}, whose exact "
+                    f"solver dispatches on the exact index type: pass {shipped.__name__} "
+                    "itself or define an independent index with its own capabilities"
+                )
+                raise TypeError(msg)
         if not isinstance(
             index,
             (
@@ -87,10 +100,12 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             ),
         ):
             name = getattr(index, "name", type(index).__name__)
+            missing = missing_index_members(index)
+            hint = f"; it is also missing index members: {', '.join(missing)}" if missing else ""
             msg = (
                 f"ExactExplainer does not support {name!r}: the index provides "
                 "neither discrete-derivative weights, bloc-marginal weights, "
-                "a regression kernel, nor a dedicated exact solver"
+                "a regression kernel, nor a dedicated exact solver" + hint
             )
             raise TypeError(msg)
         super().__init__(game, index)
@@ -115,11 +130,11 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         masks = _powerset_masks(n_players)
         index = self._exact_index
         order = self.order
-        if isinstance(index, KSII):
+        if type(index) is KSII:
             attributions = _aggregated_ksii_attributions(values, masks, order)
-        elif isinstance(index, FBII):
+        elif type(index) is FBII:
             attributions = _banzhaf_regression_attributions(values, masks, order)
-        elif isinstance(index, KADDSHAP):
+        elif type(index) is KADDSHAP:
             attributions = _kadd_regression_attributions(values, masks, index, order)
         elif isinstance(index, CardinalInteractionIndex):
             attributions = {
@@ -142,16 +157,17 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
                 for size in range(1, order + 1)
             }
         else:
-            attributions = _regression_attributions(values, masks, index, order)
+            # KSII is dispatched above, so only regression-capable indices remain
+            regression_index = cast("RegressionIndex", index)
+            attributions = _regression_attributions(values, masks, regression_index, order)
         return DenseExplanationArray(
             attributions_by_order={
                 size: to_trailing(block, n_value_axes) for size, block in attributions.items()
             },
             n_players=n_players,
-            interaction_index=self.interaction_index,
+            index=self.index,
             order=order,
             shape=self.game.target_shape,
-            orientation=self.orientation,
             value_shape=self.game.value_shape,
             baseline=baseline,
         )
@@ -274,8 +290,17 @@ def _regression_attributions(
 ) -> dict[int, Array]:
     """Solve the constrained kernel-weighted least squares fit on the full powerset."""
     n_players = masks.shape[-1]
+    kernel = index.regression_kernel(n_players)
+    if kernel[0] != 0.0 or kernel[-1] != 0.0:
+        msg = (
+            f"the exact constrained regression solver requires zero kernel weight "
+            f"at the empty and grand coalition, got {index.name!r} weights "
+            f"{float(kernel[0])!r} and {float(kernel[-1])!r}; unconstrained kernels "
+            "with a free intercept (such as FBII's) need a dedicated solver"
+        )
+        raise TypeError(msg)
     sizes = jnp.sum(masks, axis=-1)
-    sqrt_weights = jnp.sqrt(index.regression_kernel(n_players)[sizes])
+    sqrt_weights = jnp.sqrt(kernel[sizes])
     reduced, pivot = eliminate_constraint(interaction_design(masks, order))
     n_coalitions = masks.shape[-2]
     response = (values - values[..., :1]).reshape(-1, n_coalitions).T

@@ -31,6 +31,28 @@ Sampled streams are contractual. Split invariance and deduplication identity are
 order-free: batched generation over a range of unit indices can and must reproduce the sequential
 stream exactly. Any change that alters a sampled stream is out of scope for this issue.
 
+## Design notes from the 2026-07-08 review
+
+Captured from the code-review TODOs so the ideas survive their removal from the source:
+
+- **Batched unit ranges as the sampler API.** Rework `_sampled_unit_masks(unit_index)` toward a
+  range form (`start_unit`, `end_unit`, or an index array) so many units are generated per JAX
+  dispatch; `fold_in(key, unit_index)` keeps the stream order-free, so a `vmap` over the index
+  range must be bit-identical to the sequential loop.
+- **Pairing as a wrapper.** Complement pairing is currently baked into each kernel sampler
+  (`ShapleyKernelSampler`, `BanzhafKernelSampler._sampled_unit_masks`). Extract it into a
+  compositional layer that maps any sampled object (coalition, permutation) to itself plus its
+  complement, so new samplers get pairing for free and the quantum bookkeeping lives in one place.
+- **Growing evidence buffers.** `_append_coalitions` (`src/shapiq/sampling/_state.py`)
+  concatenates full dense arrays per `sample()` call — quadratic over many small calls. The
+  sampling state wants an amortized structure: a JAX-backed growing buffer (capacity doubling or
+  a user-provided pre-budget that pre-allocates for the expected total budget) with cheap appends,
+  while preserving the functional state contract and history semantics.
+- **`_sample(state, budget)` signature smell.** Schedule samplers ignore `state` (it exists for
+  adaptive samplers). When the sampler API is reworked for batching, revisit the protocol so the
+  non-adaptive case does not carry an unused parameter — for example a narrower
+  `ScheduleSampler` protocol or passing only what adaptivity needs.
+
 ## Approach (strictly in order)
 
 1. **Measure.** Benchmark script covering sampler-only and end-to-end runs; workloads are issue

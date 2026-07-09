@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
     from shapiq.interactions._types import (
         InteractionIndexName,
-        InteractionOrientation,
         OrderSemantics,
     )
 
@@ -50,23 +49,23 @@ class InteractionIndex(Protocol):
         ...
 
     @property
-    def orientation(self) -> InteractionOrientation:
-        """Return whether the index attributes to sets or ordered tuples."""
-        ...
-
-    @property
     def includes_empty_interaction(self) -> bool:
         """Return whether explanations carry an order-0 attribution."""
         ...
 
     @property
-    def generalizes(self) -> SV | BV | None:
+    def generalizes(self) -> InteractionIndex | None:
         """Return the probabilistic value this index restricts to at order 1."""
         ...
 
     @property
     def preserves_value(self) -> bool:
-        """Return whether order-1 attributions stay the generalized value at every order."""
+        """Return whether order-1 attributions are identical at every explanation order.
+
+        For a generalizing index this means the generalized value stays
+        readable off the order-1 attributions at any order; indices with no
+        generalized value preserve trivially through coverage semantics.
+        """
         ...
 
 
@@ -77,6 +76,10 @@ class CardinalInteractionIndex(InteractionIndex, Protocol):
     Cardinal interaction indices assign to an interaction ``S`` a weighted
     sum of its discrete derivatives over outside coalitions ``T``, with
     weights depending only on the cardinalities of ``S`` and ``T``.
+    Player-specific weightings (weighted Shapley values, per-player joining
+    probabilities in the weighted Banzhaf family, Owen values under a
+    coalition structure) are a separate future capability, not a
+    generalization of this one.
     """
 
     def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
@@ -85,7 +88,11 @@ class CardinalInteractionIndex(InteractionIndex, Protocol):
 
     @property
     def min_interaction_size(self) -> int:
-        """Return the smallest represented interaction size (0 for transforms)."""
+        """Return the smallest represented interaction size.
+
+        Zero when the rule attributes to the empty interaction on the
+        centered game, as for the Co-Moebius transform.
+        """
         ...
 
 
@@ -111,13 +118,15 @@ class RegressionIndex(InteractionIndex, Protocol):
     def regression_kernel(self, n_players: int) -> Array:
         """Return one kernel weight per coalition size ``0..n``.
 
-        The empty and grand coalition carry weight zero; they are
-        interpolated exactly as constraints rather than weighted.
+        A zero weight at the empty or grand coalition marks that coalition
+        as an exact interpolation constraint rather than a weighted row;
+        nonzero end weights (the uniform Banzhaf kernel) mean every
+        coalition is fitted and the fit carries a free intercept.
         """
         ...
 
 
-class ExtensionalEquality:
+class ExtensionalEquality(InteractionIndex):
     """Equality of interaction indices as attribution rules on nonempty interactions.
 
     Instances constructed at order one collapse onto the probabilistic value
@@ -130,9 +139,9 @@ class ExtensionalEquality:
     """
 
     def _identity(self) -> tuple[object, ...]:
-        index = cast("InteractionIndex", self)
-        if index.generalizes is not None and index.order == 1:
-            return ExtensionalEquality._identity(index.generalizes)
+        generalized = self.generalizes
+        if isinstance(generalized, ExtensionalEquality) and self.order == 1:
+            return ExtensionalEquality._identity(generalized)
         params = tuple(getattr(self, field.name) for field in fields(cast("Any", self)))
         return (type(self).__name__, *params)
 
@@ -154,7 +163,6 @@ class SV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "SV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
@@ -167,6 +175,19 @@ class SV(ExtensionalEquality):
     def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return Shapley discrete-derivative weights per outside size."""
         return _shapley_derivative_weights(n_players, interaction_size)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return Shapley bloc-marginal weights for single players.
+
+        The Shapley value is the singleton restriction of the Shapley
+        generalized value: for an interaction of size one the discrete
+        derivative and the bloc marginal coincide, so SV satisfies the
+        generalized-value capability there and nowhere else.
+        """
+        if interaction_size != 1:
+            msg = f"SV attributes to single players only, got interaction_size={interaction_size}"
+            raise ValueError(msg)
+        return _shapley_derivative_weights(n_players, 1)
 
     def regression_kernel(self, n_players: int) -> Array:
         """Return Shapley kernel weights per coalition size, zero at the ends.
@@ -185,7 +206,6 @@ class BV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "BV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
@@ -198,6 +218,57 @@ class BV(ExtensionalEquality):
     def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return Banzhaf discrete-derivative weights per outside size."""
         return _banzhaf_derivative_weights(n_players, interaction_size)
+
+    def marginal_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return Banzhaf bloc-marginal weights for single players.
+
+        The Banzhaf value is the singleton restriction of the Banzhaf
+        generalized value, mirroring SV's dual capability.
+        """
+        if interaction_size != 1:
+            msg = f"BV attributes to single players only, got interaction_size={interaction_size}"
+            raise ValueError(msg)
+        return _banzhaf_derivative_weights(n_players, 1)
+
+
+@dataclass(frozen=True, eq=False)
+class WeightedBV(ExtensionalEquality):
+    """The weighted Banzhaf value: players join independently with probability ``p``.
+
+    Marginal contributions are weighted with binomial weights
+    ``p**t * (1 - p)**(n - 1 - t)`` over outside coalitions of size ``t``.
+    The uniform weighting ``p = 1/2`` is the Banzhaf value, and instances at
+    ``p = 1/2`` compare equal to ``BV()``. The excluded limits ``p -> 0`` and
+    ``p -> 1`` approach the Moebius and Co-Moebius anchors.
+    """
+
+    p: float = 0.5
+
+    name: ClassVar[InteractionIndexName] = "WeightedBV"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
+    generalizes: ClassVar[None] = None
+
+    def __post_init__(self) -> None:
+        """Validate the joining probability."""
+        _validate_probability(self.p)
+
+    @property
+    def order(self) -> int:
+        """Return ``1``: the weighted Banzhaf value attributes to single players only."""
+        return 1
+
+    def _identity(self) -> tuple[object, ...]:
+        """Collapse the uniform weighting onto the Banzhaf value."""
+        if self.p == 0.5:
+            return ExtensionalEquality._identity(BV())  # noqa: SLF001 - sibling rule
+        return super()._identity()
+
+    def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return weighted Banzhaf discrete-derivative weights per outside size."""
+        return _weighted_banzhaf_derivative_weights(n_players, interaction_size, self.p)
 
 
 @dataclass(frozen=True, eq=False)
@@ -213,7 +284,6 @@ class SII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "SII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
@@ -240,7 +310,6 @@ class BII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "BII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[BV] = BV()
@@ -252,6 +321,52 @@ class BII(ExtensionalEquality):
     def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
         """Return Banzhaf discrete-derivative weights per outside size."""
         return _banzhaf_derivative_weights(n_players, interaction_size)
+
+
+@dataclass(frozen=True, eq=False)
+class WeightedBII(ExtensionalEquality):
+    """The weighted Banzhaf interaction index up to ``order``; generalizes WeightedBV.
+
+    Discrete derivatives are weighted with binomial weights
+    ``p**t * (1 - p)**(n - s - t)``: every player outside the interaction
+    joins the outside coalition independently with probability ``p``
+    (Marichal and Mathonet's weighted Banzhaf index, the cardinal-probabilistic
+    family). Order is explanation coverage. The uniform weighting ``p = 1/2``
+    is the Banzhaf interaction index, and instances at ``p = 1/2`` compare
+    equal to ``BII`` of the same order; the generalized value follows the
+    weighting, so order-1 instances equal ``WeightedBV(p)``.
+    """
+
+    p: float = 0.5
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "WeightedBII"
+    order_semantics: ClassVar[OrderSemantics] = "coverage"
+    preserves_value: ClassVar[bool] = True
+    includes_empty_interaction: ClassVar[bool] = False
+    min_interaction_size: ClassVar[int] = 1
+
+    def __post_init__(self) -> None:
+        """Validate the joining probability and the order."""
+        _validate_probability(self.p)
+        validate_int("order", self.order, minimum=1)
+
+    @property
+    def generalizes(self) -> WeightedBV:
+        """Return the weighted Banzhaf value with the same weighting."""
+        return WeightedBV(p=self.p)
+
+    def _identity(self) -> tuple[object, ...]:
+        """Collapse the uniform weighting onto the Banzhaf interaction index."""
+        if self.p == 0.5:
+            return ExtensionalEquality._identity(  # noqa: SLF001 - sibling rule
+                BII(order=self.order),
+            )
+        return super()._identity()
+
+    def derivative_weights(self, n_players: int, interaction_size: int) -> Array:
+        """Return weighted Banzhaf discrete-derivative weights per outside size."""
+        return _weighted_banzhaf_derivative_weights(n_players, interaction_size, self.p)
 
 
 @dataclass(frozen=True, eq=False)
@@ -268,7 +383,6 @@ class CHII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "CHII"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
@@ -297,7 +411,6 @@ class STII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "STII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
@@ -328,7 +441,6 @@ class KSII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "k-SII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -351,7 +463,6 @@ class FSII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "FSII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -380,13 +491,21 @@ class FBII(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "FBII"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     generalizes: ClassVar[BV] = BV()
 
     def __post_init__(self) -> None:
         """Validate the order."""
         validate_int("order", self.order, minimum=1)
+
+    def regression_kernel(self, n_players: int) -> Array:
+        """Return the uniform Banzhaf kernel: unit weight for every size.
+
+        Nonzero weights at the empty and grand coalition mean those rows are
+        fitted like any other rather than interpolated as constraints, and
+        the fit carries a free intercept as the order-0 attribution.
+        """
+        return jnp.ones(n_players + 1)
 
 
 @dataclass(frozen=True, eq=False)
@@ -404,7 +523,6 @@ class KADDSHAP(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "kADD-SHAP"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -432,7 +550,6 @@ class Moebius(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "Moebius"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
@@ -462,7 +579,6 @@ class CoMoebius(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "Co-Moebius"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 0
     generalizes: ClassVar[None] = None
@@ -491,7 +607,6 @@ class SGV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "SGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -517,7 +632,6 @@ class BGV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "BGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[BV] = BV()
 
@@ -544,7 +658,6 @@ class CHGV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "CHGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -570,7 +683,6 @@ class IGV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "IGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[None] = None
 
@@ -597,7 +709,6 @@ class EGV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "EGV"
     order_semantics: ClassVar[OrderSemantics] = "coverage"
     preserves_value: ClassVar[bool] = True
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[None] = None
 
@@ -624,7 +735,6 @@ class JointSV(ExtensionalEquality):
     name: ClassVar[InteractionIndexName] = "JointSV"
     order_semantics: ClassVar[OrderSemantics] = "identity"
     preserves_value: ClassVar[bool] = False
-    orientation: ClassVar[InteractionOrientation] = "undirected"
     includes_empty_interaction: ClassVar[bool] = False
     generalizes: ClassVar[SV] = SV()
 
@@ -655,6 +765,25 @@ def _banzhaf_derivative_weights(n_players: int, size: int) -> Array:
     """Return BII discrete-derivative weights per outside-coalition size."""
     free = n_players - size
     return jnp.full(free + 1, 2.0**-free)
+
+
+def _weighted_banzhaf_derivative_weights(n_players: int, size: int, p: float) -> Array:
+    """Return weighted Banzhaf derivative weights per outside-coalition size."""
+    free = n_players - size
+    return jnp.asarray([p**t * (1.0 - p) ** (free - t) for t in range(free + 1)])
+
+
+def _validate_probability(p: float) -> None:
+    """Validate a joining probability strictly inside the unit interval."""
+    if isinstance(p, bool) or not isinstance(p, (int, float)):
+        msg = f"p must be a float, got {type(p).__name__}"
+        raise TypeError(msg)
+    if not 0.0 < p < 1.0:
+        msg = (
+            f"p must satisfy 0 < p < 1, got {p}; the limits are the Moebius (p -> 0) "
+            "and Co-Moebius (p -> 1) anchors, and p = 0.5 is the Banzhaf weighting"
+        )
+        raise ValueError(msg)
 
 
 def _chaining_derivative_weights(n_players: int, size: int) -> Array:

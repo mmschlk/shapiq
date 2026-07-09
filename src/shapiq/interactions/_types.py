@@ -5,8 +5,10 @@ from typing import Literal
 type InteractionIndexName = Literal[
     "SV",
     "BV",
+    "WeightedBV",
     "SII",
     "BII",
+    "WeightedBII",
     "CHII",
     "k-SII",
     "STII",

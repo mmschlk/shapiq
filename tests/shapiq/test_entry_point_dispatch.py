@@ -6,9 +6,9 @@ import jax.numpy as jnp
 import pytest
 
 from shapiq import (
+    FBII,
     FSII,
     SII,
-    STII,
     SV,
     CallableGame,
     ExactExplainer,
@@ -87,14 +87,13 @@ def test_regression_sv_matches_order_one_fsii_over_the_same_stream():
     assert shapley.explain().interaction_index == "SV"
 
 
-def test_orientation_is_carried_by_the_index():
-    assert SII(order=2).orientation == "undirected"
-    assert STII(order=3).orientation == "undirected"
-    approximator = PermutationSampling(cubic_game(), SV())
-    assert approximator.orientation == "undirected"
-    assert approximator.explain is not None  # explainers derive, never store, orientation
-    explainer = ExactExplainer(cubic_game(), SV())
-    assert explainer.orientation == "undirected"
+def test_explanations_default_to_undirected_interactions():
+    explainer = ExactExplainer(cubic_game(), SII(order=2))
+    assert not hasattr(explainer, "orientation")  # orientation is no index concern
+    assert not hasattr(SII(order=2), "orientation")
+    explanation = explainer.explain()
+    assert explanation.orientation == "undirected"
+    assert jnp.allclose(explanation((2, 0)), explanation((0, 2)), atol=0)  # keys are sorted
 
 
 def test_repr_names_the_entry_point_and_index():
@@ -102,3 +101,25 @@ def test_repr_names_the_entry_point_and_index():
     text = repr(approximator)
     assert "Regression" in text
     assert "interaction_index='FSII'" in text
+
+
+def test_subclass_lookalikes_are_rejected_at_closed_entry_points():
+    class MySII(SII): ...
+
+    class MyFSII(FSII): ...
+
+    class MyFBII(FBII): ...
+
+    with pytest.raises(TypeError, match="exact index type"):
+        PermutationSampling(cubic_game(), MySII(order=2))
+    with pytest.raises(TypeError, match="exact index type"):
+        Regression(cubic_game(), MyFSII(order=2))
+    with pytest.raises(TypeError, match="subclasses FBII"):
+        ExactExplainer(cubic_game(), MyFBII(order=2))
+
+
+def test_explanations_carry_the_index_object():
+    explanation = ExactExplainer(cubic_game(), SII(order=2)).explain()
+    assert explanation.index == SII(order=2)
+    assert explanation.interaction_index == "SII"
+    assert "SII(order=2)" in repr(explanation)

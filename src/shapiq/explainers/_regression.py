@@ -95,15 +95,23 @@ class Regression(EvidenceApproximator):
                 samples shared across explanation targets.
         """
         reject_common_index_mistakes(index)
-        if not isinstance(index, (SV, FSII, FBII)):
+        if type(index) not in (SV, FSII, FBII):
             name = getattr(index, "name", type(index).__name__)
+            if isinstance(index, (SV, FSII, FBII)):
+                msg = (
+                    f"Regression dispatches on the exact index type: {type(index).__name__} "
+                    "subclasses a supported index, but the sampler and solver are "
+                    "kernel-matched to the shipped type; pass SV(), FSII(order=k), "
+                    "or FBII(order=k) itself"
+                )
+                raise TypeError(msg)
             msg = (
                 f"Regression does not support {name!r}: each supported index "
                 "samples coalitions from its own kernel, and matching "
                 "samplers exist for SV(), FSII(order=k), and FBII(order=k)"
             )
             raise TypeError(msg)
-        sampler_type = BanzhafKernelSampler if isinstance(index, FBII) else ShapleyKernelSampler
+        sampler_type = BanzhafKernelSampler if type(index) is FBII else ShapleyKernelSampler
         sampler = sampler_type(
             game.n_players,
             game.target_shape,
@@ -125,14 +133,14 @@ class Regression(EvidenceApproximator):
         the unconstrained Banzhaf fit with its free intercept.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
-        if isinstance(self.index, FBII):
+        if type(self.index) is FBII:
             return max(super().min_budget, self.sampler.n_seed_samples + n_columns + 1)
         return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
 
     def _solve(self, masks: Array, response: Array, delta: Array) -> Array:
         """Solve one design's least squares fit per the index's kernel family."""
         design = interaction_design(masks, self.order)
-        if isinstance(self.index, FBII):
+        if type(self.index) is FBII:
             design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
             require_identification(design, deduplicating=self.deduplicate)
             solution, *_ = jnp.linalg.lstsq(design, response)
@@ -199,7 +207,7 @@ class Regression(EvidenceApproximator):
             stacked = jnp.stack(per_target, axis=-1)
             solutions = stacked.reshape(stacked.shape[0], -1)
         coefficients = solutions.T
-        if isinstance(self.index, FBII):
+        if type(self.index) is FBII:
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
             attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}
@@ -217,10 +225,9 @@ class Regression(EvidenceApproximator):
         return DenseExplanationArray(
             attributions_by_order=attributions,
             n_players=n_players,
-            interaction_index=self.interaction_index,
+            index=self.index,
             order=self.order,
             shape=target_shape,
-            orientation=self.orientation,
             value_shape=value_shape,
             baseline=to_trailing(value_empty, n_value_axes),
         )

@@ -274,3 +274,23 @@ def test_exact_jointsv_higher_orders_stay_efficient():
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(joint, 2), grand - empty, atol=1e-3)
     assert jnp.allclose(joint.baseline, empty, atol=1e-4)
+
+
+def test_values_declare_their_singleton_marginal_weights():
+    assert jnp.allclose(
+        SV().marginal_weights(N_PLAYERS, 1),
+        SGV(order=2).marginal_weights(N_PLAYERS, 1),
+    )
+    assert jnp.allclose(
+        BV().marginal_weights(N_PLAYERS, 1),
+        BGV(order=2).marginal_weights(N_PLAYERS, 1),
+    )
+    with pytest.raises(ValueError, match="single players only"):
+        SV().marginal_weights(N_PLAYERS, 2)
+
+
+def test_regression_kernels_declare_their_constraint_structure():
+    assert jnp.allclose(FBII(order=2).regression_kernel(4), jnp.ones(5))
+    shapley_kernel = FSII(order=2).regression_kernel(N_PLAYERS)
+    assert shapley_kernel[0] == 0.0
+    assert shapley_kernel[-1] == 0.0

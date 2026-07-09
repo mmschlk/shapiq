@@ -26,6 +26,8 @@ from shapiq.interactions._indices import (
     JointSV,
     Moebius,
     RegressionIndex,
+    WeightedBII,
+    WeightedBV,
 )
 from shapiq.interactions._iteration import iter_interactions
 from shapiq.interactions._types import (
@@ -64,6 +66,8 @@ __all__ = [
     "Moebius",
     "OrderSemantics",
     "RegressionIndex",
+    "WeightedBII",
+    "WeightedBV",
     "iter_interactions",
     "normalize_interaction",
     "validate_interaction_metadata",

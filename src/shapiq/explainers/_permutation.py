@@ -102,6 +102,13 @@ class PermutationSampling(EvidenceApproximator):
         if family is None:
             supported = ", ".join(sorted(kind.__name__ for kind in _FAMILIES))
             name = getattr(index, "name", type(index).__name__)
+            if isinstance(index, tuple(_FAMILIES)):
+                msg = (
+                    f"PermutationSampling dispatches on the exact index type: "
+                    f"{type(index).__name__} subclasses a supported index; "
+                    f"pass one of {supported} itself (e.g. SII(order=2))"
+                )
+                raise TypeError(msg)
             msg = (
                 f"PermutationSampling does not support {name!r}: supported "
                 f"indices are {supported} (e.g. SII(order=2))"
@@ -218,10 +225,9 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
             1: to_trailing(sums / evidence.n_walks, n_value_axes),
         },
         n_players=approximator.game.n_players,
-        interaction_index=approximator.interaction_index,
+        index=approximator.index,
         order=1,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
@@ -293,10 +299,9 @@ def _explain_interactions(approximator: PermutationSampling) -> DenseExplanation
             size: to_trailing(block, n_value_axes) for size, block in attributions.items()
         },
         n_players=n_players,
-        interaction_index=approximator.interaction_index,
+        index=approximator.index,
         order=order,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
@@ -332,10 +337,9 @@ def _explain_taylor_interactions(
             size: to_trailing(block, n_value_axes) for size, block in attributions.items()
         },
         n_players=n_players,
-        interaction_index=approximator.interaction_index,
+        index=approximator.index,
         order=top_order,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )

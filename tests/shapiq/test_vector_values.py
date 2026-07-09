@@ -196,7 +196,7 @@ def test_explanations_validate_attribution_block_shapes():
         DenseExplanationArray(
             attributions_by_order={1: jnp.zeros((N_PLAYERS, 3))},
             n_players=N_PLAYERS,
-            interaction_index="SV",
+            index=SV(),
             order=1,
             value_shape=(2,),
         )

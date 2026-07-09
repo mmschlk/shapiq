@@ -9,9 +9,10 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq._shape import Shape, normalize_shape, validate_n_players
-from shapiq.explanations._base import ExplanationArray
+from shapiq.explanations._base import ExplanationArray, validate_explained_index
 from shapiq.interactions import (
     Interaction,
+    InteractionIndex,
     InteractionOrientation,
     iter_interactions,
     normalize_interaction,
@@ -28,7 +29,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
 
     attributions_by_order: Mapping[int, ValueT]
     n_players: int
-    interaction_index: str
+    index: InteractionIndex
     order: int
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"
@@ -43,8 +44,9 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         object.__setattr__(self, "n_players", n_players)
         object.__setattr__(self, "shape", shape)
         object.__setattr__(self, "value_shape", value_shape)
+        validate_explained_index(self.index, order=self.order)
         validate_interaction_metadata(
-            interaction_index=self.interaction_index,
+            interaction_index=self.index.name,
             order=self.order,
             orientation=self.orientation,
             n_players=n_players,
@@ -92,7 +94,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         return type(self)(
             new_values,
             n_players=self.n_players,
-            interaction_index=self.interaction_index,
+            index=self.index,
             order=self.order,
             shape=new_shape,
             orientation=self.orientation,
@@ -119,7 +121,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         """Return a concise representation."""
         return (
             f"{type(self).__name__}(shape={self.shape!r}, n_players={self.n_players!r}, "
-            f"interaction_index={self.interaction_index!r}, order={self.order!r}, "
+            f"index={self.index!r}, order={self.order!r}, "
             f"orientation={self.orientation!r}, value_shape={self.value_shape!r})"
         )
 

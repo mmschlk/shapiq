@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 import jax.numpy as jnp
 
 from shapiq._shape import Shape, normalize_shape, validate_n_players
-from shapiq.explanations._base import ExplanationArray
+from shapiq.explanations._base import ExplanationArray, validate_explained_index
 from shapiq.interactions import (
     Interaction,
+    InteractionIndex,
     InteractionOrientation,
     normalize_interaction,
     validate_interaction_metadata,
@@ -24,21 +25,25 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
 
     attributions: Mapping[Interaction, ValueT]
     n_players: int
-    interaction_index: str
+    index: InteractionIndex
     order: int
     shape: Shape = ()
     orientation: InteractionOrientation = "undirected"
     default_attribution: Callable[[Sequence[int] | object], ValueT] | None = None
+    value_shape: Shape = ()
     baseline: ValueT | None = None
 
     def __post_init__(self) -> None:
-        """Normalize and validate metadata."""
+        """Normalize and validate metadata, then validate attribution shapes."""
         n_players = validate_n_players(self.n_players)
         shape = normalize_shape(self.shape)
+        value_shape = normalize_shape(self.value_shape)
         object.__setattr__(self, "n_players", n_players)
         object.__setattr__(self, "shape", shape)
+        object.__setattr__(self, "value_shape", value_shape)
+        validate_explained_index(self.index, order=self.order)
         validate_interaction_metadata(
-            interaction_index=self.interaction_index,
+            interaction_index=self.index.name,
             order=self.order,
             orientation=self.orientation,
             n_players=n_players,
@@ -48,22 +53,47 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
             for interaction, value in self.attributions.items()
         }
         object.__setattr__(self, "attributions", normalized)
+        expected = (*shape, *value_shape)
+        for interaction, value in normalized.items():
+            actual = jnp.shape(cast("jnp.ndarray", value))
+            if actual != expected:
+                msg = (
+                    f"attributions for {interaction} have shape {actual}, expected "
+                    f"{expected} (targets, then value_shape)"
+                )
+                raise ValueError(msg)
+        if self.baseline is not None:
+            actual = jnp.shape(cast("jnp.ndarray", self.baseline))
+            if actual != expected:
+                msg = f"the baseline has shape {actual}, expected {expected}"
+                raise ValueError(msg)
 
     def __getitem__(self, key: object) -> SparseExplanationArray[ValueT]:
         """Index explanation target axes and preserve sparse storage."""
         if self.shape == ():
             msg = "cannot index a scalar explanation"
             raise IndexError(msg)
+        key_tuple = key if isinstance(key, tuple) else (key,)
         new_shape = tuple(int(dim) for dim in jnp.empty(self.shape)[key].shape)
+        new_values = {
+            interaction: cast("ValueT", cast("_Indexable", value)[(*key_tuple, Ellipsis)])
+            for interaction, value in self.attributions.items()
+        }
+        new_baseline = (
+            None
+            if self.baseline is None
+            else cast("ValueT", cast("_Indexable", self.baseline)[(*key_tuple, Ellipsis)])
+        )
         return type(self)(
-            self.attributions,
+            new_values,
             n_players=self.n_players,
-            interaction_index=self.interaction_index,
+            index=self.index,
             order=self.order,
             shape=new_shape,
             orientation=self.orientation,
             default_attribution=self.default_attribution,
-            baseline=self.baseline,
+            value_shape=self.value_shape,
+            baseline=new_baseline,
         )
 
     def __iter__(self) -> object:
@@ -85,8 +115,8 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
         """Return a concise representation."""
         return (
             f"{type(self).__name__}(shape={self.shape!r}, n_players={self.n_players!r}, "
-            f"interaction_index={self.interaction_index!r}, order={self.order!r}, "
-            f"orientation={self.orientation!r})"
+            f"index={self.index!r}, order={self.order!r}, "
+            f"orientation={self.orientation!r}, value_shape={self.value_shape!r})"
         )
 
     def attribution(self, interaction: Sequence[int] | object) -> ValueT:
@@ -125,3 +155,10 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
             msg = "interaction is not represented"
             raise KeyError(msg)
         return normalized
+
+
+class _Indexable(Protocol):
+    """Minimal protocol for indexable attribution storage."""
+
+    def __getitem__(self, key: object) -> object:
+        """Return indexed data."""

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Self
 from shapiq._shape import Shape, logical_size
 from shapiq.interactions import (
     Interaction,
+    InteractionIndex,
     InteractionOrientation,
     iter_interactions,
 )
@@ -24,10 +25,15 @@ class ExplanationArray[ValueT](ABC):
 
     n_players: int
     shape: Shape
-    interaction_index: str
+    index: InteractionIndex
     order: int
     orientation: InteractionOrientation
     baseline: ValueT | None
+
+    @property
+    def interaction_index(self) -> str:
+        """Return the name of the explained interaction index."""
+        return self.index.name
 
     @property
     def ndim(self) -> int:
@@ -76,3 +82,24 @@ class ExplanationArray[ValueT](ABC):
             min_order=min_order,
             orientation=self.orientation,
         )
+
+
+def validate_explained_index(index: object, *, order: int) -> InteractionIndex:
+    """Validate the index recorded on an explanation and its order consistency."""
+    if isinstance(index, str):
+        msg = (
+            "explanations carry the interaction index object, not its name: "
+            f"pass index=shapiq.SV() (or the index the explainer used), "
+            f"not the string {index!r}"
+        )
+        raise TypeError(msg)
+    if not isinstance(index, InteractionIndex):
+        msg = f"index must be an interaction index object, got {type(index).__name__}"
+        raise TypeError(msg)
+    if index.order is not None and index.order != order:
+        msg = (
+            f"the explanation records order {order} but its index declares "
+            f"order {index.order}; explanations carry the index they were computed with"
+        )
+        raise ValueError(msg)
+    return index

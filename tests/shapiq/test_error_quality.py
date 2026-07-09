@@ -91,3 +91,41 @@ def test_identification_hint_adapts_to_deduplication():
     with pytest.raises(InsufficientSamplesError, match="retry") as caught:
         Regression(game, FSII(order=2), random_state=0, deduplicate=True).sample(2 + 6).explain()
     assert "deduplicate=True" not in str(caught.value)
+
+
+@dataclass(frozen=True)
+class _UniformKernel:
+    """A regression index whose kernel forgets the endpoint constraints."""
+
+    order: int = 1
+
+    name: ClassVar = "Uniformish"
+    order_semantics: ClassVar = "identity"
+    orientation: ClassVar = "undirected"
+    includes_empty_interaction: ClassVar = False
+    preserves_value: ClassVar = False
+    generalizes: ClassVar = None
+
+    def regression_kernel(self, n_players: int):
+        return jnp.ones(n_players + 1)
+
+
+def test_unconstrained_kernels_are_rejected_by_the_constrained_solver():
+    explainer = ExactExplainer(additive_game(), _UniformKernel())
+    with pytest.raises(TypeError, match="zero kernel weight"):
+        explainer.explain()
+
+
+def test_string_errors_map_shipped_names_to_constructors():
+    with pytest.raises(TypeError, match=r"shapiq\.KSII\(order=2\) instead of 'k-SII'"):
+        ExactExplainer(additive_game(), "k-SII")
+    with pytest.raises(TypeError, match=r"shapiq\.SV\(\) instead of 'SV'"):
+        PermutationSampling(additive_game(), "SV")
+
+
+def test_non_conforming_indices_name_the_missing_members():
+    class _OldStyle:
+        name = "SII"
+
+    with pytest.raises(TypeError, match="missing index members: order,"):
+        ExactExplainer(additive_game(), _OldStyle())

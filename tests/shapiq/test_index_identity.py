@@ -30,6 +30,8 @@ from shapiq import (
     ExactExplainer,
     JointSV,
     Moebius,
+    WeightedBII,
+    WeightedBV,
 )
 from shapiq.interactions import ExtensionalEquality
 
@@ -143,3 +145,48 @@ def test_custom_named_indices_work_end_to_end():
     assert jnp.allclose(order_one(explanation), order_one(reference), atol=1e-6)
     # opting into the equality mixin makes the order-1 identity hold for it too
     assert _RenamedShapley() == SV()
+
+
+ALL_INSTANCES = [
+    SV(),
+    BV(),
+    WeightedBV(p=0.3),
+    SII(order=2),
+    BII(order=2),
+    WeightedBII(p=0.3, order=2),
+    CHII(order=2),
+    STII(order=2),
+    KSII(order=2),
+    FSII(order=2),
+    FBII(order=2),
+    KADDSHAP(order=2),
+    Moebius(),
+    CoMoebius(),
+    SGV(order=2),
+    BGV(order=2),
+    CHGV(order=2),
+    IGV(order=2),
+    EGV(order=2),
+    JointSV(order=2),
+]
+
+
+@pytest.mark.parametrize("index", ALL_INSTANCES, ids=repr)
+def test_empty_interaction_metadata_matches_explanations(index):
+    explanation = ExactExplainer(random_table_game(), index).explain()
+    if index.includes_empty_interaction:
+        explanation(())  # the order-0 attribution exists
+    else:
+        with pytest.raises(KeyError, match="not represented"):
+            explanation(())
+
+
+@pytest.mark.parametrize(
+    "index_type",
+    [SII, BII, WeightedBII, CHII, SGV, BGV, CHGV, IGV, EGV, Moebius, CoMoebius],
+)
+def test_coverage_semantics_hold_numerically(index_type):
+    assert index_type(order=1).order_semantics == "coverage"
+    first = order_one(ExactExplainer(random_table_game(), index_type(order=1)).explain())
+    second = order_one(ExactExplainer(random_table_game(), index_type(order=2)).explain())
+    assert jnp.allclose(first, second, atol=1e-6)
