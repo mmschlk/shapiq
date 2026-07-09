@@ -51,5 +51,5 @@ class BaselineMasker(Masker[torch.Tensor]):
 
     def _mask(self, coalitions: CoalitionArray) -> torch.Tensor:
         """Return model-native inputs with absent players set to the baseline."""
-        masks = _coalitions_to_torch(coalitions)
+        masks = _coalitions_to_torch(coalitions).to(self.inputs.device)
         return torch.where(masks, self.inputs.unsqueeze(-2), self.baseline)

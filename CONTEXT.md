@@ -104,6 +104,10 @@ _Avoid_: array API implementation
 A component that turns a **CoalitionArray** into model-native masked inputs by representing absent **Players**.
 _Avoid_: imputer, perturbation function
 
+**Superpixel**:
+A group of pixels acting as one **Player** when explaining image models, represented by an integer label map assigning every pixel a superpixel id covering ``0 .. n_players - 1``. A grid is the simplest layout; irregular layouts (SLIC-style) are just different label maps.
+_Avoid_: patch, segment
+
 **MaskedPredictor**:
 A metadata-carrying abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns model-native predictions for those coalitions.
 _Avoid_: masked model, prediction game

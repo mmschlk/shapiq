@@ -27,5 +27,11 @@ def to_jax(values: object, *, detach: bool = True) -> Array:
         tensor = values.detach() if detach else values
         # DLPack import requires compact striding; slices and transposed
         # views coming out of link functions rarely have it
-        return cast("Array", jax.dlpack.from_dlpack(tensor.contiguous()))
+        tensor = tensor.contiguous()
+        try:
+            return cast("Array", jax.dlpack.from_dlpack(tensor))
+        except (RuntimeError, TypeError, ValueError):
+            # JAX cannot import tensors living on devices it has no backend
+            # for (CUDA/MPS torch with CPU JAX); copy through host memory
+            return jnp.asarray(tensor.cpu().numpy())
     return jnp.asarray(values)
