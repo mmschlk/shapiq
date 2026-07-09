@@ -32,6 +32,7 @@ from shapiq import (
     Moebius,
     WeightedBII,
     WeightedBV,
+    WeightedFBII,
 )
 from shapiq.interactions import ExtensionalEquality
 
@@ -159,6 +160,7 @@ ALL_INSTANCES = [
     KSII(order=2),
     FSII(order=2),
     FBII(order=2),
+    WeightedFBII(p=0.3, order=2),
     KADDSHAP(order=2),
     Moebius(),
     CoMoebius(),

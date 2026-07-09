@@ -14,6 +14,7 @@ type InteractionIndexName = Literal[
     "STII",
     "FSII",
     "FBII",
+    "WeightedFBII",
     "kADD-SHAP",
     "SGV",
     "BGV",

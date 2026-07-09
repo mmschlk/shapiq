@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from shapiq.sampling._base import Sampler, ShareSamples
-from shapiq.sampling._kernel import BanzhafKernelSampler, ShapleyKernelSampler
+from shapiq.sampling._kernel import (
+    BanzhafKernelSampler,
+    KernelSampler,
+    ProductKernelSampler,
+    ShapleyKernelSampler,
+    SizeKernelSampler,
+)
 from shapiq.sampling._pairing import AntitheticDraws, PairedSampler
 from shapiq.sampling._permutation import (
     PermutationSIISampler,
@@ -18,8 +24,11 @@ __all__ = [
     "AntitheticDraws",
     "ApproximationState",
     "EmptyState",
+    "KernelSampler",
     "PairedSampler",
     "PermutationSIISampler",
+    "ProductKernelSampler",
+    "SizeKernelSampler",
     "PermutationSTIISampler",
     "PermutationWalkSampler",
     "Sampler",

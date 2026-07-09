@@ -28,6 +28,7 @@ from shapiq.interactions._indices import (
     RegressionIndex,
     WeightedBII,
     WeightedBV,
+    WeightedFBII,
 )
 from shapiq.interactions._iteration import iter_interactions
 from shapiq.interactions._types import (
@@ -68,6 +69,7 @@ __all__ = [
     "RegressionIndex",
     "WeightedBII",
     "WeightedBV",
+    "WeightedFBII",
     "iter_interactions",
     "normalize_interaction",
     "validate_interaction_metadata",

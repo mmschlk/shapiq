@@ -32,10 +32,17 @@ from shapiq.interactions import (
     CardinalInteractionIndex,
     GeneralizedValueIndex,
     RegressionIndex,
+    WeightedFBII,
 )
 
 type ExactIndex = (
-    CardinalInteractionIndex | GeneralizedValueIndex | RegressionIndex | KSII | FBII | KADDSHAP
+    CardinalInteractionIndex
+    | GeneralizedValueIndex
+    | RegressionIndex
+    | KSII
+    | FBII
+    | WeightedFBII
+    | KADDSHAP
 )
 
 
@@ -48,9 +55,10 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
     players. Any cardinal interaction index (discrete-derivative weights),
     generalized value (bloc-marginal weights), or Shapley-kernel regression
     index is supported through its capability, alongside dedicated solvers
-    for k-SII, FBII, and kADD-SHAP; shapiq ships SV, BV, SII, BII, CHII,
-    k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV,
-    CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
+    for k-SII, FBII, WeightedFBII, and kADD-SHAP; shapiq ships SV, BV,
+    WeightedBV, SII, BII, WeightedBII, CHII, k-SII, STII, FSII, FBII,
+    WeightedFBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV,
+    EGV, and JointSV, and the Moebius and Co-Moebius transforms.
     The powerset evaluation happens on the first ``explain()`` call and is
     reused afterwards; construction never evaluates the game. Computations
     run in the game's value precision (float32 under JAX defaults; enabling
@@ -71,8 +79,8 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             index: The interaction index to compute, as an index object such
                 as ``SV()`` or ``SII(order=2)``. Any index providing
                 discrete-derivative weights, bloc-marginal weights, or a
-                regression kernel works; k-SII, FBII, and kADD-SHAP have
-                dedicated solvers.
+                regression kernel works; k-SII, FBII, WeightedFBII, and
+                kADD-SHAP have dedicated solvers.
 
         Raises:
             TypeError: If the index is passed as a string name or provides
@@ -80,7 +88,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             ValueError: If the index order is out of range for the game.
         """
         reject_common_index_mistakes(index)
-        for shipped in (KSII, FBII, KADDSHAP):
+        for shipped in (KSII, FBII, WeightedFBII, KADDSHAP):
             if isinstance(index, shipped) and type(index) is not shipped:
                 msg = (
                     f"{type(index).__name__} subclasses {shipped.__name__}, whose exact "
@@ -118,9 +126,9 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         Returns:
             A dense explanation whose baseline is the empty-coalition value
             and whose attributions are computed on the centered game. Only
-            indices with a genuine order-0 attribution carry one: FBII's is
-            its fitted intercept, the Co-Moebius transform's is the grand
-            total ``v(N) - v(empty)``.
+            indices with a genuine order-0 attribution carry one: FBII and
+            WeightedFBII carry their fitted intercept, the Co-Moebius
+            transform its grand total ``v(N) - v(empty)``.
         """
         n_players = self.game.n_players
         n_value_axes = len(self.game.value_shape)
@@ -133,7 +141,17 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         if type(index) is KSII:
             attributions = _aggregated_ksii_attributions(values, masks, order)
         elif type(index) is FBII:
-            attributions = _banzhaf_regression_attributions(values, masks, order)
+            attributions = _free_intercept_regression_attributions(values, masks, order)
+        elif type(index) is WeightedFBII:
+            weighted = cast("WeightedFBII", index)  # type(x) is Y does not narrow in ty
+            kernel = weighted.regression_kernel(n_players)
+            sqrt_weights = jnp.sqrt(kernel / jnp.max(kernel))[jnp.sum(masks, axis=-1)]
+            attributions = _free_intercept_regression_attributions(
+                values,
+                masks,
+                order,
+                sqrt_weights=sqrt_weights,
+            )
         elif type(index) is KADDSHAP:
             attributions = _kadd_regression_attributions(values, masks, index, order)
         elif isinstance(index, CardinalInteractionIndex):
@@ -309,12 +327,18 @@ def _regression_attributions(
     return _solution_blocks(solution, values, n_players, order)
 
 
-def _banzhaf_regression_attributions(
+def _free_intercept_regression_attributions(
     values: Array,
     masks: Array,
     order: int,
+    sqrt_weights: Array | None = None,
 ) -> dict[int, Array]:
-    """Solve the unconstrained uniform least squares fit with a free intercept."""
+    """Solve an unconstrained kernel least squares fit with a free intercept.
+
+    Without ``sqrt_weights`` every row enters with unit weight (the uniform
+    Banzhaf kernel); with them the fit minimizes the kernel-weighted squared
+    error, as for the product-measure kernels of the weighted Banzhaf family.
+    """
     n_players = masks.shape[-1]
     n_coalitions = masks.shape[-2]
     design = jnp.concatenate(
@@ -322,7 +346,13 @@ def _banzhaf_regression_attributions(
         axis=-1,
     )
     response = (values - values[..., :1]).reshape(-1, n_coalitions).T
-    solution, *_ = jnp.linalg.lstsq(design, response)
+    if sqrt_weights is not None:
+        solution, *_ = jnp.linalg.lstsq(
+            sqrt_weights[:, None] * design,
+            sqrt_weights[:, None] * response,
+        )
+    else:
+        solution, *_ = jnp.linalg.lstsq(design, response)
     attributions = _solution_blocks(solution[1:], values, n_players, order)
     attributions[0] = solution[0].T.reshape(*values.shape[:-1], 1)
     return attributions

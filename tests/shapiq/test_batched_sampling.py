@@ -11,7 +11,9 @@ from shapiq.sampling import (
     EmptyState,
     PermutationSIISampler,
     PermutationSTIISampler,
+    ProductKernelSampler,
     ShapleyKernelSampler,
+    SizeKernelSampler,
     UnitScheduleSampler,
 )
 
@@ -48,6 +50,10 @@ def all_samplers():
         "shapley-kernel-targets": ShapleyKernelSampler(N_PLAYERS, (2,), random_state=1),
         "permutation-sii-targets": PermutationSIISampler(
             N_PLAYERS, (2,), order=2, random_state=1
+        ),
+        "product-kernel": ProductKernelSampler(N_PLAYERS, 0.3, random_state=2),
+        "size-kernel": SizeKernelSampler(
+            N_PLAYERS, jnp.arange(N_PLAYERS + 1.0), random_state=2
         ),
     }
 

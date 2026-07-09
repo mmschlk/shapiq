@@ -22,6 +22,7 @@ _SHIPPED_EXAMPLES = {
     "k-SII": "KSII(order=2)",
     "FSII": "FSII(order=2)",
     "FBII": "FBII(order=2)",
+    "WeightedFBII": "WeightedFBII(p=0.5, order=2)",
     "kADD-SHAP": "KADDSHAP(order=2)",
     "SGV": "SGV(order=2)",
     "BGV": "BGV(order=2)",

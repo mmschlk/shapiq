@@ -18,13 +18,15 @@ from shapiq.explainers._faithful import (
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import FBII, FSII, SV
+from shapiq.interactions import FBII, FSII, SV, WeightedFBII
 from shapiq.sampling import (
     BanzhafKernelSampler,
     EmptyState,
     PairedSampler,
+    ProductKernelSampler,
     SamplingState,
     ShapleyKernelSampler,
+    UnitScheduleSampler,
 )
 
 if TYPE_CHECKING:
@@ -47,7 +49,11 @@ class Regression(EvidenceApproximator):
     conditioned in float32. ``FBII(order=k)`` is the best ``k``-additive
     approximation under the uniform kernel, fit without constraints and with
     a free intercept as its order-0 attribution; its order-1 special case
-    converges to the Banzhaf value.
+    converges to the Banzhaf value. ``WeightedFBII(p, order=k)`` is the best
+    ``k``-additive approximation under the product measure in which every
+    player joins with probability ``p``, sampled by membership flips and fit
+    like FBII; pairing is reserved for complement-symmetric kernels, so it
+    switches off automatically at ``p != 0.5``.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the
@@ -64,11 +70,11 @@ class Regression(EvidenceApproximator):
     def __init__(
         self,
         game: Game[Array],
-        index: SV | FSII | FBII,
+        index: SV | FSII | FBII | WeightedFBII,
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
-        paired: bool = True,
+        paired: bool | None = None,
         track_history: bool = False,
         deduplicate: bool = False,
     ) -> None:
@@ -78,8 +84,9 @@ class Regression(EvidenceApproximator):
             game: Game to explain. Must have at least two players.
             index: The interaction index to estimate: ``SV()`` for Shapley
                 values via KernelSHAP, ``FSII(order=k)`` for faithful
-                Shapley interactions, or ``FBII(order=k)`` for faithful
-                Banzhaf interactions.
+                Shapley interactions, ``FBII(order=k)`` for faithful
+                Banzhaf interactions, or ``WeightedFBII(p, order=k)`` for
+                faithful weighted Banzhaf interactions.
             random_state: Integer seed or JAX PRNG key for drawing
                 coalitions.
             share_samples: Policy for sharing sampled coalitions across
@@ -87,7 +94,11 @@ class Regression(EvidenceApproximator):
                 target; ``True`` shares across all target axes; an integer or
                 tuple of integers shares across the selected axes.
             paired: Whether every sampled coalition is accompanied by its
-                complement, which reduces estimation variance.
+                complement, which reduces estimation variance. The default
+                ``None`` pairs exactly when the index's kernel is
+                complement-symmetric: always except for ``WeightedFBII``
+                with ``p != 0.5``, whose complements would enter the fit
+                with the wrong implicit weighting.
             track_history: Whether to record value-equivalent history for
                 rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
@@ -98,34 +109,59 @@ class Regression(EvidenceApproximator):
             TypeError: If the index has no kernel-matched regression
                 estimator.
             ValueError: If the game has fewer than two players, if the order
-                is out of range, or if ``deduplicate`` is enabled without
-                samples shared across explanation targets.
+                is out of range, if ``paired=True`` is requested for a
+                kernel that is not complement-symmetric, or if
+                ``deduplicate`` is enabled without samples shared across
+                explanation targets.
         """
         reject_common_index_mistakes(index)
-        if type(index) not in (SV, FSII, FBII):
+        if type(index) not in (SV, FSII, FBII, WeightedFBII):
             name = getattr(index, "name", type(index).__name__)
-            if isinstance(index, (SV, FSII, FBII)):
+            if isinstance(index, (SV, FSII, FBII, WeightedFBII)):
                 msg = (
                     f"Regression dispatches on the exact index type: {type(index).__name__} "
                     "subclasses a supported index, but the sampler and solver are "
                     "kernel-matched to the shipped type; pass SV(), FSII(order=k), "
-                    "or FBII(order=k) itself"
+                    "FBII(order=k), or WeightedFBII(p, order=k) itself"
                 )
                 raise TypeError(msg)
             msg = (
                 f"Regression does not support {name!r}: each supported index "
-                "samples coalitions from its own kernel, and matching "
-                "samplers exist for SV(), FSII(order=k), and FBII(order=k)"
+                "samples coalitions from its own kernel, and matching samplers "
+                "exist for SV(), FSII(order=k), FBII(order=k), and "
+                "WeightedFBII(p, order=k)"
             )
             raise TypeError(msg)
-        sampler_type = BanzhafKernelSampler if type(index) is FBII else ShapleyKernelSampler
-        base_sampler = sampler_type(
-            game.n_players,
-            game.target_shape,
-            share_samples=share_samples,
-            random_state=random_state,
-        )
-        sampler = PairedSampler(base_sampler) if ensure_bool("paired", paired) else base_sampler
+        base_sampler: UnitScheduleSampler
+        symmetric_kernel = True
+        if type(index) is WeightedFBII:
+            symmetric_kernel = index.p == 0.5
+            base_sampler = ProductKernelSampler(
+                game.n_players,
+                index.p,
+                game.target_shape,
+                share_samples=share_samples,
+                random_state=random_state,
+            )
+        else:
+            sampler_type = BanzhafKernelSampler if type(index) is FBII else ShapleyKernelSampler
+            base_sampler = sampler_type(
+                game.n_players,
+                game.target_shape,
+                share_samples=share_samples,
+                random_state=random_state,
+            )
+        if paired is None:
+            paired = symmetric_kernel
+        elif ensure_bool("paired", paired) and not symmetric_kernel:
+            msg = (
+                "paired sampling adds the complement of every sampled coalition, but "
+                "the product measure at p != 0.5 is not complement-symmetric, so the "
+                "complements would enter the unweighted fit with the wrong implicit "
+                "weighting; pass paired=False (or use p=0.5)"
+            )
+            raise ValueError(msg)
+        sampler = PairedSampler(base_sampler) if paired else base_sampler
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
@@ -140,14 +176,14 @@ class Regression(EvidenceApproximator):
         the unconstrained Banzhaf fit with its free intercept.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
-        if type(self.index) is FBII:
+        if type(self.index) in (FBII, WeightedFBII):
             return max(super().min_budget, self.sampler.n_seed_samples + n_columns + 1)
         return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
 
     def _solve(self, masks: Array, response: Array, delta: Array) -> Array:
         """Solve one design's least squares fit per the index's kernel family."""
         design = interaction_design(masks, self.order)
-        if type(self.index) is FBII:
+        if type(self.index) in (FBII, WeightedFBII):
             design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
             require_identification(design, deduplicating=self.deduplicate)
             solution, *_ = jnp.linalg.lstsq(design, response)
@@ -163,7 +199,8 @@ class Regression(EvidenceApproximator):
             A dense explanation whose baseline is the empty-coalition value.
             Attributions hold the solution of the kernel least squares
             problem on the centered game over all completed sampled units;
-            FBII additionally carries its fitted intercept at order zero.
+            FBII and WeightedFBII additionally carry their fitted intercept
+            at order zero.
             Pending samples of an unfinished unit are excluded.
 
         Raises:
@@ -214,7 +251,7 @@ class Regression(EvidenceApproximator):
             stacked = jnp.stack(per_target, axis=-1)
             solutions = stacked.reshape(stacked.shape[0], -1)
         coefficients = solutions.T
-        if type(self.index) is FBII:
+        if type(self.index) in (FBII, WeightedFBII):
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
             attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}

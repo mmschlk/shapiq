@@ -511,6 +511,60 @@ class FBII(ExtensionalEquality):
 
 
 @dataclass(frozen=True, eq=False)
+class WeightedFBII(ExtensionalEquality):
+    """The faithful weighted Banzhaf interaction index of order ``order``.
+
+    Order is part of the index identity: the index is the best
+    ``order``-additive approximation of the game under the product measure
+    ``p**t * (1 - p)**(n - t)``, in which every player joins a coalition
+    independently with probability ``p`` (Marichal and Mathonet's weighted
+    least squares framing, the FIxLIP foundation). The fit is unconstrained
+    with a free intercept, so the order-0 attribution is the fitted
+    intercept of the centered game. The uniform weighting ``p = 1/2`` is
+    the faithful Banzhaf interaction index, and instances at ``p = 1/2``
+    compare equal to ``FBII`` of the same order; the fit's order-1
+    coefficients are the weighted Banzhaf value, so order-1 instances
+    equal ``WeightedBV(p)``.
+    """
+
+    p: float = 0.5
+    order: int = 2
+
+    name: ClassVar[InteractionIndexName] = "WeightedFBII"
+    order_semantics: ClassVar[OrderSemantics] = "identity"
+    preserves_value: ClassVar[bool] = False
+    includes_empty_interaction: ClassVar[bool] = True
+
+    def __post_init__(self) -> None:
+        """Validate the joining probability and the order."""
+        _validate_probability(self.p)
+        validate_int("order", self.order, minimum=1)
+
+    @property
+    def generalizes(self) -> WeightedBV:
+        """Return the weighted Banzhaf value with the same weighting."""
+        return WeightedBV(p=self.p)
+
+    def _identity(self) -> tuple[object, ...]:
+        """Collapse the uniform weighting onto the faithful Banzhaf index."""
+        if self.p == 0.5:
+            return ExtensionalEquality._identity(  # noqa: SLF001 - sibling rule
+                FBII(order=self.order),
+            )
+        return super()._identity()
+
+    def regression_kernel(self, n_players: int) -> Array:
+        """Return the product-measure kernel ``p**t * (1 - p)**(n - t)`` per size.
+
+        Nonzero weights at the empty and grand coalition mean those rows are
+        fitted like any other rather than interpolated as constraints, and
+        the fit carries a free intercept as the order-0 attribution.
+        """
+        sizes = jnp.arange(n_players + 1)
+        return self.p**sizes * (1.0 - self.p) ** (n_players - sizes)
+
+
+@dataclass(frozen=True, eq=False)
 class KADDSHAP(ExtensionalEquality):
     """The k-additive Shapley index of order ``order``; generalizes SV.
 

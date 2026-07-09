@@ -30,6 +30,7 @@ from shapiq import (
     ExactExplainer,
     JointSV,
     Moebius,
+    WeightedFBII,
 )
 
 N_PLAYERS = 5
@@ -141,7 +142,21 @@ def chii_weight(interaction_size):
     return weight
 
 
-GENERALIZING_INDICES = [SII, BII, CHII, STII, KSII, FSII, FBII, KADDSHAP, SGV, BGV, CHGV, JointSV]
+GENERALIZING_INDICES = [
+    SII,
+    BII,
+    CHII,
+    STII,
+    KSII,
+    FSII,
+    FBII,
+    WeightedFBII,
+    KADDSHAP,
+    SGV,
+    BGV,
+    CHGV,
+    JointSV,
+]
 
 
 @pytest.mark.parametrize("index_type", GENERALIZING_INDICES)

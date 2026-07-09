@@ -177,7 +177,7 @@ The **Value** of the **Game** at the empty **Coalition**, carried by an **Explan
 _Avoid_: expected value, offset, order-0 attribution
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and any index-defining parameters (the weighted Banzhaf joining probability ``p``), that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the weighted Banzhaf family WeightedBV and WeightedBII, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and any index-defining parameters (the weighted Banzhaf joining probability ``p``), that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the weighted Banzhaf family WeightedBV, WeightedBII, and WeightedFBII, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
 _Avoid_: index string, metric, method
 
 **Order Semantics**:
@@ -185,7 +185,7 @@ Whether an **InteractionIndex** treats its **Order** as explanation coverage, le
 _Avoid_: truncation flag, order mode
 
 **Index Capability**:
-A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a kernel with exact endpoint constraints.
+A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a per-size kernel (zero-weight endpoints mark exact constraints; nonzero endpoints mark a free-intercept fit).
 _Avoid_: feature flag, supported-index list
 
 **Cardinal Interaction Index**:
@@ -197,11 +197,11 @@ An **Index Capability** for indices whose **Attributions** weight the marginal c
 _Avoid_: bloc value, group value
 
 **Value Generalization**:
-The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV; WeightedBII generalizes WeightedBV with the same weighting, so the declared target follows the instance's parameter. Declarations are index metadata and are verified numerically by tests. An index constructed at order one **equals** the value it generalizes: index objects compare extensionally over nonempty **Interactions**, so ``SII(order=1) == SV() == CHII(order=1)``; order-0 conventions remain per-index. A declared ``None`` means no shipped value object equals the restriction, not that none exists.
+The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV; WeightedBII and WeightedFBII generalize WeightedBV with the same weighting, so the declared target follows the instance's parameter. Declarations are index metadata and are verified numerically by tests. An index constructed at order one **equals** the value it generalizes: index objects compare extensionally over nonempty **Interactions**, so ``SII(order=1) == SV() == CHII(order=1)``; order-0 conventions remain per-index. A declared ``None`` means no shipped value object equals the restriction, not that none exists.
 _Avoid_: reduction, canonical form
 
 **Value Preservation**:
-Whether an **InteractionIndex** whose **Order Semantics** are identity still keeps its order-1 **Attributions** equal to its generalized value at every order. All coverage indices preserve trivially; kADD-SHAP preserves despite identity semantics; STII, k-SII, FSII, FBII, and JointSV do not — their order-1 attributions equal the value only when constructed at order one.
+Whether an **InteractionIndex** whose **Order Semantics** are identity still keeps its order-1 **Attributions** equal to its generalized value at every order. All coverage indices preserve trivially; kADD-SHAP preserves despite identity semantics; STII, k-SII, FSII, FBII, WeightedFBII, and JointSV do not — their order-1 attributions equal the value only when constructed at order one.
 _Avoid_: order stability, value consistency
 
 **Order**:
