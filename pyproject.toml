@@ -174,7 +174,8 @@ exclude = [
 "benchmark/*.py" = [
     "INP", # imports can be different here
     "I002",  # benchmark code does not have to import required modules
-    "PTH"  # in benchmark code we use a lot of os, which is okay
+    "PTH",  # in benchmark code we use a lot of os, which is okay
+    "T201",  # benchmarks report their tables via print
 ]
 "__init__.py" = [
     "I002", # __init__.py does not have to import required modules

@@ -71,7 +71,14 @@ class ShapleyKernelSampler(UnitScheduleSampler):
 
     def _sampled_unit_masks(self, unit_index: int) -> Array:
         """Return one kernel-distributed coalition as a single-row unit."""
-        unit_key = jax.random.fold_in(self._key, unit_index)
+        return self._unit_from_key(jax.random.fold_in(self._key, unit_index))
+
+    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
+        """Return many kernel-distributed units in a few vectorized dispatches."""
+        return jax.vmap(self._unit_from_key)(self._unit_keys(unit_indices))
+
+    def _unit_from_key(self, unit_key: Array) -> Array:
+        """Render the single-row unit a unit key stands for."""
         size_key, member_key = jax.random.split(unit_key)
         sizes = jax.random.choice(
             size_key,
@@ -142,7 +149,14 @@ class BanzhafKernelSampler(UnitScheduleSampler):
 
     def _sampled_unit_masks(self, unit_index: int) -> Array:
         """Return one uniform coalition as a single-row unit."""
-        unit_key = jax.random.fold_in(self._key, unit_index)
+        return self._unit_from_key(jax.random.fold_in(self._key, unit_index))
+
+    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
+        """Return many uniform units in a few vectorized dispatches."""
+        return jax.vmap(self._unit_from_key)(self._unit_keys(unit_indices))
+
+    def _unit_from_key(self, unit_key: Array) -> Array:
+        """Render the single-row unit a unit key stands for."""
         mask = jax.random.bernoulli(
             unit_key,
             0.5,

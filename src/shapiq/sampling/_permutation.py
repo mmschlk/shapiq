@@ -88,6 +88,14 @@ class PermutationWalkSampler(UnitScheduleSampler):
         """Return the walk masks of one sampled unit."""
         return self.render_draw(self.unit_draw(unit_index))
 
+    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
+        """Render many walks in a few vectorized dispatches.
+
+        Draws batch over the unit axis and ``render_draw`` broadcasts over
+        leading axes, so the batch is bit-identical to per-unit rendering.
+        """
+        return self.render_draw(self.unit_draws(unit_indices))
+
     def unit_draw(self, unit_index: int) -> Array:
         """Return each player's position in the permutation of a walk."""
         players = jnp.broadcast_to(
@@ -97,6 +105,10 @@ class PermutationWalkSampler(UnitScheduleSampler):
         walk_key = jax.random.fold_in(self._key, unit_index)
         permutation = jax.random.permutation(walk_key, players, axis=-1, independent=True)
         return jnp.argsort(permutation, axis=-1)
+
+    def unit_draws(self, unit_indices: Array) -> Array:
+        """Return the draws of many units, stacked on a new leading axis."""
+        return jax.vmap(self.unit_draw)(unit_indices)
 
     def antithetic_draw(self, draw: Array) -> Array:
         """Return the positions of the reversed permutation.

@@ -101,14 +101,32 @@ class UnitScheduleSampler(Sampler["ApproximationState"]):
             chunks.append(masks[..., position : position + take, :])
             position = (position + take) % length
             remaining -= take
-        while remaining > 0:
-            masks = self._unit_masks(units)
+        if remaining > 0 and units == 0:
+            masks = self._unit_masks(0)
             length = masks.shape[-2]
             take = min(length, remaining)
             chunks.append(masks[..., :take, :])
-            units += 1
+            units = 1
             position = take % length
             remaining -= take
+        quantum = self.sampling_quantum
+        full_units = remaining // quantum
+        if full_units > 0:
+            batch = self._sampled_unit_batch(jnp.arange(units - 1, units - 1 + full_units))
+            if batch.shape[-2] != quantum:
+                msg = (
+                    f"sampled units hold {batch.shape[-2]} coalitions but sampling_quantum "
+                    f"is {quantum}; unit-schedule samplers emit quantum-sized units"
+                )
+                raise ValueError(msg)
+            chunks.append(_flatten_units(batch))
+            units += full_units
+            remaining -= full_units * quantum
+        if remaining > 0:
+            masks = self._unit_masks(units)
+            chunks.append(masks[..., :remaining, :])
+            units += 1
+            position = remaining
         coalitions = DenseCoalitionArray(jnp.concatenate(chunks, axis=-2))
         return coalitions, self._evolve(units_started=units, pending_pos=position)
 
@@ -137,6 +155,32 @@ class UnitScheduleSampler(Sampler["ApproximationState"]):
     @abstractmethod
     def _sampled_unit_masks(self, unit_index: int) -> Array:
         """Return the dense coalition masks of one full sampled unit."""
+
+    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
+        """Return the masks of many sampled units, stacked on a new leading axis.
+
+        The default renders units one by one, so custom samplers stay correct
+        without extra work; shipped samplers override it to generate the whole
+        batch in a few vectorized dispatches. Overrides must be bit-identical
+        to the sequential per-unit stream: budgets may be split arbitrarily,
+        and every unit must render the same masks whether it is generated
+        alone or inside a batch.
+        """
+        return jnp.stack([self._sampled_unit_masks(index) for index in unit_indices.tolist()])
+
+    def _unit_keys(self, unit_indices: Array) -> Array:
+        """Return the PRNG keys of many sampled units in one dispatch.
+
+        Folding the sampler key by unit index is what makes unit generation
+        order-free; the batched fold is bit-identical to folding per unit.
+        """
+        return jax.vmap(lambda index: jax.random.fold_in(self._key, index))(unit_indices)
+
+
+def _flatten_units(batch: Array) -> Array:
+    """Merge a leading unit axis into the sample axis, preserving unit order."""
+    stacked = jnp.moveaxis(batch, 0, -3)
+    return stacked.reshape(*stacked.shape[:-3], -1, stacked.shape[-1])
 
 
 def _validate_random_state(random_state: Array | int) -> Array:

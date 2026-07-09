@@ -15,13 +15,20 @@ class AntitheticDraws(Protocol):
     """Optional hook declaring what pairing means for a sampler.
 
     Samplers that render structured units (permutation walks) implement the
-    draw triad so ``PairedSampler`` can render the antithesis as a bona-fide
+    draw hooks so ``PairedSampler`` can render the antithesis as a bona-fide
     unit; samplers without the hook are paired by complementing their
-    rendered rows.
+    rendered rows. The draw is also the batching surface: ``unit_draws``
+    stacks many draws on a new leading axis (``jax.vmap`` over ``unit_draw``
+    when the draw is traceable in the unit index), and ``render_draw`` and
+    ``antithetic_draw`` must broadcast over leading batch axes.
     """
 
     def unit_draw(self, unit_index: int) -> Array:
         """Return the raw draw of one sampled unit."""
+        ...
+
+    def unit_draws(self, unit_indices: Array) -> Array:
+        """Return the draws of many units, stacked on a new leading axis."""
         ...
 
     def render_draw(self, draw: Array) -> Array:
@@ -104,5 +111,16 @@ class PairedSampler(UnitScheduleSampler):
         else:
             # base case of classical pairing of sampling complement coalitions
             rendered = self.sampler._sampled_unit_masks(unit_index)  # noqa: SLF001 - wrapped unit
+            antithetic = ~rendered
+        return jnp.concatenate([rendered, antithetic], axis=-2)
+
+    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
+        """Render many wrapped units and their antitheses in batched dispatches."""
+        if isinstance(self.sampler, AntitheticDraws):
+            draws = self.sampler.unit_draws(unit_indices)
+            rendered = self.sampler.render_draw(draws)
+            antithetic = self.sampler.render_draw(self.sampler.antithetic_draw(draws))
+        else:
+            rendered = self.sampler._sampled_unit_batch(unit_indices)  # noqa: SLF001 - wrapped units
             antithetic = ~rendered
         return jnp.concatenate([rendered, antithetic], axis=-2)

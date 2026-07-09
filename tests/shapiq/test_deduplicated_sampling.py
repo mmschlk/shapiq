@@ -107,6 +107,18 @@ def test_stall_warns_and_leaves_budget_unspent():
     assert jnp.allclose(jnp.sum(order_one_attributions(explanation)), grand - empty, atol=1e-4)
 
 
+def test_branches_from_a_shared_parent_stay_consistent():
+    def make():
+        return PermutationSampling(quadratic_game(), SV(), random_state=6, deduplicate=True)
+
+    parent = make().sample(12)
+    first = parent.sample(9).sample(7)
+    second = parent.sample(9).sample(7)  # branches after `first` extended the carried keys
+    fresh = make().sample(12).sample(9).sample(7)
+    assert first.state == fresh.state
+    assert second.state == fresh.state
+
+
 def test_rollback_and_resample_are_consistent():
     first = PermutationSampling(
         quadratic_game(), SV(), random_state=3, track_history=True, deduplicate=True
