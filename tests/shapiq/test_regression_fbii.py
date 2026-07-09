@@ -52,7 +52,8 @@ def order_one(explanation):
 def test_recovers_quadratic_games_exactly_once_identified():
     approximator = Regression(
         game_from(quadratic_from_masks),
-        FBII(order=2),
+        FBII,
+        order=2,
         random_state=0,
         deduplicate=True,
     )
@@ -66,15 +67,15 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_order_one_converges_to_the_banzhaf_value():
-    exact = order_one(ExactExplainer(game_from(cubic_from_masks), BV()).explain())
-    approximator = Regression(game_from(cubic_from_masks), FBII(order=1), random_state=1)
+    exact = order_one(ExactExplainer(game_from(cubic_from_masks), BV).explain())
+    approximator = Regression(game_from(cubic_from_masks), FBII, order=1, random_state=1)
     estimate = order_one(approximator.sample(SEEDS + 3000).explain())
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_converges_to_the_exact_faithful_banzhaf_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), FBII(order=2)).explain()
-    approximator = Regression(game_from(cubic_from_masks), FBII(order=2), random_state=2)
+    exact = ExactExplainer(game_from(cubic_from_masks), FBII, order=2).explain()
+    approximator = Regression(game_from(cubic_from_masks), FBII, order=2, random_state=2)
     explanation = approximator.sample(SEEDS + 6000).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), exact((player,)), atol=0.1)
@@ -84,7 +85,7 @@ def test_converges_to_the_exact_faithful_banzhaf_interactions():
 
 def test_sampling_is_invariant_to_budget_splits():
     def make():
-        return Regression(game_from(cubic_from_masks), FBII(order=2), random_state=11)
+        return Regression(game_from(cubic_from_masks), FBII, order=2, random_state=11)
 
     split = make().sample(7).sample(2).sample(31)
     whole = make().sample(40)
@@ -94,7 +95,7 @@ def test_sampling_is_invariant_to_budget_splits():
 
 def test_pending_half_pairs_are_masked():
     def make():
-        return Regression(game_from(cubic_from_masks), FBII(order=2), random_state=5)
+        return Regression(game_from(cubic_from_masks), FBII, order=2, random_state=5)
 
     complete = make().sample(SEEDS + 80)
     with_pending = make().sample(SEEDS + 80 + 1)
@@ -109,12 +110,13 @@ def test_pending_half_pairs_are_masked():
 def test_deduplication_reproduces_plain_estimates():
     deduplicated = Regression(
         game_from(cubic_from_masks),
-        FBII(order=2),
+        FBII,
+        order=2,
         random_state=3,
         deduplicate=True,
     ).sample(SEEDS + 24)
     raw_samples = deduplicated.state.n_samples
-    plain = Regression(game_from(cubic_from_masks), FBII(order=2), random_state=3).sample(
+    plain = Regression(game_from(cubic_from_masks), FBII, order=2, random_state=3).sample(
         raw_samples,
     )
     assert deduplicated.state == plain.state
@@ -128,7 +130,8 @@ def test_deduplication_reproduces_plain_estimates():
 def test_minimum_budget_and_identification_gate_explanations():
     approximator = Regression(
         game_from(cubic_from_masks),
-        FBII(order=2),
+        FBII,
+        order=2,
         random_state=0,
         deduplicate=True,
     )
@@ -141,7 +144,8 @@ def test_minimum_budget_and_identification_gate_explanations():
 def test_metadata_names_the_index():
     approximator = Regression(
         game_from(cubic_from_masks),
-        FBII(order=2),
+        FBII,
+        order=2,
         random_state=0,
         deduplicate=True,
     )

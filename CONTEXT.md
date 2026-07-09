@@ -149,7 +149,7 @@ A subset or ordered tuple of distinct **Players**, depending on the **Interactio
 _Avoid_: explanation coalition, tuple key
 
 **Interaction Orientation**:
-Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order. Orientation is intrinsic to an **InteractionIndex**.
+Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order. Orientation is a representation property of an **ExplanationArray**; every shipped **InteractionIndex** produces undirected explanations.
 _Avoid_: direction flag, orderedness
 
 **Explanation**:
@@ -177,15 +177,15 @@ The **Value** of the **Game** at the empty **Coalition**, carried by an **Explan
 _Avoid_: expected value, offset, order-0 attribution
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and an **Interaction Orientation**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
+A uniquely named rule, represented by a module-level singleton value (``SII``, the only instance of a hidden class parameterized by its name literal) that is passed to **Explainers** and never constructed, carrying a string name, **Order Semantics**, and **Index Capabilities**, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Indices carry no **Order**: the explanation order is requested at the **Explainer** and validated by the index. Explainers select behavior by index identity and **Index Capability**, never by name; closed support sets are typed as ``Index[Literal[...]]`` unions. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
 _Avoid_: index string, metric, method
 
 **Order Semantics**:
-Whether an **InteractionIndex** treats its **Order** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII). Transforms with no inherent order cap (Moebius, Co-Moebius) default their order to all players.
+Whether an **InteractionIndex** treats the **Order** of a requested **Explanation** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII). Transforms with no inherent order cap (Moebius, Co-Moebius) default the explanation order to all players.
 _Avoid_: truncation flag, order mode
 
 **Index Capability**:
-A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a kernel with exact endpoint constraints.
+A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a kernel per coalition size, with zero end weights marking exact endpoint constraints and nonzero end weights marking an unconstrained fit with a free intercept.
 _Avoid_: feature flag, supported-index list
 
 **Cardinal Interaction Index**:
@@ -197,13 +197,13 @@ An **Index Capability** for indices whose **Attributions** weight the marginal c
 _Avoid_: bloc value, group value
 
 **Value Generalization**:
-The declared relation between an **InteractionIndex** and the probabilistic value its order-1 restriction equals: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata and are verified numerically by tests. An index constructed at order one **equals** the value it generalizes: index objects compare extensionally over nonempty **Interactions**, so ``SII(order=1) == SV() == CHII(order=1)``; order-0 conventions remain per-index. A declared ``None`` means no shipped value object equals the restriction, not that none exists.
+The declared relation between an **InteractionIndex** and the probabilistic value whose explanations its order-1 explanations equal: SII, CHII, STII, k-SII, FSII, kADD-SHAP, SGV, CHGV, and JointSV generalize SV; BII, FBII, and BGV generalize BV. Declarations are index metadata referencing the value class and are verified numerically by tests; order-0 conventions remain per-index. A declared ``None`` means no shipped value equals the restriction, not that none exists.
 _Avoid_: reduction, canonical form
 
 **Value Preservation**:
-Whether an **InteractionIndex** whose **Order Semantics** are identity still keeps its order-1 **Attributions** equal to its generalized value at every order. All coverage indices preserve trivially; kADD-SHAP preserves despite identity semantics; STII, k-SII, FSII, FBII, and JointSV do not — their order-1 attributions equal the value only when constructed at order one.
+Whether an **InteractionIndex** whose **Order Semantics** are identity still keeps its order-1 **Attributions** equal to its generalized value at every order. All coverage indices preserve trivially; kADD-SHAP preserves despite identity semantics; STII, k-SII, FSII, FBII, and JointSV do not — their order-1 attributions equal the value only when explained at order one.
 _Avoid_: order stability, value consistency
 
 **Order**:
-The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions.
+The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions. Order is requested at the **Explainer** and recorded on the **ExplanationArray**, never on the **InteractionIndex**.
 _Avoid_: degree, exact order

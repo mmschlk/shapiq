@@ -64,9 +64,9 @@ def order_one(explanation):
 
 
 def test_exact_vector_values_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SV()).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV()).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV()).explain()
+    vector = ExactExplainer(vector_game(), SV).explain()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV).explain()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV).explain()
     for player in range(N_PLAYERS):
         attribution = vector((player,))
         assert attribution.shape == (2,)
@@ -77,18 +77,18 @@ def test_exact_vector_values_match_per_component_scalar_runs():
 
 
 def test_exact_vector_interactions_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SII(order=2)).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII(order=2)).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII(order=2)).explain()
+    vector = ExactExplainer(vector_game(), SII, order=2).explain()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII, order=2).explain()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII, order=2).explain()
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-6)
         assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-6)
 
 
 def test_exact_vector_fsii_matches_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), FSII(order=2)).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII(order=2)).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII(order=2)).explain()
+    vector = ExactExplainer(vector_game(), FSII, order=2).explain()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII, order=2).explain()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII, order=2).explain()
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-5)
         assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-5)
@@ -96,14 +96,14 @@ def test_exact_vector_fsii_matches_per_component_scalar_runs():
 
 def test_sampled_vector_values_match_per_component_scalar_runs():
     budget = 2 + 20 * (N_PLAYERS - 1)
-    vector = PermutationSampling(vector_game(), SV(), random_state=3).sample(budget).explain()
+    vector = PermutationSampling(vector_game(), SV, random_state=3).sample(budget).explain()
     quadratic = (
-        PermutationSampling(scalar_game(quadratic_from_masks), SV(), random_state=3)
+        PermutationSampling(scalar_game(quadratic_from_masks), SV, random_state=3)
         .sample(budget)
         .explain()
     )
     cubic = (
-        PermutationSampling(scalar_game(cubic_from_masks), SV(), random_state=3)
+        PermutationSampling(scalar_game(cubic_from_masks), SV, random_state=3)
         .sample(budget)
         .explain()
     )
@@ -115,7 +115,7 @@ def test_sampled_vector_values_match_per_component_scalar_runs():
 def test_sampled_vector_values_are_efficient_per_component():
     grand = stacked_from_masks(jnp.ones(N_PLAYERS, dtype=jnp.float32))
     empty = stacked_from_masks(jnp.zeros(N_PLAYERS, dtype=jnp.float32))
-    approximator = PermutationSampling(vector_game(), SV(), random_state=0)
+    approximator = PermutationSampling(vector_game(), SV, random_state=0)
     explanation = approximator.sample(2 + 3 * (N_PLAYERS - 1)).explain()
     totals = jnp.sum(order_one(explanation), axis=-2)
     assert totals.shape == (2,)
@@ -126,19 +126,19 @@ def test_sampled_vector_values_are_efficient_per_component():
 def test_regression_fsii_vector_values_match_per_component_scalar_runs():
     budget = KERNEL_SEEDS + 24
     vector = (
-        Regression(vector_game(), FSII(order=2), random_state=0, deduplicate=True)
+        Regression(vector_game(), FSII, order=2, random_state=0, deduplicate=True)
         .sample(budget)
         .explain()
     )
     quadratic = (
         Regression(
-            scalar_game(quadratic_from_masks), FSII(order=2), random_state=0, deduplicate=True
+            scalar_game(quadratic_from_masks), FSII, order=2, random_state=0, deduplicate=True
         )
         .sample(budget)
         .explain()
     )
     cubic = (
-        Regression(scalar_game(cubic_from_masks), FSII(order=2), random_state=0, deduplicate=True)
+        Regression(scalar_game(cubic_from_masks), FSII, order=2, random_state=0, deduplicate=True)
         .sample(budget)
         .explain()
     )
@@ -151,7 +151,7 @@ def test_regression_fsii_vector_values_match_per_component_scalar_runs():
 
 def test_pending_vector_samples_are_masked():
     def make():
-        return PermutationSampling(vector_game(), SV(), random_state=5)
+        return PermutationSampling(vector_game(), SV, random_state=5)
 
     complete = make().sample(2 + 4 * (N_PLAYERS - 1))
     with_pending = make().sample(2 + 4 * (N_PLAYERS - 1) + 1)
@@ -164,7 +164,7 @@ def test_pending_vector_samples_are_masked():
 
 
 def test_vector_history_slices_evidence_states():
-    approximator = PermutationSampling(vector_game(), SV(), random_state=1, track_history=True)
+    approximator = PermutationSampling(vector_game(), SV, random_state=1, track_history=True)
     approximator = approximator.sample(2 + (N_PLAYERS - 1)).sample(N_PLAYERS - 1)
     states = approximator.history()
     assert [state.state.n_samples for state in states] == [
@@ -181,14 +181,14 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
         n_players=N_PLAYERS,
     )
     with pytest.raises(ValueError, match="declare value_shape"):
-        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).sample(1)
+        PermutationSampling(scalar_declared_vector_output, SV, random_state=0).sample(1)
     vector_declared_scalar_output = CallableGame(
         fn=lambda c: quadratic_from_masks(jnp.asarray(c.to_dense(), dtype=jnp.float32)),
         n_players=N_PLAYERS,
         value_shape=(2,),
     )
     with pytest.raises(ValueError, match="value_shape"):
-        ExactExplainer(vector_declared_scalar_output, SV()).explain()
+        ExactExplainer(vector_declared_scalar_output, SV).explain()
 
 
 def test_explanations_validate_attribution_block_shapes():

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import comb
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import jax.numpy as jnp
 from jax import Array
@@ -11,7 +11,7 @@ from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import SII, STII, SV
+from shapiq.interactions import SII, STII, SV, Index, InteractionIndex
 from shapiq.sampling import (
     EmptyState,
     PermutationSIISampler,
@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from shapiq.sampling import ShareSamples
 
 
+type PermutationIndex = Index[Literal["SV", "SII", "STII"]]
+
+
 class _WalkEvidence(NamedTuple):
     """Completed-walk view of a permutation sampling state."""
 
@@ -45,20 +48,20 @@ class _WalkEvidence(NamedTuple):
 class PermutationSampling(EvidenceApproximator):
     """Permutation-walk approximator dispatching on the interaction index.
 
-    The index object selects the concrete walk layout and estimator: ``SV()``
+    The index class selects the concrete walk layout and estimator: ``SV``
     evaluates the proper prefixes of random permutations and yields one
     marginal contribution per player and walk, so order-1 attributions sum to
-    ``v(N) - v(empty)`` exactly at any budget. ``SII(order=k)`` additionally
-    yields one discrete derivative per consecutive permutation window of
-    every size up to ``k``, so higher-order sample counts are random and
-    explaining requires every represented interaction to have at least one
-    sample. ``STII(order=k)`` computes interactions below the top order
-    exactly from seed evaluations and samples one top-order derivative per
-    interaction and walk, so coverage is deterministic; its seed block and
-    walks both grow quickly with the order.
+    ``v(N) - v(empty)`` exactly at any budget. ``SII`` at order ``k``
+    additionally yields one discrete derivative per consecutive permutation
+    window of every size up to ``k``, so higher-order sample counts are
+    random and explaining requires every represented interaction to have at
+    least one sample. ``STII`` at order ``k`` computes interactions below the
+    top order exactly from seed evaluations and samples one top-order
+    derivative per interaction and walk, so coverage is deterministic; its
+    seed block and walks both grow quickly with the order.
 
     Example:
-        >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
+        >>> approximator = PermutationSampling(game, SII, order=2, random_state=0)
         >>> explanation = approximator.sample(500).explain()
         >>> pair_interaction = explanation((0, 1))
     """
@@ -66,8 +69,9 @@ class PermutationSampling(EvidenceApproximator):
     def __init__(
         self,
         game: Game[Array],
-        index: SV | SII | STII,
+        index: PermutationIndex,
         *,
+        order: int | None = None,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
         track_history: bool = False,
@@ -77,8 +81,10 @@ class PermutationSampling(EvidenceApproximator):
 
         Args:
             game: Game to explain. Must have at least two players.
-            index: The interaction index to estimate: ``SV()``,
-                ``SII(order=k)``, or ``STII(order=k)``.
+            index: The interaction index to estimate, passed as the index
+                class itself: ``SV``, ``SII``, or ``STII``.
+            order: Maximum interaction order of the explanation. Required
+                for SII and STII; SV fixes it at one.
             random_state: Integer seed or JAX PRNG key for drawing
                 permutations.
             share_samples: Policy for sharing sampled coalitions across
@@ -92,30 +98,39 @@ class PermutationSampling(EvidenceApproximator):
                 count toward the budget. Requires shared samples.
 
         Raises:
-            TypeError: If the index has no permutation-walk estimator.
+            TypeError: If the index has no permutation-walk estimator, or
+                requires an order that was not given.
             ValueError: If the game has fewer than two players, if the order
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
         reject_common_index_mistakes(index)
-        family = _FAMILIES.get(type(index))
+        family = _FAMILIES.get(index)
         if family is None:
-            supported = ", ".join(sorted(kind.__name__ for kind in _FAMILIES))
+            supported = ", ".join(sorted(repr(kind) for kind in _FAMILIES))
             name = getattr(index, "name", type(index).__name__)
+            if isinstance(index, tuple(type(kind) for kind in _FAMILIES)):
+                msg = (
+                    f"PermutationSampling dispatches on the index singleton: {name} "
+                    f"builds on a supported index; pass one of {supported} itself"
+                )
+                raise TypeError(msg)
             msg = (
                 f"PermutationSampling does not support {name!r}: supported "
-                f"indices are {supported} (e.g. SII(order=2))"
+                f"indices are {supported} (e.g. PermutationSampling(game, SII, order=2))"
             )
             raise TypeError(msg)
+        resolved_order = index.resolve_order(order, n_players=game.n_players)
         build_sampler, _ = family
         sampler = build_sampler(
             game,
-            index,
+            resolved_order,
             share_samples=share_samples,
             random_state=random_state,
         )
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, index=index)
+        super().__init__(game, sampler, state, index=index, order=resolved_order)
+        self._permutation_index: PermutationIndex = index
         self._init_deduplication(deduplicate=deduplicate)
 
     def explain(self) -> DenseExplanationArray[Array]:
@@ -131,7 +146,7 @@ class PermutationSampling(EvidenceApproximator):
                 or, for SII, if some represented interaction has no sample
                 yet.
         """
-        _, explain = _FAMILIES[type(self.index)]
+        _, explain = _FAMILIES[self._permutation_index]
         return explain(self)
 
     def _completed_walks(self) -> _WalkEvidence:
@@ -173,7 +188,7 @@ class PermutationSampling(EvidenceApproximator):
 
 def _walk_sampler(
     game: Game[Array],
-    index: SV | SII | STII,
+    order: int,
     *,
     share_samples: ShareSamples,
     random_state: Array | int,
@@ -182,14 +197,14 @@ def _walk_sampler(
         game.n_players,
         game.target_shape,
         share_samples=share_samples,
-        order=index.order,
+        order=order,
         random_state=random_state,
     )
 
 
 def _taylor_sampler(
     game: Game[Array],
-    index: SV | SII | STII,
+    order: int,
     *,
     share_samples: ShareSamples,
     random_state: Array | int,
@@ -198,7 +213,7 @@ def _taylor_sampler(
         game.n_players,
         game.target_shape,
         share_samples=share_samples,
-        order=index.order,
+        order=order,
         random_state=random_state,
     )
 
@@ -221,7 +236,6 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
         interaction_index=approximator.interaction_index,
         order=1,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
@@ -296,7 +310,6 @@ def _explain_interactions(approximator: PermutationSampling) -> DenseExplanation
         interaction_index=approximator.interaction_index,
         order=order,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
@@ -335,7 +348,6 @@ def _explain_taylor_interactions(
         interaction_index=approximator.interaction_index,
         order=top_order,
         shape=approximator.game.target_shape,
-        orientation=approximator.orientation,
         value_shape=approximator.game.value_shape,
         baseline=to_trailing(evidence.value_empty, n_value_axes),
     )
@@ -407,7 +419,7 @@ def _taylor_sampled_top_order(
 
 
 _FAMILIES: dict[
-    type,
+    InteractionIndex,
     tuple[
         Callable[..., PermutationSIISampler | PermutationSTIISampler],
         Callable[[PermutationSampling], DenseExplanationArray[Array]],

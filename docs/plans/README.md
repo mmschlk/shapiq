@@ -36,6 +36,7 @@ delivers it.
 | 5 | [Index-dispatched entry points](issue-5-index-dispatched-entry-points.md) | One entry point per method family; the index object dispatches to concrete implementations | done (ADR 0007) |
 | 6 | [Exact index families](issue-6-exact-index-families.md) | Port the full exact index zoo with the capability taxonomy and declared generalizations | done (ADR 0008) |
 | 7 | [Sampled FBII](issue-7-sampled-fbii.md) | Faithful Banzhaf joins the Regression entry point via the Banzhaf kernel sampler | done |
+| 8 | [Game-call seam](issue-8-game-call-seam.md) | One evaluation path per approximator; deduplication becomes an evaluation policy | not started |
 
 ## Recommended order: 1 → 3 → 2 → 4
 
@@ -52,6 +53,15 @@ parallel worktrees.
 **Issue 5** requires issue 1 and does not block the north star; it slots naturally either right
 after issue 1 or after issue 4. Issue 1 should anticipate it by dispatching on index types and
 capabilities internally, never on name strings.
+
+**2026-07-08 index-grammar rework (ADR 0011).** Indices became plain classes passed
+uninstantiated, the explanation order moved to the explainer, orientation left the indices, and
+extensional equality was removed. The done issue files 1, 5, 6, and 7 describe the pre-rework
+grammar (`SII(order=2)` instances, orientation-on-index, frozen dataclasses); read them as
+history; ADR 0011 (orders, dispatch) and ADR 0012 (singleton representation) are the current
+state. **Issue 8** captures the game-call/deduplication seam
+from the same review; run it after or together with issue 4 (both touch
+`src/shapiq/explainers/_evidence.py`).
 
 ## Working agreement
 

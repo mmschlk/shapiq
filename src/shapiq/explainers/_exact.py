@@ -4,12 +4,17 @@ from fractions import Fraction
 from functools import cache
 from itertools import combinations
 from math import comb
+from typing import Literal, cast
 
 import jax.numpy as jnp
 from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.explainers._base import Explainer, reject_common_index_mistakes
+from shapiq.explainers._base import (
+    Explainer,
+    missing_index_members,
+    reject_common_index_mistakes,
+)
 from shapiq.explainers._faithful import (
     eliminate_constraint,
     interaction_design,
@@ -26,11 +31,15 @@ from shapiq.interactions import (
     SII,
     CardinalInteractionIndex,
     GeneralizedValueIndex,
+    Index,
     RegressionIndex,
 )
 
 type ExactIndex = (
-    CardinalInteractionIndex | GeneralizedValueIndex | RegressionIndex | KSII | FBII | KADDSHAP
+    CardinalInteractionIndex
+    | GeneralizedValueIndex
+    | RegressionIndex
+    | Index[Literal["k-SII"]]
 )
 
 
@@ -52,48 +61,62 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
     JAX x64 yields float64 throughout).
 
     Example:
-        >>> explainer = ExactExplainer(game, SII(order=2))
+        >>> explainer = ExactExplainer(game, SII, order=2)
         >>> explanation = explainer.explain()
         >>> pair_interaction = explanation((0, 1))
     """
 
-    def __init__(self, game: Game[Array], index: ExactIndex) -> None:
+    def __init__(
+        self,
+        game: Game[Array],
+        index: ExactIndex,
+        *,
+        order: int | None = None,
+    ) -> None:
         """Initialize without evaluating the game.
 
         Args:
             game: Game to explain. The game is evaluated on all
                 ``2**n_players`` coalitions.
-            index: The interaction index to compute, as an index object such
-                as ``SV()`` or ``SII(order=2)``. Any index providing
-                discrete-derivative weights, bloc-marginal weights, or a
-                regression kernel works; k-SII, FBII, and kADD-SHAP have
-                dedicated solvers.
+            index: The interaction index to compute, passed as the index
+                class itself, such as ``shapiq.SV`` or ``shapiq.SII``. Any
+                index providing discrete-derivative weights, bloc-marginal
+                weights, or a regression kernel works; k-SII, FBII, and
+                kADD-SHAP have dedicated solvers.
+            order: Maximum interaction order of the explanation. Probabilistic
+                values (SV, BV) fix it at one, the transforms (Moebius,
+                Co-Moebius) default to all orders, and every other index
+                requires an explicit order.
 
         Raises:
-            TypeError: If the index is passed as a string name or provides
-                no capability the exact explainer can compute.
-            ValueError: If the index order is out of range for the game.
+            TypeError: If the index is passed as a string name or an
+                instance, provides no capability the exact explainer can
+                compute, or requires an order that was not given.
+            ValueError: If the order is out of range for the game.
         """
         reject_common_index_mistakes(index)
-        if not isinstance(
-            index,
-            (
-                KSII,
-                FBII,
-                KADDSHAP,
-                CardinalInteractionIndex,
-                GeneralizedValueIndex,
-                RegressionIndex,
-            ),
+        for shipped in (KSII, FBII, KADDSHAP):
+            if isinstance(index, type(shipped)) and index is not shipped:
+                msg = (
+                    f"{type(index).__name__} builds on {shipped!r}, whose exact solver "
+                    f"dispatches on the singleton: pass {shipped!r} itself or define "
+                    "an independent index with its own capabilities"
+                )
+                raise TypeError(msg)
+        if not (
+            isinstance(index, (CardinalInteractionIndex, GeneralizedValueIndex, RegressionIndex))
+            or index is KSII
         ):
             name = getattr(index, "name", type(index).__name__)
+            missing = missing_index_members(index)
+            hint = f"; it is also missing index members: {', '.join(missing)}" if missing else ""
             msg = (
                 f"ExactExplainer does not support {name!r}: the index provides "
                 "neither discrete-derivative weights, bloc-marginal weights, "
-                "a regression kernel, nor a dedicated exact solver"
+                "a regression kernel, nor a dedicated exact solver" + hint
             )
             raise TypeError(msg)
-        super().__init__(game, index)
+        super().__init__(game, index, order=order)
         self._exact_index: ExactIndex = index
         self._powerset_values: Array | None = None
 
@@ -115,19 +138,19 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         masks = _powerset_masks(n_players)
         index = self._exact_index
         order = self.order
-        if isinstance(index, KSII):
+        if index is KSII:
             attributions = _aggregated_ksii_attributions(values, masks, order)
-        elif isinstance(index, FBII):
+        elif index is FBII:
             attributions = _banzhaf_regression_attributions(values, masks, order)
-        elif isinstance(index, KADDSHAP):
-            attributions = _kadd_regression_attributions(values, masks, index, order)
+        elif index is KADDSHAP:
+            attributions = _kadd_regression_attributions(values, masks, KADDSHAP, order)
         elif isinstance(index, CardinalInteractionIndex):
             attributions = {
                 size: _weighted_derivatives(
                     values,
                     masks,
                     size,
-                    index.derivative_weights(n_players, size),
+                    index.derivative_weights(n_players, size, order=order),
                 )
                 for size in range(index.min_interaction_size, order + 1)
             }
@@ -137,12 +160,14 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
                     values,
                     masks,
                     size,
-                    index.marginal_weights(n_players, size),
+                    index.marginal_weights(n_players, size, order=order),
                 )
                 for size in range(1, order + 1)
             }
         else:
-            attributions = _regression_attributions(values, masks, index, order)
+            # KSII is dispatched above, so only regression-capable indices remain
+            regression_index = cast("RegressionIndex", index)
+            attributions = _regression_attributions(values, masks, regression_index, order)
         return DenseExplanationArray(
             attributions_by_order={
                 size: to_trailing(block, n_value_axes) for size, block in attributions.items()
@@ -151,7 +176,6 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             interaction_index=self.interaction_index,
             order=order,
             shape=self.game.target_shape,
-            orientation=self.orientation,
             value_shape=self.game.value_shape,
             baseline=baseline,
         )
@@ -239,13 +263,12 @@ def _aggregated_ksii_attributions(
 ) -> dict[int, Array]:
     """Aggregate exact SII values into efficient k-SII values via Bernoulli numbers."""
     n_players = masks.shape[-1]
-    shapley_interactions = SII(order=order)
     sii = {
         size: _weighted_derivatives(
             values,
             masks,
             size,
-            shapley_interactions.derivative_weights(n_players, size),
+            SII.derivative_weights(n_players, size, order=order),
         )
         for size in range(1, order + 1)
     }
@@ -274,8 +297,17 @@ def _regression_attributions(
 ) -> dict[int, Array]:
     """Solve the constrained kernel-weighted least squares fit on the full powerset."""
     n_players = masks.shape[-1]
+    kernel = index.regression_kernel(n_players)
+    if kernel[0] != 0.0 or kernel[-1] != 0.0:
+        msg = (
+            f"the exact constrained regression solver requires zero kernel weight "
+            f"at the empty and grand coalition, got {index.name!r} weights "
+            f"{float(kernel[0])!r} and {float(kernel[-1])!r}; unconstrained kernels "
+            "with a free intercept (such as FBII's) need a dedicated solver"
+        )
+        raise TypeError(msg)
     sizes = jnp.sum(masks, axis=-1)
-    sqrt_weights = jnp.sqrt(index.regression_kernel(n_players)[sizes])
+    sqrt_weights = jnp.sqrt(kernel[sizes])
     reduced, pivot = eliminate_constraint(interaction_design(masks, order))
     n_coalitions = masks.shape[-2]
     response = (values - values[..., :1]).reshape(-1, n_coalitions).T
@@ -306,7 +338,7 @@ def _banzhaf_regression_attributions(
 def _kadd_regression_attributions(
     values: Array,
     masks: Array,
-    index: KADDSHAP,
+    index: RegressionIndex,
     order: int,
 ) -> dict[int, Array]:
     """Solve the Bernoulli-basis Shapley regression pinned at the grand coalition."""

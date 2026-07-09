@@ -60,7 +60,7 @@ def linear_vector_game():
 
 def test_masked_linear_model_has_closed_form_shapley_values():
     game, weight = linear_vector_game()
-    explanation = ExactExplainer(game, SV()).explain()
+    explanation = ExactExplainer(game, SV).explain()
     expected = jnp.asarray(((X - BASELINE)[:, None] * weight).numpy())
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), expected[player], atol=1e-6)
@@ -69,8 +69,8 @@ def test_masked_linear_model_has_closed_form_shapley_values():
 
 def test_sampled_masked_model_matches_the_exact_explainer():
     game, _ = linear_vector_game()
-    exact = ExactExplainer(game, SV()).explain()
-    approximator = PermutationSampling(game, SV(), random_state=0)
+    exact = ExactExplainer(game, SV).explain()
+    approximator = PermutationSampling(game, SV, random_state=0)
     estimate = approximator.sample(approximator.min_budget).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(estimate((player,)), exact((player,)), atol=1e-5)
@@ -84,7 +84,7 @@ def test_scalar_link_reduces_predictions():
         masked_predictor=predictor,
         link_function=lambda predictions: to_jax(predictions[..., 1]),
     )
-    explanation = ExactExplainer(game, SV()).explain()
+    explanation = ExactExplainer(game, SV).explain()
     expected = jnp.asarray(((X - BASELINE) * weight[:, 1]).numpy())
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), expected[player], atol=1e-6)

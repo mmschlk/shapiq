@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import comb
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import jax.numpy as jnp
 from jax import Array
@@ -17,12 +17,15 @@ from shapiq.explainers._faithful import (
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import FBII, FSII, SV
+from shapiq.interactions import FBII, FSII, SV, Index
 from shapiq.sampling import BanzhafKernelSampler, EmptyState, SamplingState, ShapleyKernelSampler
 
 if TYPE_CHECKING:
     from shapiq.games import Game
     from shapiq.sampling import ShareSamples
+
+
+type KernelRegressionIndex = Index[Literal["SV", "FSII", "FBII"]]
 
 
 class Regression(EvidenceApproximator):
@@ -33,14 +36,14 @@ class Regression(EvidenceApproximator):
     kernel, so every sampled coalition enters the fit with unit weight and
     repeated coalitions contribute through their multiplicity; support is
     therefore a closed set of indices whose kernel has a matching sampler.
-    ``FSII(order=k)`` is the best ``k``-additive approximation of the game
-    under the Shapley kernel with the empty and grand coalition fit exactly,
-    and ``SV()`` is its order-1 special case (KernelSHAP); their constraints
-    are substituted out of the system exactly, which keeps the solve well
-    conditioned in float32. ``FBII(order=k)`` is the best ``k``-additive
-    approximation under the uniform kernel, fit without constraints and with
-    a free intercept as its order-0 attribution; its order-1 special case
-    converges to the Banzhaf value.
+    ``FSII`` at order ``k`` is the best ``k``-additive approximation of the
+    game under the Shapley kernel with the empty and grand coalition fit
+    exactly, and ``SV`` is its order-1 special case (KernelSHAP); their
+    constraints are substituted out of the system exactly, which keeps the
+    solve well conditioned in float32. ``FBII`` at order ``k`` is the best
+    ``k``-additive approximation under the uniform kernel, fit without
+    constraints and with a free intercept as its order-0 attribution; its
+    order-1 special case converges to the Banzhaf value.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the
@@ -49,7 +52,7 @@ class Regression(EvidenceApproximator):
     ``k``-additive the estimate is exact from identification onward.
 
     Example:
-        >>> approximator = Regression(game, FSII(order=2), random_state=0)
+        >>> approximator = Regression(game, FSII, order=2, random_state=0)
         >>> explanation = approximator.sample(500).explain()
         >>> pair_interaction = explanation((0, 1))
     """
@@ -57,8 +60,9 @@ class Regression(EvidenceApproximator):
     def __init__(
         self,
         game: Game[Array],
-        index: SV | FSII | FBII,
+        index: KernelRegressionIndex,
         *,
+        order: int | None = None,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
         paired: bool = True,
@@ -69,10 +73,12 @@ class Regression(EvidenceApproximator):
 
         Args:
             game: Game to explain. Must have at least two players.
-            index: The interaction index to estimate: ``SV()`` for Shapley
-                values via KernelSHAP, ``FSII(order=k)`` for faithful
-                Shapley interactions, or ``FBII(order=k)`` for faithful
-                Banzhaf interactions.
+            index: The interaction index to estimate, passed as the index
+                class itself: ``SV`` for Shapley values via KernelSHAP,
+                ``FSII`` for faithful Shapley interactions, or ``FBII`` for
+                faithful Banzhaf interactions.
+            order: Maximum interaction order of the explanation. Required
+                for FSII and FBII; SV fixes it at one.
             random_state: Integer seed or JAX PRNG key for drawing
                 coalitions.
             share_samples: Policy for sharing sampled coalitions across
@@ -89,21 +95,28 @@ class Regression(EvidenceApproximator):
 
         Raises:
             TypeError: If the index has no kernel-matched regression
-                estimator.
+                estimator, or requires an order that was not given.
             ValueError: If the game has fewer than two players, if the order
                 is out of range, or if ``deduplicate`` is enabled without
                 samples shared across explanation targets.
         """
         reject_common_index_mistakes(index)
-        if not isinstance(index, (SV, FSII, FBII)):
+        if index not in (SV, FSII, FBII):
             name = getattr(index, "name", type(index).__name__)
+            if isinstance(index, (type(SV), type(FSII), type(FBII))):
+                msg = (
+                    f"Regression dispatches on the index singleton: {name} builds on a "
+                    "supported index, but the sampler and solver are kernel-matched to "
+                    "the shipped value; pass SV, FSII, or FBII itself"
+                )
+                raise TypeError(msg)
             msg = (
                 f"Regression does not support {name!r}: each supported index "
                 "samples coalitions from its own kernel, and matching "
-                "samplers exist for SV(), FSII(order=k), and FBII(order=k)"
+                "samplers exist for SV, FSII, and FBII"
             )
             raise TypeError(msg)
-        sampler_type = BanzhafKernelSampler if isinstance(index, FBII) else ShapleyKernelSampler
+        sampler_type = BanzhafKernelSampler if index is FBII else ShapleyKernelSampler
         sampler = sampler_type(
             game.n_players,
             game.target_shape,
@@ -112,7 +125,8 @@ class Regression(EvidenceApproximator):
             random_state=random_state,
         )
         state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, index=index)
+        super().__init__(game, sampler, state, index=index, order=order)
+        self._regression_index: KernelRegressionIndex = index
         self._init_deduplication(deduplicate=deduplicate)
 
     @property
@@ -125,14 +139,14 @@ class Regression(EvidenceApproximator):
         the unconstrained Banzhaf fit with its free intercept.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
-        if isinstance(self.index, FBII):
+        if self._regression_index is FBII:
             return max(super().min_budget, self.sampler.n_seed_samples + n_columns + 1)
         return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
 
     def _solve(self, masks: Array, response: Array, delta: Array) -> Array:
         """Solve one design's least squares fit per the index's kernel family."""
         design = interaction_design(masks, self.order)
-        if isinstance(self.index, FBII):
+        if self._regression_index is FBII:
             design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
             require_identification(design, deduplicating=self.deduplicate)
             solution, *_ = jnp.linalg.lstsq(design, response)
@@ -199,7 +213,7 @@ class Regression(EvidenceApproximator):
             stacked = jnp.stack(per_target, axis=-1)
             solutions = stacked.reshape(stacked.shape[0], -1)
         coefficients = solutions.T
-        if isinstance(self.index, FBII):
+        if self._regression_index is FBII:
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
             attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}
@@ -220,7 +234,6 @@ class Regression(EvidenceApproximator):
             interaction_index=self.interaction_index,
             order=self.order,
             shape=target_shape,
-            orientation=self.orientation,
             value_shape=value_shape,
             baseline=to_trailing(value_empty, n_value_axes),
         )

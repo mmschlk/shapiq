@@ -71,11 +71,11 @@ if __name__ == "__main__":
         return to_jax(torch.softmax(predictions, dim=-1)[..., 1])
 
     game = MaskedGame(masked_predictor=predictor, link_function=probability_link)
-    exact = ExactExplainer(game, SV()).explain()
+    exact = ExactExplainer(game, SV).explain()
     exact_values = jnp.stack([exact((player,)) for player in range(N_PLAYERS)])
     print(f"exact SV ({2**N_PLAYERS} evaluations): {exact_values.round(3)}")
 
-    approximator = PermutationSampling(game, SV(), random_state=0, track_history=True)
+    approximator = PermutationSampling(game, SV, random_state=0, track_history=True)
     payout = float(jnp.sum(exact_values))
     for budget in (9, 54, 700, 2000):
         approximator = approximator.sample(budget)
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         link_function=log_probability_link,
         value_shape=(2,),
     )
-    exact_fsii = ExactExplainer(vector_game, FSII(order=2)).explain()
+    exact_fsii = ExactExplainer(vector_game, FSII, order=2).explain()
     pairs = list(combinations(range(N_PLAYERS), 2))
     strengths = jnp.stack([exact_fsii(pair) for pair in pairs])  # (n_pairs, 2 classes)
     print("strongest exact pairwise interactions per class:")
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         top = int(jnp.argmax(jnp.abs(strengths[:, class_index])))
         print(f"  class {class_index}: {pairs[top]} with {float(strengths[top, class_index]):+.3f}")
 
-    fsii = Regression(vector_game, FSII(order=2), random_state=0, deduplicate=True)
+    fsii = Regression(vector_game, FSII, order=2, random_state=0, deduplicate=True)
     print(f"min budget (identification): {fsii.min_budget}")
     for budget in (fsii.min_budget + 20, 60, 80):
         fsii = fsii.sample(budget)

@@ -147,22 +147,21 @@ GENERALIZING_INDICES = [SII, BII, CHII, STII, KSII, FSII, FBII, KADDSHAP, SGV, B
 @pytest.mark.parametrize("index_type", GENERALIZING_INDICES)
 def test_declared_generalizations_hold_at_order_one(index_type):
     mask_fn = random_table_game()
-    index = index_type(order=1)
-    value = index.generalizes
+    value = index_type.generalizes
     assert value is not None
-    restricted = ExactExplainer(game_from(mask_fn), index).explain()
+    restricted = ExactExplainer(game_from(mask_fn), index_type, order=1).explain()
     reference = ExactExplainer(game_from(mask_fn), value).explain()
     assert jnp.allclose(order_one(restricted), order_one(reference), atol=1e-4)
 
 
 def test_values_and_transforms_declare_no_generalization():
-    for index in (SV(), BV(), Moebius(), CoMoebius(), IGV(), EGV()):
+    for index in (SV, BV, Moebius, CoMoebius, IGV, EGV):
         assert index.generalizes is None
 
 
 def test_exact_chii_matches_brute_force():
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), CHII(order=2)).explain()
+    explanation = ExactExplainer(game_from(mask_fn), CHII, order=2).explain()
     for player in range(N_PLAYERS):
         expected = brute_force_base_interaction(mask_fn, (player,), chii_weight(1))
         assert jnp.allclose(explanation((player,)), expected, atol=1e-4)
@@ -172,7 +171,7 @@ def test_exact_chii_matches_brute_force():
 
 
 def test_exact_moebius_recovers_interaction_masses():
-    explainer = ExactExplainer(game_from(cubic_from_masks), Moebius())
+    explainer = ExactExplainer(game_from(cubic_from_masks), Moebius)
     assert explainer.order == N_PLAYERS
     explanation = explainer.explain()
     assert jnp.allclose(explanation.baseline, 0.0, atol=1e-6)
@@ -189,7 +188,7 @@ def test_exact_moebius_recovers_interaction_masses():
 
 def test_exact_co_moebius_matches_derivatives_at_the_complement():
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), CoMoebius(order=2)).explain()
+    explanation = ExactExplainer(game_from(mask_fn), CoMoebius, order=2).explain()
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
@@ -202,8 +201,8 @@ def test_exact_co_moebius_matches_derivatives_at_the_complement():
 
 def test_exact_ksii_aggregates_sii_and_is_efficient():
     mask_fn = random_table_game()
-    ksii = ExactExplainer(game_from(mask_fn), KSII(order=2)).explain()
-    sii = ExactExplainer(game_from(mask_fn), SII(order=2)).explain()
+    ksii = ExactExplainer(game_from(mask_fn), KSII, order=2).explain()
+    sii = ExactExplainer(game_from(mask_fn), SII, order=2).explain()
     # top-order interactions have no supersets to aggregate over and stay SII
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(ksii(pair), sii(pair), atol=1e-4)
@@ -222,7 +221,7 @@ def test_exact_ksii_aggregates_sii_and_is_efficient():
 
 
 def test_exact_fbii_recovers_the_moebius_basis_of_quadratic_games():
-    explanation = ExactExplainer(game_from(quadratic_from_masks), FBII(order=2)).explain()
+    explanation = ExactExplainer(game_from(quadratic_from_masks), FBII, order=2).explain()
     assert jnp.allclose(order_one(explanation), WEIGHTS, atol=1e-4)
     for left, right in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-4)
@@ -230,7 +229,7 @@ def test_exact_fbii_recovers_the_moebius_basis_of_quadratic_games():
 
 
 def test_exact_kadd_shap_on_quadratic_games_yields_shapley_values_and_pair_masses():
-    explanation = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).explain()
+    explanation = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP, order=2).explain()
     shapley_values = WEIGHTS + 0.5 * jnp.sum(PAIRS, axis=1)
     assert jnp.allclose(order_one(explanation), shapley_values, atol=1e-4)
     for left, right in combinations(range(N_PLAYERS), 2):
@@ -243,7 +242,7 @@ def test_exact_kadd_shap_on_quadratic_games_yields_shapley_values_and_pair_masse
 )
 def test_exact_generalized_values_match_brute_force(index_type, weight_factory):
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), index_type(order=2)).explain()
+    explanation = ExactExplainer(game_from(mask_fn), index_type, order=2).explain()
     for interaction in [(1,), (3,), (0, 2), (2, 4)]:
         expected = brute_force_generalized_value(
             mask_fn,
@@ -255,8 +254,8 @@ def test_exact_generalized_values_match_brute_force(index_type, weight_factory):
 
 def test_exact_internal_and_external_generalized_values_have_closed_forms():
     mask_fn = random_table_game()
-    igv = ExactExplainer(game_from(mask_fn), IGV(order=2)).explain()
-    egv = ExactExplainer(game_from(mask_fn), EGV(order=2)).explain()
+    igv = ExactExplainer(game_from(mask_fn), IGV, order=2).explain()
+    egv = ExactExplainer(game_from(mask_fn), EGV, order=2).explain()
     empty = float(mask_fn(subset_mask(())))
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     for interaction in [(0,), (4,), (2, 3), (0, 1)]:
@@ -269,7 +268,7 @@ def test_exact_internal_and_external_generalized_values_have_closed_forms():
 
 def test_exact_jointsv_higher_orders_stay_efficient():
     mask_fn = random_table_game()
-    joint = ExactExplainer(game_from(mask_fn), JointSV(order=2)).explain()
+    joint = ExactExplainer(game_from(mask_fn), JointSV, order=2).explain()
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(joint, 2), grand - empty, atol=1e-3)

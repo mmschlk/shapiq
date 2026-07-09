@@ -34,9 +34,10 @@ class Approximator[
         sampler: SamplerT,
         state: StateT,
         index: InteractionIndex,
+        order: int | None = None,
     ) -> None:
         """Initialize an approximator."""
-        super().__init__(game, index)
+        super().__init__(game, index, order=order)
         if sampler.n_players != game.n_players:
             msg = "sampler and game use different numbers of players"
             raise ValueError(msg)

@@ -83,7 +83,7 @@ def brute_force_top_stii(mask_fn, interaction):
 
 
 def test_lower_orders_are_exact_derivatives_at_empty():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=0)
+    approximator = PermutationSampling(game_from(cubic_from_masks), STII, order=3, random_state=0)
     explanation = approximator.sample(seeds(3) + quantum(3)).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), WEIGHTS[player], atol=1e-5)
@@ -93,7 +93,7 @@ def test_lower_orders_are_exact_derivatives_at_empty():
 
 def test_top_order_pairs_exact_for_quadratic_after_one_walk():
     approximator = PermutationSampling(
-        game_from(quadratic_from_masks), STII(order=2), random_state=0
+        game_from(quadratic_from_masks), STII, order=2, random_state=0
     )
     explanation = approximator.sample(seeds(2) + quantum(2)).explain()
     for left, right in combinations(range(N_PLAYERS), 2):
@@ -101,7 +101,7 @@ def test_top_order_pairs_exact_for_quadratic_after_one_walk():
 
 
 def test_top_order_triples_exact_for_cubic_after_one_walk():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=1)
+    approximator = PermutationSampling(game_from(cubic_from_masks), STII, order=3, random_state=1)
     explanation = approximator.sample(seeds(3) + quantum(3)).explain()
     for triple in combinations(range(N_PLAYERS), 3):
         expected = 1.5 if triple == (0, 1, 2) else 0.0
@@ -109,7 +109,7 @@ def test_top_order_triples_exact_for_cubic_after_one_walk():
 
 
 def test_top_order_converges_to_brute_force_stii():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=2), random_state=2)
+    approximator = PermutationSampling(game_from(cubic_from_masks), STII, order=2, random_state=2)
     explanation = approximator.sample(seeds(2) + 1500 * quantum(2)).explain()
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(
@@ -119,8 +119,8 @@ def test_top_order_converges_to_brute_force_stii():
 
 def test_order_one_stii_matches_sv_approximator_exactly():
     n_walks = 25
-    stii = PermutationSampling(game_from(cubic_from_masks), STII(order=1), random_state=4)
-    sv = PermutationSampling(game_from(cubic_from_masks), SV(), random_state=4)
+    stii = PermutationSampling(game_from(cubic_from_masks), STII, order=1, random_state=4)
+    sv = PermutationSampling(game_from(cubic_from_masks), SV, random_state=4)
     stii_explanation = stii.sample(seeds(1) + n_walks * quantum(1)).explain()
     sv_explanation = sv.sample(2 + n_walks * (N_PLAYERS - 1)).explain()
     for player in range(N_PLAYERS):
@@ -132,7 +132,7 @@ def test_efficiency_holds_exactly_for_quadratic_games():
     grand = quadratic_from_masks(jnp.ones((N_PLAYERS,), dtype=jnp.float32))
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
     explanation = (
-        PermutationSampling(game, STII(order=2), random_state=3)
+        PermutationSampling(game, STII, order=2, random_state=3)
         .sample(seeds(2) + quantum(2))
         .explain()
     )
@@ -148,7 +148,7 @@ def test_empty_interaction_is_the_empty_coalition_value():
     game = game_from(quadratic_from_masks)
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
     explanation = (
-        PermutationSampling(game, STII(order=2), random_state=0)
+        PermutationSampling(game, STII, order=2, random_state=0)
         .sample(seeds(2) + quantum(2))
         .explain()
     )
@@ -157,7 +157,7 @@ def test_empty_interaction_is_the_empty_coalition_value():
 
 def test_explaining_before_first_completed_walk_raises():
     approximator = PermutationSampling(
-        game_from(quadratic_from_masks), STII(order=2), random_state=0
+        game_from(quadratic_from_masks), STII, order=2, random_state=0
     )
     with pytest.raises(InsufficientSamplesError):
         approximator.explain()
@@ -167,7 +167,7 @@ def test_explaining_before_first_completed_walk_raises():
 
 def test_seed_block_resumes_across_budget_splits():
     def make():
-        return PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=6)
+        return PermutationSampling(game_from(cubic_from_masks), STII, order=3, random_state=6)
 
     total = seeds(3) + quantum(3)
     whole = make().sample(total)
@@ -179,7 +179,7 @@ def test_seed_block_resumes_across_budget_splits():
 
 def test_pending_samples_and_budget_splits():
     def make():
-        return PermutationSampling(game_from(cubic_from_masks), STII(order=2), random_state=5)
+        return PermutationSampling(game_from(cubic_from_masks), STII, order=2, random_state=5)
 
     whole = make().sample(seeds(2) + 4 * quantum(2))
     split = make().sample(quantum(2) + 7).sample(seeds(2) + 3 * quantum(2) - 7)
