@@ -116,6 +116,10 @@ _Avoid_: masked model, prediction game
 A **MaskedPredictor** formed by composing a **Masker** with a model.
 _Avoid_: masked model wrapper
 
+**ChunkedMaskedPredictor**:
+A torch **MaskedPredictor** composing a **Masker** with a model that streams **Coalitions** through both in chunks, bounding the flat model batch, keeping at most one chunk of masked inputs alive per device, and moving chunks to the model's parameter device (overridable) so tensors otherwise never leave their device.
+_Avoid_: dataloader, batcher
+
 **PredictionArray**:
 A loose term for the model-native prediction structure returned by a **MaskedPredictor** and consumed by a **LinkFunction**. A **PredictionArray** is not a concrete type or protocol and does not become a **ValueArray** until a **LinkFunction** maps and normalizes it.
 _Avoid_: ValueArray, model output when discussing the composed game contract

@@ -29,9 +29,9 @@ class SuperpixelMasker(Masker[torch.Tensor]):
     ``(channels, height, width)`` axes; leading axes become the explanation
     target shape. The masked images carry the coalition sample axis before
     the image axes and live on the inputs' device. The masker only expands
-    coalition masks to pixel masks and applies one ``where``; batching
-    masked images through a model efficiently is the game's job (see
-    ``ImageGame``).
+    coalition masks to pixel masks and applies one ``where``; streaming
+    masked images through a model efficiently is the predictor's job (see
+    ``ChunkedMaskedPredictor``).
 
     Example:
         >>> labels = grid_labels(height=27, width=27, grid=(3, 3))

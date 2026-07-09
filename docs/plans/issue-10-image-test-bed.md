@@ -1,7 +1,7 @@
 # Issue 10 — Image test bed: chunked torch games
 
-Status: **landed 2026-07-09 (rudimentary)** — the seam exists; this file tracks what the test
-bed should measure next and the design decisions still open.
+Status: **landed 2026-07-09 (rudimentary; harmonized same day)** — the seam exists; this file
+tracks what the test bed should measure next and the design decisions still open.
 
 ## What landed
 
@@ -10,17 +10,28 @@ bed should measure next and the design decisions still open.
   and irregular (SLIC-style) layouts are different label maps, not new masker code. The masker
   stays a plain mask-and-replace: one gather (`masks[..., labels]`), one `where`, masks moved
   to the inputs' device. Baselines: float, scalar tensor, `(channels, 1, 1)`, or a full image.
-- `ImageGame(masker, model, link_function, batch_size)` (`src/shapiq/games/torch/_image.py`):
-  the game owns efficient masker use. Coalitions stream through masker and model in chunks
-  whose flat image count stays within `batch_size` (explanation-target batches divide the
-  coalition samples per chunk; at least one coalition per chunk), only one chunk of masked
-  images is alive at a time, the model receives flat `(batch, c, h, w)` tensors as trained,
-  and the link function runs once on the concatenated predictions.
-- Device seam: maskers validate one device across their tensors and move coalition masks to
-  it; `to_jax` falls back through host memory when JAX has no backend for the tensor's device.
+- `ChunkedMaskedPredictor(masker, model, batch_size, instance_axes, no_grad, device)`
+  (`src/shapiq/games/torch/_chunked.py`): the predictor owns efficient masker use. Coalitions
+  stream through masker and model in chunks whose flat instance count stays within
+  `batch_size` (explanation-target batches divide the coalition samples per chunk; at least
+  one coalition per chunk), only one chunk of masked inputs is alive at a time per device,
+  and the trailing `instance_axes` axes (3 for images, 1 for tabular) are flattened around
+  the model call so it receives batches exactly as trained. Composes with the ordinary
+  `MaskedGame` for link and value-shape handling — **`ImageGame` is gone**: it duplicated
+  MaskedGame's plumbing inside torch-land, and the harmonized cut has one masked game and a
+  torch predictor, i.e. strictly less OOP (2026-07-09 decision, replacing the "extract on the
+  second modality" plan below).
+- Device story: users never specify devices — masked chunks move to the model's parameter
+  device when it differs from the masker's (resolved on every prediction, so `model.to(...)`
+  after construction is picked up); masker tensors stay put and only chunk-sized traffic
+  crosses devices; `device` on the predictor overrides the inference for parameterless
+  callables or pinned placements; `to_jax` falls back through host memory when JAX has no
+  backend for the tensor's device; maskers validate one device across their own tensors and
+  move coalition masks to it. The cross-device path is pinned by an MPS-guarded test
+  (skips where no MPS device exists).
 - `examples/image_superpixels.py`: transparent-model sanity check (the blob superpixel holds
-  the payout share), a trained tiny CNN, a direct-game `batch_size` throughput scan, and a
-  sampled-vs-exact FSII cross-check.
+  the summed-Shapley share), a trained tiny CNN, a direct-game `batch_size` throughput scan,
+  and a sampled-vs-exact FSII cross-check.
 
 ## Review findings applied (2026-07-09, three-lens review)
 
@@ -61,11 +72,10 @@ inputs and 1-based/SLIC label maps get teaching errors; per-channel baseline doc
 
 ## Open design decisions
 
-- **ImageGame vs a `ChunkedMaskedPredictor`**: ImageGame is a third game shape (masker + model
-  + link, bypassing MaskedPredictor) and duplicates MaskedGame's link plumbing. The chunk loop
-  should be extracted into a shared helper when a second chunked modality (text/tokens)
-  arrives — not before, and not as a generic ChunkedGame (which would either apply the link
-  per chunk or need concat-axis-from-value_shape logic).
+- ~~ImageGame vs a `ChunkedMaskedPredictor`~~ — **resolved 2026-07-09**: the chunk loop moved
+  into `ChunkedMaskedPredictor` and `ImageGame` was deleted; `MaskedGame` is the only masked
+  game again, and `instance_axes` already covers the "second modality" case (tabular chunking
+  is tested; text is `instance_axes` over token axes plus its own masker).
 - **`batch_size` naming**: the glossary reserves "batch size" against Sampling Quantum
   vocabulary; here it is the standard torch model-inference batch. Either bless that reading
   in the glossary or rename to `chunk_size`.

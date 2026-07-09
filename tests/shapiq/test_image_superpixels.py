@@ -1,4 +1,4 @@
-"""Tests for superpixel masking and the chunked torch image game."""
+"""Tests for superpixel masking and chunked torch prediction."""
 
 from __future__ import annotations
 
@@ -17,7 +17,8 @@ from shapiq import (  # noqa: E402
     Regression,
 )
 from shapiq.games.torch import (  # noqa: E402
-    ImageGame,
+    BaselineMasker,
+    ChunkedMaskedPredictor,
     SuperpixelMasker,
     grid_labels,
     to_jax,
@@ -38,6 +39,20 @@ def gray_masker(inputs):
         inputs=inputs,
         baseline=torch.tensor(0.0),
         labels=grid_labels(HEIGHT, WIDTH),
+    )
+
+
+def chunked_game(masker, model, link_function=to_jax, batch_size=64, value_shape=(), device=None):
+    predictor = ChunkedMaskedPredictor(
+        masker=masker,
+        model=model,
+        batch_size=batch_size,
+        device=device,
+    )
+    return MaskedGame(
+        masked_predictor=predictor,
+        link_function=link_function,
+        value_shape=value_shape,
     )
 
 
@@ -116,6 +131,13 @@ def test_masker_broadcasts_baseline_forms():
     assert torch.equal(masked[0], baseline_image)
 
 
+def test_masker_accepts_float_baselines():
+    masked = SuperpixelMasker(inputs=image(), baseline=0.5, labels=grid_labels(HEIGHT, WIDTH))(
+        coalitions([[False] * N_PLAYERS]),
+    )
+    assert torch.equal(masked[0], torch.full((CHANNELS, HEIGHT, WIDTH), 0.5))
+
+
 def test_masker_explains_image_batches():
     batch = torch.stack([image(), 2 * image()])
     masker = SuperpixelMasker(
@@ -127,13 +149,6 @@ def test_masker_explains_image_batches():
     masked = masker(coalitions([[True] * N_PLAYERS]))
     assert masked.shape == (2, 1, CHANNELS, HEIGHT, WIDTH)
     assert torch.equal(masked[:, 0], batch)
-
-
-def test_masker_accepts_float_baselines():
-    masked = SuperpixelMasker(inputs=image(), baseline=0.5, labels=grid_labels(HEIGHT, WIDTH))(
-        coalitions([[False] * N_PLAYERS]),
-    )
-    assert torch.equal(masked[0], torch.full((CHANNELS, HEIGHT, WIDTH), 0.5))
 
 
 def test_masker_validates_metadata():
@@ -165,9 +180,9 @@ class _CountingModel(torch.nn.Module):
         return flat.mean(dim=(-3, -2, -1))
 
 
-def test_image_game_streams_coalitions_in_batch_size_chunks():
+def test_predictor_streams_coalitions_in_batch_size_chunks():
     model = _CountingModel()
-    game = ImageGame(masker=gray_masker(image()), model=model, link_function=to_jax, batch_size=4)
+    game = chunked_game(gray_masker(image()), model, batch_size=4)
     values = game(random_coalitions(10))
     assert values.shape == (10,)
     assert model.flat_batch_sizes == [4, 4, 2]
@@ -175,9 +190,9 @@ def test_image_game_streams_coalitions_in_batch_size_chunks():
 
 def test_chunked_values_match_the_single_batch():
     def make(batch_size):
-        return ImageGame(
-            masker=gray_masker(image()),
-            model=tiny_cnn(1),
+        return chunked_game(
+            gray_masker(image()),
+            tiny_cnn(1),
             link_function=lambda predictions: to_jax(predictions[..., 0]),
             batch_size=batch_size,
         )
@@ -186,7 +201,7 @@ def test_chunked_values_match_the_single_batch():
     assert jnp.allclose(make(4)(rows), make(1000)(rows), atol=1e-6)
 
 
-def test_image_game_matches_the_composed_masked_game():
+def test_chunked_predictor_matches_the_one_shot_composition():
     inputs = image()
     cnn = tiny_cnn(2)
 
@@ -199,20 +214,14 @@ def test_image_game_matches_the_composed_masked_game():
         link_function=to_jax,
         value_shape=(2,),
     )
-    chunked = ImageGame(
-        masker=gray_masker(inputs),
-        model=cnn,
-        link_function=to_jax,
-        batch_size=5,
-        value_shape=(2,),
-    )
+    chunked = chunked_game(gray_masker(inputs), cnn, batch_size=5, value_shape=(2,))
     rows = random_coalitions(17)
     with torch.no_grad():
         expected = composed(rows)
     assert jnp.allclose(chunked(rows), expected, atol=1e-6)
 
 
-def test_image_game_explains_target_batches_within_batch_size():
+def test_predictor_explains_target_batches_within_batch_size():
     batch = torch.stack([image(), image(seed=5)])
     masker = SuperpixelMasker(
         inputs=batch,
@@ -220,16 +229,16 @@ def test_image_game_explains_target_batches_within_batch_size():
         labels=grid_labels(HEIGHT, WIDTH),
     )
     model = _CountingModel()
-    game = ImageGame(masker=masker, model=model, link_function=to_jax, batch_size=8)
+    game = chunked_game(masker, model, batch_size=8)
     values = game(random_coalitions(11))
     assert values.shape == (2, 11)
     # two target images divide the coalition samples per chunk: 4 + 4 + 3
     assert model.flat_batch_sizes == [8, 8, 6]
 
 
-def test_image_game_evaluates_scalar_and_empty_coalition_arrays():
+def test_predictor_evaluates_scalar_and_empty_coalition_arrays():
     model = _CountingModel()
-    game = ImageGame(masker=gray_masker(image()), model=model, link_function=to_jax, batch_size=4)
+    game = chunked_game(gray_masker(image()), model, batch_size=4)
     single = game(DenseCoalitionArray(jnp.zeros(N_PLAYERS, dtype=bool)))
     assert single.shape == (1,)
     empty = game(coalitions(jnp.zeros((0, N_PLAYERS), dtype=bool)))
@@ -237,20 +246,70 @@ def test_image_game_evaluates_scalar_and_empty_coalition_arrays():
     assert model.flat_batch_sizes == [1, 0]  # models must accept empty batches
 
 
-def test_image_game_validates_the_batch_size():
+def test_predictor_validates_the_evaluation_policy():
     with pytest.raises(ValueError, match="batch_size"):
-        ImageGame(
+        ChunkedMaskedPredictor(masker=gray_masker(image()), model=_CountingModel(), batch_size=0)
+    with pytest.raises(ValueError, match="instance_axes"):
+        ChunkedMaskedPredictor(
             masker=gray_masker(image()),
             model=_CountingModel(),
-            link_function=to_jax,
-            batch_size=0,
+            instance_axes=0,
         )
 
 
+def test_tabular_models_chunk_with_one_instance_axis():
+    inputs = torch.tensor([1.0, -2.0, 3.0, 0.5])
+    weight = torch.tensor([[1.0, -0.5], [0.0, 2.0], [-1.0, 1.0], [0.5, 0.5]])
+    masker = BaselineMasker(inputs=inputs, baseline=torch.zeros(4))
+    one_shot = MaskedGame(
+        masked_predictor=ModelMaskedPredictor(masker=masker, model=lambda x: x @ weight),
+        link_function=to_jax,
+        value_shape=(2,),
+    )
+    chunked = MaskedGame(
+        masked_predictor=ChunkedMaskedPredictor(
+            masker=masker,
+            model=lambda x: x @ weight,
+            batch_size=3,
+            instance_axes=1,
+        ),
+        link_function=to_jax,
+        value_shape=(2,),
+    )
+    generator = torch.Generator().manual_seed(2)
+    rows = DenseCoalitionArray(
+        jnp.asarray((torch.rand((9, 4), generator=generator) < 0.5).numpy()),
+    )
+    assert jnp.allclose(chunked(rows), one_shot(rows), atol=1e-6)
+
+
+def test_explicit_devices_override_the_model_inference():
+    game = chunked_game(gray_masker(image()), _CountingModel(), batch_size=4, device="cpu")
+    values = game(random_coalitions(6))
+    assert values.shape == (6,)
+
+
+@pytest.mark.skipif(
+    not torch.backends.mps.is_available(),
+    reason="needs an mps device to test cross-device streaming",
+)
+def test_masked_chunks_follow_the_models_device():
+    cpu_model = tiny_cnn(1)
+    mps_model = tiny_cnn(1).to("mps")
+
+    def link(predictions):
+        return to_jax(predictions[..., 0])
+
+    rows = random_coalitions(13)
+    on_cpu = chunked_game(gray_masker(image()), cpu_model, link_function=link, batch_size=4)
+    on_mps = chunked_game(gray_masker(image()), mps_model, link_function=link, batch_size=4)
+    assert jnp.allclose(on_mps(rows), on_cpu(rows), atol=1e-4)
+
+
 def test_exact_shapley_values_are_efficient_on_the_image_game():
-    game = ImageGame(
-        masker=gray_masker(image()),
-        model=tiny_cnn(1),
+    game = chunked_game(
+        gray_masker(image()),
+        tiny_cnn(1),
         link_function=lambda predictions: to_jax(predictions[..., 0]),
         batch_size=128,
     )
@@ -261,13 +320,7 @@ def test_exact_shapley_values_are_efficient_on_the_image_game():
 
 
 def test_sampled_faithful_interactions_run_on_the_image_game():
-    game = ImageGame(
-        masker=gray_masker(image()),
-        model=tiny_cnn(2),
-        link_function=to_jax,
-        batch_size=64,
-        value_shape=(2,),
-    )
+    game = chunked_game(gray_masker(image()), tiny_cnn(2), batch_size=64, value_shape=(2,))
     approximator = Regression(game, FSII(order=2), random_state=0, deduplicate=True)
     explanation = approximator.sample(approximator.min_budget + 40).explain()
     assert explanation.interaction_index == "FSII"

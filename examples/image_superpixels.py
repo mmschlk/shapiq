@@ -6,11 +6,13 @@ Run with:
 A synthetic image carries a bright blob in the top-left superpixel of a 3x3
 grid. The image is explained through the chunked torch pipeline
 
-    SuperpixelMasker + model -> ImageGame -> Explainer
+    SuperpixelMasker + model -> ChunkedMaskedPredictor -> MaskedGame -> Explainer
 
 first with a transparent brightness model (the Shapley values must locate
 the blob), then with a small CNN, including a batch-size throughput scan of
 the chunked evaluation and a sampled cross-check against the exact values.
+Devices follow the model: masked chunks move to the model's parameter
+device automatically, so `cnn.to("cuda")` is the only change a GPU needs.
 """
 
 import time
@@ -20,8 +22,13 @@ import jax.numpy as jnp
 import torch
 from torch import nn
 
-from shapiq import FSII, SV, DenseCoalitionArray, ExactExplainer, Regression
-from shapiq.games.torch import ImageGame, SuperpixelMasker, grid_labels, to_jax
+from shapiq import FSII, SV, DenseCoalitionArray, ExactExplainer, MaskedGame, Regression
+from shapiq.games.torch import ChunkedMaskedPredictor, SuperpixelMasker, grid_labels, to_jax
+
+
+def chunked_image_game(masker, model, link_function, batch_size) -> MaskedGame:
+    predictor = ChunkedMaskedPredictor(masker=masker, model=model, batch_size=batch_size)
+    return MaskedGame(masked_predictor=predictor, link_function=link_function)
 
 if __name__ == "__main__":
     torch.manual_seed(0)
@@ -40,7 +47,7 @@ if __name__ == "__main__":
     def brightness(flat_images: torch.Tensor) -> torch.Tensor:
         return flat_images.mean(dim=(-3, -2, -1))
 
-    game = ImageGame(masker=masker, model=brightness, link_function=to_jax, batch_size=128)
+    game = chunked_image_game(masker, brightness, link_function=to_jax, batch_size=128)
     explanation = ExactExplainer(game, SV()).explain()
     values = explanation.attributions_by_order[1].reshape(GRID)
     print("Shapley values per superpixel (row-major 3x3 grid):")
@@ -84,13 +91,8 @@ if __name__ == "__main__":
     def class_one_probability(predictions: torch.Tensor) -> jnp.ndarray:
         return to_jax(torch.softmax(predictions, dim=-1)[..., 1])
 
-    def cnn_game(batch_size: int) -> ImageGame:
-        return ImageGame(
-            masker=masker,
-            model=cnn,
-            link_function=class_one_probability,
-            batch_size=batch_size,
-        )
+    def cnn_game(batch_size: int) -> MaskedGame:
+        return chunked_image_game(masker, cnn, class_one_probability, batch_size)
 
     start = time.perf_counter()
     exact = ExactExplainer(cnn_game(256), SV()).explain()
