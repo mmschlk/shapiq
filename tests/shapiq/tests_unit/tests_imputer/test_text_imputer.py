@@ -34,6 +34,9 @@ from shapiq.imputer.text_imputer import (
 )
 
 MODULE = "shapiq.imputer.text_imputer"
+PLAYERS_MODULE = "shapiq.imputer.text.players"
+PERTURBATIONS_MODULE = "shapiq.imputer.text.perturbations"
+CALLABLES_MODULE = "shapiq.imputer.text.callables"
 
 class DummyTokenizer:
     """Small tokenizer substitute used by fast unit tests."""
@@ -120,7 +123,7 @@ def model() -> MagicMock:
 @pytest.fixture
 def no_nltk_resource_check():
     """Avoid touching local NLTK data in every player-strategy test."""
-    with patch(f"{MODULE}._require_nltk_resource"):
+    with patch(f"{PLAYERS_MODULE}._require_nltk_resource"):
         yield
 
 
@@ -130,7 +133,7 @@ def no_nltk_resource_check():
 
 
 def test_require_nltk_resource_passes_when_resource_exists() -> None:
-    with patch(f"{MODULE}.nltk.data.find") as find:
+    with patch(f"{PLAYERS_MODULE}.nltk.data.find") as find:
         _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
 
     find.assert_called_once_with("tokenizers/punkt_tab")
@@ -138,7 +141,7 @@ def test_require_nltk_resource_passes_when_resource_exists() -> None:
 
 def test_require_nltk_resource_has_helpful_error_when_missing() -> None:
     with patch(
-        f"{MODULE}.nltk.data.find",
+        f"{PLAYERS_MODULE}.nltk.data.find",
         side_effect=LookupError("not installed"),
     ), pytest.raises(LookupError, match=r"nltk\.download\('punkt_tab'\)"):
         _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
@@ -179,7 +182,7 @@ def test_word_player_strategy_with_mocked_nltk(
     no_nltk_resource_check,
 ) -> None:
     with patch(
-        f"{MODULE}.nltk.word_tokenize",
+        f"{PLAYERS_MODULE}.nltk.word_tokenize",
         return_value=["I", "love", "cats"],
     ):
         strategy = WordPlayerStrategy("I love cats")
@@ -202,7 +205,7 @@ def test_word_player_strategy_passes_context_to_perturbation(
     no_nltk_resource_check,
 ) -> None:
     with patch(
-        f"{MODULE}.nltk.word_tokenize",
+        f"{PLAYERS_MODULE}.nltk.word_tokenize",
         return_value=["I", "love", "cats"],
     ):
         strategy = WordPlayerStrategy("I love cats")
@@ -238,9 +241,9 @@ def test_named_entity_player_strategy_groups_entities(
     ]
 
     with (
-        patch(f"{MODULE}.nltk.word_tokenize", return_value=["ignored"]),
-        patch(f"{MODULE}.nltk.pos_tag", return_value=[("ignored", "NN")]),
-        patch(f"{MODULE}.nltk.ne_chunk", return_value=ner_tree),
+        patch(f"{PLAYERS_MODULE}.nltk.word_tokenize", return_value=["ignored"]),
+        patch(f"{PLAYERS_MODULE}.nltk.pos_tag", return_value=[("ignored", "NN")]),
+        patch(f"{PLAYERS_MODULE}.nltk.ne_chunk", return_value=ner_tree),
     ):
         strategy = NamedEntityPlayerStrategy("John Smith visited Berlin")
 
@@ -263,9 +266,9 @@ def test_chunk_player_strategy_groups_phrases(
     parser.parse.return_value = parsed_tree
 
     with (
-        patch(f"{MODULE}.nltk.word_tokenize", return_value=["ignored"]),
-        patch(f"{MODULE}.nltk.pos_tag", return_value=[("ignored", "NN")]),
-        patch(f"{MODULE}.nltk.RegexpParser", return_value=parser),
+        patch(f"{PLAYERS_MODULE}.nltk.word_tokenize", return_value=["ignored"]),
+        patch(f"{PLAYERS_MODULE}.nltk.pos_tag", return_value=[("ignored", "NN")]),
+        patch(f"{PLAYERS_MODULE}.nltk.RegexpParser", return_value=parser),
     ):
         strategy = ChunkPlayerStrategy("the movie was very good")
 
@@ -280,7 +283,7 @@ def test_sentence_player_strategy_with_mocked_nltk(
     no_nltk_resource_check,
 ) -> None:
     with patch(
-        f"{MODULE}.nltk.sent_tokenize",
+        f"{PLAYERS_MODULE}.nltk.sent_tokenize",
         return_value=["First.", "Second."],
     ):
         strategy = SentencePlayerStrategy("First. Second.")
@@ -301,7 +304,7 @@ def test_player_factory_creates_correct_strategy(
         SubwordPlayerStrategy,
     )
 
-    with patch(f"{MODULE}.nltk.word_tokenize", return_value=["hello"]):
+    with patch(f"{PLAYERS_MODULE}.nltk.word_tokenize", return_value=["hello"]):
         assert isinstance(
             create_player_strategy("word", "hello", tokenizer),
             WordPlayerStrategy,
@@ -358,7 +361,7 @@ def test_penn_to_wordnet_mapping(tag: str, expected: str | None) -> None:
         ADV="r",
     )
 
-    with patch(f"{MODULE}.wn", fake_wn):
+    with patch(f"{PERTURBATIONS_MODULE}.wn", fake_wn):
         assert _penn_to_wn(tag) == expected
 
 
@@ -376,7 +379,7 @@ def test_get_neutral_replacement_uses_hypernym() -> None:
         ADV="r",
         synsets=MagicMock(return_value=[synset]),
     )
-    with patch(f"{MODULE}.wn", fake_wn):
+    with patch(f"{PERTURBATIONS_MODULE}.wn", fake_wn):
         assert _get_neutral_replacement("cat", "NN") == "living"
 
 
@@ -392,7 +395,7 @@ def test_get_neutral_replacement_falls_back_to_something(tag: str) -> None:
             ADV="r",
             synsets=MagicMock(return_value=[]),
         )
-        with patch(f"{MODULE}.wn", fake_wn):
+        with patch(f"{PERTURBATIONS_MODULE}.wn", fake_wn):
             assert _get_neutral_replacement("unknown", tag) == "something"
 
 
@@ -400,9 +403,9 @@ def test_wordnet_neutral_perturbation(
     no_nltk_resource_check,
 ) -> None:
     with (
-        patch(f"{MODULE}.nltk.pos_tag", return_value=[("cat", "NN")]),
+        patch(f"{PERTURBATIONS_MODULE}.nltk.pos_tag", return_value=[("cat", "NN")]),
         patch(
-            f"{MODULE}._get_neutral_replacement",
+            f"{PERTURBATIONS_MODULE}._get_neutral_replacement",
             return_value="animal",
         ),
     ):
@@ -522,7 +525,7 @@ def test_mlm_predict_masks_filters_invalid_tokens(
     sampled_ids = iter([0, 1, 2, 3, 4, 5])
 
     with patch(
-        f"{MODULE}.torch.multinomial",
+        f"{PERTURBATIONS_MODULE}.torch.multinomial",
         side_effect=lambda *args, **kwargs: torch.tensor(
             [next(sampled_ids)]
         ),
@@ -546,7 +549,7 @@ def test_mlm_predict_masks_falls_back_after_failed_sampling(
     model.return_value = SimpleNamespace(logits=logits)
 
     with patch(
-        f"{MODULE}.torch.multinomial",
+        f"{PERTURBATIONS_MODULE}.torch.multinomial",
         return_value=torch.tensor([0]),  # always [PAD]
     ):
         replacements = perturbation._predict_masks(

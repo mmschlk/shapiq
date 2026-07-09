@@ -3681,7 +3681,6 @@ dependencies = [
     { name = "joblib" },
     { name = "matplotlib" },
     { name = "networkx" },
-    { name = "nltk" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pillow" },
@@ -3707,6 +3706,11 @@ shapleig = [
 sparse = [
     { name = "galois" },
     { name = "sparse-transform" },
+]
+text = [
+    { name = "nltk" },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 
 [package.dev-dependencies]
@@ -3788,7 +3792,7 @@ requires-dist = [
     { name = "linear-operator", marker = "extra == 'shapleig'", specifier = ">=0.6" },
     { name = "matplotlib" },
     { name = "networkx" },
-    { name = "nltk", specifier = ">=3.9.4" },
+    { name = "nltk", marker = "extra == 'text'", specifier = ">=3.9.4" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pillow" },
@@ -3798,10 +3802,12 @@ requires-dist = [
     { name = "smac", marker = "extra == 'proxy'" },
     { name = "sparse-transform", marker = "extra == 'sparse'" },
     { name = "torch", marker = "extra == 'shapleig'", specifier = ">=2.9.1" },
+    { name = "torch", marker = "extra == 'text'" },
     { name = "tqdm" },
+    { name = "transformers", marker = "extra == 'text'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
-provides-extras = ["sparse", "proxy", "shapleig"]
+provides-extras = ["sparse", "proxy", "shapleig", "text"]
 
 [package.metadata.requires-dev]
 all-ml = [

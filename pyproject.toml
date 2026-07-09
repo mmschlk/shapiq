@@ -21,8 +21,8 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
-    "nltk>=3.9.4",
 ]
+
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
     {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
@@ -82,6 +82,12 @@ shapleig = [
     "gpytorch>=1.14",
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
+]
+text = [
+    # required by shapiq.imputer.TextImputer and text explanation utilities
+    "torch",
+    "transformers",
+    "nltk>=3.9.4",
 ]
 
 [tool.coverage.report]
