@@ -15,14 +15,13 @@ from .base import GraphGame
 from .graphshapiq import GraphSHAPIQ
 
 if TYPE_CHECKING:
+    import torch
     from torch import nn
     from torch_geometric.data import Data
 
     from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
 else:
     Data = Any
-
-SPARSIFY_THRESHOLD = 1e-8
 
 
 def _check_import_torch_geometric() -> "type[Data]":  # noqa: UP037
@@ -47,25 +46,29 @@ class GraphExplainer(Explainer):
     The algorithm is described in:footcite:t:`muschalik2025exactcomputationanyordershapley`.
 
     GraphSHAP-IQ is an algorithm for computing Shapley Interaction values for graph-based models.
-    It is based on the GraphSHAPIQ algorithm by `Muschalik et al. (2025)` [Mus25]_, which efficiently
+    It is based on the GraphSHAPIQ algorithm by :footcite:t:`muschalik2025exactcomputationanyordershapley`., which efficiently
     calculates any order Shapley Interactions for GNN-based predictions, by utilizing the unique
     characteristics of GNNs, where only nodes in node i's l-hop neighborhood are considered for coalitions,
     thus drastically reducing the total amount of coalitions to evaluate.
 
+    Assumption: Linear global pooling & Linear readout.
+
     The GraphExplainer can be used with a variety of graph-based models, including
-    GCNs, GATs and GINS.
+    GCNs, GATs and GINs.
     """
 
     def __init__(
         self,
         model: nn.Module,
         index: ValidMoebiusConverterIndices = "k-SII",
-        baseline_strategy: Literal["zeros", "average", "min", "max"] = "average",
+        baseline_strategy: Literal["zeros", "average", "min", "max"] = "zeros",
+        baseline_value: float | torch.Tensor | None = None,
         max_order: int = 2,
         class_index: int | None = None,
         *,
         efficiency_routine: bool = True,
-        normalize: bool = False,
+        sparsify_threshold: float = 1e-8,
+        normalize: bool = True,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the GraphExplainer.
@@ -87,16 +90,23 @@ class GraphExplainer(Explainer):
                 to specify the class index for your classification model.
             max_order: The maximum interaction order to be computed.
                 Defaults to 2. Set to 1 for no interactions (single feature attribution).
-            normalize: Whether to normalize the GraphSHAP-IQ algorithm.
+            normalize: Whether to normalize the game by subtracting the empty
+                coalition value.
             baseline_strategy: The node masking strategy.
+            baseline_value: Explicit baseline. If provided, this overrides ``strategy``.
+                A float creates a constant baseline vector. A tensor is interpreted
+                as a fixed feature-wise baseline.
             efficiency_routine: Whether to enforce the efficiency axiom during the
                 GraphSHAP-IQ computation. Defaults to True.
+            sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
             **kwargs: Additional keyword arguments are ignored.
         """
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._model: nn.Module = model
         self._class_index = class_index
+        self._sparsify_threshold = sparsify_threshold
         self._baseline_strategy = baseline_strategy
+        self._baseline_value = baseline_value
         self._normalize = normalize
         self._efficiency_routine = efficiency_routine
 
@@ -195,10 +205,13 @@ class GraphExplainer(Explainer):
             x_graph=x,
             class_index=self._class_index,
             baseline_strategy=self._baseline_strategy,
+            baseline_value=self._baseline_value,
             normalize=self._normalize,
             verbose=verbose,
         )
-        explainer = GraphSHAPIQ(game=game, verbose=verbose)
+        explainer = GraphSHAPIQ(
+            game=game, verbose=verbose, sparsify_threshold=self._sparsify_threshold
+        )
 
         return self._run_graph_shapiq_approximation(
             explainer,
@@ -247,6 +260,9 @@ class GraphExplainer(Explainer):
                 the full neighbourhood size is used (i.e. ``explainer.max_size_neighbors``).
                 Passed per-call via ``explain(**kwargs)``; not stored on the explainer since
                 the appropriate value is graph-instance-specific.
+
+        Returns:
+            Shapley Interaction Indices.
         """
         moebius, interactions = explainer.explain(
             max_subset_size=max_subset_size,
@@ -261,9 +277,9 @@ class GraphExplainer(Explainer):
 
         moebius.estimation_budget = explainer.last_n_model_calls
         moebius.estimated = False
-        moebius.sparsify(threshold=SPARSIFY_THRESHOLD)
+        moebius.sparsify(threshold=self._sparsify_threshold)
         interactions.estimation_budget = explainer.last_n_model_calls
         interactions.estimated = False
-        interactions.sparsify(threshold=SPARSIFY_THRESHOLD)
+        interactions.sparsify(threshold=self._sparsify_threshold)
 
         return interactions
