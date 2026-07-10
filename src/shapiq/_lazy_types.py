@@ -8,3 +8,6 @@ without ever being imported by shapiq itself.
 from __future__ import annotations
 
 TORCH_TENSOR = "torch.Tensor"
+
+SKLEARN_DECISION_TREE = "sklearn.tree._classes.BaseDecisionTree"
+SKLEARN_FOREST = "sklearn.ensemble._forest.BaseForest"

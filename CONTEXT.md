@@ -84,6 +84,14 @@ _Avoid_: value function, model wrapper
 A **Game** adapter for a callable that already maps **CoalitionArrays** to **Values**, adding game metadata and backend conversion at the boundary.
 _Avoid_: FunctionGame, WrappedGame
 
+**TreeModel**:
+The unified node-array layout of one decision tree (children, split features, thresholds, leaf values); library-specific models convert to it through the dispatched ``to_tree_model``. Leaf values may carry trailing value axes.
+_Avoid_: tree structure, tree dict
+
+**InterventionalTreeGame**:
+A **Game** over a tree ensemble realizing the interventional semantics of baseline masking exactly: present **Players** take the explained inputs' feature values, absent players the baseline's, decomposed into per-leaf present/absent reachability constraints. The game type carries the tree-explanation semantics — a path-dependent sibling game is the planned alternative — and closed-form tree explainers dispatch on it.
+_Avoid_: tree wrapper, TreeSHAP game
+
 **MaskedGame**:
 A **Game** composed from a **MaskedPredictor** and a **LinkFunction**; without a link function, predictions become **Values** through the dispatched ``to_values`` conversion, whose backend handlers (torch) register lazily on first contact.
 _Avoid_: linked predictor game

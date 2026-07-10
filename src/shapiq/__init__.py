@@ -15,6 +15,7 @@ from shapiq.explainers import (
     Explainer,
     PermutationSampling,
     Regression,
+    TreeExplainer,
 )
 from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
@@ -78,6 +79,7 @@ from shapiq.sampling import (
     SizeKernelSampler,
     UnitScheduleSampler,
 )
+from shapiq.trees import InterventionalTreeGame, TreeModel, to_tree_model
 
 try:
     from ._version import __version__
@@ -124,6 +126,7 @@ __all__ = [
     "InteractionIndex",
     "InteractionIndexName",
     "InteractionOrientation",
+    "InterventionalTreeGame",
     "LinkFunction",
     "MaskedGame",
     "MaskedPredictor",
@@ -147,6 +150,8 @@ __all__ = [
     "SamplingState",
     "ShapleyKernelSampler",
     "SparseExplanationArray",
+    "TreeExplainer",
+    "TreeModel",
     "UnitScheduleSampler",
     "UnsupportedGameError",
     "__version__",
@@ -155,6 +160,7 @@ __all__ = [
     "WeightedFBII",
     "iter_interactions",
     "normalize_interaction",
+    "to_tree_model",
     "to_values",
     "validate_interaction_metadata",
 ]
