@@ -14,7 +14,6 @@ from .text.players import (
 )
 
 from .text.perturbations import (
-    AttentionMaskPerturbation,
     BasePerturbationStrategy,
     MaskTokenPerturbation,
     MLMInfillingPerturbation,
@@ -27,6 +26,13 @@ from .text.perturbations import (
     _penn_to_wn,
     _require_nltk_resource,
     create_perturbation_strategy,
+)
+
+from .text.tensor_perturbation import (
+    BaseTensorPerturbationStrategy,
+    TENSOR_PERTURBATION_STRATEGIES,
+    AttentionMaskPerturbation,
+    create_tensor_perturbation_strategy,
 )
 
 from .text.callables import (
