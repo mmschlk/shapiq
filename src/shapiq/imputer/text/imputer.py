@@ -10,7 +10,6 @@ try:
     import torch
 except ImportError as err:
     from ._error import _text_import_error
-
     raise _text_import_error from err
 
 from shapiq.imputer.base import Imputer
@@ -57,7 +56,7 @@ class TextImputer(Imputer):
     be passed directly to shapiq approximators. A coalition entry of ``1``
     keeps a player; ``0`` marks it as missing.
 
-    For text perturbation strategies, each coalition is evaluated once.
+    For ordinary perturbation strategies, each coalition is evaluated once.
     For ``MLMInfillingPerturbation``, the imputer evaluates multiple sampled
     infillings and returns their average score, approximating ``E[f(X) | X_S]``.
 
@@ -227,6 +226,7 @@ class TextImputer(Imputer):
             msg = "MLMInfillingPerturbation currently supports only word, named-entity, and chunk players."
             raise ValueError(msg)
 
+
         # =============================================================================
         # TARGET CALLABLE
         # =============================================================================
@@ -262,6 +262,8 @@ class TextImputer(Imputer):
         else:
             msg = "model_type must be one of:\n- 'encoder_classifier'\n- 'causal_lm'\n- 'seq2seq'"
             raise ValueError(msg)
+
+        self._compute_reference_predictions()
 
     def coalition_to_text(
         self,
@@ -338,7 +340,53 @@ class TextImputer(Imputer):
 
         return np.concatenate(all_scores)
 
-<<<<<<< Updated upstream
+    def _evaluate_coalitions(
+            self,
+            coalitions: np.ndarray,
+        ) -> np.ndarray:
+        if self.perturbation_mode == "text" and isinstance(
+            self.perturbation_strategy, MLMInfillingPerturbation
+        ):
+            num_samples = self.perturbation_strategy.num_samples
+            all_scores = []
+
+            # Stored for debugging and demonstrations of sampled MLM infillings.
+            self._last_generated_texts = []
+
+            for _ in range(num_samples):
+                self.perturbation_strategy.clear_cache()
+                texts = self._coalitions_to_texts(coalitions)
+                self._last_generated_texts.extend(texts)
+                scores = self._batched_predict(texts)
+                all_scores.append(scores)
+
+            all_scores = np.stack(all_scores, axis=0)
+            scores = np.mean(all_scores, axis=0)
+            return scores
+        if self.perturbation_mode == "tensor":
+            if self.tensor_perturbation_strategy is None:
+                msg = "tensor_perturbation_strategy is required in tensor perturbation mode."
+                raise RuntimeError(msg)
+            players = self.player_strategy.get_players()
+
+            masked_inputs = self.tensor_perturbation_strategy.evaluate(
+                players=players,
+                coalitions=coalitions,
+                model_type=self.model_type,
+                prompt_template=cast(
+                    "str | None",
+                    getattr(self.target_callable, "prompt_template", None),
+                ),
+                player_separator="" if self.player_level == "subword" else " ",
+            )
+
+            scores = self._batched_predict_from_inputs(masked_inputs)
+            return scores
+
+        texts = self._coalitions_to_texts(coalitions)
+        scores = self._batched_predict(texts)
+        return scores
+
     def value_function(
         self,
         coalitions: np.ndarray,
@@ -362,64 +410,21 @@ class TextImputer(Imputer):
             msg = f"Expected coalition width {self.n_features}, got {coalitions.shape[1]}"
             raise ValueError(msg)
 
-=======
-    def _evaluate_coalitions(
-            self,
-            coalitions: np.ndarray,
-        ) -> np.ndarray:
->>>>>>> Stashed changes
-        if self.perturbation_mode == "text" and isinstance(
-            self.perturbation_strategy, MLMInfillingPerturbation
-        ):
-            num_samples = self.perturbation_strategy.num_samples
-            all_scores = []
+        scores = self._evaluate_coalitions(coalitions)
+        empty_mask = ~np.any(coalitions, axis=1)
+        scores[empty_mask] = self.empty_prediction
+        return scores
 
-            # Stored for debugging and demonstrations of sampled MLM infillings.
-            self._last_generated_texts = []
+    def _compute_reference_predictions(self) -> None:
+        self.full_prediction = float(
+            self._evaluate_coalitions(
+                self.grand_coalition.reshape(1, -1)
+            )[0]
+        )
 
-            for _ in range(num_samples):
-                self.perturbation_strategy.clear_cache()
-                texts = self._coalitions_to_texts(coalitions)
-                self._last_generated_texts.extend(texts)
-                scores = self._batched_predict(texts)
-                all_scores.append(scores)
-
-            all_scores = np.stack(all_scores, axis=0)
-<<<<<<< Updated upstream
-            return np.mean(all_scores, axis=0)
-
-=======
-            scores = np.mean(all_scores, axis=0)
-            return scores
->>>>>>> Stashed changes
-        if self.perturbation_mode == "tensor":
-            if self.tensor_perturbation_strategy is None:
-                msg = "tensor_perturbation_strategy is required in tensor perturbation mode."
-                raise RuntimeError(msg)
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
-            players = self.player_strategy.get_players()
-
-            masked_inputs = self.tensor_perturbation_strategy.evaluate(
-                players=players,
-                coalitions=coalitions,
-                model_type=self.model_type,
-                prompt_template=cast(
-                    "str | None",
-                    getattr(self.target_callable, "prompt_template", None),
-                ),
-                player_separator="" if self.player_level == "subword" else " ",
-            )
-
-            return self._batched_predict_from_inputs(masked_inputs)
-
-        texts = self._coalitions_to_texts(coalitions)
-        return self._batched_predict(texts)
-
-    def full_prediction(self) -> float:
-        """Score of original unperturbed text."""
-        full_coalition = np.ones((1, self.n_features), dtype=bool)
-        score = self.value_function(full_coalition)[0]
-        return float(score)
+        self.empty_prediction = float(
+            self._evaluate_coalitions(
+                self.empty_coalition.reshape(1, -1)
+            )[0]
+        )
+        self.normalization_value = self.empty_prediction
