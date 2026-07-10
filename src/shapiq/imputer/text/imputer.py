@@ -338,6 +338,7 @@ class TextImputer(Imputer):
 
         return np.concatenate(all_scores)
 
+<<<<<<< Updated upstream
     def value_function(
         self,
         coalitions: np.ndarray,
@@ -361,6 +362,12 @@ class TextImputer(Imputer):
             msg = f"Expected coalition width {self.n_features}, got {coalitions.shape[1]}"
             raise ValueError(msg)
 
+=======
+    def _evaluate_coalitions(
+            self,
+            coalitions: np.ndarray,
+        ) -> np.ndarray:
+>>>>>>> Stashed changes
         if self.perturbation_mode == "text" and isinstance(
             self.perturbation_strategy, MLMInfillingPerturbation
         ):
@@ -378,13 +385,21 @@ class TextImputer(Imputer):
                 all_scores.append(scores)
 
             all_scores = np.stack(all_scores, axis=0)
+<<<<<<< Updated upstream
             return np.mean(all_scores, axis=0)
 
+=======
+            scores = np.mean(all_scores, axis=0)
+            return scores
+>>>>>>> Stashed changes
         if self.perturbation_mode == "tensor":
             if self.tensor_perturbation_strategy is None:
                 msg = "tensor_perturbation_strategy is required in tensor perturbation mode."
                 raise RuntimeError(msg)
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
             players = self.player_strategy.get_players()
 
             masked_inputs = self.tensor_perturbation_strategy.evaluate(
