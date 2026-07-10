@@ -564,8 +564,12 @@ def test_compute_bootstrap_elo_ratings_collects_one_rating_per_bootstrap_sample(
         bootstrap_random_state=0,
     )
     comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+    group_match_cache = scorer._build_group_match_cache(comparable_groups)
 
-    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(comparable_groups)
+    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(
+        comparable_groups=comparable_groups,
+        group_match_cache=group_match_cache,
+    )
 
     assert set(approximator_ratings_map) == {"ApproximatorA", "ApproximatorB"}
     assert len(approximator_ratings_map["ApproximatorA"]) == 5
@@ -582,8 +586,12 @@ def test_compute_bootstrap_elo_ratings_averages_permutations_per_bootstrap_sampl
         permutations_random_state=0,
     )
     comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+    group_match_cache = scorer._build_group_match_cache(comparable_groups)
 
-    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(comparable_groups)
+    approximator_ratings_map = scorer._compute_bootstrap_elo_ratings(
+        comparable_groups=comparable_groups,
+        group_match_cache=group_match_cache,
+    )
 
     assert set(approximator_ratings_map) == {"ApproximatorA", "ApproximatorB"}
     assert len(approximator_ratings_map["ApproximatorA"]) == 5
@@ -661,3 +669,34 @@ def test_elo_scorer_with_bootstrap_and_permutations_adds_combined_metadata():
 
     for row in result.rows:
         assert row.metadata["n_rating_samples"] == 10
+
+def test_group_match_cache_preserves_original_match_list():
+    """Test that cached group matches reproduce direct pairwise match construction."""
+    scorer = EloScorer(metric_names=["mse"])
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+
+    direct_matches = scorer._build_pairwise_matches(comparable_groups)
+
+    group_match_cache = scorer._build_group_match_cache(comparable_groups)
+    cached_matches = scorer._collect_cached_matches_for_groups(
+        comparable_groups=comparable_groups,
+        group_match_cache=group_match_cache,
+    )
+
+    assert cached_matches == direct_matches
+
+def test_collect_cached_matches_preserves_bootstrap_group_multiplicity():
+    """Test that repeated bootstrap groups contribute their matches repeatedly."""
+    scorer = EloScorer(metric_names=["mse"])
+    comparable_groups = _make_comparable_groups(scorer, _make_two_budget_records())
+    group_match_cache = scorer._build_group_match_cache(comparable_groups)
+
+    bootstrap_sample = [comparable_groups[0], comparable_groups[0]]
+    cached_matches = scorer._collect_cached_matches_for_groups(
+        comparable_groups=bootstrap_sample,
+        group_match_cache=group_match_cache,
+    )
+
+    single_group_matches = group_match_cache[comparable_groups[0].key]
+
+    assert cached_matches == single_group_matches + single_group_matches

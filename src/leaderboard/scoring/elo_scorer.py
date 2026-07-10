@@ -86,6 +86,7 @@ class ComparableGroup:
 
 type BootstrapSample = list[ComparableGroup]
 type BootstrapSamples = list[BootstrapSample]
+type GroupMatchCache = dict[tuple[object, ...], list[PairwiseMatch]]
 
 
 class EloScorer(LeaderboardScorer):
@@ -172,10 +173,18 @@ class EloScorer(LeaderboardScorer):
 
         groups = group_records(selected_records, self.group_keys)
         comparable_groups = self._build_comparable_groups(groups)
-        matches = self._build_pairwise_matches(comparable_groups)
+
+        group_match_cache = self._build_group_match_cache(comparable_groups)
+        matches = self._collect_cached_matches_for_groups(
+            comparable_groups=comparable_groups,
+            group_match_cache=group_match_cache,
+        )
 
         if self.n_bootstrap_samples > 0:
-            approximator_ratings_map = self._compute_bootstrap_elo_ratings(comparable_groups)
+            approximator_ratings_map = self._compute_bootstrap_elo_ratings(
+                comparable_groups=comparable_groups,
+                group_match_cache=group_match_cache,
+            )
         else:
             approximator_ratings_map = self._compute_elo_ratings_per_sample(matches)
 
@@ -528,11 +537,12 @@ class EloScorer(LeaderboardScorer):
         matches: list[PairwiseMatch],
     ) -> list[list[PairwiseMatch]]:
         """Generate match orderings for deterministic or permuted Elo scoring."""
+        if self.n_permutations == 1:
+            return [list(matches)]
+
         permutations: list[list[PairwiseMatch]] = []
         # pseudo-random generator used for reproducible benchmarks, not for cryptography purposes
         random_instance = Random(self.permutations_random_state)  # noqa: S311
-        if self.n_permutations == 1:
-            return [list(matches)]
         for _ in range(self.n_permutations):
             shuffled_matches = list(matches)
             random_instance.shuffle(shuffled_matches)
@@ -707,20 +717,23 @@ class EloScorer(LeaderboardScorer):
         return bootstrap_samples
 
     def _compute_bootstrap_elo_ratings(
-        self,
-        comparable_groups: list[ComparableGroup],
+            self,
+            *,
+            comparable_groups: list[ComparableGroup],
+            group_match_cache: GroupMatchCache,
     ) -> ApproximatorRatingsMap:
         """Compute permutation-averaged Elo ratings across bootstrap samples.
 
-        For each bootstrap sample, pairwise matches are built from the sampled
-        comparable groups. Elo is then computed across the configured match
-        orderings. The ratings from those match orderings are averaged per
-        approximator, so each bootstrap sample contributes one stabilized Elo rating
-        per approximator.
+        For each bootstrap sample, pairwise matches are collected from the cached
+        match lists of the sampled comparable groups. Elo is then computed across
+        the configured match orderings. The ratings from those match orderings are
+        averaged per approximator, so each bootstrap sample contributes one
+        stabilized Elo rating per approximator.
 
         Args:
             comparable_groups: Comparable benchmark groups used as the population
                 for bootstrap sampling.
+            group_match_cache: Cached pairwise matches per comparable group.
 
         Returns:
             Mapping from approximator name to Elo ratings collected across bootstrap
@@ -731,7 +744,10 @@ class EloScorer(LeaderboardScorer):
         bootstrap_samples = self._generate_bootstrap_group_samples(comparable_groups)
 
         for bootstrap_sample in bootstrap_samples:
-            matches = self._build_pairwise_matches(bootstrap_sample)
+            matches = self._collect_cached_matches_for_groups(
+                comparable_groups=bootstrap_sample,
+                group_match_cache=group_match_cache,
+            )
             sample_ratings_map = self._compute_elo_ratings_per_sample(matches)
 
             for approximator, ratings in sample_ratings_map.items():
@@ -771,3 +787,38 @@ class EloScorer(LeaderboardScorer):
             float(np.quantile(values, lower_q)),
             float(np.quantile(values, upper_q)),
         )
+
+    def _build_group_match_cache(
+            self,
+            comparable_groups: list[ComparableGroup],
+    ) -> GroupMatchCache:
+        """Build pairwise matches once for each comparable group.
+
+        The cache avoids rebuilding matches for every bootstrap sample. Bootstrap
+        sampling happens over comparable groups, so each sampled group can contribute
+        its cached match list zero, one, or multiple times.
+        """
+        cache: GroupMatchCache = {}
+
+        for comparable_group in comparable_groups:
+            cache[comparable_group.key] = self._build_pairwise_matches([comparable_group])
+
+        return cache
+
+    def _collect_cached_matches_for_groups(
+            self,
+            *,
+            comparable_groups: list[ComparableGroup],
+            group_match_cache: GroupMatchCache,
+    ) -> list[PairwiseMatch]:
+        """Collect cached matches for a list of comparable groups.
+
+        The same comparable group may occur multiple times in bootstrap samples. In
+        that case its cached matches are included multiple times as well.
+        """
+        cached_matches: list[PairwiseMatch] = []
+
+        for comparable_group in comparable_groups:
+            cached_matches.extend(group_match_cache[comparable_group.key])
+
+        return cached_matches
