@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Iterator
+    from collections.abc import AsyncGenerator, Callable, Iterator
 
 import gradio as gr
 import numpy as np
@@ -290,7 +290,7 @@ def get_plot_single(
 
 
 # --- Daten laden ---
-def _with_spinner(message: str, fn):
+def _with_spinner(message: str, fn: Callable[[], T]) -> T:
     """Run a function while printing a small terminal spinner."""
     import threading
 
@@ -868,6 +868,7 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
 
                 Returns:
                     Tuple of (bucket label markdown, leaderboard DataFrame,
