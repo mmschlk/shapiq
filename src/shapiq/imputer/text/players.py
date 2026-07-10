@@ -5,19 +5,20 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 try:
     import nltk
     from nltk.tree import Tree
 except ImportError as err:
     from ._error import _text_import_error
+
     raise _text_import_error from err
 
 if TYPE_CHECKING:
+    import numpy as np
     from transformers import PreTrainedTokenizerBase
 
     from .perturbations import BasePerturbationStrategy
+
 
 def _require_nltk_resource(resource_path: str, download_name: str) -> None:
     """Raise a helpful error if an NLTK resource is not installed."""
@@ -39,6 +40,7 @@ def _require_nltk_resource(resource_path: str, download_name: str) -> None:
         )
         raise LookupError(msg) from error
 
+
 # =============================================================================
 # PLAYER STRATEGIES
 # =============================================================================
@@ -58,6 +60,7 @@ class BasePlayerStrategy(ABC):
     A coalition uses ``1`` for a kept player and ``0`` for a missing player.
     Missing players are replaced by the supplied perturbation strategy.
     """
+
     _passes_context = True
 
     @abstractmethod
@@ -161,6 +164,7 @@ class SubwordPlayerStrategy(BasePlayerStrategy):
         """Join subword tokens into text."""
         return self.tokenizer.convert_tokens_to_string(parts)
 
+
 # =============================================================================
 # WORD-LEVEL PLAYER STRATEGY
 # =============================================================================
@@ -193,6 +197,7 @@ class WordPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Join words into text."""
         return " ".join(parts)
+
 
 # =============================================================================
 # NAMED-ENTITY PLAYER STRATEGY
@@ -247,6 +252,7 @@ class NamedEntityPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Join entity into text."""
         return " ".join(parts)
+
 
 # =============================================================================
 # CHUNK-LEVEL PLAYER STRATEGY
@@ -304,6 +310,7 @@ class ChunkPlayerStrategy(BasePlayerStrategy):
         """Join chunks into text."""
         return " ".join(parts)
 
+
 # =============================================================================
 # SENTENCE-LEVEL PLAYER STRATEGY
 # =============================================================================
@@ -339,6 +346,7 @@ class SentencePlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Join sentences into text."""
         return " ".join(parts)
+
 
 # =============================================================================
 # PLAYER DICTIONARY AND FACTORY

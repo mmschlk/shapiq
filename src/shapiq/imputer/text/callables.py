@@ -11,6 +11,7 @@ try:
     import torch
 except ImportError as err:
     from ._error import _text_import_error
+
     raise _text_import_error from err
 
 if TYPE_CHECKING:
