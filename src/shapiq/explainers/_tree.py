@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import importlib
 from functools import singledispatch
 from itertools import combinations
 from math import comb
+from typing import TYPE_CHECKING, cast
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,6 +17,9 @@ from shapiq.explanations import SparseExplanationArray
 from shapiq.games import Game
 from shapiq.interactions import CardinalInteractionIndex
 from shapiq.trees import InterventionalTreeGame
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class TreeExplainer(Explainer[Array, Game[Array]]):
@@ -133,29 +138,8 @@ def _interventional_explanation(
         )
         for size in range(min_size, order + 1)
     }
-    coefficients: dict[tuple[int, int, int, int], float] = {}
-    totals: dict[tuple[int, ...], np.ndarray | float] = {}
-    for leaves in game.leaf_constraints:
-        for row in range(leaves.values.shape[0]):
-            present_members = np.flatnonzero(leaves.present[row])
-            absent_members = np.flatnonzero(leaves.absent[row])
-            value = leaves.values[row]
-            n_present, n_absent = len(present_members), len(absent_members)
-            for size in range(min_size, min(order, n_present + n_absent) + 1):
-                for from_present in range(max(0, size - n_absent), min(n_present, size) + 1):
-                    from_absent = size - from_present
-                    key = (n_present, n_absent, from_present, from_absent)
-                    coefficient = coefficients.get(key)
-                    if coefficient is None:
-                        coefficient = _leaf_coefficient(omegas[size], *key)
-                        coefficients[key] = coefficient
-                    if coefficient == 0.0:
-                        continue
-                    contribution = value * coefficient
-                    for in_present in combinations(present_members, from_present):
-                        for in_absent in combinations(absent_members, from_absent):
-                            interaction = tuple(sorted((*in_present, *in_absent)))
-                            totals[interaction] = totals.get(interaction, 0.0) + contribution
+    accumulate = _accumulate_cext if _use_cext(game, order) else _accumulate_python
+    totals = accumulate(game, omegas, min_size, order)
     baseline = 0.0
     for leaves in game.leaf_constraints:
         unconstrained = ~leaves.present.any(axis=-1)
@@ -185,13 +169,22 @@ def _interventional_explanation(
 
 
 def _superset_weight_sums(weights: np.ndarray, n_free: int) -> np.ndarray:
-    """Return ``omega[k] = sum over supersets U of a k-set of weights[|U|]``."""
+    """Return ``omega[k] = sum over supersets U of a k-set of weights[|U|]``.
+
+    Zero weights are skipped before the binomial factor is computed: the
+    exact integer overflows float conversion near 1023 players, and indices
+    with sparse weights (the Moebius family) stay serviceable at any size.
+    Dense nonzero weights still overflow beyond that point; the honest fix
+    is log-space accumulation, recorded in the tree-story plan.
+    """
     omega = np.zeros(n_free + 1)
     for fixed in range(n_free + 1):
-        omega[fixed] = sum(
-            comb(n_free - fixed, outside - fixed) * float(weights[outside])
-            for outside in range(fixed, n_free + 1)
-        )
+        total = 0.0
+        for outside in range(fixed, n_free + 1):
+            weight = float(weights[outside])
+            if weight != 0.0:
+                total += comb(n_free - fixed, outside - fixed) * weight
+        omega[fixed] = total
     return omega
 
 
@@ -203,9 +196,144 @@ def _leaf_coefficient(
     from_absent: int,
 ) -> float:
     """Sum the leaf's signed Moebius masses hitting one interaction shape."""
-    return sum(
-        comb(n_absent - from_absent, extra - from_absent)
-        * ((-1) ** extra)
-        * float(omega[n_present - from_present + extra - from_absent])
-        for extra in range(from_absent, n_absent + 1)
+    total = 0.0
+    for extra in range(from_absent, n_absent + 1):
+        weight = float(omega[n_present - from_present + extra - from_absent])
+        if weight != 0.0:
+            total += comb(n_absent - from_absent, extra - from_absent) * ((-1) ** extra) * weight
+    return total
+
+
+def _load_cext() -> Callable[..., tuple[bytes, bytes]] | None:
+    """Return the compiled kernel's entry point, if the extension was built."""
+    try:
+        module = importlib.import_module("shapiq.trees._interventional_cext")
+    except ImportError:  # pragma: no cover - pure-python installs
+        return None
+    return cast("Callable[..., tuple[bytes, bytes]]", module.accumulate)
+
+
+_cext_accumulate = _load_cext()
+_CEXT_MAX_ORDER = 4  # the kernel packs interactions as four 16-bit players
+_CEXT_MAX_PLAYERS = 0xFFFE
+
+
+def _use_cext(game: InterventionalTreeGame, order: int) -> bool:
+    """Return whether the compiled kernel serves this configuration."""
+    return (
+        _cext_accumulate is not None
+        and game.value_shape == ()
+        and order <= _CEXT_MAX_ORDER
+        and game.n_players <= _CEXT_MAX_PLAYERS
     )
+
+
+def _accumulate_python(
+    game: InterventionalTreeGame,
+    omegas: dict[int, np.ndarray],
+    min_size: int,
+    order: int,
+) -> dict[tuple[int, ...], np.ndarray | float]:
+    """Accumulate per-leaf interaction contributions in pure Python."""
+    coefficients: dict[tuple[int, int, int, int], float] = {}
+    totals: dict[tuple[int, ...], np.ndarray | float] = {}
+    for leaves in game.leaf_constraints:
+        for row in range(leaves.values.shape[0]):
+            present_members = np.flatnonzero(leaves.present[row])
+            absent_members = np.flatnonzero(leaves.absent[row])
+            value = leaves.values[row]
+            n_present, n_absent = len(present_members), len(absent_members)
+            for size in range(min_size, min(order, n_present + n_absent) + 1):
+                for from_present in range(max(0, size - n_absent), min(n_present, size) + 1):
+                    from_absent = size - from_present
+                    key = (n_present, n_absent, from_present, from_absent)
+                    coefficient = coefficients.get(key)
+                    if coefficient is None:
+                        coefficient = _leaf_coefficient(omegas[size], *key)
+                        coefficients[key] = coefficient
+                    if coefficient == 0.0:
+                        continue
+                    contribution = value * coefficient
+                    for in_present in combinations(present_members, from_present):
+                        for in_absent in combinations(absent_members, from_absent):
+                            interaction = tuple(sorted((*in_present, *in_absent)))
+                            totals[interaction] = totals.get(interaction, 0.0) + contribution
+    return totals
+
+
+def _accumulate_cext(
+    game: InterventionalTreeGame,
+    omegas: dict[int, np.ndarray],
+    min_size: int,
+    order: int,
+) -> dict[tuple[int, ...], np.ndarray | float]:
+    """Accumulate per-leaf interaction contributions in the compiled kernel.
+
+    The kernel receives the ensemble's flattened leaf constraints and one
+    dense coefficient table computed from the same ``_leaf_coefficient`` as
+    the Python path, and returns packed interaction keys with their sums.
+    """
+    assert _cext_accumulate is not None  # noqa: S101 - guarded by _use_cext
+    present = np.concatenate([leaves.present for leaves in game.leaf_constraints])
+    absent = np.concatenate([leaves.absent for leaves in game.leaf_constraints])
+    values = np.ascontiguousarray(
+        np.concatenate([leaves.values for leaves in game.leaf_constraints]),
+        dtype=np.float64,
+    )
+    present_counts = present.sum(axis=1)
+    absent_counts = absent.sum(axis=1)
+    present_offsets = np.zeros(present.shape[0] + 1, dtype=np.int64)
+    np.cumsum(present_counts, out=present_offsets[1:])
+    absent_offsets = np.zeros(absent.shape[0] + 1, dtype=np.int64)
+    np.cumsum(absent_counts, out=absent_offsets[1:])
+    present_members = _padded_members(present)
+    absent_members = _padded_members(absent)
+    max_present = int(present_counts.max())
+    max_absent = int(absent_counts.max())
+    table = np.zeros((max_present + 1, max_absent + 1, order + 1, order + 1), dtype=np.float64)
+    for n_present in range(max_present + 1):
+        for n_absent in range(max_absent + 1):
+            if n_present + n_absent > game.n_players:
+                continue  # the maxima come from different leaves; no leaf has both
+            for size in range(min_size, min(order, n_present + n_absent) + 1):
+                for from_present in range(max(0, size - n_absent), min(n_present, size) + 1):
+                    table[n_present, n_absent, from_present, size - from_present] = (
+                        _leaf_coefficient(
+                            omegas[size],
+                            n_present,
+                            n_absent,
+                            from_present,
+                            size - from_present,
+                        )
+                    )
+    keys_bytes, sums_bytes = _cext_accumulate(
+        present_offsets,
+        present_members,
+        absent_offsets,
+        absent_members,
+        values,
+        np.ascontiguousarray(table),
+        max_present,
+        max_absent,
+        min_size,
+        order,
+    )
+    keys = np.frombuffer(keys_bytes, dtype=np.uint64)
+    sums = np.frombuffer(sums_bytes, dtype=np.float64)
+    totals: dict[tuple[int, ...], np.ndarray | float] = {}
+    for key, total in zip(keys.tolist(), sums.tolist(), strict=True):
+        interaction = []
+        packed = key
+        while packed:
+            interaction.append((packed & 0xFFFF) - 1)
+            packed >>= 16
+        totals[tuple(interaction)] = total
+    return totals
+
+
+def _padded_members(masks: np.ndarray) -> np.ndarray:
+    """Return row-major member indices, padded so empty buffers stay valid."""
+    members = np.nonzero(masks)[1].astype(np.int64)
+    if members.size == 0:
+        return np.zeros(1, dtype=np.int64)
+    return np.ascontiguousarray(members)

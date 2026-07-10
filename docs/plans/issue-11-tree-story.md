@@ -1,7 +1,7 @@
 # Issue 11 — The tree story: model-specific games and closed-form explainers
 
-Status: **slice 1 landed 2026-07-10** — pure-Python interventional path; slice 2 is the C
-extension.
+Status: **slice 2 built 2026-07-10, awaiting joint judgment (uncommitted)** — slice 1
+(pure-Python interventional path) landed as `8ad90070`.
 
 ## The design
 
@@ -37,20 +37,51 @@ Parity is pinned against `ExactExplainer` for SV, BV, SII, BII, WeightedBII(p), 
 STII, Moebius, and Co-Moebius, on hand-built ensembles, vector-valued leaves, and
 converted scikit-learn models.
 
-## Slice 2 — the C extension (next)
+## Slice 2 — the C extension (built, under judgment)
 
-Bring v1's `interventional/cext` (interventional.cpp, weights.cpp) over, adapted:
+v1's kernel was adapted rather than ported wholesale. What v1 computed C-side in
+`weights.cpp` (`get_weight(n, e, r, a, b, t, index_enum, ...)`) is exactly the
+`(|E|, |R|, |T&E|, |T&R|)` coefficient the Python path derives from
+`index.derivative_weights` — so the v2 kernel takes that table as INPUT, computed in
+Python by the same `_leaf_coefficient` as the pure path (one source of truth for the
+math, any cardinal index served, no index enum in C). The kernel
+(`src/shapiq/trees/cext/interventional.cc`, ~200 lines vs v1's ~3500 across four files)
+consumes the game's flattened `LeafConstraints` (no tree walk in C) and runs only the hot
+loop: per-leaf combination enumeration accumulating into an
+`unordered_map<uint64, double>` with interactions packed as four 16-bit player fields.
 
-- The kernel's weight tables are exactly the `omega`/coefficient tables the Python path
-  computes from `index.derivative_weights` — the adaptation is feeding declared index
-  weights instead of v1's name-keyed tables (v1's CUSTOM weight_fn path becomes "any
-  cardinal index").
-- Keep the Python path as the reference; the cext registers as a faster implementation of
-  the same `tree_explanation` arm, with bit-parity tests against the Python path.
-- Build machinery: setup.py compilation + cibuildwheel; v2's pyproject still carries the
-  stale v1 test-command referencing `shapiq.tree.*.cext` — replace it when the cext lands.
-- v1's dense-flatten vs sparse switch (`max_order > 3` or > 1e6 dense results) informs
-  whether the cext returns dense blocks or sparse pairs.
+- Serviced: scalar leaf values, `order <= 4`, `n_players <= 65534`; everything else falls
+  back to the pure path silently (`_use_cext`), pinned by tests.
+- Binding: raw CPython API + buffer protocol — no numpy headers, no pybind11, no OpenMP
+  (v1's macOS static-libomp saga deliberately deferred; the kernel is single-threaded).
+  `Extension(optional=True)` keeps pure-python installs working without a compiler.
+- Build: minimal `setup.py` (C++17, -O3, no -ffast-math — parity over speed); pyproject's
+  stale v1 cibuildwheel test-command replaced, numpy dropped from build requires, macOS
+  libomp before-build removed.
+- Parity: kernel vs Python paths agree to float64 on random forests across SV, SII,
+  BII(3), WeightedBII(p), Moebius(4), CoMoebius(3) including the empty interaction;
+  kernel path also pinned against ExactExplainer.
+- Measured (200 trees, depth 14, 40 features, ~35k constrained leaves, baseline far from
+  the explicand): SII order 2: 607 ms -> 42 ms (14.4x); BII order 3: 1758 ms -> 208 ms
+  (8.4x). With a mean baseline the E/R pruning shrinks the workload so far (~300 leaves)
+  that Python is already at ~3 ms — the kernel matters for deep ensembles, high orders,
+  and distant baselines.
+- Future knobs recorded: OpenMP over leaves (release the GIL around the leaf loop first —
+  it is held for the whole hot loop today), order > 4 via wider keys (a seam rewrite, not
+  a knob — the packed-uint64 return ABI hard-wires 4x16 bits), vector leaf values in C,
+  and moving the E/R extraction itself to C if game construction ever dominates.
+- Review-fleet fixes applied (2026-07-10, five-agent round): the bridge's dense
+  coefficient table skips infeasible (|E|, |R|) cross pairs whose maxima came from
+  different leaves (was: omega IndexError on ordinary forests); the kernel validates all
+  cheap cross-buffer invariants instead of trusting five of eight (was: SIGBUS or silent
+  garbage through the private seam); zero weights are skipped before binomial factors so
+  the Moebius family stays serviceable at any player count (dense-weight indices still
+  overflow near 1023 players — log-space omega accumulation is the honest fix, still
+  open); `[tool.uv] cache-keys` covers the .cc so editable rebuilds pick up kernel edits
+  (was: silently testing stale binaries); direct kernel-call error tests, the
+  different-leaves regression, single-node trees, identical points, and large-n Moebius
+  are pinned. Known-open from review: tree paths hardcode float32 output under JAX x64,
+  and CHANGELOG.md is referenced by pyproject's readme but does not exist.
 
 ## Later slices
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel", "setuptools_scm>=8", "numpy"]
+requires = ["setuptools>=69", "wheel", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -71,6 +71,14 @@ documentation = "https://shapiq.readthedocs.io"
 source = "https://github.com/mmschlk/shapiq"
 tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
+
+[tool.uv]
+# rebuild the editable install when the C sources change, not only setup files
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "setup.py" },
+    { file = "src/shapiq/trees/cext/*.cc" },
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -207,17 +215,11 @@ python-platform = "linux"
 build = ["cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 build-frontend = "uv"
-test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+test-command = "python -c \"import shapiq; import shapiq.trees._interventional_cext; print('C extension OK')\""
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 
-[tool.cibuildwheel.macos]
-before-build = "brew install libomp || true"
-
-[tool.cibuildwheel.windows]
-# MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
-# No extra setup needed; /openmp flag in setup.py handles everything
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]
