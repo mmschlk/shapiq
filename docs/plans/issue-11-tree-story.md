@@ -97,6 +97,20 @@ loop: per-leaf combination enumeration accumulating into an
   ensemble-total assert dissolved with the loop, the cext-guard assert became a
   RuntimeError.
 
+- Host-vs-jax evaluation revisited (2026-07-10, decided: keep jax): the question was whether
+  `_call` should compute in NumPy float64 all along instead of jax copies of host data.
+  Measured (200-tree/4459-leaf forest, exact int32 counting vs host float64 BLAS): jax is
+  2.5-3x faster at realistic batches (batch 1024: 1.4 ms vs 4.8 ms; batch 16384: 29 ms vs
+  66 ms; only micro-batches of ~64 favor NumPy by dispatch overhead), values agree. The Array
+  API has no referent here — both game boundaries are contractually jax (coalitions in from
+  samplers, values out to evidence), so a namespace would always resolve to jax; the masker
+  rule ("follow the user's arrays") does not transfer because the game has no user arrays,
+  only host tree structure. The refined tree-world law: **host float64 where exactness is
+  semantic** (split routing and closed forms — a rounding flip changes *which* leaf), **stack
+  precision where it is ordinary numerics** (value accumulation, like every other game;
+  follows the x64 knob). The float64-to-float32 step happens once at construction, the same
+  downcast every game's values undergo — per-call bouncing died with the vectorization.
+
 ## Later slices
 
 - `PathDependentTreeGame` as the sibling game (TreeSHAP path-dependent semantics; weights
