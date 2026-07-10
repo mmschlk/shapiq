@@ -82,7 +82,7 @@ class Explainer[ValueT, GameT: Game](ABC):
             raise TypeError(msg)
         order = game.n_players if index.order is None else index.order
         validate_interaction_metadata(
-            interaction_index=index.name,
+            index_name=index.name,
             order=order,
             orientation="undirected",
             n_players=game.n_players,

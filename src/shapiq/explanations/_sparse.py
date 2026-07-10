@@ -43,7 +43,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
         object.__setattr__(self, "value_shape", value_shape)
         validate_explained_index(self.index, order=self.order)
         validate_interaction_metadata(
-            interaction_index=self.index.name,
+            index_name=self.index.name,
             order=self.order,
             orientation=self.orientation,
             n_players=n_players,

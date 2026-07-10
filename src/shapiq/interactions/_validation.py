@@ -30,17 +30,17 @@ def normalize_interaction(
 
 def validate_interaction_metadata(
     *,
-    interaction_index: str,
+    index_name: str,
     order: int,
     orientation: InteractionOrientation,
     n_players: int,
 ) -> None:
     """Validate shared interaction-index metadata."""
-    if not isinstance(interaction_index, str):
-        msg = "interaction_index must be a string"
+    if not isinstance(index_name, str):
+        msg = "index_name must be a string"
         raise TypeError(msg)
-    if not interaction_index:
-        msg = "interaction_index must be a non-empty string"
+    if not index_name:
+        msg = "index_name must be a non-empty string"
         raise ValueError(msg)
     if isinstance(order, bool) or not isinstance(order, int):
         msg = f"order must be an integer, got {type(order).__name__}"
@@ -51,11 +51,11 @@ def validate_interaction_metadata(
     if orientation not in {"undirected", "directed"}:
         msg = f"unsupported interaction orientation: {orientation!r}"
         raise ValueError(msg)
-    if interaction_index in {"SV", "BV"} and order != 1:
-        msg = f"{interaction_index} requires order == 1"
+    if index_name in {"SV", "BV"} and order != 1:
+        msg = f"{index_name} requires order == 1"
         raise ValueError(msg)
     if orientation != "undirected":
-        msg = f"{interaction_index} currently supports only undirected interactions"
+        msg = f"{index_name} currently supports only undirected interactions"
         raise ValueError(msg)
 
 
