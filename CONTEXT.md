@@ -109,7 +109,7 @@ A shapiq-owned data container that exposes logical shape, dimensionality, and si
 _Avoid_: array API implementation
 
 **Masker**:
-A component that turns a **CoalitionArray** into model-native masked inputs by representing absent **Players**.
+A component that turns a **CoalitionArray** into model-native masked inputs by representing absent **Players**. Maskers are backend-general: they compute in the array backend they were built from (NumPy, JAX, torch — anything Array API compatible) and masked inputs stay in that backend on its device; per-backend execution policy (autograd, devices, chunking) belongs to predictors and callable games, never to maskers.
 _Avoid_: imputer, perturbation function
 
 **Superpixel**:

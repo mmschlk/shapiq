@@ -9,13 +9,14 @@ torch = pytest.importorskip("torch")
 
 from shapiq import (  # noqa: E402
     SV,
+    BaselineMasker,
     DenseCoalitionArray,
     ExactExplainer,
     MaskedGame,
     ModelMaskedPredictor,
     PermutationSampling,
 )
-from shapiq.games.torch import BaselineMasker, to_jax  # noqa: E402
+from shapiq.games.torch import to_jax  # noqa: E402
 
 N_PLAYERS = 4
 X = torch.tensor([1.0, -2.0, 3.0, 0.5])

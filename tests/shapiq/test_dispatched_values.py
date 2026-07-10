@@ -57,11 +57,12 @@ def test_torch_tensors_dispatch_to_the_dlpack_conversion():
 def test_masked_game_defaults_to_dispatched_values():
     torch = pytest.importorskip("torch")
     from shapiq import (  # noqa: PLC0415 - keep this module importable without torch
+        BaselineMasker,
         DenseCoalitionArray,
         MaskedGame,
         ModelMaskedPredictor,
     )
-    from shapiq.games.torch import BaselineMasker, to_jax  # noqa: PLC0415 - requires torch
+    from shapiq.games.torch import to_jax  # noqa: PLC0415 - requires torch
 
     masker = BaselineMasker(
         inputs=torch.tensor([1.0, -2.0, 3.0]),

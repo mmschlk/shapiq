@@ -19,6 +19,7 @@ from shapiq.explainers import (
 )
 from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
+    BaselineMasker,
     CallableGame,
     Game,
     LinkFunction,
@@ -27,6 +28,8 @@ from shapiq.games import (
     Masker,
     Model,
     ModelMaskedPredictor,
+    SuperpixelMasker,
+    grid_labels,
     to_values,
 )
 from shapiq.interactions import (
@@ -110,6 +113,7 @@ __all__ = [
     "SV",
     "ApproximationState",
     "Approximator",
+    "BaselineMasker",
     "CallableGame",
     "CoalitionArray",
     "DenseCoalitionArray",
@@ -150,6 +154,7 @@ __all__ = [
     "SamplingState",
     "ShapleyKernelSampler",
     "SparseExplanationArray",
+    "SuperpixelMasker",
     "TreeExplainer",
     "TreeModel",
     "UnitScheduleSampler",
@@ -158,6 +163,7 @@ __all__ = [
     "WeightedBII",
     "WeightedBV",
     "WeightedFBII",
+    "grid_labels",
     "iter_interactions",
     "normalize_interaction",
     "to_tree_model",

@@ -22,8 +22,17 @@ import jax.numpy as jnp
 import torch
 from torch import nn
 
-from shapiq import FSII, SV, DenseCoalitionArray, ExactExplainer, MaskedGame, Regression
-from shapiq.games.torch import ChunkedMaskedPredictor, SuperpixelMasker, grid_labels, to_jax
+from shapiq import (
+    FSII,
+    SV,
+    DenseCoalitionArray,
+    ExactExplainer,
+    MaskedGame,
+    Regression,
+    SuperpixelMasker,
+    grid_labels,
+)
+from shapiq.games.torch import ChunkedMaskedPredictor, to_jax
 
 
 def chunked_image_game(masker, model, batch_size, link_function=None) -> MaskedGame:

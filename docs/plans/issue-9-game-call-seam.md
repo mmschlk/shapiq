@@ -39,3 +39,13 @@ Introduce one internal seam through which every approximator evaluation flows â€
 - One evaluation path: `EvidenceApproximator` no longer duplicates the sample loop.
 - All existing sampling, deduplication, history, and stall-warning tests pass unchanged.
 - No public API change.
+
+## Follow-on candidate: bounded-batch evaluation as a policy
+
+Batched game evaluation belongs at this seam, not in more wrappers (decided 2026-07-10 during
+the masker generalization): deduplication and bounded-batch evaluation are the same kind of
+evaluation policy, and the strongest backend-agnostic demand is `ExactExplainer` materializing
+all `2**n` coalitions at once â€” which only the evaluation side can fix. When this issue lands,
+revisit `ChunkedMaskedPredictor`: its chunk arithmetic could move here (one implementation for
+every game and backend, perhaps via a game-advertised preferred batch size), leaving the torch
+predictor with pure execution policy (no-grad and device placement).

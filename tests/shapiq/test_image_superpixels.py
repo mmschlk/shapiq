@@ -3,26 +3,24 @@
 from __future__ import annotations
 
 import jax.numpy as jnp
+import numpy as np
 import pytest
 
 torch = pytest.importorskip("torch")
 
-from shapiq import (  # noqa: E402
+from shapiq import (  # noqa: E402  # noqa: E402
     FSII,
     SV,
+    BaselineMasker,
     DenseCoalitionArray,
     ExactExplainer,
     MaskedGame,
     ModelMaskedPredictor,
     Regression,
-)
-from shapiq.games.torch import (  # noqa: E402
-    BaselineMasker,
-    ChunkedMaskedPredictor,
     SuperpixelMasker,
     grid_labels,
-    to_jax,
 )
+from shapiq.games.torch import ChunkedMaskedPredictor, to_jax  # noqa: E402
 
 HEIGHT = WIDTH = 6
 CHANNELS = 3
@@ -82,12 +80,12 @@ def test_grid_labels_partition_divisible_images_into_blocks():
     for row_band in range(3):
         for column_band in range(3):
             block = labels[2 * row_band : 2 * row_band + 2, 2 * column_band : 2 * column_band + 2]
-            assert torch.all(block == row_band * 3 + column_band)
+            assert np.all(block == row_band * 3 + column_band)
 
 
 def test_grid_labels_bucket_non_divisible_axes():
     labels = grid_labels(7, 5, grid=(3, 3))
-    assert torch.equal(labels[:, 0] // 3 * 3, labels[:, 0])  # first column holds row bands
+    assert np.array_equal(labels[:, 0] // 3 * 3, labels[:, 0])  # first column holds row bands
     assert labels[0, 0] == 0
     assert labels[6, 4] == 8
     row_band_sizes = [int((labels[:, 0] == band * 3).sum()) for band in range(3)]
@@ -161,7 +159,7 @@ def test_masker_validates_metadata():
     with pytest.raises(ValueError, match="channels-last"):
         SuperpixelMasker(inputs=inputs.permute(1, 2, 0), baseline=0.0, labels=labels)
     with pytest.raises(ValueError, match="integer superpixel ids"):
-        SuperpixelMasker(inputs=inputs, baseline=0.0, labels=labels.float())
+        SuperpixelMasker(inputs=inputs, baseline=0.0, labels=labels.astype(float))
     with pytest.raises(ValueError, match="integer superpixel ids"):
         SuperpixelMasker(inputs=inputs, baseline=0.0, labels=labels - 1)
     with pytest.raises(ValueError, match="no gaps"):

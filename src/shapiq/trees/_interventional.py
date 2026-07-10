@@ -9,7 +9,8 @@ import numpy as np
 
 from shapiq._shape import validate_n_players
 from shapiq.games._base import Game
-from shapiq.trees._model import TreeModel, as_host_array
+from shapiq.games._values import to_host_array
+from shapiq.trees._model import TreeModel
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -82,8 +83,8 @@ class InterventionalTreeGame(Game["Array"]):
         if not tree_tuple:
             msg = "the game needs at least one tree"
             raise ValueError(msg)
-        inputs_array = as_host_array(inputs, np.float64)
-        baseline_array = as_host_array(baseline, np.float64)
+        inputs_array = to_host_array(inputs, np.float64)
+        baseline_array = to_host_array(baseline, np.float64)
         if inputs_array.ndim != 1:
             msg = "inputs must be one explained point with shape (n_players,)"
             raise ValueError(msg)

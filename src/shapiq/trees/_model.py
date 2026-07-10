@@ -6,32 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from shapiq.games._values import to_values
+from shapiq.games._values import to_host_array
 
 LEAF = -1
-
-
-def as_host_array(array: object, dtype: type[np.generic]) -> np.ndarray:
-    """Return any array-API input as a host NumPy array of the given dtype.
-
-    Tree structure, split routing, and the closed forms are exact host-side
-    computations, so tree seams normalize their inputs to NumPy: split
-    thresholds must keep full ``float64`` precision, which JAX arrays cannot
-    hold unless x64 is enabled. NumPy views most backends directly; inputs it
-    refuses (device-resident tensors) come home through ``to_values``.
-
-    Args:
-        array: Any array-like — NumPy, JAX, torch tensors, nested sequences.
-        dtype: The NumPy dtype of the returned array.
-
-    Returns:
-        The input as a host NumPy array.
-    """
-    try:
-        host = np.asarray(array, dtype=dtype)
-    except TypeError:
-        host = np.asarray(to_values(array), dtype=dtype)
-    return host
 
 
 @dataclass(frozen=True)
@@ -59,11 +36,11 @@ class TreeModel:
 
     def __post_init__(self) -> None:
         """Normalize the arrays and validate the node layout."""
-        children_left = as_host_array(self.children_left, np.int64)
-        children_right = as_host_array(self.children_right, np.int64)
-        features = as_host_array(self.features, np.int64)
-        thresholds = as_host_array(self.thresholds, np.float64)
-        values = as_host_array(self.values, np.float64)
+        children_left = to_host_array(self.children_left, np.int64)
+        children_right = to_host_array(self.children_right, np.int64)
+        features = to_host_array(self.features, np.int64)
+        thresholds = to_host_array(self.thresholds, np.float64)
+        values = to_host_array(self.values, np.float64)
         n_nodes = children_left.shape[0]
         for name, array in (
             ("children_right", children_right),

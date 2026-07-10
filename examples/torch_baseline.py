@@ -24,6 +24,7 @@ from torch import nn
 from shapiq import (
     FSII,
     SV,
+    BaselineMasker,
     ExactExplainer,
     InsufficientSamplesError,
     MaskedGame,
@@ -31,7 +32,7 @@ from shapiq import (
     PermutationSampling,
     Regression,
 )
-from shapiq.games.torch import BaselineMasker, to_jax
+from shapiq.games.torch import to_jax
 
 if __name__ == "__main__":
     torch.manual_seed(0)
