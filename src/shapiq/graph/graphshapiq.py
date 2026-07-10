@@ -29,6 +29,10 @@ class GraphSHAPIQ:
 
     Attributes:
         edge_index: The edge index of the graph.
+        game: The game object representing the graph and prediction function.
+        sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
+        verbose: If True, additional logs are shown.
+        last_n_model_calls: The amount of times the value function was applied.
         n_players: Number of players (nodes) in the graph.
         l_hop_distance: Maximum size of neighborhoods to consider.
         neighbors: Dictionary mapping each node to its neighborhood.
@@ -37,18 +41,21 @@ class GraphSHAPIQ:
         budget_estimated: Whether the budget was estimated or computed exactly.
     """
 
-    def __init__(self, game: GraphGame, *, verbose: bool = False) -> None:
+    def __init__(
+        self, game: GraphGame, *, verbose: bool = False, sparsify_threshold: float = 1e-10
+    ) -> None:
         """Initialize the GraphSHAPIQ class.
 
         Args:
             game: The game object representing the graph and prediction function.
-            verbose: If True, prints debug information.
+            verbose: If True, additional logs are shown.
+            sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
         """
         self.last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
         self.n_players = game.n_players
         self._graph: nx.Graph = self._build_graph()
-        self.sparsify_threshold = 1e-10
+        self.sparsify_threshold = sparsify_threshold
         self.l_hop_distance = int(game.l_hop_distance)
         self._grand_coalition_set = game.grand_coalition_set
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
@@ -83,7 +90,7 @@ class GraphSHAPIQ:
         return G
 
     def _get_neighborhoods(self) -> tuple[dict, int]:
-        """Compute the k-hop neighborhoods of every node.
+        """Compute the l-hop neighborhoods of every node.
 
         Returns:
             neighbors: Mapping from node id to a sorted tuple of neighbor ids (including the
@@ -114,7 +121,7 @@ class GraphSHAPIQ:
         """Compute the Möbius transform for the given coalitions.
 
         Args:
-            coalitions: Set or dict of coalitions (tuples of player indices).
+            coalitions: Set of coalitions (tuples of player indices).
             coalition_predictions: Predictions for each coalition.
             coalition_lookup: Mapping from coalition tuples to their indices.
 
@@ -125,7 +132,6 @@ class GraphSHAPIQ:
         moebius_lookup: dict[tuple[int, ...], int] = {}
 
         for i, coalition in enumerate(coalitions):
-            moebius_values[i] = 0.0
             moebius_lookup[coalition] = i
             for subset in powerset(coalition):
                 sign = (-1) ** (len(coalition) - len(subset))
@@ -263,22 +269,22 @@ class GraphSHAPIQ:
 
         The efficiency axiom states that the sum of all Möbius coefficients must equal
         the grand coalition prediction, i.e.,
-        :math:`\\sum_{S \\subseteq N} m(S) = v(N)`.
+        :math:`\sum_{S \subseteq N} m(S) = v(N)`.
 
         When neighborhoods are incomplete, that is, when their size exceeds
         ``max_subset_size``, the Möbius transform is truncated and the efficiency axiom
         is violated. This routine corrects for this by computing a gap term for each
         incomplete neighborhood:
 
-        :math:`gap(S) = v(S) - \\sum_{T \\subseteq S, |T| \\leq k} m(T)
-        - \\sum_{S' \\subset S, S' \text{ incomplete}} gap(S')`
+        :math:`gap(S) = v(S) - \sum_{T \subseteq S, |T| \leq k} m(T)
+        - \sum_{S' \subset S, S' \text{ incomplete}} gap(S')`
 
         where :math:`k` is ``max_subset_size``.
 
         Here, :math:`v(S)` is the game value of the incomplete neighborhood :math:`S`,
         :math:`m(T)` are the already-computed Möbius coefficients for subsets
-        :math:`T \\subseteq S`, and :math:`gap(S')` are correction terms for smaller
-        incomplete neighborhoods :math:`S' \\subset S`.
+        :math:`T \subseteq S`, and :math:`gap(S')` are correction terms for smaller
+        incomplete neighborhoods :math:`S' \subset S`.
 
         Note:
             This method should only be called when ``incomplete_neighborhoods`` is non-empty.
