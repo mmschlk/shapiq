@@ -15,7 +15,21 @@ if TYPE_CHECKING:
 
 
 class TorchCallableGame[ValueT](CallableGame[ValueT]):
-    """Callable game with default torch/JAX boundary conversion."""
+    """Callable game owning the torch call policy for coalition callables.
+
+    The torch call policy lives in ``shapiq.games.torch``, owned by one
+    adapter per entry style: this game wraps callables that consume
+    coalitions and return torch tensors, and ``ChunkedMaskedPredictor``
+    owns the masked path (masker + model). Wrapped callables receive
+    coalitions as boolean torch tensors, run without building autograd
+    graphs, and their outputs re-enter the stack as JAX arrays through the
+    DLPack boundary — so a plain ``fn(coalitions) -> torch.Tensor`` behaves
+    like any other game without torch ceremony at the call site.
+
+    Example:
+        >>> game = TorchCallableGame(fn=coalition_scorer, n_players=8)
+        >>> explanation = Regression(game, SV()).sample(64).explain()
+    """
 
     no_grad: bool
     detach: bool
@@ -32,7 +46,23 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
         no_grad: bool = True,
         detach: bool = True,
     ) -> None:
-        """Initialize a torch-backed callable game."""
+        """Initialize a torch-backed callable game.
+
+        Args:
+            fn: Callable evaluating coalitions to model-native values.
+            n_players: The fixed number of players.
+            target_shape: Explanation-target axes of the game.
+            coalition_converter: Conversion applied to coalitions before the
+                callable; defaults to boolean torch tensors via DLPack.
+            value_converter: Conversion applied to the callable's outputs;
+                defaults to JAX arrays via DLPack with a host-memory
+                fallback.
+            value_shape: Trailing value axes of one evaluation.
+            no_grad: Whether to evaluate under ``torch.no_grad()`` so no
+                autograd graph is built.
+            detach: Whether the default value conversion detaches outputs
+                from an existing autograd graph first.
+        """
         object.__setattr__(self, "no_grad", no_grad)
         object.__setattr__(self, "detach", detach)
         super().__init__(

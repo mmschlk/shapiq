@@ -43,11 +43,15 @@ class EvidenceApproximator(
 
     @property
     def min_budget(self) -> int:
-        """Return the smallest total budget after which ``explain()`` works.
+        """Return the floor below which ``explain()`` cannot succeed.
 
         The first explanation needs the seed block plus one completed sampled
         unit; this property saves users the arithmetic over the sampler's
-        ``n_seed_samples`` and ``sampling_quantum``.
+        ``n_seed_samples`` and ``sampling_quantum``. It is a floor, not a
+        guarantee: whether the drawn coalitions carry enough evidence is
+        method-specific (interaction coverage for permutation walks,
+        identification for the regressions), and ``explain()`` raises
+        ``InsufficientSamplesError`` stating the shortfall while they do not.
         """
         return self.sampler.n_seed_samples + self.sampler.sampling_quantum
 

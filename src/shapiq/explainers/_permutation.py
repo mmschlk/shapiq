@@ -83,7 +83,7 @@ class PermutationSampling(EvidenceApproximator):
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
-        paired: bool = False,
+        paired: bool | None = None,
         track_history: bool = False,
         deduplicate: bool = False,
     ) -> None:
@@ -101,7 +101,9 @@ class PermutationSampling(EvidenceApproximator):
                 tuple of integers shares across the selected axes.
             paired: Whether every sampled unit also contains the walk of the
                 reversed permutation (antithetic sampling), which reduces
-                estimation variance and doubles the sampling quantum.
+                estimation variance and doubles the sampling quantum. The
+                default ``None`` resolves to the family default: permutation
+                walks are unpaired unless requested.
             track_history: Whether to record value-equivalent history for
                 rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
@@ -130,7 +132,11 @@ class PermutationSampling(EvidenceApproximator):
             share_samples=share_samples,
             random_state=random_state,
         )
-        sampler = PairedSampler(base_sampler) if ensure_bool("paired", paired) else base_sampler
+        if paired is None:
+            paired = False  # every permutation family pairs by reversal, none by default
+        else:
+            ensure_bool("paired", paired)
+        sampler = PairedSampler(base_sampler) if paired else base_sampler
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
@@ -362,12 +368,14 @@ def _explain_interactions(
             counts = jnp.sum(onehots, axis=(-3, -2))
             if bool(jnp.any(counts == 0)):
                 missing = int(jnp.sum(counts == 0))
+                walks_needed = -(-missing // n_windows)
                 msg = (
                     f"an order-{order} SII explanation needs at least one sample "
                     f"for every interaction of each size up to {order}: "
                     f"{missing} of {int(counts.size)} size-{size} interaction estimates "
-                    "have no sample yet; sample a larger budget "
-                    f"(each walk yields {n_windows} size-{size} window samples)"
+                    f"have no sample yet; sample at least {walks_needed} more completed "
+                    f"walks (each walk yields {n_windows} size-{size} window samples, "
+                    "and window coverage is random, so more may be needed)"
                 )
                 raise InsufficientSamplesError(msg)
             attributions[size] = sums / counts

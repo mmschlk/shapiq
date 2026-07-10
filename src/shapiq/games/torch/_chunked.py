@@ -43,12 +43,16 @@ class ChunkedMaskedPredictor(MaskedPredictor[torch.Tensor]):
     devices; ``device`` overrides the inference for models without
     parameters or with pinned placements. The device is resolved on every
     prediction, so moving the model after construction is picked up.
-    Compose with ``MaskedGame`` and a link function for the full game.
+    Compose with ``MaskedGame`` for the full game; predictions become game
+    values through the dispatched default conversion, and a link function
+    is only needed to transform them on the way. This predictor owns the
+    torch call policy for the masked path; its counterpart for raw
+    coalition callables is ``TorchCallableGame``.
 
     Example:
         >>> masker = SuperpixelMasker(inputs=image, baseline=0.0, labels=labels)
         >>> predictor = ChunkedMaskedPredictor(masker=masker, model=cnn, batch_size=64)
-        >>> game = MaskedGame(masked_predictor=predictor, link_function=to_jax)
+        >>> game = MaskedGame(masked_predictor=predictor)
     """
 
     masker: Masker[torch.Tensor]

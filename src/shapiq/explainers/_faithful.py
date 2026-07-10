@@ -140,6 +140,7 @@ def require_identification(reduced: Array, *, deduplicating: bool = False) -> No
         )
         msg = (
             "the faithful regression is not yet identified: the sampled coalitions "
-            f"give rank {rank} of the {needed} required; {hint}"
+            f"give rank {rank} of the {needed} required, so at least "
+            f"{needed - rank} more distinct informative coalitions are needed; {hint}"
         )
         raise InsufficientSamplesError(msg)

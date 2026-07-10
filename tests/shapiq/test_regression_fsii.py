@@ -120,7 +120,10 @@ def test_minimum_budget_and_identification_gate_explanations():
         approximator.explain()
     with pytest.raises(InsufficientSamplesError, match=r"sample at least \d+ evaluations"):
         approximator.sample(SEEDS).explain()
-    with pytest.raises(InsufficientSamplesError, match="not yet identified"):
+    # the constrained fit reports the free coefficients after elimination
+    with pytest.raises(
+        InsufficientSamplesError, match=r"rank \d+ of the 14 required, so at least \d+ more"
+    ):
         approximator.sample(SEEDS + 6).explain()
     approximator.sample(SEEDS + 24).explain()  # identified: rank 16 of 16
 

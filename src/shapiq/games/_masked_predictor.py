@@ -35,7 +35,15 @@ class MaskedPredictor[PredictionT](ABC):
 
 @dataclass(frozen=True)
 class ModelMaskedPredictor[ModelInputT, PredictionT](MaskedPredictor[PredictionT]):
-    """Masked predictor formed by composing a masker and callable model."""
+    """Masked predictor formed by composing a masker and callable model.
+
+    The composition is backend-generic and applies no framework call
+    policy: a torch model called here builds autograd graphs during the
+    forward pass. Torch models belong in
+    ``shapiq.games.torch.ChunkedMaskedPredictor``, which owns the torch
+    policy for the masked path (no-grad evaluation, device placement, and
+    chunked streaming).
+    """
 
     masker: Masker[ModelInputT]
     model: Model[ModelInputT, PredictionT]

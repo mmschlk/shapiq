@@ -137,8 +137,22 @@ def test_explaining_before_pair_coverage_raises():
     approximator = PermutationSampling(game_from(quadratic_from_masks), SII(), random_state=0)
     with pytest.raises(InsufficientSamplesError):
         approximator.sample(SEEDS + SII_QUANTUM - 1).explain()
-    with pytest.raises(InsufficientSamplesError):
+    # the coverage shortfall states a lower bound on the walks still needed
+    with pytest.raises(InsufficientSamplesError, match="more completed walks"):
         approximator.sample(SEEDS + SII_QUANTUM).explain()
+
+
+def test_paired_none_matches_the_unpaired_default():
+    def estimate(**kwargs):
+        approximator = PermutationSampling(
+            game_from(quadratic_from_masks), SII(), random_state=0, **kwargs
+        )
+        return approximator.sample(SEEDS + 20 * SII_QUANTUM).explain()
+
+    by_default = estimate()
+    unpaired = estimate(paired=False)
+    for interaction in by_default.iter_interactions():
+        assert jnp.allclose(by_default(interaction), unpaired(interaction))
 
 
 def test_pending_samples_are_masked_until_their_walk_completes():

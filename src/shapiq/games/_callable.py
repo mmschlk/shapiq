@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import KW_ONLY, dataclass
 from typing import TYPE_CHECKING, cast
 
 from shapiq._shape import ShapeLike, normalize_shape, validate_n_players
@@ -14,11 +14,19 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class CallableGame[ValueT](Game[ValueT]):
-    """Game adapter for callables that already behave like games."""
+    """Game adapter for callables that already behave like games.
+
+    The callable receives coalitions (converted by ``coalition_converter``
+    when one is given) and its outputs become game values (converted by
+    ``value_converter`` when one is given). No framework call policy is
+    applied; for torch callables use ``shapiq.games.torch.TorchCallableGame``,
+    which fills both converters and evaluates without autograd.
+    """
 
     fn: Callable[[object], object]
     n_players: int
     target_shape: ShapeLike = ()
+    _: KW_ONLY
     coalition_converter: Callable[[CoalitionArray], object] | None = None
     value_converter: Callable[[object], ValueT] | None = None
     value_shape: ShapeLike = ()

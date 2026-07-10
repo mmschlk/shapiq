@@ -112,10 +112,10 @@ class Regression(EvidenceApproximator):
                 tuple of integers shares across the selected axes.
             paired: Whether every sampled coalition is accompanied by its
                 complement, which reduces estimation variance. The default
-                ``None`` pairs exactly when the index's kernel is
-                complement-symmetric: always except for ``WeightedFBII``
-                with ``p != 0.5``, whose complements would enter the fit
-                with the wrong implicit weighting.
+                ``None`` resolves to the family default: paired exactly when
+                the index's kernel is complement-symmetric — always except
+                for ``WeightedFBII`` with ``p != 0.5``, whose complements
+                would enter the fit with the wrong implicit weighting.
             track_history: Whether to record value-equivalent history for
                 rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
@@ -166,12 +166,16 @@ class Regression(EvidenceApproximator):
 
     @property
     def min_budget(self) -> int:
-        """Return the smallest total budget after which ``explain()`` can work.
+        """Return the floor below which ``explain()`` cannot succeed.
 
         Identification needs at least as many independent evidence rows as
         free coefficients, on top of the seed block: one fewer than the
         interaction columns for the constrained Shapley fits, one more for
-        the unconstrained Banzhaf fit with its free intercept.
+        the unconstrained Banzhaf fit with its free intercept. Reaching the
+        floor does not guarantee identification — that depends on the drawn
+        coalitions (repeated coalitions add no rank, and the kADD-SHAP
+        Bernoulli basis typically identifies later than the floor) — and
+        ``explain()`` raises with the rank shortfall until they identify.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
         offset = 1 if self._family.intercept else -1
