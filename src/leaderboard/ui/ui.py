@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
-from concurrent.futures import ProcessPoolExecutor
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterator
@@ -74,8 +74,11 @@ DEFAULT_COLS = 2
 ELO_N_BOOTSTRAP_SAMPLES = 200
 ELO_N_PERMUTATIONS = 10
 
+
 @dataclass
 class InitialData:
+    """Data container for leaderboard UI."""
+
     df_agg: pd.DataFrame
     raw_records: list[dict[str, Any]]
     db_client: Any
@@ -89,6 +92,7 @@ class InitialData:
     all_gt_methods: list[str]
     all_seeds: list[int]
     available_metrics: list[str]
+
 
 def update_global_styles(df: pd.DataFrame) -> None:
     """Fill the global approximator-style mapping from the full dataset.
@@ -287,17 +291,19 @@ def get_plot_single(
 
 # --- Daten laden ---
 def _with_spinner(message: str, fn):
+    """Run a function while printing a small terminal spinner."""
     import threading
-    SPINNER = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+
+    SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     done = threading.Event()
 
-    def spin():
+    def spin() -> None:
         i = 0
         while not done.is_set():
-            print(f"\r{SPINNER[i % len(SPINNER)]}  {message}", end="", flush=True)
+            print(f"\r{SPINNER[i % len(SPINNER)]}  {message}", end="", flush=True)  # noqa: T201
             i += 1
             done.wait(0.1)
-        print(f"\r✓  {message}")
+        print(f"\r✓  {message}")  # noqa: T201
 
     t = threading.Thread(target=spin, daemon=True)
     t.start()
@@ -306,8 +312,9 @@ def _with_spinner(message: str, fn):
     t.join()
     return result
 
-def load_initial_data() -> InitialData:
 
+def load_initial_data() -> InitialData:
+    """Load and prepare all data required for the initial UI build."""
     df_agg = _with_spinner(
         "Connecting to database & loading records...",
         lambda: load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH),
@@ -329,10 +336,9 @@ def load_initial_data() -> InitialData:
     _all_n_players = sorted({c.n_players for c in _unique_configs})
     _all_max_orders = sorted({c.max_order for c in _unique_configs})
     _all_gt_methods = sorted({c.ground_truth_method for c in _unique_configs})
-    _all_seeds = sorted({
-        int(s) for r in raw_records
-        if isinstance(s := r.get("approx_seed"), int | float | str)
-    })
+    _all_seeds = sorted(
+        {int(s) for r in raw_records if isinstance(s := r.get("approx_seed"), int | float | str)}
+    )
 
     _with_spinner("Computing global styles...", lambda: update_global_styles(df_agg) or True)
 
@@ -354,6 +360,7 @@ def load_initial_data() -> InitialData:
         available_metrics=available_metrics,
     )
 
+
 def compute_elo_for_bucket(
     df_raw_records: list[dict],
     budget: int,
@@ -365,11 +372,12 @@ def compute_elo_for_bucket(
     """Run ELO scoring for a specific budget bucket and return table + plot.
 
     Args:
-        approx_styles: style definitions for plotting.
         df_raw_records: Raw benchmark records as a list of dicts.
         budget: The budget value to filter by (e.g. 250, 500, 1000, 5000, 10000).
         metric: Metric to score by. Use "all" (default) to include all metrics.
         index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+        game: Game name to filter by. Use "all" to include all games.
+        approx_styles: style definitions for plotting.
 
     Returns:
         A tuple of (leaderboard DataFrame, Plotly bar chart Figure, info markdown string).
@@ -438,9 +446,7 @@ def compute_elo_for_bucket(
 
     style_map = approx_styles if approx_styles is not None else GLOBAL_APPROX_STYLES
 
-    bar_colors = [
-        style_map.get(name, {"color": "#636EFA"})["color"] for name in approx_names
-    ]
+    bar_colors = [style_map.get(name, {"color": "#636EFA"})["color"] for name in approx_names]
 
     fig = go.Figure(
         go.Bar(
@@ -481,6 +487,7 @@ def compute_elo_for_bucket(
 
     return leaderboard_df, fig, info_md
 
+
 def compute_elo_for_bucket_worker(
     args: tuple[list[dict], int, str, str, str, dict[str, dict[str, str]]],
 ) -> tuple[int, pd.DataFrame, go.Figure, str]:
@@ -511,9 +518,7 @@ def compute_all_elo_buckets_parallel(
         info_md, table_0, fig_0, table_1, fig_1, ...
     """
     filtered = [
-        record
-        for record in raw_records
-        if record.get("approximator_name") in selected_approxs
+        record for record in raw_records if record.get("approximator_name") in selected_approxs
     ]
 
     approx_styles = GLOBAL_APPROX_STYLES.copy()
@@ -536,11 +541,15 @@ def compute_all_elo_buckets_parallel(
             first_info = info_md
         outputs.extend([table_df, fig])
 
-    return tuple([first_info or "", *outputs])
+    return first_info or "", *outputs
 
 
 def compute_cd_for_bucket(
-    df_raw_records: list[dict], budget: int, metric: str = "all", index: str = "all", game: str = "all"
+    df_raw_records: list[dict],
+    budget: int,
+    metric: str = "all",
+    index: str = "all",
+    game: str = "all",
 ) -> go.Figure:
     """Run Critical Difference scoring for a specific budget bucket and return a Plotly figure.
 
@@ -549,6 +558,8 @@ def compute_cd_for_bucket(
         budget: The budget value to filter by.
         metric: Metric to score by. Use "all" to include all metrics.
         index: Interaction index to filter by. Use "all" to include all indices.
+        game: Game name to filter by. Use "all" to include all games.
+
 
     Returns:
         A Plotly Figure with the CD diagram.
@@ -568,13 +579,17 @@ def compute_cd_for_bucket(
             title=f"CD Diagram — no data for budget {budget}",
             xaxis={"visible": False},
             yaxis={"visible": False},
-            annotations=[{
-                "text": "Not enough data for a CD diagram at this configuration.",
-                "xref": "paper", "yref": "paper",
-                "x": 0.5, "y": 0.5,
-                "showarrow": False,
-                "font": {"size": 14, "color": "gray"},
-            }],
+            annotations=[
+                {
+                    "text": "Not enough data for a CD diagram at this configuration.",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.5,
+                    "y": 0.5,
+                    "showarrow": False,
+                    "font": {"size": 14, "color": "gray"},
+                }
+            ],
         )
         return fig
 
@@ -614,6 +629,7 @@ def _records_to_df(records: list[dict], metric_filter: list[str] | None = None) 
         rows.append(row)
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
+
 def build_app() -> gr.Blocks:
     """Build and return the Gradio leaderboard app."""
     # --- Gradio App ---
@@ -647,7 +663,7 @@ def build_app() -> gr.Blocks:
         """
         df_filtered = df_agg[
             (df_agg["game_name"] == g) & (df_agg["approximator_name"].isin(approximators))
-            ]
+        ]
         yranges = {}
         for m in available_metrics:
             col = f"{m}_mean"
@@ -680,7 +696,7 @@ def build_app() -> gr.Blocks:
         """
         # args enthält: [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
         approx_vals = list(args[:MAX_COLS])
-        game_vals = list(args[MAX_COLS: 2 * MAX_COLS])
+        game_vals = list(args[MAX_COLS : 2 * MAX_COLS])
         n_cols = args[-1]
 
         # Approximatoren und Spiele herausfiltern, die gerade aktiv sichtbar sind
@@ -695,7 +711,7 @@ def build_app() -> gr.Blocks:
             df_filtered = df_agg[
                 (df_agg["game_name"].isin(active_games))
                 & (df_agg["approximator_name"].isin(active_approxs))
-                ]
+            ]
 
             if not df_filtered.empty:
                 valid_values = pd.to_numeric(df_filtered[col], errors="coerce")
@@ -744,7 +760,7 @@ def build_app() -> gr.Blocks:
         with gr.Tab("ELO Leaderboard"):
             gr.Markdown("""
             ## ELO Leaderboard by Budget Bucket
-    
+
             Approximators are ranked using pairwise ELO comparisons within each budget tier.
             A higher ELO score means the approximator consistently outperforms others at this budget.
             """)
@@ -790,7 +806,9 @@ def build_app() -> gr.Blocks:
                 with gr.Column(scale=0, min_width=120):
                     elo_deselect_btn = gr.Button("Alle abwählen", size="sm")
                     elo_reset_btn = gr.Button("Zurücksetzen", size="sm")
-                    elo_jump_btn = gr.Button("🔍 Open in Detailed Data Tab", size="sm", variant="secondary")
+                    elo_jump_btn = gr.Button(
+                        "🔍 Open in Detailed Data Tab", size="sm", variant="secondary"
+                    )
 
             elo_deselect_btn.click(fn=list, outputs=elo_approx_filter)
             elo_reset_btn.click(
@@ -814,7 +832,9 @@ def build_app() -> gr.Blocks:
 
             _elo_init_cd_fig = _with_spinner(
                 f"Computing CD diagram for initial bucket ({BUDGET_BUCKETS[2]['label']})...",
-                lambda: compute_cd_for_bucket(raw_records, int(BUDGET_BUCKETS[2]["budget"]), "all", _default_index)
+                lambda: compute_cd_for_bucket(
+                    raw_records, int(BUDGET_BUCKETS[2]["budget"]), "all", _default_index
+                ),
             )
 
             with gr.Row():
@@ -826,19 +846,18 @@ def build_app() -> gr.Blocks:
                         label="Rankings",
                         max_height=1000,
                     )
-                with gr.Column(scale=2):
-                    with gr.Tabs():
-                        with gr.TabItem("ELO Scores"):
-                            elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
-                        with gr.TabItem("CD Diagram"):
-                            elo_cd_plot = gr.Plot(value=_elo_init_cd_fig, label="CD Diagram")
+                with gr.Column(scale=2), gr.Tabs():
+                    with gr.TabItem("ELO Scores"):
+                        elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
+                    with gr.TabItem("CD Diagram"):
+                        elo_cd_plot = gr.Plot(value=_elo_init_cd_fig, label="CD Diagram")
 
             def update_elo_tab(
                 bucket_idx: int,
                 raw_records: list[dict],
                 selected_approxs: list[str],
                 metric: str = "all",
-                index: str ="all",
+                index: str = "all",
                 game: str = "all",
             ) -> tuple[str, pd.DataFrame, go.Figure, str, go.Figure]:
                 """Compute the ELO leaderboard and CD diagram for the given budget bucket.
@@ -855,9 +874,13 @@ def build_app() -> gr.Blocks:
                     ELO bar chart Figure, info markdown string, CD diagram Figure).
                 """
                 bucket = BUDGET_BUCKETS[bucket_idx]
-                filtered = [r for r in raw_records if r.get("approximator_name") in selected_approxs]
+                filtered = [
+                    r for r in raw_records if r.get("approximator_name") in selected_approxs
+                ]
                 budget = int(bucket["budget"])
-                table_df, fig, info_md = compute_elo_for_bucket(filtered, budget, metric, index, game, GLOBAL_APPROX_STYLES.copy())
+                table_df, fig, info_md = compute_elo_for_bucket(
+                    filtered, budget, metric, index, game, GLOBAL_APPROX_STYLES.copy()
+                )
                 cd_fig = compute_cd_for_bucket(filtered, budget, metric, index, game)
                 label_md = f"### {bucket['label']}"
                 return label_md, table_df, fig, info_md, cd_fig
@@ -869,7 +892,7 @@ def build_app() -> gr.Blocks:
                 selected_approxs: list[str],
                 metric: str = "all",
                 index: str = "all",
-                game: str = "all"
+                game: str = "all",
             ) -> Iterator[Any]:
                 """Navigate between budget buckets and stream UI updates.
 
@@ -883,13 +906,26 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
+
 
                 Returns:
                     Iterator of two Gradio update tuples.
                 """
                 new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
-                yield new_idx, gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
-                label_md, table_df, fig, info_md, cd_fig = update_elo_tab(new_idx, raw_records, selected_approxs, metric, index, game)
+                yield (
+                    new_idx,
+                    gr.update(),
+                    gr.update(visible=False),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                )
+                label_md, table_df, fig, info_md, cd_fig = update_elo_tab(
+                    new_idx, raw_records, selected_approxs, metric, index, game
+                )
                 yield (
                     new_idx,
                     label_md,
@@ -902,7 +938,12 @@ def build_app() -> gr.Blocks:
                 )
 
             def elo_prev(
-                idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
+                idx: int,
+                raw_records: list[dict],
+                selected_approxs: list[str],
+                metric: str = "all",
+                index: str = "all",
+                game: str = "all",
             ) -> Iterator[Any]:
                 """Navigate to the previous (lower) budget bucket.
 
@@ -912,6 +953,8 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
+
 
                 Yields:
                     Gradio update tuples forwarded from :func:`elo_navigate`.
@@ -919,7 +962,12 @@ def build_app() -> gr.Blocks:
                 yield from elo_navigate(idx, -1, raw_records, selected_approxs, metric, index, game)
 
             def elo_next(
-                idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
+                idx: int,
+                raw_records: list[dict],
+                selected_approxs: list[str],
+                metric: str = "all",
+                index: str = "all",
+                game: str = "all",
             ) -> Iterator[Any]:
                 """Navigate to the next (higher) budget bucket.
 
@@ -929,6 +977,8 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
+
 
                 Yields:
                     Gradio update tuples forwarded from :func:`elo_navigate`.
@@ -937,19 +987,54 @@ def build_app() -> gr.Blocks:
 
             elo_prev_btn.click(
                 fn=elo_prev,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
-                outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
-                         elo_prev_btn, elo_next_btn],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
+                outputs=[
+                    elo_bucket_idx_state,
+                    elo_bucket_label,
+                    elo_table,
+                    elo_plot,
+                    elo_info_md,
+                    elo_cd_plot,
+                    elo_prev_btn,
+                    elo_next_btn,
+                ],
             )
             elo_next_btn.click(
                 fn=elo_next,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
-                outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot,
-                         elo_prev_btn, elo_next_btn],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
+                outputs=[
+                    elo_bucket_idx_state,
+                    elo_bucket_label,
+                    elo_table,
+                    elo_plot,
+                    elo_info_md,
+                    elo_cd_plot,
+                    elo_prev_btn,
+                    elo_next_btn,
+                ],
             )
 
             def elo_filter_update(
-                idx: int, raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str ="all", game: str = "all",
+                idx: int,
+                raw_records: list[dict],
+                selected_approxs: list[str],
+                metric: str = "all",
+                index: str = "all",
+                game: str = "all",
             ) -> Iterator[Any]:
                 """Recompute the ELO tab after an approximator or metric filter change.
 
@@ -961,38 +1046,77 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
 
                 Returns:
                     Iterator of two Gradio update tuples.
                 """
                 yield gr.update(), gr.update(visible=False), gr.update(), gr.update(), gr.update()
                 label_md, table_df, fig, info_md, cd_fig = update_elo_tab(
-                    idx, raw_records, selected_approxs, metric, index, game,
+                    idx,
+                    raw_records,
+                    selected_approxs,
+                    metric,
+                    index,
+                    game,
                 )
-                yield label_md, gr.update(value=table_df, visible=True, max_height=1000), fig, info_md, cd_fig
+                yield (
+                    label_md,
+                    gr.update(value=table_df, visible=True, max_height=1000),
+                    fig,
+                    info_md,
+                    cd_fig,
+                )
 
             elo_approx_filter.change(
                 fn=elo_filter_update,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
             )
 
             elo_metric_filter.change(
                 fn=elo_filter_update,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
             )
 
             elo_index_filter.change(
                 fn=elo_filter_update,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
             )
 
             elo_game_filter.change(
                 fn=elo_filter_update,
-                inputs=[elo_bucket_idx_state, raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter,
-                        elo_game_filter],
+                inputs=[
+                    elo_bucket_idx_state,
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=[elo_bucket_label, elo_table, elo_plot, elo_info_md, elo_cd_plot],
             )
 
@@ -1016,7 +1140,11 @@ def build_app() -> gr.Blocks:
                         )
 
             def update_all_buckets(
-                raw_records: list[dict], selected_approxs: list[str], metric: str = "all", index: str = "all", game: str = "all",
+                raw_records: list[dict],
+                selected_approxs: list[str],
+                metric: str = "all",
+                index: str = "all",
+                game: str = "all",
             ) -> Iterator[Any]:
                 """Recompute ELO results for all budget buckets simultaneously.
 
@@ -1025,6 +1153,7 @@ def build_app() -> gr.Blocks:
                     selected_approxs: Approximator names to include.
                     metric: Metric to score by; ``"all"`` includes every metric.
                     index: Interaction index to filter by (e.g. "SV"). Use "all" to include all indices.
+                    game: Game name to filter by. Use "all" to include all games.
 
                 Returns:
                     Iterator of two Gradio update tuples.
@@ -1051,7 +1180,7 @@ def build_app() -> gr.Blocks:
                     fig = parallel_outputs[1 + 2 * i + 1]
                     outputs.extend([gr.update(value=table, visible=True, max_height=1000), fig])
 
-                yield tuple([first_info, *outputs])
+                yield first_info, *outputs
 
             _all_bucket_outputs = [
                 all_buckets_info_md,
@@ -1059,30 +1188,54 @@ def build_app() -> gr.Blocks:
                     item
                     for i in range(len(BUDGET_BUCKETS))
                     for item in [all_bucket_tables[i], all_bucket_plots[i]]
-                ]
+                ],
             ]
 
             elo_approx_filter.change(
                 fn=update_all_buckets,
-                inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=_all_bucket_outputs,
             )
 
             elo_metric_filter.change(
                 fn=update_all_buckets,
-                inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=_all_bucket_outputs,
             )
 
             elo_index_filter.change(
                 fn=update_all_buckets,
-                inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=_all_bucket_outputs,
             )
 
             elo_game_filter.change(
                 fn=update_all_buckets,
-                inputs=[raw_state, elo_approx_filter, elo_metric_filter, elo_index_filter, elo_game_filter],
+                inputs=[
+                    raw_state,
+                    elo_approx_filter,
+                    elo_metric_filter,
+                    elo_index_filter,
+                    elo_game_filter,
+                ],
                 outputs=_all_bucket_outputs,
             )
 
@@ -1109,7 +1262,9 @@ def build_app() -> gr.Blocks:
                             deselect_btn = gr.Button("Alle abwählen", size="sm")
                             reset_btn = gr.Button("Zurücksetzen", size="sm")
                             jump_buttons[metric] = gr.Button(
-                                "🔍 Open in Detailed Data Tab", size="sm", variant="secondary",
+                                "🔍 Open in Detailed Data Tab",
+                                size="sm",
+                                variant="secondary",
                             )
 
                     deselect_btn.click(fn=list, outputs=approx_checkboxes[metric])
@@ -1138,10 +1293,14 @@ def build_app() -> gr.Blocks:
         with gr.Tab("Compare Approximators"):
             gr.Markdown("## Side-by-side Approximator Comparison")
 
-            gr.HTML("<style>.compare-jump-btn { margin-left: auto !important; } .hidden-col { display: none !important; }</style>")
+            gr.HTML(
+                "<style>.compare-jump-btn { margin-left: auto !important; } .hidden-col { display: none !important; }</style>"
+            )
             with gr.Row():
                 add_col_btn = gr.Button("+ Add Approximator", scale=0, variant="primary")
-                remove_col_btn = gr.Button("- Remove Approximator", scale=0, variant="primary", interactive=False)
+                remove_col_btn = gr.Button(
+                    "- Remove Approximator", scale=0, variant="primary", interactive=False
+                )
                 n_cols_state = gr.State(value=DEFAULT_COLS)
                 compare_jump_btn = gr.Button(
                     "🔍 Open in Detailed Data Tab",
@@ -1188,7 +1347,9 @@ def build_app() -> gr.Blocks:
                 with gr.Row():
                     plots = [
                         gr.Plot(
-                            value=get_plot(df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)),
+                            value=get_plot(
+                                df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)
+                            ),
                             elem_classes=[] if i < DEFAULT_COLS else ["hidden-col"],
                         )
                         for i in range(MAX_COLS)
@@ -1211,7 +1372,10 @@ def build_app() -> gr.Blocks:
                 updates = []
 
                 # Spalten-Container (Inklusive der darin liegenden Dropdowns) updaten
-                updates = [gr.update(elem_classes=[] if c_idx < new_n else ["hidden-col"]) for c_idx in range(MAX_COLS)]
+                updates = [
+                    gr.update(elem_classes=[] if c_idx < new_n else ["hidden-col"])
+                    for c_idx in range(MAX_COLS)
+                ]
 
                 # Gemeinsame Y-Range über alle aktiven Spalten berechnen
                 active_approxs = [dropdown_values[i] for i in range(new_n)]
@@ -1227,12 +1391,19 @@ def build_app() -> gr.Blocks:
                         if is_visible:
                             approx_val = dropdown_values[p_idx]
                             game_val = dropdown_values[MAX_COLS + p_idx]
-                            plot_figure = get_plot_single(df_agg, game_val, m, approx_val, yr_shared)
+                            plot_figure = get_plot_single(
+                                df_agg, game_val, m, approx_val, yr_shared
+                            )
                             updates.append(gr.update(value=plot_figure, elem_classes=[]))
                         else:
                             updates.append(gr.update(elem_classes=["hidden-col"]))
 
-                return [new_n, *updates, gr.update(interactive=(new_n < MAX_COLS)), gr.update(interactive=(new_n > 2))]
+                return [
+                    new_n,
+                    *updates,
+                    gr.update(interactive=(new_n < MAX_COLS)),
+                    gr.update(interactive=(new_n > 2)),
+                ]
 
             click_inputs = [n_cols_state, *compare_approx_dropdowns, *compare_game_dropdowns]
 
@@ -1253,7 +1424,9 @@ def build_app() -> gr.Blocks:
 
             for component in all_inputs:
                 component.change(
-                    fn=update_compare_plots, inputs=[*all_inputs, n_cols_state], outputs=plot_outputs
+                    fn=update_compare_plots,
+                    inputs=[*all_inputs, n_cols_state],
+                    outputs=plot_outputs,
                 )
 
         with gr.Tab("Detailed Data"):
@@ -1261,16 +1434,30 @@ def build_app() -> gr.Blocks:
 
             with gr.Row():
                 det_game = gr.Dropdown(choices=_all_games, label="Game", multiselect=True)
-                det_approx = gr.Dropdown(choices=_all_approxs, label="Approximator", multiselect=True)
-                det_budget = gr.Dropdown(choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True)
+                det_approx = gr.Dropdown(
+                    choices=_all_approxs, label="Approximator", multiselect=True
+                )
+                det_budget = gr.Dropdown(
+                    choices=[str(b) for b in _all_budgets], label="Budget", multiselect=True
+                )
                 det_index = gr.Dropdown(choices=_all_indices, label="Index", multiselect=True)
-                det_max_order = gr.Dropdown(choices=[str(o) for o in _all_max_orders], label="Max Order", multiselect=True)
+                det_max_order = gr.Dropdown(
+                    choices=[str(o) for o in _all_max_orders], label="Max Order", multiselect=True
+                )
 
             with gr.Row():
-                det_n_players = gr.Dropdown(choices=[str(n) for n in _all_n_players], label="N Players", multiselect=True)
-                det_gt_method = gr.Dropdown(choices=_all_gt_methods, label="Ground Truth Method", multiselect=True)
-                det_seed = gr.Dropdown(choices=[str(s) for s in _all_seeds], label="Approx Seed", multiselect=True)
-                det_metric = gr.Dropdown(choices=available_metrics, label="Metrics", multiselect=True)
+                det_n_players = gr.Dropdown(
+                    choices=[str(n) for n in _all_n_players], label="N Players", multiselect=True
+                )
+                det_gt_method = gr.Dropdown(
+                    choices=_all_gt_methods, label="Ground Truth Method", multiselect=True
+                )
+                det_seed = gr.Dropdown(
+                    choices=[str(s) for s in _all_seeds], label="Approx Seed", multiselect=True
+                )
+                det_metric = gr.Dropdown(
+                    choices=available_metrics, label="Metrics", multiselect=True
+                )
 
             with gr.Row():
                 det_search_btn = gr.Button("Search", variant="primary")
@@ -1341,15 +1528,26 @@ def build_app() -> gr.Blocks:
 
                 result_df = _records_to_df(filtered, metrics or None)
 
-                yield f"**{len(result_df)} Runs gefunden.**", gr.update(value=result_df, visible=True)
+                yield (
+                    f"**{len(result_df)} Runs gefunden.**",
+                    gr.update(value=result_df, visible=True),
+                )
                 await asyncio.sleep(0.05)
                 yield gr.update(), gr.update(visible=False)
                 await asyncio.sleep(0.05)
                 yield gr.update(), gr.update(value=result_df, visible=True)
 
-
-            _det_filters = [det_game, det_approx, det_budget, det_index, det_metric,
-                            det_n_players, det_max_order, det_seed, det_gt_method]
+            _det_filters = [
+                det_game,
+                det_approx,
+                det_budget,
+                det_index,
+                det_metric,
+                det_n_players,
+                det_max_order,
+                det_seed,
+                det_gt_method,
+            ]
 
             det_search_btn.click(
                 fn=query_raw,
@@ -1364,7 +1562,6 @@ def build_app() -> gr.Blocks:
                     Tuple of empty lists, one for each dropdown in ``_det_filters``.
                 """
                 return tuple([] for _ in _det_filters)
-
 
             det_reset_btn.click(fn=reset_det_filters, outputs=_det_filters)
 
@@ -1427,7 +1624,13 @@ def build_app() -> gr.Blocks:
                 [index] if index != "all" else [],
                 [metric] if metric != "all" else [],
             ),
-            inputs=[elo_approx_filter, elo_bucket_idx_state, elo_metric_filter, elo_index_filter, elo_game_filter],
+            inputs=[
+                elo_approx_filter,
+                elo_bucket_idx_state,
+                elo_metric_filter,
+                elo_index_filter,
+                elo_game_filter,
+            ],
             outputs=[det_game, det_approx, det_budget, det_index, det_metric],
         ).then(
             fn=query_raw,
@@ -1474,10 +1677,12 @@ def build_app() -> gr.Blocks:
 
     return demo
 
+
 def main() -> None:
-    print("\n🚀 Starting shapiq Leaderboard...\n")
+    """Build and launch the Gradio leaderboard app."""
+    print("\n🚀 Starting shapiq Leaderboard...\n")  # noqa: T201
     demo = build_app()
-    print("\n✨ Ready!\n")
+    print("\n✨ Ready!\n")  # noqa: T201
     demo.launch()
 
 

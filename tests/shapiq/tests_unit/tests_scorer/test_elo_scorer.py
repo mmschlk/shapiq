@@ -670,6 +670,7 @@ def test_elo_scorer_with_bootstrap_and_permutations_adds_combined_metadata():
     for row in result.rows:
         assert row.metadata["n_rating_samples"] == 10
 
+
 def test_group_match_cache_preserves_original_match_list():
     """Test that cached group matches reproduce direct pairwise match construction."""
     scorer = EloScorer(metric_names=["mse"])
@@ -684,6 +685,7 @@ def test_group_match_cache_preserves_original_match_list():
     )
 
     assert cached_matches == direct_matches
+
 
 def test_collect_cached_matches_preserves_bootstrap_group_multiplicity():
     """Test that repeated bootstrap groups contribute their matches repeatedly."""

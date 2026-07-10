@@ -717,10 +717,10 @@ class EloScorer(LeaderboardScorer):
         return bootstrap_samples
 
     def _compute_bootstrap_elo_ratings(
-            self,
-            *,
-            comparable_groups: list[ComparableGroup],
-            group_match_cache: GroupMatchCache,
+        self,
+        *,
+        comparable_groups: list[ComparableGroup],
+        group_match_cache: GroupMatchCache,
     ) -> ApproximatorRatingsMap:
         """Compute permutation-averaged Elo ratings across bootstrap samples.
 
@@ -789,8 +789,8 @@ class EloScorer(LeaderboardScorer):
         )
 
     def _build_group_match_cache(
-            self,
-            comparable_groups: list[ComparableGroup],
+        self,
+        comparable_groups: list[ComparableGroup],
     ) -> GroupMatchCache:
         """Build pairwise matches once for each comparable group.
 
@@ -806,10 +806,10 @@ class EloScorer(LeaderboardScorer):
         return cache
 
     def _collect_cached_matches_for_groups(
-            self,
-            *,
-            comparable_groups: list[ComparableGroup],
-            group_match_cache: GroupMatchCache,
+        self,
+        *,
+        comparable_groups: list[ComparableGroup],
+        group_match_cache: GroupMatchCache,
     ) -> list[PairwiseMatch]:
         """Collect cached matches for a list of comparable groups.
 
