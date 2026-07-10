@@ -111,11 +111,47 @@ loop: per-leaf combination enumeration accumulating into an
   follows the x64 knob). The float64-to-float32 step happens once at construction, the same
   downcast every game's values undergo — per-call bouncing died with the vectorization.
 
+- Booster converters landed (2026-07-10): XGBoost and LightGBM join `to_tree_model` with the
+  same lazy registration as scikit-learn. Conversion is hot-path infrastructure (AutoML-scale
+  estimators depend on these libraries), so a second ~500-line kernel
+  (`src/shapiq/trees/cext/conversion.cc`, module `_conversion_cext`) parses the FAST dumps —
+  XGBoost's `save_raw()` UBJSON (all key lengths are 8-byte `L` int64s; `tree_info` is a
+  counted-but-untyped array) and LightGBM's `model_to_string()` text (leaf children encoded as
+  `~id`, `decision_type` bit 0 guards categorical splits). The same seam split as the
+  interventional kernel: C owns the byte loops and returns flat arrays; Python owns every
+  policy — the one-ulp `nextafter` threshold shift (XGBoost routes on `x < t`, the layout on
+  `x <= t`; pinned by boundary tests placing the explicand exactly on a split), leaf values
+  from `split_conditions`, `base_score` as a lone-leaf constant tree (logit-transformed for
+  logistic objectives, read from `save_config()`), and multiclass rounds as vector-valued
+  leaves (no class_label knob; explanations come out per class). Both converters keep a pure
+  Python fallback over the slow dumps (JSON / dict walk) as the correctness oracle and for
+  installs without a compiler; kernels fall back silently on unparseable streams. Measured
+  (30 features, depth 8): LightGBM 500 trees 371 -> 22 ms and 2000 trees 1596 -> 87 ms
+  (17-18x, the dict dump was the bottleneck); XGBoost 500 trees 170 -> 34 ms (5x), 2000 trees
+  226 -> 192 ms where per-tree `TreeModel` validation now dominates, not parsing (future knob:
+  batch construction). Full-sweep parity vs native margins on every coalition, kernel-vs-python
+  parses bit-compatible, laziness pinned by subprocess. CatBoost landed right after (added
+  to the all_ml group): oblivious trees unroll into the binary layout — leaf-index bit ``j``
+  is ``splits[j]``'s ``x > border`` (verified against native predictions), which is the exact
+  complement of the layout's ``x <= threshold``, so borders carry over UNSHIFTED (no ulp
+  trick); multiclass leaf values arrive grouped per leaf and become vector leaves;
+  ``scale_and_bias`` becomes a leaf-value scale plus a constant tree. No C parser needed —
+  measured 171 ms for 1000 trees depth 8 (511k nodes) in pure Python, because symmetric trees
+  share their splits and the JSON stays small relative to the node count (v1's
+  catboost_json.cc remains adaptable if this ever changes). Same full-sweep, border-boundary,
+  multiclass, and closed-form-parity tests as the other boosters. Environment quirk, reproduced
+  outside any sandbox: on this macOS wheel set the booster natives segfault in their
+  data-ingestion paths once torch's machinery has run in the same process
+  (OMP_NUM_THREADS=1 saves xgboost but not lightgbm), so the substantive conversion tests
+  run in a fresh interpreter via one wrapper test — not a shapiq bug, and Linux CI may not
+  need the isolation.
+
 ## Later slices
 
 - `PathDependentTreeGame` as the sibling game (TreeSHAP path-dependent semantics; weights
   from node sample counts — `TreeModel` will need `node_sample_weight` back).
-- More converters: xgboost / lightgbm / catboost (v1 has C++ parsers for their dumps).
+- NaN/missing-value routing (`default_left`) if explained points with missing features
+  become a story; non-symmetric CatBoost grow policies (Depthwise/Lossguide) if requested.
 - Background-dataset baselines (v1 supports reference data, not just a point): a batch of
   baselines maps naturally onto explanation targets.
 - Linear TreeSHAP as another registered family if wanted.

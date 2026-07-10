@@ -100,3 +100,19 @@ class TreeModel:
     def value_shape(self) -> tuple[int, ...]:
         """Return the trailing value axes of the leaf values."""
         return tuple(self.values.shape[1:])
+
+
+def constant_tree(value: np.ndarray | float) -> TreeModel:
+    """Return a lone-leaf tree contributing a constant to an ensemble sum.
+
+    Booster converters use this to carry base scores and biases: tree games
+    sum their trees, so one leaf holding the constant (a vector for
+    multiclass margins) completes the model's prediction.
+    """
+    return TreeModel(
+        children_left=np.asarray([-1]),
+        children_right=np.asarray([-1]),
+        features=np.asarray([-2]),
+        thresholds=np.asarray([np.nan]),
+        values=np.asarray([value]),
+    )

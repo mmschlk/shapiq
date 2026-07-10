@@ -22,5 +22,11 @@ setup(
             extra_compile_args=_compile_args(),
             optional=True,  # pure-python installs stay functional without a compiler
         ),
+        Extension(
+            name="shapiq.trees._conversion_cext",
+            sources=["src/shapiq/trees/cext/conversion.cc"],
+            extra_compile_args=_compile_args(),
+            optional=True,  # pure-python installs fall back to the slow dumps
+        ),
     ],
 )

@@ -239,6 +239,7 @@ all_ml = [
     "lightgbm",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
+    "catboost>=1.2.10",
 ]
 test = [
     "pytest>=9.0.2",        # for running tests
