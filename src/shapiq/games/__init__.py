@@ -9,6 +9,7 @@ from shapiq.games._masked import MaskedGame
 from shapiq.games._masked_predictor import MaskedPredictor, ModelMaskedPredictor
 from shapiq.games._masker import Masker
 from shapiq.games._superpixel import SuperpixelMasker, grid_labels
+from shapiq.games._tokens import TokenMasker
 from shapiq.games._values import to_values
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "Model",
     "ModelMaskedPredictor",
     "SuperpixelMasker",
+    "TokenMasker",
     "grid_labels",
     "to_values",
 ]

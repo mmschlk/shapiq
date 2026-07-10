@@ -101,5 +101,6 @@ work through the standard without shapiq code.
   capability-check the other axis"; name the tree-game registry category.
 - Docs/glossary: the `baseline` homonym (reference point vs `v(empty)`), TreeExplainer glossary
   entry, ADR 0009/0005 drift, the name-keyed SV/BV check in `validate_interaction_metadata`.
-- Strategic v1 regressions to rank: plots, sampled k-SII, xgboost/lightgbm/catboost converters,
-  background-dataset baselines, aggregation utilities, PathDependentTreeGame.
+- Strategic v1 regressions to rank: plots, sampled k-SII, background-dataset baselines,
+  aggregation utilities, PathDependentTreeGame (xgboost/lightgbm converters landed with the
+  conversion kernel, see issue-11; catboost deferred; TokenMasker landed as the text on-ramp).

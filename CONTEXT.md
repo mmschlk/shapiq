@@ -116,6 +116,10 @@ _Avoid_: imputer, perturbation function
 A group of pixels acting as one **Player** when explaining image models, represented by an integer label map assigning every pixel a superpixel id covering ``0 .. n_players - 1``. A grid is the simplest layout; irregular layouts (SLIC-style) are just different label maps.
 _Avoid_: patch, segment
 
+**Token**:
+A position in a token-id sequence acting as one **Player** when explaining sequence models; absent tokens are replaced by a mask token id (a special kind of baseline). Grouping subword tokens into word players mirrors the **Superpixel** label-map pattern.
+_Avoid_: word (unless tokens are grouped into words)
+
 **MaskedPredictor**:
 A metadata-carrying abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns model-native predictions for those coalitions.
 _Avoid_: masked model, prediction game

@@ -29,6 +29,7 @@ from shapiq.games import (
     Model,
     ModelMaskedPredictor,
     SuperpixelMasker,
+    TokenMasker,
     grid_labels,
     to_values,
 )
@@ -155,6 +156,7 @@ __all__ = [
     "ShapleyKernelSampler",
     "SparseExplanationArray",
     "SuperpixelMasker",
+    "TokenMasker",
     "TreeExplainer",
     "TreeModel",
     "UnitScheduleSampler",
