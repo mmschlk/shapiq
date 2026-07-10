@@ -9,7 +9,7 @@ import numpy as np
 
 from shapiq._shape import validate_n_players
 from shapiq.games._base import Game
-from shapiq.trees._model import TreeModel
+from shapiq.trees._model import TreeModel, as_host_array
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,6 +26,9 @@ class LeafConstraints(NamedTuple):
     in the coalition and no ``absent`` player is; its row of ``values`` then
     enters the game value. Features on which the explained inputs and the
     baseline route the same way constrain nothing and appear in neither mask.
+    The arrays are host NumPy: tree explainers consume them in exact
+    ``float64``, while game evaluation runs on JAX copies made once at
+    construction.
     """
 
     present: np.ndarray
@@ -56,8 +59,8 @@ class InterventionalTreeGame(Game["Array"]):
         self,
         trees: TreeModel | Sequence[TreeModel],
         *,
-        inputs: np.ndarray,
-        baseline: np.ndarray,
+        inputs: object,
+        baseline: object,
     ) -> None:
         """Initialize the game and precompute the leaf constraints.
 
@@ -65,9 +68,10 @@ class InterventionalTreeGame(Game["Array"]):
             trees: One tree or a sequence of trees whose values add up to the
                 ensemble prediction.
             inputs: Feature values of the explained point, shape
-                ``(n_players,)``.
+                ``(n_players,)``; any array backend (NumPy, JAX, torch) is
+                copied to the host for exact split routing.
             baseline: Feature values of the interventional reference point,
-                shape ``(n_players,)``.
+                shape ``(n_players,)``; converted like ``inputs``.
 
         Raises:
             ValueError: If no tree is passed, the trees disagree on their
@@ -78,8 +82,8 @@ class InterventionalTreeGame(Game["Array"]):
         if not tree_tuple:
             msg = "the game needs at least one tree"
             raise ValueError(msg)
-        inputs_array = np.asarray(inputs, dtype=np.float64)
-        baseline_array = np.asarray(baseline, dtype=np.float64)
+        inputs_array = as_host_array(inputs, np.float64)
+        baseline_array = as_host_array(baseline, np.float64)
         if inputs_array.ndim != 1:
             msg = "inputs must be one explained point with shape (n_players,)"
             raise ValueError(msg)
@@ -110,21 +114,26 @@ class InterventionalTreeGame(Game["Array"]):
             _leaf_constraints(tree, inputs_array, baseline_array, self.n_players)
             for tree in tree_tuple
         )
+        # evaluation state: the whole ensemble concatenates into one constraint
+        # set, stored pre-transposed so a coalition batch reaches every leaf of
+        # every tree in a single (batch, players) @ (players, leaves) pass;
+        # membership counting is exact in int32, values follow the default
+        # JAX precision
+        present = np.concatenate([leaves.present for leaves in self.leaf_constraints])
+        absent = np.concatenate([leaves.absent for leaves in self.leaf_constraints])
+        values = np.concatenate([leaves.values for leaves in self.leaf_constraints])
+        self._present_by_player = jnp.asarray(present.T, dtype=jnp.int32)
+        self._absent_by_player = jnp.asarray(absent.T, dtype=jnp.int32)
+        self._required = jnp.asarray(present.sum(axis=1), dtype=jnp.int32)
+        self._leaf_values = jnp.asarray(values)
 
     def _call(self, coalitions: CoalitionArray) -> Array:
-        """Sum reachable leaf values per coalition across the ensemble."""
-        masks = jnp.asarray(coalitions.to_dense(), dtype=jnp.float32)
-        total: Array | None = None
-        for leaves in self.leaf_constraints:
-            present = jnp.asarray(leaves.present, dtype=jnp.float32)
-            absent = jnp.asarray(leaves.absent, dtype=jnp.float32)
-            values = jnp.asarray(leaves.values, dtype=jnp.float32)
-            required = jnp.sum(present, axis=-1)
-            reached = (masks @ present.T == required) & (masks @ absent.T == 0)
-            contribution = jnp.tensordot(reached.astype(jnp.float32), values, axes=1)
-            total = contribution if total is None else total + contribution
-        assert total is not None  # noqa: S101 - at least one tree by construction
-        return total
+        """Sum reachable leaf values per coalition in one ensemble-wide pass."""
+        masks = jnp.asarray(coalitions.to_dense(), dtype=jnp.int32)
+        reached = (masks @ self._present_by_player == self._required) & (
+            masks @ self._absent_by_player == 0
+        )
+        return jnp.tensordot(reached.astype(self._leaf_values.dtype), self._leaf_values, axes=1)
 
 
 def _leaf_constraints(

@@ -152,19 +152,20 @@ def _interventional_explanation(
 
     def _zero_attribution(interaction: object) -> Array:
         del interaction
-        return jnp.zeros(value_shape, dtype=jnp.float32)
+        return jnp.zeros(value_shape)
 
+    # the closed forms run in exact float64 on the host; the explanation
+    # re-enters the stack in the default JAX precision (float64 under x64)
     return SparseExplanationArray(
         attributions={
-            interaction: jnp.asarray(total, dtype=jnp.float32)
-            for interaction, total in totals.items()
+            interaction: jnp.asarray(total) for interaction, total in totals.items()
         },
         n_players=n_players,
         index=index,
         order=order,
         value_shape=value_shape,
         default_attribution=_zero_attribution,
-        baseline=jnp.asarray(baseline, dtype=jnp.float32),
+        baseline=jnp.asarray(baseline),
     )
 
 
@@ -273,7 +274,10 @@ def _accumulate_cext(
     dense coefficient table computed from the same ``_leaf_coefficient`` as
     the Python path, and returns packed interaction keys with their sums.
     """
-    assert _cext_accumulate is not None  # noqa: S101 - guarded by _use_cext
+    kernel = _cext_accumulate
+    if kernel is None:  # _use_cext gates this path; a direct call gets a real error
+        msg = "the compiled tree kernel is not available in this install"
+        raise RuntimeError(msg)
     present = np.concatenate([leaves.present for leaves in game.leaf_constraints])
     absent = np.concatenate([leaves.absent for leaves in game.leaf_constraints])
     values = np.ascontiguousarray(
@@ -306,7 +310,7 @@ def _accumulate_cext(
                             size - from_present,
                         )
                     )
-    keys_bytes, sums_bytes = _cext_accumulate(
+    keys_bytes, sums_bytes = kernel(
         present_offsets,
         present_members,
         absent_offsets,

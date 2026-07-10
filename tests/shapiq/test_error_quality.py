@@ -103,6 +103,7 @@ class _UniformKernel:
     order_semantics: ClassVar = "identity"
     orientation: ClassVar = "undirected"
     includes_empty_interaction: ClassVar = False
+    min_interaction_size: ClassVar = 1
     preserves_value: ClassVar = False
     generalizes: ClassVar = None
 

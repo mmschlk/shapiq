@@ -1,7 +1,7 @@
 # Issue 11 — The tree story: model-specific games and closed-form explainers
 
-Status: **slice 2 built 2026-07-10, awaiting joint judgment (uncommitted)** — slice 1
-(pure-Python interventional path) landed as `8ad90070`.
+Status: slice 1 (pure-Python interventional path) landed as `8ad90070`; slice 2 (the C
+kernel) landed as `7bd6ea3a` after the five-agent review round.
 
 ## The design
 
@@ -37,7 +37,7 @@ Parity is pinned against `ExactExplainer` for SV, BV, SII, BII, WeightedBII(p), 
 STII, Moebius, and Co-Moebius, on hand-built ensembles, vector-valued leaves, and
 converted scikit-learn models.
 
-## Slice 2 — the C extension (built, under judgment)
+## Slice 2 — the C extension
 
 v1's kernel was adapted rather than ported wholesale. What v1 computed C-side in
 `weights.cpp` (`get_weight(n, e, r, a, b, t, index_enum, ...)`) is exactly the
@@ -82,6 +82,20 @@ loop: per-leaf combination enumeration accumulating into an
   different-leaves regression, single-node trees, identical points, and large-n Moebius
   are pinned. Known-open from review: tree paths hardcode float32 output under JAX x64,
   and CHANGELOG.md is referenced by pyproject's readme but does not exist.
+- Array story + vectorized evaluation (2026-07-10, review-fix round 1): tree seams accept
+  any array backend — `TreeModel` fields and the game's `inputs`/`baseline` normalize via
+  `as_host_array` (direct NumPy view, `to_values` fallback for device tensors), because
+  split routing against float64 thresholds is an exact host-side computation that JAX
+  without x64 cannot represent. Game evaluation is the opposite direction: the whole
+  ensemble concatenates into one pre-transposed constraint set at construction (int32
+  membership counting, exact comparisons instead of float32 equality), so `_call` is a
+  single two-matmul pass — measured 8-58x over the per-tree loop with its per-call
+  host-to-device conversions (100 trees depth 12: 16 ms -> 0.3-1.3 ms per batch).
+  Explainer output follows the default JAX precision (float64 under x64 — closes the
+  float32-under-x64 finding; pinned with `jax.enable_x64()` tests). Library-wide policy
+  applied here first: no `assert` in src and no bandit-rule noqa — the game's
+  ensemble-total assert dissolved with the loop, the cext-guard assert became a
+  RuntimeError.
 
 ## Later slices
 

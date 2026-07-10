@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, Protocol, cast
 import jax.numpy as jnp
 
 from shapiq._shape import Shape, normalize_shape, validate_n_players
-from shapiq.explanations._base import ExplanationArray, validate_explained_index
+from shapiq.explanations._base import (
+    ExplanationArray,
+    as_interaction_array,
+    check_represented_window,
+    interaction_rows,
+    validate_explained_index,
+)
 from shapiq.interactions import (
     Interaction,
     InteractionIndex,
@@ -120,30 +126,52 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
         )
 
     def attribution(self, interaction: Sequence[int] | object) -> ValueT:
-        """Return attributions for an interaction."""
-        if not isinstance(interaction, tuple):
-            if self.default_attribution is None:
-                msg = "array interaction lookup is unavailable without a default"
-                raise KeyError(msg)
-            return self.default_attribution(interaction)
-        normalized = self._normalize_valid(cast("Sequence[int]", interaction))
+        """Return attributions for an interaction or fixed-size interaction array."""
+        if isinstance(interaction, tuple):
+            return self._single_attribution(cast("Sequence[int]", interaction))
+        interactions = as_interaction_array(interaction)
+        rows = [self._single_attribution(tuple(row)) for row in interaction_rows(interactions)]
+        batch_shape = tuple(interactions.shape[:-1])
+        if not rows:
+            empty = jnp.zeros((*self.shape, *batch_shape, *self.value_shape))
+            return cast("ValueT", empty)
+        stacked = jnp.stack(cast("list[jnp.ndarray]", rows), axis=len(self.shape))
+        return cast(
+            "ValueT",
+            jnp.reshape(stacked, (*self.shape, *batch_shape, *self.value_shape)),
+        )
+
+    def has(self, interaction: Sequence[int] | object) -> object:
+        """Return where attributions are available for an interaction."""
+        if isinstance(interaction, tuple):
+            available = self._is_available(cast("Sequence[int]", interaction))
+            return jnp.full(self.shape, available, dtype=bool)
+        interactions = as_interaction_array(interaction)
+        mask = jnp.asarray(
+            [self._is_available(tuple(row)) for row in interaction_rows(interactions)],
+            dtype=bool,
+        )
+        mask = jnp.reshape(mask, interactions.shape[:-1])
+        return jnp.broadcast_to(mask, jnp.broadcast_shapes(self.shape, interactions.shape[:-1]))
+
+    def _single_attribution(self, interaction: Sequence[int]) -> ValueT:
+        normalized = self._normalize_valid(interaction)
         if normalized in self.attributions:
             return self.attributions[normalized]
         if self.default_attribution is not None:
             return self.default_attribution(normalized)
-        msg = "interaction attribution is missing"
+        msg = (
+            f"no attribution is stored for {normalized} and this sparse explanation "
+            "has no default; probe availability with has()"
+        )
         raise KeyError(msg)
 
-    def has(self, interaction: Sequence[int] | object) -> object:
-        """Return where attributions are available for an interaction."""
-        if not isinstance(interaction, tuple):
-            return jnp.full(self.shape, self.default_attribution is not None, dtype=bool)
+    def _is_available(self, interaction: Sequence[int]) -> bool:
         try:
-            normalized = self._normalize_valid(cast("Sequence[int]", interaction))
-        except (TypeError, ValueError):
-            return jnp.zeros(self.shape, dtype=bool)
-        available = normalized in self.attributions or self.default_attribution is not None
-        return jnp.full(self.shape, available, dtype=bool)
+            normalized = self._normalize_valid(interaction)
+        except (TypeError, ValueError, KeyError):
+            return False
+        return normalized in self.attributions or self.default_attribution is not None
 
     def _normalize_valid(self, interaction: Sequence[int]) -> Interaction:
         normalized = normalize_interaction(
@@ -151,9 +179,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
             orientation=self.orientation,
             n_players=self.n_players,
         )
-        if len(normalized) > self.order:
-            msg = "interaction is not represented"
-            raise KeyError(msg)
+        check_represented_window(self.index, len(normalized), self.order)
         return normalized
 
 

@@ -129,7 +129,6 @@ class _RenamedShapley(ExtensionalEquality):
     name: ClassVar = "MySV"
     order_semantics: ClassVar = "coverage"
     orientation: ClassVar = "undirected"
-    includes_empty_interaction: ClassVar = True
     min_interaction_size: ClassVar = 1
     preserves_value: ClassVar = True
     generalizes: ClassVar = SV()
@@ -175,11 +174,13 @@ ALL_INSTANCES = [
 
 @pytest.mark.parametrize("index", ALL_INSTANCES, ids=repr)
 def test_empty_interaction_metadata_matches_explanations(index):
+    # includes_empty_interaction is derived, never stored separately
+    assert index.includes_empty_interaction == (index.min_interaction_size == 0)
     explanation = ExactExplainer(random_table_game(), index).explain()
     if index.includes_empty_interaction:
         explanation(())  # the order-0 attribution exists
     else:
-        with pytest.raises(KeyError, match="not represented"):
+        with pytest.raises(KeyError, match="defines no order-0 attribution"):
             explanation(())
 
 

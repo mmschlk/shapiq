@@ -146,7 +146,7 @@ def test_metadata_names_the_index_and_carries_no_intercept():
     explanation = approximator.sample(SEEDS + 24).explain()
     assert explanation.interaction_index == "kADD-SHAP"
     assert explanation.order == 2
-    with pytest.raises(KeyError, match="not represented"):
+    with pytest.raises(KeyError, match="defines no order-0 attribution"):
         explanation(())
 
 

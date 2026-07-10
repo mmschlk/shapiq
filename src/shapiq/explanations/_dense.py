@@ -9,7 +9,13 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq._shape import Shape, normalize_shape, validate_n_players
-from shapiq.explanations._base import ExplanationArray, validate_explained_index
+from shapiq.explanations._base import (
+    ExplanationArray,
+    as_interaction_array,
+    check_represented_window,
+    interaction_rows,
+    validate_explained_index,
+)
 from shapiq.interactions import (
     Interaction,
     InteractionIndex,
@@ -132,7 +138,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             values = self.attributions_by_order[len(normalized)]
             key = (*repeat(slice(None), len(self.shape)), self._position(normalized), Ellipsis)
             return cast("ValueT", cast("_Indexable", values)[key])
-        interactions = _as_interaction_array(interaction)
+        interactions = as_interaction_array(interaction)
         positions = self._positions(interactions)
         values = self.attributions_by_order[int(interactions.shape[-1])]
         return cast("ValueT", jnp.take(jnp.asarray(values), positions, axis=len(self.shape)))
@@ -145,8 +151,11 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             except (TypeError, ValueError, KeyError):
                 return jnp.zeros(self.shape, dtype=bool)
             return jnp.ones(self.shape, dtype=bool)
-        interactions = _as_interaction_array(interaction)
-        mask = jnp.asarray([self._is_represented(tuple(row)) for row in _rows(interactions)])
+        interactions = as_interaction_array(interaction)
+        mask = jnp.asarray(
+            [self._is_represented(tuple(row)) for row in interaction_rows(interactions)],
+            dtype=bool,
+        )
         mask = jnp.reshape(mask, interactions.shape[:-1])
         return jnp.broadcast_to(mask, jnp.broadcast_shapes(self.shape, interactions.shape[:-1]))
 
@@ -156,8 +165,9 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             orientation=self.orientation,
             n_players=self.n_players,
         )
-        if len(normalized) > self.order or len(normalized) not in self.attributions_by_order:
-            msg = "interaction is not represented"
+        check_represented_window(self.index, len(normalized), self.order)
+        if len(normalized) not in self.attributions_by_order:
+            msg = f"no order-{len(normalized)} attributions are stored on this explanation"
             raise KeyError(msg)
         return normalized
 
@@ -183,7 +193,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             jnp.asarray(
                 [
                     self._position(self._normalize_represented(tuple(row)))
-                    for row in _rows(interactions)
+                    for row in interaction_rows(interactions)
                 ]
             ),
             interactions.shape[:-1],
@@ -192,24 +202,6 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
 
 def _slice_attributions(value: object, key: tuple[object, ...]) -> object:
     return cast("_Indexable", value)[(*key, slice(None), Ellipsis)]
-
-
-def _as_interaction_array(value: object) -> Array:
-    array = jnp.asarray(value)
-    if array.ndim < 1:
-        msg = (
-            "interactions must be tuples of player indices, e.g. explanation((0,)) "
-            "for player 0; array lookups need a final interaction-members axis"
-        )
-        raise TypeError(msg)
-    if array.dtype == jnp.bool_ or not jnp.issubdtype(array.dtype, jnp.integer):
-        msg = "interaction arrays must have integer dtype"
-        raise TypeError(msg)
-    return array
-
-
-def _rows(array: Array) -> list[list[int]]:
-    return jnp.reshape(array, (-1, array.shape[-1])).tolist()
 
 
 class _Indexable(Protocol):

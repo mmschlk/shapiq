@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from itertools import combinations, product
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -132,6 +133,16 @@ def test_closed_form_matches_the_exact_explainer(index):
             ), f"mismatch at {interaction}"
 
 
+def test_batched_lookups_match_the_exact_explainer():
+    game = tree_game()
+    sparse = TreeExplainer(game, SII(order=2)).explain()
+    dense = ExactExplainer(game, SII(order=2)).explain()
+    singles = jnp.asarray([[player] for player in range(N_PLAYERS)])
+    assert jnp.allclose(sparse(singles), dense(singles), atol=1e-4)
+    pairs = jnp.asarray(list(combinations(range(N_PLAYERS), 2)))
+    assert jnp.allclose(sparse(pairs), dense(pairs), atol=1e-4)
+
+
 def test_explanations_are_sparse_over_the_tree_support():
     explanation = TreeExplainer(tree_game(), SII(order=2)).explain()
     # features 1 and 2 sit in different branches of the first tree and never
@@ -249,6 +260,73 @@ def test_sklearn_forests_scale_to_the_mean_prediction():
     exact = ExactExplainer(game, SV()).explain()
     for player in range(N_PLAYERS):
         assert jnp.allclose(shapley((player,)), exact((player,)), atol=1e-4)
+
+
+def test_any_array_backend_constructs_the_same_game():
+    reference = tree_game()(all_coalitions())
+    jax_game = InterventionalTreeGame(
+        [stump_tree(), second_tree()],
+        inputs=jnp.asarray(INPUTS),
+        baseline=jnp.asarray(BASELINE),
+    )
+    list_game = InterventionalTreeGame(
+        [stump_tree(), second_tree()],
+        inputs=[1.0] * N_PLAYERS,
+        baseline=[0.0] * N_PLAYERS,
+    )
+    assert jnp.allclose(jax_game(all_coalitions()), reference, atol=1e-6)
+    assert jnp.allclose(list_game(all_coalitions()), reference, atol=1e-6)
+    # tree structure itself accepts non-NumPy arrays and normalizes to host
+    jax_tree = TreeModel(
+        children_left=jnp.asarray([1, -1, -1]),
+        children_right=jnp.asarray([2, -1, -1]),
+        features=jnp.asarray([0, -2, -2]),
+        thresholds=jnp.asarray([0.5, np.nan, np.nan]),
+        values=jnp.asarray([0.0, 1.0, 4.0]),
+    )
+    assert isinstance(jax_tree.thresholds, np.ndarray)
+    assert jax_tree.thresholds.dtype == np.float64
+    game = InterventionalTreeGame(jax_tree, inputs=INPUTS, baseline=BASELINE)
+    ends = game(DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])))
+    assert jnp.allclose(ends, jnp.asarray([1.0, 4.0]), atol=1e-6)
+
+
+def test_torch_tensors_construct_trees_and_games():
+    torch = pytest.importorskip("torch")
+    tree = TreeModel(
+        children_left=torch.tensor([1, -1, -1]),
+        children_right=torch.tensor([2, -1, -1]),
+        features=torch.tensor([0, -2, -2]),
+        thresholds=torch.tensor([0.5, torch.nan, torch.nan]),
+        values=torch.tensor([0.0, 1.0, 4.0]),
+    )
+    assert isinstance(tree.values, np.ndarray)
+    game = InterventionalTreeGame(
+        tree,
+        inputs=torch.ones(N_PLAYERS),
+        baseline=torch.zeros(N_PLAYERS),
+    )
+    ends = game(DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])))
+    assert jnp.allclose(ends, jnp.asarray([1.0, 4.0]), atol=1e-6)
+    explanation = TreeExplainer(game, SV()).explain()
+    assert jnp.allclose(explanation((0,)), 3.0, atol=1e-6)
+
+
+def test_outputs_follow_the_default_float_dtype():
+    # under x64 the game and the explanation come out in float64; the closed
+    # forms always run in float64 on the host, only the re-entry dtype moves
+    with jax.enable_x64():
+        game = tree_game()
+        values = game(all_coalitions())
+        assert values.dtype == jnp.float64
+        explanation = TreeExplainer(game, SII(order=2)).explain()
+        assert explanation((0,)).dtype == jnp.float64
+        assert explanation.baseline.dtype == jnp.float64
+        assert explanation((1, 2)).dtype == jnp.float64  # the zero default too
+    default_game = tree_game()
+    assert default_game(all_coalitions()).dtype == jnp.float32
+    default_explanation = TreeExplainer(default_game, SII(order=2)).explain()
+    assert default_explanation((0,)).dtype == jnp.float32
 
 
 @pytest.mark.filterwarnings("ignore::shapiq.errors.SamplingStallWarning")

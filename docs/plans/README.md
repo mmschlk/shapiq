@@ -32,12 +32,15 @@ delivers it.
 | 1 | [Interaction index objects](issue-1-interaction-index-objects.md) | Interaction indices become typed objects; index support is visible to the type checker | done (ADR 0005) |
 | 2 | [Torch baseline example](issue-2-torch-baseline-example.md) | End-to-end example explaining a torch model with baseline masking | done |
 | 3 | [Vector-valued games](issue-3-vector-valued-games.md) | Un-bake the scalar-values-only enforcement from the evidence layer | done (ADR 0006) |
-| 4 | [Sampling performance](issue-4-sampling-performance.md) | Remove per-unit Python loops from the sampling path | not started |
+| 4 | [Sampling performance](issue-4-sampling-performance.md) | Remove per-unit Python loops from the sampling path | done |
 | 5 | [Index-dispatched entry points](issue-5-index-dispatched-entry-points.md) | One entry point per method family; the index object dispatches to concrete implementations | done (ADR 0007) |
 | 6 | [Exact index families](issue-6-exact-index-families.md) | Port the full exact index zoo with the capability taxonomy and declared generalizations | done (ADR 0008) |
 | 7 | [Sampled FBII](issue-7-sampled-fbii.md) | Faithful Banzhaf joins the Regression entry point via the Banzhaf kernel sampler | done |
-| 8 | [Faithful weighted Banzhaf](issue-8-faithful-weighted-banzhaf.md) | Weighted Banzhaf interactions join the sampled world; foundation for FIxLIP | not started |
+| 8 | [Faithful weighted Banzhaf](issue-8-faithful-weighted-banzhaf.md) | Weighted Banzhaf interactions join the sampled world; foundation for FIxLIP | done |
 | 9 | [Game-call seam](issue-9-game-call-seam.md) | One evaluation path per approximator; deduplication becomes an evaluation policy | not started |
+| 10 | [Image test bed](issue-10-image-test-bed.md) | Superpixel masking and chunked torch prediction as the efficiency test bed | done |
+| 11 | [Tree story](issue-11-tree-story.md) | Interventional tree games and the closed-form TreeExplainer with the adapted cext | in progress |
+| 12 | [Review-round fixes](issue-12-review-round-fixes.md) | Fix the five-agent API review findings; explanation window landed, backlog tracked | in progress |
 
 ## Recommended order: 1 → 3 → 2 → 4
 
