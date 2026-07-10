@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import singledispatch
 from math import comb
 from typing import TYPE_CHECKING, NamedTuple, cast
 
@@ -18,6 +19,7 @@ from shapiq.sampling import (
     PairedSampler,
     PermutationSIISampler,
     PermutationSTIISampler,
+    PermutationWalkSampler,
     SamplingState,
 )
 from shapiq.sampling._permutation import (
@@ -59,11 +61,20 @@ class PermutationSampling(EvidenceApproximator):
     interaction and walk, so coverage is deterministic; its seed block and
     walks both grow quickly with the order.
 
+    The walk layout and the estimator travel together as a
+    ``PermutationFamily``, single-dispatched on the exact index type via
+    ``permutation_family``. Registering a family for a new index type
+    extends the method atomically; subclasses of supported indices stay
+    rejected with a teaching error unless they register their own family,
+    so MRO resolution never hands an index a shipped estimator silently.
+
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
         >>> explanation = approximator.sample(500).explain()
         >>> pair_interaction = explanation((0, 1))
     """
+
+    _family: PermutationFamily
 
     def __init__(
         self,
@@ -104,26 +115,18 @@ class PermutationSampling(EvidenceApproximator):
                 samples shared across explanation targets.
         """
         reject_common_index_mistakes(index)
-        family = _FAMILIES.get(type(index))
-        if family is None:
-            supported = ", ".join(sorted(kind.__name__ for kind in _FAMILIES))
-            name = getattr(index, "name", type(index).__name__)
-            if isinstance(index, tuple(_FAMILIES)):
-                msg = (
-                    f"PermutationSampling dispatches on the exact index type: "
-                    f"{type(index).__name__} subclasses a supported index; "
-                    f"pass one of {supported} itself (e.g. SII(order=2))"
-                )
-                raise TypeError(msg)
+        registered = _registered_permutation_indices()
+        if type(index) not in registered and isinstance(index, registered):
             msg = (
-                f"PermutationSampling does not support {name!r}: supported "
-                f"indices are {supported} (e.g. SII(order=2))"
+                f"PermutationSampling dispatches on the exact index type: "
+                f"{type(index).__name__} subclasses a supported index; "
+                f"pass one of {_supported_permutation_names()} itself (e.g. SII(order=2))"
             )
             raise TypeError(msg)
-        build_sampler, _ = family
-        base_sampler = build_sampler(
-            game,
+        family = permutation_family(index)
+        base_sampler = family.build_sampler(
             index,
+            game,
             share_samples=share_samples,
             random_state=random_state,
         )
@@ -131,6 +134,7 @@ class PermutationSampling(EvidenceApproximator):
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
+        self._family = family
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Estimate the configured index from completed permutation walks.
@@ -145,14 +149,13 @@ class PermutationSampling(EvidenceApproximator):
                 or, for SII, if some represented interaction has no sample
                 yet.
         """
-        _, explain = _FAMILIES[type(self.index)]
-        return explain(self)
+        return self._family.explain(self.index, self)
 
     def _completed_walks(self) -> _WalkEvidence:
         """Return seed values and completed walks, masking pending samples."""
         # paired units hold two walks (the permutation's and its reversal's),
         # so completed walks are cut by walk length, not by the quantum
-        walker = cast("PermutationSIISampler | PermutationSTIISampler", self.sampler)
+        walker = cast("PermutationWalkSampler", self.sampler)
         quantum = walker.walk_length
         n_seeds = self.sampler.n_seed_samples
         if not isinstance(self.state, SamplingState):
@@ -188,12 +191,71 @@ class PermutationSampling(EvidenceApproximator):
         )
 
 
+class PermutationFamily(NamedTuple):
+    """Walk-sampler builder and estimator of one permutation index family.
+
+    A family is registered atomically on ``permutation_family``, so an
+    index either brings both pieces or neither; drift between the walk
+    layout and its estimator is unrepresentable.
+    """
+
+    build_sampler: Callable[..., PermutationWalkSampler]
+    explain: Callable[..., DenseExplanationArray[Array]]
+
+
+@singledispatch
+def permutation_family(index: object) -> PermutationFamily:
+    """Return the permutation-walk family matching an interaction index.
+
+    The walk layout and its estimator dispatch together on the exact index
+    type; registering a family for a new index type extends
+    ``PermutationSampling``. Unregistered indices raise the teaching error.
+    """
+    raise _unsupported_permutation_index(index)
+
+
+def _registered_permutation_indices() -> tuple[type, ...]:
+    """Return the index types with a registered permutation family."""
+    return tuple(kind for kind in permutation_family.registry if kind is not object)
+
+
+def _supported_permutation_names() -> str:
+    return ", ".join(sorted(kind.__name__ for kind in _registered_permutation_indices()))
+
+
+def _unsupported_permutation_index(index: object) -> TypeError:
+    name = getattr(index, "name", type(index).__name__)
+    msg = (
+        f"PermutationSampling does not support {name!r}: supported "
+        f"indices are {_supported_permutation_names()} (e.g. SII(order=2))"
+    )
+    return TypeError(msg)
+
+
+@permutation_family.register
+def _shapley_value_family(index: SV) -> PermutationFamily:
+    del index
+    return PermutationFamily(_walk_sampler, _explain_shapley_values)
+
+
+@permutation_family.register
+def _interaction_family(index: SII) -> PermutationFamily:
+    del index
+    return PermutationFamily(_walk_sampler, _explain_interactions)
+
+
+@permutation_family.register
+def _taylor_family(index: STII) -> PermutationFamily:
+    del index
+    return PermutationFamily(_taylor_sampler, _explain_taylor_interactions)
+
+
 def _walk_sampler(
+    index: SV | SII,
     game: Game[Array],
-    index: SV | SII | STII,
     *,
-    share_samples: ShareSamples,
-    random_state: Array | int,
+    share_samples: ShareSamples = False,
+    random_state: Array | int = 0,
 ) -> PermutationSIISampler:
     return PermutationSIISampler(
         game.n_players,
@@ -205,11 +267,11 @@ def _walk_sampler(
 
 
 def _taylor_sampler(
+    index: STII,
     game: Game[Array],
-    index: SV | SII | STII,
     *,
-    share_samples: ShareSamples,
-    random_state: Array | int,
+    share_samples: ShareSamples = False,
+    random_state: Array | int = 0,
 ) -> PermutationSTIISampler:
     return PermutationSTIISampler(
         game.n_players,
@@ -220,7 +282,10 @@ def _taylor_sampler(
     )
 
 
-def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanationArray[Array]:
+def _explain_shapley_values(
+    index: SV,
+    approximator: PermutationSampling,
+) -> DenseExplanationArray[Array]:
     """Average per-player marginal contributions over completed chains."""
     evidence = approximator._completed_walks()  # noqa: SLF001
     sums = _chain_marginal_sums(
@@ -235,7 +300,7 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
             1: to_trailing(sums / evidence.n_walks, n_value_axes),
         },
         n_players=approximator.game.n_players,
-        index=approximator.index,
+        index=index,
         order=1,
         shape=approximator.game.target_shape,
         value_shape=approximator.game.value_shape,
@@ -243,10 +308,13 @@ def _explain_shapley_values(approximator: PermutationSampling) -> DenseExplanati
     )
 
 
-def _explain_interactions(approximator: PermutationSampling) -> DenseExplanationArray[Array]:
+def _explain_interactions(
+    index: SII,
+    approximator: PermutationSampling,
+) -> DenseExplanationArray[Array]:
     """Average chain marginals and windowed discrete derivatives per interaction."""
     n_players = approximator.game.n_players
-    order = approximator.order
+    order = index.order
     evidence = approximator._completed_walks()  # noqa: SLF001
     chain_masks = evidence.walk_masks[..., : n_players - 1, :]
     chain_values = evidence.walk_values[..., : n_players - 1]
@@ -309,7 +377,7 @@ def _explain_interactions(approximator: PermutationSampling) -> DenseExplanation
             size: to_trailing(block, n_value_axes) for size, block in attributions.items()
         },
         n_players=n_players,
-        index=approximator.index,
+        index=index,
         order=order,
         shape=approximator.game.target_shape,
         value_shape=approximator.game.value_shape,
@@ -318,11 +386,12 @@ def _explain_interactions(approximator: PermutationSampling) -> DenseExplanation
 
 
 def _explain_taylor_interactions(
+    index: STII,
     approximator: PermutationSampling,
 ) -> DenseExplanationArray[Array]:
     """Combine exact lower-order interactions with sampled top-order ones."""
     n_players = approximator.game.n_players
-    top_order = approximator.order
+    top_order = index.order
     evidence = approximator._completed_walks()  # noqa: SLF001
     attributions: dict[int, Array] = {}
     for size in range(1, top_order):
@@ -340,14 +409,14 @@ def _explain_taylor_interactions(
         )
         attributions[1] = sums / evidence.n_walks
     else:
-        attributions[top_order] = _taylor_sampled_top_order(approximator, evidence)
+        attributions[top_order] = _taylor_sampled_top_order(index, approximator, evidence)
     n_value_axes = len(approximator.game.value_shape)
     return DenseExplanationArray(
         attributions_by_order={
             size: to_trailing(block, n_value_axes) for size, block in attributions.items()
         },
         n_players=n_players,
-        index=approximator.index,
+        index=index,
         order=top_order,
         shape=approximator.game.target_shape,
         value_shape=approximator.game.value_shape,
@@ -374,12 +443,13 @@ def _taylor_exact_empty_derivatives(
 
 
 def _taylor_sampled_top_order(
+    index: STII,
     approximator: PermutationSampling,
     evidence: _WalkEvidence,
 ) -> Array:
     """Average sampled top-order discrete derivatives over walks."""
     n_players = approximator.game.n_players
-    top_order = approximator.order
+    top_order = index.order
     chain_length = n_players - top_order
     chain_masks = evidence.walk_masks[..., :chain_length, :]
     chain_values = evidence.walk_values[..., :chain_length]
@@ -418,19 +488,6 @@ def _taylor_sampled_top_order(
         sign = (-1) ** (top_order - len(pattern))
         derivatives = derivatives + sign * off_values[..., pattern_index, :]
     return jnp.mean(derivatives, axis=-2)
-
-
-_FAMILIES: dict[
-    type,
-    tuple[
-        Callable[..., PermutationSIISampler | PermutationSTIISampler],
-        Callable[[PermutationSampling], DenseExplanationArray[Array]],
-    ],
-] = {
-    SV: (_walk_sampler, _explain_shapley_values),
-    SII: (_walk_sampler, _explain_interactions),
-    STII: (_taylor_sampler, _explain_taylor_interactions),
-}
 
 
 def _chain_marginal_sums(
