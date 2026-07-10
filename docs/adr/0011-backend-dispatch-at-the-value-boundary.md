@@ -37,11 +37,20 @@ module that performs the real registrations on first contact.
 - `MaskedGame.link_function` defaults to `None`, meaning `to_values`: composed games work
   without a ceremonial link, and custom links remain the way to transform predictions
   (probabilities, log-odds, class selection) before they become values.
-- **Interaction indices stay exact-type dispatched and never move to `singledispatch`
-  semantics.** Dispatch by MRO would hand a subclass lookalike (`class MyFBII(FBII)`) the
-  shipped handler silently — precisely what the entry-point gates reject with teaching
-  errors (ADR 0007). Index sets are closed and explicit; flextype dispatch is reserved for
-  *backend value and model types*, which are open by nature.
+- **Index-family registries may be built on `singledispatch` as a registration mechanism,
+  but exact-type semantics are non-negotiable.** Each sampling method keeps ONE atomic
+  registry whose entries bundle everything the method needs per index (a family: sampler
+  builder plus estimator for permutation walks; sampler, pairing rule, intercept
+  convention, and solve for kernel regression), and every entry point verifies exact-type
+  membership in that registry before dispatching — so MRO resolution never selects an
+  index handler silently, and subclasses of shipped indices are rejected with a teaching
+  error unless they register their own family. Splitting a method across several parallel
+  dispatchers is forbidden: a half-registered index would inherit the missing half via the
+  MRO (reviewed and demonstrated 2026-07-10). The registries are an internal clean-code
+  mechanism, not public extension API. flextype/MRO dispatch remains reserved for *backend
+  value and model types*, which are open by nature; `ExactExplainer` stays hand-dispatched
+  because its capability arms are typing Protocols, whose structural `isinstance` hooks
+  mis-dispatch under `singledispatch` for indices carrying ``None``-valued members.
 
 ## Consequences
 

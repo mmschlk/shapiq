@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
 from functools import cache
 from itertools import combinations
+from math import comb
 
 import jax.numpy as jnp
 from jax import Array
@@ -83,6 +85,46 @@ def solve_faithful(
     partial, *_ = jnp.linalg.lstsq(reduced, shifted)
     last = delta[None, :] - jnp.sum(partial, axis=0, keepdims=True)
     return jnp.concatenate([partial, last], axis=0)
+
+
+def bernoulli_numbers(order: int) -> list[float]:
+    """Return the Bernoulli numbers up to ``order`` with the B(1) = -1/2 convention."""
+    numbers = [Fraction(1)]
+    for m in range(1, order + 1):
+        acc = sum((Fraction(comb(m + 1, j)) * numbers[j] for j in range(m)), Fraction(0))
+        numbers.append(-acc / (m + 1))
+    return [float(number) for number in numbers]
+
+
+def bernoulli_design(masks: Array, order: int) -> Array:
+    """Return Bernoulli-weighted intersection columns for all interactions up to ``order``.
+
+    The kADD-SHAP basis: columns follow the same size-then-lexicographic
+    interaction layout as ``interaction_design``, weighted by the Bernoulli
+    table, and the empty coalition's row is zero, so a response shifted by
+    ``v(empty)`` interpolates the empty coalition automatically.
+    """
+    n_players = masks.shape[-1]
+    table = _bernoulli_weight_table(order)
+    columns = []
+    for size in range(1, order + 1):
+        member_masks = interaction_masks(n_players, size)
+        intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
+        columns.append(table[size][intersections])
+    return jnp.concatenate(columns, axis=1)
+
+
+def _bernoulli_weight_table(order: int) -> Array:
+    """Return kADD-SHAP design weights per interaction and intersection size."""
+    bernoulli = bernoulli_numbers(order)
+    table = [[0.0] * (order + 1) for _ in range(order + 1)]
+    for size in range(1, order + 1):
+        for intersection in range(1, size + 1):
+            table[size][intersection] = sum(
+                comb(intersection, top) * bernoulli[size - top]
+                for top in range(1, intersection + 1)
+            )
+    return jnp.asarray(table)
 
 
 def require_identification(reduced: Array, *, deduplicating: bool = False) -> None:

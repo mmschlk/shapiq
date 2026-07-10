@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from functools import singledispatch
 from math import comb
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import jax.numpy as jnp
 from jax import Array
@@ -11,6 +12,7 @@ from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._faithful import (
+    bernoulli_design,
     eliminate_constraint,
     interaction_design,
     require_identification,
@@ -18,7 +20,7 @@ from shapiq.explainers._faithful import (
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
-from shapiq.interactions import FBII, FSII, SV, WeightedFBII
+from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (
     BanzhafKernelSampler,
     EmptyState,
@@ -30,6 +32,8 @@ from shapiq.sampling import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from shapiq.games import Game
     from shapiq.sampling import ShareSamples
 
@@ -53,7 +57,17 @@ class Regression(EvidenceApproximator):
     ``k``-additive approximation under the product measure in which every
     player joins with probability ``p``, sampled by membership flips and fit
     like FBII; pairing is reserved for complement-symmetric kernels, so it
-    switches off automatically at ``p != 0.5``.
+    switches off automatically at ``p != 0.5``. ``KADDSHAP(order=k)`` fits
+    the ``k``-additive game in the Bernoulli interaction basis under the
+    Shapley kernel, interpolating the grand coalition exactly, so its
+    order-1 attributions remain Shapley values at every order.
+
+    The sampler, pairing rule, intercept convention, and least squares
+    solve travel together as a ``RegressionFamily``, single-dispatched on
+    the exact index type via ``regression_family``. Registering a family
+    for a new index type extends the method atomically; subclasses of
+    supported indices stay rejected with a teaching error unless they
+    register their own family.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the
@@ -67,10 +81,12 @@ class Regression(EvidenceApproximator):
         >>> pair_interaction = explanation((0, 1))
     """
 
+    _family: RegressionFamily
+
     def __init__(
         self,
         game: Game[Array],
-        index: SV | FSII | FBII | WeightedFBII,
+        index: SV | FSII | FBII | WeightedFBII | KADDSHAP,
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
@@ -85,8 +101,9 @@ class Regression(EvidenceApproximator):
             index: The interaction index to estimate: ``SV()`` for Shapley
                 values via KernelSHAP, ``FSII(order=k)`` for faithful
                 Shapley interactions, ``FBII(order=k)`` for faithful
-                Banzhaf interactions, or ``WeightedFBII(p, order=k)`` for
-                faithful weighted Banzhaf interactions.
+                Banzhaf interactions, ``WeightedFBII(p, order=k)`` for
+                faithful weighted Banzhaf interactions, or
+                ``KADDSHAP(order=k)`` for k-additive Shapley values.
             random_state: Integer seed or JAX PRNG key for drawing
                 coalitions.
             share_samples: Policy for sharing sampled coalitions across
@@ -115,56 +132,37 @@ class Regression(EvidenceApproximator):
                 explanation targets.
         """
         reject_common_index_mistakes(index)
-        if type(index) not in (SV, FSII, FBII, WeightedFBII):
-            name = getattr(index, "name", type(index).__name__)
-            if isinstance(index, (SV, FSII, FBII, WeightedFBII)):
-                msg = (
-                    f"Regression dispatches on the exact index type: {type(index).__name__} "
-                    "subclasses a supported index, but the sampler and solver are "
-                    "kernel-matched to the shipped type; pass SV(), FSII(order=k), "
-                    "FBII(order=k), or WeightedFBII(p, order=k) itself"
-                )
-                raise TypeError(msg)
+        registered = _registered_regression_indices()
+        if type(index) not in registered and isinstance(index, registered):
             msg = (
-                f"Regression does not support {name!r}: each supported index "
-                "samples coalitions from its own kernel, and matching samplers "
-                "exist for SV(), FSII(order=k), FBII(order=k), and "
-                "WeightedFBII(p, order=k)"
+                f"Regression dispatches on the exact index type: {type(index).__name__} "
+                "subclasses a supported index, but the sampler and solver are "
+                f"kernel-matched to the shipped type; pass one of "
+                f"{_supported_regression_names()} itself (e.g. FSII(order=2))"
             )
             raise TypeError(msg)
-        base_sampler: UnitScheduleSampler
-        symmetric_kernel = True
-        if type(index) is WeightedFBII:
-            symmetric_kernel = index.p == 0.5
-            base_sampler = ProductKernelSampler(
-                game.n_players,
-                index.p,
-                game.target_shape,
-                share_samples=share_samples,
-                random_state=random_state,
-            )
-        else:
-            sampler_type = BanzhafKernelSampler if type(index) is FBII else ShapleyKernelSampler
-            base_sampler = sampler_type(
-                game.n_players,
-                game.target_shape,
-                share_samples=share_samples,
-                random_state=random_state,
-            )
+        family = regression_family(index)
+        base_sampler = family.build_sampler(
+            index,
+            game,
+            share_samples=share_samples,
+            random_state=random_state,
+        )
         if paired is None:
-            paired = symmetric_kernel
-        elif ensure_bool("paired", paired) and not symmetric_kernel:
+            paired = family.symmetric_kernel
+        elif ensure_bool("paired", paired) and not family.symmetric_kernel:
             msg = (
                 "paired sampling adds the complement of every sampled coalition, but "
-                "the product measure at p != 0.5 is not complement-symmetric, so the "
-                "complements would enter the unweighted fit with the wrong implicit "
-                "weighting; pass paired=False (or use p=0.5)"
+                f"the sampling kernel of {type(index).__name__} is not "
+                "complement-symmetric, so the complements would enter the unweighted "
+                "fit with the wrong implicit weighting; pass paired=False"
             )
             raise ValueError(msg)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
         state = EmptyState(track_history=track_history)
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
+        self._family = family
 
     @property
     def min_budget(self) -> int:
@@ -176,21 +174,18 @@ class Regression(EvidenceApproximator):
         the unconstrained Banzhaf fit with its free intercept.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
-        if type(self.index) in (FBII, WeightedFBII):
-            return max(super().min_budget, self.sampler.n_seed_samples + n_columns + 1)
-        return max(super().min_budget, self.sampler.n_seed_samples + n_columns - 1)
+        offset = 1 if self._family.intercept else -1
+        return max(super().min_budget, self.sampler.n_seed_samples + n_columns + offset)
 
     def _solve(self, masks: Array, response: Array, delta: Array) -> Array:
         """Solve one design's least squares fit per the index's kernel family."""
-        design = interaction_design(masks, self.order)
-        if type(self.index) in (FBII, WeightedFBII):
-            design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
-            require_identification(design, deduplicating=self.deduplicate)
-            solution, *_ = jnp.linalg.lstsq(design, response)
-            return solution
-        reduced, pivot = eliminate_constraint(design)
-        require_identification(reduced, deduplicating=self.deduplicate)
-        return solve_faithful(reduced, pivot, response, delta)
+        return self._family.solve(
+            masks,
+            response,
+            delta,
+            order=self.order,
+            deduplicating=self.deduplicate,
+        )
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Solve the kernel regression on the sampled evidence.
@@ -251,7 +246,7 @@ class Regression(EvidenceApproximator):
             stacked = jnp.stack(per_target, axis=-1)
             solutions = stacked.reshape(stacked.shape[0], -1)
         coefficients = solutions.T
-        if type(self.index) in (FBII, WeightedFBII):
+        if self._family.intercept:
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
             attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}
@@ -275,3 +270,203 @@ class Regression(EvidenceApproximator):
             value_shape=value_shape,
             baseline=to_trailing(value_empty, n_value_axes),
         )
+
+
+class RegressionFamily(NamedTuple):
+    """Kernel-matched machinery of one regression index family.
+
+    A family is registered atomically on ``regression_family``: the sampler
+    matching the index's kernel, whether that kernel is complement-symmetric
+    (pairing is variance-reducing only then), whether the fit carries a free
+    intercept as its order-0 attribution (which also costs one extra
+    identification row), and the least squares solve itself.
+    """
+
+    build_sampler: Callable[..., UnitScheduleSampler]
+    symmetric_kernel: bool
+    intercept: bool
+    solve: Callable[..., Array]
+
+
+@singledispatch
+def regression_family(index: object) -> RegressionFamily:
+    """Return the kernel-regression family matching an interaction index.
+
+    Sampler, pairing rule, intercept convention, and solve dispatch together
+    on the exact index type; registering a family for a new index type
+    extends ``Regression``. Unregistered indices raise the teaching error.
+    """
+    raise _unsupported_regression_index(index)
+
+
+def _registered_regression_indices() -> tuple[type, ...]:
+    """Return the index types with a registered regression family."""
+    return tuple(kind for kind in regression_family.registry if kind is not object)
+
+
+def _supported_regression_names() -> str:
+    return ", ".join(sorted(kind.__name__ for kind in _registered_regression_indices()))
+
+
+def _unsupported_regression_index(index: object) -> TypeError:
+    name = getattr(index, "name", type(index).__name__)
+    msg = (
+        f"Regression does not support {name!r}: each supported index samples "
+        f"coalitions from its own kernel, and families are registered for "
+        f"{_supported_regression_names()} (e.g. FSII(order=2))"
+    )
+    return TypeError(msg)
+
+
+@regression_family.register
+def _shapley_family(index: SV | FSII) -> RegressionFamily:
+    del index
+    return RegressionFamily(
+        build_sampler=_shapley_kernel_sampler,
+        symmetric_kernel=True,
+        intercept=False,
+        solve=_constrained_solve,
+    )
+
+
+@regression_family.register
+def _banzhaf_family(index: FBII) -> RegressionFamily:
+    del index
+    return RegressionFamily(
+        build_sampler=_banzhaf_kernel_sampler,
+        symmetric_kernel=True,
+        intercept=True,
+        solve=_free_intercept_solve,
+    )
+
+
+@regression_family.register
+def _weighted_banzhaf_family(index: WeightedFBII) -> RegressionFamily:
+    return RegressionFamily(
+        build_sampler=_product_kernel_sampler,
+        symmetric_kernel=index.p == 0.5,
+        intercept=True,
+        solve=_free_intercept_solve,
+    )
+
+
+@regression_family.register
+def _kadd_family(index: KADDSHAP) -> RegressionFamily:
+    del index
+    return RegressionFamily(
+        build_sampler=_shapley_kernel_sampler,
+        symmetric_kernel=True,
+        intercept=False,
+        solve=_kadd_solve,
+    )
+
+
+def _shapley_kernel_sampler(
+    index: object,
+    game: Game[Array],
+    *,
+    share_samples: ShareSamples = False,
+    random_state: Array | int = 0,
+) -> ShapleyKernelSampler:
+    del index
+    return ShapleyKernelSampler(
+        game.n_players,
+        game.target_shape,
+        share_samples=share_samples,
+        random_state=random_state,
+    )
+
+
+def _banzhaf_kernel_sampler(
+    index: object,
+    game: Game[Array],
+    *,
+    share_samples: ShareSamples = False,
+    random_state: Array | int = 0,
+) -> BanzhafKernelSampler:
+    del index
+    return BanzhafKernelSampler(
+        game.n_players,
+        game.target_shape,
+        share_samples=share_samples,
+        random_state=random_state,
+    )
+
+
+def _product_kernel_sampler(
+    index: WeightedFBII,
+    game: Game[Array],
+    *,
+    share_samples: ShareSamples = False,
+    random_state: Array | int = 0,
+) -> ProductKernelSampler:
+    return ProductKernelSampler(
+        game.n_players,
+        index.p,
+        game.target_shape,
+        share_samples=share_samples,
+        random_state=random_state,
+    )
+
+
+def _constrained_solve(
+    masks: Array,
+    response: Array,
+    delta: Array,
+    *,
+    order: int,
+    deduplicating: bool,
+) -> Array:
+    """Fit the constrained Shapley-kernel regression (empty and grand exact)."""
+    reduced, pivot = eliminate_constraint(interaction_design(masks, order))
+    require_identification(reduced, deduplicating=deduplicating)
+    return solve_faithful(reduced, pivot, response, delta)
+
+
+def _free_intercept_solve(
+    masks: Array,
+    response: Array,
+    delta: Array,
+    *,
+    order: int,
+    deduplicating: bool,
+) -> Array:
+    """Fit the unconstrained kernel regression with a free intercept row."""
+    del delta
+    design = interaction_design(masks, order)
+    design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
+    require_identification(design, deduplicating=deduplicating)
+    solution, *_ = jnp.linalg.lstsq(design, response)
+    return solution
+
+
+def _kadd_solve(
+    masks: Array,
+    response: Array,
+    delta: Array,
+    *,
+    order: int,
+    deduplicating: bool,
+) -> Array:
+    """Fit the Bernoulli-basis Shapley regression pinned at the grand coalition.
+
+    The sampled twin of the exact kADD-SHAP solver: the Bernoulli design row
+    of the grand coalition forms the constraint, one pivot column is
+    substituted out against ``delta``, and the reduced system is fit
+    unweighted because the Shapley kernel sampler already draws rows with
+    the kernel's probabilities. The empty coalition's design row is zero, so
+    the empty-shifted response interpolates it automatically.
+    """
+    n_players = masks.shape[-1]
+    design = bernoulli_design(masks, order)
+    constraint = bernoulli_design(jnp.ones((1, n_players)), order)[0]
+    pivot_column = int(jnp.argmax(jnp.abs(constraint)))
+    anchor = constraint[pivot_column]
+    pivot = design[:, pivot_column : pivot_column + 1]
+    reduced = jnp.delete(design - pivot * (constraint / anchor)[None, :], pivot_column, axis=1)
+    require_identification(reduced, deduplicating=deduplicating)
+    shifted = response - (pivot / anchor) * delta[None, :]
+    partial, *_ = jnp.linalg.lstsq(reduced, shifted)
+    others = jnp.delete(constraint, pivot_column)
+    back_substituted = (delta[None, :] - others[:, None].T @ partial) / anchor
+    return jnp.insert(partial, pivot_column, back_substituted[0], axis=0)

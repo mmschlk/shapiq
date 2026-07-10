@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from fractions import Fraction
 from functools import cache
 from itertools import combinations
 from math import comb
@@ -16,6 +15,8 @@ from shapiq.explainers._base import (
     reject_common_index_mistakes,
 )
 from shapiq.explainers._faithful import (
+    bernoulli_design,
+    bernoulli_numbers,
     eliminate_constraint,
     interaction_design,
     interaction_masks,
@@ -283,7 +284,7 @@ def _aggregated_ksii_attributions(
         )
         for size in range(1, order + 1)
     }
-    bernoulli = _bernoulli_numbers(order)
+    bernoulli = bernoulli_numbers(order)
     members = {size: interaction_masks(n_players, size) for size in range(1, order + 1)}
     attributions: dict[int, Array] = {}
     for size in range(1, order + 1):
@@ -369,7 +370,7 @@ def _kadd_regression_attributions(
     n_coalitions = masks.shape[-2]
     sizes = jnp.sum(masks, axis=-1)
     sqrt_weights = jnp.sqrt(index.regression_kernel(n_players)[sizes])
-    design = _bernoulli_design(masks, order)
+    design = bernoulli_design(masks, order)
     constraint = design[-1]
     pivot_column = int(jnp.argmax(jnp.abs(constraint)))
     anchor = constraint[pivot_column]
@@ -403,37 +404,3 @@ def _solution_blocks(
         attributions[size] = block.reshape(*values.shape[:-1], n_interactions)
         offset += n_interactions
     return attributions
-
-
-def _bernoulli_numbers(order: int) -> list[float]:
-    """Return the Bernoulli numbers up to ``order`` with the B(1) = -1/2 convention."""
-    numbers = [Fraction(1)]
-    for m in range(1, order + 1):
-        acc = sum((Fraction(comb(m + 1, j)) * numbers[j] for j in range(m)), Fraction(0))
-        numbers.append(-acc / (m + 1))
-    return [float(number) for number in numbers]
-
-
-def _bernoulli_design(masks: Array, order: int) -> Array:
-    """Return Bernoulli-weighted intersection columns for all interactions up to order."""
-    n_players = masks.shape[-1]
-    table = _bernoulli_weight_table(order)
-    columns = []
-    for size in range(1, order + 1):
-        member_masks = interaction_masks(n_players, size)
-        intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
-        columns.append(table[size][intersections])
-    return jnp.concatenate(columns, axis=1)
-
-
-def _bernoulli_weight_table(order: int) -> Array:
-    """Return kADD-SHAP design weights per interaction and intersection size."""
-    bernoulli = _bernoulli_numbers(order)
-    table = [[0.0] * (order + 1) for _ in range(order + 1)]
-    for size in range(1, order + 1):
-        for intersection in range(1, size + 1):
-            table[size][intersection] = sum(
-                comb(intersection, top) * bernoulli[size - top]
-                for top in range(1, intersection + 1)
-            )
-    return jnp.asarray(table)
