@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 
@@ -10,16 +10,17 @@ try:
     import torch
 except ImportError as err:
     from ._error import _text_import_error
+
     raise _text_import_error from err
 
-from ..base import Imputer
+from shapiq.imputer.base import Imputer
+
 from .callables import (
     CausalLMCallable,
     EncoderClassifierCallable,
     Seq2SeqCallable,
 )
 from .perturbations import (
-    AttentionMaskPerturbation,
     BasePerturbationStrategy,
     MLMInfillingPerturbation,
     create_perturbation_strategy,
@@ -27,6 +28,11 @@ from .perturbations import (
 from .players import (
     BasePlayerStrategy,
     create_player_strategy,
+)
+from .tensor_perturbation import (
+    TENSOR_PERTURBATION_STRATEGIES,
+    BaseTensorPerturbationStrategy,
+    create_tensor_perturbation_strategy,
 )
 
 if TYPE_CHECKING:
@@ -42,14 +48,16 @@ class TextImputer(Imputer):
 
     ``TextImputer`` combines three independent components:
     - a player strategy, which chooses the text features to explain;
-    - a perturbation strategy, which represents missing features;
-      - a target callable, which maps perturbed text to a scalar model score.
+    - either a text perturbation strategy, which creates perturbed strings,
+      or a tensor perturbation strategy, which creates model-ready inputs;
+    - a target callable, which maps the perturbed representation to a scalar
+      model score.
 
     The resulting object is callable with a coalition matrix and can therefore
     be passed directly to shapiq approximators. A coalition entry of ``1``
     keeps a player; ``0`` marks it as missing.
 
-    For ordinary perturbation strategies, each coalition is evaluated once.
+    For text perturbation strategies, each coalition is evaluated once.
     For ``MLMInfillingPerturbation``, the imputer evaluates multiple sampled
     infillings and returns their average score, approximating ``E[f(X) | X_S]``.
 
@@ -65,7 +73,10 @@ class TextImputer(Imputer):
         ``"subword"``, ``"word"``, ``"named_entity"``, ``"chunk"``, or ``"sentence"``.
 
     perturbation_type: Missing-player strategy
-        ``"mask"``, ``"pad"``, ``"removal"``, ``"neutral"``, ``"wordnet_neutral"``, or ``"mlm_infilling"``.
+        Text perturbations include ``"mask"``, ``"pad"``, ``"removal"``,
+        ``"neutral"``, ``"wordnet_neutral"``, and ``"mlm_infilling"``.
+        Tensor perturbations include ``"attention_mask"``. Tensor perturbations
+        do not create perturbed strings; they build model-ready inputs directly.
 
     model_type: Target-model interface
         ``"encoder_classifier"``, ``"causal_lm"``, or ``"seq2seq"``. Seq2seq is currently a placeholder.
@@ -101,6 +112,7 @@ class TextImputer(Imputer):
         perturbation_type: str = "mask",
         player_strategy: BasePlayerStrategy | None = None,
         perturbation_strategy: BasePerturbationStrategy | None = None,
+        tensor_perturbation_strategy: BaseTensorPerturbationStrategy | None = None,
         # ---------------------------------------------------------------------
         # MLM infilling settings
         # ---------------------------------------------------------------------
@@ -154,27 +166,64 @@ class TextImputer(Imputer):
         # PERTURBATION STRATEGY
         # =============================================================================
 
-        if perturbation_strategy is None:
-            perturbation_strategy = create_perturbation_strategy(
-                strategy=perturbation_type,
-                tokenizer=tokenizer,
-                mlm_model_name=mlm_model_name,
-                mlm_num_samples=mlm_num_samples,
-                device=self.device,
+        if perturbation_strategy is not None and tensor_perturbation_strategy is not None:
+            msg = (
+                "Only one of perturbation_strategy and tensor_perturbation_strategy "
+                "can be provided."
             )
+            raise ValueError(msg)
 
         self.perturbation_type = perturbation_type
-        self.perturbation_strategy = perturbation_strategy
+        self.perturbation_mode: Literal["text", "tensor"]
+
+        if perturbation_type in TENSOR_PERTURBATION_STRATEGIES:
+            if perturbation_strategy is not None:
+                msg = (
+                    f"perturbation_type={perturbation_type!r} is a tensor perturbation, "
+                    "so perturbation_strategy must be None. "
+                    "Use tensor_perturbation_strategy instead."
+                )
+                raise ValueError(msg)
+
+            if tensor_perturbation_strategy is None:
+                tensor_perturbation_strategy = create_tensor_perturbation_strategy(
+                    strategy=perturbation_type,
+                    tokenizer=tokenizer,
+                )
+
+            self.perturbation_mode = "tensor"
+            self.perturbation_strategy = None
+            self.tensor_perturbation_strategy = tensor_perturbation_strategy
+
+        else:
+            if tensor_perturbation_strategy is not None:
+                msg = (
+                    f"perturbation_type={perturbation_type!r} is a text perturbation, "
+                    "so tensor_perturbation_strategy must be None. "
+                    "Use perturbation_strategy instead."
+                )
+                raise ValueError(msg)
+
+            if perturbation_strategy is None:
+                perturbation_strategy = create_perturbation_strategy(
+                    strategy=perturbation_type,
+                    tokenizer=tokenizer,
+                    mlm_model_name=mlm_model_name,
+                    mlm_num_samples=mlm_num_samples,
+                    device=self.device,
+                )
+
+            self.perturbation_mode = "text"
+            self.perturbation_strategy = perturbation_strategy
+            self.tensor_perturbation_strategy = None
 
         # MLM infilling currently supports only word, named-entity, and chunk players.
 
-        if isinstance(
-            self.perturbation_strategy,
-            MLMInfillingPerturbation,
-        ) and self.player_level in {
-            "sentence",
-            "subword",
-        }:
+        if (
+            self.perturbation_mode == "text"
+            and isinstance(self.perturbation_strategy, MLMInfillingPerturbation)
+            and self.player_level in {"sentence", "subword"}
+        ):
             msg = "MLMInfillingPerturbation currently supports only word, named-entity, and chunk players."
             raise ValueError(msg)
 
@@ -218,14 +267,40 @@ class TextImputer(Imputer):
         self,
         coalition: np.ndarray,
     ) -> str:
-        """Convert coalition into perturbed text."""
-        return self.player_strategy.coalition_to_text(coalition, self.perturbation_strategy)
+        """Convert one coalition into a perturbed text.
+
+        This method is only valid for text perturbation strategies. Tensor
+        perturbations build model-ready inputs directly and must not be routed
+        through this string-based path.
+        """
+        if self.perturbation_mode != "text":
+            msg = (
+                "coalition_to_text() can only be used with text perturbation strategies. "
+                f"Got perturbation_mode={self.perturbation_mode!r}."
+            )
+            raise RuntimeError(msg)
+
+        if self.perturbation_strategy is None:
+            msg = "perturbation_strategy is required in text perturbation mode."
+            raise RuntimeError(msg)
+
+        return self.player_strategy.coalition_to_text(
+            coalition,
+            self.perturbation_strategy,
+        )
 
     def _coalitions_to_texts(
         self,
         coalitions: np.ndarray,
     ) -> list[str]:
         """Convert coalition matrix into perturbed texts."""
+        if self.perturbation_mode != "text":
+            msg = (
+                "_coalitions_to_texts() can only be used with text perturbation strategies. "
+                f"Got perturbation_mode={self.perturbation_mode!r}."
+            )
+            raise RuntimeError(msg)
+
         return [self.coalition_to_text(coalition) for coalition in coalitions]
 
     def _predict_batch(
@@ -269,10 +344,13 @@ class TextImputer(Imputer):
     ) -> np.ndarray:
         """Evaluate one or more coalitions.
 
-        For standard perturbations, each coalition is converted to one perturbed text and scored once.
-        For MLM infilling, the process is repeated ``mlm_num_samples`` times with fresh sampled replacements;
-        the returned value
-        is the mean score across samples.
+        For text perturbations, each coalition is converted to one perturbed text
+        and scored once. For MLM infilling, this process is repeated
+        ``mlm_num_samples`` times with fresh sampled replacements, and the returned
+        value is the mean score across samples.
+
+        For tensor perturbations, coalitions are converted directly into model-ready
+        inputs and scored through the target callable's tensor-input interface.
         """
         coalitions = np.asarray(coalitions)
 
@@ -283,9 +361,8 @@ class TextImputer(Imputer):
             msg = f"Expected coalition width {self.n_features}, got {coalitions.shape[1]}"
             raise ValueError(msg)
 
-        if isinstance(
-            self.perturbation_strategy,
-            MLMInfillingPerturbation,
+        if self.perturbation_mode == "text" and isinstance(
+            self.perturbation_strategy, MLMInfillingPerturbation
         ):
             num_samples = self.perturbation_strategy.num_samples
             all_scores = []
@@ -303,10 +380,14 @@ class TextImputer(Imputer):
             all_scores = np.stack(all_scores, axis=0)
             return np.mean(all_scores, axis=0)
 
-        if isinstance(self.perturbation_strategy, AttentionMaskPerturbation):
+        if self.perturbation_mode == "tensor":
+            if self.tensor_perturbation_strategy is None:
+                msg = "tensor_perturbation_strategy is required in tensor perturbation mode."
+                raise RuntimeError(msg)
+
             players = self.player_strategy.get_players()
 
-            masked_inputs = self.perturbation_strategy.evaluate(
+            masked_inputs = self.tensor_perturbation_strategy.evaluate(
                 players=players,
                 coalitions=coalitions,
                 model_type=self.model_type,
