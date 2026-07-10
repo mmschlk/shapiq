@@ -85,7 +85,7 @@ A **Game** adapter for a callable that already maps **CoalitionArrays** to **Val
 _Avoid_: FunctionGame, WrappedGame
 
 **MaskedGame**:
-A **Game** composed from a **MaskedPredictor** and a **LinkFunction**.
+A **Game** composed from a **MaskedPredictor** and a **LinkFunction**; without a link function, predictions become **Values** through the dispatched ``to_values`` conversion, whose backend handlers (torch) register lazily on first contact.
 _Avoid_: linked predictor game
 
 **Value**:

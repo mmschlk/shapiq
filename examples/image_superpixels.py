@@ -26,8 +26,9 @@ from shapiq import FSII, SV, DenseCoalitionArray, ExactExplainer, MaskedGame, Re
 from shapiq.games.torch import ChunkedMaskedPredictor, SuperpixelMasker, grid_labels, to_jax
 
 
-def chunked_image_game(masker, model, link_function, batch_size) -> MaskedGame:
+def chunked_image_game(masker, model, batch_size, link_function=None) -> MaskedGame:
     predictor = ChunkedMaskedPredictor(masker=masker, model=model, batch_size=batch_size)
+    # without a link the dispatched to_values conversion turns predictions into values
     return MaskedGame(masked_predictor=predictor, link_function=link_function)
 
 if __name__ == "__main__":
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     def brightness(flat_images: torch.Tensor) -> torch.Tensor:
         return flat_images.mean(dim=(-3, -2, -1))
 
-    game = chunked_image_game(masker, brightness, link_function=to_jax, batch_size=128)
+    game = chunked_image_game(masker, brightness, batch_size=128)
     explanation = ExactExplainer(game, SV()).explain()
     values = explanation.attributions_by_order[1].reshape(GRID)
     print("Shapley values per superpixel (row-major 3x3 grid):")
@@ -92,7 +93,7 @@ if __name__ == "__main__":
         return to_jax(torch.softmax(predictions, dim=-1)[..., 1])
 
     def cnn_game(batch_size: int) -> MaskedGame:
-        return chunked_image_game(masker, cnn, class_one_probability, batch_size)
+        return chunked_image_game(masker, cnn, batch_size, link_function=class_one_probability)
 
     start = time.perf_counter()
     exact = ExactExplainer(cnn_game(256), SV()).explain()

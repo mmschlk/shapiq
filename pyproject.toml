@@ -12,8 +12,8 @@ dependencies = [
     "numpy",
     "array-api-compat>=1.14.0",
     "jax>=0.10.1",
-    # plotting
-    "matplotlib",
+    # lazy backend dispatch
+    "flextype>=0.1.1",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},

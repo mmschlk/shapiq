@@ -9,6 +9,8 @@ import jax.numpy as jnp
 import torch
 from jax import Array
 
+from shapiq.games._values import to_values
+
 
 def to_jax(values: object, *, detach: bool = True) -> Array:
     """Convert torch outputs to JAX arrays, using DLPack when possible.
@@ -35,3 +37,9 @@ def to_jax(values: object, *, detach: bool = True) -> Array:
             # for (CUDA/MPS torch with CPU JAX); copy through host memory
             return jnp.asarray(tensor.cpu().numpy())
     return jnp.asarray(values)
+
+
+@to_values.register(torch.Tensor)
+def _tensor_to_values(predictions: torch.Tensor) -> Array:
+    """Convert torch predictions through the DLPack boundary."""
+    return to_jax(predictions)

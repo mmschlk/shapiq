@@ -26,6 +26,7 @@ from shapiq.games import (
     Masker,
     Model,
     ModelMaskedPredictor,
+    to_values,
 )
 from shapiq.interactions import (
     BGV,
@@ -154,5 +155,6 @@ __all__ = [
     "WeightedFBII",
     "iter_interactions",
     "normalize_interaction",
+    "to_values",
     "validate_interaction_metadata",
 ]

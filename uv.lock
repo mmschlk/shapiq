@@ -656,6 +656,15 @@ wheels = [
 ]
 
 [[package]]
+name = "flextype"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/85/f1b45b7d586d9dda4e0e16625c416099591131cbc1dbc17995a6118abb3a/flextype-0.1.1.tar.gz", hash = "sha256:dfe12138039816badf26b57c6944112949884045e4ebfef51c7b7d19bc4a0264", size = 20819, upload-time = "2026-06-27T10:08:41.95Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/6f/8b045677127b6fa5a64b2ebcd1cec8d6f03dbcacdebc4a14be92e5df8fa0/flextype-0.1.1-py3-none-any.whl", hash = "sha256:a86f12428bfdfdf5a52c02b6c53c08d5c4f02bce75d8d180182df0c538d03674", size = 20425, upload-time = "2026-06-27T10:08:40.822Z" },
+]
+
+[[package]]
 name = "fonttools"
 version = "4.63.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2913,8 +2922,8 @@ name = "shapiq"
 source = { editable = "." }
 dependencies = [
     { name = "array-api-compat" },
+    { name = "flextype" },
     { name = "jax" },
-    { name = "matplotlib" },
     { name = "numpy" },
 ]
 
@@ -2979,8 +2988,8 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "array-api-compat", specifier = ">=1.14.0" },
+    { name = "flextype", specifier = ">=0.1.1" },
     { name = "jax", specifier = ">=0.10.1" },
-    { name = "matplotlib" },
     { name = "numpy" },
 ]
 
