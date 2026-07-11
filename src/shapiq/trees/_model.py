@@ -102,6 +102,32 @@ class TreeModel:
         return tuple(self.values.shape[1:])
 
 
+def trusted_tree_model(
+    *,
+    children_left: np.ndarray,
+    children_right: np.ndarray,
+    features: np.ndarray,
+    thresholds: np.ndarray,
+    values: np.ndarray,
+) -> TreeModel:
+    """Construct a ``TreeModel`` from already-normalized arrays, unvalidated.
+
+    Converter-internal: the validating constructor exists to teach users
+    hand-building trees, while converters guarantee the node layout by
+    construction and their parity suites pin it — re-validating thousands
+    of trees would only cost conversion time. Arrays must already be host
+    NumPy in the normalized dtypes (``int64`` structure, ``float64``
+    thresholds and values).
+    """
+    tree = object.__new__(TreeModel)
+    object.__setattr__(tree, "children_left", children_left)
+    object.__setattr__(tree, "children_right", children_right)
+    object.__setattr__(tree, "features", features)
+    object.__setattr__(tree, "thresholds", thresholds)
+    object.__setattr__(tree, "values", values)
+    return tree
+
+
 def constant_tree(value: np.ndarray | float) -> TreeModel:
     """Return a lone-leaf tree contributing a constant to an ensemble sum.
 

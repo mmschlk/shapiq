@@ -7,7 +7,7 @@ from sklearn.ensemble._forest import BaseForest  # noqa: TC002 - registration ne
 from sklearn.tree._classes import BaseDecisionTree  # noqa: TC002 - registration needs the class
 
 from shapiq.trees._conversion import to_tree_model
-from shapiq.trees._model import TreeModel
+from shapiq.trees._model import TreeModel, trusted_tree_model
 
 
 def _from_sklearn_tree(tree: BaseDecisionTree, *, scale: float = 1.0) -> TreeModel:
@@ -18,12 +18,12 @@ def _from_sklearn_tree(tree: BaseDecisionTree, *, scale: float = 1.0) -> TreeMod
         values = values[:, 0, :]
     if values.ndim == 2 and values.shape[1] == 1:
         values = values[:, 0]
-    return TreeModel(
-        children_left=inner.children_left,
-        children_right=inner.children_right,
-        features=inner.feature,
-        thresholds=inner.threshold,
-        values=values * scale,
+    return trusted_tree_model(
+        children_left=np.asarray(inner.children_left, dtype=np.int64),
+        children_right=np.asarray(inner.children_right, dtype=np.int64),
+        features=np.asarray(inner.feature, dtype=np.int64),
+        thresholds=np.asarray(inner.threshold, dtype=np.float64),
+        values=np.asarray(values * scale, dtype=np.float64),
     )
 
 

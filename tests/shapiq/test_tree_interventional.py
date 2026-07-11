@@ -240,6 +240,60 @@ def test_sklearn_trees_convert_and_explain():
             assert jnp.allclose(closed_form(interaction), exact(interaction), atol=1e-4)
 
 
+def test_sklearn_classifiers_become_probability_games():
+    # classifier leaves store class fractions, so the converted game IS
+    # predict_proba and one explanation covers every class
+    pytest.importorskip("sklearn")
+    from sklearn.ensemble import RandomForestClassifier  # noqa: PLC0415 - requires sklearn
+
+    rng = np.random.default_rng(3)
+    features = rng.normal(size=(300, N_PLAYERS))
+    labels = np.digitize(features[:, 0] * features[:, 1] + features[:, 2], [-0.5, 0.5])
+    model = RandomForestClassifier(n_estimators=5, max_depth=3, random_state=0)
+    model.fit(features, labels)
+    game = InterventionalTreeGame(
+        to_tree_model(model), inputs=features[0], baseline=features.mean(axis=0)
+    )
+    assert game.value_shape == (3,)
+    masks = list(product([False, True], repeat=N_PLAYERS))
+    values = game(DenseCoalitionArray(jnp.asarray(masks)))
+    mixed = np.where(np.asarray(masks), features[0], features.mean(axis=0))
+    assert jnp.allclose(values, model.predict_proba(mixed), atol=1e-5)
+    # the closed form explains all classes at once and stays efficient per class
+    explanation = TreeExplainer(game, SV()).explain()
+    total = sum(jnp.asarray(explanation((player,))) for player in range(N_PLAYERS))
+    assert jnp.allclose(total, values[-1] - values[0], atol=1e-5)
+
+
+def test_converted_trees_survive_revalidation():
+    # converters build trees through the trusted fast path; rebuilding every
+    # tree through the validating constructor must accept it and agree
+    pytest.importorskip("sklearn")
+    from sklearn.ensemble import RandomForestRegressor  # noqa: PLC0415 - requires sklearn
+
+    rng = np.random.default_rng(2)
+    features = rng.normal(size=(150, N_PLAYERS))
+    model = RandomForestRegressor(n_estimators=4, max_depth=4, random_state=0).fit(
+        features, features[:, 0] * features[:, 1]
+    )
+    trusted = to_tree_model(model)
+    revalidated = tuple(
+        TreeModel(
+            children_left=tree.children_left,
+            children_right=tree.children_right,
+            features=tree.features,
+            thresholds=tree.thresholds,
+            values=tree.values,
+        )
+        for tree in trusted
+    )
+    coalitions = all_coalitions()
+    inputs, baseline = features[0], features.mean(axis=0)
+    trusted_game = InterventionalTreeGame(trusted, inputs=inputs, baseline=baseline)
+    revalidated_game = InterventionalTreeGame(revalidated, inputs=inputs, baseline=baseline)
+    assert jnp.allclose(trusted_game(coalitions), revalidated_game(coalitions), atol=1e-6)
+
+
 def test_sklearn_forests_scale_to_the_mean_prediction():
     pytest.importorskip("sklearn")
     from sklearn.ensemble import RandomForestRegressor  # noqa: PLC0415 - requires sklearn

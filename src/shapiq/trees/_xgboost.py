@@ -11,7 +11,7 @@ from xgboost.core import Booster  # noqa: TC002 - registration needs the class
 from xgboost.sklearn import XGBModel  # noqa: TC002 - registration needs the class
 
 from shapiq.trees._conversion import to_tree_model
-from shapiq.trees._model import TreeModel, constant_tree
+from shapiq.trees._model import TreeModel, constant_tree, trusted_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -120,7 +120,7 @@ def _tree_from_arrays(arrays: _TreeArrays, class_id: int, n_classes: int) -> Tre
         values[:, class_id] = leaf_values
     else:
         values = leaf_values
-    return TreeModel(
+    return trusted_tree_model(
         children_left=left,
         children_right=right,
         features=np.where(leaves, -2, features),

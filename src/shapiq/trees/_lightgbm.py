@@ -10,7 +10,7 @@ from lightgbm.basic import Booster  # noqa: TC002 - registration needs the class
 from lightgbm.sklearn import LGBMModel  # noqa: TC002 - registration needs the class
 
 from shapiq.trees._conversion import to_tree_model
-from shapiq.trees._model import TreeModel
+from shapiq.trees._model import TreeModel, trusted_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -123,7 +123,7 @@ def _tree_from_arrays(arrays: _TreeArrays, class_id: int, n_classes: int) -> Tre
         values[:, class_id] = leaf_values
     else:
         values = leaf_values
-    return TreeModel(
+    return trusted_tree_model(
         children_left=left,
         children_right=right,
         features=features,

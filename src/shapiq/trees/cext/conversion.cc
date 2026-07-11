@@ -245,9 +245,19 @@ public:
         return header.type != 0 ? header.type : readByte();
     }
 
+    // push_back growth must stay geometric: an exact reserve() per tree
+    // reallocates the whole accumulated forest on every call (quadratic)
+    template <typename T>
+    static void ensureRoom(std::vector<T> &out, size_t extra) {
+        size_t needed = out.size() + extra;
+        if (needed > out.capacity()) {
+            out.reserve(needed > out.capacity() * 2 ? needed : out.capacity() * 2);
+        }
+    }
+
     uint64_t readInt64Array(std::vector<int64_t> &out) {
         ArrayHeader header = readArrayHeader();
-        out.reserve(out.size() + header.count);
+        ensureRoom(out, header.count);
         for (uint64_t i = 0; i < header.count; i++) {
             out.push_back(readIntPayload(elementMarker(header)));
         }
@@ -258,6 +268,7 @@ public:
         if (header.type == 'D') {
             require(header.count * 8);
             size_t start = out.size();
+            ensureRoom(out, header.count);
             out.resize(start + header.count);
             std::memcpy(out.data() + start, data_ + pos_, header.count * 8);
             pos_ += header.count * 8;
@@ -269,7 +280,7 @@ public:
             }
             return header.count;
         }
-        out.reserve(out.size() + header.count);
+        ensureRoom(out, header.count);
         for (uint64_t i = 0; i < header.count; i++) {
             out.push_back(readFloatPayload(elementMarker(header)));
         }

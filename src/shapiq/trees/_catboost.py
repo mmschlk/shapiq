@@ -11,7 +11,7 @@ import numpy as np
 from catboost.core import CatBoost  # noqa: TC002 - registration needs the class
 
 from shapiq.trees._conversion import to_tree_model
-from shapiq.trees._model import TreeModel, constant_tree
+from shapiq.trees._model import TreeModel, constant_tree, trusted_tree_model
 
 _CATEGORICAL_MESSAGE = (
     "the model uses categorical splits, which the unified tree layout "
@@ -65,7 +65,7 @@ def _oblivious_to_tree(tree: dict[str, Any], scale: float, n_classes: int) -> Tr
     else:
         values = np.zeros(n_nodes)
         values[n_internal:] = leaf_values
-    return TreeModel(
+    return trusted_tree_model(
         children_left=left,
         children_right=right,
         features=features,
