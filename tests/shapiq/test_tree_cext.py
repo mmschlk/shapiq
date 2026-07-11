@@ -91,7 +91,7 @@ def test_moebius_of_deep_supports_falls_back_to_python(monkeypatch):
     assert calls == ["python"]
 
 
-def test_vector_leaf_values_fall_back_to_python():
+def test_vector_leaf_values_run_through_the_kernel(monkeypatch):
     two_class = TreeModel(
         children_left=[1, -1, -1],
         children_right=[2, -1, -1],
@@ -104,9 +104,35 @@ def test_vector_leaf_values_fall_back_to_python():
         inputs=np.ones(N_PLAYERS),
         baseline=np.zeros(N_PLAYERS),
     )
-    assert not _tree._use_cext(game, order=1)
-    explanation = TreeExplainer(game, SV()).explain()
-    assert explanation((0,)).shape == (2,)
+    assert _tree._use_cext(game, order=1)
+    with_kernel = TreeExplainer(game, SV()).explain()
+    assert with_kernel((0,)).shape == (2,)
+    monkeypatch.setattr(_tree, "_cext_accumulate", None)
+    pure_python = TreeExplainer(game, SV()).explain()
+    for player in range(N_PLAYERS):
+        assert jnp.allclose(with_kernel((player,)), pure_python((player,)), atol=1e-7)
+
+
+def test_multiclass_forests_run_through_the_kernel(monkeypatch):
+    pytest.importorskip("sklearn")
+    from sklearn.ensemble import RandomForestClassifier  # noqa: PLC0415 - requires sklearn
+
+    rng = np.random.default_rng(4)
+    features = rng.normal(size=(300, N_PLAYERS))
+    labels = np.digitize(features[:, 0] * features[:, 1] + features[:, 2], [-0.5, 0.5])
+    model = RandomForestClassifier(n_estimators=6, max_depth=4, random_state=0)
+    model.fit(features, labels)
+    game = InterventionalTreeGame(
+        to_tree_model(model), inputs=features[0], baseline=features.mean(axis=0)
+    )
+    assert game.value_shape == (3,)
+    assert _tree._use_cext(game, order=2)
+    with_kernel = TreeExplainer(game, SII(order=2)).explain()
+    monkeypatch.setattr(_tree, "_cext_accumulate", None)
+    pure_python = TreeExplainer(game, SII(order=2)).explain()
+    assert set(with_kernel.attributions) == set(pure_python.attributions)
+    for interaction, total in pure_python.attributions.items():
+        assert jnp.allclose(with_kernel.attributions[interaction], total, rtol=1e-6, atol=1e-7)
 
 
 def test_kernel_handles_the_empty_interaction():
@@ -196,7 +222,7 @@ def test_kernel_validates_inconsistent_buffers():
     table = np.zeros((3, 3, 2, 2), dtype=np.float64)
     with pytest.raises(ValueError, match="shorter than the offsets claim"):
         # the leaf claims two members but the buffer holds one
-        kernel(offsets, small, np.asarray([0, 0], dtype=np.int64), small, values, table, 2, 2, 1, 1)
+        kernel(offsets, small, np.asarray([0, 0], dtype=np.int64), small, values, table, 2, 2, 1, 1, 1)
     zero_offsets = np.asarray([0, 0], dtype=np.int64)
     with pytest.raises(ValueError, match="non-decreasing"):
         kernel(
@@ -210,6 +236,7 @@ def test_kernel_validates_inconsistent_buffers():
             2,
             1,
             1,
+            1,
         )
     with pytest.raises(ValueError, match="declared coefficient-table extents"):
         small_table = np.zeros((2, 2, 2, 2), dtype=np.float64)
@@ -220,6 +247,7 @@ def test_kernel_validates_inconsistent_buffers():
             small,
             values,
             small_table,
+            1,
             1,
             1,
             1,
@@ -237,11 +265,29 @@ def test_kernel_validates_inconsistent_buffers():
             2,
             1,
             1,
+            1,
         )
     with pytest.raises(ValueError, match="at most four players"):
-        kernel(zero_offsets, small, zero_offsets, small, values, table, 2, 2, 1, 5)
+        kernel(zero_offsets, small, zero_offsets, small, values, table, 2, 2, 1, 5, 1)
     with pytest.raises(ValueError, match="disagree on the leaf count"):
-        kernel(zero_offsets, small, np.asarray([0], dtype=np.int64), small, values, table, 2, 2, 1, 1)
+        kernel(zero_offsets, small, np.asarray([0], dtype=np.int64), small, values, table, 2, 2, 1, 1, 1)
+    with pytest.raises(ValueError, match="width must be positive"):
+        kernel(zero_offsets, small, zero_offsets, small, values, table, 2, 2, 1, 1, 0)
+    with pytest.raises(ValueError, match="disagree on the leaf count"):
+        # one leaf of width two needs two doubles, not one
+        kernel(
+            np.asarray([0, 0], dtype=np.int64),
+            small,
+            np.asarray([0, 0], dtype=np.int64),
+            small,
+            values,
+            table,
+            2,
+            2,
+            1,
+            1,
+            2,
+        )
 
 
 def test_single_node_trees_and_identical_points_stay_serviceable():

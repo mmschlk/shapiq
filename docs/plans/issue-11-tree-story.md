@@ -35,7 +35,13 @@ linear TreeSHAP cexts, TreeSHAP-IQ) re-enters v2 with the game carrying the sema
 
 Parity is pinned against `ExactExplainer` for SV, BV, SII, BII, WeightedBII(p), CHII,
 STII, Moebius, and Co-Moebius, on hand-built ensembles, vector-valued leaves, and
-converted scikit-learn models.
+converted scikit-learn models. The value-shape story holds end to end: scikit-learn
+classifier leaves store class fractions, so the converted game IS `predict_proba` and one
+explanation covers every class (pinned), exactly as booster multiclass margins become
+vector games — and the interventional C kernel serves vector values too (leaf values are
+rows of the flattened value shape accumulated into an arena of equally wide sums; measured
+9.5x on a 3-class 200-tree depth-14 forest at SII order 2, 128 -> 13 ms, with the scalar
+path unregressed at 12.5x).
 
 ## Slice 2 — the C extension
 
@@ -68,8 +74,10 @@ loop: per-leaf combination enumeration accumulating into an
   and distant baselines.
 - Future knobs recorded: OpenMP over leaves (release the GIL around the leaf loop first —
   it is held for the whole hot loop today), order > 4 via wider keys (a seam rewrite, not
-  a knob — the packed-uint64 return ABI hard-wires 4x16 bits), vector leaf values in C,
-  and moving the E/R extraction itself to C if game construction ever dominates.
+  a knob — the packed-uint64 return ABI hard-wires 4x16 bits), and moving the E/R
+  extraction itself to C if game construction ever dominates. Vector leaf values landed
+  (value_width rows into an arena of sums), so `_use_cext` gates only on order and player
+  count.
 - Review-fleet fixes applied (2026-07-10, five-agent round): the bridge's dense
   coefficient table skips infeasible (|E|, |R|) cross pairs whose maxima came from
   different leaves (was: omega IndexError on ordinary forests); the kernel validates all
@@ -126,10 +134,16 @@ loop: per-leaf combination enumeration accumulating into an
   leaves (no class_label knob; explanations come out per class). Both converters keep a pure
   Python fallback over the slow dumps (JSON / dict walk) as the correctness oracle and for
   installs without a compiler; kernels fall back silently on unparseable streams. Measured
-  (30 features, depth 8): LightGBM 500 trees 371 -> 22 ms and 2000 trees 1596 -> 87 ms
-  (17-18x, the dict dump was the bottleneck); XGBoost 500 trees 170 -> 34 ms (5x), 2000 trees
-  226 -> 192 ms where per-tree `TreeModel` validation now dominates, not parsing (future knob:
-  batch construction). Full-sweep parity vs native margins on every coalition, kernel-vs-python
+  (30 features, depth 8): LightGBM 500 trees 371 -> 22 ms and 2000 trees 1596 -> 70 ms
+  (17-23x, the dict dump was the bottleneck); XGBoost 500 trees 170 -> 34 ms (5x) and 2000
+  trees 226 -> 18 ms after two follow-up fixes: the kernel's per-tree exact `reserve()`
+  defeated geometric vector growth (quadratic in tree count — an earlier note here blamed
+  TreeModel construction, which measurement refuted: validation was 13 ms of 183), and the
+  converters now build trees through `trusted_tree_model` (module-internal, unvalidated:
+  producers guarantee the layout by construction, their parity suites pin it, and a
+  revalidation test rebuilds converted trees through the validating constructor). The
+  validating `TreeModel` constructor remains the only public path — no `validate=False`
+  knob, since the teaching checks exist exactly for hand-built trees. Full-sweep parity vs native margins on every coalition, kernel-vs-python
   parses bit-compatible, laziness pinned by subprocess. CatBoost landed right after (added
   to the all_ml group): oblivious trees unroll into the binary layout — leaf-index bit ``j``
   is ``splits[j]``'s ``x > border`` (verified against native predictions), which is the exact

@@ -6,6 +6,9 @@
 // weights. This kernel only runs the hot loop: for every leaf it enumerates
 // the interactions inside the leaf's constraint sets and accumulates
 // value * coefficient into a sparse map keyed by the interaction's players.
+// Leaf values are rows of `value_width` doubles (1 for scalar games, the
+// flattened value shape for vector-valued ones such as multiclass margins),
+// accumulated into an arena of equally wide sums.
 //
 // Interactions are packed into one uint64 as up to four 16-bit fields
 // holding player id + 1 in ascending order (0 marks an unused slot), so the
@@ -54,13 +57,39 @@ inline uint64_t pack_interaction(const int64_t *players, int count) {
     return key;
 }
 
+// Sparse per-interaction sums: packed keys map to slots in an arena of
+// `width`-wide rows, so scalar and vector-valued games share one code path.
+struct SparseSums {
+    std::unordered_map<uint64_t, size_t> slots;
+    std::vector<double> arena;
+    int width;
+
+    explicit SparseSums(int value_width) : width(value_width) {}
+
+    void add(uint64_t key, const double *scaled) {
+        auto emplaced = slots.try_emplace(key, slots.size());
+        if (emplaced.second) {
+            size_t needed = arena.size() + static_cast<size_t>(width);
+            if (needed > arena.capacity()) {
+                // growth must stay geometric; an exact resize would copy the
+                // whole arena on every new interaction
+                arena.reserve(needed > arena.capacity() * 2 ? needed : arena.capacity() * 2);
+            }
+            arena.resize(needed, 0.0);
+        }
+        double *row = arena.data() + emplaced.first->second * static_cast<size_t>(width);
+        for (int j = 0; j < width; j++) {
+            row[j] += scaled[j];
+        }
+    }
+};
+
 // Enumerate all ways to take `take_present` members of `present` and
 // `take_absent` members of `absent` (both ascending), merge each pick into
-// ascending player order, and accumulate `contribution` on the packed key.
+// ascending player order, and accumulate the scaled value row on the key.
 void accumulate_combinations(const int64_t *present, int n_present, int take_present,
                              const int64_t *absent, int n_absent, int take_absent,
-                             double contribution,
-                             std::unordered_map<uint64_t, double> &totals) {
+                             const double *scaled, SparseSums &totals) {
     std::vector<int> pick_present(static_cast<size_t>(take_present));
     std::vector<int> pick_absent(static_cast<size_t>(take_absent));
     for (int i = 0; i < take_present; ++i) pick_present[static_cast<size_t>(i)] = i;
@@ -78,7 +107,7 @@ void accumulate_combinations(const int64_t *present, int n_present, int take_pre
             }
             while (a < take_present) merged[out++] = present[pick_present[static_cast<size_t>(a++)]];
             while (b < take_absent) merged[out++] = absent[pick_absent[static_cast<size_t>(b++)]];
-            totals[pack_interaction(merged, out)] += contribution;
+            totals.add(pack_interaction(merged, out), scaled);
 
             // odometer over the absent pick
             int digit = take_absent - 1;
@@ -104,10 +133,15 @@ PyObject *accumulate(PyObject *, PyObject *args) {
     PyObject *present_offsets_obj, *present_members_obj;
     PyObject *absent_offsets_obj, *absent_members_obj;
     PyObject *values_obj, *coefficients_obj;
-    int max_present, max_absent, min_size, order;
-    if (!PyArg_ParseTuple(args, "OOOOOOiiii", &present_offsets_obj, &present_members_obj,
+    int max_present, max_absent, min_size, order, value_width;
+    if (!PyArg_ParseTuple(args, "OOOOOOiiiii", &present_offsets_obj, &present_members_obj,
                           &absent_offsets_obj, &absent_members_obj, &values_obj,
-                          &coefficients_obj, &max_present, &max_absent, &min_size, &order)) {
+                          &coefficients_obj, &max_present, &max_absent, &min_size, &order,
+                          &value_width)) {
+        return nullptr;
+    }
+    if (value_width < 1) {
+        PyErr_SetString(PyExc_ValueError, "the leaf value width must be positive");
         return nullptr;
     }
     Buffer present_offsets, present_members, absent_offsets, absent_members, values, coefficients;
@@ -124,7 +158,7 @@ PyObject *accumulate(PyObject *, PyObject *args) {
     }
     const Py_ssize_t n_leaves = present_offsets.n_int64() - 1;
     if (n_leaves < 0 || absent_offsets.n_int64() != n_leaves + 1 ||
-        values.view.len != n_leaves * static_cast<Py_ssize_t>(sizeof(double))) {
+        values.view.len != n_leaves * value_width * static_cast<Py_ssize_t>(sizeof(double))) {
         PyErr_SetString(PyExc_ValueError, "leaf offset and value buffers disagree on the leaf count");
         return nullptr;
     }
@@ -182,13 +216,14 @@ PyObject *accumulate(PyObject *, PyObject *args) {
         return nullptr;
     }
 
-    std::unordered_map<uint64_t, double> totals;
+    SparseSums totals(value_width);
+    std::vector<double> scaled(static_cast<size_t>(value_width));
     for (Py_ssize_t leaf = 0; leaf < n_leaves; ++leaf) {
         const int64_t *present = p_members + p_offsets[leaf];
         const int64_t *absent = a_members + a_offsets[leaf];
         const int n_present = static_cast<int>(p_offsets[leaf + 1] - p_offsets[leaf]);
         const int n_absent = static_cast<int>(a_offsets[leaf + 1] - a_offsets[leaf]);
-        const double value = leaf_values[leaf];
+        const double *value_row = leaf_values + leaf * value_width;
         const int max_size = n_present + n_absent < order ? n_present + n_absent : order;
         for (int size = min_size; size <= max_size; ++size) {
             const int lowest = size - n_absent > 0 ? size - n_absent : 0;
@@ -201,27 +236,32 @@ PyObject *accumulate(PyObject *, PyObject *args) {
                 if (coefficient == 0.0) {
                     continue;
                 }
+                for (int j = 0; j < value_width; ++j) {
+                    scaled[static_cast<size_t>(j)] = value_row[j] * coefficient;
+                }
                 accumulate_combinations(present, n_present, take_present, absent, n_absent,
-                                        take_absent, value * coefficient, totals);
+                                        take_absent, scaled.data(), totals);
             }
         }
     }
 
-    PyObject *keys = PyBytes_FromStringAndSize(nullptr, static_cast<Py_ssize_t>(totals.size() * sizeof(uint64_t)));
-    PyObject *sums = PyBytes_FromStringAndSize(nullptr, static_cast<Py_ssize_t>(totals.size() * sizeof(double)));
+    const size_t n_interactions = totals.slots.size();
+    PyObject *keys = PyBytes_FromStringAndSize(
+        nullptr, static_cast<Py_ssize_t>(n_interactions * sizeof(uint64_t)));
+    PyObject *sums = PyBytes_FromStringAndSize(
+        nullptr,
+        static_cast<Py_ssize_t>(n_interactions * static_cast<size_t>(value_width) * sizeof(double)));
     if (keys == nullptr || sums == nullptr) {
         Py_XDECREF(keys);
         Py_XDECREF(sums);
         return nullptr;
     }
     auto *key_out = reinterpret_cast<uint64_t *>(PyBytes_AS_STRING(keys));
-    auto *sum_out = reinterpret_cast<double *>(PyBytes_AS_STRING(sums));
-    size_t cursor = 0;
-    for (const auto &entry : totals) {
-        key_out[cursor] = entry.first;
-        sum_out[cursor] = entry.second;
-        ++cursor;
+    for (const auto &entry : totals.slots) {
+        key_out[entry.second] = entry.first;
     }
+    std::memcpy(PyBytes_AS_STRING(sums), totals.arena.data(),
+                n_interactions * static_cast<size_t>(value_width) * sizeof(double));
     PyObject *result = PyTuple_Pack(2, keys, sums);
     Py_DECREF(keys);
     Py_DECREF(sums);

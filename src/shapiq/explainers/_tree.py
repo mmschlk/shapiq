@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from functools import singledispatch
 from itertools import combinations
-from math import comb
+from math import comb, prod
 from typing import TYPE_CHECKING, cast
 
 import jax.numpy as jnp
@@ -220,10 +220,13 @@ _CEXT_MAX_PLAYERS = 0xFFFE
 
 
 def _use_cext(game: InterventionalTreeGame, order: int) -> bool:
-    """Return whether the compiled kernel serves this configuration."""
+    """Return whether the compiled kernel serves this configuration.
+
+    Vector-valued games (multiclass margins, class probabilities) are
+    served too: the kernel accumulates rows of the flattened value shape.
+    """
     return (
         _cext_accumulate is not None
-        and game.value_shape == ()
         and order <= _CEXT_MAX_ORDER
         and game.n_players <= _CEXT_MAX_PLAYERS
     )
@@ -280,8 +283,11 @@ def _accumulate_cext(
         raise RuntimeError(msg)
     present = np.concatenate([leaves.present for leaves in game.leaf_constraints])
     absent = np.concatenate([leaves.absent for leaves in game.leaf_constraints])
+    value_width = prod(game.value_shape)
     values = np.ascontiguousarray(
-        np.concatenate([leaves.values for leaves in game.leaf_constraints]),
+        np.concatenate([leaves.values for leaves in game.leaf_constraints]).reshape(
+            present.shape[0], value_width
+        ),
         dtype=np.float64,
     )
     present_counts = present.sum(axis=1)
@@ -321,16 +327,19 @@ def _accumulate_cext(
         max_absent,
         min_size,
         order,
+        value_width,
     )
     keys = np.frombuffer(keys_bytes, dtype=np.uint64)
-    sums = np.frombuffer(sums_bytes, dtype=np.float64)
+    sums = np.frombuffer(sums_bytes, dtype=np.float64).reshape(keys.shape[0], value_width)
     totals: dict[tuple[int, ...], np.ndarray | float] = {}
-    for key, total in zip(keys.tolist(), sums.tolist(), strict=True):
+    for position, key in enumerate(keys.tolist()):
         interaction = []
         packed = key
         while packed:
             interaction.append((packed & 0xFFFF) - 1)
             packed >>= 16
+        row = sums[position]
+        total = float(row[0]) if game.value_shape == () else row.reshape(game.value_shape)
         totals[tuple(interaction)] = total
     return totals
 
