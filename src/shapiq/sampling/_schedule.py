@@ -112,7 +112,13 @@ class UnitScheduleSampler(Sampler["ApproximationState"]):
         quantum = self.sampling_quantum
         full_units = remaining // quantum
         if full_units > 0:
-            batch = self._sampled_unit_batch(jnp.arange(units - 1, units - 1 + full_units))
+            # render in power-of-two unit buckets: budgets vary call to call,
+            # and a handful of stable batch shapes keeps XLA from recompiling
+            # the render pipeline per budget; padded units are sliced away
+            # before use and never reach the game
+            bucket = 1 << (full_units - 1).bit_length()
+            indices = jnp.arange(units - 1, units - 1 + bucket)
+            batch = self._sampled_unit_batch(indices)[:full_units]
             if batch.shape[-2] != quantum:
                 msg = (
                     f"sampled units hold {batch.shape[-2]} coalitions but sampling_quantum "

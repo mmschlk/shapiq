@@ -24,6 +24,7 @@ from shapiq.interactions import (
     normalize_interaction,
     validate_interaction_metadata,
 )
+from shapiq.interactions._ranks import interaction_rank, interaction_ranks
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -152,12 +153,30 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
                 return jnp.zeros(self.shape, dtype=bool)
             return jnp.ones(self.shape, dtype=bool)
         interactions = as_interaction_array(interaction)
-        mask = jnp.asarray(
-            [self._is_represented(tuple(row)) for row in interaction_rows(interactions)],
-            dtype=bool,
-        )
-        mask = jnp.reshape(mask, interactions.shape[:-1])
+        if self.orientation == "undirected":
+            size = int(interactions.shape[-1])
+            mask = (
+                self._valid_players(interactions)
+                if self._represents_size(size)
+                else jnp.zeros(interactions.shape[:-1], dtype=bool)
+            )
+        else:
+            mask = jnp.reshape(
+                jnp.asarray(
+                    [self._is_represented(tuple(row)) for row in interaction_rows(interactions)],
+                    dtype=bool,
+                ),
+                interactions.shape[:-1],
+            )
         return jnp.broadcast_to(mask, jnp.broadcast_shapes(self.shape, interactions.shape[:-1]))
+
+    def _represents_size(self, size: int) -> bool:
+        """Return whether lookups of one interaction size can succeed."""
+        try:
+            check_represented_window(self.index, size, self.order)
+        except KeyError:
+            return False
+        return size in self.attributions_by_order
 
     def _normalize_represented(self, interaction: Sequence[int]) -> Interaction:
         normalized = normalize_interaction(
@@ -178,7 +197,21 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             return False
         return True
 
+    def _valid_players(self, interactions: Array) -> Array:
+        """Return per-interaction validity: players in range, no repeats."""
+        in_bounds = jnp.all(
+            (interactions >= 0) & (interactions < self.n_players),
+            axis=-1,
+        )
+        if interactions.shape[-1] < 2:
+            return in_bounds
+        ordered = jnp.sort(interactions, axis=-1)
+        distinct = jnp.all(ordered[..., 1:] > ordered[..., :-1], axis=-1)
+        return in_bounds & distinct
+
     def _position(self, interaction: Interaction) -> int:
+        if self.orientation == "undirected":
+            return interaction_rank(interaction, self.n_players)
         return list(
             iter_interactions(
                 self.n_players,
@@ -189,15 +222,25 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         ).index(interaction)
 
     def _positions(self, interactions: Array) -> Array:
-        return jnp.reshape(
-            jnp.asarray(
-                [
-                    self._position(self._normalize_represented(tuple(row)))
-                    for row in interaction_rows(interactions)
-                ]
-            ),
-            interactions.shape[:-1],
-        )
+        if self.orientation != "undirected" or not bool(
+            jnp.all(self._valid_players(interactions)),
+        ):
+            # the loop re-raises the per-interaction teaching error
+            return jnp.reshape(
+                jnp.asarray(
+                    [
+                        self._position(self._normalize_represented(tuple(row)))
+                        for row in interaction_rows(interactions)
+                    ]
+                ),
+                interactions.shape[:-1],
+            )
+        size = int(interactions.shape[-1])
+        check_represented_window(self.index, size, self.order)
+        if size not in self.attributions_by_order:
+            msg = f"no order-{size} attributions are stored on this explanation"
+            raise KeyError(msg)
+        return interaction_ranks(interactions, self.n_players)
 
 
 def _slice_attributions(value: object, key: tuple[object, ...]) -> object:

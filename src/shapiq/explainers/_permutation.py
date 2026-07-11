@@ -14,6 +14,7 @@ from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._valueaxes import to_leading, to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
+from shapiq.interactions._ranks import interaction_ranks
 from shapiq.sampling import (
     EmptyState,
     PairedSampler,
@@ -362,10 +363,21 @@ def _explain_interactions(
                 [permutations[..., start : start + n_windows] for start in range(size)],
                 axis=-1,
             )
-            ranks = _interaction_ranks(window_members, n_players)
-            onehots = ranks[..., None] == jnp.arange(comb(n_players, size))
-            sums = jnp.sum(onehots * derivatives[..., None], axis=(-3, -2))
-            counts = jnp.sum(onehots, axis=(-3, -2))
+            ranks = interaction_ranks(window_members, n_players)
+            n_interactions = comb(n_players, size)
+            sums = _scatter_by_rank(
+                jnp.broadcast_to(
+                    derivatives,
+                    jnp.broadcast_shapes(ranks.shape, derivatives.shape),
+                ),
+                ranks,
+                n_interactions,
+            )
+            counts = _scatter_by_rank(
+                jnp.ones(ranks.shape, dtype=jnp.int32),
+                ranks,
+                n_interactions,
+            )
             if bool(jnp.any(counts == 0)):
                 missing = int(jnp.sum(counts == 0))
                 walks_needed = -(-missing // n_windows)
@@ -444,7 +456,7 @@ def _taylor_exact_empty_derivatives(
     for pattern in nonempty_patterns(size):
         subset_members = members[:, jnp.asarray(pattern)]
         block_offset = 2 + sum(comb(n_players, s) for s in range(1, len(pattern)))
-        indices = block_offset + _interaction_ranks(subset_members, n_players)
+        indices = block_offset + interaction_ranks(subset_members, n_players)
         sign = (-1) ** (size - len(pattern))
         derivatives = derivatives + sign * seed_values[..., indices]
     return derivatives
@@ -523,6 +535,26 @@ def _chain_marginal_sums(
     return sums + jnp.sum(~chain_masks[..., -1, :] * last_marginals[..., None], axis=-2)
 
 
+def _scatter_by_rank(values: Array, ranks: Array, n_interactions: int) -> Array:
+    """Sum per-window values into per-interaction bins by lexicographic rank.
+
+    The scatter-add avoids materializing a one-hot
+    ``(walks, windows, interactions)`` tensor, whose size grows with the
+    full interaction count times the sample count.
+    """
+    lead = values.shape[:-2]
+    n_samples = values.shape[-2] * values.shape[-1]
+    flat_values = values.reshape(-1, n_samples)
+    flat_ranks = jnp.broadcast_to(ranks, values.shape).reshape(-1, n_samples)
+    rows = jnp.arange(flat_values.shape[0])[:, None]
+    binned = (
+        jnp.zeros((flat_values.shape[0], n_interactions), dtype=values.dtype)
+        .at[rows, flat_ranks]
+        .add(flat_values)
+    )
+    return binned.reshape(*lead, n_interactions)
+
+
 def _recover_permutations(chain_masks: Array) -> Array:
     """Recover player orderings from stored prefix chains."""
     previous_masks = jnp.concatenate(
@@ -534,12 +566,3 @@ def _recover_permutations(chain_masks: Array) -> Array:
     return jnp.argmax(jnp.concatenate([added_players, last_players], axis=-2), axis=-1)
 
 
-def _interaction_ranks(members: Array, n_players: int) -> Array:
-    """Return lexicographic ranks of fixed-size interactions among all combinations."""
-    size = members.shape[-1]
-    ordered = jnp.sort(members, axis=-1)
-    binomials = jnp.asarray(
-        [[comb(row, column) for column in range(size + 1)] for row in range(n_players)],
-    )
-    terms = binomials[n_players - 1 - ordered, size - jnp.arange(size)]
-    return comb(n_players, size) - 1 - jnp.sum(terms, axis=-1)
