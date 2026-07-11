@@ -10,6 +10,7 @@ try:
     import torch
 except ImportError as err:
     from ._error import _text_import_error
+
     raise _text_import_error from err
 
 from shapiq.imputer.base import Imputer
@@ -78,7 +79,7 @@ class TextImputer(Imputer):
         do not create perturbed strings; they build model-ready inputs directly.
 
     model_type: Target-model interface
-        ``"encoder_classifier"``, ``"causal_lm"``, or ``"seq2seq"``. Seq2seq is currently a placeholder.
+        ``"encoder_classifier"``, ``"causal_lm"``, and ``"seq2seq"``.
 
     """
 
@@ -226,7 +227,6 @@ class TextImputer(Imputer):
             msg = "MLMInfillingPerturbation currently supports only word, named-entity, and chunk players."
             raise ValueError(msg)
 
-
         # =============================================================================
         # TARGET CALLABLE
         # =============================================================================
@@ -341,9 +341,9 @@ class TextImputer(Imputer):
         return np.concatenate(all_scores)
 
     def _evaluate_coalitions(
-            self,
-            coalitions: np.ndarray,
-        ) -> np.ndarray:
+        self,
+        coalitions: np.ndarray,
+    ) -> np.ndarray:
         if self.perturbation_mode == "text" and isinstance(
             self.perturbation_strategy, MLMInfillingPerturbation
         ):
@@ -361,8 +361,7 @@ class TextImputer(Imputer):
                 all_scores.append(scores)
 
             all_scores = np.stack(all_scores, axis=0)
-            scores = np.mean(all_scores, axis=0)
-            return scores
+            return np.mean(all_scores, axis=0)
         if self.perturbation_mode == "tensor":
             if self.tensor_perturbation_strategy is None:
                 msg = "tensor_perturbation_strategy is required in tensor perturbation mode."
@@ -380,12 +379,10 @@ class TextImputer(Imputer):
                 player_separator="" if self.player_level == "subword" else " ",
             )
 
-            scores = self._batched_predict_from_inputs(masked_inputs)
-            return scores
+            return self._batched_predict_from_inputs(masked_inputs)
 
         texts = self._coalitions_to_texts(coalitions)
-        scores = self._batched_predict(texts)
-        return scores
+        return self._batched_predict(texts)
 
     def value_function(
         self,
@@ -417,14 +414,10 @@ class TextImputer(Imputer):
 
     def _compute_reference_predictions(self) -> None:
         self.full_prediction = float(
-            self._evaluate_coalitions(
-                self.grand_coalition.reshape(1, -1)
-            )[0]
+            self._evaluate_coalitions(self.grand_coalition.reshape(1, -1))[0]
         )
 
         self.empty_prediction = float(
-            self._evaluate_coalitions(
-                self.empty_coalition.reshape(1, -1)
-            )[0]
+            self._evaluate_coalitions(self.empty_coalition.reshape(1, -1))[0]
         )
         self.normalization_value = self.empty_prediction

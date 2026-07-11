@@ -305,13 +305,17 @@ class Seq2SeqCallable(BaseTargetCallable):
     """Score a fixed target sequence with an encoder-decoder model.
 
     For each input text, this callable computes the conditional log-probability
-    of generating ``target_label`` using teacher forcing:
+    of generating ``target_label`` using teacher forcing. A multi-token target
+    is scored token by token. By default, the final score is the mean token
+    log-probability, making targets of different lengths more comparable.
 
-        log P(target_label | input_text)
-
-    A multi-token target is scored token by token. By default, the final score
-    is the mean token log-probability, so targets of different lengths are more
-    comparable.
+    Args:
+        model: Encoder-decoder model used for target-sequence scoring.
+        tokenizer: Tokenizer associated with the model.
+        device: Device on which model inference is performed.
+        target_label: Target sequence whose conditional log-probability is scored.
+        prompt_template: Template used to format each input text. The template must contain a ``{text}`` placeholder.
+        normalize: Whether to average the total target log-probability over the number of target tokens.
     """
 
     def __init__(
@@ -415,7 +419,14 @@ class Seq2SeqCallable(BaseTargetCallable):
         return total_log_probs.cpu().numpy()
 
     def predict(self, texts: list[str]) -> np.ndarray:
-        """Compute log-probability scores of the Seq2Seq target sequence for a batch of texts."""
+        """Compute target-sequence log-probability scores.
+
+        Args:
+        texts: Input texts to score.
+
+        Returns:
+        One target-sequence log-probability score per input text.
+        """
         prompts = [self._build_prompt(text) for text in texts]
         encoder_inputs = self._encode_inputs(prompts)
 
@@ -437,7 +448,15 @@ class Seq2SeqCallable(BaseTargetCallable):
         self,
         inputs: list[dict[str, torch.Tensor]],
     ) -> np.ndarray:
-        """Score target sequence from pre-tokenized encoder inputs."""
+        """Score target sequences from pre-tokenized encoder inputs.
+
+        Args:
+        inputs: Pre-tokenized encoder inputs containing ``input_ids`` and ``attention_mask``.
+
+        Returns:
+        One target-sequence log-probability score per input.
+
+        """
         input_ids = torch.cat(
             [item["input_ids"] for item in inputs],
             dim=0,

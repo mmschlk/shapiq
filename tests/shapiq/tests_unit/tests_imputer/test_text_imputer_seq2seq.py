@@ -4,22 +4,25 @@
 #           teacher forcing, normalisation, prompt template, end-to-end
 #           integration with TextImputer
 # ============================================================================
+from __future__ import annotations
 
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-import torch
 
-from shapiq.imputer.text_imputer import (
+torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from shapiq.imputer.text_imputer import (  # noqa: E402
+    NeutralPerturbation,
     Seq2SeqCallable,
     TextImputer,
-    NeutralPerturbation,
 )
 
 MODULE = "shapiq.imputer.text_imputer"
@@ -29,6 +32,7 @@ MODULE = "shapiq.imputer.text_imputer"
 # Mock fixtures — no real model downloads; all model calls go through MagicMock
 # ============================================================================
 
+
 def make_seq2seq_tokenizer() -> MagicMock:
     """Return a minimal seq2seq tokenizer substitute.
 
@@ -36,16 +40,16 @@ def make_seq2seq_tokenizer() -> MagicMock:
     each call to encode() pops from the front of the queue.
     """
     tok = MagicMock()
-    tok.pad_token    = "[PAD]"
+    tok.pad_token = "[PAD]"
     tok.pad_token_id = 0
-    tok.eos_token    = "</s>"
+    tok.eos_token = "</s>"
     tok.eos_token_id = 2
 
     tok.encode_queue = []
     tok.encode.side_effect = lambda text, **kwargs: tok.encode_queue.pop(0)
 
     tok.return_value = {
-        "input_ids":      torch.tensor([[10, 11, 12]]),
+        "input_ids": torch.tensor([[10, 11, 12]]),
         "attention_mask": torch.ones((1, 3), dtype=torch.long),
     }
     return tok
@@ -62,7 +66,7 @@ def make_seq2seq_model(decoder_start_token_id: int = 0) -> MagicMock:
     model = MagicMock()
     model.to.return_value = model
 
-    model.config.is_encoder_decoder     = True
+    model.config.is_encoder_decoder = True
     model.config.decoder_start_token_id = decoder_start_token_id
 
     encoder_mock = MagicMock()
@@ -92,8 +96,8 @@ def seq2seq_model() -> MagicMock:
 # "is_encoder_decoder" must be raised.
 # ============================================================================
 
-class TestModelTypeValidation:
 
+class TestModelTypeValidation:
     def test_rejects_model_with_is_encoder_decoder_false(
         self,
         seq2seq_tokenizer: MagicMock,
@@ -165,8 +169,8 @@ class TestModelTypeValidation:
     ) -> None:
         """ValueError must be raised when both decoder_start_token_id and
         pad_token_id are None."""
-        seq2seq_tokenizer.encode_queue  = [[1]]
-        seq2seq_tokenizer.pad_token_id  = None
+        seq2seq_tokenizer.encode_queue = [[1]]
+        seq2seq_tokenizer.pad_token_id = None
 
         bad_model = make_seq2seq_model()
         bad_model.config.decoder_start_token_id = None
@@ -184,8 +188,8 @@ class TestModelTypeValidation:
     ) -> None:
         """When config.decoder_start_token_id is None, tokenizer.pad_token_id
         must be used as the fallback."""
-        seq2seq_tokenizer.encode_queue  = [[1]]
-        seq2seq_tokenizer.pad_token_id  = 7
+        seq2seq_tokenizer.encode_queue = [[1]]
+        seq2seq_tokenizer.pad_token_id = 7
 
         model = make_seq2seq_model()
         model.config.decoder_start_token_id = None
@@ -206,14 +210,15 @@ class TestModelTypeValidation:
 # The scalar value must be a finite negative number (log-probability).
 # ============================================================================
 
-class TestSingleTokenTarget:
 
+class TestSingleTokenTarget:
     def _make_callable(
         self,
         seq2seq_model: MagicMock,
         seq2seq_tokenizer: MagicMock,
         token_id: int = 42,
         logit_value: float = 2.0,
+        *,
         normalize: bool = True,
     ) -> Seq2SeqCallable:
         """Build a Seq2SeqCallable with a single-token target.
@@ -289,13 +294,13 @@ class TestSingleTokenTarget:
         seq2seq_tokenizer: MagicMock,
     ) -> None:
         """When predict receives N texts, the output shape must be (N,)."""
-        token_id   = 42
-        n_texts    = 3
+        token_id = 42
+        n_texts = 3
         vocab_size = 100
 
         seq2seq_tokenizer.encode_queue = [[token_id]]
         seq2seq_tokenizer.return_value = {
-            "input_ids":      torch.tensor([[10, 11, 12]] * n_texts),
+            "input_ids": torch.tensor([[10, 11, 12]] * n_texts),
             "attention_mask": torch.ones((n_texts, 3), dtype=torch.long),
         }
 
@@ -322,14 +327,15 @@ class TestSingleTokenTarget:
 # equals the sum of per-token log-probabilities.
 # ============================================================================
 
-class TestMultiTokenTarget:
 
+class TestMultiTokenTarget:
     def _make_two_token_callable(
         self,
         seq2seq_model: MagicMock,
         seq2seq_tokenizer: MagicMock,
         token_ids: list[int],
         logit_value: float = 3.0,
+        *,
         normalize: bool = False,
     ) -> Seq2SeqCallable:
         """Build a callable with a two-token target.
@@ -340,7 +346,7 @@ class TestMultiTokenTarget:
         seq2seq_tokenizer.encode_queue = [token_ids]
 
         vocab_size = 100
-        logits     = torch.zeros((1, len(token_ids), vocab_size))
+        logits = torch.zeros((1, len(token_ids), vocab_size))
         for tid in token_ids:
             logits[:, :, tid] = logit_value
         seq2seq_model.return_value = SimpleNamespace(logits=logits)
@@ -359,10 +365,8 @@ class TestMultiTokenTarget:
         seq2seq_tokenizer: MagicMock,
     ) -> None:
         """model() must be called exactly N times for an N-token target."""
-        token_ids    = [10, 20]
-        callable_obj = self._make_two_token_callable(
-            seq2seq_model, seq2seq_tokenizer, token_ids
-        )
+        token_ids = [10, 20]
+        callable_obj = self._make_two_token_callable(seq2seq_model, seq2seq_tokenizer, token_ids)
 
         callable_obj.predict(["text"])
 
@@ -374,9 +378,9 @@ class TestMultiTokenTarget:
         seq2seq_tokenizer: MagicMock,
     ) -> None:
         """With normalize=False the score must equal the sum of per-token log-probs."""
-        token_ids   = [10, 20]
+        token_ids = [10, 20]
         logit_value = 3.0
-        vocab_size  = 100
+        vocab_size = 100
 
         seq2seq_tokenizer.encode_queue = [token_ids]
 
@@ -412,7 +416,7 @@ class TestMultiTokenTarget:
     ) -> None:
         """The length of decoder_input_ids passed to model() must increase by
         one at each teacher-forcing step."""
-        token_ids  = [10, 20, 30]
+        token_ids = [10, 20, 30]
         vocab_size = 100
 
         seq2seq_tokenizer.encode_queue = [token_ids]
@@ -450,14 +454,15 @@ class TestMultiTokenTarget:
 # normalize=True  → score = mean of per-token log-probs = sum / n_tokens
 # ============================================================================
 
-class TestNormalization:
 
+class TestNormalization:
     def _get_score(
         self,
         seq2seq_model: MagicMock,
         seq2seq_tokenizer: MagicMock,
         token_ids: list[int],
         logit_value: float,
+        *,
         normalize: bool,
     ) -> float:
         """Compute the callable score for a given token_ids target."""
@@ -467,7 +472,7 @@ class TestNormalization:
 
         def make_logits(**kwargs) -> SimpleNamespace:
             dec_len = kwargs["decoder_input_ids"].shape[1]
-            logits  = torch.zeros((1, dec_len, vocab_size))
+            logits = torch.zeros((1, dec_len, vocab_size))
             for tid in token_ids:
                 logits[:, :, tid] = logit_value
             return SimpleNamespace(logits=logits)
@@ -491,10 +496,10 @@ class TestNormalization:
     ) -> None:
         """For a single-token target, normalize=True and normalize=False
         must produce the same score (dividing by 1 is a no-op)."""
-        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, [5], 2.0, False)
+        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, [5], 2.0, normalize=False)
 
         seq2seq_model.reset_mock()
-        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, [5], 2.0, True)
+        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, [5], 2.0, normalize=True)
 
         assert abs(raw - norm) < 1e-6
 
@@ -506,10 +511,10 @@ class TestNormalization:
         """For a multi-token target, norm_score must equal raw_score / n_tokens."""
         token_ids = [5, 6, 7]
 
-        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, False)
+        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, normalize=False)
 
         seq2seq_model.reset_mock()
-        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, True)
+        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, normalize=True)
 
         expected = raw / len(token_ids)
         assert abs(norm - expected) < 1e-5
@@ -524,10 +529,10 @@ class TestNormalization:
         less negative."""
         token_ids = [5, 6]
 
-        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, False)
+        raw = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, normalize=False)
 
         seq2seq_model.reset_mock()
-        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, True)
+        norm = self._get_score(seq2seq_model, seq2seq_tokenizer, token_ids, 2.0, normalize=True)
 
         assert norm > raw
 
@@ -540,8 +545,8 @@ class TestNormalization:
 # reflected in what the tokenizer receives.
 # ============================================================================
 
-class TestPromptTemplate:
 
+class TestPromptTemplate:
     def test_default_template_is_noop(
         self,
         seq2seq_model: MagicMock,
@@ -561,23 +566,26 @@ class TestPromptTemplate:
 
         assert callable_obj._build_prompt("hello world") == "hello world"
 
-    @pytest.mark.parametrize("template,text,expected", [
-        (
-            "sst2 sentence: {text}",
-            "great film",
-            "sst2 sentence: great film",
-        ),
-        (
-            "Sentiment of '{text}':",
-            "great film",
-            "Sentiment of 'great film':",
-        ),
-        (
-            "Q: {text}\nA:",
-            "great film",
-            "Q: great film\nA:",
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "template,text,expected",
+        [
+            (
+                "sst2 sentence: {text}",
+                "great film",
+                "sst2 sentence: great film",
+            ),
+            (
+                "Sentiment of '{text}':",
+                "great film",
+                "Sentiment of 'great film':",
+            ),
+            (
+                "Q: {text}\nA:",
+                "great film",
+                "Q: great film\nA:",
+            ),
+        ],
+    )
     def test_build_prompt_formats_correctly(
         self,
         seq2seq_model: MagicMock,
@@ -610,12 +618,10 @@ class TestPromptTemplate:
         seq2seq_tokenizer.encode_queue = [[1]]
 
         vocab_size = 100
-        seq2seq_model.return_value = SimpleNamespace(
-            logits=torch.zeros((1, 1, vocab_size))
-        )
+        seq2seq_model.return_value = SimpleNamespace(logits=torch.zeros((1, 1, vocab_size)))
 
-        template        = "sst2 sentence: {text}"
-        input_text      = "great film"
+        template = "sst2 sentence: {text}"
+        input_text = "great film"
         expected_prompt = "sst2 sentence: great film"
 
         callable_obj = Seq2SeqCallable(
@@ -628,7 +634,7 @@ class TestPromptTemplate:
 
         callable_obj.predict([input_text])
 
-        call_args    = seq2seq_tokenizer.call_args
+        call_args = seq2seq_tokenizer.call_args
         actual_texts = call_args[0][0]
         assert actual_texts == [expected_prompt]
 
@@ -640,16 +646,14 @@ class TestPromptTemplate:
         """Different prompt templates must cause the tokenizer to receive
         different input texts."""
         vocab_size = 100
-        seq2seq_model.return_value = SimpleNamespace(
-            logits=torch.zeros((1, 1, vocab_size))
-        )
+        seq2seq_model.return_value = SimpleNamespace(logits=torch.zeros((1, 1, vocab_size)))
 
         prompts_seen: list[list[str]] = []
 
         def capture_tokenizer(texts, **kwargs):
             prompts_seen.append(texts)
             return {
-                "input_ids":      torch.tensor([[10, 11, 12]]),
+                "input_ids": torch.tensor([[10, 11, 12]]),
                 "attention_mask": torch.ones((1, 3), dtype=torch.long),
             }
 
@@ -679,8 +683,8 @@ class TestPromptTemplate:
 # full_prediction() and value_function() must return finite values.
 # ============================================================================
 
-class TestSeq2SeqTextImputer:
 
+class TestSeq2SeqTextImputer:
     def _make_imputer(
         self,
         seq2seq_model: MagicMock,
@@ -689,6 +693,7 @@ class TestSeq2SeqTextImputer:
         perturbation_type: str = "neutral",
         target_label: str = "positive",
         prompt_template: str = "{text}",
+        *,
         normalize: bool = True,
     ) -> TextImputer:
         """Build a seq2seq TextImputer with minimal configuration."""
@@ -699,9 +704,7 @@ class TestSeq2SeqTextImputer:
         player_strategy.coalition_to_text.return_value = "perturbed text"
 
         vocab_size = 100
-        seq2seq_model.return_value = SimpleNamespace(
-            logits=torch.zeros((1, 1, vocab_size))
-        )
+        seq2seq_model.return_value = SimpleNamespace(logits=torch.zeros((1, 1, vocab_size)))
 
         return TextImputer(
             model=seq2seq_model,
@@ -713,6 +716,7 @@ class TestSeq2SeqTextImputer:
             player_strategy=player_strategy,
             perturbation_strategy=NeutralPerturbation(),
             normalize_target_logprob=normalize,
+            device="cpu",
         )
 
     def test_target_callable_is_seq2seq_callable(
@@ -731,9 +735,7 @@ class TestSeq2SeqTextImputer:
         seq2seq_tokenizer: MagicMock,
     ) -> None:
         """target_label must be forwarded correctly to the internal callable."""
-        imputer = self._make_imputer(
-            seq2seq_model, seq2seq_tokenizer, target_label="negative"
-        )
+        imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer, target_label="negative")
         assert imputer.target_callable.target_label == "negative"
 
     def test_prompt_template_forwarded_to_callable(
@@ -743,9 +745,7 @@ class TestSeq2SeqTextImputer:
     ) -> None:
         """prompt_template must be forwarded correctly to the internal callable."""
         template = "sst2 sentence: {text}"
-        imputer  = self._make_imputer(
-            seq2seq_model, seq2seq_tokenizer, prompt_template=template
-        )
+        imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer, prompt_template=template)
         assert imputer.target_callable.prompt_template == template
 
     def test_normalize_forwarded_to_callable(
@@ -755,9 +755,7 @@ class TestSeq2SeqTextImputer:
     ) -> None:
         """normalize_target_logprob must be forwarded correctly to the
         internal callable."""
-        imputer = self._make_imputer(
-            seq2seq_model, seq2seq_tokenizer, normalize=False
-        )
+        imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer, normalize=False)
         assert imputer.target_callable.normalize is False
 
     def test_full_prediction_returns_finite_float(
@@ -765,15 +763,9 @@ class TestSeq2SeqTextImputer:
         seq2seq_model: MagicMock,
         seq2seq_tokenizer: MagicMock,
     ) -> None:
-        """full_prediction() must return a finite float."""
+        """full_prediction must be a finite float."""
         imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer)
-
-        imputer.target_callable = MagicMock()
-        imputer.target_callable.predict.return_value = np.array(
-            [-1.5], dtype=np.float32
-        )
-
-        score = imputer.full_prediction()
+        score = imputer.full_prediction
         assert isinstance(score, float)
         assert np.isfinite(score)
 
@@ -786,12 +778,10 @@ class TestSeq2SeqTextImputer:
         imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer)
 
         imputer.target_callable = MagicMock()
-        imputer.target_callable.predict.return_value = np.array(
-            [-0.8], dtype=np.float32
-        )
+        imputer.target_callable.predict.return_value = np.array([-0.8], dtype=np.float32)
 
         coalition = np.array([[1, 0, 1]])
-        scores    = imputer.value_function(coalition)
+        scores = imputer.value_function(coalition)
 
         assert isinstance(scores, np.ndarray)
         assert scores.shape == (1,)
@@ -807,12 +797,10 @@ class TestSeq2SeqTextImputer:
         imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer)
 
         imputer.target_callable = MagicMock()
-        imputer.target_callable.predict.return_value = np.array(
-            [-2.0], dtype=np.float32
-        )
+        imputer.target_callable.predict.return_value = np.array([-2.0], dtype=np.float32)
 
         coalition = np.array([[0, 0, 0]])
-        scores    = imputer.value_function(coalition)
+        scores = imputer.value_function(coalition)
 
         assert np.isfinite(scores[0])
 
@@ -824,19 +812,15 @@ class TestSeq2SeqTextImputer:
         """For a batch of texts, the encoder must be called exactly once
         regardless of the number of target tokens."""
         target_token_ids = [10, 20, 30]
-        vocab_size       = 100
+        vocab_size = 100
 
         seq2seq_tokenizer.encode_queue = [target_token_ids]
 
         encoder_mock = MagicMock()
-        encoder_mock.return_value = SimpleNamespace(
-            last_hidden_state=torch.zeros((1, 3, 16))
-        )
+        encoder_mock.return_value = SimpleNamespace(last_hidden_state=torch.zeros((1, 3, 16)))
         seq2seq_model.get_encoder.return_value = encoder_mock
 
-        seq2seq_model.return_value = SimpleNamespace(
-            logits=torch.zeros((1, 1, vocab_size))
-        )
+        seq2seq_model.return_value = SimpleNamespace(logits=torch.zeros((1, 1, vocab_size)))
 
         callable_obj = Seq2SeqCallable(
             model=seq2seq_model,

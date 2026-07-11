@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 import numpy as np
 import pytest
-import torch
 from nltk.tree import Tree
 
-from shapiq.imputer.text_imputer import (
+torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from transformers import AutoModelForSequenceClassification, AutoTokenizer  # noqa: E402
+
+from shapiq.imputer.text_imputer import (  # noqa: E402
     CausalLMCallable,
     ChunkPlayerStrategy,
     EncoderClassifierCallable,
@@ -21,7 +26,6 @@ from shapiq.imputer.text_imputer import (
     PadTokenPerturbation,
     RemovalPerturbation,
     SentencePlayerStrategy,
-    Seq2SeqCallable,
     SubwordPlayerStrategy,
     TextImputer,
     WordNetNeutralPerturbation,
@@ -37,6 +41,7 @@ MODULE = "shapiq.imputer.text_imputer"
 PLAYERS_MODULE = "shapiq.imputer.text.players"
 PERTURBATIONS_MODULE = "shapiq.imputer.text.perturbations"
 CALLABLES_MODULE = "shapiq.imputer.text.callables"
+
 
 class DummyTokenizer:
     """Small tokenizer substitute used by fast unit tests."""
@@ -117,6 +122,10 @@ def tokenizer() -> DummyTokenizer:
 def model() -> MagicMock:
     model = MagicMock()
     model.to.return_value = model
+    model.return_value = SimpleNamespace(
+        logits=torch.tensor([[1.0, 2.0]]),
+    )
+
     return model
 
 
@@ -140,10 +149,13 @@ def test_require_nltk_resource_passes_when_resource_exists() -> None:
 
 
 def test_require_nltk_resource_has_helpful_error_when_missing() -> None:
-    with patch(
-        f"{PLAYERS_MODULE}.nltk.data.find",
-        side_effect=LookupError("not installed"),
-    ), pytest.raises(LookupError, match=r"nltk\.download\('punkt_tab'\)"):
+    with (
+        patch(
+            f"{PLAYERS_MODULE}.nltk.data.find",
+            side_effect=LookupError("not installed"),
+        ),
+        pytest.raises(LookupError, match=r"nltk\.download\('punkt_tab'\)"),
+    ):
         _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
 
 
@@ -190,15 +202,21 @@ def test_word_player_strategy_with_mocked_nltk(
     assert strategy.get_players() == ["I", "love", "cats"]
     assert strategy.n_players == 3
 
-    assert strategy.coalition_to_text(
-        np.array([1, 0, 1]),
-        MaskTokenPerturbation(DummyTokenizer()),
-    ) == "I [MASK] cats"
+    assert (
+        strategy.coalition_to_text(
+            np.array([1, 0, 1]),
+            MaskTokenPerturbation(DummyTokenizer()),
+        )
+        == "I [MASK] cats"
+    )
 
-    assert strategy.coalition_to_text(
-        np.array([1, 0, 1]),
-        RemovalPerturbation(),
-    ) == "I cats"
+    assert (
+        strategy.coalition_to_text(
+            np.array([1, 0, 1]),
+            RemovalPerturbation(),
+        )
+        == "I cats"
+    )
 
 
 def test_word_player_strategy_passes_context_to_perturbation(
@@ -213,10 +231,13 @@ def test_word_player_strategy_passes_context_to_perturbation(
     perturbation = MagicMock()
     perturbation.perturb.return_value = "X"
 
-    assert strategy.coalition_to_text(
-        np.array([1, 0, 1]),
-        perturbation,
-    ) == "I X cats"
+    assert (
+        strategy.coalition_to_text(
+            np.array([1, 0, 1]),
+            perturbation,
+        )
+        == "I X cats"
+    )
 
     perturbation.perturb.assert_called_once()
     args, kwargs = perturbation.perturb.call_args
@@ -226,7 +247,7 @@ def test_word_player_strategy_passes_context_to_perturbation(
     np.testing.assert_array_equal(
         context["coalition"],
         np.array([1, 0, 1]),
-        )
+    )
 
     assert context["mask_index"] == 1
 
@@ -248,10 +269,13 @@ def test_named_entity_player_strategy_groups_entities(
         strategy = NamedEntityPlayerStrategy("John Smith visited Berlin")
 
     assert strategy.get_players() == ["John Smith", "visited", "Berlin"]
-    assert strategy.coalition_to_text(
-        np.array([1, 0, 1]),
-        NeutralPerturbation("something"),
-    ) == "John Smith something Berlin"
+    assert (
+        strategy.coalition_to_text(
+            np.array([1, 0, 1]),
+            NeutralPerturbation("something"),
+        )
+        == "John Smith something Berlin"
+    )
 
 
 def test_chunk_player_strategy_groups_phrases(
@@ -273,10 +297,13 @@ def test_chunk_player_strategy_groups_phrases(
         strategy = ChunkPlayerStrategy("the movie was very good")
 
     assert strategy.get_players() == ["the movie", "was very good"]
-    assert strategy.coalition_to_text(
-        np.array([0, 1]),
-        NeutralPerturbation("something"),
-    ) == "something was very good"
+    assert (
+        strategy.coalition_to_text(
+            np.array([0, 1]),
+            NeutralPerturbation("something"),
+        )
+        == "something was very good"
+    )
 
 
 def test_sentence_player_strategy_with_mocked_nltk(
@@ -289,10 +316,13 @@ def test_sentence_player_strategy_with_mocked_nltk(
         strategy = SentencePlayerStrategy("First. Second.")
 
     assert strategy.get_players() == ["First.", "Second."]
-    assert strategy.coalition_to_text(
-        np.array([1, 0]),
-        PadTokenPerturbation(DummyTokenizer()),
-    ) == "First. [PAD]"
+    assert (
+        strategy.coalition_to_text(
+            np.array([1, 0]),
+            PadTokenPerturbation(DummyTokenizer()),
+        )
+        == "First. [PAD]"
+    )
 
 
 def test_player_factory_creates_correct_strategy(
@@ -353,7 +383,6 @@ def test_mask_and_pad_require_special_tokens() -> None:
     ],
 )
 def test_penn_to_wordnet_mapping(tag: str, expected: str | None) -> None:
-
     fake_wn = SimpleNamespace(
         NOUN="n",
         VERB="v",
@@ -501,14 +530,17 @@ def test_mlm_infilling_returns_original_player_if_index_missing(
     perturbation = make_mlm_without_constructor(tokenizer, model)
     perturbation._predict_masks = MagicMock(return_value={})
 
-    assert perturbation.perturb(
-        "movie",
-        context={
-            "players": ["movie"],
-            "coalition": np.array([0]),
-            "mask_index": 0,
-        },
-    ) == "movie"
+    assert (
+        perturbation.perturb(
+            "movie",
+            context={
+                "players": ["movie"],
+                "coalition": np.array([0]),
+                "mask_index": 0,
+            },
+        )
+        == "movie"
+    )
 
 
 def test_mlm_predict_masks_filters_invalid_tokens(
@@ -526,9 +558,7 @@ def test_mlm_predict_masks_filters_invalid_tokens(
 
     with patch(
         f"{PERTURBATIONS_MODULE}.torch.multinomial",
-        side_effect=lambda *args, **kwargs: torch.tensor(
-            [next(sampled_ids)]
-        ),
+        side_effect=lambda *args, **kwargs: torch.tensor([next(sampled_ids)]),
     ):
         replacements = perturbation._predict_masks(
             players=["This", "movie", "works"],
@@ -628,8 +658,8 @@ def test_causal_callable_scores_multi_token_target(
 ) -> None:
     # First encode call is target label; following calls are prompt encodings.
     tokenizer.encode_return_values = [
-        [5, 6],       # target label
-        [10, 11],     # prompt
+        [5, 6],  # target label
+        [10, 11],  # prompt
     ]
 
     logits = torch.zeros((1, 2, 20))
@@ -648,9 +678,7 @@ def test_causal_callable_scores_multi_token_target(
 
     assert scores.shape == (1,)
     assert model.call_count == 2
-    assert callable_._build_prompt("nice") == (
-        "Review: nice\n\nSentiment:"
-    )
+    assert callable_._build_prompt("nice") == ("Review: nice\n\nSentiment:")
 
 
 def test_causal_callable_uses_eos_as_pad_when_pad_is_missing(
@@ -684,8 +712,6 @@ def test_causal_callable_rejects_empty_target(
         )
 
 
-
-
 # ============================================================================
 # TextImputer orchestration
 # ============================================================================
@@ -695,6 +721,8 @@ def make_player_strategy() -> MagicMock:
     strategy = MagicMock()
     strategy.n_players = 2
     strategy.coalition_to_text.side_effect = [
+        "full-text",
+        "empty-text",
         "text-1",
         "text-2",
         "text-3",
@@ -728,7 +756,7 @@ def test_text_imputer_batches_and_returns_scores(
         np.array([[1, 0], [0, 1], [0, 0]]),
     )
 
-    np.testing.assert_allclose(scores, np.array([0.1, 0.2, 0.3]))
+    np.testing.assert_allclose(scores, np.array([0.1, 0.2, imputer.empty_prediction]))
     assert imputer.target_callable.predict.call_args_list == [
         call(["text-1", "text-2"]),
         call(["text-3"]),
@@ -783,6 +811,15 @@ def test_text_imputer_mlm_averages_multiple_samples(
     player_strategy = MagicMock()
     player_strategy.n_players = 1
     player_strategy.coalition_to_text.side_effect = [
+        # full prediction
+        "full-1",
+        "full-2",
+        "full-3",
+        # empty prediction
+        "empty-1",
+        "empty-2",
+        "empty-3",
+        # value_function
         "sample-1",
         "sample-2",
         "sample-3",
@@ -813,7 +850,7 @@ def test_text_imputer_mlm_averages_multiple_samples(
         np.array([2.0]),
     )
 
-    assert mlm.clear_cache.call_count == 3
+    assert mlm.clear_cache.call_count == mlm.num_samples * 3
     assert imputer._last_generated_texts == [
         "sample-1",
         "sample-2",
@@ -876,14 +913,42 @@ def test_text_imputer_full_prediction_and_call(
         perturbation_strategy=NeutralPerturbation(),
     )
 
-    imputer.target_callable = MagicMock()
-    imputer.target_callable.predict.side_effect = [
-        np.array([0.9]),  # full_prediction
-        np.array([0.4]),  # __call__
-    ]
+    assert imputer.full_prediction == 2.0
 
-    assert imputer.full_prediction() == 0.9
-    np.testing.assert_allclose(
-        imputer(np.array([1])),
-        np.array([0.4]),
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    os.environ.get("RUN_SLOW_TESTS") != "1",
+    reason="Set RUN_SLOW_TESTS=1 to run slow end-to-end tests.",
+)
+def test_text_imputer_end_to_end_with_tiny_checkpoint() -> None:
+    """Run TextImputer end-to-end with a real tiny Hugging Face checkpoint."""
+    model_name = "hf-internal-testing/tiny-random-bert"
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+    imputer = TextImputer(
+        model=model,
+        tokenizer=tokenizer,
+        text="This movie is surprisingly good.",
+        player_level="subword",
+        perturbation_type="mask",
+        model_type="encoder_classifier",
+        class_idx=1,
+        output_type="logit",
+        device="cpu",
     )
+
+    coalitions = np.stack(
+        [
+            imputer.empty_coalition,
+            imputer.grand_coalition,
+        ]
+    )
+
+    scores = imputer(coalitions)
+
+    assert scores.shape == (2,)
+    assert np.all(np.isfinite(scores))
+    assert scores[0] == pytest.approx(0.0)

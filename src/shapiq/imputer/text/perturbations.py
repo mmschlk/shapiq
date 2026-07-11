@@ -160,7 +160,6 @@ class RemovalPerturbation(BasePerturbationStrategy):
         """Remove a player by replacing it with an empty string."""
         del player
         del context
-        """Return empty string."""
         return ""
 
 

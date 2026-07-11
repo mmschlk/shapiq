@@ -21,5 +21,5 @@ __all__ = [
     "TabPFNImputer",
     "GaussianImputer",
     "GaussianCopulaImputer",
-    "TextImputer"
+    "TextImputer",
 ]
