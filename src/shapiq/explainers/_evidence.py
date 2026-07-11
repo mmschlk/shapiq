@@ -207,7 +207,10 @@ class EvidenceApproximator(
                 n_value_axes,
             )
         state_values = None
-        if isinstance(self.state, SamplingState):
+        # reading stored values materializes the state's lazy chunks, so only
+        # touch them when duplicates need filling or no novel values exist to
+        # serve as the dtype reference
+        if isinstance(self.state, SamplingState) and (state_duplicates or not novel_positions):
             state_values = to_leading(
                 jnp.asarray(cast("SamplingState[Array]", self.state).values),
                 n_value_axes,

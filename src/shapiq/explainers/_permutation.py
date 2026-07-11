@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 import jax.numpy as jnp
 from jax import Array
 
-from shapiq._shape import ensure_bool
+from shapiq._shape import broadcast_shapes, ensure_bool
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
@@ -368,7 +368,7 @@ def _explain_interactions(
             sums = _scatter_by_rank(
                 jnp.broadcast_to(
                     derivatives,
-                    jnp.broadcast_shapes(ranks.shape, derivatives.shape),
+                    broadcast_shapes(ranks.shape, derivatives.shape),
                 ),
                 ranks,
                 n_interactions,

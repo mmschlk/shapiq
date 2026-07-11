@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Self
 
-import jax.numpy as jnp
+import numpy as np
 
 from shapiq._shape import Shape, logical_size
 from shapiq.interactions import (
@@ -15,8 +15,6 @@ from shapiq.interactions import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
-
-    from jax import Array
 
 
 class ExplanationArray[ValueT](ABC):
@@ -121,24 +119,28 @@ def check_represented_window(index: InteractionIndex, size: int, order: int) -> 
     raise KeyError(msg)
 
 
-def as_interaction_array(value: object) -> Array:
-    """Coerce an array-of-interactions lookup argument, teaching on misuse."""
-    array = jnp.asarray(value)
+def as_interaction_array(value: object) -> np.ndarray:
+    """Coerce an array-of-interactions lookup argument, teaching on misuse.
+
+    Interactions are host-side index metadata, so lookups coerce to NumPy;
+    device-backed lookup arrays come home once here.
+    """
+    array = np.asarray(value)
     if array.ndim < 1:
         msg = (
             "interactions must be tuples of player indices, e.g. explanation((0,)) "
             "for player 0; array lookups need a final interaction-members axis"
         )
         raise TypeError(msg)
-    if array.dtype == jnp.bool_ or not jnp.issubdtype(array.dtype, jnp.integer):
+    if array.dtype == np.bool_ or not np.issubdtype(array.dtype, np.integer):
         msg = "interaction arrays must have integer dtype"
         raise TypeError(msg)
     return array
 
 
-def interaction_rows(array: Array) -> list[list[int]]:
+def interaction_rows(array: np.ndarray) -> list[list[int]]:
     """Return the interactions of a lookup array as flat host rows."""
-    return jnp.reshape(array, (-1, array.shape[-1])).tolist()
+    return array.reshape(-1, array.shape[-1]).tolist()
 
 
 def validate_explained_index(index: object, *, order: int) -> InteractionIndex:

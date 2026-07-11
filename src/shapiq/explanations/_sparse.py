@@ -5,7 +5,15 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 import jax.numpy as jnp
 
-from shapiq._shape import Shape, normalize_shape, validate_n_players
+from shapiq._shape import (
+    Shape,
+    broadcast_shapes,
+    expand_ellipsis,
+    indexed_shape,
+    normalize_shape,
+    shape_of,
+    validate_n_players,
+)
 from shapiq.explanations._base import (
     ExplanationArray,
     as_interaction_array,
@@ -61,7 +69,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
         object.__setattr__(self, "attributions", normalized)
         expected = (*shape, *value_shape)
         for interaction, value in normalized.items():
-            actual = jnp.shape(cast("jnp.ndarray", value))
+            actual = shape_of(value)
             if actual != expected:
                 msg = (
                     f"attributions for {interaction} have shape {actual}, expected "
@@ -69,7 +77,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
                 )
                 raise ValueError(msg)
         if self.baseline is not None:
-            actual = jnp.shape(cast("jnp.ndarray", self.baseline))
+            actual = shape_of(self.baseline)
             if actual != expected:
                 msg = f"the baseline has shape {actual}, expected {expected}"
                 raise ValueError(msg)
@@ -79,8 +87,8 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
         if self.shape == ():
             msg = "cannot index a scalar explanation"
             raise IndexError(msg)
-        key_tuple = key if isinstance(key, tuple) else (key,)
-        new_shape = tuple(int(dim) for dim in jnp.empty(self.shape)[key].shape)
+        new_shape = indexed_shape(self.shape, key)
+        key_tuple = expand_ellipsis(key if isinstance(key, tuple) else (key,), self.ndim)
         new_values = {
             interaction: cast("ValueT", cast("_Indexable", value)[(*key_tuple, Ellipsis)])
             for interaction, value in self.attributions.items()
@@ -152,7 +160,7 @@ class SparseExplanationArray[ValueT](ExplanationArray[ValueT]):
             dtype=bool,
         )
         mask = jnp.reshape(mask, interactions.shape[:-1])
-        return jnp.broadcast_to(mask, jnp.broadcast_shapes(self.shape, interactions.shape[:-1]))
+        return jnp.broadcast_to(mask, broadcast_shapes(self.shape, interactions.shape[:-1]))
 
     def _single_attribution(self, interaction: Sequence[int]) -> ValueT:
         normalized = self._normalize_valid(interaction)

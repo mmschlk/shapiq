@@ -1,27 +1,26 @@
 from __future__ import annotations
 
+from copy import copy
 from dataclasses import dataclass
 from typing import Protocol, Self, cast
 
 import jax.numpy as jnp
 
-from shapiq._shape import Shape, ensure_bool, normalize_shape
+from shapiq._shape import Shape, ShapeLike, ensure_bool, normalize_shape
 from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
 from shapiq.errors import HistoryError
 
 
 class ApproximationState:
-    """Base abstraction for approximator evidence."""
+    """Base abstraction for approximator evidence.
 
-    @property
-    def mutable(self) -> bool:
-        """Return whether this state mutates in place."""
-        return False
+    ``mutable`` declares value-visible in-place mutation; value-equivalent
+    internal caching does not count. Both flags are plain class attributes
+    so subclasses may shadow them with fields or instance assignments.
+    """
 
-    @property
-    def track_history(self) -> bool:
-        """Return whether history tracking is enabled."""
-        return False
+    mutable: bool = False
+    track_history: bool = False
 
     def rollback(self, steps: int = 1) -> Self:
         """Return a value-equivalent previous state."""
@@ -114,64 +113,139 @@ class EmptyState(ApproximationState):
         return [self] if include_self else []
 
 
-@dataclass(eq=False, frozen=True)
 class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
-    """Approximation state storing sampled coalitions and evaluated values."""
+    """Approximation state storing sampled coalitions and evaluated values.
 
-    coalitions: CoalitionArray
-    values: ValueT
-    target_shape: Shape = ()
-    track_history: bool = False
-    _history_n_samples: tuple[int, ...] | None = None
+    Evidence accumulates as chunks: ``append`` shares the stored chunks and
+    adds the new one without copying, and the ``coalitions`` and ``values``
+    views concatenate all chunks once, on first access, caching the result.
+    Sampling many times between explanations therefore costs one
+    concatenation per explanation instead of one per sample call.
+    """
 
-    def __post_init__(self) -> None:
-        """Normalize metadata and initialize compact history."""
-        ensure_bool("track_history", self.track_history)
-        target_shape = normalize_shape(self.target_shape)
-        object.__setattr__(self, "target_shape", target_shape)
-        if self.track_history and self.mutable:
+    target_shape: Shape
+    track_history: bool
+
+    def __init__(
+        self,
+        coalitions: CoalitionArray,
+        values: ValueT,
+        target_shape: ShapeLike = (),
+        *,
+        track_history: bool = False,
+        _history_n_samples: tuple[int, ...] | None = None,
+    ) -> None:
+        """Initialize the evidence state from one sampled block.
+
+        Args:
+            coalitions: The sampled coalitions, as a dense coalition array.
+            values: The evaluated values aligned with the coalitions.
+            target_shape: The game's explanation-target shape.
+            track_history: Whether to record value-equivalent history.
+            _history_n_samples: Internal compact history carried by
+                ``append`` and ``rollback``.
+
+        Raises:
+            TypeError: If the coalitions are not dense.
+            ValueError: If the values' sample axis does not pair with the
+                coalitions.
+        """
+        ensure_bool("track_history", track_history)
+        _require_dense(coalitions)
+        self.target_shape = normalize_shape(target_shape)
+        self.track_history = track_history
+        _validate_values_alignment(coalitions, values, axis=len(self.target_shape))
+        self._chunks: tuple[tuple[CoalitionArray, ValueT], ...] = ((coalitions, values),)
+        self._history_n_samples = _history_n_samples
+        if track_history and self.mutable:
             msg = "mutable states cannot track history"
             raise HistoryError(msg)
-        if self.track_history and self._history_n_samples is None:
-            object.__setattr__(self, "_history_n_samples", (self.n_samples,))
+        if track_history and _history_n_samples is None:
+            self._history_n_samples = (self.n_samples,)
+
+    def __repr__(self) -> str:
+        """Return a concise representation."""
+        return (
+            f"{type(self).__name__}(n_samples={self.n_samples!r}, "
+            f"target_shape={self.target_shape!r}, track_history={self.track_history!r})"
+        )
+
+    @property
+    def coalitions(self) -> CoalitionArray:
+        """Return all sampled coalitions as one array."""
+        return self._materialized()[0]
+
+    @property
+    def values(self) -> ValueT:
+        """Return all evaluated values, aligned with the coalitions."""
+        return self._materialized()[1]
 
     @property
     def n_samples(self) -> int:
         """Return the number of sampled coalitions."""
-        if self.coalitions.shape == ():
-            return 0
-        return self.coalitions.shape[-1]
+        return sum(
+            0 if coalitions.shape == () else coalitions.shape[-1]
+            for coalitions, _ in self._chunks
+        )
 
     @property
     def shared_target_shape(self) -> Shape:
         """Return the sampler-produced shared target shape."""
-        if self.coalitions.shape == ():
+        first_coalitions, _ = self._chunks[0]
+        if first_coalitions.shape == ():
             return ()
-        return self.coalitions.shape[:-1]
+        return first_coalitions.shape[:-1]
 
     def append(self, coalitions: CoalitionArray, values: ValueT) -> SamplingState[ValueT]:
-        """Append sampled coalitions and evaluated values."""
+        """Append sampled coalitions and evaluated values without copying.
+
+        The appended state shares the stored chunks, so a sampling chain
+        costs no concatenations until its evidence is read.
+        """
         if coalitions.shape == () or coalitions.shape[-1] == 0:
             return self
-        if coalitions.n_players != self.coalitions.n_players:
+        if coalitions.n_players != self._chunks[0][0].n_players:
             msg = "coalitions use a different number of players"
             raise ValueError(msg)
         if coalitions.shape[:-1] != self.shared_target_shape:
             msg = "coalitions use a different shared target shape"
             raise ValueError(msg)
-        next_coalitions = _append_coalitions(self.coalitions, coalitions)
-        next_values = _append_values(self.values, values, axis=len(self.target_shape))
-        history = None
+        _require_dense(coalitions)
+        _validate_values_alignment(
+            coalitions,
+            values,
+            axis=len(self.target_shape),
+            like=self._chunks[0][1],
+        )
+        appended = copy(self)
+        appended._chunks = (*self._chunks, (coalitions, values))  # noqa: SLF001 - evolving a copy of self
         if self.track_history:
             previous = self._history_n_samples or (self.n_samples,)
-            history = (*previous, self.n_samples + coalitions.shape[-1])
-        return type(self)(
-            coalitions=next_coalitions,
-            values=next_values,
-            target_shape=self.target_shape,
-            track_history=self.track_history,
-            _history_n_samples=history,
-        )
+            appended._history_n_samples = (*previous, appended.n_samples)  # noqa: SLF001
+        return appended
+
+    def _materialized(self) -> tuple[CoalitionArray, ValueT]:
+        """Concatenate the stored chunks once and cache the result.
+
+        The cache swap is value-equivalent, so the state stays immutable in
+        the sense ``mutable`` declares.
+        """
+        if len(self._chunks) > 1:
+            merged_coalitions = DenseCoalitionArray(
+                jnp.concatenate(
+                    [jnp.asarray(chunk.to_dense()) for chunk, _ in self._chunks],
+                    axis=-2,
+                ),
+            )
+            merged_values = cast(
+                "ValueT",
+                jnp.concatenate(
+                    [jnp.asarray(values) for _, values in self._chunks],
+                    axis=len(self.target_shape),
+                ),
+            )
+            self._chunks = ((merged_coalitions, merged_values),)
+        return self._chunks[0]
 
     def rollback(self, steps: int = 1) -> SamplingState[ValueT]:
         """Return a previous sampling state."""
@@ -239,17 +313,51 @@ def _validate_history_steps(steps: int) -> None:
         raise HistoryError(msg)
 
 
-def _append_coalitions(left: CoalitionArray, right: CoalitionArray) -> CoalitionArray:
-    if isinstance(left, DenseCoalitionArray) and isinstance(right, DenseCoalitionArray):
-        return DenseCoalitionArray(
-            jnp.concatenate([jnp.asarray(left.to_dense()), jnp.asarray(right.to_dense())], axis=-2),
+def _require_dense(coalitions: CoalitionArray) -> None:
+    if not isinstance(coalitions, DenseCoalitionArray):
+        msg = "only dense coalition storage is supported by SamplingState"
+        raise TypeError(msg)
+
+
+def _validate_values_alignment(
+    coalitions: CoalitionArray,
+    values: object,
+    *,
+    axis: int,
+    like: object = None,
+) -> None:
+    """Reject values whose shape does not pair with the coalitions.
+
+    Deferring this to the lazy chunk concatenation would blame the read
+    instead of the append that stored the misaligned block. The sample axis
+    must match the coalitions; with a stored reference block ``like``, the
+    remaining axes must match it too. Values without a shape (nested
+    sequences) pass through and fail at materialization.
+    """
+    if coalitions.shape == ():
+        return
+    shape = getattr(values, "shape", None)
+    if shape is None:
+        return
+    n_samples = coalitions.shape[-1]
+    like_shape = getattr(like, "shape", None)
+    if like_shape is not None and len(like_shape) > axis:
+        expected = (*like_shape[:axis], n_samples, *like_shape[axis + 1 :])
+        if tuple(shape) != expected:
+            msg = (
+                f"values with shape {tuple(shape)} do not pair with the stored "
+                f"evidence: expected {tuple(expected)} (target axes, then "
+                f"{n_samples} samples, then value axes)"
+            )
+            raise ValueError(msg)
+        return
+    if len(shape) <= axis or shape[axis] != n_samples:
+        msg = (
+            f"values with shape {tuple(shape)} do not pair with {n_samples} "
+            f"sampled coalitions: the sample axis follows the target axes "
+            f"(axis {axis}), then any value axes trail"
         )
-    msg = "only dense coalition append is supported by SamplingState"
-    raise TypeError(msg)
-
-
-def _append_values(left: object, right: object, *, axis: int) -> object:
-    return jnp.concatenate([jnp.asarray(left), jnp.asarray(right)], axis=axis)
+        raise ValueError(msg)
 
 
 def _dense_equal(left: CoalitionArray, right: CoalitionArray) -> bool:

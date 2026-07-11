@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 from array_api_compat import array_namespace, device
 
-from shapiq._shape import validate_int
+from shapiq._shape import broadcast_shapes, validate_int
 from shapiq.games._masker import (
     BackendArray,
     Masker,
@@ -108,7 +108,7 @@ class SuperpixelMasker[InputT: BackendArray](Masker[InputT]):
             require_shared_backend(self.inputs, baseline=self.baseline)
             baseline_array = cast("InputT", self.baseline)
         try:
-            np.broadcast_shapes(tuple(baseline_array.shape), image_shape)
+            broadcast_shapes(tuple(baseline_array.shape), image_shape)
         except ValueError as error:
             msg = (
                 f"baseline with shape {tuple(baseline_array.shape)} does not "

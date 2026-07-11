@@ -2,9 +2,60 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from math import prod
+from typing import Any, cast
+
+import numpy as np
 
 type Shape = tuple[int, ...]
 type ShapeLike = int | Iterable[int]
+
+
+def broadcast_shapes(*shapes: Shape) -> Shape:
+    """Return the broadcast of logical shapes as a plain tuple.
+
+    Shape arithmetic is host metadata, so it lives here rather than in a
+    compute backend.
+    """
+    return tuple(int(dim) for dim in np.broadcast_shapes(*shapes))
+
+
+def indexed_shape(shape: Shape, key: object) -> Shape:
+    """Return the logical shape produced by indexing ``shape`` with ``key``.
+
+    The key semantics are resolved by indexing a stride-zero host dummy, so
+    no allocation or kernel is spent on shape metadata; out-of-range indices
+    raise ``IndexError``.
+    """
+    dummy = cast("Any", np.broadcast_to(np.empty((), dtype=bool), shape))
+    return tuple(int(dim) for dim in dummy[key].shape)
+
+
+def expand_ellipsis(key: tuple[object, ...], ndim: int) -> tuple[object, ...]:
+    """Replace an ``Ellipsis`` key entry with explicit full slices.
+
+    Container ``__getitem__`` implementations append their own trailing
+    axes to the key, which an unexpanded user ``Ellipsis`` would clash
+    with. Entries other than ``None`` count as consuming one axis, so a
+    multi-axis boolean mask combined with an ellipsis is not supported.
+    """
+    positions = [index for index, entry in enumerate(key) if entry is Ellipsis]
+    if len(positions) != 1:
+        return key
+    consumed = sum(1 for entry in key if entry is not Ellipsis and entry is not None)
+    fill = (slice(None),) * max(ndim - consumed, 0)
+    return (*key[: positions[0]], *fill, *key[positions[0] + 1 :])
+
+
+def shape_of(value: object) -> Shape:
+    """Return a value's logical shape as a plain tuple, host-side.
+
+    Prefers the value's own ``shape`` attribute; values without one
+    (nested sequences, scalars) are probed through NumPy.
+    """
+    shape = getattr(value, "shape", None)
+    if shape is not None:
+        return tuple(int(dim) for dim in shape)
+    return tuple(int(dim) for dim in np.shape(cast("Any", value)))
 
 
 def normalize_shape(shape: ShapeLike = ()) -> Shape:
