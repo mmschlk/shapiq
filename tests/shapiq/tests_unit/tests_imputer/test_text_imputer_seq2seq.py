@@ -5,6 +5,7 @@
 #           integration with TextImputer
 # ============================================================================
 from __future__ import annotations
+from __future__ import annotations
 
 import os
 
@@ -15,9 +16,11 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-import torch
 
-from shapiq.imputer.text_imputer import (
+torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from shapiq.imputer.text_imputer import (  # noqa: E402
     NeutralPerturbation,
     Seq2SeqCallable,
     TextImputer,
@@ -714,6 +717,7 @@ class TestSeq2SeqTextImputer:
             player_strategy=player_strategy,
             perturbation_strategy=NeutralPerturbation(),
             normalize_target_logprob=normalize,
+            device="cpu",
         )
 
     def test_target_callable_is_seq2seq_callable(
@@ -760,13 +764,9 @@ class TestSeq2SeqTextImputer:
         seq2seq_model: MagicMock,
         seq2seq_tokenizer: MagicMock,
     ) -> None:
-        """full_prediction() must return a finite float."""
+        """full_prediction must be a finite float."""
         imputer = self._make_imputer(seq2seq_model, seq2seq_tokenizer)
-
-        imputer.target_callable = MagicMock()
-        imputer.target_callable.predict.return_value = np.array([-1.5], dtype=np.float32)
-
-        score = imputer.full_prediction()
+        score = imputer.full_prediction
         assert isinstance(score, float)
         assert np.isfinite(score)
 
