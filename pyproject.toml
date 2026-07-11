@@ -90,6 +90,14 @@ text = [
     "nltk>=3.9.4",
 ]
 
+benchmark = [
+    # optional model backends for shapiq_benchmark, imported lazily
+    "optuna",
+    "tabpfn",
+    "lightgbm",
+    "xgboost",
+]
+
 [tool.coverage.report]
 exclude_also = [
     'if TYPE_CHECKING:',
@@ -114,7 +122,8 @@ changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 [tool.pytest.ini_options]
 testpaths = [
   "tests/shapiq",
-  "tests/shapiq_games"
+  "tests/shapiq_games",
+  "tests/shapiq_benchmark"
 ]
 markers = [
     "slow: marks tests that use real external model checkpoints",
