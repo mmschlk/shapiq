@@ -127,16 +127,17 @@ class EvidenceApproximator(
             coalitions, sampler = sampler.sample(self.state, remaining)
             dense = jnp.asarray(coalitions.to_dense())
             chunks.append(dense)
-            found = _classify_chunk(
-                _packed_rows(dense),
-                position,
-                known=known,
-                batch_ranks=batch_ranks,
-                novel_positions=novel_positions,
-                state_duplicates=state_duplicates,
-                batch_duplicates=batch_duplicates,
-            )
-            position += int(dense.shape[-2])
+            found = 0
+            for key in _coalition_keys(dense):
+                if key in batch_ranks:
+                    batch_duplicates.append((position, batch_ranks[key]))
+                elif key in known:
+                    state_duplicates.append((position, known[key]))
+                else:
+                    batch_ranks[key] = len(novel_positions)
+                    novel_positions.append(position)
+                    found += 1
+                position += 1
             remaining -= found
             raw_since_novel = 0 if found else raw_since_novel + int(dense.shape[-2])
             if remaining > 0 and raw_since_novel >= stall_limit:
@@ -181,12 +182,11 @@ class EvidenceApproximator(
                 if cached_length == len(cached):
                     return cached
                 return {key: index for key, index in cached.items() if index < n_samples}
-        packed = _packed_rows(jnp.asarray(self.state.coalitions.to_dense()))
-        unique_rows, first_indices = np.unique(packed, axis=0, return_index=True)
-        return {
-            row.tobytes(): int(index)
-            for row, index in zip(unique_rows, first_indices, strict=True)
-        }
+        dense = jnp.asarray(self.state.coalitions.to_dense())
+        known: dict[bytes, int] = {}
+        for index, key in enumerate(_coalition_keys(dense)):
+            known.setdefault(key, index)
+        return known
 
     def _stitch_values(
         self,
@@ -268,67 +268,10 @@ class EvidenceApproximator(
         raise InsufficientSamplesError(msg)
 
 
-def _packed_rows(dense: Array) -> np.ndarray:
-    """Return one packed identity row per sample-axis coalition (shared targets only)."""
+def _coalition_keys(dense: Array) -> list[bytes]:
+    """Return a hashable identity per sample-axis coalition (shared targets only)."""
     rows = np.asarray(dense).reshape(-1, dense.shape[-2], dense.shape[-1])[0]
-    return np.packbits(rows, axis=-1)
-
-
-def _classify_chunk(
-    packed: np.ndarray,
-    position: int,
-    *,
-    known: dict[bytes, int],
-    batch_ranks: dict[bytes, int],
-    novel_positions: list[int],
-    state_duplicates: list[tuple[int, int]],
-    batch_duplicates: list[tuple[int, int]],
-) -> int:
-    """Classify one sampled chunk into novel rows and duplicates.
-
-    The classification runs once per distinct coalition of the chunk instead
-    of once per row: duplicates within the chunk resolve through
-    ``np.unique``, and only the unique rows touch the carried dictionaries.
-    Novel ranks are assigned in first-occurrence order, matching sequential
-    row-by-row classification exactly.
-
-    Returns:
-        The number of novel coalitions found in the chunk.
-    """
-    unique_rows, first_indices, inverse = np.unique(
-        packed,
-        axis=0,
-        return_index=True,
-        return_inverse=True,
-    )
-    codes = np.empty(unique_rows.shape[0], dtype=np.int64)
-    is_state_dup = np.zeros(unique_rows.shape[0], dtype=bool)
-    found = 0
-    for unique_index in np.argsort(first_indices, kind="stable"):
-        key = unique_rows[unique_index].tobytes()
-        rank = batch_ranks.get(key)
-        if rank is not None:
-            codes[unique_index] = rank
-        elif (source := known.get(key)) is not None:
-            is_state_dup[unique_index] = True
-            codes[unique_index] = source
-        else:
-            batch_ranks[key] = len(novel_positions)
-            codes[unique_index] = len(novel_positions)
-            novel_positions.append(position + int(first_indices[unique_index]))
-            found += 1
-    row_positions = position + np.arange(packed.shape[0])
-    row_codes = codes[inverse]
-    row_is_state = is_state_dup[inverse]
-    novel_first = np.zeros(packed.shape[0], dtype=bool)
-    if found:
-        novel_first[np.asarray(novel_positions[-found:]) - position] = True
-    state_mask = row_is_state
-    batch_mask = ~row_is_state & ~novel_first
-    state_duplicates.extend(
-        zip(row_positions[state_mask].tolist(), row_codes[state_mask].tolist(), strict=True),
-    )
-    batch_duplicates.extend(
-        zip(row_positions[batch_mask].tolist(), row_codes[batch_mask].tolist(), strict=True),
-    )
-    return found
+    packed = np.packbits(rows, axis=-1)
+    width = packed.shape[-1]
+    blob = packed.tobytes()
+    return [blob[start : start + width] for start in range(0, len(blob), width)]
