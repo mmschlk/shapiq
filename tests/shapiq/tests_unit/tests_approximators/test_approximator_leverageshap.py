@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+import math
 import random
 
 import numpy as np
@@ -57,7 +59,11 @@ def test_approximate(n, budget, seed):
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0
     assert sv_estimates.index == "SV"
-    assert sv_estimates.estimation_budget <= budget
+    # estimation_budget reports the realized number of coalitions evaluated. It concentrates
+    # around ``budget`` but may over-/undershoot (random Binomial draw); it must equal the
+    # game's access count and never exceed full enumeration (2**n).
+    assert sv_estimates.estimation_budget == game.access_counter
+    assert sv_estimates.estimation_budget <= 2**n
     assert sv_estimates.estimated != (budget >= 2**n)
 
     # The access counter should be at most 2**n, since LeverageSHAP caps the budget at 2**n and does not make redundant calls.
@@ -145,15 +151,25 @@ def test_budget_too_small_raises():
         approximator.approximate(budget=1, game=lambda Z: np.zeros(len(Z)))
 
 
-@pytest.mark.parametrize("pairing_trick", [True, False])
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
-def test_pairing_trick(pairing_trick, seed):
-    """LeverageSHAP should run without errors with and without the pairing trick."""
+def test_pairing_trick_is_a_noop(seed):
+    """The ``pairing_trick`` flag is inert: Algorithm 1 always samples ``(z, z̄)`` pairs.
+
+    Toggling the flag must therefore produce bitwise-identical results for a fixed seed.
+    This pins down the documented no-op contract instead of merely asserting the run
+    succeeds.
+    """
     n, budget = 6, 40
-    game = DummyGame(n, interaction=(0, 1))
-    approximator = LeverageSHAP(n, pairing_trick=pairing_trick, random_state=seed)
-    result = approximator.approximate(budget=budget, game=game)
-    assert isinstance(result, InteractionValues)
+    game_true = DummyGame(n, interaction=(0, 1))
+    game_false = DummyGame(n, interaction=(0, 1))
+
+    res_true = LeverageSHAP(n, pairing_trick=True, random_state=seed).approximate(budget, game_true)
+    res_false = LeverageSHAP(n, pairing_trick=False, random_state=seed).approximate(
+        budget, game_false
+    )
+
+    assert isinstance(res_true, InteractionValues)
+    np.testing.assert_array_equal(res_true.values, res_false.values)
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
@@ -161,12 +177,11 @@ def test_unanimity_game_exact_svs(seed):
     """Unanimity game v(S) = 1 iff T ⊆ S is fully non-additive.
 
     True Shapley values: 1/|T| for players in T, 0 for others.
-    LeverageSHAP's IS weights (1/(s(n-s))) differ from the Shapley kernel weights
-    ((n-1)/(binom(n,s)*s*(n-s))), so even at full budget the per-run solution is a
-    biased estimate — it converges to the Shapley values only in expectation over
-    many random runs. What must always hold is:
-    - efficiency axiom: sum(SVs) == v(N) - v({}) = 1
-    - structural ordering: every player in T gets a strictly higher SV than every player outside T
+    At full budget every interior coalition has inclusion probability 1, so the IS
+    weight w(s) = (s-1)!(n-s-1)!/n! is a fixed global multiple ((n-1)x) of the Shapley
+    kernel weight. A global scale does not change the weighted-least-squares argmin, so
+    the per-run full-budget solution is *exact* (not merely unbiased in expectation).
+    We assert the exact Shapley values, plus the efficiency and ordering properties.
     """
     n = 6
     T = frozenset({1, 3, 5})
@@ -176,6 +191,10 @@ def test_unanimity_game_exact_svs(seed):
 
     approximator = LeverageSHAP(n, random_state=seed)
     result = approximator.approximate(budget=2**n, game=unanimity_game)
+
+    # exact Shapley values: 1/|T| inside T, 0 outside
+    expected = np.array([1.0 / len(T) if i in T else 0.0 for i in range(n)])
+    np.testing.assert_allclose(result.values[1:], expected, atol=1e-8, rtol=0.0)
 
     # efficiency must always hold exactly
     assert result.values[1:].sum() == pytest.approx(1.0, abs=1e-8)
@@ -279,9 +298,11 @@ def test_reproducibility(seed):
 def test_exact_regime_seed_independence():
     """When the budget covers the full coalition space, results must be seed-independent.
 
-    LeverageSHAP caps the budget at 2**n and switches to an exact/deterministic
-    computation when the estimator can enumerate all coalitions. In that mode the
-    random seed must not affect the output. This test asserts that behavior.
+    At full budget (2**n) every coalition size has inclusion probability that rounds to
+    ~1.0, so BernoulliSample draws the entire coalition space regardless of the random
+    seed (there is no separate deterministic branch — the sampling probabilities simply
+    saturate). Two different seeds must therefore yield identical output. This test
+    asserts that behavior.
     """
     n = 6
     budget = 2**n
@@ -361,41 +382,25 @@ def test_empirical_convergence_rate():
     assert err_large < err_medium < err_small
 
 
-def test_pairing_trick_variance_reduction():
-    """Pairing trick should reduce estimator variance in the stochastic regime.
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_paired_sampling_invariant(seed):
+    """Every sampled coalition must appear together with its complement.
 
-    This is a statistical test: we run several independent seeds with and without
-    the pairing trick and compare the across-seed variance of the estimated SVs.
-    We assert that the average per-player variance with pairing is not larger than
-    the variance without pairing (i.e., pairing should not increase variance).
+    Paired ``(z, z̄)`` sampling is the variance-reduction mechanism baked into
+    Algorithm 1 (it is unconditional, not gated by the inert ``pairing_trick`` flag).
+    Rather than comparing variance across a flag that does nothing, we verify the
+    structural invariant directly: for the empty/grand pair and every interior
+    coalition in the sampled matrix, its bitwise complement is also present.
     """
-    n = 6
-    budget = 40  # sampling regime (2**6 == 64)
+    n, budget = 6, 40
+    approximator = LeverageSHAP(n, random_state=seed)
+    Z, _ = approximator._sample(budget)
 
-    def make_game():
-        return DummyGame(n, interaction=(0, 1))
-
-    vals_no = np.stack(
-        [
-            LeverageSHAP(n, pairing_trick=False, random_state=s)
-            .approximate(budget, make_game())
-            .values[1:]
-            for s in DIVERSE_SEEDS
-        ]
-    )
-    vals_yes = np.stack(
-        [
-            LeverageSHAP(n, pairing_trick=True, random_state=s)
-            .approximate(budget, make_game())
-            .values[1:]
-            for s in DIVERSE_SEEDS
-        ]
-    )
-
-    var_no = np.mean(np.var(vals_no, axis=0))
-    var_yes = np.mean(np.var(vals_yes, axis=0))
-
-    assert var_yes <= var_no
+    # Represent each coalition as an immutable tuple so we can test set membership.
+    rows = {tuple(row) for row in Z.astype(bool)}
+    for row in Z.astype(bool):
+        complement = tuple(~row)
+        assert complement in rows, "Sampled coalition is missing its complement"
 
 
 def test_leverageshap_vs_kernelshap_mean_error():
@@ -477,7 +482,9 @@ def test_minimal_budget_sweep(seed):
     for b in budgets:
         res = LeverageSHAP(n, random_state=seed).approximate(b, DummyGame(n, interaction=(0, 1)))
         assert res.estimation_budget is not None
-        assert res.estimation_budget <= b
+        # Realized evaluation count is capped at full enumeration; it may exceed the tiny
+        # requested budget because the Binomial draw can overshoot.
+        assert res.estimation_budget <= 2**n
         if b < 2**n:
             assert res.estimated is True
         else:
@@ -550,6 +557,61 @@ def test_combo_empty_combination_returns_all_false():
     assert z.shape == (7,)
     assert z.sum() == 0
     assert np.array_equal(z, np.zeros(7, dtype=bool))
+
+
+@pytest.mark.parametrize(("n", "s"), [(5, 2), (6, 3), (7, 1), (7, 4), (4, 4)])
+def test_combo_matches_itertools_lexicographic_order(n, s):
+    """_combo (Algorithm 3) must reproduce itertools.combinations in lexicographic order.
+
+    This exercises the load-bearing while-loop recursion (not just the s == 0 early
+    return): for every index i in [0, C(n, s)) the returned boolean vector must mark
+    exactly the players of the i-th lexicographic size-s combination.
+    """
+    total = math.comb(n, s)
+    for i, expected_players in enumerate(itertools.combinations(range(n), s)):
+        z = LeverageSHAP._combo(n=n, s=s, i=i)
+        expected = np.zeros(n, dtype=bool)
+        expected[list(expected_players)] = True
+        assert z.dtype == bool
+        assert z.sum() == s
+        np.testing.assert_array_equal(z, expected)
+    # sanity check: we enumerated exactly C(n, s) combinations
+    assert i + 1 == total
+
+
+@pytest.mark.parametrize(
+    ("n", "m"),
+    [(4, 8), (5, 12), (6, 20), (7, 100), (10, 50), (12, 40)],
+)
+def test_find_c_solves_equation_12(n, m):
+    """_find_c must solve Eq. 12: m - 2 == sum_{s=1}^{n-1} min(C(n, s), 2c).
+
+    The oversampling constant c drives the whole sampling rate; a regression here would
+    silently shift the budget match without failing the efficiency/ordering tests.
+    """
+    c = LeverageSHAP._find_c(n, m)
+    total = sum(min(math.comb(n, s), 2.0 * c) for s in range(1, n))
+    assert total == pytest.approx(m - 2, abs=1e-6)
+
+
+def test_find_c_boundary_cases():
+    """_find_c returns 0.0 for the degenerate regimes with nothing to subsample."""
+    # n < 2: no interior coalition sizes exist.
+    assert LeverageSHAP._find_c(n=1, m=2) == 0.0
+    # target <= 0: budget only covers the empty and grand coalitions.
+    assert LeverageSHAP._find_c(n=6, m=2) == 0.0
+    assert LeverageSHAP._find_c(n=6, m=1) == 0.0
+
+
+def test_find_c_large_n_overflow_safe():
+    """_find_c must not overflow for large n where C(n, n//2) exceeds float range."""
+    n, m = 2000, 5000
+    c = LeverageSHAP._find_c(n, m)
+    # For a modest budget the small sizes dominate; c stays finite and positive.
+    assert math.isfinite(c)
+    assert c > 0.0
+    total = sum(min(math.comb(n, s), 2.0 * c) for s in range(1, n))
+    assert total == pytest.approx(m - 2, abs=1e-3)
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)

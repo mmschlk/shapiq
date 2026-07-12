@@ -1,4 +1,4 @@
-"""LeverageSHAP regression approximator (Algorithm 1 of Musco & Witter, 2024)."""
+"""LeverageSHAP regression approximator (Algorithm 1 of Musco and Witter, 2025)."""
 
 from __future__ import annotations
 
@@ -24,31 +24,50 @@ ValidRegressionLeverageSHAPIndices = Literal["SV"]
 
 
 class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
-    """The LeverageSHAP regression approximator for estimating Shapley values.
+    r"""Leverage SHAP approximator for Shapley values.
 
-    Faithful implementation of Algorithm 1 from Musco & Witter (2024). The algorithm:
+    Leverage SHAP, introduced by Musco and Witter (2025) :cite:t:`Musco.2025`, is a
+    lightweight modification of KernelSHAP that comes with provable accuracy
+    guarantees. Like KernelSHAP, it recovers the Shapley values as the solution of a
+    weighted least-squares problem over sampled coalitions; unlike KernelSHAP, it
+    samples coalitions proportional to their statistical *leverage scores* rather than
+    the heuristic Shapley kernel weights. The key result of the paper is that these
+    leverage scores have a simple closed form -- the score of a coalition depends only
+    on its size, ``l_z = 1/C(n, ||z||)`` (Lemma 3.2) -- which makes leverage-score
+    sampling tractable despite the exponentially many coalitions.
 
-    1. Finds an oversampling parameter ``c`` via binary search such that
-       ``m - 2 = sum_{s=1}^{n-1} min(C(n,s), 2c)`` (Equation 12).
-    2. Draws coalition pairs ``(z, z̄)`` via Bernoulli sampling without replacement
-       (Algorithm 2): for each size ``s``, ``m_s ~ Binomial(C(n,s), min(1, 2c/C(n,s)))``
-       pairs are included. Subsets of small sizes (where ``C(n,s) <= 2c``) are
-       included deterministically; only larger sizes are subsampled.
-    3. Reweights each row by ``w(||z||) / min(1, 2c·l_z)`` where
-       ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight and
-       ``l_z = 1/C(n,s)`` is its leverage score.
-    4. Solves the unconstrained centered regression (Lemma 3.1) and adds the
-       efficiency offset.
+    This class is a faithful implementation of Algorithm 1 of the paper. Given a target
+    budget ``m`` of game evaluations, it:
+
+    1. Solves for an oversampling parameter ``c`` by binary search so that the expected
+       number of sampled coalitions matches the budget,
+       ``m - 2 = sum_{s=1}^{n-1} min(C(n, s), 2c)`` (Equation 12). Two evaluations are
+       reserved for the empty and grand coalitions.
+    2. Draws coalition pairs ``(z, z̄)`` by Bernoulli sampling without replacement
+       (Algorithm 2). For each size ``s`` the number of pairs is drawn as
+       ``m_s ~ Binomial(C(n, s), min(1, 2c / C(n, s)))``. Sizes whose entire layer fits
+       within the ``2c`` budget are taken exhaustively; since ``C(n, s)`` is symmetric
+       and peaks in the middle, that covers the smallest and largest sizes, leaving only
+       the middle sizes to be subsampled.
+    3. Reweights each sampled row by ``w(||z||) / min(1, 2c * l_z)``, where
+       ``w(s) = (s-1)! (n-s-1)! / n!`` is the Shapley kernel weight -- the standard
+       importance-sampling correction that keeps the estimate unbiased.
+    4. Projects out the efficiency constraint to obtain an unconstrained regression
+       (Lemma 3.1), solves it by weighted least squares, and adds the efficiency offset
+       back in.
+
+    Paired sampling (always including a coalition's complement) and sampling without
+    replacement are built into the algorithm; both are variance-reduction tricks that
+    the optimized KernelSHAP in the SHAP library also uses.
 
     Note:
-        The number of game evaluations is a random variable concentrated around
-        ``budget``; small overshoots and undershoots are expected. The paper notes
-        a deterministic variant (``m_s := E[Binomial(...)]``) is also valid; this
-        implementation uses the random Binomial form to match the paper's main
-        figures.
+        The number of game evaluations is random -- it concentrates tightly around
+        ``budget`` but may over- or undershoot slightly. The paper also describes a fully
+        deterministic variant that fixes ``m_s`` to the Binomial's expectation; we use the
+        random Binomial form to match the paper's reported experiments.
 
     Example:
-        >>> from shapiq.approximator.regression import LeverageSHAP
+        >>> from shapiq.approximator import LeverageSHAP
         >>> from shapiq_games.synthetic import DummyGame
         >>> n = 5
         >>> game = DummyGame(n=n, interaction=(1, 2))
@@ -56,6 +75,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         >>> sv_estimates = approximator.approximate(budget=100, game=game)
         >>> print(sv_estimates.values)
         [0.  0.2 0.7 0.7 0.2 0.2]
+
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The original
+          KernelSHAP approximator that Leverage SHAP refines.
     """
 
     valid_indices: tuple[ValidRegressionLeverageSHAPIndices, ...] = ("SV",)
@@ -74,11 +97,12 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Args:
             n: The number of players.
 
-            pairing_trick: Kept for interface compatibility. Algorithm 1 always
-                samples pairs ``(z, z̄)`` together.
+            pairing_trick: Inert; kept only for interface compatibility with the other
+                regression approximators. Algorithm 1 always samples pairs ``(z, z̄)``
+                together, so toggling this flag has no effect on the output.
 
-            sampling_weights: Kept for interface compatibility. LeverageSHAP uses
-                its own leverage-score-based sampling scheme.
+            sampling_weights: Inert; kept only for interface compatibility. LeverageSHAP
+                uses its own leverage-score-based sampling scheme and ignores this argument.
 
             random_state: The random state of the estimator. Defaults to ``None``.
 
@@ -110,9 +134,20 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         Returns:
             The estimated Shapley values as an :class:`~shapiq.InteractionValues` object.
+            Its ``estimation_budget`` reports the number of coalitions actually evaluated,
+            which concentrates around ``budget`` but may over- or undershoot it (see the
+            class docstring).
+
+        Raises:
+            ValueError: If ``budget`` is less than ``2`` (the empty and grand coalitions
+                must both be evaluated), or if the game returns non-finite (NaN/Inf) values.
         """
         Z, weights = self._sample(budget)
         game_values: FloatVector = game(Z)
+        # Number of coalitions actually evaluated. Because BernoulliSample draws a random
+        # (Binomial) number of pairs, this concentrates around ``budget`` but can over- or
+        # undershoot it; report the realized count so downstream cost accounting is honest.
+        n_evaluations = int(Z.shape[0])
         if not np.all(np.isfinite(game_values)):
             msg = "Game returned NaN or Inf values. LeverageSHAP requires finite game values."
             raise ValueError(msg)
@@ -152,7 +187,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             max_order=self.max_order,
             n_players=self.n,
             estimated=not budget >= 2**self.n,
-            estimation_budget=budget,
+            estimation_budget=n_evaluations,
             target_index=self.index,
         )
 
@@ -161,10 +196,12 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         This method implements the custom Bernoulli sampling logic required by
         LeverageSHAP, bypassing the generic ``CoalitionSampler``. This is necessary
-        to strictly enforce the $2c$ threshold boundaries (Equation 12). By explicitly
-        oversampling and deterministically evaluating low-cardinality subsets
-        (where \binom{n}{s} \le 2c), this algorithm optimally captures high-leverage
-        main effects.
+        to strictly enforce the $2c$ threshold boundaries (Equation 12). Because the
+        leverage score $l_z = 1/\binom{n}{s}$ is largest for the few extreme-size
+        coalitions, those layers fit within the $2c$ budget and are evaluated
+        exhaustively (both the smallest coalitions and their large-cardinality
+        complements, since $\binom{n}{s} = \binom{n}{n-s}$ is small at both extremes),
+        while leverage sampling otherwise spreads samples uniformly across sizes.
 
         Args:
             budget: Target number of evaluations ``m``.
@@ -178,53 +215,48 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 Empty/grand coalitions get weight 0 (they enter via the efficiency
                 shift, not the regression).
         """
-        if budget < 2:  # need at least empty + grand coalition
+        if budget < 2:
             msg = "Budget must be at least 2 to evaluate baseline and grand coalition."
             raise ValueError(msg)
 
-        n = self.n  # number of players
+        n = self.n
         m = min(budget, 2**n)  # cap budget at full enumeration (2^n)
 
-        z_empty = np.zeros(n, dtype=bool)  # empty coalition (no players)
-        z_grand = np.ones(n, dtype=bool)  # grand coalition (all players)
+        z_empty = np.zeros(n, dtype=bool)
+        z_grand = np.ones(n, dtype=bool)
 
-        c = self._find_c(n, m)  # oversampling parameter from Eq. 12 of paper
-
-        Z_pairs, sizes = self._bernoulli_sample(n, c)  # draw the (z, z̄) coalition pairs
+        c = self._find_c(n, m)  # oversampling parameter from Eq. 12
+        Z_pairs, sizes = self._bernoulli_sample(n, c)
 
         # IS weights (Algorithm 1 line 7)
-        if Z_pairs.shape[0] > 0:  # if any pairs were sampled
+        if Z_pairs.shape[0] > 0:
             weights_pairs = np.empty(Z_pairs.shape[0], dtype=float)
-
-            # Precompute factorial of n to save cycles, Python handles this as huge int
-            fact_n = math.factorial(n)
+            two_c = 2.0 * c
+            fact_n = math.factorial(n)  # big-int; reused across sizes
 
             for i, s in enumerate(sizes):
-                # Exact Shapley kernel weight: w(s) = (s-1)!(n-s-1)! / n!
-                # Computed entirely in native Python big-int space before converting to float
-                w_s = (math.factorial(s - 1) * math.factorial(n - s - 1)) / fact_n
+                full_count = math.comb(n, s)
+                # A size is included deterministically iff its whole layer fits the 2c
+                # budget. Compare in big-int space (full_count is an exact int) so the
+                # threshold never forms float(C(n, s)), which overflows for large n.
+                if full_count <= two_c:
+                    # p = 1: the IS weight is the raw Shapley kernel weight
+                    # w(s) = (s-1)!(n-s-1)!/n!, evaluated as a big-int ratio.
+                    weights_pairs[i] = (math.factorial(s - 1) * math.factorial(n - s - 1)) / fact_n
+                else:
+                    # p = 2c/C(n,s): the IS weight w(s)/p collapses analytically to
+                    # w(s)*C(n,s)/(2c) = 1/(s*(n-s)*2c), so the binomial cancels and
+                    # cannot overflow. (C(n,s) == C(n,n-s) makes this symmetric across
+                    # a (z, z̄) pair, matching the paired-sampling design.)
+                    weights_pairs[i] = 1.0 / (s * (n - s) * two_c)
 
-                # Leverage score: l_z = 1 / C(n, s)
-                # Note: Using math.comb instead of scipy's binom to ensure exact arbitrary-precision
-                # integer math and prevent 64-bit float overflows for large n.
-                l_z = 1.0 / math.comb(n, s)
-
-                # Cap probability at 1
-                p = min(1.0, 2.0 * c * l_z)
-
-                # IS weight = w(s) / min(1, 2c * l_z)
-                weights_pairs[i] = w_s / p
-
-            Z = np.vstack(
-                [z_empty[None, :], z_grand[None, :], Z_pairs]
-            )  # stack empty + grand + pairs
+            Z = np.vstack([z_empty[None, :], z_grand[None, :], Z_pairs])
         else:
-            weights_pairs = np.empty(0, dtype=float)  # no pairs → no weights
-            Z = np.vstack([z_empty[None, :], z_grand[None, :]])  # only empty + grand
+            weights_pairs = np.empty(0, dtype=float)
+            Z = np.vstack([z_empty[None, :], z_grand[None, :]])
 
-        weights = np.concatenate(
-            [[0.0, 0.0], weights_pairs]
-        )  # empty/grand get weight 0 (excluded from lstsq)
+        # Empty/grand get weight 0: they enter via the efficiency shift, not the regression.
+        weights = np.concatenate([[0.0, 0.0], weights_pairs])
         return Z, weights
 
     @staticmethod
@@ -236,34 +268,34 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         MAX_BISECT_ITER = 200
 
         if n < 2:
-            return 0.0  # trivial case: nothing to sample
+            return 0.0
         target = m - 2  # budget minus empty + grand
         if target <= 0:
             return 0.0  # nothing left to sample beyond empty + grand
 
-        binoms = [math.comb(n, s) for s in range(1, n)]  # keep as int to avoid float overflow
+        binoms = [math.comb(n, s) for s in range(1, n)]  # kept as int to avoid float overflow
 
-        def total(c_: float) -> float:  # expected sample count for a given c
+        def total(c_: float) -> float:
             two_c = 2.0 * c_
-            return float(sum((min(b, two_c)) for b in binoms))
+            return float(sum(min(b, two_c) for b in binoms))
 
-        # Find an upper bound without relying on float(max_binom), which can overflow for large n.
+        # Grow the upper bound by doubling rather than float(max_binom), which overflows for large n.
         hi = 1.0
         while total(hi) < target:
             hi *= 2.0
-        lo = 0.0  # lower bound for binary search
-        for _ in range(MAX_BISECT_ITER):  # bisect up to MAX_BISECT_ITER iterations
-            mid = 0.5 * (lo + hi)  # midpoint
+        lo = 0.0
+        for _ in range(MAX_BISECT_ITER):
+            mid = 0.5 * (lo + hi)
             if total(mid) >= target:
-                hi = mid  # too big, shrink upper bound
+                hi = mid
             else:
-                lo = mid  # too small, raise lower bound
+                lo = mid
             if hi - lo < 1e-12 * max(1.0, hi):
-                break  # converged
-        return 0.5 * (lo + hi)  # final c estimate
+                break
+        return 0.5 * (lo + hi)
 
     def _bernoulli_sample(self, n: int, c: float) -> tuple[np.ndarray, np.ndarray]:
-        """Algorithm 2 (BernoulliSample) of Musco & Witter (2024).
+        """Algorithm 2 (BernoulliSample) of Musco and Witter (2025) :cite:t:`Musco.2025`.
 
         For each size ``s in {1, ..., floor(n/2)}`` draws ``m_s ~ Binomial`` pairs
         ``(z, z̄)`` without replacement. The middle size (when ``n`` is even and
@@ -276,66 +308,73 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             sizes: Cardinality of each row of ``Z_pairs``.
         """
         if n < 2 or c <= 0.0:
-            return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)  # nothing to sample
+            return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)
 
-        z_list: list[np.ndarray] = []  # collected coalition vectors
-        sizes_list: list[int] = []  # their sizes
+        z_list: list[np.ndarray] = []
+        sizes_list: list[int] = []
 
         # Convert numpy seed to a Python random seed so randrange supports
         # arbitrary-precision integers (needed for large n where C(n, n/2) overflows int64).
-        py_seed = int(self._rng.integers(0, 2**32))  # reproducible seed for python RNG
+        py_seed = int(self._rng.integers(0, 2**32))
         py_rng = _py_random.Random(py_seed)  # noqa: S311 - reproducible, non-crypto sampling
 
-        two_c = 2.0 * c  # cached for the loop
-        for s in range(1, n // 2 + 1):  # iterate sizes 1..⌊n/2⌋ (rest covered via complement z̄)
-            is_middle = (n % 2 == 0) and (s == n // 2)  # special case: pair would self-complement
-            full_count = math.comb(n, s)  # C(n, s) total subsets of this size
-            prob = (
-                1.0 if full_count <= two_c else two_c / full_count
-            )  # inclusion probability l_z*2c
+        two_c = 2.0 * c
+        for s in range(1, n // 2 + 1):  # sizes 1..⌊n/2⌋ (the rest are covered via complement z̄)
+            is_middle = (n % 2 == 0) and (s == n // 2)  # pair would self-complement here
+            full_count = math.comb(n, s)  # C(n, s); exact big-int, never cast to float
 
             # Number of distinct unordered pairs at this size.
-            pool_size = (
-                math.comb(n - 1, s - 1) if is_middle else full_count
-            )  # # of distinct unordered pairs
+            pool_size = math.comb(n - 1, s - 1) if is_middle else full_count
 
-            if prob >= 1.0:
-                m_s = pool_size  # include all pairs deterministically
+            if full_count <= two_c:
+                # Whole layer fits the 2c budget (inclusion probability 1): include all
+                # pairs. The int-vs-float comparison is exact in Python, so it stays
+                # overflow-safe even when C(n, s) is astronomically large.
+                m_s = pool_size
             elif pool_size > 2**31 - 1:
-                # Pool overflows C long → fall back to Poisson(pool_size·prob).
-                # In this regime pool_size·prob = 2c is bounded and prob → 0, so
-                # Poisson is exact in the limit (n large, p small, np fixed).
-                m_s = min(int(self._rng.poisson(pool_size * prob)), pool_size)
+                # Pool exceeds a conservative int32 cap (2**31 - 1) → fall back to
+                # Poisson with the analytic mean ``pool_size * 2c / C(n, s)``, which
+                # equals ``2c`` (non-middle) or ``2c*s/n`` (middle). This cap is
+                # self-imposed (not numpy's own Binomial ``n`` limit, which is C long /
+                # int64): computing the mean this way avoids forming ``float(C(n, s))``
+                # (which overflows for n ≳ 1030). In this regime prob → 0 with the mean
+                # fixed, so Poisson matches Binomial.
+                poisson_mean = two_c * s / n if is_middle else two_c
+                m_s = min(int(self._rng.poisson(poisson_mean)), pool_size)
             else:
-                # Pseudocode samples Binomial(C(n,s), prob) then halves for middle;
-                # equivalent (and exact) to Binomial(pool_size, prob) here.
-                m_s = int(self._rng.binomial(pool_size, prob))  # random count of pairs to draw
+                # pool_size fits in an int32 (numpy Binomial's ``n``-argument limit).
+                # full_count equals pool_size for non-middle sizes and twice pool_size
+                # for the middle size, i.e. at most ~2^32, which fits exactly in a
+                # double, so prob = 2c/C(n,s) is a safe float. Binomial(pool_size, prob)
+                # matches the paper's pseudocode (sample Binomial(C(n,s), prob) then
+                # halve for the middle size).
+                prob = two_c / full_count
+                m_s = int(self._rng.binomial(pool_size, prob))
 
             if m_s == 0:
-                continue  # skip this size
+                continue
 
-            indices = self._sample_without_replacement(
-                pool_size, m_s, py_rng
-            )  # pick m_s unique indices
+            indices = self._sample_without_replacement(pool_size, m_s, py_rng)
 
-            for idx in indices:  # build each sampled coalition
+            for idx in indices:
                 if is_middle:
-                    # Sample over n-1 items with size s-1, then fix z_n = 1.
-                    z_partial = self._combo(n - 1, s - 1, idx)  # combo over n-1 items
+                    # Sample over n-1 items with size s-1, then fix z_n = 1 so each
+                    # unordered pair is produced exactly once.
+                    z_partial = self._combo(n - 1, s - 1, idx)
                     z = np.zeros(n, dtype=bool)
-                    z[: n - 1] = z_partial  # copy partial pattern
-                    z[n - 1] = True  # force last player → ensures unique unordered pair
+                    z[: n - 1] = z_partial
+                    z[n - 1] = True
                 else:
-                    z = self._combo(n, s, idx)  # idx-th lexicographic combination
+                    z = self._combo(n, s, idx)
                 z_bar = ~z  # complement (paired sampling)
-                z_list.append(z)  # add z
-                z_list.append(z_bar)  # add z̄
-                sizes_list.append(int(z.sum()))  # |z|
-                sizes_list.append(int(z_bar.sum()))  # |z̄| = n - |z|
+                z_list.append(z)
+                z_list.append(z_bar)
+                sizes_list.append(int(z.sum()))
+                sizes_list.append(int(z_bar.sum()))
 
         if z_list:
-            return np.array(z_list), np.array(sizes_list, dtype=int)  # stack into arrays
-        return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)  # nothing got sampled
+            return np.array(z_list), np.array(sizes_list, dtype=int)
+        return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)
 
     @staticmethod
     def _sample_without_replacement(total: int, k: int, py_rng: _py_random.Random) -> list[int]:
@@ -366,18 +405,20 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Returns a boolean vector of length ``n`` with exactly ``s`` True entries.
         ``i`` is 0-indexed.
         """
-        z = np.zeros(n, dtype=bool)  # output coalition vector
+        z = np.zeros(n, dtype=bool)
         if s == 0:
-            return z  # empty combination
+            return z
         k = s  # remaining slots to fill
         j = 0  # current position
         while k > 0 and j < n:
-            # Number of combinations that include j (and choose k-1 from remaining n-j-1).
-            count = math.comb(n - j - 1, k - 1)  # # combinations with position j included
+            # Combinations that include position j (choose the other k-1 from the n-j-1
+            # positions after it). If i falls in that block, j is in the combination;
+            # otherwise skip past the block and move on.
+            count = math.comb(n - j - 1, k - 1)
             if i < count:
-                z[j] = True  # include position j in the coalition
-                k -= 1  # one fewer slot to fill
+                z[j] = True
+                k -= 1
             else:
-                i -= count  # skip this branch, adjust i
-            j += 1  # advance to next position
-        return z  # boolean vector with exactly s True entries
+                i -= count
+            j += 1
+        return z
