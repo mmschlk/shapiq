@@ -21,8 +21,8 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
-    "nltk>=3.9.4",
 ]
+
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
     {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
@@ -83,6 +83,20 @@ shapleig = [
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
+text = [
+    # required by shapiq.imputer.TextImputer and text explanation utilities
+    "torch",
+    "transformers",
+    "nltk>=3.9.4",
+]
+
+benchmark = [
+    # optional model backends for shapiq_benchmark, imported lazily
+    "optuna",
+    "tabpfn",
+    "lightgbm",
+    "xgboost",
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -108,7 +122,11 @@ changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 [tool.pytest.ini_options]
 testpaths = [
   "tests/shapiq",
-  "tests/shapiq_games"
+  "tests/shapiq_games",
+  "tests/shapiq_benchmark"
+]
+markers = [
+    "slow: marks tests that use real external model checkpoints",
 ]
 pythonpath = ["src"]
 minversion = "8.0"

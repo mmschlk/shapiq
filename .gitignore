@@ -197,6 +197,7 @@ src/shapiq/_version.py
 docs/source/auto_examples/
 docs/source/sg_execution_times.rst
 docs/source/generated/
+docs/source/gen_modules/
 
 # Local debug / scratch scripts (not public)
 scripts/

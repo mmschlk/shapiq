@@ -4,9 +4,11 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-import torch
 
-from shapiq.imputer.text_imputer import (
+torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from shapiq.imputer.text_imputer import (  # noqa: E402
     AttentionMaskPerturbation,
     TextImputer,
 )
@@ -328,7 +330,7 @@ def test_attention_mask_full_prediction_uses_full_coalition() -> None:
         device="cpu",
     )
 
-    score = imputer.full_prediction()
+    score = imputer.full_prediction
 
     assert isinstance(score, float)
     assert np.isfinite(score)
