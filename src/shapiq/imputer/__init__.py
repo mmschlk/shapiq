@@ -11,7 +11,6 @@ from .gaussian_imputer import GaussianImputer
 from .generative_conditional_imputer import GenerativeConditionalImputer
 from .marginal_imputer import MarginalImputer
 from .tabpfn_imputer import TabPFNImputer
-from .text import TextImputer
 
 __all__ = [
     "Imputer",
@@ -23,3 +22,13 @@ __all__ = [
     "GaussianCopulaImputer",
     "TextImputer",
 ]
+
+
+def __getattr__(name: str) -> type:
+    if name == "TextImputer":
+        from .text import TextImputer
+
+        return TextImputer
+
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
