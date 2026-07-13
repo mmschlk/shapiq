@@ -41,6 +41,7 @@ def test_expand_validated_config_2():
     assert len(run_configs) == len(mvp_run_config.budgets)
     assert [cfg["budget"] for cfg in run_configs] == mvp_run_config.budgets
 
+
 def test_mvp_run_config_filters_out_invalid_budgets():
     """Check that filters are applied for invalid budgets."""
     config = MVPRunConfig(

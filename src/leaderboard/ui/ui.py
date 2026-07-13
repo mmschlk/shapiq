@@ -340,7 +340,13 @@ def load_initial_data() -> InitialData:
     _all_max_orders = sorted({c.max_order for c in _unique_configs})
     _all_gt_methods = sorted({c.ground_truth_method for c in _unique_configs})
     _all_seeds = sorted(
-        set({int(s) for r in raw_records if isinstance(s := r.get("approx_seed"), int | float | str)})
+        set(
+            {
+                int(s)
+                for r in raw_records
+                if isinstance(s := r.get("approx_seed"), int | float | str)
+            }
+        )
     )
 
     _with_spinner("Computing global styles...", lambda: update_global_styles(df_agg) or True)
@@ -530,11 +536,7 @@ def compute_all_elo_buckets_parallel(
 
     for bucket in BUDGET_BUCKETS:
         budget_value = int(bucket["budget"])
-        bucket_records = [
-            record
-            for record in filtered
-            if record.get("budget") == budget_value
-        ]
+        bucket_records = [record for record in filtered if record.get("budget") == budget_value]
         tasks.append((bucket_records, budget_value, metric, index, game, approx_styles))
 
     max_workers = min(len(tasks), 6)

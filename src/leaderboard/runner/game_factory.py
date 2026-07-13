@@ -90,16 +90,12 @@ def create_game_from_config(
         game_class = SOUM
     elif game_family == "global_xai":
         if game_name not in GLOBAL_GAME_REGISTRY:
-            msg = (
-                f"Game '{game_name}' is not supported in global_xai family. "
-            )
+            msg = f"Game '{game_name}' is not supported in global_xai family. "
             raise UnknownGameError(msg, tuple(LOCAL_GAME_REGISTRY.keys()))
         game_class = GLOBAL_GAME_REGISTRY[game_name]
     else:
         if game_name not in LOCAL_GAME_REGISTRY:
-            msg = (
-                f"Game '{game_name}' is not supported in local_xai family. "
-            )
+            msg = f"Game '{game_name}' is not supported in local_xai family. "
             raise UnknownGameError(msg, tuple(LOCAL_GAME_REGISTRY.keys()))
         game_class = LOCAL_GAME_REGISTRY[game_name]
 

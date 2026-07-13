@@ -47,6 +47,7 @@ def _process(raw_runs: list[dict]) -> pd.DataFrame:
 
     return _aggregate(runs_df)
 
+
 def process_raw_runs(raw_runs: list[dict]) -> pd.DataFrame:
     """Process raw run documents, filter failures, flatten metrics, and aggregate.
 
