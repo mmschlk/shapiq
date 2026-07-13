@@ -23,6 +23,7 @@ from leaderboard.metrics import METRICS
 from leaderboard.scoring.cd_scorer import CriticalDifferenceScorer
 from leaderboard.scoring.elo_scorer import EloScorer
 from leaderboard.storage.connection import DatabaseClientFactory, DBConnectionError
+from leaderboard.storage.connection.utilities import process_raw_runs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -315,18 +316,20 @@ def _with_spinner(message: str, fn: Callable[[], T]) -> T:
 
 def load_initial_data() -> InitialData:
     """Load and prepare all data required for the initial UI build."""
-    df_agg = _with_spinner(
-        "Connecting to database & loading records...",
-        lambda: load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH),
-    )
-
-    # Raw DB client for details tab
     db_client = DatabaseClientFactory.create_client(
         LOADING_METHOD,
         db_args={"LOCAL_DB_PATH": str(RESULTS_PATH)} if LOADING_METHOD == "local" else {},
     )
 
+    if not db_client.test_connection():
+        raise DBConnectionError from None
+
     raw_records = _with_spinner("Loading raw records...", db_client.get_all)
+    df_agg = _with_spinner(
+        "Aggregating raw records...",
+        lambda: process_raw_runs(raw_records),
+    )
+
     _all_games = db_client.get_games()
     _all_approxs = db_client.get_approximators()
     _unique_configs = db_client.get_unique_configs()
@@ -337,7 +340,7 @@ def load_initial_data() -> InitialData:
     _all_max_orders = sorted({c.max_order for c in _unique_configs})
     _all_gt_methods = sorted({c.ground_truth_method for c in _unique_configs})
     _all_seeds = sorted(
-        {int(s) for r in raw_records if isinstance(s := r.get("approx_seed"), int | float | str)}
+        set({int(s) for r in raw_records if isinstance(s := r.get("approx_seed"), int | float | str)})
     )
 
     _with_spinner("Computing global styles...", lambda: update_global_styles(df_agg) or True)
@@ -523,10 +526,16 @@ def compute_all_elo_buckets_parallel(
 
     approx_styles = GLOBAL_APPROX_STYLES.copy()
 
-    tasks = [
-        (filtered, int(bucket["budget"]), metric, index, game, approx_styles)
-        for bucket in BUDGET_BUCKETS
-    ]
+    tasks = []
+
+    for bucket in BUDGET_BUCKETS:
+        budget_value = int(bucket["budget"])
+        bucket_records = [
+            record
+            for record in filtered
+            if record.get("budget") == budget_value
+        ]
+        tasks.append((bucket_records, budget_value, metric, index, game, approx_styles))
 
     max_workers = min(len(tasks), 6)
 
@@ -1579,8 +1588,8 @@ def build_app() -> gr.Blocks:
                 available metric a game dropdown update, approximator checkbox
                 update, and plot Figure.
             """
-            new_df = reload_data()
             new_raw = db_client.get_all()
+            new_df = process_raw_runs(new_raw)
             update_global_styles(new_df)
 
             games = new_df["game_name"].unique().tolist()
@@ -1602,20 +1611,6 @@ def build_app() -> gr.Blocks:
                 )
 
             return tuple(outputs)
-
-        reload_btn.click(
-            fn=on_reload,
-            inputs=[],
-            outputs=[
-                df_state,
-                raw_state,
-                *[
-                    comp
-                    for m in available_metrics
-                    for comp in [game_dropdowns[m], approx_checkboxes[m], metric_plots[m]]
-                ],
-            ],
-        )
 
         elo_jump_btn.click(
             fn=lambda approxs, budget_idx, metric, index, game: (
