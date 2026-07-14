@@ -48,6 +48,18 @@ def _process(raw_runs: list[dict]) -> pd.DataFrame:
     return _aggregate(runs_df)
 
 
+def process_raw_runs(raw_runs: list[dict]) -> pd.DataFrame:
+    """Process raw run documents, filter failures, flatten metrics, and aggregate.
+
+    Args:
+        raw_runs: Raw run documents from a storage backend.
+
+    Returns:
+        Aggregated DataFrame ready for the leaderboard UI.
+    """
+    return _process(raw_runs)
+
+
 def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate runs by game, approximator, and budget, computing mean and std for each metric."""
     avail_metrics = [m for m in METRICS if m in df.columns]

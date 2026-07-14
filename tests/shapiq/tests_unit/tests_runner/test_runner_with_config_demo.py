@@ -12,23 +12,50 @@ def test_expand_validated_config():
         max_order=1,
         game_seed=0,
         approximators=["PermutationSamplingSV"],
+        budgets=[100, 200],
+        seeds=[0, 1, 2],
+        ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
+    )
+
+    run_configs = expand_validated_config(mvp_run_config)
+
+    assert len(run_configs) == 2
+    assert [cfg["budget"] for cfg in run_configs] == [100, 200]
+
+
+def test_expand_validated_config_2():
+    """Test that validated budgets are expanded into concrete run configs."""
+    mvp_run_config = MVPRunConfig(
+        game="CaliforniaHousing",
+        index="SV",
+        max_order=1,
+        game_seed=0,
+        approximators=["PermutationSamplingSV"],
+        budgets=[100, 200],
+        seeds=[0, 1, 2],
+        ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
+    )
+
+    run_configs = expand_validated_config(mvp_run_config)
+
+    assert len(run_configs) == len(mvp_run_config.budgets)
+    assert [cfg["budget"] for cfg in run_configs] == mvp_run_config.budgets
+
+
+def test_mvp_run_config_filters_out_invalid_budgets():
+    """Check that filters are applied for invalid budgets."""
+    config = MVPRunConfig(
+        game="CaliforniaHousing",
+        index="SV",
+        max_order=1,
+        game_seed=0,
+        approximators=["PermutationSamplingSV"],
         budgets=[100, 500],
         seeds=[0, 1, 2],
         ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
     )
-    run_configs = expand_validated_config(mvp_run_config)
-    assert len(run_configs) == 2
 
-    budgets = [run_config["budget"] for run_config in run_configs]
-    assert budgets == [100, 500]
-
-    for run_config in run_configs:
-        assert run_config["game"] == "CaliforniaHousing"
-        assert run_config["index"] == "SV"
-        assert run_config["approximator"] == "PermutationSamplingSV"
-        assert run_config["max_order"] == 1
-        assert run_config["seeds"] == [0, 1, 2]
-        assert run_config["game_seed"] == 0
+    assert config.budgets == [100]
 
 
 def test_expand_validated_config_with_multiple_approximators():

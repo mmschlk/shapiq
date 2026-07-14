@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -9,8 +9,14 @@ from leaderboard.runner.runner_exceptions import NoSuccessfulRunsError
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import DummyGame
 
+if TYPE_CHECKING:
+    from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq import Game
 
-def fake_ground_truth_fn(*, game: Any, index: str, max_order: int) -> str:
+
+def fake_ground_truth_fn(
+    game: Game, index: InteractionIndex, max_order: int, method: str = "ExactComputer"
+) -> str:
     """Return a fixed fake ground truth object for benchmark orchestration tests."""
     return "fake_ground_truth"
 

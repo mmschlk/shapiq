@@ -243,11 +243,11 @@ class LocalClient(DatabaseClient):
 
     def get_unique_configs(self) -> list[RunConfig]:
         """Return one ``RunConfig`` per unique configuration in the store."""
-        seen: set[tuple[Any, ...]] = set()
+        seen: set[str] = set()
         result: list[RunConfig] = []
         for doc in self._load():
             config = RunConfig.from_dict(doc)
-            key = tuple(sorted(config.to_dict().items()))
+            key = json.dumps(config.to_dict(), sort_keys=True)
             if key not in seen:
                 seen.add(key)
                 result.append(config)
