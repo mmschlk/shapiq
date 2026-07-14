@@ -1,8 +1,69 @@
 # Storage CLI
 
-A short tutorial on the interactions with the storage cli (now with images)
+We discuss:
+1. [Module Overview](#module-overview)
+2. [Implementation Details](#implementation-details)
+3. [Usage](#usage)
+
+## Module Overview
+
+The module is structured as follows:
+
+```
+├── cli
+│   ├── __init__.py           
+│   ├── cli.py                         # entry point for the CLI
+│   ├── formatting.py                  # formatting utilities for the CLI
+│   ├── query_context.py               # context manager for the `seq` command of the CLI
+│   ├── registry.py                    # registry for the available storage backends
+│   └── repl.py                        # defines CLI grammar (commands, arguments, and options)
+```
+
+## Implementation Details
+
+The CLI is a small custom Read-Eval-Print Loop (REPL).
+
+Can you shorten this a bit and make it sound more natural as well
+
+| File | Responsibility |
+|---|---|
+| [`cli.py`](cli.py) | Entry point. Parses top-level startup flags (`--backend`, `--no-color`) and constructs a `StorageREPL` and triggers its run. Through the optional flag `--backend` a connection is opened immediately. Handles `KeyboardInterrupt` by closing all connections before exiting. |
+| [`repl.py`](repl.py) | Defines `StorageREPL` (grammar and dispatch loop). Tokenises each input line (`shlex`) and routes it to a `_cmd_*` handler for `list`, `add`, `close`, `insert`, `delete`, and `sequence`/`seq`. Also handles the additional parameters required for defining new connections, creating the client via the [`DatabaseClientFactory`](../connection/README.md#databaseclientfactory). |
+| [`registry.py`](registry.py) | Defines `StorageRegistry`, which tracks every open `DatabaseClient` and assigns human-readable IDs (`local1`, `mongodb1`, `huggingface1`, ...). IDs are scoped per-backend-type, so opening two local files gives `local1` and `local2`.|
+| [`query_context.py`](query_context.py) | Defines `QueryContext`, which powers the `seq` command described in [Exploring the Store](#3-exploring-the-store). It accumulates a list of `(verb, args)` pairs (`get`, `list`, `count`, `sort`, `show`) as the user types them, and only executes them against the storage once the end of the sequence is received (`eoc`). |
+| [`formatting.py`](formatting.py) | Stateless ANSI-color and message-formatting helpers (`bold`, `ok`, `warn`, `error`, `header`, the prompt string, ...) shared by `repl.py`. Color can be disabled globally via `set_color(enabled=False)`, or by enabling the flag `--no-color`. |
+
+### Command grammar
+
+At the top level, the REPL recognises:
+
+```
+list storages                              List open connections and their IDs
+add <backend>                              Open a new connection (prompts for params)
+close <storage_id> | close all             Close one or every open connection
+
+insert [safe] <src> to <dst> [using <mode>]  Transfer documents between storages
+delete from <storage_id>                     Interactively delete entries from a storage
+delete entries <src> from <dst>              Delete entries found in <src> from <dst>
+
+sequence [<storage_id>]  (alias: seq)        Enter a query sequence (see query_context.py)
+help                                          Show the command reference
+exit | quit | q                              Close all connections and exit
+```
+
+Once inside a `sequence` block, a separate mini-grammar applies (`get`, `list`, `count`, `sort`, `show`, `eoc`, `help`, `abort`) - see the docstring at the top of [`query_context.py`](query_context.py) for the exact semantics of each sub-command.
+
+
+### Adding a new backend to the CLI
+
+Because the CLI ultimately delegates connection creation to `DatabaseClientFactory` (see the [connection README](../connection/README.md#databaseclientfactory)), wiring up a new storage backend in the CLI only requires:
+1. Registering the backend with the factory (as described in the connection README).
+2. Adding an entry to `_BACKEND_PARAMS` in [`repl.py`](repl.py) describing which environment-variable-backed parameters the CLI should prompt for.
+3. Adding the backend name to the `choices` list for `--backend` in [`cli.py`](cli.py).
 
 ## Usage
+
+We present a short tutorial on the usage of the CLI. The CLI is intended to be used for storage management and synchronization between different storage backends.
 
 1. Open CLI
 2. Add storage

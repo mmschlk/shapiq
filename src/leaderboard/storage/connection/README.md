@@ -1,30 +1,33 @@
 # The database client
 
-This module defines the connecting to a database logic. It is built around three components:
-- a **factory** (`DatabaseClientFactory`) that creates clients based on environment variables,
+This module defines the database-connection logic. It is built around three components:
+- a **factory** (`DatabaseClientFactory`) that creates clients based on a chosen backend and environment variables,
 - an **abstract client** (`DatabaseClient`) that defines the public API for all backends,
-- and one or more **concrete clients** (e.g. `MongoDBClient`) that implement the abstract interface for specific databases.
+- and one or more **concrete clients** (`MongoDBClient`, `LocalClient`, `HuggingFaceClient`) that implement the abstract interface for specific storage systems.
+
+For the schema of the documents these clients read and write, see the [`data_classes` README](../data_classes/README.md) (in particular `RunConfig`). For the interactive CLI built on top of this client, see the [`cli` README](../cli/README.md).
 
 ## Architecture
 
 ```
 DatabaseClientFactory
         │
-        │  .create_client(backend)
+        │  .create_client(backend, db_args)
         ▼
 DatabaseClient  (ABC)
         │
         ├── MongoDBClient
-        └── (future backends …)
+        ├── LocalClient
+        └── HuggingFaceClient  (subclasses LocalClient)
 ```
-
-User code depends only on `DatabaseClientFactory` and `DatabaseClient`. Concrete implementations are an internal detail.
-
 ---
 
 ## Interaction Flow
 
-1. Creation of a client
+1. [Creation of a client](#1-creation-of-a-client)
+2. [Using the client](#2-using-the-client)
+
+### 1. Creation of a client
 
 ```python
 from leaderboard.storage.connection import DatabaseClientFactory, DatabaseBackend
@@ -37,9 +40,10 @@ client = DatabaseClientFactory.create_client(DatabaseBackend.MONGODB)
 It is also possible to use a string instead of the specially defined `DatabaseBackend` enum, but using the enum is recommended for better type safety and discoverability. Using a string will attempt to cast it to a `DatabaseBackend` value, which will raise an `UnsupportedBackendError` if the string is not valid.
 
 
-2. Using the client
+### 2. Using the client
 
-Regardless of the concrete backend type, the returned object is always a `DatabaseClient`, so all user code can be written against this single, stable interface.
+Regardless of the concrete backend type, the returned object is always a `DatabaseClient`, which allows the user to write code that is independent of the specific backend being used. For a client to be valid, it must fulfill the contract defined by the `DatabaseClient` abstract base class. 
+
 
 ## `DatabaseClient` Interface
 
@@ -49,9 +53,9 @@ The abstract base class defines the full public API that every backend must impl
 
 | Method | Description |
 |---|---|
-| `from_env() → Self` | Classmethod. Construct the client from environment variables. |
-| `test_connection() → bool` | Returns `True` if the backend is reachable. |
-| `close() → None` | Close the underlying connection (called automatically by `__exit__`). |
+| `from_env() -> Self` | Classmethod. Construct the client from environment variables. |
+| `test_connection() -> bool` | Returns `True` if the backend is reachable. |
+| `close() -> None` | Close the underlying connection (called automatically by `__exit__`). |
 
 ### Write
 
@@ -64,8 +68,8 @@ The abstract base class defines the full public API that every backend must impl
 
 | Method | Description |
 |---|---|
-| `delete_all() → int` | Delete every document; returns deleted count. |
-| `delete_by_config(config) → int` | Delete documents matching a `RunConfig`; returns deleted count. |
+| `delete_all() -> int` | Delete every document; returns deleted count. |
+| `delete_by_config(config) -> int` | Delete documents matching a `RunConfig`; returns deleted count. |
 
 ### Read
 
@@ -78,7 +82,7 @@ The abstract base class defines the full public API that every backend must impl
 | `get_by_game(game_name)` | Return all runs for a given game. |
 | `get_approximators()` | Return sorted list of distinct approximator names. |
 | `get_by_approximator(name)` | Return all runs for a given approximator. |
-| `count_by_config(config) → int` | Count stored runs matching a `RunConfig`. |
+| `count_by_config(config) -> int` | Count stored runs matching a `RunConfig`. |
 
 ---
 
@@ -88,7 +92,9 @@ The abstract base class defines the full public API that every backend must impl
 
 | `DatabaseBackend` value | Concrete class | Required env vars |
 |---|---|---|
-| `"mongodb"` | `MongoDBClient` | `MONGODB_URI`, `MONGODB_DB` (optional, default `"shapiq-leaderboard"`) |
+| `"mongodb"` | `MongoDBClient` | `MONGODB_URI`, `MONGODB_DB` |
+| `"local"` | `LocalClient` | `LOCAL_DB_PATH` |
+| `"huggingface"` | `HuggingFaceClient` | `HF_DATASET`, `HF_FILE`, `HF_TOKEN` |
 
 
 ### Registering a new backend
