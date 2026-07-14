@@ -1681,7 +1681,7 @@ def main() -> None:
     print("\n🚀 Starting shapiq Leaderboard...\n")  # noqa: T201
     demo = build_app()
     print("\n✨ Ready!\n")  # noqa: T201
-    demo.launch()
+    demo.launch(ssr_mode=False)
 
 
 if __name__ == "__main__":
