@@ -84,6 +84,27 @@ jobs:
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
     # ----------------------------------------------------------------------------------------------
+    # Install, Import, and Test `shapiq_benchmark`
+    # ----------------------------------------------------------------------------------------------
+    test_shapiq_benchmark:
+        name: Install and test shapiq-benchmark
+        runs-on: ubuntu-latest
+        needs:
+            - install_and_import_shapiq
+        steps:
+            -   uses: actions/checkout@v7
+            -   name: Set up Python and uv
+                uses: astral-sh/setup-uv@v7
+                with:
+                    python-version: "3.12"
+                    enable-cache: true
+            -   name: Install shapiq package and dependencies for shapiq-benchmark
+                run: uv sync --all-extras
+            -   name: Test import of shapiq_benchmark
+                run: uv run --no-sync python -c "import shapiq_benchmark; print('shapiq_benchmark imported successfully')"
+            -   name: Run shapiq_benchmark unit tests
+                run: uv run --no-sync pytest "tests/shapiq_benchmark"
+    # ----------------------------------------------------------------------------------------------
     # Unit Tests for shapiq (Stable Python and Matrix)
     # ----------------------------------------------------------------------------------------------
     test_shapiq_stable:

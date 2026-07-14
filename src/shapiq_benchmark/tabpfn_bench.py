@@ -5,18 +5,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from tabpfn import TabPFNClassifier, TabPFNRegressor
 
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.typing import IndexType, Model
 
+from ._optional import require
 from .base import Benchmark
 from .computers import BruteForceComputer, GroundTruthComputer
 from .setup import load_from_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from tabpfn import TabPFNClassifier, TabPFNRegressor
 
     from .bench_types import BenchmarkDataset
 
@@ -46,6 +48,9 @@ class TabPFNBench(Benchmark[IndexType]):
             random_state: Random state used for data split and model initialization.
             **kwargs: Additional keyword arguments for model building.
         """
+        tabpfn = require("tabpfn")
+        tabpfn_model_types = (tabpfn.TabPFNClassifier, tabpfn.TabPFNRegressor)
+
         self.dataset: BenchmarkDataset | None = None
         self.model: TabPFNClassifier | TabPFNRegressor
         if isinstance(data, str) and isinstance(model, str):
@@ -69,7 +74,7 @@ class TabPFNBench(Benchmark[IndexType]):
             if labels is None:
                 msg = "When data is a tuple, labels must be provided as (y_train, y_test)."
                 raise ValueError(msg)
-            if not isinstance(model, TabPFNClassifier | TabPFNRegressor):
+            if not isinstance(model, tabpfn_model_types):
                 msg = "Model must be a TabPFNClassifier or TabPFNRegressor."
                 raise TypeError(msg)
             self.model = model
