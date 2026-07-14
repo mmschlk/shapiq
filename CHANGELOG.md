@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Bugfix
-
-- Fixes `CNNMaskingStrategy._build_pixel_mask` mixing devices when explaining a model on the GPU: the player masks follow the model onto the GPU while the coalition sampler emits coalitions on the CPU, so the coalition–mask matmul raised `RuntimeError: Expected all tensors to be on the same device ... mat2 is on cuda:0, different from other tensors on cpu`. Coalitions are now moved to the masks' device before the matmul, so `ImageExplainer` runs on a CUDA model.
-
 ## v1.6.0 (2026-07-06)
 
 ### Highlights of new Features
