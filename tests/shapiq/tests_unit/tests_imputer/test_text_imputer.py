@@ -131,8 +131,11 @@ def model() -> MagicMock:
 
 @pytest.fixture
 def no_nltk_resource_check():
-    """Avoid touching local NLTK data in every player-strategy test."""
-    with patch(f"{PLAYERS_MODULE}._require_nltk_resource"):
+    """Avoid touching local NLTK data in tests."""
+    with (
+        patch("shapiq.imputer.text.players._require_nltk_resource"),
+        patch("shapiq.imputer.text.perturbations._require_nltk_resource"),
+    ):
         yield
 
 
