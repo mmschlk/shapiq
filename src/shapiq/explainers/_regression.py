@@ -15,7 +15,7 @@ from shapiq.explainers._faithful import (
     bernoulli_design,
     eliminate_constraint,
     interaction_design,
-    require_identification,
+    lstsq_identified,
     solve_faithful,
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
@@ -234,6 +234,8 @@ class Regression(EvidenceApproximator):
         if flat_masks.shape[0] == 1:
             solutions = self._solve(flat_masks[0], response, delta)
         else:
+            # per-target solves stay sequential: LAPACK multithreads inside
+            # each least squares solve, which beats one batched SVD on CPU
             broadcast_masks = jnp.broadcast_to(
                 sample_masks,
                 (*target_shape, n_rows, n_players),
@@ -423,8 +425,14 @@ def _constrained_solve(
 ) -> Array:
     """Fit the constrained Shapley-kernel regression (empty and grand exact)."""
     reduced, pivot = eliminate_constraint(interaction_design(masks, order))
-    require_identification(reduced, deduplicating=deduplicating)
-    return solve_faithful(reduced, pivot, response, delta)
+    return solve_faithful(
+        reduced,
+        pivot,
+        response,
+        delta,
+        identify=True,
+        deduplicating=deduplicating,
+    )
 
 
 def _free_intercept_solve(
@@ -438,10 +446,8 @@ def _free_intercept_solve(
     """Fit the unconstrained kernel regression with a free intercept row."""
     del delta
     design = interaction_design(masks, order)
-    design = jnp.concatenate([jnp.ones((design.shape[0], 1)), design], axis=-1)
-    require_identification(design, deduplicating=deduplicating)
-    solution, *_ = jnp.linalg.lstsq(design, response)
-    return solution
+    design = jnp.concatenate([jnp.ones((*design.shape[:-1], 1)), design], axis=-1)
+    return lstsq_identified(design, response, deduplicating=deduplicating)
 
 
 def _kadd_solve(
@@ -466,11 +472,14 @@ def _kadd_solve(
     constraint = bernoulli_design(jnp.ones((1, n_players)), order)[0]
     pivot_column = int(jnp.argmax(jnp.abs(constraint)))
     anchor = constraint[pivot_column]
-    pivot = design[:, pivot_column : pivot_column + 1]
-    reduced = jnp.delete(design - pivot * (constraint / anchor)[None, :], pivot_column, axis=1)
-    require_identification(reduced, deduplicating=deduplicating)
-    shifted = response - (pivot / anchor) * delta[None, :]
-    partial, *_ = jnp.linalg.lstsq(reduced, shifted)
+    pivot = design[..., pivot_column : pivot_column + 1]
+    reduced = jnp.delete(
+        design - pivot * (constraint / anchor)[None, :],
+        pivot_column,
+        axis=-1,
+    )
+    shifted = response - (pivot / anchor) * delta[..., None, :]
+    partial = lstsq_identified(reduced, shifted, deduplicating=deduplicating)
     others = jnp.delete(constraint, pivot_column)
-    back_substituted = (delta[None, :] - others[:, None].T @ partial) / anchor
-    return jnp.insert(partial, pivot_column, back_substituted[0], axis=0)
+    back_substituted = (delta[..., None, :] - others[None, :] @ partial) / anchor
+    return jnp.insert(partial, pivot_column, back_substituted[..., 0, :], axis=-2)

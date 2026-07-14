@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+import numpy as np
 import torch
 
 from shapiq.games import CallableGame
@@ -87,8 +88,14 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
 
 
 def _coalitions_to_torch(coalitions: CoalitionArray) -> torch.Tensor:
-    """Convert coalitions to torch bool tensors, using DLPack when possible."""
+    """Convert coalitions to torch bool tensors, keeping the DLPack device.
+
+    DLPack import preserves the coalitions' device, so a GPU JAX backend
+    hands the wrapped callable GPU-resident masks with no copy; inputs
+    torch cannot import come through host memory instead.
+    """
     dense = coalitions.to_dense()
-    if hasattr(dense, "__dlpack__"):
+    try:
         return torch.from_dlpack(dense).to(dtype=torch.bool)
-    return torch.as_tensor(dense, dtype=torch.bool)
+    except (AttributeError, BufferError, RuntimeError, TypeError, ValueError):
+        return torch.as_tensor(np.asarray(dense).copy(), dtype=torch.bool)

@@ -6,24 +6,31 @@ from math import comb
 from typing import TYPE_CHECKING, Protocol, cast
 
 import jax.numpy as jnp
-from jax import Array
+import numpy as np
 
-from shapiq._shape import Shape, normalize_shape, validate_n_players
+from shapiq._shape import (
+    Shape,
+    broadcast_shapes,
+    expand_ellipsis,
+    indexed_shape,
+    normalize_shape,
+    shape_of,
+    validate_n_players,
+)
 from shapiq.explanations._base import (
     ExplanationArray,
     as_interaction_array,
     check_represented_window,
-    interaction_rows,
     validate_explained_index,
 )
 from shapiq.interactions import (
     Interaction,
     InteractionIndex,
     InteractionOrientation,
-    iter_interactions,
     normalize_interaction,
     validate_interaction_metadata,
 )
+from shapiq.interactions._ranks import host_interaction_ranks, interaction_rank
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -59,10 +66,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         )
         for size, block in self.attributions_by_order.items():
             expected = (*shape, comb(n_players, size), *value_shape)
-            block_shape = getattr(block, "shape", None)
-            actual = (
-                tuple(block_shape) if block_shape is not None else jnp.shape(cast("Array", block))
-            )
+            actual = shape_of(block)
             if actual != expected:
                 msg = (
                     f"order-{size} attributions have shape {actual}, expected "
@@ -71,12 +75,7 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
                 raise ValueError(msg)
         if self.baseline is not None:
             expected = (*shape, *value_shape)
-            baseline_shape = getattr(self.baseline, "shape", None)
-            actual = (
-                tuple(baseline_shape)
-                if baseline_shape is not None
-                else jnp.shape(cast("Array", self.baseline))
-            )
+            actual = shape_of(self.baseline)
             if actual != expected:
                 msg = f"the baseline has shape {actual}, expected {expected}"
                 raise ValueError(msg)
@@ -86,8 +85,8 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
         if self.shape == ():
             msg = "cannot index a scalar explanation"
             raise IndexError(msg)
-        key_tuple = key if isinstance(key, tuple) else (key,)
-        new_shape = tuple(int(dim) for dim in jnp.empty(self.shape)[key].shape)
+        new_shape = indexed_shape(self.shape, key)
+        key_tuple = expand_ellipsis(key if isinstance(key, tuple) else (key,), self.ndim)
         new_values = {
             order: _slice_attributions(values, key_tuple)
             for order, values in self.attributions_by_order.items()
@@ -152,12 +151,22 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
                 return jnp.zeros(self.shape, dtype=bool)
             return jnp.ones(self.shape, dtype=bool)
         interactions = as_interaction_array(interaction)
-        mask = jnp.asarray(
-            [self._is_represented(tuple(row)) for row in interaction_rows(interactions)],
-            dtype=bool,
+        rows = interactions.reshape(-1, interactions.shape[-1])
+        available = (
+            self._valid_players(rows)
+            if self._represents_size(int(interactions.shape[-1]))
+            else np.zeros(rows.shape[0], dtype=bool)
         )
-        mask = jnp.reshape(mask, interactions.shape[:-1])
-        return jnp.broadcast_to(mask, jnp.broadcast_shapes(self.shape, interactions.shape[:-1]))
+        mask = jnp.asarray(available.reshape(interactions.shape[:-1]))
+        return jnp.broadcast_to(mask, broadcast_shapes(self.shape, interactions.shape[:-1]))
+
+    def _represents_size(self, size: int) -> bool:
+        """Return whether lookups of one interaction size can succeed."""
+        try:
+            check_represented_window(self.index, size, self.order)
+        except KeyError:
+            return False
+        return size in self.attributions_by_order
 
     def _normalize_represented(self, interaction: Sequence[int]) -> Interaction:
         normalized = normalize_interaction(
@@ -171,33 +180,43 @@ class DenseExplanationArray[ValueT](ExplanationArray[ValueT]):
             raise KeyError(msg)
         return normalized
 
-    def _is_represented(self, interaction: Sequence[int]) -> bool:
-        try:
-            self._normalize_represented(interaction)
-        except (TypeError, ValueError, KeyError):
-            return False
-        return True
+    def _valid_players(self, rows: np.ndarray) -> np.ndarray:
+        """Return per-interaction validity: players in range, no repeats."""
+        in_bounds = np.all((rows >= 0) & (rows < self.n_players), axis=-1)
+        if rows.shape[-1] < 2:
+            return in_bounds
+        ordered = np.sort(rows, axis=-1)
+        return in_bounds & np.all(ordered[..., 1:] > ordered[..., :-1], axis=-1)
 
     def _position(self, interaction: Interaction) -> int:
-        return list(
-            iter_interactions(
-                self.n_players,
-                len(interaction),
-                min_order=len(interaction),
-                orientation=self.orientation,
-            )
-        ).index(interaction)
+        # every constructible explanation is undirected; a directed rank
+        # would need its own closed form next to interaction_rank
+        return interaction_rank(interaction, self.n_players)
 
-    def _positions(self, interactions: Array) -> Array:
-        return jnp.reshape(
-            jnp.asarray(
-                [
-                    self._position(self._normalize_represented(tuple(row)))
-                    for row in interaction_rows(interactions)
-                ]
-            ),
-            interactions.shape[:-1],
-        )
+    def _positions(self, interactions: np.ndarray) -> np.ndarray:
+        """Resolve block positions of a lookup array, teaching on bad rows.
+
+        Positions are host-side index math and resolve in plain NumPy, so
+        bulk lookups run at full speed on the first call with no kernel
+        compilation.
+        """
+        rows = interactions.reshape(-1, interactions.shape[-1])
+        invalid = ~self._valid_players(rows)
+        if bool(invalid.any()):
+            offender = tuple(int(player) for player in rows[int(np.argmax(invalid))])
+            normalize_interaction(
+                offender,
+                orientation=self.orientation,
+                n_players=self.n_players,
+            )
+            msg = "invalid interaction row"  # unreachable: the checks above mirror it
+            raise ValueError(msg)
+        size = int(interactions.shape[-1])
+        check_represented_window(self.index, size, self.order)
+        if size not in self.attributions_by_order:
+            msg = f"no order-{size} attributions are stored on this explanation"
+            raise KeyError(msg)
+        return host_interaction_ranks(rows, self.n_players).reshape(interactions.shape[:-1])
 
 
 def _slice_attributions(value: object, key: tuple[object, ...]) -> object:

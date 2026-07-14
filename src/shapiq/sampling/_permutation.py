@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from functools import lru_cache
 from itertools import combinations
 from math import comb
 from typing import TYPE_CHECKING
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import Array
 
 from shapiq._shape import validate_int
@@ -285,6 +287,11 @@ def nonempty_patterns(size: int) -> tuple[tuple[int, ...], ...]:
 def interaction_members(n_players: int, order: int) -> Array:
     """Return the member table of all order-sized interactions.
 
+    The host table is cached with a small bound: building the combination
+    list on every walk render or explain call is waste, while caching
+    device arrays would pin accelerator memory and the first call's dtype
+    regime for the process lifetime.
+
     Args:
         n_players: Number of players.
         order: Interaction order of the listed interactions.
@@ -294,4 +301,10 @@ def interaction_members(n_players: int, order: int) -> Array:
         rows are the interactions in lexicographic order, matching the order
         used by explanations.
     """
-    return jnp.asarray(list(combinations(range(n_players), order)))
+    return jnp.asarray(_member_table(n_players, order))
+
+
+@lru_cache(maxsize=16)
+def _member_table(n_players: int, order: int) -> np.ndarray:
+    """Return the host member table of all order-sized interactions."""
+    return np.asarray(list(combinations(range(n_players), order)))

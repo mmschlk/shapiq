@@ -6,10 +6,9 @@ from dataclasses import dataclass
 from math import prod
 from typing import TYPE_CHECKING
 
-import jax.numpy as jnp
 import torch
 
-from shapiq._shape import validate_int
+from shapiq._shape import broadcast_shapes, validate_int
 from shapiq.games._masked_predictor import MaskedPredictor
 
 if TYPE_CHECKING:
@@ -93,7 +92,7 @@ class ChunkedMaskedPredictor(MaskedPredictor[torch.Tensor]):
         n_samples = coalitions.shape[-1]
         leading = (slice(None),) * (len(coalitions.shape) - 1)
         instances_per_sample = prod(
-            jnp.broadcast_shapes(self.target_shape, coalitions.shape[:-1]),
+            broadcast_shapes(self.target_shape, coalitions.shape[:-1]),
         )
         samples_per_chunk = max(1, self.batch_size // max(instances_per_sample, 1))
         chunks: list[torch.Tensor] = []

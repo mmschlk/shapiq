@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import cache
-from itertools import combinations
 from math import comb
 from typing import cast
 
@@ -214,12 +213,9 @@ def _require_weight_length(source: str, weights: Array, n_players: int, size: in
 @cache
 def _powerset_masks(n_players: int) -> Array:
     """Return all coalitions as dense masks, ordered by size then lexicographically."""
-    return jnp.asarray(
-        [
-            [player in members for player in range(n_players)]
-            for size in range(n_players + 1)
-            for members in combinations(range(n_players), size)
-        ],
+    return jnp.concatenate(
+        [interaction_masks(n_players, size) for size in range(n_players + 1)],
+        axis=0,
     )
 
 

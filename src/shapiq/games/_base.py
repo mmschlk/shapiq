@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
-import jax.numpy as jnp
+from shapiq._shape import broadcast_shapes, shape_of
 
 if TYPE_CHECKING:
-    from jax import Array
-
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
 
@@ -43,12 +41,11 @@ class Game[ValueT](ABC):
         if coalitions.shape == ():
             return
         expected = (
-            *jnp.broadcast_shapes(self.target_shape, coalitions.shape[:-1]),
+            *broadcast_shapes(self.target_shape, coalitions.shape[:-1]),
             coalitions.shape[-1],
             *self.value_shape,
         )
-        shape = getattr(values, "shape", None)
-        actual = tuple(shape) if shape is not None else jnp.shape(cast("Array", values))
+        actual = shape_of(values)
         if actual != expected:
             msg = (
                 f"game values have shape {actual}, expected {expected} "

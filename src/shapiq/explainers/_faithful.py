@@ -8,6 +8,7 @@ from itertools import combinations
 from math import comb
 
 import jax.numpy as jnp
+import numpy as np
 from jax import Array
 
 from shapiq.errors import InsufficientSamplesError
@@ -16,12 +17,16 @@ from shapiq.errors import InsufficientSamplesError
 @cache
 def interaction_masks(n_players: int, size: int) -> Array:
     """Return dense member masks of all size-``size`` interactions, lexicographic."""
-    return jnp.asarray(
-        [
-            [player in members for player in range(n_players)]
-            for members in combinations(range(n_players), size)
-        ],
+    if size == 0:
+        return jnp.zeros((1, n_players), dtype=bool)
+    members = np.fromiter(
+        combinations(range(n_players), size),
+        dtype=np.dtype((np.int64, (size,))),
+        count=comb(n_players, size),
     )
+    masks = np.zeros((members.shape[0], n_players), dtype=bool)
+    masks[np.arange(members.shape[0])[:, None], members] = True
+    return jnp.asarray(masks)
 
 
 def interaction_design(masks: Array, order: int) -> Array:
@@ -51,10 +56,10 @@ def eliminate_constraint(design: Array) -> tuple[Array, Array]:
 
     Returns:
         The reduced design ``(rows, columns - 1)`` and the pivot column
-        ``(rows, 1)``.
+        ``(rows, 1)``; leading batch axes pass through.
     """
-    pivot = design[:, -1:]
-    return design[:, :-1] - pivot, pivot
+    pivot = design[..., -1:]
+    return design[..., :-1] - pivot, pivot
 
 
 def solve_faithful(
@@ -64,6 +69,8 @@ def solve_faithful(
     delta: Array,
     *,
     sqrt_weights: Array | None = None,
+    identify: bool = False,
+    deduplicating: bool = False,
 ) -> Array:
     """Solve the eliminated least squares problem for all interaction columns.
 
@@ -74,17 +81,48 @@ def solve_faithful(
         delta: Grand-minus-empty value per target, shape ``(targets,)``.
         sqrt_weights: Optional square roots of row weights, shape ``(rows,)``;
             rows with zero weight drop out of the fit.
+        identify: Whether to require the design to identify all columns,
+            raising ``InsufficientSamplesError`` otherwise.
+        deduplicating: Whether the caller deduplicates coalitions, selecting
+            the identification hint.
 
     Returns:
         Attributions for every interaction column, shape ``(columns, targets)``.
     """
-    shifted = response - pivot * delta[None, :]
+    shifted = response - pivot * delta[..., None, :]
     if sqrt_weights is not None:
         reduced = reduced * sqrt_weights[:, None]
         shifted = shifted * sqrt_weights[:, None]
-    partial, *_ = jnp.linalg.lstsq(reduced, shifted)
-    last = delta[None, :] - jnp.sum(partial, axis=0, keepdims=True)
-    return jnp.concatenate([partial, last], axis=0)
+    if identify:
+        partial = lstsq_identified(reduced, shifted, deduplicating=deduplicating)
+    else:
+        partial, *_ = jnp.linalg.lstsq(reduced, shifted)
+    last = delta[..., None, :] - jnp.sum(partial, axis=-2, keepdims=True)
+    return jnp.concatenate([partial, last], axis=-2)
+
+
+def lstsq_identified(design: Array, response: Array, *, deduplicating: bool = False) -> Array:
+    """Solve a least squares fit, requiring the design to identify all columns.
+
+    The identifying rank comes from the solve itself, so no second
+    decomposition is paid on top of the fit.
+
+    Args:
+        design: Design matrix of shape ``(rows, columns)``.
+        response: Responses of shape ``(rows, targets)``.
+        deduplicating: Whether the caller deduplicates coalitions, selecting
+            the identification hint.
+
+    Returns:
+        The least squares solution of shape ``(columns, targets)``.
+
+    Raises:
+        InsufficientSamplesError: If the design does not identify every
+            column.
+    """
+    solution, _, rank, _ = jnp.linalg.lstsq(design, response)
+    _require_rank(int(rank), int(design.shape[-1]), deduplicating=deduplicating)
+    return solution
 
 
 def bernoulli_numbers(order: int) -> list[float]:
@@ -111,7 +149,7 @@ def bernoulli_design(masks: Array, order: int) -> Array:
         member_masks = interaction_masks(n_players, size)
         intersections = masks.astype(jnp.int32) @ member_masks.T.astype(jnp.int32)
         columns.append(table[size][intersections])
-    return jnp.concatenate(columns, axis=1)
+    return jnp.concatenate(columns, axis=-1)
 
 
 def _bernoulli_weight_table(order: int) -> Array:
@@ -129,18 +167,26 @@ def _bernoulli_weight_table(order: int) -> Array:
 
 def require_identification(reduced: Array, *, deduplicating: bool = False) -> None:
     """Raise when the sampled coalitions do not yet identify all attributions."""
-    needed = int(reduced.shape[-1])
-    rank = int(jnp.linalg.matrix_rank(reduced))
-    if rank < needed:
-        hint = (
-            "sample more evaluations and retry"
-            if deduplicating
-            else "sample more evaluations (deduplicate=True reaches distinct "
-            "coalitions with the fewest evaluations)"
-        )
-        msg = (
-            "the faithful regression is not yet identified: the sampled coalitions "
-            f"give rank {rank} of the {needed} required, so at least "
-            f"{needed - rank} more distinct informative coalitions are needed; {hint}"
-        )
-        raise InsufficientSamplesError(msg)
+    _require_rank(
+        int(jnp.linalg.matrix_rank(reduced)),
+        int(reduced.shape[-1]),
+        deduplicating=deduplicating,
+    )
+
+
+def _require_rank(rank: int, needed: int, *, deduplicating: bool) -> None:
+    """Raise the identification error when a solved rank falls short."""
+    if rank >= needed:
+        return
+    hint = (
+        "sample more evaluations and retry"
+        if deduplicating
+        else "sample more evaluations (deduplicate=True reaches distinct "
+        "coalitions with the fewest evaluations)"
+    )
+    msg = (
+        "the faithful regression is not yet identified: the sampled coalitions "
+        f"give rank {rank} of the {needed} required, so at least "
+        f"{needed - rank} more distinct informative coalitions are needed; {hint}"
+    )
+    raise InsufficientSamplesError(msg)
