@@ -47,6 +47,7 @@ class TextImputer(Imputer):
     """Coalition-based text imputer for model-agnostic Shapley explanations.
 
     ``TextImputer`` combines three independent components:
+
     - a player strategy, which chooses the text features to explain;
     - either a text perturbation strategy, which creates perturbed strings,
       or a tensor perturbation strategy, which creates model-ready inputs;
@@ -62,6 +63,7 @@ class TextImputer(Imputer):
     infillings and returns their average score, approximating ``E[f(X) | X_S]``.
 
     Parameters:
+
     model:
         Hugging Face model whose output is explained.
     tokenizer:
@@ -80,9 +82,7 @@ class TextImputer(Imputer):
 
     model_type: Target-model interface
         ``"encoder_classifier"``, ``"causal_lm"``, and ``"seq2seq"``.
-
     """
-
     def __init__(
         self,
         model: PreTrainedModel,
