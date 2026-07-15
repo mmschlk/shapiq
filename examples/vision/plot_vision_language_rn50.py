@@ -313,20 +313,3 @@ iv.plot_network(feature_names=feature_names, draw_threshold=0.0, show=False)
 plt.savefig("vision_rn50_slic_network.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_rn50_slic_network.png")
-
-# %%
-# Summary
-# --------
-# This example demonstrated the :class:`~shapiq.explainer.vision.VisionLanguageExplainer`
-# with a CNN-backbone CLIP model and SLIC superpixels:
-#
-# | Step | Component | What it does |
-# |---|---|---|
-# | Load model | OpenAI ``clip`` | RN50 (ResNet-50) |
-# | Explain | ``VisionLanguageExplainer`` | Wraps imputer + approximator |
-# | Segment | ``SLICSegmenter`` | 49 superpixel players |
-# | Mask | ``CrossModalMeanMasker`` | Zero-out pixels + text attention |
-# | Approximate | ``KernelSHAPIQ`` (k-SII) | First- and second-order attributions |
-#
-# CNN-based CLIP models (RN50, RN101, RN50x4) benefit from SLIC superpixels
-# because the rigid patch grid does not align with their convolutional feature maps.

@@ -243,19 +243,3 @@ fig = plot_patch_overlay(image, iv_first_order, imputer.grid_size, imputer.patch
 plt.savefig("vision_clip_patch_overlay.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("Saved: vision_clip_patch_overlay.png")
-
-# %%
-# Summary
-# --------
-# This example demonstrated the :class:`~shapiq.explainer.vision.VisionLanguageExplainer`:
-#
-# | Step | Component | What it does |
-# |---|---|---|
-# | Load model | ``transformers`` | CLIP ViT-B/32 |
-# | Explain | ``VisionLanguageExplainer`` | Wraps imputer + approximator |
-# | Segment | ``PatchSegmenter`` | 49 image patches + text tokens |
-# | Mask | ``CrossModalMeanMasker`` | Zero-out pixels + text attention |
-# | Approximate | ``KernelSHAPIQ`` (k-SII) | First- and second-order attributions |
-#
-# To use your own image or text, simply change the ``image`` and ``INPUT_TEXT`` variables.
-# To switch segmenter/masker, pass ``segmenter_config`` / ``masker_config`` to the explainer.
