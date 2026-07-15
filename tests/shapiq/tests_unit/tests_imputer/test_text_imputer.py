@@ -16,6 +16,7 @@ pytest.importorskip("transformers")
 from transformers import AutoModelForSequenceClassification, AutoTokenizer  # noqa: E402
 
 from shapiq.imputer.text_imputer import (  # noqa: E402
+    BaseTargetCallable,
     CausalLMCallable,
     ChunkPlayerStrategy,
     EncoderClassifierCallable,
@@ -149,6 +150,21 @@ def test_require_nltk_resource_passes_when_resource_exists() -> None:
         _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
 
     find.assert_called_once_with("tokenizers/punkt_tab")
+
+
+def test_require_nltk_resource_passes_when_zip_resource_exists() -> None:
+    with patch(
+        f"{PLAYERS_MODULE}.nltk.data.find",
+        side_effect=[LookupError("not installed"), None],
+    ) as find:
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
+
+    assert find.call_count == 2
+
+    assert find.call_args_list == [
+        call("tokenizers/punkt_tab"),
+        call("tokenizers/punkt_tab.zip"),
+    ]
 
 
 def test_require_nltk_resource_has_helpful_error_when_missing() -> None:
@@ -286,7 +302,8 @@ def test_chunk_player_strategy_groups_phrases(
 ) -> None:
     parsed_tree = [
         Tree("NP", [("the", "DT"), ("movie", "NN")]),
-        Tree("VP", [("was", "VBD"), ("very", "RB"), ("good", "JJ")]),
+        ("was", "VBD"),
+        Tree("ADJP", [("very", "RB"), ("good", "JJ")]),
     ]
 
     parser = MagicMock()
@@ -299,10 +316,10 @@ def test_chunk_player_strategy_groups_phrases(
     ):
         strategy = ChunkPlayerStrategy("the movie was very good")
 
-    assert strategy.get_players() == ["the movie", "was very good"]
+    assert strategy.get_players() == ["the movie", "was", "very good"]
     assert (
         strategy.coalition_to_text(
-            np.array([0, 1]),
+            np.array([0, 1, 1]),
             NeutralPerturbation("something"),
         )
         == "something was very good"
@@ -342,6 +359,28 @@ def test_player_factory_creates_correct_strategy(
             create_player_strategy("word", "hello", tokenizer),
             WordPlayerStrategy,
         )
+
+    with (
+        patch(
+            f"{PLAYERS_MODULE}.NamedEntityPlayerStrategy",
+            return_value=MagicMock(),
+        ) as named_entity_strategy,
+        patch(
+            f"{PLAYERS_MODULE}.ChunkPlayerStrategy",
+            return_value=MagicMock(),
+        ) as chunk_strategy,
+        patch(
+            f"{PLAYERS_MODULE}.SentencePlayerStrategy",
+            return_value=MagicMock(),
+        ) as sentence_strategy,
+    ):
+        create_player_strategy("named_entity", "hello", tokenizer)
+        create_player_strategy("chunk", "hello", tokenizer)
+        create_player_strategy("sentence", "hello", tokenizer)
+
+    named_entity_strategy.assert_called_once_with(text="hello")
+    chunk_strategy.assert_called_once_with(text="hello")
+    sentence_strategy.assert_called_once_with(text="hello")
 
 
 def test_player_factory_rejects_unknown_level(tokenizer: DummyTokenizer) -> None:
@@ -431,6 +470,22 @@ def test_get_neutral_replacement_falls_back_to_something(tag: str) -> None:
             assert _get_neutral_replacement("unknown", tag) == "something"
 
 
+def test_get_neutral_replacement_falls_back_when_no_hypernym() -> None:
+    synset = MagicMock()
+    synset.hypernyms.return_value = []
+
+    fake_wn = SimpleNamespace(
+        NOUN="n",
+        VERB="v",
+        ADJ="a",
+        ADV="r",
+        synsets=MagicMock(return_value=[synset]),
+    )
+
+    with patch(f"{PERTURBATIONS_MODULE}.wn", fake_wn):
+        assert _get_neutral_replacement("cat", "NN") == "something"
+
+
 def test_wordnet_neutral_perturbation(
     no_nltk_resource_check,
 ) -> None:
@@ -472,9 +527,92 @@ def test_perturbation_factory(tokenizer: DummyTokenizer) -> None:
         create_perturbation_strategy("not_real", tokenizer)
 
 
+def test_perturbation_factory_creates_mlm_infilling(
+    tokenizer: DummyTokenizer,
+) -> None:
+    with patch(
+        f"{PERTURBATIONS_MODULE}.MLMInfillingPerturbation",
+    ) as mlm_strategy:
+        result = create_perturbation_strategy(
+            "mlm_infilling",
+            tokenizer,
+            mlm_model_name="fake-mlm",
+            mlm_num_samples=5,
+            device="cpu",
+        )
+
+    mlm_strategy.assert_called_once_with(
+        model_name="fake-mlm",
+        device="cpu",
+        num_samples=5,
+    )
+    assert result is mlm_strategy.return_value
+
+
 # ============================================================================
 # MLM infilling: all model calls are mocked
 # ============================================================================
+
+
+def test_mlm_infilling_initializes_model_and_tokenizer() -> None:
+    tokenizer = MagicMock()
+    tokenizer.mask_token = "[MASK]"
+
+    model = MagicMock()
+    model.to.return_value = model
+
+    with (
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoTokenizer.from_pretrained",
+            return_value=tokenizer,
+        ) as tokenizer_loader,
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoModelForMaskedLM.from_pretrained",
+            return_value=model,
+        ) as model_loader,
+    ):
+        perturbation = MLMInfillingPerturbation(
+            model_name="fake-mlm",
+            device="cpu",
+            num_samples=5,
+        )
+
+    tokenizer_loader.assert_called_once_with("fake-mlm")
+    model_loader.assert_called_once_with("fake-mlm")
+    model.to.assert_called_once_with("cpu")
+    model.eval.assert_called_once()
+
+    assert perturbation.tokenizer is tokenizer
+    assert perturbation.model is model
+    assert perturbation.model_name == "fake-mlm"
+    assert perturbation.device == "cpu"
+    assert perturbation.mask_token == "[MASK]"
+    assert perturbation._cache == {}
+    assert perturbation.num_samples == 5
+
+
+def test_mlm_infilling_rejects_tokenizer_without_mask_token() -> None:
+    tokenizer = MagicMock()
+    tokenizer.mask_token = None
+
+    model = MagicMock()
+    model.to.return_value = model
+
+    with (
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoTokenizer.from_pretrained",
+            return_value=tokenizer,
+        ),
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoModelForMaskedLM.from_pretrained",
+            return_value=model,
+        ),
+        pytest.raises(ValueError, match="does not define a mask token"),
+    ):
+        MLMInfillingPerturbation(
+            model_name="fake-mlm",
+            device="cpu",
+        )
 
 
 def make_mlm_without_constructor(
@@ -598,6 +736,27 @@ def test_mlm_predict_masks_falls_back_after_failed_sampling(
 # ============================================================================
 
 
+class DummyTargetCallable(BaseTargetCallable):
+    """Minimal target callable used to test the default tensor-input path."""
+
+    def predict(self, texts: list[str]) -> np.ndarray:
+        return np.zeros(len(texts))
+
+
+def test_base_target_callable_rejects_pre_tokenized_inputs(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    callable_ = DummyTargetCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+    )
+
+    with pytest.raises(NotImplementedError, match="does not support pre-tokenized inputs"):
+        callable_.predict_from_inputs([])
+
+
 def test_encoder_callable_returns_logits(
     tokenizer: DummyTokenizer,
     model: MagicMock,
@@ -640,6 +799,61 @@ def test_encoder_callable_returns_probabilities(
         callable_.predict(["a"]),
         np.array([0.5]),
     )
+
+
+def test_encoder_callable_predicts_probabilities_from_inputs_with_token_type_ids(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    model.return_value = SimpleNamespace(
+        logits=torch.tensor(
+            [
+                [0.0, 0.0],
+                [1.0, 2.0],
+            ]
+        ),
+    )
+
+    callable_ = EncoderClassifierCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+        class_idx=1,
+        output_type="probability",
+    )
+
+    inputs = [
+        {
+            "input_ids": torch.tensor([[10, 11]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "token_type_ids": torch.tensor([[0, 0]]),
+        },
+        {
+            "input_ids": torch.tensor([[12, 13]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "token_type_ids": torch.tensor([[1, 1]]),
+        },
+    ]
+
+    scores = callable_.predict_from_inputs(inputs)
+
+    expected = torch.softmax(
+        torch.tensor(
+            [
+                [0.0, 0.0],
+                [1.0, 2.0],
+            ]
+        ),
+        dim=-1,
+    )[:, 1].numpy()
+
+    np.testing.assert_allclose(scores, expected)
+
+    model.assert_called_once()
+    model_inputs = model.call_args.kwargs
+
+    assert "token_type_ids" in model_inputs
+    assert model_inputs["token_type_ids"].shape == (2, 2)
 
 
 def test_encoder_callable_rejects_invalid_output_type(
@@ -701,6 +915,61 @@ def test_causal_callable_uses_eos_as_pad_when_pad_is_missing(
     assert tokenizer.padding_side == "left"
 
 
+def test_causal_callable_rejects_tokenizer_without_pad_or_eos(
+    model: MagicMock,
+) -> None:
+    tokenizer = DummyTokenizer()
+    tokenizer.pad_token_id = None
+    tokenizer.eos_token_id = None
+    tokenizer.encode_return_values = [[5]]
+
+    with pytest.raises(
+        ValueError,
+        match="Tokenizer must define either a pad token or eos token",
+    ):
+        CausalLMCallable(
+            model=model,
+            tokenizer=tokenizer,
+            device="cpu",
+        )
+
+
+def test_causal_callable_predicts_from_inputs_with_multi_token_target(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    tokenizer.encode_return_values = [[5, 6]]
+
+    logits = torch.zeros((1, 3, 20))
+    logits[0, -1, 5] = 3.0
+    logits[0, -1, 6] = 4.0
+    model.return_value = SimpleNamespace(logits=logits)
+
+    callable_ = CausalLMCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+        target_label="very good",
+    )
+
+    inputs = [
+        {
+            "input_ids": torch.tensor([[10, 11]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+        }
+    ]
+
+    scores = callable_.predict_from_inputs(inputs)
+
+    assert scores.shape == (1,)
+    assert np.isfinite(scores[0])
+    assert model.call_count == 2
+
+    second_call_inputs = model.call_args_list[1].kwargs
+    assert second_call_inputs["input_ids"].shape == (1, 3)
+    assert second_call_inputs["attention_mask"].shape == (1, 3)
+
+
 def test_causal_callable_rejects_empty_target(
     tokenizer: DummyTokenizer,
     model: MagicMock,
@@ -731,6 +1000,173 @@ def make_player_strategy() -> MagicMock:
         "text-3",
     ]
     return strategy
+
+
+def test_text_imputer_creates_default_player_strategy(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with patch(
+        "shapiq.imputer.text.imputer.create_player_strategy",
+        return_value=player_strategy,
+    ) as create_strategy:
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            perturbation_strategy=NeutralPerturbation(),
+        )
+
+    create_strategy.assert_called_once_with(
+        level="word",
+        text="original",
+        tokenizer=tokenizer,
+    )
+
+
+def test_text_imputer_creates_default_perturbation_strategy(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    perturbation = NeutralPerturbation()
+
+    with patch(
+        "shapiq.imputer.text.imputer.create_perturbation_strategy",
+        return_value=perturbation,
+    ) as create_strategy:
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="neutral",
+            mlm_model_name="test-mlm",
+            mlm_num_samples=5,
+            device="cpu",
+        )
+
+    create_strategy.assert_called_once_with(
+        strategy="neutral",
+        tokenizer=tokenizer,
+        mlm_model_name="test-mlm",
+        mlm_num_samples=5,
+        device="cpu",
+    )
+
+
+def test_text_imputer_rejects_both_perturbation_strategies(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(
+        ValueError,
+        match="Only one of perturbation_strategy and tensor_perturbation_strategy",
+    ):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_strategy=NeutralPerturbation(),
+            tensor_perturbation_strategy=MagicMock(),
+        )
+
+
+def test_text_imputer_rejects_text_strategy_for_tensor_perturbation(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(ValueError, match="is a tensor perturbation"):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            perturbation_strategy=NeutralPerturbation(),
+        )
+
+
+def test_text_imputer_rejects_tensor_strategy_for_text_perturbation(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(ValueError, match="is a text perturbation"):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="mask",
+            tensor_perturbation_strategy=MagicMock(),
+        )
+
+
+def test_text_imputer_rejects_coalition_to_text_in_tensor_mode(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    tensor_perturbation_strategy = MagicMock()
+    tensor_perturbation_strategy.evaluate.return_value = [{"input_ids": torch.tensor([[1, 2]])}]
+
+    with patch.object(
+        EncoderClassifierCallable,
+        "predict_from_inputs",
+        return_value=np.array([0.5]),
+    ):
+        imputer = TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            tensor_perturbation_strategy=tensor_perturbation_strategy,
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"coalition_to_text\(\) can only be used with text perturbation strategies",
+    ):
+        imputer.coalition_to_text(np.array([1, 0]))
+
+
+def test_text_imputer_rejects_coalitions_to_texts_in_tensor_mode(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    tensor_perturbation_strategy = MagicMock()
+    tensor_perturbation_strategy.evaluate.return_value = [{"input_ids": torch.tensor([[1, 2]])}]
+
+    with patch.object(
+        EncoderClassifierCallable,
+        "predict_from_inputs",
+        return_value=np.array([0.5]),
+    ):
+        imputer = TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            tensor_perturbation_strategy=tensor_perturbation_strategy,
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"_coalitions_to_texts\(\) can only be used with text perturbation strategies",
+    ):
+        imputer._coalitions_to_texts(np.array([[1, 0]]))
 
 
 def test_text_imputer_batches_and_returns_scores(

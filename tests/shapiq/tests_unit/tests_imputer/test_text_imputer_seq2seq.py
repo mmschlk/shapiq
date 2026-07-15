@@ -675,6 +675,50 @@ class TestPromptTemplate:
         assert prompts_seen[0] != prompts_seen[1]
 
 
+def test_seq2seq_callable_predicts_from_pre_tokenized_inputs(
+    seq2seq_model: MagicMock,
+    seq2seq_tokenizer: MagicMock,
+) -> None:
+    seq2seq_tokenizer.encode_queue = [[5, 6]]
+
+    vocab_size = 100
+    seq2seq_model.return_value = SimpleNamespace(
+        logits=torch.zeros((2, 1, vocab_size)),
+    )
+
+    callable_obj = Seq2SeqCallable(
+        model=seq2seq_model,
+        tokenizer=seq2seq_tokenizer,
+        device="cpu",
+        target_label="positive",
+    )
+
+    inputs = [
+        {
+            "input_ids": torch.tensor([[10, 11, 12]]),
+            "attention_mask": torch.tensor([[1, 1, 1]]),
+        },
+        {
+            "input_ids": torch.tensor([[20, 21, 22]]),
+            "attention_mask": torch.tensor([[1, 1, 1]]),
+        },
+    ]
+
+    scores = callable_obj.predict_from_inputs(inputs)
+
+    assert isinstance(scores, np.ndarray)
+    assert scores.shape == (2,)
+    assert np.all(np.isfinite(scores))
+
+    encoder = seq2seq_model.get_encoder.return_value
+    encoder.assert_called_once()
+
+    encoder_inputs = encoder.call_args.kwargs
+    assert encoder_inputs["input_ids"].shape == (2, 3)
+    assert encoder_inputs["attention_mask"].shape == (2, 3)
+    assert encoder_inputs["return_dict"] is True
+
+
 # ============================================================================
 # TEST 6 — TextImputer end-to-end integration
 # ============================================================================

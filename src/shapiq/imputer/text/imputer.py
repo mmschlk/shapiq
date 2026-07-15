@@ -47,6 +47,7 @@ class TextImputer(Imputer):
     """Coalition-based text imputer for model-agnostic Shapley explanations.
 
     ``TextImputer`` combines three independent components:
+
     - a player strategy, which chooses the text features to explain;
     - either a text perturbation strategy, which creates perturbed strings,
       or a tensor perturbation strategy, which creates model-ready inputs;
@@ -61,26 +62,24 @@ class TextImputer(Imputer):
     For ``MLMInfillingPerturbation``, the imputer evaluates multiple sampled
     infillings and returns their average score, approximating ``E[f(X) | X_S]``.
 
-    Parameters:
-    model:
+    Parameters
+    ----------
+    model
         Hugging Face model whose output is explained.
-    tokenizer:
+    tokenizer
         Tokenizer associated with ``model``.
-    text:
+    text
         Original text instance to explain.
-
-    player_level: Player granularity
-        ``"subword"``, ``"word"``, ``"named_entity"``, ``"chunk"``, or ``"sentence"``.
-
-    perturbation_type: Missing-player strategy
-        Text perturbations include ``"mask"``, ``"pad"``, ``"removal"``,
-        ``"neutral"``, ``"wordnet_neutral"``, and ``"mlm_infilling"``.
-        Tensor perturbations include ``"attention_mask"``. Tensor perturbations
-        do not create perturbed strings; they build model-ready inputs directly.
-
-    model_type: Target-model interface
-        ``"encoder_classifier"``, ``"causal_lm"``, and ``"seq2seq"``.
-
+    player_level
+        Player granularity. Available levels are ``"subword"``, ``"word"``,
+        ``"named_entity"``, ``"chunk"``, and ``"sentence"``.
+    perturbation_type
+        Missing-player strategy. Text perturbations include ``"mask"``, ``"pad"``,
+        ``"removal"``, ``"neutral"``, ``"wordnet_neutral"``, and ``"mlm_infilling"``.
+        Tensor perturbations include ``"attention_mask"``.
+    model_type
+        Target-model interface. Available model types are ``"encoder_classifier"``,
+        ``"causal_lm"``, and ``"seq2seq"``.
     """
 
     def __init__(
