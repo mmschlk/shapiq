@@ -16,6 +16,7 @@ pytest.importorskip("transformers")
 from transformers import AutoModelForSequenceClassification, AutoTokenizer  # noqa: E402
 
 from shapiq.imputer.text_imputer import (  # noqa: E402
+    BaseTargetCallable,
     CausalLMCallable,
     ChunkPlayerStrategy,
     EncoderClassifierCallable,
@@ -735,6 +736,27 @@ def test_mlm_predict_masks_falls_back_after_failed_sampling(
 # ============================================================================
 
 
+class DummyTargetCallable(BaseTargetCallable):
+    """Minimal target callable used to test the default tensor-input path."""
+
+    def predict(self, texts: list[str]) -> np.ndarray:
+        return np.zeros(len(texts))
+
+
+def test_base_target_callable_rejects_pre_tokenized_inputs(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    callable_ = DummyTargetCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+    )
+
+    with pytest.raises(NotImplementedError, match="does not support pre-tokenized inputs"):
+        callable_.predict_from_inputs([])
+
+
 def test_encoder_callable_returns_logits(
     tokenizer: DummyTokenizer,
     model: MagicMock,
@@ -777,6 +799,61 @@ def test_encoder_callable_returns_probabilities(
         callable_.predict(["a"]),
         np.array([0.5]),
     )
+
+
+def test_encoder_callable_predicts_probabilities_from_inputs_with_token_type_ids(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    model.return_value = SimpleNamespace(
+        logits=torch.tensor(
+            [
+                [0.0, 0.0],
+                [1.0, 2.0],
+            ]
+        ),
+    )
+
+    callable_ = EncoderClassifierCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+        class_idx=1,
+        output_type="probability",
+    )
+
+    inputs = [
+        {
+            "input_ids": torch.tensor([[10, 11]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "token_type_ids": torch.tensor([[0, 0]]),
+        },
+        {
+            "input_ids": torch.tensor([[12, 13]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "token_type_ids": torch.tensor([[1, 1]]),
+        },
+    ]
+
+    scores = callable_.predict_from_inputs(inputs)
+
+    expected = torch.softmax(
+        torch.tensor(
+            [
+                [0.0, 0.0],
+                [1.0, 2.0],
+            ]
+        ),
+        dim=-1,
+    )[:, 1].numpy()
+
+    np.testing.assert_allclose(scores, expected)
+
+    model.assert_called_once()
+    model_inputs = model.call_args.kwargs
+
+    assert "token_type_ids" in model_inputs
+    assert model_inputs["token_type_ids"].shape == (2, 2)
 
 
 def test_encoder_callable_rejects_invalid_output_type(
@@ -836,6 +913,61 @@ def test_causal_callable_uses_eos_as_pad_when_pad_is_missing(
 
     assert tokenizer.pad_token == "</s>"
     assert tokenizer.padding_side == "left"
+
+
+def test_causal_callable_rejects_tokenizer_without_pad_or_eos(
+    model: MagicMock,
+) -> None:
+    tokenizer = DummyTokenizer()
+    tokenizer.pad_token_id = None
+    tokenizer.eos_token_id = None
+    tokenizer.encode_return_values = [[5]]
+
+    with pytest.raises(
+        ValueError,
+        match="Tokenizer must define either a pad token or eos token",
+    ):
+        CausalLMCallable(
+            model=model,
+            tokenizer=tokenizer,
+            device="cpu",
+        )
+
+
+def test_causal_callable_predicts_from_inputs_with_multi_token_target(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    tokenizer.encode_return_values = [[5, 6]]
+
+    logits = torch.zeros((1, 3, 20))
+    logits[0, -1, 5] = 3.0
+    logits[0, -1, 6] = 4.0
+    model.return_value = SimpleNamespace(logits=logits)
+
+    callable_ = CausalLMCallable(
+        model=model,
+        tokenizer=tokenizer,
+        device="cpu",
+        target_label="very good",
+    )
+
+    inputs = [
+        {
+            "input_ids": torch.tensor([[10, 11]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+        }
+    ]
+
+    scores = callable_.predict_from_inputs(inputs)
+
+    assert scores.shape == (1,)
+    assert np.isfinite(scores[0])
+    assert model.call_count == 2
+
+    second_call_inputs = model.call_args_list[1].kwargs
+    assert second_call_inputs["input_ids"].shape == (1, 3)
+    assert second_call_inputs["attention_mask"].shape == (1, 3)
 
 
 def test_causal_callable_rejects_empty_target(
