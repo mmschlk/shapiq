@@ -33,6 +33,10 @@ import re
 from pathlib import Path
 from typing import TypedDict
 
+# Disable threaded HuggingFace weight loading on Windows to avoid torch access-violation crashes.
+# 在 Windows 上关闭 HuggingFace 并行加载，避免 torch 访问冲突崩溃。
+os.environ.setdefault("HF_ENABLE_PARALLEL_LOADING", "false")
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -290,7 +294,7 @@ GENERATED_FEW_SHOT_TOPIC = os.getenv("SHAPIQ_GENERATED_FEW_SHOT_TOPIC", "simple 
 # MMLU dataset controls used when CASE_SOURCE is "mmlu_dataset".
 # CASE_SOURCE ? "mmlu_dataset" ???? MMLU ??????
 MMLU_DATASET_NAME = os.getenv("SHAPIQ_MMLU_DATASET_NAME", "cais/mmlu")
-MMLU_SUBJECT = os.getenv("SHAPIQ_MMLU_SUBJECT", "electrical_engineering")
+MMLU_SUBJECT = os.getenv("SHAPIQ_MMLU_SUBJECT", "college_computer_science")
 MMLU_SPLIT = os.getenv("SHAPIQ_MMLU_SPLIT", "test")
 MMLU_NUM_DEMOS = int(os.getenv("SHAPIQ_MMLU_NUM_DEMOS", "5"))
 MMLU_TARGET_OFFSET = int(os.getenv("SHAPIQ_MMLU_TARGET_OFFSET", str(MMLU_NUM_DEMOS)))
@@ -605,13 +609,19 @@ Include these evidence types:
 - misleading: distracts toward another answer without directly contradicting the target
 - contradictory: directly states an answer that conflicts with the target answer
 
-Return JSON only. Use exactly this schema:
+Return JSON only. Use exactly this schema and level of detail:
 {{
-  "question": "...",
+  "question": "Where is the Eiffel Tower located?",
   "target_answer": "Paris",
-  "chunk_names": ["support: fact", "mislead: distractor", "irrelevant: extra", "contradict: conflict"],
-  "chunk_kinds": ["supporting", "misleading", "irrelevant", "contradictory"],
-  "context_chunks": ["...", "...", "...", "..."]
+  "chunk_names": ["support: tower", "mislead: vegas", "irrelevant: berlin", "contradict: rome", "support: paris"],
+  "chunk_kinds": ["supporting", "misleading", "irrelevant", "contradictory", "supporting"],
+  "context_chunks": [
+    "The Eiffel Tower is located in Paris, France.",
+    "A replica of the Eiffel Tower can be found in Las Vegas.",
+    "Berlin is the capital of Germany.",
+    "The Eiffel Tower is located in Rome, Italy.",
+    "Paris is the capital of France and is known for many landmarks."
+  ]
 }}
 """.strip()
 
@@ -626,24 +636,26 @@ The topic should be: {topic}.
 
 Hard constraints:
 - Use exactly 5 demonstrations.
-- Each demonstration must contain a question, four choices A-D, and one answer letter.
-- The target question must contain four choices A-D but no answer.
+- Each context_chunks item must be a complete demonstration, not a short label.
+- Each demonstration must contain these exact lines: Demo N, Question, A., B., C., D., and Answer: <letter>.
+- The target question must contain Question, A., B., C., and D., but must not contain Answer.
 - The target_answer must be one letter only: A, B, C, or D.
-- Keep every question short and easy to read.
+- Do not use placeholder text such as "...".
+- Keep every question and choice short and easy to read.
 - Keep chunk_names short, like "demo 1: helpful".
 
-Return JSON only. Use exactly this schema:
+Return JSON only. Use exactly this schema and level of detail:
 {{
-  "question": "Question: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...",
+  "question": "Question: Which device stores data permanently?\nA. CPU\nB. RAM\nC. Hard drive\nD. Monitor",
   "target_answer": "C",
   "chunk_names": ["demo 1: helpful", "demo 2: similar", "demo 3: irrelevant", "demo 4: helpful", "demo 5: misleading"],
   "chunk_kinds": ["helpful", "helpful", "irrelevant", "helpful", "misleading"],
   "context_chunks": [
-    "Demo 1:\\nQuestion: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...\\nAnswer: A",
-    "Demo 2:\\nQuestion: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...\\nAnswer: B",
-    "Demo 3:\\nQuestion: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...\\nAnswer: D",
-    "Demo 4:\\nQuestion: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...\\nAnswer: C",
-    "Demo 5:\\nQuestion: ...\\nA. ...\\nB. ...\\nC. ...\\nD. ...\\nAnswer: B"
+    "Demo 1:\nQuestion: Which device is used for long-term file storage?\nA. Keyboard\nB. Hard drive\nC. Mouse\nD. Speaker\nAnswer: B",
+    "Demo 2:\nQuestion: Which memory is temporary and loses data when power is off?\nA. RAM\nB. Hard drive\nC. SSD\nD. DVD\nAnswer: A",
+    "Demo 3:\nQuestion: Which planet is known as the Red Planet?\nA. Earth\nB. Venus\nC. Mars\nD. Jupiter\nAnswer: C",
+    "Demo 4:\nQuestion: Which component performs most computer calculations?\nA. Monitor\nB. CPU\nC. Printer\nD. Router\nAnswer: B",
+    "Demo 5:\nQuestion: Which device displays images to the user?\nA. Monitor\nB. RAM\nC. Hard drive\nD. Battery\nAnswer: A"
   ]
 }}
 """.strip()
@@ -663,6 +675,41 @@ def format_case_generation_prompt(tokenizer: AutoTokenizer, prompt: str) -> str:
     except Exception:  # noqa: BLE001
         return prompt
 
+
+
+def _has_choice_lines(text: str) -> bool:
+    """Return whether text contains A-D multiple-choice lines.
+    判断文本里是否包含完整的 A-D 选项行。
+    """
+    return all(
+        re.search(rf"(?im)^\s*{letter}\.\s+\S", text)
+        for letter in ("A", "B", "C", "D")
+    )
+
+
+def _has_answer_line(text: str) -> bool:
+    """Return whether text contains an answer letter line.
+    判断文本里是否包含 Answer: A/B/C/D 这一行。
+    """
+    return re.search(r"(?im)^\s*Answer\s*:\s*[ABCD]\b", text) is not None
+
+
+def _validate_few_shot_demo_text(chunk: str, index: int) -> None:
+    """Require one generated demonstration to include question, choices, and answer.
+    要求每个自动生成的 demonstration 都包含题目、选项和答案。
+    """
+    if "..." in chunk:
+        msg = f"Generated demo {index} still contains placeholder text '...'."
+        raise ValueError(msg)
+    if not re.search(r"(?im)^\s*Question\s*:", chunk):
+        msg = f"Generated demo {index} is missing a Question line."
+        raise ValueError(msg)
+    if not _has_choice_lines(chunk):
+        msg = f"Generated demo {index} is missing complete A-D choices."
+        raise ValueError(msg)
+    if not _has_answer_line(chunk):
+        msg = f"Generated demo {index} is missing an Answer: A/B/C/D line."
+        raise ValueError(msg)
 
 def _validate_generated_few_shot_case(data: dict[str, object]) -> ContextCase:
     """Validate and normalize a Gemma-generated few-shot case.
@@ -693,6 +740,21 @@ def _validate_generated_few_shot_case(data: dict[str, object]) -> ContextCase:
     if not question:
         msg = "Generated few-shot question must not be empty."
         raise ValueError(msg)
+    if "..." in question:
+        msg = "Generated few-shot target question still contains placeholder text '...'."
+        raise ValueError(msg)
+    if not re.search(r"(?im)^\s*Question\s*:", question):
+        msg = "Generated few-shot target question is missing a Question line."
+        raise ValueError(msg)
+    if not _has_choice_lines(question):
+        msg = "Generated few-shot target question is missing complete A-D choices."
+        raise ValueError(msg)
+    if _has_answer_line(question):
+        msg = "Generated few-shot target question must not include an Answer line."
+        raise ValueError(msg)
+
+    for index, chunk in enumerate(context_chunks, start=1):
+        _validate_few_shot_demo_text(chunk, index)
 
     allowed_kinds = {"helpful", "irrelevant", "misleading", "harmful", "similar", "distractor"}
     bad_kinds = sorted(set(chunk_kinds) - allowed_kinds)
@@ -926,6 +988,34 @@ def compute_shapiq_pairwise_interactions(
     return interaction_matrix, interaction_values
 
 
+def build_display_interaction_values(
+    effects: np.ndarray,
+    interactions: np.ndarray,
+) -> shapiq.InteractionValues:
+    """Build a mixed first- and second-order object for force/waterfall plots.
+    为 force/waterfall 图构造一个同时包含一阶和二阶结果的展示对象。
+    """
+    n_players = len(effects)
+    display_values: dict[tuple[int, ...], float] = {}
+
+    for i, effect in enumerate(effects):
+        display_values[(i,)] = float(effect)
+
+    for i in range(n_players):
+        for j in range(i + 1, n_players):
+            display_values[(i, j)] = float(interactions[i, j])
+
+    return shapiq.InteractionValues(
+        values=display_values,
+        index=INTERACTION_INDEX,
+        max_order=INTERACTION_ORDER,
+        min_order=1,
+        n_players=n_players,
+        estimated=False,
+        baseline_value=0.0,
+    )
+
+
 def plot_single_chunk_effects(
     case_name: str,
     case: ContextCase,
@@ -1026,6 +1116,117 @@ def plot_pairwise_heatmap(
     ax.set_title(
         f"{INTERACTION_INDEX} pairwise heatmap for answer {case['target_answer']!r}"
     )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    if SHOW_PLOTS:
+        plt.show()
+
+    return output_path
+
+
+def plot_network_interactions(
+    case_name: str,
+    case: ContextCase,
+    interaction_values: shapiq.InteractionValues,
+) -> Path | None:
+    """Plot and save shapiq's built-in network interaction visualization.
+    使用 shapiq 自带的 network plot 保存 interaction 关系图。
+    """
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = FIGURE_DIR / f"context_{case_name}_pairwise_network.png"
+
+    try:
+        result = interaction_values.plot_network(
+            feature_names=case["chunk_names"],
+            show=False,
+        )
+    except Exception as error:  # noqa: BLE001
+        print(f"Warning: could not create shapiq network plot: {error}")
+        return None
+
+    if result is None:
+        print("Warning: interaction_values.plot_network returned None although show=False.")
+        return None
+
+    fig, _ax = result
+    fig.suptitle(
+        f"{INTERACTION_INDEX} network interactions for answer {case['target_answer']!r}",
+        y=0.98,
+    )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    if SHOW_PLOTS:
+        plt.show()
+
+    return output_path
+
+
+def plot_force_interactions(
+    case_name: str,
+    case: ContextCase,
+    interaction_values: shapiq.InteractionValues,
+) -> Path | None:
+    """Plot and save shapiq's built-in force plot if available.
+    如果当前环境支持，则保存 shapiq 自带的 force plot。
+    """
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = FIGURE_DIR / f"context_{case_name}_force.png"
+
+    try:
+        fig = interaction_values.plot_force(
+            feature_names=np.asarray(case["chunk_names"], dtype=object),
+            show=False,
+            abbreviate=False,
+        )
+    except Exception as error:  # noqa: BLE001
+        print(f"Warning: could not create shapiq force plot: {error}")
+        return None
+
+    if fig is None:
+        print("Warning: interaction_values.plot_force returned None although show=False.")
+        return None
+
+    fig.suptitle(
+        f"{INTERACTION_INDEX} force plot for answer {case['target_answer']!r}",
+        y=0.98,
+    )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    if SHOW_PLOTS:
+        plt.show()
+
+    return output_path
+
+
+def plot_waterfall_interactions(
+    case_name: str,
+    case: ContextCase,
+    interaction_values: shapiq.InteractionValues,
+) -> Path | None:
+    """Plot and save shapiq's built-in waterfall plot if available.
+    如果当前环境支持，则保存 shapiq 自带的 waterfall plot。
+    """
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = FIGURE_DIR / f"context_{case_name}_waterfall.png"
+
+    try:
+        plt.figure()
+        ax = interaction_values.plot_waterfall(
+            feature_names=np.asarray(case["chunk_names"], dtype=object),
+            show=False,
+            abbreviate=False,
+            max_display=20,
+        )
+    except Exception as error:  # noqa: BLE001
+        print(f"Warning: could not create shapiq waterfall plot: {error}")
+        return None
+
+    if ax is None:
+        print("Warning: interaction_values.plot_waterfall returned None although show=False.")
+        return None
+
+    fig = ax.figure
+    ax.set_title(f"{INTERACTION_INDEX} waterfall for answer {case['target_answer']!r}")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     if SHOW_PLOTS:
@@ -1206,15 +1407,31 @@ def main() -> None:
     print_automatic_summary(case, effects, interactions)
 
     figure_case_name = f"{DEMO_MODE}_{selected_case_name}"
+    display_interaction_values = build_display_interaction_values(effects, interactions)
     single_effects_path = plot_single_chunk_effects(figure_case_name, case, effects)
     interactions_path = plot_pairwise_interactions(figure_case_name, case, interaction_values)
     heatmap_path = plot_pairwise_heatmap(figure_case_name, case, interactions)
+    network_path = plot_network_interactions(figure_case_name, case, interaction_values)
+    force_path = plot_force_interactions(figure_case_name, case, display_interaction_values)
+    waterfall_path = plot_waterfall_interactions(
+        figure_case_name,
+        case,
+        display_interaction_values,
+    )
 
     print("\nSaved figures:")
-    print(single_effects_path)
-    print(interactions_path)
-    print(heatmap_path)
+    for path in (
+        single_effects_path,
+        interactions_path,
+        heatmap_path,
+        network_path,
+        force_path,
+        waterfall_path,
+    ):
+        if path is not None:
+            print(path)
 
 
 if __name__ == "__main__":
     main()
+

@@ -89,6 +89,7 @@ def run_demo(
     # Avoid duplicate OpenMP runtime crashes on Windows and save plots without popup windows.
     # 避免 Windows 上 OpenMP 重复加载报错，并禁止图片窗口自动弹出。
     env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+    env["HF_ENABLE_PARALLEL_LOADING"] = "false"
     env["SHAPIQ_SHOW_PLOTS"] = "0"
     env["SHAPIQ_DEMO_MODE"] = demo_mode
     env["SHAPIQ_CASE_SOURCE"] = case_source
@@ -279,6 +280,15 @@ def render_figures(image_paths: list[Path]) -> None:
 st.set_page_config(page_title="Context Attribution Demo", layout="wide")
 st.title("Context Attribution Demo")
 st.caption("Gemma + TextImputer + shapiq")
+st.markdown("**Value function**")
+st.code(
+    "v(S) = log P_Gemma(target answer | target question + selected players in S)",
+    language="text",
+)
+st.caption(
+    "For each coalition S, the selected context chunks or demonstrations are kept, "
+    "and Gemma scores how likely the target answer is."
+)
 
 with st.sidebar:
     st.header("Run settings")
@@ -297,19 +307,19 @@ with st.sidebar:
     device = st.radio("Device", ["auto", "cpu", "cuda"], index=0)
 
     st.divider()
-    st.subheader("Generated case topics")
+    st.subheader("Gemma-generated case")
     generated_retrieval_topic = st.text_input(
-        "Retrieval topic",
+        "Retrieval generation topic",
         "simple general-knowledge question with short evidence chunks",
     )
     generated_few_shot_topic = st.text_input(
-        "Few-shot topic",
+        "Few-shot generation topic",
         "simple MMLU-style multiple-choice question with five short demonstrations",
     )
 
     st.divider()
     st.subheader("MMLU dataset")
-    mmlu_subject = st.text_input("MMLU subject", "electrical_engineering")
+    mmlu_subject = st.text_input("MMLU subject", "college_computer_science")
 
     run_clicked = st.button("Run demo", type="primary")
 

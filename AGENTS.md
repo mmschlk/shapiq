@@ -21,3 +21,9 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 ```bash
 uv run pre-commit run --all-files
 ```
+
+## Windows environment note
+
+In some Codex PowerShell sessions, `uv` is not on `PATH` and the global Python installation has
+none of the project test dependencies. Check `Get-Command uv` before running the commands above;
+if it is missing, ask for the project's Python/uv environment path instead of using global Python.
