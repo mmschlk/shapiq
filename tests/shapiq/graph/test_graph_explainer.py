@@ -171,16 +171,6 @@ class TestGraphExplainerE2E:
         assert explainer.last_computation_exact is False
 
 
-# Some edge cases
-# 1 generator input to explain_X is silently consumed -> empty result
-# 2 n_jobs=0 is falsy and silently runs sequentially
-# 3 the tqdm progress bar is never closed (success or exception path)
-# 4 compute_moebius_transform raises an opaque KeyError when the empty
-# 5 coalition is missing from coalitions/lookup
-# 6 max_subset_size / order / max_order are not validated
-# 7 unknown kwargs (typos) are silently swallowed
-
-
 try:  # pragma: no cover - environment-dependent
     import shapiq.graph.cext  # noqa: F401
 
@@ -235,11 +225,6 @@ class TestGeneratorInput:
         assert len(result) == 2
 
 
-# ---------------------------------------------------------------------------
-# #13 -- n_jobs handling
-# ---------------------------------------------------------------------------
-
-
 @requires_cext
 class TestNJobsHandling:
     def test_n_jobs_zero_is_rejected(self, gcn_model, simple_graph):
@@ -261,29 +246,6 @@ class TestNJobsHandling:
         par = explainer.explain_X([simple_graph, simple_graph], n_jobs=1)
         assert np.allclose(seq[0].values, par[0].values)
         assert np.allclose(seq[1].values, par[1].values)
-
-
-# ---------------------------------------------------------------------------
-# #14 -- progress bar lifecycle
-# ---------------------------------------------------------------------------
-
-
-class _RecordingPbar:
-    """Minimal tqdm stand-in that records update/close calls."""
-
-    instances: list[_RecordingPbar] = []  # noqa: RUF012
-
-    def __init__(self, *args, **kwargs):
-        self.total = kwargs.get("total")
-        self.n_updates = 0
-        self.closed = False
-        _RecordingPbar.instances.append(self)
-
-    def update(self, n: int = 1) -> None:
-        self.n_updates += n
-
-    def close(self) -> None:
-        self.closed = True
 
 
 class TestMoebiusTransformInputValidation:
@@ -321,11 +283,6 @@ class TestMoebiusTransformInputValidation:
                 coalition_predictions=predictions,
                 coalition_lookup=lookup,
             )
-
-
-# ---------------------------------------------------------------------------
-# #16 -- parameter validation
-# ---------------------------------------------------------------------------
 
 
 class TestParameterValidation:
