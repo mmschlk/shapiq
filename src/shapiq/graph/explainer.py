@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, Literal, cast, override
 
 import joblib
@@ -84,10 +85,8 @@ class GraphExplainer(Explainer):
                 "FBII": Faithful Banzhaf Interaction Index (becomes BV for order 1)
                 "STII": Shapley Taylor Interaction Index
                 "SII": Shapley Interaction Index
-            class_index: The class index of the model to explain. Defaults to None,
-                which will set the class index to 1 per default for classification
-                models and is ignored for regression models. Note, it is important
-                to specify the class index for your classification model.
+            class_index: Output index to explain for multi-output models. If ``None``, the model
+                output is expected to be scalar and is used directly.
             max_order: The maximum interaction order to be computed.
                 Defaults to 2. Set to 1 for no interactions (single feature attribution).
             normalize: Whether to normalize the game by subtracting the empty
@@ -147,9 +146,15 @@ class GraphExplainer(Explainer):
             )
             raise TypeError(msg)
 
+        X = list(X)
+
         if not all(isinstance(x, Data) for x in X):
             msg = "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects."
             raise TypeError(msg)
+
+        if n_jobs == 0:
+            msg = "n_jobs must be a positive int or -1 (all cores); got 0. Use None for sequential execution."
+            raise ValueError(msg)
 
         if n_jobs:
             parallel = joblib.Parallel(n_jobs=n_jobs)
@@ -157,12 +162,18 @@ class GraphExplainer(Explainer):
                 "list[InteractionValues]",
                 parallel(joblib.delayed(self.explain)(x_graph, **kwargs) for x_graph in X),
             )
+
         pbar = tqdm(total=len(X), desc="Explaining") if verbose else None
         ivs: list[InteractionValues] = []
-        for x_graph in X:
-            ivs.append(self.explain(x_graph, **kwargs))
+
+        try:
+            for x_graph in X:
+                ivs.append(self.explain(x_graph, **kwargs))
+                if pbar is not None:
+                    pbar.update(1)
+        finally:
             if pbar is not None:
-                pbar.update(1)
+                pbar.close()
         return ivs
 
     @override
@@ -195,10 +206,19 @@ class GraphExplainer(Explainer):
             )
             raise TypeError(msg)
 
+        allowed_kwargs = {"index", "efficiency_routine", "max_subset_size"}
+
         # Allow per-call overrides of explainer-level settings via kwargs.
         index: ValidMoebiusConverterIndices = kwargs.get("index", self._index)
         efficiency_routine: bool = kwargs.get("efficiency_routine", self._efficiency_routine)
         max_subset_size: int | None = kwargs.get("max_subset_size")
+
+        if max_subset_size is not None and max_subset_size < 1:
+            msg = f"max_subset_size must be a positive integer or None, got {max_subset_size}."
+            raise ValueError(msg)
+
+        if not set(kwargs).issubset(allowed_kwargs):
+            warnings.warn("Your provided keyword argument is not accepted.", stacklevel=2)
 
         game = GraphGame(
             model=self._model,
@@ -228,6 +248,7 @@ class GraphExplainer(Explainer):
             x: The input graph to explain as a
                 :class:`~torch_geometric.data.Data` object.
             **kwargs: Additional keyword-only arguments forwarded to ``explain_function``.
+                It allows for passing the following arguments: ``index``, ``efficiency_routine`` and ``max_subset_size``
 
         Returns:
             The interaction values for the graph.
@@ -256,30 +277,31 @@ class GraphExplainer(Explainer):
             explainer: The GraphSHAPIQ explainer initialised from the game.
             index: The type of Shapley interaction index to compute.
             efficiency_routine: Whether to enforce the efficiency axiom. Defaults to ``True``.
-            max_subset_size: Maximum subset size for the Möbius transform. When ``None``,
-                the full neighbourhood size is used (i.e. ``explainer.max_size_neighbors``).
-                Passed per-call via ``explain(**kwargs)``; not stored on the explainer since
-                the appropriate value is graph-instance-specific.
+            max_subset_size: Maximum subset size for the Möbius transform. When
+                ``None``, the full neighbourhood size is used and the result is
+                exact. When set below the largest neighbourhood size, the result
+                is an approximation and the returned ``InteractionValues`` are
+                flagged with ``estimated=True`` (exact again at
+                ``max_size_neighbors - 1`` if the efficiency routine is enabled).
 
         Returns:
             Shapley Interaction Indices.
         """
-        moebius, interactions = explainer.explain(
+        _, interactions = explainer.explain(
             max_subset_size=max_subset_size,
             order=self._max_order,
             efficiency_routine=efficiency_routine,
             index=index,
         )
 
-        if not isinstance(moebius, InteractionValues):
-            err_msg = f"Expected InteractionValues, got {type(moebius)}"
+        if not isinstance(interactions, InteractionValues):
+            err_msg = f"Expected InteractionValues, got {type(interactions)}"
             raise TypeError(err_msg)
 
-        moebius.estimation_budget = explainer.last_n_model_calls
-        moebius.estimated = False
-        moebius.sparsify(threshold=self._sparsify_threshold)
+        is_estimated = not explainer.last_computation_exact
+
         interactions.estimation_budget = explainer.last_n_model_calls
-        interactions.estimated = False
+        interactions.estimated = is_estimated
         interactions.sparsify(threshold=self._sparsify_threshold)
 
         return interactions

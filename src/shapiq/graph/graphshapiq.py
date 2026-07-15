@@ -39,6 +39,11 @@ class GraphSHAPIQ:
         max_size_neighbors: Maximum size of any neighborhood in the graph.
         total_budget: Total number of coalitions to evaluate (or upper bound).
         budget_estimated: Whether the budget was estimated or computed exactly.
+        last_computation_exact: last_computation_exact: Whether the most recent :meth:`explain` call
+            produced exact Shapley interactions. ``True`` if no truncation
+            occurred (``max_subset_size >= max_size_neighbors``) or if
+            ``max_subset_size >= max_size_neighbors - 1`` with the efficiency
+            routine enabled.
     """
 
     def __init__(
@@ -61,6 +66,7 @@ class GraphSHAPIQ:
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         self.game = game
         self._grand_coalition_prediction = game(np.ones(self.n_players, dtype=float))
+        self.last_computation_exact: bool | None = None
         self.verbose = verbose
 
         # Compute or estimate total budget
@@ -121,21 +127,43 @@ class GraphSHAPIQ:
         """Compute the Möbius transform for the given coalitions.
 
         Args:
-            coalitions: Set of coalitions (tuples of player indices).
-            coalition_predictions: Predictions for each coalition.
-            coalition_lookup: Mapping from coalition tuples to their indices.
+            coalitions: Set of coalitions (tuples of player indices) to compute
+                Möbius coefficients for. Must contain the empty coalition ``()``.
+            coalition_predictions: Predictions for each coalition; indexed via
+                ``coalition_lookup``.
+            coalition_lookup: Mapping from coalition tuples to row indices in
+                ``coalition_predictions``. May be a superset of ``coalitions``,
+                but must contain every subset of every coalition in
+                ``coalitions`` (subset-closed over the input).
 
         Returns:
-            InteractionValues object containing the Möbius values.
+            InteractionValues object containing one Möbius value per coalition
+            in ``coalitions``.
         """
-        moebius_values = np.zeros(len(coalition_lookup), dtype=float)
+        if () not in coalitions or () not in coalition_lookup:
+            msg = (
+                "compute_moebius_transform requires the empty coalition () in both "
+                "`coalitions` and `coalition_lookup`; it anchors the baseline_value "
+                "and every subset expansion."
+            )
+            raise ValueError(msg)
+
+        moebius_values = np.zeros(len(coalitions), dtype=float)
         moebius_lookup: dict[tuple[int, ...], int] = {}
 
         for i, coalition in enumerate(coalitions):
             moebius_lookup[coalition] = i
             for subset in powerset(coalition):
                 sign = (-1) ** (len(coalition) - len(subset))
-                moebius_values[i] += sign * coalition_predictions[coalition_lookup[subset]]
+                try:
+                    idx = coalition_lookup[subset]
+                except KeyError as err:
+                    msg = (
+                        f"coalition_lookup is missing subset {subset!r}, required to "
+                        f"compute the Möbius coefficient of {coalition!r}."
+                    )
+                    raise ValueError(msg) from err
+                moebius_values[i] += sign * coalition_predictions[idx]
 
         return InteractionValues(
             values=moebius_values,
@@ -384,12 +412,26 @@ class GraphSHAPIQ:
         Returns:
             Tuple of (moebius_coefficients, shapley_interactions).
         """
+        if max_subset_size is not None and max_subset_size < 1:
+            msg = f"max_subset_size must be a positive integer or None, got {max_subset_size}."
+            raise ValueError(msg)
+        if order is not None and order < 1:
+            msg = f"order must be a positive integer or None, got {order}."
+            raise ValueError(msg)
         if order is None:
             order = self.n_players
 
         capped_interaction_size = min(
             self.max_size_neighbors,
             max_subset_size if max_subset_size is not None else self.max_size_neighbors,
+        )
+
+        # Exactness bookkeeping (Corollary D.1): the result is exact if no
+        # truncation occurred (lambda >= n_max), or if lambda >= n_max - 1
+        # AND the efficiency routine runs -- each maximal neighborhood then
+        # misses exactly one top-order MI, which its gap term recovers.
+        self.last_computation_exact = capped_interaction_size >= self.max_size_neighbors or (
+            efficiency_routine and capped_interaction_size >= self.max_size_neighbors - 1
         )
 
         # Get coalitions and incomplete neighborhoods
@@ -475,7 +517,6 @@ class GraphSHAPIQ:
                 coalition_predictions=masked_predictions,
                 coalition_lookup=moebius_coalition_lookup,
             )
-        moebius_coefficients.sparsify(self.sparsify_threshold)
 
         if efficiency_routine and incomplete_neighborhoods:
             additional_coefficients = self._efficiency_routine(
@@ -489,6 +530,8 @@ class GraphSHAPIQ:
             final_moebius = moebius_coefficients + additional_coefficients
         else:
             final_moebius = moebius_coefficients
+
+        final_moebius.sparsify(self.sparsify_threshold)
 
         converter = MoebiusConverter(moebius_coefficients=final_moebius)
         interactions = converter.compute(index=index, order=order)
