@@ -151,6 +151,21 @@ def test_require_nltk_resource_passes_when_resource_exists() -> None:
     find.assert_called_once_with("tokenizers/punkt_tab")
 
 
+def test_require_nltk_resource_passes_when_zip_resource_exists() -> None:
+    with patch(
+        f"{PLAYERS_MODULE}.nltk.data.find",
+        side_effect=[LookupError("not installed"), None],
+    ) as find:
+        _require_nltk_resource("tokenizers/punkt_tab", "punkt_tab")
+
+    assert find.call_count == 2
+
+    assert find.call_args_list == [
+        call("tokenizers/punkt_tab"),
+        call("tokenizers/punkt_tab.zip"),
+    ]
+
+
 def test_require_nltk_resource_has_helpful_error_when_missing() -> None:
     with (
         patch(
@@ -286,7 +301,8 @@ def test_chunk_player_strategy_groups_phrases(
 ) -> None:
     parsed_tree = [
         Tree("NP", [("the", "DT"), ("movie", "NN")]),
-        Tree("VP", [("was", "VBD"), ("very", "RB"), ("good", "JJ")]),
+        ("was", "VBD"),
+        Tree("ADJP", [("very", "RB"), ("good", "JJ")]),
     ]
 
     parser = MagicMock()
@@ -299,10 +315,10 @@ def test_chunk_player_strategy_groups_phrases(
     ):
         strategy = ChunkPlayerStrategy("the movie was very good")
 
-    assert strategy.get_players() == ["the movie", "was very good"]
+    assert strategy.get_players() == ["the movie", "was", "very good"]
     assert (
         strategy.coalition_to_text(
-            np.array([0, 1]),
+            np.array([0, 1, 1]),
             NeutralPerturbation("something"),
         )
         == "something was very good"
@@ -342,6 +358,28 @@ def test_player_factory_creates_correct_strategy(
             create_player_strategy("word", "hello", tokenizer),
             WordPlayerStrategy,
         )
+
+    with (
+        patch(
+            f"{PLAYERS_MODULE}.NamedEntityPlayerStrategy",
+            return_value=MagicMock(),
+        ) as named_entity_strategy,
+        patch(
+            f"{PLAYERS_MODULE}.ChunkPlayerStrategy",
+            return_value=MagicMock(),
+        ) as chunk_strategy,
+        patch(
+            f"{PLAYERS_MODULE}.SentencePlayerStrategy",
+            return_value=MagicMock(),
+        ) as sentence_strategy,
+    ):
+        create_player_strategy("named_entity", "hello", tokenizer)
+        create_player_strategy("chunk", "hello", tokenizer)
+        create_player_strategy("sentence", "hello", tokenizer)
+
+    named_entity_strategy.assert_called_once_with(text="hello")
+    chunk_strategy.assert_called_once_with(text="hello")
+    sentence_strategy.assert_called_once_with(text="hello")
 
 
 def test_player_factory_rejects_unknown_level(tokenizer: DummyTokenizer) -> None:
