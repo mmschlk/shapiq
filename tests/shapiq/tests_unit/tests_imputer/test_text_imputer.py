@@ -469,6 +469,22 @@ def test_get_neutral_replacement_falls_back_to_something(tag: str) -> None:
             assert _get_neutral_replacement("unknown", tag) == "something"
 
 
+def test_get_neutral_replacement_falls_back_when_no_hypernym() -> None:
+    synset = MagicMock()
+    synset.hypernyms.return_value = []
+
+    fake_wn = SimpleNamespace(
+        NOUN="n",
+        VERB="v",
+        ADJ="a",
+        ADV="r",
+        synsets=MagicMock(return_value=[synset]),
+    )
+
+    with patch(f"{PERTURBATIONS_MODULE}.wn", fake_wn):
+        assert _get_neutral_replacement("cat", "NN") == "something"
+
+
 def test_wordnet_neutral_perturbation(
     no_nltk_resource_check,
 ) -> None:
@@ -510,9 +526,92 @@ def test_perturbation_factory(tokenizer: DummyTokenizer) -> None:
         create_perturbation_strategy("not_real", tokenizer)
 
 
+def test_perturbation_factory_creates_mlm_infilling(
+    tokenizer: DummyTokenizer,
+) -> None:
+    with patch(
+        f"{PERTURBATIONS_MODULE}.MLMInfillingPerturbation",
+    ) as mlm_strategy:
+        result = create_perturbation_strategy(
+            "mlm_infilling",
+            tokenizer,
+            mlm_model_name="fake-mlm",
+            mlm_num_samples=5,
+            device="cpu",
+        )
+
+    mlm_strategy.assert_called_once_with(
+        model_name="fake-mlm",
+        device="cpu",
+        num_samples=5,
+    )
+    assert result is mlm_strategy.return_value
+
+
 # ============================================================================
 # MLM infilling: all model calls are mocked
 # ============================================================================
+
+
+def test_mlm_infilling_initializes_model_and_tokenizer() -> None:
+    tokenizer = MagicMock()
+    tokenizer.mask_token = "[MASK]"
+
+    model = MagicMock()
+    model.to.return_value = model
+
+    with (
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoTokenizer.from_pretrained",
+            return_value=tokenizer,
+        ) as tokenizer_loader,
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoModelForMaskedLM.from_pretrained",
+            return_value=model,
+        ) as model_loader,
+    ):
+        perturbation = MLMInfillingPerturbation(
+            model_name="fake-mlm",
+            device="cpu",
+            num_samples=5,
+        )
+
+    tokenizer_loader.assert_called_once_with("fake-mlm")
+    model_loader.assert_called_once_with("fake-mlm")
+    model.to.assert_called_once_with("cpu")
+    model.eval.assert_called_once()
+
+    assert perturbation.tokenizer is tokenizer
+    assert perturbation.model is model
+    assert perturbation.model_name == "fake-mlm"
+    assert perturbation.device == "cpu"
+    assert perturbation.mask_token == "[MASK]"
+    assert perturbation._cache == {}
+    assert perturbation.num_samples == 5
+
+
+def test_mlm_infilling_rejects_tokenizer_without_mask_token() -> None:
+    tokenizer = MagicMock()
+    tokenizer.mask_token = None
+
+    model = MagicMock()
+    model.to.return_value = model
+
+    with (
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoTokenizer.from_pretrained",
+            return_value=tokenizer,
+        ),
+        patch(
+            f"{PERTURBATIONS_MODULE}.AutoModelForMaskedLM.from_pretrained",
+            return_value=model,
+        ),
+        pytest.raises(ValueError, match="does not define a mask token"),
+    ):
+        MLMInfillingPerturbation(
+            model_name="fake-mlm",
+            device="cpu",
+        )
 
 
 def make_mlm_without_constructor(
