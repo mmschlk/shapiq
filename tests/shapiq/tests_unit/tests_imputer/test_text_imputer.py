@@ -733,6 +733,173 @@ def make_player_strategy() -> MagicMock:
     return strategy
 
 
+def test_text_imputer_creates_default_player_strategy(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with patch(
+        "shapiq.imputer.text.imputer.create_player_strategy",
+        return_value=player_strategy,
+    ) as create_strategy:
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            perturbation_strategy=NeutralPerturbation(),
+        )
+
+    create_strategy.assert_called_once_with(
+        level="word",
+        text="original",
+        tokenizer=tokenizer,
+    )
+
+
+def test_text_imputer_creates_default_perturbation_strategy(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    perturbation = NeutralPerturbation()
+
+    with patch(
+        "shapiq.imputer.text.imputer.create_perturbation_strategy",
+        return_value=perturbation,
+    ) as create_strategy:
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="neutral",
+            mlm_model_name="test-mlm",
+            mlm_num_samples=5,
+            device="cpu",
+        )
+
+    create_strategy.assert_called_once_with(
+        strategy="neutral",
+        tokenizer=tokenizer,
+        mlm_model_name="test-mlm",
+        mlm_num_samples=5,
+        device="cpu",
+    )
+
+
+def test_text_imputer_rejects_both_perturbation_strategies(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(
+        ValueError,
+        match="Only one of perturbation_strategy and tensor_perturbation_strategy",
+    ):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_strategy=NeutralPerturbation(),
+            tensor_perturbation_strategy=MagicMock(),
+        )
+
+
+def test_text_imputer_rejects_text_strategy_for_tensor_perturbation(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(ValueError, match="is a tensor perturbation"):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            perturbation_strategy=NeutralPerturbation(),
+        )
+
+
+def test_text_imputer_rejects_tensor_strategy_for_text_perturbation(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+
+    with pytest.raises(ValueError, match="is a text perturbation"):
+        TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="mask",
+            tensor_perturbation_strategy=MagicMock(),
+        )
+
+
+def test_text_imputer_rejects_coalition_to_text_in_tensor_mode(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    tensor_perturbation_strategy = MagicMock()
+    tensor_perturbation_strategy.evaluate.return_value = [{"input_ids": torch.tensor([[1, 2]])}]
+
+    with patch.object(
+        EncoderClassifierCallable,
+        "predict_from_inputs",
+        return_value=np.array([0.5]),
+    ):
+        imputer = TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            tensor_perturbation_strategy=tensor_perturbation_strategy,
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"coalition_to_text\(\) can only be used with text perturbation strategies",
+    ):
+        imputer.coalition_to_text(np.array([1, 0]))
+
+
+def test_text_imputer_rejects_coalitions_to_texts_in_tensor_mode(
+    tokenizer: DummyTokenizer,
+    model: MagicMock,
+) -> None:
+    player_strategy = make_player_strategy()
+    tensor_perturbation_strategy = MagicMock()
+    tensor_perturbation_strategy.evaluate.return_value = [{"input_ids": torch.tensor([[1, 2]])}]
+
+    with patch.object(
+        EncoderClassifierCallable,
+        "predict_from_inputs",
+        return_value=np.array([0.5]),
+    ):
+        imputer = TextImputer(
+            model=model,
+            tokenizer=tokenizer,
+            text="original",
+            player_strategy=player_strategy,
+            perturbation_type="attention_mask",
+            tensor_perturbation_strategy=tensor_perturbation_strategy,
+        )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"_coalitions_to_texts\(\) can only be used with text perturbation strategies",
+    ):
+        imputer._coalitions_to_texts(np.array([[1, 0]]))
+
+
 def test_text_imputer_batches_and_returns_scores(
     tokenizer: DummyTokenizer,
     model: MagicMock,
