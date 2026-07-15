@@ -678,7 +678,7 @@ def solve_regression(
             # Solves (X^T * W * X) * phi = X^T * W * y
             return np.linalg.solve(X.T @ WX, WX.T @ y)
 
-    except np.linalg.LinAlgError:
+    except (np.linalg.LinAlgError, ValueError):
         # Fallback: Gram matrix is singular. Use robust SVD approach.
         W_sqrt = np.sqrt(kernel_weights)
         return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
