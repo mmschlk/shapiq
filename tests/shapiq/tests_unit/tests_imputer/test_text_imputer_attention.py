@@ -11,6 +11,7 @@ pytest.importorskip("transformers")
 from shapiq.imputer.text_imputer import (  # noqa: E402
     AttentionMaskPerturbation,
     TextImputer,
+    create_tensor_perturbation_strategy,
 )
 
 
@@ -334,3 +335,116 @@ def test_attention_mask_full_prediction_uses_full_coalition() -> None:
 
     assert isinstance(score, float)
     assert np.isfinite(score)
+
+
+def test_attention_mask_rejects_mismatched_coalition_and_player_spans() -> None:
+    """Coalition length must match the number of player spans."""
+    base_attention_mask = torch.ones((1, 3), dtype=torch.long)
+    player_spans = [(0, 1), (1, 2), (2, 3)]
+    coalition = np.array([True, False], dtype=bool)
+
+    with pytest.raises(ValueError, match="does not match number of player spans"):
+        AttentionMaskPerturbation.build_attention_mask_for_coalition(
+            base_attention_mask=base_attention_mask,
+            player_spans=player_spans,
+            coalition=coalition,
+        )
+
+
+def test_attention_mask_prompt_template_requires_text_placeholder() -> None:
+    """Prompt templates must contain the text placeholder."""
+    tokenizer = TinyTokenizer()
+    players = ["Paris", "is", "beautiful"]
+    coalition = np.array([True, False, True], dtype=bool)
+
+    with pytest.raises(ValueError, match=r"prompt_template must contain '\{text\}'"):
+        AttentionMaskPerturbation.build_prompt_inputs_for_coalitions(
+            tokenizer=tokenizer,
+            players=players,
+            coalitions=coalition,
+            prompt_template="Question: Paris is beautiful Answer:",
+            player_separator=" ",
+        )
+
+
+def test_attention_mask_prompt_rejects_wrong_coalition_width() -> None:
+    """Prompt coalition width must match the number of players."""
+    tokenizer = TinyTokenizer()
+    players = ["Paris", "is", "beautiful"]
+    wrong_coalition = np.array([[True, False]], dtype=bool)
+
+    with pytest.raises(ValueError, match="Expected coalition width"):
+        AttentionMaskPerturbation.build_prompt_inputs_for_coalitions(
+            tokenizer=tokenizer,
+            players=players,
+            coalitions=wrong_coalition,
+            prompt_template="Question: {text} Answer:",
+            player_separator=" ",
+        )
+
+
+def test_attention_mask_causal_lm_requires_prompt_template() -> None:
+    """Causal-LM attention masking requires a prompt template."""
+    tokenizer = TinyTokenizer()
+    perturbation = AttentionMaskPerturbation(tokenizer=tokenizer)
+
+    with pytest.raises(ValueError, match="prompt_template is required for causal_lm"):
+        perturbation.evaluate(
+            players=["Paris", "is", "beautiful"],
+            coalitions=np.array([[True, False, True]], dtype=bool),
+            model_type="causal_lm",
+        )
+
+
+def test_attention_mask_seq2seq_requires_prompt_template() -> None:
+    """Seq2seq attention masking requires a prompt template."""
+    tokenizer = TinyTokenizer()
+    perturbation = AttentionMaskPerturbation(tokenizer=tokenizer)
+
+    with pytest.raises(ValueError, match="prompt_template is required for seq2seq"):
+        perturbation.evaluate(
+            players=["Paris", "is", "beautiful"],
+            coalitions=np.array([[True, False, True]], dtype=bool),
+            model_type="seq2seq",
+        )
+
+
+def test_attention_mask_seq2seq_builds_prompt_inputs() -> None:
+    """Seq2seq attention masking should build prompt-based masked inputs."""
+    tokenizer = TinyTokenizer()
+    perturbation = AttentionMaskPerturbation(tokenizer=tokenizer)
+
+    masked_inputs = perturbation.evaluate(
+        players=["Paris", "is", "beautiful"],
+        coalitions=np.array([[False, True, True]], dtype=bool),
+        model_type="seq2seq",
+        prompt_template="Question: {text} Answer:",
+        player_separator=" ",
+    )
+
+    assert len(masked_inputs) == 1
+    assert masked_inputs[0]["attention_mask"].tolist()[0] == [1, 0, 1, 1, 1]
+
+
+def test_attention_mask_rejects_unknown_model_type() -> None:
+    """Attention masking should reject unsupported model types."""
+    tokenizer = TinyTokenizer()
+    perturbation = AttentionMaskPerturbation(tokenizer=tokenizer)
+
+    with pytest.raises(ValueError, match="Unknown model_type for attention masking"):
+        perturbation.evaluate(
+            players=["Paris"],
+            coalitions=np.array([[True]], dtype=bool),
+            model_type="unsupported",
+        )
+
+
+def test_create_tensor_perturbation_strategy_rejects_unknown_strategy() -> None:
+    """Tensor perturbation factory should reject unknown strategies."""
+    tokenizer = TinyTokenizer()
+
+    with pytest.raises(ValueError, match="Unknown tensor perturbation strategy"):
+        create_tensor_perturbation_strategy(
+            "unsupported",
+            tokenizer=tokenizer,
+        )
