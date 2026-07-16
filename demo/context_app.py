@@ -1,8 +1,6 @@
 """Streamlit UI for the context attribution demo.
-Streamlit 界面：用于运行 context attribution demo。
 
 Run from the repository root with:
-在项目根目录运行：
     streamlit run demo/context_app.py
 """
 
@@ -18,14 +16,12 @@ import streamlit as st
 
 
 # Repository paths used by the Streamlit wrapper.
-# Streamlit 外层界面需要用到的项目路径。
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEMO_SCRIPT = REPO_ROOT / "demo" / "context_attribution.py"
 FIGURE_PATTERN = re.compile(r"^[A-Za-z]:\\.*\.png$|^/.*\.png$")
 
 
 # Short UI explanations for the two supported demo modes.
-# 两种 demo 模式在界面上展示的简短说明。
 MODE_EXPLANATIONS = {
     "retrieval": (
         "Retrieval mode treats each evidence chunk as one player. "
@@ -39,7 +35,6 @@ MODE_EXPLANATIONS = {
 
 
 # Short explanations shown under each generated figure.
-# 每张生成图片下方展示的简短解释。
 FIGURE_EXPLANATIONS = {
     "single_chunk_effects": (
         "Single-player effects: positive bars increase Gemma's score for the target answer; "
@@ -53,11 +48,22 @@ FIGURE_EXPLANATIONS = {
         "Pairwise heatmap: the same order-2 k-SII interaction matrix in a more readable pairwise layout. "
         "Red means positive cooperation; blue means negative interference."
     ),
+    "pairwise_network": (
+        "shapiq network plot: players are nodes, and pairwise interactions are edges. "
+        "This gives a relationship-oriented view of the same interaction structure."
+    ),
+    "force": (
+        "shapiq force plot: shows which effects push the target-answer score up or down. "
+        "This plot combines single-player effects and pairwise interactions for display."
+    ),
+    "waterfall": (
+        "shapiq waterfall plot: ranks contribution values as an additive explanation. "
+        "This is useful as another library-style view of the attribution result."
+    ),
 }
 
 
 # One-sentence reading guide for the selected mode.
-# 根据当前模式给出一句读图提示。
 RUN_TIPS = {
     "retrieval": (
         "Read this as evidence attribution: which retrieved chunk changes Gemma's confidence in the final answer?"
@@ -77,17 +83,14 @@ def run_demo(
     mmlu_subject: str,
 ) -> tuple[int, str, list[Path]]:
     """Run context_attribution.py with environment-variable controls.
-通过环境变量控制并运行 context_attribution.py。
 """
     # Build a clean environment for the subprocess.
-    # 为子进程构造运行环境。
     env = os.environ.copy()
     old_pythonpath = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
     if old_pythonpath:
         env["PYTHONPATH"] += os.pathsep + old_pythonpath
     # Avoid duplicate OpenMP runtime crashes on Windows and save plots without popup windows.
-    # 避免 Windows 上 OpenMP 重复加载报错，并禁止图片窗口自动弹出。
     env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     env["HF_ENABLE_PARALLEL_LOADING"] = "false"
     env["SHAPIQ_SHOW_PLOTS"] = "0"
@@ -99,7 +102,6 @@ def run_demo(
     env["SHAPIQ_MMLU_SUBJECT"] = mmlu_subject
 
     # Run the actual attribution script and capture its console output.
-    # 运行真正的 attribution 脚本，并捕获终端输出。
     result = subprocess.run(
         [sys.executable, str(DEMO_SCRIPT)],
         cwd=REPO_ROOT,
@@ -114,7 +116,6 @@ def run_demo(
         output += "\n\n[stderr]\n" + result.stderr
 
     # Parse saved figure paths from the script output.
-    # 从脚本输出中提取已保存的图片路径。
     image_paths: list[Path] = []
     for line in output.splitlines():
         candidate = line.strip()
@@ -128,7 +129,6 @@ def run_demo(
 
 def output_value(output: str, prefix: str) -> str | None:
     """Extract the value after a console-output prefix.
-提取某个终端输出前缀后面的值。
 """
     for line in output.splitlines():
         if line.startswith(prefix):
@@ -138,7 +138,6 @@ def output_value(output: str, prefix: str) -> str | None:
 
 def output_line(output: str, prefix: str) -> str | None:
     """Extract a whole console-output line by prefix.
-根据前缀提取一整行终端输出。
 """
     for line in output.splitlines():
         if line.startswith(prefix):
@@ -148,7 +147,6 @@ def output_line(output: str, prefix: str) -> str | None:
 
 def output_block(output: str, heading: str) -> list[str]:
     """Extract non-empty lines after a console heading until the next blank section.
-提取某个标题后的非空行，直到下一个空行段落为止。
 """
     lines = output.splitlines()
     for index, line in enumerate(lines):
@@ -167,7 +165,6 @@ def output_block(output: str, heading: str) -> list[str]:
 
 def parse_output_summary(output: str) -> dict[str, str]:
     """Collect the most important console lines for a compact UI summary.
-收集最重要的终端输出，用于界面上的简洁摘要。
 """
     return {
         "mode": output_value(output, "Demo mode") or "-",
@@ -187,7 +184,6 @@ def parse_output_summary(output: str) -> dict[str, str]:
 
 def figure_kind(path: Path) -> str:
     """Classify a generated figure by filename.
-根据文件名判断生成图片的类型。
 """
     name = path.name
     if "single_chunk_effects" in name:
@@ -201,7 +197,6 @@ def figure_kind(path: Path) -> str:
 
 def figure_caption(path: Path) -> str:
     """Return a short interpretation for a saved figure path.
-根据图片路径返回一句简短解释。
 """
     name = path.name
     for key, explanation in FIGURE_EXPLANATIONS.items():
@@ -212,7 +207,6 @@ def figure_caption(path: Path) -> str:
 
 def render_output_summary(output: str) -> None:
     """Render the compact summary before the full console log.
-在完整终端 log 之前先展示简洁摘要。
 """
     summary = parse_output_summary(output)
 
@@ -246,7 +240,6 @@ def render_output_summary(output: str) -> None:
 
 def render_figures(image_paths: list[Path]) -> None:
     """Render generated figures in readable groups.
-按图片类型分组展示生成结果。
 """
     st.subheader("Figures and interpretation")
     if not image_paths:
@@ -276,7 +269,6 @@ def render_figures(image_paths: list[Path]) -> None:
 
 
 # Page layout and sidebar controls.
-# 页面布局和侧边栏控件。
 st.set_page_config(page_title="Context Attribution Demo", layout="wide")
 st.title("Context Attribution Demo")
 st.caption("Gemma + TextImputer + shapiq")

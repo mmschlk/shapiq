@@ -1,27 +1,19 @@
 """Context attribution demo for LLM explanations with Gemma, TextImputer, and shapiq.
-用 Gemma、TextImputer 和 shapiq 做 LLM context attribution demo。
 
 This file supports two demo modes.
-本文件支持两种 demo 模式。
 
 1. retrieval mode: each retrieved evidence chunk is one player.
-1. retrieval 模式：每个检索到的 evidence chunk 是一个 player。
 
 2. few_shot mode: each question-choice-answer demonstration is one player.
-2. few_shot 模式：每个 question-choice-answer demonstration 是一个 player。
 
 For each coalition S, selected players are kept and missing players are removed.
-对每个 coalition S，被选中的 players 会保留，没被选中的 players 会被移除。
 
 Value function:
-价值函数：
     v(S) = log P_Gemma(target_answer | target question + selected players in S)
 
 A higher score means Gemma is more likely to produce the target answer.
-分数越高，表示 Gemma 越倾向生成目标答案。
 
 The demo can use manual cases or Gemma-generated cases, and can run on CPU or GPU.
-本 demo 可以使用手写案例或 Gemma 自动生成案例，也可以切换 CPU 或 GPU 运行。
 """
 
 from __future__ import annotations
@@ -34,7 +26,6 @@ from pathlib import Path
 from typing import TypedDict
 
 # Disable threaded HuggingFace weight loading on Windows to avoid torch access-violation crashes.
-# 在 Windows 上关闭 HuggingFace 并行加载，避免 torch 访问冲突崩溃。
 os.environ.setdefault("HF_ENABLE_PARALLEL_LOADING", "false")
 
 import matplotlib.pyplot as plt
@@ -52,56 +43,43 @@ from shapiq.imputer.text_imputer import TextImputer
 
 
 # Avoid tokenizer parallelism warnings during repeated demo runs.
-# 避免多次运行 demo 时出现 tokenizer 并行 warning。
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 # Model setup.
-# 模型设置。
 # ---------------------------------------------------------------------------
 
 MODEL_NAME = "google/gemma-4-E2B-it"
 
 # Formal shapiq interaction index used for the main heatmap.
-# 主 heatmap 使用的正式 shapiq interaction index。
 INTERACTION_INDEX = "k-SII"
 INTERACTION_ORDER = 2
 
 # Prefer cached HuggingFace files to avoid network calls during demos.
-# 优先使用 HuggingFace 本地缓存，避免 demo 时重新联网下载模型。
 LOCAL_FILES_ONLY = True
 
 # CPU mode is slower but more stable on this machine.
-# CPU 模式慢一些，但在这台电脑上更稳定。
 DEVICE = os.getenv("SHAPIQ_DEVICE", "auto")
 
 # Keep the causal LM prompt exactly as build_text() creates it.
-# 保持 causal LM 的 prompt 就是 build_text() 构造出来的内容。
 PROMPT_TEMPLATE = "{text}"
 
 # Show matplotlib windows when running from the command line.
-# 命令行运行时是否弹出 matplotlib 图片窗口。
 SHOW_PLOTS = os.getenv("SHAPIQ_SHOW_PLOTS", "1") == "1"
 
 
 class ContextCase(TypedDict):
     """Reusable context attribution case.
-    可复用的 context attribution 案例。
 
     question: the question asked after the retrieved chunks.
-    question：放在 retrieved chunks 后面的具体问题。
 
     target_answer: the answer scored by the value function.
-    target_answer：value function 要打分的目标答案。
 
     chunk_names: short labels used in plots.
-    chunk_names：画图时使用的短标签。
 
     chunk_kinds: supporting, irrelevant, misleading, or contradictory labels.
-    chunk_kinds：标注每个 chunk 是 supporting、irrelevant、misleading 还是 contradictory。
 
     context_chunks: retrieved chunks used as players.
-    context_chunks：作为 players 的 retrieved context chunks。
     """
 
     question: str
@@ -112,7 +90,6 @@ class ContextCase(TypedDict):
 
 
 # Each case mixes supporting, irrelevant, misleading, and contradictory context.
-# 每个 case 都混合了支持、无关、误导和矛盾性的 context。
 CASES: dict[str, ContextCase] = {
     "eiffel_tower": {
         "question": "Where is the Eiffel Tower located?",
@@ -195,7 +172,6 @@ CASES: dict[str, ContextCase] = {
 
 
 # Few-shot cases treat each demonstration as one player.
-# few-shot case 会把每个 demonstration 当作一个 player。
 FEW_SHOT_CASES: dict[str, ContextCase] = {
     "mmlu_electrical": {
         "question": (
@@ -271,23 +247,18 @@ FEW_SHOT_CASES: dict[str, ContextCase] = {
 }
 
 # Choose the demo format: "retrieval" or "few_shot".
-# 选择 demo 格式："retrieval" 是证据检索场景，"few_shot" 是 in-context learning 示例场景。
 DEMO_MODE = os.getenv("SHAPIQ_DEMO_MODE", "few_shot")
 
 # Change this value to run another test case.
-# 改这里就可以切换测试案例。
 CASE_NAME = os.getenv("SHAPIQ_CASE_NAME", "eiffel_tower")
 
 # Change this value to run another few-shot test case.
-# 改这里可以切换 few-shot 测试案例。
 FEW_SHOT_CASE_NAME = os.getenv("SHAPIQ_FEW_SHOT_CASE_NAME", "mmlu_electrical")
 
 # Choose where the case comes from: "manual" or "gemma_generated".
-# 选择 case 来源："manual" 使用手写案例，"gemma_generated" 让 Gemma 自动生成一个新案例。
 CASE_SOURCE = os.getenv("SHAPIQ_CASE_SOURCE", "manual")
 
 # Topic used only when CASE_SOURCE is "gemma_generated".
-# 只有 CASE_SOURCE 是 "gemma_generated" 时才会使用这个主题。
 GENERATED_RETRIEVAL_TOPIC = os.getenv("SHAPIQ_GENERATED_RETRIEVAL_TOPIC", "simple general-knowledge question with short evidence chunks")
 GENERATED_FEW_SHOT_TOPIC = os.getenv("SHAPIQ_GENERATED_FEW_SHOT_TOPIC", "simple MMLU-style multiple-choice question with five short demonstrations")
 
@@ -300,17 +271,14 @@ MMLU_NUM_DEMOS = int(os.getenv("SHAPIQ_MMLU_NUM_DEMOS", "5"))
 MMLU_TARGET_OFFSET = int(os.getenv("SHAPIQ_MMLU_TARGET_OFFSET", str(MMLU_NUM_DEMOS)))
 
 # Limit the length of Gemma's generated JSON case.
-# 限制 Gemma 生成 JSON case 的长度，避免 demo 等太久。
 GENERATED_CASE_MAX_NEW_TOKENS = 512
 
 # Figures are saved here for reports and slides.
-# 图片会保存到这里，方便放进汇报和 slides。
 FIGURE_DIR = Path(__file__).resolve().parent / "figures"
 
 
 def get_case(case_name: str) -> ContextCase:
     """Return the selected retrieval-style context attribution case.
-    返回当前选择的 retrieval-style context attribution 案例。
     """
     if case_name not in CASES:
         available = ", ".join(CASES)
@@ -321,7 +289,6 @@ def get_case(case_name: str) -> ContextCase:
 
 def get_few_shot_case(case_name: str) -> ContextCase:
     """Return the selected few-shot attribution case.
-    返回当前选择的 few-shot attribution 案例。
     """
     if case_name not in FEW_SHOT_CASES:
         available = ", ".join(FEW_SHOT_CASES)
@@ -426,7 +393,6 @@ def load_mmlu_few_shot_case(subject: str) -> ContextCase:
 
 def build_text(case: ContextCase) -> str:
     """Build the full prompt from players, target question, and answer prefix.
-    把 players、目标问题和 answer prefix 拼成完整 prompt。
     """
     if DEMO_MODE == "few_shot":
         demonstrations = "\n\n".join(case["context_chunks"])
@@ -441,32 +407,26 @@ def build_text(case: ContextCase) -> str:
 
 class ContextChunkPlayerStrategy:
     """Player strategy that only treats retrieved context chunks as players.
-    这个 player strategy 只把 retrieved context chunks 当成 players。
 
     TextImputer has built-in sentence-level strategies, but here the question should stay fixed.
-    TextImputer 有内置的 sentence-level strategy，但这里 question 应该保持固定。
 
     Therefore, only retrieved chunks are explained as players.
-    因此，这里只解释 retrieved chunks 对答案的影响。
     """
 
     def __init__(self, case: ContextCase) -> None:
         """Store the current context attribution case.
-        保存当前 context attribution 案例。
         """
         self.case = case
         self.context_chunks = case["context_chunks"]
 
     def get_players(self) -> list[str]:
         """Return context chunks as players.
-        返回作为 players 的 context chunks。
         """
         return self.context_chunks
 
     @property
     def n_players(self) -> int:
         """Return the number of context chunk players.
-        返回 context chunk players 的数量。
         """
         return len(self.context_chunks)
 
@@ -476,13 +436,10 @@ class ContextChunkPlayerStrategy:
         perturbation_strategy: object,  # noqa: ARG002
     ) -> str:
         """Build a prompt from selected context chunks.
-        根据选中的 context chunks 构造 prompt。
 
         Missing chunks are removed from the prompt.
-        没有被选中的 chunks 会从 prompt 里移除。
 
         The question and answer prefix are always kept because they are not players.
-        question 和 answer prefix 始终保留，因为它们不是要解释的 players。
         """
         if len(coalition) != self.n_players:
             msg = (
@@ -515,7 +472,6 @@ class ContextChunkPlayerStrategy:
 
 def _slugify(text: str) -> str:
     """Create a short file-safe name.
-    创建一个适合文件名使用的短名称。
     """
     slug = re.sub(r"[^a-zA-Z0-9]+", "_", text.lower()).strip("_")
     return slug[:40] or "generated_case"
@@ -523,7 +479,6 @@ def _slugify(text: str) -> str:
 
 def _extract_json_object(text: str) -> dict[str, object]:
     """Extract the first JSON object from a model response.
-    从模型回复中提取第一个 JSON object。
     """
     start = text.find("{")
     end = text.rfind("}")
@@ -535,7 +490,6 @@ def _extract_json_object(text: str) -> dict[str, object]:
 
 def _short_label(label: str, max_words: int = 4) -> str:
     """Shorten generated labels so plots stay readable.
-    缩短自动生成的标签，避免图上文字重叠。
     """
     words = label.replace(":", ": ").split()
     return " ".join(words[:max_words])
@@ -543,7 +497,6 @@ def _short_label(label: str, max_words: int = 4) -> str:
 
 def _validate_generated_case(data: dict[str, object]) -> ContextCase:
     """Validate and normalize a Gemma-generated context case.
-    校验并标准化 Gemma 自动生成的 context case。
     """
     required = ["question", "target_answer", "context_chunks", "chunk_names", "chunk_kinds"]
     missing = [key for key in required if key not in data]
@@ -588,7 +541,6 @@ def _validate_generated_case(data: dict[str, object]) -> ContextCase:
 
 def build_case_generation_prompt(topic: str) -> str:
     """Build the instruction prompt that asks Gemma to create a case.
-    构造让 Gemma 自动生成 context attribution case 的指令 prompt。
     """
     return f"""
 Create one context attribution demo case for an LLM explanation experiment.
@@ -628,7 +580,6 @@ Return JSON only. Use exactly this schema and level of detail:
 
 def build_few_shot_generation_prompt(topic: str) -> str:
     """Build the instruction prompt that asks Gemma to create a few-shot case.
-    构造让 Gemma 自动生成 few-shot attribution case 的指令 prompt。
     """
     return f"""
 Create one few-shot in-context learning attribution case for an LLM explanation experiment.
@@ -663,7 +614,6 @@ Return JSON only. Use exactly this schema and level of detail:
 
 def format_case_generation_prompt(tokenizer: AutoTokenizer, prompt: str) -> str:
     """Format the case-generation prompt for an instruction-tuned model.
-    将 case 生成 prompt 格式化成 instruction model 更容易响应的 chat 格式。
     """
     messages = [{"role": "user", "content": prompt}]
     try:
@@ -679,7 +629,6 @@ def format_case_generation_prompt(tokenizer: AutoTokenizer, prompt: str) -> str:
 
 def _has_choice_lines(text: str) -> bool:
     """Return whether text contains A-D multiple-choice lines.
-    判断文本里是否包含完整的 A-D 选项行。
     """
     return all(
         re.search(rf"(?im)^\s*{letter}\.\s+\S", text)
@@ -689,14 +638,12 @@ def _has_choice_lines(text: str) -> bool:
 
 def _has_answer_line(text: str) -> bool:
     """Return whether text contains an answer letter line.
-    判断文本里是否包含 Answer: A/B/C/D 这一行。
     """
     return re.search(r"(?im)^\s*Answer\s*:\s*[ABCD]\b", text) is not None
 
 
 def _validate_few_shot_demo_text(chunk: str, index: int) -> None:
     """Require one generated demonstration to include question, choices, and answer.
-    要求每个自动生成的 demonstration 都包含题目、选项和答案。
     """
     if "..." in chunk:
         msg = f"Generated demo {index} still contains placeholder text '...'."
@@ -713,7 +660,6 @@ def _validate_few_shot_demo_text(chunk: str, index: int) -> None:
 
 def _validate_generated_few_shot_case(data: dict[str, object]) -> ContextCase:
     """Validate and normalize a Gemma-generated few-shot case.
-    校验并标准化 Gemma 自动生成的 few-shot case。
     """
     required = ["question", "target_answer", "context_chunks", "chunk_names", "chunk_kinds"]
     missing = [key for key in required if key not in data]
@@ -778,7 +724,6 @@ def generate_case_with_gemma(
     few_shot: bool = False,
 ) -> ContextCase:
     """Ask Gemma to generate either a retrieval or few-shot attribution case.
-    调用 Gemma 自动生成 retrieval 或 few-shot attribution case。
     """
     formatted_prompt = format_case_generation_prompt(tokenizer, prompt)
     inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
@@ -806,7 +751,6 @@ def generate_case_with_gemma(
 
 def resolve_device() -> str:
     """Resolve DEVICE into the actual runtime device.
-    将 DEVICE 解析成实际运行设备。
     """
     if DEVICE == "auto":
         return "cuda" if torch.cuda.is_available() else "cpu"
@@ -824,7 +768,6 @@ def select_case(
     model: AutoModelForCausalLM,
 ) -> tuple[str, ContextCase]:
     """Select the case for the current demo mode and case source.
-    根据当前 demo mode 和 case source 选择 case。
     """
     if DEMO_MODE not in {"retrieval", "few_shot"}:
         msg = 'DEMO_MODE must be either "retrieval" or "few_shot".'
@@ -875,7 +818,6 @@ def select_case(
 
 def all_coalitions(n_players: int) -> np.ndarray:
     """Enumerate all binary coalitions.
-    枚举所有二进制 coalitions。
     """
     return np.array(
         list(itertools.product([0, 1], repeat=n_players)),
@@ -885,7 +827,6 @@ def all_coalitions(n_players: int) -> np.ndarray:
 
 def _score_lookup(coalitions: np.ndarray, scores: np.ndarray) -> dict[tuple[int, ...], float]:
     """Create a lookup table from coalition to value-function score.
-    创建 coalition 到 value function 分数的查询表。
     """
     return {
         tuple(coalition.astype(int)): float(score)
@@ -895,7 +836,6 @@ def _score_lookup(coalitions: np.ndarray, scores: np.ndarray) -> dict[tuple[int,
 
 def _as_float(value: object) -> float:
     """Convert scalar or one-element array-like values to float.
-    将标量或单元素 array-like 值转成 float。
     """
     return float(np.asarray(value).reshape(-1)[0])
 
@@ -905,10 +845,8 @@ def estimate_single_chunk_effects(
     scores: np.ndarray,
 ) -> np.ndarray:
     """Estimate the individual effect of each context chunk.
-    估计每个 context chunk 的单独影响。
 
     This prototype score uses v({i}) - v({}).
-    这里使用 v({i}) - v({}) 作为直观的 first-order prototype 指标。
     """
     n_players = coalitions.shape[1]
     lookup = _score_lookup(coalitions, scores)
@@ -931,13 +869,10 @@ def estimate_pairwise_interactions(
     scores: np.ndarray,
 ) -> np.ndarray:
     """Estimate simple prototype pairwise interactions.
-    估计简单的 prototype 两两交互。
 
     The prototype formula is v({i,j}) - v({i}) - v({j}) + v({}).
-    prototype 公式是 v({i,j}) - v({i}) - v({j}) + v({})。
 
     The main reported result still uses formal shapiq k-SII.
-    主要汇报结果仍然使用正式的 shapiq k-SII。
     """
     n_players = coalitions.shape[1]
     interactions = np.zeros((n_players, n_players), dtype=float)
@@ -974,7 +909,6 @@ def compute_shapiq_pairwise_interactions(
     imputer: TextImputer,
 ) -> tuple[np.ndarray, shapiq.InteractionValues]:
     """Compute formal second-order interaction values with shapiq.
-    用 shapiq 计算正式的二阶 interaction values。
     """
     computer = shapiq.ExactComputer(
         n_players=imputer.n_players,
@@ -993,7 +927,6 @@ def build_display_interaction_values(
     interactions: np.ndarray,
 ) -> shapiq.InteractionValues:
     """Build a mixed first- and second-order object for force/waterfall plots.
-    为 force/waterfall 图构造一个同时包含一阶和二阶结果的展示对象。
     """
     n_players = len(effects)
     display_values: dict[tuple[int, ...], float] = {}
@@ -1058,7 +991,6 @@ def plot_pairwise_interactions(
     interaction_values: shapiq.InteractionValues,
 ) -> Path:
     """Plot and save second-order interactions with shapiq's matrix-style UpSet plot.
-    使用 shapiq 自带的 matrix-style UpSet plot 绘制并保存二阶 interaction 图。
     """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_pairwise_interactions.png"
@@ -1092,7 +1024,6 @@ def plot_pairwise_heatmap(
     interactions: np.ndarray,
 ) -> Path:
     """Plot and save a readable heatmap for pairwise interactions.
-    绘制并保存更便于解释的两两 interaction heatmap。
     """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_pairwise_heatmap.png"
@@ -1130,7 +1061,6 @@ def plot_network_interactions(
     interaction_values: shapiq.InteractionValues,
 ) -> Path | None:
     """Plot and save shapiq's built-in network interaction visualization.
-    使用 shapiq 自带的 network plot 保存 interaction 关系图。
     """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_pairwise_network.png"
@@ -1167,7 +1097,6 @@ def plot_force_interactions(
     interaction_values: shapiq.InteractionValues,
 ) -> Path | None:
     """Plot and save shapiq's built-in force plot if available.
-    如果当前环境支持，则保存 shapiq 自带的 force plot。
     """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_force.png"
@@ -1204,7 +1133,6 @@ def plot_waterfall_interactions(
     interaction_values: shapiq.InteractionValues,
 ) -> Path | None:
     """Plot and save shapiq's built-in waterfall plot if available.
-    如果当前环境支持，则保存 shapiq 自带的 waterfall plot。
     """
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output_path = FIGURE_DIR / f"context_{case_name}_waterfall.png"
@@ -1241,13 +1169,11 @@ def print_automatic_summary(
     interactions: np.ndarray,
 ) -> None:
     """Print a short automatic summary of the most important results.
-    打印最重要结果的简短自动总结。
     """
     top_positive_idx = int(np.argmax(effects))
     top_negative_idx = int(np.argmin(effects))
 
     # Only summarize real pairs; ignore the diagonal.
-    # 只总结真正的两两组合，不看对角线。
     pair_indices = np.triu_indices_from(interactions, k=1)
     pair_values = interactions[pair_indices]
 
@@ -1296,11 +1222,9 @@ def print_automatic_summary(
 
 def main() -> None:
     """Run the context attribution demo.
-    运行 context attribution demo。
 
     The workflow loads the model, creates TextImputer, enumerates coalitions,
     computes the value function, computes k-SII interactions, and saves figures.
-    流程包括加载模型、创建 TextImputer、枚举 coalitions、计算 value function、计算 k-SII interaction、画图并保存结果。
     """
     runtime_device = resolve_device()
 
