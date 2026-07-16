@@ -1,17 +1,36 @@
-"""Tests for the PolySHAP approximators: PolySHAPKAdd, PolySHAPPartial, PolySHAPPrior."""
+"""Tests for the :class:`~shapiq.approximator.PolySHAP` approximator.
+
+PolySHAP selects its interaction frontier through one of three constructor arguments:
+
+* **k-additive** (default): ``max_order`` (with ``max_terms=None``).
+* **partial**: ``max_terms`` (budget-capped frontier, whole low orders first).
+* **prior**: ``prior_frontier`` supplies the interaction terms directly.
+
+The suite exercises every branch of the frontier builder and both design-matrix
+paths of :meth:`~shapiq.approximator.PolySHAP.approximate` (the order-1 KernelSHAP path
+and the higher-order interaction path), checks convergence to the ground truth from
+:class:`~shapiq.ExactComputer`, and runs reproducibility / variance sweeps over a
+fixed list of 50 seeds.
+"""
 
 from __future__ import annotations
+
+from functools import cache
+from itertools import pairwise
 
 import numpy as np
 import pytest
 from scipy.special import binom
 
-from shapiq.approximator.regression import PolySHAPKAdd, PolySHAPPartial, PolySHAPPrior
-from shapiq.approximator.regression.polyshap.polyshap import PolySHAP
+import shapiq.approximator as approximator_module
+from shapiq import ExactComputer
+from shapiq.approximator import PolySHAP
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 from shapiq_games.synthetic import DummyGame
 
+# The sampler's border-trick and the underdefined-system check both emit UserWarnings
+# that are irrelevant to most assertions here; individual tests opt back in where needed.
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
@@ -20,26 +39,28 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 # ---------------------------------------------------------------------------
 
 
-def _singleton_prior(n: int) -> list[tuple]:
-    """Minimal prior: empty set + all singletons (structurally identical to KernelSHAP frontier)."""
+def _singleton_prior(n: int) -> list[tuple[int, ...]]:
+    """Minimal prior: empty set + all singletons (the KernelSHAP frontier)."""
     return list(powerset(range(n), max_size=1))
 
 
 def _kadd_frontier_size(n: int, max_order: int) -> int:
+    """Number of subsets of ``range(n)`` of size ``0 .. max_order``."""
     return int(sum(binom(n, k) for k in range(max_order + 1)))
 
 
-def _true_sv_dummy_game(n: int, interaction: tuple) -> np.ndarray:
-    """Exact Shapley values for ``DummyGame(n, interaction)``.
+@cache
+def _exact_sv(n: int, interaction: tuple[int, ...]) -> tuple[float, ...]:
+    """Ground-truth Shapley values for ``DummyGame(n, interaction)`` via ExactComputer."""
+    game = DummyGame(n, interaction)
+    values = ExactComputer(game, n_players=n)(index="SV", order=1).get_n_order_values(1)
+    return tuple(float(v) for v in np.asarray(values))
 
-    ``v(S) = |S| / n + 1[interaction ⊆ S]``.  The additive ``|S| / n`` term gives
-    every player ``1 / n``; a pairwise interaction term splits its unit worth equally
-    among its members, so each member additionally receives ``1 / |interaction|``.
-    """
-    sv = np.full(n, 1.0 / n)
-    for i in interaction:
-        sv[i] += 1.0 / len(interaction)
-    return sv
+
+def _estimate_vector(approx: PolySHAP, budget: int, game: DummyGame) -> np.ndarray:
+    """Run ``approx`` and return its per-player Shapley-value vector of length ``n``."""
+    sv = approx.approximate(budget, game)
+    return np.array([sv[(i,)] for i in range(approx.n)])
 
 
 def _generate_seeds(rng_seed: int = 20260617, count: int = 50) -> list[int]:
@@ -47,55 +68,48 @@ def _generate_seeds(rng_seed: int = 20260617, count: int = 50) -> list[int]:
     return [int(s) for s in np.random.default_rng(rng_seed).integers(0, 2**31 - 1, size=count)]
 
 
-PARTIAL_SEEDS: list[int] = _generate_seeds()
+SEEDS: list[int] = _generate_seeds()
+
+# Shared configuration for the seeded sweeps.
+_SEEDED_N = 12
+_SEEDED_INTERACTION = (1, 2)
+_SEEDED_MAX_TERMS = 30
+_SEEDED_BUDGET = 400
+
+# The three modes, as (label, constructor-kwargs) pairs, reused by shared tests.
+_MODES: list[tuple[str, dict]] = [
+    ("kadd_order1", {"max_order": 1}),
+    ("kadd_order2", {"max_order": 2}),
+    ("partial", {"max_terms": 12}),
+    ("prior", {"prior_frontier": _singleton_prior(7)}),
+]
+_MODE_IDS = [label for label, _ in _MODES]
+_MODE_KWARGS = [kwargs for _, kwargs in _MODES]
 
 
 # ---------------------------------------------------------------------------
-# PolySHAP base-class: frontier validation
+# Registration / exports
 # ---------------------------------------------------------------------------
 
 
-def test_polyshap_raises_when_singleton_missing():
-    """PolySHAP must reject a frontier that omits any singleton."""
-    n = 4
-    incomplete = {(): 0, (0,): 1, (1,): 2}  # players 2 and 3 missing
-    with pytest.raises(ValueError, match="main effects"):
-        PolySHAP(n, incomplete)
-
-
-def test_polyshap_accepts_valid_custom_frontier():
-    """PolySHAP should accept any frontier that contains all singletons."""
-    n = 3
-    frontier = {(): 0, (0,): 1, (1,): 2, (2,): 3, (0, 1): 4}
-    approx = PolySHAP(n, frontier)
-    assert approx.n == n
-    assert len(approx.explanation_frontier) == len(frontier)
-    assert approx.n_variables == len(frontier) - 1
-
-
-def test_polyshap_interaction_matrix_shape():
-    """interaction_matrix_binary must have shape (|frontier|, n)."""
-    n = 4
-    frontier = {S: pos for pos, S in enumerate(powerset(range(n), max_size=2))}
-    approx = PolySHAP(n, frontier)
-    assert approx.interaction_matrix_binary.shape == (len(frontier), n)
+def test_polyshap_is_exported_and_registered():
+    """PolySHAP must be publicly exported and registered as an SV approximator."""
+    assert "PolySHAP" in approximator_module.__all__
+    assert PolySHAP in approximator_module.SV_APPROXIMATORS
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPKAdd - initialisation
+# Frontier construction: k-additive mode
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("n", "max_order"),
-    [(3, 1), (3, 2), (7, 1), (7, 2), (10, 3)],
-)
-def test_kadd_init_attributes(n, max_order):
-    """PolySHAPKAdd must expose correct attributes after construction."""
-    approx = PolySHAPKAdd(n, max_order)
+@pytest.mark.parametrize(("n", "max_order"), [(3, 1), (3, 2), (7, 1), (7, 2), (10, 3)])
+def test_kadd_frontier_size_and_attributes(n, max_order):
+    """The k-additive frontier holds every subset up to ``max_order`` and sets attributes."""
+    approx = PolySHAP(n, max_order=max_order)
     expected_size = _kadd_frontier_size(n, max_order)
     assert approx.n == n
-    assert approx.max_order == 1  # PolySHAP always targets SVs
+    assert approx.max_order == 1  # the *output* order: PolySHAP always targets SVs
     assert approx.min_order == 0
     assert approx.top_order is False
     assert approx.iteration_cost == 1
@@ -104,410 +118,478 @@ def test_kadd_init_attributes(n, max_order):
     assert approx.n_variables == expected_size - 1
 
 
+def test_default_constructor_is_two_additive():
+    """``PolySHAP(n)`` defaults to the 2-additive frontier."""
+    n = 6
+    approx = PolySHAP(n)
+    assert len(approx.explanation_frontier) == _kadd_frontier_size(n, 2)
+
+
+def test_kadd_order1_frontier_is_kernelshap_frontier():
+    """``max_order=1`` yields exactly the empty set plus all singletons."""
+    n = 6
+    frontier = PolySHAP(n, max_order=1).explanation_frontier
+    assert len(frontier) == n + 1
+    assert max(len(S) for S in frontier) == 1
+
+
 @pytest.mark.parametrize("n", [4, 7])
-def test_kadd_frontier_contains_all_singletons(n):
-    """Every singleton (i,) must be a key in the explanation frontier."""
-    approx = PolySHAPKAdd(n, max_order=2)
+def test_kadd_frontier_contains_empty_set_and_all_singletons(n):
+    """The empty set sits at index 0 and every singleton is present."""
+    frontier = PolySHAP(n, max_order=2).explanation_frontier
+    assert frontier[()] == 0
+    for i in range(n):
+        assert (i,) in frontier
+
+
+@pytest.mark.parametrize("excluded_size", [2, 3])
+def test_kadd_sizes_to_exclude_removes_those_sizes(excluded_size):
+    """Excluded higher-order sizes are absent, while singletons are always kept."""
+    n = 6
+    approx = PolySHAP(n, max_order=4, sizes_to_exclude={excluded_size})
+    for coalition in approx.explanation_frontier:
+        assert len(coalition) != excluded_size
     for i in range(n):
         assert (i,) in approx.explanation_frontier
 
 
-@pytest.mark.parametrize("excluded_size", [2, 3])
-def test_kadd_sizes_to_exclude_removes_coalitions(excluded_size):
-    """Coalitions of an excluded size must be absent from the frontier."""
-    approx = PolySHAPKAdd(6, max_order=4, sizes_to_exclude={excluded_size})
-    for coalition in approx.explanation_frontier:
-        assert len(coalition) != excluded_size
-
-
-def test_kadd_sizes_to_exclude_singletons_raises():
-    """Excluding size 1 (singletons) must propagate a ValueError from the base class."""
-    with pytest.raises(ValueError, match="main effects"):
-        PolySHAPKAdd(4, max_order=2, sizes_to_exclude={1})
+def test_kadd_sizes_to_exclude_singletons_is_ignored():
+    """Singletons are mandatory, so excluding size 1 has no effect (no error)."""
+    n = 4
+    approx = PolySHAP(n, max_order=2, sizes_to_exclude={1})
+    for i in range(n):
+        assert (i,) in approx.explanation_frontier
 
 
 def test_kadd_frontier_positions_are_unique():
-    """Each frontier term must map to a unique column position."""
-    approx = PolySHAPKAdd(5, max_order=2)
-    positions = list(approx.explanation_frontier.values())
-    assert len(positions) == len(set(positions))
+    """Each frontier term maps to a unique, contiguous column position."""
+    approx = PolySHAP(5, max_order=2)
+    positions = sorted(approx.explanation_frontier.values())
+    assert positions == list(range(len(positions)))
+
+
+def test_interaction_matrix_binary_shape():
+    """``interaction_matrix_binary`` has shape ``(|frontier|, n)``."""
+    n = 4
+    approx = PolySHAP(n, max_order=2)
+    assert approx.interaction_matrix_binary.shape == (len(approx.explanation_frontier), n)
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPKAdd - approximation quality
+# Frontier construction: partial mode
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("n", "budget"), [(7, 500), (7, 100)])
-def test_kadd_approximate_sv_quality(n, budget):
-    """PolySHAPKAdd(max_order=1) recovers correct SVs on DummyGame."""
-    interaction = (1, 2)
-    game = DummyGame(n, interaction)
-    approx = PolySHAPKAdd(n, max_order=1, random_state=42)
-    sv = approx.approximate(budget, game)
+@pytest.mark.parametrize(
+    ("n", "max_terms"),
+    [
+        (7, 8),  # empty + singletons only, no higher-order extension
+        (7, 12),  # empty + singletons + 4 pairs
+        (7, 25),  # empty + singletons + 17 pairs (21 pairs exist -> fits)
+    ],
+)
+def test_partial_frontier_size_when_within_capacity(n, max_terms):
+    """When capacity allows, the partial frontier holds exactly ``max_terms`` entries."""
+    approx = PolySHAP(n, max_terms=max_terms, random_state=42)
+    assert len(approx.explanation_frontier) == max_terms
+    assert approx.n_variables == max_terms - 1
 
+
+def test_partial_frontier_capped_by_capacity_when_candidates_exhausted():
+    """If ``max_terms`` exceeds the available terms up to ``max_order`` the frontier caps out."""
+    n = 5  # capacity at order 2 is 1 + 5 + C(5, 2) = 16
+    approx = PolySHAP(n, max_order=2, max_terms=100, random_state=0)
+    assert len(approx.explanation_frontier) == _kadd_frontier_size(n, 2)
+    assert max(len(S) for S in approx.explanation_frontier) == 2
+
+
+def test_partial_is_bounded_by_max_order():
+    """Partial extension never adds terms above ``max_order``."""
+    order2 = PolySHAP(6, max_order=2, max_terms=40, random_state=0)
+    assert max(len(S) for S in order2.explanation_frontier) == 2
+    order3 = PolySHAP(6, max_order=3, max_terms=40, random_state=0)
+    assert max(len(S) for S in order3.explanation_frontier) == 3
+
+
+def test_partial_always_contains_all_singletons():
+    """Every singleton appears regardless of the cap."""
+    n = 7
+    approx = PolySHAP(n, max_order=3, max_terms=15, random_state=1)
+    for i in range(n):
+        assert (i,) in approx.explanation_frontier
+
+
+def test_partial_sizes_to_exclude_omits_those_sizes():
+    """Excluded sizes never appear among the randomly selected terms."""
+    approx = PolySHAP(7, max_order=3, max_terms=25, sizes_to_exclude={2}, random_state=0)
+    for coalition in approx.explanation_frontier:
+        assert len(coalition) != 2
+
+
+def test_partial_fills_whole_low_orders_before_sampling_boundary_order():
+    """Partial mode realizes the paper's ``I_ell``: complete low orders, partial top order.
+
+    With ``n=6``, ``max_order=3`` and ``max_terms=30`` the frontier holds the empty set,
+    6 singletons and all 15 pairs (22 terms), then a *random* subset of the 20 triples to
+    reach 30. Every pair must be present while only some triples are.
+    """
+    n, max_terms = 6, 30
+    frontier = PolySHAP(n, max_order=3, max_terms=max_terms, random_state=0).explanation_frontier
+    all_pairs = list(powerset(range(n), min_size=2, max_size=2))
+    triples = [S for S in frontier if len(S) == 3]
+
+    assert all(pair in frontier for pair in all_pairs)  # every lower-order term kept
+    assert 0 < len(triples) < int(binom(n, 3))  # boundary order only partially included
+    assert len(frontier) == max_terms
+
+
+def test_partial_different_seeds_produce_different_frontiers():
+    """Different random states select different higher-order interactions."""
+    n, max_terms = 7, 20
+    a1 = PolySHAP(n, max_order=3, max_terms=max_terms, random_state=1)
+    a2 = PolySHAP(n, max_order=3, max_terms=max_terms, random_state=2)
+    assert set(a1.explanation_frontier) != set(a2.explanation_frontier)
+
+
+def test_partial_same_seed_reproduces_frontier():
+    """The same random state yields an identical frontier."""
+    n, max_terms = 7, 20
+    a1 = PolySHAP(n, max_order=3, max_terms=max_terms, random_state=7)
+    a2 = PolySHAP(n, max_order=3, max_terms=max_terms, random_state=7)
+    assert set(a1.explanation_frontier) == set(a2.explanation_frontier)
+
+
+# ---------------------------------------------------------------------------
+# Frontier construction: prior mode
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("n", [3, 7, 10])
+def test_prior_frontier_matches_supplied_ordering(n):
+    """The prior frontier equals ``prior_frontier`` with positions in enumeration order."""
+    prior = [*_singleton_prior(n), (0, 1), (1, 2)]
+    approx = PolySHAP(n, prior_frontier=prior)
+    assert len(approx.explanation_frontier) == len(prior)
+    assert approx.n_variables == len(prior) - 1
+    for pos, coalition in enumerate(prior):
+        assert approx.explanation_frontier[coalition] == pos
+
+
+def test_informed_prior_recovers_exact_interaction_game():
+    """A prior carrying the game's true interaction recovers the exact Shapley values.
+
+    This is the realistic use of *prior* mode: on a 2-additive game whose only
+    interaction is the pair ``(1, 2)``, supplying that pair (plus the singletons) as the
+    frontier lets PolySHAP recover the exact SVs from a subsampled budget (``n=12``,
+    ``budget << 2**n``), whereas a singleton-only prior (KernelSHAP) cannot.
+    """
+    n, budget, interaction = 12, 200, (1, 2)
+    exact = np.asarray(_exact_sv(n, interaction))
+
+    informed = [*_singleton_prior(n), interaction]
+    est = _estimate_vector(
+        PolySHAP(n, prior_frontier=informed, random_state=1), budget, DummyGame(n, interaction)
+    )
+    np.testing.assert_allclose(est, exact, atol=1e-6)
+
+    # A singleton-only prior lacks the interaction term and leaves a visible error.
+    est_singletons = _estimate_vector(
+        PolySHAP(n, prior_frontier=_singleton_prior(n), random_state=1),
+        budget,
+        DummyGame(n, interaction),
+    )
+    assert np.sqrt(np.mean((est_singletons - exact) ** 2)) > 1e-3
+
+
+# ---------------------------------------------------------------------------
+# Frontier construction: validation / error paths
+# ---------------------------------------------------------------------------
+
+
+def test_prior_frontier_with_max_order_raises():
+    """``prior_frontier`` combined with ``max_order`` is rejected."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        PolySHAP(5, prior_frontier=_singleton_prior(5), max_order=2)
+
+
+def test_prior_frontier_with_max_terms_raises():
+    """``prior_frontier`` combined with ``max_terms`` is rejected."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        PolySHAP(5, prior_frontier=_singleton_prior(5), max_terms=10)
+
+
+def test_prior_frontier_with_sizes_to_exclude_raises():
+    """``prior_frontier`` combined with ``sizes_to_exclude`` is rejected."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        PolySHAP(5, prior_frontier=_singleton_prior(5), sizes_to_exclude={2})
+
+
+def test_max_terms_below_minimum_raises():
+    """``max_terms`` must leave room for the empty set and all singletons."""
+    n = 6
+    with pytest.raises(ValueError, match="at least"):
+        PolySHAP(n, max_terms=n)  # needs >= n + 1
+
+
+def test_prior_missing_singleton_raises():
+    """A prior that omits a singleton is rejected by the base-class check."""
+    n = 5
+    incomplete = [(), (0,), (1,), (2,)]  # players 3 and 4 absent
+    with pytest.raises(ValueError, match="main effects"):
+        PolySHAP(n, prior_frontier=incomplete)
+
+
+# ---------------------------------------------------------------------------
+# Approximation output contract
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("kwargs", _MODE_KWARGS, ids=_MODE_IDS)
+def test_output_is_valid_interaction_values(kwargs):
+    """Every mode returns a well-formed SV ``InteractionValues`` object."""
+    n, budget = 7, 200
+    game = DummyGame(n, (1, 2))
+    sv = PolySHAP(n, **kwargs, random_state=0).approximate(budget, game)
     assert isinstance(sv, InteractionValues)
     assert sv.index == "SV"
     assert sv.max_order == 1
     assert sv.min_order == 0
     assert sv.estimation_budget <= budget
-    assert sv.estimated != (budget >= 2**n)
-    assert game.access_counter <= budget
-
-    # Players 1 and 2 carry the interaction: SV ≈ 0.6429
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.1)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.1)
-
-    # Efficiency: sum of SVs equals v(N) - v({}) = 2.0
-    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.1)
-
-
-@pytest.mark.parametrize("max_order", [1, 2, 3])
-def test_kadd_approximate_higher_order_converges(max_order):
-    """PolySHAPKAdd at any order still converges to the correct SVs on DummyGame."""
-    n, budget = 7, 400
-    game = DummyGame(n, (1, 2))
-    sv = PolySHAPKAdd(n, max_order=max_order, random_state=0).approximate(budget, game)
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.15)
-    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.15)
-
-
-def test_kadd_all_players_present_in_output():
-    """The output must contain a Shapley value for every player."""
-    n = 7
-    game = DummyGame(n, (1, 2))
-    sv = PolySHAPKAdd(n, max_order=1, random_state=0).approximate(200, game)
     for i in range(n):
         assert (i,) in sv.interaction_lookup
 
 
-def test_kadd_pairing_trick_produces_valid_output():
-    """PolySHAPKAdd with pairing_trick=True must still produce valid SV estimates."""
+@pytest.mark.parametrize("kwargs", _MODE_KWARGS, ids=_MODE_IDS)
+def test_budget_never_exceeded(kwargs):
+    """The game is never queried more than ``budget`` times."""
+    n, budget = 7, 150
+    game = DummyGame(n, (1, 2))
+    PolySHAP(n, **kwargs, random_state=0).approximate(budget, game)
+    assert game.access_counter <= budget
+
+
+@pytest.mark.parametrize("kwargs", _MODE_KWARGS, ids=_MODE_IDS)
+def test_sv_efficiency_holds(kwargs):
+    """The Shapley values sum to ``v(N) - v(empty) = 2.0`` for ``DummyGame(7, (1, 2))``."""
+    n = 7
+    game = DummyGame(n, (1, 2))
+    sv = PolySHAP(n, **kwargs, random_state=0).approximate(500, game)
+    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.05)
+
+
+def test_pairing_trick_produces_valid_output():
+    """``pairing_trick=True`` still yields accurate estimates (order-1 path)."""
     n, budget = 7, 200
     game = DummyGame(n, (1, 2))
-    sv = PolySHAPKAdd(n, max_order=1, pairing_trick=True, random_state=7).approximate(budget, game)
+    est = _estimate_vector(
+        PolySHAP(n, max_order=1, pairing_trick=True, random_state=7), budget, game
+    )
+    exact = np.asarray(_exact_sv(n, (1, 2)))
+    np.testing.assert_allclose(est, exact, atol=0.15)
+
+
+# ---------------------------------------------------------------------------
+# Convergence to the ExactComputer ground truth
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("kwargs", _MODE_KWARGS, ids=_MODE_IDS)
+def test_converges_to_exact_sv_with_sufficient_budget(kwargs):
+    """With ample budget every mode recovers the exact Shapley values (n <= 10)."""
+    n, budget = 7, 600
+    game = DummyGame(n, (1, 2))
+    est = _estimate_vector(PolySHAP(n, **kwargs, random_state=42), budget, game)
+    exact = np.asarray(_exact_sv(n, (1, 2)))
+    np.testing.assert_allclose(est, exact, atol=0.1)
+
+
+def test_matching_frontier_order_recovers_exact_two_additive_game():
+    """A 2-additive game is recovered exactly by ``max_order=2`` but not ``max_order=1``.
+
+    Uses ``n = 12`` with ``budget << 2**n`` so the estimate is genuinely subsampled
+    rather than a full-space enumeration.
+    """
+    n, budget = 12, 200
+    interaction = (1, 2)
+    exact = np.asarray(_exact_sv(n, interaction))
+
+    est_order2 = _estimate_vector(
+        PolySHAP(n, max_order=2, random_state=1), budget, DummyGame(n, interaction)
+    )
+    np.testing.assert_allclose(est_order2, exact, atol=1e-6)
+
+    est_order1 = _estimate_vector(
+        PolySHAP(n, max_order=1, random_state=1), budget, DummyGame(n, interaction)
+    )
+    assert np.sqrt(np.mean((est_order1 - exact) ** 2)) > 1e-3
+
+
+def test_higher_order_reduces_error_on_three_additive_game():
+    """On a 3-way interaction game, ``max_order=3`` recovers exact SVs while order 2 lags."""
+    n, budget = 12, 300
+    interaction = (1, 2, 3)
+    exact = np.asarray(_exact_sv(n, interaction))
+
+    rmse = {}
+    for order in (2, 3):
+        est = _estimate_vector(
+            PolySHAP(n, max_order=order, random_state=1), budget, DummyGame(n, interaction)
+        )
+        rmse[order] = float(np.sqrt(np.mean((est - exact) ** 2)))
+
+    np.testing.assert_allclose(
+        _estimate_vector(
+            PolySHAP(n, max_order=3, random_state=1), budget, DummyGame(n, interaction)
+        ),
+        exact,
+        atol=1e-6,
+    )
+    assert rmse[3] < rmse[2]
+
+
+# ---------------------------------------------------------------------------
+# Edge cases
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("n", [2, 3])
+def test_tiny_games(n):
+    """PolySHAP works for very small player counts and stays efficient."""
+    game = DummyGame(n, (0, 1))
+    sv = PolySHAP(n, max_order=1, random_state=0).approximate(2**n, game)
+    assert np.sum(sv.values) == pytest.approx(2.0, abs=1e-6)
+
+
+def test_budget_smaller_than_frontier_still_runs():
+    """A budget far below the frontier size runs and returns a full SV vector."""
+    n = 8
+    game = DummyGame(n, (1, 2))
+    sv = PolySHAP(n, max_order=2, random_state=0).approximate(6, game)
     assert isinstance(sv, InteractionValues)
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
+    for i in range(n):
+        assert (i,) in sv.interaction_lookup
 
 
-def test_kadd_random_state_reproducibility():
-    """Identical random_state must yield bit-identical approximations."""
-    n, budget = 7, 200
-    sv1 = PolySHAPKAdd(n, max_order=1, random_state=99).approximate(budget, DummyGame(n, (1, 2)))
-    sv2 = PolySHAPKAdd(n, max_order=1, random_state=99).approximate(budget, DummyGame(n, (1, 2)))
-    np.testing.assert_array_equal(sv1.values, sv2.values)
+def test_underdefined_system_warns():
+    """An under-sampled least-squares system emits an explanatory UserWarning."""
+    n = 8  # order-2 frontier has 36 variables; budget of 10 is far too small
+    game = DummyGame(n, (1, 2))
+    with pytest.warns(UserWarning, match="underdefined"):
+        PolySHAP(n, max_order=2, random_state=0).approximate(10, game)
 
 
-def test_kadd_not_estimated_when_full_space_covered():
-    """estimated must be False when budget exceeds the full coalition space."""
-    n = 5
-    sv = PolySHAPKAdd(n, max_order=1, random_state=0).approximate(2**n + 10, DummyGame(n, (1, 2)))
-    assert sv.estimated is False
-
-
-def test_kadd_estimated_when_budget_small():
-    """estimated must be True when budget is smaller than the full coalition space."""
+def test_estimated_flag_true_when_budget_small():
+    """``estimated`` is True when the budget is below the full coalition space."""
     n = 7
-    sv = PolySHAPKAdd(n, max_order=1, random_state=0).approximate(50, DummyGame(n, (1, 2)))
+    sv = PolySHAP(n, max_order=1, random_state=0).approximate(50, DummyGame(n, (1, 2)))
     assert sv.estimated is True
 
 
-# ---------------------------------------------------------------------------
-# PolySHAPPartial - initialisation
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("n", "n_terms"),
-    [
-        (7, 8),  # empty + singletons only, no higher-order extension
-        (7, 12),  # empty + singletons + 4 pairs
-        (7, 25),  # empty + singletons + 17 pairs (only 21 pairs exist, so no triples)
-    ],
-)
-def test_partial_frontier_size(n, n_terms):
-    """PolySHAPPartial must build a frontier with exactly n_explanation_terms entries."""
-    approx = PolySHAPPartial(n, n_explanation_terms=n_terms, random_state=42)
-    assert len(approx.explanation_frontier) == n_terms
-    assert approx.n_variables == n_terms - 1
-
-
-def test_partial_always_contains_all_singletons():
-    """All singletons must appear in the frontier regardless of n_explanation_terms."""
-    n = 7
-    approx = PolySHAPPartial(n, n_explanation_terms=15, random_state=1)
-    for i in range(n):
-        assert (i,) in approx.explanation_frontier
-
-
-def test_partial_different_seeds_produce_different_frontiers():
-    """Different random states must yield different higher-order interaction sets."""
-    n, n_terms = 7, 20
-    a1 = PolySHAPPartial(n, n_terms, random_state=1)
-    a2 = PolySHAPPartial(n, n_terms, random_state=2)
-    assert set(a1.explanation_frontier) != set(a2.explanation_frontier)
-
-
-def test_partial_same_seed_reproduces_frontier():
-    """Same random state must yield an identical frontier."""
-    n, n_terms = 7, 20
-    a1 = PolySHAPPartial(n, n_terms, random_state=7)
-    a2 = PolySHAPPartial(n, n_terms, random_state=7)
-    assert set(a1.explanation_frontier) == set(a2.explanation_frontier)
-
-
-def test_partial_sizes_to_exclude_omits_those_sizes():
-    """Coalitions of excluded sizes must not appear in the extended frontier."""
-    n, n_terms = 7, 25
-    approx = PolySHAPPartial(n, n_terms, sizes_to_exclude={2}, random_state=0)
-    for coalition in approx.explanation_frontier:
-        assert len(coalition) != 2
-
-
-# ---------------------------------------------------------------------------
-# PolySHAPPartial - approximation quality
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(("n", "budget"), [(7, 400), (7, 120)])
-def test_partial_approximate_sv_quality(n, budget):
-    """PolySHAPPartial with a minimal frontier approximates SVs correctly on DummyGame."""
-    interaction = (1, 2)
-    game = DummyGame(n, interaction)
-    approx = PolySHAPPartial(n, n_explanation_terms=n + 1, random_state=42)
-    sv = approx.approximate(budget, game)
-
-    assert isinstance(sv, InteractionValues)
-    assert sv.index == "SV"
-    assert sv.estimation_budget <= budget
-    assert game.access_counter <= budget
-
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.1)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.1)
-    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.1)
-
-
-def test_partial_extended_frontier_approximates_correctly():
-    """PolySHAPPartial with higher-order terms still recovers correct SVs."""
-    n, budget = 7, 400
-    game = DummyGame(n, (1, 2))
-    approx = PolySHAPPartial(n, n_explanation_terms=20, random_state=42)
-    sv = approx.approximate(budget, game)
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.15)
-
-
-# ---------------------------------------------------------------------------
-# PolySHAPPartial - seeded reproducibility & variance (fixed list of 50 seeds)
-# ---------------------------------------------------------------------------
-
-_SEEDED_N = 12
-_SEEDED_INTERACTION = (1, 2)
-_SEEDED_N_TERMS = 30
-_SEEDED_BUDGET = 400
-
-
-def test_partial_seed_list_is_deterministic():
-    """The fixed seed list must be regenerable and contain 50 unique seeds."""
-    assert _generate_seeds() == PARTIAL_SEEDS
-    assert len(PARTIAL_SEEDS) == 50
-    assert len(set(PARTIAL_SEEDS)) == 50
-
-
-def test_partial_seeded_runs_are_reproducible():
-    """For every seed in the fixed list, two independent runs must be bit-identical."""
-    for seed in PARTIAL_SEEDS:
-        sv1 = PolySHAPPartial(
-            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
-        ).approximate(_SEEDED_BUDGET, DummyGame(_SEEDED_N, _SEEDED_INTERACTION))
-        sv2 = PolySHAPPartial(
-            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
-        ).approximate(_SEEDED_BUDGET, DummyGame(_SEEDED_N, _SEEDED_INTERACTION))
-        np.testing.assert_array_equal(
-            sv1.values, sv2.values, err_msg=f"non-reproducible result for seed {seed}"
-        )
-
-
-def test_partial_seeded_estimates_have_low_variance_vs_true_sv():
-    """Across the 50 fixed seeds the estimates must cluster tightly around the true SVs.
-
-    Aggregates one PolySHAPPartial run per seed and checks, per player, that the
-    mean estimate is close to the exact Shapley value and that the spread over
-    seeds is small.
-    """
-    true_sv = _true_sv_dummy_game(_SEEDED_N, _SEEDED_INTERACTION)
-
-    estimates = np.empty((len(PARTIAL_SEEDS), _SEEDED_N))
-    for row, seed in enumerate(PARTIAL_SEEDS):
-        game = DummyGame(_SEEDED_N, _SEEDED_INTERACTION)
-        sv = PolySHAPPartial(
-            _SEEDED_N, n_explanation_terms=_SEEDED_N_TERMS, random_state=seed
-        ).approximate(_SEEDED_BUDGET, game)
-        estimates[row] = [sv[(i,)] for i in range(_SEEDED_N)]
-
-    mean_estimate = estimates.mean(axis=0)
-    std_estimate = estimates.std(axis=0)
-
-    # The mean over 50 seeds must be (near-)unbiased w.r.t. the true Shapley value.
-    np.testing.assert_allclose(mean_estimate, true_sv, atol=0.02)
-
-    # The per-seed spread around the true value must be small.
-    assert std_estimate.max() < 0.05
-
-    # Efficiency must hold on average: sum of SVs ≈ v(N) - v({}) = 2.0.
-    assert estimates.sum(axis=1).mean() == pytest.approx(2.0, abs=0.01)
-
-
-# ---------------------------------------------------------------------------
-# PolySHAPPrior - initialisation
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("n", [3, 7, 10])
-def test_prior_init_attributes(n):
-    """PolySHAPPrior must expose correct attributes for a singleton prior."""
-    prior = _singleton_prior(n)
-    approx = PolySHAPPrior(n, q_prior=prior)
-    assert approx.n == n
-    assert approx.max_order == 1
-    assert approx.min_order == 0
-    assert approx.top_order is False
-    assert approx.index == "SV"
-    assert len(approx.explanation_frontier) == len(prior)
-    assert approx.n_variables == len(prior) - 1
-
-
-def test_prior_raises_when_singleton_missing():
-    """PolySHAPPrior must propagate a ValueError for a prior that omits singletons."""
+def test_estimated_flag_false_when_full_space_covered():
+    """``estimated`` is False when the budget exceeds ``2**n``."""
     n = 5
-    incomplete = [(), (0,), (1,), (2,)]  # players 3 and 4 absent
-    with pytest.raises(ValueError, match="main effects"):
-        PolySHAPPrior(n, q_prior=incomplete)
-
-
-@pytest.mark.parametrize("n", [3, 7])
-def test_prior_frontier_positions_match_enumeration_order(n):
-    """Each coalition's position in the frontier must match its index in q_prior."""
-    prior = [*_singleton_prior(n), (0, 1), (1, 2)]
-    approx = PolySHAPPrior(n, q_prior=prior)
-    for pos, coalition in enumerate(prior):
-        assert approx.explanation_frontier[coalition] == pos
+    sv = PolySHAP(n, max_order=1, random_state=0).approximate(2**n + 10, DummyGame(n, (1, 2)))
+    assert sv.estimated is False
 
 
 # ---------------------------------------------------------------------------
-# PolySHAPPrior - approximation quality
+# Reproducibility under a fixed random_state
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("n", "budget"), [(7, 500), (7, 100)])
-def test_prior_approximate_sv_quality(n, budget):
-    """PolySHAPPrior with a singleton prior estimates SVs correctly on DummyGame."""
-    interaction = (1, 2)
-    game = DummyGame(n, interaction)
-    approx = PolySHAPPrior(n, q_prior=_singleton_prior(n), random_state=42)
-    sv = approx.approximate(budget, game)
-
-    assert isinstance(sv, InteractionValues)
-    assert sv.index == "SV"
-    assert sv.estimation_budget <= budget
-    assert sv.estimated != (budget >= 2**n)
-    assert game.access_counter <= budget
-
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.1)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.1)
-    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.1)
+@pytest.mark.parametrize("kwargs", _MODE_KWARGS, ids=_MODE_IDS)
+def test_random_state_reproducibility(kwargs):
+    """Identical ``random_state`` yields bit-identical estimates for every mode."""
+    n, budget = 7, 200
+    sv1 = PolySHAP(n, **kwargs, random_state=99).approximate(budget, DummyGame(n, (1, 2)))
+    sv2 = PolySHAP(n, **kwargs, random_state=99).approximate(budget, DummyGame(n, (1, 2)))
+    np.testing.assert_array_equal(sv1.values, sv2.values)
 
 
-def test_prior_with_interaction_pairs_still_correct():
-    """Adding interaction pairs to the prior must not break SV accuracy."""
-    n, budget = 7, 400
-    game = DummyGame(n, (1, 2))
-    prior = [*_singleton_prior(n), (1, 2), (0, 3), (2, 4)]
-    approx = PolySHAPPrior(n, q_prior=prior, random_state=42)
-    sv = approx.approximate(budget, game)
-    assert sv[(1,)] == pytest.approx(0.6429, abs=0.15)
-    assert sv[(2,)] == pytest.approx(0.6429, abs=0.15)
-
-
-def test_prior_agrees_exactly_with_kadd_order1():
-    """PolySHAPPrior (singleton prior) and PolySHAPKAdd(max_order=1) share the same frontier
-    and implementation path, so they must produce bit-identical SVs given the same random state."""
+def test_prior_singleton_matches_kadd_order1():
+    """A singleton prior and ``max_order=1`` share the same frontier and results."""
     n, budget, seed = 7, 200, 5
-    sv_prior = PolySHAPPrior(n, q_prior=_singleton_prior(n), random_state=seed).approximate(
+    sv_prior = PolySHAP(n, prior_frontier=_singleton_prior(n), random_state=seed).approximate(
         budget, DummyGame(n, (1, 2))
     )
-    sv_kadd = PolySHAPKAdd(n, max_order=1, random_state=seed).approximate(
-        budget, DummyGame(n, (1, 2))
-    )
+    sv_kadd = PolySHAP(n, max_order=1, random_state=seed).approximate(budget, DummyGame(n, (1, 2)))
     np.testing.assert_array_almost_equal(sv_prior.values, sv_kadd.values, decimal=12)
 
 
 # ---------------------------------------------------------------------------
-# Shared behaviour across approximators
+# Seeded sweeps over 50 fixed seeds
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("ApproxClass", "kwargs"),
-    [
-        (PolySHAPKAdd, {"max_order": 1}),
-        (PolySHAPKAdd, {"max_order": 2}),
-        (PolySHAPPartial, {"n_explanation_terms": 10}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
-    ],
-)
-def test_budget_never_exceeded(ApproxClass, kwargs):
-    """The game access counter must never exceed the declared budget."""
-    n, budget = 7, 150
-    game = DummyGame(n, (1, 2))
-    ApproxClass(n, **kwargs, random_state=0).approximate(budget, game)
-    assert game.access_counter <= budget
+def test_seed_list_is_deterministic_and_unique():
+    """The fixed seed list is regenerable and contains 50 unique seeds."""
+    assert _generate_seeds() == SEEDS
+    assert len(SEEDS) == 50
+    assert len(set(SEEDS)) == 50
 
 
-@pytest.mark.parametrize(
-    ("ApproxClass", "kwargs"),
-    [
-        (PolySHAPKAdd, {"max_order": 1}),
-        (PolySHAPKAdd, {"max_order": 2}),
-        (PolySHAPPartial, {"n_explanation_terms": 10}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
-    ],
-)
-def test_sv_efficiency_with_large_budget(ApproxClass, kwargs):
-    """Sum of estimated Shapley values must equal v(N) - v({}) ≈ 2.0 for DummyGame(7, (1,2))."""
-    n = 7
-    game = DummyGame(n, (1, 2))
-    sv = ApproxClass(n, **kwargs, random_state=0).approximate(500, game)
-    assert np.sum(sv.values) == pytest.approx(2.0, abs=0.05)
+def test_seeded_runs_are_reproducible():
+    """For every seed, two independent partial-mode runs are bit-identical."""
+    for seed in SEEDS:
+        est1 = _estimate_vector(
+            PolySHAP(_SEEDED_N, max_terms=_SEEDED_MAX_TERMS, random_state=seed),
+            _SEEDED_BUDGET,
+            DummyGame(_SEEDED_N, _SEEDED_INTERACTION),
+        )
+        est2 = _estimate_vector(
+            PolySHAP(_SEEDED_N, max_terms=_SEEDED_MAX_TERMS, random_state=seed),
+            _SEEDED_BUDGET,
+            DummyGame(_SEEDED_N, _SEEDED_INTERACTION),
+        )
+        np.testing.assert_array_equal(
+            est1, est2, err_msg=f"non-reproducible result for seed {seed}"
+        )
 
 
-@pytest.mark.parametrize(
-    ("ApproxClass", "kwargs"),
-    [
-        (PolySHAPKAdd, {"max_order": 1}),
-        (PolySHAPPartial, {"n_explanation_terms": 8}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
-    ],
-)
-def test_index_is_sv(ApproxClass, kwargs):
-    """All PolySHAP approximators must report index='SV'."""
-    n = 7
-    sv = ApproxClass(n, **kwargs, random_state=0).approximate(200, DummyGame(n, (1, 2)))
-    assert sv.index == "SV"
+def test_seeded_estimates_are_unbiased_with_low_variance():
+    """Across 50 seeds the partial-mode estimates cluster tightly around the true SVs."""
+    exact = np.asarray(_exact_sv(_SEEDED_N, _SEEDED_INTERACTION))
+
+    estimates = np.empty((len(SEEDS), _SEEDED_N))
+    for row, seed in enumerate(SEEDS):
+        estimates[row] = _estimate_vector(
+            PolySHAP(_SEEDED_N, max_terms=_SEEDED_MAX_TERMS, random_state=seed),
+            _SEEDED_BUDGET,
+            DummyGame(_SEEDED_N, _SEEDED_INTERACTION),
+        )
+
+    # Near-unbiased: the mean over seeds matches the exact Shapley values.
+    np.testing.assert_allclose(estimates.mean(axis=0), exact, atol=0.02)
+    # Tight spread around the truth.
+    assert estimates.std(axis=0).max() < 0.05
+    # Efficiency holds on average.
+    assert estimates.sum(axis=1).mean() == pytest.approx(2.0, abs=0.01)
 
 
-@pytest.mark.parametrize(
-    ("ApproxClass", "kwargs"),
-    [
-        (PolySHAPKAdd, {"max_order": 1}),
-        (PolySHAPPartial, {"n_explanation_terms": 8}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
-    ],
-)
-def test_all_players_have_sv_in_output(ApproxClass, kwargs):
-    """The output InteractionValues must contain an SV entry for each player."""
-    n = 7
-    sv = ApproxClass(n, **kwargs, random_state=0).approximate(200, DummyGame(n, (1, 2)))
-    for i in range(n):
-        assert (i,) in sv.interaction_lookup
+def test_error_decreases_as_budget_grows():
+    """Mean RMSE over 50 seeds drops monotonically as the budget increases (order-1)."""
+    n, interaction = 8, (1, 2)
+    exact = np.asarray(_exact_sv(n, interaction))
+    budgets = [40, 80, 160, 240]  # all below 2**8 = 256, so genuinely estimated
+
+    mean_rmse = []
+    for budget in budgets:
+        rmses = [
+            np.sqrt(
+                np.mean(
+                    (
+                        _estimate_vector(
+                            PolySHAP(n, max_order=1, random_state=seed),
+                            budget,
+                            DummyGame(n, interaction),
+                        )
+                        - exact
+                    )
+                    ** 2
+                )
+            )
+            for seed in SEEDS
+        ]
+        mean_rmse.append(float(np.mean(rmses)))
+
+    assert all(later < earlier for earlier, later in pairwise(mean_rmse))

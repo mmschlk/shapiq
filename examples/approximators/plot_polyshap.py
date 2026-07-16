@@ -3,7 +3,7 @@ PolySHAP
 ========
 
 Shapley value approximation with interaction-informed polynomial regression
-using :class:`~shapiq.approximator.PolySHAPKAdd` :footcite:t:`Fumagalli.2026a`.
+using :class:`~shapiq.approximator.PolySHAP` :footcite:t:`Fumagalli.2026a`.
 
 PolySHAP extends KernelSHAP by fitting a *k-additive* surrogate of the game -- a
 polynomial of degree ``max_order`` over the players -- and reading the Shapley
@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 import shapiq
-from shapiq.approximator import PolySHAPKAdd
+from shapiq.approximator import PolySHAP
 
 N_PLAYERS = 8
 BUDGET = 200
@@ -39,7 +39,7 @@ def game_fun(coalitions: np.ndarray) -> np.ndarray:
 # The game has a pairwise interaction, so we fit a second-order (``max_order=2``)
 # polynomial surrogate to recover the Shapley values.
 
-approximator = PolySHAPKAdd(n=N_PLAYERS, max_order=2, random_state=42)
+approximator = PolySHAP(n=N_PLAYERS, max_order=2, random_state=42)
 iv = approximator.approximate(BUDGET, game_fun)
 print(iv)
 
@@ -63,7 +63,7 @@ exact = np.asarray(
 
 for max_order in (1, 2):
     est = np.asarray(
-        PolySHAPKAdd(n=N_PLAYERS, max_order=max_order, random_state=42)
+        PolySHAP(n=N_PLAYERS, max_order=max_order, random_state=42)
         .approximate(BUDGET, game_fun)
         .get_n_order_values(1)
     )

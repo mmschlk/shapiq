@@ -10,9 +10,10 @@ from scipy.special import binom
 
 from shapiq.approximator.regression.base import Regression
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     from shapiq.game import Game
 
@@ -25,29 +26,45 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     Generalises KernelSHAP :cite:t:`Lundberg.2017`; the algorithm is described in
     Fumagalli et al. (2026) :cite:t:`Fumagalli.2026a`.
 
-    The explanation frontier — the set of interactions used as basis functions in the
-    regression — is supplied as a pre-built dictionary mapping each coalition tuple to
-    its column index.  Three approximators with different frontier schemes are available:
-    :class:`PolySHAPKAdd` (k-additive), :class:`PolySHAPPartial` (budget-controlled
-    random extension), and :class:`PolySHAPPrior` (user-supplied).
+    PolySHAP fits an interaction-informed polynomial surrogate of the game over an
+    *explanation frontier* (the interactions used as basis functions) and reads the
+    Shapley values off it.  ``max_order=1`` recovers KernelSHAP exactly; higher orders
+    model interactions and recover the exact Shapley values when the game is genuinely
+    low-order.
+
+    By default the frontier holds every interaction up to ``max_order`` (*k-additive*).
+    When that is too large for the available budget, cap its size with ``max_terms``
+    (*partial* mode).  Alternatively, ``prior_frontier`` lets you specify the interaction
+    terms directly, for instance when domain knowledge already identifies them.
 
     Args:
         n: The number of players.
-        explanation_frontier: A dictionary mapping coalition tuples to their column
-            positions in the regression matrix.  Must contain every singleton ``(i,)``
-            for ``i`` in ``range(n)``.
+        max_order: Maximum interaction order included in the frontier.  Defaults to ``2``.
+        max_terms: If set, cap the frontier at this many terms (*partial* mode).  Whole
+            interaction orders up to ``max_order`` are included from low to high, and the
+            one order that does not fit in full is sampled at random; this keeps the
+            noise-robust lower orders complete.  Must be at least ``n + 1``.  ``None``
+            (default) uses the full k-additive frontier.
+        sizes_to_exclude: Higher-order coalition sizes to omit from the frontier.
+            Singletons are always kept.  Defaults to ``None``.
+        prior_frontier: An iterable of coalition tuples defining the frontier and its
+            column ordering (*prior* mode).  Must include every singleton ``(i,)``.  It
+            is mutually exclusive with ``max_order``, ``max_terms`` and
+            ``sizes_to_exclude``; passing any of them alongside it raises ``ValueError``.
         pairing_trick: If ``True``, the pairing trick is applied to the sampling
             procedure.  Defaults to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure.
             Must be of shape ``(n + 1,)`` and determines the probability of sampling
             a coalition of a given size.  Defaults to ``None``.
-        random_state: The random state of the estimator.  Defaults to ``None``.
+        random_state: The random state of the estimator (also seeds the *partial*
+            frontier selection).  Defaults to ``None``.
 
     Attributes:
         n: The number of players.
         N: The set of players (``0`` to ``n - 1``).
-        max_order: Interaction order of the approximation (always ``1`` — PolySHAP
-            targets Shapley values).
+        max_order: Interaction order of the approximation (always ``1``, since PolySHAP
+            targets Shapley values; distinct from the ``max_order`` constructor argument,
+            which sets the frontier order).
         min_order: Minimum interaction order (always ``0``).
         iteration_cost: The cost of a single iteration of the estimator.
         explanation_frontier: The active explanation frontier dictionary.
@@ -56,13 +73,25 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     def __init__(
         self,
         n: int,
-        explanation_frontier: dict,
         *,
+        max_order: int | None = None,
+        max_terms: int | None = None,
+        sizes_to_exclude: set[int] | None = None,
+        prior_frontier: Iterable[tuple[int, ...]] | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
     ) -> None:
-        """Initialize the PolySHAP approximator from a pre-built explanation frontier."""
+        """Initialize the PolySHAP approximator."""
+        explanation_frontier = self._build_frontier(
+            n,
+            max_order=max_order,
+            max_terms=max_terms,
+            sizes_to_exclude=sizes_to_exclude,
+            prior_frontier=prior_frontier,
+            random_state=random_state,
+        )
+
         super().__init__(
             n,
             max_order=1,
@@ -89,6 +118,102 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
 
         # Exclude the empty-coalition term from the variable count.
         self.n_variables = len(explanation_frontier) - 1
+
+    @staticmethod
+    def _build_frontier(
+        n: int,
+        *,
+        max_order: int | None,
+        max_terms: int | None,
+        sizes_to_exclude: set[int] | None,
+        prior_frontier: Iterable[tuple[int, ...]] | None,
+        random_state: int | None,
+    ) -> dict[tuple[int, ...], int]:
+        """Resolve the explanation frontier from the constructor arguments.
+
+        The mode is selected by which arguments are supplied (see the class docstring):
+        ``prior_frontier`` yields the *prior* frontier; ``max_terms`` the *partial*
+        frontier (whole orders low-to-high, then a random sample of the boundary order);
+        otherwise the deterministic *k-additive* frontier up to ``max_order`` (default 2).
+
+        Args:
+            n: The number of players.
+            max_order: Maximum interaction order of the frontier (``None`` defaults to 2).
+            max_terms: Optional cap on the number of frontier terms (*partial* mode).
+            sizes_to_exclude: Higher-order coalition sizes to omit.
+            prior_frontier: Optional explicit frontier (*prior* mode).
+            random_state: Seeds the random selection in *partial* mode.
+
+        Returns:
+            A dictionary mapping each coalition tuple to its column index, with the empty
+            set at index ``0`` and every singleton present.
+
+        Raises:
+            ValueError: If ``prior_frontier`` is combined with ``max_order``,
+                ``max_terms`` or ``sizes_to_exclude``, or if ``max_terms`` is smaller
+                than ``n + 1``.
+        """
+        # Prior mode: use the caller-supplied frontier verbatim; it admits no other knobs.
+        if prior_frontier is not None:
+            if max_order is not None or max_terms is not None or sizes_to_exclude is not None:
+                msg = (
+                    "PolySHAP: 'prior_frontier' is mutually exclusive with 'max_order', "
+                    "'max_terms' and 'sizes_to_exclude'."
+                )
+                raise ValueError(msg)
+            return {S: pos for pos, S in enumerate(prior_frontier)}
+
+        if max_order is None:
+            max_order = 2
+
+        def _excluded(size: int) -> bool:
+            return sizes_to_exclude is not None and size in sizes_to_exclude
+
+        # The empty set and all singletons are always present so that Shapley values can
+        # be read off directly.
+        frontier: dict[tuple[int, ...], int] = {}
+        for S in powerset(range(n), max_size=1):
+            frontier[S] = len(frontier)
+
+        higher_order = (
+            S for S in powerset(range(n), min_size=2, max_size=max_order) if not _excluded(len(S))
+        )
+
+        # Deterministic k-additive frontier: take every term up to max_order.
+        if max_terms is None:
+            for S in higher_order:
+                frontier[S] = len(frontier)
+            return frontier
+
+        # Budget-capped partial interaction frontier of exactly max_terms terms
+        # (Fumagalli et al. 2026, Sec. 4): fill whole interaction orders from low to high,
+        # then randomly sample the single boundary order that does not fit in full.  Lower
+        # orders are kept complete because they occur more frequently and are less
+        # sensitive to sampling noise.
+        if max_terms < n + 1:
+            msg = (
+                f"PolySHAP: 'max_terms' ({max_terms}) must be at least n + 1 ({n + 1}) "
+                "to include the empty set and all singletons."
+            )
+            raise ValueError(msg)
+
+        rng = np.random.default_rng(random_state)
+        for order in range(2, max_order + 1):
+            if _excluded(order):
+                continue
+            remaining = max_terms - len(frontier)
+            if remaining <= 0:
+                break
+            order_terms = list(powerset(range(n), min_size=order, max_size=order))
+            if len(order_terms) <= remaining:
+                for S in order_terms:  # whole order fits: include it deterministically
+                    frontier[S] = len(frontier)
+            else:  # boundary order: randomly select the terms that still fit, then stop
+                rng.shuffle(order_terms)
+                for S in order_terms[:remaining]:
+                    frontier[S] = len(frontier)
+                break
+        return frontier
 
     def _warn_if_underdefined(self, n_sampled: int, budget: int) -> None:
         """Emit a UserWarning when the least-squares system has more variables than samples.
