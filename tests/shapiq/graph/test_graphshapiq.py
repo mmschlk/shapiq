@@ -1185,3 +1185,60 @@ class TestGraphSHAPIQCpp:
             assert moebius_cpp[key] == pytest.approx(moebius_py[key], abs=1e-8)
         for key in interactions_py.interaction_lookup:
             assert interactions_cpp[key] == pytest.approx(interactions_py[key], abs=1e-8)
+
+    # Tests for the multi-word subset counter that lifts the k <= 63 limit of the
+    # subset enumeration in moebius.cc. Enumerating 2^k subsets for k >= 64 is
+    # infeasible end-to-end, so the counter mechanics (carry across uint64 word
+    # boundaries, termination bit) are tested directly through the test-only
+    # exports of the extension, by placing the counter right before a boundary.
+
+    def test_cpp_counter_carry_across_word_boundary(self):
+        """Incrementing 2^64 - 1 carries into the next uint64 word."""
+        from shapiq.graph.cext import _counter_increment  # ty: ignore[unresolved-import]
+
+        words = np.array([np.iinfo(np.uint64).max, 0], dtype=np.uint64)
+        _counter_increment(words)
+        assert list(words) == [0, 1]
+
+        words = np.array([np.iinfo(np.uint64).max, np.iinfo(np.uint64).max, 0], dtype=np.uint64)
+        _counter_increment(words)
+        assert list(words) == [0, 0, 1]
+
+    def test_cpp_counter_test_bit(self):
+        """Bit b is read from word b // 64 at position b % 64."""
+        from shapiq.graph.cext import _counter_test_bit  # ty: ignore[unresolved-import]
+
+        # Bit 63 = word 0, highest bit; bit 64 = word 1, lowest bit.
+        words = np.array([1 << 63, 1], dtype=np.uint64)
+        assert _counter_test_bit(words, 63)
+        assert _counter_test_bit(words, 64)
+        assert not _counter_test_bit(words, 0)
+        assert not _counter_test_bit(words, 65)
+
+    def test_cpp_counter_full_enumeration_small_k(self):
+        """Counting until bit k is set enumerates exactly the 2^k subsets."""
+        from shapiq.graph.cext import (  # ty: ignore[unresolved-import]
+            _counter_increment,
+            _counter_test_bit,
+        )
+
+        k = 3
+        words = np.zeros(2, dtype=np.uint64)
+        seen = []
+        while not _counter_test_bit(words, k):
+            seen.append(int(words[0]))
+            _counter_increment(words)
+        assert seen == list(range(2**k))
+
+    def test_cpp_counter_termination_bit_64(self):
+        """The enumeration for k = 64 would terminate exactly after 2^64 subsets."""
+        from shapiq.graph.cext import (  # ty: ignore[unresolved-import]
+            _counter_increment,
+            _counter_test_bit,
+        )
+
+        # Counter state 2^64 - 1: the last subset of a k = 64 coalition.
+        words = np.array([np.iinfo(np.uint64).max, 0], dtype=np.uint64)
+        assert not _counter_test_bit(words, 64)
+        _counter_increment(words)
+        assert _counter_test_bit(words, 64)
