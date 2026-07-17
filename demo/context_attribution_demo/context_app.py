@@ -1,7 +1,7 @@
 """Streamlit UI for the context attribution demo.
 
 Run from the repository root with:
-    streamlit run demo/context_app.py
+    streamlit run demo/context_attribution_demo/context_app.py
 """
 
 from __future__ import annotations
@@ -16,8 +16,9 @@ import streamlit as st
 
 
 # Repository paths used by the Streamlit wrapper.
-REPO_ROOT = Path(__file__).resolve().parents[1]
-DEMO_SCRIPT = REPO_ROOT / "demo" / "context_attribution.py"
+DEMO_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEMO_SCRIPT = DEMO_DIR / "context_attribution.py"
 FIGURE_PATTERN = re.compile(r"^[A-Za-z]:\\.*\.png$|^/.*\.png$")
 
 
@@ -264,7 +265,7 @@ def render_figures(image_paths: list[Path]) -> None:
                 continue
             for path in grouped[label]:
                 st.markdown(f"**{path.name}**")
-                st.image(str(path), use_container_width=True)
+                st.image(str(path), width="stretch")
                 st.caption(figure_caption(path))
 
 
