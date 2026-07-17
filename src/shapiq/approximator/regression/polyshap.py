@@ -40,6 +40,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     Args:
         n: The number of players.
         max_order: Maximum interaction order included in the frontier.  Defaults to ``2``.
+            In *partial* mode it bounds the orders drawn from (``2 .. max_order``); set
+            ``max_order=n`` to leave that frontier unbounded.
         max_terms: If set, cap the frontier at this many terms (*partial* mode).  Whole
             interaction orders up to ``max_order`` are included from low to high, and the
             one order that does not fit in full is sampled at random; this keeps the
