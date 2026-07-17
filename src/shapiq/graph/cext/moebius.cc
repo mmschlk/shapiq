@@ -11,9 +11,13 @@
 //
 // Data is passed in flat (CSR-like) arrays so that arbitrary player indices are
 // supported (no 64-player bitmask limit): the subset enumeration uses a *local*
-// bitmask over the members of a single coalition (size k, in practice <= 22),
-// while global node ids are resolved through a hash map keyed by the (sorted)
-// member tuple.
+// multi-word counter over the members of a single coalition (bit b lives in
+// word b / 64 at position b % 64), so coalitions of any size k are handled
+// without the single-uint64 limit of k <= 63. Global node ids are resolved
+// through a hash map keyed by the (sorted) member tuple. Note that the
+// enumeration still visits all 2^k subsets, so the practical bound on k is the
+// runtime, not the counter width (in practice k <= 22, see the
+// max_size_neighbors threshold in graphshapiq.py).
 
 #include <cstdint>
 #include <omp.h>
@@ -41,6 +45,35 @@ namespace moebius
     };
 
     using LookupMap = std::unordered_map<std::vector<int>, int, VecHash>;
+
+    // The subset counter is an array of uint64_t words acting as one arbitrarily
+    // wide integer: bit b lives in word b >> 6 (b / 64) at position b & 63
+    // (b % 64). Incrementing propagates the carry across word boundaries, so the
+    // enumeration over 2^k subsets works for any k, not just k <= 63.
+
+    // Number of words for a counter that must be able to carry bits 0..k. One
+    // word more than k bits strictly need, so the termination bit k always
+    // exists (also when k % 64 == 0, e.g. k = 64 -> 2 words).
+    inline int counter_words(int k)
+    {
+        return (k >> 6) + 1;
+    }
+
+    // counter += 1 with carry propagation across word boundaries.
+    inline void counter_increment(uint64_t *words, int n_words)
+    {
+        for (int w = 0; w < n_words; ++w)
+        {
+            if (++words[w] != 0)
+                break;
+        }
+    }
+
+    // Test bit b of the counter (b >> 6 selects the word, b & 63 the bit).
+    inline bool counter_test_bit(const uint64_t *words, int b)
+    {
+        return (words[b >> 6] >> (b & 63)) & uint64_t(1);
+    }
 
     // Build the coalition -> prediction-index map from CSR arrays describing
     // `coalition_lookup`.
@@ -125,13 +158,15 @@ namespace moebius
             std::vector<int> subset;
             subset.reserve(static_cast<std::size_t>(k));
 
-            const uint64_t n_subsets = uint64_t(1) << k; // 2^k local subsets
-            for (uint64_t local_mask = 0; local_mask < n_subsets; ++local_mask)
+            // Counts from 0 through the 2^k local subsets; done once bit k is set.
+            std::vector<uint64_t> counter(counter_words(k), 0);
+            for (; !counter_test_bit(counter.data(), k);
+                 counter_increment(counter.data(), static_cast<int>(counter.size())))
             {
                 subset.clear();
                 for (int b = 0; b < k; ++b)
                 {
-                    if (local_mask & (uint64_t(1) << b))
+                    if (counter_test_bit(counter.data(), b))
                     {
                         subset.push_back(members[b]);
                     }

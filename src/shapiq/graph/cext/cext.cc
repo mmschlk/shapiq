@@ -10,10 +10,16 @@
 // PyObject *self is required by the Python C API but unused for module-level
 // functions. See: https://docs.python.org/3/extending/extending.html
 static PyObject *compute_moebius_transform(PyObject *self, PyObject *args);
+static PyObject *counter_increment_py(PyObject *self, PyObject *args);
+static PyObject *counter_test_bit_py(PyObject *self, PyObject *args);
 
 static PyMethodDef module_methods[] = {
     {"compute_moebius_transform", compute_moebius_transform, METH_VARARGS,
      "Compute Moebius coefficients for a set of coalitions (CSR input)."},
+    {"_counter_increment", counter_increment_py, METH_VARARGS,
+     "Test-only: increment a multi-word uint64 subset counter in place."},
+    {"_counter_test_bit", counter_test_bit_py, METH_VARARGS,
+     "Test-only: test bit b of a multi-word uint64 subset counter."},
     {NULL, NULL, 0, NULL}};
 
 #if PY_MAJOR_VERSION >= 3
@@ -166,4 +172,84 @@ static PyObject *compute_moebius_transform(PyObject *self, PyObject *args)
     }
 
     return output;
+}
+
+// Validate a test-only counter argument: a 1-d, C-contiguous, writable uint64
+// numpy array. Returned as borrowed pointer (no new reference); NULL + Python
+// error set on failure. The exact-type requirement (instead of
+// PyArray_FROM_OTF) keeps _counter_increment in-place: a silent conversion
+// copy would swallow the mutation.
+static PyArrayObject *counter_array_checked(PyObject *obj)
+{
+    if (!PyArray_Check(obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "words must be a numpy array");
+        return NULL;
+    }
+    PyArrayObject *arr = (PyArrayObject *)obj;
+    if (PyArray_TYPE(arr) != NPY_UINT64 || PyArray_NDIM(arr) != 1 ||
+        !PyArray_IS_C_CONTIGUOUS(arr) || !PyArray_ISWRITEABLE(arr))
+    {
+        PyErr_SetString(PyExc_TypeError,
+                        "words must be a 1-d contiguous writable uint64 numpy array");
+        return NULL;
+    }
+    return arr;
+}
+
+static PyObject *counter_increment_py(PyObject *self, PyObject *args)
+{
+    /**
+     * Test-only wrapper around moebius::counter_increment.
+     *
+     * Increments the multi-word subset counter `words` (uint64 numpy array,
+     * word i holds bits 64*i .. 64*i+63) by one, in place, propagating the
+     * carry across word boundaries. Exposed so the multi-word mechanics can be
+     * unit-tested from Python without enumerating 2^64 subsets.
+     */
+    (void)self;
+
+    PyObject *words_obj;
+    if (!PyArg_ParseTuple(args, "O", &words_obj))
+        return NULL;
+
+    PyArrayObject *words_array = counter_array_checked(words_obj);
+    if (!words_array)
+        return NULL;
+
+    moebius::counter_increment(
+        (uint64_t *)PyArray_DATA(words_array),
+        static_cast<int>(PyArray_DIM(words_array, 0)));
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *counter_test_bit_py(PyObject *self, PyObject *args)
+{
+    /**
+     * Test-only wrapper around moebius::counter_test_bit.
+     *
+     * Returns whether bit b of the multi-word subset counter `words` is set
+     * (word b // 64, position b % 64).
+     */
+    (void)self;
+
+    PyObject *words_obj;
+    int b;
+    if (!PyArg_ParseTuple(args, "Oi", &words_obj, &b))
+        return NULL;
+
+    PyArrayObject *words_array = counter_array_checked(words_obj);
+    if (!words_array)
+        return NULL;
+
+    if (b < 0 || (b >> 6) >= PyArray_DIM(words_array, 0))
+    {
+        PyErr_SetString(PyExc_ValueError, "bit index b is out of range for words");
+        return NULL;
+    }
+
+    if (moebius::counter_test_bit((const uint64_t *)PyArray_DATA(words_array), b))
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
