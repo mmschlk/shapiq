@@ -15,7 +15,7 @@ $env:PYTHONPATH="$PWD\src;$env:PYTHONPATH"
 Start the Streamlit app:
 
 ```powershell
-streamlit run demo\context_app.py
+streamlit run demo\context_attribution_demo\context_app.py
 ```
 
 The app lets you choose:
@@ -32,7 +32,7 @@ $env:SHAPIQ_DEMO_MODE="retrieval"
 $env:SHAPIQ_CASE_SOURCE="manual"
 $env:SHAPIQ_DEVICE="auto"
 $env:SHAPIQ_SHOW_PLOTS="0"
-python demo\context_attribution.py
+python demo\context_attribution_demo\context_attribution.py
 ```
 
 For MMLU few-shot mode:
@@ -43,7 +43,7 @@ $env:SHAPIQ_CASE_SOURCE="mmlu_dataset"
 $env:SHAPIQ_MMLU_SUBJECT="college_computer_science"
 $env:SHAPIQ_DEVICE="auto"
 $env:SHAPIQ_SHOW_PLOTS="0"
-python demo\context_attribution.py
+python demo\context_attribution_demo\context_attribution.py
 ```
 
 ## Requirements
@@ -138,7 +138,7 @@ The Streamlit app shows the value function, run settings, question, players, key
 Figures are saved under:
 
 ```text
-demo/figures/
+demo/context_attribution_demo/figures/
 ```
 
 Main figure types:
