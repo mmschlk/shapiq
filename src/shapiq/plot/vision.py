@@ -68,7 +68,7 @@ def image_attribution_plot(
     norm = mcolors.TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
 
     if heatmap_only:
-        fig, ax_heatmap = plt.subplots(1, 1, figsize=(14, 5))
+        fig, ax_heatmap = plt.subplots(1, 1, figsize=(6, 5))
         ax_bar = None
     else:
         fig, (ax_heatmap, ax_bar) = plt.subplots(1, 2, figsize=(14, 5))

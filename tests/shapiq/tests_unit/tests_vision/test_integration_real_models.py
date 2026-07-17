@@ -16,7 +16,7 @@ import pytest
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.vision import ImageExplainer
-from shapiq.vision.architecture import CNNArchitecture, TransformerArchitecture
+from shapiq.vision.architecture import ClassificationArchitecture, ViTClassificationArchitecture
 from shapiq.vision.imputer import ImageImputer
 from shapiq.vision.masking import MeanColorMasking
 from shapiq.vision.players import SuperpixelStrategy
@@ -45,13 +45,13 @@ class TestResNetIntegration:
         image = rng.integers(0, 255, size=(64, 64, 3), dtype=np.uint8)
         masks = _quadrant_masks(64, 64)
 
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=model,
             masking_strategy=MeanColorMasking(),
             player_strategy=FixedMasksStrategy(masks),
         )
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=image,
             normalize=False,
             batch_size=2,
@@ -71,7 +71,7 @@ class TestResNetIntegration:
         image = rng.integers(0, 255, size=(64, 64, 3), dtype=np.uint8)
         masks = _quadrant_masks(64, 64)
 
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=model,
             masking_strategy=MeanColorMasking(),
             player_strategy=FixedMasksStrategy(masks),
@@ -99,13 +99,13 @@ class TestResNetIntegration:
         rng = np.random.default_rng(2)
         image = rng.integers(0, 255, size=(48, 48, 3), dtype=np.uint8)
 
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=model,
             masking_strategy=MeanColorMasking(),
             player_strategy=SuperpixelStrategy(n_segments=6),
         )
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=image,
             normalize=False,
             batch_size=2,
@@ -146,9 +146,9 @@ class TestViTIntegration:
         image = rng.integers(0, 255, size=(96, 96, 3), dtype=np.uint8)
 
         # Default MaskTokenStrategy initialises mask_token on classification ViTs.
-        arch = TransformerArchitecture(model=model, vit_processor=processor)
+        arch = ViTClassificationArchitecture(model=model, vit_processor=processor)
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=image,
             normalize=False,
             batch_size=2,
@@ -165,7 +165,7 @@ class TestViTIntegration:
         rng = np.random.default_rng(4)
         image = rng.integers(0, 255, size=(96, 96, 3), dtype=np.uint8)
 
-        arch = TransformerArchitecture(model=model, vit_processor=processor)
+        arch = ViTClassificationArchitecture(model=model, vit_processor=processor)
         explainer = ImageExplainer(
             model=arch,
             data=image,

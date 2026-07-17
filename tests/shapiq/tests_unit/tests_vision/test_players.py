@@ -5,21 +5,69 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from shapiq.vision.custom_types import CoalitionDomain
 from shapiq.vision.players import (
-    CNNPlayerStrategy,
     CustomPlayerStrategy,
     GridStrategy,
+    LatentBasedPlayerStrategy,
     PatchStrategy,
+    PixelBasedPlayerStrategy,
     PlayerStrategy,
     SuperpixelStrategy,
-    TransformerPlayerStrategy,
+    labels_to_masks,
 )
+
+
+class TestLabelsToMasks:
+    """Converts a segmentation label map into the per-player boolean masks used everywhere else."""
+
+    def test_one_mask_per_unique_label(self) -> None:
+        labels = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 2, 2], [2, 2, 2, 2]])
+        masks = labels_to_masks(labels)
+        assert masks.shape == (3, 4, 4)
+        assert masks.dtype == bool
+
+    def test_masks_partition_the_image(self) -> None:
+        labels = np.array([[0, 1], [2, 3]])
+        assert (labels_to_masks(labels).sum(axis=0) == 1).all()
+
+    def test_masks_follow_sorted_label_order(self) -> None:
+        """Row i belongs to the i-th smallest label, not to label value i."""
+        labels = np.array([[7, 7], [3, 3]])
+        masks = labels_to_masks(labels)
+        np.testing.assert_array_equal(masks[0], labels == 3)
+        np.testing.assert_array_equal(masks[1], labels == 7)
+
+    def test_non_contiguous_labels_supported(self) -> None:
+        """SLIC starts at label 1, and custom label maps may skip values entirely."""
+        labels = np.array([[1, 1], [5, 9]])
+        masks = labels_to_masks(labels)
+        assert masks.shape == (3, 2, 2)
+        assert (masks.sum(axis=0) == 1).all()
+
+    def test_single_label_yields_one_full_mask(self) -> None:
+        masks = labels_to_masks(np.zeros((3, 3), dtype=int))
+        assert masks.shape == (1, 3, 3)
+        assert masks.all()
+
+
+class TestCoalitionDomains:
+    """The architecture rejects a player/masker pair whose domains disagree."""
+
+    def test_pixel_strategies_declare_pixel_domain(self) -> None:
+        assert SuperpixelStrategy(n_segments=4).coalition_domain is CoalitionDomain.PIXEL
+        assert GridStrategy(grid_shape=2).coalition_domain is CoalitionDomain.PIXEL
+        assert PixelBasedPlayerStrategy.coalition_domain is CoalitionDomain.PIXEL
+
+    def test_token_strategies_declare_token_domain(self) -> None:
+        assert PatchStrategy(grid_size=4, n_players=4).coalition_domain is CoalitionDomain.TOKEN
+        assert LatentBasedPlayerStrategy.coalition_domain is CoalitionDomain.TOKEN
 
 
 class TestPatchStrategy:
     def test_is_transformer_player_strategy(self) -> None:
         strategy = PatchStrategy(grid_size=4, n_players=4)
-        assert isinstance(strategy, TransformerPlayerStrategy)
+        assert isinstance(strategy, LatentBasedPlayerStrategy)
         assert isinstance(strategy, PlayerStrategy)
 
     def test_n_players_property(self) -> None:
@@ -82,12 +130,24 @@ class TestPatchStrategy:
 class TestSuperpixelStrategy:
     def test_is_cnn_player_strategy(self) -> None:
         strategy = SuperpixelStrategy(n_segments=5)
-        assert isinstance(strategy, CNNPlayerStrategy)
+        assert isinstance(strategy, PixelBasedPlayerStrategy)
         assert isinstance(strategy, PlayerStrategy)
 
     def test_n_players_matches_n_segments(self) -> None:
         strategy = SuperpixelStrategy(n_segments=7)
         assert strategy.n_players == 7
+
+    @pytest.mark.parametrize("n_segments", [0, -1])
+    def test_rejects_non_positive_n_segments(self, n_segments) -> None:
+        with pytest.raises(ValueError, match="positive integer"):
+            SuperpixelStrategy(n_segments=n_segments)
+
+    def test_slico_algorithm_selectable(self) -> None:
+        """SLIC-zero enforces equal-size segments regardless of texture."""
+        pytest.importorskip("skimage")
+        image = np.random.default_rng(3).integers(0, 255, size=(24, 24, 3)).astype(np.float64)
+        masks = SuperpixelStrategy(n_segments=4, algorithm="slico").get_masks(image)
+        assert (masks.sum(axis=0) == 1).all()
 
     def test_get_masks_shape_and_dtype(self) -> None:
         pytest.importorskip("skimage")
@@ -280,3 +340,42 @@ class TestGridStrategy:
             strategy.get_masks(image),
             strategy.get_masks(np.random.rand(4, 4, 3)),
         )
+
+
+class TestGridStrategyResolutionErrors:
+    """The grid is resolved against the image at fit time, so these only surface in get_masks."""
+
+    @pytest.mark.parametrize("grid_shape", [0, -1, (0, 2), (2, -3)])
+    def test_rejects_non_positive_grid_dimensions(self, grid_shape) -> None:
+        strategy = GridStrategy(grid_shape=grid_shape)
+        with pytest.raises(ValueError, match="positive integers"):
+            strategy.get_masks(np.zeros((8, 8, 3)))
+
+    def test_rejects_grid_finer_than_the_image(self) -> None:
+        """More tiles than pixels along an axis would leave players with no pixels at all."""
+        strategy = GridStrategy(grid_shape=10)
+        with pytest.raises(ValueError, match="exceeds image shape"):
+            strategy.get_masks(np.zeros((4, 4, 3)))
+
+    def test_grid_error_mentions_empty_players(self) -> None:
+        strategy = GridStrategy(grid_shape=(2, 99))
+        with pytest.raises(ValueError, match="empty players"):
+            strategy.get_masks(np.zeros((4, 4, 3)))
+
+    @pytest.mark.parametrize("patch_size", [0, -4, (2, 0)])
+    def test_rejects_non_positive_patch_dimensions(self, patch_size) -> None:
+        strategy = GridStrategy(patch_size=patch_size)
+        with pytest.raises(ValueError, match="positive integers"):
+            strategy.get_masks(np.zeros((8, 8, 3)))
+
+    def test_rejects_patch_larger_than_the_image(self) -> None:
+        strategy = GridStrategy(patch_size=16)
+        with pytest.raises(ValueError, match="exceeds image shape"):
+            strategy.get_masks(np.zeros((8, 8, 3)))
+
+    def test_grid_equal_to_image_size_is_allowed(self) -> None:
+        """One tile per pixel is the finest valid grid."""
+        strategy = GridStrategy(grid_shape=4)
+        masks = strategy.get_masks(np.zeros((4, 4, 3)))
+        assert masks.shape == (16, 4, 4)
+        assert (masks.sum(axis=0) == 1).all()

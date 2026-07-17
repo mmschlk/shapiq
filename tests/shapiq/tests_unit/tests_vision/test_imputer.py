@@ -9,7 +9,7 @@ from PIL import Image
 
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.imputer.base import Imputer
-from shapiq.vision.architecture import CNNArchitecture
+from shapiq.vision.architecture import ClassificationArchitecture
 from shapiq.vision.imputer import ImageImputer
 from shapiq.vision.masking import MeanColorMasking, ZeroMasking
 
@@ -17,13 +17,13 @@ from .conftest import ChannelSumModel, FixedMasksStrategy, expected_full_coaliti
 
 
 def _build_imputer(image, masks, masking_strategy, *, normalize=True, batch_size=32):
-    arch = CNNArchitecture(
+    arch = ClassificationArchitecture(
         model=ChannelSumModel(),
         masking_strategy=masking_strategy,
         player_strategy=FixedMasksStrategy(masks),
     )
     return ImageImputer(
-        model_architecture=arch,
+        model=arch,
         image=image,
         normalize=normalize,
         batch_size=batch_size,
@@ -131,13 +131,13 @@ class TestImageImputerInputFormats:
         ],
     )
     def test_accepts_common_image_formats(self, tiny_image, two_player_masks, image_input) -> None:
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=ChannelSumModel(),
             masking_strategy=ZeroMasking(),
             player_strategy=FixedMasksStrategy(two_player_masks),
         )
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=image_input(tiny_image),
             normalize=False,
         )
@@ -149,13 +149,13 @@ class TestImageImputerInputFormats:
     def test_accepts_torch_hwc_tensor(self, three_player_masks) -> None:
         """HWC tensors are only unambiguous when H is not in {1, 3, 4}."""
         image = np.random.default_rng(0).integers(0, 255, size=(6, 6, 3)).astype(np.float64)
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=ChannelSumModel(),
             masking_strategy=ZeroMasking(),
             player_strategy=FixedMasksStrategy(three_player_masks),
         )
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=torch.from_numpy(image),
             normalize=False,
         )
@@ -190,13 +190,55 @@ class TestImageImputerFit:
         imputer.fit(new_image)
         assert imputer.empty_prediction != pytest.approx(old_empty)
 
+    def test_fit_keeps_the_explained_class(self, tiny_image, two_player_masks) -> None:
+        """The tracked class must survive refitting, or values across images stop comparing."""
+        arch = ClassificationArchitecture(
+            model=ChannelSumModel(),
+            masking_strategy=ZeroMasking(),
+            player_strategy=FixedMasksStrategy(two_player_masks),
+        )
+        imputer = ImageImputer(model=arch, image=tiny_image, normalize=False, class_index=1)
+        imputer.fit(np.ones_like(tiny_image) * 5.0)
+        assert arch._class_id == 1
+
+    def test_fit_updates_normalization_value_when_normalizing(
+        self, tiny_image, two_player_masks
+    ) -> None:
+        imputer = _build_imputer(tiny_image, two_player_masks, MeanColorMasking(), normalize=True)
+        imputer.fit(np.ones_like(tiny_image) * 99.0)
+        assert imputer.normalization_value == pytest.approx(imputer.empty_prediction)
+
+    def test_fit_resets_coalition_bookkeeping(self, tiny_image, two_player_masks) -> None:
+        imputer = _build_imputer(tiny_image, two_player_masks, ZeroMasking(), normalize=False)
+        imputer.fit(tiny_image)
+        assert imputer.empty_coalition.shape == (2,)
+        assert not imputer.empty_coalition.any()
+        assert imputer.grand_coalition.all()
+
+
+class TestImageImputerProperties:
+    def test_image_property_returns_hwc_array(self, tiny_image, two_player_masks) -> None:
+        imputer = _build_imputer(tiny_image, two_player_masks, ZeroMasking())
+        np.testing.assert_array_equal(imputer.image, tiny_image)
+
+    def test_image_property_returns_a_copy(self, tiny_image, two_player_masks) -> None:
+        """Callers plot the returned image, so mutating it must not corrupt the game."""
+        imputer = _build_imputer(tiny_image, two_player_masks, ZeroMasking())
+        imputer.image[0, 0, 0] = -999.0
+        assert imputer.image[0, 0, 0] != -999.0
+
+    def test_player_masks_are_numpy_not_tensors(self, tiny_image, two_player_masks) -> None:
+        imputer = _build_imputer(tiny_image, two_player_masks, ZeroMasking())
+        assert isinstance(imputer.player_masks, np.ndarray)
+        assert imputer.player_masks.dtype == bool
+
 
 class TestImageImputerTransformer:
     def test_transformer_architecture_value_function(
         self, transformer_architecture, image_24x24
     ) -> None:
         imputer = ImageImputer(
-            model_architecture=transformer_architecture,
+            model=transformer_architecture,
             image=image_24x24,
             normalize=False,
         )
@@ -218,7 +260,7 @@ class TestImageImputerTransformer:
         self, transformer_architecture, image_24x24
     ) -> None:
         imputer = ImageImputer(
-            model_architecture=transformer_architecture,
+            model=transformer_architecture,
             image=image_24x24,
             normalize=False,
         )

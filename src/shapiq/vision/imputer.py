@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 
 from shapiq.imputer.base import Imputer
 
+from .architecture import ModelArchitecture
 from .utils import ImageLike, as_hwc_array, tensor_to_numpy
 
 try:
@@ -16,9 +15,6 @@ except ImportError as err:
     from ._error import _vision_import_error
 
     raise _vision_import_error from err
-
-if TYPE_CHECKING:
-    from .architecture import ModelArchitectureStrategy
 
 
 class ImageImputer(Imputer):
@@ -30,7 +26,7 @@ class ImageImputer(Imputer):
 
     def __init__(
         self,
-        model_architecture: ModelArchitectureStrategy,
+        model: ModelArchitecture,
         image: ImageLike,
         *,
         normalize: bool = True,
@@ -40,8 +36,13 @@ class ImageImputer(Imputer):
         """Initialise the imputer for a specific image and model architecture.
 
         Args:
-            model_architecture: Architecture that encapsulates the
-                model, player definition, and masking strategy.
+            model: A configured
+                :class:`~shapiq.vision.architecture.ModelArchitecture`
+                (e.g. :class:`~shapiq.vision.architecture.ClassificationArchitecture` or
+                :class:`~shapiq.vision.architecture.ViTClassificationArchitecture`).
+                This object owns the model, the player strategy, and the masking
+                strategy. Sensible defaults are chosen automatically if no custom
+                strategies are passed to the architecture constructor.
             image: The image to explain. Accepts a PIL Image, numpy array
                 ``(H, W, C)`` or ``(C, H, W)``, or a PyTorch tensor.
             normalize: If ``True``, the empty-coalition prediction is used as
@@ -50,8 +51,14 @@ class ImageImputer(Imputer):
                 model forward pass.
             class_index: Optional index of the class to explain. If not provided,
             the class with the highest logit is used.
+
+        Raises:
+            TypeError: If the model is not a ModelArchitecture instance.
         """
-        self.architecture = model_architecture
+        if not isinstance(model, ModelArchitecture):
+            msg = "ImageImputer expects a ModelArchitecture instance for the model."
+            raise TypeError(msg)
+        self.architecture = model
         self._batch_size = batch_size
         self._normalize = normalize
 
@@ -60,7 +67,7 @@ class ImageImputer(Imputer):
         self.n_features = self.architecture.n_players
 
         dummy_data = np.zeros((1, self.n_features))
-        super().__init__(model=model_architecture.model, data=dummy_data)
+        super().__init__(model=model.model, data=dummy_data)
 
         self.empty_prediction = self.calc_empty_prediction()
         if self._normalize:

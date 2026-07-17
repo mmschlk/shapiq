@@ -91,7 +91,7 @@ def get_predict_function_and_model_type(
     """
     from shapiq.game import Game
     from shapiq.tree import TreeModel
-    from shapiq.vision.architecture import ModelArchitectureStrategy
+    from shapiq.vision.architecture import ModelArchitecture
 
     if model_class is None:
         model_class = print_class(model)
@@ -103,7 +103,7 @@ def get_predict_function_and_model_type(
         _predict_function = RuntimeError("Games cannot be used for prediction.")
         return _predict_function, "game"
 
-    if isinstance(model, ModelArchitectureStrategy):
+    if isinstance(model, ModelArchitecture):
         _predict_function = RuntimeError(
             "Image models use ImageImputer directly, not a predict function."
         )

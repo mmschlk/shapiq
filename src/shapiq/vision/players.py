@@ -13,6 +13,8 @@ from typing import Literal
 
 import numpy as np
 
+from .custom_types import CoalitionDomain
+
 
 def labels_to_masks(labels: np.ndarray) -> np.ndarray:
     """Converts a 2D integer label array to a 3D boolean mask array.
@@ -31,8 +33,13 @@ class PlayerStrategy(ABC):
     """Abstract base class for all player strategies.
 
     A player strategy encapsulates the rule by which an image is divided into
-    ``n_players`` disjoint regions.
+    ``n_players`` disjoint regions. Subclasses declare the coalition domain
+    they produce via ``coalition_domain``, e.g. ``CoalitionDomain.PIXEL``
+    for pixel-space strategies and ``CoalitionDomain.TOKEN`` for token-space
+    strategies.
     """
+
+    coalition_domain: CoalitionDomain
 
     @property
     @abstractmethod
@@ -41,8 +48,13 @@ class PlayerStrategy(ABC):
         ...
 
 
-class CNNPlayerStrategy(PlayerStrategy, ABC):
-    """Abstract base class for player strategies that returns spatial masks in pixel space."""
+class PixelBasedPlayerStrategy(PlayerStrategy, ABC):
+    """Abstract base class for player strategies that returns spatial masks in pixel space.
+
+    ``coalition_domain`` is ``CoalitionDomain.PIXEL`` for these strategies.
+    """
+
+    coalition_domain: CoalitionDomain = CoalitionDomain.PIXEL
 
     @abstractmethod
     def get_masks(self, image: np.ndarray) -> np.ndarray:
@@ -57,7 +69,7 @@ class CNNPlayerStrategy(PlayerStrategy, ABC):
         ...
 
 
-class CustomPlayerStrategy(CNNPlayerStrategy):
+class CustomPlayerStrategy(PixelBasedPlayerStrategy):
     """Uses a set of pre-computed binary masks as players provided by the user.
 
     Provided masks may overlap — pixels covered by multiple
@@ -68,17 +80,6 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
     attributed or masked away. A :exc:`UserWarning` is raised when uncovered
     pixels are detected.
 
-    Args:
-        masks: either: Array of shape ``(n_players, H, W)``. Any dtype is accepted and
-            will be cast to ``bool``. Should be evaluated to ``True`` for pixels
-            belonging to the player and ``False`` otherwise.
-            or: a 2-D integer segmentation label map of shape ``(H, W)`` where each
-            unique integer corresponds to a player, with at least 2 distinct labels
-
-    Raises:
-        ValueError: If ``masks`` is not a 3-D array or any player mask is
-            entirely empty.
-
     Example::
 
         # From a pre-computed boolean mask array
@@ -86,7 +87,19 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
     """
 
     def __init__(self, masks: np.ndarray) -> None:
-        """Initialize the strategy with pre-computed masks."""
+        """Initialize the strategy with pre-computed masks.
+
+        Args:
+            masks: either: Array of shape ``(n_players, H, W)``. Any dtype is accepted and
+                will be cast to ``bool``. Should be evaluated to ``True`` for pixels
+                belonging to the player and ``False`` otherwise.
+                or: a 2-D integer segmentation label map of shape ``(H, W)`` where each
+                unique integer corresponds to a player, with at least 2 distinct labels
+
+        Raises:
+            ValueError: If ``masks`` is not a 3-D array or any player mask is
+                entirely empty.
+        """
         masks = np.asarray(masks)
 
         if masks.ndim == 2 and np.issubdtype(masks.dtype, np.integer):
@@ -160,7 +173,7 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
         return self._masks.shape[0]
 
 
-class GridStrategy(CNNPlayerStrategy):
+class GridStrategy(PixelBasedPlayerStrategy):
     """Splits the image into a regular rectangular grid of players.
 
     The strategy must be initialized implicitly via :meth:`get_masks`
@@ -176,16 +189,6 @@ class GridStrategy(CNNPlayerStrategy):
     - ``patch_size``: fixes the pixel size of each patch; the grid dimensions
     are inferred from the image shape at fit time. Some patches may be
     smaller than ``patch_size`` if the image dimensions are not exact multiples.
-
-    Args:
-        patch_size: ``(patch_height, patch_width)`` or a single int for square
-            patches. The grid shape is inferred from the image.
-        grid_shape: ``(grid_y, grid_x)`` or a single int for a square grid.
-            The patch size is derived from the image.
-
-    Raises:
-        ValueError: If both or neither of ``patch_size`` and ``grid_shape``
-            are provided.
 
     Example::
 
@@ -204,7 +207,18 @@ class GridStrategy(CNNPlayerStrategy):
         patch_size: int | tuple[int, int] | None = None,
         grid_shape: int | tuple[int, int] | None = None,
     ) -> None:
-        """Initialize the strategy with either a patch size or grid shape."""
+        """Initialize the strategy with either a patch size or grid shape.
+
+        Args:
+            patch_size: ``(patch_height, patch_width)`` or a single int for square
+                patches. The grid shape is inferred from the image.
+            grid_shape: ``(grid_y, grid_x)`` or a single int for a square grid.
+                The patch size is derived from the image.
+
+        Raises:
+            ValueError: If both or neither of ``patch_size`` and ``grid_shape``
+                are provided.
+        """
         if (patch_size is None) == (grid_shape is None):
             msg = "Must provide exactly one of 'patch_size' or 'grid_shape'."
             raise ValueError(msg)
@@ -329,7 +343,7 @@ class GridStrategy(CNNPlayerStrategy):
         return self.grid_y * self.grid_x
 
 
-class SuperpixelStrategy(CNNPlayerStrategy):
+class SuperpixelStrategy(PixelBasedPlayerStrategy):
     """Splits the image into superpixels using SLIC.
 
     Uses the SLIC or SLICO algorithm from :mod:`skimage.segmentation` to
@@ -342,17 +356,6 @@ class SuperpixelStrategy(CNNPlayerStrategy):
     :func:`labels_to_masks` and pass the result to
     :class:`CustomPlayerStrategy`.
 
-    Args:
-        n_segments: Preferred number of superpixels to request from SLIC.
-        algorithm: SLIC variant to use. Either ``"slico"`` (default) for
-            SLIC-zero, which enforces equal-size superpixels regardless of
-            image texture, or ``"slic"`` for standard SLIC, where segment
-            size follows image content and can yield irregular segments in
-            textured regions.
-
-    Raises:
-        ValueError: If neither ``n_segments`` nor ``mask`` is provided.
-
     Example:
         >>> strategy = SuperpixelStrategy(n_segments=16)
         >>> masks = strategy.get_masks(image)   # (n_players, H, W) bool
@@ -361,7 +364,19 @@ class SuperpixelStrategy(CNNPlayerStrategy):
     """
 
     def __init__(self, n_segments: int, algorithm: Literal["slic", "slico"] = "slic") -> None:
-        """Initialize the strategy with the desired number of superpixels and algorithm."""
+        """Initialize the strategy with the desired number of superpixels and algorithm.
+
+        Args:
+            n_segments: Preferred number of superpixels to request from SLIC.
+            algorithm: SLIC variant to use. Either ``"slico"`` for
+                SLIC-zero, which enforces equal-size superpixels regardless of
+                image texture, or ``"slic"`` (default) for standard SLIC, where segment
+                size follows image content and can yield irregular segments in
+                textured regions.
+
+        Raises:
+            ValueError: If neither ``n_segments`` nor ``mask`` is provided.
+        """
         if n_segments < 1:
             msg = "n_segments must be a positive integer."
             raise ValueError(msg)
@@ -415,8 +430,13 @@ class SuperpixelStrategy(CNNPlayerStrategy):
         return self._n_players
 
 
-class TransformerPlayerStrategy(PlayerStrategy, ABC):
-    """Abstract base class for token-space player strategies."""
+class LatentBasedPlayerStrategy(PlayerStrategy, ABC):
+    """Abstract base class for token-space player strategies.
+
+    ``coalition_domain`` is ``CoalitionDomain.TOKEN`` for these strategies.
+    """
+
+    coalition_domain = CoalitionDomain.TOKEN
 
     @abstractmethod
     def get_token_masks(self) -> np.ndarray:
@@ -440,7 +460,7 @@ class TransformerPlayerStrategy(PlayerStrategy, ABC):
         ...
 
 
-class PatchStrategy(TransformerPlayerStrategy):
+class PatchStrategy(LatentBasedPlayerStrategy):
     """Splits the image into patches for ViT models.
 
     Each player corresponds to a group of tokens in the latent space.
@@ -449,7 +469,16 @@ class PatchStrategy(TransformerPlayerStrategy):
     """
 
     def __init__(self, grid_size: int, n_players: int) -> None:
-        """Initialize the strategy with the grid size and number of players."""
+        """Initialize the strategy with the grid size and number of players.
+
+        Args:
+            grid_size: The number of tokens along one axis of the square grid.
+            n_players: The number of players (patches) to divide the grid into.
+
+        Raises:
+            ValueError: If ``n_players`` is not a perfect square or if
+                ``grid_size`` is not divisible by the square root of ``n_players``.
+        """
         side = int(math.sqrt(n_players))
         if side * side != n_players:
             msg = "n_players must be a perfect square."

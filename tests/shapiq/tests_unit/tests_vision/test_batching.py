@@ -14,15 +14,15 @@ import numpy as np
 import pytest
 
 from shapiq.vision import ImageExplainer
-from shapiq.vision.architecture import CNNArchitecture
+from shapiq.vision.architecture import ClassificationArchitecture
 from shapiq.vision.imputer import ImageImputer
 from shapiq.vision.masking import ZeroMasking
 
 from .conftest import ChannelSumModel, FixedMasksStrategy
 
 
-class _CountingCNN(CNNArchitecture):
-    """CNNArchitecture that records the per-call coalition batch size."""
+class _CountingCNN(ClassificationArchitecture):
+    """ClassificationArchitecture that records the per-call coalition batch size."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -40,7 +40,7 @@ def _build(image, masks, *, batch_size):
         player_strategy=FixedMasksStrategy(masks),
     )
     imputer = ImageImputer(
-        model_architecture=arch,
+        model=arch,
         image=image,
         batch_size=batch_size,
         normalize=False,

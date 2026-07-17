@@ -101,9 +101,9 @@ def test_tree_get_predict_function_and_model_type(
 
 def test_image_get_predict_function_and_model_type():
     """Test that a ModelArchitectureStrategy is recognized as image model."""
-    from shapiq.vision.architecture import ModelArchitectureStrategy
+    from shapiq.vision.architecture import ModelArchitecture
 
-    mock_architecture = Mock(spec=ModelArchitectureStrategy)
+    mock_architecture = Mock(spec=ModelArchitecture)
     predict_function, model_type = get_predict_function_and_model_type(mock_architecture)
 
     assert model_type == "image"

@@ -7,23 +7,23 @@ import pytest
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.vision import ImageExplainer
-from shapiq.vision.architecture import CNNArchitecture
+from shapiq.vision.architecture import ClassificationArchitecture
 from shapiq.vision.imputer import ImageImputer
 from shapiq.vision.masking import ZeroMasking
-from shapiq.vision.players import CNNPlayerStrategy
+from shapiq.vision.players import PixelBasedPlayerStrategy
 
 from .conftest import ChannelSumModel, FixedMasksStrategy
 
 
 def _build_arch(masks):
-    return CNNArchitecture(
+    return ClassificationArchitecture(
         model=ChannelSumModel(),
         masking_strategy=ZeroMasking(),
         player_strategy=FixedMasksStrategy(masks),
     )
 
 
-class ShapeKeyedStrategy(CNNPlayerStrategy):
+class ShapeKeyedStrategy(PixelBasedPlayerStrategy):
     """Player strategy whose player count depends on the image size.
 
     Used to exercise reusing one explainer across images with different player
@@ -94,7 +94,7 @@ class TestImageExplainer:
     def test_explainer_uses_provided_imputer(self, tiny_image, two_player_masks) -> None:
         arch = _build_arch(two_player_masks)
         imputer = ImageImputer(
-            model_architecture=arch,
+            model=arch,
             image=tiny_image,
             normalize=False,
             batch_size=8,
@@ -180,6 +180,15 @@ class TestImageExplainer:
         result_b = explainer.explain_function(tiny_image, budget=16, random_state=42)
         np.testing.assert_allclose(result_a.values, result_b.values)
 
+    def test_imputer_property_exposes_the_game(self, tiny_image, two_player_masks) -> None:
+        explainer = ImageExplainer(
+            model=_build_arch(two_player_masks),
+            data=tiny_image,
+            random_state=0,
+        )
+        assert explainer.imputer is explainer._imputer
+        np.testing.assert_array_equal(explainer.imputer.image, tiny_image)
+
     def test_custom_approximator_is_used(self, tiny_image, two_player_masks) -> None:
         explainer = ImageExplainer(
             model=_build_arch(two_player_masks),
@@ -191,7 +200,7 @@ class TestImageExplainer:
 
     def test_reuse_across_images_rebuilds_approximator(self) -> None:
         strategy = ShapeKeyedStrategy({(4, 4): 2, (6, 6): 3})
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=ChannelSumModel(), masking_strategy=ZeroMasking(), player_strategy=strategy
         )
         explainer = ImageExplainer(model=arch, data=_image((4, 4), 0), index="SV", random_state=0)
@@ -207,7 +216,7 @@ class TestImageExplainer:
         from shapiq.approximator import KernelSHAP
 
         strategy = ShapeKeyedStrategy({(4, 4): 2, (6, 6): 3})
-        arch = CNNArchitecture(
+        arch = ClassificationArchitecture(
             model=ChannelSumModel(), masking_strategy=ZeroMasking(), player_strategy=strategy
         )
         explainer = ImageExplainer(

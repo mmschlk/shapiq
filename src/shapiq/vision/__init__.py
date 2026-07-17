@@ -6,22 +6,29 @@ import importlib
 from typing import TYPE_CHECKING
 
 _LAZY_MODULES: dict[str, str] = {
-    "ModelArchitectureStrategy": "architecture",
-    "CNNArchitecture": "architecture",
-    "TransformerArchitecture": "architecture",
+    "ModelArchitecture": "architecture",
+    "ClassificationArchitecture": "architecture",
+    "ViTClassificationArchitecture": "architecture",
     "ImageExplainer": "explainer",
     "ImageImputer": "imputer",
-    "CNNMaskingStrategy": "masking",
-    "TransformerMaskingStrategy": "masking",
+    "PixelBasedMaskingStrategy": "masking",
+    "LatentBasedMaskingStrategy": "masking",
     "MeanColorMasking": "masking",
     "ZeroMasking": "masking",
+    "BlurMasking": "masking",
+    "DatasetMeanMasking": "masking",
+    "MarginalSampling": "masking",
+    "InpaintingMasking": "masking",
     "BoolMaskedPosStrategy": "masking",
     "MaskTokenStrategy": "masking",
     "PlayerStrategy": "players",
-    "CNNPlayerStrategy": "players",
-    "TransformerPlayerStrategy": "players",
+    "PixelBasedPlayerStrategy": "players",
+    "LatentBasedPlayerStrategy": "players",
     "SuperpixelStrategy": "players",
     "PatchStrategy": "players",
+    "GridStrategy": "players",
+    "CustomPlayerStrategy": "players",
+    "labels_to_masks": "players",
 }
 
 
@@ -61,49 +68,63 @@ def __dir__() -> list[str]:
 
 if TYPE_CHECKING:
     from .architecture import (
-        CNNArchitecture,
-        ModelArchitectureStrategy,
-        TransformerArchitecture,
+        ClassificationArchitecture,
+        ModelArchitecture,
+        ViTClassificationArchitecture,
     )
     from .explainer import ImageExplainer
     from .imputer import ImageImputer
     from .masking import (
+        BlurMasking,
         BoolMaskedPosStrategy,
-        CNNMaskingStrategy,
+        DatasetMeanMasking,
+        InpaintingMasking,
+        LatentBasedMaskingStrategy,
+        MarginalSampling,
         MaskTokenStrategy,
         MeanColorMasking,
-        TransformerMaskingStrategy,
+        PixelBasedMaskingStrategy,
         ZeroMasking,
     )
     from .players import (
-        CNNPlayerStrategy,
+        CustomPlayerStrategy,
+        GridStrategy,
+        LatentBasedPlayerStrategy,
         PatchStrategy,
+        PixelBasedPlayerStrategy,
         PlayerStrategy,
         SuperpixelStrategy,
-        TransformerPlayerStrategy,
+        labels_to_masks,
     )
 
 
 __all__ = [
     # Architecture
-    "ModelArchitectureStrategy",
-    "CNNArchitecture",
-    "TransformerArchitecture",
+    "ModelArchitecture",
+    "ClassificationArchitecture",
+    "ViTClassificationArchitecture",
     # Explainer
     "ImageExplainer",
     # Imputer
     "ImageImputer",
     # Masking
-    "CNNMaskingStrategy",
-    "TransformerMaskingStrategy",
+    "PixelBasedMaskingStrategy",
+    "LatentBasedMaskingStrategy",
     "MeanColorMasking",
     "ZeroMasking",
+    "BlurMasking",
+    "DatasetMeanMasking",
+    "MarginalSampling",
+    "InpaintingMasking",
     "BoolMaskedPosStrategy",
     "MaskTokenStrategy",
     # Players
     "PlayerStrategy",
-    "CNNPlayerStrategy",
-    "TransformerPlayerStrategy",
+    "PixelBasedPlayerStrategy",
+    "LatentBasedPlayerStrategy",
     "SuperpixelStrategy",
     "PatchStrategy",
+    "GridStrategy",
+    "CustomPlayerStrategy",
+    "labels_to_masks",
 ]
