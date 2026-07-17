@@ -43,6 +43,10 @@ TARGET_LABEL_KEYWORDS = ("malicious", "label_1")
 PLAYER_LEVEL = "sentence"
 PERTURBATION_TYPE = "mask"
 
+# Sessions are always saved next to THIS script (…/jailbreak_demo/outputs/),
+# regardless of the current working directory the demo is launched from.
+OUTPUT_DIR = Path(__file__).resolve().parent / "outputs"
+
 
 class JailbreakTextImputer(TextImputer):
     """TextImputer that targets the detector's 'attack' class by label keyword."""
@@ -288,7 +292,7 @@ class Session:
     On close(), writes session.json summarizing all steps and the final state.
     """
 
-    def __init__(self, out_dir: str = "outputs") -> None:
+    def __init__(self, out_dir: str | Path = OUTPUT_DIR) -> None:
         self.started = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.dir = Path(out_dir) / f"session_{self.started}"
         self.dir.mkdir(parents=True, exist_ok=True)
