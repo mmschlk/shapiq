@@ -20,3 +20,4 @@ This is the API reference for the ``shapiq`` package.
    shapiq.datasets
    shapiq.utils
    shapiq.tree
+   shapiq.graph
