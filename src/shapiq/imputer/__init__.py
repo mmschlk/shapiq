@@ -20,4 +20,15 @@ __all__ = [
     "TabPFNImputer",
     "GaussianImputer",
     "GaussianCopulaImputer",
+    "TextImputer",
 ]
+
+
+def __getattr__(name: str) -> type:
+    if name == "TextImputer":
+        from .text import TextImputer
+
+        return TextImputer
+
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
