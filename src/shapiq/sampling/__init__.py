@@ -11,29 +11,25 @@ from shapiq.sampling._kernel import (
     SizeKernelSampler,
 )
 from shapiq.sampling._pairing import AntitheticDraws, PairedSampler
-from shapiq.sampling._permutation import (
-    PermutationSIISampler,
-    PermutationSTIISampler,
-    PermutationWalkSampler,
-)
+from shapiq.sampling._permutation import ChainPlan, PermutationSampler, WalkPlan
 from shapiq.sampling._schedule import UnitScheduleSampler
 from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState
 
 __all__ = [
-    "BanzhafKernelSampler",
     "AntitheticDraws",
     "ApproximationState",
+    "BanzhafKernelSampler",
+    "ChainPlan",
     "EmptyState",
     "KernelSampler",
     "PairedSampler",
-    "PermutationSIISampler",
+    "PermutationSampler",
     "ProductKernelSampler",
-    "SizeKernelSampler",
-    "PermutationSTIISampler",
-    "PermutationWalkSampler",
     "Sampler",
     "SamplingState",
     "ShapleyKernelSampler",
     "ShareSamples",
+    "SizeKernelSampler",
     "UnitScheduleSampler",
+    "WalkPlan",
 ]

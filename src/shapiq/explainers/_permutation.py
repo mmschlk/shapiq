@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from functools import singledispatch
+from dataclasses import dataclass
+from functools import lru_cache, singledispatch
+from itertools import combinations
 from math import comb
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple
 
 import jax.numpy as jnp
+import numpy as np
 from jax import Array
 
-from shapiq._shape import broadcast_shapes, ensure_bool
+from shapiq._shape import broadcast_shapes, ensure_bool, validate_int
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
@@ -16,24 +19,18 @@ from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
 from shapiq.sampling import (
+    ChainPlan,
     EmptyState,
     PairedSampler,
-    PermutationSIISampler,
-    PermutationSTIISampler,
-    PermutationWalkSampler,
+    PermutationSampler,
     SamplingState,
-)
-from shapiq.sampling._permutation import (
-    interaction_members,
-    nonempty_patterns,
-    off_chain_patterns,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.games import Game
-    from shapiq.sampling import ShareSamples
+    from shapiq.sampling import ShareSamples, WalkPlan
 
 
 class _WalkEvidence(NamedTuple):
@@ -62,13 +59,15 @@ class PermutationSampling(EvidenceApproximator):
     interaction and walk, so coverage is deterministic; its seed block and
     walks both grow quickly with the order.
 
-    The walk layout and the estimator travel together as a
+    The walk plan and the estimator travel together as a
     ``PermutationFamily``, single-dispatched on the index type via
-    ``permutation_family``. Registering a family for a new index type
-    extends the method atomically (a library-internal mechanism), and
-    subclasses of supported indices inherit their parent's complete family
-    through the method resolution order — an experimenter's index riding a
-    shipped estimator answers for its own semantics.
+    ``permutation_family``: the plan an estimator declares is the layout it
+    decodes, executed by one ``PermutationSampler`` vehicle. Registering a
+    family for a new index type extends the method atomically (a
+    library-internal mechanism), and subclasses of supported indices
+    inherit their parent's complete family through the method resolution
+    order — an experimenter's index riding a shipped estimator answers for
+    its own semantics.
 
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
@@ -77,6 +76,7 @@ class PermutationSampling(EvidenceApproximator):
     """
 
     _family: PermutationFamily
+    _plan: WalkPlan
 
     def __init__(
         self,
@@ -120,9 +120,11 @@ class PermutationSampling(EvidenceApproximator):
         """
         reject_common_index_mistakes(index)
         family = permutation_family(index)
-        base_sampler = family.build_sampler(
-            index,
-            game,
+        plan = family.build_plan(index, game.n_players)
+        base_sampler = PermutationSampler(
+            game.n_players,
+            game.target_shape,
+            plan=plan,
             share_samples=share_samples,
             random_state=random_state,
         )
@@ -135,6 +137,7 @@ class PermutationSampling(EvidenceApproximator):
         super().__init__(game, sampler, state, index=index)
         self._init_deduplication(deduplicate=deduplicate)
         self._family = family
+        self._plan = plan
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Estimate the configured index from completed permutation walks.
@@ -154,9 +157,9 @@ class PermutationSampling(EvidenceApproximator):
     def _completed_walks(self) -> _WalkEvidence:
         """Return seed values and completed walks, masking pending samples."""
         # paired units hold two walks (the permutation's and its reversal's),
-        # so completed walks are cut by walk length, not by the quantum
-        walker = cast("PermutationWalkSampler", self.sampler)
-        quantum = walker.walk_length
+        # so completed walks are cut by the plan's walk length, not by the
+        # sampler's quantum
+        quantum = self._plan.length
         n_seeds = self.sampler.n_seed_samples
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()
@@ -192,14 +195,15 @@ class PermutationSampling(EvidenceApproximator):
 
 
 class PermutationFamily(NamedTuple):
-    """Walk-sampler builder and estimator of one permutation index family.
+    """Walk plan and estimator of one permutation index family.
 
     A family is registered atomically on ``permutation_family``, so an
-    index either brings both pieces or neither; drift between the walk
-    layout and its estimator is unrepresentable.
+    index either brings both pieces or neither — and because the plan an
+    estimator declares is the very layout it decodes, drift between walk
+    layout and estimator is unrepresentable by construction.
     """
 
-    build_sampler: Callable[..., PermutationWalkSampler]
+    build_plan: Callable[..., WalkPlan]
     explain: Callable[..., DenseExplanationArray[Array]]
 
 
@@ -236,51 +240,171 @@ def _unsupported_permutation_index(index: object) -> TypeError:
 @permutation_family.register
 def _shapley_value_family(index: SV) -> PermutationFamily:
     del index
-    return PermutationFamily(_walk_sampler, _explain_shapley_values)
+    return PermutationFamily(_chain_plan, _explain_shapley_values)
 
 
 @permutation_family.register
 def _interaction_family(index: SII) -> PermutationFamily:
     del index
-    return PermutationFamily(_walk_sampler, _explain_interactions)
+    return PermutationFamily(_window_plan, _explain_interactions)
 
 
 @permutation_family.register
 def _taylor_family(index: STII) -> PermutationFamily:
     del index
-    return PermutationFamily(_taylor_sampler, _explain_taylor_interactions)
+    return PermutationFamily(_taylor_plan, _explain_taylor_interactions)
 
 
-def _walk_sampler(
-    index: SV | SII,
-    game: Game[Array],
-    *,
-    share_samples: ShareSamples = False,
-    random_state: Array | int = 0,
-) -> PermutationSIISampler:
-    return PermutationSIISampler(
-        game.n_players,
-        game.target_shape,
-        share_samples=share_samples,
-        order=index.order,
-        random_state=random_state,
-    )
+def _chain_plan(index: SV, n_players: int) -> ChainPlan:
+    del index
+    return ChainPlan(n_players)
 
 
-def _taylor_sampler(
-    index: STII,
-    game: Game[Array],
-    *,
-    share_samples: ShareSamples = False,
-    random_state: Array | int = 0,
-) -> PermutationSTIISampler:
-    return PermutationSTIISampler(
-        game.n_players,
-        game.target_shape,
-        share_samples=share_samples,
-        order=index.order,
-        random_state=random_state,
-    )
+def _window_plan(index: SII, n_players: int) -> WindowPlan:
+    return WindowPlan(n_players, index.order)
+
+
+def _taylor_plan(index: STII, n_players: int) -> TaylorPlan:
+    return TaylorPlan(n_players, index.order)
+
+
+@dataclass(frozen=True)
+class WindowPlan:
+    """SII walk layout: the prefix chain plus consecutive-window derivatives.
+
+    A walk contains the proper prefix chain followed, for every window size
+    ``s`` from two to ``order``, by one block per off-chain pattern of that
+    size (patterns ordered by size then lexicographically, windows ascending
+    within each block). Window ``k`` of size ``s`` covers the players at
+    permutation positions ``k`` to ``k + s - 1``; together with the chain
+    its coalitions provide the discrete derivative of the window players.
+    With ``order=1`` a walk is the plain Shapley-value chain.
+    """
+
+    n_players: int
+    order: int
+
+    def __post_init__(self) -> None:
+        """Validate the interaction order against the player count."""
+        _validate_plan_order(self.order, self.n_players)
+
+    @property
+    def length(self) -> int:
+        """Return the walk length in coalitions.
+
+        A walk costs ``(n - 1)`` chain coalitions plus, for every window size
+        ``s`` from two to ``order``, ``(n - s + 1) * (2**s - s - 1)``
+        off-chain coalitions. With ``order=1`` this is the plain chain length
+        ``n - 1``.
+        """
+        return (self.n_players - 1) + sum(
+            (self.n_players - size + 1) * len(off_chain_patterns(size))
+            for size in range(2, self.order + 1)
+        )
+
+    def prelude(self) -> Array | None:
+        """Return no prelude; windowed walks need only the shared seed block."""
+        return None
+
+    def render(self, positions: Array) -> Array:
+        """Return chain masks followed by per-size, per-pattern window masks."""
+        blocks = [positions[..., None, :] < jnp.arange(1, self.n_players)[:, None]]
+        for size in range(2, self.order + 1):
+            window_starts = jnp.arange(self.n_players - size + 1)
+            prefixes = positions[..., None, :] < window_starts[:, None]
+            members = [
+                positions[..., None, :] == (window_starts + offset)[:, None]
+                for offset in range(size)
+            ]
+            for pattern in off_chain_patterns(size):
+                mask = prefixes
+                for offset in pattern:
+                    mask = mask | members[offset]
+                blocks.append(mask)
+        return jnp.concatenate(blocks, axis=-2)
+
+
+@dataclass(frozen=True)
+class TaylorPlan:
+    """STII walk layout: prefix chain plus top-order interaction derivatives.
+
+    The prelude holds every coalition of size one to ``order - 1`` in
+    lexicographic order, providing the exact lower-order discrete
+    derivatives at the empty coalition — estimation strategy the estimator
+    declares and the vehicle executes once, inside the seed block. A walk
+    contains the prefix chain up to length ``n_players - order`` followed by
+    one block per non-empty subset pattern of the interaction (patterns
+    ordered by size then lexicographically, interactions in lexicographic
+    order within each block). For every top-order interaction the walk
+    provides its discrete derivative at the set of players strictly
+    preceding the whole interaction. With ``order=1`` a walk is the plain
+    Shapley-value chain.
+    """
+
+    n_players: int
+    order: int
+
+    def __post_init__(self) -> None:
+        """Validate the interaction order against the player count."""
+        _validate_plan_order(self.order, self.n_players)
+
+    @property
+    def length(self) -> int:
+        """Return the walk length in coalitions.
+
+        A walk costs ``(n - order)`` chain coalitions plus
+        ``comb(n, order) * (2**order - 1)`` off-chain coalitions. With
+        ``order=1`` this is the plain chain length ``n - 1``. Walks grow
+        quickly with ``order``; prefer small orders or generous budgets.
+        """
+        if self.order == 1:
+            return self.n_players - 1
+        n_interactions = comb(self.n_players, self.order)
+        return (self.n_players - self.order) + n_interactions * len(
+            nonempty_patterns(self.order),
+        )
+
+    def prelude(self) -> Array | None:
+        """Return the lower-order coalitions anchoring the exact derivatives."""
+        if self.order == 1:
+            return None
+        blocks = []
+        for size in range(1, self.order):
+            members = interaction_members(self.n_players, size)
+            block = jnp.zeros((members.shape[0], self.n_players), dtype=bool)
+            block = block.at[jnp.arange(members.shape[0])[:, None], members].set(True)
+            blocks.append(block)
+        return jnp.concatenate(blocks, axis=0)
+
+    def render(self, positions: Array) -> Array:
+        """Return chain masks followed by per-pattern interaction masks."""
+        if self.order == 1:
+            return positions[..., None, :] < jnp.arange(1, self.n_players)[:, None]
+        chain = positions[..., None, :] < jnp.arange(1, self.n_players - self.order + 1)[:, None]
+        members = interaction_members(self.n_players, self.order)
+        first_positions = jnp.min(positions[..., members], axis=-1)
+        predecessors = positions[..., None, :] < first_positions[..., :, None]
+        blocks = [chain]
+        for pattern in nonempty_patterns(self.order):
+            selected = members[:, jnp.asarray(pattern)]
+            pattern_mask = (
+                jnp.zeros(
+                    (members.shape[0], self.n_players),
+                    dtype=bool,
+                )
+                .at[jnp.arange(members.shape[0])[:, None], selected]
+                .set(True)
+            )
+            blocks.append(predecessors | pattern_mask)
+        return jnp.concatenate(blocks, axis=-2)
+
+
+def _validate_plan_order(order: int, n_players: int) -> None:
+    """Validate a plan's interaction order against its player count."""
+    validate_int("order", order, minimum=1)
+    if order > n_players:
+        msg = "order must not exceed the number of players"
+        raise ValueError(msg)
 
 
 def _explain_shapley_values(
@@ -558,5 +682,74 @@ def _recover_permutations(chain_masks: Array) -> Array:
     added_players = chain_masks & ~previous_masks
     last_players = ~chain_masks[..., -1:, :]
     return jnp.argmax(jnp.concatenate([added_players, last_players], axis=-2), axis=-1)
+
+
+def off_chain_patterns(size: int) -> tuple[tuple[int, ...], ...]:
+    """Return window subset patterns whose coalitions are not chain prefixes.
+
+    Discrete derivatives of a size ``size`` window need all ``2**size``
+    subsets of the window; the ``size + 1`` prefix runs are already on the
+    walk's chain, and the remaining patterns are evaluated off-chain. The
+    pattern order defines the walk layout ``WindowPlan`` declares and the
+    SII estimator decodes.
+
+    Args:
+        size: Window size, i.e. the interaction order of the window.
+
+    Returns:
+        All subsets of ``range(size)`` that are not prefix runs, ordered by
+        size then lexicographically.
+    """
+    runs = {tuple(range(length)) for length in range(size + 1)}
+    return tuple(
+        pattern
+        for length in range(size + 1)
+        for pattern in combinations(range(size), length)
+        if pattern not in runs
+    )
+
+
+def nonempty_patterns(size: int) -> tuple[tuple[int, ...], ...]:
+    """Return all non-empty subset patterns ordered by size then lexicographically.
+
+    The pattern order defines the walk layout ``TaylorPlan`` declares and
+    the STII estimator decodes.
+
+    Args:
+        size: Interaction order of the patterns.
+
+    Returns:
+        All non-empty subsets of ``range(size)``, ordered by size then
+        lexicographically.
+    """
+    return tuple(
+        pattern for length in range(1, size + 1) for pattern in combinations(range(size), length)
+    )
+
+
+def interaction_members(n_players: int, order: int) -> Array:
+    """Return the member table of all order-sized interactions.
+
+    The host table is cached with a small bound: building the combination
+    list on every walk render or explain call is waste, while caching
+    device arrays would pin accelerator memory and the first call's dtype
+    regime for the process lifetime.
+
+    Args:
+        n_players: Number of players.
+        order: Interaction order of the listed interactions.
+
+    Returns:
+        An integer array of shape ``(comb(n_players, order), order)`` whose
+        rows are the interactions in lexicographic order, matching the order
+        used by explanations.
+    """
+    return jnp.asarray(_member_table(n_players, order))
+
+
+@lru_cache(maxsize=16)
+def _member_table(n_players: int, order: int) -> np.ndarray:
+    """Return the host member table of all order-sized interactions."""
+    return np.asarray(list(combinations(range(n_players), order)))
 
 

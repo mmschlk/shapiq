@@ -6,11 +6,11 @@ import jax.numpy as jnp
 import pytest
 
 from shapiq import PairedSampler
+from shapiq.explainers._permutation import TaylorPlan, WindowPlan
 from shapiq.sampling import (
     BanzhafKernelSampler,
     EmptyState,
-    PermutationSIISampler,
-    PermutationSTIISampler,
+    PermutationSampler,
     ProductKernelSampler,
     ShapleyKernelSampler,
     SizeKernelSampler,
@@ -36,20 +36,25 @@ def all_samplers():
     return {
         "shapley-kernel": ShapleyKernelSampler(N_PLAYERS, random_state=3),
         "banzhaf-kernel": BanzhafKernelSampler(N_PLAYERS, random_state=3),
-        "permutation-sii": PermutationSIISampler(N_PLAYERS, order=2, random_state=3),
-        "permutation-stii": PermutationSTIISampler(N_PLAYERS, order=2, random_state=3),
+        "permutation-chain": PermutationSampler(N_PLAYERS, random_state=3),
+        "permutation-sii": PermutationSampler(
+            N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=3
+        ),
+        "permutation-stii": PermutationSampler(
+            N_PLAYERS, plan=TaylorPlan(N_PLAYERS, 2), random_state=3
+        ),
         "paired-shapley-kernel": PairedSampler(ShapleyKernelSampler(N_PLAYERS, random_state=3)),
         "paired-permutation-sii": PairedSampler(
-            PermutationSIISampler(N_PLAYERS, order=2, random_state=3),
+            PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=3),
         ),
         "paired-permutation-stii": PairedSampler(
-            PermutationSTIISampler(N_PLAYERS, order=2, random_state=3),
+            PermutationSampler(N_PLAYERS, plan=TaylorPlan(N_PLAYERS, 2), random_state=3),
         ),
         "custom-default-batch": _FixedUnit(N_PLAYERS),
         "paired-custom": PairedSampler(_FixedUnit(N_PLAYERS)),
         "shapley-kernel-targets": ShapleyKernelSampler(N_PLAYERS, (2,), random_state=1),
-        "permutation-sii-targets": PermutationSIISampler(
-            N_PLAYERS, (2,), order=2, random_state=1
+        "permutation-sii-targets": PermutationSampler(
+            N_PLAYERS, (2,), plan=WindowPlan(N_PLAYERS, 2), random_state=1
         ),
         "product-kernel": ProductKernelSampler(N_PLAYERS, 0.3, random_state=2),
         "size-kernel": SizeKernelSampler(
@@ -102,7 +107,7 @@ def test_split_budgets_replay_the_scalar_reference_stream(sampler):
 
 
 def test_batched_permutation_draws_match_scalar_draws():
-    sampler = PermutationSIISampler(N_PLAYERS, order=2, random_state=7)
+    sampler = PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=7)
     draws = sampler.unit_draws(jnp.arange(4))
     for index in range(4):
         assert jnp.array_equal(draws[index], sampler.unit_draw(index))

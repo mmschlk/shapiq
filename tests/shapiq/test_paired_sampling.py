@@ -84,7 +84,7 @@ def test_paired_permutation_units_walk_the_reversed_permutation():
     approximator = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=2)
     walk = N_PLAYERS - 1
     assert approximator.sampler.sampling_quantum == 2 * walk
-    assert approximator.sampler.walk_length == walk
+    assert approximator.sampler.plan.length == walk
     evolved = approximator.sample(approximator.min_budget)
     masks = jnp.asarray(evolved.state.coalitions.to_dense())
     chain = masks[2 : 2 + walk]

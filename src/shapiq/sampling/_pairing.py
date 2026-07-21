@@ -92,7 +92,7 @@ class PairedSampler(UnitScheduleSampler):
         return self.sampler.n_seed_samples
 
     def __getattr__(self, name: str) -> object:
-        """Expose the wrapped sampler's metadata (order, walk_length, ...)."""
+        """Expose the wrapped sampler's metadata (plan, p, ...)."""
         if name.startswith("_"):
             msg = f"{type(self).__name__!r} object has no attribute {name!r}"
             raise AttributeError(msg)
