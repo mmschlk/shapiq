@@ -25,14 +25,17 @@ from shapiq import (
     SII,
     STII,
     SV,
+    BanzhafValue,
     CallableGame,
     CoMoebius,
     ExactExplainer,
     JointSV,
     Moebius,
+    ShapleyValue,
     WeightedBII,
     WeightedBV,
     WeightedFBII,
+    validate_interaction_metadata,
 )
 from shapiq.interactions import ExtensionalEquality
 
@@ -87,6 +90,19 @@ def test_order_one_instances_equal_the_banzhaf_value():
     assert SV() != BV()
 
 
+def test_ready_made_value_shorthands_are_the_values():
+    assert ShapleyValue == SV()
+    assert BanzhafValue == BV()
+    explanation = ExactExplainer(random_table_game(), ShapleyValue).explain()
+    assert explanation.interaction_index == "SV"
+
+
+def test_open_names_are_not_order_checked():
+    # names are metadata: a custom index may call itself "SV" at any order;
+    # the shipped SV type pins order one through its own class
+    validate_interaction_metadata(index_name="SV", order=3, orientation="undirected", n_players=5)
+
+
 def test_higher_orders_and_transforms_stay_distinct():
     assert SII(order=2) != SV()
     assert SII(order=2) != SII(order=1)
@@ -103,7 +119,6 @@ def test_higher_orders_and_transforms_stay_distinct():
 )
 def test_value_preserving_indices_keep_the_value_at_higher_orders(index_type):
     index = index_type(order=2)
-    assert index.preserves_value
     game = random_table_game()
     restricted = order_one(ExactExplainer(game, index).explain())
     value = order_one(ExactExplainer(random_table_game(), index.generalizes).explain())
@@ -113,7 +128,6 @@ def test_value_preserving_indices_keep_the_value_at_higher_orders(index_type):
 @pytest.mark.parametrize("index_type", [STII, KSII, FSII, FBII, JointSV])
 def test_non_preserving_indices_leave_the_value_at_higher_orders(index_type):
     index = index_type(order=2)
-    assert not index.preserves_value
     game = random_table_game()
     restricted = order_one(ExactExplainer(game, index).explain())
     value = order_one(ExactExplainer(random_table_game(), index.generalizes).explain())
@@ -127,10 +141,7 @@ class _RenamedShapley(ExtensionalEquality):
     order: int = 1
 
     name: ClassVar = "MySV"
-    order_semantics: ClassVar = "coverage"
-    orientation: ClassVar = "undirected"
     min_interaction_size: ClassVar = 1
-    preserves_value: ClassVar = True
     generalizes: ClassVar = SV()
 
     def derivative_weights(self, n_players: int, interaction_size: int):
@@ -189,7 +200,6 @@ def test_empty_interaction_metadata_matches_explanations(index):
     [SII, BII, WeightedBII, CHII, SGV, BGV, CHGV, IGV, EGV, Moebius, CoMoebius],
 )
 def test_coverage_semantics_hold_numerically(index_type):
-    assert index_type(order=1).order_semantics == "coverage"
     first = order_one(ExactExplainer(random_table_game(), index_type(order=1)).explain())
     second = order_one(ExactExplainer(random_table_game(), index_type(order=2)).explain())
     assert jnp.allclose(first, second, atol=1e-6)

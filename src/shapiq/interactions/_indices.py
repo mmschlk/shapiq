@@ -14,10 +14,7 @@ from shapiq._shape import validate_int
 if TYPE_CHECKING:
     from jax import Array
 
-    from shapiq.interactions._types import (
-        InteractionIndexName,
-        OrderSemantics,
-    )
+    from shapiq.interactions._types import InteractionIndexName
 
 
 @runtime_checkable
@@ -25,9 +22,9 @@ class InteractionIndex(Protocol):
     """An interaction index as an immutable value object.
 
     Explainers select behavior by index type and capability, never by name;
-    the ``name`` is explanation metadata. The order semantics record whether
-    the order is explanation coverage (attributions of shared interactions
-    are unchanged across orders, as for SII and BII) or part of the index
+    the ``name`` is explanation metadata. Each index documents whether its
+    order is explanation coverage (attributions of shared interactions are
+    unchanged across orders, as for SII and BII) or part of the index
     identity (attributions change with the order, as for STII and FSII).
     Indices that generalize a probabilistic value declare it: their order-1
     restriction equals that value, and the declaration is tested numerically.
@@ -41,11 +38,6 @@ class InteractionIndex(Protocol):
     @property
     def order(self) -> int | None:
         """Return the maximum interaction order, or ``None`` for all orders."""
-        ...
-
-    @property
-    def order_semantics(self) -> OrderSemantics:
-        """Return whether order is explanation coverage or index identity."""
         ...
 
     @property
@@ -70,16 +62,13 @@ class InteractionIndex(Protocol):
 
     @property
     def generalizes(self) -> InteractionIndex | None:
-        """Return the probabilistic value this index restricts to at order 1."""
-        ...
+        """Return the probabilistic value this index restricts to at order 1.
 
-    @property
-    def preserves_value(self) -> bool:
-        """Return whether order-1 attributions are identical at every explanation order.
-
-        For a generalizing index this means the generalized value stays
-        readable off the order-1 attributions at any order; indices with no
-        generalized value preserve trivially through coverage semantics.
+        Whether that value also stays readable off the order-1 attributions
+        at *higher* explanation orders is documented per index: coverage
+        indices preserve it trivially, kADD-SHAP preserves it despite
+        identity semantics, and STII, k-SII, FSII, FBII, and JointSV do
+        not — each declaration is pinned numerically in the test suite.
         """
         ...
 
@@ -172,8 +161,6 @@ class SV(ExtensionalEquality):
     """The Shapley value: the unique efficient attribution to single players."""
 
     name: ClassVar[InteractionIndexName] = "SV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -209,14 +196,14 @@ class SV(ExtensionalEquality):
         return _shapley_regression_kernel(n_players)
 
 ShapleyValue = SV()
+"""Ready-made Shapley value instance: a shorthand for ``SV()``."""
+
 
 @dataclass(frozen=True, eq=False)
 class BV(ExtensionalEquality):
     """The Banzhaf value: uniform-coalition attribution to single players."""
 
     name: ClassVar[InteractionIndexName] = "BV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -241,6 +228,8 @@ class BV(ExtensionalEquality):
         return _banzhaf_derivative_weights(n_players, 1)
 
 BanzhafValue = BV()
+"""Ready-made Banzhaf value instance: a shorthand for ``BV()``."""
+
 
 @dataclass(frozen=True, eq=False)
 class WeightedBV(ExtensionalEquality):
@@ -256,8 +245,6 @@ class WeightedBV(ExtensionalEquality):
     p: float = 0.5
 
     name: ClassVar[InteractionIndexName] = "WeightedBV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -292,8 +279,6 @@ class SII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "SII"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -317,8 +302,6 @@ class BII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "BII"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[BV] = BV()
 
@@ -349,8 +332,6 @@ class WeightedBII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "WeightedBII"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
 
     def __post_init__(self) -> None:
@@ -388,8 +369,6 @@ class CHII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "CHII"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -415,8 +394,6 @@ class STII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "STII"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -444,8 +421,6 @@ class KSII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "k-SII"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -466,8 +441,6 @@ class FSII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "FSII"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -494,8 +467,6 @@ class FBII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "FBII"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 0
     generalizes: ClassVar[BV] = BV()
 
@@ -534,8 +505,6 @@ class WeightedFBII(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "WeightedFBII"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 0
 
     def __post_init__(self) -> None:
@@ -580,8 +549,6 @@ class KADDSHAP(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "kADD-SHAP"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -607,8 +574,6 @@ class Moebius(ExtensionalEquality):
     order: int | None = None
 
     name: ClassVar[InteractionIndexName] = "Moebius"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -635,8 +600,6 @@ class CoMoebius(ExtensionalEquality):
     order: int | None = None
 
     name: ClassVar[InteractionIndexName] = "Co-Moebius"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 0
     generalizes: ClassVar[None] = None
 
@@ -662,8 +625,6 @@ class SGV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "SGV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -687,8 +648,6 @@ class BGV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "BGV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[BV] = BV()
 
@@ -713,8 +672,6 @@ class CHGV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "CHGV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 
@@ -738,8 +695,6 @@ class IGV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "IGV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -764,8 +719,6 @@ class EGV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "EGV"
-    order_semantics: ClassVar[OrderSemantics] = "coverage"
-    preserves_value: ClassVar[bool] = True
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None
 
@@ -790,8 +743,6 @@ class JointSV(ExtensionalEquality):
     order: int = 2
 
     name: ClassVar[InteractionIndexName] = "JointSV"
-    order_semantics: ClassVar[OrderSemantics] = "identity"
-    preserves_value: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[SV] = SV()
 

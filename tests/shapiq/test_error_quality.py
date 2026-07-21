@@ -67,11 +67,8 @@ class _ShortWeights:
     order: int = 1
 
     name: ClassVar = "SII"  # borrow a shipped name to isolate the length check
-    order_semantics: ClassVar = "coverage"
-    orientation: ClassVar = "undirected"
     includes_empty_interaction: ClassVar = False
     min_interaction_size: ClassVar = 1
-    preserves_value: ClassVar = True
     generalizes: ClassVar = None
 
     def derivative_weights(self, n_players: int, interaction_size: int):
@@ -100,11 +97,8 @@ class _UniformKernel:
     order: int = 1
 
     name: ClassVar = "Uniformish"
-    order_semantics: ClassVar = "identity"
-    orientation: ClassVar = "undirected"
     includes_empty_interaction: ClassVar = False
     min_interaction_size: ClassVar = 1
-    preserves_value: ClassVar = False
     generalizes: ClassVar = None
 
     def regression_kernel(self, n_players: int):

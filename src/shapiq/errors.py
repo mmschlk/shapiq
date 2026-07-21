@@ -11,10 +11,6 @@ class UnsupportedGameError(TypeError):
     """Raised when an explainer cannot work with a supplied game."""
 
 
-class SamplingError(RuntimeError):
-    """Raised when a sampler cannot produce requested coalitions."""
-
-
 class HistoryError(IndexError):
     """Raised when approximation history is unavailable or invalid."""
 

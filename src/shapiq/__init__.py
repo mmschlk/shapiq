@@ -4,7 +4,6 @@ from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
 from shapiq.errors import (
     HistoryError,
     InsufficientSamplesError,
-    SamplingError,
     SamplingStallWarning,
     UnsupportedGameError,
 )
@@ -49,8 +48,10 @@ from shapiq.interactions import (
     SII,
     STII,
     SV,
+    BanzhafValue,
     CardinalInteractionIndex,
     CoMoebius,
+    ExtensionalEquality,
     GeneralizedValueIndex,
     Interaction,
     InteractionIndex,
@@ -58,8 +59,8 @@ from shapiq.interactions import (
     InteractionOrientation,
     JointSV,
     Moebius,
-    OrderSemantics,
     RegressionIndex,
+    ShapleyValue,
     WeightedBII,
     WeightedBV,
     WeightedFBII,
@@ -68,6 +69,7 @@ from shapiq.interactions import (
     validate_interaction_metadata,
 )
 from shapiq.sampling import (
+    AntitheticDraws,
     ApproximationState,
     BanzhafKernelSampler,
     EmptyState,
@@ -80,10 +82,11 @@ from shapiq.sampling import (
     Sampler,
     SamplingState,
     ShapleyKernelSampler,
+    ShareSamples,
     SizeKernelSampler,
     UnitScheduleSampler,
 )
-from shapiq.trees import InterventionalTreeGame, TreeModel, to_tree_model
+from shapiq.trees import InterventionalTreeGame, LeafConstraints, TreeModel, to_tree_model
 
 try:
     from ._version import __version__
@@ -91,7 +94,9 @@ except ImportError:  # pragma: no cover - _version.py is generated at build time
     __version__ = "0.0.0"
 
 __all__ = [
+    "AntitheticDraws",
     "BanzhafKernelSampler",
+    "BanzhafValue",
     "BGV",
     "CHGV",
     "CHII",
@@ -124,6 +129,7 @@ __all__ = [
     "ExactExplainer",
     "Explainer",
     "ExplanationArray",
+    "ExtensionalEquality",
     "Game",
     "HistoryError",
     "InsufficientSamplesError",
@@ -132,6 +138,7 @@ __all__ = [
     "InteractionIndexName",
     "InteractionOrientation",
     "InterventionalTreeGame",
+    "LeafConstraints",
     "LinkFunction",
     "MaskedGame",
     "MaskedPredictor",
@@ -139,7 +146,6 @@ __all__ = [
     "Model",
     "ModelMaskedPredictor",
     "KernelSampler",
-    "OrderSemantics",
     "PairedSampler",
     "PermutationSIISampler",
     "PermutationSTIISampler",
@@ -150,10 +156,11 @@ __all__ = [
     "SizeKernelSampler",
     "RegressionIndex",
     "Sampler",
-    "SamplingError",
     "SamplingStallWarning",
     "SamplingState",
     "ShapleyKernelSampler",
+    "ShapleyValue",
+    "ShareSamples",
     "SparseExplanationArray",
     "SuperpixelMasker",
     "TokenMasker",

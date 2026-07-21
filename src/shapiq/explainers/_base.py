@@ -37,10 +37,8 @@ _SHIPPED_EXAMPLES = {
 _INDEX_MEMBERS = (
     "name",
     "order",
-    "order_semantics",
     "min_interaction_size",
     "includes_empty_interaction",
-    "preserves_value",
     "generalizes",
 )
 

@@ -27,4 +27,3 @@ type InteractionIndexName = Literal[
 ]
 type InteractionOrientation = Literal["undirected", "directed"]
 type Interaction = tuple[int, ...]
-type OrderSemantics = Literal["coverage", "identity"]

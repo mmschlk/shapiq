@@ -18,6 +18,7 @@ from shapiq.interactions._indices import (
     SII,
     STII,
     SV,
+    BanzhafValue,
     CardinalInteractionIndex,
     CoMoebius,
     ExtensionalEquality,
@@ -26,6 +27,7 @@ from shapiq.interactions._indices import (
     JointSV,
     Moebius,
     RegressionIndex,
+    ShapleyValue,
     WeightedBII,
     WeightedBV,
     WeightedFBII,
@@ -35,7 +37,6 @@ from shapiq.interactions._types import (
     Interaction,
     InteractionIndexName,
     InteractionOrientation,
-    OrderSemantics,
 )
 from shapiq.interactions._validation import normalize_interaction, validate_interaction_metadata
 
@@ -55,6 +56,7 @@ __all__ = [
     "SII",
     "STII",
     "SV",
+    "BanzhafValue",
     "CardinalInteractionIndex",
     "CoMoebius",
     "ExtensionalEquality",
@@ -65,8 +67,8 @@ __all__ = [
     "InteractionOrientation",
     "JointSV",
     "Moebius",
-    "OrderSemantics",
     "RegressionIndex",
+    "ShapleyValue",
     "WeightedBII",
     "WeightedBV",
     "WeightedFBII",

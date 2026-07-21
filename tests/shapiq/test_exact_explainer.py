@@ -209,7 +209,6 @@ def test_unsupported_indices_are_rejected():
     class WeightlessIndex:
         name = "SII"
         order = 1
-        order_semantics = "coverage"
         includes_empty_interaction = False
 
     with pytest.raises(TypeError, match="does not support"):
@@ -220,11 +219,8 @@ def test_unsupported_indices_are_rejected():
         SV(order=1)  # the Shapley value has no order freedom
 
 
-def test_index_objects_expose_order_and_semantics():
+def test_index_objects_expose_order():
     assert SV().order == 1
     assert SII().order == 2
-    assert SII(order=3).order_semantics == "coverage"
-    assert STII(order=3).order_semantics == "identity"
-    assert FSII().order_semantics == "identity"
     with pytest.raises(ValueError, match="order"):
         SII(order=0)

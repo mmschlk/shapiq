@@ -51,9 +51,6 @@ def validate_interaction_metadata(
     if orientation not in {"undirected", "directed"}:
         msg = f"unsupported interaction orientation: {orientation!r}"
         raise ValueError(msg)
-    if index_name in {"SV", "BV"} and order != 1:
-        msg = f"{index_name} requires order == 1"
-        raise ValueError(msg)
     if orientation != "undirected":
         msg = f"{index_name} currently supports only undirected interactions"
         raise ValueError(msg)
