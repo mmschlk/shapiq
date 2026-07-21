@@ -1,13 +1,37 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Self
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 from shapiq._shape import Shape, ShapeLike, normalize_shape, validate_int, validate_n_players
 from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
 from shapiq.sampling._state import ApproximationState
 
+if TYPE_CHECKING:
+    from jax import Array
+
 type ShareSamples = bool | int | tuple[int, ...]
+
+
+@runtime_checkable
+class LawfulSampler(Protocol):
+    """Optional capability: the marginal law of one sampled coalition.
+
+    Samplers whose sampled stream positions are identically distributed may
+    declare their law. ``log_probability`` answers for the marginal
+    distribution of one sampled position *after* all wrapper
+    transformations (pairing symmetrizes the wrapped law), in log-space so
+    many-player binomials stay finite; coalitions outside the support
+    answer ``-inf``. The deterministic seed block sits outside the law —
+    its rows are certain, not sampled. Samplers with unit-correlated
+    streams (permutation walks) do not implement the capability:
+    Horvitz-Thompson-style estimators check for it, and unit-structured
+    estimators never need it.
+    """
+
+    def log_probability(self, coalitions: CoalitionArray) -> Array:
+        """Return per-coalition log-probabilities under the sampling law."""
+        ...
 
 
 class Sampler[StateT: ApproximationState](ABC):

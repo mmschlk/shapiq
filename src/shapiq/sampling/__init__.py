@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapiq.sampling._base import Sampler, ShareSamples
+from shapiq.sampling._base import LawfulSampler, Sampler, ShareSamples
 from shapiq.sampling._kernel import (
     BanzhafKernelSampler,
     KernelSampler,
@@ -22,6 +22,7 @@ __all__ = [
     "ChainPlan",
     "EmptyState",
     "KernelSampler",
+    "LawfulSampler",
     "PairedSampler",
     "PermutationSampler",
     "ProductKernelSampler",

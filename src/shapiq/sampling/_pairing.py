@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import jax.numpy as jnp
 
+from shapiq.coalitions import DenseCoalitionArray
+from shapiq.sampling._base import LawfulSampler
 from shapiq.sampling._schedule import UnitScheduleSampler
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from jax import Array
+
+    from shapiq.coalitions import CoalitionArray
 
 
 @runtime_checkable
@@ -80,6 +87,12 @@ class PairedSampler(UnitScheduleSampler):
             random_state=0,
         )
         self.sampler = sampler
+        # pairing complements non-hook units, so the marginal law of one
+        # paired sample is the complement symmetrization of the wrapped law;
+        # a sampler with custom antithetic draws keeps its law undeclared
+        # under pairing, because its antithesis is not the complement
+        if isinstance(sampler, LawfulSampler) and not isinstance(sampler, AntitheticDraws):
+            self.log_probability = partial(_paired_log_probability, sampler.log_probability)
 
     @property
     def sampling_quantum(self) -> int:
@@ -92,8 +105,15 @@ class PairedSampler(UnitScheduleSampler):
         return self.sampler.n_seed_samples
 
     def __getattr__(self, name: str) -> object:
-        """Expose the wrapped sampler's metadata (plan, p, ...)."""
-        if name.startswith("_"):
+        """Expose the wrapped sampler's metadata (plan, p, ...).
+
+        The law is never forwarded verbatim: when the wrapped sampler
+        declares one and pairing means complementing, the symmetrized law
+        is grafted as an instance attribute at construction and found
+        before this fallback; in every other case the paired law is
+        undeclared, so the ``LawfulSampler`` capability check stays honest.
+        """
+        if name == "log_probability" or name.startswith("_"):
             msg = f"{type(self).__name__!r} object has no attribute {name!r}"
             raise AttributeError(msg)
         return getattr(self.sampler, name)
@@ -124,3 +144,12 @@ class PairedSampler(UnitScheduleSampler):
             rendered = self.sampler._sampled_unit_batch(unit_indices)  # noqa: SLF001 - wrapped units
             antithetic = ~rendered
         return jnp.concatenate([rendered, antithetic], axis=-2)
+
+
+def _paired_log_probability(
+    inner_law: Callable[[CoalitionArray], Array],
+    coalitions: CoalitionArray,
+) -> Array:
+    """Return the complement-symmetrized law of one paired sample."""
+    complements = DenseCoalitionArray(~jnp.asarray(coalitions.to_dense()))
+    return jnp.logaddexp(inner_law(coalitions), inner_law(complements)) - jnp.log(2.0)

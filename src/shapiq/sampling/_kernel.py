@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Self
 import jax
 import jax.numpy as jnp
 from jax import Array
+from jax.scipy.special import gammaln
 
 from shapiq.sampling._schedule import UnitScheduleSampler
 
@@ -14,7 +15,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from shapiq._shape import ShapeLike
+    from shapiq.coalitions import CoalitionArray
     from shapiq.sampling._base import ShareSamples
+
+
+def _log_binomial(n_players: int, sizes: Array) -> Array:
+    """Return ``log(comb(n_players, sizes))`` via log-gamma, finite at any size."""
+    total = gammaln(n_players + 1.0)
+    return total - gammaln(sizes + 1.0) - gammaln(n_players - sizes + 1.0)
 
 
 class KernelSampler(UnitScheduleSampler):
@@ -121,6 +129,21 @@ class SizeKernelSampler(KernelSampler):
             raise ValueError(msg)
         self._sizes = support
         self._size_probabilities = weights[support] / jnp.sum(weights[support])
+
+    def log_probability(self, coalitions: CoalitionArray) -> Array:
+        """Return the log-probability of drawing each given coalition.
+
+        A coalition of size ``t`` is drawn with probability
+        ``size_probability(t) / comb(n_players, t)``; sizes outside the
+        sampled support answer ``-inf``. This is the sampler's
+        ``LawfulSampler`` capability.
+        """
+        sizes = jnp.sum(jnp.asarray(coalitions.to_dense()), axis=-1).astype(jnp.int32)
+        table = jnp.full(self.n_players + 1, -jnp.inf)
+        table = table.at[self._sizes].set(
+            jnp.log(self._size_probabilities) - _log_binomial(self.n_players, self._sizes),
+        )
+        return table[sizes]
 
     @classmethod
     def from_coalition_kernel(
@@ -299,6 +322,17 @@ class ProductKernelSampler(KernelSampler):
             )
             raise ValueError(msg)
         self.p = float(p)
+
+    def log_probability(self, coalitions: CoalitionArray) -> Array:
+        """Return the log-probability of flipping each given coalition.
+
+        A coalition of size ``t`` is drawn with probability
+        ``p**t * (1 - p)**(n - t)``; the product measure has full support,
+        including the empty and grand coalition. This is the sampler's
+        ``LawfulSampler`` capability.
+        """
+        sizes = jnp.sum(jnp.asarray(coalitions.to_dense()), axis=-1)
+        return sizes * jnp.log(self.p) + (self.n_players - sizes) * jnp.log1p(-self.p)
 
     def _unit_from_key(self, unit_key: Array) -> Array:
         """Render the single-row unit a unit key stands for."""
