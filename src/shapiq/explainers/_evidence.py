@@ -11,7 +11,7 @@ from shapiq._shape import ensure_bool, logical_size, validate_int
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.errors import InsufficientSamplesError, SamplingStallWarning
 from shapiq.explainers._approximator import Approximator
-from shapiq.explainers._valueaxes import to_leading, to_trailing
+from shapiq.explainers._valueaxes import to_leading
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, Sampler, SamplingState
 
@@ -64,6 +64,17 @@ class EvidenceApproximator(
             f"n_pending_samples={self.sampler.n_pending_samples!r}, "
             f"deduplicate={self.deduplicate!r})"
         )
+
+    def _evaluate(self, coalitions: CoalitionArray) -> Array:
+        """Evaluate the game and enter values in the canonical layout.
+
+        This is the single entry seam where boundary values (broadcast
+        targets, then samples, then value axes — the public game contract)
+        become the canonical internal layout: value axes leading, sample
+        axis last. Everything behind this seam — the state, the estimators —
+        computes on the canonical layout and never moves value axes again.
+        """
+        return to_leading(jnp.asarray(self.game(coalitions)), len(self.game.value_shape))
 
     def _init_deduplication(self, *, deduplicate: bool) -> None:
         """Validate and store the deduplication policy."""
@@ -195,26 +206,23 @@ class EvidenceApproximator(
         state_duplicates: list[tuple[int, int]],
         batch_duplicates: list[tuple[int, int]],
     ) -> Array:
-        """Evaluate novel coalitions and fill duplicates from stored values."""
+        """Evaluate novel coalitions and fill duplicates from stored values.
+
+        Novel values enter through ``_evaluate`` and stored values are
+        already canonical, so the stitched result is canonical throughout.
+        """
         target_shape = self.game.target_shape
         value_shape = self.game.value_shape
-        n_value_axes = len(value_shape)
         novel_values: Array | None = None
         if novel_positions:
             novel_index = jnp.asarray(novel_positions)
-            novel_values = to_leading(
-                jnp.asarray(self.game(DenseCoalitionArray(masks[..., novel_index, :]))),
-                n_value_axes,
-            )
+            novel_values = self._evaluate(DenseCoalitionArray(masks[..., novel_index, :]))
         state_values = None
         # reading stored values materializes the state's lazy chunks, so only
         # touch them when duplicates need filling or no novel values exist to
         # serve as the dtype reference
         if isinstance(self.state, SamplingState) and (state_duplicates or not novel_positions):
-            state_values = to_leading(
-                jnp.asarray(cast("SamplingState[Array]", self.state).values),
-                n_value_axes,
-            )
+            state_values = jnp.asarray(cast("SamplingState[Array]", self.state).values)
         reference = novel_values if novel_values is not None else state_values
         if reference is None:  # unreachable: a first call always yields novel seeds
             msg = "deduplicated sampling produced neither novel nor stored values"
@@ -233,14 +241,13 @@ class EvidenceApproximator(
             positions = jnp.asarray([position for position, _ in batch_duplicates])
             ranks = jnp.asarray([rank for _, rank in batch_duplicates])
             values = values.at[..., positions].set(novel_values[..., ranks])
-        return to_trailing(values, n_value_axes)
+        return values
 
     def _append_state(self, coalitions: CoalitionArray, values: Array) -> SamplingState[Array]:
         """Append sampled coalitions, creating the evidence state on first use.
 
         Value shapes are validated at the game boundary; states store values
-        with the sample axis at the target-shape position and any value axes
-        trailing.
+        in the canonical layout — value axes leading, sample axis last.
         """
         checked_values = jnp.asarray(values)
         if isinstance(self.state, SamplingState):

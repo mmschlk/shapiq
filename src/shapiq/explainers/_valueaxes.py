@@ -1,10 +1,14 @@
-"""Axis moves between the boundary value layout and the internal compute form.
+"""Axis moves between the boundary value layout and the canonical internal layout.
 
-At the game boundary and in sampling states, dense values carry logical axes
-first, then the sample axis, then the value's internal axes (ADR 0006).
-Estimators accumulate with the value axes moved to the front instead: leading
-axes broadcast against mask-derived arrays by left-padding, which is always
-correct, whereas trailing value axes would misalign silently.
+Game values cross exactly two seams. On entry — ``EvidenceApproximator._evaluate``
+for sampled evidence, ``ExactExplainer._game_values`` for the powerset — boundary
+values (broadcast targets, then samples, then value axes, per ADR 0006) become
+the canonical internal layout: value axes leading, sample axis last. Leading
+value axes broadcast against mask-derived arrays by left-padding, which is
+always correct, whereas trailing value axes would misalign silently. On exit —
+explanation construction — attribution blocks and baselines return to the
+public trailing layout. Between the seams, states and estimators never move
+value axes.
 """
 
 from __future__ import annotations

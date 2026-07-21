@@ -11,7 +11,7 @@ from shapiq._shape import broadcast_shapes, ensure_bool
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._evidence import EvidenceApproximator
-from shapiq.explainers._valueaxes import to_leading, to_trailing
+from shapiq.explainers._valueaxes import to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
@@ -171,7 +171,7 @@ class PermutationSampling(EvidenceApproximator):
             )
             raise InsufficientSamplesError(msg)
         coalitions = jnp.asarray(self.state.coalitions.to_dense())
-        values = to_leading(jnp.asarray(self.state.values), len(self.game.value_shape))
+        values = jnp.asarray(self.state.values)  # canonical: sample axis last
         stop = n_seeds + n_walks * quantum
         walk_masks = jnp.reshape(
             coalitions[..., n_seeds:stop, :],

@@ -116,6 +116,9 @@ class EmptyState(ApproximationState):
 class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
     """Approximation state storing sampled coalitions and evaluated values.
 
+    Values are stored in the canonical internal layout — value axes
+    leading, then target axes, with the sample axis last — so the sample
+    axis is always ``[..., :n]`` regardless of target or value shapes.
     Evidence accumulates as chunks: ``append`` shares the stored chunks and
     adds the new one without copying, and the ``coalitions`` and ``values``
     views concatenate all chunks once, on first access, caching the result.
@@ -139,7 +142,8 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
 
         Args:
             coalitions: The sampled coalitions, as a dense coalition array.
-            values: The evaluated values aligned with the coalitions.
+            values: The evaluated values aligned with the coalitions, in the
+                canonical layout (value axes leading, sample axis last).
             target_shape: The game's explanation-target shape.
             track_history: Whether to record value-equivalent history.
             _history_n_samples: Internal compact history carried by
@@ -154,7 +158,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         _require_dense(coalitions)
         self.target_shape = normalize_shape(target_shape)
         self.track_history = track_history
-        _validate_values_alignment(coalitions, values, axis=len(self.target_shape))
+        _validate_values_alignment(coalitions, values)
         self._chunks: tuple[tuple[CoalitionArray, ValueT], ...] = ((coalitions, values),)
         self._history_n_samples = _history_n_samples
         if track_history and self.mutable:
@@ -211,12 +215,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
             msg = "coalitions use a different shared target shape"
             raise ValueError(msg)
         _require_dense(coalitions)
-        _validate_values_alignment(
-            coalitions,
-            values,
-            axis=len(self.target_shape),
-            like=self._chunks[0][1],
-        )
+        _validate_values_alignment(coalitions, values, like=self._chunks[0][1])
         appended = copy(self)
         appended._chunks = (*self._chunks, (coalitions, values))  # noqa: SLF001 - evolving a copy of self
         if self.track_history:
@@ -241,7 +240,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
                 "ValueT",
                 jnp.concatenate(
                     [jnp.asarray(values) for _, values in self._chunks],
-                    axis=len(self.target_shape),
+                    axis=-1,
                 ),
             )
             self._chunks = ((merged_coalitions, merged_values),)
@@ -293,7 +292,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
 
     def _slice_to(self, n_samples: int) -> SamplingState[ValueT]:
         key = (*((slice(None),) * len(self.shared_target_shape)), slice(0, n_samples))
-        value_key = (*((slice(None),) * len(self.target_shape)), slice(0, n_samples), Ellipsis)
+        value_key = (Ellipsis, slice(0, n_samples))
         history = tuple(count for count in self._require_history() if count <= n_samples)
         return type(self)(
             coalitions=self.coalitions[key],
@@ -323,16 +322,16 @@ def _validate_values_alignment(
     coalitions: CoalitionArray,
     values: object,
     *,
-    axis: int,
     like: object = None,
 ) -> None:
     """Reject values whose shape does not pair with the coalitions.
 
     Deferring this to the lazy chunk concatenation would blame the read
-    instead of the append that stored the misaligned block. The sample axis
-    must match the coalitions; with a stored reference block ``like``, the
-    remaining axes must match it too. Values without a shape (nested
-    sequences) pass through and fail at materialization.
+    instead of the append that stored the misaligned block. Values arrive in
+    the canonical layout, so the last axis is the sample axis and must match
+    the coalitions; with a stored reference block ``like``, the leading axes
+    must match it too. Values without a shape (nested sequences) pass
+    through and fail at materialization.
     """
     if coalitions.shape == ():
         return
@@ -341,21 +340,21 @@ def _validate_values_alignment(
         return
     n_samples = coalitions.shape[-1]
     like_shape = getattr(like, "shape", None)
-    if like_shape is not None and len(like_shape) > axis:
-        expected = (*like_shape[:axis], n_samples, *like_shape[axis + 1 :])
+    if like_shape is not None:
+        expected = (*like_shape[:-1], n_samples)
         if tuple(shape) != expected:
             msg = (
                 f"values with shape {tuple(shape)} do not pair with the stored "
-                f"evidence: expected {tuple(expected)} (target axes, then "
-                f"{n_samples} samples, then value axes)"
+                f"evidence: expected {tuple(expected)} (value axes leading, "
+                f"then target axes, then {n_samples} samples last)"
             )
             raise ValueError(msg)
         return
-    if len(shape) <= axis or shape[axis] != n_samples:
+    if len(shape) < 1 or shape[-1] != n_samples:
         msg = (
             f"values with shape {tuple(shape)} do not pair with {n_samples} "
-            f"sampled coalitions: the sample axis follows the target axes "
-            f"(axis {axis}), then any value axes trail"
+            "sampled coalitions: the canonical layout carries value axes "
+            "leading, then target axes, with the sample axis last"
         )
         raise ValueError(msg)
 

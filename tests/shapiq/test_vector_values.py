@@ -172,7 +172,8 @@ def test_vector_history_slices_evidence_states():
         2 + 2 * (N_PLAYERS - 1),
     ]
     rolled = approximator.rollback()
-    assert jnp.asarray(rolled.state.values).shape == (2 + (N_PLAYERS - 1), 2)
+    # canonical state layout: value axes leading, sample axis last
+    assert jnp.asarray(rolled.state.values).shape == (2, 2 + (N_PLAYERS - 1))
 
 
 def test_misdeclared_value_shapes_are_rejected_at_the_boundary():

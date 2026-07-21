@@ -18,7 +18,7 @@ from shapiq.explainers._faithful import (
     lstsq_identified,
     solve_faithful,
 )
-from shapiq.explainers._valueaxes import to_leading, to_trailing
+from shapiq.explainers._valueaxes import to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (
@@ -215,7 +215,7 @@ class Regression(EvidenceApproximator):
         value_shape = self.game.value_shape
         n_value_axes = len(value_shape)
         masks = jnp.asarray(self.state.coalitions.to_dense())[..., :usable, :]
-        values = to_leading(jnp.asarray(self.state.values), n_value_axes)[..., :usable]
+        values = jnp.asarray(self.state.values)[..., :usable]  # canonical: sample axis last
         value_empty = values[..., 0]
         value_grand = values[..., 1]
         n_rows = usable - n_seeds

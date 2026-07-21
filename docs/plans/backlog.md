@@ -9,9 +9,9 @@ findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last tru
 
 | Item | What | Source | Status / when |
 | --- | --- | --- | --- |
-| Amortized lifecycle ADR | fit-once/explain-many doesn't fit `Explainer(game).explain()`; sibling ABC vs `explain(target)`; facade currency = (model, masker, index) | VI.3 | open — grill session, **before facade**; also decides `__call__` fate (F5e) |
-| Value-layout canonicalization | one internal layout (value axes leading), convert once at game boundary + explanation construction; kills the 23 `to_leading`/`to_trailing` sites | Part III, VI.2 | open — before new estimator families |
+| Amortized lifecycle ADR | fit-once/explain-many doesn't fit `Explainer(game).explain()`; sibling ABC vs `explain(target)`; facade currency = (model, masker, index) | VI.3 | **deferred** (user 2026-07-21) — still before facade; also decides `__call__` fate (F5e) |
 | History rework | keep `history()`/`rollback()` as anytime-estimator identity; rebuild as always-on cut points + sampler replay (arithmetic fast-forward — samplers are pure functions of emitted count); drop `track_history`, parallel sampler tuple, lockstep check, `EmptyState` edge-case law, `HistoryError` | F3-revised | direction accepted — after `_state.py` settles post-#564 |
+| Sampling-state addressability | state-owned `unique()` view (chunk-mirrored key store; dedup's `_dedup_keys` machinery becomes a consumer, Regression gets the smaller unique-solve) + `LawfulSampler` capability (`log_probability`, log-space, wrappers transform) + exactness-strata design note | issue-13 | designed — unique view before/with history rework; law lands with the sampled k-SII port as first consumer |
 | Game-call seam | issue 9: one evaluation path per approximator, dedup becomes an evaluation policy; backend-agnostic chunking generalization lives here too | issue-9 | not started |
 
 ## B — API surface & ergonomics (small–medium)

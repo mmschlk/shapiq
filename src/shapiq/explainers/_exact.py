@@ -124,7 +124,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         """
         n_players = self.game.n_players
         n_value_axes = len(self.game.value_shape)
-        values = to_leading(self._game_values(), n_value_axes)
+        values = self._game_values()
         baseline = to_trailing(values[..., 0], n_value_axes)
         values = values - values[..., :1]
         masks = _powerset_masks(n_players)
@@ -184,10 +184,18 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         )
 
     def _game_values(self) -> Array:
-        """Evaluate the game on the full powerset once and reuse the values."""
+        """Evaluate the game on the full powerset once and reuse the values.
+
+        This is the exact explainer's entry seam: boundary values become the
+        canonical internal layout (value axes leading, sample axis last)
+        here, and the cache holds them canonically.
+        """
         if self._powerset_values is None:
             coalitions = DenseCoalitionArray(_powerset_masks(self.game.n_players))
-            self._powerset_values = jnp.asarray(self.game(coalitions))
+            self._powerset_values = to_leading(
+                jnp.asarray(self.game(coalitions)),
+                len(self.game.value_shape),
+            )
         return self._powerset_values
 
 

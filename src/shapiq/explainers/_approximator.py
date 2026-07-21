@@ -56,10 +56,14 @@ class Approximator[
         if budget == 0:
             return self
         coalitions, next_sampler = self.sampler.sample(self.state, budget)
-        values = self.game(coalitions)
+        values = self._evaluate(coalitions)
         next_state = self._append_state(coalitions, values)
         next_history = self._next_sampler_history(next_sampler)
         return self._replace(state=next_state, sampler=next_sampler, sampler_history=next_history)
+
+    def _evaluate(self, coalitions: CoalitionArray) -> ValueT:
+        """Evaluate the game; subclasses may normalize the value layout here."""
+        return self.game(coalitions)
 
     def approximate(self, budget: int) -> ExplanationArray[ValueT]:
         """Sample a budget and return explanations."""

@@ -12,7 +12,14 @@ if TYPE_CHECKING:
 
 
 class Game[ValueT](ABC):
-    """Base abstraction for cooperative games."""
+    """Base abstraction for cooperative games.
+
+    Estimators are linear in game values, so ``ValueT`` must form a vector
+    space over the reals: addition, scalar multiplication, and the centering
+    ``v - v(empty)`` must be meaningful. Class-probability vectors, margin
+    vectors, and embeddings qualify; anything nonlinear belongs in the link
+    function, before predictions become values.
+    """
 
     n_players: int
     target_shape: Shape
