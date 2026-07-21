@@ -13,7 +13,7 @@ from shapiq.sampling._kernel import (
 from shapiq.sampling._pairing import AntitheticDraws, PairedSampler
 from shapiq.sampling._permutation import ChainPlan, PermutationSampler, WalkPlan
 from shapiq.sampling._schedule import UnitScheduleSampler
-from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState
+from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState, UniqueView
 
 __all__ = [
     "AntitheticDraws",
@@ -30,6 +30,7 @@ __all__ = [
     "ShapleyKernelSampler",
     "ShareSamples",
     "SizeKernelSampler",
+    "UniqueView",
     "UnitScheduleSampler",
     "WalkPlan",
 ]

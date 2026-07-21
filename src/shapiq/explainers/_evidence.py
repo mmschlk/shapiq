@@ -4,7 +4,6 @@ import warnings
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import jax.numpy as jnp
-import numpy as np
 from jax import Array
 
 from shapiq._shape import ensure_bool, logical_size, validate_int
@@ -14,6 +13,7 @@ from shapiq.explainers._approximator import Approximator
 from shapiq.explainers._valueaxes import to_leading
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, Sampler, SamplingState
+from shapiq.sampling._state import coalition_keys
 
 if TYPE_CHECKING:
     from shapiq.coalitions import CoalitionArray
@@ -39,7 +39,6 @@ class EvidenceApproximator(
     """
 
     deduplicate: bool
-    _dedup_keys: tuple[int, int, dict[bytes, int]] | None
 
     @property
     def min_budget(self) -> int:
@@ -79,7 +78,6 @@ class EvidenceApproximator(
     def _init_deduplication(self, *, deduplicate: bool) -> None:
         """Validate and store the deduplication policy."""
         self.deduplicate = ensure_bool("deduplicate", deduplicate)
-        self._dedup_keys = None
         if self.deduplicate and logical_size(self.sampler.shared_target_shape) != 1:
             msg = (
                 "deduplicate=True requires the same coalitions to be sampled for every "
@@ -139,7 +137,7 @@ class EvidenceApproximator(
             dense = jnp.asarray(coalitions.to_dense())
             chunks.append(dense)
             found = 0
-            for key in _coalition_keys(dense):
+            for key in coalition_keys(dense):
                 if key in batch_ranks:
                     batch_duplicates.append((position, batch_ranks[key]))
                 elif key in known:
@@ -164,39 +162,24 @@ class EvidenceApproximator(
         values = self._stitch_values(masks, novel_positions, state_duplicates, batch_duplicates)
         next_state = self._append_state(DenseCoalitionArray(masks), values)
         next_history = self._next_sampler_history(sampler)
-        base = self.state.n_samples if isinstance(self.state, SamplingState) else 0
-        for key, rank in batch_ranks.items():
-            known[key] = base + novel_positions[rank]
-        evolved = cast(
-            "EvidenceApproximator",
-            self._replace(state=next_state, sampler=sampler, sampler_history=next_history),
-        )
-        evolved._dedup_keys = (next_state.n_samples, len(known), known)  # noqa: SLF001 - evolving a copy of self
-        return evolved
+        return self._replace(state=next_state, sampler=sampler, sampler_history=next_history)
 
     def _known_coalitions(self) -> dict[bytes, int]:
         """Map every stored coalition to its first sample index.
 
-        The map is carried forward across sample calls: the approximator at
-        the tip of a sampling chain extends it in place, a branch (sampling
-        twice from the same approximator) detects the foreign extension via
-        the recorded length and copies its own entries, and any other state
-        change (rollback, history) misses the sample-count token and rebuilds
-        from the stored coalitions.
+        The state owns coalition identity: its packed keys are computed once
+        per state and cached, so building the map is a plain host pass with
+        no carried bookkeeping — branching a sampling chain, rollback, and
+        history need no special cases.
         """
         if not isinstance(self.state, SamplingState):
             return {}
-        n_samples = self.state.n_samples
-        if self._dedup_keys is not None:
-            cached_samples, cached_length, cached = self._dedup_keys
-            if cached_samples == n_samples:
-                if cached_length == len(cached):
-                    return cached
-                return {key: index for key, index in cached.items() if index < n_samples}
-        dense = jnp.asarray(self.state.coalitions.to_dense())
+        packed = cast("SamplingState[Array]", self.state).packed_keys()
+        width = packed.shape[-1]
+        blob = packed.tobytes()
         known: dict[bytes, int] = {}
-        for index, key in enumerate(_coalition_keys(dense)):
-            known.setdefault(key, index)
+        for index in range(packed.shape[0]):
+            known.setdefault(blob[index * width : (index + 1) * width], index)
         return known
 
     def _stitch_values(
@@ -276,12 +259,3 @@ class EvidenceApproximator(
             "`approximator = approximator.sample(budget)`"
         )
         raise InsufficientSamplesError(msg)
-
-
-def _coalition_keys(dense: Array) -> list[bytes]:
-    """Return a hashable identity per sample-axis coalition (shared targets only)."""
-    rows = np.asarray(dense).reshape(-1, dense.shape[-2], dense.shape[-1])[0]
-    packed = np.packbits(rows, axis=-1)
-    width = packed.shape[-1]
-    blob = packed.tobytes()
-    return [blob[start : start + width] for start in range(0, len(blob), width)]

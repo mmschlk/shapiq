@@ -22,11 +22,11 @@ from shapiq import (
     PermutationSampling,
     Regression,
 )
+from shapiq.explainers._permutation import TaylorPlan, WindowPlan
 from shapiq.sampling import (
     BanzhafKernelSampler,
     EmptyState,
-    PermutationSIISampler,
-    PermutationSTIISampler,
+    PermutationSampler,
     ShapleyKernelSampler,
     UnitScheduleSampler,
 )
@@ -68,11 +68,17 @@ def sampler_only_cases() -> dict[str, UnitScheduleSampler]:
         "ShapleyKernelSampler": ShapleyKernelSampler(N_PLAYERS, random_state=0),
         "BanzhafKernelSampler": BanzhafKernelSampler(N_PLAYERS, random_state=0),
         "PairedSampler(ShapleyKernel)": PairedSampler(ShapleyKernelSampler(N_PLAYERS)),
-        "PermutationSIISampler(order=2)": PermutationSIISampler(N_PLAYERS, order=2),
-        "PairedSampler(PermutationSII(order=2))": PairedSampler(
-            PermutationSIISampler(N_PLAYERS, order=2),
+        "PermutationSampler(WindowPlan order=2)": PermutationSampler(
+            N_PLAYERS,
+            plan=WindowPlan(N_PLAYERS, 2),
         ),
-        "PermutationSTIISampler(order=2)": PermutationSTIISampler(N_PLAYERS, order=2),
+        "PairedSampler(Permutation WindowPlan)": PairedSampler(
+            PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2)),
+        ),
+        "PermutationSampler(TaylorPlan order=2)": PermutationSampler(
+            N_PLAYERS,
+            plan=TaylorPlan(N_PLAYERS, 2),
+        ),
     }
 
 
