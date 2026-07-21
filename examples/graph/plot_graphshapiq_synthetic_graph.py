@@ -1,6 +1,8 @@
-"""GraphSHAP-IQ for GNN Explanation.
+"""
+GraphSHAP-IQ for GNN Explanation
+=================================
 
-This example demonstrates how to use :class:`~shapiq.graph.GraphExplainer` to explain
+This example demonstrates how to use the GraphExplainer class to explain
 GNN predictions using the GraphSHAP-IQ algorithm.
 
 We use a small hand-crafted graph and a simple pre-trained GCN to show the API.
