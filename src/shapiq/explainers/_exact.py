@@ -88,14 +88,6 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             ValueError: If the index order is out of range for the game.
         """
         reject_common_index_mistakes(index)
-        for shipped in (KSII, FBII, WeightedFBII, KADDSHAP):
-            if isinstance(index, shipped) and type(index) is not shipped:
-                msg = (
-                    f"{type(index).__name__} subclasses {shipped.__name__}, whose exact "
-                    f"solver dispatches on the exact index type: pass {shipped.__name__} "
-                    "itself or define an independent index with its own capabilities"
-                )
-                raise TypeError(msg)
         if not isinstance(
             index,
             (
@@ -138,13 +130,14 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         masks = _powerset_masks(n_players)
         index = self._exact_index
         order = self.order
-        if type(index) is KSII:
+        # isinstance arms let subclasses inherit the dedicated solvers, the
+        # same MRO rule the sampling family registries follow
+        if isinstance(index, KSII):
             attributions = _aggregated_ksii_attributions(values, masks, order)
-        elif type(index) is FBII:
+        elif isinstance(index, FBII):
             attributions = _free_intercept_regression_attributions(values, masks, order)
-        elif type(index) is WeightedFBII:
-            weighted = cast("WeightedFBII", index)  # type(x) is Y does not narrow in ty
-            kernel = weighted.regression_kernel(n_players)
+        elif isinstance(index, WeightedFBII):
+            kernel = index.regression_kernel(n_players)
             sqrt_weights = jnp.sqrt(kernel / jnp.max(kernel))[jnp.sum(masks, axis=-1)]
             attributions = _free_intercept_regression_attributions(
                 values,
@@ -152,7 +145,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
                 order,
                 sqrt_weights=sqrt_weights,
             )
-        elif type(index) is KADDSHAP:
+        elif isinstance(index, KADDSHAP):
             attributions = _kadd_regression_attributions(values, masks, index, order)
         elif isinstance(index, CardinalInteractionIndex):
             attributions = {

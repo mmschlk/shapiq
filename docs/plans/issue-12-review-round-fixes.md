@@ -86,21 +86,48 @@ wrapper. Backend worlds after this: only torch needs a policy module; a "numpy w
 deliberately empty, a "jax/flax world" is an example file, and Array API backends like cupy
 work through the standard without shapiq code.
 
+### Index handling round: metadata trim, guards removed, contracts trued (2026-07-21)
+
+The API-review follow-up round landed in one pass over the index package and every
+dispatch site:
+
+- **Metadata trim.** `order_semantics` and `preserves_value` left the `InteractionIndex`
+  protocol and all 21 index declarations — no code consumed them; the coverage/identity
+  and value-preservation semantics stay in the index docstrings and are pinned by numeric
+  property tests with test-local index lists (amendment notes on ADR 0005/0009). The
+  protocol is five members: `name`, `order`, `min_interaction_size`,
+  `includes_empty_interaction`, `generalizes` (the last consumed by extensional equality).
+- **Subclass guards removed.** Inheritance is a feature: `MySII(SII)` inherits SII's
+  complete family through the MRO at the experimenter's own semantic risk. All four
+  lookalike guards are gone and their pin tests flipped to assert the flow-through
+  (permutation state bit-identity, regression construction, exact FBII-solver parity,
+  tree-game closed form); `ExactExplainer`'s dedicated solvers switched from exact-type to
+  `isinstance` arms so subclasses inherit them too. Atomic family registries stay — they,
+  not the guards, close the demonstrated half-registration hole (ADR 0011 amendment).
+- **Dispatch-duality ADR amendment** (ADR 0007): "register where the algorithm's variance
+  lives, capability-check the other axis"; the tree-game registry is the named second
+  category — game-type-keyed, index capability-checked.
+- **Dead contracts.** TreeExplainer's game axis raises `UnsupportedGameError` (entry gate
+  and dispatch fallback); `SamplingError` deleted — nothing could raise it: dedup stalls
+  warn by design (ADR 0004), explain-side shortfalls are `InsufficientSamplesError`;
+  `ShapleyValue`/`BanzhafValue` kept and exported as ready-made value shorthands (user
+  decision: instances for people who skip the `SV()` ceremony).
+- **Name-keyed SV/BV check removed** from `validate_interaction_metadata`: names are open
+  (ADR 0009), and only the shipped SV/BV types pin order one — through their own classes.
+- **Exports.** `ShareSamples`, `AntitheticDraws`, `ExtensionalEquality`,
+  `LeafConstraints`, `ShapleyValue`, `BanzhafValue` promoted to the top level;
+  `OrderSemantics` and `SamplingError` left it. Registry docstrings reconciled: families
+  are a library-internal mechanism, and subclasses inherit through the MRO.
+
 ## Open backlog from the reviews (biggest first)
 
 - numpy on-ramp remainder: background-averaging masker (marginal/background-dataset baselines),
   README quickstart, and a dense array exporter (`np.asarray(explanation)` is a silent 0-d
   object array today).
-- Dead contracts: raise `UnsupportedGameError` from TreeExplainer's game axis, find a raiser for
-  or delete `SamplingError`; delete the orphan `ShapleyValue`/`BanzhafValue` singletons.
 - Reprs: samplers, ExactExplainer, TreeExplainer, InterventionalTreeGame are grade-F defaults;
   SamplingState/TreeModel dump full arrays.
-- Exports: promote `ShareSamples`, `AntitheticDraws`, `ExtensionalEquality`, `LeafConstraints`;
-  reconcile family-registry docstrings with the registries-are-internal decision.
-- Dispatch-duality ADR amendment: "register where the algorithm's variance lives,
-  capability-check the other axis"; name the tree-game registry category.
 - Docs/glossary: the `baseline` homonym (reference point vs `v(empty)`), TreeExplainer glossary
-  entry, ADR 0009/0005 drift, the name-keyed SV/BV check in `validate_interaction_metadata`.
+  entry, remaining ADR 0009/0005 drift.
 - Strategic v1 regressions to rank: plots, sampled k-SII, background-dataset baselines,
-  aggregation utilities, PathDependentTreeGame (xgboost/lightgbm converters landed with the
-  conversion kernel, see issue-11; catboost deferred; TokenMasker landed as the text on-ramp).
+  aggregation utilities, PathDependentTreeGame (xgboost/lightgbm/catboost converters landed with
+  the conversion kernel, see issue-11; TokenMasker landed as the text on-ramp).

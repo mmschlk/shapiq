@@ -12,6 +12,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import Array
 
+from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._base import Explainer, reject_common_index_mistakes
 from shapiq.explanations import SparseExplanationArray
 from shapiq.games import Game
@@ -47,30 +48,25 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
         Args:
             game: A registered tree game; ``InterventionalTreeGame`` ships,
                 and a path-dependent sibling is the planned alternative.
+                Subclasses inherit the closest registered ancestor's
+                algorithm.
             index: The interaction index to compute. Any index providing
                 discrete-derivative weights works.
 
         Raises:
-            TypeError: If the game is no registered tree game, or if the
-                index provides no discrete-derivative weights.
+            UnsupportedGameError: If the game is no registered tree game.
+            TypeError: If the index provides no discrete-derivative weights.
         """
         reject_common_index_mistakes(index)
         registered = _registered_tree_games()
-        if type(game) not in registered:
+        if not isinstance(game, registered):
             supported = ", ".join(sorted(kind.__name__ for kind in registered))
-            if isinstance(game, registered):
-                msg = (
-                    f"TreeExplainer dispatches on the exact game type: "
-                    f"{type(game).__name__} subclasses a registered tree game; "
-                    f"pass one of {supported} itself or register a family for it"
-                )
-                raise TypeError(msg)
             msg = (
                 f"TreeExplainer computes registered tree games in closed form, "
                 f"got {type(game).__name__}: registered games are {supported}; "
                 "for arbitrary games use ExactExplainer or a sampling approximator"
             )
-            raise TypeError(msg)
+            raise UnsupportedGameError(msg)
         if not isinstance(index, CardinalInteractionIndex):
             name = getattr(index, "name", type(index).__name__)
             msg = (
@@ -100,13 +96,14 @@ def tree_explanation(
 ) -> SparseExplanationArray[Array]:
     """Compute an interaction index in closed form on a tree game.
 
-    The algorithm dispatches on the exact game type; registering an
-    implementation for a new tree game type extends ``TreeExplainer``.
+    The algorithm dispatches on the game type; subclasses resolve to the
+    closest registered ancestor's algorithm through the MRO, and registering
+    an implementation for a new tree game type extends ``TreeExplainer``.
     """
     del index, order
     supported = ", ".join(sorted(kind.__name__ for kind in _registered_tree_games()))
     msg = f"no closed-form tree explanation is registered for {type(game).__name__} ({supported})"
-    raise TypeError(msg)
+    raise UnsupportedGameError(msg)
 
 
 def _registered_tree_games() -> tuple[type, ...]:

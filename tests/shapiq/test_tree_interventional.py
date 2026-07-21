@@ -26,6 +26,7 @@ from shapiq import (
     Regression,
     TreeExplainer,
     TreeModel,
+    UnsupportedGameError,
     WeightedBII,
     to_tree_model,
 )
@@ -174,7 +175,7 @@ def test_entry_gates_keep_teaching():
         fn=lambda c: jnp.sum(jnp.asarray(c.to_dense(), dtype=jnp.float32), axis=-1),
         n_players=N_PLAYERS,
     )
-    with pytest.raises(TypeError, match="registered games are InterventionalTreeGame"):
+    with pytest.raises(UnsupportedGameError, match="registered games are InterventionalTreeGame"):
         TreeExplainer(quadratic, SV())
     with pytest.raises(TypeError, match="discrete-derivative"):
         TreeExplainer(tree_game(), FSII(order=2))
@@ -182,9 +183,14 @@ def test_entry_gates_keep_teaching():
     class MyTreeGame(InterventionalTreeGame):
         pass
 
+    # a subclassed tree game inherits the closest registered ancestor's closed form
     lookalike = MyTreeGame([stump_tree()], inputs=INPUTS, baseline=BASELINE)
-    with pytest.raises(TypeError, match="subclasses a registered tree game"):
-        TreeExplainer(lookalike, SV())
+    reference = InterventionalTreeGame([stump_tree()], inputs=INPUTS, baseline=BASELINE)
+    assert jnp.allclose(
+        TreeExplainer(lookalike, SV()).explain()((0,)),
+        TreeExplainer(reference, SV()).explain()((0,)),
+        atol=0,
+    )
 
 
 def test_tree_model_validation_teaches():

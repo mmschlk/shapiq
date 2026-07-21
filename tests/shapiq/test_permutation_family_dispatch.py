@@ -55,14 +55,26 @@ def test_unregistered_indices_get_the_registry_derived_teaching_error():
         PermutationSampling(quadratic_game(), FBII(order=2))
 
 
-def test_subclass_lookalikes_stay_rejected_despite_mro_dispatch():
+def test_subclasses_inherit_their_parents_family_through_the_mro():
     class MySII(SII):
         pass
 
-    # singledispatch alone would hand MySII the SII family via the MRO;
-    # the exact-type guard keeps teaching instead
-    with pytest.raises(TypeError, match="subclasses a supported index"):
-        PermutationSampling(quadratic_game(), MySII(order=2))
+    # singledispatch resolves along the MRO: a subclass rides its parent's
+    # complete family and answers for its own semantics
+    assert permutation_family(MySII(order=2)) == permutation_family(SII(order=2))
+    budget = 2 + 24 * 2 * (N_PLAYERS - 1)
+    subclassed = PermutationSampling(
+        quadratic_game(),
+        MySII(order=2),
+        random_state=3,
+    ).sample(budget)
+    reference = PermutationSampling(quadratic_game(), SII(order=2), random_state=3).sample(budget)
+    assert subclassed.state == reference.state  # same walks, bit-identical
+    assert jnp.allclose(
+        order_one(subclassed.explain()),
+        order_one(reference.explain()),
+        atol=1e-6,
+    )
 
 
 @dataclass(frozen=True, eq=False)
@@ -70,8 +82,6 @@ class _MirroredSV(ExtensionalEquality):
     """A third-party index estimating Shapley values under its own name."""
 
     name: ClassVar[str] = "MirroredSV"
-    order_semantics: ClassVar[str] = "coverage"
-    preserves_value: ClassVar[bool] = True
     includes_empty_interaction: ClassVar[bool] = False
     min_interaction_size: ClassVar[int] = 1
     generalizes: ClassVar[None] = None

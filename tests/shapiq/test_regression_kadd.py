@@ -157,5 +157,6 @@ def test_entry_gates_keep_teaching():
     class MyKADD(KADDSHAP):
         pass
 
-    with pytest.raises(TypeError, match="subclasses a supported index"):
-        Regression(game_from(cubic_from_masks), MyKADD(order=2))
+    # subclasses inherit the kADD family through the MRO
+    approximator = Regression(game_from(cubic_from_masks), MyKADD(order=2))
+    assert approximator.interaction_index == "kADD-SHAP"

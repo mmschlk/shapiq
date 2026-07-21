@@ -17,3 +17,16 @@ registries (`permutation_family`, `regression_family`) rather than hardcoded tab
 sets are exact-and-explicit instead of closed, teaching errors derive their supported
 lists from the registry, and the exact-type guards stand unchanged. See ADR 0011 for the
 dispatch boundary rules.
+
+## Amendment (2026-07-21)
+
+Two registry categories exist, and the rule for choosing the dispatch axis is: **register
+where the algorithm's variance lives, and capability-check the other axis.** Sampling
+estimators vary by index (walk layouts, kernels) and take any game, so their families
+register on the index type. The closed-form tree explainer varies by game construction
+(interventional constraints today, a path-dependent sibling planned) and serves any
+cardinal index, so its `tree_explanation` registry — the **tree-game registry** — registers
+on the game type and capability-checks the index. With this amendment the exact-type
+subclass guards on all entry points are removed (see ADR 0011, amendment 2026-07-21):
+registries dispatch along the MRO, and subclasses inherit their parent's implementation
+at the experimenter's own semantic risk.

@@ -63,11 +63,12 @@ class PermutationSampling(EvidenceApproximator):
     walks both grow quickly with the order.
 
     The walk layout and the estimator travel together as a
-    ``PermutationFamily``, single-dispatched on the exact index type via
+    ``PermutationFamily``, single-dispatched on the index type via
     ``permutation_family``. Registering a family for a new index type
-    extends the method atomically; subclasses of supported indices stay
-    rejected with a teaching error unless they register their own family,
-    so MRO resolution never hands an index a shipped estimator silently.
+    extends the method atomically (a library-internal mechanism), and
+    subclasses of supported indices inherit their parent's complete family
+    through the method resolution order — an experimenter's index riding a
+    shipped estimator answers for its own semantics.
 
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
@@ -118,14 +119,6 @@ class PermutationSampling(EvidenceApproximator):
                 samples shared across explanation targets.
         """
         reject_common_index_mistakes(index)
-        registered = _registered_permutation_indices()
-        if type(index) not in registered and isinstance(index, registered):
-            msg = (
-                f"PermutationSampling dispatches on the exact index type: "
-                f"{type(index).__name__} subclasses a supported index; "
-                f"pass one of {_supported_permutation_names()} itself (e.g. SII(order=2))"
-            )
-            raise TypeError(msg)
         family = permutation_family(index)
         base_sampler = family.build_sampler(
             index,
@@ -214,8 +207,9 @@ class PermutationFamily(NamedTuple):
 def permutation_family(index: object) -> PermutationFamily:
     """Return the permutation-walk family matching an interaction index.
 
-    The walk layout and its estimator dispatch together on the exact index
-    type; registering a family for a new index type extends
+    The walk layout and its estimator dispatch together on the index type;
+    subclasses resolve to their parent's family through the MRO, and
+    registering a family for a new index type extends
     ``PermutationSampling``. Unregistered indices raise the teaching error.
     """
     raise _unsupported_permutation_index(index)

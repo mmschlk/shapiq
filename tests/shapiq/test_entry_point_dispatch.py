@@ -103,19 +103,20 @@ def test_repr_names_the_entry_point_and_index():
     assert "interaction_index='FSII'" in text
 
 
-def test_subclass_lookalikes_are_rejected_at_closed_entry_points():
+def test_subclasses_flow_to_their_parents_entry_points():
     class MySII(SII): ...
 
     class MyFSII(FSII): ...
 
     class MyFBII(FBII): ...
 
-    with pytest.raises(TypeError, match="exact index type"):
-        PermutationSampling(cubic_game(), MySII(order=2))
-    with pytest.raises(TypeError, match="exact index type"):
-        Regression(cubic_game(), MyFSII(order=2))
-    with pytest.raises(TypeError, match="subclasses FBII"):
-        ExactExplainer(cubic_game(), MyFBII(order=2))
+    # inheritance is a feature: a subclass inherits its parent's estimator
+    # through the MRO and answers for its own semantics
+    assert PermutationSampling(cubic_game(), MySII(order=2)).interaction_index == "SII"
+    assert Regression(cubic_game(), MyFSII(order=2)).interaction_index == "FSII"
+    subclassed = order_one(ExactExplainer(cubic_game(), MyFBII(order=2)).explain())
+    reference = order_one(ExactExplainer(cubic_game(), FBII(order=2)).explain())
+    assert jnp.allclose(subclassed, reference, atol=1e-6)
 
 
 def test_explanations_carry_the_index_object():

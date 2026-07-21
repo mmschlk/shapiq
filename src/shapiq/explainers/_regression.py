@@ -64,10 +64,11 @@ class Regression(EvidenceApproximator):
 
     The sampler, pairing rule, intercept convention, and least squares
     solve travel together as a ``RegressionFamily``, single-dispatched on
-    the exact index type via ``regression_family``. Registering a family
-    for a new index type extends the method atomically; subclasses of
-    supported indices stay rejected with a teaching error unless they
-    register their own family.
+    the index type via ``regression_family``. Registering a family for a
+    new index type extends the method atomically (a library-internal
+    mechanism), and subclasses of supported indices inherit their parent's
+    complete family through the method resolution order — an experimenter's
+    index riding a shipped kernel answers for its own semantics.
 
     ``explain()`` requires the sampled coalitions to identify all
     coefficients and raises ``InsufficientSamplesError`` while the
@@ -132,15 +133,6 @@ class Regression(EvidenceApproximator):
                 explanation targets.
         """
         reject_common_index_mistakes(index)
-        registered = _registered_regression_indices()
-        if type(index) not in registered and isinstance(index, registered):
-            msg = (
-                f"Regression dispatches on the exact index type: {type(index).__name__} "
-                "subclasses a supported index, but the sampler and solver are "
-                f"kernel-matched to the shipped type; pass one of "
-                f"{_supported_regression_names()} itself (e.g. FSII(order=2))"
-            )
-            raise TypeError(msg)
         family = regression_family(index)
         base_sampler = family.build_sampler(
             index,
@@ -299,8 +291,9 @@ def regression_family(index: object) -> RegressionFamily:
     """Return the kernel-regression family matching an interaction index.
 
     Sampler, pairing rule, intercept convention, and solve dispatch together
-    on the exact index type; registering a family for a new index type
-    extends ``Regression``. Unregistered indices raise the teaching error.
+    on the index type; subclasses resolve to their parent's family through
+    the MRO, and registering a family for a new index type extends
+    ``Regression``. Unregistered indices raise the teaching error.
     """
     raise _unsupported_regression_index(index)
 
