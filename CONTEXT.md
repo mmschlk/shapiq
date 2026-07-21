@@ -29,8 +29,16 @@ An **ApproximationState** that records sampled **Coalitions** together with thei
 _Avoid_: default state, raw sample cache
 
 **Sampler**:
-A component used by an **Approximator** to propose a **CoalitionArray** from an **ApproximationState** and sample budget. Samplers may evolve during sampling by returning a next sampler together with sampled coalitions; mutable samplers must not be used with **Approximation History**. Shape policy is sampler-owned and normally trusted by approximators rather than revalidated on every sample.
+A component used by an **Approximator** to propose a **CoalitionArray** from an **ApproximationState** and sample budget. Samplers may evolve during sampling by returning a next sampler together with sampled coalitions; mutable samplers must not be used with **Approximation History**. Shape policy is sampler-owned and normally trusted by approximators rather than revalidated on every sample. Samplers are vehicles: they own the sampling procedure, never estimator logic.
 _Avoid_: generator, coalition generator
+
+**Walk Plan**:
+The declaration of which **Coalitions** one permutation materializes into: a length fixing the **Sampling Quantum**, a render from player positions to walk masks, and an optional deterministic prelude extending the **Seed Samples**. The permutation **Sampler** is the vehicle executing a plan; the **Approximator** family that declares a plan is the one that decodes its layout.
+_Avoid_: walk sampler subclass, layout sampler
+
+**Sampling Law**:
+The marginal probability distribution of one sampled stream position, declared by a **Sampler** as an optional capability — log-space, after wrapper transformations such as pairing. Kernel samplers declare their law; permutation walks do not, because their positions are unit-correlated. **Seed Samples** sit outside the law.
+_Avoid_: sampling weights, proposal distribution
 
 **Budget**:
 The exact number of new sampled **Coalitions** an **Approximator** evaluates on its **Game** when asked to sample. Budgets are spent exactly rather than floored, rejected, or redistributed to align with a **Sampling Quantum**.

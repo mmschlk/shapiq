@@ -11,8 +11,7 @@ findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last tru
 | --- | --- | --- | --- |
 | Amortized lifecycle ADR | fit-once/explain-many doesn't fit `Explainer(game).explain()`; sibling ABC vs `explain(target)`; facade currency = (model, masker, index) | VI.3 | **deferred** (user 2026-07-21) — still before facade; also decides `__call__` fate (F5e) |
 | History rework | keep `history()`/`rollback()` as anytime-estimator identity; rebuild as always-on cut points + sampler replay (arithmetic fast-forward — samplers are pure functions of emitted count); drop `track_history`, parallel sampler tuple, lockstep check, `EmptyState` edge-case law, `HistoryError` | F3-revised | direction accepted — after `_state.py` settles post-#564 |
-| Sampling-state addressability | state-owned `unique()` view (chunk-mirrored key store; dedup's `_dedup_keys` machinery becomes a consumer, Regression gets the smaller unique-solve) + `LawfulSampler` capability (`log_probability`, log-space, wrappers transform) + exactness-strata design note | issue-13 | designed — unique view before/with history rework; law lands with the sampled k-SII port as first consumer |
-| Sampler = vehicle (walk plans) | one `PermutationSampler` (default plan: prefix chain); estimators declare a `WalkPlan` (length/prelude/render) the vehicle executes — layout gets one owner, `PermutationFamily` pairing ceremony dissolves, STII's exact lower-order seed override becomes a declared prelude (first instance of the issue-13 exactness-strata seam); streams stay bit-identical (pins verify) | user 2026-07-21 | decided — before any new walk estimator |
+| Sampling-state addressability (remainder) | landed 2026-07-21 (ADR 0013): `unique()`/`packed_keys()` on the state, dedup as a consumer, `LawfulSampler` on kernel/product samplers with pairing symmetrization. Remaining: wire Regression's solve to the unique view (√count weighting — proven equivalent, smaller solves), exactness-strata design when the border trick ports, law's first estimator consumer = sampled k-SII port | issue-13 | remainder open |
 | Game-call seam | issue 9: one evaluation path per approximator, dedup becomes an evaluation policy; backend-agnostic chunking generalization lives here too | issue-9 | not started |
 
 ## B — API surface & ergonomics (small–medium)
@@ -62,7 +61,6 @@ findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last tru
 | FIxLIP orientation design note | bipartite/cross-modal structure is masker/game metadata, not an orientation flag; sketch the requirement before reintroducing anything | F5b-revised | open — when FIxLIP nears |
 | PR #564 test pins | `interaction_rank` vs `iter_interactions` property test; chunked-state append→materialize equivalence + misalignment error; `expand_ellipsis` cases | #564 review | offered, open |
 | CHANGELOG.md | missing entirely | review rounds | open |
-| Review-file housekeeping | `shapiqv2apireview.md` untracked in repo root → `docs/plans/` or delete | this round | open — trivial |
 
 ## Closed — considered and rejected (do not re-open without new evidence)
 
