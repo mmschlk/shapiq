@@ -99,6 +99,17 @@ def test_tree_get_predict_function_and_model_type(
         assert np.all(predict_function(model, x_data) == model.predict(x_data))  # pyright: ignore[reportCallIssue] thinks its RuntimeError
 
 
+def test_image_get_predict_function_and_model_type():
+    """Test that a ModelArchitectureStrategy is recognized as image model."""
+    from shapiq.vision.architecture import ModelArchitecture
+
+    mock_architecture = Mock(spec=ModelArchitecture)
+    predict_function, model_type = get_predict_function_and_model_type(mock_architecture)
+
+    assert model_type == "image"
+    assert isinstance(predict_function, RuntimeError)
+
+
 def test_all_supported_tree_models_recognized():
     """Test that all supported tree models are recognized as tree models."""
     model = Mock()

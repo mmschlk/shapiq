@@ -89,6 +89,11 @@ benchmark = [
     "lightgbm",
     "xgboost",
 ]
+vision = [
+    # required by shapiq.vision (ImageExplainer and related classes)
+    "torch>=2.9.1",
+    "scikit-image>=0.26.0",
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -119,6 +124,9 @@ testpaths = [
 ]
 pythonpath = ["src"]
 minversion = "8.0"
+markers = [
+  "integration: tests that load real ML models (slower; optional extras)",
+]
 
 [tool.ruff]
 line-length = 100

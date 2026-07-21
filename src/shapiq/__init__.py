@@ -89,6 +89,17 @@ from .utils import (  # sets.py  # tree.py
     split_subsets_budget,
 )
 
+
+def __getattr__(name: str) -> object:
+    """Expose the optional vision explainer lazily so ``import shapiq`` stays torch-free."""
+    if name == "ImageExplainer":
+        from .vision import ImageExplainer
+
+        return ImageExplainer
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
 __all__ = [
     # version
     "__version__",
@@ -124,6 +135,7 @@ __all__ = [
     "TreeExplainer",
     "TabPFNExplainer",
     "AgnosticExplainer",
+    "ImageExplainer",
     # imputers
     "MarginalImputer",
     "BaselineImputer",
