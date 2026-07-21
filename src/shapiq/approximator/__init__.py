@@ -17,6 +17,7 @@ from .regression import (
     KernelSHAP,
     KernelSHAPIQ,
     OddSHAP,
+    PolySHAP,
     RegressionFBII,
     RegressionFSII,
     kADDSHAP,
@@ -64,6 +65,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     ProxySPEX,
     OddSHAP,
     ShaplEIG,
+    PolySHAP,
 ]
 
 # contains all SI approximators
@@ -149,4 +151,5 @@ __all__ = [
     "STII_APPROXIMATORS",
     "FSII_APPROXIMATORS",
     "FBII_APPROXIMATORS",
+    "PolySHAP",
 ]

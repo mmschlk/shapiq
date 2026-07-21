@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- adds the `PolySHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via interaction-informed polynomial regression (PolySHAP, [Fumagalli et al., ICLR 2026](https://arxiv.org/abs/2601.18608)). PolySHAP generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values. The interaction frontier can be the full *k*-additive frontier up to `max_order` (with `max_order=1` recovering `KernelSHAP`), a budget-controlled partial frontier (`max_terms`), or a user-supplied set of interaction terms (`prior_frontier`). Registered as a Shapley-value (`SV`) approximator.
+
 ## v1.6.0 (2026-07-06)
 
 ### Highlights of new Features
