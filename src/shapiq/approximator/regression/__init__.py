@@ -5,6 +5,7 @@ from .faithful import RegressionFBII, RegressionFSII
 from .kadd_shap import kADDSHAP
 from .kernelshap import KernelSHAP
 from .kernelshapiq import InconsistentKernelSHAPIQ, KernelSHAPIQ
+from .leverageshap import LeverageSHAP
 from .oddshap import OddSHAP
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "KernelSHAP",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
+    "LeverageSHAP",
     "Regression",
     "RegressionFBII",
     "OddSHAP",
