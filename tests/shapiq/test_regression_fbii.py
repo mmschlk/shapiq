@@ -89,18 +89,19 @@ def test_sampling_is_invariant_to_budget_splits():
     split = make().sample(7).sample(2).sample(31)
     whole = make().sample(40)
     assert split.state == whole.state
-    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
+    assert split.bank == whole.bank
 
 
-def test_pending_half_pairs_are_masked():
+def test_partial_pair_budgets_are_banked():
     def make():
         return Regression(game_from(cubic_from_masks), FBII(order=2), random_state=5)
 
     complete = make().sample(SEEDS + 80)
-    with_pending = make().sample(SEEDS + 80 + 1)
-    assert with_pending.sampler.n_pending_samples == 1
+    with_bank = make().sample(SEEDS + 80 + 1)
+    assert with_bank.bank == 1
+    assert with_bank.state.n_samples == complete.state.n_samples
     assert jnp.allclose(
-        order_one(with_pending.explain()),
+        order_one(with_bank.explain()),
         order_one(complete.explain()),
         atol=1e-6,
     )

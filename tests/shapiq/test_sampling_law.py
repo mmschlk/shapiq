@@ -8,7 +8,6 @@ import numpy as np
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.sampling import (
     BanzhafKernelSampler,
-    EmptyState,
     LawfulSampler,
     PairedSampler,
     PermutationSampler,
@@ -87,8 +86,7 @@ def test_empirical_frequencies_follow_the_law():
     n_players = 4
     sampler = ShapleyKernelSampler(n_players, random_state=5)
     n_sampled = 4000
-    coalitions, _ = sampler.sample(EmptyState(), sampler.n_seed_samples + n_sampled)
-    dense = np.asarray(jnp.asarray(coalitions.to_dense()))[sampler.n_seed_samples :]
+    dense = np.asarray(jnp.asarray(sampler.draws(jnp.arange(n_sampled))))
     codes = dense @ (1 << np.arange(n_players))
     frequencies = np.bincount(codes.astype(np.int64), minlength=2**n_players) / n_sampled
     law = np.exp(np.asarray(sampler.log_probability(powerset_coalitions(n_players))))

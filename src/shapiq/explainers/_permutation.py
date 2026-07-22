@@ -12,25 +12,19 @@ from jax import Array
 
 from shapiq._shape import broadcast_shapes, ensure_bool, validate_int
 from shapiq.errors import InsufficientSamplesError
+from shapiq.explainers._approximator import Approximator
 from shapiq.explainers._base import reject_common_index_mistakes
-from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._valueaxes import to_trailing
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
-from shapiq.sampling import (
-    ChainPlan,
-    EmptyState,
-    PairedSampler,
-    PermutationSampler,
-    SamplingState,
-)
+from shapiq.sampling import PairedSampler, PermutationSampler, SamplingState
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.games import Game
-    from shapiq.sampling import ShareSamples, WalkPlan
+    from shapiq.sampling import ShareSamples
 
 
 class _WalkEvidence(NamedTuple):
@@ -44,7 +38,7 @@ class _WalkEvidence(NamedTuple):
     walk_values: Array
 
 
-class PermutationSampling(EvidenceApproximator):
+class PermutationSampling(Approximator):
     """Permutation-walk approximator dispatching on the interaction index.
 
     The index object selects the concrete walk layout and estimator: ``SV()``
@@ -76,7 +70,6 @@ class PermutationSampling(EvidenceApproximator):
     """
 
     _family: PermutationFamily
-    _plan: WalkPlan
 
     def __init__(
         self,
@@ -86,7 +79,6 @@ class PermutationSampling(EvidenceApproximator):
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
         paired: bool | None = None,
-        track_history: bool = False,
         deduplicate: bool = False,
     ) -> None:
         """Initialize without evaluating the game.
@@ -106,8 +98,6 @@ class PermutationSampling(EvidenceApproximator):
                 estimation variance and doubles the sampling quantum. The
                 default ``None`` resolves to the family default: permutation
                 walks are unpaired unless requested.
-            track_history: Whether to record value-equivalent history for
-                rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
                 once; repeats reuse stored values and only novel evaluations
                 count toward the budget. Requires shared samples.
@@ -120,11 +110,10 @@ class PermutationSampling(EvidenceApproximator):
         """
         reject_common_index_mistakes(index)
         family = permutation_family(index)
-        plan = family.build_plan(index, game.n_players)
+        walk = family.walk(index, game.n_players)
         base_sampler = PermutationSampler(
             game.n_players,
             game.target_shape,
-            plan=plan,
             share_samples=share_samples,
             random_state=random_state,
         )
@@ -133,11 +122,11 @@ class PermutationSampling(EvidenceApproximator):
         else:
             ensure_bool("paired", paired)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
-        state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, index=index)
-        self._init_deduplication(deduplicate=deduplicate)
+        super().__init__(game, sampler, index, deduplicate=deduplicate)
         self._family = family
-        self._plan = plan
+        self._render = walk.render
+        self._unit_length = walk.length
+        self._prelude_masks = walk.prelude()
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Estimate the configured index from completed permutation walks.
@@ -155,22 +144,19 @@ class PermutationSampling(EvidenceApproximator):
         return self._family.explain(self.index, self)
 
     def _completed_walks(self) -> _WalkEvidence:
-        """Return seed values and completed walks, masking pending samples."""
+        """Return seed values and the sampled walks."""
         # paired units hold two walks (the permutation's and its reversal's),
-        # so completed walks are cut by the plan's walk length, not by the
-        # sampler's quantum
-        quantum = self._plan.length
-        n_seeds = self.sampler.n_seed_samples
+        # so walks are cut by the walk length, not by the unit rows
+        quantum = self._unit_length
+        n_seeds = self.n_seed_samples
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()
-        n_walk_samples = self.state.n_samples - n_seeds - self.sampler.n_pending_samples
-        n_walks = n_walk_samples // quantum
+        n_walks = (self.state.n_samples - n_seeds) // quantum
         if self.state.n_samples < n_seeds or n_walks < 1:
             msg = (
                 "explaining requires at least one completed permutation walk: "
                 f"sample at least {self.min_budget} evaluations in total "
-                f"(currently {self.state.n_samples} stored, "
-                f"{self.sampler.n_pending_samples} pending)"
+                f"(currently {self.state.n_samples} stored, {self.bank} banked)"
             )
             raise InsufficientSamplesError(msg)
         coalitions = jnp.asarray(self.state.coalitions.to_dense())
@@ -195,15 +181,15 @@ class PermutationSampling(EvidenceApproximator):
 
 
 class PermutationFamily(NamedTuple):
-    """Walk plan and estimator of one permutation index family.
+    """Walk layout and estimator of one permutation index family.
 
     A family is registered atomically on ``permutation_family``, so an
-    index either brings both pieces or neither — and because the plan an
+    index either brings both pieces or neither — and because the layout an
     estimator declares is the very layout it decodes, drift between walk
     layout and estimator is unrepresentable by construction.
     """
 
-    build_plan: Callable[..., WalkPlan]
+    walk: Callable[..., WindowPlan | TaylorPlan]
     explain: Callable[..., DenseExplanationArray[Array]]
 
 
@@ -240,31 +226,31 @@ def _unsupported_permutation_index(index: object) -> TypeError:
 @permutation_family.register
 def _shapley_value_family(index: SV) -> PermutationFamily:
     del index
-    return PermutationFamily(_chain_plan, _explain_shapley_values)
+    return PermutationFamily(_chain_walk, _explain_shapley_values)
 
 
 @permutation_family.register
 def _interaction_family(index: SII) -> PermutationFamily:
     del index
-    return PermutationFamily(_window_plan, _explain_interactions)
+    return PermutationFamily(_window_walk, _explain_interactions)
 
 
 @permutation_family.register
 def _taylor_family(index: STII) -> PermutationFamily:
     del index
-    return PermutationFamily(_taylor_plan, _explain_taylor_interactions)
+    return PermutationFamily(_taylor_walk, _explain_taylor_interactions)
 
 
-def _chain_plan(index: SV, n_players: int) -> ChainPlan:
+def _chain_walk(index: SV, n_players: int) -> WindowPlan:
     del index
-    return ChainPlan(n_players)
+    return WindowPlan(n_players, 1)
 
 
-def _window_plan(index: SII, n_players: int) -> WindowPlan:
+def _window_walk(index: SII, n_players: int) -> WindowPlan:
     return WindowPlan(n_players, index.order)
 
 
-def _taylor_plan(index: STII, n_players: int) -> TaylorPlan:
+def _taylor_walk(index: STII, n_players: int) -> TaylorPlan:
     return TaylorPlan(n_players, index.order)
 
 

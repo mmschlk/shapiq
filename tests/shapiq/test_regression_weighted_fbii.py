@@ -127,11 +127,11 @@ def test_pairing_follows_the_kernel_symmetry():
     game = game_from(cubic_from_masks)
     asymmetric = Regression(game, WeightedFBII(p=0.3, order=2))
     assert isinstance(asymmetric.sampler, ProductKernelSampler)
-    assert asymmetric.sampler.sampling_quantum == 1
+    assert asymmetric.unit_rows == 1
     uniform = Regression(game, WeightedFBII(p=0.5, order=2))
     assert isinstance(uniform.sampler, PairedSampler)
     explicit = Regression(game, WeightedFBII(p=0.3, order=2), paired=False)
-    assert explicit.sampler.sampling_quantum == 1
+    assert explicit.unit_rows == 1
     with pytest.raises(ValueError, match="not complement-symmetric"):
         Regression(game, WeightedFBII(p=0.3, order=2), paired=True)
 

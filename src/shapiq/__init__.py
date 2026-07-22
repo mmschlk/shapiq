@@ -2,14 +2,12 @@
 
 from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
 from shapiq.errors import (
-    HistoryError,
     InsufficientSamplesError,
     SamplingStallWarning,
     UnsupportedGameError,
 )
 from shapiq.explainers import (
     Approximator,
-    EvidenceApproximator,
     ExactExplainer,
     Explainer,
     PermutationSampling,
@@ -72,8 +70,8 @@ from shapiq.sampling import (
     AntitheticDraws,
     ApproximationState,
     BanzhafKernelSampler,
+    CoalitionSampler,
     EmptyState,
-    KernelSampler,
     LawfulSampler,
     PairedSampler,
     PermutationSampler,
@@ -83,7 +81,6 @@ from shapiq.sampling import (
     ShapleyKernelSampler,
     ShareSamples,
     SizeKernelSampler,
-    UnitScheduleSampler,
 )
 from shapiq.trees import InterventionalTreeGame, LeafConstraints, TreeModel, to_tree_model
 
@@ -95,6 +92,7 @@ except ImportError:  # pragma: no cover - _version.py is generated at build time
 __all__ = [
     "AntitheticDraws",
     "BanzhafKernelSampler",
+    "CoalitionSampler",
     "BanzhafValue",
     "BGV",
     "CHGV",
@@ -124,13 +122,11 @@ __all__ = [
     "DenseCoalitionArray",
     "DenseExplanationArray",
     "EmptyState",
-    "EvidenceApproximator",
     "ExactExplainer",
     "Explainer",
     "ExplanationArray",
     "ExtensionalEquality",
     "Game",
-    "HistoryError",
     "InsufficientSamplesError",
     "Interaction",
     "InteractionIndex",
@@ -144,7 +140,6 @@ __all__ = [
     "Masker",
     "Model",
     "ModelMaskedPredictor",
-    "KernelSampler",
     "LawfulSampler",
     "PairedSampler",
     "PermutationSampler",
@@ -164,7 +159,6 @@ __all__ = [
     "TokenMasker",
     "TreeExplainer",
     "TreeModel",
-    "UnitScheduleSampler",
     "UnsupportedGameError",
     "__version__",
     "WeightedBII",

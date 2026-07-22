@@ -5,23 +5,21 @@ from __future__ import annotations
 from shapiq.sampling._base import LawfulSampler, Sampler, ShareSamples
 from shapiq.sampling._kernel import (
     BanzhafKernelSampler,
-    KernelSampler,
+    CoalitionSampler,
     ProductKernelSampler,
     ShapleyKernelSampler,
     SizeKernelSampler,
 )
 from shapiq.sampling._pairing import AntitheticDraws, PairedSampler
-from shapiq.sampling._permutation import ChainPlan, PermutationSampler, WalkPlan
-from shapiq.sampling._schedule import UnitScheduleSampler
+from shapiq.sampling._permutation import PermutationSampler
 from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState, UniqueView
 
 __all__ = [
     "AntitheticDraws",
     "ApproximationState",
     "BanzhafKernelSampler",
-    "ChainPlan",
+    "CoalitionSampler",
     "EmptyState",
-    "KernelSampler",
     "LawfulSampler",
     "PairedSampler",
     "PermutationSampler",
@@ -32,6 +30,4 @@ __all__ = [
     "ShareSamples",
     "SizeKernelSampler",
     "UniqueView",
-    "UnitScheduleSampler",
-    "WalkPlan",
 ]

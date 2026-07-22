@@ -98,7 +98,7 @@ def test_sampling_is_invariant_to_budget_splits():
     split = make().sample(7).sample(2).sample(31)
     whole = make().sample(40)
     assert split.state == whole.state
-    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
+    assert split.bank == whole.bank
 
 
 def test_deduplication_reproduces_plain_estimates():

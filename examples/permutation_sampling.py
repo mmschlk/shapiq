@@ -48,28 +48,28 @@ if __name__ == "__main__":
     print("=== Shapley values via permutation walks ===")
     approximator = PermutationSampling(game, SV(), random_state=0)
     total_payout = float(jnp.sum(EXACT_SV))  # v(N) - v(empty)
-    print(f"sampling quantum: {approximator.sampler.sampling_quantum} evaluations per walk")
-    print(f"seed samples (paid from the first budget): {approximator.sampler.n_seed_samples}")
+    print(f"walk length: {approximator.unit_rows} evaluations per walk")
+    print(f"seed samples (paid from the first budget): {approximator.n_seed_samples}")
     print(f"exact SV: {EXACT_SV}")
     for budget in (6, 9, 51, 400):
         approximator = approximator.sample(budget)
         estimate = order_one(approximator.explain())
         print(
             f"after +{budget:>4} evals | stored: {approximator.state.n_samples:>4}"
-            f" | pending: {approximator.sampler.n_pending_samples}"
+            f" | banked: {approximator.bank}"
             f" | max error: {jnp.max(jnp.abs(estimate - EXACT_SV)):.4f}"
             f" | efficiency gap: {jnp.abs(jnp.sum(estimate) - total_payout):.2e}"
         )
 
     print()
-    print("=== budgets are spent exactly; splits do not matter ===")
+    print("=== whole-unit spending banks the remainder; splits do not matter ===")
     whole = PermutationSampling(game, SV(), random_state=0).sample(100)
     split = PermutationSampling(game, SV(), random_state=0).sample(7).sample(13).sample(80)
     print(f"states equal: {split.state == whole.state}")
 
     print()
     print("=== history: watch the estimate converge ===")
-    approximator = PermutationSampling(game, SV(), random_state=3, track_history=True)
+    approximator = PermutationSampling(game, SV(), random_state=3)
     for _ in range(5):
         approximator = approximator.sample(40)
     for step, past in enumerate(approximator.history()):
@@ -82,8 +82,8 @@ if __name__ == "__main__":
     print()
     print("=== pairwise Shapley interactions (SII) ===")
     approximator = PermutationSampling(game, SII(), random_state=0)
-    print(f"sampling quantum: {approximator.sampler.sampling_quantum} evaluations per walk")
-    approximator = approximator.sample(100 * approximator.sampler.sampling_quantum)
+    print(f"walk length: {approximator.unit_rows} evaluations per walk")
+    approximator = approximator.sample(100 * approximator.unit_rows)
     explanation = approximator.explain()
     print("pair : estimate | exact")
     for left in range(N_PLAYERS):
@@ -108,9 +108,9 @@ if __name__ == "__main__":
     # raw weights), and every walk samples every top-order pair once, so a single
     # walk already covers all pairs -- for this quadratic game even exactly
     approximator = PermutationSampling(game, STII(order=2), random_state=0)
-    print(f"sampling quantum: {approximator.sampler.sampling_quantum} evaluations per walk")
+    print(f"walk length: {approximator.unit_rows} evaluations per walk")
     explanation = approximator.sample(
-        approximator.sampler.n_seed_samples + approximator.sampler.sampling_quantum,
+        approximator.n_seed_samples + approximator.unit_rows,
     ).explain()
     print(f"order 1 (exact, = weights): {order_one(explanation)}")
     print("pair : estimate | exact")

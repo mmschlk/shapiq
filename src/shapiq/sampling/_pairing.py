@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 import jax.numpy as jnp
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.sampling._base import LawfulSampler
-from shapiq.sampling._schedule import UnitScheduleSampler
+from shapiq.sampling._base import LawfulSampler, Sampler
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -19,65 +18,46 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class AntitheticDraws(Protocol):
-    """Optional hook declaring what pairing means for a sampler.
+    """Optional capability declaring what the antithesis of a draw is.
 
-    Samplers that render structured units (permutation walks) implement the
-    draw hooks so ``PairedSampler`` can render the antithesis as a bona-fide
-    unit; samplers without the hook are paired by complementing their
-    rendered rows. The draw is also the batching surface: ``unit_draws``
-    stacks many draws on a new leading axis (``jax.vmap`` over ``unit_draw``
-    when the draw is traceable in the unit index), and ``render_draw`` and
-    ``antithetic_draw`` must broadcast over leading batch axes.
+    The meaning is draw-kind knowledge and lives on the sampler: reversal
+    for permutations, complement for coalitions. ``PairedSampler`` attaches
+    to any sampler declaring it.
     """
 
-    def unit_draw(self, unit_index: int) -> Array:
-        """Return the raw draw of one sampled unit."""
-        ...
-
-    def unit_draws(self, unit_indices: Array) -> Array:
-        """Return the draws of many units, stacked on a new leading axis."""
-        ...
-
-    def render_draw(self, draw: Array) -> Array:
-        """Return the dense coalition masks a draw stands for."""
-        ...
-
-    def antithetic_draw(self, draw: Array) -> Array:
-        """Return the variance-reducing antithesis of a draw."""
+    def antithetic(self, draws: Array) -> Array:
+        """Return the variance-reducing antithesis of each draw."""
         ...
 
 
-class PairedSampler(UnitScheduleSampler):
+class PairedSampler(Sampler):
     """Pairing as sampler composition: ``PairedSampler(sampler)``.
 
-    The wrapper owns the emission schedule (seed block, budgets, pending
-    units) and uses the wrapped sampler purely as a unit renderer, so any
-    ``UnitScheduleSampler`` gains variance-reducing pairing without knowing
-    about it. Every unit contains the wrapped sampler's unit followed by its
-    antithesis: samplers implementing the ``AntitheticDraws`` hook define
-    what the antithesis is (the reversed permutation for walks); all others
-    are paired by complementing the rendered rows, which is exact for
-    single-coalition units. The sampling quantum doubles.
+    Attachable to any sampler that declares its antithesis: every unit
+    index yields the wrapped draw followed by its antithesis, so one unit
+    carries both. The wrapped sampler defines what the antithesis means —
+    the reversed permutation for permutation draws, the complement for
+    coalition draws — and the wrapper stays a thin draw transformer.
     """
 
-    def __init__(self, sampler: UnitScheduleSampler) -> None:
-        """Wrap a sampler so every unit also renders its antithesis.
+    def __init__(self, sampler: Sampler) -> None:
+        """Wrap a sampler so every unit also draws its antithesis.
 
         Args:
-            sampler: The sampler whose units are paired. Must be a
-                ``UnitScheduleSampler``; pairing composes on the schedule.
+            sampler: The sampler whose draws are paired. Must declare an
+                antithesis.
 
         Raises:
-            TypeError: If the sampler is already paired or is no
-                unit-schedule sampler.
+            TypeError: If the sampler is already paired, or declares no
+                antithesis.
         """
         if isinstance(sampler, PairedSampler):
             msg = "the sampler is already paired: pairing twice would pair antitheses"
             raise TypeError(msg)
-        if not isinstance(sampler, UnitScheduleSampler):
+        if not isinstance(sampler, AntitheticDraws):
             msg = (
-                "PairedSampler composes on unit-schedule samplers, got "
-                f"{type(sampler).__name__}"
+                f"{type(sampler).__name__} declares no antithesis; pairing needs the "
+                "sampler to define what the antithetic draw is"
             )
             raise TypeError(msg)
         super().__init__(
@@ -87,69 +67,49 @@ class PairedSampler(UnitScheduleSampler):
             random_state=0,
         )
         self.sampler = sampler
-        # pairing complements non-hook units, so the marginal law of one
-        # paired sample is the complement symmetrization of the wrapped law;
-        # a sampler with custom antithetic draws keeps its law undeclared
-        # under pairing, because its antithesis is not the complement
-        if isinstance(sampler, LawfulSampler) and not isinstance(sampler, AntitheticDraws):
-            self.log_probability = partial(_paired_log_probability, sampler.log_probability)
+        # the marginal law of one paired draw is the antithesis-symmetrized
+        # wrapped law; grafted as an instance attribute exactly when the
+        # wrapped sampler declares a law, so the LawfulSampler capability
+        # check sees through pairing (python 3.12+ protocol isinstance uses
+        # getattr_static, which ignores __getattr__)
+        if isinstance(sampler, LawfulSampler):
+            self.log_probability = partial(
+                _paired_log_probability,
+                sampler.log_probability,
+                sampler.antithetic,
+            )
 
     @property
-    def sampling_quantum(self) -> int:
-        """Return the unit length: the wrapped quantum, doubled."""
-        return 2 * self.sampler.sampling_quantum
+    def draws_per_unit(self) -> int:
+        """Return the wrapped count, doubled: draw and antithesis per unit."""
+        return 2 * self.sampler.draws_per_unit
 
-    @property
-    def n_seed_samples(self) -> int:
-        """Return the wrapped sampler's seed block length; seeds are not paired."""
-        return self.sampler.n_seed_samples
+    def draws(self, unit_indices: Array) -> Array:
+        """Return draw and antithesis per unit, interleaved along the unit axis."""
+        drawn = self.sampler.draws(unit_indices)
+        antithetic = self.sampler.antithetic(drawn)  # type: ignore[attr-defined]
+        paired = jnp.stack([drawn, antithetic], axis=1)
+        return paired.reshape(-1, *drawn.shape[1:])
 
     def __getattr__(self, name: str) -> object:
-        """Expose the wrapped sampler's metadata (plan, p, ...).
+        """Expose the wrapped sampler's metadata (p, size probabilities, ...).
 
         The law is never forwarded verbatim: when the wrapped sampler
-        declares one and pairing means complementing, the symmetrized law
-        is grafted as an instance attribute at construction and found
-        before this fallback; in every other case the paired law is
-        undeclared, so the ``LawfulSampler`` capability check stays honest.
+        declares one, the symmetrized law is grafted at construction and
+        found before this fallback; otherwise the paired law is undeclared.
         """
         if name == "log_probability" or name.startswith("_"):
             msg = f"{type(self).__name__!r} object has no attribute {name!r}"
             raise AttributeError(msg)
         return getattr(self.sampler, name)
 
-    def _seed_masks(self) -> Array:
-        """Return the wrapped sampler's deterministic seed block."""
-        return self.sampler._seed_masks()  # noqa: SLF001 - rendering the wrapped units
-
-    def _sampled_unit_masks(self, unit_index: int) -> Array:
-        """Render the wrapped unit followed by its antithesis."""
-        if isinstance(self.sampler, AntitheticDraws):
-            draw = self.sampler.unit_draw(unit_index)
-            rendered = self.sampler.render_draw(draw)
-            antithetic = self.sampler.render_draw(self.sampler.antithetic_draw(draw))
-        else:
-            # base case of classical pairing of sampling complement coalitions
-            rendered = self.sampler._sampled_unit_masks(unit_index)  # noqa: SLF001 - wrapped unit
-            antithetic = ~rendered
-        return jnp.concatenate([rendered, antithetic], axis=-2)
-
-    def _sampled_unit_batch(self, unit_indices: Array) -> Array:
-        """Render many wrapped units and their antitheses in batched dispatches."""
-        if isinstance(self.sampler, AntitheticDraws):
-            draws = self.sampler.unit_draws(unit_indices)
-            rendered = self.sampler.render_draw(draws)
-            antithetic = self.sampler.render_draw(self.sampler.antithetic_draw(draws))
-        else:
-            rendered = self.sampler._sampled_unit_batch(unit_indices)  # noqa: SLF001 - wrapped units
-            antithetic = ~rendered
-        return jnp.concatenate([rendered, antithetic], axis=-2)
-
 
 def _paired_log_probability(
     inner_law: Callable[[CoalitionArray], Array],
+    inner_antithetic: Callable[[Array], Array],
     coalitions: CoalitionArray,
 ) -> Array:
-    """Return the complement-symmetrized law of one paired sample."""
-    complements = DenseCoalitionArray(~jnp.asarray(coalitions.to_dense()))
-    return jnp.logaddexp(inner_law(coalitions), inner_law(complements)) - jnp.log(2.0)
+    """Return the antithesis-symmetrized law of one paired draw."""
+    dense = jnp.asarray(coalitions.to_dense())
+    antitheses = DenseCoalitionArray(inner_antithetic(dense))
+    return jnp.logaddexp(inner_law(coalitions), inner_law(antitheses)) - jnp.log(2.0)

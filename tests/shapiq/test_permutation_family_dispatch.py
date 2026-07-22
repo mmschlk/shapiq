@@ -11,7 +11,7 @@ import pytest
 from shapiq import FBII, SII, STII, SV, CallableGame, PermutationSampling
 from shapiq.explainers._permutation import (
     PermutationFamily,
-    _chain_plan,
+    _chain_walk,
     _explain_shapley_values,
     permutation_family,
 )
@@ -46,7 +46,7 @@ def test_the_registry_carries_the_shipped_families_atomically():
     assert {SV, SII, STII} <= set(permutation_family.registry)
     for index in (SV(), SII(order=2), STII(order=2)):
         family = permutation_family(index)
-        assert callable(family.build_plan)
+        assert callable(family.walk)
         assert callable(family.explain)
 
 
@@ -94,7 +94,7 @@ class _MirroredSV(ExtensionalEquality):
 @permutation_family.register
 def _mirrored_family(index: _MirroredSV) -> PermutationFamily:
     del index
-    return PermutationFamily(_chain_plan, _explain_shapley_values)
+    return PermutationFamily(_chain_walk, _explain_shapley_values)
 
 
 def test_registered_third_party_families_extend_the_method():

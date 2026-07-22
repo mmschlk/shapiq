@@ -9,7 +9,6 @@ from shapiq import (
     SV,
     CallableGame,
     DenseCoalitionArray,
-    HistoryError,
     InsufficientSamplesError,
     PermutationSampling,
 )
@@ -77,7 +76,7 @@ def test_sampling_is_invariant_to_budget_splits():
     split = make().sample(7).sample(2).sample(3 * QUANTUM)
     whole = make().sample(7 + 2 + 3 * QUANTUM)
     assert split.state == whole.state
-    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
+    assert split.bank == whole.bank
     assert jnp.allclose(
         order_one_attributions(split.explain()),
         order_one_attributions(whole.explain()),
@@ -85,16 +84,16 @@ def test_sampling_is_invariant_to_budget_splits():
     )
 
 
-def test_pending_samples_are_masked_until_their_walk_completes():
+def test_partial_walk_budgets_are_banked_not_evaluated():
     def make():
         return PermutationSampling(quadratic_game(), SV(), random_state=5)
 
     complete = make().sample(SEEDS + 2 * QUANTUM)
-    with_pending = make().sample(SEEDS + 2 * QUANTUM + 3)
-    assert with_pending.sampler.n_pending_samples == 3
-    assert with_pending.state.n_samples == complete.state.n_samples + 3
+    with_bank = make().sample(SEEDS + 2 * QUANTUM + 3)
+    assert with_bank.bank == 3
+    assert with_bank.state.n_samples == complete.state.n_samples
     assert jnp.allclose(
-        order_one_attributions(with_pending.explain()),
+        order_one_attributions(with_bank.explain()),
         order_one_attributions(complete.explain()),
         atol=1e-6,
     )
@@ -108,15 +107,17 @@ def test_explaining_before_first_completed_walk_raises():
         approximator.sample(QUANTUM - 1).explain()
 
 
-def test_sampling_quantum_and_pending_are_observable():
+def test_unit_rows_bank_and_spend_are_observable():
     approximator = PermutationSampling(quadratic_game(), SV(), random_state=0)
-    assert approximator.sampler.sampling_quantum == QUANTUM
-    assert approximator.sampler.n_seed_samples == SEEDS
-    assert approximator.sampler.n_pending_samples == 0
-    assert approximator.sample(SEEDS + QUANTUM + 1).sampler.n_pending_samples == 1
-    assert (
-        approximator.sample(SEEDS + QUANTUM + 1).sample(QUANTUM - 1).sampler.n_pending_samples == 0
-    )
+    assert approximator.unit_rows == QUANTUM
+    assert approximator.n_seed_samples == SEEDS
+    assert approximator.bank == 0
+    banked = approximator.sample(SEEDS + QUANTUM + 1)
+    assert banked.bank == 1
+    assert banked.spent == SEEDS + QUANTUM
+    completed = banked.sample(QUANTUM - 1)
+    assert completed.bank == 0
+    assert completed.spent == SEEDS + 2 * QUANTUM
 
 
 def test_baseline_carries_the_empty_coalition_value():
@@ -127,7 +128,7 @@ def test_baseline_carries_the_empty_coalition_value():
 
 
 def test_history_rollback_restores_earlier_estimates():
-    approximator = PermutationSampling(quadratic_game(), SV(), random_state=13, track_history=True)
+    approximator = PermutationSampling(quadratic_game(), SV(), random_state=13)
     early = approximator.sample(SEEDS + 2 * QUANTUM)
     late = early.sample(3 * QUANTUM)
     assert jnp.allclose(
@@ -138,7 +139,7 @@ def test_history_rollback_restores_earlier_estimates():
 
 
 def test_history_begins_at_first_evidence_state():
-    approximator = PermutationSampling(quadratic_game(), SV(), random_state=13, track_history=True)
+    approximator = PermutationSampling(quadratic_game(), SV(), random_state=13)
     unseeded_history = approximator.history()
     assert len(unseeded_history) == 1
     with pytest.raises(InsufficientSamplesError):
@@ -149,7 +150,7 @@ def test_history_begins_at_first_evidence_state():
         SEEDS + 2 * QUANTUM,
         SEEDS + 3 * QUANTUM,
     ]
-    with pytest.raises(HistoryError):
+    with pytest.raises(IndexError, match="past the initial state"):
         sampled.rollback(2)
 
 
@@ -190,4 +191,4 @@ def test_undeclared_vector_values_are_rejected():
 
     game = CallableGame(fn=vector_values, n_players=N_PLAYERS)  # value_shape not declared
     with pytest.raises(ValueError, match="declare value_shape"):
-        PermutationSampling(game, SV(), random_state=0).sample(1)
+        PermutationSampling(game, SV(), random_state=0).sample(16)

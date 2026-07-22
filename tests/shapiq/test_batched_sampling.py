@@ -1,4 +1,4 @@
-"""Tests pinning batched unit generation bit-identical to the sequential stream."""
+"""Tests pinning batched draw generation bit-identical and stateless."""
 
 from __future__ import annotations
 
@@ -6,108 +6,64 @@ import jax.numpy as jnp
 import pytest
 
 from shapiq import PairedSampler
-from shapiq.explainers._permutation import TaylorPlan, WindowPlan
 from shapiq.sampling import (
     BanzhafKernelSampler,
-    EmptyState,
     PermutationSampler,
     ProductKernelSampler,
     ShapleyKernelSampler,
     SizeKernelSampler,
-    UnitScheduleSampler,
 )
 
 N_PLAYERS = 6
-
-
-class _FixedUnit(UnitScheduleSampler):
-    """Custom sampler without a batched override; exercises the default path."""
-
-    @property
-    def sampling_quantum(self):
-        return 3
-
-    def _sampled_unit_masks(self, unit_index):
-        mask = jnp.arange(self.n_players) < (unit_index % self.n_players)
-        return jnp.stack([mask, ~mask, jnp.roll(mask, 1)])
 
 
 def all_samplers():
     return {
         "shapley-kernel": ShapleyKernelSampler(N_PLAYERS, random_state=3),
         "banzhaf-kernel": BanzhafKernelSampler(N_PLAYERS, random_state=3),
-        "permutation-chain": PermutationSampler(N_PLAYERS, random_state=3),
-        "permutation-sii": PermutationSampler(
-            N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=3
-        ),
-        "permutation-stii": PermutationSampler(
-            N_PLAYERS, plan=TaylorPlan(N_PLAYERS, 2), random_state=3
-        ),
+        "permutation": PermutationSampler(N_PLAYERS, random_state=3),
         "paired-shapley-kernel": PairedSampler(ShapleyKernelSampler(N_PLAYERS, random_state=3)),
-        "paired-permutation-sii": PairedSampler(
-            PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=3),
-        ),
-        "paired-permutation-stii": PairedSampler(
-            PermutationSampler(N_PLAYERS, plan=TaylorPlan(N_PLAYERS, 2), random_state=3),
-        ),
-        "custom-default-batch": _FixedUnit(N_PLAYERS),
-        "paired-custom": PairedSampler(_FixedUnit(N_PLAYERS)),
+        "paired-permutation": PairedSampler(PermutationSampler(N_PLAYERS, random_state=3)),
         "shapley-kernel-targets": ShapleyKernelSampler(N_PLAYERS, (2,), random_state=1),
-        "permutation-sii-targets": PermutationSampler(
-            N_PLAYERS, (2,), plan=WindowPlan(N_PLAYERS, 2), random_state=1
-        ),
+        "permutation-targets": PermutationSampler(N_PLAYERS, (2,), random_state=1),
         "product-kernel": ProductKernelSampler(N_PLAYERS, 0.3, random_state=2),
-        "size-kernel": SizeKernelSampler(
-            N_PLAYERS, jnp.arange(N_PLAYERS + 1.0), random_state=2
-        ),
+        "size-kernel": SizeKernelSampler(N_PLAYERS, jnp.arange(N_PLAYERS + 1.0), random_state=2),
     }
 
 
 def sampler_params():
     return pytest.mark.parametrize(
-        "sampler", list(all_samplers().values()), ids=list(all_samplers().keys())
+        "sampler",
+        list(all_samplers().values()),
+        ids=list(all_samplers().keys()),
     )
 
 
-def reference_stream(sampler, budget):
-    """Rebuild the schedule stream from scalar per-unit renders only."""
-    chunks = []
-    unit = 0
-    total = 0
-    while total < budget:
-        masks = sampler._unit_masks(unit)
-        chunks.append(masks)
-        total += masks.shape[-2]
-        unit += 1
-    return jnp.concatenate(chunks, axis=-2)[..., :budget, :]
-
-
 @sampler_params()
-def test_batched_units_match_scalar_units(sampler):
-    batch = sampler._sampled_unit_batch(jnp.arange(5))
-    assert batch.shape[0] == 5
+def test_batched_draws_match_single_unit_draws(sampler):
+    batch = sampler.draws(jnp.arange(5))
+    assert batch.shape[0] == 5 * sampler.draws_per_unit
     for index in range(5):
-        assert jnp.array_equal(batch[index], sampler._sampled_unit_masks(index))
+        single = sampler.draws(jnp.asarray([index]))
+        start = index * sampler.draws_per_unit
+        assert jnp.array_equal(batch[start : start + sampler.draws_per_unit], single)
 
 
 @sampler_params()
-def test_split_budgets_replay_the_scalar_reference_stream(sampler):
-    total = sampler.n_seed_samples + 3 * sampler.sampling_quantum + 1
-    expected = reference_stream(sampler, total)
-    first, evolved = sampler.sample(EmptyState(), 3)
-    second, evolved = evolved.sample(EmptyState(), total - 3)
-    stream = jnp.concatenate(
-        [jnp.asarray(first.to_dense()), jnp.asarray(second.to_dense())], axis=-2
-    )
-    assert jnp.array_equal(stream, expected)
-    # the pending unit resumes bit-identically
-    tail, _ = evolved.sample(EmptyState(), 2 * sampler.sampling_quantum)
-    expected_tail = reference_stream(sampler, total + 2 * sampler.sampling_quantum)
-    assert jnp.array_equal(jnp.asarray(tail.to_dense()), expected_tail[..., total:, :])
+def test_draws_are_order_free(sampler):
+    forward = sampler.draws(jnp.arange(4))
+    reverse = sampler.draws(jnp.asarray([3, 2, 1, 0]))
+    per_unit = sampler.draws_per_unit
+    for unit in range(4):
+        mirrored = 3 - unit
+        assert jnp.array_equal(
+            forward[unit * per_unit : (unit + 1) * per_unit],
+            reverse[mirrored * per_unit : (mirrored + 1) * per_unit],
+        )
 
 
-def test_batched_permutation_draws_match_scalar_draws():
-    sampler = PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2), random_state=7)
-    draws = sampler.unit_draws(jnp.arange(4))
-    for index in range(4):
-        assert jnp.array_equal(draws[index], sampler.unit_draw(index))
+@sampler_params()
+def test_samplers_are_stateless_values(sampler):
+    first = sampler.draws(jnp.arange(3))
+    second = sampler.draws(jnp.arange(3))
+    assert jnp.array_equal(first, second)

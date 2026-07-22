@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from shapiq._shape import Shape, ShapeLike, normalize_shape, validate_int, validate_n_players
-from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
-from shapiq.sampling._state import ApproximationState
+import jax
+import jax.numpy as jnp
+
+from shapiq._shape import Shape, ShapeLike, normalize_shape, validate_n_players
 
 if TYPE_CHECKING:
     from jax import Array
+
+    from shapiq.coalitions import CoalitionArray
 
 type ShareSamples = bool | int | tuple[int, ...]
 
@@ -17,14 +20,14 @@ type ShareSamples = bool | int | tuple[int, ...]
 class LawfulSampler(Protocol):
     """Optional capability: the marginal law of one sampled coalition.
 
-    Samplers whose sampled stream positions are identically distributed may
-    declare their law. ``log_probability`` answers for the marginal
-    distribution of one sampled position *after* all wrapper
-    transformations (pairing symmetrizes the wrapped law), in log-space so
-    many-player binomials stay finite; coalitions outside the support
-    answer ``-inf``. The deterministic seed block sits outside the law —
-    its rows are certain, not sampled. Samplers with unit-correlated
-    streams (permutation walks) do not implement the capability:
+    Samplers whose draws are identically distributed may declare their law.
+    ``log_probability`` answers for the marginal distribution of one drawn
+    coalition *after* all wrapper transformations (pairing symmetrizes the
+    wrapped law), in log-space so many-player binomials stay finite;
+    coalitions outside the support answer ``-inf``. The deterministic seed
+    evaluations an approximator makes sit outside the law — they are
+    certain, not sampled. Samplers whose draws are not coalitions
+    (permutation walks) do not implement the capability:
     Horvitz-Thompson-style estimators check for it, and unit-structured
     estimators never need it.
     """
@@ -34,8 +37,17 @@ class LawfulSampler(Protocol):
         ...
 
 
-class Sampler[StateT: ApproximationState](ABC):
-    """Base abstraction for coalition samplers."""
+class Sampler(ABC):
+    """Base abstraction for draw sources: stateless sampler values.
+
+    A sampler proposes draws — permutations, coalitions, whatever its kind
+    stands for — and nothing else: no schedule, no budget, no evolution.
+    Draw ``unit_index`` derives from ``fold_in(random_state, unit_index)``,
+    so draws are order-free and a sampler never changes: approximators ask
+    for the unit indices they need and own everything downstream. Shape
+    policy (which explanation targets share draws) is sampler-owned and
+    trusted by approximators rather than revalidated per call.
+    """
 
     n_players: int
     target_shape: Shape
@@ -48,62 +60,62 @@ class Sampler[StateT: ApproximationState](ABC):
         target_shape: ShapeLike = (),
         *,
         share_samples: ShareSamples = False,
+        random_state: Array | int = 0,
     ) -> None:
-        """Initialize sampler shape policy."""
+        """Initialize sampler shape policy and the draw key.
+
+        Args:
+            n_players: Number of players in the explained game. Must be at
+                least two.
+            target_shape: Shape of the explanation targets, matching the
+                game's target shape.
+            share_samples: Policy for sharing draws across explanation-target
+                axes. ``False`` draws independently per target; ``True``
+                shares across all target axes; an integer or tuple of
+                integers shares across the selected axes.
+            random_state: Integer seed or JAX PRNG key from which every draw
+                derives.
+
+        Raises:
+            ValueError: If ``n_players`` is smaller than two.
+            TypeError: If ``random_state`` is neither an integer nor a JAX
+                PRNG key.
+        """
         self.n_players = validate_n_players(n_players)
+        if self.n_players < 2:
+            msg = "sampled draws require at least two players"
+            raise ValueError(msg)
         self.target_shape = normalize_shape(target_shape)
         self.share_samples = _validate_share_samples(share_samples, self.target_shape)
         self.shared_target_shape = _shared_target_shape(self.target_shape, self.share_samples)
+        self._key = _validate_random_state(random_state)
 
     @property
-    def mutable(self) -> bool:
-        """Return whether this sampler mutates in place."""
-        return False
-
-    @property
-    def sampling_quantum(self) -> int:
-        """Return the smallest sample count after which new evidence is usable.
-
-        Estimates incorporate only completed quanta; samples belonging to an
-        incomplete quantum stay pending until later sampling completes them.
-        Samplers whose evidence is usable per single sample return ``1``.
-        """
+    def draws_per_unit(self) -> int:
+        """Return how many draws one unit index yields (pairing doubles it)."""
         return 1
 
-    @property
-    def n_seed_samples(self) -> int:
-        """Return the number of deterministic seed samples emitted first.
-
-        Seed samples, such as the empty and grand coalition, are emitted as a
-        one-time prelude unit before sampled units and are paid from the
-        sample budget. Samplers without a seed prelude return ``0``.
-        """
-        return 0
-
-    @property
-    def n_pending_samples(self) -> int:
-        """Return the number of sampled coalitions in an incomplete unit.
-
-        Pending samples are already evaluated and stored, but masked from
-        explanations until their unit completes on a later sample call.
-        """
-        return 0
-
-    def sample(self, state: StateT, budget: int) -> tuple[CoalitionArray, Self]:
-        """Sample coalitions and return the evolved sampler."""
-        validate_int("budget", budget)
-        if budget == 0:
-            return DenseCoalitionArray.empty(self.sample_shape(0), self.n_players), self
-        return self._sample(state, budget)
-
-    def sample_shape(self, budget: int) -> Shape:
-        """Return the logical coalition shape for a budget."""
-        validate_int("budget", budget)
-        return (*self.shared_target_shape, budget)
-
     @abstractmethod
-    def _sample(self, state: StateT, budget: int) -> tuple[CoalitionArray, Self]:
-        """Sample positive-budget coalitions."""
+    def draws(self, unit_indices: Array) -> Array:
+        """Return the draws of the given unit indices, stacked on a new leading axis."""
+
+
+def _validate_random_state(random_state: Array | int) -> Array:
+    """Return a JAX PRNG key from an integer seed or an existing key."""
+    if isinstance(random_state, bool):
+        msg = "random_state must be an integer seed or a JAX PRNG key, got bool"
+        raise TypeError(msg)
+    if isinstance(random_state, int):
+        return jax.random.key(random_state)
+    if isinstance(random_state, jax.Array) and jnp.issubdtype(
+        random_state.dtype,
+        jax.dtypes.prng_key,
+    ):
+        return random_state
+    msg = (
+        f"random_state must be an integer seed or a JAX PRNG key, got {type(random_state).__name__}"
+    )
+    raise TypeError(msg)
 
 
 def _validate_share_samples(share_samples: ShareSamples, target_shape: Shape) -> ShareSamples:

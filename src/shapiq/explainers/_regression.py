@@ -9,8 +9,8 @@ from jax import Array
 
 from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
+from shapiq.explainers._approximator import Approximator
 from shapiq.explainers._base import reject_common_index_mistakes
-from shapiq.explainers._evidence import EvidenceApproximator
 from shapiq.explainers._faithful import (
     bernoulli_design,
     eliminate_constraint,
@@ -23,12 +23,11 @@ from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (
     BanzhafKernelSampler,
-    EmptyState,
+    CoalitionSampler,
     PairedSampler,
     ProductKernelSampler,
     SamplingState,
     ShapleyKernelSampler,
-    UnitScheduleSampler,
 )
 
 if TYPE_CHECKING:
@@ -38,7 +37,7 @@ if TYPE_CHECKING:
     from shapiq.sampling import ShareSamples
 
 
-class Regression(EvidenceApproximator):
+class Regression(Approximator):
     """Kernel-regression approximator dispatching on the interaction index.
 
     Each supported index is defined by a least squares fit under its kernel,
@@ -92,7 +91,6 @@ class Regression(EvidenceApproximator):
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
         paired: bool | None = None,
-        track_history: bool = False,
         deduplicate: bool = False,
     ) -> None:
         """Initialize without evaluating the game.
@@ -117,8 +115,6 @@ class Regression(EvidenceApproximator):
                 the index's kernel is complement-symmetric — always except
                 for ``WeightedFBII`` with ``p != 0.5``, whose complements
                 would enter the fit with the wrong implicit weighting.
-            track_history: Whether to record value-equivalent history for
-                rollback and convergence analysis.
             deduplicate: Whether to evaluate each distinct coalition at most
                 once; repeats reuse stored values and only novel evaluations
                 count toward the budget. Requires shared samples.
@@ -151,10 +147,11 @@ class Regression(EvidenceApproximator):
             )
             raise ValueError(msg)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
-        state = EmptyState(track_history=track_history)
-        super().__init__(game, sampler, state, index=index)
-        self._init_deduplication(deduplicate=deduplicate)
+        super().__init__(game, sampler, index, deduplicate=deduplicate)
         self._family = family
+        self._render = _coalition_rows
+        self._unit_length = 1
+        self._prelude_masks = None
 
     @property
     def min_budget(self) -> int:
@@ -171,7 +168,7 @@ class Regression(EvidenceApproximator):
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
         offset = 1 if self._family.intercept else -1
-        return max(super().min_budget, self.sampler.n_seed_samples + n_columns + offset)
+        return max(super().min_budget, self.n_seed_samples + n_columns + offset)
 
     def _solve(self, masks: Array, response: Array, delta: Array) -> Array:
         """Solve one design's least squares fit per the index's kernel family."""
@@ -189,10 +186,9 @@ class Regression(EvidenceApproximator):
         Returns:
             A dense explanation whose baseline is the empty-coalition value.
             Attributions hold the solution of the kernel least squares
-            problem on the centered game over all completed sampled units;
-            FBII and WeightedFBII additionally carry their fitted intercept
-            at order zero.
-            Pending samples of an unfinished unit are excluded.
+            problem on the centered game over all sampled units; FBII and
+            WeightedFBII additionally carry their fitted intercept at order
+            zero.
 
         Raises:
             InsufficientSamplesError: If no sampled unit has completed, or if
@@ -200,14 +196,13 @@ class Regression(EvidenceApproximator):
         """
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()
-        n_seeds = self.sampler.n_seed_samples
-        pending = self.sampler.n_pending_samples
-        usable = self.state.n_samples - pending
+        n_seeds = self.n_seed_samples
+        usable = self.state.n_samples
         if usable - n_seeds < 1:
             msg = (
                 "explaining requires at least one completed sampled unit: "
                 f"sample at least {self.min_budget} evaluations in total "
-                f"(currently {self.state.n_samples} stored, {pending} pending)"
+                f"(currently {usable} stored, {self.bank} banked)"
             )
             raise InsufficientSamplesError(msg)
         n_players = self.game.n_players
@@ -280,7 +275,7 @@ class RegressionFamily(NamedTuple):
     identification row), and the least squares solve itself.
     """
 
-    build_sampler: Callable[..., UnitScheduleSampler]
+    build_sampler: Callable[..., CoalitionSampler]
     symmetric_kernel: bool
     intercept: bool
     solve: Callable[..., Array]
@@ -476,3 +471,8 @@ def _kadd_solve(
     others = jnp.delete(constraint, pivot_column)
     back_substituted = (delta[..., None, :] - others[None, :] @ partial) / anchor
     return jnp.insert(partial, pivot_column, back_substituted[..., 0, :], axis=-2)
+
+
+def _coalition_rows(draws: Array) -> Array:
+    """Enter drawn coalitions directly as single-row units."""
+    return draws[..., None, :]

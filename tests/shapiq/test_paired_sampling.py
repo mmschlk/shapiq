@@ -16,7 +16,6 @@ from shapiq import (
     PermutationSampling,
     ShapleyKernelSampler,
 )
-from shapiq.sampling import UnitScheduleSampler
 
 N_PLAYERS = 5
 WEIGHTS = jnp.asarray([0.7, -1.3, 0.1, 2.0, -0.4])
@@ -50,28 +49,20 @@ def order_one(explanation):
 def test_paired_kernel_units_are_the_wrapped_draw_plus_its_complement(sampler_type):
     paired = PairedSampler(sampler_type(N_PLAYERS, random_state=3))
     plain = sampler_type(N_PLAYERS, random_state=3)
-    assert paired.sampling_quantum == 2 * plain.sampling_quantum
+    assert paired.draws_per_unit == 2 * plain.draws_per_unit
+    draws = paired.draws(jnp.arange(5))
+    base = plain.draws(jnp.arange(5))
     for unit in range(5):
-        unit_masks = paired._sampled_unit_masks(unit)
-        base = plain._sampled_unit_masks(unit)
-        assert unit_masks.shape[-2] == 2
-        assert jnp.array_equal(unit_masks[..., 0, :], base[..., 0, :])
-        assert jnp.array_equal(unit_masks[..., 1, :], ~base[..., 0, :])
+        assert jnp.array_equal(draws[2 * unit], base[unit])
+        assert jnp.array_equal(draws[2 * unit + 1], ~base[unit])
 
 
-def test_hookless_samplers_get_row_complement_pairing_for_free():
-    class _FixedUnit(UnitScheduleSampler):
-        @property
-        def sampling_quantum(self):
-            return 1
+def test_samplers_without_an_antithesis_are_rejected_with_a_teaching_error():
+    class _NoAntithesis:
+        n_players = N_PLAYERS
 
-        def _sampled_unit_masks(self, unit_index):
-            mask = jnp.arange(self.n_players) < (unit_index % self.n_players)
-            return mask[None, :]
-
-    paired = PairedSampler(_FixedUnit(N_PLAYERS))
-    unit = paired._sampled_unit_masks(2)
-    assert jnp.array_equal(unit[1], ~unit[0])
+    with pytest.raises(TypeError, match="declares no antithesis"):
+        PairedSampler(_NoAntithesis())
 
 
 def test_pairing_twice_is_rejected_with_a_teaching_error():
@@ -83,8 +74,8 @@ def test_pairing_twice_is_rejected_with_a_teaching_error():
 def test_paired_permutation_units_walk_the_reversed_permutation():
     approximator = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=2)
     walk = N_PLAYERS - 1
-    assert approximator.sampler.sampling_quantum == 2 * walk
-    assert approximator.sampler.plan.length == walk
+    assert approximator.unit_rows == 2 * walk
+    assert approximator.sampler.draws_per_unit == 2
     evolved = approximator.sample(approximator.min_budget)
     masks = jnp.asarray(evolved.state.coalitions.to_dense())
     chain = masks[2 : 2 + walk]

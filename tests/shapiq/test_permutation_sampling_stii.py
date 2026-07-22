@@ -184,7 +184,8 @@ def test_pending_samples_and_budget_splits():
     whole = make().sample(seeds(2) + 4 * quantum(2))
     split = make().sample(quantum(2) + 7).sample(seeds(2) + 3 * quantum(2) - 7)
     assert split.state == whole.state
-    with_pending = make().sample(seeds(2) + 4 * quantum(2) + 9)
-    assert with_pending.sampler.n_pending_samples == 9
+    with_bank = make().sample(seeds(2) + 4 * quantum(2) + 9)
+    assert with_bank.bank == 9
+    assert with_bank.state.n_samples == whole.state.n_samples
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(with_pending.explain()(pair), whole.explain()(pair), atol=1e-6)
+        assert jnp.allclose(with_bank.explain()(pair), whole.explain()(pair), atol=1e-6)

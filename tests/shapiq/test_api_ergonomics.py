@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from shapiq import SV, CallableGame, HistoryError, InsufficientSamplesError, PermutationSampling
+from shapiq import SV, CallableGame, InsufficientSamplesError, PermutationSampling
 
 N_PLAYERS = 5
 QUANTUM = N_PLAYERS - 1
@@ -40,11 +40,6 @@ def test_share_samples_accepts_false_and_rejects_none():
         PermutationSampling(additive_game(), SV(), share_samples=None)
 
 
-def test_track_history_must_be_a_bool():
-    with pytest.raises(TypeError, match="track_history must be a bool"):
-        PermutationSampling(additive_game(), SV(), track_history=1)
-
-
 def test_min_budget_matches_first_explainable_budget():
     approximator = PermutationSampling(additive_game(), SV())
     assert approximator.min_budget == SEEDS + QUANTUM
@@ -59,8 +54,12 @@ def test_error_messages_teach_the_working_idiom():
         approximator.explain()
     with pytest.raises(InsufficientSamplesError, match=r"sample at least \d+ evaluations"):
         approximator.sample(3).explain()
-    with pytest.raises(HistoryError, match="track_history=True"):
-        approximator.history()
+    # history is always on: a fresh approximator is its own single-entry history
+    history = approximator.history()
+    assert len(history) == 1
+    assert history[0].state == approximator.state
+    with pytest.raises(IndexError, match="past the initial state"):
+        approximator.rollback()
     explanation = approximator.sample(SEEDS + QUANTUM).explain()
     with pytest.raises(TypeError, match=r"explanation\(\(0,\)\)"):
         explanation(0)
@@ -78,4 +77,5 @@ def test_fresh_approximator_is_observable():
     text = repr(approximator)
     assert "PermutationSampling" in text
     assert "n_samples=0" in text
-    assert "n_pending_samples=0" in text
+    assert "bank=0" in text
+    assert "spent=0" in text

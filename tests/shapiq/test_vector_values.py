@@ -149,22 +149,23 @@ def test_regression_fsii_vector_values_match_per_component_scalar_runs():
         assert jnp.allclose(vector((player,))[0], quadratic((player,)), atol=1e-5)
 
 
-def test_pending_vector_samples_are_masked():
+def test_partial_vector_walk_budgets_are_banked():
     def make():
         return PermutationSampling(vector_game(), SV(), random_state=5)
 
     complete = make().sample(2 + 4 * (N_PLAYERS - 1))
-    with_pending = make().sample(2 + 4 * (N_PLAYERS - 1) + 1)
-    assert with_pending.sampler.n_pending_samples == 1
+    with_bank = make().sample(2 + 4 * (N_PLAYERS - 1) + 1)
+    assert with_bank.bank == 1
+    assert with_bank.state.n_samples == complete.state.n_samples
     assert jnp.allclose(
-        order_one(with_pending.explain()),
+        order_one(with_bank.explain()),
         order_one(complete.explain()),
         atol=1e-6,
     )
 
 
 def test_vector_history_slices_evidence_states():
-    approximator = PermutationSampling(vector_game(), SV(), random_state=1, track_history=True)
+    approximator = PermutationSampling(vector_game(), SV(), random_state=1)
     approximator = approximator.sample(2 + (N_PLAYERS - 1)).sample(N_PLAYERS - 1)
     states = approximator.history()
     assert [state.state.n_samples for state in states] == [
@@ -182,7 +183,7 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
         n_players=N_PLAYERS,
     )
     with pytest.raises(ValueError, match="declare value_shape"):
-        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).sample(1)
+        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).sample(16)
     vector_declared_scalar_output = CallableGame(
         fn=lambda c: quadratic_from_masks(jnp.asarray(c.to_dense(), dtype=jnp.float32)),
         n_players=N_PLAYERS,

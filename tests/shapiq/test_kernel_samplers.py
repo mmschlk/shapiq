@@ -9,7 +9,6 @@ import pytest
 from shapiq.interactions._indices import _shapley_regression_kernel
 from shapiq.sampling import (
     BanzhafKernelSampler,
-    EmptyState,
     ProductKernelSampler,
     ShapleyKernelSampler,
     SizeKernelSampler,
@@ -18,9 +17,8 @@ from shapiq.sampling import (
 N_PLAYERS = 7
 
 
-def sampled_rows(sampler, budget):
-    coalitions, _ = sampler.sample(EmptyState(), budget)
-    return jnp.asarray(coalitions.to_dense())
+def sampled_rows(sampler, n_draws):
+    return jnp.asarray(sampler.draws(jnp.arange(n_draws)))
 
 
 def test_shapley_stream_is_pinned_to_the_original_arithmetic():
@@ -36,8 +34,8 @@ def test_shapley_stream_is_pinned_to_the_original_arithmetic():
         size = jax.random.choice(size_key, sizes, shape=(), p=probabilities)
         players = jnp.arange(N_PLAYERS)
         permutation = jax.random.permutation(member_key, players, axis=-1, independent=True)
-        expected = (jnp.argsort(permutation) < size)[None, :]
-        assert jnp.array_equal(sampler._sampled_unit_masks(unit), expected)
+        expected = jnp.argsort(permutation) < size
+        assert jnp.array_equal(sampler.draws(jnp.asarray([unit]))[0], expected)
 
 
 def test_banzhaf_stream_is_pinned_to_fair_coin_flips():
@@ -46,21 +44,21 @@ def test_banzhaf_stream_is_pinned_to_fair_coin_flips():
     product = ProductKernelSampler(N_PLAYERS, 0.5, random_state=4)
     for unit in range(20):
         expected = jax.random.bernoulli(jax.random.fold_in(key, unit), 0.5, (N_PLAYERS,))
-        assert jnp.array_equal(sampler._sampled_unit_masks(unit), expected[None, :])
-        assert jnp.array_equal(product._sampled_unit_masks(unit), expected[None, :])
+        assert jnp.array_equal(sampler.draws(jnp.asarray([unit]))[0], expected)
+        assert jnp.array_equal(product.draws(jnp.asarray([unit]))[0], expected)
 
 
 def test_size_kernel_samples_only_positive_weight_sizes():
     weights = jnp.zeros(N_PLAYERS + 1).at[3].set(1.0)
     sampler = SizeKernelSampler(N_PLAYERS, weights, random_state=0)
-    rows = sampled_rows(sampler, 40)
-    assert jnp.array_equal(jnp.sum(rows[2:], axis=-1), jnp.full(38, 3))
+    rows = sampled_rows(sampler, 38)
+    assert jnp.array_equal(jnp.sum(rows, axis=-1), jnp.full(38, 3))
 
 
 def test_size_kernel_mixes_declared_sizes_and_members():
     weights = jnp.zeros(N_PLAYERS + 1).at[jnp.asarray([1, 6])].set(1.0)
     sampler = SizeKernelSampler(N_PLAYERS, weights, random_state=1)
-    sizes = jnp.sum(sampled_rows(sampler, 402)[2:], axis=-1)
+    sizes = jnp.sum(sampled_rows(sampler, 400), axis=-1)
     assert set(jnp.unique(sizes).tolist()) == {1, 6}
     # both sizes appear with roughly equal frequency
     assert 120 < int(jnp.sum(sizes == 1)) < 280
@@ -78,7 +76,7 @@ def test_from_coalition_kernel_matches_the_shapley_size_marginal():
 
 def test_product_kernel_memberships_follow_the_probability():
     sampler = ProductKernelSampler(N_PLAYERS, 0.2, random_state=3)
-    rows = sampled_rows(sampler, 2002)[2:]
+    rows = sampled_rows(sampler, 2000)
     frequencies = jnp.mean(rows.astype(jnp.float32), axis=0)
     assert jnp.all(jnp.abs(frequencies - 0.2) < 0.05)
 

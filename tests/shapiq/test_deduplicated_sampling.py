@@ -77,7 +77,10 @@ def test_game_sees_each_coalition_exactly_once_and_budget_counts_novel():
     approximator = PermutationSampling(recording_game(rows), SV(), random_state=0, deduplicate=True)
     approximator = approximator.sample(12).sample(8)
     evaluated = np.concatenate(rows, axis=0)
-    assert evaluated.shape[0] == 12 + 8
+    # whole-unit spending: the final unit may overshoot into the bank, and
+    # spent + bank always balances the budgets handed in
+    assert evaluated.shape[0] == approximator.spent
+    assert approximator.spent + approximator.bank == 12 + 8
     assert np.unique(evaluated, axis=0).shape[0] == evaluated.shape[0]
 
 
@@ -88,7 +91,7 @@ def test_sampling_is_invariant_to_budget_splits():
     split = make().sample(9).sample(2).sample(8)
     whole = make().sample(19)
     assert split.state == whole.state
-    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
+    assert split.bank == whole.bank
 
 
 def test_stall_warns_and_leaves_budget_unspent():
@@ -121,7 +124,7 @@ def test_branches_from_a_shared_parent_stay_consistent():
 
 def test_rollback_and_resample_are_consistent():
     first = PermutationSampling(
-        quadratic_game(), SV(), random_state=3, track_history=True, deduplicate=True
+        quadratic_game(), SV(), random_state=3, deduplicate=True
     ).sample(15)
     second = first.sample(10)
     assert second.rollback(1).state == first.state

@@ -155,15 +155,16 @@ def test_paired_none_matches_the_unpaired_default():
         assert jnp.allclose(by_default(interaction), unpaired(interaction))
 
 
-def test_pending_samples_are_masked_until_their_walk_completes():
+def test_partial_walk_budgets_are_banked():
     def make():
         return PermutationSampling(game_from(quadratic_from_masks), SII(), random_state=5)
 
     complete = make().sample(SEEDS + 40 * SII_QUANTUM)
-    with_pending = make().sample(SEEDS + 40 * SII_QUANTUM + 5)
-    assert with_pending.sampler.n_pending_samples == 5
+    with_bank = make().sample(SEEDS + 40 * SII_QUANTUM + 5)
+    assert with_bank.bank == 5
+    assert with_bank.state.n_samples == complete.state.n_samples
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(with_pending.explain()(pair), complete.explain()(pair), atol=1e-6)
+        assert jnp.allclose(with_bank.explain()(pair), complete.explain()(pair), atol=1e-6)
 
 
 def test_sampling_is_invariant_to_budget_splits():
@@ -173,7 +174,7 @@ def test_sampling_is_invariant_to_budget_splits():
     split = make().sample(13).sample(3).sample(30 * SII_QUANTUM - 16)
     whole = make().sample(30 * SII_QUANTUM)
     assert split.state == whole.state
-    assert split.sampler.n_pending_samples == whole.sampler.n_pending_samples
+    assert split.bank == whole.bank
 
 
 def test_explanation_metadata_and_normalization():

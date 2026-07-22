@@ -11,10 +11,6 @@ class UnsupportedGameError(TypeError):
     """Raised when an explainer cannot work with a supplied game."""
 
 
-class HistoryError(IndexError):
-    """Raised when approximation history is unavailable or invalid."""
-
-
 class SamplingStallWarning(UserWarning):
     """Warned when deduplicated sampling cannot spend its remaining budget.
 

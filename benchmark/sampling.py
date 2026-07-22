@@ -25,10 +25,9 @@ from shapiq import (
 from shapiq.explainers._permutation import TaylorPlan, WindowPlan
 from shapiq.sampling import (
     BanzhafKernelSampler,
-    EmptyState,
     PermutationSampler,
+    Sampler,
     ShapleyKernelSampler,
-    UnitScheduleSampler,
 )
 
 if TYPE_CHECKING:
@@ -62,22 +61,26 @@ def median_seconds(run: Callable[[], object], repeats: int) -> float:
     return times[len(times) // 2]
 
 
-def sampler_only_cases() -> dict[str, UnitScheduleSampler]:
-    """Return the sampler-only workloads."""
+def sampler_only_cases() -> dict[str, tuple[Sampler, object]]:
+    """Return the sampler-only workloads: a draw source and its expansion."""
+    window = WindowPlan(N_PLAYERS, 2)
+    taylor = TaylorPlan(N_PLAYERS, 2)
+    identity = lambda draws: draws[..., None, :]  # noqa: E731 - coalition rows
     return {
-        "ShapleyKernelSampler": ShapleyKernelSampler(N_PLAYERS, random_state=0),
-        "BanzhafKernelSampler": BanzhafKernelSampler(N_PLAYERS, random_state=0),
-        "PairedSampler(ShapleyKernel)": PairedSampler(ShapleyKernelSampler(N_PLAYERS)),
-        "PermutationSampler(WindowPlan order=2)": PermutationSampler(
-            N_PLAYERS,
-            plan=WindowPlan(N_PLAYERS, 2),
+        "ShapleyKernelSampler": (ShapleyKernelSampler(N_PLAYERS, random_state=0), identity),
+        "BanzhafKernelSampler": (BanzhafKernelSampler(N_PLAYERS, random_state=0), identity),
+        "PairedSampler(ShapleyKernel)": (PairedSampler(ShapleyKernelSampler(N_PLAYERS)), identity),
+        "PermutationSampler + window render": (
+            PermutationSampler(N_PLAYERS, random_state=0),
+            window.render,
         ),
-        "PairedSampler(Permutation WindowPlan)": PairedSampler(
-            PermutationSampler(N_PLAYERS, plan=WindowPlan(N_PLAYERS, 2)),
+        "Paired(Permutation) + window render": (
+            PairedSampler(PermutationSampler(N_PLAYERS, random_state=0)),
+            window.render,
         ),
-        "PermutationSampler(TaylorPlan order=2)": PermutationSampler(
-            N_PLAYERS,
-            plan=TaylorPlan(N_PLAYERS, 2),
+        "PermutationSampler + taylor render": (
+            PermutationSampler(N_PLAYERS, random_state=0),
+            taylor.render,
         ),
     }
 
@@ -140,12 +143,12 @@ def main() -> None:
     print("| workload | total ms | us/eval |")
     print("|---|---|---|")
 
-    state = EmptyState()
-    for name, sampler in sampler_only_cases().items():
+    for name, (sampler, render) in sampler_only_cases().items():
+        n_units = budget // sampler.draws_per_unit
 
-        def run(sampler: UnitScheduleSampler = sampler) -> object:
-            coalitions, _ = sampler.sample(state, budget)
-            return jax.block_until_ready(jnp.asarray(coalitions.to_dense()))
+        def run(sampler: Sampler = sampler, render: object = render, n_units: int = n_units) -> object:
+            masks = render(sampler.draws(jnp.arange(n_units)))
+            return jax.block_until_ready(jnp.asarray(masks))
 
         seconds = median_seconds(run, repeats)
         print(f"| sampler-only: {name} | {seconds * 1e3:.1f} | {seconds / budget * 1e6:.1f} |")
