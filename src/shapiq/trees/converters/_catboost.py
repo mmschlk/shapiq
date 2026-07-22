@@ -10,8 +10,8 @@ from typing import Any
 import numpy as np
 from catboost.core import CatBoost  # noqa: TC002 - registration needs the class
 
-from shapiq.trees._conversion import to_tree_model
 from shapiq.trees._model import TreeModel, constant_tree, trusted_tree_model
+from shapiq.trees.converters._base import to_tree_model
 
 _CATEGORICAL_MESSAGE = (
     "the model uses categorical splits, which the unified tree layout "

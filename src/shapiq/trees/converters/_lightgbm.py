@@ -9,8 +9,8 @@ import numpy as np
 from lightgbm.basic import Booster  # noqa: TC002 - registration needs the class
 from lightgbm.sklearn import LGBMModel  # noqa: TC002 - registration needs the class
 
-from shapiq.trees._conversion import to_tree_model
 from shapiq.trees._model import TreeModel, trusted_tree_model
+from shapiq.trees.converters._base import to_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable

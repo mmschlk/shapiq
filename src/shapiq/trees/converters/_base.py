@@ -59,22 +59,22 @@ def _tree_model_passthrough(model: TreeModel) -> tuple[TreeModel, ...]:
 @to_tree_model.delayed_register((SKLEARN_DECISION_TREE, SKLEARN_FOREST))
 def _register_sklearn_conversions(_: type) -> None:
     """Materialize the scikit-learn converters on first contact."""
-    import shapiq.trees._sklearn  # noqa: F401, PLC0415 - registers the handlers
+    import shapiq.trees.converters._sklearn  # noqa: F401, PLC0415 - registers the handlers
 
 
 @to_tree_model.delayed_register((XGBOOST_BOOSTER, XGBOOST_MODEL))
 def _register_xgboost_conversions(_: type) -> None:
     """Materialize the XGBoost converters on first contact."""
-    import shapiq.trees._xgboost  # noqa: F401, PLC0415 - registers the handlers
+    import shapiq.trees.converters._xgboost  # noqa: F401, PLC0415 - registers the handlers
 
 
 @to_tree_model.delayed_register((LIGHTGBM_BOOSTER, LIGHTGBM_MODEL))
 def _register_lightgbm_conversions(_: type) -> None:
     """Materialize the LightGBM converters on first contact."""
-    import shapiq.trees._lightgbm  # noqa: F401, PLC0415 - registers the handlers
+    import shapiq.trees.converters._lightgbm  # noqa: F401, PLC0415 - registers the handlers
 
 
 @to_tree_model.delayed_register(CATBOOST_MODEL)
 def _register_catboost_conversions(_: type) -> None:
     """Materialize the CatBoost converters on first contact."""
-    import shapiq.trees._catboost  # noqa: F401, PLC0415 - registers the handlers
+    import shapiq.trees.converters._catboost  # noqa: F401, PLC0415 - registers the handlers

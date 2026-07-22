@@ -10,8 +10,8 @@ import numpy as np
 from xgboost.core import Booster  # noqa: TC002 - registration needs the class
 from xgboost.sklearn import XGBModel  # noqa: TC002 - registration needs the class
 
-from shapiq.trees._conversion import to_tree_model
 from shapiq.trees._model import TreeModel, constant_tree, trusted_tree_model
+from shapiq.trees.converters._base import to_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable

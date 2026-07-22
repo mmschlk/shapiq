@@ -9,13 +9,13 @@ import numpy as np
 from array_api_compat import array_namespace, device
 
 from shapiq._shape import broadcast_shapes, validate_int
-from shapiq.games._masker import (
+from shapiq.games._values import to_host_array
+from shapiq.games.maskers._base import (
     BackendArray,
     Masker,
     coalition_masks_like,
     require_shared_backend,
 )
-from shapiq.games._values import to_host_array
 
 if TYPE_CHECKING:
     from shapiq.coalitions import CoalitionArray

@@ -57,7 +57,7 @@ from shapiq import (  # noqa: E402
     TreeExplainer,
     to_tree_model,
 )
-from shapiq.trees import _lightgbm, _xgboost  # noqa: E402
+from shapiq.trees.converters import _lightgbm, _xgboost  # noqa: E402
 
 N_PLAYERS = 5
 

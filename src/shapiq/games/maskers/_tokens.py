@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 from array_api_compat import array_namespace, device
 
-from shapiq.games._baseline import BaselineMasker
-from shapiq.games._masker import BackendArray
+from shapiq.games.maskers._base import BackendArray
+from shapiq.games.maskers._baseline import BaselineMasker
 
 
 @dataclass(frozen=True)

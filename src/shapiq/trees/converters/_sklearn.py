@@ -6,8 +6,8 @@ import numpy as np
 from sklearn.ensemble._forest import BaseForest  # noqa: TC002 - registration needs the class
 from sklearn.tree._classes import BaseDecisionTree  # noqa: TC002 - registration needs the class
 
-from shapiq.trees._conversion import to_tree_model
 from shapiq.trees._model import TreeModel, trusted_tree_model
+from shapiq.trees.converters._base import to_tree_model
 
 
 def _from_sklearn_tree(tree: BaseDecisionTree, *, scale: float = 1.0) -> TreeModel:

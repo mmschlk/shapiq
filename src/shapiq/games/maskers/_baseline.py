@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from array_api_compat import array_namespace
 
-from shapiq.games._masker import (
+from shapiq.games.maskers._base import (
     BackendArray,
     Masker,
     coalition_masks_like,

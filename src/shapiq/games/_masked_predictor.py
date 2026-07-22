@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
     from shapiq.games._base import Model
-    from shapiq.games._masker import Masker
+    from shapiq.games.maskers._base import Masker
 
 
 class MaskedPredictor[PredictionT](ABC):
