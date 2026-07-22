@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 
 from shapiq import FBII, SII, STII, SV, CallableGame, PermutationSampling
-from shapiq.explainers._permutation import (
+from shapiq.explainers.approximators._permutation import (
     PermutationFamily,
     _chain_walk,
     _explain_shapley_values,

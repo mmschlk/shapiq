@@ -3,7 +3,7 @@
 One table for everything planned, postponed, or discussed and not yet landed. Shorthand is
 fine here — per-issue files and ADRs stay authoritative for detail. Sources: the issue files,
 the five-agent review rounds (issue-12), the outside API review (`shapiqv2apireview.md`,
-findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last trued: 2026-07-21.
+findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last trued: 2026-07-22.
 
 ## A — Core arcs (ossify-sensitive; order matters)
 
@@ -21,7 +21,7 @@ findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last tru
 | CallableGame dense default | user callables receive dense bool jax arrays (today: raw `CoalitionArray`; every example's first line is `to_dense()`); ABC stays | F5d | open — small |
 | `share_samples` → bool | axis-tuple design to the drawer until the VLM/multi-target story arrives | F5a | open — small |
 | Drop `approximate()` | real alias duplication; `__call__` waits on the lifecycle ADR | F5e | open |
-| `ensure_bool` trim | keep teaching sites, drop flag-policing; much of it dies with the history rework anyway | F5c | open — low, batch |
+| `ensure_bool` trim | keep teaching sites, drop flag-policing (the sampling rework already deleted most of it with `track_history`/`HistoryError`) | F5c | open — low, batch |
 | Reprs | samplers, ExactExplainer, TreeExplainer, InterventionalTreeGame are grade-F defaults; TreeModel dumps full arrays (SamplingState got its repr in #564) | issue-12 | open |
 | `np.asarray(explanation)` | silent 0-d object array today → real dense exporter | issue-12 | open |
 | Naming | `Regression` → `KernelRegression`?, `sampling_quantum` → `unit_size`? | Part III | open — decide at facade/namespace time |

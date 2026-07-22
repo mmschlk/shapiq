@@ -9,7 +9,6 @@ from jax import Array
 
 from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
-from shapiq.explainers._approximator import Approximator
 from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers._faithful import (
     bernoulli_design,
@@ -19,6 +18,7 @@ from shapiq.explainers._faithful import (
     solve_faithful,
 )
 from shapiq.explainers._valueaxes import to_trailing
+from shapiq.explainers.approximators._base import Approximator
 from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (

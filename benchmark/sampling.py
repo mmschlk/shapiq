@@ -22,7 +22,7 @@ from shapiq import (
     PermutationSampling,
     Regression,
 )
-from shapiq.explainers._permutation import TaylorPlan, WindowPlan
+from shapiq.explainers.approximators._permutation import TaylorPlan, WindowPlan
 from shapiq.sampling import (
     BanzhafKernelSampler,
     PermutationSampler,
