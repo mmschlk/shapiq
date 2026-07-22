@@ -133,6 +133,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         _validate_values_alignment(coalitions, values)
         self._chunks: tuple[tuple[CoalitionArray, ValueT], ...] = ((coalitions, values),)
         self._packed_keys: np.ndarray | None = None
+        self._key_index: dict[bytes, int] | None = None
         self._unique: UniqueView | None = None
         self._history_cuts = (
             ((self.n_samples, 0),) if _history_cuts is None else _history_cuts
@@ -197,6 +198,32 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         if self._packed_keys is None:
             self._packed_keys = _packed_rows(cast("ArrayLike", self.coalitions.to_dense()))
         return self._packed_keys
+
+    def key_index(self) -> dict[bytes, int]:
+        """Return each distinct stored coalition's first stream position.
+
+        The mapping is keyed by the packed identity rows of ``packed_keys``
+        as bytes, in first-occurrence order; its length is the distinct
+        coalition count — the deduplicated spend of a stream. Computed once
+        per state and cached; treat the returned mapping as read-only.
+
+        Returns:
+            A mapping from packed coalition identity to the coalition's
+            first position on the sample axis.
+
+        Raises:
+            ValueError: If the stored coalitions are not shared across
+                explanation targets.
+        """
+        if self._key_index is None:
+            packed = self.packed_keys()
+            width = packed.shape[-1]
+            blob = packed.tobytes()
+            index: dict[bytes, int] = {}
+            for position in range(packed.shape[0]):
+                index.setdefault(blob[position * width : (position + 1) * width], position)
+            self._key_index = index
+        return self._key_index
 
     def unique(self, n_samples: int | None = None) -> UniqueView:
         """Return the distinct stored coalitions with their multiplicities.
@@ -269,6 +296,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         appended = copy(self)
         appended._chunks = (*self._chunks, (coalitions, values))  # noqa: SLF001 - evolving a copy of self
         appended._packed_keys = None  # noqa: SLF001 - the caches describe the shorter stream
+        appended._key_index = None  # noqa: SLF001 - the caches describe the shorter stream
         appended._unique = None  # noqa: SLF001 - the caches describe the shorter stream
         appended._history_cuts = (  # noqa: SLF001
             *self._history_cuts,

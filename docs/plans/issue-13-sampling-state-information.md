@@ -4,7 +4,9 @@ Status: largely landed 2026-07-21 (ADR 0013 — together with the walk-plan refa
 `SamplingState.packed_keys()`/`unique()` with deduplication as a consumer, and
 `LawfulSampler` on the kernel/product samplers with pairing symmetrization (landed ahead
 of its first estimator consumer at the maintainer's request; its property tests are the
-spec until the sampled k-SII port arrives). Remaining: wire Regression's solve to the
+spec until the sampled k-SII port arrives). 2026-07-22: `SamplingState.key_index()` joins
+them — the cached first-position map deduplication used to rebuild inline every call now
+lives with the identity it derives from. Remaining: wire Regression's solve to the
 unique view, and the exactness-strata design when the border trick ports. Scratchpad
 experiments: `exp1_state_info.py`, `exp2_counts_and_law.py` (run against a frozen copy
 of `a3d0f529`).

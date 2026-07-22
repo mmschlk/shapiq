@@ -14,6 +14,11 @@ from shapiq.coalitions import DenseCoalitionArray
 from shapiq.errors import InsufficientSamplesError, SamplingStallWarning
 from shapiq.explainers._base import Explainer
 from shapiq.explainers._valueaxes import to_leading
+from shapiq.explainers.approximators._deduplication import (
+    STALL_UNITS,
+    admit_units,
+    stitch_values,
+)
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, EmptyState, Sampler, SamplingState
 from shapiq.sampling._state import coalition_keys
@@ -23,8 +28,6 @@ if TYPE_CHECKING:
 
     from shapiq.explanations import ExplanationArray
     from shapiq.interactions import InteractionIndex
-
-_STALL_UNITS = 10
 
 
 class Approximator(Explainer[Array, Game[Array]], ABC):
@@ -205,7 +208,13 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         )
 
     def _sample_deduplicated(self, budget: int) -> Self:
-        """Spend budget on novel evaluations only, reusing stored values."""
+        """Spend budget on novel evaluations only, reusing stored values.
+
+        The admission policy lives in ``_deduplication``: whole units are
+        admitted against the state's key index, only novel rows reach the
+        game-call seam, and duplicate rows are stitched from values
+        already computed.
+        """
         spent = self.spent
         units_done = self.units_done
         remaining = self.bank + budget
@@ -218,66 +227,53 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             evidence, seed_spent = self._evaluate_seeds()
             spent += seed_spent
             remaining -= seed_spent
-        known: dict[bytes, int] = {}
-        packed = evidence.packed_keys()
-        width = packed.shape[-1]
-        blob = packed.tobytes()
-        for index in range(packed.shape[0]):
-            known.setdefault(blob[index * width : (index + 1) * width], index)
+        known = dict(evidence.key_index())
         unit_rows = self.unit_rows
         quiet_units = self._quiet_units
+        leading_shape = (*self.game.value_shape, *self.game.target_shape)
         exhaustive = 2**self.game.n_players
         exhausted = len(known) >= exhaustive
-        while remaining > 0 and quiet_units < _STALL_UNITS and not exhausted:
+        while remaining > 0 and quiet_units < STALL_UNITS and not exhausted:
             n_request = max(-(-remaining // unit_rows), 1)
             masks = self._unit_masks(n_request, first_unit=units_done)
             keys = coalition_keys(np.asarray(masks))
-            base = evidence.n_samples
-            novel_positions: list[int] = []
-            state_duplicates: list[tuple[int, int]] = []
-            batch_duplicates: list[tuple[int, int]] = []
-            batch_ranks: dict[bytes, int] = {}
-            charge = 0
-            kept_units = 0
-            for unit in range(n_request):
-                unit_novel = 0
-                for row in range(unit_rows):
-                    position = unit * unit_rows + row
-                    key = keys[position]
-                    if key in batch_ranks:
-                        batch_duplicates.append((position, batch_ranks[key]))
-                    elif key in known:
-                        state_duplicates.append((position, known[key]))
-                    else:
-                        batch_ranks[key] = len(novel_positions)
-                        novel_positions.append(position)
-                        unit_novel += 1
-                charge += unit_novel
-                quiet_units = 0 if unit_novel else quiet_units + 1
-                kept_units = unit + 1
-                # every stopping rule is a pure function of the unit sequence
-                # and cumulative counters, never of the batch size, so stored
-                # streams stay invariant under budget splits even here
-                if len(known) + len(batch_ranks) >= exhaustive:
-                    exhausted = True
-                if charge >= remaining or quiet_units >= _STALL_UNITS or exhausted:
-                    break
-            keep_rows = kept_units * unit_rows
-            masks = masks[..., :keep_rows, :]
-            values = self._stitch_values(
-                masks,
-                evidence,
-                [p for p in novel_positions if p < keep_rows],
-                [pair for pair in state_duplicates if pair[0] < keep_rows],
-                [pair for pair in batch_duplicates if pair[0] < keep_rows],
+            admission = admit_units(
+                keys,
+                known,
+                unit_rows=unit_rows,
+                remaining=remaining,
+                quiet_units=quiet_units,
+                exhaustive=exhaustive,
             )
+            keep_rows = admission.kept_units * unit_rows
+            masks = masks[..., :keep_rows, :]
+            novel_values = (
+                self._call_game(masks[..., jnp.asarray(admission.novel_positions), :])
+                if admission.novel_positions
+                else None
+            )
+            stored_values = (
+                jnp.asarray(evidence.values)
+                if admission.state_duplicates or novel_values is None
+                else None
+            )
+            values = stitch_values(
+                admission,
+                novel_values,
+                stored_values,
+                leading_shape=leading_shape,
+                n_rows=keep_rows,
+            )
+            base = evidence.n_samples
             evidence = evidence.append(DenseCoalitionArray(masks), values)
-            for position in range(keep_rows):
-                known.setdefault(keys[position], base + position)
-            spent += charge
-            remaining -= charge
-            units_done += kept_units
-        if remaining > 0 and (exhausted or quiet_units >= _STALL_UNITS):
+            for position in admission.novel_positions:
+                known[keys[position]] = base + position
+            quiet_units = admission.quiet_units
+            exhausted = admission.exhausted
+            spent += admission.charge
+            remaining -= admission.charge
+            units_done += admission.kept_units
+        if remaining > 0 and (exhausted or quiet_units >= STALL_UNITS):
             msg = (
                 f"sampling stopped with {remaining} evaluations still banked: no novel "
                 f"coalitions remain reachable (a game with {self.game.n_players} players "
@@ -360,44 +356,6 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         values = self.game(DenseCoalitionArray(masks))
         return to_leading(jnp.asarray(values), len(self.game.value_shape))
 
-    def _stitch_values(
-        self,
-        masks: Array,
-        state: SamplingState[Array],
-        novel_positions: list[int],
-        state_duplicates: list[tuple[int, int]],
-        batch_duplicates: list[tuple[int, int]],
-    ) -> Array:
-        """Evaluate novel coalitions and fill duplicates from stored values."""
-        target_shape = self.game.target_shape
-        value_shape = self.game.value_shape
-        novel_values: Array | None = None
-        if novel_positions:
-            novel_index = jnp.asarray(novel_positions)
-            novel_values = self._call_game(masks[..., novel_index, :])
-        state_values = None
-        if state_duplicates or not novel_positions:
-            state_values = jnp.asarray(state.values)
-        reference = novel_values if novel_values is not None else state_values
-        if reference is None:  # unreachable: the seed block always precedes
-            msg = "deduplicated sampling produced neither novel nor stored values"
-            raise RuntimeError(msg)
-        values = jnp.zeros(
-            (*value_shape, *target_shape, int(masks.shape[-2])),
-            dtype=reference.dtype,
-        )
-        if novel_values is not None:
-            values = values.at[..., jnp.asarray(novel_positions)].set(novel_values)
-        if state_duplicates and state_values is not None:
-            positions = jnp.asarray([position for position, _ in state_duplicates])
-            sources = jnp.asarray([source for _, source in state_duplicates])
-            values = values.at[..., positions].set(state_values[..., sources])
-        if batch_duplicates and novel_values is not None:
-            positions = jnp.asarray([position for position, _ in batch_duplicates])
-            ranks = jnp.asarray([rank for _, rank in batch_duplicates])
-            values = values.at[..., positions].set(novel_values[..., ranks])
-        return values
-
     def approximate(self, budget: int) -> ExplanationArray[Array]:
         """Sample a budget and return explanations."""
         return self.sample(budget).explain()
@@ -437,7 +395,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             return self._evolve(state=state, units_done=0, spent=0, bank=0, quiet_units=0)
         sampled = state.n_samples - self.n_seed_samples
         units_done = max(sampled // self.unit_rows, 0)
-        spent = len(state.unique().counts) if self.deduplicate else state.n_samples
+        spent = len(state.key_index()) if self.deduplicate else state.n_samples
         bank = state._history_cuts[-1][1]  # noqa: SLF001 - the checkpoint carries the bank
         return self._evolve(state=state, units_done=units_done, spent=spent, bank=bank, quiet_units=0)
 

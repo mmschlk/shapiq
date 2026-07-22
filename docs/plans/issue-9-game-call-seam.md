@@ -10,7 +10,14 @@ is a resume point), stalls are split-invariant (per-unit exhaustion check + a pe
 quiet counter; exhausted approximators bank without growing), and the API pass landed
 `Self` transitions, the constructor walk contract, `WalkLayout`/`BuildSampler`/
 `KernelSolve` protocols, and the `PairedSampler.__getattr__` removal. Benchmarks after:
-dedup regression 9.6 ms, permutation dedup 25.3 ms, 64 split calls 299.9 ms. Originally: This supersedes the
+dedup regression 9.6 ms, permutation dedup 25.3 ms, 64 split calls 299.9 ms.
+Follow-up (2026-07-22): slice 4's "consuming the state's key index" now holds literally —
+`SamplingState.key_index()` caches the first-position map deduplication used to rebuild
+inline every call, and the admission policy moved out of the loop into
+`explainers/approximators/_deduplication.py` (`admit_units`/`stitch_values`; the game
+call stays visible at the `_call_game` seam in the loop). Golden streams pinned
+bit-identical across whole/split/exhausted/stalled/replayed scenarios before and after
+the cut; the base class is 432 lines with the loop reading as the six-step story. Originally: This supersedes the
 original "game-call seam" scope: after the maintainer waived ADR 0004's exact-spending
 constraint ("we are prototyping exactly for this"), the seam merged with the follow-through
 of the sampler-vehicle arc (ADR 0013) into one rework. Design converged in discussion

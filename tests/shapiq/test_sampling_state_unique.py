@@ -69,6 +69,22 @@ def test_unshared_targets_get_the_teaching_error():
     state = SamplingState(DenseCoalitionArray(masks), values, target_shape=(2,))
     with pytest.raises(ValueError, match="share_samples=True"):
         state.unique()
+    with pytest.raises(ValueError, match="share_samples=True"):
+        state.key_index()
+
+
+def test_key_index_agrees_with_the_unique_view():
+    masks, values = stream(4, 40)
+    state = SamplingState(DenseCoalitionArray(masks), values)
+    index = state.key_index()
+    view = state.unique()
+    # same identity definition: one entry per distinct coalition, mapped to
+    # its first stream position, in first-occurrence order
+    assert list(index.values()) == list(view.first_indices)
+    packed = state.packed_keys()
+    for key, position in index.items():
+        assert packed[position].tobytes() == key
+    assert state.key_index() is index  # computed once per state and cached
 
 
 def test_deduplicated_sampling_multiplicities_are_visible():
