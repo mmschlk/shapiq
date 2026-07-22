@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from functools import lru_cache, singledispatch
 from itertools import combinations
 from math import comb
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 import jax.numpy as jnp
 import numpy as np
@@ -53,15 +53,15 @@ class PermutationSampling(Approximator):
     interaction and walk, so coverage is deterministic; its seed block and
     walks both grow quickly with the order.
 
-    The walk plan and the estimator travel together as a
+    The walk layout and the estimator travel together as a
     ``PermutationFamily``, single-dispatched on the index type via
-    ``permutation_family``: the plan an estimator declares is the layout it
-    decodes, executed by one ``PermutationSampler`` vehicle. Registering a
-    family for a new index type extends the method atomically (a
-    library-internal mechanism), and subclasses of supported indices
-    inherit their parent's complete family through the method resolution
-    order — an experimenter's index riding a shipped estimator answers for
-    its own semantics.
+    ``permutation_family``: the layout an estimator declares is the layout
+    it decodes, rendered by the approximator around one stateless
+    ``PermutationSampler``. Registering a family for a new index type
+    extends the method atomically (a library-internal mechanism), and
+    subclasses of supported indices inherit their parent's complete family
+    through the method resolution order — an experimenter's index riding a
+    shipped estimator answers for its own semantics.
 
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
@@ -95,9 +95,9 @@ class PermutationSampling(Approximator):
                 tuple of integers shares across the selected axes.
             paired: Whether every sampled unit also contains the walk of the
                 reversed permutation (antithetic sampling), which reduces
-                estimation variance and doubles the sampling quantum. The
-                default ``None`` resolves to the family default: permutation
-                walks are unpaired unless requested.
+                estimation variance and doubles the sampled unit
+                (``unit_rows``). The default ``None`` means unpaired:
+                permutation walks pair only on request.
             deduplicate: Whether to evaluate each distinct coalition at most
                 once; repeats reuse stored values and only novel evaluations
                 count toward the budget. Requires shared samples.
@@ -122,19 +122,23 @@ class PermutationSampling(Approximator):
         else:
             ensure_bool("paired", paired)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
-        super().__init__(game, sampler, index, deduplicate=deduplicate)
+        super().__init__(
+            game,
+            sampler,
+            index,
+            render=walk.render,
+            unit_length=walk.length,
+            prelude_masks=walk.prelude(),
+            deduplicate=deduplicate,
+        )
         self._family = family
-        self._render = walk.render
-        self._unit_length = walk.length
-        self._prelude_masks = walk.prelude()
 
     def explain(self) -> DenseExplanationArray[Array]:
         """Estimate the configured index from completed permutation walks.
 
         Returns:
             A dense explanation whose baseline is the empty-coalition value;
-            attributions cover orders one and above. Pending samples of an
-            unfinished walk are excluded.
+            attributions cover orders one and above.
 
         Raises:
             InsufficientSamplesError: If no permutation walk has completed,
@@ -147,11 +151,11 @@ class PermutationSampling(Approximator):
         """Return seed values and the sampled walks."""
         # paired units hold two walks (the permutation's and its reversal's),
         # so walks are cut by the walk length, not by the unit rows
-        quantum = self._unit_length
+        walk_length = self._unit_length
         n_seeds = self.n_seed_samples
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()
-        n_walks = (self.state.n_samples - n_seeds) // quantum
+        n_walks = (self.state.n_samples - n_seeds) // walk_length
         if self.state.n_samples < n_seeds or n_walks < 1:
             msg = (
                 "explaining requires at least one completed permutation walk: "
@@ -161,14 +165,16 @@ class PermutationSampling(Approximator):
             raise InsufficientSamplesError(msg)
         coalitions = jnp.asarray(self.state.coalitions.to_dense())
         values = jnp.asarray(self.state.values)  # canonical: sample axis last
-        stop = n_seeds + n_walks * quantum
+        # whole-unit spending guarantees stop == n_samples; the slice is the
+        # walk-count arithmetic made explicit, never a trim
+        stop = n_seeds + n_walks * walk_length
         walk_masks = jnp.reshape(
             coalitions[..., n_seeds:stop, :],
-            (*coalitions.shape[:-2], n_walks, quantum, self.game.n_players),
+            (*coalitions.shape[:-2], n_walks, walk_length, self.game.n_players),
         )
         walk_values = jnp.reshape(
             values[..., n_seeds:stop],
-            (*values.shape[:-1], n_walks, quantum),
+            (*values.shape[:-1], n_walks, walk_length),
         )
         return _WalkEvidence(
             n_walks=n_walks,
@@ -180,6 +186,29 @@ class PermutationSampling(Approximator):
         )
 
 
+class WalkLayout(Protocol):
+    """The glossary's Walk: what one permutation materializes into.
+
+    A length fixing the sampled unit, a render from player positions to
+    walk masks, and an optional deterministic prelude extending the seed
+    block — declared and decoded by the same estimator family, so the
+    layout has one owner and never rides in the sampler.
+    """
+
+    @property
+    def length(self) -> int:
+        """Return the number of coalitions one walk contains."""
+        ...
+
+    def prelude(self) -> Array | None:
+        """Return deterministic seed masks following the empty and grand coalition."""
+        ...
+
+    def render(self, positions: Array) -> Array:
+        """Return the walk masks of one permutation, given player positions."""
+        ...
+
+
 class PermutationFamily(NamedTuple):
     """Walk layout and estimator of one permutation index family.
 
@@ -189,8 +218,8 @@ class PermutationFamily(NamedTuple):
     layout and estimator is unrepresentable by construction.
     """
 
-    walk: Callable[..., WindowPlan | TaylorPlan]
-    explain: Callable[..., DenseExplanationArray[Array]]
+    walk: Callable[[Any, int], WalkLayout]
+    explain: Callable[[Any, PermutationSampling], DenseExplanationArray[Array]]
 
 
 @singledispatch
@@ -316,8 +345,9 @@ class TaylorPlan:
 
     The prelude holds every coalition of size one to ``order - 1`` in
     lexicographic order, providing the exact lower-order discrete
-    derivatives at the empty coalition — estimation strategy the estimator
-    declares and the vehicle executes once, inside the seed block. A walk
+    derivatives at the empty coalition — estimation strategy the family
+    declares and the approximator evaluates once, inside its seed block. A
+    walk
     contains the prefix chain up to length ``n_players - order`` followed by
     one block per non-empty subset pattern of the interaction (patterns
     ordered by size then lexicographically, interactions in lexicographic

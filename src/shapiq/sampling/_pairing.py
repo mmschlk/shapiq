@@ -67,11 +67,12 @@ class PairedSampler(Sampler):
             random_state=0,
         )
         self.sampler = sampler
+        self._antithesis = sampler.antithetic
         # the marginal law of one paired draw is the antithesis-symmetrized
         # wrapped law; grafted as an instance attribute exactly when the
         # wrapped sampler declares a law, so the LawfulSampler capability
         # check sees through pairing (python 3.12+ protocol isinstance uses
-        # getattr_static, which ignores __getattr__)
+        # getattr_static, which ignores dynamic lookup)
         if isinstance(sampler, LawfulSampler):
             self.log_probability = partial(
                 _paired_log_probability,
@@ -87,21 +88,9 @@ class PairedSampler(Sampler):
     def draws(self, unit_indices: Array) -> Array:
         """Return draw and antithesis per unit, interleaved along the unit axis."""
         drawn = self.sampler.draws(unit_indices)
-        antithetic = self.sampler.antithetic(drawn)  # type: ignore[attr-defined]
+        antithetic = self._antithesis(drawn)
         paired = jnp.stack([drawn, antithetic], axis=1)
         return paired.reshape(-1, *drawn.shape[1:])
-
-    def __getattr__(self, name: str) -> object:
-        """Expose the wrapped sampler's metadata (p, size probabilities, ...).
-
-        The law is never forwarded verbatim: when the wrapped sampler
-        declares one, the symmetrized law is grafted at construction and
-        found before this fallback; otherwise the paired law is undeclared.
-        """
-        if name == "log_probability" or name.startswith("_"):
-            msg = f"{type(self).__name__!r} object has no attribute {name!r}"
-            raise AttributeError(msg)
-        return getattr(self.sampler, name)
 
 
 def _paired_log_probability(

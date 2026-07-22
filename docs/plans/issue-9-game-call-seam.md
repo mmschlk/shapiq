@@ -4,9 +4,13 @@ Status: **largely landed** (2026-07-22, `a498e5f5`, ADR 0014) — slices 1-5 and
 pass; slice 6 (bounded-batch evaluation shared with the exact sweep,
 `ChunkedMaskedPredictor` slimming) remains open. Landed beyond the design: history
 checkpoints carry the bank as `(n_samples, bank)` pairs, so rollback restores the exact
-resume point instead of forfeiting the remainder. Known cost: the deduplication charge
-scan is a host loop per row (permutation dedup 31 vs 27 ms on the benchmark; deduplicated
-regression dropped 62.5 → 9.5 ms from the batched scan). Originally: This supersedes the
+resume point instead of forfeiting the remainder. Review round (two agents,
+2026-07-22): banking-only calls now checkpoint (cuts slice by position; every sample call
+is a resume point), stalls are split-invariant (per-unit exhaustion check + a persisted
+quiet counter; exhausted approximators bank without growing), and the API pass landed
+`Self` transitions, the constructor walk contract, `WalkLayout`/`BuildSampler`/
+`KernelSolve` protocols, and the `PairedSampler.__getattr__` removal. Benchmarks after:
+dedup regression 9.6 ms, permutation dedup 25.3 ms, 64 split calls 299.9 ms. Originally: This supersedes the
 original "game-call seam" scope: after the maintainer waived ADR 0004's exact-spending
 constraint ("we are prototyping exactly for this"), the seam merged with the follow-through
 of the sampler-vehicle arc (ADR 0013) into one rework. Design converged in discussion

@@ -1,6 +1,6 @@
 """Axis moves between the boundary value layout and the canonical internal layout.
 
-Game values cross exactly two seams. On entry — ``EvidenceApproximator._evaluate``
+Game values cross exactly two seams. On entry — ``Approximator._call_game``
 for sampled evidence, ``ExactExplainer._game_values`` for the powerset — boundary
 values (broadcast targets, then samples, then value axes, per ADR 0006) become
 the canonical internal layout: value axes leading, sample axis last. Leading

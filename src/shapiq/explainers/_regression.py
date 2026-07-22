@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import singledispatch
 from math import comb
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 import jax.numpy as jnp
 from jax import Array
@@ -31,7 +31,6 @@ from shapiq.sampling import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
 
     from shapiq.games import Game
     from shapiq.sampling import ShareSamples
@@ -147,11 +146,15 @@ class Regression(Approximator):
             )
             raise ValueError(msg)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
-        super().__init__(game, sampler, index, deduplicate=deduplicate)
+        super().__init__(
+            game,
+            sampler,
+            index,
+            render=_coalition_rows,
+            unit_length=1,
+            deduplicate=deduplicate,
+        )
         self._family = family
-        self._render = _coalition_rows
-        self._unit_length = 1
-        self._prelude_masks = None
 
     @property
     def min_budget(self) -> int:
@@ -197,6 +200,7 @@ class Regression(Approximator):
         if not isinstance(self.state, SamplingState):
             self._require_no_evidence_yet()
         n_seeds = self.n_seed_samples
+        # whole-unit spending guarantees every stored row is usable evidence
         usable = self.state.n_samples
         if usable - n_seeds < 1:
             msg = (
@@ -265,6 +269,37 @@ class Regression(Approximator):
         )
 
 
+class BuildSampler(Protocol):
+    """Family callback building the kernel-matched coalition sampler."""
+
+    def __call__(
+        self,
+        index: Any,  # noqa: ANN401 - per-index builders narrow to their family's index
+        game: Game[Array],
+        *,
+        share_samples: ShareSamples = False,
+        random_state: Array | int = 0,
+    ) -> CoalitionSampler:
+        """Return the sampler drawing coalitions proportional to the kernel."""
+        ...
+
+
+class KernelSolve(Protocol):
+    """Family callback solving one design's kernel least squares fit."""
+
+    def __call__(
+        self,
+        masks: Array,
+        response: Array,
+        delta: Array,
+        *,
+        order: int,
+        deduplicating: bool,
+    ) -> Array:
+        """Return the fitted coefficients, identification enforced."""
+        ...
+
+
 class RegressionFamily(NamedTuple):
     """Kernel-matched machinery of one regression index family.
 
@@ -275,10 +310,10 @@ class RegressionFamily(NamedTuple):
     identification row), and the least squares solve itself.
     """
 
-    build_sampler: Callable[..., CoalitionSampler]
+    build_sampler: BuildSampler
     symmetric_kernel: bool
     intercept: bool
-    solve: Callable[..., Array]
+    solve: KernelSolve
 
 
 @singledispatch

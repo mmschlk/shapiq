@@ -81,6 +81,7 @@ from shapiq.sampling import (
     ShapleyKernelSampler,
     ShareSamples,
     SizeKernelSampler,
+    UniqueView,
 )
 from shapiq.trees import InterventionalTreeGame, LeafConstraints, TreeModel, to_tree_model
 
@@ -147,6 +148,7 @@ __all__ = [
     "ProductKernelSampler",
     "Regression",
     "SizeKernelSampler",
+    "UniqueView",
     "RegressionIndex",
     "Sampler",
     "SamplingStallWarning",

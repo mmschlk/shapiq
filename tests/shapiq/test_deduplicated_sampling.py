@@ -12,6 +12,7 @@ from shapiq import (
     SV,
     CallableGame,
     PermutationSampling,
+    Regression,
     SamplingStallWarning,
 )
 
@@ -156,3 +157,46 @@ def test_deduplication_works_with_shared_batched_targets():
         deduplicated.state.n_samples,
     )
     assert deduplicated.state == plain.state
+
+
+def test_banking_only_calls_checkpoint_and_replay_bit_identically():
+    def make():
+        return PermutationSampling(quadratic_game(), SV(), random_state=3, deduplicate=True)
+
+    first = make().sample(15)  # borrow leaves a negative bank
+    second = first.sample(10)
+    # a call whose whole budget repays the borrow still checkpoints
+    repaid = first.sample(1)
+    assert repaid.rollback(0) is repaid
+    assert repaid.history()[-1].bank == repaid.bank
+    assert repaid.rollback(1).bank == first.bank
+    # rollback restores the exact resume point: replaying the same budget
+    # reproduces the same evidence and bank
+    replayed = second.rollback(1).sample(10)
+    assert replayed.state == second.state
+    assert replayed.bank == second.bank
+    assert replayed.spent == second.spent
+
+
+def test_stalled_sampling_is_split_invariant_and_stops_growing():
+    def tiny_game():
+        return CallableGame(
+            fn=lambda c: jnp.sum(jnp.asarray(c.to_dense(), dtype=jnp.float32), axis=-1),
+            n_players=2,
+        )
+
+    def make():
+        return Regression(tiny_game(), SV(), random_state=0, share_samples=True, deduplicate=True)
+
+    with pytest.warns(SamplingStallWarning):
+        whole = make().sample(30)
+    with pytest.warns(SamplingStallWarning):
+        split = make().sample(15)
+        split = split.sample(15)
+    assert whole.state == split.state
+    assert whole.bank == split.bank
+    # an exhausted approximator banks further budgets without growing
+    with pytest.warns(SamplingStallWarning):
+        again = whole.sample(5)
+    assert again.state.n_samples == whole.state.n_samples
+    assert again.bank == whole.bank + 5

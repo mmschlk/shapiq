@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import copy
 from dataclasses import dataclass
-from typing import NamedTuple, Protocol, Self, cast
+from typing import TYPE_CHECKING, NamedTuple, Protocol, Self, cast
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,6 +15,11 @@ from shapiq._shape import (
     validate_int,
 )
 from shapiq.coalitions import CoalitionArray, DenseCoalitionArray
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from numpy.typing import ArrayLike
 
 
 class UniqueView(NamedTuple):
@@ -43,6 +48,11 @@ class ApproximationState:
     single-entry history.
     """
 
+    @property
+    def n_samples(self) -> int:
+        """Return the number of sampled coalitions, zero before evidence."""
+        return 0
+
     def rollback(self, steps: int = 1) -> Self:
         """Return a value-equivalent previous state."""
         _validate_history_steps(steps)
@@ -56,7 +66,7 @@ class ApproximationState:
         *,
         reverse: bool = False,
         include_self: bool = True,
-    ) -> list[Self]:
+    ) -> Sequence[Self]:
         """Return value-equivalent history states."""
         del reverse
         return [self] if include_self else []
@@ -71,11 +81,6 @@ class EmptyState(ApproximationState):
     block replaces it with an evidence-bearing state, where approximation
     history begins.
     """
-
-    @property
-    def n_samples(self) -> int:
-        """Return the number of sampled coalitions, which is zero."""
-        return 0
 
 
 class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
@@ -190,7 +195,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
             )
             raise ValueError(msg)
         if self._packed_keys is None:
-            self._packed_keys = _packed_rows(self.coalitions.to_dense())
+            self._packed_keys = _packed_rows(cast("ArrayLike", self.coalitions.to_dense()))
         return self._packed_keys
 
     def unique(self, n_samples: int | None = None) -> UniqueView:
@@ -198,8 +203,8 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
 
         Args:
             n_samples: Number of leading stream samples to view; defaults to
-                all stored samples. Estimators pass their usable prefix so
-                pending samples of an unfinished unit are excluded.
+                all stored samples. A prefix views the distinct coalitions
+                of a historical resume point.
 
         Returns:
             A ``UniqueView`` in first-occurrence order. Values at
@@ -245,7 +250,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
             self._unique = view
         return view
 
-    def append(self, coalitions: CoalitionArray, values: ValueT) -> SamplingState[ValueT]:
+    def append(self, coalitions: CoalitionArray, values: ValueT) -> Self:
         """Append sampled coalitions and evaluated values without copying.
 
         The appended state shares the stored chunks, so a sampling chain
@@ -294,7 +299,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
             self._chunks = ((merged_coalitions, merged_values),)
         return self._chunks[0]
 
-    def rollback(self, steps: int = 1) -> SamplingState[ValueT]:
+    def rollback(self, steps: int = 1) -> Self:
         """Return a previous sampling state."""
         _validate_history_steps(steps)
         if steps == 0:
@@ -303,22 +308,24 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         if steps >= len(cuts):
             msg = "cannot roll back past the initial state"
             raise IndexError(msg)
-        return self._slice_to(cuts[-1 - steps][0])
+        return self._slice_to(cuts[: len(cuts) - steps])
 
     def history(
         self,
         *,
         reverse: bool = False,
         include_self: bool = True,
-    ) -> list[ApproximationState]:
+    ) -> Sequence[SamplingState[ValueT]]:
         """Return value-equivalent sampling-state history."""
         cuts = self._history_cuts
         if not include_self:
             cuts = cuts[:-1]
-        states = [self._slice_to(count) for count, _ in cuts]
+        states: list[SamplingState[ValueT]] = [
+            self._slice_to(cuts[: index + 1]) for index in range(len(cuts))
+        ]
         if reverse:
             states.reverse()
-        return cast("list[ApproximationState]", states)
+        return states
 
     def __eq__(self, other: object) -> bool:
         """Compare current sampling evidence for test/debug use."""
@@ -330,10 +337,16 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
             and bool(jnp.array_equal(jnp.asarray(self.values), jnp.asarray(other.values)))
         )
 
-    def _slice_to(self, n_samples: int) -> SamplingState[ValueT]:
+    def _slice_to(self, cuts: tuple[tuple[int, int], ...]) -> Self:
+        """Return the state at a checkpoint-cut prefix.
+
+        Cuts slice by position, not by sample count: banking-only calls
+        append checkpoints that repeat the row count with a new residual,
+        and each prefix is its own resume point.
+        """
+        n_samples = cuts[-1][0]
         key = (*((slice(None),) * len(self.shared_target_shape)), slice(0, n_samples))
         value_key = (Ellipsis, slice(0, n_samples))
-        cuts = tuple(cut for cut in self._history_cuts if cut[0] <= n_samples)
         return type(self)(
             coalitions=self.coalitions[key],
             values=cast("_Indexable", self.values)[value_key],
@@ -404,7 +417,7 @@ def _dense_equal(left: CoalitionArray, right: CoalitionArray) -> bool:
     )
 
 
-def coalition_keys(masks: object) -> list[bytes]:
+def coalition_keys(masks: ArrayLike) -> list[bytes]:
     """Return a hashable identity per sample-axis coalition (shared targets only).
 
     This is the one definition of coalition identity: the state's packed
@@ -416,7 +429,7 @@ def coalition_keys(masks: object) -> list[bytes]:
     return [blob[start : start + width] for start in range(0, len(blob), width)]
 
 
-def _packed_rows(masks: object) -> np.ndarray:
+def _packed_rows(masks: ArrayLike) -> np.ndarray:
     """Pack the shared sample-axis coalition rows into bit rows."""
     dense = np.asarray(masks)
     rows = dense.reshape(-1, dense.shape[-2], dense.shape[-1])[0]

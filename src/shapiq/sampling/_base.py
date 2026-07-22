@@ -97,7 +97,16 @@ class Sampler(ABC):
 
     @abstractmethod
     def draws(self, unit_indices: Array) -> Array:
-        """Return the draws of the given unit indices, stacked on a new leading axis."""
+        """Return the draws of the given unit indices, stacked on a new leading axis.
+
+        ``unit_indices`` is a one-dimensional integer array; implementations
+        coerce array-likes. The payload is draw-kind specific — player
+        positions of shape ``(units, *shared_target_shape, n_players)`` for
+        permutation samplers, boolean masks of the same shape for coalition
+        samplers — and stays a raw array: coalitions become boundary
+        ``CoalitionArray`` currency where the approximator's state and game
+        receive them, not here.
+        """
 
 
 def _validate_random_state(random_state: Array | int) -> Array:

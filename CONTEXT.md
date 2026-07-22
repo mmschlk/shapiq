@@ -76,10 +76,6 @@ _Avoid_: empty state error
 An error raised when an **Explainer** cannot work with the supplied **Game**.
 _Avoid_: invalid game error
 
-**SamplingError**:
-An error raised when a **Sampler** cannot produce the requested **CoalitionArray**.
-_Avoid_: sampler failure
-
 **Game**:
 A cooperative-game base abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns **Values** for those coalitions. Its **ValueArray** shape follows the broadcasted shape of the targets and the **CoalitionArray**. Games validate player-count compatibility at the boundary where they receive coalitions.
 _Avoid_: value function, model wrapper
