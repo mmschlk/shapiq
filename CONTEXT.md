@@ -21,43 +21,43 @@ The algorithm-specific accumulated evidence an **Approximator** uses to estimate
 _Avoid_: sample history, cache
 
 **Approximation History**:
-Optional bookkeeping that lets an **ApproximationState** restore or list value-equivalent earlier states after functional state transitions. It is mainly intended for post-hoc analysis of how approximations change with increasing budget; efficient history may retain shared backing storage from later states.
-_Avoid_: previous-state pointer, undo stack
+The always-on record of value-equivalent earlier states an **ApproximationState** can restore or list after functional state transitions — one checkpoint per sample call, carrying the sample count and the **Bank**. History is identity, not a feature: an **Approximator** is an anytime estimator, and rollback plus resampling replays the same evidence. Efficient history retains shared backing storage from later states.
+_Avoid_: previous-state pointer, undo stack, track_history flag
 
 **SamplingState**:
 An **ApproximationState** that records sampled **Coalitions** together with their evaluated **Values**.
 _Avoid_: default state, raw sample cache
 
 **Sampler**:
-A component used by an **Approximator** to propose a **CoalitionArray** from an **ApproximationState** and sample budget. Samplers may evolve during sampling by returning a next sampler together with sampled coalitions; mutable samplers must not be used with **Approximation History**. Shape policy is sampler-owned and normally trusted by approximators rather than revalidated on every sample. Samplers are vehicles: they own the sampling procedure, never estimator logic.
+A stateless draw value used by an **Approximator**: permutation samplers draw permutations, coalition samplers draw coalitions, and every draw derives from its unit index, so samplers never evolve. Shape policy is sampler-owned; everything downstream — rendering, budgets, evaluation — is approximator logic. Samplers are vehicles: they own the sampling procedure, never estimator logic.
 _Avoid_: generator, coalition generator
 
-**Walk Plan**:
-The declaration of which **Coalitions** one permutation materializes into: a length fixing the **Sampling Quantum**, a render from player positions to walk masks, and an optional deterministic prelude extending the **Seed Samples**. The permutation **Sampler** is the vehicle executing a plan; the **Approximator** family that declares a plan is the one that decodes its layout.
-_Avoid_: walk sampler subclass, layout sampler
+**Walk**:
+The coalition block one permutation materializes into, declared by the **Approximator** family that decodes it: a length, a render from player positions to walk masks, and an optional deterministic prelude extending the **Seed Samples**. The layout has one owner and never rides in the **Sampler**.
+_Avoid_: walk plan object, walk sampler subclass
 
 **Sampling Law**:
-The marginal probability distribution of one sampled stream position, declared by a **Sampler** as an optional capability — log-space, after wrapper transformations such as pairing. Kernel samplers declare their law; permutation walks do not, because their positions are unit-correlated. **Seed Samples** sit outside the law.
+The marginal probability distribution of one drawn **Coalition**, declared by a **Sampler** as an optional capability — log-space, after wrapper transformations such as pairing. Coalition samplers declare their law; permutation samplers do not, because their draws are permutations, not coalitions. **Seed Samples** sit outside the law.
 _Avoid_: sampling weights, proposal distribution
 
 **Budget**:
-The exact number of new sampled **Coalitions** an **Approximator** evaluates on its **Game** when asked to sample. Budgets are spent exactly rather than floored, rejected, or redistributed to align with a **Sampling Quantum**.
+The number of new game evaluations an **Approximator** is asked to spend. Budgets are spent in whole sampled units; the remainder is carried in the **Bank** and spent first on the next call, so splits never change the sampled evidence and no evaluation is made that cannot inform an estimate.
 _Avoid_: permutation count, number of iterations
 
-**Sampling Quantum**:
-The smallest number of additional samples after which an **Approximator** can incorporate new evidence into its estimate, such as one full permutation walk. A completed quantum is also called a sampled unit. Samplers own and expose their quantum; budgets do not need to align with it.
-_Avoid_: iteration cost, batch size
+**Bank**:
+The integer budget remainder an **Approximator** carries between sample calls: whole-unit spending banks what is left over, and deduplication may borrow (a negative bank) when its final unit overshoots. Checkpoints record the bank, so rollback restores the exact resume point.
+_Avoid_: pending budget, leftover counter
 
-**Pending Samples**:
-Sampled **Coalitions** and evaluated **Values** that belong to an incomplete **Sampling Quantum**. Pending samples remain in the **ApproximationState** and are completed by later sampling, but are masked when an **Explanation** is materialized to preserve unbiasedness.
-_Avoid_: wasted evaluations, partial batch, leftover budget
+**Sampled Unit**:
+The coalition rows one draw materializes into — one full permutation walk, or one drawn coalition (doubled under pairing). Approximators spend budgets in whole units, so every stored row belongs to a complete unit and estimates never see partial evidence.
+_Avoid_: sampling quantum, iteration cost, batch size
 
 **Seed Samples**:
-Deterministic evaluations an **Approximator** needs before sampled units can be interpreted, such as the empty and grand coalition. Seed samples are emitted first by the **Sampler** as a one-time prelude unit and are paid from the sample **Budget**; constructing an **Explainer** never evaluates the **Game**.
+Deterministic evaluations an **Approximator** needs before sampled units can be interpreted: the empty and grand coalition, plus any family prelude such as STII's lower-order anchors. The approximator evaluates the seed block once, paid from the first sample **Budget**; constructing an **Explainer** never evaluates the **Game**.
 _Avoid_: initialization cost, setup evaluations, create step
 
 **Empty State**:
-The **ApproximationState** of an **Approximator** that has not sampled yet. The first sampled batch replaces it with an evidence-bearing state; **Approximation History** begins at that first evidence state, and an empty state with history enabled lists only itself.
+The **ApproximationState** of an **Approximator** that has not sampled yet. The first sampled batch replaces it with an evidence-bearing state; **Approximation History** begins at that first evidence state, and an empty state is its own single-entry history.
 _Avoid_: uninitialized state, null state
 
 **Deduplication**:
@@ -79,10 +79,6 @@ _Avoid_: invalid game error
 **SamplingError**:
 An error raised when a **Sampler** cannot produce the requested **CoalitionArray**.
 _Avoid_: sampler failure
-
-**HistoryError**:
-An index-style error raised when **Approximation History** is unavailable or cannot satisfy a requested history operation.
-_Avoid_: rollback error, undo error
 
 **Game**:
 A cooperative-game base abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns **Values** for those coalitions. Its **ValueArray** shape follows the broadcasted shape of the targets and the **CoalitionArray**. Games validate player-count compatibility at the boundary where they receive coalitions.

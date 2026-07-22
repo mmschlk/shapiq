@@ -4,7 +4,9 @@ Date: 2026-07-21
 
 ## Status
 
-Accepted
+Accepted; refined by ADR 0014 (2026-07-22): walk plans became family-owned walk
+layouts that never ride in the sampler, and the law lives on stateless draw
+sources with the paired symmetrization on the wrapper.
 
 ## Context
 

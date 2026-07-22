@@ -1,6 +1,12 @@
 # Issue 9 — The sampling rework: sources, one loop, one seam
 
-Status: **designed** (2026-07-22), prototype-validated, not started. This supersedes the
+Status: **largely landed** (2026-07-22, `a498e5f5`, ADR 0014) — slices 1-5 and 7 in one
+pass; slice 6 (bounded-batch evaluation shared with the exact sweep,
+`ChunkedMaskedPredictor` slimming) remains open. Landed beyond the design: history
+checkpoints carry the bank as `(n_samples, bank)` pairs, so rollback restores the exact
+resume point instead of forfeiting the remainder. Known cost: the deduplication charge
+scan is a host loop per row (permutation dedup 31 vs 27 ms on the benchmark; deduplicated
+regression dropped 62.5 → 9.5 ms from the batched scan). Originally: This supersedes the
 original "game-call seam" scope: after the maintainer waived ADR 0004's exact-spending
 constraint ("we are prototyping exactly for this"), the seam merged with the follow-through
 of the sampler-vehicle arc (ADR 0013) into one rework. Design converged in discussion

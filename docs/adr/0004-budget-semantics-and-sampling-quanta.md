@@ -1,5 +1,10 @@
 # Budget Semantics And Sampling Quanta
 
+> Superseded in part by ADR 0014 (2026-07-22): budgets remain denominated in
+> game evaluations, but spending is whole-unit with a banked remainder — the
+> pending-sample machinery this document describes is gone. Deduplication and
+> the stall warning stand, now as a policy inside the approximator's loop.
+
 `Approximator.sample(budget)` spends its budget exactly: budget counts new game evaluations, and samplers neither floor it, reject unaligned values, nor redistribute a remainder. Samplers whose evidence arrives in units larger than single evaluations, such as whole permutation walks, bank the remainder as pending samples and resume the unfinished unit on the next sample call, carrying resume data in the evolved sampler. Deterministic seed samples that estimators need first, such as the empty and grand coalition, are emitted by the sampler as a one-time prelude unit and paid from the same budget, so constructing an explainer never evaluates the game.
 
 Estimates use only completed sampling quanta. Using partial quanta would bias estimators whose evidence is position-dependent, and under iterative sampling repeated truncation keeps biased samples at a constant fraction of the evidence, so the estimate would converge to a wrong value; abandoning partial units instead would silently waste budget. Masking pending samples at explanation time preserves exact unbiasedness and, for permutation walks, exact efficiency, while deferring at most one quantum of already-paid evidence. For samplers whose individual samples are interpretable on their own, such as kernel-distributed coalitions, masking pending samples serves contract uniformity rather than bias prevention.
