@@ -10,9 +10,9 @@ findings cited as F1–F6 / Part III / IV / VI), and session decisions. Last tru
 | Item | What | Source | Status / when |
 | --- | --- | --- | --- |
 | Amortized lifecycle ADR | fit-once/explain-many doesn't fit `Explainer(game).explain()`; sibling ABC vs `explain(target)`; facade currency = (model, masker, index) | VI.3 | **deferred** (user 2026-07-21) — still before facade; also decides `__call__` fate (F5e) |
-| History rework | keep `history()`/`rollback()` as anytime-estimator identity; rebuild as always-on cut points + sampler replay (arithmetic fast-forward — samplers are pure functions of emitted count); drop `track_history`, parallel sampler tuple, lockstep check, `EmptyState` edge-case law, `HistoryError` | F3-revised | direction accepted — after `_state.py` settles post-#564 |
+| History rework | keep `history()`/`rollback()` as anytime-estimator identity; always-on cut points (+ per-cut bank); `track_history`, `HistoryError`, `EmptyState` edge-case law die — the sampler-history limb dies with stateless samplers | F3-revised | **folds into the issue-9 arc** (slice 5) |
 | Sampling-state addressability (remainder) | landed 2026-07-21 (ADR 0013): `unique()`/`packed_keys()` on the state, dedup as a consumer, `LawfulSampler` on kernel/product samplers with pairing symmetrization. Remaining: wire Regression's solve to the unique view (√count weighting — proven equivalent, smaller solves), exactness-strata design when the border trick ports, law's first estimator consumer = sampled k-SII port | issue-13 | remainder open |
-| Game-call seam | issue 9: one evaluation path per approximator, dedup becomes an evaluation policy; backend-agnostic chunking generalization lives here too | issue-9 | not started |
+| Sampling rework (merged issue 9) | stateless draw-source hierarchy (`Sampler` → Permutation/Coalition → kernel concretes; `Paired` slims to draw doubling + law symmetrization), ONE sample loop on `Approximator` (`EvidenceApproximator` folds in) with banked whole-unit budgets (ADR 0004 exact spending waived — pending subsystem dies), `_call_game` seam (dedup policy; later bounded-batch shared with Exact, `ChunkedMaskedPredictor` slims); estimates stay bit-identical, prototype-validated (V1–V5) | issue-9 (rewritten 2026-07-22) | **designed — next arc**; SHAP-IQ port validates after |
 
 ## B — API surface & ergonomics (small–medium)
 
