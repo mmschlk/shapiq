@@ -258,6 +258,10 @@ class TestSegmenterRegistry:
         with pytest.raises(KeyError):
             get_segmenter("nonexistent")
 
+    def test_none_segmenter_name_raises(self):
+        with pytest.raises(TypeError, match="must not be None"):
+            get_segmenter(None)
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # CustomSegmenter tests
@@ -536,6 +540,10 @@ class TestMaskerRegistry:
     def test_unknown_masker_raises(self):
         with pytest.raises(KeyError):
             get_masker("nonexistent")
+
+    def test_none_masker_name_raises(self):
+        with pytest.raises(TypeError, match="must not be None"):
+            get_masker(None)
 
 
 # ═══════════════════════════════════════════════════════════════════════
