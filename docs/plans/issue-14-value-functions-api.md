@@ -83,8 +83,12 @@ proxy carries higher-order structure the order-1 kernel struggles with (the know
 proxy carrying the order-3 redundancy block cuts the error 2.4x at zero extra
 evaluations); the test now pins both the no-op law and the knowledge-proxy win.
 
-**Remaining:** the SHAP-IQ port as the counts-times-law consumer; evidence-side
-provenance and an `evidence.minus` rebase verb (deferred until a consumer needs them).
+**Remaining:** evidence-side provenance (now part of the guard-surface cluster the
+review fleet surfaced; settled at the reflection). The SHAP-IQ port landed
+(`6adf570c`, with SVARM-IQ — the derivative-weight capability replaced v1's weight
+zoo outright). `evidence.minus` landed (`508c9351`): its consumer arrived — the
+ProxySHAP rebase collapsed to ``at_evidence(evidence.minus(proxy))``, history
+checkpoints riding along so the residual carry keeps its resume points.
 
 The original design record follows unchanged.
 
