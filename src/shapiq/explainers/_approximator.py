@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, NoReturn
 
+from shapiq._frozen import Frozen
 from shapiq._shape import ensure_bool, logical_size, validate_int
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._binding import validate_index_binding
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from shapiq.interactions import InteractionIndex
 
 
-class Approximator(ABC):
+class Approximator(Frozen, ABC):
     """Base abstraction for sampling-based explainers: frozen config, verbs.
 
     An approximator is a frozen policy: a sampler, the family's expansion

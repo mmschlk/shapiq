@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, cast
 
+from shapiq._frozen import Frozen
 from shapiq._shape import broadcast_shapes, shape_of
 from shapiq.coalitions import (
     CoalitionArray as _CoalitionArray,
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from shapiq.coalitions import CoalitionArray
 
 
-class Game[ValueT](ABC):
+class Game[ValueT](Frozen, ABC):
     """Base abstraction for cooperative games.
 
     Estimators are linear in game values, so ``ValueT`` must form a vector
@@ -25,6 +26,9 @@ class Game[ValueT](ABC):
     ``v - v(empty)`` must be meaningful. Class-probability vectors, margin
     vectors, and embeddings qualify; anything nonlinear belongs in the link
     function, before predictions become values.
+
+    Games are configuration and freeze after construction: a game's numeric
+    identity never changes underneath the estimates derived from it.
     """
 
     n_players: int

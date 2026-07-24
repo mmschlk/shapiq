@@ -7,6 +7,7 @@ from typing import cast
 import jax.numpy as jnp
 from jax import Array
 
+from shapiq._frozen import Frozen
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.explainers._binding import (
     missing_index_members,
@@ -47,7 +48,7 @@ type ExactIndex = (
 )
 
 
-class ExactExplainer:
+class ExactExplainer(Frozen):
     """Explainer computing interaction indices exactly from all coalitions.
 
     The exact explainer evaluates the game once on every one of the
@@ -116,7 +117,9 @@ class ExactExplainer:
         self.order = validate_index_binding(game, index)
         self.game = game
         self.index = index
-        self._powerset_values: Array | None = None
+        # value-equivalent lazy memo; a container so the frozen explainer
+        # never rebinds an attribute
+        self._cache: dict[str, Array] = {}
 
     def estimate(self) -> Estimate:
         """Compute the configured index exactly from all game values.
@@ -212,13 +215,15 @@ class ExactExplainer:
         canonical internal layout (value axes leading, sample axis last)
         here, and the cache holds them canonically.
         """
-        if self._powerset_values is None:
+        values = self._cache.get("powerset")
+        if values is None:
             coalitions = DenseCoalitionArray(_powerset_masks(self.game.n_players))
-            self._powerset_values = to_leading(
+            values = to_leading(
                 jnp.asarray(self.game(coalitions)),
                 len(self.game.value_shape),
             )
-        return self._powerset_values
+            self._cache["powerset"] = values
+        return values
 
 
 def _require_weight_length(source: str, weights: Array, n_players: int, size: int) -> None:

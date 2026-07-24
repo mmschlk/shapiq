@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
+from shapiq._frozen import Frozen
 from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._binding import reject_common_index_mistakes, validate_index_binding
 from shapiq.games import BasisGame, Estimate, MoebiusBasis, Provenance
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class TreeExplainer:
+class TreeExplainer(Frozen):
     """Closed-form interaction explainer for tree games.
 
     The game type carries the tree-explanation semantics and selects the

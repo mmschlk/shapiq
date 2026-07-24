@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from shapiq._frozen import Frozen
+
 if TYPE_CHECKING:
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     from shapiq.games.maskers._base import Masker
 
 
-class MaskedPredictor[PredictionT](ABC):
+class MaskedPredictor[PredictionT](Frozen, ABC):
     """Base abstraction for coalition-aware prediction."""
 
     n_players: int

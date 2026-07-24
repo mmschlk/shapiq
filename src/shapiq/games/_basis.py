@@ -206,7 +206,11 @@ class BasisGame(Game["Array"]):
         self.n_players = n_players
         self.value_shape = value_shape
         self.target_shape = target_shape
-        self._values = np.asarray(values, dtype=np.float64)
+        # the game owns its coefficients: an immutable copy, so no caller
+        # alias can change which game this vector describes
+        owned = np.array(values, dtype=np.float64)
+        owned.setflags(write=False)
+        self._values = owned
         self._lookup = {term: position for position, term in enumerate(terms)}
 
     @property

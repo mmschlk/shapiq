@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 import jax
 import jax.numpy as jnp
 
+from shapiq._frozen import Frozen
 from shapiq._shape import Shape, ShapeLike, normalize_shape, validate_n_players
 
 if TYPE_CHECKING:
@@ -37,7 +38,7 @@ class LawfulSampler(Protocol):
         ...
 
 
-class Sampler(ABC):
+class Sampler(Frozen, ABC):
     """Base abstraction for draw sources: stateless sampler values.
 
     A sampler proposes draws — permutations, coalitions, whatever its kind
