@@ -67,7 +67,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
 
     Example:
         >>> explainer = ExactExplainer(game, SII(order=2))
-        >>> explanation = explainer.explain()
+        >>> estimate = explainer.estimate()
         >>> pair_interaction = explanation((0, 1))
     """
 

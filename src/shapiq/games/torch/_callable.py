@@ -29,7 +29,7 @@ class TorchCallableGame[ValueT](CallableGame[ValueT]):
 
     Example:
         >>> game = TorchCallableGame(fn=coalition_scorer, n_players=8)
-        >>> explanation = Regression(game, SV()).sample(64).explain()
+        >>> estimate = Regression(game, SV()).estimate(64)
     """
 
     no_grad: bool

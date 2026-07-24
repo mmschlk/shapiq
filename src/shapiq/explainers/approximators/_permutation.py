@@ -152,18 +152,18 @@ class PermutationSampling(Approximator):
         # so walks are cut by the walk length, not by the unit rows
         walk_length = self._unit_length
         n_seeds = self.n_seed_samples
-        if not isinstance(self.state, SamplingState):
+        if not isinstance(self._state, SamplingState):
             self._require_no_evidence_yet()
-        n_walks = (self.state.n_samples - n_seeds) // walk_length
-        if self.state.n_samples < n_seeds or n_walks < 1:
+        n_walks = (self._state.n_samples - n_seeds) // walk_length
+        if self._state.n_samples < n_seeds or n_walks < 1:
             msg = (
                 "explaining requires at least one completed permutation walk: "
                 f"estimate with at least {self.min_budget} evaluations in total "
-                f"(currently {self.state.n_samples} stored, {self.bank} banked)"
+                f"(currently {self._state.n_samples} stored, {self._bank} banked)"
             )
             raise InsufficientSamplesError(msg)
-        coalitions = jnp.asarray(self.state.coalitions.to_dense())
-        values = jnp.asarray(self.state.values)  # canonical: sample axis last
+        coalitions = jnp.asarray(self._state.coalitions.to_dense())
+        values = jnp.asarray(self._state.values)  # canonical: sample axis last
         # whole-unit spending guarantees stop == n_samples; the slice is the
         # walk-count arithmetic made explicit, never a trim
         stop = n_seeds + n_walks * walk_length

@@ -52,6 +52,7 @@ class Estimate(BasisGame):
         deduplicated: bool = False,
         variance: Mapping[frozenset[int], float] | None = None,
         unready_reason: str | None = None,
+        fingerprint: tuple[object, ...] | None = None,
     ) -> None:
         """Initialize an estimate from coefficients and provenance.
 
@@ -72,6 +73,9 @@ class Estimate(BasisGame):
             unready_reason: When the evidence cannot support coefficients
                 yet, the reason reads raise with; the carry stays legal
                 (banked budgets ride it) but its planes refuse.
+            fingerprint: The producing policy's structural identity
+                (family, unit rows, seeds, deduplication); policies refuse
+                to refine a carry whose fingerprint is not theirs.
         """
         super().__init__(
             MoebiusBasis() if basis is None else basis,
@@ -87,6 +91,7 @@ class Estimate(BasisGame):
         self.index = index
         self.deduplicated = deduplicated
         self.variance = variance
+        self.fingerprint = fingerprint
         self._unready_reason = unready_reason
 
     @property

@@ -194,23 +194,23 @@ class Regression(Approximator):
             InsufficientSamplesError: If no sampled unit has completed, or if
                 the sampled coalitions do not yet identify all coefficients.
         """
-        if not isinstance(self.state, SamplingState):
+        if not isinstance(self._state, SamplingState):
             self._require_no_evidence_yet()
         n_seeds = self.n_seed_samples
         # whole-unit spending guarantees every stored row is usable evidence
-        usable = self.state.n_samples
+        usable = self._state.n_samples
         if usable - n_seeds < 1:
             msg = (
                 "explaining requires at least one completed sampled unit: "
                 f"estimate with at least {self.min_budget} evaluations in total "
-                f"(currently {usable} stored, {self.bank} banked)"
+                f"(currently {usable} stored, {self._bank} banked)"
             )
             raise InsufficientSamplesError(msg)
         n_players = self.game.n_players
         target_shape = self.game.target_shape
         value_shape = self.game.value_shape
-        masks = jnp.asarray(self.state.coalitions.to_dense())[..., :usable, :]
-        values = jnp.asarray(self.state.values)[..., :usable]  # canonical: sample axis last
+        masks = jnp.asarray(self._state.coalitions.to_dense())[..., :usable, :]
+        values = jnp.asarray(self._state.values)[..., :usable]  # canonical: sample axis last
         value_empty = values[..., 0]
         value_grand = values[..., 1]
         n_rows = usable - n_seeds

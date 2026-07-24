@@ -56,12 +56,8 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
     banked and a ``SamplingStallWarning`` is issued.
     """
 
-    state: ApproximationState
     sampler: Sampler
     deduplicate: bool
-    bank: int
-    spent: int
-    units_done: int
 
     def __init__(
         self,
@@ -98,10 +94,10 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             raise ValueError(msg)
         validate_int("unit_length", unit_length, minimum=1)
         self.sampler = sampler
-        self.state = EmptyState()
-        self.bank = 0
-        self.spent = 0
-        self.units_done = 0
+        self._state: ApproximationState = EmptyState()
+        self._bank = 0
+        self._spent = 0
+        self._units_done = 0
         self._render = render
         self._unit_length = unit_length
         self._prelude_masks = prelude_masks
@@ -141,11 +137,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
 
     def __repr__(self) -> str:
         """Return a concise representation for the rebind workflow."""
-        n_samples = self.state.n_samples
+        n_samples = self._state.n_samples
         return (
             f"{type(self).__name__}(interaction_index={self.interaction_index!r}, "
-            f"order={self.order!r}, n_samples={n_samples!r}, bank={self.bank!r}, "
-            f"spent={self.spent!r}, deduplicate={self.deduplicate!r})"
+            f"order={self.order!r}, n_samples={n_samples!r}, bank={self._bank!r}, "
+            f"spent={self._spent!r}, deduplicate={self.deduplicate!r})"
         )
 
     def _grow(self, budget: int) -> Self:
@@ -174,14 +170,14 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             return self
         if self.deduplicate:
             return self._sample_deduplicated(budget)
-        remaining = self.bank + budget
-        fresh = not isinstance(self.state, SamplingState)
+        remaining = self._bank + budget
+        fresh = not isinstance(self._state, SamplingState)
         seeds = self.n_seed_samples if fresh else 0
         if fresh and remaining < seeds:
             return self._evolve(bank=remaining)
         n_units = (remaining - seeds) // self.unit_rows
         if not fresh and n_units == 0:
-            evidence = self._checkpoint(cast("SamplingState[Array]", self.state), remaining)
+            evidence = self._checkpoint(cast("SamplingState[Array]", self._state), remaining)
             return self._evolve(state=evidence, bank=remaining)
         blocks: list[Array] = []
         if fresh:
@@ -198,7 +194,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
                 target_shape=self.game.target_shape,
             )
         else:
-            evidence = cast("SamplingState[Array]", self.state).append(
+            evidence = cast("SamplingState[Array]", self._state).append(
                 DenseCoalitionArray(masks),
                 values,
             )
@@ -206,8 +202,8 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         evidence = self._checkpoint(evidence, bank)
         return self._evolve(
             state=evidence,
-            units_done=self.units_done + n_units,
-            spent=self.spent + rows,
+            units_done=self._units_done + n_units,
+            spent=self._spent + rows,
             bank=bank,
         )
 
@@ -219,11 +215,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         game-call seam, and duplicate rows are stitched from values
         already computed.
         """
-        spent = self.spent
-        units_done = self.units_done
-        remaining = self.bank + budget
-        if isinstance(self.state, SamplingState):
-            evidence = cast("SamplingState[Array]", self.state)
+        spent = self._spent
+        units_done = self._units_done
+        remaining = self._bank + budget
+        if isinstance(self._state, SamplingState):
+            evidence = cast("SamplingState[Array]", self._state)
         else:
             seeds = self.n_seed_samples
             if remaining < seeds:
@@ -278,12 +274,18 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             remaining -= admission.charge
             units_done += admission.kept_units
         if remaining > 0 and (exhausted or quiet_units >= STALL_UNITS):
-            msg = (
-                f"sampling stopped with {remaining} evaluations still banked: no novel "
-                f"coalitions remain reachable (a game with {self.game.n_players} players "
-                f"has at most 2**{self.game.n_players} distinct coalitions); evidence "
-                "gathered so far remains valid"
-            )
+            if exhausted:
+                msg = (
+                    f"sampling stopped with {remaining} evaluations still banked: every "
+                    f"distinct coalition of the {self.game.n_players}-player game has "
+                    "been evaluated; evidence gathered so far remains valid"
+                )
+            else:
+                msg = (
+                    f"sampling stopped with {remaining} evaluations still banked: the "
+                    f"sampler produced no novel coalition in {STALL_UNITS} consecutive "
+                    "units; evidence gathered so far remains valid"
+                )
             warnings.warn(msg, SamplingStallWarning, stacklevel=3)
         evidence = self._checkpoint(evidence, remaining)
         return self._evolve(
@@ -304,11 +306,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         shallow state copy, so every sample call is a resume point.
         """
         base_cuts = (
-            self.state._history_cuts  # noqa: SLF001 - finalizing cuts of a state this call created
-            if isinstance(self.state, SamplingState)
+            self._state._history_cuts  # noqa: SLF001 - finalizing cuts of a state this call created
+            if isinstance(self._state, SamplingState)
             else ()
         )
-        if evidence is self.state:
+        if evidence is self._state:
             evidence = copy(evidence)
         evidence._history_cuts = (*base_cuts, (evidence.n_samples, bank))  # noqa: SLF001
         return evidence
@@ -343,7 +345,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
 
     def _unit_masks(self, n_units: int, first_unit: int | None = None) -> Array:
         """Render whole sampled units into one coalition block."""
-        start = self.units_done if first_unit is None else first_unit
+        start = self._units_done if first_unit is None else first_unit
         draws = self.sampler.draws(jnp.arange(start, start + n_units))
         rendered = self._render(draws)
         return _flatten_units(rendered)
@@ -387,14 +389,31 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         )
         return self.refine(fresh, budget)
 
+    @property
+    def _fingerprint(self) -> tuple[object, ...]:
+        """Return the policy's structural identity for carry checks."""
+        return (type(self).__name__, self.unit_rows, self.n_seed_samples, self.deduplicate)
+
+    def _require_own_carry(self, carry: Estimate) -> None:
+        if carry.fingerprint is not None and carry.fingerprint != self._fingerprint:
+            msg = (
+                f"this estimate was produced by {carry.fingerprint!r} and cannot be "
+                f"continued by {self._fingerprint!r}: evidence rows would be "
+                "reinterpreted under the wrong unit convention; build the intended "
+                "policy, or derive from raw evidence with at_evidence()"
+            )
+            raise ValueError(msg)
+
     def refine(self, carry: Estimate, budget: int) -> Estimate:
         """Spend more budget on an estimate and return the grown carry.
 
         Counters are derived from the carried evidence (the stall counter
         included — it is a pure function of the unit sequence), so any
         estimate is an exact resume point: rollback and resample replay
-        bit-identically, stalls included.
+        bit-identically, stalls included. Refining another policy's carry
+        raises: the fingerprint says whose it is.
         """
+        self._require_own_carry(carry)
         worker = self._at_state(carry.evidence)._evolve(  # noqa: SLF001 - transitional shim onto the loop
             bank=carry.bank,
             quiet_units=(
@@ -436,13 +455,14 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             terms=terms,
             values=coefficients,
             n_players=self.game.n_players,
-            evidence=worker.state,
-            bank=worker.bank,
+            evidence=worker._state,
+            bank=worker._bank,
             index=self.index,
             deduplicated=self.deduplicate,
             target_shape=target_shape,
             value_shape=value_shape,
             unready_reason=reason,
+            fingerprint=self._fingerprint,
         )
 
     def _at_state(self, state: ApproximationState) -> Self:
@@ -453,7 +473,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         deduplication (duplicates were free) and the row count otherwise;
         the bank is forfeited.
         """
-        if state is self.state:
+        if state is self._state:
             return self
         if not isinstance(state, SamplingState):
             return self._evolve(state=state, units_done=0, spent=0, bank=0, quiet_units=0)
@@ -473,10 +493,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         quiet_units: int | None = None,
     ) -> Self:
         clone = copy(self)
-        clone.state = self.state if state is None else state
-        clone.units_done = self.units_done if units_done is None else units_done
-        clone.spent = self.spent if spent is None else spent
-        clone.bank = self.bank if bank is None else bank
+        # process state is private and evolves only on transient loop clones
+        clone._state = self._state if state is None else state  # noqa: SLF001
+        clone._units_done = self._units_done if units_done is None else units_done  # noqa: SLF001
+        clone._spent = self._spent if spent is None else spent  # noqa: SLF001
+        clone._bank = self._bank if bank is None else bank  # noqa: SLF001
         clone._quiet_units = self._quiet_units if quiet_units is None else quiet_units  # noqa: SLF001
         return clone
 
