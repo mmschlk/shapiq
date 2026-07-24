@@ -58,8 +58,8 @@ if __name__ == "__main__":
         return flat_images.mean(dim=(-3, -2, -1))
 
     game = chunked_image_game(masker, brightness, batch_size=128)
-    explanation = ExactExplainer(game, SV()).estimate()
-    values = explanation.attributions_by_order[1].reshape(GRID)
+    estimate = ExactExplainer(game, SV()).estimate()
+    values = jnp.stack([estimate[(player,)] for player in range(N_PLAYERS)]).reshape(GRID)
     print("Shapley values per superpixel (row-major 3x3 grid):")
     for row in values:
         print("  " + " ".join(f"{float(cell):+0.4f}" for cell in row))
@@ -131,5 +131,5 @@ if __name__ == "__main__":
     print(
         f"after {estimate.evidence.n_samples} stored evaluations | "
         f"max pair error {float(jnp.max(errors)):.4f} | "
-        f"strongest exact pair {pairs[top]} at {float(exact_fsii(pairs[top])):+0.4f}"
+        f"strongest exact pair {pairs[top]} at {float(exact_fsii[pairs[top]]):+0.4f}"
     )

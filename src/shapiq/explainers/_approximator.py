@@ -110,14 +110,14 @@ class Approximator(Frozen, ABC):
 
     @property
     def min_budget(self) -> int:
-        """Return the floor below which ``explain()`` cannot succeed.
+        """Return the floor below which no readable estimate exists.
 
         The first explanation needs the seed block plus one completed
         sampled unit. It is a floor, not a guarantee: whether the drawn
         coalitions carry enough evidence is method-specific (interaction
         coverage for permutation walks, identification for the
-        regressions), and ``explain()`` raises ``InsufficientSamplesError``
-        stating the shortfall while they do not.
+        regressions), and the estimate carries the shortfall — its planes
+        raise ``InsufficientSamplesError`` — while they do not.
         """
         return self.n_seed_samples + self.unit_rows
 

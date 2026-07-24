@@ -66,16 +66,16 @@ class Regression(Approximator):
     complete family through the method resolution order — an experimenter's
     index riding a shipped kernel answers for its own semantics.
 
-    ``explain()`` requires the sampled coalitions to identify all
-    coefficients and raises ``InsufficientSamplesError`` while the
-    regression design is rank deficient; ``deduplicate=True`` reaches
+    Reading an estimate requires the sampled coalitions to identify all
+    coefficients, and the coefficient plane raises ``InsufficientSamplesError``
+    while the regression design is rank deficient; ``deduplicate=True`` reaches
     identification with the fewest evaluations. For a game that is itself
     ``k``-additive the estimate is exact from identification onward.
 
     Example:
         >>> approximator = Regression(game, FSII(order=2), random_state=0)
         >>> estimate = approximator.estimate(500)
-        >>> pair_interaction = explanation((0, 1))
+        >>> pair_interaction = estimate[(0, 1)]
     """
 
     _family: RegressionFamily
@@ -156,7 +156,7 @@ class Regression(Approximator):
 
     @property
     def min_budget(self) -> int:
-        """Return the floor below which ``explain()`` cannot succeed.
+        """Return the floor below which no readable estimate exists.
 
         Identification needs at least as many independent evidence rows as
         free coefficients, on top of the seed block: one fewer than the
@@ -165,7 +165,7 @@ class Regression(Approximator):
         floor does not guarantee identification — that depends on the drawn
         coalitions (repeated coalitions add no rank, and the kADD-SHAP
         Bernoulli basis typically identifies later than the floor) — and
-        ``explain()`` raises with the rank shortfall until they identify.
+        the estimate carries the rank shortfall until they identify.
         """
         n_columns = sum(comb(self.game.n_players, size) for size in range(1, self.order + 1))
         offset = 1 if self._family.intercept else -1

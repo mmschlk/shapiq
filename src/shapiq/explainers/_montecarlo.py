@@ -35,6 +35,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import Array
 
+from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._approximator import Approximator
 from shapiq.explainers._binding import reject_common_index_mistakes
@@ -59,7 +60,7 @@ class _SizeLawSampling(Approximator):
         *,
         random_state: Array | int = 0,
         share_samples: ShareSamples = False,
-        paired: bool = False,
+        paired: bool | None = None,
         deduplicate: bool = False,
     ) -> None:
         """Initialize without evaluating the game.
@@ -76,7 +77,9 @@ class _SizeLawSampling(Approximator):
                 explanation-target axes.
             paired: Whether every sampled coalition is accompanied by its
                 complement (the pairing trick); the interior size law is
-                complement-symmetric, so pairing is always sound here.
+                complement-symmetric, so pairing is always sound here. The
+                default ``None`` means unpaired: coalition draws pair only
+                on request.
             deduplicate: Whether to evaluate each distinct coalition at most
                 once; repeats reuse stored values and only novel evaluations
                 count toward the budget. Requires shared samples.
@@ -115,6 +118,10 @@ class _SizeLawSampling(Approximator):
             share_samples=share_samples,
             random_state=random_state,
         )
+        if paired is None:
+            paired = False  # the size law pairs only on request, like the walk families
+        else:
+            ensure_bool("paired", paired)
         sampler = PairedSampler(base_sampler) if paired else base_sampler
         super().__init__(
             game,

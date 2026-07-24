@@ -38,7 +38,7 @@ class TreeExplainer(Frozen):
     Example:
         >>> game = InterventionalTreeGame(to_tree_model(model), inputs=x, baseline=background)
         >>> estimate = TreeExplainer(game, SII(order=2)).estimate()
-        >>> pair_interaction = explanation((0, 1))
+        >>> pair_interaction = estimate[(0, 1)]
     """
 
     game: InterventionalTreeGame

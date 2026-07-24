@@ -61,7 +61,7 @@ class ExactExplainer(Frozen):
     WeightedBV, SII, BII, WeightedBII, CHII, k-SII, STII, FSII, FBII,
     WeightedFBII, kADD-SHAP, the generalized values SGV, BGV, CHGV, IGV,
     EGV, and JointSV, and the Moebius and Co-Moebius transforms.
-    The powerset evaluation happens on the first ``explain()`` call and is
+    The powerset evaluation happens on the first ``estimate()`` call and is
     reused afterwards; construction never evaluates the game. Computations
     run in the game's value precision (float32 under JAX defaults; enabling
     JAX x64 yields float64 throughout).
@@ -69,7 +69,7 @@ class ExactExplainer(Frozen):
     Example:
         >>> explainer = ExactExplainer(game, SII(order=2))
         >>> estimate = explainer.estimate()
-        >>> pair_interaction = explanation((0, 1))
+        >>> pair_interaction = estimate[(0, 1)]
     """
 
     game: Game[Array]

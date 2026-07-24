@@ -64,7 +64,7 @@ class PermutationSampling(Approximator):
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
         >>> estimate = approximator.estimate(500)
-        >>> pair_interaction = explanation((0, 1))
+        >>> pair_interaction = estimate[(0, 1)]
     """
 
     _family: PermutationFamily

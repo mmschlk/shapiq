@@ -26,7 +26,6 @@ from shapiq import (
     SV,
     BaselineMasker,
     ExactExplainer,
-    InsufficientSamplesError,
     MaskedGame,
     ModelMaskedPredictor,
     PermutationSampling,
@@ -78,7 +77,7 @@ if __name__ == "__main__":
 
     policy = PermutationSampling(game, SV(), random_state=0)
     payout = float(jnp.sum(exact_values))
-    running = policy.estimate[0]
+    running = policy.estimate(0)  # a fresh carry: no evidence yet, budget banked
     for budget in (9, 54, 700, 2000):
         running = policy.refine(running, budget)
         estimate = jnp.stack([running[(player,)] for player in range(N_PLAYERS)])
@@ -107,29 +106,28 @@ if __name__ == "__main__":
         top = int(jnp.argmax(jnp.abs(strengths[:, class_index])))
         print(f"  class {class_index}: {pairs[top]} with {float(strengths[top, class_index]):+.3f}")
 
-    fsii = Regression(vector_game, FSII(order=2), random_state=0, deduplicate=True)
-    print(f"min budget (identification): {fsii.min_budget}")
-    for budget in (fsii.min_budget + 20, 60, 80):
-        fsii = fsii.sample(budget)
-        try:
-            estimate = fsii.estimate()
-        except InsufficientSamplesError as error:
-            print(f"after +{budget:>3} novel evals | {error}")
+    fsii_policy = Regression(vector_game, FSII(order=2), random_state=0, deduplicate=True)
+    print(f"min budget (identification): {fsii_policy.min_budget}")
+    estimate = fsii_policy.estimate(0)  # the fresh carry; refine spends the budgets
+    for budget in (fsii_policy.min_budget + 20, 60, 80):
+        estimate = fsii_policy.refine(estimate, budget)
+        if not estimate.ready:
+            print(f"after +{budget:>3} novel evals | {estimate.provenance.shortfall}")
             continue
         errors = jnp.stack(
             [jnp.abs(estimate[pair] - exact_fsii[pair]) for pair in pairs],
         )
         interaction = estimate[(0, 1)]
         print(
-            f"after +{budget:>3} novel evals | stored: {fsii.state.n_samples:>4}"
+            f"after +{budget:>3} novel evals | stored: {estimate.evidence.n_samples:>4}"
             f" | max pair error: {jnp.max(errors):.4f}"
             f" | (0, 1) per class: {interaction.round(3)}"
         )
     empty = exact_fsii[()]
-    totals = sum(
-        (jnp.sum(exact_fsii.attributions_by_order[size], axis=-2) for size in (1, 2)),
-        start=jnp.zeros(2),
-    )
+    totals = jnp.zeros(2)
+    for size in (1, 2):
+        for term in exact_fsii.interactions(size):
+            totals = totals + jnp.asarray(exact_fsii[tuple(term)])
     grand = log_probability_link(model(instance))
     print(
         "per-class efficiency of the exact faithful fit "

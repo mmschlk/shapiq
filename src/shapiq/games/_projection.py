@@ -91,7 +91,13 @@ def project(game: Game[object], order: int, measure: Measure) -> BasisGame:
 
 
 def fidelity(game: Game[object], surrogate: Game[object], measure: Measure) -> float:
-    """Return the surrogate's weighted R^2 against the game under the measure."""
+    """Return the surrogate's weighted R^2 against the game under the measure.
+
+    Free-intercept surrogates (the FBII family) fit the centered game
+    ``v - v(empty)`` by design, so their fidelity against the raw game
+    carries the baseline offset; compare against ``game - baseline`` or
+    use an efficiency-shaped index when that offset matters.
+    """
     truth = _scalar_full_values(game)
     guess = _scalar_full_values(surrogate)
     weights = measure.row_weights(all_coalitions(game.n_players))
