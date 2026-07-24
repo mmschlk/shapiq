@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
 from shapiq._shape import broadcast_shapes, shape_of
 
 if TYPE_CHECKING:
+    from jax import Array
+
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
 
@@ -31,6 +33,32 @@ class Game[ValueT](ABC):
         values = self._call(coalitions)
         self._validate_values(values, coalitions)
         return values
+
+    def __add__(self, other: Game[Array]) -> Game[Array]:
+        """Return the game evaluating to the sum of both games' values."""
+        if not isinstance(other, Game):
+            return NotImplemented
+        from shapiq.games._algebra import SumGame  # noqa: PLC0415 - avoids a base/algebra cycle
+
+        return SumGame(((1.0, cast("Game[Array]", self)), (1.0, other)))
+
+    def __sub__(self, other: Game[Array]) -> Game[Array]:
+        """Return the residual game ``self - other``."""
+        if not isinstance(other, Game):
+            return NotImplemented
+        from shapiq.games._algebra import SumGame  # noqa: PLC0415 - avoids a base/algebra cycle
+
+        return SumGame(((1.0, cast("Game[Array]", self)), (-1.0, other)))
+
+    def __mul__(self, scale: float) -> Game[Array]:
+        """Return the game with all values scaled by ``scale``."""
+        if isinstance(scale, bool) or not isinstance(scale, (int, float)):
+            return NotImplemented
+        from shapiq.games._algebra import SumGame  # noqa: PLC0415 - avoids a base/algebra cycle
+
+        return SumGame(((float(scale), cast("Game[Array]", self)),))
+
+    __rmul__ = __mul__
 
     def _validate_coalitions(self, coalitions: CoalitionArray) -> None:
         """Validate coalition compatibility at the game boundary."""
