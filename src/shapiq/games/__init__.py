@@ -5,6 +5,11 @@ from __future__ import annotations
 from shapiq.games._algebra import SumGame
 from shapiq.games._base import Game, LinkFunction, Model
 from shapiq.games._callable import CallableGame
+from shapiq.games._extension import (
+    integrated_gradients,
+    multilinear_diagonal_gradient,
+)
+from shapiq.games._fit import fit_game
 from shapiq.games._masked import MaskedGame
 from shapiq.games._masked_predictor import MaskedPredictor, ModelMaskedPredictor
 from shapiq.games._measures import (
@@ -49,7 +54,10 @@ __all__ = [
     "all_coalitions",
     "banzhaf_values",
     "fidelity",
+    "fit_game",
     "grid_labels",
+    "integrated_gradients",
+    "multilinear_diagonal_gradient",
     "product_measure",
     "project",
     "shapley_values",

@@ -49,6 +49,11 @@ class Estimate:
     shortfall: InsufficientSamplesError | None = None
     """The family's coverage error when evidence is not enough for a view."""
 
+    variance: dict[frozenset[int], float] | None = None
+    """Per-interaction uncertainty — a capability, present when the
+    estimator provides it (posterior variances, Monte-Carlo variance),
+    absent otherwise."""
+
     target_shape: tuple[int, ...] = ()
     value_shape: tuple[int, ...] = ()
 
