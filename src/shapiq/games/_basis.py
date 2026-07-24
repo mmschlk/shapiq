@@ -34,7 +34,7 @@ import numpy as np
 from shapiq.games._base import Game
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Iterable, Mapping
+    from collections.abc import Collection, Iterable, Mapping
     from types import ModuleType
 
     from jax import Array
@@ -66,20 +66,27 @@ class Basis(Protocol):
         ...
 
 
-def _term_columns(
+def _membership_counts(
     masks: Array | np.ndarray,
     terms: Iterable[frozenset[int]],
     xp: ModuleType,
-    column: Callable[[Array | np.ndarray, int, np.dtype], Array | np.ndarray],
-) -> Array | np.ndarray:
-    ones = xp.ones(masks.shape[:-1])
-    columns = []
-    for term in terms:
-        if not term:
-            columns.append(ones)
-            continue
-        columns.append(column(masks[..., sorted(term)], len(term), ones.dtype))
-    return xp.stack(columns, axis=-1)
+) -> tuple[Array | np.ndarray, Array | np.ndarray]:
+    """Return per-row member counts ``(..., m, d)`` and term sizes ``(d,)``.
+
+    Every basis atom is a function of how many of a term's players a
+    coalition contains, so all columns reduce to one matmul against the
+    term-membership table — one device dispatch instead of one per term.
+    Counts are exact: they are small integers carried in the stack dtype.
+    """
+    term_list = list(terms)
+    n_players = int(masks.shape[-1])
+    members = np.zeros((len(term_list), n_players), dtype=bool)
+    for row, term in enumerate(term_list):
+        members[row, list(term)] = True
+    dtype = xp.ones(()).dtype
+    counts = xp.asarray(masks, dtype=dtype) @ xp.asarray(members.T, dtype=dtype)
+    sizes = xp.asarray(np.array([len(term) for term in term_list]), dtype=dtype)
+    return counts, sizes
 
 
 @dataclass(frozen=True)
@@ -94,9 +101,8 @@ class MoebiusBasis:
         xp: ModuleType = jnp,
     ) -> Array | np.ndarray:
         """Evaluate unanimity atoms."""
-        return _term_columns(
-            masks, terms, xp, lambda inside, _size, dtype: inside.all(axis=-1).astype(dtype)
-        )
+        counts, sizes = _membership_counts(masks, terms, xp)
+        return (counts == sizes).astype(counts.dtype)
 
 
 @dataclass(frozen=True)
@@ -111,9 +117,9 @@ class CoMoebiusBasis:
         xp: ModuleType = jnp,
     ) -> Array | np.ndarray:
         """Evaluate redundancy atoms."""
-        return _term_columns(
-            masks, terms, xp, lambda inside, _size, dtype: inside.any(axis=-1).astype(dtype)
-        )
+        counts, sizes = _membership_counts(masks, terms, xp)
+        # the empty term's atom is one everywhere, matching the other bases
+        return ((counts > 0) | (sizes == 0)).astype(counts.dtype)
 
 
 @dataclass(frozen=True)
@@ -128,14 +134,8 @@ class FourierBasis:
         xp: ModuleType = jnp,
     ) -> Array | np.ndarray:
         """Evaluate parity atoms ``chi_T(S) = (-1) ** |T minus S|``."""
-
-        def column(
-            inside: Array | np.ndarray, size: int, dtype: np.dtype
-        ) -> Array | np.ndarray:
-            parity = (size - inside.sum(axis=-1)) % 2
-            return 1.0 - 2.0 * parity.astype(dtype)
-
-        return _term_columns(masks, terms, xp, column)
+        counts, sizes = _membership_counts(masks, terms, xp)
+        return 1.0 - 2.0 * ((sizes - counts) % 2)
 
 
 class BasisGame(Game["Array"]):
