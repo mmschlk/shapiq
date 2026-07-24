@@ -6,7 +6,7 @@ or a duplicate of an earlier row in the same batch. Only whole units are
 admitted and only novel rows are charged; every stopping rule is a pure
 function of the unit sequence and cumulative counters — never of the
 batch size — so stored streams stay invariant under budget splits. The
-game call itself stays at the approximator's ``_call_game`` seam: the
+game call itself stays at the engine's ``_call_game`` seam: the
 policy decides which rows reach it (``admit_units``) and assembles the
 duplicate rows from values already computed (``stitch_values``).
 """
