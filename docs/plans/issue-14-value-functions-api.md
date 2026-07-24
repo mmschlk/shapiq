@@ -73,9 +73,18 @@ did not slim beneath `ChunkedGame`: its chunking is torch device-memory policy o
 flattened instance axes, a different concern from sample-axis shape canonicalization,
 so the two compose rather than merge.
 
-**Remaining:** ProxySHAP/BED promoted from test recipes to shipped examples; the
-SHAP-IQ port as the counts-times-law consumer; evidence-side provenance and an
-`evidence.minus` rebase verb (deferred until a consumer needs them).
+**Recipes shipped as examples** (`examples/proxy_shap.py`,
+`examples/active_learning_policy.py`, `examples/gradient_bridge.py`). Promoting
+ProxySHAP surfaced a theorem the original acceptance test had missed: the constrained
+Shapley-kernel regression is sample-exact on order-2 games and linear in the game
+values, so a proxy *fit to the same evidence* is a no-op (combined == direct to float
+noise — the old assert was passing on a 3e-7 margin). The recipe pays exactly when the
+proxy carries higher-order structure the order-1 kernel struggles with (the knowledge
+proxy carrying the order-3 redundancy block cuts the error 2.4x at zero extra
+evaluations); the test now pins both the no-op law and the knowledge-proxy win.
+
+**Remaining:** the SHAP-IQ port as the counts-times-law consumer; evidence-side
+provenance and an `evidence.minus` rebase verb (deferred until a consumer needs them).
 
 The original design record follows unchanged.
 

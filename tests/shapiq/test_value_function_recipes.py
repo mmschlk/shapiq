@@ -9,6 +9,7 @@ active-learning policy built entirely on the public carry contract.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import combinations
 
 import jax.numpy as jnp
 import numpy as np
@@ -94,8 +95,42 @@ def test_a_different_extension_of_the_same_game_attributes_differently():
 # ---------------------------------------------------------------- proxy recipe
 
 
-def test_proxyshap_recipe_from_primitives_costs_zero_extra_evaluations():
-    n = 10  # 1024 coalitions; the evidence must NOT identify the game
+def _proxy_corrected_shapley_values(game, direct, proxy):
+    """The recipe body: rebase the carried evidence onto the residual, re-solve."""
+    evidence = direct.evidence
+    residual_values = jnp.asarray(evidence.values) - jnp.asarray(proxy(evidence.coalitions))
+    rebased = SampledEvidence(
+        coalitions=evidence.coalitions,
+        values=residual_values,
+        target_shape=(),
+    )
+    correction = Regression(game - proxy, SV(), random_state=0).at_evidence(rebased, bank=0)
+    n = game.n_players
+    combined = shapley_values(proxy) + np.array(
+        [float(correction[(player,)]) for player in range(n)],
+    )
+    return combined, proxy + correction
+
+
+def test_a_self_fit_low_order_proxy_is_a_no_op_by_linearity():
+    # the constrained shapley-kernel regression is sample-exact on order-2
+    # games, and the estimate is linear in the game values — so a proxy fit
+    # to the same evidence gives back exactly what it put in
+    n = 10
+    game = structured_game(n)
+    direct = Regression(game, SV(), random_state=0, deduplicate=True).estimate(160)
+    evidence = direct.evidence
+    masks = np.asarray(evidence.coalitions.to_dense(), dtype=bool)
+    proxy = fit_game(masks, np.asarray(evidence.values), n, order=2)
+    combined, _ = _proxy_corrected_shapley_values(game, direct, proxy)
+    direct_sv = np.array([float(direct[(p,)]) for p in range(n)])
+    assert np.allclose(combined, direct_sv, atol=1e-4)
+
+
+def test_a_knowledge_proxy_cuts_the_error_at_zero_extra_evaluations():
+    # the recipe pays when the proxy carries structure the order-1 kernel
+    # struggles with: here the order-3 redundancy block of structured_game
+    n = 10
     calls = []
     base = structured_game(n)
 
@@ -105,34 +140,31 @@ def test_proxyshap_recipe_from_primitives_costs_zero_extra_evaluations():
 
     game = CallableGame(fn=recording, n_players=n)
     exact_sv = shapley_values(to_basis(base, MoebiusBasis()))
+    calls.clear()
 
-    policy = Regression(game, SV(), random_state=0, deduplicate=True)
-    direct = policy.estimate(160)
+    direct = Regression(game, SV(), random_state=0, deduplicate=True).estimate(160)
     evaluations_after_direct = sum(calls)
 
-    # -- the recipe: fit, subtract, re-solve on rebased evidence ---------
-    evidence = direct.evidence
-    masks = jnp.asarray(evidence.coalitions.to_dense())
-    proxy = fit_game(np.asarray(masks), np.asarray(evidence.values), n, order=2)
-    residual_values = jnp.asarray(evidence.values) - jnp.asarray(
-        proxy._host_values(np.asarray(masks, dtype=bool)),
-    )
-    rebased = SampledEvidence(
-        coalitions=evidence.coalitions,
-        values=residual_values,
-        target_shape=(),
-    )
-    correction = Regression(base - proxy, SV(), random_state=0).at_evidence(rebased, bank=0)
-    combined = shapley_values(proxy) + np.array(
-        [float(correction[(player,)]) for player in range(n)],
-    )
-    # ---------------------------------------------------------------------
+    rng = np.random.default_rng(7)  # structured_game's own constants
+    weights = rng.normal(size=n)
+    pairs = rng.normal(size=(n, n)) * 0.5
+    coefficients: dict[frozenset[int], float] = {}
+    for i in range(n):
+        coefficients[frozenset([i])] = weights[i] + 0.5 * pairs[i, i]
+        for j in range(i + 1, n):
+            coefficients[frozenset([i, j])] = 0.5 * (pairs[i, j] + pairs[j, i])
+    for size in (1, 2, 3):  # moebius of 1.5 * max over {2, 4, 6}
+        for block in combinations((2, 4, 6), size):
+            key = frozenset(block)
+            coefficients[key] = coefficients.get(key, 0.0) + 1.5 * (-1) ** (size + 1)
+    proxy = BasisGame(MoebiusBasis(), coefficients, n)
+
+    combined, surrogate = _proxy_corrected_shapley_values(game, direct, proxy)
 
     assert sum(calls) == evaluations_after_direct  # the correction was free
     direct_error = np.abs(np.array([float(direct[(p,)]) for p in range(n)]) - exact_sv).max()
     combined_error = np.abs(combined - exact_sv).max()
-    assert combined_error < direct_error  # the proxy soaked up real structure
-    surrogate = proxy + correction
+    assert combined_error < 0.6 * direct_error  # measured 0.42x; headroom to 0.6
     assert fidelity(base, surrogate, uniform_measure(n)) > 0.5
 
 
