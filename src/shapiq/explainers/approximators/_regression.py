@@ -31,7 +31,7 @@ from shapiq.sampling import (
 if TYPE_CHECKING:
 
     from shapiq.games import Game
-    from shapiq.sampling import ShareSamples
+    from shapiq.sampling import Evidence, ShareSamples
 
 
 class Regression(Approximator):
@@ -181,7 +181,11 @@ class Regression(Approximator):
             deduplicating=self.deduplicate,
         )
 
-    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
+    def _estimate_parts(
+        self,
+        evidence: Evidence,
+        bank: int,
+    ) -> tuple[dict[int, Array], Array | None]:
         """Solve the kernel regression on the sampled evidence.
 
         Returns:
@@ -194,23 +198,23 @@ class Regression(Approximator):
             InsufficientSamplesError: If no sampled unit has completed, or if
                 the sampled coalitions do not yet identify all coefficients.
         """
-        if not isinstance(self._state, SampledEvidence):
+        if not isinstance(evidence, SampledEvidence):
             self._require_no_evidence_yet()
         n_seeds = self.n_seed_samples
         # whole-unit spending guarantees every stored row is usable evidence
-        usable = self._state.n_samples
+        usable = evidence.n_samples
         if usable - n_seeds < 1:
             msg = (
                 "explaining requires at least one completed sampled unit: "
                 f"estimate with at least {self.min_budget} evaluations in total "
-                f"(currently {usable} stored, {self._bank} banked)"
+                f"(currently {usable} stored, {bank} banked)"
             )
             raise InsufficientSamplesError(msg)
         n_players = self.game.n_players
         target_shape = self.game.target_shape
         value_shape = self.game.value_shape
-        masks = jnp.asarray(self._state.coalitions.to_dense())[..., :usable, :]
-        values = jnp.asarray(self._state.values)[..., :usable]  # canonical: sample axis last
+        masks = jnp.asarray(evidence.coalitions.to_dense())[..., :usable, :]
+        values = jnp.asarray(evidence.values)[..., :usable]  # canonical: sample axis last
         value_empty = values[..., 0]
         value_grand = values[..., 1]
         n_rows = usable - n_seeds

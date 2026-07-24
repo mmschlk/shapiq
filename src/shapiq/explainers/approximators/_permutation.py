@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.games import Game
-    from shapiq.sampling import ShareSamples
+    from shapiq.sampling import Evidence, ShareSamples
 
 
 class _WalkEvidence(NamedTuple):
@@ -131,7 +131,11 @@ class PermutationSampling(Approximator):
         )
         self._family = family
 
-    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
+    def _estimate_parts(
+        self,
+        evidence: Evidence,
+        bank: int,
+    ) -> tuple[dict[int, Array], Array | None]:
         """Estimate the configured index from completed permutation walks.
 
         Returns:
@@ -144,26 +148,26 @@ class PermutationSampling(Approximator):
                 or, for SII, if some represented interaction has no sample
                 yet.
         """
-        return self._family.explain(self.index, self)
+        return self._family.explain(self.index, self, self._completed_walks(evidence, bank))
 
-    def _completed_walks(self) -> _WalkEvidence:
-        """Return seed values and the sampled walks."""
+    def _completed_walks(self, evidence: Evidence, bank: int) -> _WalkEvidence:
+        """Return seed values and the sampled walks decoded from evidence."""
         # paired units hold two walks (the permutation's and its reversal's),
         # so walks are cut by the walk length, not by the unit rows
         walk_length = self._unit_length
         n_seeds = self.n_seed_samples
-        if not isinstance(self._state, SampledEvidence):
+        if not isinstance(evidence, SampledEvidence):
             self._require_no_evidence_yet()
-        n_walks = (self._state.n_samples - n_seeds) // walk_length
-        if self._state.n_samples < n_seeds or n_walks < 1:
+        n_walks = (evidence.n_samples - n_seeds) // walk_length
+        if evidence.n_samples < n_seeds or n_walks < 1:
             msg = (
                 "explaining requires at least one completed permutation walk: "
                 f"estimate with at least {self.min_budget} evaluations in total "
-                f"(currently {self._state.n_samples} stored, {self._bank} banked)"
+                f"(currently {evidence.n_samples} stored, {bank} banked)"
             )
             raise InsufficientSamplesError(msg)
-        coalitions = jnp.asarray(self._state.coalitions.to_dense())
-        values = jnp.asarray(self._state.values)  # canonical: sample axis last
+        coalitions = jnp.asarray(evidence.coalitions.to_dense())
+        values = jnp.asarray(evidence.values)  # canonical: sample axis last
         # whole-unit spending guarantees stop == n_samples; the slice is the
         # walk-count arithmetic made explicit, never a trim
         stop = n_seeds + n_walks * walk_length
@@ -218,7 +222,10 @@ class PermutationFamily(NamedTuple):
     """
 
     walk: Callable[[Any, int], WalkLayout]
-    explain: Callable[[Any, PermutationSampling], tuple[dict[int, Array], Array | None]]
+    explain: Callable[
+        [Any, PermutationSampling, _WalkEvidence],
+        tuple[dict[int, Array], Array | None],
+    ]
 
 
 @singledispatch
@@ -424,10 +431,10 @@ def _validate_plan_order(order: int, n_players: int) -> None:
 
 def _explain_shapley_values(
     index: SV,  # noqa: ARG001 - the family signature carries the index
-    approximator: PermutationSampling,
+    approximator: PermutationSampling,  # noqa: ARG001 - the family signature carries the policy
+    evidence: _WalkEvidence,
 ) -> tuple[dict[int, Array], Array | None]:
     """Average per-player marginal contributions over completed chains."""
-    evidence = approximator._completed_walks()  # noqa: SLF001
     sums = _chain_marginal_sums(
         evidence.walk_masks,
         evidence.walk_values,
@@ -440,11 +447,11 @@ def _explain_shapley_values(
 def _explain_interactions(
     index: SII,
     approximator: PermutationSampling,
+    evidence: _WalkEvidence,
 ) -> tuple[dict[int, Array], Array | None]:
     """Average chain marginals and windowed discrete derivatives per interaction."""
     n_players = approximator.game.n_players
     order = index.order
-    evidence = approximator._completed_walks()  # noqa: SLF001
     chain_masks = evidence.walk_masks[..., : n_players - 1, :]
     chain_values = evidence.walk_values[..., : n_players - 1]
     order_one_sums = _chain_marginal_sums(
@@ -519,10 +526,10 @@ def _explain_interactions(
 def _explain_taylor_interactions(
     index: STII,
     approximator: PermutationSampling,
+    evidence: _WalkEvidence,
 ) -> tuple[dict[int, Array], Array | None]:
     """Combine exact lower-order interactions with sampled top-order ones."""
     top_order = index.order
-    evidence = approximator._completed_walks()  # noqa: SLF001
     attributions: dict[int, Array] = {}
     for size in range(1, top_order):
         attributions[size] = _taylor_exact_empty_derivatives(

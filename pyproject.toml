@@ -145,6 +145,9 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
+"src/shapiq/explainers/approximators/_engine.py" = [
+    "SLF001",  # the engine is the loop behind the policy's verbs: one subsystem, two files
+]
 "src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
     "D102",  # we don't need docstrings for protocol stubs
