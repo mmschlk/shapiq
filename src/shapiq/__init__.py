@@ -7,6 +7,8 @@ from shapiq.errors import (
     UnsupportedGameError,
 )
 from shapiq.explainers import (
+    SHAPIQ,
+    SVARMIQ,
     Approximator,
     ExactExplainer,
     PermutationSampling,
@@ -127,6 +129,8 @@ __all__ = [
     "KSII",
     "Moebius",
     "SGV",
+    "SHAPIQ",
+    "SVARMIQ",
     "BII",
     "BV",
     "FSII",
