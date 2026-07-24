@@ -19,6 +19,7 @@ from shapiq.explainers.approximators._deduplication import (
     admit_units,
     stitch_values,
 )
+from shapiq.explainers.approximators._estimate import Estimate, trailing_quiet_units
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, EmptyState, Sampler, SamplingState
 from shapiq.sampling._state import coalition_keys
@@ -355,6 +356,69 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         """
         values = self.game(DenseCoalitionArray(masks))
         return to_leading(jnp.asarray(values), len(self.game.value_shape))
+
+    def estimate(self, budget: int) -> Estimate:
+        """Estimate the game from scratch: spend a budget, return the carry.
+
+        The returned :class:`Estimate` is inert — a game-with-provenance;
+        continue it with ``refine`` on this (frozen) policy.
+        """
+        fresh = Estimate(
+            evidence=EmptyState(),
+            bank=0,
+            n_players=self.game.n_players,
+            view=None,
+            deduplicated=self.deduplicate,
+            target_shape=tuple(self.game.target_shape),
+            value_shape=tuple(self.game.value_shape),
+        )
+        return self.refine(fresh, budget)
+
+    def refine(self, carry: Estimate, budget: int) -> Estimate:
+        """Spend more budget on an estimate and return the grown carry.
+
+        Counters are derived from the carried evidence (the stall counter
+        included — it is a pure function of the unit sequence), so any
+        estimate is an exact resume point: rollback and resample replay
+        bit-identically, stalls included.
+        """
+        worker = self._at_state(carry.evidence)._evolve(  # noqa: SLF001 - transitional shim onto the loop
+            bank=carry.bank,
+            quiet_units=(
+                trailing_quiet_units(carry.evidence, self.unit_rows, self.n_seed_samples)
+                if self.deduplicate
+                else 0
+            ),
+        )
+        return self._as_estimate(worker.sample(budget))
+
+    def at_evidence(self, evidence: ApproximationState, bank: int | None = None) -> Estimate:
+        """Return the estimate a policy derives from given evidence.
+
+        ``bank`` defaults to the banked remainder the evidence's last
+        checkpoint recorded; rolling back an estimate is
+        ``policy.at_evidence(carry.evidence.rollback(steps))``.
+        """
+        worker = self._at_state(evidence)
+        if bank is not None:
+            worker = worker._evolve(bank=bank)  # noqa: SLF001 - transitional shim
+        return self._as_estimate(worker)
+
+    def _as_estimate(self, worker: Approximator) -> Estimate:
+        view: ExplanationArray[Array] | None
+        try:
+            view = worker.explain()
+        except InsufficientSamplesError:
+            view = None
+        return Estimate(
+            evidence=worker.state,
+            bank=worker.bank,
+            n_players=self.game.n_players,
+            view=view,
+            deduplicated=self.deduplicate,
+            target_shape=tuple(self.game.target_shape),
+            value_shape=tuple(self.game.value_shape),
+        )
 
     def approximate(self, budget: int) -> ExplanationArray[Array]:
         """Sample a budget and return explanations."""
