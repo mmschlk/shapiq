@@ -148,7 +148,7 @@ def test_empty_interaction_is_the_empty_coalition_value():
     explanation = PermutationSampling(game, STII(order=2), random_state=0).estimate(
         seeds(2) + quantum(2),
     )
-    assert jnp.allclose(explanation.view.baseline, empty, atol=1e-6)
+    assert jnp.allclose(explanation[()], empty, atol=1e-6)
 
 
 def test_explaining_before_first_completed_walk_raises():

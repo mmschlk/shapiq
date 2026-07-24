@@ -60,7 +60,7 @@ def test_error_messages_teach_the_working_idiom():
     estimate = policy.refine(banked, SEEDS + QUANTUM - 1)
     with pytest.raises(IndexError, match="past the initial state"):
         estimate.evidence.rollback(len(estimate.evidence.history()))
-    with pytest.raises(TypeError, match=r"estimate\[\(0,\)\]"):
+    with pytest.raises(TypeError, match=r"game\[\(0,\)\]"):
         estimate[0]
 
 

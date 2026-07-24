@@ -72,13 +72,13 @@ if __name__ == "__main__":
         return to_jax(torch.softmax(predictions, dim=-1)[..., 1])
 
     game = MaskedGame(masked_predictor=predictor, link_function=probability_link)
-    exact = ExactExplainer(game, SV()).estimate().view
-    exact_values = jnp.stack([exact((player,)) for player in range(N_PLAYERS)])
+    exact = ExactExplainer(game, SV()).estimate()
+    exact_values = jnp.stack([exact[(player,)] for player in range(N_PLAYERS)])
     print(f"exact SV ({2**N_PLAYERS} evaluations): {exact_values.round(3)}")
 
     policy = PermutationSampling(game, SV(), random_state=0)
     payout = float(jnp.sum(exact_values))
-    running = policy.estimate(0)
+    running = policy.estimate[0]
     for budget in (9, 54, 700, 2000):
         running = policy.refine(running, budget)
         estimate = jnp.stack([running[(player,)] for player in range(N_PLAYERS)])
@@ -99,9 +99,9 @@ if __name__ == "__main__":
         link_function=log_probability_link,
         value_shape=(2,),
     )
-    exact_fsii = ExactExplainer(vector_game, FSII(order=2)).estimate().view
+    exact_fsii = ExactExplainer(vector_game, FSII(order=2)).estimate()
     pairs = list(combinations(range(N_PLAYERS), 2))
-    strengths = jnp.stack([exact_fsii(pair) for pair in pairs])  # (n_pairs, 2 classes)
+    strengths = jnp.stack([exact_fsii[pair] for pair in pairs])  # (n_pairs, 2 classes)
     print("strongest exact pairwise interactions per class:")
     for class_index in (0, 1):
         top = int(jnp.argmax(jnp.abs(strengths[:, class_index])))
@@ -112,20 +112,20 @@ if __name__ == "__main__":
     for budget in (fsii.min_budget + 20, 60, 80):
         fsii = fsii.sample(budget)
         try:
-            estimate = fsii.estimate().view
+            estimate = fsii.estimate()
         except InsufficientSamplesError as error:
             print(f"after +{budget:>3} novel evals | {error}")
             continue
         errors = jnp.stack(
-            [jnp.abs(estimate(pair) - exact_fsii(pair)) for pair in pairs],
+            [jnp.abs(estimate[pair] - exact_fsii[pair]) for pair in pairs],
         )
-        interaction = estimate((0, 1))
+        interaction = estimate[(0, 1)]
         print(
             f"after +{budget:>3} novel evals | stored: {fsii.state.n_samples:>4}"
             f" | max pair error: {jnp.max(errors):.4f}"
             f" | (0, 1) per class: {interaction.round(3)}"
         )
-    empty = exact_fsii.baseline
+    empty = exact_fsii[()]
     totals = sum(
         (jnp.sum(exact_fsii.attributions_by_order[size], axis=-2) for size in (1, 2)),
         start=jnp.zeros(2),

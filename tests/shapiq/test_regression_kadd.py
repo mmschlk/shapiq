@@ -54,7 +54,7 @@ def order_one(source):
 
 @pytest.mark.filterwarnings("ignore::shapiq.errors.SamplingStallWarning")
 def test_recovers_the_exact_kadd_fit_once_identified():
-    exact = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).estimate().view
+    exact = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).estimate()
     approximator = Regression(
         game_from(quadratic_from_masks),
         KADDSHAP(order=2),
@@ -63,16 +63,16 @@ def test_recovers_the_exact_kadd_fit_once_identified():
     )
     estimate = approximator.estimate(SEEDS + 26)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=1e-3)
+        assert jnp.allclose(estimate[(player,)], exact[(player,)], atol=1e-3)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(estimate[pair], exact(pair), atol=1e-3)
+        assert jnp.allclose(estimate[pair], exact[pair], atol=1e-3)
 
 
 @pytest.mark.filterwarnings("ignore::shapiq.errors.SamplingStallWarning")
 def test_order_one_attributions_are_shapley_values():
     # kADD-SHAP preserves the Shapley value at every order; on a 2-additive
     # game the identified fit reproduces the game, so equality is exact
-    shapley = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).estimate().view)
+    shapley = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).estimate())
     approximator = Regression(
         game_from(quadratic_from_masks),
         KADDSHAP(order=2),
@@ -84,13 +84,13 @@ def test_order_one_attributions_are_shapley_values():
 
 
 def test_converges_to_the_exact_kadd_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), KADDSHAP(order=2)).estimate().view
+    exact = ExactExplainer(game_from(cubic_from_masks), KADDSHAP(order=2)).estimate()
     approximator = Regression(game_from(cubic_from_masks), KADDSHAP(order=2), random_state=2)
     estimate = approximator.estimate(SEEDS + 6000)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=0.1)
+        assert jnp.allclose(estimate[(player,)], exact[(player,)], atol=0.1)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(estimate[pair], exact(pair), atol=0.1)
+        assert jnp.allclose(estimate[pair], exact[pair], atol=0.1)
 
 
 def test_sampling_is_invariant_to_budget_splits():
@@ -148,9 +148,9 @@ def test_metadata_names_the_index_and_carries_no_intercept():
     )
     estimate = approximator.estimate(SEEDS + 24)
     assert estimate.index == KADDSHAP(order=2)
-    assert estimate.view.order == 2
-    with pytest.raises(KeyError, match="defines no order-0 attribution"):
-        estimate[()]
+    assert estimate.order == 2
+    assert estimate[()] == 0.0  # kADD declares no order-0 slot: absent reads zero
+    assert frozenset() not in estimate.terms
 
 
 def test_entry_gates_keep_teaching():
@@ -162,4 +162,4 @@ def test_entry_gates_keep_teaching():
 
     # subclasses inherit the kADD family through the MRO
     approximator = Regression(game_from(cubic_from_masks), MyKADD(order=2))
-    assert approximator.interaction_index == "kADD-SHAP"
+    assert approximator.index.name == "kADD-SHAP"

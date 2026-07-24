@@ -75,23 +75,23 @@ def brute_force_weighted_fit(mask_fn, p, order):
 @pytest.mark.parametrize("p", [0.2, 0.5, 0.8])
 def test_exact_weighted_fbii_solves_the_product_measure_fit(p):
     expected = brute_force_weighted_fit(cubic_from_masks, p, order=2)
-    explanation = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=p, order=2)).estimate().view
+    explanation = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=p, order=2)).estimate()
     for interaction, coefficient in expected.items():
-        assert jnp.allclose(explanation(interaction), coefficient, atol=1e-4)
+        assert jnp.allclose(explanation[interaction], coefficient, atol=1e-4)
 
 
 def test_uniform_weighting_is_the_faithful_banzhaf_index():
-    weighted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.5, order=2)).estimate().view
-    banzhaf = ExactExplainer(game_from(cubic_from_masks), FBII(order=2)).estimate().view
-    assert jnp.allclose(weighted(()), banzhaf(()), atol=1e-6)
+    weighted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.5, order=2)).estimate()
+    banzhaf = ExactExplainer(game_from(cubic_from_masks), FBII(order=2)).estimate()
+    assert jnp.allclose(weighted[()], banzhaf[()], atol=1e-6)
     for size in (1, 2):
         for combo in combinations(range(N_PLAYERS), size):
-            assert jnp.allclose(weighted(combo), banzhaf(combo), atol=1e-6)
+            assert jnp.allclose(weighted[combo], banzhaf[combo], atol=1e-6)
 
 
 def test_exact_order_one_is_the_weighted_banzhaf_value():
-    fitted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.3, order=1)).estimate().view
-    value = ExactExplainer(game_from(cubic_from_masks), WeightedBV(p=0.3)).estimate().view
+    fitted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.3, order=1)).estimate()
+    value = ExactExplainer(game_from(cubic_from_masks), WeightedBV(p=0.3)).estimate()
     assert jnp.allclose(order_one(fitted), order_one(value), atol=1e-5)
 
 
@@ -112,7 +112,7 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_converges_to_the_exact_faithful_weighted_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.7, order=2)).estimate().view
+    exact = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.7, order=2)).estimate()
     approximator = Regression(
         game_from(cubic_from_masks),
         WeightedFBII(p=0.7, order=2),
@@ -120,9 +120,9 @@ def test_converges_to_the_exact_faithful_weighted_interactions():
     )
     estimate = approximator.estimate(SEEDS + 8000)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=0.1)
+        assert jnp.allclose(estimate[(player,)], exact[(player,)], atol=0.1)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(estimate[pair], exact(pair), atol=0.1)
+        assert jnp.allclose(estimate[pair], exact[pair], atol=0.1)
 
 
 def test_pairing_follows_the_kernel_symmetry():
@@ -176,7 +176,7 @@ def test_metadata_names_the_index():
     )
     estimate = approximator.estimate(SEEDS + 24)
     assert estimate.index == WeightedFBII(p=0.3, order=2)
-    assert estimate.view.order == 2
+    assert estimate.order == 2
     assert WeightedFBII(p=0.3, order=2).includes_empty_interaction
 
 

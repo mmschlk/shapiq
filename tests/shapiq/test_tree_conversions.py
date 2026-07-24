@@ -145,9 +145,9 @@ def test_xgboost_multiclass_becomes_a_vector_valued_game(parse_path):
         FEATURES.mean(axis=0),
     )
     # vector-valued closed form: Shapley values are efficient per class
-    explanation = TreeExplainer(game, SV()).estimate().view
+    explanation = TreeExplainer(game, SV()).estimate()
     ends = game(DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])))
-    total = sum(np.asarray(explanation((player,))) for player in range(N_PLAYERS))
+    total = sum(np.asarray(explanation[(player,)]) for player in range(N_PLAYERS))
     assert np.allclose(total, np.asarray(ends[1] - ends[0]), atol=1e-4)
 
 
@@ -194,11 +194,11 @@ def test_tree_explainer_serves_converted_boosters():
     game = InterventionalTreeGame(
         to_tree_model(model), inputs=FEATURES[0], baseline=FEATURES.mean(axis=0)
     )
-    closed_form = TreeExplainer(game, SII(order=2)).estimate().view
-    exact = ExactExplainer(game, SII(order=2)).estimate().view
+    closed_form = TreeExplainer(game, SII(order=2)).estimate()
+    exact = ExactExplainer(game, SII(order=2)).estimate()
     for size in (1, 2):
         for interaction in combinations(range(N_PLAYERS), size):
-            assert jnp.allclose(closed_form(interaction), exact(interaction), atol=1e-4)
+            assert jnp.allclose(closed_form[interaction], exact[interaction], atol=1e-4)
 
 
 @fresh_process
@@ -285,11 +285,11 @@ def test_catboost_closed_form_matches_the_exact_explainer():
     game = InterventionalTreeGame(
         to_tree_model(model), inputs=FEATURES[0], baseline=FEATURES.mean(axis=0)
     )
-    closed_form = TreeExplainer(game, SII(order=2)).estimate().view
-    exact = ExactExplainer(game, SII(order=2)).estimate().view
+    closed_form = TreeExplainer(game, SII(order=2)).estimate()
+    exact = ExactExplainer(game, SII(order=2)).estimate()
     for size in (1, 2):
         for interaction in combinations(range(N_PLAYERS), size):
-            assert jnp.allclose(closed_form(interaction), exact(interaction), atol=1e-4)
+            assert jnp.allclose(closed_form[interaction], exact[interaction], atol=1e-4)
 
 
 def test_importing_shapiq_never_imports_the_boosting_libraries():

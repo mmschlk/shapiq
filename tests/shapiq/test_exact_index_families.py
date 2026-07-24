@@ -79,7 +79,7 @@ def random_table_game():
 
 
 def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+    return jnp.stack([explanation[(player,)] for player in range(N_PLAYERS)], axis=-1)
 
 
 def discrete_derivative(mask_fn, interaction, base):
@@ -116,7 +116,7 @@ def total_attribution(explanation, order):
     total = 0.0
     for size in range(1, order + 1):
         for interaction in combinations(range(N_PLAYERS), size):
-            total += float(explanation(interaction))
+            total += float(explanation[interaction])
     return total
 
 
@@ -165,8 +165,8 @@ def test_declared_generalizations_hold_at_order_one(index_type):
     index = index_type(order=1)
     value = index.generalizes
     assert value is not None
-    restricted = ExactExplainer(game_from(mask_fn), index).estimate().view
-    reference = ExactExplainer(game_from(mask_fn), value).estimate().view
+    restricted = ExactExplainer(game_from(mask_fn), index).estimate()
+    reference = ExactExplainer(game_from(mask_fn), value).estimate()
     assert jnp.allclose(order_one(restricted), order_one(reference), atol=1e-4)
 
 
@@ -177,79 +177,78 @@ def test_values_and_transforms_declare_no_generalization():
 
 def test_exact_chii_matches_brute_force():
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), CHII(order=2)).estimate().view
+    explanation = ExactExplainer(game_from(mask_fn), CHII(order=2)).estimate()
     for player in range(N_PLAYERS):
         expected = brute_force_base_interaction(mask_fn, (player,), chii_weight(1))
-        assert jnp.allclose(explanation((player,)), expected, atol=1e-4)
+        assert jnp.allclose(explanation[(player,)], expected, atol=1e-4)
     for pair in combinations(range(N_PLAYERS), 2):
         expected = brute_force_base_interaction(mask_fn, pair, chii_weight(2))
-        assert jnp.allclose(explanation(pair), expected, atol=1e-4)
+        assert jnp.allclose(explanation[pair], expected, atol=1e-4)
 
 
 def test_exact_moebius_recovers_interaction_masses():
     explainer = ExactExplainer(game_from(cubic_from_masks), Moebius())
     assert explainer.order == N_PLAYERS
-    explanation = explainer.estimate().view
-    assert jnp.allclose(explanation.baseline, 0.0, atol=1e-6)
+    explanation = explainer.estimate()
+    assert jnp.allclose(explanation[()], 0.0, atol=1e-6)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(explanation((player,)), WEIGHTS[player], atol=1e-4)
+        assert jnp.allclose(explanation[(player,)], WEIGHTS[player], atol=1e-4)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation(pair), PAIRS[pair], atol=1e-4)
+        assert jnp.allclose(explanation[pair], PAIRS[pair], atol=1e-4)
     for triple in combinations(range(N_PLAYERS), 3):
         expected = 1.5 if triple == (0, 1, 2) else 0.0
-        assert jnp.allclose(explanation(triple), expected, atol=1e-4)
+        assert jnp.allclose(explanation[triple], expected, atol=1e-4)
     for quadruple in combinations(range(N_PLAYERS), 4):
-        assert jnp.allclose(explanation(quadruple), 0.0, atol=1e-4)
+        assert jnp.allclose(explanation[quadruple], 0.0, atol=1e-4)
 
 
 def test_exact_co_moebius_matches_derivatives_at_the_complement():
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), CoMoebius(order=2)).estimate().view
+    explanation = ExactExplainer(game_from(mask_fn), CoMoebius(order=2)).estimate()
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
-    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
-    assert jnp.allclose(explanation(()), grand - empty, atol=1e-4)
+    assert jnp.allclose(explanation[()], grand - empty, atol=1e-4)
     for interaction in [(1,), (4,), (0, 2), (3, 4)]:
         complement = tuple(p for p in range(N_PLAYERS) if p not in interaction)
         expected = discrete_derivative(mask_fn, interaction, complement)
-        assert jnp.allclose(explanation(interaction), expected, atol=1e-4)
+        assert jnp.allclose(explanation[interaction], expected, atol=1e-4)
 
 
 def test_exact_ksii_aggregates_sii_and_is_efficient():
     mask_fn = random_table_game()
-    ksii = ExactExplainer(game_from(mask_fn), KSII(order=2)).estimate().view
-    sii = ExactExplainer(game_from(mask_fn), SII(order=2)).estimate().view
+    ksii = ExactExplainer(game_from(mask_fn), KSII(order=2)).estimate()
+    sii = ExactExplainer(game_from(mask_fn), SII(order=2)).estimate()
     # top-order interactions have no supersets to aggregate over and stay SII
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(ksii(pair), sii(pair), atol=1e-4)
+        assert jnp.allclose(ksii[pair], sii[pair], atol=1e-4)
     # players absorb their pair interactions scaled by the Bernoulli number -1/2
     for player in range(N_PLAYERS):
         pairs = sum(
-            float(sii(tuple(sorted((player, other)))))
+            float(sii[tuple(sorted((player, other)))])
             for other in range(N_PLAYERS)
             if other != player
         )
-        assert jnp.allclose(ksii((player,)), float(sii((player,))) - 0.5 * pairs, atol=1e-4)
+        assert jnp.allclose(ksii[(player,)], float(sii[(player,)]) - 0.5 * pairs, atol=1e-4)
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(ksii, 2), grand - empty, atol=1e-3)
-    assert jnp.allclose(ksii.baseline, empty, atol=1e-4)
+    assert jnp.allclose(ksii[()], empty, atol=1e-4)
 
 
 def test_exact_fbii_recovers_the_moebius_basis_of_quadratic_games():
-    explanation = ExactExplainer(game_from(quadratic_from_masks), FBII(order=2)).estimate().view
+    explanation = ExactExplainer(game_from(quadratic_from_masks), FBII(order=2)).estimate()
     assert jnp.allclose(order_one(explanation), WEIGHTS, atol=1e-4)
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-4)
-    assert jnp.allclose(explanation(()), 0.0, atol=1e-4)
+        assert jnp.allclose(explanation[(left, right)], PAIRS[left, right], atol=1e-4)
+    assert jnp.allclose(explanation[()], 0.0, atol=1e-4)
 
 
 def test_exact_kadd_shap_on_quadratic_games_yields_shapley_values_and_pair_masses():
-    explanation = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).estimate().view
+    explanation = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).estimate()
     shapley_values = WEIGHTS + 0.5 * jnp.sum(PAIRS, axis=1)
     assert jnp.allclose(order_one(explanation), shapley_values, atol=1e-4)
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-4)
+        assert jnp.allclose(explanation[(left, right)], PAIRS[left, right], atol=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -258,37 +257,37 @@ def test_exact_kadd_shap_on_quadratic_games_yields_shapley_values_and_pair_masse
 )
 def test_exact_generalized_values_match_brute_force(index_type, weight_factory):
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), index_type(order=2)).estimate().view
+    explanation = ExactExplainer(game_from(mask_fn), index_type(order=2)).estimate()
     for interaction in [(1,), (3,), (0, 2), (2, 4)]:
         expected = brute_force_generalized_value(
             mask_fn,
             interaction,
             weight_factory(len(interaction)),
         )
-        assert jnp.allclose(explanation(interaction), expected, atol=1e-4)
+        assert jnp.allclose(explanation[interaction], expected, atol=1e-4)
 
 
 def test_exact_internal_and_external_generalized_values_have_closed_forms():
     mask_fn = random_table_game()
-    igv = ExactExplainer(game_from(mask_fn), IGV(order=2)).estimate().view
-    egv = ExactExplainer(game_from(mask_fn), EGV(order=2)).estimate().view
+    igv = ExactExplainer(game_from(mask_fn), IGV(order=2)).estimate()
+    egv = ExactExplainer(game_from(mask_fn), EGV(order=2)).estimate()
     empty = float(mask_fn(subset_mask(())))
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     for interaction in [(0,), (4,), (2, 3), (0, 1)]:
         joined = float(mask_fn(subset_mask(interaction)))
-        assert jnp.allclose(igv(interaction), joined - empty, atol=1e-4)
+        assert jnp.allclose(igv[interaction], joined - empty, atol=1e-4)
         complement = tuple(p for p in range(N_PLAYERS) if p not in interaction)
         left_out = float(mask_fn(subset_mask(complement)))
-        assert jnp.allclose(egv(interaction), grand - left_out, atol=1e-4)
+        assert jnp.allclose(egv[interaction], grand - left_out, atol=1e-4)
 
 
 def test_exact_jointsv_higher_orders_stay_efficient():
     mask_fn = random_table_game()
-    joint = ExactExplainer(game_from(mask_fn), JointSV(order=2)).estimate().view
+    joint = ExactExplainer(game_from(mask_fn), JointSV(order=2)).estimate()
     grand = float(mask_fn(subset_mask(range(N_PLAYERS))))
     empty = float(mask_fn(subset_mask(())))
     assert jnp.allclose(total_attribution(joint, 2), grand - empty, atol=1e-3)
-    assert jnp.allclose(joint.baseline, empty, atol=1e-4)
+    assert jnp.allclose(joint[()], empty, atol=1e-4)
 
 
 def test_values_declare_their_singleton_marginal_weights():

@@ -17,9 +17,7 @@ from shapiq.explainers._faithful import (
     lstsq_identified,
     solve_faithful,
 )
-from shapiq.explainers._valueaxes import to_trailing
 from shapiq.explainers.approximators._base import Approximator
-from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (
     BanzhafKernelSampler,
@@ -183,15 +181,14 @@ class Regression(Approximator):
             deduplicating=self.deduplicate,
         )
 
-    def _view(self) -> DenseExplanationArray[Array]:
+    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
         """Solve the kernel regression on the sampled evidence.
 
         Returns:
-            A dense explanation whose baseline is the empty-coalition value.
-            Attributions hold the solution of the kernel least squares
-            problem on the centered game over all sampled units; FBII and
-            WeightedFBII additionally carry their fitted intercept at order
-            zero.
+            Per-order coefficient blocks in the canonical leading layout,
+            and the empty slot's value: the empty-coalition value for the
+            efficiency family, ``None`` where the fit carries its own
+            intercept block or the index defines no order-0 slot (kADD).
 
         Raises:
             InsufficientSamplesError: If no sampled unit has completed, or if
@@ -212,7 +209,6 @@ class Regression(Approximator):
         n_players = self.game.n_players
         target_shape = self.game.target_shape
         value_shape = self.game.value_shape
-        n_value_axes = len(value_shape)
         masks = jnp.asarray(self.state.coalitions.to_dense())[..., :usable, :]
         values = jnp.asarray(self.state.values)[..., :usable]  # canonical: sample axis last
         value_empty = values[..., 0]
@@ -246,27 +242,17 @@ class Regression(Approximator):
         if self._family.intercept:
             intercept = coefficients[:, :1].reshape(*value_shape, *target_shape, 1)
             coefficients = coefficients[:, 1:]
-            attributions: dict[int, Array] = {0: to_trailing(intercept, n_value_axes)}
+            attributions: dict[int, Array] = {0: intercept}
         else:
             attributions = {}
         offset = 0
         for size in range(1, self.order + 1):
             n_interactions = comb(n_players, size)
             block = coefficients[:, offset : offset + n_interactions]
-            attributions[size] = to_trailing(
-                block.reshape(*value_shape, *target_shape, n_interactions),
-                n_value_axes,
-            )
+            attributions[size] = block.reshape(*value_shape, *target_shape, n_interactions)
             offset += n_interactions
-        return DenseExplanationArray(
-            attributions_by_order=attributions,
-            n_players=n_players,
-            index=self.index,
-            order=self.order,
-            shape=target_shape,
-            value_shape=value_shape,
-            baseline=to_trailing(value_empty, n_value_axes),
-        )
+        empty = value_empty if self._family.carries_baseline else None
+        return attributions, empty
 
 
 class BuildSampler(Protocol):
@@ -314,6 +300,9 @@ class RegressionFamily(NamedTuple):
     symmetric_kernel: bool
     intercept: bool
     solve: KernelSolve
+    carries_baseline: bool = False
+    """Whether the surrogate interpolates the empty coalition, putting the
+    empty-coalition value at the empty slot (the efficiency family's logic)."""
 
 
 @singledispatch
@@ -355,6 +344,7 @@ def _shapley_family(index: SV | FSII) -> RegressionFamily:
         symmetric_kernel=True,
         intercept=False,
         solve=_constrained_solve,
+        carries_baseline=True,
     )
 
 

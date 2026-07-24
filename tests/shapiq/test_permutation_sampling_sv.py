@@ -124,8 +124,8 @@ def test_baseline_carries_the_empty_coalition_value():
     game = quadratic_game()
     empty = game(DenseCoalitionArray(jnp.zeros((N_PLAYERS,), dtype=bool)))
     estimate = PermutationSampling(game, SV(), random_state=0).estimate(SEEDS + QUANTUM)
-    assert jnp.allclose(estimate.view.baseline, empty, atol=1e-6)
-    assert jnp.allclose(estimate.as_game()[()], empty, atol=1e-6)
+    assert jnp.allclose(estimate[()], empty, atol=1e-6)
+    assert jnp.allclose(estimate(jnp.zeros((1, N_PLAYERS), dtype=bool))[0], empty, atol=1e-6)
 
 
 def test_rollback_restores_earlier_estimates():
@@ -165,7 +165,7 @@ def test_batched_targets_with_independent_walks():
 
     game = CallableGame(fn=additive_batched, n_players=N_PLAYERS, target_shape=(3,))
     estimate = PermutationSampling(game, SV(), random_state=2).estimate(SEEDS + QUANTUM)
-    assert estimate.view.shape == (3,)
+    assert estimate.target_shape == (3,)
     attributions = jnp.stack([estimate[(player,)] for player in range(N_PLAYERS)], axis=-1)
     assert jnp.allclose(attributions, per_target_weights, atol=1e-6)
 
@@ -181,7 +181,7 @@ def test_shared_samples_across_targets():
     policy = PermutationSampling(game, SV(), random_state=2, share_samples=True)
     assert policy.sampler.shared_target_shape == (1,)
     estimate = policy.estimate(SEEDS + QUANTUM)
-    assert estimate.view.shape == (3,)
+    assert estimate.target_shape == (3,)
     attributions = jnp.stack([estimate[(player,)] for player in range(N_PLAYERS)], axis=-1)
     assert jnp.allclose(attributions, per_target_weights, atol=1e-6)
 

@@ -21,9 +21,8 @@ from shapiq.explainers._faithful import (
     interaction_masks,
     solve_faithful,
 )
-from shapiq.explainers._valueaxes import to_leading, to_trailing
-from shapiq.explainers.approximators._estimate import Estimate
-from shapiq.explanations import DenseExplanationArray
+from shapiq.explainers._valueaxes import to_leading
+from shapiq.explainers.approximators._estimate import Estimate, leading_blocks_to_terms
 from shapiq.games import Game
 from shapiq.interactions import (
     FBII,
@@ -125,27 +124,33 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             carry their fitted intercept, the Co-Moebius transform its
             grand total ``v(N) - v(empty)``.
         """
-        view = self._view()
+        attributions, empty = self._estimate_parts()
+        terms, coefficients = leading_blocks_to_terms(
+            attributions,
+            self.game.n_players,
+            empty,
+        )
         evidence = SamplingState(
             coalitions=DenseCoalitionArray(_powerset_masks(self.game.n_players)),
             values=self._game_values(),
             target_shape=self.game.target_shape,
         )
         return Estimate(
+            terms=terms,
+            values=coefficients,
+            n_players=self.game.n_players,
             evidence=evidence,
             bank=0,
-            n_players=self.game.n_players,
-            view=view,
+            index=self.index,
             target_shape=tuple(self.game.target_shape),
             value_shape=tuple(self.game.value_shape),
         )
 
-    def _view(self) -> DenseExplanationArray[Array]:
-        """Build the exact coefficient view (all solver dispatch lives here)."""
+    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
+        """Build the exact coefficient blocks (all solver dispatch lives here)."""
         n_players = self.game.n_players
-        n_value_axes = len(self.game.value_shape)
         values = self._game_values()
-        baseline = to_trailing(values[..., 0], n_value_axes)
+        empty_value = values[..., 0]
         values = values - values[..., :1]
         masks = _powerset_masks(n_players)
         index = self._exact_index
@@ -191,17 +196,9 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             # KSII is dispatched above, so only regression-capable indices remain
             regression_index = cast("RegressionIndex", index)
             attributions = _regression_attributions(values, masks, regression_index, order)
-        return DenseExplanationArray(
-            attributions_by_order={
-                size: to_trailing(block, n_value_axes) for size, block in attributions.items()
-            },
-            n_players=n_players,
-            index=self.index,
-            order=order,
-            shape=self.game.target_shape,
-            value_shape=self.game.value_shape,
-            baseline=baseline,
-        )
+        # the fit carries its own intercept, or kADD declares no order-0 slot
+        empty = None if 0 in attributions or isinstance(index, KADDSHAP) else empty_value
+        return attributions, empty
 
     def _game_values(self) -> Array:
         """Evaluate the game on the full powerset once and reuse the values.

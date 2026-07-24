@@ -130,7 +130,7 @@ def test_proxyshap_recipe_from_primitives_costs_zero_extra_evaluations():
     direct_error = np.abs(np.array([float(direct[(p,)]) for p in range(n)]) - exact_sv).max()
     combined_error = np.abs(combined - exact_sv).max()
     assert combined_error < direct_error  # the proxy soaked up real structure
-    surrogate = proxy + correction.as_game()
+    surrogate = proxy + correction
     assert fidelity(base, surrogate, uniform_measure(n)) > 0.5
 
 
@@ -155,7 +155,7 @@ class ToyBED:
     candidate_key: int = 99
 
     def estimate(self, budget: int) -> Estimate:
-        fresh = Estimate(evidence=EmptyState(), bank=0, n_players=self.game.n_players, view=None)
+        fresh = self.at_evidence(EmptyState(), 0)
         return self.refine(fresh, budget)
 
     def refine(self, carry: Estimate, budget: int) -> Estimate:
@@ -179,23 +179,30 @@ class ToyBED:
         return self.at_evidence(evidence, bank)
 
     def at_evidence(self, evidence, bank: int) -> Estimate:
+        n = self.game.n_players
         if not isinstance(evidence, SamplingState):
-            return Estimate(evidence=evidence, bank=bank, n_players=self.game.n_players, view=None)
-        _, mean, cov, sv_map = self._posterior(evidence)
+            return Estimate(
+                terms=(),
+                values=np.zeros(0),
+                n_players=n,
+                evidence=evidence,
+                bank=bank,
+                unready_reason="no evidence yet",
+            )
+        terms, mean, cov, sv_map = self._posterior(evidence)
         sv_cov = sv_map @ cov @ sv_map.T
         variance = {
-            frozenset([player]): float(sv_cov[player, player])
-            for player in range(self.game.n_players)
+            frozenset([player]): float(sv_cov[player, player]) for player in range(n)
         }
-        estimate = Estimate(
+        # a third-party policy hands its own coefficients straight to the carry
+        return Estimate(
+            terms=terms,
+            values=np.asarray(mean, dtype=np.float64),
+            n_players=n,
             evidence=evidence,
             bank=bank,
-            n_players=self.game.n_players,
-            view=None,
             variance=variance,
         )
-        object.__setattr__(estimate, "_posterior_mean", mean)
-        return estimate
 
     def _posterior(self, evidence: SamplingState):
         n = self.game.n_players
@@ -249,13 +256,7 @@ def bed_game() -> CallableGame:
 
 
 def sv_posterior(estimate: Estimate) -> np.ndarray:
-    mean = estimate._posterior_mean
-    n = estimate.n_players
-    values = np.zeros(n)
-    for coefficient, term in zip(mean, interaction_terms(n, 2), strict=True):
-        for player in term:
-            values[player] += coefficient / len(term)
-    return values
+    return shapley_values(estimate)  # the carry IS a moebius game
 
 
 def test_active_policies_on_the_carry_contract_are_split_invariant():

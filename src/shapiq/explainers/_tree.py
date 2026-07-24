@@ -8,14 +8,12 @@ from itertools import combinations
 from math import comb, prod
 from typing import TYPE_CHECKING, cast
 
-import jax.numpy as jnp
 import numpy as np
 from jax import Array
 
 from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._base import Explainer, reject_common_index_mistakes
 from shapiq.explainers.approximators._estimate import Estimate
-from shapiq.explanations import SparseExplanationArray
 from shapiq.games import Game
 from shapiq.interactions import CardinalInteractionIndex
 from shapiq.sampling import EmptyState
@@ -86,16 +84,22 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
         explanation needs no game evaluations, so its evidence is empty
         and ``spent`` reads zero.
         """
+        terms, coefficients, empty = self._sparse_parts()
+        if empty is not None:
+            terms = (frozenset(), *terms)
+            coefficients = np.concatenate([empty[..., None], coefficients], axis=-1)
         return Estimate(
+            terms=terms,
+            values=coefficients,
+            n_players=self.game.n_players,
             evidence=EmptyState(),
             bank=0,
-            n_players=self.game.n_players,
-            view=self._view(),
+            index=self.index,
             target_shape=tuple(self.game.target_shape),
             value_shape=tuple(self.game.value_shape),
         )
 
-    def _view(self) -> SparseExplanationArray[Array]:
+    def _sparse_parts(self) -> tuple[tuple[frozenset[int], ...], np.ndarray, np.ndarray | None]:
         """Compute the configured index exactly from the tree structure.
 
         Returns:
@@ -111,7 +115,7 @@ def tree_explanation(
     game: object,
     index: CardinalInteractionIndex,
     order: int,
-) -> SparseExplanationArray[Array]:
+) -> tuple[tuple[frozenset[int], ...], np.ndarray, np.ndarray | None]:
     """Compute an interaction index in closed form on a tree game.
 
     The algorithm dispatches on the game type; subclasses resolve to the
@@ -134,7 +138,7 @@ def _interventional_explanation(
     game: InterventionalTreeGame,
     index: CardinalInteractionIndex,
     order: int,
-) -> SparseExplanationArray[Array]:
+) -> tuple[tuple[frozenset[int], ...], np.ndarray, np.ndarray | None]:
     """Sum per-leaf Moebius masses against superset-summed derivative weights.
 
     A leaf with present set ``E``, absent set ``R``, and value ``v`` carries
@@ -164,24 +168,22 @@ def _interventional_explanation(
         # the empty coalition's Moebius mass, which is the baseline
         totals[()] = totals.get((), 0.0) - baseline * float(omegas[0][0])
     value_shape = game.value_shape
-
-    def _zero_attribution(interaction: object) -> Array:
-        del interaction
-        return jnp.zeros(value_shape)
-
-    # the closed forms run in exact float64 on the host; the explanation
-    # re-enters the stack in the default JAX precision (float64 under x64)
-    return SparseExplanationArray(
-        attributions={
-            interaction: jnp.asarray(total) for interaction, total in totals.items()
-        },
-        n_players=n_players,
-        index=index,
-        order=order,
-        value_shape=value_shape,
-        default_attribution=_zero_attribution,
-        baseline=jnp.asarray(baseline),
-    )
+    # the closed forms run in exact float64 on the host; coefficients stay
+    # host float64 (which game they describe is semantic exactness)
+    terms = tuple(frozenset(interaction) for interaction in totals)
+    if terms:
+        coefficients = np.stack(
+            [np.asarray(totals[tuple(sorted(term))], dtype=np.float64) for term in terms],
+            axis=-1,
+        )
+    else:
+        coefficients = np.zeros((*value_shape, 0))
+    empty = None
+    if index.min_interaction_size >= 1:
+        # efficiency-shaped indices: the surrogate interpolates the empty
+        # coalition, so its value sits at the empty slot
+        empty = np.asarray(baseline, dtype=np.float64)
+    return terms, coefficients, empty
 
 
 def _superset_weight_sums(weights: np.ndarray, n_free: int) -> np.ndarray:

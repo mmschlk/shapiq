@@ -78,11 +78,11 @@ def test_sklearn_models_explain_without_ceremony():
     background = features.mean(axis=0)
     masker = BaselineMasker(inputs=features[0], baseline=background)
     game = MaskedGame(masked_predictor=ModelMaskedPredictor(masker=masker, model=model.predict))
-    explanation = ExactExplainer(game, SV()).estimate().view
+    explanation = ExactExplainer(game, SV()).estimate()
     # a linear model's Shapley values are w_i * (x_i - baseline_i)
     for player in range(N_PLAYERS):
         expected = coefficients[player] * (features[0, player] - background[player])
-        assert jnp.allclose(explanation((player,)), expected, atol=1e-5)
+        assert jnp.allclose(explanation[(player,)], expected, atol=1e-5)
 
 
 def test_superpixel_masking_is_backend_general():

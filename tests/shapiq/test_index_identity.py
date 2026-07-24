@@ -67,7 +67,7 @@ def random_table_game():
 
 
 def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+    return jnp.stack([explanation[(player,)] for player in range(N_PLAYERS)], axis=-1)
 
 
 SHAPLEY_ORDER_ONE = [SII, CHII, STII, KSII, FSII, KADDSHAP, SGV, CHGV, JointSV]
@@ -93,8 +93,8 @@ def test_order_one_instances_equal_the_banzhaf_value():
 def test_ready_made_value_shorthands_are_the_values():
     assert ShapleyValue == SV()
     assert BanzhafValue == BV()
-    explanation = ExactExplainer(random_table_game(), ShapleyValue).estimate().view
-    assert explanation.interaction_index == "SV"
+    explanation = ExactExplainer(random_table_game(), ShapleyValue).estimate()
+    assert explanation.index.name == "SV"
 
 
 def test_open_names_are_not_order_checked():
@@ -120,8 +120,8 @@ def test_higher_orders_and_transforms_stay_distinct():
 def test_value_preserving_indices_keep_the_value_at_higher_orders(index_type):
     index = index_type(order=2)
     game = random_table_game()
-    restricted = order_one(ExactExplainer(game, index).estimate().view)
-    value = order_one(ExactExplainer(random_table_game(), index.generalizes).estimate().view)
+    restricted = order_one(ExactExplainer(game, index).estimate())
+    value = order_one(ExactExplainer(random_table_game(), index.generalizes).estimate())
     assert jnp.allclose(restricted, value, atol=1e-4)
 
 
@@ -129,8 +129,8 @@ def test_value_preserving_indices_keep_the_value_at_higher_orders(index_type):
 def test_non_preserving_indices_leave_the_value_at_higher_orders(index_type):
     index = index_type(order=2)
     game = random_table_game()
-    restricted = order_one(ExactExplainer(game, index).estimate().view)
-    value = order_one(ExactExplainer(random_table_game(), index.generalizes).estimate().view)
+    restricted = order_one(ExactExplainer(game, index).estimate())
+    value = order_one(ExactExplainer(random_table_game(), index.generalizes).estimate())
     assert not jnp.allclose(restricted, value, atol=1e-3)
 
 
@@ -150,9 +150,9 @@ class _RenamedShapley(ExtensionalEquality):
 
 def test_custom_named_indices_work_end_to_end():
     game = random_table_game()
-    explanation = ExactExplainer(game, _RenamedShapley()).estimate().view
-    reference = ExactExplainer(random_table_game(), SV()).estimate().view
-    assert explanation.interaction_index == "MySV"
+    explanation = ExactExplainer(game, _RenamedShapley()).estimate()
+    reference = ExactExplainer(random_table_game(), SV()).estimate()
+    assert explanation.index.name == "MySV"
     assert jnp.allclose(order_one(explanation), order_one(reference), atol=1e-6)
     # opting into the equality mixin makes the order-1 identity hold for it too
     assert _RenamedShapley() == SV()
@@ -187,12 +187,8 @@ ALL_INSTANCES = [
 def test_empty_interaction_metadata_matches_explanations(index):
     # includes_empty_interaction is derived, never stored separately
     assert index.includes_empty_interaction == (index.min_interaction_size == 0)
-    explanation = ExactExplainer(random_table_game(), index).estimate().view
-    if index.includes_empty_interaction:
-        explanation(())  # the order-0 attribution exists
-    else:
-        with pytest.raises(KeyError, match="defines no order-0 attribution"):
-            explanation(())
+    explanation = ExactExplainer(random_table_game(), index).estimate()
+    explanation[()]  # the empty slot is an ordinary coefficient now
 
 
 @pytest.mark.parametrize(
@@ -200,6 +196,6 @@ def test_empty_interaction_metadata_matches_explanations(index):
     [SII, BII, WeightedBII, CHII, SGV, BGV, CHGV, IGV, EGV, Moebius, CoMoebius],
 )
 def test_coverage_semantics_hold_numerically(index_type):
-    first = order_one(ExactExplainer(random_table_game(), index_type(order=1)).estimate().view)
-    second = order_one(ExactExplainer(random_table_game(), index_type(order=2)).estimate().view)
+    first = order_one(ExactExplainer(random_table_game(), index_type(order=1)).estimate())
+    second = order_one(ExactExplainer(random_table_game(), index_type(order=2)).estimate())
     assert jnp.allclose(first, second, atol=1e-6)

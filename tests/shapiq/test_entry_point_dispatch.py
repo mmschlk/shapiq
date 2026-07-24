@@ -68,7 +68,7 @@ def test_permutation_sampling_sv_equals_order_one_sii():
 
 
 def test_regression_with_sv_is_kernelshap():
-    exact = order_one(ExactExplainer(cubic_game(), SV()).estimate().view)
+    exact = order_one(ExactExplainer(cubic_game(), SV()).estimate())
     approximator = Regression(cubic_game(), SV(), random_state=1)
     estimate = order_one(approximator.estimate(2 + 3000))
     assert jnp.allclose(estimate, exact, atol=0.05)
@@ -93,9 +93,9 @@ def test_explanations_default_to_undirected_interactions():
     explainer = ExactExplainer(cubic_game(), SII(order=2))
     assert not hasattr(explainer, "orientation")  # orientation is no index concern
     assert not hasattr(SII(order=2), "orientation")
-    explanation = explainer.estimate().view
-    assert explanation.orientation == "undirected"
-    assert jnp.allclose(explanation((2, 0)), explanation((0, 2)), atol=0)  # keys are sorted
+    explanation = explainer.estimate()
+    assert not hasattr(explanation, "orientation")  # games carry no orientation either
+    assert jnp.allclose(explanation[(2, 0)], explanation[(0, 2)], atol=0)  # keys are sorted
 
 
 def test_repr_names_the_entry_point_and_index():
@@ -114,15 +114,15 @@ def test_subclasses_flow_to_their_parents_entry_points():
 
     # inheritance is a feature: a subclass inherits its parent's estimator
     # through the MRO and answers for its own semantics
-    assert PermutationSampling(cubic_game(), MySII(order=2)).interaction_index == "SII"
-    assert Regression(cubic_game(), MyFSII(order=2)).interaction_index == "FSII"
-    subclassed = order_one(ExactExplainer(cubic_game(), MyFBII(order=2)).estimate().view)
-    reference = order_one(ExactExplainer(cubic_game(), FBII(order=2)).estimate().view)
+    assert PermutationSampling(cubic_game(), MySII(order=2)).index.name == "SII"
+    assert Regression(cubic_game(), MyFSII(order=2)).index.name == "FSII"
+    subclassed = order_one(ExactExplainer(cubic_game(), MyFBII(order=2)).estimate())
+    reference = order_one(ExactExplainer(cubic_game(), FBII(order=2)).estimate())
     assert jnp.allclose(subclassed, reference, atol=1e-6)
 
 
 def test_explanations_carry_the_index_object():
-    explanation = ExactExplainer(cubic_game(), SII(order=2)).estimate().view
+    explanation = ExactExplainer(cubic_game(), SII(order=2)).estimate()
     assert explanation.index == SII(order=2)
-    assert explanation.interaction_index == "SII"
+    assert explanation.index.name == "SII"
     assert "SII(order=2)" in repr(explanation)

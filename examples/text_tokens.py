@@ -51,21 +51,21 @@ if __name__ == "__main__":
         return 0.0 if abs(scalar) < 1e-6 else scalar
 
     # --- Shapley values per token position ---
-    shapley = ExactExplainer(game, SV()).estimate().view
+    shapley = ExactExplainer(game, SV()).estimate()
     print("\nShapley values (baseline: the fully masked sequence)")
     for position, word in enumerate(sentence):
-        print(f"  {word:>6}: {tidy(shapley((position,))):+.3f}")
-    total = sum(tidy(shapley((position,))) for position in range(len(sentence)))
+        print(f"  {word:>6}: {tidy(shapley[(position,)]):+.3f}")
+    total = sum(tidy(shapley[(position,)]) for position in range(len(sentence)))
     print(f"  {'sum':>6}: {total:+.3f}")
     print("  ('good' nets to zero: its sense and the negation cancel at order 1)")
 
     # --- pairwise interactions recover the negation ---
-    interactions = ExactExplainer(game, SII(order=2)).estimate().view
+    interactions = ExactExplainer(game, SII(order=2)).estimate()
     not_position, good_position = sentence.index("not"), sentence.index("good")
-    negation = tidy(interactions((not_position, good_position)))
+    negation = tidy(interactions[(not_position, good_position)])
     print("\npairwise Shapley interactions (order 2)")
     print(f"  ('not', 'good'):   {negation:+.3f}  <- the negation lives on the pair")
-    print(f"  ('movie', 'good'): {tidy(interactions((1, good_position))):+.3f}")
+    print(f"  ('movie', 'good'): {tidy(interactions[(1, good_position)]):+.3f}")
 
     # the pair flips twice the lexicon value of "good"
     expected = -2.0 * LEXICON[VOCABULARY["good"]]

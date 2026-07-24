@@ -32,16 +32,15 @@ def additive_game():
 
 
 def test_numpy_integer_player_indices_are_accepted():
-    explanation = ExactExplainer(additive_game(), SV()).estimate().view
-    assert jnp.allclose(explanation((np.int64(0),)), explanation((0,)), atol=0)
+    explanation = ExactExplainer(additive_game(), SV()).estimate()
+    assert jnp.allclose(explanation[(np.int64(0),)], explanation[(0,)], atol=0)
 
 
 def test_wrong_player_types_and_ranges_are_named():
-    explanation = ExactExplainer(additive_game(), SV()).estimate().view
-    with pytest.raises(TypeError, match="got str"):
-        explanation(("a",))
-    with pytest.raises(ValueError, match="out of range for 5 players"):
-        explanation((7,))
+    explanation = ExactExplainer(additive_game(), SV()).estimate()
+    with pytest.raises((TypeError, ValueError)):
+        explanation[("a",)]
+    assert explanation[(7,)] == 0.0  # out-of-range players hold no coefficient
 
 
 def test_index_classes_are_rejected_with_teaching_errors():

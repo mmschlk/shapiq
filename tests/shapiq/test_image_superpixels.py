@@ -311,8 +311,8 @@ def test_exact_shapley_values_are_efficient_on_the_image_game():
         link_function=lambda predictions: to_jax(predictions[..., 0]),
         batch_size=128,
     )
-    explanation = ExactExplainer(game, SV()).estimate().view
-    attributions = jnp.stack([explanation((player,)) for player in range(N_PLAYERS)])
+    explanation = ExactExplainer(game, SV()).estimate()
+    attributions = jnp.stack([explanation[(player,)] for player in range(N_PLAYERS)])
     ends = game(coalitions([[False] * N_PLAYERS, [True] * N_PLAYERS]))
     assert jnp.allclose(jnp.sum(attributions), ends[1] - ends[0], atol=1e-4)
 

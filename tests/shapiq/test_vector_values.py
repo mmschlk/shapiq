@@ -12,7 +12,6 @@ from shapiq import (
     SII,
     SV,
     CallableGame,
-    DenseExplanationArray,
     Estimate,
     ExactExplainer,
     PermutationSampling,
@@ -66,34 +65,34 @@ def order_one(source):
 
 
 def test_exact_vector_values_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SV()).estimate().view
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV()).estimate().view
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV()).estimate().view
+    vector = ExactExplainer(vector_game(), SV()).estimate()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV()).estimate()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV()).estimate()
     for player in range(N_PLAYERS):
-        attribution = vector((player,))
+        attribution = vector[(player,)]
         assert attribution.shape == (2,)
-        assert jnp.allclose(attribution[0], quadratic((player,)), atol=1e-6)
-        assert jnp.allclose(attribution[1], cubic((player,)), atol=1e-6)
-    assert jnp.allclose(vector.baseline[0], quadratic.baseline, atol=1e-6)
-    assert jnp.allclose(vector.baseline[1], cubic.baseline, atol=1e-6)
+        assert jnp.allclose(attribution[0], quadratic[(player,)], atol=1e-6)
+        assert jnp.allclose(attribution[1], cubic[(player,)], atol=1e-6)
+    assert jnp.allclose(vector[()][0], quadratic[()], atol=1e-6)
+    assert jnp.allclose(vector[()][1], cubic[()], atol=1e-6)
 
 
 def test_exact_vector_interactions_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SII(order=2)).estimate().view
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII(order=2)).estimate().view
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII(order=2)).estimate().view
+    vector = ExactExplainer(vector_game(), SII(order=2)).estimate()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII(order=2)).estimate()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII(order=2)).estimate()
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-6)
-        assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-6)
+        assert jnp.allclose(vector[pair][0], quadratic[pair], atol=1e-6)
+        assert jnp.allclose(vector[pair][1], cubic[pair], atol=1e-6)
 
 
 def test_exact_vector_fsii_matches_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), FSII(order=2)).estimate().view
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII(order=2)).estimate().view
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII(order=2)).estimate().view
+    vector = ExactExplainer(vector_game(), FSII(order=2)).estimate()
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII(order=2)).estimate()
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII(order=2)).estimate()
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-5)
-        assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-5)
+        assert jnp.allclose(vector[pair][0], quadratic[pair], atol=1e-5)
+        assert jnp.allclose(vector[pair][1], cubic[pair], atol=1e-5)
 
 
 def test_sampled_vector_values_match_per_component_scalar_runs():
@@ -118,7 +117,7 @@ def test_sampled_vector_values_are_efficient_per_component():
     totals = jnp.sum(order_one(estimate), axis=-2)
     assert totals.shape == (2,)
     assert jnp.allclose(totals, grand - empty, atol=1e-5)
-    assert jnp.allclose(estimate.view.baseline, empty, atol=1e-6)
+    assert jnp.allclose(estimate[()], empty, atol=1e-6)
 
 
 def test_regression_fsii_vector_values_match_per_component_scalar_runs():
@@ -181,14 +180,3 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
     )
     with pytest.raises(ValueError, match="value_shape"):
         ExactExplainer(vector_declared_scalar_output, SV()).estimate()
-
-
-def test_explanations_validate_attribution_block_shapes():
-    with pytest.raises(ValueError, match="expected"):
-        DenseExplanationArray(
-            attributions_by_order={1: jnp.zeros((N_PLAYERS, 3))},
-            n_players=N_PLAYERS,
-            index=SV(),
-            order=1,
-            value_shape=(2,),
-        )

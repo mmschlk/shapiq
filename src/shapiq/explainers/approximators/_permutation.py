@@ -13,9 +13,7 @@ from jax import Array
 from shapiq._shape import broadcast_shapes, ensure_bool, validate_int
 from shapiq.errors import InsufficientSamplesError
 from shapiq.explainers._base import reject_common_index_mistakes
-from shapiq.explainers._valueaxes import to_trailing
 from shapiq.explainers.approximators._base import Approximator
-from shapiq.explanations import DenseExplanationArray
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
 from shapiq.sampling import PairedSampler, PermutationSampler, SamplingState
@@ -133,12 +131,13 @@ class PermutationSampling(Approximator):
         )
         self._family = family
 
-    def _view(self) -> DenseExplanationArray[Array]:
+    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
         """Estimate the configured index from completed permutation walks.
 
         Returns:
-            A dense explanation whose baseline is the empty-coalition value;
-            attributions cover orders one and above.
+            Per-order coefficient blocks in the canonical leading layout
+            and the empty slot's value (the empty-coalition value — every
+            permutation family is efficiency-shaped).
 
         Raises:
             InsufficientSamplesError: If no permutation walk has completed,
@@ -219,7 +218,7 @@ class PermutationFamily(NamedTuple):
     """
 
     walk: Callable[[Any, int], WalkLayout]
-    explain: Callable[[Any, PermutationSampling], DenseExplanationArray[Array]]
+    explain: Callable[[Any, PermutationSampling], tuple[dict[int, Array], Array | None]]
 
 
 @singledispatch
@@ -424,9 +423,9 @@ def _validate_plan_order(order: int, n_players: int) -> None:
 
 
 def _explain_shapley_values(
-    index: SV,
+    index: SV,  # noqa: ARG001 - the family signature carries the index
     approximator: PermutationSampling,
-) -> DenseExplanationArray[Array]:
+) -> tuple[dict[int, Array], Array | None]:
     """Average per-player marginal contributions over completed chains."""
     evidence = approximator._completed_walks()  # noqa: SLF001
     sums = _chain_marginal_sums(
@@ -435,24 +434,13 @@ def _explain_shapley_values(
         evidence.value_empty,
         evidence.value_grand,
     )
-    n_value_axes = len(approximator.game.value_shape)
-    return DenseExplanationArray(
-        attributions_by_order={
-            1: to_trailing(sums / evidence.n_walks, n_value_axes),
-        },
-        n_players=approximator.game.n_players,
-        index=index,
-        order=1,
-        shape=approximator.game.target_shape,
-        value_shape=approximator.game.value_shape,
-        baseline=to_trailing(evidence.value_empty, n_value_axes),
-    )
+    return {1: sums / evidence.n_walks}, evidence.value_empty
 
 
 def _explain_interactions(
     index: SII,
     approximator: PermutationSampling,
-) -> DenseExplanationArray[Array]:
+) -> tuple[dict[int, Array], Array | None]:
     """Average chain marginals and windowed discrete derivatives per interaction."""
     n_players = approximator.game.n_players
     order = index.order
@@ -525,26 +513,14 @@ def _explain_interactions(
                 )
                 raise InsufficientSamplesError(msg)
             attributions[size] = sums / counts
-    n_value_axes = len(approximator.game.value_shape)
-    return DenseExplanationArray(
-        attributions_by_order={
-            size: to_trailing(block, n_value_axes) for size, block in attributions.items()
-        },
-        n_players=n_players,
-        index=index,
-        order=order,
-        shape=approximator.game.target_shape,
-        value_shape=approximator.game.value_shape,
-        baseline=to_trailing(evidence.value_empty, n_value_axes),
-    )
+    return attributions, evidence.value_empty
 
 
 def _explain_taylor_interactions(
     index: STII,
     approximator: PermutationSampling,
-) -> DenseExplanationArray[Array]:
+) -> tuple[dict[int, Array], Array | None]:
     """Combine exact lower-order interactions with sampled top-order ones."""
-    n_players = approximator.game.n_players
     top_order = index.order
     evidence = approximator._completed_walks()  # noqa: SLF001
     attributions: dict[int, Array] = {}
@@ -564,18 +540,7 @@ def _explain_taylor_interactions(
         attributions[1] = sums / evidence.n_walks
     else:
         attributions[top_order] = _taylor_sampled_top_order(index, approximator, evidence)
-    n_value_axes = len(approximator.game.value_shape)
-    return DenseExplanationArray(
-        attributions_by_order={
-            size: to_trailing(block, n_value_axes) for size, block in attributions.items()
-        },
-        n_players=n_players,
-        index=index,
-        order=top_order,
-        shape=approximator.game.target_shape,
-        value_shape=approximator.game.value_shape,
-        baseline=to_trailing(evidence.value_empty, n_value_axes),
-    )
+    return attributions, evidence.value_empty
 
 
 def _taylor_exact_empty_derivatives(

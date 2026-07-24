@@ -71,8 +71,8 @@ def test_shapley_values_of_an_additive_token_scorer_are_analytic():
 
     masker = TokenMasker(inputs=np.asarray(TOKEN_IDS), baseline=MASK_ID)
     game = MaskedGame(masked_predictor=ModelMaskedPredictor(masker=masker, model=score))
-    explanation = ExactExplainer(game, SV()).estimate().view
+    explanation = ExactExplainer(game, SV()).estimate()
     for position, token in enumerate(TOKEN_IDS):
         expected = VALUE_TABLE[token] - VALUE_TABLE[MASK_ID]
-        assert jnp.allclose(explanation((position,)), expected, atol=1e-6)
-    assert jnp.allclose(explanation.baseline, N_TOKENS * VALUE_TABLE[MASK_ID], atol=1e-6)
+        assert jnp.allclose(explanation[(position,)], expected, atol=1e-6)
+    assert jnp.allclose(explanation[()], N_TOKENS * VALUE_TABLE[MASK_ID], atol=1e-6)

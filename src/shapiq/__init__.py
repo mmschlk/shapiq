@@ -15,7 +15,6 @@ from shapiq.explainers import (
     Regression,
     TreeExplainer,
 )
-from shapiq.explanations import DenseExplanationArray, ExplanationArray, SparseExplanationArray
 from shapiq.games import (
     BaselineMasker,
     Basis,
@@ -139,12 +138,10 @@ __all__ = [
     "CallableGame",
     "CoalitionArray",
     "DenseCoalitionArray",
-    "DenseExplanationArray",
     "EmptyState",
     "Estimate",
     "ExactExplainer",
     "Explainer",
-    "ExplanationArray",
     "ExtensionalEquality",
     "Game",
     "InsufficientSamplesError",
@@ -181,7 +178,6 @@ __all__ = [
     "ShapleyKernelSampler",
     "ShapleyValue",
     "ShareSamples",
-    "SparseExplanationArray",
     "SuperpixelMasker",
     "TokenMasker",
     "banzhaf_values",

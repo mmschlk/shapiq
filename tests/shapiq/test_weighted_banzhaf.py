@@ -73,42 +73,42 @@ def brute_force_weighted_banzhaf(mask_fn, interaction, p):
 
 
 def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+    return jnp.stack([explanation[(player,)] for player in range(N_PLAYERS)], axis=-1)
 
 
 @pytest.mark.parametrize("p", [0.2, 0.5, 0.8])
 def test_exact_weighted_banzhaf_interactions_match_brute_force(p):
     mask_fn = random_table_game()
-    explanation = ExactExplainer(game_from(mask_fn), WeightedBII(p=p, order=2)).estimate().view
+    explanation = ExactExplainer(game_from(mask_fn), WeightedBII(p=p, order=2)).estimate()
     for player in (0, 3):
         expected = brute_force_weighted_banzhaf(mask_fn, (player,), p)
-        assert jnp.allclose(explanation((player,)), expected, atol=1e-4)
+        assert jnp.allclose(explanation[(player,)], expected, atol=1e-4)
     for pair in [(0, 1), (2, 4)]:
         expected = brute_force_weighted_banzhaf(mask_fn, pair, p)
-        assert jnp.allclose(explanation(pair), expected, atol=1e-4)
+        assert jnp.allclose(explanation[pair], expected, atol=1e-4)
 
 
 def test_weighted_banzhaf_recovers_the_moebius_basis_of_quadratic_games():
     # binomial masses sum to one, so additive parts and pair masses are exact at any p
     explanation = ExactExplainer(game_from(quadratic_from_masks), WeightedBII(p=0.3, order=2))
-    result = explanation.estimate().view
+    result = explanation.estimate()
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(result((left, right)), PAIRS[left, right], atol=1e-4)
+        assert jnp.allclose(result[(left, right)], PAIRS[left, right], atol=1e-4)
 
 
 def test_uniform_weighting_is_the_banzhaf_index():
     mask_fn = random_table_game()
-    weighted = ExactExplainer(game_from(mask_fn), WeightedBII(p=0.5, order=2)).estimate().view
-    banzhaf = ExactExplainer(game_from(mask_fn), BII(order=2)).estimate().view
+    weighted = ExactExplainer(game_from(mask_fn), WeightedBII(p=0.5, order=2)).estimate()
+    banzhaf = ExactExplainer(game_from(mask_fn), BII(order=2)).estimate()
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(weighted(pair), banzhaf(pair), atol=1e-6)
+        assert jnp.allclose(weighted[pair], banzhaf[pair], atol=1e-6)
     assert jnp.allclose(order_one(weighted), order_one(banzhaf), atol=1e-6)
 
 
 def test_order_one_weighted_interactions_are_the_weighted_value():
     mask_fn = random_table_game()
-    restricted = ExactExplainer(game_from(mask_fn), WeightedBII(p=0.3, order=1)).estimate().view
-    value = ExactExplainer(game_from(mask_fn), WeightedBV(p=0.3)).estimate().view
+    restricted = ExactExplainer(game_from(mask_fn), WeightedBII(p=0.3, order=1)).estimate()
+    value = ExactExplainer(game_from(mask_fn), WeightedBV(p=0.3)).estimate()
     assert jnp.allclose(order_one(restricted), order_one(value), atol=1e-6)
     assert WeightedBII(p=0.3, order=1).generalizes == WeightedBV(p=0.3)
 
@@ -125,8 +125,8 @@ def test_weighted_instances_carry_their_parameter_into_equality():
 
 
 def test_weighted_explanations_carry_the_index_name():
-    explanation = ExactExplainer(game_from(quadratic_from_masks), WeightedBV(p=0.3)).estimate().view
-    assert explanation.interaction_index == "WeightedBV"
+    explanation = ExactExplainer(game_from(quadratic_from_masks), WeightedBV(p=0.3)).estimate()
+    assert explanation.index.name == "WeightedBV"
     assert explanation.order == 1
 
 

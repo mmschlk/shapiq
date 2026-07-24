@@ -62,20 +62,20 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_order_one_converges_to_the_shapley_value():
-    exact = order_one(ExactExplainer(game_from(cubic_from_masks), SV()).estimate().view)
+    exact = order_one(ExactExplainer(game_from(cubic_from_masks), SV()).estimate())
     policy = Regression(game_from(cubic_from_masks), FSII(order=1), random_state=1)
     estimate = order_one(policy.estimate(SEEDS + 3000))
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_converges_to_the_exact_faithful_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), FSII(order=2)).estimate().view
+    exact = ExactExplainer(game_from(cubic_from_masks), FSII(order=2)).estimate()
     policy = Regression(game_from(cubic_from_masks), FSII(order=2), random_state=2)
     estimate = policy.estimate(SEEDS + 6000)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=0.1)
+        assert jnp.allclose(estimate[(player,)], exact[(player,)], atol=0.1)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(estimate[pair], exact(pair), atol=0.1)
+        assert jnp.allclose(estimate[pair], exact[pair], atol=0.1)
 
 
 def test_sampling_is_invariant_to_budget_splits():
@@ -145,5 +145,5 @@ def test_baseline_and_metadata():
     policy = Regression(game, FSII(order=2), random_state=0, deduplicate=True)
     estimate = policy.estimate(SEEDS + 24)
     assert estimate.index == FSII(order=2)
-    assert estimate.view.order == 2
-    assert jnp.allclose(estimate.view.baseline, empty, atol=1e-5)
+    assert estimate.order == 2
+    assert jnp.allclose(estimate[()], empty, atol=1e-5)

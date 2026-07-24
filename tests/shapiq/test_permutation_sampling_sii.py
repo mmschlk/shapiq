@@ -114,7 +114,7 @@ def test_order_three_triples_are_exact_for_cubic_games():
     quantum = (N_PLAYERS - 1) + (N_PLAYERS - 1) * 1 + (N_PLAYERS - 2) * 4
     policy = PermutationSampling(game_from(cubic_from_masks), SII(order=3), random_state=3)
     estimate = policy.estimate(SEEDS + 100 * quantum)
-    assert estimate.view.order == 3
+    assert estimate.order == 3
     for triple in combinations(range(N_PLAYERS), 3):
         expected = 1.5 if triple == (0, 1, 2) else 0.0
         assert jnp.allclose(estimate[triple], expected, atol=1e-4)
@@ -147,7 +147,7 @@ def test_paired_none_matches_the_unpaired_default():
 
     by_default = run()
     unpaired = run(paired=False)
-    for interaction in by_default.view.iter_interactions():
+    for interaction in by_default.interactions():
         assert jnp.allclose(by_default[interaction], unpaired[interaction])
 
 
@@ -178,10 +178,10 @@ def test_explanation_metadata_and_normalization():
     estimate = PermutationSampling(
         game_from(quadratic_from_masks), SII(), random_state=0
     ).estimate(SEEDS + 50 * SII_QUANTUM)
-    assert estimate.view.order == 2
+    assert estimate.order == 2
     assert estimate.index == SII()
-    assert bool(jnp.all(estimate.view.has((0, 1))))
-    assert not bool(jnp.any(estimate.view.has(())))
+    assert frozenset((0, 1)) in estimate.terms
+    assert frozenset() in estimate.terms  # the empty slot carries the baseline now
     assert jnp.allclose(estimate[(3, 1)], estimate[(1, 3)], atol=1e-7)
 
 
@@ -195,7 +195,7 @@ def test_shared_samples_across_scaled_targets():
     game = CallableGame(fn=scaled_quadratic, n_players=N_PLAYERS, target_shape=(3,))
     policy = PermutationSampling(game, SII(), random_state=2, share_samples=True)
     explanation = policy.estimate(SEEDS + 50 * SII_QUANTUM)
-    assert explanation.view.shape == (3,)
+    assert explanation.target_shape == (3,)
     for (left, right), attribution in pair_attributions(explanation).items():
         assert attribution.shape == (3,)
         assert jnp.allclose(attribution, scales * PAIRS[left, right], atol=1e-4)

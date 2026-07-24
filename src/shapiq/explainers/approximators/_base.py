@@ -19,7 +19,11 @@ from shapiq.explainers.approximators._deduplication import (
     admit_units,
     stitch_values,
 )
-from shapiq.explainers.approximators._estimate import Estimate, trailing_quiet_units
+from shapiq.explainers.approximators._estimate import (
+    Estimate,
+    leading_blocks_to_terms,
+    trailing_quiet_units,
+)
 from shapiq.games import Game
 from shapiq.sampling import ApproximationState, EmptyState, Sampler, SamplingState
 from shapiq.sampling._state import coalition_keys
@@ -27,7 +31,6 @@ from shapiq.sampling._state import coalition_keys
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.explanations import ExplanationArray
     from shapiq.interactions import InteractionIndex
 
 
@@ -346,8 +349,8 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         return _flatten_units(rendered)
 
     @abstractmethod
-    def _view(self) -> ExplanationArray[Array]:
-        """Build the family's coefficient view from the carried evidence."""
+    def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
+        """Build per-order coefficient blocks and the empty slot's value."""
         ...
 
     def _call_game(self, masks: Array) -> Array:
@@ -368,14 +371,19 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         The returned :class:`Estimate` is inert — a game-with-provenance;
         continue it with ``refine`` on this (frozen) policy.
         """
+        value_shape = tuple(self.game.value_shape)
+        target_shape = tuple(self.game.target_shape)
         fresh = Estimate(
+            terms=(),
+            values=np.zeros((*value_shape, *target_shape, 0)),
+            n_players=self.game.n_players,
             evidence=EmptyState(),
             bank=0,
-            n_players=self.game.n_players,
-            view=None,
+            index=self.index,
             deduplicated=self.deduplicate,
-            target_shape=tuple(self.game.target_shape),
-            value_shape=tuple(self.game.value_shape),
+            target_shape=target_shape,
+            value_shape=value_shape,
+            unready_reason="no evidence yet: refine this estimate with a budget first",
         )
         return self.refine(fresh, budget)
 
@@ -410,22 +418,31 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         return self._as_estimate(worker)
 
     def _as_estimate(self, worker: Approximator) -> Estimate:
-        view: ExplanationArray[Array] | None
-        shortfall: InsufficientSamplesError | None = None
+        value_shape = tuple(self.game.value_shape)
+        target_shape = tuple(self.game.target_shape)
+        reason: str | None = None
         try:
-            view = worker._view()
+            attributions, empty = worker._estimate_parts()
+            terms, coefficients = leading_blocks_to_terms(
+                attributions,
+                self.game.n_players,
+                empty,
+            )
         except InsufficientSamplesError as error:
-            view = None
-            shortfall = error
+            reason = str(error)
+            terms = ()
+            coefficients = np.zeros((*value_shape, *target_shape, 0))
         return Estimate(
+            terms=terms,
+            values=coefficients,
+            n_players=self.game.n_players,
             evidence=worker.state,
             bank=worker.bank,
-            n_players=self.game.n_players,
-            view=view,
+            index=self.index,
             deduplicated=self.deduplicate,
-            shortfall=shortfall,
-            target_shape=tuple(self.game.target_shape),
-            value_shape=tuple(self.game.value_shape),
+            target_shape=target_shape,
+            value_shape=value_shape,
+            unready_reason=reason,
         )
 
     def _at_state(self, state: ApproximationState) -> Self:

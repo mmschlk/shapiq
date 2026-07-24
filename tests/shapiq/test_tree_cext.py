@@ -68,12 +68,13 @@ def test_kernel_and_python_paths_agree_exactly(index, monkeypatch):
     order = game.n_players if index.order is None else index.order
     if order > _tree._CEXT_MAX_ORDER:
         pytest.skip("the kernel serves orders up to four")
-    with_kernel = TreeExplainer(game, index).estimate().view
+    with_kernel = TreeExplainer(game, index).estimate()
     monkeypatch.setattr(_tree, "_cext_accumulate", None)
-    pure_python = TreeExplainer(game, index).estimate().view
-    assert set(with_kernel.attributions) == set(pure_python.attributions)
-    for interaction, total in pure_python.attributions.items():
-        assert jnp.allclose(with_kernel.attributions[interaction], total, rtol=1e-6, atol=1e-7)
+    pure_python = TreeExplainer(game, index).estimate()
+    assert set(with_kernel.terms) == set(pure_python.terms)
+    for interaction in pure_python.terms:
+        total = pure_python[tuple(sorted(interaction))]
+        assert jnp.allclose(with_kernel[tuple(sorted(interaction))], total, rtol=1e-6, atol=1e-7)
 
 
 def test_moebius_of_deep_supports_falls_back_to_python(monkeypatch):
@@ -105,12 +106,12 @@ def test_vector_leaf_values_run_through_the_kernel(monkeypatch):
         baseline=np.zeros(N_PLAYERS),
     )
     assert _tree._use_cext(game, order=1)
-    with_kernel = TreeExplainer(game, SV()).estimate().view
-    assert with_kernel((0,)).shape == (2,)
+    with_kernel = TreeExplainer(game, SV()).estimate()
+    assert with_kernel[(0,)].shape == (2,)
     monkeypatch.setattr(_tree, "_cext_accumulate", None)
-    pure_python = TreeExplainer(game, SV()).estimate().view
+    pure_python = TreeExplainer(game, SV()).estimate()
     for player in range(N_PLAYERS):
-        assert jnp.allclose(with_kernel((player,)), pure_python((player,)), atol=1e-7)
+        assert jnp.allclose(with_kernel[(player,)], pure_python[(player,)], atol=1e-7)
 
 
 def test_multiclass_forests_run_through_the_kernel(monkeypatch):
@@ -127,24 +128,25 @@ def test_multiclass_forests_run_through_the_kernel(monkeypatch):
     )
     assert game.value_shape == (3,)
     assert _tree._use_cext(game, order=2)
-    with_kernel = TreeExplainer(game, SII(order=2)).estimate().view
+    with_kernel = TreeExplainer(game, SII(order=2)).estimate()
     monkeypatch.setattr(_tree, "_cext_accumulate", None)
-    pure_python = TreeExplainer(game, SII(order=2)).estimate().view
-    assert set(with_kernel.attributions) == set(pure_python.attributions)
-    for interaction, total in pure_python.attributions.items():
-        assert jnp.allclose(with_kernel.attributions[interaction], total, rtol=1e-6, atol=1e-7)
+    pure_python = TreeExplainer(game, SII(order=2)).estimate()
+    assert set(with_kernel.terms) == set(pure_python.terms)
+    for interaction in pure_python.terms:
+        total = pure_python[tuple(sorted(interaction))]
+        assert jnp.allclose(with_kernel[tuple(sorted(interaction))], total, rtol=1e-6, atol=1e-7)
 
 
 def test_kernel_handles_the_empty_interaction():
     from shapiq import DenseCoalitionArray  # noqa: PLC0415
 
     game = random_forest_game(seed=3)
-    explanation = TreeExplainer(game, CoMoebius(order=2)).estimate().view
+    explanation = TreeExplainer(game, CoMoebius(order=2)).estimate()
     ends = game(
         DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])),
     )
     # the co-Moebius order-0 attribution is the grand total on the centered game
-    assert jnp.allclose(explanation(()), ends[1] - ends[0], atol=1e-4)
+    assert jnp.allclose(explanation[()], ends[1] - ends[0], atol=1e-4)
 
 
 def test_kernel_serves_the_shipped_parity_suite():
@@ -152,11 +154,11 @@ def test_kernel_serves_the_shipped_parity_suite():
     from shapiq import ExactExplainer  # noqa: PLC0415
 
     game = random_forest_game(seed=1)
-    closed_form = TreeExplainer(game, SII(order=2)).estimate().view
-    exact = ExactExplainer(game, SII(order=2)).estimate().view
+    closed_form = TreeExplainer(game, SII(order=2)).estimate()
+    exact = ExactExplainer(game, SII(order=2)).estimate()
     for size in (1, 2):
         for interaction in combinations(range(N_PLAYERS), size):
-            assert jnp.allclose(closed_form(interaction), exact(interaction), atol=1e-4)
+            assert jnp.allclose(closed_form[interaction], exact[interaction], atol=1e-4)
 
 
 def test_table_extents_from_different_leaves_do_not_crash():
@@ -207,10 +209,10 @@ def test_table_extents_from_different_leaves_do_not_crash():
     assert max_present + max_absent > N_PLAYERS  # the trap is armed
     from shapiq import ExactExplainer  # noqa: PLC0415
 
-    closed_form = TreeExplainer(game, SV()).estimate().view
-    exact = ExactExplainer(game, SV()).estimate().view
+    closed_form = TreeExplainer(game, SV()).estimate()
+    exact = ExactExplainer(game, SV()).estimate()
     for player in range(N_PLAYERS):
-        assert jnp.allclose(closed_form((player,)), exact((player,)), atol=1e-4)
+        assert jnp.allclose(closed_form[(player,)], exact[(player,)], atol=1e-4)
 
 
 def test_kernel_validates_inconsistent_buffers():
@@ -301,19 +303,19 @@ def test_single_node_trees_and_identical_points_stay_serviceable():
         values=[3.5],
     )
     game = InterventionalTreeGame(lone_leaf, inputs=np.ones(N_PLAYERS), baseline=np.zeros(N_PLAYERS))
-    explanation = TreeExplainer(game, SV()).estimate().view
-    assert jnp.allclose(explanation.baseline, 3.5)
-    assert jnp.allclose(explanation((0,)), 0.0)
+    explanation = TreeExplainer(game, SV()).estimate()
+    assert jnp.allclose(explanation[()], 3.5)
+    assert jnp.allclose(explanation[(0,)], 0.0)
     # identical points: every split routes both ways the same, nothing is constrained
     identical = InterventionalTreeGame(
         random_forest_game().trees,
         inputs=np.zeros(N_PLAYERS),
         baseline=np.zeros(N_PLAYERS),
     )
-    closed_form = TreeExplainer(identical, SV()).estimate().view
-    exact = ExactExplainer(identical, SV()).estimate().view
+    closed_form = TreeExplainer(identical, SV()).estimate()
+    exact = ExactExplainer(identical, SV()).estimate()
     for player in range(N_PLAYERS):
-        assert jnp.allclose(closed_form((player,)), exact((player,)), atol=1e-5)
+        assert jnp.allclose(closed_form[(player,)], exact[(player,)], atol=1e-5)
 
 
 def test_sparse_weight_indices_survive_large_player_counts():
@@ -327,5 +329,5 @@ def test_sparse_weight_indices_survive_large_player_counts():
         values=[0.0, 1.0, 4.0],
     )
     game = InterventionalTreeGame(wide, inputs=np.ones(1200), baseline=np.zeros(1200))
-    explanation = TreeExplainer(game, Moebius(order=2)).estimate().view
-    assert jnp.allclose(explanation((700,)), 3.0, atol=1e-5)  # m({700}) = 4 - 1
+    explanation = TreeExplainer(game, Moebius(order=2)).estimate()
+    assert jnp.allclose(explanation[(700,)], 3.0, atol=1e-5)  # m({700}) = 4 - 1
