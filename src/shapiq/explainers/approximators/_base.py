@@ -3,11 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, NoReturn
 
-from jax import Array
-
 from shapiq._shape import ensure_bool, logical_size, validate_int
 from shapiq.errors import InsufficientSamplesError
-from shapiq.explainers._base import Explainer
+from shapiq.explainers._base import validate_index_binding
 from shapiq.explainers.approximators._engine import banked_at, grow
 from shapiq.explainers.approximators._estimate import leading_blocks_to_terms
 from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
@@ -16,10 +14,12 @@ from shapiq.sampling import Evidence, NoEvidence, Sampler
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from jax import Array
+
     from shapiq.interactions import InteractionIndex
 
 
-class Approximator(Explainer[Array, Game[Array]], ABC):
+class Approximator(ABC):
     """Base abstraction for sampling-based explainers: frozen config, verbs.
 
     An approximator is a frozen policy: a sampler, the family's expansion
@@ -41,6 +41,9 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
     budget stays banked and a ``SamplingStallWarning`` is issued.
     """
 
+    game: Game[Array]
+    index: InteractionIndex
+    order: int
     sampler: Sampler
     deduplicate: bool
 
@@ -70,7 +73,9 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             deduplicate: Whether to evaluate each distinct coalition at most
                 once.
         """
-        super().__init__(game, index)
+        self.order = validate_index_binding(game, index)
+        self.game = game
+        self.index = index
         if sampler.n_players != game.n_players:
             msg = "sampler and game use different numbers of players"
             raise ValueError(msg)
@@ -118,7 +123,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
     def __repr__(self) -> str:
         """Return a concise representation of the frozen configuration."""
         return (
-            f"{type(self).__name__}(interaction_index={self.interaction_index!r}, "
+            f"{type(self).__name__}(index={self.index!r}, "
             f"order={self.order!r}, deduplicate={self.deduplicate!r})"
         )
 

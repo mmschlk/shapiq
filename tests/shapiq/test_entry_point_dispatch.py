@@ -102,7 +102,7 @@ def test_repr_names_the_entry_point_and_index():
     approximator = Regression(cubic_game(), FSII(order=2))
     text = repr(approximator)
     assert "Regression" in text
-    assert "interaction_index='FSII'" in text
+    assert "FSII" in text
 
 
 def test_subclasses_flow_to_their_parents_entry_points():

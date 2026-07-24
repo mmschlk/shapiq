@@ -1,9 +1,21 @@
+"""Index-binding validation shared by every explainer entry point.
+
+There is no explainer base class: an explainer is anything that maps a
+game to a game, and each entry point binds its own ``game``, ``index``,
+and resolved ``order`` as frozen attributes. What is shared is the
+gauntlet an index object runs before binding — the teaching errors for
+strings and classes, the protocol conformance check, and the metadata
+validation that resolves the explanation's maximum interaction order.
+"""
+
 from __future__ import annotations
 
-from abc import ABC
+from typing import TYPE_CHECKING
 
-from shapiq.games import Game
 from shapiq.interactions import InteractionIndex, validate_interaction_metadata
+
+if TYPE_CHECKING:
+    from shapiq.games import Game
 
 _SHIPPED_EXAMPLES = {
     "SV": "SV()",
@@ -57,45 +69,37 @@ def reject_common_index_mistakes(index: object) -> None:
         raise TypeError(msg)
 
 
-class Explainer[ValueT, GameT: Game](ABC):
-    """Base abstraction for objects that explain games."""
+def validate_index_binding(game: Game, index: InteractionIndex) -> int:
+    """Validate an index object against a game and resolve the order.
 
-    game: GameT
-    index: InteractionIndex
+    Args:
+        game: The game the explainer binds.
+        index: The interaction index object the explainer estimates.
 
-    def __init__(self, game: GameT, index: InteractionIndex) -> None:
-        """Initialize shared explainer metadata."""
-        reject_common_index_mistakes(index)
-        if not isinstance(index, InteractionIndex):
-            missing = missing_index_members(index)
-            hint = f" (missing protocol members: {', '.join(missing)})" if missing else ""
-            msg = (
-                "index must be an interaction index object such as shapiq.SII(order=2), "
-                f"got {type(index).__name__}{hint}"
-            )
-            raise TypeError(msg)
-        order = game.n_players if index.order is None else index.order
-        validate_interaction_metadata(
-            index_name=index.name,
-            order=order,
-            orientation="undirected",
-            n_players=game.n_players,
+    Returns:
+        The explanation's maximum interaction order: the index's own order,
+        or the full player count for indices with order ``None`` (the
+        Moebius and Co-Moebius transforms).
+
+    Raises:
+        TypeError: If the index is a string, a class, or no interaction
+            index object.
+        ValueError: If the order is out of range for the game.
+    """
+    reject_common_index_mistakes(index)
+    if not isinstance(index, InteractionIndex):
+        missing = missing_index_members(index)
+        hint = f" (missing protocol members: {', '.join(missing)})" if missing else ""
+        msg = (
+            "index must be an interaction index object such as shapiq.SII(order=2), "
+            f"got {type(index).__name__}{hint}"
         )
-        self.game = game
-        self.index = index
-
-    @property
-    def interaction_index(self) -> str:
-        """Return the name of the explained interaction index."""
-        return self.index.name
-
-    @property
-    def order(self) -> int:
-        """Return the maximum interaction order of the explanation.
-
-        Indices with order ``None`` (the Moebius and Co-Moebius transforms)
-        resolve to the full number of players.
-        """
-        order = self.index.order
-        return self.game.n_players if order is None else order
-
+        raise TypeError(msg)
+    order = game.n_players if index.order is None else index.order
+    validate_interaction_metadata(
+        index_name=index.name,
+        order=order,
+        orientation="undirected",
+        n_players=game.n_players,
+    )
+    return order

@@ -9,9 +9,9 @@ from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.explainers._base import (
-    Explainer,
     missing_index_members,
     reject_common_index_mistakes,
+    validate_index_binding,
 )
 from shapiq.explainers._faithful import (
     bernoulli_design,
@@ -47,7 +47,7 @@ type ExactIndex = (
 )
 
 
-class ExactExplainer(Explainer[Array, Game[Array]]):
+class ExactExplainer:
     """Explainer computing interaction indices exactly from all coalitions.
 
     The exact explainer evaluates the game once on every one of the
@@ -70,6 +70,10 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         >>> estimate = explainer.estimate()
         >>> pair_interaction = explanation((0, 1))
     """
+
+    game: Game[Array]
+    index: ExactIndex
+    order: int
 
     def __init__(self, game: Game[Array], index: ExactIndex) -> None:
         """Initialize without evaluating the game.
@@ -109,8 +113,9 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
                 "a regression kernel, nor a dedicated exact solver" + hint
             )
             raise TypeError(msg)
-        super().__init__(game, index)
-        self._exact_index: ExactIndex = index
+        self.order = validate_index_binding(game, index)
+        self.game = game
+        self.index = index
         self._powerset_values: Array | None = None
 
     def estimate(self) -> Estimate:
@@ -153,7 +158,7 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         empty_value = values[..., 0]
         values = values - values[..., :1]
         masks = _powerset_masks(n_players)
-        index = self._exact_index
+        index = self.index
         order = self.order
         # isinstance arms let subclasses inherit the dedicated solvers, the
         # same MRO rule the sampling family registries follow

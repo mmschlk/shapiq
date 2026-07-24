@@ -9,7 +9,6 @@ from shapiq.errors import (
 from shapiq.explainers import (
     Approximator,
     ExactExplainer,
-    Explainer,
     PermutationSampling,
     Regression,
     TreeExplainer,
@@ -141,7 +140,6 @@ __all__ = [
     "DenseCoalitionArray",
     "NoEvidence",
         "ExactExplainer",
-    "Explainer",
     "ExtensionalEquality",
     "Game",
     "InsufficientSamplesError",

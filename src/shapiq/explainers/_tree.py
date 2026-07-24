@@ -9,11 +9,10 @@ from math import comb, prod
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from jax import Array
 
 from shapiq.errors import UnsupportedGameError
-from shapiq.explainers._base import Explainer, reject_common_index_mistakes
-from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
+from shapiq.explainers._base import reject_common_index_mistakes, validate_index_binding
+from shapiq.games import BasisGame, Estimate, MoebiusBasis, Provenance
 from shapiq.interactions import CardinalInteractionIndex
 from shapiq.sampling import NoEvidence
 from shapiq.trees import InterventionalTreeGame
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class TreeExplainer(Explainer[Array, Game[Array]]):
+class TreeExplainer:
     """Closed-form interaction explainer for tree games.
 
     The game type carries the tree-explanation semantics and selects the
@@ -40,6 +39,10 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
         >>> estimate = TreeExplainer(game, SII(order=2)).estimate()
         >>> pair_interaction = explanation((0, 1))
     """
+
+    game: InterventionalTreeGame
+    index: CardinalInteractionIndex
+    order: int
 
     def __init__(self, game: InterventionalTreeGame, index: CardinalInteractionIndex) -> None:
         """Initialize without evaluating the game.
@@ -74,7 +77,9 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
                 "(for the faithful regression family use Regression on the tree game)"
             )
             raise TypeError(msg)
-        super().__init__(game, index)
+        self.order = validate_index_binding(game, index)
+        self.game = game
+        self.index = index
 
     def estimate(self) -> Estimate:
         """Compute the closed-form explanation as an estimate.
