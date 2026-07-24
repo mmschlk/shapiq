@@ -5,27 +5,27 @@
 ## Language
 
 **Explainer**:
-A strategy that takes a **Game** and configuration and produces an **ExplanationArray** when asked to explain.
+Any strategy that takes a **Game** and configuration and produces an **Estimate** when asked. Explainers are frozen policies: binding a game and an index is configuration, and all evolving state rides in the returned estimate.
 _Avoid_: Computer, calculator, engine
 
 **Approximator**:
-An **Explainer** that estimates an **InteractionIndex** from sampled **Game** evaluations.
+An **Explainer** that estimates an **InteractionIndex** from sampled **Game** evaluations through the policy verbs — estimate opens a carry, refine spends more **Budget** on one, and a policy refuses to continue another policy's carry.
 _Avoid_: approximate computer, estimator
 
 **ExactExplainer**:
-An **Explainer** that explains an **InteractionIndex** without sampling approximation.
+An **Explainer** whose **Estimate** carries complete evidence: the full coalition sweep is its provenance and spending is visible, never hidden.
 _Avoid_: ExactComputer, exact calculator
 
-**ApproximationState**:
-The algorithm-specific accumulated evidence an **Approximator** uses to estimate an **InteractionIndex**, such as sampled **Coalitions**, **Values**, weights, duplicate-tracking data, or sufficient statistics. Only states that track evaluated game results need to carry value data.
-_Avoid_: sample history, cache
+**Evidence**:
+The accumulated record an **Estimate** is derived from — the sufficient statistic for exact resume. Everything else about an estimate is either recomputed from evidence or checkpointed with it; a policy's proposals are memoryless given the carried evidence, which is what makes budget splits, rollback, and replay exact. (Rename of ApproximationState; lands with the engine rewrite.)
+_Avoid_: sample history, cache, state (when speaking of the concept)
 
 **Approximation History**:
-The always-on record of value-equivalent earlier states an **ApproximationState** can restore or list after functional state transitions — one checkpoint per sample call, carrying the sample count and the **Bank**. History is identity, not a feature: an **Approximator** is an anytime estimator, and rollback plus resampling replays the same evidence. Efficient history retains shared backing storage from later states.
+The always-on record of value-equivalent earlier evidence an **Evidence** can restore or list after functional transitions — one checkpoint per sample call, carrying the sample count and the **Bank**. History is identity, not a feature: an **Approximator** is an anytime estimator, and rollback plus resampling replays the same evidence. Efficient history retains shared backing storage from later states.
 _Avoid_: previous-state pointer, undo stack, track_history flag
 
-**SamplingState**:
-An **ApproximationState** that records sampled **Coalitions** together with their evaluated **Values**.
+**SampledEvidence**:
+**Evidence** recording sampled **Coalitions** together with their evaluated **Values**, and owning coalition identity: distinct coalitions, first positions, multiplicities. (Rename of SamplingState; lands with the engine rewrite. The gradient bridge will add a sibling species: path points with gradients.)
 _Avoid_: default state, raw sample cache
 
 **Sampler**:
@@ -35,6 +35,18 @@ _Avoid_: generator, coalition generator
 **Walk**:
 The coalition block one permutation materializes into, declared by the **Approximator** family that decodes it: a length, a render from player positions to walk masks, and an optional deterministic prelude extending the **Seed Samples**. The layout has one owner and never rides in the **Sampler**.
 _Avoid_: walk plan object, walk sampler subclass
+
+**Measure**:
+A probability weighting over **Coalitions** — the inner product of the game space. The measure is part of an index's identity: a projection index is a subspace plus a measure, projections compose into a tower only under a shared measure, and **Fidelity** is distance under one. A **Sampler**'s **Sampling Law** targets a measure, which is why kernel-matched sampling makes the unweighted solve correct.
+_Avoid_: weighting scheme, kernel (when speaking of the concept)
+
+**Fidelity**:
+How faithfully one **Game** accounts for another: the weighted R-squared of a surrogate against the explained game under a **Measure**. An **Explanation**'s order is its fidelity dial — order n is exact.
+_Avoid_: accuracy, faithfulness score
+
+**Extension**:
+A differentiable function on the unit cube agreeing with a **Game** at the vertices. Gradient explainers integrate along paths of an extension, and the extension is part of the method: the same diagonal integral yields Integrated Gradients on the model's own extension and the Shapley value on the multilinear one.
+_Avoid_: interpolation, relaxation
 
 **Sampling Law**:
 The marginal probability distribution of one drawn **Coalition**, declared by a **Sampler** as an optional capability — log-space, after wrapper transformations such as pairing. Coalition samplers declare their law; permutation samplers do not, because their draws are permutations, not coalitions. **Seed Samples** sit outside the law.
@@ -56,9 +68,9 @@ _Avoid_: sampling quantum, iteration cost, batch size
 Deterministic evaluations an **Approximator** needs before sampled units can be interpreted: the empty and grand coalition, plus any family prelude such as STII's lower-order anchors. The approximator evaluates the seed block once, paid from the first sample **Budget**; constructing an **Explainer** never evaluates the **Game**.
 _Avoid_: initialization cost, setup evaluations, create step
 
-**Empty State**:
-The **ApproximationState** of an **Approximator** that has not sampled yet. The first sampled batch replaces it with an evidence-bearing state; **Approximation History** begins at that first evidence state, and an empty state is its own single-entry history.
-_Avoid_: uninitialized state, null state
+**NoEvidence**:
+The **Evidence** of an **Estimate** that has not sampled yet; banked **Budget** may still ride it. The first sampled batch replaces it, **Approximation History** begins at that first evidence, and no evidence is its own single-entry history. (Rename of EmptyState; lands with the engine rewrite.)
+_Avoid_: uninitialized state, null state, empty state
 
 **Deduplication**:
 An **Approximator** policy that evaluates each distinct **Coalition** on the **Game** at most once, reusing stored **Values** for repeats. Only novel evaluations count toward the **Budget**, and repeated coalitions become free evidence; the estimate is unchanged relative to sampling without deduplication.
@@ -69,7 +81,7 @@ A warning issued when **Deduplication** leaves **Budget** unspent because the **
 _Avoid_: exhaustion error
 
 **InsufficientSamplesError**:
-An error raised when an **Approximator** cannot produce an **ExplanationArray** from its current **ApproximationState**.
+An error raised when reading an **Estimate** whose evidence cannot support coefficients yet; the carry itself stays legal, so banked budgets survive.
 _Avoid_: empty state error
 
 **UnsupportedGameError**:
@@ -77,8 +89,20 @@ An error raised when an **Explainer** cannot work with the supplied **Game**.
 _Avoid_: invalid game error
 
 **Game**:
-A cooperative-game base abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns **Values** for those coalitions. Its **ValueArray** shape follows the broadcasted shape of the targets and the **CoalitionArray**. Games validate player-count compatibility at the boundary where they receive coalitions.
-_Avoid_: value function, model wrapper
+A value function: the cooperative-game abstraction assigning **Values** to **Coalitions** over a fixed set of **Players**, with an **Explanation Target** shape. Its **ValueArray** shape follows the broadcasted shape of the targets and the **CoalitionArray**; the boundary also accepts plain dense masks and wraps them. Games are the library's one currency: models behind **Maskers** enter as games, and every **Explanation** produced is again a game.
+_Avoid_: model wrapper
+
+**Basis**:
+A value object spanning the game space with its own atoms: Moebius atoms fire when all of an **Interaction**'s players are present (synergy), Co-Moebius atoms when any is present (redundancy), Fourier atoms by presence parity. Sparsity is basis-relative, so declaring the basis is a modeling statement; a basis is not an **InteractionIndex** — indices add a measure and semantics on top.
+_Avoid_: basis string, transform flag
+
+**BasisGame**:
+A **Game** known through a finite coefficient vector on a declared **Basis**: evaluating it plays the surrogate, indexing it reads a coefficient. Unlisted **Interactions** are zero, the empty interaction included — the empty slot is an ordinary coefficient whose meaning each producer declares. Sparse explanations are basis games with fewer terms, not a separate kind.
+_Avoid_: parametric game, coefficient table
+
+**Estimate**:
+A **BasisGame** carrying its estimation provenance: the evidence it was derived from, the **Bank**, the **InteractionIndex** it was made under, its producer's fingerprint, and optional per-interaction uncertainty. Estimates are inert — process verbs live on the **Approximator** — and every producer returns one: sampled estimates carry sampled evidence, exact estimates complete evidence, tree estimates none.
+_Avoid_: result object, explanation array
 
 **CallableGame**:
 A **Game** adapter for a callable that already maps **CoalitionArrays** to **Values**, adding game metadata and backend conversion at the boundary.
@@ -165,44 +189,24 @@ An explainable unit whose presence or absence is represented in a **Coalition**.
 _Avoid_: feature, variable, participant
 
 **Interaction**:
-A subset or ordered tuple of distinct **Players**, depending on the **Interaction Orientation**, that receives an **Attribution** in an **Explanation**. The empty interaction is allowed; fixed-size multi-interaction access may use an array-api-compatible integer array whose final axis stores player indices.
+A subset of distinct **Players** that receives an **Attribution** in an **Explanation**. The empty interaction is allowed and is an ordinary coefficient slot.
 _Avoid_: explanation coalition, tuple key
 
-**Interaction Orientation**:
-Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order. Orientation is a representation property of an **ExplanationArray**; every shipped **InteractionIndex** produces undirected explanations.
-_Avoid_: direction flag, orderedness
-
 **Explanation**:
-A scalar element of an **ExplanationArray** for one **Explanation Target**, assigning **Attributions** to selected **Interactions** under a specified **InteractionIndex** and order.
-_Avoid_: explanation map, result dict
-
-**ExplanationArray**:
-An **Array-Like Data Type** whose elements are **Explanations** for the same fixed set of **Players**, represented by batched internal data rather than as a Python array of explanation objects. Its logical shape describes the array of explanation elements and excludes interactions and value dimensions. An **ExplanationArray** records the number of players, the **InteractionIndex** object itself (parameters included, so a weighted index keeps its weighting), the resolved **Order**, and the **Interaction Orientation** of the represented attributions, carries the **Baseline** separately from attributions, inherits player metadata from the explained **Game** when available, can be called with an **Interaction** to return its **Attribution**, and can report for which explanation elements an attribution is available.
-_Avoid_: explanation batch, list of explanations
-
-**DenseExplanationArray**:
-An **ExplanationArray** whose represented **Interactions** are shared across every **Explanation Target**.
-_Avoid_: dense explanation
-
-**SparseExplanationArray**:
-An **ExplanationArray** whose stored **Interactions** may differ across **Explanation Targets**. Missing stored entries are not represented unless the sparse explanation defines an object-level default attribution.
-_Avoid_: sparse explanation
+A **Game** interpreted as the account of another game: readable in a declared **Basis**, its coefficients are the **Attributions**. An explanation of order k is a k-additive surrogate — a lossy compression of the explained game whose order is the fidelity dial.
+_Avoid_: explanation map, result dict, explanation array
 
 **Attribution**:
-A **Value**-shaped contribution assigned to an **Interaction** within an **Explanation**. Attributions are defined on the centered game, following the game-theoretic convention that the empty **Coalition** has value zero.
+A **Value**-shaped coefficient assigned to an **Interaction** by an **Explanation** — one readable term of the surrogate game.
 _Avoid_: score, importance
 
 **Baseline**:
-The **Value** of the **Game** at the empty **Coalition**, carried by an **ExplanationArray** separately from **Attributions**. An order-0 Attribution, where an **InteractionIndex** defines one on the centered game (FBII's fitted intercept, the Co-Moebius grand total), is conceptually distinct from the baseline.
-_Avoid_: expected value, offset, order-0 attribution
+The **Value** of the explained **Game** at the empty **Coalition**. Each **InteractionIndex** family declares what the empty slot of its **Explanation** holds: the baseline where the surrogate interpolates the empty coalition (the efficiency family), a fitted intercept (FBII-style fits), or nothing (kADD-SHAP).
+_Avoid_: expected value, offset
 
 **InteractionIndex**:
-A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, **Order Semantics**, and any index-defining parameters (the weighted Banzhaf joining probability ``p``), that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the weighted Banzhaf family WeightedBV, WeightedBII, and WeightedFBII, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
+A uniquely named rule, represented by an immutable index object carrying a string name, an **Order**, and any index-defining parameters (the weighted Banzhaf joining probability ``p``), that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Explainers select behavior by index type and **Index Capability**, never by name. Names include SV, BV, SII, BII, CHII, k-SII, STII, FSII, FBII, kADD-SHAP, the weighted Banzhaf family WeightedBV, WeightedBII, and WeightedFBII, the generalized values SGV, BGV, CHGV, IGV, EGV, and JointSV, and the Moebius and Co-Moebius transforms.
 _Avoid_: index string, metric, method
-
-**Order Semantics**:
-Whether an **InteractionIndex** treats its **Order** as explanation coverage, leaving **Attributions** of shared **Interactions** unchanged across orders (SV, BV, SII, BII), or as part of the index identity, changing attribution values with the order (STII, FSII). Transforms with no inherent order cap (Moebius, Co-Moebius) default their order to all players.
-_Avoid_: truncation flag, order mode
 
 **Index Capability**:
 A structural protocol an **InteractionIndex** implements to work with an **Explainer** family. The **Cardinal Interaction Index** capability supplies cardinality-dependent discrete-derivative weights; the **Generalized Value** capability supplies cardinality-dependent bloc-marginal weights; the regression capability supplies a per-size kernel (zero-weight endpoints mark exact constraints; nonzero endpoints mark a free-intercept fit).
