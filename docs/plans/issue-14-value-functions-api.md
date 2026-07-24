@@ -1,9 +1,52 @@
 # Issue 14 — Value functions all the way down (the "world A" rebuild)
 
-Status: design converged in discussion 2026-07-24; validated by a scratchpad prototype
-(`worlda.py` + `demo.py`, session-ephemeral — every number in the Evidence appendix comes
-from it; say the word to vendor the scripts into the repo). Rebuild not started. This
-document is the working record: thesis, decisions, evidence, landmines, and the arc plan.
+Status: **rebuilt through arc 4 on this branch** (2026-07-24, `cb1c8ad6..bfabc4f6`,
+402 tests green). Design converged same day; validated first by a scratchpad prototype
+(session-ephemeral; its numbers live in the Evidence appendix), then rebuilt against the
+real library in four arcs:
+
+- **Arc 1 (`cb1c8ad6`) — the math tier.** `ParametricGame` speaking the three bases with
+  the two planes (`[]` coefficients, `()` evaluation), `Measure`, game arithmetic on the
+  `Game` ABC (`v - proxy` is a first-class residual), exact verbs `to_basis` / `project` /
+  `fidelity` / `shapley_values` / `banzhaf_values` at host float64 (the `_host_values`
+  seam lets intensional games evaluate off-stack for exact ops). Tower, basis-sparsity
+  matrix, fidelity ladder, and the Banzhaf–Fourier bridge are pinned tests.
+- **Arcs 2a+2b (`2fcff39b`, `389fda48`) — the process tier.** Inert `Estimate` carry
+  (evidence, bank, view, `index`, `shortfall` — families' coverage errors ride the carry
+  and re-raise on plane access — and `variance` as the uncertainty capability); frozen
+  policy verbs `estimate` / `refine` / `at_evidence`; the old
+  `sample`/`rollback`/`history`/`approximate` grammar deleted across 24 consumer files.
+  The stall counter is **derived from evidence** (`trailing_quiet_units` via
+  `key_index`), which kills the old line's replay-across-stall bug by construction — the
+  new pin `test_rollback_replays_exactly_across_a_stall_boundary` was impossible before.
+- **Arc 3 (`a2903a1b`) — one currency.** `ExactExplainer` and `TreeExplainer` gained the
+  same verb: `estimate() -> Estimate`. An exact explanation is an estimate with complete
+  evidence (`spent` reads `2**n`); a tree explanation is an estimate with **zero**
+  evaluations. `explain()` and the `__call__` alias died library-wide (settling backlog
+  F5e: `()` now means game evaluation); the `Explainer` ABC slimmed to game+index binding.
+- **Arc 4 (`bfabc4f6`) — the recipes as acceptance tests.** `fit_game` (the game-fitter
+  verb) and the gradient bridge (`multilinear_diagonal_gradient`,
+  `integrated_gradients`); `tests/shapiq/test_value_function_recipes.py` pins Owen's
+  theorem live, the center-gradient=Banzhaf identity, the extension-artifact ∓C/6 demo,
+  the ProxySHAP recipe (correction costs zero evaluations and beats the direct estimate),
+  and a fully third-party active-learning policy on the public carry contract
+  (split-invariant at rtol=0, variance shrinking, candidate-dry budgets banked).
+
+**Deviations from the plan, deliberate:** keys stay on the sampler (ADR 0014's owner),
+not per-call — provenance carries stream position instead; `Estimate.view` wraps the
+existing explanation machinery rather than dissolving it (the coefficient *currency*
+unified; the coefficient *storage* dissolution — ParametricGame absorbing dense/sparse
+storage with vector/target axes and a real empty slot — is the remaining half of the old
+slice); `estimate[()]` keeps each family's teaching error until that lands.
+
+**Remaining after arc 4:** the storage dissolution above; the `_base.py` de-shim
+(construction-field remnants + `_evolve`/`_at_state` folding into the verbs — internal
+only); `ChunkedGame` (D10 — also the float32 bit-identity fix); the vocabulary grill
+before any CONTEXT.md changes (names in code are provisional: Estimate, ParametricGame,
+Measure, `estimate`/`refine`/`at_evidence`, `fit_game`); ProxySHAP/BED promoted from
+test recipes to shipped examples; the SHAP-IQ port as the counts-times-law consumer.
+
+The original design record follows unchanged.
 
 ## Thesis
 
