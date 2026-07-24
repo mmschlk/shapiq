@@ -40,7 +40,8 @@ def test_wrong_player_types_and_ranges_are_named():
     explanation = ExactExplainer(additive_game(), SV()).estimate()
     with pytest.raises((TypeError, ValueError)):
         explanation[("a",)]
-    assert explanation[(7,)] == 0.0  # out-of-range players hold no coefficient
+    with pytest.raises(ValueError, match="outside this 5-player game"):
+        explanation[(7,)]  # a typo, not a zero coefficient
 
 
 def test_index_classes_are_rejected_with_teaching_errors():

@@ -239,6 +239,8 @@ class BasisGame(Game["Array"]):
 
         Returns a float for scalar games, else an array of
         ``(*target_shape, *value_shape)`` (the public trailing layout).
+        Absent means absent from the support — players outside the game
+        raise, because a read that silently returns zero would hide typos.
         """
         if isinstance(interaction, int):
             msg = (
@@ -246,7 +248,15 @@ class BasisGame(Game["Array"]):
                 f"{interaction} with game[({interaction},)]"
             )
             raise TypeError(msg)
-        position = self._lookup.get(frozenset(int(player) for player in interaction))
+        players = frozenset(int(player) for player in interaction)
+        out_of_range = sorted(p for p in players if p < 0 or p >= self.n_players)
+        if out_of_range:
+            msg = (
+                f"interaction {tuple(sorted(players))} names players outside this "
+                f"{self.n_players}-player game: {out_of_range}"
+            )
+            raise ValueError(msg)
+        position = self._lookup.get(players)
         if position is None:
             block = np.zeros((*self.value_shape, *self.target_shape))
         else:
