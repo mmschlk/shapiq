@@ -18,6 +18,8 @@ from __future__ import annotations
 from abc import ABCMeta
 from typing import Any
 
+import numpy as np
+
 
 class FrozenABCMeta(ABCMeta):
     """Metaclass stamping instances as frozen after full construction.
@@ -65,3 +67,18 @@ class Frozen(metaclass=FrozenABCMeta):
             )
             raise AttributeError(msg)
         super().__delattr__(name)
+
+
+def frozen_host_array(
+    array: np.typing.ArrayLike,
+    dtype: np.typing.DTypeLike | None = None,
+) -> np.ndarray:
+    """Return an owned, write-locked host copy of configuration data.
+
+    Configuration arrays freeze in contents, not just in binding: the copy
+    severs any alias the caller kept, and the write lock turns in-place
+    edits into errors instead of silent retyping.
+    """
+    owned = np.array(array, dtype=dtype)
+    owned.setflags(write=False)
+    return owned

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import combinations
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import jax.numpy as jnp
@@ -211,7 +212,30 @@ class BasisGame(Game["Array"]):
         owned = np.array(values, dtype=np.float64)
         owned.setflags(write=False)
         self._values = owned
-        self._lookup = {term: position for position, term in enumerate(terms)}
+        self._lookup = MappingProxyType(
+            {term: position for position, term in enumerate(terms)},
+        )
+
+    def __getstate__(self) -> dict[str, object]:
+        """Return picklable state (the lookup proxy flattens to a dict)."""
+        state = dict(self.__dict__)
+        state["_lookup"] = dict(self._lookup)
+        return state
+
+    def __setstate__(self, state: dict[str, object]) -> None:
+        """Restore with the coefficient lock and lookup proxy intact.
+
+        NumPy does not preserve the write lock across pickle or deepcopy,
+        so a round-tripped game would silently become retypable without
+        this re-lock.
+        """
+        values = state.get("_values")
+        if isinstance(values, np.ndarray):
+            values.setflags(write=False)
+        lookup = state.get("_lookup")
+        if isinstance(lookup, dict):
+            state["_lookup"] = MappingProxyType(lookup)
+        self.__dict__.update(state)
 
     @property
     def coefficients(self) -> np.ndarray:

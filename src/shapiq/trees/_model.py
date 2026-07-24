@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from shapiq._frozen import frozen_host_array
 from shapiq.games._values import to_host_array
 
 LEAF = -1
@@ -72,11 +73,11 @@ class TreeModel:
             if linked.size and (int(linked.min()) < 0 or int(linked.max()) >= n_nodes):
                 msg = f"{name} links out of range for {n_nodes} nodes"
                 raise ValueError(msg)
-        object.__setattr__(self, "children_left", children_left)
-        object.__setattr__(self, "children_right", children_right)
-        object.__setattr__(self, "features", features)
-        object.__setattr__(self, "thresholds", thresholds)
-        object.__setattr__(self, "values", values)
+        object.__setattr__(self, "children_left", frozen_host_array(children_left))
+        object.__setattr__(self, "children_right", frozen_host_array(children_right))
+        object.__setattr__(self, "features", frozen_host_array(features))
+        object.__setattr__(self, "thresholds", frozen_host_array(thresholds))
+        object.__setattr__(self, "values", frozen_host_array(values))
 
     @property
     def n_nodes(self) -> int:

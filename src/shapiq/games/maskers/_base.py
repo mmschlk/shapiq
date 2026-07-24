@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 import numpy as np
 from array_api_compat import array_namespace, device, to_device
 
+from shapiq._frozen import Frozen
+
 if TYPE_CHECKING:
     from shapiq._shape import Shape
     from shapiq.coalitions import CoalitionArray
@@ -31,8 +33,15 @@ class BackendArray(Protocol):
         ...
 
 
-class Masker[ModelInputT](ABC):
-    """Base abstraction for converting coalitions to model-native inputs."""
+class Masker[ModelInputT](Frozen, ABC):
+    """Base abstraction for converting coalitions to model-native inputs.
+
+    Maskers are configuration and freeze after construction. The arrays a
+    masker holds stay backend-native by design (a torch model receives
+    torch tensors), so their contents follow the backend's mutability —
+    JAX arrays are immutable, NumPy and torch buffers are not — and are
+    to be treated as frozen: the masker holds them, it never edits them.
+    """
 
     n_players: int
     target_shape: Shape

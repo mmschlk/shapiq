@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import jax.numpy as jnp
 import numpy as np
 
+from shapiq._frozen import frozen_host_array
 from shapiq._shape import validate_n_players
 from shapiq.games._base import Game
 from shapiq.games._values import to_host_array
@@ -109,11 +110,18 @@ class InterventionalTreeGame(Game["Array"]):
                 raise ValueError(msg)
         self.value_shape = value_shape
         self.trees = tree_tuple
-        self.inputs = inputs_array
-        self.baseline = baseline_array
+        self.inputs = frozen_host_array(inputs_array)
+        self.baseline = frozen_host_array(baseline_array)
         self.leaf_constraints = tuple(
-            _leaf_constraints(tree, inputs_array, baseline_array, self.n_players)
-            for tree in tree_tuple
+            LeafConstraints(
+                present=frozen_host_array(leaves.present),
+                absent=frozen_host_array(leaves.absent),
+                values=frozen_host_array(leaves.values),
+            )
+            for leaves in (
+                _leaf_constraints(tree, inputs_array, baseline_array, self.n_players)
+                for tree in tree_tuple
+            )
         )
         # evaluation state: the whole ensemble concatenates into one constraint
         # set, stored pre-transposed so a coalition batch reaches every leaf of
