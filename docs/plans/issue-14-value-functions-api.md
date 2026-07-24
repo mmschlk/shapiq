@@ -1,9 +1,12 @@
 # Issue 14 — Value functions all the way down (the "world A" rebuild)
 
-Status: **rebuilt through arc 4 on this branch** (2026-07-24, `cb1c8ad6..bfabc4f6`,
-402 tests green). Design converged same day; validated first by a scratchpad prototype
-(session-ephemeral; its numbers live in the Evidence appendix), then rebuilt against the
-real library in four arcs:
+Status: **landed through the games-center rework, the engine rewrite, the naming
+pass, and D10** (2026-07-24, `cb1c8ad6..b34ea384`, 395 tests green). CONTEXT.md and
+ADR 0015 now speak this design. Names inside the design record below are the record
+of the journey, not everywhere the current API (`ParametricGame` became `BasisGame`,
+`Estimate.view` died — see the second wave). Design converged same day; validated
+first by a scratchpad prototype (session-ephemeral; its numbers live in the Evidence
+appendix), then rebuilt against the real library in four arcs:
 
 - **Arc 1 (`cb1c8ad6`) — the math tier.** `ParametricGame` speaking the three bases with
   the two planes (`[]` coefficients, `()` evaluation), `Measure`, game arithmetic on the
@@ -32,19 +35,47 @@ real library in four arcs:
   and a fully third-party active-learning policy on the public carry contract
   (split-invariant at rtol=0, variance shrinking, candidate-dry budgets banked).
 
-**Deviations from the plan, deliberate:** keys stay on the sampler (ADR 0014's owner),
-not per-call — provenance carries stream position instead; `Estimate.view` wraps the
-existing explanation machinery rather than dissolving it (the coefficient *currency*
-unified; the coefficient *storage* dissolution — ParametricGame absorbing dense/sparse
-storage with vector/target axes and a real empty slot — is the remaining half of the old
-slice); `estimate[()]` keeps each family's teaching error until that lands.
+The second wave, same day, in the main tree:
 
-**Remaining after arc 4:** the storage dissolution above; the `_base.py` de-shim
-(construction-field remnants + `_evolve`/`_at_state` folding into the verbs — internal
-only); `ChunkedGame` (D10 — also the float32 bit-identity fix); the vocabulary grill
-before any CONTEXT.md changes (names in code are provisional: Estimate, ParametricGame,
-Measure, `estimate`/`refine`/`at_evidence`, `fit_game`); ProxySHAP/BED promoted from
-test recipes to shipped examples; the SHAP-IQ port as the counts-times-law consumer.
+- **Games-center rework (`09af190f`, `4392325f`, `b454c654`) — G1–G3.** `Basis` became
+  a protocol with value objects (`MoebiusBasis()` / `CoMoebiusBasis()` /
+  `FourierBasis()`) owning their atoms — extension is implementing the protocol, never
+  registering a string. `ParametricGame` became `BasisGame` (duplicate terms summed, a
+  real ∅ slot whose meaning each index family declares: efficiency → baseline,
+  FBII-style → fitted intercept, kADD → absent). `Estimate` became IS-A `BasisGame`:
+  the `view` died, the explanations package (dense and sparse species) was deleted
+  (net −805 lines) — the storage dissolution the arc-4 deviations paragraph owed.
+- **The grill + ADR 0015 (`067220f4`).** Game stays the canonical noun ("value
+  function" its defining synonym; explanations are readable games); the Evidence
+  renames landed (`Evidence` / `SampledEvidence` / `NoEvidence`); CONTEXT.md trued to
+  world A and binding.
+- **The engine rewrite (`8b2b700b..91d4423b`).** The carry became two-argument —
+  `Estimate(surrogate, Provenance)` with one frozen provenance record (the answer to
+  the 13-parameter-init red flag). `_engine.py` holds the loop as pure functions,
+  `grow(policy, evidence, bank, budget) -> (evidence, bank)`, every counter derived
+  from evidence at entry (units from stored rows, the stall counter from the trailing
+  unit sequence); the worker-clone shims and the process-field quintet died. The
+  `Explainer` ABC dissolved into `validate_index_binding` — an explainer is anything
+  that maps a game to a game. Coefficient reads raise on players outside the game.
+- **The naming pass (`070f2d98`).** Public names held against the now-binding
+  glossary (Approximator, PermutationSampling, Regression, ExactExplainer stay);
+  `explainers/` flattened to one package — the directory hierarchy died with the ABC —
+  and modules are named for what they hold (`_approximator`, `_engine`, `_binding`,
+  `_blocks`).
+- **D10 (`b34ea384`).** `ChunkedGame(game, batch_size)`: the evaluation policy as a
+  game transformer; the wrapped game only ever sees fixed-shape blocks, which makes a
+  coalition's float32 value independent of how a budget was split — the dedup
+  bit-identity finding fixed structurally.
+
+**Deviations from the plan, deliberate:** keys stay on the sampler (ADR 0014's owner),
+not per-call — provenance carries stream position instead. `ChunkedMaskedPredictor`
+did not slim beneath `ChunkedGame`: its chunking is torch device-memory policy over
+flattened instance axes, a different concern from sample-axis shape canonicalization,
+so the two compose rather than merge.
+
+**Remaining:** ProxySHAP/BED promoted from test recipes to shipped examples; the
+SHAP-IQ port as the counts-times-law consumer; evidence-side provenance and an
+`evidence.minus` rebase verb (deferred until a consumer needs them).
 
 The original design record follows unchanged.
 
