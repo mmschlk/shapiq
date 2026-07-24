@@ -12,8 +12,8 @@ from jax import Array
 
 from shapiq._shape import broadcast_shapes, ensure_bool, validate_int
 from shapiq.errors import InsufficientSamplesError
-from shapiq.explainers._base import reject_common_index_mistakes
-from shapiq.explainers.approximators._base import Approximator
+from shapiq.explainers._approximator import Approximator
+from shapiq.explainers._binding import reject_common_index_mistakes
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
 from shapiq.sampling import PairedSampler, PermutationSampler, SampledEvidence

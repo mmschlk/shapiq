@@ -8,11 +8,12 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.explainers._base import (
+from shapiq.explainers._binding import (
     missing_index_members,
     reject_common_index_mistakes,
     validate_index_binding,
 )
+from shapiq.explainers._blocks import leading_blocks_to_terms
 from shapiq.explainers._faithful import (
     bernoulli_design,
     bernoulli_numbers,
@@ -22,7 +23,6 @@ from shapiq.explainers._faithful import (
     solve_faithful,
 )
 from shapiq.explainers._valueaxes import to_leading
-from shapiq.explainers.approximators._estimate import leading_blocks_to_terms
 from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
 from shapiq.interactions import (
     FBII,

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 
 from shapiq.errors import UnsupportedGameError
-from shapiq.explainers._base import reject_common_index_mistakes, validate_index_binding
+from shapiq.explainers._binding import reject_common_index_mistakes, validate_index_binding
 from shapiq.games import BasisGame, Estimate, MoebiusBasis, Provenance
 from shapiq.interactions import CardinalInteractionIndex
 from shapiq.sampling import NoEvidence

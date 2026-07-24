@@ -17,7 +17,7 @@ An **Explainer** whose **Estimate** carries complete evidence: the full coalitio
 _Avoid_: ExactComputer, exact calculator
 
 **Evidence**:
-The accumulated record an **Estimate** is derived from — the sufficient statistic for exact resume. Everything else about an estimate is either recomputed from evidence or checkpointed with it; a policy's proposals are memoryless given the carried evidence, which is what makes budget splits, rollback, and replay exact. (Rename of ApproximationState; lands with the engine rewrite.)
+The accumulated record an **Estimate** is derived from — the sufficient statistic for exact resume. Everything else about an estimate is either recomputed from evidence or checkpointed with it; a policy's proposals are memoryless given the carried evidence, which is what makes budget splits, rollback, and replay exact.
 _Avoid_: sample history, cache, state (when speaking of the concept)
 
 **Approximation History**:
@@ -25,7 +25,7 @@ The always-on record of value-equivalent earlier evidence an **Evidence** can re
 _Avoid_: previous-state pointer, undo stack, track_history flag
 
 **SampledEvidence**:
-**Evidence** recording sampled **Coalitions** together with their evaluated **Values**, and owning coalition identity: distinct coalitions, first positions, multiplicities. (Rename of SamplingState; lands with the engine rewrite. The gradient bridge will add a sibling species: path points with gradients.)
+**Evidence** recording sampled **Coalitions** together with their evaluated **Values**, and owning coalition identity: distinct coalitions, first positions, multiplicities. (The gradient bridge will add a sibling species: path points with gradients.)
 _Avoid_: default state, raw sample cache
 
 **Sampler**:
@@ -69,7 +69,7 @@ Deterministic evaluations an **Approximator** needs before sampled units can be 
 _Avoid_: initialization cost, setup evaluations, create step
 
 **NoEvidence**:
-The **Evidence** of an **Estimate** that has not sampled yet; banked **Budget** may still ride it. The first sampled batch replaces it, **Approximation History** begins at that first evidence, and no evidence is its own single-entry history. (Rename of EmptyState; lands with the engine rewrite.)
+The **Evidence** of an **Estimate** that has not sampled yet; banked **Budget** may still ride it. The first sampled batch replaces it, **Approximation History** begins at that first evidence, and no evidence is its own single-entry history.
 _Avoid_: uninitialized state, null state, empty state
 
 **Deduplication**:

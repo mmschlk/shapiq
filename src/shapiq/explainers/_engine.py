@@ -30,20 +30,19 @@ import numpy as np
 from shapiq._shape import validate_int
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.errors import SamplingStallWarning
-from shapiq.explainers._valueaxes import to_leading
-from shapiq.explainers.approximators._deduplication import (
+from shapiq.explainers._deduplication import (
     STALL_UNITS,
     admit_units,
     stitch_values,
 )
-from shapiq.explainers.approximators._estimate import trailing_quiet_units
+from shapiq.explainers._valueaxes import to_leading
 from shapiq.sampling import Evidence, SampledEvidence
 from shapiq.sampling._evidence import coalition_keys
 
 if TYPE_CHECKING:
     from jax import Array
 
-    from shapiq.explainers.approximators._base import Approximator
+    from shapiq.explainers._approximator import Approximator
 
 
 def grow(
@@ -82,6 +81,37 @@ def banked_at(evidence: Evidence) -> int:
         return 0
     cuts = evidence._history_cuts
     return cuts[-1][1] if cuts else 0
+
+
+def trailing_quiet_units(evidence: Evidence, unit_rows: int, n_seed_samples: int) -> int:
+    """Derive the stall counter: trailing whole units with no novel coalition.
+
+    A row is novel exactly when it is its coalition's first occurrence in
+    the stream (``row == key_index[key]``). Deriving the counter from the
+    evidence — instead of carrying it — is what makes rollback and replay
+    exact across a stall: the counter can never disagree with the stream.
+    """
+    if not isinstance(evidence, SampledEvidence):
+        return 0
+    index = evidence.key_index()
+    keys = _row_keys(evidence)
+    quiet = 0
+    unit_end = evidence.n_samples
+    while unit_end - unit_rows >= n_seed_samples:
+        start = unit_end - unit_rows
+        novel = any(index[keys[row]] == row for row in range(start, unit_end))
+        if novel:
+            break
+        quiet += 1
+        unit_end = start
+    return quiet
+
+
+def _row_keys(evidence: SampledEvidence) -> list[bytes]:
+    packed = evidence.packed_keys()
+    width = packed.shape[-1]
+    blob = packed.tobytes()
+    return [blob[start : start + width] for start in range(0, len(blob), width)]
 
 
 def _grow_plain(

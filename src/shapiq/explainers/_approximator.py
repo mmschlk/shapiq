@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, NoReturn
 
 from shapiq._shape import ensure_bool, logical_size, validate_int
 from shapiq.errors import InsufficientSamplesError
-from shapiq.explainers._base import validate_index_binding
-from shapiq.explainers.approximators._engine import banked_at, grow
-from shapiq.explainers.approximators._estimate import leading_blocks_to_terms
+from shapiq.explainers._binding import validate_index_binding
+from shapiq.explainers._blocks import leading_blocks_to_terms
+from shapiq.explainers._engine import banked_at, grow
 from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
 from shapiq.sampling import Evidence, NoEvidence, Sampler
 

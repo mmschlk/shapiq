@@ -9,7 +9,8 @@ from jax import Array
 
 from shapiq._shape import ensure_bool
 from shapiq.errors import InsufficientSamplesError
-from shapiq.explainers._base import reject_common_index_mistakes
+from shapiq.explainers._approximator import Approximator
+from shapiq.explainers._binding import reject_common_index_mistakes
 from shapiq.explainers._faithful import (
     bernoulli_design,
     eliminate_constraint,
@@ -17,7 +18,6 @@ from shapiq.explainers._faithful import (
     lstsq_identified,
     solve_faithful,
 )
-from shapiq.explainers.approximators._base import Approximator
 from shapiq.interactions import FBII, FSII, KADDSHAP, SV, WeightedFBII
 from shapiq.sampling import (
     BanzhafKernelSampler,
