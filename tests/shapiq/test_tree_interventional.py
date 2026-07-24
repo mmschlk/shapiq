@@ -393,7 +393,7 @@ def test_outputs_follow_the_default_float_dtype():
 def test_sampling_explainers_consume_the_tree_game():
     game = tree_game()
     approximator = Regression(game, SV(), random_state=0, deduplicate=True)
-    estimate = approximator.sample(2 + 12).explain()
+    estimate = approximator.estimate(2 + 12)
     closed_form = TreeExplainer(game, SV()).explain()
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate((player,)), closed_form((player,)), atol=1e-4)
+        assert jnp.allclose(estimate[(player,)], closed_form((player,)), atol=1e-4)

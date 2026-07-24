@@ -25,7 +25,8 @@ def additive_game():
 def test_random_state_accepts_int_and_prng_key():
     from_int = PermutationSampling(additive_game(), SV(), random_state=7)
     from_key = PermutationSampling(additive_game(), SV(), random_state=jax.random.key(7))
-    assert from_int.sample(SEEDS + QUANTUM).state == from_key.sample(SEEDS + QUANTUM).state
+    budget = SEEDS + QUANTUM
+    assert from_int.estimate(budget).evidence == from_key.estimate(budget).evidence
 
 
 @pytest.mark.parametrize("bad", [None, 1.5, True, np.random.default_rng(0), "7"])
@@ -41,41 +42,41 @@ def test_share_samples_accepts_false_and_rejects_none():
 
 
 def test_min_budget_matches_first_explainable_budget():
-    approximator = PermutationSampling(additive_game(), SV())
-    assert approximator.min_budget == SEEDS + QUANTUM
+    policy = PermutationSampling(additive_game(), SV())
+    assert policy.min_budget == SEEDS + QUANTUM
+    short = policy.estimate(policy.min_budget - 1)
     with pytest.raises(InsufficientSamplesError):
-        approximator.sample(approximator.min_budget - 1).explain()
-    approximator.sample(approximator.min_budget).explain()
+        short[(0,)]
+    policy.estimate(policy.min_budget)[(0,)]
 
 
 def test_error_messages_teach_the_working_idiom():
-    approximator = PermutationSampling(additive_game(), SV())
-    with pytest.raises(InsufficientSamplesError, match=r"approximator = approximator\.sample"):
-        approximator.explain()
-    with pytest.raises(InsufficientSamplesError, match=r"sample at least \d+ evaluations"):
-        approximator.sample(3).explain()
-    # history is always on: a fresh approximator is its own single-entry history
-    history = approximator.history()
-    assert len(history) == 1
-    assert history[0].state == approximator.state
+    policy = PermutationSampling(additive_game(), SV())
+    # a sub-seed budget banks without evidence; the planes teach the fix
+    banked = policy.estimate(1)
+    assert banked.bank == 1
+    with pytest.raises(InsufficientSamplesError, match=r"estimate = policy\.estimate"):
+        banked[(0,)]
+    estimate = policy.refine(banked, SEEDS + QUANTUM - 1)
     with pytest.raises(IndexError, match="past the initial state"):
-        approximator.rollback()
-    explanation = approximator.sample(SEEDS + QUANTUM).explain()
-    with pytest.raises(TypeError, match=r"explanation\(\(0,\)\)"):
-        explanation(0)
+        estimate.evidence.rollback(len(estimate.evidence.history()))
+    with pytest.raises(TypeError, match=r"estimate\[\(0,\)\]"):
+        estimate[0]
 
 
 def test_budget_type_errors_name_the_offending_type():
-    approximator = PermutationSampling(additive_game(), SV())
+    policy = PermutationSampling(additive_game(), SV())
     with pytest.raises(TypeError, match="budget must be an integer, got float"):
-        approximator.sample(10.0)
+        policy.estimate(10.0)
 
 
-def test_fresh_approximator_is_observable():
-    approximator = PermutationSampling(additive_game(), SV())
-    assert approximator.state.n_samples == 0
-    text = repr(approximator)
-    assert "PermutationSampling" in text
+def test_fresh_estimates_are_observable():
+    policy = PermutationSampling(additive_game(), SV())
+    estimate = policy.estimate(0)
+    assert estimate.evidence.n_samples == 0
+    assert estimate.bank == 0
+    assert estimate.spent == 0
+    text = repr(estimate)
+    assert "Estimate" in text
     assert "n_samples=0" in text
     assert "bank=0" in text
-    assert "spent=0" in text

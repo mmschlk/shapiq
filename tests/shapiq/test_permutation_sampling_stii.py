@@ -83,37 +83,37 @@ def brute_force_top_stii(mask_fn, interaction):
 
 
 def test_lower_orders_are_exact_derivatives_at_empty():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=0)
-    explanation = approximator.sample(seeds(3) + quantum(3)).explain()
+    policy = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=0)
+    estimate = policy.estimate(seeds(3) + quantum(3))
     for player in range(N_PLAYERS):
-        assert jnp.allclose(explanation((player,)), WEIGHTS[player], atol=1e-5)
+        assert jnp.allclose(estimate[(player,)], WEIGHTS[player], atol=1e-5)
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-5)
+        assert jnp.allclose(estimate[(left, right)], PAIRS[left, right], atol=1e-5)
 
 
 def test_top_order_pairs_exact_for_quadratic_after_one_walk():
-    approximator = PermutationSampling(
+    policy = PermutationSampling(
         game_from(quadratic_from_masks), STII(order=2), random_state=0
     )
-    explanation = approximator.sample(seeds(2) + quantum(2)).explain()
+    estimate = policy.estimate(seeds(2) + quantum(2))
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-5)
+        assert jnp.allclose(estimate[(left, right)], PAIRS[left, right], atol=1e-5)
 
 
 def test_top_order_triples_exact_for_cubic_after_one_walk():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=1)
-    explanation = approximator.sample(seeds(3) + quantum(3)).explain()
+    policy = PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=1)
+    estimate = policy.estimate(seeds(3) + quantum(3))
     for triple in combinations(range(N_PLAYERS), 3):
         expected = 1.5 if triple == (0, 1, 2) else 0.0
-        assert jnp.allclose(explanation(triple), expected, atol=1e-5)
+        assert jnp.allclose(estimate[triple], expected, atol=1e-5)
 
 
 def test_top_order_converges_to_brute_force_stii():
-    approximator = PermutationSampling(game_from(cubic_from_masks), STII(order=2), random_state=2)
-    explanation = approximator.sample(seeds(2) + 1500 * quantum(2)).explain()
+    policy = PermutationSampling(game_from(cubic_from_masks), STII(order=2), random_state=2)
+    estimate = policy.estimate(seeds(2) + 1500 * quantum(2))
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(
-            explanation(pair), brute_force_top_stii(cubic_from_masks, pair), atol=0.1
+            estimate[pair], brute_force_top_stii(cubic_from_masks, pair), atol=0.1
         )
 
 
@@ -121,23 +121,21 @@ def test_order_one_stii_matches_sv_approximator_exactly():
     n_walks = 25
     stii = PermutationSampling(game_from(cubic_from_masks), STII(order=1), random_state=4)
     sv = PermutationSampling(game_from(cubic_from_masks), SV(), random_state=4)
-    stii_explanation = stii.sample(seeds(1) + n_walks * quantum(1)).explain()
-    sv_explanation = sv.sample(2 + n_walks * (N_PLAYERS - 1)).explain()
+    stii_estimate = stii.estimate(seeds(1) + n_walks * quantum(1))
+    sv_estimate = sv.estimate(2 + n_walks * (N_PLAYERS - 1))
     for player in range(N_PLAYERS):
-        assert jnp.allclose(stii_explanation((player,)), sv_explanation((player,)), atol=1e-6)
+        assert jnp.allclose(stii_estimate[(player,)], sv_estimate[(player,)], atol=1e-6)
 
 
 def test_efficiency_holds_exactly_for_quadratic_games():
     game = game_from(quadratic_from_masks)
     grand = quadratic_from_masks(jnp.ones((N_PLAYERS,), dtype=jnp.float32))
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
-    explanation = (
-        PermutationSampling(game, STII(order=2), random_state=3)
-        .sample(seeds(2) + quantum(2))
-        .explain()
+    explanation = PermutationSampling(game, STII(order=2), random_state=3).estimate(
+        seeds(2) + quantum(2),
     )
     total = sum(
-        float(explanation(interaction))
+        float(explanation[interaction])
         for order in (1, 2)
         for interaction in combinations(range(N_PLAYERS), order)
     )
@@ -147,22 +145,20 @@ def test_efficiency_holds_exactly_for_quadratic_games():
 def test_empty_interaction_is_the_empty_coalition_value():
     game = game_from(quadratic_from_masks)
     empty = quadratic_from_masks(jnp.zeros((N_PLAYERS,), dtype=jnp.float32))
-    explanation = (
-        PermutationSampling(game, STII(order=2), random_state=0)
-        .sample(seeds(2) + quantum(2))
-        .explain()
+    explanation = PermutationSampling(game, STII(order=2), random_state=0).estimate(
+        seeds(2) + quantum(2),
     )
-    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
+    assert jnp.allclose(explanation.view.baseline, empty, atol=1e-6)
 
 
 def test_explaining_before_first_completed_walk_raises():
-    approximator = PermutationSampling(
+    policy = PermutationSampling(
         game_from(quadratic_from_masks), STII(order=2), random_state=0
     )
     with pytest.raises(InsufficientSamplesError):
-        approximator.explain()
+        policy.estimate(0)[(0, 1)]
     with pytest.raises(InsufficientSamplesError):
-        approximator.sample(seeds(2) + quantum(2) - 1).explain()
+        policy.estimate(seeds(2) + quantum(2) - 1)[(0, 1)]
 
 
 def test_seed_block_resumes_across_budget_splits():
@@ -170,22 +166,24 @@ def test_seed_block_resumes_across_budget_splits():
         return PermutationSampling(game_from(cubic_from_masks), STII(order=3), random_state=6)
 
     total = seeds(3) + quantum(3)
-    whole = make().sample(total)
-    split = make().sample(5).sample(9).sample(total - 14)  # 5 + 9 = 14 < seeds(3) = 17
-    assert split.state == whole.state
+    whole = make().estimate(total)
+    policy = make()
+    split = policy.refine(policy.refine(policy.estimate(5), 9), total - 14)  # 14 < seeds(3) = 17
+    assert split.evidence == whole.evidence
     for triple in combinations(range(N_PLAYERS), 3):
-        assert jnp.allclose(split.explain()(triple), whole.explain()(triple), atol=1e-6)
+        assert jnp.allclose(split[triple], whole[triple], atol=1e-6)
 
 
 def test_pending_samples_and_budget_splits():
     def make():
         return PermutationSampling(game_from(cubic_from_masks), STII(order=2), random_state=5)
 
-    whole = make().sample(seeds(2) + 4 * quantum(2))
-    split = make().sample(quantum(2) + 7).sample(seeds(2) + 3 * quantum(2) - 7)
-    assert split.state == whole.state
-    with_bank = make().sample(seeds(2) + 4 * quantum(2) + 9)
+    whole = make().estimate(seeds(2) + 4 * quantum(2))
+    policy = make()
+    split = policy.refine(policy.estimate(quantum(2) + 7), seeds(2) + 3 * quantum(2) - 7)
+    assert split.evidence == whole.evidence
+    with_bank = make().estimate(seeds(2) + 4 * quantum(2) + 9)
     assert with_bank.bank == 9
-    assert with_bank.state.n_samples == whole.state.n_samples
+    assert with_bank.evidence.n_samples == whole.evidence.n_samples
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(with_bank.explain()(pair), whole.explain()(pair), atol=1e-6)
+        assert jnp.allclose(with_bank[pair], whole[pair], atol=1e-6)

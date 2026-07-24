@@ -76,7 +76,7 @@ class Regression(Approximator):
 
     Example:
         >>> approximator = Regression(game, FSII(order=2), random_state=0)
-        >>> explanation = approximator.sample(500).explain()
+        >>> estimate = approximator.estimate(500)
         >>> pair_interaction = explanation((0, 1))
     """
 
@@ -205,7 +205,7 @@ class Regression(Approximator):
         if usable - n_seeds < 1:
             msg = (
                 "explaining requires at least one completed sampled unit: "
-                f"sample at least {self.min_budget} evaluations in total "
+                f"estimate with at least {self.min_budget} evaluations in total "
                 f"(currently {usable} stored, {self.bank} banked)"
             )
             raise InsufficientSamplesError(msg)

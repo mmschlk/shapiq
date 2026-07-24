@@ -11,6 +11,7 @@ from shapiq import (
     SII,
     SV,
     CallableGame,
+    Estimate,
     ExactExplainer,
     PermutationSampling,
     Regression,
@@ -41,8 +42,9 @@ def cubic_game():
     )
 
 
-def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+def order_one(source):
+    read = source.__getitem__ if isinstance(source, Estimate) else source
+    return jnp.stack([read((player,)) for player in range(N_PLAYERS)], axis=-1)
 
 
 def test_unsupported_indices_are_rejected_with_teaching_errors():
@@ -53,38 +55,38 @@ def test_unsupported_indices_are_rejected_with_teaching_errors():
 
 
 def test_permutation_sampling_sv_equals_order_one_sii():
-    shapley = PermutationSampling(cubic_game(), SV(), random_state=4).sample(50)
-    interactions = PermutationSampling(cubic_game(), SII(order=1), random_state=4).sample(50)
-    assert shapley.state == interactions.state
+    shapley = PermutationSampling(cubic_game(), SV(), random_state=4).estimate(50)
+    interactions = PermutationSampling(cubic_game(), SII(order=1), random_state=4).estimate(50)
+    assert shapley.evidence == interactions.evidence
     assert jnp.allclose(
-        order_one(shapley.explain()),
-        order_one(interactions.explain()),
+        order_one(shapley),
+        order_one(interactions),
         atol=1e-6,
     )
-    assert shapley.explain().interaction_index == "SV"
-    assert interactions.explain().interaction_index == "SII"
+    assert shapley.index == SV()
+    assert interactions.index == SII(order=1)
 
 
 def test_regression_with_sv_is_kernelshap():
     exact = order_one(ExactExplainer(cubic_game(), SV()).explain())
     approximator = Regression(cubic_game(), SV(), random_state=1)
-    estimate = order_one(approximator.sample(2 + 3000).explain())
+    estimate = order_one(approximator.estimate(2 + 3000))
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_regression_sv_matches_order_one_fsii_over_the_same_stream():
     budget = 2 + 24
-    shapley = Regression(cubic_game(), SV(), random_state=3, deduplicate=True).sample(budget)
-    faithful = Regression(cubic_game(), FSII(order=1), random_state=3, deduplicate=True).sample(
-        budget,
-    )
-    assert shapley.state == faithful.state
+    shapley = Regression(cubic_game(), SV(), random_state=3, deduplicate=True).estimate(budget)
+    faithful = Regression(
+        cubic_game(), FSII(order=1), random_state=3, deduplicate=True
+    ).estimate(budget)
+    assert shapley.evidence == faithful.evidence
     assert jnp.allclose(
-        order_one(shapley.explain()),
-        order_one(faithful.explain()),
+        order_one(shapley),
+        order_one(faithful),
         atol=1e-6,
     )
-    assert shapley.explain().interaction_index == "SV"
+    assert shapley.index == SV()
 
 
 def test_explanations_default_to_undirected_interactions():

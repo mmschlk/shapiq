@@ -10,6 +10,7 @@ import pytest
 from shapiq import (
     FBII,
     CallableGame,
+    Estimate,
     ExactExplainer,
     PairedSampler,
     Regression,
@@ -48,8 +49,9 @@ def game_from(mask_fn):
     )
 
 
-def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+def order_one(source):
+    read = source.__getitem__ if isinstance(source, Estimate) else source
+    return jnp.stack([read((player,)) for player in range(N_PLAYERS)], axis=-1)
 
 
 def brute_force_weighted_fit(mask_fn, p, order):
@@ -101,12 +103,12 @@ def test_recovers_quadratic_games_exactly_once_identified():
         random_state=0,
         deduplicate=True,
     )
-    explanation = approximator.sample(SEEDS + 24).explain()
-    assert jnp.allclose(order_one(explanation), WEIGHTS, atol=1e-3)
+    estimate = approximator.estimate(SEEDS + 24)
+    assert jnp.allclose(order_one(estimate), WEIGHTS, atol=1e-3)
     for left, right in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation((left, right)), PAIRS[left, right], atol=1e-3)
+        assert jnp.allclose(estimate[(left, right)], PAIRS[left, right], atol=1e-3)
     # a 2-additive game's centered fit needs no intercept
-    assert jnp.allclose(explanation(()), 0.0, atol=1e-3)
+    assert jnp.allclose(estimate[()], 0.0, atol=1e-3)
 
 
 def test_converges_to_the_exact_faithful_weighted_interactions():
@@ -116,11 +118,11 @@ def test_converges_to_the_exact_faithful_weighted_interactions():
         WeightedFBII(p=0.7, order=2),
         random_state=2,
     )
-    explanation = approximator.sample(SEEDS + 8000).explain()
+    estimate = approximator.estimate(SEEDS + 8000)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(explanation((player,)), exact((player,)), atol=0.1)
+        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=0.1)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(explanation(pair), exact(pair), atol=0.1)
+        assert jnp.allclose(estimate[pair], exact(pair), atol=0.1)
 
 
 def test_pairing_follows_the_kernel_symmetry():
@@ -140,12 +142,14 @@ def test_uniform_weighted_sampling_matches_the_fbii_stream():
     game = game_from(cubic_from_masks)
     weighted = Regression(
         game, WeightedFBII(p=0.5, order=2), random_state=6, deduplicate=True
-    ).sample(SEEDS + 28)
-    banzhaf = Regression(game, FBII(order=2), random_state=6, deduplicate=True).sample(SEEDS + 28)
-    assert weighted.state == banzhaf.state
+    ).estimate(SEEDS + 28)
+    banzhaf = Regression(game, FBII(order=2), random_state=6, deduplicate=True).estimate(
+        SEEDS + 28,
+    )
+    assert weighted.evidence == banzhaf.evidence
     assert jnp.allclose(
-        order_one(weighted.explain()),
-        order_one(banzhaf.explain()),
+        order_one(weighted),
+        order_one(banzhaf),
         atol=1e-6,
     )
 
@@ -170,9 +174,9 @@ def test_metadata_names_the_index():
         random_state=0,
         deduplicate=True,
     )
-    explanation = approximator.sample(SEEDS + 24).explain()
-    assert explanation.interaction_index == "WeightedFBII"
-    assert explanation.order == 2
+    estimate = approximator.estimate(SEEDS + 24)
+    assert estimate.index == WeightedFBII(p=0.3, order=2)
+    assert estimate.view.order == 2
     assert WeightedFBII(p=0.3, order=2).includes_empty_interaction
 
 

@@ -320,6 +320,6 @@ def test_exact_shapley_values_are_efficient_on_the_image_game():
 def test_sampled_faithful_interactions_run_on_the_image_game():
     game = chunked_game(gray_masker(image()), tiny_cnn(2), batch_size=64, value_shape=(2,))
     approximator = Regression(game, FSII(order=2), random_state=0, deduplicate=True)
-    explanation = approximator.sample(approximator.min_budget + 40).explain()
-    assert explanation.interaction_index == "FSII"
-    assert explanation((0, 1)).shape == (2,)
+    explanation = approximator.estimate(approximator.min_budget + 40)
+    assert explanation.index == FSII(order=2)
+    assert explanation[(0, 1)].shape == (2,)

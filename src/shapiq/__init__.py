@@ -8,6 +8,7 @@ from shapiq.errors import (
 )
 from shapiq.explainers import (
     Approximator,
+    Estimate,
     ExactExplainer,
     Explainer,
     PermutationSampling,
@@ -133,6 +134,7 @@ __all__ = [
     "DenseCoalitionArray",
     "DenseExplanationArray",
     "EmptyState",
+    "Estimate",
     "ExactExplainer",
     "Explainer",
     "ExplanationArray",

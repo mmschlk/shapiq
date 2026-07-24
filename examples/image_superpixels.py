@@ -123,14 +123,13 @@ if __name__ == "__main__":
 
     print("\n=== C: sampled faithful interactions on the CNN ===")
     exact_fsii = ExactExplainer(cnn_game(256), FSII(order=2)).explain()
-    approximator = Regression(cnn_game(256), FSII(order=2), random_state=0, deduplicate=True)
-    approximator = approximator.sample(approximator.min_budget + 120)
-    estimate = approximator.explain()
+    policy = Regression(cnn_game(256), FSII(order=2), random_state=0, deduplicate=True)
+    estimate = policy.estimate(policy.min_budget + 120)
     pairs = list(combinations(range(N_PLAYERS), 2))
-    errors = jnp.stack([jnp.abs(estimate(pair) - exact_fsii(pair)) for pair in pairs])
+    errors = jnp.stack([jnp.abs(estimate[pair] - exact_fsii(pair)) for pair in pairs])
     top = int(jnp.argmax(jnp.abs(jnp.stack([exact_fsii(pair) for pair in pairs]))))
     print(
-        f"after {approximator.state.n_samples} stored evaluations | "
+        f"after {estimate.evidence.n_samples} stored evaluations | "
         f"max pair error {float(jnp.max(errors)):.4f} | "
         f"strongest exact pair {pairs[top]} at {float(exact_fsii(pairs[top])):+0.4f}"
     )

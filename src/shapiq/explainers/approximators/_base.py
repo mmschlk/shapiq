@@ -145,7 +145,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             f"spent={self.spent!r}, deduplicate={self.deduplicate!r})"
         )
 
-    def sample(self, budget: int) -> Self:
+    def _grow(self, budget: int) -> Self:
         """Sample and evaluate additional coalitions, deduplicating if enabled.
 
         Budgets are spent in whole units — the seed block once, then
@@ -390,7 +390,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
                 else 0
             ),
         )
-        return self._as_estimate(worker.sample(budget))
+        return self._as_estimate(worker._grow(budget))  # noqa: SLF001 - the loop behind the verb
 
     def at_evidence(self, evidence: ApproximationState, bank: int | None = None) -> Estimate:
         """Return the estimate a policy derives from given evidence.
@@ -406,44 +406,22 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
 
     def _as_estimate(self, worker: Approximator) -> Estimate:
         view: ExplanationArray[Array] | None
+        shortfall: InsufficientSamplesError | None = None
         try:
             view = worker.explain()
-        except InsufficientSamplesError:
+        except InsufficientSamplesError as error:
             view = None
+            shortfall = error
         return Estimate(
             evidence=worker.state,
             bank=worker.bank,
             n_players=self.game.n_players,
             view=view,
             deduplicated=self.deduplicate,
+            shortfall=shortfall,
             target_shape=tuple(self.game.target_shape),
             value_shape=tuple(self.game.value_shape),
         )
-
-    def approximate(self, budget: int) -> ExplanationArray[Array]:
-        """Sample a budget and return explanations."""
-        return self.sample(budget).explain()
-
-    def rollback(self, steps: int = 1) -> Self:
-        """Return a previous approximator.
-
-        Samplers are stateless, so rolling back only rewinds the evidence
-        state and the derived counters; the checkpoint restores the banked
-        remainder, so rolling back and resampling the same budgets replays
-        the same evidence.
-        """
-        rolled = self.state.rollback(steps)
-        return self._at_state(rolled)  # rollback(0) returns this approximator itself
-
-    def history(
-        self,
-        *,
-        reverse: bool = False,
-        include_self: bool = True,
-    ) -> list[Self]:
-        """Return value-equivalent approximator history."""
-        states = self.state.history(reverse=reverse, include_self=include_self)
-        return [self._at_state(state) for state in states]
 
     def _at_state(self, state: ApproximationState) -> Self:
         """Return this approximator rewound to a historical state.
@@ -483,9 +461,9 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
     def _require_no_evidence_yet(self) -> NoReturn:
         """Raise the standard error for explaining without any evidence."""
         msg = (
-            f"no samples yet: sample at least {self.min_budget} evaluations first; "
-            "note that sample() returns a new approximator: "
-            "`approximator = approximator.sample(budget)`"
+            f"no evidence yet: estimate with at least {self.min_budget} evaluations first; "
+            "note that policies are frozen and return the estimate: "
+            "`estimate = policy.estimate(budget)`"
         )
         raise InsufficientSamplesError(msg)
 

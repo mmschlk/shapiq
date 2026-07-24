@@ -95,8 +95,8 @@ def test_deduplicated_sampling_multiplicities_are_visible():
     game = CallableGame(fn=fn, n_players=N_PLAYERS)
     budget = 20
     approximator = Regression(game, SV(), random_state=0, share_samples=True, deduplicate=True)
-    approximator = approximator.sample(budget)
-    state = approximator.state
+    estimate = approximator.estimate(budget)
+    state = estimate.evidence
     assert isinstance(state, SamplingState)
     view = state.unique()
     # with deduplication every spent evaluation bought one distinct coalition,

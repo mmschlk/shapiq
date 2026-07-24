@@ -84,9 +84,9 @@ def test_short_weight_vectors_are_rejected_instead_of_clamped():
 def test_identification_hint_adapts_to_deduplication():
     game = additive_game()
     with pytest.raises(InsufficientSamplesError, match="deduplicate=True"):
-        Regression(game, FSII(order=2), random_state=0).sample(2 + 6).explain()
+        Regression(game, FSII(order=2), random_state=0).estimate(2 + 6)[(0,)]
     with pytest.raises(InsufficientSamplesError, match="retry") as caught:
-        Regression(game, FSII(order=2), random_state=0, deduplicate=True).sample(2 + 6).explain()
+        Regression(game, FSII(order=2), random_state=0, deduplicate=True).estimate(2 + 6)[(0,)]
     assert "deduplicate=True" not in str(caught.value)
 
 

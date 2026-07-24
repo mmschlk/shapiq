@@ -13,6 +13,7 @@ from shapiq import (
     SV,
     CallableGame,
     DenseExplanationArray,
+    Estimate,
     ExactExplainer,
     PermutationSampling,
     Regression,
@@ -59,8 +60,9 @@ def vector_game():
     )
 
 
-def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-2)
+def order_one(source):
+    read = source.__getitem__ if isinstance(source, Estimate) else source
+    return jnp.stack([read((player,)) for player in range(N_PLAYERS)], axis=-2)
 
 
 def test_exact_vector_values_match_per_component_scalar_runs():
@@ -96,85 +98,73 @@ def test_exact_vector_fsii_matches_per_component_scalar_runs():
 
 def test_sampled_vector_values_match_per_component_scalar_runs():
     budget = 2 + 20 * (N_PLAYERS - 1)
-    vector = PermutationSampling(vector_game(), SV(), random_state=3).sample(budget).explain()
-    quadratic = (
-        PermutationSampling(scalar_game(quadratic_from_masks), SV(), random_state=3)
-        .sample(budget)
-        .explain()
-    )
-    cubic = (
-        PermutationSampling(scalar_game(cubic_from_masks), SV(), random_state=3)
-        .sample(budget)
-        .explain()
+    vector = PermutationSampling(vector_game(), SV(), random_state=3).estimate(budget)
+    quadratic = PermutationSampling(
+        scalar_game(quadratic_from_masks), SV(), random_state=3
+    ).estimate(budget)
+    cubic = PermutationSampling(scalar_game(cubic_from_masks), SV(), random_state=3).estimate(
+        budget,
     )
     for player in range(N_PLAYERS):
-        assert jnp.allclose(vector((player,))[0], quadratic((player,)), atol=1e-6)
-        assert jnp.allclose(vector((player,))[1], cubic((player,)), atol=1e-6)
+        assert jnp.allclose(vector[(player,)][0], quadratic[(player,)], atol=1e-6)
+        assert jnp.allclose(vector[(player,)][1], cubic[(player,)], atol=1e-6)
 
 
 def test_sampled_vector_values_are_efficient_per_component():
     grand = stacked_from_masks(jnp.ones(N_PLAYERS, dtype=jnp.float32))
     empty = stacked_from_masks(jnp.zeros(N_PLAYERS, dtype=jnp.float32))
-    approximator = PermutationSampling(vector_game(), SV(), random_state=0)
-    explanation = approximator.sample(2 + 3 * (N_PLAYERS - 1)).explain()
-    totals = jnp.sum(order_one(explanation), axis=-2)
+    policy = PermutationSampling(vector_game(), SV(), random_state=0)
+    estimate = policy.estimate(2 + 3 * (N_PLAYERS - 1))
+    totals = jnp.sum(order_one(estimate), axis=-2)
     assert totals.shape == (2,)
     assert jnp.allclose(totals, grand - empty, atol=1e-5)
-    assert jnp.allclose(explanation.baseline, empty, atol=1e-6)
+    assert jnp.allclose(estimate.view.baseline, empty, atol=1e-6)
 
 
 def test_regression_fsii_vector_values_match_per_component_scalar_runs():
     budget = KERNEL_SEEDS + 24
-    vector = (
-        Regression(vector_game(), FSII(order=2), random_state=0, deduplicate=True)
-        .sample(budget)
-        .explain()
-    )
-    quadratic = (
-        Regression(
-            scalar_game(quadratic_from_masks), FSII(order=2), random_state=0, deduplicate=True
-        )
-        .sample(budget)
-        .explain()
-    )
-    cubic = (
-        Regression(scalar_game(cubic_from_masks), FSII(order=2), random_state=0, deduplicate=True)
-        .sample(budget)
-        .explain()
-    )
+    vector = Regression(
+        vector_game(), FSII(order=2), random_state=0, deduplicate=True
+    ).estimate(budget)
+    quadratic = Regression(
+        scalar_game(quadratic_from_masks), FSII(order=2), random_state=0, deduplicate=True
+    ).estimate(budget)
+    cubic = Regression(
+        scalar_game(cubic_from_masks), FSII(order=2), random_state=0, deduplicate=True
+    ).estimate(budget)
     for pair in combinations(range(N_PLAYERS), 2):
-        assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-5)
-        assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-5)
+        assert jnp.allclose(vector[pair][0], quadratic[pair], atol=1e-5)
+        assert jnp.allclose(vector[pair][1], cubic[pair], atol=1e-5)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(vector((player,))[0], quadratic((player,)), atol=1e-5)
+        assert jnp.allclose(vector[(player,)][0], quadratic[(player,)], atol=1e-5)
 
 
 def test_partial_vector_walk_budgets_are_banked():
     def make():
         return PermutationSampling(vector_game(), SV(), random_state=5)
 
-    complete = make().sample(2 + 4 * (N_PLAYERS - 1))
-    with_bank = make().sample(2 + 4 * (N_PLAYERS - 1) + 1)
+    complete = make().estimate(2 + 4 * (N_PLAYERS - 1))
+    with_bank = make().estimate(2 + 4 * (N_PLAYERS - 1) + 1)
     assert with_bank.bank == 1
-    assert with_bank.state.n_samples == complete.state.n_samples
+    assert with_bank.evidence.n_samples == complete.evidence.n_samples
     assert jnp.allclose(
-        order_one(with_bank.explain()),
-        order_one(complete.explain()),
+        order_one(with_bank),
+        order_one(complete),
         atol=1e-6,
     )
 
 
 def test_vector_history_slices_evidence_states():
-    approximator = PermutationSampling(vector_game(), SV(), random_state=1)
-    approximator = approximator.sample(2 + (N_PLAYERS - 1)).sample(N_PLAYERS - 1)
-    states = approximator.history()
-    assert [state.state.n_samples for state in states] == [
+    policy = PermutationSampling(vector_game(), SV(), random_state=1)
+    estimate = policy.refine(policy.estimate(2 + (N_PLAYERS - 1)), N_PLAYERS - 1)
+    states = estimate.evidence.history()
+    assert [state.n_samples for state in states] == [
         2 + (N_PLAYERS - 1),
         2 + 2 * (N_PLAYERS - 1),
     ]
-    rolled = approximator.rollback()
+    rolled = policy.at_evidence(estimate.evidence.rollback(1))
     # canonical state layout: value axes leading, sample axis last
-    assert jnp.asarray(rolled.state.values).shape == (2, 2 + (N_PLAYERS - 1))
+    assert jnp.asarray(rolled.evidence.values).shape == (2, 2 + (N_PLAYERS - 1))
 
 
 def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
@@ -183,7 +173,7 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
         n_players=N_PLAYERS,
     )
     with pytest.raises(ValueError, match="declare value_shape"):
-        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).sample(16)
+        PermutationSampling(scalar_declared_vector_output, SV(), random_state=0).estimate(16)
     vector_declared_scalar_output = CallableGame(
         fn=lambda c: quadratic_from_masks(jnp.asarray(c.to_dense(), dtype=jnp.float32)),
         n_players=N_PLAYERS,

@@ -76,16 +76,15 @@ if __name__ == "__main__":
     exact_values = jnp.stack([exact((player,)) for player in range(N_PLAYERS)])
     print(f"exact SV ({2**N_PLAYERS} evaluations): {exact_values.round(3)}")
 
-    approximator = PermutationSampling(game, SV(), random_state=0)
+    policy = PermutationSampling(game, SV(), random_state=0)
     payout = float(jnp.sum(exact_values))
+    running = policy.estimate(0)
     for budget in (9, 54, 700, 2000):
-        approximator = approximator.sample(budget)
-        estimate = jnp.stack(
-            [approximator.explain()((player,)) for player in range(N_PLAYERS)],
-        )
+        running = policy.refine(running, budget)
+        estimate = jnp.stack([running[(player,)] for player in range(N_PLAYERS)])
         print(
-            f"after +{budget:>4} evals | stored: {approximator.state.n_samples:>4}"
-            f" | banked: {approximator.bank}"
+            f"after +{budget:>4} evals | stored: {running.evidence.n_samples:>4}"
+            f" | banked: {running.bank}"
             f" | max error: {jnp.max(jnp.abs(estimate - exact_values)):.4f}"
             f" | efficiency gap: {jnp.abs(jnp.sum(estimate) - payout):.2e}"
         )

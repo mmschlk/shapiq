@@ -1,4 +1,4 @@
-"""Playground for the permutation-sampling approximators.
+"""Playground for the permutation-sampling policies.
 
 Run with:
     uv run python examples/permutation_sampling.py
@@ -6,8 +6,9 @@ Run with:
 The game is a small quadratic cooperative game with known ground truth:
     v(S) = sum_{i in S} w_i + sum_{i<j in S} M_ij
 so the exact Shapley values are w_i + 0.5 * sum_j M_ij and the exact
-pairwise SII values are exactly M_ij. Tweak the constants, budgets, and
-keys below and watch what happens.
+pairwise SII values are exactly M_ij. Policies are frozen; every verb
+returns an inert estimate — a game with provenance. Tweak the constants,
+budgets, and keys below and watch what happens.
 """
 
 import jax.numpy as jnp
@@ -42,54 +43,57 @@ if __name__ == "__main__":
 
     game = CallableGame(fn=game_value, n_players=N_PLAYERS)
 
-    def order_one(explanation) -> Array:
-        return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)])
+    def order_one(estimate) -> Array:
+        return jnp.stack([estimate[(player,)] for player in range(N_PLAYERS)])
 
     print("=== Shapley values via permutation walks ===")
-    approximator = PermutationSampling(game, SV(), random_state=0)
+    policy = PermutationSampling(game, SV(), random_state=0)
     total_payout = float(jnp.sum(EXACT_SV))  # v(N) - v(empty)
-    print(f"walk length: {approximator.unit_rows} evaluations per walk")
-    print(f"seed samples (paid from the first budget): {approximator.n_seed_samples}")
+    print(f"walk length: {policy.unit_rows} evaluations per walk")
+    print(f"seed samples (paid from the first budget): {policy.n_seed_samples}")
     print(f"exact SV: {EXACT_SV}")
+    estimate = policy.estimate(0)
     for budget in (6, 9, 51, 400):
-        approximator = approximator.sample(budget)
-        estimate = order_one(approximator.explain())
+        estimate = policy.refine(estimate, budget)
+        values = order_one(estimate)
         print(
-            f"after +{budget:>4} evals | stored: {approximator.state.n_samples:>4}"
-            f" | banked: {approximator.bank}"
-            f" | max error: {jnp.max(jnp.abs(estimate - EXACT_SV)):.4f}"
-            f" | efficiency gap: {jnp.abs(jnp.sum(estimate) - total_payout):.2e}"
+            f"after +{budget:>4} evals | stored: {estimate.evidence.n_samples:>4}"
+            f" | banked: {estimate.bank}"
+            f" | max error: {jnp.max(jnp.abs(values - EXACT_SV)):.4f}"
+            f" | efficiency gap: {jnp.abs(jnp.sum(values) - total_payout):.2e}"
         )
 
     print()
     print("=== whole-unit spending banks the remainder; splits do not matter ===")
-    whole = PermutationSampling(game, SV(), random_state=0).sample(100)
-    split = PermutationSampling(game, SV(), random_state=0).sample(7).sample(13).sample(80)
-    print(f"states equal: {split.state == whole.state}")
+    whole = PermutationSampling(game, SV(), random_state=0).estimate(100)
+    split_policy = PermutationSampling(game, SV(), random_state=0)
+    split = split_policy.refine(split_policy.refine(split_policy.estimate(7), 13), 80)
+    print(f"evidence equal: {split.evidence == whole.evidence}")
 
     print()
     print("=== history: watch the estimate converge ===")
-    approximator = PermutationSampling(game, SV(), random_state=3)
-    for _ in range(5):
-        approximator = approximator.sample(40)
-    for step, past in enumerate(approximator.history()):
+    policy = PermutationSampling(game, SV(), random_state=3)
+    estimate = policy.estimate(40)
+    for _ in range(4):
+        estimate = policy.refine(estimate, 40)
+    for step, state in enumerate(estimate.evidence.history()):
+        past = policy.at_evidence(state)
         try:
-            report = f"max error: {jnp.max(jnp.abs(order_one(past.explain()) - EXACT_SV)):.4f}"
+            report = f"max error: {jnp.max(jnp.abs(order_one(past) - EXACT_SV)):.4f}"
         except InsufficientSamplesError:
             report = "no completed walk yet"
-        print(f"state {step} | samples: {past.state.n_samples:>4} | {report}")
+        print(f"state {step} | samples: {state.n_samples:>4} | {report}")
 
     print()
     print("=== pairwise Shapley interactions (SII) ===")
-    approximator = PermutationSampling(game, SII(), random_state=0)
-    print(f"walk length: {approximator.unit_rows} evaluations per walk")
-    approximator = approximator.sample(100 * approximator.unit_rows)
-    explanation = approximator.explain()
+    policy = PermutationSampling(game, SII(), random_state=0)
+    print(f"walk length: {policy.unit_rows} evaluations per walk")
+    estimate = policy.estimate(100 * policy.unit_rows)
     print("pair : estimate | exact")
     for left in range(N_PLAYERS):
         for right in range(left + 1, N_PLAYERS):
-            estimate = float(explanation((left, right)))
-            print(f"({left}, {right}) : {estimate:+.4f} | {float(PAIRS[left, right]):+.4f}")
+            value = float(estimate[(left, right)])
+            print(f"({left}, {right}) : {value:+.4f} | {float(PAIRS[left, right]):+.4f}")
 
     print()
     print("=== deduplication: never pay for the same coalition twice ===")
@@ -97,24 +101,22 @@ if __name__ == "__main__":
     # values and their walks are free evidence. with only 2**5 = 32 coalitions in
     # this game, duplicates pile up fast. (a budget near 2**n stalls with a
     # SamplingStallWarning once no novel coalitions remain.)
-    approximator = PermutationSampling(game, SV(), random_state=0, deduplicate=True).sample(25)
+    estimate = PermutationSampling(game, SV(), random_state=0, deduplicate=True).estimate(25)
     print("budget spent on novel evaluations: 25")
-    print(f"raw samples stored (walks incl. free duplicates): {approximator.state.n_samples}")
-    print(f"max error: {jnp.max(jnp.abs(order_one(approximator.explain()) - EXACT_SV)):.4f}")
+    print(f"raw samples stored (walks incl. free duplicates): {estimate.evidence.n_samples}")
+    print(f"max error: {jnp.max(jnp.abs(order_one(estimate) - EXACT_SV)):.4f}")
 
     print()
     print("=== Shapley-Taylor interactions (STII) ===")
     # lower orders are exact discrete derivatives at the empty coalition (here: the
     # raw weights), and every walk samples every top-order pair once, so a single
     # walk already covers all pairs -- for this quadratic game even exactly
-    approximator = PermutationSampling(game, STII(order=2), random_state=0)
-    print(f"walk length: {approximator.unit_rows} evaluations per walk")
-    explanation = approximator.sample(
-        approximator.n_seed_samples + approximator.unit_rows,
-    ).explain()
-    print(f"order 1 (exact, = weights): {order_one(explanation)}")
+    policy = PermutationSampling(game, STII(order=2), random_state=0)
+    print(f"walk length: {policy.unit_rows} evaluations per walk")
+    estimate = policy.estimate(policy.n_seed_samples + policy.unit_rows)
+    print(f"order 1 (exact, = weights): {order_one(estimate)}")
     print("pair : estimate | exact")
     for left in range(N_PLAYERS):
         for right in range(left + 1, N_PLAYERS):
-            estimate = float(explanation((left, right)))
-            print(f"({left}, {right}) : {estimate:+.4f} | {float(PAIRS[left, right]):+.4f}")
+            value = float(estimate[(left, right)])
+            print(f"({left}, {right}) : {value:+.4f} | {float(PAIRS[left, right]):+.4f}")

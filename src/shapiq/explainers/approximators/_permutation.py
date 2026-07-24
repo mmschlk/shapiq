@@ -65,7 +65,7 @@ class PermutationSampling(Approximator):
 
     Example:
         >>> approximator = PermutationSampling(game, SII(order=2), random_state=0)
-        >>> explanation = approximator.sample(500).explain()
+        >>> estimate = approximator.estimate(500)
         >>> pair_interaction = explanation((0, 1))
     """
 
@@ -159,7 +159,7 @@ class PermutationSampling(Approximator):
         if self.state.n_samples < n_seeds or n_walks < 1:
             msg = (
                 "explaining requires at least one completed permutation walk: "
-                f"sample at least {self.min_budget} evaluations in total "
+                f"estimate with at least {self.min_budget} evaluations in total "
                 f"(currently {self.state.n_samples} stored, {self.bank} banked)"
             )
             raise InsufficientSamplesError(msg)
@@ -519,7 +519,7 @@ def _explain_interactions(
                     f"an order-{order} SII explanation needs at least one sample "
                     f"for every interaction of each size up to {order}: "
                     f"{missing} of {int(counts.size)} size-{size} interaction estimates "
-                    f"have no sample yet; sample at least {walks_needed} more completed "
+                    f"have no sample yet; estimate with at least {walks_needed} more completed "
                     f"walks (each walk yields {n_windows} size-{size} window samples, "
                     "and window coverage is random, so more may be needed)"
                 )

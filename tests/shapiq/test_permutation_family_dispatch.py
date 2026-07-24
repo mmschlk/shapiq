@@ -38,8 +38,8 @@ def quadratic_game():
     return CallableGame(fn=fn, n_players=N_PLAYERS)
 
 
-def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+def order_one(estimate):
+    return jnp.stack([estimate[(player,)] for player in range(N_PLAYERS)], axis=-1)
 
 
 def test_the_registry_carries_the_shipped_families_atomically():
@@ -67,12 +67,12 @@ def test_subclasses_inherit_their_parents_family_through_the_mro():
         quadratic_game(),
         MySII(order=2),
         random_state=3,
-    ).sample(budget)
-    reference = PermutationSampling(quadratic_game(), SII(order=2), random_state=3).sample(budget)
-    assert subclassed.state == reference.state  # same walks, bit-identical
+    ).estimate(budget)
+    reference = PermutationSampling(quadratic_game(), SII(order=2), random_state=3).estimate(budget)
+    assert subclassed.evidence == reference.evidence  # same walks, bit-identical
     assert jnp.allclose(
-        order_one(subclassed.explain()),
-        order_one(reference.explain()),
+        order_one(subclassed),
+        order_one(reference),
         atol=1e-6,
     )
 
@@ -99,12 +99,11 @@ def _mirrored_family(index: _MirroredSV) -> PermutationFamily:
 
 def test_registered_third_party_families_extend_the_method():
     budget = 2 + 12 * (N_PLAYERS - 1)
-    mirrored = PermutationSampling(quadratic_game(), _MirroredSV(), random_state=3).sample(budget)
-    reference = PermutationSampling(quadratic_game(), SV(), random_state=3).sample(budget)
-    assert mirrored.state == reference.state  # same walks, bit-identical
-    explanation = mirrored.explain()
-    assert explanation.interaction_index == "MirroredSV"
-    assert jnp.allclose(order_one(explanation), order_one(reference.explain()), atol=1e-6)
+    mirrored = PermutationSampling(quadratic_game(), _MirroredSV(), random_state=3).estimate(budget)
+    reference = PermutationSampling(quadratic_game(), SV(), random_state=3).estimate(budget)
+    assert mirrored.evidence == reference.evidence  # same walks, bit-identical
+    assert mirrored.index == _MirroredSV()
+    assert jnp.allclose(order_one(mirrored), order_one(reference), atol=1e-6)
     # the teaching error now names the registered family too
     with pytest.raises(TypeError, match="_MirroredSV"):
         PermutationSampling(quadratic_game(), FBII(order=2))

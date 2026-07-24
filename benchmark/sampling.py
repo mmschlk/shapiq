@@ -91,31 +91,32 @@ def end_to_end_cases(budget: int) -> dict[str, Callable[[], object]]:
 
     def regression(*, deduplicate: bool) -> Callable[[], object]:
         def run() -> object:
-            approximator = Regression(game, SV(), random_state=0, deduplicate=deduplicate)
-            evolved = approximator.sample(budget)
-            return jax.block_until_ready(jnp.asarray(evolved.state.values))  # type: ignore[attr-defined]
+            policy = Regression(game, SV(), random_state=0, deduplicate=deduplicate)
+            estimate = policy.estimate(budget)
+            return jax.block_until_ready(jnp.asarray(estimate.evidence.values))  # type: ignore[attr-defined]
 
         return run
 
     def permutation(*, deduplicate: bool) -> Callable[[], object]:
         def run() -> object:
-            approximator = PermutationSampling(
+            policy = PermutationSampling(
                 game,
                 SII(order=2),
                 random_state=0,
                 deduplicate=deduplicate,
             )
-            evolved = approximator.sample(budget)
-            return jax.block_until_ready(jnp.asarray(evolved.state.values))  # type: ignore[attr-defined]
+            estimate = policy.estimate(budget)
+            return jax.block_until_ready(jnp.asarray(estimate.evidence.values))  # type: ignore[attr-defined]
 
         return run
 
     def split_regression(calls: int) -> Callable[[], object]:
         def run() -> object:
-            approximator = Regression(game, SV(), random_state=0, deduplicate=True)
-            for _ in range(calls):
-                approximator = approximator.sample(budget // calls)
-            return jax.block_until_ready(jnp.asarray(approximator.state.values))  # type: ignore[attr-defined]
+            policy = Regression(game, SV(), random_state=0, deduplicate=True)
+            estimate = policy.estimate(budget // calls)
+            for _ in range(calls - 1):
+                estimate = policy.refine(estimate, budget // calls)
+            return jax.block_until_ready(jnp.asarray(estimate.evidence.values))  # type: ignore[attr-defined]
 
         return run
 

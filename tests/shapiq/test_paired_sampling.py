@@ -11,6 +11,7 @@ from shapiq import (
     SV,
     BanzhafKernelSampler,
     CallableGame,
+    Estimate,
     ExactExplainer,
     PairedSampler,
     PermutationSampling,
@@ -41,8 +42,9 @@ def quadratic_game():
     )
 
 
-def order_one(explanation):
-    return jnp.stack([explanation((player,)) for player in range(N_PLAYERS)], axis=-1)
+def order_one(source):
+    read = source.__getitem__ if isinstance(source, Estimate) else source
+    return jnp.stack([read((player,)) for player in range(N_PLAYERS)], axis=-1)
 
 
 @pytest.mark.parametrize("sampler_type", [ShapleyKernelSampler, BanzhafKernelSampler])
@@ -72,12 +74,12 @@ def test_pairing_twice_is_rejected_with_a_teaching_error():
 
 
 def test_paired_permutation_units_walk_the_reversed_permutation():
-    approximator = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=2)
+    policy = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=2)
     walk = N_PLAYERS - 1
-    assert approximator.unit_rows == 2 * walk
-    assert approximator.sampler.draws_per_unit == 2
-    evolved = approximator.sample(approximator.min_budget)
-    masks = jnp.asarray(evolved.state.coalitions.to_dense())
+    assert policy.unit_rows == 2 * walk
+    assert policy.sampler.draws_per_unit == 2
+    evolved = policy.estimate(policy.min_budget)
+    masks = jnp.asarray(evolved.evidence.coalitions.to_dense())
     chain = masks[2 : 2 + walk]
     antithetic = masks[2 + walk : 2 + 2 * walk]
     # prefixes of the reversed permutation are reversed complements of the chain
@@ -86,31 +88,31 @@ def test_paired_permutation_units_walk_the_reversed_permutation():
 
 
 def test_paired_shapley_value_walks_stay_exactly_efficient():
-    approximator = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=0)
-    explanation = approximator.sample(approximator.min_budget).explain()
+    policy = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=0)
+    explanation = policy.estimate(policy.min_budget)
     grand = quadratic_from_masks(jnp.ones(N_PLAYERS, dtype=jnp.float32))
     empty = quadratic_from_masks(jnp.zeros(N_PLAYERS, dtype=jnp.float32))
     assert jnp.allclose(jnp.sum(order_one(explanation)), grand - empty, atol=1e-4)
 
 
 def test_paired_streams_are_split_invariant():
-    whole = PermutationSampling(quadratic_game(), SII(order=2), paired=True, random_state=5)
-    split = PermutationSampling(quadratic_game(), SII(order=2), paired=True, random_state=5)
-    budget = whole.min_budget + 7
-    whole = whole.sample(budget)
-    split = split.sample(3).sample(budget - 10).sample(7)
-    assert whole.state == split.state
+    whole_policy = PermutationSampling(quadratic_game(), SII(order=2), paired=True, random_state=5)
+    split_policy = PermutationSampling(quadratic_game(), SII(order=2), paired=True, random_state=5)
+    budget = whole_policy.min_budget + 7
+    whole = whole_policy.estimate(budget)
+    split = split_policy.refine(split_policy.refine(split_policy.estimate(3), budget - 10), 7)
+    assert whole.evidence == split.evidence
 
 
 def test_paired_permutation_sampling_matches_the_exact_values():
     exact = order_one(ExactExplainer(quadratic_game(), SV()).explain())
-    approximator = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=7)
-    estimate = order_one(approximator.sample(2 + 1500 * (N_PLAYERS - 1)).explain())
+    policy = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=7)
+    estimate = order_one(policy.estimate(2 + 1500 * (N_PLAYERS - 1)))
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_paired_taylor_walks_explain():
-    approximator = PermutationSampling(quadratic_game(), STII(order=2), paired=True, random_state=1)
-    explanation = approximator.sample(approximator.min_budget).explain()
-    assert explanation.order == 2
-    assert explanation.interaction_index == "STII"
+    policy = PermutationSampling(quadratic_game(), STII(order=2), paired=True, random_state=1)
+    explanation = policy.estimate(policy.min_budget)
+    assert explanation.view.order == 2
+    assert explanation.index == STII(order=2)

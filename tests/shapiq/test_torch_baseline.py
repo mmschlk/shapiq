@@ -72,9 +72,9 @@ def test_sampled_masked_model_matches_the_exact_explainer():
     game, _ = linear_vector_game()
     exact = ExactExplainer(game, SV()).explain()
     approximator = PermutationSampling(game, SV(), random_state=0)
-    estimate = approximator.sample(approximator.min_budget).explain()
+    estimate = approximator.estimate(approximator.min_budget)
     for player in range(N_PLAYERS):
-        assert jnp.allclose(estimate((player,)), exact((player,)), atol=1e-5)
+        assert jnp.allclose(estimate[(player,)], exact((player,)), atol=1e-5)
 
 
 def test_scalar_link_reduces_predictions():

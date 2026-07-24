@@ -46,11 +46,23 @@ class Estimate:
     deduplicated: bool = False
     """Whether the evidence was gathered deduplicating (a provenance fact)."""
 
+    shortfall: InsufficientSamplesError | None = None
+    """The family's coverage error when evidence is not enough for a view."""
+
     target_shape: tuple[int, ...] = ()
     value_shape: tuple[int, ...] = ()
 
     def __getitem__(self, interaction: Collection[int]) -> Array:
         """Read one coefficient (the coefficient plane)."""
+        if isinstance(interaction, int):
+            msg = (
+                f"interactions are player collections: read player {interaction} "
+                f"with estimate[({interaction},)]"
+            )
+            raise TypeError(msg)
+        # the empty interaction keeps each family's own teaching error for
+        # now; the surrogate's empty coefficient becomes a real slot when
+        # explanations dissolve into parametric games (arc 3)
         return self._require_view()(tuple(interaction))
 
     def __call__(self, coalitions: CoalitionArray) -> Array:
@@ -84,6 +96,11 @@ class Estimate:
         return ParametricGame("moebius", coefficients, self.n_players)
 
     @property
+    def index(self) -> object:
+        """Return the interaction index this estimate was made under."""
+        return self._require_view().index
+
+    @property
     def spent(self) -> int:
         """Return evaluations spent, derived from the evidence."""
         if not isinstance(self.evidence, SamplingState):
@@ -94,6 +111,8 @@ class Estimate:
 
     def _require_view(self) -> ExplanationArray[Array]:
         if self.view is None:
+            if self.shortfall is not None:  # the family said exactly what is missing
+                raise self.shortfall
             msg = (
                 "no estimate yet: this carry holds banked budget but not "
                 "enough evidence; refine it with a larger budget first"

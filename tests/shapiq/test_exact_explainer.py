@@ -163,7 +163,8 @@ def test_exact_shapley_values_are_efficient():
 def test_exact_explainer_agrees_with_permutation_sampling():
     exact = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).explain())
     sampled = PermutationSampling(game_from(quadratic_from_masks), SV(), random_state=7)
-    estimate = order_one(sampled.sample(2 + 3000 * (N_PLAYERS - 1)).explain())
+    carry = sampled.estimate(2 + 3000 * (N_PLAYERS - 1))
+    estimate = jnp.stack([carry[(player,)] for player in range(N_PLAYERS)], axis=-1)
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 

@@ -73,10 +73,10 @@ def test_sampling_explainers_consume_the_torch_game():
 
     game = TorchCallableGame(fn=scorer, n_players=N_PLAYERS)
     approximator = Regression(game, SV(), random_state=0, deduplicate=True)
-    explanation = approximator.sample(SEEDS_AND_ROOM := 16).explain()
+    explanation = approximator.estimate(SEEDS_AND_ROOM := 16)
     assert approximator.min_budget <= SEEDS_AND_ROOM
     for player, expected in enumerate(WEIGHTS):
-        assert jnp.allclose(explanation((player,)), expected, atol=1e-4)
+        assert jnp.allclose(explanation[(player,)], expected, atol=1e-4)
 
 
 def test_signatures_align_with_the_base_game():
