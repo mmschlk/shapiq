@@ -10,6 +10,8 @@ import pytest
 
 from shapiq import (
     CallableGame,
+    FourierBasis,
+    MoebiusBasis,
     banzhaf_values,
     fidelity,
     project,
@@ -19,8 +21,7 @@ from shapiq import (
     uniform_measure,
 )
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.games import all_coalitions
-from shapiq.games._parametric import interaction_terms
+from shapiq.games import all_coalitions, interaction_terms
 
 N_PLAYERS = 8
 
@@ -75,7 +76,7 @@ def test_fidelity_climbs_the_order_dial_to_exactness():
 
 def test_read_outs_match_the_full_table_oracles():
     game = generic_game(seed=11)
-    exact = to_basis(game, "moebius")
+    exact = to_basis(game, MoebiusBasis())
     masks = all_coalitions(N_PLAYERS)
     table = np.asarray(game(DenseCoalitionArray(jnp.asarray(masks))), dtype=np.float64)
     row_weights = 1 << np.arange(N_PLAYERS)
@@ -100,6 +101,6 @@ def test_read_outs_match_the_full_table_oracles():
     assert np.allclose(shapley_values(exact), sv_oracle, atol=1e-6)
     assert np.allclose(banzhaf_values(exact), bv_oracle, atol=1e-6)
     # the Fourier bridge: Banzhaf values are twice the degree-one coefficients
-    fourier = to_basis(game, "fourier")
+    fourier = to_basis(game, FourierBasis())
     fourier_singles = np.array([2.0 * fourier[(i,)] for i in range(N_PLAYERS)])
     assert np.allclose(fourier_singles, bv_oracle, atol=1e-6)

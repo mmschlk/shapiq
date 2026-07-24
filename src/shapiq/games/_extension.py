@@ -22,15 +22,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.games._projection import _require_moebius
+from shapiq.games._projection import _scalar_moebius_coefficients
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.games._parametric import ParametricGame
+    from shapiq.games._basis import BasisGame
 
 
-def multilinear_diagonal_gradient(game: ParametricGame, t: float) -> np.ndarray:
+def multilinear_diagonal_gradient(game: BasisGame, t: float) -> np.ndarray:
     """Gradient of the multilinear extension on the diagonal ``z = t * ones``.
 
     ``dg/dz_i = sum over T containing i of m(T) * t ** (|T| - 1)`` — the
@@ -38,11 +38,11 @@ def multilinear_diagonal_gradient(game: ParametricGame, t: float) -> np.ndarray:
 
     Raises:
         ValueError: If the game is not in the moebius basis; convert with
-            ``to_basis(game, "moebius")`` first.
+            ``to_basis(game, MoebiusBasis())`` first.
     """
-    _require_moebius(game, "multilinear_diagonal_gradient")
+    coefficients = _scalar_moebius_coefficients(game, "multilinear_diagonal_gradient")
     gradient = np.zeros(game.n_players)
-    for term, coefficient in zip(game.terms, game.coefficients, strict=True):
+    for term, coefficient in zip(game.terms, coefficients, strict=True):
         for player in term:
             gradient[player] += coefficient * t ** (len(term) - 1)
     return gradient

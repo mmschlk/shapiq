@@ -29,7 +29,7 @@ from shapiq import (
     uniform_measure,
 )
 from shapiq.coalitions import DenseCoalitionArray
-from shapiq.games._parametric import atom_columns, interaction_terms
+from shapiq.games import MoebiusBasis, interaction_terms
 from shapiq.sampling import EmptyState, SamplingState
 
 N_PLAYERS = 8
@@ -55,7 +55,7 @@ def structured_game(n_players: int = N_PLAYERS) -> CallableGame:
 
 
 def test_owen_integrated_gradients_on_the_multilinear_extension_are_shapley():
-    exact = to_basis(structured_game(), "moebius")
+    exact = to_basis(structured_game(), MoebiusBasis())
     owen = integrated_gradients(
         lambda t: multilinear_diagonal_gradient(exact, t),
         N_PLAYERS,
@@ -65,14 +65,14 @@ def test_owen_integrated_gradients_on_the_multilinear_extension_are_shapley():
 
 
 def test_center_gradient_of_the_multilinear_extension_is_banzhaf():
-    exact = to_basis(structured_game(), "moebius")
+    exact = to_basis(structured_game(), MoebiusBasis())
     center = multilinear_diagonal_gradient(exact, 0.5)
     assert np.allclose(center, banzhaf_values(exact), atol=1e-9)
 
 
 def test_a_different_extension_of_the_same_game_attributes_differently():
     # add a bump vanishing at every vertex: same game, new extension
-    exact = to_basis(structured_game(), "moebius")
+    exact = to_basis(structured_game(), MoebiusBasis())
     bump = 1.2
 
     def bumped(t: float) -> np.ndarray:
@@ -102,7 +102,7 @@ def test_proxyshap_recipe_from_primitives_costs_zero_extra_evaluations():
         return base(coalitions)
 
     game = CallableGame(fn=recording, n_players=n)
-    exact_sv = shapley_values(to_basis(base, "moebius"))
+    exact_sv = shapley_values(to_basis(base, MoebiusBasis()))
 
     policy = Regression(game, SV(), random_state=0, deduplicate=True)
     direct = policy.estimate(160)
@@ -201,7 +201,7 @@ class ToyBED:
         n = self.game.n_players
         terms = interaction_terms(n, self.order)
         masks = np.asarray(evidence.coalitions.to_dense(), dtype=bool)
-        design = np.asarray(atom_columns("moebius", masks, terms, xp=np))
+        design = np.asarray(MoebiusBasis().atoms(masks, terms, xp=np))
         precision = design.T @ design / self.sigma**2 + np.eye(len(terms)) / self.tau**2
         cov = np.linalg.inv(precision)
         mean = cov @ design.T @ np.asarray(evidence.values, dtype=np.float64) / self.sigma**2
@@ -227,7 +227,7 @@ class ToyBED:
 
     def _propose(self, evidence: SamplingState, candidates: np.ndarray) -> int:
         terms, _, cov, sv_map = self._posterior(evidence)
-        design = np.asarray(atom_columns("moebius", candidates, terms, xp=np))
+        design = np.asarray(MoebiusBasis().atoms(candidates, terms, xp=np))
         projected = design @ (sv_map @ cov).T
         denominator = self.sigma**2 + np.einsum("md,de,me->m", design, cov, design)
         return int(np.argmax((projected**2).sum(axis=1) / denominator))
@@ -265,7 +265,7 @@ def test_active_policies_on_the_carry_contract_are_split_invariant():
     assert whole.evidence == split.evidence
     assert np.allclose(sv_posterior(whole), sv_posterior(split), atol=0, rtol=0)
     # rollback and replay: derive-from-evidence makes resume exact
-    exact_truth = shapley_values(to_basis(bed_game(), "moebius"))
+    exact_truth = shapley_values(to_basis(bed_game(), MoebiusBasis()))
     assert np.abs(sv_posterior(whole) - exact_truth).max() < 0.2
     # uncertainty is a capability: posterior variance shrinks with budget
     early = policy.estimate(15)

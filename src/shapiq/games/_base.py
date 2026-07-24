@@ -5,6 +5,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, cast
 
 from shapiq._shape import broadcast_shapes, shape_of
+from shapiq.coalitions import (
+    CoalitionArray as _CoalitionArray,
+    DenseCoalitionArray,
+)
 
 if TYPE_CHECKING:
     from jax import Array
@@ -27,8 +31,12 @@ class Game[ValueT](ABC):
     target_shape: Shape
     value_shape: Shape = ()
 
-    def __call__(self, coalitions: CoalitionArray) -> ValueT:
-        """Evaluate values for coalitions."""
+    def __call__(self, coalitions: CoalitionArray | object) -> ValueT:
+        """Evaluate values for coalitions; dense mask arrays wrap themselves."""
+        if not isinstance(coalitions, _CoalitionArray):
+            import jax.numpy as _jnp  # noqa: PLC0415
+
+            coalitions = DenseCoalitionArray(_jnp.asarray(coalitions, dtype=bool))
         self._validate_coalitions(coalitions)
         values = self._call(coalitions)
         self._validate_values(values, coalitions)

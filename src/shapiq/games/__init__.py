@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from shapiq.games._algebra import SumGame
 from shapiq.games._base import Game, LinkFunction, Model
+from shapiq.games._basis import (
+    Basis,
+    BasisGame,
+    CoMoebiusBasis,
+    FourierBasis,
+    MoebiusBasis,
+    interaction_terms,
+)
 from shapiq.games._callable import CallableGame
 from shapiq.games._extension import (
     integrated_gradients,
@@ -18,7 +26,6 @@ from shapiq.games._measures import (
     soft_shapley_measure,
     uniform_measure,
 )
-from shapiq.games._parametric import ParametricGame
 from shapiq.games._projection import (
     all_coalitions,
     banzhaf_values,
@@ -47,7 +54,11 @@ __all__ = [
     "Measure",
     "Model",
     "ModelMaskedPredictor",
-    "ParametricGame",
+    "Basis",
+    "BasisGame",
+    "CoMoebiusBasis",
+    "FourierBasis",
+    "MoebiusBasis",
     "SumGame",
     "SuperpixelMasker",
     "TokenMasker",
@@ -57,6 +68,7 @@ __all__ = [
     "fit_game",
     "grid_labels",
     "integrated_gradients",
+    "interaction_terms",
     "multilinear_diagonal_gradient",
     "product_measure",
     "project",

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import jax.numpy as jnp
 
 from shapiq.errors import InsufficientSamplesError
-from shapiq.games import ParametricGame
+from shapiq.games import BasisGame, MoebiusBasis
 from shapiq.sampling import ApproximationState, SamplingState
 
 if TYPE_CHECKING:
@@ -74,7 +74,7 @@ class Estimate:
         """Evaluate the estimated surrogate game (the game plane)."""
         return self.as_game()(coalitions)
 
-    def as_game(self) -> ParametricGame:
+    def as_game(self) -> BasisGame:
         """Return the surrogate as a moebius-basis parametric game.
 
         The coefficient view is read as a k-additive game: exact surrogate
@@ -98,7 +98,7 @@ class Estimate:
         coefficients: dict[Collection[int], float] = {(): baseline}
         for interaction in view.iter_interactions():
             coefficients[interaction] = float(jnp.asarray(view(interaction)))
-        return ParametricGame("moebius", coefficients, self.n_players)
+        return BasisGame(MoebiusBasis(), coefficients, self.n_players)
 
     @property
     def index(self) -> object:

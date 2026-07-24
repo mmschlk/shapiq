@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.games._parametric import ParametricGame, atom_columns, interaction_terms
+from shapiq.games._basis import Basis, BasisGame, MoebiusBasis, interaction_terms
 
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
@@ -24,8 +24,8 @@ def fit_game(
     n_players: int,
     *,
     order: int,
-    basis: str = "moebius",
-) -> ParametricGame:
+    basis: Basis | None = None,
+) -> BasisGame:
     """Fit a degree-<= ``order`` parametric game to evaluated coalitions.
 
     Args:
@@ -33,15 +33,16 @@ def fit_game(
         values: The evaluated game values aligned with the masks.
         n_players: Number of players of the fitted game.
         order: Largest interaction size in the fit.
-        basis: The basis to fit in (``"moebius"`` by default).
+        basis: The basis to fit in (moebius by default).
 
     Returns:
         The least-squares parametric game; its coefficients are exact
         when the evidence identifies the truncation.
     """
+    basis = MoebiusBasis() if basis is None else basis
     host_masks = np.asarray(masks, dtype=bool).reshape(-1, n_players)
     host_values = np.asarray(values, dtype=np.float64).reshape(-1)
     terms = interaction_terms(n_players, order)
-    atoms = np.asarray(atom_columns(basis, host_masks, terms, xp=np))
+    atoms = np.asarray(basis.atoms(host_masks, terms, xp=np))
     coefficients, *_ = np.linalg.lstsq(atoms, host_values, rcond=None)
-    return ParametricGame(basis, dict(zip(terms, coefficients, strict=True)), n_players)
+    return BasisGame(basis, dict(zip(terms, coefficients, strict=True)), n_players)

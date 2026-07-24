@@ -25,21 +25,25 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Measure:
-    """A size-symmetric probability measure over the coalition lattice."""
+    """A size-symmetric probability measure over the coalition lattice.
 
-    weight_of_size: np.ndarray  # (n_players + 1,) float64, one coalition each
+    A value: two measures with the same per-size weights compare equal,
+    which is what "projections compose under a shared measure" needs.
+    """
+
+    weight_of_size: tuple[float, ...]  # one coalition of each size
     n_players: int
 
     def row_weights(self, masks: ArrayLike) -> np.ndarray:
         """Return one probability per mask row ``(..., m, n) -> (..., m)``."""
         sizes = np.asarray(masks, dtype=bool).sum(axis=-1)
-        return self.weight_of_size[sizes]
+        return np.asarray(self.weight_of_size, dtype=np.float64)[sizes]
 
 
 def _normalized(raw_of_size: np.ndarray, n_players: int) -> Measure:
     counts = np.array([math.comb(n_players, size) for size in range(n_players + 1)])
     total = float((raw_of_size * counts).sum())
-    return Measure(weight_of_size=raw_of_size / total, n_players=n_players)
+    return Measure(weight_of_size=tuple(raw_of_size / total), n_players=n_players)
 
 
 def uniform_measure(n_players: int) -> Measure:
