@@ -16,7 +16,7 @@ from shapiq.explainers._base import reject_common_index_mistakes
 from shapiq.explainers.approximators._base import Approximator
 from shapiq.interactions import SII, STII, SV
 from shapiq.interactions._ranks import interaction_ranks
-from shapiq.sampling import PairedSampler, PermutationSampler, SamplingState
+from shapiq.sampling import PairedSampler, PermutationSampler, SampledEvidence
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -152,7 +152,7 @@ class PermutationSampling(Approximator):
         # so walks are cut by the walk length, not by the unit rows
         walk_length = self._unit_length
         n_seeds = self.n_seed_samples
-        if not isinstance(self._state, SamplingState):
+        if not isinstance(self._state, SampledEvidence):
             self._require_no_evidence_yet()
         n_walks = (self._state.n_samples - n_seeds) // walk_length
         if self._state.n_samples < n_seeds or n_walks < 1:

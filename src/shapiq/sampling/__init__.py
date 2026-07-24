@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from shapiq.sampling._base import LawfulSampler, Sampler, ShareSamples
+from shapiq.sampling._evidence import Evidence, NoEvidence, SampledEvidence, UniqueView
 from shapiq.sampling._kernel import (
     BanzhafKernelSampler,
     CoalitionSampler,
@@ -12,20 +13,19 @@ from shapiq.sampling._kernel import (
 )
 from shapiq.sampling._pairing import AntitheticDraws, PairedSampler
 from shapiq.sampling._permutation import PermutationSampler
-from shapiq.sampling._state import ApproximationState, EmptyState, SamplingState, UniqueView
 
 __all__ = [
     "AntitheticDraws",
-    "ApproximationState",
+    "Evidence",
     "BanzhafKernelSampler",
     "CoalitionSampler",
-    "EmptyState",
+    "NoEvidence",
     "LawfulSampler",
     "PairedSampler",
     "PermutationSampler",
     "ProductKernelSampler",
     "Sampler",
-    "SamplingState",
+    "SampledEvidence",
     "ShapleyKernelSampler",
     "ShareSamples",
     "SizeKernelSampler",

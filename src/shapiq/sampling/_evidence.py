@@ -40,7 +40,7 @@ class UniqueView(NamedTuple):
     inverse: np.ndarray
 
 
-class ApproximationState:
+class Evidence:
     """Base abstraction for approximator evidence.
 
     History is identity, not a feature: every state answers ``history()``
@@ -73,7 +73,7 @@ class ApproximationState:
 
 
 @dataclass(frozen=True)
-class EmptyState(ApproximationState):
+class NoEvidence(Evidence):
     """Approximation state that holds no evidence yet.
 
     Approximators are constructed with an empty state so that no game
@@ -83,7 +83,7 @@ class EmptyState(ApproximationState):
     """
 
 
-class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
+class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
     """Approximation state storing sampled coalitions and evaluated values.
 
     Values are stored in the canonical internal layout — value axes
@@ -343,12 +343,12 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
         *,
         reverse: bool = False,
         include_self: bool = True,
-    ) -> Sequence[SamplingState[ValueT]]:
+    ) -> Sequence[SampledEvidence[ValueT]]:
         """Return value-equivalent sampling-state history."""
         cuts = self._history_cuts
         if not include_self:
             cuts = cuts[:-1]
-        states: list[SamplingState[ValueT]] = [
+        states: list[SampledEvidence[ValueT]] = [
             self._slice_to(cuts[: index + 1]) for index in range(len(cuts))
         ]
         if reverse:
@@ -357,7 +357,7 @@ class SamplingState[ValueT](ApproximationState):  # noqa: PLW1641
 
     def __eq__(self, other: object) -> bool:
         """Compare current sampling evidence for test/debug use."""
-        if not isinstance(other, SamplingState):
+        if not isinstance(other, SampledEvidence):
             return NotImplemented
         return (
             self.target_shape == other.target_shape
@@ -394,7 +394,7 @@ def _validate_history_steps(steps: int) -> None:
 
 def _require_dense(coalitions: CoalitionArray) -> None:
     if not isinstance(coalitions, DenseCoalitionArray):
-        msg = "only dense coalition storage is supported by SamplingState"
+        msg = "only dense coalition storage is supported by SampledEvidence"
         raise TypeError(msg)
 
 

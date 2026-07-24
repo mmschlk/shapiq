@@ -22,8 +22,8 @@ from shapiq.explainers._faithful import (
     solve_faithful,
 )
 from shapiq.explainers._valueaxes import to_leading
-from shapiq.explainers.approximators._estimate import Estimate, leading_blocks_to_terms
-from shapiq.games import Game
+from shapiq.explainers.approximators._estimate import leading_blocks_to_terms
+from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
 from shapiq.interactions import (
     FBII,
     KADDSHAP,
@@ -34,7 +34,7 @@ from shapiq.interactions import (
     RegressionIndex,
     WeightedFBII,
 )
-from shapiq.sampling import SamplingState
+from shapiq.sampling import SampledEvidence
 
 type ExactIndex = (
     CardinalInteractionIndex
@@ -130,21 +130,21 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
             self.game.n_players,
             empty,
         )
-        evidence = SamplingState(
+        evidence = SampledEvidence(
             coalitions=DenseCoalitionArray(_powerset_masks(self.game.n_players)),
             values=self._game_values(),
             target_shape=self.game.target_shape,
         )
-        return Estimate(
+        surrogate = BasisGame(
+            MoebiusBasis(),
+            None,
+            self.game.n_players,
             terms=terms,
             values=coefficients,
-            n_players=self.game.n_players,
-            evidence=evidence,
-            bank=0,
-            index=self.index,
-            target_shape=tuple(self.game.target_shape),
             value_shape=tuple(self.game.value_shape),
+            target_shape=tuple(self.game.target_shape),
         )
+        return Estimate(surrogate, Provenance(evidence=evidence, index=self.index))
 
     def _estimate_parts(self) -> tuple[dict[int, Array], Array | None]:
         """Build the exact coefficient blocks (all solver dispatch lives here)."""

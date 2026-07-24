@@ -13,10 +13,9 @@ from jax import Array
 
 from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._base import Explainer, reject_common_index_mistakes
-from shapiq.explainers.approximators._estimate import Estimate
-from shapiq.games import Game
+from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
 from shapiq.interactions import CardinalInteractionIndex
-from shapiq.sampling import EmptyState
+from shapiq.sampling import NoEvidence
 from shapiq.trees import InterventionalTreeGame
 
 if TYPE_CHECKING:
@@ -88,16 +87,16 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
         if empty is not None:
             terms = (frozenset(), *terms)
             coefficients = np.concatenate([empty[..., None], coefficients], axis=-1)
-        return Estimate(
+        surrogate = BasisGame(
+            MoebiusBasis(),
+            None,
+            self.game.n_players,
             terms=terms,
             values=coefficients,
-            n_players=self.game.n_players,
-            evidence=EmptyState(),
-            bank=0,
-            index=self.index,
-            target_shape=tuple(self.game.target_shape),
             value_shape=tuple(self.game.value_shape),
+            target_shape=tuple(self.game.target_shape),
         )
+        return Estimate(surrogate, Provenance(evidence=NoEvidence(), index=self.index))
 
     def _sparse_parts(self) -> tuple[tuple[frozenset[int], ...], np.ndarray, np.ndarray | None]:
         """Compute the configured index exactly from the tree structure.

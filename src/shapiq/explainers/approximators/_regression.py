@@ -24,7 +24,7 @@ from shapiq.sampling import (
     CoalitionSampler,
     PairedSampler,
     ProductKernelSampler,
-    SamplingState,
+    SampledEvidence,
     ShapleyKernelSampler,
 )
 
@@ -194,7 +194,7 @@ class Regression(Approximator):
             InsufficientSamplesError: If no sampled unit has completed, or if
                 the sampled coalitions do not yet identify all coefficients.
         """
-        if not isinstance(self._state, SamplingState):
+        if not isinstance(self._state, SampledEvidence):
             self._require_no_evidence_yet()
         n_seeds = self.n_seed_samples
         # whole-unit spending guarantees every stored row is usable evidence

@@ -20,13 +20,12 @@ from shapiq.explainers.approximators._deduplication import (
     stitch_values,
 )
 from shapiq.explainers.approximators._estimate import (
-    Estimate,
     leading_blocks_to_terms,
     trailing_quiet_units,
 )
-from shapiq.games import Game
-from shapiq.sampling import ApproximationState, EmptyState, Sampler, SamplingState
-from shapiq.sampling._state import coalition_keys
+from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
+from shapiq.sampling import Evidence, NoEvidence, SampledEvidence, Sampler
+from shapiq.sampling._evidence import coalition_keys
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -94,7 +93,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             raise ValueError(msg)
         validate_int("unit_length", unit_length, minimum=1)
         self.sampler = sampler
-        self._state: ApproximationState = EmptyState()
+        self._state: Evidence = NoEvidence()
         self._bank = 0
         self._spent = 0
         self._units_done = 0
@@ -171,13 +170,13 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         if self.deduplicate:
             return self._sample_deduplicated(budget)
         remaining = self._bank + budget
-        fresh = not isinstance(self._state, SamplingState)
+        fresh = not isinstance(self._state, SampledEvidence)
         seeds = self.n_seed_samples if fresh else 0
         if fresh and remaining < seeds:
             return self._evolve(bank=remaining)
         n_units = (remaining - seeds) // self.unit_rows
         if not fresh and n_units == 0:
-            evidence = self._checkpoint(cast("SamplingState[Array]", self._state), remaining)
+            evidence = self._checkpoint(cast("SampledEvidence[Array]", self._state), remaining)
             return self._evolve(state=evidence, bank=remaining)
         blocks: list[Array] = []
         if fresh:
@@ -188,13 +187,13 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         values = self._call_game(masks)
         rows = seeds + n_units * self.unit_rows
         if fresh:
-            evidence: SamplingState[Array] = SamplingState(
+            evidence: SampledEvidence[Array] = SampledEvidence(
                 coalitions=DenseCoalitionArray(masks),
                 values=values,
                 target_shape=self.game.target_shape,
             )
         else:
-            evidence = cast("SamplingState[Array]", self._state).append(
+            evidence = cast("SampledEvidence[Array]", self._state).append(
                 DenseCoalitionArray(masks),
                 values,
             )
@@ -218,8 +217,8 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         spent = self._spent
         units_done = self._units_done
         remaining = self._bank + budget
-        if isinstance(self._state, SamplingState):
-            evidence = cast("SamplingState[Array]", self._state)
+        if isinstance(self._state, SampledEvidence):
+            evidence = cast("SampledEvidence[Array]", self._state)
         else:
             seeds = self.n_seed_samples
             if remaining < seeds:
@@ -296,7 +295,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             quiet_units=quiet_units,
         )
 
-    def _checkpoint(self, evidence: SamplingState[Array], bank: int) -> SamplingState[Array]:
+    def _checkpoint(self, evidence: SampledEvidence[Array], bank: int) -> SampledEvidence[Array]:
         """Record one history checkpoint for this sample call.
 
         A checkpoint is ``(n_samples, bank)``: per-iteration appends (and
@@ -307,7 +306,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         """
         base_cuts = (
             self._state._history_cuts  # noqa: SLF001 - finalizing cuts of a state this call created
-            if isinstance(self._state, SamplingState)
+            if isinstance(self._state, SampledEvidence)
             else ()
         )
         if evidence is self._state:
@@ -315,11 +314,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         evidence._history_cuts = (*base_cuts, (evidence.n_samples, bank))  # noqa: SLF001
         return evidence
 
-    def _evaluate_seeds(self) -> tuple[SamplingState[Array], int]:
+    def _evaluate_seeds(self) -> tuple[SampledEvidence[Array], int]:
         """Evaluate the seed block once and open the evidence state."""
         seed_masks = self._seed_masks()
         values = self._call_game(seed_masks)
-        state: SamplingState[Array] = SamplingState(
+        state: SampledEvidence[Array] = SampledEvidence(
             coalitions=DenseCoalitionArray(seed_masks),
             values=values,
             target_shape=self.game.target_shape,
@@ -373,19 +372,15 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         The returned :class:`Estimate` is inert — a game-with-provenance;
         continue it with ``refine`` on this (frozen) policy.
         """
-        value_shape = tuple(self.game.value_shape)
-        target_shape = tuple(self.game.target_shape)
         fresh = Estimate(
-            terms=(),
-            values=np.zeros((*value_shape, *target_shape, 0)),
-            n_players=self.game.n_players,
-            evidence=EmptyState(),
-            bank=0,
-            index=self.index,
-            deduplicated=self.deduplicate,
-            target_shape=target_shape,
-            value_shape=value_shape,
-            unready_reason="no evidence yet: refine this estimate with a budget first",
+            self._empty_surrogate(),
+            Provenance(
+                evidence=NoEvidence(),
+                index=self.index,
+                deduplicated=self.deduplicate,
+                fingerprint=self._fingerprint,
+                shortfall="no evidence yet: refine this estimate with a budget first",
+            ),
         )
         return self.refine(fresh, budget)
 
@@ -424,7 +419,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         )
         return self._as_estimate(worker._grow(budget))  # noqa: SLF001 - the loop behind the verb
 
-    def at_evidence(self, evidence: ApproximationState, bank: int | None = None) -> Estimate:
+    def at_evidence(self, evidence: Evidence, bank: int | None = None) -> Estimate:
         """Return the estimate a policy derives from given evidence.
 
         ``bank`` defaults to the banked remainder the evidence's last
@@ -436,9 +431,16 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
             worker = worker._evolve(bank=bank)  # noqa: SLF001 - transitional shim
         return self._as_estimate(worker)
 
+    def _empty_surrogate(self) -> BasisGame:
+        return BasisGame(
+            MoebiusBasis(),
+            {},
+            self.game.n_players,
+            value_shape=tuple(self.game.value_shape),
+            target_shape=tuple(self.game.target_shape),
+        )
+
     def _as_estimate(self, worker: Approximator) -> Estimate:
-        value_shape = tuple(self.game.value_shape)
-        target_shape = tuple(self.game.target_shape)
         reason: str | None = None
         try:
             attributions, empty = worker._estimate_parts()
@@ -447,25 +449,31 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
                 self.game.n_players,
                 empty,
             )
+            surrogate = BasisGame(
+                MoebiusBasis(),
+                None,
+                self.game.n_players,
+                terms=terms,
+                values=coefficients,
+                value_shape=tuple(self.game.value_shape),
+                target_shape=tuple(self.game.target_shape),
+            )
         except InsufficientSamplesError as error:
             reason = str(error)
-            terms = ()
-            coefficients = np.zeros((*value_shape, *target_shape, 0))
+            surrogate = self._empty_surrogate()
         return Estimate(
-            terms=terms,
-            values=coefficients,
-            n_players=self.game.n_players,
-            evidence=worker._state,
-            bank=worker._bank,
-            index=self.index,
-            deduplicated=self.deduplicate,
-            target_shape=target_shape,
-            value_shape=value_shape,
-            unready_reason=reason,
-            fingerprint=self._fingerprint,
+            surrogate,
+            Provenance(
+                evidence=worker._state,
+                bank=worker._bank,
+                index=self.index,
+                deduplicated=self.deduplicate,
+                shortfall=reason,
+                fingerprint=self._fingerprint,
+            ),
         )
 
-    def _at_state(self, state: ApproximationState) -> Self:
+    def _at_state(self, state: Evidence) -> Self:
         """Return this approximator rewound to a historical state.
 
         Counters are recomputed from the evidence: units from the stored
@@ -475,7 +483,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         """
         if state is self._state:
             return self
-        if not isinstance(state, SamplingState):
+        if not isinstance(state, SampledEvidence):
             return self._evolve(state=state, units_done=0, spent=0, bank=0, quiet_units=0)
         sampled = state.n_samples - self.n_seed_samples
         units_done = max(sampled // self.unit_rows, 0)
@@ -486,7 +494,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
     def _evolve(
         self,
         *,
-        state: ApproximationState | None = None,
+        state: Evidence | None = None,
         units_done: int | None = None,
         spent: int | None = None,
         bank: int | None = None,

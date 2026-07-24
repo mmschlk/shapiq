@@ -16,8 +16,10 @@ import pytest
 
 from shapiq import (
     SV,
+    BasisGame,
     CallableGame,
     Estimate,
+    Provenance,
     Regression,
     banzhaf_values,
     fidelity,
@@ -30,7 +32,7 @@ from shapiq import (
 )
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.games import MoebiusBasis, interaction_terms
-from shapiq.sampling import EmptyState, SamplingState
+from shapiq.sampling import NoEvidence, SampledEvidence
 
 N_PLAYERS = 8
 
@@ -115,7 +117,7 @@ def test_proxyshap_recipe_from_primitives_costs_zero_extra_evaluations():
     residual_values = jnp.asarray(evidence.values) - jnp.asarray(
         proxy._host_values(np.asarray(masks, dtype=bool)),
     )
-    rebased = SamplingState(
+    rebased = SampledEvidence(
         coalitions=evidence.coalitions,
         values=residual_values,
         target_shape=(),
@@ -155,20 +157,20 @@ class ToyBED:
     candidate_key: int = 99
 
     def estimate(self, budget: int) -> Estimate:
-        fresh = self.at_evidence(EmptyState(), 0)
+        fresh = self.at_evidence(NoEvidence(), 0)
         return self.refine(fresh, budget)
 
     def refine(self, carry: Estimate, budget: int) -> Estimate:
         n = self.game.n_players
         evidence, bank = carry.evidence, carry.bank + budget
-        if not isinstance(evidence, SamplingState) and bank >= 2:
+        if not isinstance(evidence, SampledEvidence) and bank >= 2:
             seeds = jnp.stack([jnp.zeros(n, dtype=bool), jnp.ones(n, dtype=bool)])
-            evidence = SamplingState(
+            evidence = SampledEvidence(
                 coalitions=DenseCoalitionArray(seeds),
                 values=jnp.asarray(self.game(DenseCoalitionArray(seeds))),
             )
             bank -= 2
-        while bank > 0 and isinstance(evidence, SamplingState):
+        while bank > 0 and isinstance(evidence, SampledEvidence):
             candidates = self._candidates(evidence)
             if candidates.shape[0] == 0:
                 break  # support exhausted: the remainder stays banked
@@ -180,14 +182,10 @@ class ToyBED:
 
     def at_evidence(self, evidence, bank: int) -> Estimate:
         n = self.game.n_players
-        if not isinstance(evidence, SamplingState):
+        if not isinstance(evidence, SampledEvidence):
             return Estimate(
-                terms=(),
-                values=np.zeros(0),
-                n_players=n,
-                evidence=evidence,
-                bank=bank,
-                unready_reason="no evidence yet",
+                BasisGame(MoebiusBasis(), {}, n),
+                Provenance(evidence=evidence, bank=bank, shortfall="no evidence yet"),
             )
         terms, mean, cov, sv_map = self._posterior(evidence)
         sv_cov = sv_map @ cov @ sv_map.T
@@ -195,16 +193,12 @@ class ToyBED:
             frozenset([player]): float(sv_cov[player, player]) for player in range(n)
         }
         # a third-party policy hands its own coefficients straight to the carry
-        return Estimate(
-            terms=terms,
-            values=np.asarray(mean, dtype=np.float64),
-            n_players=n,
-            evidence=evidence,
-            bank=bank,
-            variance=variance,
+        surrogate = BasisGame(
+            MoebiusBasis(), None, n, terms=terms, values=np.asarray(mean, dtype=np.float64)
         )
+        return Estimate(surrogate, Provenance(evidence=evidence, bank=bank, variance=variance))
 
-    def _posterior(self, evidence: SamplingState):
+    def _posterior(self, evidence: SampledEvidence):
         n = self.game.n_players
         terms = interaction_terms(n, self.order)
         masks = np.asarray(evidence.coalitions.to_dense(), dtype=bool)
@@ -218,7 +212,7 @@ class ToyBED:
                 sv_map[player, column] = 1.0 / len(term)
         return terms, mean, cov, sv_map
 
-    def _candidates(self, evidence: SamplingState) -> np.ndarray:
+    def _candidates(self, evidence: SampledEvidence) -> np.ndarray:
         n = self.game.n_players
         rows, seen, local = [], set(evidence.key_index()), set()
         for unit in range(self.n_candidates):
@@ -232,7 +226,7 @@ class ToyBED:
                 rows.append(row)
         return np.array(rows, dtype=bool) if rows else np.empty((0, n), dtype=bool)
 
-    def _propose(self, evidence: SamplingState, candidates: np.ndarray) -> int:
+    def _propose(self, evidence: SampledEvidence, candidates: np.ndarray) -> int:
         terms, _, cov, sv_map = self._posterior(evidence)
         design = np.asarray(MoebiusBasis().atoms(candidates, terms, xp=np))
         projected = design @ (sv_map @ cov).T

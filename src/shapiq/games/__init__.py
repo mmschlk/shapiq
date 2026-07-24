@@ -13,6 +13,7 @@ from shapiq.games._basis import (
     interaction_terms,
 )
 from shapiq.games._callable import CallableGame
+from shapiq.games._estimate import Estimate, Provenance
 from shapiq.games._extension import (
     integrated_gradients,
     multilinear_diagonal_gradient,
@@ -53,10 +54,12 @@ __all__ = [
     "Masker",
     "Measure",
     "Model",
+    "Provenance",
     "ModelMaskedPredictor",
     "Basis",
     "BasisGame",
     "CoMoebiusBasis",
+    "Estimate",
     "FourierBasis",
     "MoebiusBasis",
     "SumGame",
