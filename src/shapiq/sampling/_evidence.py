@@ -45,9 +45,9 @@ class UniqueView(NamedTuple):
 class Evidence:
     """Base abstraction for approximator evidence.
 
-    History is identity, not a feature: every state answers ``history()``
-    and ``rollback()``, and a state without prior evidence is its own
-    single-entry history.
+    History is identity, not a feature: every evidence answers
+    ``history()`` and ``rollback()``, and evidence without prior samples
+    is its own single-entry history.
     """
 
     @property
@@ -56,11 +56,11 @@ class Evidence:
         return 0
 
     def rollback(self, steps: int = 1) -> Self:
-        """Return a value-equivalent previous state."""
+        """Return value-equivalent previous evidence."""
         _validate_history_steps(steps)
         if steps == 0:
             return self
-        msg = "cannot roll back past the initial state"
+        msg = "cannot roll back past the initial evidence"
         raise IndexError(msg)
 
     def history(
@@ -69,24 +69,23 @@ class Evidence:
         reverse: bool = False,
         include_self: bool = True,
     ) -> Sequence[Self]:
-        """Return value-equivalent history states."""
+        """Return value-equivalent history entries."""
         del reverse
         return [self] if include_self else []
 
 
 @dataclass(frozen=True)
 class NoEvidence(Evidence):
-    """Approximation state that holds no evidence yet.
+    """Evidence that holds no samples yet.
 
-    Approximators are constructed with an empty state so that no game
-    evaluation happens before the first sample call; the first sampled
-    block replaces it with an evidence-bearing state, where approximation
-    history begins.
+    Fresh estimates carry this so that no game evaluation happens before
+    the first budget is spent; the first sampled block replaces it with
+    sampled evidence, where approximation history begins.
     """
 
 
 class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
-    """Approximation state storing sampled coalitions and evaluated values.
+    """Evidence storing sampled coalitions and evaluated values.
 
     Values are stored in the canonical internal layout — value axes
     leading, then target axes, with the sample axis last — so the sample
@@ -97,7 +96,7 @@ class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
     Sampling many times between explanations therefore costs one
     concatenation per explanation instead of one per sample call.
 
-    The state also owns coalition identity: ``unique()`` summarizes the
+    The evidence also owns coalition identity: ``unique()`` summarizes the
     stream as distinct coalitions with multiplicities and first positions,
     and deduplication consumes the same packed keys — one definition of
     "the same coalition" for every consumer.
@@ -113,7 +112,7 @@ class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
         *,
         _history_cuts: tuple[tuple[int, int], ...] | None = None,
     ) -> None:
-        """Initialize the evidence state from one sampled block.
+        """Initialize the evidence from one sampled block.
 
         Args:
             coalitions: The sampled coalitions, as a dense coalition array.
@@ -360,7 +359,7 @@ class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
             return self
         cuts = self._history_cuts
         if steps >= len(cuts):
-            msg = "cannot roll back past the initial state"
+            msg = "cannot roll back past the initial evidence"
             raise IndexError(msg)
         return self._slice_to(cuts[: len(cuts) - steps])
 

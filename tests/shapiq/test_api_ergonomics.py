@@ -58,7 +58,7 @@ def test_error_messages_teach_the_working_idiom():
     with pytest.raises(InsufficientSamplesError, match=r"estimate = policy\.estimate"):
         banked[(0,)]
     estimate = policy.refine(banked, SEEDS + QUANTUM - 1)
-    with pytest.raises(IndexError, match="past the initial state"):
+    with pytest.raises(IndexError, match="past the initial evidence"):
         estimate.evidence.rollback(len(estimate.evidence.history()))
     with pytest.raises(TypeError, match=r"game\[\(0,\)\]"):
         estimate[0]

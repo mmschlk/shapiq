@@ -152,7 +152,7 @@ def test_history_begins_at_first_evidence_state():
         SEEDS + 2 * QUANTUM,
         SEEDS + 3 * QUANTUM,
     ]
-    with pytest.raises(IndexError, match="past the initial state"):
+    with pytest.raises(IndexError, match="past the initial evidence"):
         grown.evidence.rollback(2)
 
 

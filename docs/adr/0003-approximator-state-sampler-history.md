@@ -3,7 +3,10 @@
 > Superseded in part by ADR 0014 (2026-07-22): samplers are stateless draw
 > values and never evolve; sampler history and the mutable/history interlocks
 > are gone; history is always on via state checkpoints. The functional
-> transition contract (`sample` returns a new approximator) stands.
+> transition contract (`sample` returns a new approximator) stood until
+> ADR 0015 (2026-07-24): policies are frozen now, the verbs are
+> `estimate`/`refine`/`at_evidence` returning inert estimates, and
+> `sample()`/`explain()`/`approximate()` no longer exist.
 
 Approximators use functional transitions: `sample(budget)` returns a new approximator after sampling coalitions, evaluating the game, and updating approximation evidence, while `explain()` materializes an `ExplanationArray` from the current state. `approximate(budget)` is shorthand for `sample(budget).explain()`, and `sample(0)` is a no-op returning the same approximator.
 

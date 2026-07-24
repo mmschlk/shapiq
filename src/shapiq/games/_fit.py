@@ -1,6 +1,6 @@
 """Fit an intensional surrogate from evidence: the game-fitter verb.
 
-The fit-then-read estimator family learns a parametric game from
+The fit-then-read estimator family learns a basis game from
 evaluated coalitions and reads it exactly (proxy models, sparse
 recovery, trees). This is its simplest member: an unweighted
 least-squares fit onto a basis truncation, at host float64.
@@ -26,7 +26,7 @@ def fit_game(
     order: int,
     basis: Basis | None = None,
 ) -> BasisGame:
-    """Fit a degree-<= ``order`` parametric game to evaluated coalitions.
+    """Fit a degree-<= ``order`` basis game to evaluated coalitions.
 
     Args:
         masks: Dense coalition masks of shape ``(m, n_players)``.
@@ -36,7 +36,7 @@ def fit_game(
         basis: The basis to fit in (moebius by default).
 
     Returns:
-        The least-squares parametric game; its coefficients are exact
+        The least-squares basis game; its coefficients are exact
         when the evidence identifies the truncation.
     """
     basis = MoebiusBasis() if basis is None else basis

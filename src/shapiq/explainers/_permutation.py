@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class _WalkEvidence(NamedTuple):
-    """Completed-walk view of a permutation sampling state."""
+    """Completed-walk view of permutation evidence."""
 
     n_walks: int
     seed_values: Array

@@ -64,7 +64,7 @@ where = ["./src"]
 include = ["shapiq*"]
 
 [tool.setuptools.dynamic]
-readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
+readme = {file = ["README.md"], content-type = "text/markdown"}
 
 [project.urls]
 documentation = "https://shapiq.readthedocs.io"
@@ -209,7 +209,7 @@ convention = "google"
 
 [tool.ty.src]
 include = ["src/shapiq"]
-exclude = ["tests", "docs", "src/shapiq_games"]
+exclude = ["tests", "docs"]
 
 [tool.ty.environment]
 python-version = "3.13"

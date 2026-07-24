@@ -1,5 +1,9 @@
 # Value Shapes And The Dense Value Layout
 
+> Superseded in part by ADR 0015 (2026-07-24): the explanation-array
+> species and its vocabulary were replaced by the game currency; the
+> carrier of this decision today is the estimate/basis-game tier.
+
 Games declare the internal shape of their values: `value_shape` on the game, defaulting to scalar. Dense value arrays carry the broadcast of the target shape and the coalition array's leading axes first, then the sample axis, then the declared value shape, and the game validates this contract at its boundary whenever it is called. Declaration was chosen over inference because lazy seeding defers the first evaluation until sampling — inference would leave estimators unable to validate or allocate before that point, degrading validation to trust — and because a misdeclared game should fail at its first evaluation with an error that names the fix rather than mislabeling axes silently.
 
 The layout follows from contracts that already existed: a ValueArray's logical shape excludes each value's internal axes, so logical axes lead and internal axes trail; `SamplingState` was built for exactly this, appending on the sample axis by position and slicing history with a trailing ellipsis, and needed no changes; `DenseExplanationArray` mirrors it with the interaction axis at the target position and value axes trailing. Explanation arrays now record their `value_shape` and validate every attribution block against targets, interaction count, and value shape — previously blocks were not validated at all.
