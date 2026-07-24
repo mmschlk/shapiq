@@ -32,12 +32,12 @@ def additive_game():
 
 
 def test_numpy_integer_player_indices_are_accepted():
-    explanation = ExactExplainer(additive_game(), SV()).explain()
+    explanation = ExactExplainer(additive_game(), SV()).estimate().view
     assert jnp.allclose(explanation((np.int64(0),)), explanation((0,)), atol=0)
 
 
 def test_wrong_player_types_and_ranges_are_named():
-    explanation = ExactExplainer(additive_game(), SV()).explain()
+    explanation = ExactExplainer(additive_game(), SV()).estimate().view
     with pytest.raises(TypeError, match="got str"):
         explanation(("a",))
     with pytest.raises(ValueError, match="out of range for 5 players"):
@@ -78,7 +78,7 @@ class _ShortWeights:
 def test_short_weight_vectors_are_rejected_instead_of_clamped():
     explainer = ExactExplainer(additive_game(), _ShortWeights())
     with pytest.raises(ValueError, match="must return 5 weights"):
-        explainer.explain()
+        explainer.estimate()
 
 
 def test_identification_hint_adapts_to_deduplication():
@@ -108,7 +108,7 @@ class _UniformKernel:
 def test_unconstrained_kernels_are_rejected_by_the_constrained_solver():
     explainer = ExactExplainer(additive_game(), _UniformKernel())
     with pytest.raises(TypeError, match="zero kernel weight"):
-        explainer.explain()
+        explainer.estimate()
 
 
 def test_string_errors_map_shipped_names_to_constructors():

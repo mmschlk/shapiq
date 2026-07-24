@@ -54,7 +54,7 @@ def order_one(source):
 
 @pytest.mark.filterwarnings("ignore::shapiq.errors.SamplingStallWarning")
 def test_recovers_the_exact_kadd_fit_once_identified():
-    exact = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).explain()
+    exact = ExactExplainer(game_from(quadratic_from_masks), KADDSHAP(order=2)).estimate().view
     approximator = Regression(
         game_from(quadratic_from_masks),
         KADDSHAP(order=2),
@@ -72,7 +72,7 @@ def test_recovers_the_exact_kadd_fit_once_identified():
 def test_order_one_attributions_are_shapley_values():
     # kADD-SHAP preserves the Shapley value at every order; on a 2-additive
     # game the identified fit reproduces the game, so equality is exact
-    shapley = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).explain())
+    shapley = order_one(ExactExplainer(game_from(quadratic_from_masks), SV()).estimate().view)
     approximator = Regression(
         game_from(quadratic_from_masks),
         KADDSHAP(order=2),
@@ -84,7 +84,7 @@ def test_order_one_attributions_are_shapley_values():
 
 
 def test_converges_to_the_exact_kadd_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), KADDSHAP(order=2)).explain()
+    exact = ExactExplainer(game_from(cubic_from_masks), KADDSHAP(order=2)).estimate().view
     approximator = Regression(game_from(cubic_from_masks), KADDSHAP(order=2), random_state=2)
     estimate = approximator.estimate(SEEDS + 6000)
     for player in range(N_PLAYERS):

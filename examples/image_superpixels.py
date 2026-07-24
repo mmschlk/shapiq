@@ -58,7 +58,7 @@ if __name__ == "__main__":
         return flat_images.mean(dim=(-3, -2, -1))
 
     game = chunked_image_game(masker, brightness, batch_size=128)
-    explanation = ExactExplainer(game, SV()).explain()
+    explanation = ExactExplainer(game, SV()).estimate().view
     values = explanation.attributions_by_order[1].reshape(GRID)
     print("Shapley values per superpixel (row-major 3x3 grid):")
     for row in values:
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         return chunked_image_game(masker, cnn, batch_size, link_function=class_one_probability)
 
     start = time.perf_counter()
-    exact = ExactExplainer(cnn_game(256), SV()).explain()
+    exact = ExactExplainer(cnn_game(256), SV()).estimate().view
     print(f"exact SV over all {2**N_PLAYERS} coalitions: {time.perf_counter() - start:.2f}s")
 
     # time the game directly on a fixed coalition array so the numbers show
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         print(f"  batch_size {batch_size:>4}: {duration:.3f}s ({rate:,.0f} masked images/s)")
 
     print("\n=== C: sampled faithful interactions on the CNN ===")
-    exact_fsii = ExactExplainer(cnn_game(256), FSII(order=2)).explain()
+    exact_fsii = ExactExplainer(cnn_game(256), FSII(order=2)).estimate().view
     policy = Regression(cnn_game(256), FSII(order=2), random_state=0, deduplicate=True)
     estimate = policy.estimate(policy.min_budget + 120)
     pairs = list(combinations(range(N_PLAYERS), 2))

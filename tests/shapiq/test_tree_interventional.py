@@ -120,8 +120,8 @@ CARDINAL_INDICES = [
 @pytest.mark.parametrize("index", CARDINAL_INDICES, ids=repr)
 def test_closed_form_matches_the_exact_explainer(index):
     game = tree_game()
-    closed_form = TreeExplainer(game, index).explain()
-    exact = ExactExplainer(game, index).explain()
+    closed_form = TreeExplainer(game, index).estimate().view
+    exact = ExactExplainer(game, index).estimate().view
     assert jnp.allclose(closed_form.baseline, exact.baseline, atol=1e-5)
     min_size = index.min_interaction_size
     order = game.n_players if index.order is None else index.order
@@ -136,8 +136,8 @@ def test_closed_form_matches_the_exact_explainer(index):
 
 def test_batched_lookups_match_the_exact_explainer():
     game = tree_game()
-    sparse = TreeExplainer(game, SII(order=2)).explain()
-    dense = ExactExplainer(game, SII(order=2)).explain()
+    sparse = TreeExplainer(game, SII(order=2)).estimate().view
+    dense = ExactExplainer(game, SII(order=2)).estimate().view
     singles = jnp.asarray([[player] for player in range(N_PLAYERS)])
     assert jnp.allclose(sparse(singles), dense(singles), atol=1e-4)
     pairs = jnp.asarray(list(combinations(range(N_PLAYERS), 2)))
@@ -145,7 +145,7 @@ def test_batched_lookups_match_the_exact_explainer():
 
 
 def test_explanations_are_sparse_over_the_tree_support():
-    explanation = TreeExplainer(tree_game(), SII(order=2)).explain()
+    explanation = TreeExplainer(tree_game(), SII(order=2)).estimate().view
     # features 1 and 2 sit in different branches of the first tree and never
     # co-occur on a path, so their interaction carries no mass
     assert (1, 2) not in explanation.attributions
@@ -163,8 +163,8 @@ def test_vector_leaf_values_flow_into_the_value_shape():
     )
     game = InterventionalTreeGame(two_class, inputs=INPUTS, baseline=BASELINE)
     assert game.value_shape == (2,)
-    explanation = TreeExplainer(game, SV()).explain()
-    exact = ExactExplainer(game, SV()).explain()
+    explanation = TreeExplainer(game, SV()).estimate().view
+    exact = ExactExplainer(game, SV()).estimate().view
     for player in range(N_PLAYERS):
         assert jnp.allclose(explanation((player,)), exact((player,)), atol=1e-5)
     assert explanation((0,)).shape == (2,)
@@ -187,8 +187,8 @@ def test_entry_gates_keep_teaching():
     lookalike = MyTreeGame([stump_tree()], inputs=INPUTS, baseline=BASELINE)
     reference = InterventionalTreeGame([stump_tree()], inputs=INPUTS, baseline=BASELINE)
     assert jnp.allclose(
-        TreeExplainer(lookalike, SV()).explain()((0,)),
-        TreeExplainer(reference, SV()).explain()((0,)),
+        TreeExplainer(lookalike, SV()).estimate().view((0,)),
+        TreeExplainer(reference, SV()).estimate().view((0,)),
         atol=0,
     )
 
@@ -239,8 +239,8 @@ def test_sklearn_trees_convert_and_explain():
     ends = game(DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])))
     assert jnp.allclose(ends[1], model.predict(x.reshape(1, -1))[0], atol=1e-5)
     assert jnp.allclose(ends[0], model.predict(reference.reshape(1, -1))[0], atol=1e-5)
-    closed_form = TreeExplainer(game, SII(order=2)).explain()
-    exact = ExactExplainer(game, SII(order=2)).explain()
+    closed_form = TreeExplainer(game, SII(order=2)).estimate().view
+    exact = ExactExplainer(game, SII(order=2)).estimate().view
     for size in (1, 2):
         for interaction in combinations(range(N_PLAYERS), size):
             assert jnp.allclose(closed_form(interaction), exact(interaction), atol=1e-4)
@@ -266,7 +266,7 @@ def test_sklearn_classifiers_become_probability_games():
     mixed = np.where(np.asarray(masks), features[0], features.mean(axis=0))
     assert jnp.allclose(values, model.predict_proba(mixed), atol=1e-5)
     # the closed form explains all classes at once and stays efficient per class
-    explanation = TreeExplainer(game, SV()).explain()
+    explanation = TreeExplainer(game, SV()).estimate().view
     total = sum(jnp.asarray(explanation((player,))) for player in range(N_PLAYERS))
     assert jnp.allclose(total, values[-1] - values[0], atol=1e-5)
 
@@ -316,8 +316,8 @@ def test_sklearn_forests_scale_to_the_mean_prediction():
     game = InterventionalTreeGame(trees, inputs=x, baseline=features.mean(axis=0))
     grand = game(DenseCoalitionArray(jnp.asarray([[True] * N_PLAYERS])))
     assert jnp.allclose(grand[0], model.predict(x.reshape(1, -1))[0], atol=1e-5)
-    shapley = TreeExplainer(game, SV()).explain()
-    exact = ExactExplainer(game, SV()).explain()
+    shapley = TreeExplainer(game, SV()).estimate().view
+    exact = ExactExplainer(game, SV()).estimate().view
     for player in range(N_PLAYERS):
         assert jnp.allclose(shapley((player,)), exact((player,)), atol=1e-4)
 
@@ -368,7 +368,7 @@ def test_torch_tensors_construct_trees_and_games():
     )
     ends = game(DenseCoalitionArray(jnp.asarray([[False] * N_PLAYERS, [True] * N_PLAYERS])))
     assert jnp.allclose(ends, jnp.asarray([1.0, 4.0]), atol=1e-6)
-    explanation = TreeExplainer(game, SV()).explain()
+    explanation = TreeExplainer(game, SV()).estimate().view
     assert jnp.allclose(explanation((0,)), 3.0, atol=1e-6)
 
 
@@ -379,13 +379,13 @@ def test_outputs_follow_the_default_float_dtype():
         game = tree_game()
         values = game(all_coalitions())
         assert values.dtype == jnp.float64
-        explanation = TreeExplainer(game, SII(order=2)).explain()
+        explanation = TreeExplainer(game, SII(order=2)).estimate().view
         assert explanation((0,)).dtype == jnp.float64
         assert explanation.baseline.dtype == jnp.float64
         assert explanation((1, 2)).dtype == jnp.float64  # the zero default too
     default_game = tree_game()
     assert default_game(all_coalitions()).dtype == jnp.float32
-    default_explanation = TreeExplainer(default_game, SII(order=2)).explain()
+    default_explanation = TreeExplainer(default_game, SII(order=2)).estimate().view
     assert default_explanation((0,)).dtype == jnp.float32
 
 
@@ -394,6 +394,6 @@ def test_sampling_explainers_consume_the_tree_game():
     game = tree_game()
     approximator = Regression(game, SV(), random_state=0, deduplicate=True)
     estimate = approximator.estimate(2 + 12)
-    closed_form = TreeExplainer(game, SV()).explain()
+    closed_form = TreeExplainer(game, SV()).estimate().view
     for player in range(N_PLAYERS):
         assert jnp.allclose(estimate[(player,)], closed_form((player,)), atol=1e-4)

@@ -22,6 +22,7 @@ from shapiq.explainers._faithful import (
     solve_faithful,
 )
 from shapiq.explainers._valueaxes import to_leading, to_trailing
+from shapiq.explainers.approximators._estimate import Estimate
 from shapiq.explanations import DenseExplanationArray
 from shapiq.games import Game
 from shapiq.interactions import (
@@ -34,6 +35,7 @@ from shapiq.interactions import (
     RegressionIndex,
     WeightedFBII,
 )
+from shapiq.sampling import SamplingState
 
 type ExactIndex = (
     CardinalInteractionIndex
@@ -112,16 +114,34 @@ class ExactExplainer(Explainer[Array, Game[Array]]):
         self._exact_index: ExactIndex = index
         self._powerset_values: Array | None = None
 
-    def explain(self) -> DenseExplanationArray[Array]:
+    def estimate(self) -> Estimate:
         """Compute the configured index exactly from all game values.
 
         Returns:
-            A dense explanation whose baseline is the empty-coalition value
-            and whose attributions are computed on the centered game. Only
-            indices with a genuine order-0 attribution carry one: FBII and
-            WeightedFBII carry their fitted intercept, the Co-Moebius
-            transform its grand total ``v(N) - v(empty)``.
+            An :class:`Estimate` with complete evidence: the full powerset
+            sweep is its provenance (``spent`` reads ``2**n``), the bank is
+            zero, and the coefficient view is exact. Only indices with a
+            genuine order-0 attribution carry one: FBII and WeightedFBII
+            carry their fitted intercept, the Co-Moebius transform its
+            grand total ``v(N) - v(empty)``.
         """
+        view = self._view()
+        evidence = SamplingState(
+            coalitions=DenseCoalitionArray(_powerset_masks(self.game.n_players)),
+            values=self._game_values(),
+            target_shape=self.game.target_shape,
+        )
+        return Estimate(
+            evidence=evidence,
+            bank=0,
+            n_players=self.game.n_players,
+            view=view,
+            target_shape=tuple(self.game.target_shape),
+            value_shape=tuple(self.game.value_shape),
+        )
+
+    def _view(self) -> DenseExplanationArray[Array]:
+        """Build the exact coefficient view (all solver dispatch lives here)."""
         n_players = self.game.n_players
         n_value_axes = len(self.game.value_shape)
         values = self._game_values()

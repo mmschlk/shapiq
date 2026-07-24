@@ -62,14 +62,14 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_order_one_converges_to_the_shapley_value():
-    exact = order_one(ExactExplainer(game_from(cubic_from_masks), SV()).explain())
+    exact = order_one(ExactExplainer(game_from(cubic_from_masks), SV()).estimate().view)
     policy = Regression(game_from(cubic_from_masks), FSII(order=1), random_state=1)
     estimate = order_one(policy.estimate(SEEDS + 3000))
     assert jnp.allclose(estimate, exact, atol=0.05)
 
 
 def test_converges_to_the_exact_faithful_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), FSII(order=2)).explain()
+    exact = ExactExplainer(game_from(cubic_from_masks), FSII(order=2)).estimate().view
     policy = Regression(game_from(cubic_from_masks), FSII(order=2), random_state=2)
     estimate = policy.estimate(SEEDS + 6000)
     for player in range(N_PLAYERS):

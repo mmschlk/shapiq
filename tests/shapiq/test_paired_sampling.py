@@ -105,7 +105,7 @@ def test_paired_streams_are_split_invariant():
 
 
 def test_paired_permutation_sampling_matches_the_exact_values():
-    exact = order_one(ExactExplainer(quadratic_game(), SV()).explain())
+    exact = order_one(ExactExplainer(quadratic_game(), SV()).estimate().view)
     policy = PermutationSampling(quadratic_game(), SV(), paired=True, random_state=7)
     estimate = order_one(policy.estimate(2 + 1500 * (N_PLAYERS - 1)))
     assert jnp.allclose(estimate, exact, atol=0.05)

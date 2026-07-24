@@ -183,7 +183,7 @@ class Regression(Approximator):
             deduplicating=self.deduplicate,
         )
 
-    def explain(self) -> DenseExplanationArray[Array]:
+    def _view(self) -> DenseExplanationArray[Array]:
         """Solve the kernel regression on the sampled evidence.
 
         Returns:

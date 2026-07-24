@@ -133,7 +133,7 @@ class PermutationSampling(Approximator):
         )
         self._family = family
 
-    def explain(self) -> DenseExplanationArray[Array]:
+    def _view(self) -> DenseExplanationArray[Array]:
         """Estimate the configured index from completed permutation walks.
 
         Returns:

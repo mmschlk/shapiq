@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from abc import ABC
+from abc import ABC, abstractmethod
 from copy import copy
 from typing import TYPE_CHECKING, NoReturn, Self, cast
 
@@ -345,6 +345,11 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         rendered = self._render(draws)
         return _flatten_units(rendered)
 
+    @abstractmethod
+    def _view(self) -> ExplanationArray[Array]:
+        """Build the family's coefficient view from the carried evidence."""
+        ...
+
     def _call_game(self, masks: Array) -> Array:
         """Evaluate the game and enter values in the canonical layout.
 
@@ -408,7 +413,7 @@ class Approximator(Explainer[Array, Game[Array]], ABC):
         view: ExplanationArray[Array] | None
         shortfall: InsufficientSamplesError | None = None
         try:
-            view = worker.explain()
+            view = worker._view()
         except InsufficientSamplesError as error:
             view = None
             shortfall = error

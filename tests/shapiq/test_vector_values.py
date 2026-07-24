@@ -66,9 +66,9 @@ def order_one(source):
 
 
 def test_exact_vector_values_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SV()).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV()).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV()).explain()
+    vector = ExactExplainer(vector_game(), SV()).estimate().view
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SV()).estimate().view
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SV()).estimate().view
     for player in range(N_PLAYERS):
         attribution = vector((player,))
         assert attribution.shape == (2,)
@@ -79,18 +79,18 @@ def test_exact_vector_values_match_per_component_scalar_runs():
 
 
 def test_exact_vector_interactions_match_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), SII(order=2)).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII(order=2)).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII(order=2)).explain()
+    vector = ExactExplainer(vector_game(), SII(order=2)).estimate().view
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), SII(order=2)).estimate().view
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), SII(order=2)).estimate().view
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-6)
         assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-6)
 
 
 def test_exact_vector_fsii_matches_per_component_scalar_runs():
-    vector = ExactExplainer(vector_game(), FSII(order=2)).explain()
-    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII(order=2)).explain()
-    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII(order=2)).explain()
+    vector = ExactExplainer(vector_game(), FSII(order=2)).estimate().view
+    quadratic = ExactExplainer(scalar_game(quadratic_from_masks), FSII(order=2)).estimate().view
+    cubic = ExactExplainer(scalar_game(cubic_from_masks), FSII(order=2)).estimate().view
     for pair in combinations(range(N_PLAYERS), 2):
         assert jnp.allclose(vector(pair)[0], quadratic(pair), atol=1e-5)
         assert jnp.allclose(vector(pair)[1], cubic(pair), atol=1e-5)
@@ -180,7 +180,7 @@ def test_misdeclared_value_shapes_are_rejected_at_the_boundary():
         value_shape=(2,),
     )
     with pytest.raises(ValueError, match="value_shape"):
-        ExactExplainer(vector_declared_scalar_output, SV()).explain()
+        ExactExplainer(vector_declared_scalar_output, SV()).estimate()
 
 
 def test_explanations_validate_attribution_block_shapes():

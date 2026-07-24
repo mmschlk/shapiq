@@ -51,7 +51,7 @@ if __name__ == "__main__":
         return 0.0 if abs(scalar) < 1e-6 else scalar
 
     # --- Shapley values per token position ---
-    shapley = ExactExplainer(game, SV()).explain()
+    shapley = ExactExplainer(game, SV()).estimate().view
     print("\nShapley values (baseline: the fully masked sequence)")
     for position, word in enumerate(sentence):
         print(f"  {word:>6}: {tidy(shapley((position,))):+.3f}")
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     print("  ('good' nets to zero: its sense and the negation cancel at order 1)")
 
     # --- pairwise interactions recover the negation ---
-    interactions = ExactExplainer(game, SII(order=2)).explain()
+    interactions = ExactExplainer(game, SII(order=2)).estimate().view
     not_position, good_position = sentence.index("not"), sentence.index("good")
     negation = tidy(interactions((not_position, good_position)))
     print("\npairwise Shapley interactions (order 2)")

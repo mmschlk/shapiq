@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from abc import ABC
 
 from shapiq.games import Game
 from shapiq.interactions import InteractionIndex, validate_interaction_metadata
-
-if TYPE_CHECKING:
-    from shapiq.explanations import ExplanationArray
-
 
 _SHIPPED_EXAMPLES = {
     "SV": "SV()",
@@ -104,10 +99,3 @@ class Explainer[ValueT, GameT: Game](ABC):
         order = self.index.order
         return self.game.n_players if order is None else order
 
-    def __call__(self) -> ExplanationArray[ValueT]:
-        """Alias explain()."""
-        return self.explain()
-
-    @abstractmethod
-    def explain(self) -> ExplanationArray[ValueT]:
-        """Return explanations for the bound game."""

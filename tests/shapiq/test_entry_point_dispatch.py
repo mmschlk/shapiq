@@ -68,7 +68,7 @@ def test_permutation_sampling_sv_equals_order_one_sii():
 
 
 def test_regression_with_sv_is_kernelshap():
-    exact = order_one(ExactExplainer(cubic_game(), SV()).explain())
+    exact = order_one(ExactExplainer(cubic_game(), SV()).estimate().view)
     approximator = Regression(cubic_game(), SV(), random_state=1)
     estimate = order_one(approximator.estimate(2 + 3000))
     assert jnp.allclose(estimate, exact, atol=0.05)
@@ -93,7 +93,7 @@ def test_explanations_default_to_undirected_interactions():
     explainer = ExactExplainer(cubic_game(), SII(order=2))
     assert not hasattr(explainer, "orientation")  # orientation is no index concern
     assert not hasattr(SII(order=2), "orientation")
-    explanation = explainer.explain()
+    explanation = explainer.estimate().view
     assert explanation.orientation == "undirected"
     assert jnp.allclose(explanation((2, 0)), explanation((0, 2)), atol=0)  # keys are sorted
 
@@ -116,13 +116,13 @@ def test_subclasses_flow_to_their_parents_entry_points():
     # through the MRO and answers for its own semantics
     assert PermutationSampling(cubic_game(), MySII(order=2)).interaction_index == "SII"
     assert Regression(cubic_game(), MyFSII(order=2)).interaction_index == "FSII"
-    subclassed = order_one(ExactExplainer(cubic_game(), MyFBII(order=2)).explain())
-    reference = order_one(ExactExplainer(cubic_game(), FBII(order=2)).explain())
+    subclassed = order_one(ExactExplainer(cubic_game(), MyFBII(order=2)).estimate().view)
+    reference = order_one(ExactExplainer(cubic_game(), FBII(order=2)).estimate().view)
     assert jnp.allclose(subclassed, reference, atol=1e-6)
 
 
 def test_explanations_carry_the_index_object():
-    explanation = ExactExplainer(cubic_game(), SII(order=2)).explain()
+    explanation = ExactExplainer(cubic_game(), SII(order=2)).estimate().view
     assert explanation.index == SII(order=2)
     assert explanation.interaction_index == "SII"
     assert "SII(order=2)" in repr(explanation)

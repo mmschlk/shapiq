@@ -14,9 +14,11 @@ from jax import Array
 
 from shapiq.errors import UnsupportedGameError
 from shapiq.explainers._base import Explainer, reject_common_index_mistakes
+from shapiq.explainers.approximators._estimate import Estimate
 from shapiq.explanations import SparseExplanationArray
 from shapiq.games import Game
 from shapiq.interactions import CardinalInteractionIndex
+from shapiq.sampling import EmptyState
 from shapiq.trees import InterventionalTreeGame
 
 if TYPE_CHECKING:
@@ -77,7 +79,23 @@ class TreeExplainer(Explainer[Array, Game[Array]]):
             raise TypeError(msg)
         super().__init__(game, index)
 
-    def explain(self) -> SparseExplanationArray[Array]:
+    def estimate(self) -> Estimate:
+        """Compute the closed-form explanation as an estimate.
+
+        The estimate's provenance is honest about the price: a tree
+        explanation needs no game evaluations, so its evidence is empty
+        and ``spent`` reads zero.
+        """
+        return Estimate(
+            evidence=EmptyState(),
+            bank=0,
+            n_players=self.game.n_players,
+            view=self._view(),
+            target_shape=tuple(self.game.target_shape),
+            value_shape=tuple(self.game.value_shape),
+        )
+
+    def _view(self) -> SparseExplanationArray[Array]:
         """Compute the configured index exactly from the tree structure.
 
         Returns:

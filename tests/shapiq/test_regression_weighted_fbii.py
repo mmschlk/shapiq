@@ -75,14 +75,14 @@ def brute_force_weighted_fit(mask_fn, p, order):
 @pytest.mark.parametrize("p", [0.2, 0.5, 0.8])
 def test_exact_weighted_fbii_solves_the_product_measure_fit(p):
     expected = brute_force_weighted_fit(cubic_from_masks, p, order=2)
-    explanation = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=p, order=2)).explain()
+    explanation = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=p, order=2)).estimate().view
     for interaction, coefficient in expected.items():
         assert jnp.allclose(explanation(interaction), coefficient, atol=1e-4)
 
 
 def test_uniform_weighting_is_the_faithful_banzhaf_index():
-    weighted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.5, order=2)).explain()
-    banzhaf = ExactExplainer(game_from(cubic_from_masks), FBII(order=2)).explain()
+    weighted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.5, order=2)).estimate().view
+    banzhaf = ExactExplainer(game_from(cubic_from_masks), FBII(order=2)).estimate().view
     assert jnp.allclose(weighted(()), banzhaf(()), atol=1e-6)
     for size in (1, 2):
         for combo in combinations(range(N_PLAYERS), size):
@@ -90,8 +90,8 @@ def test_uniform_weighting_is_the_faithful_banzhaf_index():
 
 
 def test_exact_order_one_is_the_weighted_banzhaf_value():
-    fitted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.3, order=1)).explain()
-    value = ExactExplainer(game_from(cubic_from_masks), WeightedBV(p=0.3)).explain()
+    fitted = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.3, order=1)).estimate().view
+    value = ExactExplainer(game_from(cubic_from_masks), WeightedBV(p=0.3)).estimate().view
     assert jnp.allclose(order_one(fitted), order_one(value), atol=1e-5)
 
 
@@ -112,7 +112,7 @@ def test_recovers_quadratic_games_exactly_once_identified():
 
 
 def test_converges_to_the_exact_faithful_weighted_interactions():
-    exact = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.7, order=2)).explain()
+    exact = ExactExplainer(game_from(cubic_from_masks), WeightedFBII(p=0.7, order=2)).estimate().view
     approximator = Regression(
         game_from(cubic_from_masks),
         WeightedFBII(p=0.7, order=2),

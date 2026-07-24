@@ -78,7 +78,7 @@ def test_sklearn_models_explain_without_ceremony():
     background = features.mean(axis=0)
     masker = BaselineMasker(inputs=features[0], baseline=background)
     game = MaskedGame(masked_predictor=ModelMaskedPredictor(masker=masker, model=model.predict))
-    explanation = ExactExplainer(game, SV()).explain()
+    explanation = ExactExplainer(game, SV()).estimate().view
     # a linear model's Shapley values are w_i * (x_i - baseline_i)
     for player in range(N_PLAYERS):
         expected = coefficients[player] * (features[0, player] - background[player])

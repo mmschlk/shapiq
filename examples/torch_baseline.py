@@ -72,7 +72,7 @@ if __name__ == "__main__":
         return to_jax(torch.softmax(predictions, dim=-1)[..., 1])
 
     game = MaskedGame(masked_predictor=predictor, link_function=probability_link)
-    exact = ExactExplainer(game, SV()).explain()
+    exact = ExactExplainer(game, SV()).estimate().view
     exact_values = jnp.stack([exact((player,)) for player in range(N_PLAYERS)])
     print(f"exact SV ({2**N_PLAYERS} evaluations): {exact_values.round(3)}")
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         link_function=log_probability_link,
         value_shape=(2,),
     )
-    exact_fsii = ExactExplainer(vector_game, FSII(order=2)).explain()
+    exact_fsii = ExactExplainer(vector_game, FSII(order=2)).estimate().view
     pairs = list(combinations(range(N_PLAYERS), 2))
     strengths = jnp.stack([exact_fsii(pair) for pair in pairs])  # (n_pairs, 2 classes)
     print("strongest exact pairwise interactions per class:")
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     for budget in (fsii.min_budget + 20, 60, 80):
         fsii = fsii.sample(budget)
         try:
-            estimate = fsii.explain()
+            estimate = fsii.estimate().view
         except InsufficientSamplesError as error:
             print(f"after +{budget:>3} novel evals | {error}")
             continue
