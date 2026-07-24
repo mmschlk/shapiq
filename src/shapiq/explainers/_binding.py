@@ -1,21 +1,61 @@
-"""Index-binding validation shared by every explainer entry point.
+"""The explainer vocabulary and the index gauntlet every entry point runs.
 
 There is no explainer base class: an explainer is anything that maps a
 game to a game, and each entry point binds its own ``game``, ``index``,
 and resolved ``order`` as frozen attributes. What is shared is the
-gauntlet an index object runs before binding — the teaching errors for
-strings and classes, the protocol conformance check, and the metadata
-validation that resolves the explanation's maximum interaction order.
+vocabulary — the :class:`Explainer` protocol, conformed to structurally,
+never inherited — and the gauntlet an index object runs before binding:
+the teaching errors for strings and classes, the protocol conformance
+check, and the metadata validation that resolves the explanation's
+maximum interaction order.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from shapiq.interactions import InteractionIndex, validate_interaction_metadata
 
 if TYPE_CHECKING:
-    from shapiq.games import Game
+    from collections.abc import Callable
+
+    from shapiq.games import Estimate, Game
+
+
+@runtime_checkable
+class Explainer(Protocol):
+    """The vocabulary of an explainer, as a structural contract.
+
+    An explainer binds a ``game`` and an ``index`` with the resolved
+    ``order`` as frozen configuration, and produces an
+    :class:`~shapiq.games.Estimate` when asked. How it is asked differs by
+    kind — exact and tree explainers estimate outright, sampling policies
+    spend a budget — so ``estimate`` promises only its return currency.
+
+    Nothing inherits this: the shipped entry points and third-party
+    policies alike conform by having the members, which is what lets a
+    policy built entirely outside the library still *be* an explainer.
+    """
+
+    @property
+    def game(self) -> Game:
+        """Return the bound game."""
+        ...
+
+    @property
+    def index(self) -> InteractionIndex:
+        """Return the bound interaction index."""
+        ...
+
+    @property
+    def order(self) -> int:
+        """Return the resolved maximum interaction order."""
+        ...
+
+    @property
+    def estimate(self) -> Callable[..., Estimate]:
+        """Return the verb producing an estimate."""
+        ...
 
 _SHIPPED_EXAMPLES = {
     "SV": "SV()",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from shapiq.explainers._approximator import Approximator
+from shapiq.explainers._binding import Explainer
 from shapiq.explainers._exact import ExactExplainer
 from shapiq.explainers._montecarlo import SHAPIQ, SVARMIQ
 from shapiq.explainers._permutation import PermutationSampling
@@ -14,6 +15,7 @@ __all__ = [
     "SVARMIQ",
     "Approximator",
     "ExactExplainer",
+    "Explainer",
     "PermutationSampling",
     "Regression",
     "TreeExplainer",
