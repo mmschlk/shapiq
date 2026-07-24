@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from jax import Array
 
 from shapiq._frozen import Frozen
+from shapiq._valueaxes import to_leading
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.explainers._binding import (
     missing_index_members,
@@ -23,7 +24,6 @@ from shapiq.explainers._faithful import (
     interaction_masks,
     solve_faithful,
 )
-from shapiq.explainers._valueaxes import to_leading
 from shapiq.games import BasisGame, Estimate, Game, MoebiusBasis, Provenance
 from shapiq.interactions import (
     FBII,

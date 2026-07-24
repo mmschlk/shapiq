@@ -38,7 +38,6 @@ from shapiq import (
     CallableGame,
     MoebiusBasis,
     Regression,
-    SampledEvidence,
     fidelity,
     fit_game,
     shapley_values,
@@ -92,13 +91,7 @@ if __name__ == "__main__":
 
     # 3. rebase the evidence onto the residual and re-solve — zero new calls
     evidence = direct.evidence
-    residual_values = jnp.asarray(evidence.values) - jnp.asarray(proxy(evidence.coalitions))
-    rebased = SampledEvidence(
-        coalitions=evidence.coalitions,
-        values=residual_values,
-        target_shape=(),
-    )
-    correction = Regression(game - proxy, SV(), random_state=0).at_evidence(rebased, bank=0)
+    correction = Regression(game - proxy, SV(), random_state=0).at_evidence(evidence.minus(proxy))
 
     # 4. combine and compare
     combined = shapley_values(proxy) + np.array(
@@ -117,15 +110,8 @@ if __name__ == "__main__":
     # the no-op, for contrast: an order-2 proxy fit to the same evidence
     masks = np.asarray(evidence.coalitions.to_dense(), dtype=bool)
     self_fit = fit_game(masks, np.asarray(evidence.values), N_PLAYERS, order=2)
-    self_residual = jnp.asarray(evidence.values) - jnp.asarray(self_fit(evidence.coalitions))
-    self_rebased = SampledEvidence(
-        coalitions=evidence.coalitions,
-        values=self_residual,
-        target_shape=(),
-    )
     self_correction = Regression(game - self_fit, SV(), random_state=0).at_evidence(
-        self_rebased,
-        bank=0,
+        evidence.minus(self_fit),
     )
     self_combined = shapley_values(self_fit) + np.array(
         [float(self_correction[(player,)]) for player in range(N_PLAYERS)],

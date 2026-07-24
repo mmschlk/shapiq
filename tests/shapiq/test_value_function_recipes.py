@@ -97,14 +97,8 @@ def test_a_different_extension_of_the_same_game_attributes_differently():
 
 def _proxy_corrected_shapley_values(game, direct, proxy):
     """The recipe body: rebase the carried evidence onto the residual, re-solve."""
-    evidence = direct.evidence
-    residual_values = jnp.asarray(evidence.values) - jnp.asarray(proxy(evidence.coalitions))
-    rebased = SampledEvidence(
-        coalitions=evidence.coalitions,
-        values=residual_values,
-        target_shape=(),
-    )
-    correction = Regression(game - proxy, SV(), random_state=0).at_evidence(rebased, bank=0)
+    rebased = direct.evidence.minus(proxy)
+    correction = Regression(game - proxy, SV(), random_state=0).at_evidence(rebased)
     n = game.n_players
     combined = shapley_values(proxy) + np.array(
         [float(correction[(player,)]) for player in range(n)],

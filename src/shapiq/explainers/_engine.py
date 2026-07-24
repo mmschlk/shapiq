@@ -28,6 +28,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from shapiq._shape import validate_int
+from shapiq._valueaxes import to_leading
 from shapiq.coalitions import DenseCoalitionArray
 from shapiq.errors import SamplingStallWarning
 from shapiq.explainers._deduplication import (
@@ -35,7 +36,6 @@ from shapiq.explainers._deduplication import (
     admit_units,
     stitch_values,
 )
-from shapiq.explainers._valueaxes import to_leading
 from shapiq.sampling import Evidence, SampledEvidence
 from shapiq.sampling._evidence import coalition_keys
 

@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
     from numpy.typing import ArrayLike
 
+    from shapiq.games import Game
+
 
 class UniqueView(NamedTuple):
     """Distinct sampled coalitions of one evidence stream.
@@ -303,6 +305,30 @@ class SampledEvidence[ValueT](Evidence):  # noqa: PLW1641
             (appended.n_samples, 0),
         )
         return appended
+
+    def minus(self, game: Game[object]) -> SampledEvidence[ValueT]:
+        """Return this evidence rebased onto the residual against a game.
+
+        Same coalitions, values minus the game's values on them — the
+        evidence one would have gathered explaining ``original - game``,
+        at zero new evaluations of the original. History checkpoints ride
+        along, so the rebased evidence keeps the same resume points and
+        banked remainder, and a policy on the residual game can continue
+        it directly: ``policy.at_evidence(evidence.minus(proxy))``.
+        """
+        from shapiq._valueaxes import to_leading  # noqa: PLC0415 - avoids a sampling/games cycle
+
+        game_values = to_leading(
+            jnp.asarray(game(self.coalitions)),
+            len(game.value_shape),
+        )
+        values = cast("ValueT", jnp.asarray(self.values) - game_values)
+        return SampledEvidence(
+            coalitions=self.coalitions,
+            values=values,
+            target_shape=self.target_shape,
+            _history_cuts=self._history_cuts,
+        )
 
     def _materialized(self) -> tuple[CoalitionArray, ValueT]:
         """Concatenate the stored chunks once and cache the result.
