@@ -13,6 +13,7 @@ from shapiq.games._basis import (
     interaction_terms,
 )
 from shapiq.games._callable import CallableGame
+from shapiq.games._chunked import ChunkedGame
 from shapiq.games._estimate import Estimate, Provenance
 from shapiq.games._extension import (
     integrated_gradients,
@@ -47,6 +48,7 @@ from shapiq.games.maskers import (
 __all__ = [
     "BaselineMasker",
     "CallableGame",
+    "ChunkedGame",
     "Game",
     "LinkFunction",
     "MaskedGame",
