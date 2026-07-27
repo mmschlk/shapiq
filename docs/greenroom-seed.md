@@ -4,13 +4,13 @@ You are building a Python library for Shapley-value and Shapley-interaction
 explanations of machine-learning models, from scratch. You get this brief,
 the published literature, and nothing else.
 
-**Rules of the room.** Do not consult the shapiq codebase (any version), its
-documentation, or its issue tracker. Textbooks and papers are fair game —
-in particular KernelSHAP (Lundberg & Lee 2017), Unbiased KernelSHAP (Covert
-& Lee 2021), SHAP-IQ (Fumagalli et al. 2023), SVARM-IQ (Kolpaczki et al.
-2024), Faithful Shapley Interactions (Tsai et al. 2023), and ProxySHAP.
-Where this brief is silent, decide and write the decision down. Your
-interpretation of the silence is a deliverable.
+**Rules of the room.** Do not consult the shapiq codebase (any version),
+its documentation, its issue tracker, or publications presenting the
+shapiq package itself — those leak the incumbent API this exercise exists
+to challenge. Everything else in the published literature is fair game;
+the reading list at the end names the works we like, not the works you
+are limited to. Where this brief is silent, decide and write the decision
+down. Your interpretation of the silence is a deliverable.
 
 ## The domain, in the language you may assume
 
@@ -145,3 +145,19 @@ loop over terms.
 
 Do not aim for feature completeness across all published indices; aim for
 the *shape* that could hold them. Cut scope anywhere except the scenarios.
+
+## Reading (all references are fair game; these are the ones we like)
+
+- Lundberg & Lee (2017), *A Unified Approach to Interpreting Model
+  Predictions* (KernelSHAP) — https://arxiv.org/abs/1705.07874
+- Covert & Lee (2021), *Improving KernelSHAP: Practical Shapley Value
+  Estimation via Linear Regression* — https://arxiv.org/abs/2012.01536
+- Fumagalli et al. (2023), *SHAP-IQ: Unified Approximation of any-order
+  Shapley Interactions* — https://arxiv.org/abs/2303.01179
+- Kolpaczki et al. (2024), *SVARM-IQ: Efficient Approximation of Any-order
+  Shapley Interactions through Stratification* —
+  https://arxiv.org/abs/2401.13371
+- Tsai et al. (2023), *Faith-Shap: The Faithful Shapley Interaction
+  Index* — https://arxiv.org/abs/2203.00870
+- A perspective we value — https://openreview.net/forum?id=tp3Aw6t0QF
+- A perspective we value — https://openreview.net/forum?id=gAO7AFSTJD
