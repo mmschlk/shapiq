@@ -27,6 +27,39 @@ kernel-weighted** views of these indices are textbook. Explanations can be
 judged by **fidelity**: how well the (sparser) attribution object accounts
 for the model's behavior.
 
+## Pillars (non-negotiable; the brief's one big bet is yours to elaborate)
+
+1. **Everything is a game.** The value function is the central abstraction.
+   A model behind a feature-removal scheme is a game — and the library's
+   *outputs* must live in the same currency: an explanation is itself a
+   game, a sparser and readable one. Explainers map games to games. You
+   work out the consequences, and they are the heart of this exercise:
+   What does it mean to *evaluate* an explanation? How does a user read
+   its attributions without confusing reading with evaluating? Where do
+   the byproducts of estimation — spend, uncertainty, resumability —
+   live, if the output is a game? What happens when you add two
+   explanations, or subtract one from its model? If this pillar never
+   fights you, you have not pushed it far enough; where it fought you
+   belongs in `DECISIONS.md`.
+
+2. **Optax-shaped process.** Take the discipline of the JAX ecosystem
+   (optax, equinox, flax) as your model: configuration is immutable
+   values, computation is pure transformation, and any state that evolves
+   between calls is a first-class value the *user* holds and passes —
+   never hidden attributes mutating on a long-lived object.
+
+3. **JAX-first numerics, open boundary.** The numerical core computes in
+   JAX, batched — no per-coalition Python loops on hot paths. The model
+   boundary stays backend-open (a torch model receives torch tensors;
+   think array-api at the masking layer, not conversion ceremonies).
+
+4. **Value axes and batching are a contract, not an accident.** Games may
+   return vector values (class probabilities, margins) and be explained
+   for many instances at once. Declare an explicit layout contract for
+   how target axes, sample axes, and value axes compose — at the public
+   boundary and internally — before writing estimators, and enforce it
+   at the game boundary.
+
 ## Design values (the taste you are being hired for)
 
 - Identity is typed. A misspelled method or index name must be impossible
@@ -53,8 +86,11 @@ it. Write each as a runnable script.
 superpixels, a text model over tokens, and a scikit-learn random forest are
 each explained: Shapley values and order-2 interactions, exact for small
 `n`, budgeted estimation for larger `n`. Exact and estimated agree in the
-limit. Peak memory for the image model is bounded regardless of how many
-coalitions an estimator requests at once.
+limit. The tabular classifier is also explained for both class
+log-probabilities at once (vector values) and for a batch of ten
+instances in one pass — the pillar-4 contract, exercised. Peak memory for
+the image model is bounded regardless of how many coalitions an estimator
+requests at once.
 
 **S2 — Anytime, split-invariant, replayable.** Spending a budget of 4000
 and then 4000 more yields *bit-identical* results to spending 8000 once —
@@ -102,8 +138,10 @@ loop over terms.
 2. `DESIGN.md` — the type inventory and how the scenarios flow through it.
 3. A working prototype with tests: all seven scenarios runnable.
 4. `DECISIONS.md` — the five hardest calls you made, the alternatives you
-   rejected, and why. If nothing felt hard, you have not found the domain's
-   real tensions yet; look again at S2, S5, and S6 together.
+   rejected, and why. At least two must be about pillar 1's edges: the
+   places "everything is a game" resisted you and how you resolved it.
+   If nothing felt hard, you have not found the domain's real tensions
+   yet; look again at S2, S5, and S6 together, under pillar 1.
 
 Do not aim for feature completeness across all published indices; aim for
 the *shape* that could hold them. Cut scope anywhere except the scenarios.
