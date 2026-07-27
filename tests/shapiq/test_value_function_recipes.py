@@ -99,11 +99,8 @@ def _proxy_corrected_shapley_values(game, direct, proxy):
     """The recipe body: rebase the carried evidence onto the residual, re-solve."""
     rebased = direct.evidence.minus(proxy)
     correction = Regression(game - proxy, SV(), random_state=0).at_evidence(rebased)
-    n = game.n_players
-    combined = shapley_values(proxy) + np.array(
-        [float(correction[(player,)]) for player in range(n)],
-    )
-    return combined, proxy + correction
+    surrogate = proxy + correction  # closed addition: still a readable moebius game
+    return shapley_values(surrogate), surrogate
 
 
 def test_a_self_fit_low_order_proxy_is_a_no_op_by_linearity():

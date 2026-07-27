@@ -93,10 +93,10 @@ if __name__ == "__main__":
     evidence = direct.evidence
     correction = Regression(game - proxy, SV(), random_state=0).at_evidence(evidence.minus(proxy))
 
-    # 4. combine and compare
-    combined = shapley_values(proxy) + np.array(
-        [float(correction[(player,)]) for player in range(N_PLAYERS)],
-    )
+    # 4. combine and compare — basis games are closed under addition, and
+    # shapley values are linear in the game, so the combined explanation is
+    # one readable game and one read
+    combined = shapley_values(proxy + correction)
     proxy_alone = shapley_values(proxy)
     print(f"evaluations spent in total               : {sum(calls)}  (the correction was free)")
     print(f"max |error| proxy alone (biased)         : {np.abs(proxy_alone - exact_sv).max():.4f}")
@@ -113,8 +113,6 @@ if __name__ == "__main__":
     self_correction = Regression(game - self_fit, SV(), random_state=0).at_evidence(
         evidence.minus(self_fit),
     )
-    self_combined = shapley_values(self_fit) + np.array(
-        [float(self_correction[(player,)]) for player in range(N_PLAYERS)],
-    )
+    self_combined = shapley_values(self_fit + self_correction)
     print(f"self-fit order-2 proxy, |combined - direct|: "
           f"{np.abs(self_combined - direct_sv).max():.2e}  (a no-op, by linearity)")

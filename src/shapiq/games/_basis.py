@@ -262,6 +262,67 @@ class BasisGame(Game["Array"]):
             return self.terms
         return tuple(term for term in self.terms if len(term) == order)
 
+    def __add__(self, other: Game[Array]) -> Game[Array]:
+        """Return the sum, staying readable when the bases agree.
+
+        Basis games are closed under addition: coefficients on shared
+        terms add, and the result reads and evaluates like any other
+        basis game (an estimate's provenance does not survive — the sum
+        is a new derived game). Games on a different basis, or games
+        without coefficients, fall back to the extensional ``SumGame``.
+        """
+        merged = self._merged_coefficients(other, 1.0)
+        if merged is None:
+            return super().__add__(other)
+        return merged
+
+    def __sub__(self, other: Game[Array]) -> Game[Array]:
+        """Return the residual, staying readable when the bases agree."""
+        merged = self._merged_coefficients(other, -1.0)
+        if merged is None:
+            return super().__sub__(other)
+        return merged
+
+    def __mul__(self, scale: float) -> Game[Array]:
+        """Return the scaled game, staying readable."""
+        if isinstance(scale, bool) or not isinstance(scale, (int, float)):
+            return NotImplemented
+        return BasisGame(
+            self.basis,
+            None,
+            self.n_players,
+            terms=self.terms,
+            values=self._values * float(scale),
+            value_shape=self.value_shape,
+            target_shape=self.target_shape,
+        )
+
+    __rmul__ = __mul__
+
+    def _merged_coefficients(self, other: Game[Array], sign: float) -> BasisGame | None:
+        if (
+            not isinstance(other, BasisGame)
+            or other.basis != self.basis
+            or other.n_players != self.n_players
+            or other.value_shape != self.value_shape
+            or other.target_shape != self.target_shape
+        ):
+            return None
+        coefficients: dict[Collection[int], np.ndarray] = {
+            term: self._values[..., position] for position, term in enumerate(self.terms)
+        }
+        for position, term in enumerate(other.terms):
+            block = sign * other._values[..., position]  # noqa: SLF001 - same-class merge
+            existing = coefficients.get(term)
+            coefficients[term] = block if existing is None else existing + block
+        return BasisGame(
+            self.basis,
+            coefficients,
+            self.n_players,
+            value_shape=self.value_shape,
+            target_shape=self.target_shape,
+        )
+
     def __getitem__(self, interaction: Collection[int]) -> np.ndarray | float:
         """Read one coefficient (the coefficient plane); absent terms are zero.
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from jax import Array
 
     from shapiq.coalitions import CoalitionArray
+    from shapiq.interactions import InteractionIndex
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,7 @@ class Provenance:
     bank: int = 0
     """The banked budget remainder."""
 
-    index: object | None = None
+    index: InteractionIndex | None = None
     """The interaction index the estimate was made under."""
 
     fingerprint: tuple[object, ...] | None = None
@@ -90,7 +91,7 @@ class Estimate(BasisGame):
         return self.provenance.bank
 
     @property
-    def index(self) -> object | None:
+    def index(self) -> InteractionIndex | None:
         """Return the interaction index the estimate was made under."""
         return self.provenance.index
 
@@ -124,8 +125,28 @@ class Estimate(BasisGame):
         return self.evidence.n_samples
 
     def __getitem__(self, interaction: Collection[int]) -> np.ndarray | float:
-        """Read one coefficient; raises while the estimate is not ready."""
+        """Read one coefficient; raises while the estimate is not ready.
+
+        Reads above the estimate's declared order raise: an SV estimate
+        has no pair interactions to be silently zero about. Within the
+        declared order, absent terms read ``0.0`` — that is sparsity.
+        """
         self._require_ready()
+        index = self.provenance.index
+        declared = None if index is None else index.order
+        if (
+            index is not None
+            and declared is not None
+            and not isinstance(interaction, int)
+            and len(tuple(interaction)) > declared
+        ):
+            msg = (
+                f"this estimate was made under {index.name!r} at order {declared}: "
+                f"interactions of size {len(tuple(interaction))} are outside its "
+                "space (within the order, absent terms read 0.0); estimate with "
+                "an index of higher order for them"
+            )
+            raise ValueError(msg)
         return super().__getitem__(interaction)
 
     def _call(self, coalitions: CoalitionArray) -> Array:
