@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from shapiq.games._algebra import SumGame
-from shapiq.games._base import Game, LinkFunction, Model
+from shapiq.games._base import Game, GameValues, LinkFunction, Model, SumGame
 from shapiq.games._basis import (
     Basis,
     BasisGame,
@@ -50,6 +49,7 @@ __all__ = [
     "CallableGame",
     "ChunkedGame",
     "Game",
+    "GameValues",
     "LinkFunction",
     "MaskedGame",
     "MaskedPredictor",

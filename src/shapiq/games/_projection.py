@@ -22,7 +22,7 @@ from shapiq.coalitions import DenseCoalitionArray
 from shapiq.games._basis import Basis, BasisGame, MoebiusBasis, interaction_terms
 
 if TYPE_CHECKING:
-    from shapiq.games._base import Game
+    from shapiq.games._base import Game, GameValues
     from shapiq.games._measures import Measure
 
 _EXACT_LIMIT = 20
@@ -46,7 +46,7 @@ def all_coalitions(n_players: int) -> np.ndarray:
     return (grid & 1).astype(bool)
 
 
-def _scalar_full_values(game: Game[object]) -> np.ndarray:
+def _scalar_full_values(game: Game[GameValues]) -> np.ndarray:
     """Evaluate the game on the full table, as a host float64 vector."""
     if game.target_shape != () or game.value_shape != ():
         msg = (
@@ -62,7 +62,7 @@ def _scalar_full_values(game: Game[object]) -> np.ndarray:
     return np.asarray(values, dtype=np.float64)
 
 
-def to_basis(game: Game[object], basis: Basis) -> BasisGame:
+def to_basis(game: Game[GameValues], basis: Basis) -> BasisGame:
     """Return the game's exact representation in a basis (all orders)."""
     n_players = game.n_players
     truth = _scalar_full_values(game)
@@ -72,7 +72,7 @@ def to_basis(game: Game[object], basis: Basis) -> BasisGame:
     return BasisGame(basis, dict(zip(terms, coefficients, strict=True)), n_players)
 
 
-def project(game: Game[object], order: int, measure: Measure) -> BasisGame:
+def project(game: Game[GameValues], order: int, measure: Measure) -> BasisGame:
     """Return the best game of degree <= ``order`` under the measure.
 
     The degree-<=k subspace is basis-free; coefficients are reported in
@@ -89,8 +89,7 @@ def project(game: Game[object], order: int, measure: Measure) -> BasisGame:
     coefficients, *_ = np.linalg.lstsq(atoms * weights[:, None], truth * weights, rcond=None)
     return BasisGame(basis, dict(zip(terms, coefficients, strict=True)), n_players)
 
-
-def fidelity(game: Game[object], surrogate: Game[object], measure: Measure) -> float:
+def fidelity(game: Game[GameValues], surrogate: Game[GameValues], measure: Measure) -> float:
     """Return the surrogate's weighted R^2 against the game under the measure.
 
     Free-intercept surrogates (the FBII family) fit the centered game
