@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.1 (TBD)
+
+### Highlights of new Features
+
+- adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
+
 ## v1.6.0 (2026-07-06)
 
 ### Highlights of new Features
