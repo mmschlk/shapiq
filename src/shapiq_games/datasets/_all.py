@@ -929,6 +929,95 @@ def load_random(
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
+def load_curthvds_synthetic(
+    n: int = 500,
+    d: int = 4,
+    seed: int = 42,
+    setting: str = "ii",
+) -> pd.DataFrame:
+    """Load a Curth-VDS-style synthetic causal inference dataset.
+
+    Generates an observational dataset following Curth and van der Schaar
+    (2021) :cite:t:`curth2021`, with a binary treatment, a continuous outcome,
+    and covariates assigned to four causal roles: instruments, confounders,
+    effect modifiers, and outcome-only variables.
+
+    For ``d=4`` the split is exactly 1 instrument, 1 confounder, 1 effect
+    modifier, 1 outcome-only variable.  For other values of ``d`` the roles are
+    split as evenly as possible across the four groups.
+
+    Treatment assignment depends on the confounders (observational study),
+    so naive treatment-effect estimates are biased.
+
+    Args:
+        n: Number of observations. Defaults to 500.
+        d: Number of covariates. Must be at least 4. Defaults to 4.
+        seed: Random seed. Defaults to 42.
+        setting: DGP setting. ``'ii'`` has heterogeneous treatment effects
+            (effect modifiers matter); ``'i'`` has no treatment effect.
+            Defaults to ``'ii'``.
+
+    Returns:
+        A DataFrame with covariate columns (``Instrument``, ``Confounder``,
+        ``EffectModifier``, ``OutcomeOnly``, with numeric suffixes when
+        there are multiple of the same type), a ``Treatment`` column (0/1),
+        and an ``Outcome`` column (continuous).
+
+    Example:
+        >>> from shapiq_games.datasets import load_curthvds_synthetic
+        >>> df = load_curthvds_synthetic(n=200, d=4, seed=0)
+        >>> print(df.shape)
+        (200, 6)
+        >>> print(list(df.columns))
+        ['Instrument', 'Confounder', 'EffectModifier', 'OutcomeOnly', 'Treatment', 'Outcome']
+
+    """
+    if d < 4:
+        msg = "d must be at least 4."
+        raise ValueError(msg)
+    if setting not in {"i", "ii"}:
+        msg = "setting must be 'i' or 'ii'."
+        raise ValueError(msg)
+
+    rng = np.random.default_rng(seed)
+
+    n_c = max(1, d // 4)
+    n_tau = max(1, d // 4)
+    n_z = max(1, d // 4)
+    n_o = max(0, d - n_c - n_tau - n_z)
+
+    x_c = rng.normal(0.0, 1.0, (n, n_c))
+    x_tau = rng.normal(0.0, 1.0, (n, n_tau))
+    x_z = rng.normal(0.0, 1.0, (n, n_z))
+    x_o = rng.normal(0.0, 1.0, (n, n_o)) if n_o > 0 else None
+
+    x_co = np.concatenate([x_c, x_o], axis=1) if x_o is not None else x_c
+    mu0 = np.sum(x_co**2, axis=1)
+    mu1 = mu0 + (np.sum(x_tau**2, axis=1) if setting == "ii" else 0.0)
+
+    m = np.mean(x_c**2, axis=1)
+    prop = 1.0 / (1.0 + np.exp(-3.0 * (m - float(np.quantile(m, 0.5)))))
+    A = rng.binomial(1, prop, n).astype(int)
+    Y = mu0 * (1 - A) + mu1 * A + rng.normal(0.0, 1.0, n)
+
+    def _cols(arr: np.ndarray, base: str) -> dict:
+        k = arr.shape[1]
+        if k == 1:
+            return {base: arr[:, 0]}
+        return {f"{base}{j + 1}": arr[:, j] for j in range(k)}
+
+    data: dict = {}
+    data.update(_cols(x_z, "Instrument"))
+    data.update(_cols(x_c, "Confounder"))
+    data.update(_cols(x_tau, "EffectModifier"))
+    if x_o is not None:
+        data.update(_cols(x_o, "OutcomeOnly"))
+    data["Treatment"] = A
+    data["Outcome"] = Y
+
+    return pd.DataFrame(data)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Private helpers for UCI CSV loaders
 # ─────────────────────────────────────────────────────────────────────────────
