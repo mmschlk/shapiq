@@ -181,6 +181,7 @@ illustration_sources/
 src/shapiq_games/datasets/data/tabarena_*.csv
 
 shapiq/games/benchmark/precomputed/
+benchmark/results/*
 precomputed.zip
 game_storage/*
 
