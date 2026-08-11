@@ -16,10 +16,10 @@ from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
-if TYPE_CHECKING:
-    import numpy as np
+import numpy as np
+from shapiq.interaction_values import InteractionValues
 
-    from shapiq.interaction_values import InteractionValues
+if TYPE_CHECKING:
     from shapiq.typing import Model
 
     from .base import TreeModel
@@ -133,6 +133,7 @@ class TreeExplainer(Explainer):
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
         self._interventional_explainer: InterventionalTreeExplainer | None = None
+        self.explainers_initialized = False
 
         if self.mode == "pathdependent":
             if self._can_use_lineartreeshap():
@@ -232,9 +233,9 @@ class TreeExplainer(Explainer):
         elif self._index == "BV":
             metric = BanzhafValues()
         elif self._index == "SII":
-            metric = GeneralShapleyInteractionValues(self._min_order, self._max_order)
+            metric = GeneralShapleyInteractionValues(max(self._min_order, 1), self._max_order)
         elif self._index == "BII":
-            metric = GeneralBanzhafInteractionValues(self._min_order, self._max_order)
+            metric = GeneralBanzhafInteractionValues(max(self._min_order, 1), self._max_order)
         else:
             return None
 
@@ -279,8 +280,12 @@ class TreeExplainer(Explainer):
         return woodelf_format
 
     def _cast_woodelf_result_to_shapiq_format(self, woodelf_result: Dict[tuple, np.ndarray], n_players) -> InteractionValues:
+         interaction_values = {subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0}
+         if self._min_order == 0:
+             interaction_values[tuple()] = self.baseline_value
+
          return InteractionValues(
-             values={subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0},
+             values=interaction_values,
              index=self._index,
              max_order=self._max_order,
              n_players=n_players,
@@ -410,7 +415,9 @@ class TreeExplainer(Explainer):
         """
         if self._should_use_woodelf(number_of_explained_instances=1):
             woodelf_explanation = self._run_woodelf(np.array([x]))
-            return self._cast_woodelf_result_to_shapiq_format(woodelf_explanation, n_players=int(x.shape[0]))
+            if woodelf_explanation is not None:
+                return self._cast_woodelf_result_to_shapiq_format(woodelf_explanation, n_players=int(x.shape[0]))
+
         if self.mode == "pathdependent":
             # Dispatch on whichever per-tree list __init__ chose to populate.
             if self._lineartreeshap_explainers:
@@ -430,7 +437,8 @@ class TreeExplainer(Explainer):
         """Explaining many instances and once, using Woodelf on larger datasets and shapiq on smaller onces"""
         if self._should_use_woodelf(len(X)):
             woodelf_result = self._run_woodelf(X)
-            return woodelf_result
+            if woodelf_result is not None:
+                return woodelf_result
 
-        shapiq_results = super(self).explain_X(X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs)
+        shapiq_results = super().explain_X(X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs)
         return self._cast_shapiq_results_to_woodelf_format(shapiq_results)
