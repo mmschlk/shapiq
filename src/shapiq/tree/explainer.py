@@ -13,16 +13,15 @@ from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 
 from .linear import LinearTreeSHAP
-from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
+from .treeshapiq import TreeSHAPIQ
 from .validation import validate_tree_model
 
 import numpy as np
 from shapiq.interaction_values import InteractionValues
+from .base import TreeModel
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
-
-    from .base import TreeModel
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
