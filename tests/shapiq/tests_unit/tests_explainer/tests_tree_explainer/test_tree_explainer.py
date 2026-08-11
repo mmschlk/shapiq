@@ -65,6 +65,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 def test_random_forest_regression(rf_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1, index="k-SII")
+    explainer._init_explainers(index="k-SII")
 
     x_explain = background_reg_data[0]
     explanation = explainer.explain(x_explain)
@@ -418,6 +419,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
         index="SV",
         class_index=class_label,
     )
+    explainer_shapiq_rounded._init_explainers(index="SV")
     # max_order=1 SV routes through the LinearTreeSHAP path; round thresholds on whichever
     # per-tree explainer list was populated so the mutation actually takes effect at explain time.
     per_tree_explainers = (
@@ -549,8 +551,10 @@ def test_extra_trees_clf(et_clf_model, background_clf_data):
 
 def test_interventional_missing_reference_dataset_raises(rf_reg_model):
     """``mode='interventional'`` requires a ``reference_dataset``."""
+    # the explainers are built lazily, so the check fires on init, not on construction
+    explainer = TreeExplainer(model=rf_reg_model, mode="interventional", max_order=2, index="SII")
     with pytest.raises(ValueError, match="reference_dataset"):
-        TreeExplainer(model=rf_reg_model, mode="interventional", max_order=2, index="SII")
+        explainer._init_explainers(index="SII")
 
 
 def test_interventional_dt_regression(dt_reg_model, background_reg_data):
@@ -568,6 +572,7 @@ def test_interventional_dt_regression(dt_reg_model, background_reg_data):
     )
 
     # the interventional path must be the one that's wired up
+    explainer._init_explainers(index="SII")
     assert explainer._interventional_explainer is not None
     assert explainer._treeshapiq_explainers == []
     assert explainer._lineartreeshap_explainers == []
@@ -702,6 +707,76 @@ def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_da
     direct_values = np.array([direct_iv[(i,)] for i in range(n_features)])
 
     assert np.allclose(wrapper_values, direct_values, rtol=1e-5, atol=1e-6)
+
+
+def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
+    """Background SHAP over 20 rows x 10 background rows routes through Woodelf.
+
+    ``10 * 20 >= 100`` crosses the interventional Woodelf cut-off, so ``explain_X`` no longer
+    runs the shapiq kernel. The per-feature values must still match the direct
+    :class:`InterventionalTreeExplainer`.
+    """
+    from shapiq.tree import InterventionalTreeExplainer
+
+    reference = background_reg_data[:10]
+    x_explain = background_reg_data[10:30]
+    n_features = background_reg_data.shape[1]
+
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+    assert explainer._should_use_woodelf(len(x_explain))  # guard: Woodelf, not the fallback
+    woodelf_values = explainer.explain_X(x_explain)
+
+    direct = InterventionalTreeExplainer(
+        model=rf_reg_model, data=reference, max_order=1, index="SV"
+    )
+    # Woodelf omits a feature entirely when it is zero for every row, so default to zeros.
+    zeros = np.zeros(len(x_explain))
+    for row, x in enumerate(x_explain):
+        direct_iv = direct.explain_function(x)
+        for feature in range(n_features):
+            woodelf_value = woodelf_values.get((feature,), zeros)[row]
+            assert woodelf_value == pytest.approx(direct_iv[(feature,)], abs=1e-5)
+
+
+def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_data):
+    """Path-dependent SII with ``min_order=0``, ``max_order=3`` routes through Woodelf.
+
+    ``max_order > 1`` crosses the path-dependent Woodelf cut-off. Orders 1-3 must match
+    :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0`` must still put the
+    baseline at the empty interaction.
+    """
+    from shapiq.tree import TreeSHAPIQ
+    from shapiq.tree.validation import validate_tree_model
+
+    x_explain = background_reg_data[0]
+
+    explainer = TreeExplainer(model=dt_reg_model, max_order=3, min_order=0, index="SII")
+    assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
+    explanation = explainer.explain(x_explain)
+
+    per_tree = [
+        TreeSHAPIQ(model=tree, max_order=3, index="SII").explain(x_explain)
+        for tree in validate_tree_model(dt_reg_model)
+    ]
+    reference = sum(per_tree[1:], start=per_tree[0])
+
+    assert explanation.min_order == 0
+    assert explanation.max_order == 3
+    assert explanation[()] == pytest.approx(explainer.baseline_value)
+
+    # a subset missing on one side is an exact zero there, so compare over the union
+    interactions = set(explanation.interactions) | set(reference.interactions)
+    assert {len(interaction) for interaction in interactions} == {0, 1, 2, 3}
+    for interaction in interactions:
+        if interaction:  # skip the empty interaction, checked against the baseline above
+            assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
 
 
 def test_extra_trees_reg(et_reg_model, background_reg_data):

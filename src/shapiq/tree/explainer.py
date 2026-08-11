@@ -135,6 +135,13 @@ class TreeExplainer(Explainer):
         self._interventional_explainer: InterventionalTreeExplainer | None = None
         self.explainers_initialized = False
 
+        # Baseline is the sum of the per-tree empty predictions and is identical regardless of
+        # which algorithm runs explain — derive it from the trees directly so the attribute is
+        # always populated, including in ``"interventional"`` mode where no per-tree list exists.
+        self.baseline_value: float = float(sum(tree.empty_prediction for tree in self._trees))
+
+    def _init_explainers(self, index: Literal["SV", "SII", "k-SII"]):
+        self.explainers_initialized = True
         if self.mode == "pathdependent":
             if self._can_use_lineartreeshap():
                 self._lineartreeshap_explainers = [
@@ -161,11 +168,6 @@ class TreeExplainer(Explainer):
                 max_order=self._max_order,
                 index=self.index,
             )
-
-        # Baseline is the sum of the per-tree empty predictions and is identical regardless of
-        # which algorithm runs explain — derive it from the trees directly so the attribute is
-        # always populated, including in ``"interventional"`` mode where no per-tree list exists.
-        self.baseline_value: float = float(sum(tree.empty_prediction for tree in self._trees))
 
     def _can_use_lineartreeshap(self) -> bool:
         """Whether the LinearTreeSHAP fast path can replace TreeSHAP-IQ for this configuration.
@@ -290,6 +292,7 @@ class TreeExplainer(Explainer):
              max_order=self._max_order,
              n_players=n_players,
              min_order=self._min_order,
+             baseline_value=self.baseline_value,
          )
 
     def _explain_function_lineartreeshap(
@@ -368,6 +371,7 @@ class TreeExplainer(Explainer):
         if len(x.shape) != 1:
             msg = "explain expects a single instance, not a batch."
             raise TypeError(msg)
+
         # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
         for explainer in self._treeshapiq_explainers:
@@ -418,6 +422,8 @@ class TreeExplainer(Explainer):
             if woodelf_explanation is not None:
                 return self._cast_woodelf_result_to_shapiq_format(woodelf_explanation, n_players=int(x.shape[0]))
 
+        if not self.explainers_initialized:
+            self._init_explainers(self.index)
         if self.mode == "pathdependent":
             # Dispatch on whichever per-tree list __init__ chose to populate.
             if self._lineartreeshap_explainers:
