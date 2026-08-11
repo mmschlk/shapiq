@@ -7,10 +7,7 @@ for tree ensembles.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
-
-import pandas as pd
-from woodelf.core.cube_metric import BanzhafInteractionValues
+from typing import TYPE_CHECKING, Any, Literal, Dict
 
 from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
@@ -30,6 +27,7 @@ if TYPE_CHECKING:
 TREE_MODES = Literal["pathdependent", "interventional"]
 
 
+
 class TreeExplainer(Explainer):
     """The TreeExplainer class for tree-based models.
 
@@ -47,9 +45,15 @@ class TreeExplainer(Explainer):
     ``scikit-learn``, ``XGBoost``, ``LightGBM``, and ``CatBoost``. The explainer can handle both
     regression and classification models.
 
+    On large datasets the explainer relays on the Woodelf and WoodelfHD algorithms. For details, refer to
+    `Nadel and Wettenstein (2026)` [Nad26]_ and `Wettenstein et al. (2026)` [Wet26]_
+
+
     References:
         .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read. (2022). Linear Tree Shap. In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
         .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
+        ... [Nad26] Nadel, A., & Wettenstein, R. (2026). From Decision Trees to Boolean Logic: A Fast and Unified SHAP Algorithm. Proceedings of the AAAI Conference on Artificial Intelligence, 40(29), 24476–24485. https://doi.org/10.1609/aaai.v40i29.39630
+        .... [Wet26] Ron Wettenstein, Alexander Nadel, Udi Boker. (2026). WOODELF-HD: Efficient Background SHAP for High-Depth Decision Trees. arXiv preprint arXiv:2604.10569. https://arxiv.org/abs/2604.10569
 
     """
 
@@ -228,21 +232,60 @@ class TreeExplainer(Explainer):
         elif self._index == "BV":
             metric = BanzhafValues()
         elif self._index == "SII":
-            metric = GeneralShapleyInteractionValues(self._max_order, self._min_order)
+            metric = GeneralShapleyInteractionValues(self._min_order, self._max_order)
         elif self._index == "BII":
-            metric = GeneralBanzhafInteractionValues(self._max_order, self._min_order)
+            metric = GeneralBanzhafInteractionValues(self._min_order, self._max_order)
         else:
             return None
 
         # TODO when woodelf support path dependent SHAP on high depth trees remove this if and model parsing
-        loaded_model = load_decision_tree_ensemble_model(self.model, range(len(X)))
+        loaded_model = load_decision_tree_ensemble_model(self.model, range(X.shape[1]))
         if self._reference_dataset is None and self.max_order >= 3 and loaded_model.max_depth > 16:
             return None
 
-        return hybrid_woodelf(
+        woodelf_result = hybrid_woodelf(
             model=loaded_model, consumer_data=consumer_dataset, background_data=background_dataset,
             metric=metric, model_was_loaded=True
         )
+        if self._index in ("SV", "BV"):
+            return {(k, ): v for k, v in woodelf_result.items()}
+        return woodelf_result
+
+    def _cast_shapiq_results_to_woodelf_format(
+            self,
+            shapiq_results: list[InteractionValues],
+    ) -> Dict[tuple, np.ndarray]:
+        """Transpose one shapiq output format, ``InteractionValues`` per row, into ``_run_woodelf``'s output format, ``{interaction_tuple: ndarray(n_instances,)}``,
+         keeping orders ``max(min_order, 1) .. max_order`` (which also drops the ``()`` baseline).
+        """
+        lowest = max(self._min_order, 1)
+
+        # Shapiq omits exactly-zero terms per row and woodelf include them (it emits only terms that are zero in all rows)
+        all_subsets = {
+            subset
+            for result in shapiq_results
+            for subset in result.interactions
+            if lowest <= len(subset) <= self._max_order
+        }
+
+        woodelf_format = {subset: np.zeros(len(shapiq_results)) for subset in all_subsets}
+
+        # A subset a row does not report stays 0.0 -- that is what its absence means.
+        for row, result in enumerate(shapiq_results):
+            for subset, value in result.interactions.items():
+                if subset in woodelf_format:
+                    woodelf_format[subset][row] = value
+
+        return woodelf_format
+
+    def _cast_woodelf_result_to_shapiq_format(self, woodelf_result: Dict[tuple, np.ndarray], n_players) -> InteractionValues:
+         return InteractionValues(
+             values={subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0},
+             index=self._index,
+             max_order=self._max_order,
+             n_players=n_players,
+             min_order=self._min_order,
+         )
 
     def _explain_function_lineartreeshap(
         self,
@@ -365,9 +408,29 @@ class TreeExplainer(Explainer):
         Returns:
             The computed interaction index for the instance.
         """
+        if self._should_use_woodelf(number_of_explained_instances=1):
+            woodelf_explanation = self._run_woodelf(np.array([x]))
+            return self._cast_woodelf_result_to_shapiq_format(woodelf_explanation, n_players=int(x.shape[0]))
         if self.mode == "pathdependent":
             # Dispatch on whichever per-tree list __init__ chose to populate.
             if self._lineartreeshap_explainers:
                 return self._explain_function_lineartreeshap(x, **kwargs)
             return self._explain_function_treeshapiq(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)
+
+    def explain_X(
+        self,
+        X: np.ndarray,
+        *,
+        n_jobs: int | None = None,
+        random_state: int | None = None,
+        verbose: bool = False,
+        **kwargs: Any,
+    ) -> Dict[tuple, np.ndarray]:
+        """Explaining many instances and once, using Woodelf on larger datasets and shapiq on smaller onces"""
+        if self._should_use_woodelf(len(X)):
+            woodelf_result = self._run_woodelf(X)
+            return woodelf_result
+
+        shapiq_results = super(self).explain_X(X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs)
+        return self._cast_shapiq_results_to_woodelf_format(shapiq_results)
