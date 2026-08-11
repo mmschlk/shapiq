@@ -201,6 +201,10 @@ class TreeExplainer(Explainer):
         if self.index not in ("SV", "BV", "SII", "BII"):
             return False
 
+        # Woodelf needs the original model as an input
+        if isinstance(self.model, list) or isinstance(self.model, TreeModel):
+            return False
+
         if self.mode == "interventional":
             if len(self._reference_dataset) * number_of_explained_instances >= 100:
                 return True
