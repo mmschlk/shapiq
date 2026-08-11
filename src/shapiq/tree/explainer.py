@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
+import pandas as pd
+from woodelf.core.cube_metric import BanzhafInteractionValues
+
 from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 
@@ -171,6 +174,74 @@ class TreeExplainer(Explainer):
             self._max_order == 1
             and self.index in ("SV", "SII")
             and all(tree.n_features_in_tree >= 2 for tree in self._trees)
+        )
+
+    def _should_use_woodelf(self, number_of_explained_instances):
+        """
+        The function decide when to use Woodelf and when to use shapiq implementation for Shapley values computation.
+        The cut-offs are n*m >= 100 for interventional and n >= 100 for path dependent where n is the number of explained instances and
+        m is the size of the reference dataset. They are based on experiments summerized in the htmls below:
+
+        Path Dependent experiment:
+        https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_path_dependent_experiment.html
+
+        Interventional experiment:
+        https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_experiment.html
+
+        This function should change when new capabilities are developed in Woodelf.
+        """
+        if self.index not in ("SV", "BV", "SII", "BII"):
+            return False
+
+        if self.mode == "interventional":
+            if len(self._reference_dataset) * number_of_explained_instances >= 100:
+                return True
+        elif self.mode == "pathdependent":
+            if self.max_order > 1 or number_of_explained_instances >= 100:
+                return True
+        return False
+
+    def _run_woodelf(self, X: np.ndarray):
+        """
+        Compute Shapley or Banzhaf values using the Woodelf package.
+        We use the hybrid_woodelf function.
+
+        Return the values in Woodelf format or None if this configuration is not supported in Woodelf (e.g. unsupported index or too deep tree)
+        """
+        try:
+            from woodelf.woodelf_sparse import hybrid_woodelf
+            from woodelf.core.cube_metric import ShapleyValues, BanzhafValues, GeneralShapleyInteractionValues, GeneralBanzhafInteractionValues
+            from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "For efficient computation of decision trees woodelf and treelite needs to be installed.\n" +
+                "You can install all the needed package for decision tree explainability by installing shapiq [trees] extra. Run: \n" +
+                ">> pip install shapiq[trees]"
+            )
+
+        consumer_dataset = pd.DataFrame(X)
+        background_dataset = pd.DataFrame(self._reference_dataset) if self._reference_dataset is not None else None
+
+        if self._index == "SV":
+            metric = ShapleyValues()
+        elif self._index == "BV":
+            metric = BanzhafValues()
+        elif self._index == "SII":
+            metric = GeneralShapleyInteractionValues(self._max_order, self._min_order)
+        elif self._index == "BII":
+            metric = GeneralBanzhafInteractionValues(self._max_order, self._min_order)
+        else:
+            return None
+
+        # TODO when woodelf support path dependent SHAP on high depth trees remove this if and model parsing
+        loaded_model = load_decision_tree_ensemble_model(self.model, range(len(X)))
+        if self._reference_dataset is None and self.max_order >= 3 and loaded_model.max_depth > 16:
+            return None
+
+        return hybrid_woodelf(
+            model=loaded_model, consumer_data=consumer_dataset, background_data=background_dataset,
+            metric=metric, model_was_loaded=True
         )
 
     def _explain_function_lineartreeshap(
