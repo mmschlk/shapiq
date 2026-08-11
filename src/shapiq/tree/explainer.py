@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .base import TreeModel
 
 TREE_MODES = Literal["pathdependent", "interventional"]
+TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
 
 
 
@@ -65,7 +66,7 @@ class TreeExplainer(Explainer):
         reference_dataset: np.ndarray | None = None,
         max_order: int = 1,
         min_order: int = 0,
-        index: TreeSHAPIQIndices = "SV",
+        index: TreeExplainerIndices = "SV",
         class_index: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -205,6 +206,8 @@ class TreeExplainer(Explainer):
                 return True
         elif self.mode == "pathdependent":
             if self.max_order > 1 or number_of_explained_instances >= 100:
+                return True
+            if self.index in ("BV", "BII"):
                 return True
         return False
 
