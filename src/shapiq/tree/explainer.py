@@ -188,7 +188,7 @@ class TreeExplainer(Explainer):
         """
         The function decide when to use Woodelf and when to use shapiq implementation for Shapley values computation.
         The cut-offs are n*m >= 100 for interventional and n >= 100 for path dependent where n is the number of explained instances and
-        m is the size of the reference dataset. They are based on experiments summerized in the htmls below:
+        m is the size of the reference dataset. They are based on experiments summarized in the htmls below:
 
         Path Dependent experiment:
         https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_path_dependent_experiment.html
@@ -231,7 +231,9 @@ class TreeExplainer(Explainer):
             )
 
         consumer_dataset = pd.DataFrame(X)
-        background_dataset = pd.DataFrame(self._reference_dataset) if self._reference_dataset is not None else None
+        background_dataset = None
+        if self._reference_dataset is not None and self.mode == "interventional":
+            background_dataset = pd.DataFrame(self._reference_dataset)
 
         if self._index == "SV":
             metric = ShapleyValues()
