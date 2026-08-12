@@ -779,6 +779,61 @@ def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_d
             assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
 
 
+@pytest.mark.parametrize(
+    ("model_fixture", "data_fixture", "n_classes"),
+    [
+        ("rf_clf_model", "background_clf_dataset", 3),
+        ("rf_clf_binary_model", "background_clf_dataset_binary", 2),
+        ("xgb_clf_model", "background_clf_dataset", 3),
+    ],
+    ids=["rf-multiclass", "rf-binary", "xgb-multiclass"],
+)
+def test_woodelf_pathdependent_honors_class_index(
+    model_fixture,
+    data_fixture,
+    n_classes,
+    request,
+):
+    """Woodelf must explain the class ``class_index`` asks for.
+
+    ``max_order=2`` crosses the path-dependent Woodelf cut-off, so every class here is
+    computed by Woodelf rather than the shapiq kernel. Each one must match
+    :class:`~shapiq.tree.TreeSHAPIQ` run directly on the class-selected trees. Sklearn
+    ensembles select a class by slicing leaf values and boosters by filtering trees, so
+    both mechanisms are covered.
+    """
+    from shapiq.tree import TreeSHAPIQ
+    from shapiq.tree.validation import validate_tree_model
+
+    model = request.getfixturevalue(model_fixture)
+    X, _ = request.getfixturevalue(data_fixture)
+    x_explain = np.asarray(X)[2]
+
+    per_class_values = []
+    for class_index in range(n_classes):
+        explainer = TreeExplainer(
+            model=model,
+            mode = "pathdependent",
+            max_order=2,
+            min_order=1,
+            index="SII",
+            class_index=class_index,
+        )
+        assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
+        explanation = explainer.explain(x_explain)
+
+        per_tree = [
+            TreeSHAPIQ(model=tree, max_order=2, index="SII").explain(x_explain)
+            for tree in validate_tree_model(model, class_label=class_index)
+        ]
+        reference = sum(per_tree[1:], start=per_tree[0])
+
+        interactions = set(explanation.interactions) | set(reference.interactions)
+        for interaction in interactions:
+            if len(interaction) >= 1:  # the empty interaction carries the baseline, not a class value
+                assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
+
+
 def test_extra_trees_reg(et_reg_model, background_reg_data):
     """Test the shapiq implementation of TreeSHAP vs. SHAP's implementation for Extra Trees."""
     explanation_instance = 1

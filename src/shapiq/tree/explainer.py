@@ -259,9 +259,10 @@ class TreeExplainer(Explainer):
         else:
             return None
 
-        # TODO when woodelf support path dependent SHAP on high depth trees remove this if and model parsing
-        loaded_model = load_decision_tree_ensemble_model(self.model, range(X.shape[1]))
-        if self._reference_dataset is None and self.max_order >= 3 and loaded_model.max_depth > 16:
+        class_index = self._class_label if self._class_label is not None else 1
+        loaded_model = load_decision_tree_ensemble_model(self.model, range(X.shape[1]), class_index=class_index)
+        # TODO when woodelf support path dependent SHAP on high depth trees remove this if
+        if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
             return None
 
         woodelf_result = hybrid_woodelf(
