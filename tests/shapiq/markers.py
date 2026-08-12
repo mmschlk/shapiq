@@ -12,6 +12,7 @@ __all__ = [
     "skip_if_no_lightgbm",
     "skip_if_no_tabpfn",
     "skip_if_no_tensorflow",
+    "skip_if_no_treelite",
     "skip_if_no_xgboost",
 ]
 
@@ -46,4 +47,9 @@ skip_if_no_keras = pytest.mark.skipif(not is_installed("keras"), reason="keras i
 skip_if_no_lightgbm = pytest.mark.skipif(
     not is_installed("lightgbm"),
     reason="lightgbm is not installed",
+)
+
+skip_if_no_treelite = pytest.mark.skipif(
+    not is_installed("treelite"),
+    reason="treelite is not installed",
 )

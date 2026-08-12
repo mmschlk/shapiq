@@ -40,9 +40,10 @@ class TreeExplainer(Explainer):
     only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
     efficiently.
 
-    The TreeExplainer can be used with a variety of tree-based models, including
-    ``scikit-learn``, ``XGBoost``, ``LightGBM``, and ``CatBoost``. The explainer can handle both
-    regression and classification models.
+    The TreeExplainer can be used with a variety of tree-based models, including ``scikit-learn``
+    (its ``GradientBoosting*`` and ``HistGradientBoosting*`` ensembles are converted through the
+    optional ``treelite`` dependency), ``XGBoost``, ``LightGBM``, and ``CatBoost``. The explainer
+    can handle both regression and classification models.
 
     References:
         .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read. (2022). Linear Tree Shap. In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g

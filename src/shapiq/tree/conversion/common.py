@@ -60,7 +60,8 @@ def convert_tree_model(model: object, class_label: int | None = None) -> list[Tr
 
     Args:
         model: The tree-based model to convert. Supported types include scikit-learn decision
-            trees and random forests, XGBoost models, LightGBM models, and CatBoost models.
+            trees, random forests and gradient boosting ensembles, XGBoost models, LightGBM
+            models, and CatBoost models.
         class_label: The class label to explain for multiclass gradient-boosted models.
             ``None`` is passed to backend converters as their default class selection.
 

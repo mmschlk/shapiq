@@ -2,7 +2,8 @@
 
 The public API of this sub-package is a single function, :func:`convert_tree_model`, which
 dispatches to the appropriate converter based on the type of the model passed in.  Scikit-learn
-converters are loaded eagerly; XGBoost, LightGBM, and CatBoost converters are loaded lazily the
+converters -- including the treelite-backed converter for scikit-learn's gradient boosting
+ensembles -- are loaded eagerly; XGBoost, LightGBM, and CatBoost converters are loaded lazily the
 first time an instance of the respective booster class is encountered.
 """
 
@@ -13,6 +14,10 @@ import importlib
 from . import common
 
 importlib.import_module(".sklearn", package=__package__)
+# The treelite-backed converter registers scikit-learn's gradient boosting classes, so it is
+# loaded eagerly alongside the other scikit-learn converters. It only imports the optional
+# ``treelite`` dependency once one of those models is actually converted.
+importlib.import_module(".treelite", package=__package__)
 
 
 @common.conversion_generator.delayed_register(

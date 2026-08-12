@@ -5,6 +5,7 @@
 ### Highlights of new Features
 
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
+- adds `TreeExplainer` support for scikit-learn's `GradientBoostingRegressor`, `GradientBoostingClassifier`, `HistGradientBoostingRegressor`, and `HistGradientBoostingClassifier` through a new treelite-backed converter in [`shapiq.tree.conversion.treelite`](src/shapiq/tree/conversion/treelite.py). 
 
 ## v1.6.0 (2026-07-06)
 

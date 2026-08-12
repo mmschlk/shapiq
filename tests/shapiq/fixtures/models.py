@@ -10,6 +10,10 @@ import pytest
 from sklearn.ensemble import (
     ExtraTreesClassifier,
     ExtraTreesRegressor,
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+    HistGradientBoostingClassifier,
+    HistGradientBoostingRegressor,
     IsolationForest,
     RandomForestClassifier,
     RandomForestRegressor,
@@ -65,6 +69,10 @@ TREE_MODEL_FIXTURES = [
     ("rf_clf_model", "sklearn.ensemble.RandomForestClassifier"),
     ("dt_clf_model", "sklearn.tree.DecisionTreeClassifier"),
     ("dt_reg_model", "sklearn.tree.DecisionTreeRegressor"),
+    ("gb_reg_model", "sklearn.ensemble.GradientBoostingRegressor"),
+    ("gb_clf_model", "sklearn.ensemble.GradientBoostingClassifier"),
+    ("hgb_reg_model", "sklearn.ensemble.HistGradientBoostingRegressor"),
+    ("hgb_clf_model", "sklearn.ensemble.HistGradientBoostingClassifier"),
 ]
 
 PRODUCT_KERNEL_MODEL_FIXTURES = [
@@ -376,6 +384,47 @@ def rf_clf_model(background_clf_dataset) -> RandomForestClassifier:
     """Return a simple (classification) random forest model."""
     X, y = background_clf_dataset
     model = RandomForestClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+# Gradient boosting models (converted to shapiq's tree format through treelite)
+@pytest.fixture
+def gb_reg_model(background_reg_dataset) -> GradientBoostingRegressor:
+    """Return a simple (regression) gradient boosting model."""
+    X, y = background_reg_dataset
+    model = GradientBoostingRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def gb_clf_model(background_clf_dataset) -> GradientBoostingClassifier:
+    """Return a simple (multiclass classification) gradient boosting model."""
+    X, y = background_clf_dataset
+    model = GradientBoostingClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def hgb_reg_model(background_reg_dataset) -> HistGradientBoostingRegressor:
+    """Return a simple (regression) histogram-based gradient boosting model."""
+    X, y = background_reg_dataset
+    model = HistGradientBoostingRegressor(
+        random_state=RANDOM_SEED_MODELS, max_depth=3, max_iter=3, early_stopping=False
+    )
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def hgb_clf_model(background_clf_dataset) -> HistGradientBoostingClassifier:
+    """Return a simple (multiclass classification) histogram-based gradient boosting model."""
+    X, y = background_clf_dataset
+    model = HistGradientBoostingClassifier(
+        random_state=RANDOM_SEED_MODELS, max_depth=3, max_iter=3, early_stopping=False
+    )
     model.fit(X, y)
     return model
 
