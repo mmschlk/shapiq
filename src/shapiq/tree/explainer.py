@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, Dict
 
+from shap.utils import safe_isinstance
+
 from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 
@@ -198,6 +200,14 @@ class TreeExplainer(Explainer):
         This function should change when new capabilities are developed in Woodelf.
         """
         if self.index not in ("SV", "BV", "SII", "BII"):
+            return False
+
+        # Woodelf currently does not support cat boost models
+        cat_boost_classes = [
+            "catboost.core.CatBoostRegressor", "catboost.core.CatBoostClassifier",
+            "catboost.core.CatBoost"
+        ]
+        if any(safe_isinstance(self.model, catboost_cls) for catboost_cls in cat_boost_classes):
             return False
 
         # Woodelf needs the original model as an input
