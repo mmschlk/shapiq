@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import copy
-from math import factorial
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 import scipy as sp
@@ -71,15 +70,27 @@ class TreeSHAPIQ:
             min_order: The minimum interaction order to be computed. Must be ``>= 1``. Defaults
                 to ``1``.
 
-            index: The type of interaction to be computed.
+            index: The type of interaction to be computed. Must be one of ``"SV"``, ``"SII"``,
+                or ``"k-SII"``.
 
             verbose: Whether to print information about the tree during initialization. Defaults to
                 ``False``.
+
+        Raises:
+            ValueError: If the index is not one of the supported indices or if the interaction
+                orders are invalid.
 
         """
         # set parameters
         self._root_node_id = 0
         self.verbose = verbose
+        if index not in get_args(TreeSHAPIQIndices):
+            msg = (
+                f"Index '{index}' is not supported by TreeSHAP-IQ. Supported indices are "
+                f"{get_args(TreeSHAPIQIndices)}. For other indices such as 'STII', 'FSII', or "
+                "'FBII', use the TreeExplainer in 'interventional' mode."
+            )
+            raise ValueError(msg)
         if max_order < min_order or max_order < 1 or min_order < 1:
             msg = (
                 "The maximum order must be greater than the minimum order and both must be greater "
@@ -147,9 +158,8 @@ class TreeSHAPIQ:
         self.D_powers_store: dict = {}
         self.Ns_id_store: dict = {}
         self.Ns_store: dict = {}
-        self.n_interpolation_size = self._n_features_in_tree
-        if self._index in ("SV", "SII", "k-SII"):  # SP is of order at most d_max
-            self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
+        # SP is of order at most d_max
+        self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
         if self._n_features_in_tree > 0:
             try:
                 self._init_summary_polynomials()
@@ -393,12 +403,8 @@ class TreeSHAPIQ:
                 self._int_height[node_id][interaction_sets] == order
             ]
             if len(interactions_seen) > 0:
-                if self._index not in ("SV", "SII", "k-SII"):  # for CII
-                    D_power = self.D_powers[self._n_features_in_tree - current_height]
-                    index_quotient = self._n_features_in_tree - order
-                else:  # for SII and k-SII
-                    D_power = self.D_powers[0]
-                    index_quotient = current_height - order
+                D_power = self.D_powers[0]
+                index_quotient = current_height - order
                 interaction_update = np.dot(
                     interaction_poly_down[depth, interactions_seen],
                     self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -428,12 +434,8 @@ class TreeSHAPIQ:
                     ancestor_heights = self._edge_tree.edge_heights[
                         interactions_ancestors[cond_interaction_seen]
                     ]
-                    if self._index not in ("SV", "SII", "k-SII"):  # for CII
-                        D_power = self.D_powers[self._n_features_in_tree - current_height]
-                        index_quotient = self._n_features_in_tree - order
-                    else:  # for SII and k-SII
-                        D_power = self.D_powers[ancestor_heights - current_height]
-                        index_quotient = (ancestor_heights - order)
+                    D_power = self.D_powers[ancestor_heights - current_height]
+                    index_quotient = (ancestor_heights - order)
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -448,7 +450,7 @@ class TreeSHAPIQ:
                     if to_update.shape == (1, 1):
                         update *= to_update[0]  # cast out shape of (1, 1) to float
                     else:
-                        update *= to_update  # something errors here for CII
+                        update *= to_update
                     # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
@@ -510,10 +512,7 @@ class TreeSHAPIQ:
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
 
             self.D_powers_store[order] = self._cache(self.D_store[order])
-            if self._index in ("SV", "SII", "k-SII"):
-                self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
-            else:
-                self.Ns_store[order] = self._get_n_cii_matrix(self.D_store[order], order)
+            self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
             self.Ns_id_store[order] = self._get_n_id_matrix(self.D_store[order])
 
     def _get_polynomials(
@@ -716,42 +715,6 @@ class TreeSHAPIQ:
                 1.0 / np.array([sp.special.binom(i - 1, k) for k in range(i)])
             )
         return Ns
-
-    def _get_n_cii_matrix(self, interpolated_poly: np.ndarray, order: int) -> np.ndarray:
-        """Computes the N matrix for the CII index."""
-        depth = interpolated_poly.shape[0]
-        Ns = np.zeros((depth + 1, depth))
-        for i in range(1, depth + 1):
-            Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)]),
-            )
-        return Ns
-
-    def _get_subset_weight_cii(self, t: int, order: int) -> float | None:
-        """Computes the weight for a given subset size and interaction order.
-
-        Args:
-            t: The size of the subset.
-            order: The interaction order.
-
-        Returns:
-            float | None: The weight for the subset, or None if the index is not supported.
-        """
-        if self._index == "STII":
-            return self._max_order / (
-                self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
-            )
-        if self._index == "FSII":
-            return (
-                factorial(2 * self._max_order - 1)
-                / factorial(self._max_order - 1) ** 2
-                * factorial(self._max_order + t - 1)
-                * factorial(self._n_features_in_tree - t - 1)
-                / factorial(self._n_features_in_tree + self._max_order - 1)
-            )
-        if self._index == "BII":
-            return 1 / (2 ** (self._n_features_in_tree - order))
-        return None
 
     @staticmethod
     def _get_n_id_matrix(D: np.ndarray) -> np.ndarray:
