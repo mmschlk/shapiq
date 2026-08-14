@@ -103,8 +103,8 @@ class TreeExplainer(Explainer):
                 set the class index to ``1`` per default for classification models and is ignored
                 for regression models.
 
-            reference_dataset: A dataset to be used for reference in the explanation when using
-                ``mode="interventional"``. Defaults to ``None``.
+            reference_dataset: A dataset to be used for reference in the explanation. Required
+                when ``mode="interventional"``. Defaults to ``None``.
 
             **kwargs: Additional keyword arguments are ignored.
 
@@ -124,6 +124,12 @@ class TreeExplainer(Explainer):
 
         self._min_order: int = min_order
         self._class_label: int | None = class_index
+        if mode == "interventional" and reference_dataset is None:
+            msg = (
+                "mode='interventional' requires a reference_dataset; pass one to "
+                "TreeExplainer(..., mode='interventional', reference_dataset=...)."
+            )
+            raise ValueError(msg)
         self._mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
@@ -132,10 +138,30 @@ class TreeExplainer(Explainer):
         self._interventional_explainer: InterventionalTreeExplainer | None = None
         self._explainers_initialized = False
 
-        # Baseline is the sum of the per-tree empty predictions and is identical regardless of
-        # which algorithm runs explain — derive it from the trees directly so the attribute is
-        # always populated, including in ``"interventional"`` mode where no per-tree list exists.
-        self.baseline_value: float = float(sum(tree.empty_prediction for tree in self._trees))
+        self._baseline_value: float | None = None
+
+    @property
+    def baseline_value(self) -> float:
+        """The empty prediction of the explained model, matching the explanation mode.
+
+        Computed lazily on first access and cached. In ``"pathdependent"`` mode this is the sum
+        of the per-tree (coverage-weighted) empty predictions; in ``"interventional"`` mode it is
+        the mean ensemble prediction over the reference dataset.
+        """
+        if self._baseline_value is None:
+            if self.mode == "interventional":
+                if self._reference_dataset is None:
+                    msg = (
+                        "The interventional baseline value requires a reference_dataset; pass "
+                        "one to TreeExplainer(..., mode='interventional', reference_dataset=...)."
+                    )
+                    raise ValueError(msg)
+                self._baseline_value = InterventionalTreeExplainer.compute_empty_prediction(
+                    self._trees, self._reference_dataset
+                )
+            else:
+                self._baseline_value = float(sum(tree.empty_prediction for tree in self._trees))
+        return self._baseline_value
 
     @property
     def mode(self) -> Literal["interventional", "pathdependent"]:

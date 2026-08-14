@@ -216,11 +216,7 @@ class InterventionalTreeExplainer:
             self.index = "CUSTOM"
             self.look_up_table = self._build_custom_weight_table()
         # Compute the interventional baseline directly from the validated trees.
-        per_sample_predictions = np.array(
-            [sum(t.predict_one(ref) for t in self.tree) for ref in self.reference_data],
-            dtype=np.float64,
-        )
-        self.baseline_value = float(per_sample_predictions.mean())
+        self.baseline_value = self.compute_empty_prediction(self.tree, self.reference_data)
 
         # The sparse C path needs the per-tree flattened arrays. Populate them
         # whenever we'll route there: max_order > 3 (always sparse) or when the
@@ -235,6 +231,29 @@ class InterventionalTreeExplainer:
             self._preprocess_tree_sparse_path()
         if self.bool_tree:
             self._preprocess_boolean_tree()
+
+    @staticmethod
+    def compute_empty_prediction(trees: list[TreeModel], reference_data: np.ndarray) -> float:
+        """Compute the interventional empty prediction of a tree ensemble.
+
+        The interventional empty prediction (baseline value) is the mean ensemble prediction
+        over the reference (background) dataset. The reference data is cast to ``float32`` so
+        the result matches the split routing of the interventional C kernels.
+
+        Args:
+            trees: The validated trees of the ensemble (see
+                :func:`shapiq.tree.validation.validate_tree_model`).
+            reference_data: Background dataset of shape ``(n_ref, n_features)``.
+
+        Returns:
+            The mean ensemble prediction over the reference data.
+        """
+        reference_data = reference_data.astype(np.float32)
+        per_sample_predictions = np.array(
+            [sum(tree.predict_one(ref) for tree in trees) for ref in reference_data],
+            dtype=np.float64,
+        )
+        return float(per_sample_predictions.mean())
 
     def _preprocess_tree_sparse_path(self) -> None:
         """Flatten per-tree arrays into the layout expected by the sparse C kernel."""

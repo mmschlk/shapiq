@@ -550,11 +550,9 @@ def test_extra_trees_clf(et_clf_model, background_clf_data):
 
 
 def test_interventional_missing_reference_dataset_raises(rf_reg_model):
-    """``mode='interventional'`` requires a ``reference_dataset``."""
-    # the explainers are built lazily, so the check fires on init, not on construction
-    explainer = TreeExplainer(model=rf_reg_model, mode="interventional", max_order=2, index="SII")
+    """``mode='interventional'`` requires a ``reference_dataset`` already at construction."""
     with pytest.raises(ValueError, match="reference_dataset"):
-        explainer._init_explainers()
+        TreeExplainer(model=rf_reg_model, mode="interventional", max_order=2, index="SII")
 
 
 def test_interventional_dt_regression(dt_reg_model, background_reg_data):
@@ -680,9 +678,8 @@ def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_da
     """TreeExplainer's interventional route must produce the same per-feature values as the raw
     :class:`InterventionalTreeExplainer`.
 
-    Baselines can differ (the wrapper uses tree empty predictions; the raw class uses
-    reference-data mean), but the actual Shapley contributions come from the same kernel
-    and must agree.
+    The actual Shapley contributions come from the same kernel and must agree, and both
+    explainers must report the same reference-data-mean baseline.
     """
     from shapiq.tree import InterventionalTreeExplainer
 
@@ -707,6 +704,46 @@ def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_da
     direct_values = np.array([direct_iv[(i,)] for i in range(n_features)])
 
     assert np.allclose(wrapper_values, direct_values, rtol=1e-5, atol=1e-6)
+    assert wrapper.baseline_value == pytest.approx(direct.baseline_value)
+
+
+def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
+    """``baseline_value`` is the empty prediction of the mode the explainer runs in.
+
+    Path-dependent: the sum of the per-tree (coverage-weighted) empty predictions.
+    Interventional: the mean ensemble prediction over the reference dataset — not the
+    path-dependent value, which is what a woodelf-routed explanation used to report.
+    """
+    from shapiq.tree import InterventionalTreeExplainer
+
+    reference = background_reg_data  # 100 rows: 100 * 1 >= 100 routes even explain() to Woodelf
+    x_explain = background_reg_data[0]
+
+    pathdependent = TreeExplainer(model=rf_reg_model, max_order=1, index="SV")
+    assert pathdependent.baseline_value == pytest.approx(
+        sum(tree.empty_prediction for tree in pathdependent._trees)
+    )
+
+    interventional = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=0,
+        index="SV",
+    )
+    expected_baseline = InterventionalTreeExplainer(
+        model=rf_reg_model, data=reference, max_order=1, index="SV"
+    ).baseline_value
+    assert interventional.baseline_value == pytest.approx(expected_baseline)
+    assert expected_baseline == pytest.approx(float(rf_reg_model.predict(reference).mean()))
+
+    # the woodelf-routed single-instance explanation must carry the interventional baseline
+    pytest.importorskip("woodelf")
+    assert interventional._should_use_woodelf(1)  # guard: Woodelf, not the fallback
+    explanation = interventional.explain(x_explain)
+    assert explanation.baseline_value == pytest.approx(expected_baseline)
+    assert explanation[()] == pytest.approx(expected_baseline)
 
 
 def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
