@@ -813,7 +813,7 @@ def test_woodelf_pathdependent_honors_class_index(
     for class_index in range(n_classes):
         explainer = TreeExplainer(
             model=model,
-            mode = "pathdependent",
+            mode="pathdependent",
             max_order=2,
             min_order=1,
             index="SII",
@@ -830,7 +830,9 @@ def test_woodelf_pathdependent_honors_class_index(
 
         interactions = set(explanation.interactions) | set(reference.interactions)
         for interaction in interactions:
-            if len(interaction) >= 1:  # the empty interaction carries the baseline, not a class value
+            if (
+                len(interaction) >= 1
+            ):  # the empty interaction carries the baseline, not a class value
                 assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
 
 
