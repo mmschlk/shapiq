@@ -89,6 +89,11 @@ benchmark = [
     "lightgbm",
     "xgboost",
 ]
+trees = [
+    # required by the Woodelf fast path of shapiq.tree.explainer (pulls in treelite);
+    # NOTE: the PyPI name is woodelf_explainer -- "woodelf" is an unrelated ELF parser
+    "woodelf_explainer",
+]
 
 [tool.coverage.report]
 exclude_also = [

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 
 import numpy as np
 import pytest
@@ -834,6 +835,90 @@ def test_woodelf_pathdependent_honors_class_index(
                 len(interaction) >= 1
             ):  # the empty interaction carries the baseline, not a class value
                 assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
+
+
+def test_woodelf_treelite_load_failure_falls_back_to_shapiq(
+    dt_reg_model, background_reg_data, monkeypatch
+):
+    """A treelite dylib-load ``OSError`` at explain time must degrade to shapiq, not crash.
+
+    Treelite loads its native library lazily on Woodelf's first model parse, so a broken
+    installation (e.g. treelite's macOS wheels link ``@rpath/libomp.dylib`` without bundling
+    libomp or a usable rpath) surfaces as an ``OSError`` inside ``_run_woodelf`` -- not as an
+    ``ImportError`` when Woodelf is imported. The explainer must warn with the libomp fix,
+    compute the same result through TreeSHAPIQ, and never re-enter Woodelf on that instance.
+    """
+    from woodelf.core.trees import parse_models
+
+    from shapiq.tree import TreeSHAPIQ
+    from shapiq.tree.validation import validate_tree_model
+
+    def raise_dlopen_error(*args, **kwargs):
+        msg = (
+            "dlopen(.../treelite/lib/libtreelite.dylib, 0x0006): Library not loaded: "
+            "@rpath/libomp.dylib"
+        )
+        raise OSError(msg)
+
+    monkeypatch.setattr(parse_models, "load_decision_tree_ensemble_model", raise_dlopen_error)
+
+    x_explain = background_reg_data[0]
+    explainer = TreeExplainer(model=dt_reg_model, max_order=3, min_order=1, index="SII")
+    assert explainer._should_use_woodelf(1)  # guard: this configuration would pick Woodelf
+
+    with pytest.warns(RuntimeWarning, match="brew install libomp"):
+        explanation = explainer.explain(x_explain)
+
+    per_tree = [
+        TreeSHAPIQ(model=tree, max_order=3, index="SII").explain(x_explain)
+        for tree in validate_tree_model(dt_reg_model)
+    ]
+    reference = sum(per_tree[1:], start=per_tree[0])
+    interactions = set(explanation.interactions) | set(reference.interactions)
+    for interaction in interactions:
+        if interaction:  # the empty interaction carries the baseline, not a computed value
+            assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
+
+    # The failure is remembered: no second dlopen attempt, no second warning.
+    assert not explainer._should_use_woodelf(1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        explainer.explain(x_explain)
+
+
+def test_woodelf_treelite_load_failure_falls_back_in_explain_X(
+    rf_reg_model, background_reg_data, monkeypatch
+):
+    """``explain_X`` keeps its Woodelf-format output when treelite cannot load its library."""
+    from woodelf.core.trees import parse_models
+
+    def raise_dlopen_error(*args, **kwargs):
+        msg = "dlopen(...): Library not loaded: @rpath/libomp.dylib"
+        raise OSError(msg)
+
+    monkeypatch.setattr(parse_models, "load_decision_tree_ensemble_model", raise_dlopen_error)
+
+    reference = background_reg_data[:10]
+    x_explain = background_reg_data[10:30]
+
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+    assert explainer._should_use_woodelf(len(x_explain))  # guard: would pick Woodelf
+
+    with pytest.warns(RuntimeWarning, match="libomp"):
+        values = explainer.explain_X(x_explain)
+
+    assert explainer._woodelf_unavailable
+    assert isinstance(values, dict)
+    assert values  # the shapiq fallback still produced per-feature arrays
+    for value in values.values():
+        assert value.shape == (len(x_explain),)
 
 
 def test_extra_trees_reg(et_reg_model, background_reg_data):

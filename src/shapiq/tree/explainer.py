@@ -7,6 +7,7 @@ for tree ensembles.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -123,6 +124,11 @@ class TreeExplainer(Explainer):
         self.mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
+        # Set when treelite fails to load its native library inside ``_run_woodelf``; keeps every
+        # later explain call on the shapiq kernels instead of re-attempting a dlopen that cannot
+        # succeed within this process.
+        self._woodelf_unavailable: bool = False
+
         # In ``"pathdependent"`` mode, build exactly one per-tree explainer list — either
         # ``LinearTreeSHAP`` (cheap, order-1 only) or ``TreeSHAPIQ`` (any order). The dispatch
         # decision is fixed at construction time so callers can mutate the chosen list (e.g.
@@ -196,6 +202,9 @@ class TreeExplainer(Explainer):
 
         This function should change when new capabilities are developed in Woodelf.
         """
+        if self._woodelf_unavailable:
+            return False
+
         if self.index not in ("SV", "BV", "SII", "BII"):
             return False
 
@@ -242,7 +251,9 @@ class TreeExplainer(Explainer):
             raise ImportError(
                 "For efficient computation of decision trees woodelf and treelite needs to be installed.\n"
                 + "You can install all the needed package for decision tree explainability by installing shapiq [trees] extra. Run: \n"
-                + ">> pip install shapiq[trees]"
+                + ">> pip install shapiq[trees]\n"
+                + "Note: the woodelf package is published on PyPI as 'woodelf_explainer'; "
+                + "'pip install woodelf' installs an unrelated package."
             )
 
         consumer_dataset = pd.DataFrame(X)
@@ -262,9 +273,31 @@ class TreeExplainer(Explainer):
             return None
 
         class_index = self._class_label if self._class_label is not None else 1
-        loaded_model = load_decision_tree_ensemble_model(
-            self.model, range(X.shape[1]), class_index=class_index
-        )
+        try:
+            loaded_model = load_decision_tree_ensemble_model(
+                self.model, range(X.shape[1]), class_index=class_index
+            )
+        except OSError as error:
+            # Woodelf imports treelite lazily during model parsing, and treelite dlopens its
+            # native library at import time -- so a load failure surfaces here as an OSError at
+            # explain time, not as an ImportError above. Known case: treelite's macOS wheels
+            # link ``@rpath/libomp.dylib`` but neither bundle libomp nor bake in a usable rpath.
+            self._woodelf_unavailable = True
+            warnings.warn(
+                "Woodelf is installed, but treelite failed to load its native library:\n"
+                f"    {error}\n"
+                "Falling back to shapiq's own implementation: results are identical, but "
+                "computation is slower on large datasets.\n"
+                "On macOS, treelite needs the OpenMP runtime, which its wheels do not bundle. "
+                "To enable the Woodelf fast path, install libomp and make it visible to the "
+                "dynamic linker before starting Python:\n"
+                "    brew install libomp\n"
+                '    export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix libomp)/lib:'
+                '$DYLD_FALLBACK_LIBRARY_PATH"',
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return None
         # TODO when woodelf support path dependent SHAP on high depth trees remove this if
         if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
             return None

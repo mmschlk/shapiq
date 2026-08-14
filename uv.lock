@@ -3821,6 +3821,9 @@ sparse = [
     { name = "galois" },
     { name = "sparse-transform" },
 ]
+trees = [
+    { name = "woodelf-explainer" },
+]
 
 [package.dev-dependencies]
 all-ml = [
@@ -3914,10 +3917,11 @@ requires-dist = [
     { name = "tabpfn", marker = "extra == 'benchmark'" },
     { name = "torch", marker = "extra == 'shapleig'", specifier = ">=2.9.1" },
     { name = "tqdm" },
+    { name = "woodelf-explainer", marker = "extra == 'trees'" },
     { name = "xgboost", marker = "extra == 'benchmark'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
-provides-extras = ["sparse", "proxy", "shapleig", "benchmark"]
+provides-extras = ["sparse", "proxy", "shapleig", "benchmark", "trees"]
 
 [package.metadata.requires-dev]
 all-ml = [
@@ -4615,6 +4619,24 @@ wheels = [
 ]
 
 [[package]]
+name = "treelite"
+version = "4.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/dd/78886789f87a6d9cb3d78241fdd750c13123ea4c64df03bcc717ee5b5d26/treelite-4.7.0.tar.gz", hash = "sha256:6d1a0d990f4972e77bad6b42a6e0b7d68527d790564bd42d7d8d48ae1f14dc4c", size = 110239, upload-time = "2026-03-06T23:25:38.477Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/8e/ee9595a6c6a839cc79a919312805af4ed85906a96d3ab1446b0e800805e3/treelite-4.7.0-py3-none-macosx_10_15_x86_64.macosx_11_0_x86_64.macosx_12_0_x86_64.whl", hash = "sha256:dac8a400a3f08ed4b8611289e2f92f589eadd95b97857d118597a5db7b489ecb", size = 445207, upload-time = "2026-03-06T23:25:30.974Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/46/2de9011d8f618dc60087a4cfee2ab4d1caf437b83fc552554b8dd4530b26/treelite-4.7.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:54f8b46a1aaa531d1491a5429cf7ab9816341cefc462096a8c4a2a03acbcf46b", size = 418136, upload-time = "2026-03-06T23:25:32.649Z" },
+    { url = "https://files.pythonhosted.org/packages/60/6a/38c21bea47fd08d82267b36baae23edb610749bf319136fceb6871266207/treelite-4.7.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:adf49cdc004437615468b54255eb04f65e467803e8b0c2f06481fdd873f25f59", size = 939359, upload-time = "2026-03-06T23:25:33.963Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/a2/ac3aad5c77f85f47890dd929b2690c2ba3794ebcbb5384c19aa28d222066/treelite-4.7.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:d616f1df2b8c7c6497cda2b8434fbcefe07fa897d269bdde3b48b11fd62393d9", size = 956840, upload-time = "2026-03-06T23:25:35.207Z" },
+    { url = "https://files.pythonhosted.org/packages/73/a8/bea7cea3ee860ec24d0be304f9a5433f32e80b547db51bfe971fb41b3825/treelite-4.7.0-py3-none-win_amd64.whl", hash = "sha256:c9c5af96685d7636bdaaa5604973ce63cc85d4f47fc2265ab94cf5247511e0cb", size = 515640, upload-time = "2026-03-06T23:25:37.433Z" },
+]
+
+[[package]]
 name = "triton"
 version = "3.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4805,6 +4827,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bd/f4/c67440c7fb409a71b7404b7aefcd7569a9c0d6bd071299bf4198ae7a5d95/widgetsnbextension-4.0.15.tar.gz", hash = "sha256:de8610639996f1567952d763a5a41af8af37f2575a41f9852a38f947eb82a3b9", size = 1097402, upload-time = "2025-11-01T21:15:55.178Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/0e/fa3b193432cfc60c93b42f3be03365f5f909d2b3ea410295cf36df739e31/widgetsnbextension-4.0.15-py3-none-any.whl", hash = "sha256:8156704e4346a571d9ce73b84bee86a29906c9abfd7223b7228a28899ccf3366", size = 2196503, upload-time = "2025-11-01T21:15:53.565Z" },
+]
+
+[[package]]
+name = "woodelf-explainer"
+version = "0.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "tqdm" },
+    { name = "treelite" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e5/62/2bc67e6a2d56835d81aa8256086246d63d421e49fab48d81a8cfc69ce442/woodelf_explainer-0.4.6.tar.gz", hash = "sha256:6ec24ba8290d2e545bc28e30cdbf77da34f77b944db2c1f0c5c740ed7fb9f7ca", size = 82701, upload-time = "2026-08-12T10:36:33.568Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/9c/9beb79b75a87a99f260a6534af404ed6d695d1d9662ecbc7abc1077c36d0/woodelf_explainer-0.4.6-py3-none-any.whl", hash = "sha256:827d014f2d5753d5a337db1a207e2aed1c40c8142e27f771cddefe751ad19c13", size = 82795, upload-time = "2026-08-12T10:36:32.317Z" },
 ]
 
 [[package]]
