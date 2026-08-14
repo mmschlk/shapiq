@@ -322,7 +322,7 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "BII"):
+        if self.index not in ("SV", "BV", "SII", "k-SII", "BII"):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -397,7 +397,9 @@ class TreeExplainer(Explainer):
             metric = ShapleyValues()
         elif self._index == "BV":
             metric = BanzhafValues()
-        elif self._index == "SII":
+        elif self._index in ("SII", "k-SII"):
+            # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
+            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
             metric = GeneralShapleyInteractionValues(max(self._min_order, 1), self._max_order)
         elif self._index == "BII":
             metric = GeneralBanzhafInteractionValues(max(self._min_order, 1), self._max_order)
@@ -441,7 +443,46 @@ class TreeExplainer(Explainer):
             raise RuntimeError(msg) from error
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
+        if self._index == "k-SII":
+            return self._aggregate_batched_sii_to_ksii(woodelf_result)
         return woodelf_result
+
+    def _aggregate_batched_sii_to_ksii(
+        self, sii_result: dict[tuple, np.ndarray]
+    ) -> dict[tuple, np.ndarray]:
+        """Aggregate a batched Woodelf SII result into k-SII values.
+
+        k-SII is a linear aggregation of SII (the same one the shapiq explainers apply through
+        :class:`~shapiq.interaction_values.InteractionValues`), so it transfers unchanged onto
+        the per-row value arrays of the Woodelf format.
+
+        Args:
+            sii_result: Woodelf-format SII values ``{interaction_tuple: ndarray(n_instances,)}``.
+
+        Returns:
+            The k-SII values in the same format, restricted to orders
+            ``max(min_order, 1) .. max_order``.
+        """
+        from shapiq.game_theory.aggregation import aggregate_base_attributions
+
+        # min_order=1 describes the aggregation base, not the requested filter: the k-SII value
+        # of an interaction only depends on the SII values of its supersets, which Woodelf all
+        # computed, so the kept orders below are exact even when ``self._min_order > 1``.
+        aggregated, _, _ = aggregate_base_attributions(
+            interactions=sii_result,
+            index="SII",
+            order=self._max_order,
+            min_order=1,
+            baseline_value=self.baseline_value,
+        )
+        lowest = max(self._min_order, 1)
+        # the isinstance check narrows out the scalar ``()`` baseline entry, which the order
+        # filter drops anyway
+        return {
+            subset: values
+            for subset, values in aggregated.items()
+            if isinstance(values, np.ndarray) and lowest <= len(subset) <= self._max_order
+        }
 
     def _cast_shapiq_results_to_woodelf_format(
         self,

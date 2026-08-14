@@ -50,10 +50,9 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with empty_predictions
-    assert explainer.baseline_value == sum(
-        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers],
-    )
+    # compare baseline_value with the per-tree empty predictions; k-SII with max_order=2 routes
+    # through Woodelf, so `_treeshapiq_explainers` is never built and we read from `_trees`.
+    assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
     # test efficiency: with min_order=1 the empty interaction is excluded,
@@ -810,6 +809,44 @@ def test_backend_woodelf_forces_woodelf(dt_reg_model, background_reg_data):
     for feature in range(n_features):
         assert forced_explanation[(feature,)] == pytest.approx(
             shapiq_explanation[(feature,)], abs=1e-5
+        )
+
+
+def test_woodelf_ksii_matches_shapiq(dt_reg_model, background_reg_data):
+    """Woodelf serves ``k-SII`` by computing SII and aggregating, exactly like the shapiq path.
+
+    Both the single-instance ``explain`` and the batched ``explain_X`` of a forced woodelf
+    backend must match the forced shapiq backend.
+    """
+    pytest.importorskip("woodelf")
+    X_explain = background_reg_data[:5]
+
+    woodelf = TreeExplainer(
+        model=dt_reg_model, max_order=2, min_order=1, index="k-SII", backend="woodelf"
+    )
+    shapiq_ = TreeExplainer(
+        model=dt_reg_model, max_order=2, min_order=1, index="k-SII", backend="shapiq"
+    )
+
+    # single instance: identical interactions over the union (missing on one side means zero)
+    woodelf_explanation = woodelf.explain(X_explain[0])
+    shapiq_explanation = shapiq_.explain(X_explain[0])
+    assert woodelf_explanation.index == "k-SII"
+    interactions = set(woodelf_explanation.interactions) | set(shapiq_explanation.interactions)
+    assert {len(interaction) for interaction in interactions} == {1, 2}
+    for interaction in interactions:
+        # rel covers float32 woodelf arrays on large values, abs covers exact zeros
+        assert woodelf_explanation[interaction] == pytest.approx(
+            shapiq_explanation[interaction], rel=1e-5, abs=1e-5
+        )
+
+    # batched: the woodelf-format dicts must match row by row
+    woodelf_values = woodelf.explain_X(X_explain)
+    shapiq_values = shapiq_.explain_X(X_explain)
+    zeros = np.zeros(len(X_explain))
+    for subset in set(woodelf_values) | set(shapiq_values):
+        assert woodelf_values.get(subset, zeros) == pytest.approx(
+            shapiq_values.get(subset, zeros), rel=1e-5, abs=1e-5
         )
 
 

@@ -4,6 +4,7 @@
 
 ### Highlights of new Features
 
+- adds a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026): larger inputs are computed by the vectorized Woodelf algorithms, `TreeExplainer` now supports the Banzhaf indices `"BV"` and `"BII"`, and `TreeExplainer.explain_X` explains all instances in one run and returns the vectorized Woodelf format. Requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`. The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing [#572](https://github.com/mmschlk/shapiq/pull/572)
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
 - adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
 
