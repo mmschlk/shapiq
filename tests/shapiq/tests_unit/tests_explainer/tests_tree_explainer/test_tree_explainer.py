@@ -746,6 +746,130 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
     assert explanation[()] == pytest.approx(expected_baseline)
 
 
+def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_data, monkeypatch):
+    """Without the optional woodelf dependency the explainer warns and falls back to shapiq."""
+    import importlib.util
+
+    from shapiq.tree import WoodelfNotAvailableWarning
+
+    real_find_spec = importlib.util.find_spec
+
+    def fake_find_spec(name, *args, **kwargs):
+        return None if name == "woodelf" else real_find_spec(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
+
+    # max_order=2 crosses the path-dependent Woodelf cut-off, so this would route to Woodelf
+    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="SII")
+    with pytest.warns(WoodelfNotAvailableWarning, match="woodelf"):
+        assert not explainer._should_use_woodelf(1)
+        explanation = explainer.explain(background_reg_data[0])
+    assert type(explanation).__name__ == "InteractionValues"
+    assert explainer._treeshapiq_explainers  # the shapiq fallback computed the explanation
+
+
+def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
+    """``backend='shapiq'`` never routes to Woodelf, even past the cut-offs, and never warns."""
+    import warnings
+
+    reference = background_reg_data[:10]
+    x_explain = background_reg_data[0]
+
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+        backend="shapiq",
+    )
+    assert not explainer._should_use_woodelf(20)  # 10 * 20 >= 100 would cross the cut-off
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # forcing shapiq is a choice, not something to warn about
+        explanation = explainer.explain(x_explain)
+    assert type(explanation).__name__ == "InteractionValues"
+
+
+def test_backend_woodelf_forces_woodelf(dt_reg_model, background_reg_data):
+    """``backend='woodelf'`` routes to Woodelf even under the cut-offs and matches shapiq."""
+    pytest.importorskip("woodelf")
+    x_explain = background_reg_data[0]
+    n_features = background_reg_data.shape[1]
+
+    forced = TreeExplainer(
+        model=dt_reg_model, max_order=1, min_order=1, index="SV", backend="woodelf"
+    )
+    assert forced._should_use_woodelf(1)  # a single path-dependent SV instance is under the cut-off
+    forced_explanation = forced.explain(x_explain)
+
+    shapiq_explanation = TreeExplainer(
+        model=dt_reg_model, max_order=1, min_order=1, index="SV", backend="shapiq"
+    ).explain(x_explain)
+
+    for feature in range(n_features):
+        assert forced_explanation[(feature,)] == pytest.approx(
+            shapiq_explanation[(feature,)], abs=1e-5
+        )
+
+
+def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatch):
+    """Invalid or unusable backend configurations fail at construction time."""
+    import importlib.util
+
+    # unknown backend name
+    with pytest.raises(ValueError, match="backend='banzhaf-machine'"):
+        TreeExplainer(model=dt_reg_model, backend="banzhaf-machine")
+
+    # backend='woodelf' with a configuration Woodelf cannot serve (already-parsed trees)
+    from shapiq.tree.validation import validate_tree_model
+
+    with pytest.raises(ValueError, match="original model object"):
+        TreeExplainer(model=validate_tree_model(dt_reg_model), backend="woodelf")
+
+    # backend='shapiq' cannot compute path-dependent Banzhaf indices
+    with pytest.raises(ValueError, match="woodelf"):
+        TreeExplainer(model=dt_reg_model, index="BV", backend="shapiq")
+
+    # without the woodelf package, forcing it (or needing it for path-dependent Banzhaf) raises
+    real_find_spec = importlib.util.find_spec
+
+    def fake_find_spec(name, *args, **kwargs):
+        return None if name == "woodelf" else real_find_spec(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
+    with pytest.raises(ImportError, match="woodelf-explainer"):
+        TreeExplainer(model=dt_reg_model, backend="woodelf")
+    with pytest.raises(ImportError, match="woodelf-explainer"):
+        TreeExplainer(model=dt_reg_model, index="BV", backend="auto")
+
+
+def test_woodelf_broken_backend_raises_with_fix_instructions(
+    dt_reg_model, background_reg_data, monkeypatch
+):
+    """A woodelf whose native backend cannot load (e.g. treelite missing libomp on macOS).
+
+    Loading treelite happens lazily inside woodelf and surfaces as an ``OSError`` at explain
+    time; the explainer must break loudly with instructions on how to fix the installation
+    (see https://github.com/dmlc/treelite/issues/678) instead of silently computing slowly.
+    """
+    pytest.importorskip("woodelf")
+    from woodelf.core.trees import parse_models
+
+    def broken_load(*args, **kwargs):
+        msg = "dlopen(libtreelite.dylib): Library not loaded: @rpath/libomp.dylib"
+        raise OSError(msg)
+
+    monkeypatch.setattr(parse_models, "load_decision_tree_ensemble_model", broken_load)
+
+    # max_order=2 crosses the path-dependent Woodelf cut-off, so this routes to Woodelf
+    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="SII")
+    with pytest.raises(RuntimeError, match="brew install libomp") as excinfo:
+        explainer.explain(background_reg_data[0])
+    assert "treelite/issues/678" in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, OSError)  # the dlopen error stays in the chain
+
+
 def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
     """Background SHAP over 20 rows x 10 background rows routes through Woodelf.
 

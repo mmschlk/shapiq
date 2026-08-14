@@ -7,6 +7,8 @@ for tree ensembles.
 
 from __future__ import annotations
 
+import importlib.util
+import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -25,9 +27,21 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 TREE_MODES = Literal["pathdependent", "interventional"]
+TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
+
+
+class WoodelfNotAvailableWarning(UserWarning):
+    """The explanation would be computed faster with the optional woodelf dependency.
+
+    Emitted when an input crosses :class:`TreeExplainer`'s Woodelf cut-offs but the optional
+    ``woodelf-explainer`` package is not installed, so the (slower) shapiq implementation
+    computes the explanation instead. Filter it with
+    ``warnings.filterwarnings("ignore", category=WoodelfNotAvailableWarning)`` or silence it
+    for good by installing ``shapiq[tree]``.
+    """
 
 
 class TreeExplainer(Explainer):
@@ -69,6 +83,7 @@ class TreeExplainer(Explainer):
         min_order: int = 0,
         index: TreeExplainerIndices = "SV",
         class_index: int | None = None,
+        backend: TREE_BACKENDS = "auto",
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the TreeExplainer.
@@ -106,6 +121,13 @@ class TreeExplainer(Explainer):
             reference_dataset: A dataset to be used for reference in the explanation. Required
                 when ``mode="interventional"``. Defaults to ``None``.
 
+            backend: Which implementation computes the explanations. With ``"auto"`` the
+                explainer picks per input: Woodelf on larger inputs (falling back to shapiq
+                with a :class:`WoodelfNotAvailableWarning` if the optional woodelf dependency
+                is missing) and shapiq otherwise. ``"woodelf"`` forces Woodelf and raises if it
+                is not installed or cannot handle the configuration; ``"shapiq"`` forces the
+                shapiq implementation. Defaults to ``"auto"``.
+
             **kwargs: Additional keyword arguments are ignored.
 
         """
@@ -132,6 +154,35 @@ class TreeExplainer(Explainer):
             raise ValueError(msg)
         self._mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
+
+        if backend not in ("auto", "woodelf", "shapiq"):
+            msg = f"backend='{backend}' must be one of 'auto', 'woodelf', or 'shapiq'."
+            raise ValueError(msg)
+        self.backend: TREE_BACKENDS = backend
+        if backend == "woodelf":
+            # forced means forced: fail fast instead of silently falling back later.
+            if importlib.util.find_spec("woodelf") is None:
+                msg = f"backend='woodelf' requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
+                raise ImportError(msg)
+            reason = self._woodelf_unsupported_reason()
+            if reason is not None:
+                msg = f"backend='woodelf' cannot be used: {reason}."
+                raise ValueError(msg)
+        elif mode == "pathdependent" and index in ("BV", "BII"):
+            # only Woodelf computes path-dependent Banzhaf indices; fail fast when it is
+            # excluded by choice or missing from the environment.
+            if backend == "shapiq":
+                msg = (
+                    f"index='{index}' with mode='pathdependent' is only computed by the woodelf "
+                    "backend; use backend='auto' or backend='woodelf'."
+                )
+                raise ValueError(msg)
+            if importlib.util.find_spec("woodelf") is None:
+                msg = (
+                    f"index='{index}' with mode='pathdependent' requires the optional "
+                    f"'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
+                )
+                raise ImportError(msg)
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
@@ -244,20 +295,12 @@ class TreeExplainer(Explainer):
         Returns:
             ``True`` if Woodelf should compute the explanation, ``False`` for shapiq.
         """
-        if self.index not in ("SV", "BV", "SII", "BII"):
+        if self.backend == "shapiq":
             return False
+        if self.backend == "woodelf":
+            return True
 
-        # Woodelf currently does not support cat boost models
-        cat_boost_classes = [
-            "catboost.core.CatBoostRegressor",
-            "catboost.core.CatBoostClassifier",
-            "catboost.core.CatBoost",
-        ]
-        if any(safe_isinstance(self.model, catboost_cls) for catboost_cls in cat_boost_classes):
-            return False
-
-        # Woodelf needs the original model as an input
-        if isinstance(self.model, list | TreeModel):
+        if self._woodelf_unsupported_reason() is not None:
             return False
 
         if self.mode == "interventional":
@@ -265,12 +308,51 @@ class TreeExplainer(Explainer):
                 self._reference_dataset is not None
                 and len(self._reference_dataset) * number_of_explained_instances >= 100
             ):
-                return True
+                return self._woodelf_available()
         elif self.mode == "pathdependent":
             if self.max_order > 1 or number_of_explained_instances >= 100:
-                return True
+                return self._woodelf_available()
             if self.index in ("BV", "BII"):
-                return True
+                return self._woodelf_available()
+        return False
+
+    def _woodelf_unsupported_reason(self) -> str | None:
+        """The reason why Woodelf cannot serve this explainer's configuration, if any.
+
+        Returns:
+            A human-readable reason, or ``None`` when Woodelf supports the configuration.
+        """
+        if self.index not in ("SV", "BV", "SII", "BII"):
+            return f"index='{self.index}' is not supported by Woodelf"
+
+        cat_boost_classes = [
+            "catboost.core.CatBoostRegressor",
+            "catboost.core.CatBoostClassifier",
+            "catboost.core.CatBoost",
+        ]
+        if any(safe_isinstance(self.model, catboost_cls) for catboost_cls in cat_boost_classes):
+            return "Woodelf does not support CatBoost models"
+
+        if isinstance(self.model, list | TreeModel):
+            return "Woodelf requires the original model object, not already-parsed trees"
+
+        return None
+
+    @staticmethod
+    def _woodelf_available() -> bool:
+        """Return whether the optional woodelf dependency is installed.
+
+        Only called once the cut-offs decided for Woodelf, so a missing package warns the user
+        that the computation falls back to the (slower) shapiq implementation.
+        """
+        if importlib.util.find_spec("woodelf") is not None:
+            return True
+        warnings.warn(
+            "This explanation would be computed substantially faster with the optional "
+            f"'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}",
+            category=WoodelfNotAvailableWarning,
+            stacklevel=2,
+        )
         return False
 
     def _run_woodelf(self, X: np.ndarray) -> dict[tuple, np.ndarray] | None:
@@ -284,6 +366,10 @@ class TreeExplainer(Explainer):
             The values in the Woodelf format ``{interaction_tuple: ndarray of shape
             (n_instances,)}``, or ``None`` if the configuration is not supported by Woodelf
             (e.g. an unsupported index or a too deep tree).
+
+        Raises:
+            RuntimeError: If woodelf is installed but its treelite backend cannot load its
+                native library (e.g. a missing OpenMP runtime on macOS).
         """
         try:
             import pandas as pd
@@ -319,21 +405,40 @@ class TreeExplainer(Explainer):
             return None
 
         class_index = self._class_label if self._class_label is not None else 1
-        loaded_model = load_decision_tree_ensemble_model(
-            self.model, range(X.shape[1]), class_index=class_index
-        )
-        # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
-        # yet; remove this fallback once it can.
-        if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
-            return None
+        try:
+            loaded_model = load_decision_tree_ensemble_model(
+                self.model, range(X.shape[1]), class_index=class_index
+            )
+            # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
+            # yet; remove this fallback once it can.
+            if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
+                if self.backend == "woodelf":
+                    msg = (
+                        "backend='woodelf' cannot compute path-dependent interactions of "
+                        f"order >= 3 on trees deeper than 16 (tree depth: "
+                        f"{loaded_model.max_depth}); use backend='auto' or backend='shapiq'."
+                    )
+                    raise ValueError(msg)
+                return None
 
-        woodelf_result = hybrid_woodelf(
-            model=loaded_model,
-            consumer_data=consumer_dataset,
-            background_data=background_dataset,
-            metric=metric,
-            model_was_loaded=True,
-        )
+            woodelf_result = hybrid_woodelf(
+                model=loaded_model,
+                consumer_data=consumer_dataset,
+                background_data=background_dataset,
+                metric=metric,
+                model_was_loaded=True,
+            )
+        except OSError as error:
+            # typically treelite's macOS wheel failing to load libomp: treelite imports lazily
+            # inside woodelf, so a missing OpenMP runtime surfaces here as an OSError.
+            msg = (
+                "woodelf is installed but its treelite backend failed to load. On macOS this "
+                "usually means the OpenMP runtime is missing: install it with "
+                "`brew install libomp` and set "
+                "`DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix libomp)/lib`. "
+                "See https://github.com/dmlc/treelite/issues/678 for details."
+            )
+            raise RuntimeError(msg) from error
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         return woodelf_result
