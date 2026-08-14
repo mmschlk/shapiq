@@ -962,3 +962,62 @@ def test_init_with_sparse_dict():
     # it should only contain keys actually present in ``values``, not the
     # full enumeration of Σ C(n_players, k) interactions.
     assert set(iv.interaction_lookup.keys()) == set(sparse_values.keys())
+
+
+def test_interaction_values_batch_sequence_protocol():
+    """``InteractionValuesBatch`` behaves like a lazy sequence of ``InteractionValues``."""
+    from shapiq.interaction_values import InteractionValuesBatch
+
+    values = {
+        (0,): np.array([1.0, 0.0, -2.0]),
+        (1,): np.array([0.5, 0.25, 0.0]),
+        (0, 1): np.array([0.0, 0.0, 3.0]),
+    }
+    batch = InteractionValuesBatch(
+        values,
+        n_instances=3,
+        n_players=2,
+        index="SII",
+        max_order=2,
+        min_order=1,
+        baseline_value=10.0,
+    )
+
+    assert len(batch) == 3
+    assert "n_instances=3" in repr(batch)
+
+    # materialization drops the per-row zeros and carries the metadata
+    first = batch[0]
+    assert isinstance(first, InteractionValues)
+    assert first[(0,)] == 1.0
+    assert first[(1,)] == 0.5
+    assert (0, 1) not in first.interaction_lookup  # zero for this row
+    assert first.baseline_value == 10.0
+    assert first.index == "SII"
+
+    # negative indexing, slicing, and iteration
+    assert batch[-1][(0, 1)] == 3.0
+    assert [iv[(0,)] for iv in batch] == [1.0, 0.0, -2.0]
+    assert len(batch[1:]) == 2
+    with pytest.raises(IndexError, match="out of range"):
+        _ = batch[3]
+    with pytest.raises(IndexError, match="out of range"):
+        _ = batch[-4]
+
+
+def test_interaction_values_batch_min_order_zero_adds_baseline():
+    """With ``min_order=0`` the empty interaction carries the baseline on materialization."""
+    from shapiq.interaction_values import InteractionValuesBatch
+
+    batch = InteractionValuesBatch(
+        {(0,): np.array([4.0])},
+        n_instances=1,
+        n_players=1,
+        index="SV",
+        max_order=1,
+        min_order=0,
+        baseline_value=-1.5,
+    )
+    materialized = batch[0]
+    assert materialized[()] == -1.5
+    assert materialized.min_order == 0

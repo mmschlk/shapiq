@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 from shapiq.utils.modules import safe_isinstance
 
@@ -519,30 +519,26 @@ class TreeExplainer(Explainer):
 
         return woodelf_format
 
-    def _cast_woodelf_result_to_shapiq_format(
-        self, woodelf_result: dict[tuple, np.ndarray], n_players: int
-    ) -> InteractionValues:
-        """Convert a single-instance Woodelf result into an :class:`InteractionValues` object.
+    def _woodelf_result_to_batch(
+        self, woodelf_result: dict[tuple, np.ndarray], n_players: int, n_instances: int
+    ) -> InteractionValuesBatch:
+        """Wrap a Woodelf result in an :class:`~shapiq.interaction_values.InteractionValuesBatch`.
 
         Args:
-            woodelf_result: Woodelf-format values ``{interaction_tuple: ndarray of shape (1,)}``.
-            n_players: The number of features of the explained instance.
+            woodelf_result: Woodelf-format values
+                ``{interaction_tuple: ndarray of shape (n_instances,)}``.
+            n_players: The number of features of the explained instances.
+            n_instances: The number of explained instances.
 
         Returns:
-            The interaction values of the instance, with the baseline value at the empty
-            interaction ``()`` when ``min_order == 0``.
+            The batch carrying this explainer's index, orders, and baseline value.
         """
-        interaction_values = {
-            subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0
-        }
-        if self._min_order == 0:
-            interaction_values[()] = self.baseline_value
-
-        return InteractionValues(
-            values=interaction_values,
+        return InteractionValuesBatch(
+            woodelf_result,
+            n_instances=n_instances,
+            n_players=n_players,
             index=self._index,
             max_order=self._max_order,
-            n_players=n_players,
             min_order=self._min_order,
             baseline_value=self.baseline_value,
         )
@@ -672,9 +668,9 @@ class TreeExplainer(Explainer):
         if self._should_use_woodelf(number_of_explained_instances=1):
             woodelf_explanation = self._run_woodelf(np.array([x]))
             if woodelf_explanation is not None:
-                return self._cast_woodelf_result_to_shapiq_format(
-                    woodelf_explanation, n_players=int(x.shape[0])
-                )
+                return self._woodelf_result_to_batch(
+                    woodelf_explanation, n_players=int(x.shape[0]), n_instances=1
+                )[0]
 
         if not self._explainers_initialized:
             self._init_explainers()
@@ -685,7 +681,7 @@ class TreeExplainer(Explainer):
             return self._explain_function_treeshapiq(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)
 
-    def explain_X(  # ty: ignore[invalid-method-override]
+    def explain_X(
         self,
         X: np.ndarray,
         *,
@@ -693,17 +689,16 @@ class TreeExplainer(Explainer):
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
-    ) -> dict[tuple, np.ndarray]:
-        """Explain many instances at once, returning the Woodelf output format.
+    ) -> InteractionValuesBatch:
+        """Explain multiple instances at once, using Woodelf on larger inputs.
 
-        Uses Woodelf on larger inputs and falls back to the per-instance shapiq computation on
-        smaller ones (see :meth:`_should_use_woodelf`). Either way, the result is returned in the
-        vectorized Woodelf format.
-
-        Note:
-            The return type intentionally differs from
-            :meth:`shapiq.explainer.base.Explainer.explain_X`, which returns one
-            :class:`~shapiq.interaction_values.InteractionValues` object per instance.
+        The whole batch is computed in a single vectorized Woodelf run when the input crosses
+        the cut-offs (see :meth:`_should_use_woodelf`), and by the per-instance shapiq
+        computation otherwise. Either way the result is an
+        :class:`~shapiq.interaction_values.InteractionValuesBatch`: a sequence of one
+        :class:`~shapiq.interaction_values.InteractionValues` per instance (materialized lazily
+        on access), whose ``values`` attribute exposes the memory-efficient vectorized format
+        ``{interaction_tuple: ndarray of shape (n_instances,)}`` directly.
 
         Args:
             X: A 2-dimensional matrix of inputs to be explained with shape
@@ -717,15 +712,21 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword-only arguments passed to the shapiq fallback.
 
         Returns:
-            The interaction values in the Woodelf format
-            ``{interaction_tuple: ndarray of shape (n_instances,)}``.
+            The interaction values of all instances in ``X`` as a batch.
         """
+        n_players = int(X.shape[1])
         if self._should_use_woodelf(len(X)):
             woodelf_result = self._run_woodelf(X)
             if woodelf_result is not None:
-                return woodelf_result
+                return self._woodelf_result_to_batch(
+                    woodelf_result, n_players=n_players, n_instances=len(X)
+                )
 
         shapiq_results = super().explain_X(
             X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs
         )
-        return self._cast_shapiq_results_to_woodelf_format(shapiq_results)
+        return self._woodelf_result_to_batch(
+            self._cast_shapiq_results_to_woodelf_format(list(shapiq_results)),
+            n_players=n_players,
+            n_instances=len(X),
+        )

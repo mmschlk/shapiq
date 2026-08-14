@@ -840,9 +840,9 @@ def test_woodelf_ksii_matches_shapiq(dt_reg_model, background_reg_data):
             shapiq_explanation[interaction], rel=1e-5, abs=1e-5
         )
 
-    # batched: the woodelf-format dicts must match row by row
-    woodelf_values = woodelf.explain_X(X_explain)
-    shapiq_values = shapiq_.explain_X(X_explain)
+    # batched: the vectorized woodelf-format dicts must match row by row
+    woodelf_values = woodelf.explain_X(X_explain).values
+    shapiq_values = shapiq_.explain_X(X_explain).values
     zeros = np.zeros(len(X_explain))
     for subset in set(woodelf_values) | set(shapiq_values):
         assert woodelf_values.get(subset, zeros) == pytest.approx(
@@ -930,7 +930,7 @@ def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, backgroun
         index="SV",
     )
     assert explainer._should_use_woodelf(len(x_explain))  # guard: Woodelf, not the fallback
-    woodelf_values = explainer.explain_X(x_explain)
+    woodelf_values = explainer.explain_X(x_explain).values
 
     direct = InterventionalTreeExplainer(
         model=rf_reg_model, data=reference, max_order=1, index="SV"
@@ -942,6 +942,51 @@ def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, backgroun
         for feature in range(n_features):
             woodelf_value = woodelf_values.get((feature,), zeros)[row]
             assert woodelf_value == pytest.approx(direct_iv[(feature,)], abs=1e-5)
+
+
+def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg_data):
+    """``explain_X`` returns a lazy sequence of ``InteractionValues`` (the base contract).
+
+    ``10 * 20 >= 100`` crosses the interventional cut-off, so the batch is computed by Woodelf —
+    but the result must still behave like one :class:`InteractionValues` per instance, matching
+    the per-instance ``explain`` (which stays under the cut-off and runs the shapiq kernel),
+    while exposing the raw vectorized arrays via ``.values``.
+    """
+    pytest.importorskip("woodelf")
+    from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
+
+    reference = background_reg_data[:10]
+    X_explain = background_reg_data[10:30]
+
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+    assert explainer._should_use_woodelf(len(X_explain))  # guard: Woodelf, not the fallback
+    explanations = explainer.explain_X(X_explain)
+
+    # sequence protocol: len, indexing (incl. negative), iteration, slicing
+    assert isinstance(explanations, InteractionValuesBatch)
+    assert len(explanations) == len(X_explain)
+    assert isinstance(explanations[0], InteractionValues)
+    assert explanations[-1][(0,)] == explanations[len(X_explain) - 1][(0,)]
+    assert len(explanations[2:5]) == 3
+    assert all(isinstance(explanation, InteractionValues) for explanation in explanations)
+
+    # the raw vectorized arrays are exposed without materialization
+    assert all(len(values) == len(X_explain) for values in explanations.values.values())
+
+    # each row matches the single-instance explanation (computed by the shapiq kernel here)
+    for row, x in enumerate(X_explain):
+        single = explainer.explain(x)
+        for feature in range(X_explain.shape[1]):
+            assert explanations[row][(feature,)] == pytest.approx(
+                single[(feature,)], rel=1e-5, abs=1e-5
+            )
 
 
 def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_data):

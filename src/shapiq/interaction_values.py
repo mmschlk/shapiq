@@ -5,8 +5,9 @@ from __future__ import annotations
 import contextlib
 import copy
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 from warnings import warn
 
 import numpy as np
@@ -21,7 +22,6 @@ from .game_theory.indices import (
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any
 
     from matplotlib.axes import Axes
@@ -1243,3 +1243,128 @@ def _update_interactions_for_index(
         # https://github.com/mmschlk/shapiq/issues/385
         interactions[()] = float(baseline_value)
     return interactions, index, min_order, float(baseline_value)
+
+
+class InteractionValuesBatch(Sequence[InteractionValues]):
+    """A batch of interaction values for multiple instances in a vectorized format.
+
+    Instead of one :class:`InteractionValues` object per instance, the batch stores one value
+    array of shape ``(n_instances,)`` per interaction — a memory-efficient layout for explaining
+    many instances at once (the output format of the Woodelf algorithms). The batch behaves like
+    a read-only sequence of :class:`InteractionValues`: indexing and iterating materialize the
+    per-instance objects lazily, so consumers that only need the raw arrays never pay for them.
+
+    Attributes:
+        values: The interaction values in the vectorized format
+            ``{interaction_tuple: ndarray of shape (n_instances,)}`` holding the orders
+            ``max(min_order, 1) .. max_order``. Interactions that are zero for every instance
+            may be omitted; the empty interaction ``()`` is not included.
+        n_instances: The number of explained instances in the batch.
+        n_players: The number of players (features) of the explained instances.
+        index: The interaction index of the values (e.g. ``"SV"`` or ``"k-SII"``).
+        max_order: The maximum interaction order contained in the batch.
+        min_order: The minimum interaction order of the materialized
+            :class:`InteractionValues`. When ``0``, the empty interaction ``()`` is added with
+            the baseline value on materialization.
+        baseline_value: The baseline value (empty prediction) of the explained model.
+    """
+
+    values: dict[tuple[int, ...], np.ndarray]
+    n_instances: int
+    n_players: int
+    # deliberately shadows ``Sequence.index`` to mirror ``InteractionValues.index``
+    index: str
+    max_order: int
+    min_order: int
+    baseline_value: float
+
+    def __init__(
+        self,
+        values: dict[tuple[int, ...], np.ndarray],
+        *,
+        n_instances: int,
+        n_players: int,
+        index: str,
+        max_order: int,
+        min_order: int,
+        baseline_value: float,
+    ) -> None:
+        """Initializes the InteractionValuesBatch.
+
+        Args:
+            values: The interaction values in the vectorized format
+                ``{interaction_tuple: ndarray of shape (n_instances,)}``.
+            n_instances: The number of explained instances in the batch.
+            n_players: The number of players (features) of the explained instances.
+            index: The interaction index of the values (e.g. ``"SV"`` or ``"k-SII"``).
+            max_order: The maximum interaction order contained in the batch.
+            min_order: The minimum interaction order of the materialized
+                :class:`InteractionValues`.
+            baseline_value: The baseline value (empty prediction) of the explained model.
+        """
+        self.values = values
+        self.n_instances = n_instances
+        self.n_players = n_players
+        self.index = index
+        self.max_order = max_order
+        self.min_order = min_order
+        self.baseline_value = baseline_value
+
+    def __len__(self) -> int:
+        """The number of explained instances in the batch."""
+        return self.n_instances
+
+    @overload
+    def __getitem__(self, item: int) -> InteractionValues: ...
+    @overload
+    def __getitem__(self, item: slice) -> list[InteractionValues]: ...
+    def __getitem__(self, item: int | slice) -> InteractionValues | list[InteractionValues]:
+        """Materialize the interaction values of one instance (or a slice of instances).
+
+        Args:
+            item: The instance position in the batch, or a slice of positions.
+
+        Returns:
+            The instance's :class:`InteractionValues`, or a list of them for a slice.
+        """
+        if isinstance(item, slice):
+            return [self._materialize(row) for row in range(*item.indices(self.n_instances))]
+        row = item + self.n_instances if item < 0 else item
+        if not 0 <= row < self.n_instances:
+            msg = f"Index {item} is out of range for a batch of {self.n_instances} instances."
+            raise IndexError(msg)
+        return self._materialize(row)
+
+    def _materialize(self, row: int) -> InteractionValues:
+        """Build the :class:`InteractionValues` object of a single instance.
+
+        Args:
+            row: The instance position in the batch.
+
+        Returns:
+            The interaction values of the instance, with the baseline value at the empty
+            interaction ``()`` when ``min_order == 0``.
+        """
+        interactions = {
+            interaction: values[row]
+            for interaction, values in self.values.items()
+            if values[row] != 0
+        }
+        if self.min_order == 0:
+            interactions[()] = self.baseline_value
+        return InteractionValues(
+            values=interactions,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            baseline_value=self.baseline_value,
+        )
+
+    def __repr__(self) -> str:
+        """A concise representation of the batch."""
+        return (
+            f"InteractionValuesBatch(n_instances={self.n_instances}, "
+            f"n_players={self.n_players}, index='{self.index}', "
+            f"max_order={self.max_order}, min_order={self.min_order})"
+        )
