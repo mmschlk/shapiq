@@ -153,6 +153,96 @@ def test_sklearn_if_conversion(if_clf_model):
     assert tree_model[0].empty_prediction is not None
 
 
+def test_sklearn_gradient_boosting_conversion_predicts_raw_output(gb_reg_model, gb_clf_model):
+    """Test that GradientBoosting conversions (incl. the init_ baseline) match raw outputs."""
+    from sklearn.datasets import make_classification, make_regression
+
+    # regression: sum of converted tree predictions equals model.predict
+    X, _ = make_regression(random_state=42, n_samples=80, n_features=7)
+    expected = gb_reg_model.predict(X[:10])
+    converted = convert_tree_model(gb_reg_model)
+    assert len(converted) == gb_reg_model.n_estimators
+    np.testing.assert_allclose(_predict_tree_ensemble(converted, X[:10]), expected, rtol=1e-6)
+
+    # multiclass classification: converted trees match the per-class raw decision function,
+    # and class_label=None defaults to class 1
+    Xc, _ = make_classification(
+        random_state=42, n_samples=80, n_features=7, n_classes=3, n_informative=5
+    )
+    expected_raw = gb_clf_model.decision_function(Xc[:10])
+    for class_label in range(3):
+        converted = convert_tree_model(gb_clf_model, class_label=class_label)
+        assert len(converted) == gb_clf_model.n_estimators
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, Xc[:10]), expected_raw[:, class_label], rtol=1e-6
+        )
+    converted_default = convert_tree_model(gb_clf_model)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_default, Xc[:10]), expected_raw[:, 1], rtol=1e-6
+    )
+
+    # a custom init estimator cannot be folded into a constant baseline
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.linear_model import LinearRegression
+
+    y = X.sum(axis=1)
+    custom_init_model = GradientBoostingRegressor(
+        random_state=42, n_estimators=3, init=LinearRegression()
+    )
+    custom_init_model.fit(X, y)
+    with pytest.raises(ValueError, match="custom `init` estimator"):
+        convert_tree_model(custom_init_model)
+
+
+def test_sklearn_hist_gradient_boosting_conversion_predicts_raw_output(
+    hist_gb_reg_model, hist_gb_clf_model
+):
+    """Test that HistGradientBoosting conversions (incl. the baseline) match raw outputs."""
+    from sklearn.datasets import make_classification, make_regression
+
+    # regression: sum of converted tree predictions equals model.predict
+    X, _ = make_regression(random_state=42, n_samples=80, n_features=7)
+    expected = hist_gb_reg_model.predict(X[:10])
+    converted = convert_tree_model(hist_gb_reg_model)
+    np.testing.assert_allclose(_predict_tree_ensemble(converted, X[:10]), expected, rtol=1e-6)
+
+    # missing values are routed like the model routes them
+    x_nan = X[0].copy()
+    x_nan[0] = np.nan
+    expected_nan = float(hist_gb_reg_model.predict(x_nan.reshape(1, -1))[0])
+    prediction_nan = float(sum(tree.predict_one(x_nan) for tree in converted))
+    assert prediction_nan == pytest.approx(expected_nan, rel=1e-6)
+
+    # multiclass classification: converted trees match the per-class raw decision function,
+    # and class_label=None defaults to class 1
+    Xc, _ = make_classification(
+        random_state=42, n_samples=80, n_features=7, n_classes=3, n_informative=5
+    )
+    expected_raw = hist_gb_clf_model.decision_function(Xc[:10])
+    for class_label in range(3):
+        converted = convert_tree_model(hist_gb_clf_model, class_label=class_label)
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, Xc[:10]), expected_raw[:, class_label], rtol=1e-6
+        )
+    converted_default = convert_tree_model(hist_gb_clf_model)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_default, Xc[:10]), expected_raw[:, 1], rtol=1e-6
+    )
+
+
+def test_sklearn_hist_gradient_boosting_categorical_splits_raise():
+    """Test that HistGradientBoosting models with categorical splits raise a clear error."""
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    rng = np.random.default_rng(42)
+    X = np.column_stack([rng.integers(0, 4, size=100), rng.normal(size=100)]).astype(np.float64)
+    y = X[:, 0] * 2.0 + X[:, 1]
+    model = HistGradientBoostingRegressor(random_state=42, max_iter=3, categorical_features=[0])
+    model.fit(X, y)
+    with pytest.raises(ValueError, match="categorical splits"):
+        convert_tree_model(model)
+
+
 def test_cpp_edge_tree_matches_python_edge_tree():
     """Test C++ edge conversion parity with the Python reference implementation."""
     children_left = np.asarray([1, 3, 5, -1, -1, -1, -1])

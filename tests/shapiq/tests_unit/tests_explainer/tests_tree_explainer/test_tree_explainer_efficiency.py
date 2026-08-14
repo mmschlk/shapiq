@@ -34,6 +34,8 @@ from shapiq import TreeExplainer
 _REG_CASES = [
     ("dt_reg_model", "background_reg_dataset"),
     ("rf_reg_model", "background_reg_dataset"),
+    ("gb_reg_model", "background_reg_dataset"),
+    ("hist_gb_reg_model", "background_reg_dataset"),
     ("xgb_reg_model", "background_reg_dataset"),
     ("lightgbm_reg_model", "background_reg_dataset"),
     ("catboost_reg_model", "background_reg_dataset"),
@@ -41,6 +43,8 @@ _REG_CASES = [
 _CLF_CASES = [
     ("dt_clf_model", "background_clf_dataset"),
     ("rf_clf_model", "background_clf_dataset"),
+    ("gb_clf_model", "background_clf_dataset"),
+    ("hist_gb_clf_model", "background_clf_dataset"),
     ("xgb_clf_model", "background_clf_dataset"),
     ("lightgbm_clf_model", "background_clf_dataset"),
     ("catboost_clf_model", "background_clf_dataset"),

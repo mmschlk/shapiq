@@ -945,7 +945,15 @@ public:
         double base_score = margin_base_score;
 
         // Whether to filter: keep only trees for the requested class.
-        bool filtering = (class_label >= 0) && (num_class > 1);
+        bool filtering = (num_class > 1);
+
+        // class_label < 0 means "unspecified": default to class 1 for multiclass
+        // models and class 0 otherwise. Must stay in sync with the default applied
+        // in _xgboost_margin_base_score (xgboost.py) for the base score.
+        if (!filtering)
+            class_label = 0;
+        else if (class_label < 0)
+            class_label = 1;
 
         // Each included tree carries base_score / num_rounds so that the sum
         // across all rounds equals base_score for the selected class.

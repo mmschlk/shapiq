@@ -6,6 +6,7 @@
 
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
 - adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
+- adds `TreeExplainer` support for scikit-learn gradient boosting models: `GradientBoostingRegressor`, `GradientBoostingClassifier`, `HistGradientBoostingRegressor`, and `HistGradientBoostingClassifier` can now be converted to the internal tree format (including the constant baseline / `init_` prediction, so attributions sum to the raw model output)
 
 ## v1.6.0 (2026-07-06)
 
