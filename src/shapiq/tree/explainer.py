@@ -7,20 +7,19 @@ for tree ensembles.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Dict
+from typing import TYPE_CHECKING, Any, Literal
 
-from shap.utils import safe_isinstance
+import numpy as np
 
 from shapiq.explainer.base import Explainer
+from shapiq.interaction_values import InteractionValues
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.utils.modules import safe_isinstance
 
+from .base import TreeModel
 from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ
 from .validation import validate_tree_model
-
-import numpy as np
-from shapiq.interaction_values import InteractionValues
-from .base import TreeModel
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
 TREE_MODES = Literal["pathdependent", "interventional"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
 
+_WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 
 
 class TreeExplainer(Explainer):
@@ -47,15 +47,15 @@ class TreeExplainer(Explainer):
     ``scikit-learn``, ``XGBoost``, ``LightGBM``, and ``CatBoost``. The explainer can handle both
     regression and classification models.
 
-    On large datasets the explainer relays on the Woodelf and WoodelfHD algorithms. For details, refer to
-    `Nadel and Wettenstein (2026)` [Nad26]_ and `Wettenstein et al. (2026)` [Wet26]_
-
+    On large datasets the explainer relies on the Woodelf and WOODELF-HD algorithms. For
+    details, refer to `Nadel and Wettenstein (2026)` [Nad26]_ and
+    `Wettenstein et al. (2026)` [Wet26]_.
 
     References:
         .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read. (2022). Linear Tree Shap. In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
         .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
-        ... [Nad26] Nadel, A., & Wettenstein, R. (2026). From Decision Trees to Boolean Logic: A Fast and Unified SHAP Algorithm. Proceedings of the AAAI Conference on Artificial Intelligence, 40(29), 24476–24485. https://doi.org/10.1609/aaai.v40i29.39630
-        .... [Wet26] Ron Wettenstein, Alexander Nadel, Udi Boker. (2026). WOODELF-HD: Efficient Background SHAP for High-Depth Decision Trees. arXiv preprint arXiv:2604.10569. https://arxiv.org/abs/2604.10569
+        .. [Nad26] Nadel, A., & Wettenstein, R. (2026). From Decision Trees to Boolean Logic: A Fast and Unified SHAP Algorithm. Proceedings of the AAAI Conference on Artificial Intelligence, 40(29), 24476-24485. https://doi.org/10.1609/aaai.v40i29.39630
+        .. [Wet26] Ron Wettenstein, Alexander Nadel, Udi Boker. (2026). WOODELF-HD: Efficient Background SHAP for High-Depth Decision Trees. arXiv preprint arXiv:2604.10569. https://arxiv.org/abs/2604.10569
 
     """
 
@@ -95,14 +95,16 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. It can be one of
-                ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"``
-                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"SV"``.
+                ``["SV", "SII", "k-SII", "BV", "BII"]``. All indices apart from the Banzhaf
+                indices ``"BV"`` and ``"BII"`` will reduce to the ``"SV"`` (Shapley value) for
+                order 1. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
                 for regression models.
 
-            reference_dataset: A dataset to be used for reference in the explanation when using `mode=interventional`. Defaults to ``None``.
+            reference_dataset: A dataset to be used for reference in the explanation when using
+                ``mode="interventional"``. Defaults to ``None``.
 
             **kwargs: Additional keyword arguments are ignored.
 
@@ -122,36 +124,45 @@ class TreeExplainer(Explainer):
 
         self._min_order: int = min_order
         self._class_label: int | None = class_index
-        self.mode = mode
+        self._mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
-        # In ``"pathdependent"`` mode, build exactly one per-tree explainer list — either
-        # ``LinearTreeSHAP`` (cheap, order-1 only) or ``TreeSHAPIQ`` (any order). The dispatch
-        # decision is fixed at construction time so callers can mutate the chosen list (e.g.
-        # ``_tree.thresholds`` rounding in tests) before calling :meth:`explain`. In
-        # ``"interventional"`` mode no per-tree list is created — the
-        # :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer` handles the
-        # full ensemble in one shot, so a per-tree list would be meaningless.
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
         self._interventional_explainer: InterventionalTreeExplainer | None = None
-        self.explainers_initialized = False
+        self._explainers_initialized = False
 
         # Baseline is the sum of the per-tree empty predictions and is identical regardless of
         # which algorithm runs explain — derive it from the trees directly so the attribute is
         # always populated, including in ``"interventional"`` mode where no per-tree list exists.
         self.baseline_value: float = float(sum(tree.empty_prediction for tree in self._trees))
 
-    def _init_explainers(self, index: Literal["SV", "SII", "k-SII"]):
-        self.explainers_initialized = True
+    @property
+    def mode(self) -> Literal["interventional", "pathdependent"]:
+        """The mode of the explainer."""
+        return self._mode
+
+    def _init_explainers(self) -> None:
+        """Build the shapiq explainers for the configured mode.
+
+        Runs lazily on the first explanation that is not routed to Woodelf, so the (potentially
+        expensive) shapiq explainers are never built when Woodelf handles the computation.
+        """
+        self._explainers_initialized = True
         if self.mode == "pathdependent":
             if self._can_use_lineartreeshap():
                 self._lineartreeshap_explainers = [
                     LinearTreeSHAP(model=tree) for tree in self._trees
                 ]
             else:
-                # ``index`` (the local parameter) is already narrowed to ``TreeSHAPIQIndices``;
-                # ``self.index`` is the broader ``ExplainerIndices`` and would not type-check.
+                index = self.index
+                if index not in ("SV", "SII", "k-SII"):
+                    msg = (
+                        f"index='{index}' with mode='pathdependent' is only supported via the "
+                        "optional woodelf dependency (`pip install shapiq[tree]`), which is "
+                        "unavailable or does not support this configuration."
+                    )
+                    raise ValueError(msg)
                 self._treeshapiq_explainers = [
                     TreeSHAPIQ(model=tree, max_order=self._max_order, index=index)
                     for tree in self._trees
@@ -185,37 +196,49 @@ class TreeExplainer(Explainer):
             and all(tree.n_features_in_tree >= 2 for tree in self._trees)
         )
 
-    def _should_use_woodelf(self, number_of_explained_instances):
-        """
-        The function decide when to use Woodelf and when to use shapiq implementation for Shapley values computation.
-        The cut-offs are n*m >= 100 for interventional and n >= 100 for path dependent where n is the number of explained instances and
-        m is the size of the reference dataset. They are based on experiments summarized in the htmls below:
+    def _should_use_woodelf(self, number_of_explained_instances: int) -> bool:
+        """Decide whether Woodelf or the shapiq implementation computes the explanation.
 
-        Path Dependent experiment:
+        The cut-offs are ``n * m >= 100`` for interventional and ``n >= 100`` (or
+        ``max_order > 1``, or a Banzhaf index) for path-dependent mode, where ``n`` is the number
+        of explained instances and ``m`` is the size of the reference dataset. They are based on
+        the experiments summarized in the reports below:
+
+        Path-dependent experiment:
         https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_path_dependent_experiment.html
 
         Interventional experiment:
         https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_experiment.html
 
         This function should change when new capabilities are developed in Woodelf.
+
+        Args:
+            number_of_explained_instances: How many instances are about to be explained.
+
+        Returns:
+            ``True`` if Woodelf should compute the explanation, ``False`` for shapiq.
         """
         if self.index not in ("SV", "BV", "SII", "BII"):
             return False
 
         # Woodelf currently does not support cat boost models
         cat_boost_classes = [
-            "catboost.core.CatBoostRegressor", "catboost.core.CatBoostClassifier",
-            "catboost.core.CatBoost"
+            "catboost.core.CatBoostRegressor",
+            "catboost.core.CatBoostClassifier",
+            "catboost.core.CatBoost",
         ]
         if any(safe_isinstance(self.model, catboost_cls) for catboost_cls in cat_boost_classes):
             return False
 
         # Woodelf needs the original model as an input
-        if isinstance(self.model, list) or isinstance(self.model, TreeModel):
+        if isinstance(self.model, list | TreeModel):
             return False
 
         if self.mode == "interventional":
-            if len(self._reference_dataset) * number_of_explained_instances >= 100:
+            if (
+                self._reference_dataset is not None
+                and len(self._reference_dataset) * number_of_explained_instances >= 100
+            ):
                 return True
         elif self.mode == "pathdependent":
             if self.max_order > 1 or number_of_explained_instances >= 100:
@@ -224,24 +247,34 @@ class TreeExplainer(Explainer):
                 return True
         return False
 
-    def _run_woodelf(self, X: np.ndarray):
-        """
-        Compute Shapley or Banzhaf values using the Woodelf package.
-        We use the hybrid_woodelf function.
+    def _run_woodelf(self, X: np.ndarray) -> dict[tuple, np.ndarray] | None:
+        """Compute Shapley or Banzhaf (interaction) values with Woodelf's ``hybrid_woodelf``.
 
-        Return the values in Woodelf format or None if this configuration is not supported in Woodelf (e.g. unsupported index or too deep tree)
+        Args:
+            X: The instances to explain as a 2-dimensional array of shape
+                ``(n_instances, n_features)``.
+
+        Returns:
+            The values in the Woodelf format ``{interaction_tuple: ndarray of shape
+            (n_instances,)}``, or ``None`` if the configuration is not supported by Woodelf
+            (e.g. an unsupported index or a too deep tree).
         """
         try:
-            from woodelf.woodelf_sparse import hybrid_woodelf
-            from woodelf.core.cube_metric import ShapleyValues, BanzhafValues, GeneralShapleyInteractionValues, GeneralBanzhafInteractionValues
-            from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
             import pandas as pd
-        except ImportError:
-            raise ImportError(
-                "For efficient computation of decision trees woodelf and treelite needs to be installed.\n" +
-                "You can install all the needed package for decision tree explainability by installing shapiq [trees] extra. Run: \n" +
-                ">> pip install shapiq[trees]"
+            from woodelf.core.cube_metric import (
+                BanzhafValues,
+                GeneralBanzhafInteractionValues,
+                GeneralShapleyInteractionValues,
+                ShapleyValues,
             )
+            from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
+            from woodelf.woodelf_sparse import hybrid_woodelf
+        except ImportError as error:
+            msg = (
+                "The Woodelf fast path requires the optional 'woodelf-explainer' package. "
+                f"{_WOODELF_INSTALL_HINT}"
+            )
+            raise ImportError(msg) from error
 
         consumer_dataset = pd.DataFrame(X)
         background_dataset = None
@@ -260,29 +293,43 @@ class TreeExplainer(Explainer):
             return None
 
         class_index = self._class_label if self._class_label is not None else 1
-        loaded_model = load_decision_tree_ensemble_model(self.model, range(X.shape[1]), class_index=class_index)
-        # TODO when woodelf support path dependent SHAP on high depth trees remove this if
+        loaded_model = load_decision_tree_ensemble_model(
+            self.model, range(X.shape[1]), class_index=class_index
+        )
+        # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
+        # yet; remove this fallback once it can.
         if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
             return None
 
         woodelf_result = hybrid_woodelf(
-            model=loaded_model, consumer_data=consumer_dataset, background_data=background_dataset,
-            metric=metric, model_was_loaded=True
+            model=loaded_model,
+            consumer_data=consumer_dataset,
+            background_data=background_dataset,
+            metric=metric,
+            model_was_loaded=True,
         )
         if self._index in ("SV", "BV"):
-            return {(k, ): v for k, v in woodelf_result.items()}
+            return {(k,): v for k, v in woodelf_result.items()}
         return woodelf_result
 
     def _cast_shapiq_results_to_woodelf_format(
-            self,
-            shapiq_results: list[InteractionValues],
-    ) -> Dict[tuple, np.ndarray]:
-        """Transpose one shapiq output format, ``InteractionValues`` per row, into ``_run_woodelf``'s output format, ``{interaction_tuple: ndarray(n_instances,)}``,
-         keeping orders ``max(min_order, 1) .. max_order`` (which also drops the ``()`` baseline).
+        self,
+        shapiq_results: list[InteractionValues],
+    ) -> dict[tuple, np.ndarray]:
+        """Transpose a per-row list of ``InteractionValues`` into the Woodelf output format.
+
+        Keeps orders ``max(min_order, 1) .. max_order`` (which also drops the ``()`` baseline).
+
+        Args:
+            shapiq_results: One :class:`InteractionValues` object per explained instance.
+
+        Returns:
+            The values in the Woodelf format ``{interaction_tuple: ndarray of shape
+            (n_instances,)}``.
         """
         lowest = max(self._min_order, 1)
 
-        # Shapiq omits exactly-zero terms per row and woodelf include them (it emits only terms that are zero in all rows)
+        # shapiq omits exactly-zero terms per row and woodelf include them (it emits only terms that are zero in all rows)
         all_subsets = {
             subset
             for result in shapiq_results
@@ -292,7 +339,7 @@ class TreeExplainer(Explainer):
 
         woodelf_format = {subset: np.zeros(len(shapiq_results)) for subset in all_subsets}
 
-        # A subset a row does not report stays 0.0 -- that is what its absence means.
+        # a subset a row does not report stays 0.0
         for row, result in enumerate(shapiq_results):
             for subset, value in result.interactions.items():
                 if subset in woodelf_format:
@@ -300,19 +347,33 @@ class TreeExplainer(Explainer):
 
         return woodelf_format
 
-    def _cast_woodelf_result_to_shapiq_format(self, woodelf_result: Dict[tuple, np.ndarray], n_players) -> InteractionValues:
-         interaction_values = {subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0}
-         if self._min_order == 0:
-             interaction_values[tuple()] = self.baseline_value
+    def _cast_woodelf_result_to_shapiq_format(
+        self, woodelf_result: dict[tuple, np.ndarray], n_players: int
+    ) -> InteractionValues:
+        """Convert a single-instance Woodelf result into an :class:`InteractionValues` object.
 
-         return InteractionValues(
-             values=interaction_values,
-             index=self._index,
-             max_order=self._max_order,
-             n_players=n_players,
-             min_order=self._min_order,
-             baseline_value=self.baseline_value,
-         )
+        Args:
+            woodelf_result: Woodelf-format values ``{interaction_tuple: ndarray of shape (1,)}``.
+            n_players: The number of features of the explained instance.
+
+        Returns:
+            The interaction values of the instance, with the baseline value at the empty
+            interaction ``()`` when ``min_order == 0``.
+        """
+        interaction_values = {
+            subset: values[0] for subset, values in woodelf_result.items() if values[0] != 0
+        }
+        if self._min_order == 0:
+            interaction_values[()] = self.baseline_value
+
+        return InteractionValues(
+            values=interaction_values,
+            index=self._index,
+            max_order=self._max_order,
+            n_players=n_players,
+            min_order=self._min_order,
+            baseline_value=self.baseline_value,
+        )
 
     def _explain_function_lineartreeshap(
         self,
@@ -405,7 +466,7 @@ class TreeExplainer(Explainer):
 
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
-            # Add the baseline value to the empty prediction
+            # add the baseline value to the empty prediction
             # might break for some edge cases
             final_explanation.interactions[()] = float(final_explanation.baseline_value)
 
@@ -439,18 +500,20 @@ class TreeExplainer(Explainer):
         if self._should_use_woodelf(number_of_explained_instances=1):
             woodelf_explanation = self._run_woodelf(np.array([x]))
             if woodelf_explanation is not None:
-                return self._cast_woodelf_result_to_shapiq_format(woodelf_explanation, n_players=int(x.shape[0]))
+                return self._cast_woodelf_result_to_shapiq_format(
+                    woodelf_explanation, n_players=int(x.shape[0])
+                )
 
-        if not self.explainers_initialized:
-            self._init_explainers(self.index)
+        if not self._explainers_initialized:
+            self._init_explainers()
         if self.mode == "pathdependent":
-            # Dispatch on whichever per-tree list __init__ chose to populate.
+            # dispatch on whichever per-tree list _init_explainers chose to populate.
             if self._lineartreeshap_explainers:
                 return self._explain_function_lineartreeshap(x, **kwargs)
             return self._explain_function_treeshapiq(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)
 
-    def explain_X(
+    def explain_X(  # ty: ignore[invalid-method-override]
         self,
         X: np.ndarray,
         *,
@@ -458,12 +521,39 @@ class TreeExplainer(Explainer):
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
-    ) -> Dict[tuple, np.ndarray]:
-        """Explaining many instances and once, using Woodelf on larger datasets and shapiq on smaller onces"""
+    ) -> dict[tuple, np.ndarray]:
+        """Explain many instances at once, returning the Woodelf output format.
+
+        Uses Woodelf on larger inputs and falls back to the per-instance shapiq computation on
+        smaller ones (see :meth:`_should_use_woodelf`). Either way, the result is returned in the
+        vectorized Woodelf format.
+
+        Note:
+            The return type intentionally differs from
+            :meth:`shapiq.explainer.base.Explainer.explain_X`, which returns one
+            :class:`~shapiq.interaction_values.InteractionValues` object per instance.
+
+        Args:
+            X: A 2-dimensional matrix of inputs to be explained with shape
+                ``(n_instances, n_features)``.
+            n_jobs: Number of jobs for the shapiq fallback's ``joblib.Parallel``. Defaults to
+                ``None`` (no parallelization).
+            random_state: The random state to re-initialize the shapiq fallback with. Defaults to
+                ``None``.
+            verbose: Whether to print a progress bar in the shapiq fallback. Defaults to
+                ``False``.
+            **kwargs: Additional keyword-only arguments passed to the shapiq fallback.
+
+        Returns:
+            The interaction values in the Woodelf format
+            ``{interaction_tuple: ndarray of shape (n_instances,)}``.
+        """
         if self._should_use_woodelf(len(X)):
             woodelf_result = self._run_woodelf(X)
             if woodelf_result is not None:
                 return woodelf_result
 
-        shapiq_results = super().explain_X(X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs)
+        shapiq_results = super().explain_X(
+            X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs
+        )
         return self._cast_shapiq_results_to_woodelf_format(shapiq_results)
