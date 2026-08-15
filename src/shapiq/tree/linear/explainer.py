@@ -227,6 +227,10 @@ class LinearTreeSHAP:
             np.ascontiguousarray(X, dtype=np.float64),
             V,
             self._tree.decision_type,
+            np.ascontiguousarray(self._tree.cat_values, dtype=np.int64),
+            np.ascontiguousarray(self._tree.cat_start, dtype=np.int64),
+            np.ascontiguousarray(self._tree.cat_size, dtype=np.int64),
+            np.ascontiguousarray(self._tree.children_left_default, dtype=bool),
         )
         return V
 

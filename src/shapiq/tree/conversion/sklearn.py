@@ -344,10 +344,6 @@ def convert_hist_gradient_boosting_tree(
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting iteration for the selected class.
-
-    Raises:
-        ValueError: If the model contains categorical splits, which the internal tree format
-            does not support.
     """
     predictors = tree_model._predictors  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     tree_column = 0
@@ -355,33 +351,140 @@ def convert_hist_gradient_boosting_tree(
         tree_column = 1 if class_label is None else class_label
     baseline = tree_model._baseline_prediction  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     offset = float(np.asarray(baseline).ravel()[tree_column]) / len(predictors)
+
+    # With categorical features, sklearn routes the input through an internal
+    # ColumnTransformer that orders the CATEGORICAL COLUMNS FIRST and ordinal-encodes their
+    # raw values; the tree predictors live in that transformed feature space. The internal
+    # TreeModel operates on the untransformed input, so feature indices must be mapped back
+    # to the original columns and encoded category codes back to raw category values.
+    trans_to_orig = None
+    raw_categories = None
+    known_cat_bitsets = None
+    f_idx_map = None
+    if any(np.any(iteration[tree_column].nodes["is_categorical"]) for iteration in predictors):
+        bin_mapper = tree_model._bin_mapper  # noqa: SLF001  # ty: ignore[unresolved-attribute]
+        known_cat_bitsets, f_idx_map = bin_mapper.make_known_categories_bitsets()
+        preprocessor = getattr(tree_model, "_preprocessor", None)
+        if preprocessor is not None:
+            is_cat = np.asarray(
+                tree_model.is_categorical_,  # ty: ignore[unresolved-attribute]
+                dtype=bool,
+            )
+            trans_to_orig = np.concatenate([np.flatnonzero(is_cat), np.flatnonzero(~is_cat)])
+            raw_categories = list(preprocessor.named_transformers_["encoder"].categories_)
     return [
-        _convert_hist_tree_predictor(iteration[tree_column].nodes, offset)
+        _convert_hist_tree_predictor(
+            iteration[tree_column],
+            offset,
+            trans_to_orig=trans_to_orig,
+            raw_categories=raw_categories,
+            known_cat_bitsets=known_cat_bitsets,
+            f_idx_map=f_idx_map,
+        )
         for iteration in predictors
     ]
 
 
-def _convert_hist_tree_predictor(nodes: np.ndarray, offset: float) -> TreeModel:
-    """Convert the structured node array of a single Hist ``TreePredictor`` to a ``TreeModel``.
+def _bitset_to_categories(bitset: np.ndarray) -> np.ndarray:
+    """Decode one of sklearn's ``(8,) uint32`` category bitsets into sorted category codes."""
+    words = np.asarray(bitset, dtype=np.uint32)
+    # Obtain set bits by shifting each word and masking with 1.
+    bits = (words[:, None] >> np.arange(32, dtype=np.uint32)) & 1
+    return np.flatnonzero(bits.ravel()).astype(np.int64)
+
+
+def _hist_node_stored_set(
+    nodes: np.ndarray,
+    node_id: int,
+    raw_left_cat_bitsets: np.ndarray,
+    raw_categories: list[np.ndarray] | None,
+    known_cat_bitsets: np.ndarray | None,
+    f_idx_map: np.ndarray | None,
+) -> tuple[np.ndarray, bool]:
+    """Build the stored category set of one categorical Hist node in raw value space.
+
+    sklearn's routing is three-way: left-bitset members go left, other *known* categories go
+    right, and everything else (NaN, unknown, negative) goes to the missing branch. The
+    internal binary rule (in set -> left, else -> right, NaN -> missing child) captures this
+    exactly by always enumerating the side *opposite* the missing branch, which is finite:
+
+    - missing branch is the right child: store the left bitset; every non-member (including
+      unknown categories) falls to the right = missing side.
+    - missing branch is the left child: store the *right*-routed set (known categories minus
+      the left bitset) and swap the children; every non-member (left-bitset members, unknown
+      categories, negatives) then falls to the stored right = actual left = missing side.
+
+    Returns:
+        A 2-tuple ``(stored_set, swap_children)``.
+
+    Raises:
+        ValueError: If the model was trained on non-integer raw category values, which the
+            internal integer-based categorical representation cannot express.
+    """
+    feature_idx = nodes["feature_idx"][node_id]
+    if known_cat_bitsets is None or f_idx_map is None:
+        msg = "known_cat_bitsets and f_idx_map are required for categorical Hist trees."
+        raise ValueError(msg)
+    codes = _bitset_to_categories(raw_left_cat_bitsets[nodes["bitset_idx"][node_id]])
+    swap_children = bool(nodes["missing_go_to_left"][node_id])
+    if swap_children:
+        known = _bitset_to_categories(known_cat_bitsets[f_idx_map[feature_idx]])
+        codes = np.setdiff1d(known, codes)
+    if raw_categories is not None:
+        # Bitsets are in the ordinal-encoded space; translate codes to raw values via the
+        # encoder's category list (categorical features occupy the first transformed
+        # columns, in original order, matching ``encoder.categories_``).
+        raw = np.asarray(raw_categories[feature_idx], dtype=np.float64)[codes]
+        raw = raw[np.isfinite(raw)]
+        if not np.all(raw == np.floor(raw)):
+            msg = (
+                "HistGradientBoosting models with non-integer raw category values are not "
+                "supported by the internal categorical tree representation."
+            )
+            raise ValueError(msg)
+        return np.sort(raw.astype(np.int64)), swap_children
+    return codes, swap_children
+
+
+def _convert_hist_tree_predictor(
+    predictor: object,
+    offset: float,
+    *,
+    trans_to_orig: np.ndarray | None = None,
+    raw_categories: list[np.ndarray] | None = None,
+    known_cat_bitsets: np.ndarray | None = None,
+    f_idx_map: np.ndarray | None = None,
+) -> TreeModel:
+    """Convert a single Hist ``TreePredictor`` to a ``TreeModel``.
+
+    Categorical splits are decoded from the predictor's ``raw_left_cat_bitsets`` into the
+    internal CSR representation (category in set -> left child), translated back into the
+    original (untransformed) feature space: feature indices are remapped via
+    ``trans_to_orig`` and encoded category codes back to raw values via ``raw_categories``.
+    Nodes whose missing branch is the left child store the (finite) right-routed category
+    set with swapped children instead, so unknown categories fall through to the missing
+    branch exactly like in sklearn (see :func:`_hist_node_stored_set`).
+
+    Residual, documented caveat: fractional feature values at categorical splits are
+    truncated (``int(5.7) == 5``) instead of being treated as unknown categories like
+    sklearn's ordinal encoder does.
 
     Args:
-        nodes: The structured node array of the ``TreePredictor``
+        predictor: The ``TreePredictor``
             (``sklearn.ensemble._hist_gradient_boosting.predictor``).
         offset: An additive offset applied to all leaf values.
+        trans_to_orig: Mapping from transformed to original feature indices (``None`` when
+            the model has no encoding preprocessor).
+        raw_categories: Per categorical feature, the raw category values in code order
+            (``encoder.categories_``); ``None`` without the preprocessor.
+        known_cat_bitsets: Model-level known-category bitsets from
+            ``_bin_mapper.make_known_categories_bitsets()``; only needed for categorical trees.
+        f_idx_map: Feature-index map accompanying ``known_cat_bitsets``.
 
     Returns:
         The tree converted to the internal ``TreeModel`` format.
-
-    Raises:
-        ValueError: If the tree contains categorical splits, which the internal tree format
-            does not support.
     """
-    if np.any(nodes["is_categorical"]):
-        msg = (
-            "HistGradientBoosting models with categorical splits are not supported. "
-            "Refit the model without `categorical_features`."
-        )
-        raise ValueError(msg)
+    nodes = predictor.nodes  # ty: ignore[unresolved-attribute]
     is_leaf = nodes["is_leaf"].astype(bool)
     children_left = np.where(is_leaf, -1, nodes["left"].astype(np.int64))
     children_right = np.where(is_leaf, -1, nodes["right"].astype(np.int64))
@@ -389,15 +492,62 @@ def _convert_hist_tree_predictor(nodes: np.ndarray, offset: float) -> TreeModel:
         nodes["missing_go_to_left"].astype(bool), children_left, children_right
     )
     values = np.where(is_leaf, nodes["value"] + offset, 0.0)
+    features = nodes["feature_idx"].astype(np.int64)
+    if trans_to_orig is not None:
+        features = trans_to_orig[features]
+
+    thresholds = nodes["num_threshold"].astype(np.float64)
+    cat_values_arr = None
+    cat_start_arr = None
+    cat_size_arr = None
+    categorical_nodes = np.flatnonzero(nodes["is_categorical"])
+    if len(categorical_nodes) > 0:
+        raw_left_cat_bitsets = predictor.raw_left_cat_bitsets  # ty: ignore[unresolved-attribute]
+        n_nodes = len(nodes)
+        cat_start = np.zeros(n_nodes, dtype=np.int64)
+        cat_size = np.zeros(n_nodes, dtype=np.int64)
+        left_sets: list[np.ndarray] = []
+        total = 0
+        for node_id in categorical_nodes:
+            stored_set, swap_children = _hist_node_stored_set(
+                nodes, node_id, raw_left_cat_bitsets, raw_categories, known_cat_bitsets, f_idx_map
+            )
+            if swap_children:
+                # the stored set enumerates the right-routed categories; swapping the
+                # children restores the internal in-set -> left convention and sends every
+                # non-member to the missing (actual left) child. children_missing holds a
+                # node id computed from the original orientation, so it is unaffected.
+                children_left[node_id], children_right[node_id] = (
+                    children_right[node_id],
+                    children_left[node_id],
+                )
+            if len(stored_set) == 0:
+                # no finite value may reach the stored left child (e.g. only the
+                # missing-values bin routes to one side): encode as a numeric split nothing
+                # satisfies (NaN keeps routing via children_missing)
+                thresholds[node_id] = -np.inf
+                continue
+            cat_start[node_id] = total
+            cat_size[node_id] = len(stored_set)
+            total += len(stored_set)
+            left_sets.append(stored_set)
+        if left_sets:
+            cat_values_arr = np.concatenate(left_sets)
+            cat_start_arr = cat_start
+            cat_size_arr = cat_size
+
     return TreeModel(
         children_left=children_left,
         children_right=children_right,
         children_missing=children_missing,
-        features=nodes["feature_idx"].astype(np.int64),
-        thresholds=nodes["num_threshold"].astype(np.float64),
+        features=features,
+        thresholds=thresholds,
         values=values,
         node_sample_weight=nodes["count"].astype(np.float64),
         original_output_type="raw",
+        cat_values=cat_values_arr,
+        cat_start=cat_start_arr,
+        cat_size=cat_size_arr,
     )
 
 

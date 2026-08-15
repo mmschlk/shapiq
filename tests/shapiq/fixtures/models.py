@@ -215,6 +215,66 @@ def hist_gb_clf_model(background_clf_dataset) -> HistGradientBoostingClassifier:
 
 
 @pytest.fixture
+def hist_gb_cat_reg_model(background_cat_dataset) -> HistGradientBoostingRegressor:
+    """Return a histogram-based gradient boosting regressor with categorical splits."""
+    X, y = background_cat_dataset
+    model = HistGradientBoostingRegressor(
+        random_state=RANDOM_SEED_MODELS,
+        max_iter=5,
+        max_depth=4,
+        min_samples_leaf=5,
+        categorical_features=[0, 2],
+    )
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def hist_gb_cat_clf_model(background_cat_dataset) -> HistGradientBoostingClassifier:
+    """Return a histogram-based gradient boosting classifier with categorical splits."""
+    X, y = background_cat_dataset
+    y_classes = np.digitize(y, np.quantile(y, [0.33, 0.66]))
+    model = HistGradientBoostingClassifier(
+        random_state=RANDOM_SEED_MODELS,
+        max_iter=4,
+        max_depth=4,
+        min_samples_leaf=5,
+        categorical_features=[0, 2],
+    )
+    model.fit(X, y_classes)
+    return model
+
+
+@pytest.fixture
+def lightgbm_cat_reg_model(background_cat_dataset) -> Model:
+    """Return a LightGBM regressor with categorical splits."""
+    lightgbm = pytest.importorskip("lightgbm")
+
+    X, y = background_cat_dataset
+    model = lightgbm.LGBMRegressor(
+        random_state=RANDOM_SEED_MODELS, n_estimators=3, min_child_samples=5, verbose=-1
+    )
+    model.fit(X, y, categorical_feature=[0, 2])
+    return model
+
+
+@pytest.fixture
+def xgb_cat_reg_model(background_cat_dataset) -> Model:
+    """Return an XGBoost booster with categorical splits."""
+    xgboost = pytest.importorskip("xgboost")
+
+    X, y = background_cat_dataset
+    dtrain = xgboost.DMatrix(
+        X, label=y, feature_types=["c", "q", "c", "q"], enable_categorical=True
+    )
+    return xgboost.train(
+        {"tree_method": "hist", "max_depth": 3, "seed": RANDOM_SEED_MODELS},
+        dtrain,
+        num_boost_round=3,
+    )
+
+
+@pytest.fixture
 def xgb_clf_model(background_clf_dataset) -> Model:
     """Return a simple xgboost classification model."""
     xgboost = pytest.importorskip("xgboost")

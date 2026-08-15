@@ -90,19 +90,11 @@ def obtain_E_R_values_point(
             continue
 
         feature = int(tree.features[node_id])
-        explain_goes_left = tree.decision_function(
-            point_to_explain[feature],
-            tree.thresholds[node_id],
-            left_default=tree.children_left_default[node_id],
-        )
+        explain_goes_left = tree.goes_left(node_id, point_to_explain[feature])
         child_node_explain = (
             tree.children_left[node_id] if explain_goes_left else tree.children_right[node_id]
         )
-        ref_goes_left = tree.decision_function(
-            reference_point[feature],
-            tree.thresholds[node_id],
-            left_default=tree.children_left_default[node_id],
-        )
+        ref_goes_left = tree.goes_left(node_id, reference_point[feature])
         child_node_ref = (
             tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]
         )
@@ -250,6 +242,9 @@ class InterventionalTreeExplainer:
         self.children_left_default_list = [
             tree.children_left_default.astype(bool).flatten() for tree in self.tree
         ]
+        self.cat_values_list = [tree.cat_values.astype(np.int64).flatten() for tree in self.tree]
+        self.cat_start_list = [tree.cat_start.astype(np.int64).flatten() for tree in self.tree]
+        self.cat_size_list = [tree.cat_size.astype(np.int64).flatten() for tree in self.tree]
 
     def _preprocess_boolean_tree(self) -> None:
         """Gather E and R statistics for boolean tree mode using C++ BitSet DFS."""
@@ -479,6 +474,9 @@ class InterventionalTreeExplainer:
                 self.max_order,
                 self.debug,  # whether to print debug information
                 self.look_up_table,  # optional custom weight table (None → built-in index)
+                self.cat_values_list,  # per-tree categorical split sets (CSR layout)
+                self.cat_start_list,
+                self.cat_size_list,
             )
         else:
             interactions = compute_interactions_flatten(

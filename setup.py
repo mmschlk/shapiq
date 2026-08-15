@@ -37,9 +37,10 @@ def get_base_flags() -> dict[str, list[str]]:
             "include_dirs": [],
             "library_dirs": [],
         }
-    # macOS and Linux
+    # macOS and Linux. -fno-finite-math-only must follow -ffast-math: the kernels route
+    # missing values via std::isnan, which finite-math-only would compile away.
     return {
-        "extra_compile_args": ["-std=c++17", "-O3", "-ffast-math"],
+        "extra_compile_args": ["-std=c++17", "-O3", "-ffast-math", "-fno-finite-math-only"],
         "extra_link_args": [],
         "include_dirs": [],
         "library_dirs": [],
@@ -85,6 +86,9 @@ def get_openmp_flags() -> dict[str, list[str]]:
                         "-fopenmp",
                         "-O3",
                         "-ffast-math",
+                        # keep NaN semantics: missing-value routing uses std::isnan,
+                        # which finite-math-only would compile away
+                        "-fno-finite-math-only",
                         # Hide our own (algorithms::*) symbols; only _PyInit_cext
                         # is exported via the linker allowlist below.
                         "-fvisibility=hidden",
@@ -115,7 +119,13 @@ def get_openmp_flags() -> dict[str, list[str]]:
         raise RuntimeError(msg)
     # Linux and others
     return {
-        "extra_compile_args": ["-std=c++17", "-fopenmp", "-O3", "-ffast-math"],
+        "extra_compile_args": [
+            "-std=c++17",
+            "-fopenmp",
+            "-O3",
+            "-ffast-math",
+            "-fno-finite-math-only",
+        ],
         "extra_link_args": ["-fopenmp"],
         "include_dirs": [],
         "library_dirs": [],

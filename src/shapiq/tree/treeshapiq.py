@@ -296,7 +296,6 @@ class TreeSHAPIQ:
 
         # get feature information
         feature_id = int(self._tree.features[parent_id])
-        feature_threshold = self._tree.thresholds[node_id]
         child_edge_feature = self._tree.features[node_id]
 
         # get height of related nodes
@@ -317,11 +316,8 @@ class TreeSHAPIQ:
 
         # if node is not a leaf -> set activations for children nodes accordingly
         if not is_leaf:
-            go_left = (
-                x[child_edge_feature] < feature_threshold
-                if self._strict_lt
-                else x[child_edge_feature] <= feature_threshold
-            )
+            feature_value = x[child_edge_feature]
+            go_left = self._tree.goes_left(node_id, feature_value)
             if go_left:
                 activations[left_child], activations[right_child] = True, False
             else:
