@@ -482,41 +482,6 @@ class TreeExplainer(Explainer):
             if isinstance(values, np.ndarray) and lowest <= len(subset) <= self._max_order
         }
 
-    def _cast_shapiq_results_to_woodelf_format(
-        self,
-        shapiq_results: list[InteractionValues],
-    ) -> dict[tuple, np.ndarray]:
-        """Transpose a per-row list of ``InteractionValues`` into the Woodelf output format.
-
-        Keeps orders ``max(min_order, 1) .. max_order`` (which also drops the ``()`` baseline).
-
-        Args:
-            shapiq_results: One :class:`InteractionValues` object per explained instance.
-
-        Returns:
-            The values in the Woodelf format ``{interaction_tuple: ndarray of shape
-            (n_instances,)}``.
-        """
-        lowest = max(self._min_order, 1)
-
-        # shapiq omits exactly-zero terms per row and woodelf include them (it emits only terms that are zero in all rows)
-        all_subsets = {
-            subset
-            for result in shapiq_results
-            for subset in result.interactions
-            if lowest <= len(subset) <= self._max_order
-        }
-
-        woodelf_format = {subset: np.zeros(len(shapiq_results)) for subset in all_subsets}
-
-        # a subset a row does not report stays 0.0
-        for row, result in enumerate(shapiq_results):
-            for subset, value in result.interactions.items():
-                if subset in woodelf_format:
-                    woodelf_format[subset][row] = value
-
-        return woodelf_format
-
     def _woodelf_result_to_batch(
         self, woodelf_result: dict[tuple, np.ndarray], n_players: int, n_instances: int
     ) -> InteractionValuesBatch:
@@ -723,9 +688,4 @@ class TreeExplainer(Explainer):
         shapiq_results = super().explain_X(
             X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs
         )
-        # transposed into the vectorized layout so the batch is the same on both routes
-        return self._woodelf_result_to_batch(
-            self._cast_shapiq_results_to_woodelf_format(list(shapiq_results)),
-            n_players=n_players,
-            n_instances=len(X),
-        )
+        return InteractionValuesBatch.from_interaction_values(shapiq_results)

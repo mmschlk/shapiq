@@ -1021,3 +1021,39 @@ def test_interaction_values_batch_min_order_zero_adds_baseline():
     materialized = batch[0]
     assert materialized[()] == -1.5
     assert materialized.min_order == 0
+
+
+def test_interaction_values_batch_from_interaction_values():
+    """``from_interaction_values`` transposes per-instance results into a batch."""
+    from shapiq.interaction_values import InteractionValuesBatch
+
+    instances = [
+        InteractionValues(
+            values={(0,): 1.0, (0, 1): 2.0},
+            index="SII",
+            max_order=2,
+            n_players=2,
+            min_order=1,
+            baseline_value=5.0,
+        ),
+        InteractionValues(
+            values={(1,): -1.0},
+            index="SII",
+            max_order=2,
+            n_players=2,
+            min_order=1,
+            baseline_value=5.0,
+        ),
+    ]
+    batch = InteractionValuesBatch.from_interaction_values(instances)
+
+    assert len(batch) == 2
+    assert batch.index == "SII"
+    assert batch.baseline_value == 5.0
+    assert batch.values[(0,)] == pytest.approx([1.0, 0.0])
+    assert batch.values[(0, 1)] == pytest.approx([2.0, 0.0])
+    assert batch.values[(1,)] == pytest.approx([0.0, -1.0])
+    assert batch[1][(1,)] == -1.0
+
+    with pytest.raises(ValueError, match="zero instances"):
+        InteractionValuesBatch.from_interaction_values([])

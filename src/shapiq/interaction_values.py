@@ -1335,6 +1335,50 @@ class InteractionValuesBatch(Sequence[InteractionValues]):
             raise IndexError(msg)
         return self._materialize(row)
 
+    @classmethod
+    def from_interaction_values(
+        cls, instances: Sequence[InteractionValues]
+    ) -> InteractionValuesBatch:
+        """Build a batch from per-instance interaction values.
+
+        Transposes the instances into the vectorized batch storage. The metadata (index,
+        orders, number of players, and baseline value) is taken from the first instance.
+
+        Args:
+            instances: One :class:`InteractionValues` per explained instance. Must be non-empty.
+
+        Returns:
+            The batch holding the values of all instances.
+
+        Raises:
+            ValueError: If ``instances`` is empty.
+        """
+        if len(instances) == 0:
+            msg = "Cannot build an InteractionValuesBatch from zero instances."
+            raise ValueError(msg)
+        first = instances[0]
+        lowest = max(first.min_order, 1)
+        all_interactions = {
+            interaction
+            for instance in instances
+            for interaction in instance.interactions
+            if lowest <= len(interaction) <= first.max_order
+        }
+        values = {interaction: np.zeros(len(instances)) for interaction in all_interactions}
+        for row, instance in enumerate(instances):
+            for interaction, value in instance.interactions.items():
+                if interaction in values:
+                    values[interaction][row] = value
+        return cls(
+            values,
+            n_instances=len(instances),
+            n_players=first.n_players,
+            index=first.index,
+            max_order=first.max_order,
+            min_order=first.min_order,
+            baseline_value=float(first.baseline_value),
+        )
+
     def _materialize(self, row: int) -> InteractionValues:
         """Build the :class:`InteractionValues` object of a single instance.
 
