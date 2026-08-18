@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
+TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -110,9 +110,10 @@ class TreeExplainer(Explainer):
                 underlying algorithm still computes them internally when required by aggregated
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
-            index: The type of interaction to be computed. It can be one of
-                ``["SV", "SII", "k-SII", "BV", "BII"]``. Both ``"SII"`` and ``"k-SII"``
-                reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"SV"``.
+            index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
+                indices ``["SV", "SII", "k-SII"]`` are supported, plus ``"BV"`` and ``"BII"``
+                through the woodelf backend. In ``"interventional"`` mode, further indices such
+                as ``"STII"``, ``"FSII"``, or ``"FBII"`` can be computed. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -180,6 +181,12 @@ class TreeExplainer(Explainer):
             if importlib.util.find_spec("woodelf") is None:
                 msg = f"index='{index}' with mode='pathdependent' {_WOODELF_REQUIRED}"
                 raise ImportError(msg)
+        if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
+            msg = (
+                f"index='{self.index}' is not supported in 'pathdependent' mode; use "
+                "mode='interventional' with a reference_dataset."
+            )
+            raise ValueError(msg)
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
@@ -232,9 +239,9 @@ class TreeExplainer(Explainer):
                 index = self.index
                 if index not in ("SV", "SII", "k-SII"):
                     msg = (
-                        f"index='{index}' with mode='pathdependent' is only supported via the "
-                        "optional woodelf dependency (`pip install shapiq[tree]`), which is "
-                        "unavailable or does not support this configuration."
+                        f"index='{index}' is not supported in mode='pathdependent'. 'BV' and "
+                        "'BII' require the woodelf backend; for 'STII', 'FSII', or 'FBII' use "
+                        "mode='interventional' with a reference_dataset."
                     )
                     raise ValueError(msg)
                 self._treeshapiq_explainers = [

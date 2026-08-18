@@ -1135,5 +1135,5 @@ def test_treeshapiq_rejects_unsupported_index(dt_reg_model):
     """``TreeSHAPIQ`` validates its index instead of crashing in the weight computation."""
     from shapiq.tree import TreeSHAPIQ
 
-    with pytest.raises(ValueError, match="not supported by TreeSHAPIQ"):
+    with pytest.raises(ValueError, match="not supported by TreeSHAP-IQ"):
         TreeSHAPIQ(model=dt_reg_model, max_order=2, index="BV")
