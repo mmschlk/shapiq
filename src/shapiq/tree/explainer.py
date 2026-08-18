@@ -31,6 +31,7 @@ TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
+_WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
 
 
 class WoodelfNotAvailableWarning(UserWarning):
@@ -110,9 +111,8 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. It can be one of
-                ``["SV", "SII", "k-SII", "BV", "BII"]``. All indices apart from the Banzhaf
-                indices ``"BV"`` and ``"BII"`` will reduce to the ``"SV"`` (Shapley value) for
-                order 1. Defaults to ``"SV"``.
+                ``["SV", "SII", "k-SII", "BV", "BII"]``. Both ``"SII"`` and ``"k-SII"``
+                reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -162,7 +162,7 @@ class TreeExplainer(Explainer):
         if backend == "woodelf":
             # forced means forced: fail fast instead of silently falling back later.
             if importlib.util.find_spec("woodelf") is None:
-                msg = f"backend='woodelf' requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
+                msg = f"backend='woodelf' {_WOODELF_REQUIRED}"
                 raise ImportError(msg)
             reason = self._woodelf_unsupported_reason()
             if reason is not None:
@@ -178,10 +178,7 @@ class TreeExplainer(Explainer):
                 )
                 raise ValueError(msg)
             if importlib.util.find_spec("woodelf") is None:
-                msg = (
-                    f"index='{index}' with mode='pathdependent' requires the optional "
-                    f"'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
-                )
+                msg = f"index='{index}' with mode='pathdependent' {_WOODELF_REQUIRED}"
                 raise ImportError(msg)
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
@@ -382,10 +379,7 @@ class TreeExplainer(Explainer):
             from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
             from woodelf.woodelf_sparse import hybrid_woodelf
         except ImportError as error:
-            msg = (
-                "The Woodelf fast path requires the optional 'woodelf-explainer' package. "
-                f"{_WOODELF_INSTALL_HINT}"
-            )
+            msg = f"The Woodelf fast path {_WOODELF_REQUIRED}"
             raise ImportError(msg) from error
 
         consumer_dataset = pd.DataFrame(X)
@@ -411,28 +405,9 @@ class TreeExplainer(Explainer):
             loaded_model = load_decision_tree_ensemble_model(
                 self.model, range(X.shape[1]), class_index=class_index
             )
-            # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
-            # yet; remove this fallback once it can.
-            if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
-                if self.backend == "woodelf":
-                    msg = (
-                        "backend='woodelf' cannot compute path-dependent interactions of "
-                        f"order >= 3 on trees deeper than 16 (tree depth: "
-                        f"{loaded_model.max_depth}); use backend='auto' or backend='shapiq'."
-                    )
-                    raise ValueError(msg)
-                return None
-
-            woodelf_result = hybrid_woodelf(
-                model=loaded_model,
-                consumer_data=consumer_dataset,
-                background_data=background_dataset,
-                metric=metric,
-                model_was_loaded=True,
-            )
         except OSError as error:
-            # typically treelite's macOS wheel failing to load libomp: treelite imports lazily
-            # inside woodelf, so a missing OpenMP runtime surfaces here as an OSError.
+            # treelite imports lazily inside woodelf's model parsing, so a macOS wheel that
+            # cannot load libomp surfaces here as an OSError.
             msg = (
                 "woodelf is installed but its treelite backend failed to load. On macOS this "
                 "usually means the OpenMP runtime is missing: install it with "
@@ -441,6 +416,26 @@ class TreeExplainer(Explainer):
                 "See https://github.com/dmlc/treelite/issues/678 for details."
             )
             raise RuntimeError(msg) from error
+
+        # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
+        # yet; remove this fallback once it can.
+        if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
+            if self.backend == "woodelf":
+                msg = (
+                    "backend='woodelf' cannot compute path-dependent interactions of "
+                    f"order >= 3 on trees deeper than 16 (tree depth: "
+                    f"{loaded_model.max_depth}); use backend='auto' or backend='shapiq'."
+                )
+                raise ValueError(msg)
+            return None
+
+        woodelf_result = hybrid_woodelf(
+            model=loaded_model,
+            consumer_data=consumer_dataset,
+            background_data=background_dataset,
+            metric=metric,
+            model_was_loaded=True,
+        )
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         if self._index == "k-SII":
@@ -725,6 +720,7 @@ class TreeExplainer(Explainer):
         shapiq_results = super().explain_X(
             X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs
         )
+        # transposed into the vectorized layout so the batch is the same on both routes
         return self._woodelf_result_to_batch(
             self._cast_shapiq_results_to_woodelf_format(list(shapiq_results)),
             n_players=n_players,

@@ -86,6 +86,12 @@ class TreeSHAPIQ:
                 "than 0."
             )
             raise ValueError(msg)
+        if index not in ("SV", "SII", "k-SII", "STII", "FSII", "BII"):
+            msg = (
+                f"index='{index}' is not supported by TreeSHAPIQ. Valid indices are 'SV', "
+                "'SII', 'k-SII', 'STII', 'FSII', and 'BII'."
+            )
+            raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._index: str = index

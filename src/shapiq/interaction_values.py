@@ -1330,7 +1330,7 @@ class InteractionValuesBatch(Sequence[InteractionValues]):
         if isinstance(item, slice):
             return [self._materialize(row) for row in range(*item.indices(self.n_instances))]
         row = item + self.n_instances if item < 0 else item
-        if not 0 <= row < self.n_instances:
+        if not (0 <= row < self.n_instances):
             msg = f"Index {item} is out of range for a batch of {self.n_instances} instances."
             raise IndexError(msg)
         return self._materialize(row)

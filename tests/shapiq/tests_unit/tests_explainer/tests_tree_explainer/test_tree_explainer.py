@@ -1129,3 +1129,11 @@ def test_tree_model_batch_predict(rf_reg_model, background_reg_data):
         assert batched == pytest.approx([tree.predict_one(x) for x in X])
 
     assert predict_ensemble(trees, X) == pytest.approx(rf_reg_model.predict(X), rel=1e-5)
+
+
+def test_treeshapiq_rejects_unsupported_index(dt_reg_model):
+    """``TreeSHAPIQ`` validates its index instead of crashing in the weight computation."""
+    from shapiq.tree import TreeSHAPIQ
+
+    with pytest.raises(ValueError, match="not supported by TreeSHAPIQ"):
+        TreeSHAPIQ(model=dt_reg_model, max_order=2, index="BV")
