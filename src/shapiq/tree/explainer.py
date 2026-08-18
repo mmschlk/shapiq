@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 
@@ -20,7 +20,7 @@ from shapiq.utils.modules import safe_isinstance
 
 from .base import TreeModel
 from .linear import LinearTreeSHAP
-from .treeshapiq import TreeSHAPIQ
+from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
@@ -236,16 +236,12 @@ class TreeExplainer(Explainer):
                     LinearTreeSHAP(model=tree) for tree in self._trees
                 ]
             else:
-                index = self.index
-                if index not in ("SV", "SII", "k-SII"):
-                    msg = (
-                        f"index='{index}' is not supported in mode='pathdependent'. 'BV' and "
-                        "'BII' require the woodelf backend; for 'STII', 'FSII', or 'FBII' use "
-                        "mode='interventional' with a reference_dataset."
-                    )
-                    raise ValueError(msg)
                 self._treeshapiq_explainers = [
-                    TreeSHAPIQ(model=tree, max_order=self._max_order, index=index)
+                    TreeSHAPIQ(
+                        model=tree,
+                        max_order=self._max_order,
+                        index=cast("TreeSHAPIQIndices", self.index),
+                    )
                     for tree in self._trees
                 ]
         elif self.mode == "interventional":
