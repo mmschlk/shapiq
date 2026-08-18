@@ -1109,3 +1109,23 @@ def test_extra_trees_reg(et_reg_model, background_reg_data):
 
     assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
+def test_tree_model_batch_predict(rf_reg_model, background_reg_data):
+    """``TreeModel.predict`` is the batch companion of ``predict_one``.
+
+    Per tree it must equal the per-row ``predict_one`` results, and summed over the validated
+    ensemble it must reproduce the original model's predictions.
+    """
+    from shapiq.tree.base import predict_ensemble
+    from shapiq.tree.validation import validate_tree_model
+
+    X = background_reg_data[:15]
+    trees = validate_tree_model(rf_reg_model)
+
+    for tree in trees:
+        batched = tree.predict(X)
+        assert batched.shape == (len(X),)
+        assert batched == pytest.approx([tree.predict_one(x) for x in X])
+
+    assert predict_ensemble(trees, X) == pytest.approx(rf_reg_model.predict(X), rel=1e-5)
