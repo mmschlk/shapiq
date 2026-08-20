@@ -22,9 +22,7 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
 
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
     described in Pelegrina et al. (2023) :cite:t:`Pelegrina.2023` and is related to
-    Inconsistent KernelSHAP-IQ :cite:t:`Fumagalli.2024`. With ``index="SV"``, the order-1 part of
-    the k-additive solution is returned as the Shapley value estimate, which is the use case the
-    kADD-SHAP method was introduced for.
+    Inconsistent KernelSHAP-IQ :cite:t:`Fumagalli.2024`.
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
