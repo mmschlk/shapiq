@@ -3,6 +3,7 @@
 from .base import LocalExplanation
 from .benchmark_image import ImageClassifier
 from .benchmark_language import SentimentAnalysis
+from .benchmark_language import LMGeneration
 from .benchmark_tabular import (
     AdultCensus,
     Amazon,
@@ -122,6 +123,7 @@ __all__ = [
     "Xor",
     "Zoo",
     "SentimentAnalysis",
+    "LMGeneration",
     "ImageClassifier",
     "TabArenaAirfoilSelfNoise",
     "TabArenaAmazonEmployeeAccess",

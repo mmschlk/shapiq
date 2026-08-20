@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import torch
+import torch.functional as F
+from transformers import PreTrainedTokenizerBase, PreTrainedModel
 
 from shapiq.game import Game
 
@@ -151,3 +154,146 @@ class SentimentAnalysis(Game):
             for output in outputs
         ]
         return np.array(outputs, dtype=float)
+
+
+
+class LMGeneration(Game):
+    """"""
+
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase,
+        embed_model: PreTrainedModel,
+        embed_tokenizer: PreTrainedTokenizerBase,
+        sequence: str,
+        *,
+        baseline_id: int | None = None,
+        sampling_params: dict | None = None,
+        batch_size: int | None = None,
+        normalize: bool = False,
+        verbose: bool = False,
+    ) -> None:
+        """"""
+        self.sequence = sequence
+
+        if len(self.sequence) == 0:
+            msg = "Sequence must not be empty."
+            raise ValueError(msg)
+
+        self.device = next(model.parameters()).device
+
+        self.model = model
+        self.model.eval().to(self.device)
+        self.sampling_params = sampling_params
+        self.batch_size = batch_size if batch_size is not None else 1
+        self.tokenizer = tokenizer
+        self.embed_model = embed_model
+        self.embed_model.eval().to(self.device)
+        self.embed_tokenizer = embed_tokenizer
+        # Padding is required to batch generated texts of different lengths in the embedder.
+        if self.embed_tokenizer.pad_token is None:
+            self.embed_tokenizer.pad_token = self.embed_tokenizer.eos_token
+        self.special_token_ids = set(self.tokenizer.all_special_ids)
+        self.n_players = len(self.tokenizer.encode(self.sequence, add_special_tokens=False))
+
+        if baseline_id is not None:
+            self.baseline = baseline_id
+        else:
+            self.baseline = tokenizer.encode(" ", add_special_tokens=False)[0]
+
+        original_sequence = self.mask_input(torch.ones(self.n_players))
+        original_output = self.model_generate(original_sequence)[0]
+        self.original_embed = self.embed(original_output)
+
+        normalization_value = None
+        if normalize:
+            empty_coalition_value = self.value_function(np.zeros(self.n_players))
+            normalization_value = float(empty_coalition_value[0])
+
+        super().__init__(
+            n_players=self.n_players,
+            normalize=normalize,
+            normalization_value=normalization_value,
+            verbose=verbose,
+        )
+
+    def mask_input(self, coalition: np.ndarray):
+        """"""
+        if len(coalition) != self.n_players:
+            msg = "Coalition must be the same size as number of non-special tokens."
+            raise ValueError(msg)
+        sequence_masked = self.tokenizer(self.sequence, return_tensors="pt").to(self.device)
+        c = 0
+        for s, token_id in enumerate(sequence_masked.input_ids[0].tolist()):
+            # Skip special tokens
+            if token_id in self.special_token_ids:
+                pass
+            else:
+                if not coalition[c]:
+                    sequence_masked.input_ids[0, s] = self.baseline
+                c += 1
+        assert c == self.n_players
+        return sequence_masked
+
+    def mask_input_batch(self, coalitions: np.ndarray):
+        """"""
+        masked = [self.mask_input(coalition) for coalition in coalitions]
+        return {
+            "input_ids": torch.cat([m.input_ids for m in masked], dim=0),
+            "attention_mask": torch.cat([m.attention_mask for m in masked], dim=0),
+        }
+
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        """"""
+        if coalitions.ndim == 1:
+            coalitions = coalitions.reshape(1, -1)
+
+        coalition_values = []
+
+        for start in range(0, len(coalitions), self.batch_size):
+            coalition_batch = coalitions[start : start + self.batch_size]
+            batched_input = self.mask_input_batch(coalition_batch)
+            model_outputs = self.model_generate(batched_input)
+            output_embeds = self.embed(model_outputs)
+            batch_values = self.similarity(self.original_embed, output_embeds)
+            for coalition_value in batch_values:
+                coalition_values.append(coalition_value.item())
+        return np.array(coalition_values)
+
+    def embed(self, texts, prompt="task: sentence similarity | query: "):
+        if isinstance(texts, str):
+            texts = [texts]
+        inputs = self.embed_tokenizer(
+            [prompt + text for text in texts],
+            return_tensors="pt",
+            padding=True,
+        ).to(self.device)
+        with torch.no_grad():
+            hidden = self.embed_model(**inputs).last_hidden_state
+        # Mean pooling over real (non-padding) tokens only.
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        emb = (hidden * mask).sum(dim=1) / mask.sum(dim=1)
+        emb = emb.float()
+        return F.normalize(emb, dim=-1)
+
+    def similarity(self, e1, e2):
+        return F.cosine_similarity(e1, e2, dim=-1)
+
+    def model_generate(self, input):
+        with torch.no_grad():
+            if self.sampling_params is None:
+                model_output = self.model.generate(**input,
+                    max_new_tokens=256,
+                    do_sample=False
+                )
+            else:
+                model_output = self.model.generate(**input,
+                    **self.sampling_params
+                )
+        input_length = input["input_ids"].shape[1]
+        generated_only = model_output[:, input_length:]
+        return [
+            self.tokenizer.decode(sequence, skip_special_tokens=True)
+            for sequence in generated_only
+        ]
