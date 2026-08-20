@@ -125,6 +125,7 @@ class InteractionValues:
         )
 
         self.interactions = interactions
+        self.baseline_value = baseline_value
         self.index = index
         self.max_order = max_order
         self.n_players = n_players
