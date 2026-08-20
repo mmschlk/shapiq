@@ -41,30 +41,18 @@ def test_approximate(budget, order):
     assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)
 
 
-def test_initialization_with_sv_index():
-    """Tests that the kADDSHAP approximator can be set up to estimate Shapley values."""
-    approximator = kADDSHAP(7, index="SV")
-    assert approximator.index == "SV"
-    assert approximator.approximation_index == "kADD-SHAP"
-    assert approximator.max_order == 2
-
-    with pytest.raises(ValueError, match="Invalid index"):
-        kADDSHAP(7, index="SII")
-
-
-@pytest.mark.parametrize("order", [2, 3])
-def test_approximate_sv(order):
-    """Tests that with index="SV" the order-1 part of the k-additive solution is returned."""
+def test_approximate_sv():
+    """Tests that kADDSHAP with max_order=1 estimates Shapley values."""
     n = 7
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
-    approximator = kADDSHAP(n, max_order=order, index="SV")
+    approximator = kADDSHAP(n, max_order=1)
+    assert "SV" in approximator.valid_indices
     sv_estimates = approximator.approximate(100, game)
     assert isinstance(sv_estimates, InteractionValues)
     assert sv_estimates.index == "SV"
     assert sv_estimates.max_order == 1
-    assert sv_estimates.min_order == 0
 
     assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.1)
     assert sv_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)

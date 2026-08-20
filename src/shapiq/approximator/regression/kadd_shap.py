@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from .base import Regression
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     import numpy as np
-
-    from shapiq.game import Game
-    from shapiq.interaction_values import InteractionValues
 
 ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP", "SV"]
 
@@ -36,7 +31,9 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
 
     """
 
-    valid_indices: tuple[ValidRegressionkADDSHAPIndices, ...] = ("kADD-SHAP", "SV")
+    valid_indices: tuple[ValidRegressionkADDSHAPIndices, ...] = tuple(
+        get_args(ValidRegressionkADDSHAPIndices)
+    )
     """The valid indices for this approximator."""
 
     def __init__(
@@ -44,7 +41,6 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
         n: int,
         max_order: int = 2,
         *,
-        index: ValidRegressionkADDSHAPIndices = "kADD-SHAP",
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
@@ -56,10 +52,6 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
             n: The number of players.
 
             max_order: The interaction order of the approximation. Defaults to ``2``.
-
-            index: The index to estimate. With ``"kADD-SHAP"`` (default), the full k-additive
-                solution up to ``max_order`` is returned. With ``"SV"``, the order-1 part of the
-                k-additive solution is returned as the Shapley value estimate.
 
             pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
                 Defaults to ``False``.
@@ -75,38 +67,8 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
         super().__init__(
             n,
             max_order,
-            index=index,
+            index="kADD-SHAP",
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
         )
-        # the SV estimate is read off the k-additive solution, so the computation always runs
-        # with the kADD-SHAP weights (index="SV" would otherwise dispatch to the SII routine)
-        self.approximation_index = "kADD-SHAP"
-
-    def approximate(
-        self,
-        budget: int,
-        game: Game | Callable[[np.ndarray], np.ndarray],
-        *args: Any | None,
-        **kwargs: Any,
-    ) -> InteractionValues:
-        """Approximates the kADD-SHAP values or, for ``index="SV"``, the Shapley values.
-
-        Args:
-            budget: The budget of the approximation.
-
-            game: The game to be approximated.
-
-            *args: Additional positional arguments (not used for compatibility).
-
-            **kwargs: Additional arguments (not used for compatibility).
-
-        Returns:
-            The estimated interaction values. For ``index="SV"``, only the orders 0 and 1 of the
-            k-additive solution are returned, which finalizes to the ``"SV"`` index.
-        """
-        interaction_values = super().approximate(budget, game, *args, **kwargs)
-        if self.index == "SV":
-            return interaction_values.get_n_order(min_order=0, max_order=1)
-        return interaction_values
