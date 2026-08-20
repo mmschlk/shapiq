@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast, override
 import numpy as np
 
 from shapiq import Game
+from shapiq.explainer.nn._util import assert_enough_training_samples
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -80,6 +81,7 @@ class KNNExplainerGameBase(NNExplainerGameBase):
         class_index: int,
     ) -> None:
         super().__init__(model, x, class_index)
+        assert_enough_training_samples(self.k, self.X_train.shape[0])
         # Seperate attribute with narrower type KNeighborsClassifier
         self.knn_model = model
 

@@ -10,6 +10,7 @@ from shapiq.explainer.nn.base import NNExplainerBase
 from shapiq.interaction_values import InteractionValues
 
 from ._util import (
+    assert_enough_training_samples,
     assert_valid_index_and_order,
     warn_ignored_parameters,
 )
@@ -29,11 +30,9 @@ class KNNExplainer(NNExplainerBase):
     point, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
 
     Note:
-        If the model was fitted on fewer training samples than ``n_neighbors``, the explainer
-        caps the effective ``k`` at the number of training samples, so that all training points
-        act as neighbors. This matches the normalization used by
-        :class:`~shapiq.explainer.nn.games.knn.KNNExplainerGame`. Note that scikit-learn itself
-        refuses to predict in this regime.
+        The model must be fitted on at least ``n_neighbors`` training samples. Models fitted on
+        fewer samples are rejected at construction with a ``ValueError``, since scikit-learn
+        itself refuses to predict in this regime.
 
     References:
         .. footbibliography::
@@ -60,9 +59,8 @@ class KNNExplainer(NNExplainerBase):
             raise TypeError(msg)
 
         super().__init__(model, class_index=class_index)
-        # Cap k at the number of training samples: with fewer training points than n_neighbors,
-        # all training points act as neighbors (KNNExplainerGame normalizes the same way).
-        self.k = min(model.n_neighbors, self.X_train.shape[0])
+        assert_enough_training_samples(model.n_neighbors, self.X_train.shape[0])
+        self.k = model.n_neighbors
 
     @override
     def explain_function(
