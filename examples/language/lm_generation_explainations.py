@@ -17,7 +17,7 @@ You can also decide to use special token ids, such as padding tokens.
 
 To asses how two outputs differ, to attribute the difference in outcome to individual tokens,
 we use a second language model, specialized on embedding.
-We then measure the cosine difference between the output embedding of the unchanged output
+We then measure the cosine similarity between the output embedding of the unchanged output
 and the coalition where tokens are imputed. This measures the "semantic similarity" of the two outputs,
 indicating how much the essence of the output has changed, while being more robust to changes in
 wording or similar minor differences.
