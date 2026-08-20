@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 import torch
-import torch.functional as f
+import torch.nn.functional as f
 
 from shapiq.game import Game
 
