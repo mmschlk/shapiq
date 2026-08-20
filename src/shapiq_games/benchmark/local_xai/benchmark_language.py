@@ -417,7 +417,7 @@ class LMGeneration(Game):
                 model_output = self.model.generate(**inputs, max_new_tokens=256, do_sample=False)
             else:
                 model_output = self.model.generate(**inputs, **self.sampling_params)
-        input_length = input["input_ids"].shape[1]
+        input_length = inputs["input_ids"].shape[1]
         generated_only = model_output[:, input_length:]
         return [
             self.tokenizer.decode(sequence, skip_special_tokens=True) for sequence in generated_only
