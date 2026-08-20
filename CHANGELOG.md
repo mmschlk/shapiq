@@ -12,6 +12,10 @@
 - Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
 - Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
 
+### Maintenance
+
+- Removes the dead non-log weight computations from the approximator base classes, which were superseded by their log-space counterparts: `Regression._init_kernel_weights` (superseded by `_init_log_kernel_weights`) and the `MonteCarlo` family `_get_standard_form_weights`/`_weight`/`_sii_weight`/`_bii_weight`/`_chii_weight`/`_stii_weight`/`_fsii_weight`/`_fbii_weight` (superseded by `_get_standard_form_log_weights` and the `_log_*_weight` methods). All were private and unused by the `approximate()` code paths; `ExactComputer` in `shapiq.game_theory.exact` has its own independent `_stii_weight` and is unaffected
+
 ## v1.6.0 (2026-07-06)
 
 ### Highlights of new Features

@@ -48,19 +48,19 @@ def test_initialization(
     assert approximator.index == index
 
     with pytest.raises(ValueError):
-        approximator._get_standard_form_weights(index="wrong_index")
+        approximator._get_standard_form_log_weights(index="wrong_index")
 
     if index == "FSII":
         max_order = approximator.max_order
-        _ = approximator._fsii_weight(interaction_size=max_order, coalition_size=0)  # no error
+        _ = approximator._log_fsii_weight(interaction_size=max_order, coalition_size=0)  # no error
         with pytest.raises(ValueError):  # FSII weights only defined for top order
-            approximator._fsii_weight(interaction_size=max_order - 1, coalition_size=0)  # error
+            approximator._log_fsii_weight(interaction_size=max_order - 1, coalition_size=0)  # error
 
     if index == "FBII":
         max_order = approximator.max_order
-        _ = approximator._fbii_weight(interaction_size=max_order)
+        _ = approximator._log_fbii_weight(interaction_size=max_order)
         with pytest.raises(ValueError):
-            approximator._fbii_weight(interaction_size=max_order - 1)
+            approximator._log_fbii_weight(interaction_size=max_order - 1)
 
 
 @pytest.mark.parametrize(

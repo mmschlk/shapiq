@@ -84,51 +84,21 @@ class Regression(Approximator[TIndices]):
         # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
         self._sii_consistent = sii_consistent
 
-    def _init_kernel_weights(self, interaction_size: int) -> FloatVector:
-        """Initializes the kernel weights for the regression in KernelSHAP-IQ.
-
-        The kernel weights are of size n + 1 and indexed by the size of the coalition. The kernel
-        weights depend on the size of the interactions and are set to a large number for the edges.
-
-        Args:
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weights for sampling subsets of size s in shape (n + 1,).
-
-        """
-        # vector that determines the kernel weights for the regression
-        weight_vector = np.zeros(shape=self.n + 1)
-        if self.approximation_index == "FBII":
-            for coalition_size in range(self.n + 1):
-                weight_vector[coalition_size] = 1 / (2**self.n)
-            return weight_vector
-        if self.approximation_index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
-            for coalition_size in range(self.n + 1):
-                if (coalition_size < interaction_size) or (
-                    coalition_size > self.n - interaction_size
-                ):
-                    weight_vector[coalition_size] = self._big_M
-                else:
-                    weight_vector[coalition_size] = 1 / (
-                        (self.n - 2 * interaction_size + 1)
-                        * binom(
-                            self.n - 2 * interaction_size,
-                            coalition_size - interaction_size,
-                        )
-                    )
-            return weight_vector
-        msg = f"Index {self.index} not available for Regression Approximator."
-        raise ValueError(msg)  # pragma: no cover
-
     def _init_log_kernel_weights(self, interaction_size: int) -> FloatVector:
-        """Natural logarithm of :meth:`_init_kernel_weights`, stable for large ``n``.
+        """Initializes the log-space kernel weights for the regression in KernelSHAP-IQ.
 
-        Returns the per-coalition-size kernel weights in log-space. This avoids materialising the
-        ``1 / binom`` weight (which underflows to ``0`` once ``binom`` overflows for many players);
-        combined in log-space with the sampler's log adjustment weight, whose binomial cancels the
-        one here, the resulting effective regression weight stays finite and ``O(1)`` for mid-size
-        coalitions instead of collapsing to ``0`` (or ``0 * inf = nan``).
+        The kernel weights are of size ``n + 1`` and indexed by the size of the coalition. They
+        depend on the size of the interaction and are set to (the log of) a large number
+        ``self._big_M`` for the edges (coalition sizes smaller than the interaction size or larger
+        than ``n - interaction_size``); in between, the weight is
+        ``1 / ((n - 2s + 1) * binom(n - 2s, t - s))`` for coalition size ``t`` and interaction
+        size ``s`` (a uniform ``1 / 2 ** n`` for ``FBII``).
+
+        Returning the weights in log-space avoids materialising the ``1 / binom`` weight (which
+        underflows to ``0`` once ``binom`` overflows for many players); combined in log-space with
+        the sampler's log adjustment weight, whose binomial cancels the one here, the resulting
+        effective regression weight stays finite and ``O(1)`` for mid-size coalitions instead of
+        collapsing to ``0`` (or ``0 * inf = nan``).
 
         Args:
             interaction_size: The size of the interaction.
