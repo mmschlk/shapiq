@@ -7,7 +7,7 @@ for tree ensembles.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
@@ -85,9 +85,10 @@ class TreeExplainer(Explainer):
                 underlying algorithm still computes them internally when required by aggregated
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
-            index: The type of interaction to be computed. It can be one of
-                ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"``
-                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"SV"``.
+            index: The type of interaction to be computed. In ``"pathdependent"`` mode, only the
+                indices ``["SV", "SII", "k-SII"]`` are supported. In ``"interventional"`` mode,
+                further indices such as ``"STII"``, ``"FSII"``, ``"FBII"``, or ``"BII"`` can be
+                computed. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -128,15 +129,28 @@ class TreeExplainer(Explainer):
         self._interventional_explainer: InterventionalTreeExplainer | None = None
 
         if self.mode == "pathdependent":
+            # ``self.index`` is the effective index after base-class validation (which may e.g.
+            # downgrade an interaction index with ``max_order=1`` to ``"SV"``), so it is checked
+            # here instead of the raw ``index`` argument.
+            if self.index not in get_args(TreeSHAPIQIndices):
+                msg = (
+                    f"Index '{self.index}' is not supported by the TreeExplainer in "
+                    f"'pathdependent' mode. Supported indices are {get_args(TreeSHAPIQIndices)}. "
+                    "For other indices such as 'STII', 'FSII', or 'FBII', use "
+                    "mode='interventional' with a reference_dataset."
+                )
+                raise ValueError(msg)
             if self._can_use_lineartreeshap():
                 self._lineartreeshap_explainers = [
                     LinearTreeSHAP(model=tree) for tree in self._trees
                 ]
             else:
-                # ``index`` (the local parameter) is already narrowed to ``TreeSHAPIQIndices``;
-                # ``self.index`` is the broader ``ExplainerIndices`` and would not type-check.
                 self._treeshapiq_explainers = [
-                    TreeSHAPIQ(model=tree, max_order=self._max_order, index=index)
+                    TreeSHAPIQ(
+                        model=tree,
+                        max_order=self._max_order,
+                        index=cast("TreeSHAPIQIndices", self.index),
+                    )
                     for tree in self._trees
                 ]
         elif self.mode == "interventional":

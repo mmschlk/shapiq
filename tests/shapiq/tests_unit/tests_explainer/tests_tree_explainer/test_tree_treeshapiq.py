@@ -50,39 +50,6 @@ def test_init(dt_clf_model, background_clf_data):
                 (1, 2): 0,
             },
         ),
-        (
-            "BII",
-            {
-                (0,): -10.18947368,
-                (1,): -13.31052632,
-                (2,): 3.0,
-                (0, 1): -11.77894737,
-                (0, 2): -6.0,
-                (1, 2): 0,
-            },
-        ),
-        (
-            "FSII",
-            {
-                (0,): -39.45789474,
-                (1,): -45.82105263,
-                (2,): 6.0,
-                (0, 1): -11.77894737,
-                (0, 2): -6.0,
-                (1, 2): 0,
-            },
-        ),
-        (
-            "STII",
-            {
-                (0,): -20.37894737,
-                (1,): -26.62105263,
-                (2,): 6.0,
-                (0, 1): -11.77894737,
-                (0, 2): -6.0,
-                (1, 2): 0,
-            },
-        ),
     ],
 )
 def test_against_old_treeshapiq_implementation(index: str, expected: dict):
@@ -113,6 +80,16 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
 
     for key, value in expected.items():
         assert np.isclose(explanation[key], value, atol=1e-5)
+
+
+@pytest.mark.parametrize("index", ["STII", "FSII", "FBII", "BII"])
+def test_unsupported_indices_raise(dt_clf_model, index: str):
+    """Test that unsupported indices raise a clear error instead of crashing internally."""
+    with pytest.raises(ValueError, match="not supported by TreeSHAP-IQ"):
+        _ = TreeSHAPIQ(model=dt_clf_model, max_order=2, index=index)
+
+    with pytest.raises(ValueError, match="'pathdependent' mode"):
+        _ = TreeExplainer(model=dt_clf_model, max_order=2, index=index)
 
 
 def test_edge_case_params():

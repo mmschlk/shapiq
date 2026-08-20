@@ -7,6 +7,11 @@
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
 - adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
 
+### Bugfix
+
+- Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
+- Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
+
 ## v1.6.0 (2026-07-06)
 
 ### Highlights of new Features
