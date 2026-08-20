@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 import scipy as sp
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 def _change_index(index: str) -> str:
@@ -26,19 +30,40 @@ def _change_index(index: str) -> str:
     return f"k-{index}"
 
 
+# The aggregation is linear, so it applies equally to scalar values and to per-instance value
+# arrays. The overloads keep scalar callers scalar-typed; Mapping is covariant in its value
+# type, so both dict variants are accepted without casts.
+@overload
 def aggregate_base_attributions(
-    interactions: dict[tuple[int, ...], float],
+    interactions: Mapping[tuple[int, ...], float],
     index: str,
     order: int,
     min_order: int,
     baseline_value: float,
-) -> tuple[dict[tuple[int, ...], float], str, int]:
+) -> tuple[dict[tuple[int, ...], float], str, int]: ...
+@overload
+def aggregate_base_attributions(
+    interactions: Mapping[tuple[int, ...], float | np.ndarray],
+    index: str,
+    order: int,
+    min_order: int,
+    baseline_value: float,
+) -> tuple[dict[tuple[int, ...], float | np.ndarray], str, int]: ...
+def aggregate_base_attributions(
+    interactions: Mapping[tuple[int, ...], float | np.ndarray],
+    index: str,
+    order: int,
+    min_order: int,
+    baseline_value: float,
+) -> tuple[dict[tuple[int, ...], float | np.ndarray], str, int]:
     """Aggregates the interactions into an efficient interactions.
 
     An example aggregation would be the transformation from `SII` values to `k-SII` values.
 
     Args:
-        interactions: The base interaction values to aggregate.
+        interactions: The base interaction values to aggregate. Values may be scalars or arrays
+            of one value per explained instance; the aggregation is linear and applies
+            element-wise to arrays.
         index: The index of the interaction values.
         order: The order of the aggregation. For example, the order of the k-SII aggregation.
         min_order: The minimum order of the base interactions. If the base interactions have a minimum
@@ -65,20 +90,22 @@ def aggregate_base_attributions(
         )
 
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
-    transformed_interactions: dict[tuple, float] = {(): baseline_value}  # storage
+    transformed_interactions: dict[tuple[int, ...], float | np.ndarray] = {(): baseline_value}
     # iterate over all interactions in base_interactions and project them onto all interactions T
     # where 1 <= |T| <= order
     for base_interaction, base_interaction_value in interactions.items():
         for interaction in powerset(base_interaction, min_size=1, max_size=order):
             scaling = float(bernoulli_numbers[len(base_interaction) - len(interaction)])
             update_interaction = scaling * base_interaction_value
-            if update_interaction == 0:
+            # the aggregation is linear, so values may also be arrays (one entry per explained
+            # instance); the zero skip applies only when every entry is zero
+            if np.all(update_interaction == 0):
                 continue
             transformed_interactions[interaction] = (
                 transformed_interactions.get(interaction, 0) + update_interaction
             )
             # if the interactions sum to 0, we pop them from the dict
-            if transformed_interactions[interaction] == 0:
+            if np.all(transformed_interactions[interaction] == 0):
                 transformed_interactions.pop(interaction)
 
     # update the index name after the aggregation (e.g., SII -> k-SII)

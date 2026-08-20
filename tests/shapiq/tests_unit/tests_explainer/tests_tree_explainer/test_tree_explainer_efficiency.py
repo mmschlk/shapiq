@@ -78,6 +78,7 @@ def _assert_efficiency(model, X: np.ndarray, *, force_treeshapiq: bool) -> None:
         TreeExplainer._can_use_lineartreeshap = lambda self: False
     try:
         explainer = TreeExplainer(model=model, max_order=1, min_order=0, index="SV")
+        explainer._init_explainers()
     finally:
         if force_treeshapiq:
             TreeExplainer._can_use_lineartreeshap = original

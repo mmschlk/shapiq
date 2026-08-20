@@ -88,6 +88,8 @@ def test_unsupported_indices_raise(dt_clf_model, index: str):
     with pytest.raises(ValueError, match="not supported by TreeSHAP-IQ"):
         _ = TreeSHAPIQ(model=dt_clf_model, max_order=2, index=index)
 
+    if index == "BII":  # supported in 'pathdependent' mode through the woodelf backend
+        return
     with pytest.raises(ValueError, match="'pathdependent' mode"):
         _ = TreeExplainer(model=dt_clf_model, max_order=2, index=index)
 
