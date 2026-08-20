@@ -30,7 +30,7 @@ NOTE: This game is expensive. LLM generations themselves are expensive, but doin
 with the addition of using a second LM to evaluate the output is costly.
 This setup assumes that you have the compute available because you are working with LLMs anyway.
 With Google Colab Free Tier, it is slow but fine. With an A100, one coalition can be cut down to a few seconds.
-On your local machine you will have to practice patience and reconcider some of the parameters.
+On your local machine you will have to practice patience and reconsider some of the parameters.
 """
 
 # %%
