@@ -28,6 +28,13 @@ class KNNExplainer(NNExplainerBase):
     The algorithm itself has a linear time complexity, but requires sorting training points by distance to the test
     point, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
 
+    Note:
+        If the model was fitted on fewer training samples than ``n_neighbors``, the explainer
+        caps the effective ``k`` at the number of training samples, so that all training points
+        act as neighbors. This matches the normalization used by
+        :class:`~shapiq.explainer.nn.games.knn.KNNExplainerGame`. Note that scikit-learn itself
+        refuses to predict in this regime.
+
     References:
         .. footbibliography::
     """
@@ -53,7 +60,9 @@ class KNNExplainer(NNExplainerBase):
             raise TypeError(msg)
 
         super().__init__(model, class_index=class_index)
-        self.k = model.n_neighbors
+        # Cap k at the number of training samples: with fewer training points than n_neighbors,
+        # all training points act as neighbors (KNNExplainerGame normalizes the same way).
+        self.k = min(model.n_neighbors, self.X_train.shape[0])
 
     @override
     def explain_function(

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pytest
+from sklearn.neighbors import KNeighborsClassifier
 
 from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
 from shapiq.explainer.nn.games.knn import KNNExplainerGame
@@ -73,18 +74,26 @@ def test_sv_values_agree_with_ground_truth_game(
             assert np.allclose(iv_expected_array, iv_array)
 
 
-def test_knn_small_n(sklearn_knn_model, background_clf_dataset_small):
-    """Test the KNNExplainer in the case where N < k."""
-    X, y = background_clf_dataset_small
-    X = X[:2]
-    y = y[:2]
-    n_classes = np.max(y) + 1
+@pytest.mark.parametrize("n_train", [1, 2])
+def test_knn_small_training_set(n_train, background_clf_dataset_small):
+    """Test that KNNExplainer agrees with its ground-truth game when N < k.
 
-    for x_test in X:
+    When the model is fitted on fewer training samples than ``n_neighbors``, both the explainer
+    and the game cap the effective ``k`` at the number of training samples.
+    """
+    X, y = background_clf_dataset_small
+    model = KNeighborsClassifier(n_neighbors=3, weights="uniform")
+    model.fit(X[:n_train], y[:n_train])
+    n_classes = len(model.classes_)
+
+    rng = np.random.default_rng(seed=43)
+    X_test = rng.multivariate_normal(np.mean(X, axis=0), np.cov(X, rowvar=False), size=5)
+
+    for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = KNNExplainerGame(sklearn_knn_model, x_test, class_index)
+            ground_truth_game = KNNExplainerGame(model, x_test, class_index)
             iv_expected = ground_truth_game.exact_values("SV", 1)
-            knn_explainer = KNNExplainer(sklearn_knn_model, class_index=class_index)
+            knn_explainer = KNNExplainer(model, class_index=class_index)
             iv = knn_explainer.explain(x_test)
 
             interactions = iv.interactions.keys()
