@@ -38,6 +38,8 @@ On your local machine you will have to practice patience and reconcider some of 
 # -------
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
+
 # To use the specified Gemma model
 # ---------------------------------
 # Export "HF_TOKEN" in a .env file or manually.
@@ -138,7 +140,10 @@ sv_exact.plot_stacked_bar(
     xlabel="Tokens",
     ylabel="Shapley Values",
     feature_names=tokens,
+    show=False,
 )
+plt.savefig("biden_exact_sv.png", dpi=300)
+plt.show()
 
 # %%
 # Second Experiment
@@ -170,7 +175,10 @@ sv_approx2.plot_stacked_bar(
     xlabel="Tokens",
     ylabel="Shapley Values",
     feature_names=tokens2,
+    show=False,
 )
+plt.savefig("china_kernelshap_sv.png", dpi=300)
+plt.show()
 
 exact_computer2 = ExactComputer(n_players=game2.n_players, game=game2)
 sv_exact2 = exact_computer2(index="SV")
@@ -179,7 +187,10 @@ sv_exact2.plot_stacked_bar(
     xlabel="Tokens",
     ylabel="Shapley Values",
     feature_names=tokens2,
+    show=False,
 )
+plt.savefig("china_exact_sv.png", dpi=300)
+plt.show()
 
 # %%
 # Experiment 2.5
@@ -251,6 +262,7 @@ sv_approx3.plot_stacked_bar(
     xlabel="Tokens",
     ylabel="Shapley Values",
     feature_names=tokens3,
+    show=False,
 )
-
-
+plt.savefig("pr_comment_kernelshap_sv.png", dpi=300)
+plt.show()
