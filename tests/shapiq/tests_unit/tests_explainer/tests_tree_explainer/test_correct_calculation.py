@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.tree import InterventionalGame, InterventionalTreeExplainer
+from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
 
 SEED = 1337
 np.random.seed(SEED)
@@ -29,8 +29,8 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
     model = dt_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, index=index, max_order=order, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -78,8 +78,8 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
     model = dt_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         index=index,
@@ -133,8 +133,8 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
     model = rf_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -182,8 +182,8 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
     model = rf_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -237,8 +237,8 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
     model = xgb_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -287,8 +287,8 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
     model = xgb_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -342,8 +342,8 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
     model = lightgbm_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -391,8 +391,8 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
     model = lightgbm_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -434,7 +434,7 @@ def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, ind
     model = dt_reg_model
     point_to_explain = X_test[0:1]
 
-    own_interventional_explainer = InterventionalTreeExplainer(
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, index=index, max_order=order, debug=False
     )
     assert own_interventional_explainer._use_sparse_path
@@ -480,7 +480,7 @@ def test_interventional_float64_point_matches_model(index, order):
     point_to_explain = X[250].astype(np.float64)
     assert point_to_explain.dtype == np.float64
 
-    explainer = InterventionalTreeExplainer(model, X_train, index=index, max_order=order)
+    explainer = InterventionalTreeSHAPIQ(model, X_train, index=index, max_order=order)
     own_interactions = explainer.explain_function(point_to_explain).interactions
 
     game = InterventionalGame(model, X_train, point_to_explain)

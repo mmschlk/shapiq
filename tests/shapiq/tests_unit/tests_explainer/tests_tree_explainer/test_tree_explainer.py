@@ -673,13 +673,13 @@ def test_interventional_k_sii_higher_order(dt_reg_model, background_reg_data):
 
 def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_data):
     """TreeExplainer's interventional route must produce the same per-feature values as the raw
-    :class:`InterventionalTreeExplainer`.
+    :class:`InterventionalTreeSHAPIQ`.
 
     Baselines can differ (the wrapper uses tree empty predictions; the raw class uses
     reference-data mean), but the actual Shapley contributions come from the same kernel
     and must agree.
     """
-    from shapiq.tree import InterventionalTreeExplainer
+    from shapiq.tree import InterventionalTreeSHAPIQ
 
     reference = background_reg_data[:20]
     x_explain = background_reg_data[0]
@@ -694,9 +694,7 @@ def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_da
     )
     wrapper_values = wrapper.explain(x_explain).get_n_order_values(1)
 
-    direct = InterventionalTreeExplainer(
-        model=dt_reg_model, data=reference, max_order=1, index="SV"
-    )
+    direct = InterventionalTreeSHAPIQ(model=dt_reg_model, data=reference, max_order=1, index="SV")
     direct_iv = direct.explain_function(x_explain)
     n_features = background_reg_data.shape[1]
     direct_values = np.array([direct_iv[(i,)] for i in range(n_features)])

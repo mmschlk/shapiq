@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from shapiq.explainer.base import Explainer
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 
 from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
@@ -122,11 +122,11 @@ class TreeExplainer(Explainer):
         # decision is fixed at construction time so callers can mutate the chosen list (e.g.
         # ``_tree.thresholds`` rounding in tests) before calling :meth:`explain`. In
         # ``"interventional"`` mode no per-tree list is created — the
-        # :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer` handles the
+        # :class:`~shapiq.tree.interventional.explainer.InterventionalTreeSHAPIQ` handles the
         # full ensemble in one shot, so a per-tree list would be meaningless.
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
-        self._interventional_explainer: InterventionalTreeExplainer | None = None
+        self._interventional_explainer: InterventionalTreeSHAPIQ | None = None
 
         if self.mode == "pathdependent":
             # ``self.index`` is the effective index after base-class validation (which may e.g.
@@ -156,11 +156,11 @@ class TreeExplainer(Explainer):
         elif self.mode == "interventional":
             if self._reference_dataset is None:
                 msg = (
-                    "InterventionalTreeExplainer requires a reference_dataset; pass one to "
+                    "InterventionalTreeSHAPIQ requires a reference_dataset; pass one to "
                     "TreeExplainer(..., mode='interventional', reference_dataset=...)."
                 )
                 raise ValueError(msg)
-            self._interventional_explainer = InterventionalTreeExplainer(
+            self._interventional_explainer = InterventionalTreeSHAPIQ(
                 model=self._trees,
                 data=self._reference_dataset,
                 class_index=self._class_label,
@@ -231,7 +231,7 @@ class TreeExplainer(Explainer):
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute interaction values for ``x`` via the eagerly-built :class:`InterventionalTreeExplainer`.
+        """Compute interaction values for ``x`` via the eagerly-built :class:`InterventionalTreeSHAPIQ`.
 
         Args:
             x: The instance to explain as a 1-dimensional array.

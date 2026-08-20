@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from math import comb
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from scipy.special import binom
@@ -25,18 +25,8 @@ if TYPE_CHECKING:
 
     from shapiq.tree.base import TreeModel
 
-INDICES_C_IMPLEMENTATION_CAPABLE = [
-    "SV",
-    "SII",
-    "BII",
-    "BV",
-    "SV",
-    "CHII",
-    "CV",
-    "FBII",
-    "FSII",
-    "STII",
-    "CUSTOM",
+InterventionalTreeSHAPIQIndices = Literal[
+    "SV", "SII", "k-SII", "BII", "BV", "CHII", "CV", "FBII", "FSII", "STII", "CUSTOM"
 ]
 
 
@@ -116,7 +106,7 @@ def obtain_E_R_values_point(
     return E, R, leaf_vals
 
 
-class InterventionalTreeExplainer:
+class InterventionalTreeSHAPIQ:
     """Any-order interventional Shapley-interaction explainer for tree models.
 
     Extends interventional TreeSHAP to compute exact Shapley interactions of
@@ -134,7 +124,7 @@ class InterventionalTreeExplainer:
       higher orders or wide-feature trees.
 
     Indices supported via the C path are listed in
-    :data:`INDICES_C_IMPLEMENTATION_CAPABLE`. Custom weight functions are
+    :data:`InterventionalTreeSHAPIQIndices`. Custom weight functions are
     accepted via ``weight_fn`` and routed through a precomputed lookup table.
 
     The baseline value is computed from the validated trees by summing per-tree
@@ -164,12 +154,12 @@ class InterventionalTreeExplainer:
         class_index: int | None = None,
         debug: bool = False,
         max_order: int = 2,
-        index: str = "SII",
+        index: InterventionalTreeSHAPIQIndices = "SII",
         index_func: Callable | None = None,
         bool_tree: bool = False,
         weight_fn: Callable[[int, int, int], float] | None = None,
     ) -> None:
-        r"""Initialize the InterventionalTreeExplainer.
+        r"""Initialize the InterventionalTreeSHAPIQ.
 
         Args:
             model: A fitted tree or tree ensemble compatible with
@@ -184,7 +174,7 @@ class InterventionalTreeExplainer:
                 Defaults to ``False``.
             max_order: Maximum interaction order to compute. Defaults to ``2``.
             index: Interaction index; one of
-                :data:`INDICES_C_IMPLEMENTATION_CAPABLE`. Replaced with
+                :data:`InterventionalTreeSHAPIQIndices`. Replaced with
                 ``"CUSTOM"`` when ``weight_fn`` is supplied. Defaults to
                 ``"SII"``.
             index_func: Reserved for a Python-side custom index function.
@@ -446,13 +436,7 @@ class InterventionalTreeExplainer:
             compute_interactions_flatten,  # ty: ignore[unresolved-import]
         )
 
-        # Route the explain point at the same float32 precision as the reference
-        # data (cast in __init__) and the tree thresholds. The underlying tree
-        # models (e.g. XGBoost) evaluate splits in float32, so comparing a
-        # float64 explain value against a float32 threshold can flip the routing
-        # at a split whose threshold lies between the two representations,
-        # sending the explanation to the wrong leaf and disagreeing with the
-        # model it explains.
+        # Convert input to float32 for C++ kernel compatibility
         x = np.asarray(x, dtype=np.float32)
 
         if not self.bool_tree and not self._use_sparse_path:
@@ -460,10 +444,7 @@ class InterventionalTreeExplainer:
         computation_index = get_computation_index(self.index)
         interactions = {}
         # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects, pairwise, and triple interactions.
-        # For orders up to 3, we can use the flatten implementation which is faster.
-        # We also redirect to sparse for orders <= 3 when n_features is large
-        # enough that the dense flatten buffer would blow memory (see
-        # _DENSE_FLATTEN_MAX_RESULT_SIZE). _use_sparse_path is set in __init__.
+        # We also redirect to sparse for orders <= 3 when n_features is large enough that the dense flatten buffer would blow memory (see _DENSE_FLATTEN_MAX_RESULT_SIZE). _use_sparse_path is set in __init__.
         if self._use_sparse_path:
             interactions = compute_interactions_batched_sparse(
                 self.values_list,
