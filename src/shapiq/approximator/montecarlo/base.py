@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
-from scipy.special import binom, factorial, gammaln
+from scipy.special import gammaln
 
 from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues
@@ -369,166 +369,12 @@ class MonteCarlo(Approximator[TIndices]):
                 )
         return log_sampling_adjustment_weights
 
-    def _sii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the SII discrete derivative weight given the coalition size and interaction size.
-
-        Args:
-            coalition_size: The size of the subset.
-            interaction_size: The size of the interaction.
-
-        Returns:
-            float: The weight for the interaction type.
-
-        """
-        return 1 / (
-            (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
-        )
-
-    def _bii_weight(self, interaction_size: int) -> float:
-        """Returns the BII discrete derivative weight given the coalition size and interaction size.
-
-        Args:
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        return 1 / 2 ** (self.n - interaction_size)
-
-    def _chii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the CHII discrete derivative weight given the coalition size and interaction size.
-
-        Args:
-            coalition_size: The size of the subset.
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        try:
-            return interaction_size / coalition_size
-        except ZeroDivisionError:
-            return 0.0
-
-    def _stii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the STII discrete derivative weight given the coalition size and interaction size.
-
-        For details, refer to `Dhamdhere et al. (2020) <https://doi.org/10.48550/arXiv.1902.05622>`_.
-
-        Args:
-            coalition_size: The size of the subset.
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        if interaction_size == self.max_order:
-            return self.max_order / (self.n * binom(self.n - 1, coalition_size))
-        return 1.0 * (coalition_size == 0)
-
-    def _fsii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the FSII discrete derivative weight given the coalition size and interaction size.
-
-        The representation is based on the FSII representation according to Theorem 19 by
-        `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
-
-        Args:
-            coalition_size: The size of the subset.
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        if interaction_size == self.max_order:
-            return (
-                factorial(2 * self.max_order - 1)
-                / factorial(self.max_order - 1) ** 2
-                * factorial(self.n - coalition_size - 1)
-                * factorial(coalition_size + self.max_order - 1)
-                / factorial(self.n + self.max_order - 1)
-            )
-        msg = f"Lower order interactions are not supported for {self.index}."
-        raise ValueError(msg)
-
-    def _fbii_weight(self, interaction_size: int) -> float:
-        """Returns the FSII discrete derivative weight given the coalition size and interaction size.
-
-        The representation is based on the FBII representation according to Theorem 17 by
-        `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
-
-        Args:
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        if interaction_size == self.max_order:
-            return 1 / 2 ** (self.n - interaction_size)
-        msg = f"Lower order interactions are not supported for {self.index}."
-        raise ValueError(msg)
-
-    def _weight(self, index: str, coalition_size: int, interaction_size: int) -> float:
-        """Returns the weight for each interaction type given coalition and interaction size.
-
-        Args:
-            index: The interaction index
-            coalition_size: The size of the subset.
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weight for the interaction type.
-
-        """
-        if index == "STII":
-            return self._stii_weight(coalition_size, interaction_size)
-        if index == "FSII":
-            return self._fsii_weight(coalition_size, interaction_size)
-        if index == "FBII":
-            return self._fbii_weight(interaction_size)
-        if index in ["SII", "SV"]:
-            return self._sii_weight(coalition_size, interaction_size)
-        if index in ["BII", "BV"]:
-            return self._bii_weight(interaction_size)
-        if index == "CHII":
-            return self._chii_weight(coalition_size, interaction_size)
-        msg = f"The index {index} is not supported."
-        raise ValueError(msg)
-
-    def _get_standard_form_weights(self, index: str) -> np.ndarray:
-        """Computes the standard form weights for the interaction index.
+    def _get_standard_form_log_weights(self, index: str) -> tuple[np.ndarray, np.ndarray]:
+        """Sign and log-magnitude of the standard form weights, stable for large ``n``.
 
         Initializes the weights for the interaction index re-written from discrete derivatives to
         standard form. Standard form according to Theorem 1 by
         `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
-
-        Args:
-            index: The interaction index
-
-        Returns:
-            The standard form weights.
-
-        """
-        # init data structure
-        weights = np.zeros((self.max_order + 1, self.n + 1, self.max_order + 1))
-        for order in self._order_iterator:
-            # fill with values specific to each index
-            for coalition_size in range(self.n + 1):
-                for intersection_size in range(
-                    max(0, order + coalition_size - self.n),
-                    min(order, coalition_size) + 1,
-                ):
-                    weights[order, coalition_size, intersection_size] = (-1) ** (
-                        order - intersection_size
-                    ) * self._weight(index, coalition_size - intersection_size, order)
-        return weights
-
-    def _get_standard_form_log_weights(self, index: str) -> tuple[np.ndarray, np.ndarray]:
-        """Sign and log-magnitude of :meth:`_get_standard_form_weights`, stable for large ``n``.
 
         The discrete-derivative weights are non-negative, so the standard-form weight
         ``(-1) ** (order - intersection) * w`` factors into a sign and a magnitude. The magnitude is
@@ -540,9 +386,10 @@ class MonteCarlo(Approximator[TIndices]):
             index: The interaction index.
 
         Returns:
-            A tuple ``(sign_weights, log_abs_weights)`` of arrays shaped like
-            :meth:`_get_standard_form_weights`. Unfilled entries have sign ``0`` and log ``-inf``
-            (i.e. weight ``0``).
+            A tuple ``(sign_weights, log_abs_weights)`` of arrays of shape
+            ``(max_order + 1, n + 1, max_order + 1)`` indexed by interaction order, coalition size,
+            and intersection size. Unfilled entries have sign ``0`` and log ``-inf`` (i.e. weight
+            ``0``).
 
         """
         shape = (self.max_order + 1, self.n + 1, self.max_order + 1)
@@ -563,7 +410,10 @@ class MonteCarlo(Approximator[TIndices]):
         return sign_weights, log_abs_weights
 
     def _log_weight(self, index: str, coalition_size: int, interaction_size: int) -> float:
-        """Natural logarithm of the (non-negative) discrete-derivative weight :meth:`_weight`.
+        """Natural logarithm of the (non-negative) discrete-derivative weight for an index.
+
+        Dispatches to the per-index ``_log_*_weight`` method given the coalition size and
+        interaction size.
 
         Args:
             index: The interaction index.
@@ -571,8 +421,8 @@ class MonteCarlo(Approximator[TIndices]):
             interaction_size: The size of the interaction.
 
         Returns:
-            ``log(_weight(index, coalition_size, interaction_size))`` (``-inf`` when the weight is
-            ``0``), computed in log-space so it stays finite for many players.
+            The log of the discrete-derivative weight (``-inf`` when the weight is ``0``),
+            computed in log-space so it stays finite for many players.
 
         """
         if index == "STII":
@@ -591,24 +441,40 @@ class MonteCarlo(Approximator[TIndices]):
         raise ValueError(msg)
 
     def _log_sii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Log of :meth:`_sii_weight`."""
+        """Log of the SII discrete derivative weight.
+
+        The weight is ``1 / ((n - s + 1) * binom(n - s, t))`` for interaction size ``s`` and
+        coalition size ``t``.
+        """
         return float(
             -np.log(self.n - interaction_size + 1)
             - log_binom(self.n - interaction_size, coalition_size)
         )
 
     def _log_bii_weight(self, interaction_size: int) -> float:
-        """Log of :meth:`_bii_weight`."""
+        """Log of the BII discrete derivative weight.
+
+        The weight is ``1 / 2 ** (n - s)`` for interaction size ``s``.
+        """
         return float(-(self.n - interaction_size) * np.log(2))
 
     def _log_chii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Log of :meth:`_chii_weight`."""
+        """Log of the CHII discrete derivative weight.
+
+        The weight is ``s / t`` for interaction size ``s`` and coalition size ``t`` (``0``,
+        i.e. ``-inf`` in log-space, for empty coalitions).
+        """
         if coalition_size == 0:
             return -np.inf
         return float(np.log(interaction_size) - np.log(coalition_size))
 
     def _log_stii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Log of :meth:`_stii_weight`."""
+        """Log of the STII discrete derivative weight.
+
+        The weight is ``max_order / (n * binom(n - 1, t))`` for top-order interactions and
+        coalition size ``t`` (an indicator on the empty coalition for lower orders). For details,
+        refer to `Dhamdhere et al. (2020) <https://doi.org/10.48550/arXiv.1902.05622>`_.
+        """
         if interaction_size == self.max_order:
             return float(
                 np.log(self.max_order) - np.log(self.n) - log_binom(self.n - 1, coalition_size)
@@ -616,7 +482,12 @@ class MonteCarlo(Approximator[TIndices]):
         return 0.0 if coalition_size == 0 else -np.inf
 
     def _log_fsii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Log of :meth:`_fsii_weight` (factorial ratio via ``gammaln``)."""
+        """Log of the FSII discrete derivative weight, defined for top-order interactions only.
+
+        The weight is a factorial ratio (computed via ``gammaln``) based on the FSII
+        representation according to Theorem 19 by `Tsai et al. (2023)
+        <https://doi.org/10.48550/arXiv.2203.00870>`_.
+        """
         if interaction_size == self.max_order:
             return float(
                 gammaln(2 * self.max_order)
@@ -629,7 +500,12 @@ class MonteCarlo(Approximator[TIndices]):
         raise ValueError(msg)
 
     def _log_fbii_weight(self, interaction_size: int) -> float:
-        """Log of :meth:`_fbii_weight`."""
+        """Log of the FBII discrete derivative weight, defined for top-order interactions only.
+
+        The weight is ``1 / 2 ** (n - s)`` for interaction size ``s``, based on the FBII
+        representation according to Theorem 17 by `Tsai et al. (2023)
+        <https://doi.org/10.48550/arXiv.2203.00870>`_.
+        """
         if interaction_size == self.max_order:
             return float(-(self.n - interaction_size) * np.log(2))
         msg = f"Lower order interactions are not supported for {self.index}."
