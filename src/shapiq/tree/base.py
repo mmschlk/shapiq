@@ -404,6 +404,37 @@ class TreeModel:
             is_leaf = self.leaf_mask[node]
         return float(self.values[node])
 
+    def predict(self, X: NDArray[np.floating]) -> NDArray[np.floating]:
+        """Predicts the output of multiple instances.
+
+        Args:
+            X: The instances to predict as a 2-dimensional array of shape
+                ``(n_instances, n_features)``.
+
+        Returns:
+            The predictions of the instances with the tree model as a 1-dimensional array of
+            shape ``(n_instances,)``.
+        """
+        return np.asarray([self.predict_one(x) for x in X], dtype=np.float64)
+
+
+def predict_ensemble(trees: list[TreeModel], X: NDArray[np.floating]) -> NDArray[np.floating]:
+    """Predicts the output of a tree ensemble for multiple instances.
+
+    The ensemble prediction is the sum of the per-tree predictions (validated trees already
+    carry any ensemble scaling, e.g. the ``1/n_estimators`` averaging of sklearn forests).
+
+    Args:
+        trees: The validated trees of the ensemble (see
+            :func:`shapiq.tree.validation.validate_tree_model`).
+        X: The instances to predict as a 2-dimensional array of shape
+            ``(n_instances, n_features)``.
+
+    Returns:
+        The ensemble predictions as a 1-dimensional array of shape ``(n_instances,)``.
+    """
+    return np.sum([tree.predict(X) for tree in trees], axis=0)
+
 
 class EdgeTree:
     """Edge-based representation of a tree used by the TreeSHAP-IQ algorithm.

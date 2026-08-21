@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from .base import Regression
 
 if TYPE_CHECKING:
     import numpy as np
 
-ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP"]
+ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP", "SV"]
 
 
 class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
@@ -31,7 +31,9 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
 
     """
 
-    valid_indices = ("kADD-SHAP",)
+    valid_indices: tuple[ValidRegressionkADDSHAPIndices, ...] = tuple(
+        get_args(ValidRegressionkADDSHAPIndices)
+    )
     """The valid indices for this approximator."""
 
     def __init__(
