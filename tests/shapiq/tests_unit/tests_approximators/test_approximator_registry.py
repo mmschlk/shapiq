@@ -11,6 +11,7 @@ from shapiq.approximator import InconsistentKernelSHAPIQ, KernelSHAPIQ
 @pytest.mark.parametrize(
     ("registry_name", "index"),
     [
+        ("SV_APPROXIMATORS", "SV"),
         ("SII_APPROXIMATORS", "SII"),
         ("STII_APPROXIMATORS", "STII"),
         ("FSII_APPROXIMATORS", "FSII"),
