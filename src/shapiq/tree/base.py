@@ -50,7 +50,7 @@ class TreeModel:
         feature_ids: The set of feature indices used by decision nodes.
         root_node_id: The root node id of the tree model. Defaults to ``0``.
         n_nodes: The number of nodes in the tree model.
-        decision_type: The split comparison used by :meth:`decision_function`. Either ``"<="``
+        decision_type: The split comparison used by :meth:`goes_left`. Either ``"<="``
             (default) or ``"<"``.
         nodes: The node ids of the tree model as ``np.arange(n_nodes)``.
         feature_map_original_internal: Mapping of feature indices from the original feature
@@ -144,7 +144,7 @@ class TreeModel:
             root_node_id: Root node id. ``None`` defaults to ``0``.
             n_nodes: Number of nodes. ``None`` derives it from ``len(children_left)``.
             nodes: Node-id array. ``None`` defaults to ``np.arange(n_nodes)``.
-            decision_type: Split comparison used by :meth:`decision_function` (``"<="`` or ``"<"``).
+            decision_type: Split comparison used by :meth:`goes_left` (``"<="`` or ``"<"``).
                 ``None`` defaults to ``"<="``.
             feature_map_original_internal: Mapping from original to internal feature indices.
                 ``None`` defaults to the identity mapping on ``feature_ids``.
@@ -277,24 +277,6 @@ class TreeModel:
 
         # Set decision function
         self.decision_type = decision_type if decision_type is not None else "<="
-
-    def decision_function(self, value: float, threshold: float, *, left_default: bool) -> bool:
-        """Decision function for split nodes.
-
-        The function compares the input value to the threshold using the specified decision type.
-        If the value is NaN, the function returns the left_default.
-
-        Args:
-            value: The feature value to compare.
-            threshold: The threshold to compare the feature value against.
-            left_default: The default direction to take if the value is NaN. True for left, False for right.
-
-        Returns:
-            A boolean indicating whether to go left (True) or right (False) at the split node.
-        """
-        if self.decision_type == "<":
-            return (value < threshold) if not np.isnan(value) else left_default
-        return (value <= threshold) if not np.isnan(value) else left_default
 
     def goes_left(self, node_id: int, value: float) -> bool:
         """Route a feature value through the split at ``node_id``.
