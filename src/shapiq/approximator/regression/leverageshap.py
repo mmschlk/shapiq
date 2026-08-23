@@ -471,16 +471,28 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 frac[s] = mu - floor_mu
                 exhaustive[s] = False
 
-        # Largest-remainder apportionment. `_find_c` guarantees the continuous target is
-        # met almost exactly: the initial shortfall is the sum of at most `len(half_sizes)`
-        # fractional parts, each in [0, 1), so it can never reach `len(half_sizes)`; and
-        # `_find_c` returning `hi` (the bisection endpoint satisfying total(hi) >= target)
-        # rather than the midpoint keeps it non-negative. Verified empirically over
-        # ~67,000 (n, budget) pairs with zero violations (ls_verify/VERIFY_REPORT.md).
+        # Largest-remainder apportionment. Every non-exhaustive half-size s has
+        # m_s[s] < pool_size_of[s] strictly by definition: for non-middle sizes
+        # pool_size == full_count > two_c == mu, and for the middle size
+        # pool_size > mu because it is not exhaustive; either way floor(mu) < pool_size
+        # since both are integers and mu < pool_size. So every non-exhaustive size can
+        # always absorb exactly one increment in the fill loop below without ever
+        # triggering the `m_s[s] >= pool_size_of[s]` skip on its single visit -- this
+        # holds for any c (not just one solved by `_find_c`), so the fill loop can
+        # resolve any shortfall up to and including the number of non-exhaustive
+        # half-sizes, a bound strictly tighter than `len(half_sizes)` whenever at
+        # least one size is exhaustive. When c *is* the `_find_c(n, m)` solution (the
+        # only way `_sample` ever calls this method) the bound is normally not even
+        # reached with equality: the continuous target is met almost exactly, so
+        # shortfall is the sum of one sub-1 fractional remainder per non-exhaustive
+        # size and so is typically strictly less than their count. Verified
+        # empirically over ~67,000 (n, budget) pairs with zero violations
+        # (ls_verify/VERIFY_REPORT.md).
         shortfall = target_pairs - sum(m_s.values())
-        assert 0 <= shortfall < len(half_sizes), (  # noqa: S101
+        num_non_exhaustive = sum(1 for s in half_sizes if not exhaustive[s])
+        assert 0 <= shortfall <= num_non_exhaustive, (  # noqa: S101
             f"largest-remainder shortfall {shortfall} out of the expected "
-            f"[0, {len(half_sizes)}) range for n={n}, m={m}"
+            f"[0, {num_non_exhaustive}] range for n={n}, m={m}"
         )
         for s in sorted(half_sizes, key=lambda s: -frac[s]):
             if shortfall <= 0:
