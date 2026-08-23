@@ -235,14 +235,25 @@ class RegressionMSR(ProxySHAP):
             interactions[(i,)] = interactions.get((i,), 0.0) + correction[i]
         interactions[()] = baseline_value
 
+        # estimated/estimation_budget are computed directly from n_samples (the number of
+        # distinct coalitions this call actually evaluated), rather than read off
+        # proxy_interactions: for index="BV" with proxy_model="linear", the linear route's
+        # MoebiusConverter(...).compute(index="BV", ...) step (_routes.py's _extract_linear)
+        # does not carry these fields through -- proxy_interactions.estimated is always True and
+        # proxy_interactions.estimation_budget is always None for that one (index, proxy_model)
+        # combination, even at full budget (confirmed via run_logs/pr_b/check_linear_metadata.py,
+        # job 284305). This is a pre-existing bug in the linear extraction route (same family as
+        # the pre-existing BV+linear issue in item 6 of the brief), unrelated to the MSR
+        # correction; computing these fields ourselves from data we already have avoids
+        # depending on it.
         result = InteractionValues(
             values=interactions,
             index=proxy_interactions.index,
             max_order=proxy_interactions.max_order,
             n_players=n_players,
             min_order=proxy_interactions.min_order,
-            estimated=proxy_interactions.estimated,
-            estimation_budget=proxy_interactions.estimation_budget,
+            estimated=n_samples < 2**n_players,
+            estimation_budget=n_samples,
             baseline_value=baseline_value,
         )
         return result
