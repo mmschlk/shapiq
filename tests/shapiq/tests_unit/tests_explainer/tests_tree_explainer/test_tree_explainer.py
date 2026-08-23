@@ -711,7 +711,7 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
     Interventional: the mean ensemble prediction over the reference dataset — not the
     path-dependent value, which is what a woodelf-routed explanation used to report.
     """
-    from shapiq.tree import InterventionalTreeExplainer
+    from shapiq.tree import InterventionalTreeSHAPIQ
 
     reference = background_reg_data  # 100 rows: 100 * 1 >= 100 routes even explain() to Woodelf
     x_explain = background_reg_data[0]
@@ -729,7 +729,7 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
         min_order=0,
         index="SV",
     )
-    expected_baseline = InterventionalTreeExplainer(
+    expected_baseline = InterventionalTreeSHAPIQ(
         model=rf_reg_model, data=reference, max_order=1, index="SV"
     ).baseline_value
     assert interventional.baseline_value == pytest.approx(expected_baseline)
@@ -910,9 +910,9 @@ def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, backgroun
 
     ``10 * 20 >= 100`` crosses the interventional Woodelf cut-off, so ``explain_X`` no longer
     runs the shapiq kernel. The per-feature values must still match the direct
-    :class:`InterventionalTreeExplainer`.
+    :class:`InterventionalTreeSHAPIQ`.
     """
-    from shapiq.tree import InterventionalTreeExplainer
+    from shapiq.tree import InterventionalTreeSHAPIQ
 
     pytest.importorskip("woodelf")
     reference = background_reg_data[:10]
@@ -930,9 +930,7 @@ def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, backgroun
     assert explainer._should_use_woodelf(len(x_explain))  # guard: Woodelf, not the fallback
     woodelf_values = explainer.explain_X(x_explain).values
 
-    direct = InterventionalTreeExplainer(
-        model=rf_reg_model, data=reference, max_order=1, index="SV"
-    )
+    direct = InterventionalTreeSHAPIQ(model=rf_reg_model, data=reference, max_order=1, index="SV")
     # Woodelf omits a feature entirely when it is zero for every row, so default to zeros.
     zeros = np.zeros(len(x_explain))
     for row, x in enumerate(x_explain):
