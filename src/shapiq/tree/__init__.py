@@ -18,11 +18,16 @@ __all__ = [
 ]
 
 
-# This function is used to lazily import the TreeExplainer class when it is accessed as an attribute of the module.
+# This function is used to lazily import the TreeExplainer class (and its warning class) when
+# accessed as an attribute of the module.
 def __getattr__(name: str) -> object:
     if name == "TreeExplainer":
         from .explainer import TreeExplainer
 
         return TreeExplainer
+    if name == "WoodelfNotAvailableWarning":
+        from .explainer import WoodelfNotAvailableWarning
+
+        return WoodelfNotAvailableWarning
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)
