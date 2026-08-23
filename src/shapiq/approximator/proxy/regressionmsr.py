@@ -26,9 +26,9 @@ def _semivalue_p(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
     """The probabilistic-value coefficients p_0, ..., p_{n-1} used by the closed-form MSR correction.
 
     SV (Shapley): ``p_k = k! (n-k-1)! / n!`` for ``k = 0, ..., n-1`` (shapiq's internal Shapley
-    semivalue weight; matches ``regressionMSR/utils/p_generator.py``'s ``shapley_distribution``).
-    BV (Banzhaf): ``p_k = 1 / 2**(n-1)``, constant in ``k`` (matches ``p_generator.py``'s
-    ``banzhaf_distribution``). Computed via arbitrary-precision Python ints (:func:`math.factorial`
+    semivalue weight; matches :cite:t:`Witter.2025`'s Shapley probabilistic-value coefficients).
+    BV (Banzhaf): ``p_k = 1 / 2**(n-1)``, constant in ``k`` (matches the same reference's Banzhaf
+    coefficients). Computed via arbitrary-precision Python ints (:func:`math.factorial`
     / ``2 ** (n - 1)``) before the final division, so this stays numerically exact (no overflow)
     even for ``n`` well beyond the range where a naive float-factorial computation would overflow.
 
@@ -59,15 +59,14 @@ def _paper_sampling_weights(n: int, index: ValidRegressionMSRIndices) -> np.ndar
     r"""The default ``sampling_weights`` of :class:`RegressionMSR`: the paper's own sampling kernel.
 
     Reproduces :cite:t:`Witter.2025`'s ``UniversalMSR``/``TreeMSRAll`` sampling density
-    ``sample_dist`` exactly (``regressionMSR/estimators/regMSR.py:108-115``) -- a per-INDIVIDUAL-
-    COALITION density ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``, normalized to
-    sum to 1, where ``p_0, ..., p_{n-1}`` are :func:`_semivalue_p`'s semivalue coefficients for the
-    target ``index`` -- then converts it to shapiq's per-SIZE probability-mass convention the same
-    way the reference itself does before drawing a coalition size: ``mass[s] = D(s) * C(n, s)``,
-    renormalized (``regMSR.py:147-150``). See ``run_logs/bench_msr/gap_diag/GAP_REPORT.md`` for the
-    units diagnosis and ``run_logs/bench_msr/bench_msr_task_v2.py``'s ``paper_sampling_weights``/
-    ``to_shapiq_sampling_weights`` for the benchmark's independently verified port of this same
-    conversion.
+    ``sample_dist`` exactly -- a per-INDIVIDUAL-COALITION density
+    ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``, normalized to sum to 1, where
+    ``p_0, ..., p_{n-1}`` are :func:`_semivalue_p`'s semivalue coefficients for the target
+    ``index`` -- then converts it to shapiq's per-SIZE probability-mass convention the same way the
+    reference itself does before drawing a coalition size: ``mass[s] = D(s) * C(n, s)``,
+    renormalized. shapiq's ``sampling_weights[s]`` is this per-SIZE probability mass, not the
+    reference's per-coalition density -- see the ``sampling_weights`` parameter's docstring below
+    for the conversion, needed if porting in a *different* density than this default.
 
     Computed entirely in log-space (:func:`math.lgamma`) rather than by squaring/dividing raw
     floats, so it stays finite and correctly normalized for ``n`` up to (at least) the low
@@ -138,21 +137,23 @@ class RegressionMSR(ProxySHAP):
     The method was proposed by Witter et al. (2025) :cite:t:`Witter.2025` and is designed to provide more accurate approximations of the Shapley values, especially in cases where the value function is complex and non-linear.
 
     Attributes:
-        train_residual_ratio: Set after :meth:`approximate`. The ratio of the proxy's residual norm
-            to the game-value norm over the training coalitions, ``||v - f_hat||_2 / ||v||_2``,
-            using the *raw* game values ``v`` (i.e. ``game(coalitions)``, before shapiq's own
+        train_residual_ratio: ``None`` until a fast-path :meth:`approximate` call (``index in
+            ("SV", "BV")``) sets it; stays ``None`` if ``approximate`` instead falls back to
+            :meth:`ProxySHAP.approximate() <shapiq.approximator.proxy.proxyshap.ProxySHAP.approximate>`
+            for any other index. Once set: the ratio of the proxy's residual norm to the
+            game-value norm over the training coalitions, ``||v - f_hat||_2 / ||v||_2``, using the
+            *raw* game values ``v`` (i.e. ``game(coalitions)``, before shapiq's own
             baseline-shift-to-zero-at-the-empty-coalition convention is applied for fitting), which
-            matches the reference's own definition exactly: ``residual = y - reg_pred``,
-            ``train_residual_ratio = ||residual||_2 / ||y||_2`` on the raw model outputs ``y`` (see
-            :cite:t:`Witter.2025`, ``regressionMSR/estimators/regMSR_all.py:96-101``). Near ``0``
-            means the proxy interpolates its training coalitions and the MSR correction is nearly
-            vanishing. Using shapiq's baseline-shifted ``v - v(empty)`` instead of the raw ``v``
-            would diverge from the reference by up to ~6x whenever ``v(empty) != 0`` (real games
-            almost always have ``v(empty) != 0``); see
-            ``run_logs/pr_b/diff_check/DIFF_REPORT.md`` item 4.8 for the measurement.
-        correction_norm: Set after :meth:`approximate`. The Euclidean norm of the MSR correction
-            vector that was added on top of the proxy's own singleton attributions (``||correction||_2``;
-            see :cite:t:`Witter.2025`, ``regressionMSR/estimators/regMSR_all.py:141``).
+            matches :cite:t:`Witter.2025`'s own definition exactly: ``residual = y - reg_pred``,
+            ``train_residual_ratio = ||residual||_2 / ||y||_2`` on the raw model outputs ``y``.
+            Near ``0`` means the proxy interpolates its training coalitions and the MSR correction
+            is nearly vanishing. Using shapiq's baseline-shifted ``v - v(empty)`` instead of the
+            raw ``v`` would diverge from the reference by up to ~6x whenever ``v(empty) != 0``
+            (real games almost always have ``v(empty) != 0``).
+        correction_norm: ``None`` until a fast-path :meth:`approximate` call sets it (see
+            ``train_residual_ratio`` above for when that is). Once set: the Euclidean norm of the
+            MSR correction vector that was added on top of the proxy's own singleton attributions
+            (``||correction||_2``; see :cite:t:`Witter.2025`).
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame
@@ -199,23 +200,20 @@ class RegressionMSR(ProxySHAP):
                 to sum to 1, then ``mass[s] = D(s) * C(n, s)``, renormalized to sum to 1 -- where
                 ``p_0, ..., p_{n-1}`` are the semivalue coefficients for ``index`` (see
                 :func:`_semivalue_p`). This exactly reproduces :cite:t:`Witter.2025`'s reference
-                implementation's ``sample_dist`` (``regressionMSR/estimators/regMSR.py:108-115``)
-                converted the way the reference itself converts it before sampling a size
-                (``regMSR.py:147-150``). Empirically, this default is markedly more accurate than
-                the previous bowl-shaped default at large budgets -- about 25% lower pooled error
-                across the benchmark's 8-dataset grid (pooled ratio-to-reference 0.972 vs. 1.32; see
-                ``run_logs/bench_msr/REPORT_v2.md``'s "Overall verdicts").
+                ``sample_dist``, converted the way the reference itself converts it before sampling
+                a size. Empirically, this default is markedly more accurate than the previous
+                bowl-shaped default at large budgets -- about 25% lower pooled error across an
+                8-dataset benchmark grid (pooled ratio-to-reference 0.972 vs. 1.32).
 
                 ``sampling_weights[s]`` is a per-SIZE probability mass (``P(a drawn coalition has
                 size s)``), the convention every other :class:`~shapiq.approximator.base.Approximator`
-                subclass uses -- not a per-individual-coalition density. The paper's reference
-                implementation (``regressionMSR/estimators/regMSR.py:108-150``) instead specifies a
-                per-coalition density ``D(s)``; porting a *different* density here (rather than
-                using this class's built-in default) requires first converting via
-                ``sampling_weights = D * binom(n, np.arange(n + 1))``, renormalized to sum to 1, or
-                the sampler silently starves middle coalition sizes (see
-                ``run_logs/bench_msr/gap_diag/GAP_REPORT.md``). Passing an explicit array here
-                always overrides this class's default, for either code path above.
+                subclass uses -- not a per-individual-coalition density. :cite:t:`Witter.2025`'s
+                reference instead specifies a per-coalition density ``D(s)``; porting a *different*
+                density here (rather than using this class's built-in default) requires first
+                converting via ``sampling_weights = D * binom(n, np.arange(n + 1))``, renormalized
+                to sum to 1, or the sampler silently starves middle coalition sizes. Passing an
+                explicit array here always overrides this class's default, for either code path
+                above.
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
             random_state: The random state for reproducibility. Default is None.
 
@@ -237,6 +235,12 @@ class RegressionMSR(ProxySHAP):
             pairing_trick=pairing_trick,
             random_state=random_state,
         )
+        # Declared here (not just assigned inside `approximate`) so both attributes always exist,
+        # even before `approximate` is ever called or when it falls back to
+        # `ProxySHAP.approximate()` for an index outside the closed-form fast path's
+        # `{"SV", "BV"}` -- see the class docstring's `Attributes:` section.
+        self.train_residual_ratio: float | None = None
+        self.correction_norm: float | None = None
 
     def approximate(
         self,
@@ -284,7 +288,7 @@ class RegressionMSR(ProxySHAP):
         a configuration the fast path cannot handle. This also means an index the *parent* itself
         rejects (e.g. ``"BII"``, which is not implemented for ``adjustment="msr"`` upstream) now
         raises the same error the parent raises, rather than a different, closed-form-specific
-        ``ValueError`` from :func:`_semivalue_p` -- see ``run_logs/pr_b/REVIEW.md`` finding B1.
+        ``ValueError`` from :func:`_semivalue_p`.
 
         Args:
             budget: Number of coalition evaluations to draw.
@@ -329,29 +333,26 @@ class RegressionMSR(ProxySHAP):
         # diagnostics (B5).
         proxy_predictions = predict_proxy(fitted, coalitions_matrix, max_order=self.max_order)
         # raw_residual = v(S) - f_hat(S) is invariant to shapiq's baseline shift (v and f_hat both
-        # shift by the same baseline_value, which cancels in the subtraction), so it equals the
-        # reference's `residual = y - reg_pred` (regMSR_all.py:97) exactly, using the RAW
-        # (unshifted) game values -- see item 3 of run_logs/pr_b/BRIEF.md's fix round and
-        # run_logs/pr_b/diff_check/DIFF_REPORT.md item 4.8.
+        # shift by the same baseline_value, which cancels in the subtraction), so it equals
+        # :cite:t:`Witter.2025`'s reference `residual = y - reg_pred` exactly, using the RAW
+        # (unshifted) game values.
         raw_residual = coalition_values - proxy_predictions
 
         # --- diagnostics: train_residual_ratio matches the reference's raw formula exactly
-        # (regMSR_all.py:96-101: ||y - f_hat||_2 / ||y||_2 on the RAW, baseline-inclusive game
-        # values y -- not shapiq's own baseline-shifted convention, which was found to diverge from
-        # the reference by up to ~6x whenever v(empty) != 0; see :attr:`train_residual_ratio`'s
-        # docstring and DIFF_REPORT.md item 4.8).
+        # (||y - f_hat||_2 / ||y||_2 on the RAW, baseline-inclusive game values y -- not shapiq's
+        # own baseline-shifted convention, which diverges from the reference by up to ~6x whenever
+        # v(empty) != 0; see :attr:`train_residual_ratio`'s docstring).
         raw_y_norm = float(np.linalg.norm(coalition_values_raw))
         residual_norm = float(np.linalg.norm(raw_residual))
         self.train_residual_ratio = residual_norm / raw_y_norm if raw_y_norm > 0 else float("nan")
 
         # --- correction: uses shapiq's own base-class residual convention, recentered so the
         # sampled empty coalition has zero residual, exactly matching
-        # ProxySHAP.approximate()'s "Normalize residuals" step (proxyshap.py:207). This recentering
-        # is NOT part of the reference's train_residual_ratio formula (hence computed separately,
-        # above, from the non-recentered raw_residual) but IS required here: it is what makes the
-        # closed-form correction reproduce the generic Monte-Carlo residual-game path bit-for-bit
-        # (verified in test_fast_path_matches_parent_path and
-        # run_logs/pr_b/diff_check/DIFF_REPORT.md item 2).
+        # ProxySHAP.approximate()'s "Normalize residuals" step. This recentering is NOT part of
+        # the reference's train_residual_ratio formula (hence computed separately, above, from the
+        # non-recentered raw_residual) but IS required here: it is what makes the closed-form
+        # correction reproduce the generic Monte-Carlo residual-game path bit-for-bit (verified in
+        # test_fast_path_matches_parent_path).
         residual_values = raw_residual - raw_residual[0]
 
         # self.index is typed at the base class's broader ValidProxySHAPIndices, but the guard
@@ -386,11 +387,9 @@ class RegressionMSR(ProxySHAP):
         # MoebiusConverter(...).compute(index="BV", ...) step (_routes.py's _extract_linear)
         # does not carry these fields through -- proxy_interactions.estimated is always True and
         # proxy_interactions.estimation_budget is always None for that one (index, proxy_model)
-        # combination, even at full budget (confirmed via run_logs/pr_b/check_linear_metadata.py,
-        # job 284305). This is a pre-existing bug in the linear extraction route (same family as
-        # the pre-existing BV+linear issue in item 6 of the brief), unrelated to the MSR
-        # correction; computing these fields ourselves from data we already have avoids
-        # depending on it.
+        # combination, even at full budget. This is a pre-existing bug in the linear extraction
+        # route, unrelated to the MSR correction; computing these fields ourselves from data we
+        # already have avoids depending on it.
         return InteractionValues(
             values=interactions,
             index=proxy_interactions.index,
