@@ -84,51 +84,21 @@ class Regression(Approximator[TIndices]):
         # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
         self._sii_consistent = sii_consistent
 
-    def _init_kernel_weights(self, interaction_size: int) -> FloatVector:
-        """Initializes the kernel weights for the regression in KernelSHAP-IQ.
-
-        The kernel weights are of size n + 1 and indexed by the size of the coalition. The kernel
-        weights depend on the size of the interactions and are set to a large number for the edges.
-
-        Args:
-            interaction_size: The size of the interaction.
-
-        Returns:
-            The weights for sampling subsets of size s in shape (n + 1,).
-
-        """
-        # vector that determines the kernel weights for the regression
-        weight_vector = np.zeros(shape=self.n + 1)
-        if self.approximation_index == "FBII":
-            for coalition_size in range(self.n + 1):
-                weight_vector[coalition_size] = 1 / (2**self.n)
-            return weight_vector
-        if self.approximation_index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
-            for coalition_size in range(self.n + 1):
-                if (coalition_size < interaction_size) or (
-                    coalition_size > self.n - interaction_size
-                ):
-                    weight_vector[coalition_size] = self._big_M
-                else:
-                    weight_vector[coalition_size] = 1 / (
-                        (self.n - 2 * interaction_size + 1)
-                        * binom(
-                            self.n - 2 * interaction_size,
-                            coalition_size - interaction_size,
-                        )
-                    )
-            return weight_vector
-        msg = f"Index {self.index} not available for Regression Approximator."
-        raise ValueError(msg)  # pragma: no cover
-
     def _init_log_kernel_weights(self, interaction_size: int) -> FloatVector:
-        """Natural logarithm of :meth:`_init_kernel_weights`, stable for large ``n``.
+        """Initializes the log-space kernel weights for the regression in KernelSHAP-IQ.
 
-        Returns the per-coalition-size kernel weights in log-space. This avoids materialising the
-        ``1 / binom`` weight (which underflows to ``0`` once ``binom`` overflows for many players);
-        combined in log-space with the sampler's log adjustment weight, whose binomial cancels the
-        one here, the resulting effective regression weight stays finite and ``O(1)`` for mid-size
-        coalitions instead of collapsing to ``0`` (or ``0 * inf = nan``).
+        The kernel weights are of size ``n + 1`` and indexed by the size of the coalition. They
+        depend on the size of the interaction and are set to (the log of) a large number
+        ``self._big_M`` for the edges (coalition sizes smaller than the interaction size or larger
+        than ``n - interaction_size``); in between, the weight is
+        ``1 / ((n - 2s + 1) * binom(n - 2s, t - s))`` for coalition size ``t`` and interaction
+        size ``s`` (a uniform ``1 / 2 ** n`` for ``FBII``).
+
+        Returning the weights in log-space avoids materialising the ``1 / binom`` weight (which
+        underflows to ``0`` once ``binom`` overflows for many players); combined in log-space with
+        the sampler's log adjustment weight, whose binomial cancels the one here, the resulting
+        effective regression weight stays finite and ``O(1)`` for mid-size coalitions instead of
+        collapsing to ``0`` (or ``0 * inf = nan``).
 
         Args:
             interaction_size: The size of the interaction.
@@ -289,6 +259,7 @@ class Regression(Approximator[TIndices]):
                     X=regression_matrix,
                     y=residual_game_values[interaction_size],
                     kernel_weights=regression_weights,
+                    use_svd=False,
                 )
             else:
                 # for order > 2 use ground truth weights for sizes < interaction_size and > n -
@@ -314,6 +285,7 @@ class Regression(Approximator[TIndices]):
                     X=regression_matrix,
                     y=game_values_plus,
                     kernel_weights=regression_weights,
+                    use_svd=False,
                 )
 
                 sii_values_current_size = (
@@ -372,6 +344,7 @@ class Regression(Approximator[TIndices]):
             X=regression_matrix,
             y=regression_response,
             kernel_weights=regression_weights,
+            use_svd=False,
         )
 
         if index_approximation in ["kADD-SHAP", "FBII"]:
@@ -638,31 +611,44 @@ def _get_regression_matrices(
     return regression_matrix, regression_weights
 
 
-def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: FloatVector) -> np.ndarray:
-    """Solves the Shapley regression problem.
+def solve_regression(
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel_weights: FloatVector,
+    *,
+    use_svd: bool = False,
+) -> np.ndarray:
+    """Solves the Shapley regression problem using weighted least squares (WLS).
 
-    Solves the regression problem using the weighted least squares method. Returns all approximated
-    interactions.
+    By default, this attempts a fast solution using the normal equations. If the
+    Gram matrix is singular or ill-conditioned, it falls back to a robust
+    Singular Value Decomposition (SVD) solver.
 
     Args:
         X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
         y: The response vector for each coalition of shape ``[n_coalitions]``.
-        kernel_weights: The weights for the regression problem for each coalition.
+        kernel_weights: The weights for the regression problem of shape ``[n_coalitions]``.
+        use_svd: If ``True``, skips the fast normal equation solver and directly uses
+            the robust SVD-based least squares solver (``np.linalg.lstsq``). Useful
+            for cases with extreme weight initializations or known rank-deficiencies.
 
     Returns:
-        The solution to the regression problem.
-
+        The approximated interaction values of shape ``[n_interactions]``.
     """
+    # Explicit override: go straight to the robust, SVD-backed solver
+    if use_svd:
+        W_sqrt = np.sqrt(kernel_weights)
+        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
+
+    # Standard fast path (try the fast way, catch the error if it fails)
     try:
-        # try solving via solve function
         WX = kernel_weights[:, np.newaxis] * X
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            phi = np.linalg.solve(X.T @ WX, WX.T @ y)
-    except np.linalg.LinAlgError:
-        # solve WLSQ via lstsq function and throw warning
+            # Solves (X^T * W * X) * phi = X^T * W * y
+            return np.linalg.solve(X.T @ WX, WX.T @ y)
+
+    except (np.linalg.LinAlgError, ValueError):
+        # Fallback: Gram matrix is singular. Use robust SVD approach.
         W_sqrt = np.sqrt(kernel_weights)
-        X = W_sqrt[:, np.newaxis] * X
-        y = W_sqrt * y
-        phi = np.linalg.lstsq(X, y, rcond=None)[0]
-    return phi
+        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]

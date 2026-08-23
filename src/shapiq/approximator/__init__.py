@@ -16,6 +16,7 @@ from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
+    LeverageSHAP,
     OddSHAP,
     RegressionFBII,
     RegressionFSII,
@@ -58,6 +59,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     UnbiasedKernelSHAP,
     PermutationSamplingSV,
     KernelSHAP,
+    LeverageSHAP,
     kADDSHAP,
     SPEX,
     RegressionMSR,
@@ -96,8 +98,6 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
 # contains all approximators that can be used for STII
 STII_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSTII,
-    KernelSHAPIQ,
-    InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
     SPEX,
@@ -107,8 +107,6 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
 # contains all approximators that can be used for FSII
 FSII_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionFSII,
-    KernelSHAPIQ,
-    InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
     SPEX,
@@ -128,6 +126,7 @@ __all__ = [
     "StratifiedSamplingSV",
     "OwenSamplingSV",
     "KernelSHAP",
+    "LeverageSHAP",
     "RegressionFSII",
     "RegressionFBII",
     "KernelSHAPIQ",

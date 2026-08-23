@@ -20,6 +20,7 @@ from .approximator import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
+    LeverageSHAP,
     OddSHAP,
     OwenSamplingSV,
     PermutationSamplingSII,
@@ -64,7 +65,7 @@ from .imputer import (
 )
 
 # base classes
-from .interaction_values import InteractionValues
+from .interaction_values import InteractionValues, InteractionValuesBatch
 
 # plotting functions
 from .plot import (
@@ -94,6 +95,7 @@ __all__ = [
     "__version__",
     # base
     "InteractionValues",
+    "InteractionValuesBatch",
     "ExactComputer",
     "Game",
     # approximators
@@ -103,6 +105,7 @@ __all__ = [
     "StratifiedSamplingSV",
     "OwenSamplingSV",
     "KernelSHAP",
+    "LeverageSHAP",
     "RegressionFSII",
     "RegressionFBII",
     "KernelSHAPIQ",

@@ -63,6 +63,9 @@ keywords = [
 [project.optional-dependencies]
 graph = [
     "torch-geometric>=2.8.0",
+tree = [
+    # required by the Woodelf fast path of shapiq.tree.TreeExplainer
+    "woodelf-explainer>=0.4.6",  # imports as `woodelf`; pulls in treelite>=4.0
 ]
 sparse = [
     # required by shapiq.approximator.sparse (SPEX and the Sparse base class)
