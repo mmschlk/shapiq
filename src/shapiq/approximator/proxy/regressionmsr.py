@@ -40,7 +40,12 @@ def _semivalue_p(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
         An array of shape ``(n,)`` holding ``p_0, ..., p_{n-1}``.
 
     Raises:
-        ValueError: If ``index`` is not ``"SV"`` or ``"BV"``.
+        ValueError: If ``index`` is not ``"SV"`` or ``"BV"``. :meth:`RegressionMSR.approximate`
+            never triggers this branch itself: it checks ``self.index`` and delegates to
+            :meth:`ProxySHAP.approximate() <shapiq.approximator.proxy.proxyshap.ProxySHAP.approximate>`
+            *before* calling this function for any index other than ``"SV"``/``"BV"``. This branch
+            is exercised directly (e.g. ``test_semivalue_p_raises_for_unsupported_index``) so it
+            stays covered without depending on that guard never changing.
     """
     if index == "SV":
         return np.array([factorial(k) * factorial(n - k - 1) / factorial(n) for k in range(n)])
@@ -71,10 +76,17 @@ class RegressionMSR(ProxySHAP):
 
     Attributes:
         train_residual_ratio: Set after :meth:`approximate`. The ratio of the proxy's residual norm
-            to the (baseline-normalized) game-value norm over the training coalitions, ``||v -
-            f_hat||_2 / ||v - v(empty)||_2``; near ``0`` means the proxy interpolates its training
-            coalitions and the MSR correction is nearly vanishing (see
-            :cite:t:`Witter.2025`, ``regressionMSR/estimators/regMSR_all.py:96-101``).
+            to the game-value norm over the training coalitions, ``||v - f_hat||_2 / ||v||_2``,
+            using the *raw* game values ``v`` (i.e. ``game(coalitions)``, before shapiq's own
+            baseline-shift-to-zero-at-the-empty-coalition convention is applied for fitting), which
+            matches the reference's own definition exactly: ``residual = y - reg_pred``,
+            ``train_residual_ratio = ||residual||_2 / ||y||_2`` on the raw model outputs ``y`` (see
+            :cite:t:`Witter.2025`, ``regressionMSR/estimators/regMSR_all.py:96-101``). Near ``0``
+            means the proxy interpolates its training coalitions and the MSR correction is nearly
+            vanishing. Using shapiq's baseline-shifted ``v - v(empty)`` instead of the raw ``v``
+            would diverge from the reference by up to ~6x whenever ``v(empty) != 0`` (real games
+            almost always have ``v(empty) != 0``); see
+            ``run_logs/pr_b/diff_check/DIFF_REPORT.md`` item 4.8 for the measurement.
         correction_norm: Set after :meth:`approximate`. The Euclidean norm of the MSR correction
             vector that was added on top of the proxy's own singleton attributions (``||correction||_2``;
             see :cite:t:`Witter.2025`, ``regressionMSR/estimators/regMSR_all.py:141``).
@@ -134,7 +146,7 @@ class RegressionMSR(ProxySHAP):
         self,
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
-        **kwargs: dict,  # noqa: ARG002
+        **kwargs: dict,
     ) -> InteractionValues:
         """Approximate SV/BV via the proxy readout plus a closed-form MSR correction.
 
@@ -165,27 +177,42 @@ class RegressionMSR(ProxySHAP):
         ``0`` before the correction is added, exactly like the generic path would treat an interaction
         the adjustment approximator never touched.
 
-        Only valid for the exact configuration :class:`RegressionMSR` always uses (``max_order=1``,
-        ``adjustment="msr"``, ``index`` in ``{"SV", "BV"}``); this class permits nothing else, so no
-        runtime guard is needed here beyond what :func:`_semivalue_p` already raises for an unknown
-        index.
+        The closed-form correction only has a semivalue weight formula (:func:`_semivalue_p`) for
+        ``index in {"SV", "BV"}``. For any other index -- e.g. ``RegressionMSR`` constructed
+        directly with ``index="SII"`` (the base :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP`
+        validation this class inherits does not narrow ``valid_indices``, so construction with such
+        an index succeeds), or with ``self.index`` mutated after construction -- this method checks
+        ``self.index`` *before* sampling or fitting anything and delegates the entire call to
+        :meth:`ProxySHAP.approximate() <shapiq.approximator.proxy.proxyshap.ProxySHAP.approximate>`,
+        the generic re-sampled Monte-Carlo path, so no coalitions are sampled and no proxy is fit for
+        a configuration the fast path cannot handle. This also means an index the *parent* itself
+        rejects (e.g. ``"BII"``, which is not implemented for ``adjustment="msr"`` upstream) now
+        raises the same error the parent raises, rather than a different, closed-form-specific
+        ``ValueError`` from :func:`_semivalue_p` -- see ``run_logs/pr_b/REVIEW.md`` finding B1.
 
         Args:
             budget: Number of coalition evaluations to draw.
             game: Coalition game (a :class:`shapiq.game.Game` or any callable
                 accepting a binary coalition matrix and returning game values).
-            **kwargs: Ignored; present for interface compatibility.
+            **kwargs: Passed through to :meth:`ProxySHAP.approximate` when delegating for an
+                unsupported index; ignored otherwise (present for interface compatibility).
 
         Returns:
             :class:`~shapiq.interaction_values.InteractionValues` of order 1 (the singletons plus
             the empty coalition).
         """
+        # 0. The closed-form correction below only covers index in {"SV", "BV"} (see
+        # _semivalue_p). Check this *before* sampling or fitting anything, so an unsupported
+        # index never wastes a sampling/fitting pass before falling back.
+        if self.index not in ("SV", "BV"):
+            return super().approximate(budget, game, **kwargs)
+
         # 1. Sample coalitions and evaluate the game (identical to ProxySHAP.approximate()).
         self._sampler.sample(int(budget))
         coalitions_matrix = self._sampler.coalitions_matrix
-        coalition_values = game(coalitions_matrix)
-        baseline_value = coalition_values[0]
-        coalition_values = coalition_values - baseline_value
+        coalition_values_raw = game(coalitions_matrix)
+        baseline_value = coalition_values_raw[0]
+        coalition_values = coalition_values_raw - baseline_value
         n_samples, n_players = coalitions_matrix.shape
 
         # 2. Fit the proxy, then read interactions out of the fitted model (identical).
@@ -203,22 +230,40 @@ class RegressionMSR(ProxySHAP):
         )
 
         # 3. Closed-form MSR correction (replaces the re-sampled Monte-Carlo detour) and its
-        # diagnostics (B5), computed on the base-class-normalized residual (residual - residual[0],
-        # matching ProxySHAP.approximate()'s "Normalize residuals" step) so that both the correction
-        # and the diagnostics describe the same quantity.
+        # diagnostics (B5).
         proxy_predictions = predict_proxy(fitted, coalitions_matrix, max_order=self.max_order)
-        residual_values = coalition_values - proxy_predictions
-        residual_values = residual_values - residual_values[0]  # normalize, matches base class
+        # raw_residual = v(S) - f_hat(S) is invariant to shapiq's baseline shift (v and f_hat both
+        # shift by the same baseline_value, which cancels in the subtraction), so it equals the
+        # reference's `residual = y - reg_pred` (regMSR_all.py:97) exactly, using the RAW
+        # (unshifted) game values -- see item 3 of run_logs/pr_b/BRIEF.md's fix round and
+        # run_logs/pr_b/diff_check/DIFF_REPORT.md item 4.8.
+        raw_residual = coalition_values - proxy_predictions
 
-        y_norm = float(np.linalg.norm(coalition_values))
-        residual_norm = float(np.linalg.norm(residual_values))
-        self.train_residual_ratio = residual_norm / y_norm if y_norm > 0 else float("nan")
+        # --- diagnostics: train_residual_ratio matches the reference's raw formula exactly
+        # (regMSR_all.py:96-101: ||y - f_hat||_2 / ||y||_2 on the RAW, baseline-inclusive game
+        # values y -- not shapiq's own baseline-shifted convention, which was found to diverge from
+        # the reference by up to ~6x whenever v(empty) != 0; see :attr:`train_residual_ratio`'s
+        # docstring and DIFF_REPORT.md item 4.8).
+        raw_y_norm = float(np.linalg.norm(coalition_values_raw))
+        residual_norm = float(np.linalg.norm(raw_residual))
+        self.train_residual_ratio = residual_norm / raw_y_norm if raw_y_norm > 0 else float("nan")
 
-        # self.index is typed at the base class's broader ValidProxySHAPIndices, but
-        # RegressionMSR.__init__ only ever assigns it a ValidRegressionMSRIndices ("SV" or
-        # "BV"); ty cannot narrow an inherited attribute's type across the class hierarchy, so
-        # this is a false positive.
-        p = _semivalue_p(n_players, self.index)  # ty: ignore[invalid-argument-type]
+        # --- correction: uses shapiq's own base-class residual convention, recentered so the
+        # sampled empty coalition has zero residual, exactly matching
+        # ProxySHAP.approximate()'s "Normalize residuals" step (proxyshap.py:207). This recentering
+        # is NOT part of the reference's train_residual_ratio formula (hence computed separately,
+        # above, from the non-recentered raw_residual) but IS required here: it is what makes the
+        # closed-form correction reproduce the generic Monte-Carlo residual-game path bit-for-bit
+        # (verified in test_fast_path_matches_parent_path and
+        # run_logs/pr_b/diff_check/DIFF_REPORT.md item 2).
+        residual_values = raw_residual - raw_residual[0]
+
+        # self.index is typed at the base class's broader ValidProxySHAPIndices, but the guard
+        # above (self.index not in ("SV", "BV") -> delegate) narrows it to Literal["SV", "BV"] for
+        # the rest of this method, which ty accepts as a ValidRegressionMSRIndices argument here
+        # without a suppression comment (confirmed empirically: a `ty: ignore[invalid-argument-type]`
+        # on this line is flagged as an unused-ignore-comment warning by `ty check`).
+        p = _semivalue_p(n_players, self.index)
         sizes = coalitions_matrix.sum(axis=1).astype(int)
         d_weights = self._sampler.sampling_adjustment_weights
         p_below = np.concatenate(([0.0], p))[sizes]  # p_{|S|-1}

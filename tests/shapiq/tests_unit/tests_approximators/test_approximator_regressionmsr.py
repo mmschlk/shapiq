@@ -17,9 +17,11 @@ import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
+import shapiq.approximator.proxy.regressionmsr as regressionmsr_mod
 from shapiq.approximator import RegressionMSR
-from shapiq.approximator.proxy._routes import _extract_proxy_interactions, fit_proxy
+from shapiq.approximator.proxy._routes import _extract_proxy_interactions, fit_proxy, predict_proxy
 from shapiq.approximator.proxy.proxyshap import ProxySHAP
+from shapiq.approximator.proxy.regressionmsr import _semivalue_p
 from shapiq.game_theory.exact import ExactComputer
 from shapiq_games.synthetic import DummyGame
 
@@ -55,6 +57,25 @@ def _pairwise_game(n: int, seed: int):
         for (i, j), pw in zip(pairs, pair_w, strict=False):
             val = val + pw * coalitions[:, i] * coalitions[:, j]
         return val + 0.3 * np.sin(coalitions.sum(axis=1))
+
+    return game
+
+
+def _offset_game(n: int, offset: float = 3.7):
+    """A purely linear game with a nonzero intercept, i.e. ``v(empty) == offset != 0``.
+
+    Every other game in this file has ``v(empty) == 0`` by construction, which hides a bug that
+    hardcodes or otherwise loses the baseline value (see ``run_logs/pr_b/mutation/MUTATION_REPORT.md``
+    survivors M6/M12) and hides the ``train_residual_ratio`` definitional mismatch documented in
+    ``run_logs/pr_b/diff_check/DIFF_REPORT.md`` item 4.8 (shapiq's baseline-shifted vs. the
+    reference's raw formula only diverge when ``v(empty) != 0``).
+    """
+    rng = np.random.default_rng(0)
+    w = rng.normal(size=n)
+
+    def game(coalitions: np.ndarray) -> np.ndarray:
+        coalitions = np.atleast_2d(coalitions).astype(float)
+        return offset + coalitions @ w
 
     return game
 
@@ -268,20 +289,27 @@ def test_bv_linear_estimation_budget_not_lost():
 
 def test_partial_budget_msr_beats_none_on_average():
     """At a partial budget, the msr-adjusted estimate should on average be more accurate than
-    the unadjusted proxy-only estimate, over several seeds.
+    the unadjusted proxy-only estimate, over several seeds, by a statistically meaningful margin.
 
-    Uses the tree-game family and configuration verified in
-    ``run_logs/pr_b/check_partial_budget.py`` (job 284308: mean RSE msr=0.08786 < none=0.08796
-    over these exact 10 seeds), matching the "none" baseline convention established by
+    Uses the tree-game family and configuration from
+    ``run_logs/pr_b/check_partial_budget.py``, but widened from 10 to 30 seeds and checked against
+    the paired-difference standard error rather than a bare inequality: the original 10-seed,
+    bare-``<`` version had only a ~0.1% relative margin (``run_logs/pr_b/REVIEW.md`` finding N1),
+    which is not distinguishable from noise and could flip on an unrelated dependency bump without
+    indicating a real regression. Requiring the mean gap to exceed 2 standard errors of the paired
+    per-seed differences is the same style of check
+    ``run_logs/pr_b/diff_check/DIFF_REPORT.md``'s own item 2/3 tables use to separate a real effect
+    from sampling noise. Matches the "none" baseline convention established by
     ``run_logs/msr_verify/phase2b_accuracy.py`` (``RegressionMSR`` hardcodes
     ``adjustment="msr"``, so the no-correction reference uses ``ProxySHAP(adjustment="none")``
     directly with the same ``max_order=1``/``index="SV"`` configuration).
     """
     n = 6
     budget = 4 * n
+    n_seeds = 30
     rse_msr, rse_none = [], []
     last_result = None
-    for seed in range(10):
+    for seed in range(n_seeds):
         game = _make_tree_game(n, seed)
         exact = ExactComputer(game=game, n_players=n)(index="SV", order=1)
         phi_exact = _phi(exact, n)
@@ -304,7 +332,13 @@ def test_partial_budget_msr_beats_none_on_average():
 
     assert last_result.estimated is True
     assert last_result.estimation_budget <= budget
-    assert np.mean(rse_msr) < np.mean(rse_none)
+
+    diffs = np.array(rse_none) - np.array(rse_msr)
+    mean_diff = float(np.mean(diffs))
+    se_diff = float(np.std(diffs, ddof=1) / np.sqrt(n_seeds))
+    assert mean_diff > 2 * se_diff, (
+        f"mean gap {mean_diff} is not a statistically meaningful margin (2*SE={2 * se_diff})"
+    )
 
 
 def test_diagnostics_set_and_in_range():
@@ -348,3 +382,201 @@ def test_docstring_example_reproduces():
         "    n_players=5, baseline_value=0.0\n"
         ")"
     )
+
+
+def test_semivalue_p_raises_for_unsupported_index():
+    """``_semivalue_p`` only has a closed-form weight for ``"SV"``/``"BV"``; any other index must
+    raise, not silently fall back to (e.g.) the SV weights (see
+    ``run_logs/pr_b/mutation/MUTATION_REPORT.md`` mutant M18).
+
+    ``RegressionMSR.approximate()`` itself never reaches this branch (it delegates to
+    ``ProxySHAP.approximate()`` for any index outside ``{"SV", "BV"}`` before calling
+    ``_semivalue_p`` at all -- see ``test_unsupported_index_falls_back_to_parent`` below), so this
+    branch is exercised directly here to keep it covered without depending on that guard.
+    """
+    with pytest.raises(ValueError, match="No closed-form semivalue weight"):
+        _semivalue_p(5, "SII")
+
+
+@pytest.mark.parametrize("index", ["SII", "k-SII", "STII"])
+def test_unsupported_index_falls_back_to_parent(index):
+    """For any index the closed-form correction does not handle (``{"SV", "BV"}`` only),
+    ``approximate()`` must delegate to the generic ``ProxySHAP.approximate()`` path and produce the
+    identical result -- not crash.
+
+    Before the fix, construction with e.g. ``index="SII"`` succeeded silently (the inherited
+    ``valid_indices`` is not narrowed), but ``approximate()`` then wasted a full sampling/fitting
+    pass before raising a closed-form-specific ``ValueError`` from ``_semivalue_p`` -- a direct
+    contradiction of ``run_logs/pr_b/BRIEF.md``'s fallback requirement, reproduced live in
+    ``run_logs/pr_b/review/verify_msr_284636.out`` (``REVIEW.md`` finding B1). ``ProxySHAP`` itself
+    handles these three indices fine at ``max_order=1``/``adjustment="msr"`` (same evidence file),
+    so this is a meaningful, not merely hypothetical, fallback target. ``index="BII"`` is a
+    separate case (see ``test_bii_index_delegates_and_matches_parent_failure``): the *parent*
+    itself does not support it for ``adjustment="msr"``.
+    """
+    n, seed, budget = 6, 0, 4 * 6
+    game = _pairwise_game(n, seed)
+
+    fast = RegressionMSR(n=n, index=index, proxy_model="xgboost", random_state=seed).approximate(
+        budget, game
+    )
+    generic = ProxySHAP(
+        n=n,
+        max_order=1,
+        index=index,
+        proxy_model="xgboost",
+        adjustment="msr",
+        random_state=seed,
+    ).approximate(budget, game)
+
+    assert np.allclose(_phi(fast, n), _phi(generic, n), atol=1e-10)
+    assert fast.index == generic.index
+    assert fast.estimated == generic.estimated
+    assert fast.estimation_budget == generic.estimation_budget
+
+
+def test_bii_index_delegates_and_matches_parent_failure():
+    r"""``index="BII"`` is not supported by ``ProxySHAP`` itself for ``adjustment="msr"`` when the
+    proxy is a *linear* model (a pre-existing, upstream limitation, unrelated to
+    ``RegressionMSR`` -- confirmed via ``run_logs/pr_b/review/verify_msr_284636.out``: the generic
+    ``ProxySHAP(adjustment="msr", index="BII", proxy_model="linear").approximate()`` itself raises
+    ``ValueError: Invalid index. Index \`BII\` is not supported...``, raised from
+    ``MoebiusConverter.compute``).
+
+    This is specific to the linear proxy's extraction route (``_extract_linear`` in ``_routes.py``
+    unconditionally runs its interaction read-out through ``MoebiusConverter(...).compute()``); the
+    tree route (``_extract_tree``) does not call ``MoebiusConverter`` at all, so
+    ``proxy_model="xgboost"``/``"tree"`` does *not* reproduce this failure -- confirmed empirically:
+    an earlier version of this test used ``proxy_model="xgboost"`` and failed with "DID NOT RAISE"
+    (job 284799). Hence ``proxy_model="linear"`` here, matching the reviewer's own reproduction.
+
+    Delegating the *entire* call to the parent (rather than special-casing the exception) means
+    ``RegressionMSR`` now raises exactly the same error the parent does for this index, instead of
+    the different, closed-form-specific ``_semivalue_p`` ``ValueError`` it raised before this fix
+    -- that inconsistency across "unsupported" indices was exactly ``REVIEW.md`` finding B1's
+    complaint ("the failure mode is not even consistent across 'unsupported' indices").
+    """
+    n, seed, budget = 6, 0, 24
+    game = _pairwise_game(n, seed)
+    fast = RegressionMSR(n=n, index="BII", proxy_model="linear", random_state=seed)
+    generic = ProxySHAP(
+        n=n, max_order=1, index="BII", proxy_model="linear", adjustment="msr", random_state=seed
+    )
+
+    with pytest.raises(ValueError, match=r"Index `BII` is not supported"):
+        fast.approximate(budget, game)
+    with pytest.raises(ValueError, match=r"Index `BII` is not supported"):
+        generic.approximate(budget, game)
+
+
+@pytest.mark.parametrize("index", ["SV", "BV"])
+def test_baseline_value_matches_v_of_empty_coalition(index):
+    """``result.baseline_value`` and ``result[()]`` must equal the game's own ``v(empty)``, not be
+    silently hardcoded to ``0.0`` (see ``run_logs/pr_b/mutation/MUTATION_REPORT.md`` survivors
+    M6/M12). Every other game in this file has ``v(empty) == 0`` by construction, which lets such a
+    bug hide behind every existing test; ``_offset_game`` has ``v(empty) == 3.7``.
+
+    Both assertions matter and are NOT redundant: ``InteractionValues.__init__`` reconciles a
+    disagreement between the passed ``values[()]`` dict entry and the passed ``baseline_value=``
+    kwarg by overwriting the dict entry from ``baseline_value=`` -- but only for indices where
+    ``is_empty_value_the_baseline(index)`` is ``True``, which holds for ``"SV"`` but not for
+    ``"BV"``. A bug that corrupts only the local ``interactions[()]`` dict entry (while
+    ``baseline_value=`` itself stays correct) would be silently self-healed and invisible via
+    ``result[()]`` for SV; parametrizing over both of ``RegressionMSR``'s two supported indices is
+    what makes this test meaningful.
+    """
+    n = 6
+    game = _offset_game(n, offset=3.7)
+    approx = RegressionMSR(n=n, index=index, proxy_model="xgboost", random_state=0)
+    result = approx.approximate(budget=4 * n, game=game)
+
+    assert result.baseline_value == pytest.approx(3.7, abs=1e-9)
+    assert result[()] == pytest.approx(3.7, abs=1e-9)
+
+
+def test_proxy_interactions_object_not_mutated_in_place(monkeypatch):
+    """``approximate()`` must assemble a FRESH ``InteractionValues``, never mutating the proxy's
+    own extracted result in place (explicit requirement in ``run_logs/pr_b/BRIEF.md`` item 1 and
+    the class docstring; untested previously -- ``run_logs/pr_b/mutation/MUTATION_REPORT.md``
+    mutant M13).
+
+    Not observable from the final output alone (``proxy_interactions`` is a purely local variable
+    in the implementation), so capture the object at the seam -- monkeypatching the module-level
+    ``_extract_proxy_interactions`` that ``regressionmsr.py`` calls -- and check it is
+    byte-for-byte unchanged after ``approximate()`` returns.
+    """
+    captured = {}
+    orig = regressionmsr_mod._extract_proxy_interactions
+
+    def spy(*args, **kwargs):
+        result = orig(*args, **kwargs)
+        captured["proxy_interactions"] = result
+        captured["snapshot"] = dict(result.interactions)
+        return result
+
+    monkeypatch.setattr(regressionmsr_mod, "_extract_proxy_interactions", spy)
+
+    n = 6
+    game = _pairwise_game(n, seed=0)
+    RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=0).approximate(
+        budget=4 * n, game=game
+    )
+
+    assert captured, "the spy was never invoked; approximate() no longer calls this seam"
+    assert captured["proxy_interactions"].interactions == captured["snapshot"]
+
+
+def test_train_residual_ratio_matches_hand_computed_reference_formula():
+    """``train_residual_ratio`` must match the reference's raw (baseline-inclusive) formula
+    exactly: ``||v - f_hat||_2 / ||v||_2`` (``regressionMSR/estimators/regMSR_all.py:96-101``),
+    using ``v(S)``/``f_hat(S)`` *before* any baseline shift -- not shapiq's internal
+    ``||v - v(empty)||_2`` convention, which diverges from the reference by up to ~6x whenever
+    ``v(empty) != 0`` (``run_logs/pr_b/diff_check/DIFF_REPORT.md`` item 4.8).
+
+    Uses a game with ``v(empty) != 0`` so the two formulas are actually distinguishable, and
+    recomputes the expected ratio *by hand* from the reference's own definition (not by calling
+    any of the approximator's correction/diagnostics code): the sampler's own realized coalitions
+    and the game's raw values, refit via the same public ``fit_proxy``/``predict_proxy`` routes the
+    implementation itself uses (not a reimplementation of the correction formula, so this isn't a
+    self-comparison tautology).
+    """
+    n, seed = 6, 0
+    game = _offset_game(n, offset=3.7)
+
+    approx = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=seed)
+    approx.approximate(budget=4 * n, game=game)
+
+    z = approx._sampler.coalitions_matrix
+    v_raw = game(z)  # raw, NOT baseline-shifted
+    baseline = v_raw[0]
+    v_shifted = v_raw - baseline
+    fitted = fit_proxy(approx.proxy_model, z, v_shifted, max_order=1)
+    f_hat_shifted = predict_proxy(fitted, z, max_order=1)
+    f_hat_raw = f_hat_shifted + baseline
+    residual = v_raw - f_hat_raw
+    expected_ratio = np.linalg.norm(residual) / np.linalg.norm(v_raw)
+
+    assert approx.train_residual_ratio == pytest.approx(expected_ratio, rel=1e-9)
+
+
+def test_correction_norm_is_l2_not_l1():
+    """``correction_norm`` must be the Euclidean (L2) norm of the correction vector, not the L1
+    norm (see ``run_logs/pr_b/mutation/MUTATION_REPORT.md`` mutant M20; the previous
+    ``test_diagnostics_set_and_in_range``'s ``> 0`` check cannot distinguish a norm type).
+
+    Recovers the per-player correction behaviorally as ``(msr singleton) - (proxy-only singleton,
+    same seed/coalitions, adjustment="none")``, then compares its L2 norm to ``correction_norm``.
+    """
+    n, seed = 6, 0
+    game = _pairwise_game(n, seed)
+    approx = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=seed)
+    result = approx.approximate(budget=4 * n, game=game)
+
+    approx_none = ProxySHAP(
+        n=n, max_order=1, index="SV", proxy_model="xgboost", adjustment="none", random_state=seed
+    )
+    result_none = approx_none.approximate(budget=4 * n, game=game)
+    correction = _phi(result, n) - _phi(result_none, n)
+    expected_l2 = float(np.linalg.norm(correction))
+
+    assert approx.correction_norm == pytest.approx(expected_l2, rel=1e-6)
