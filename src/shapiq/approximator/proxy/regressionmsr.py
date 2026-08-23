@@ -7,8 +7,14 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from shapiq.approximator.proxy._routes import _extract_proxy_interactions, fit_proxy, predict_proxy
+from shapiq.approximator.proxy._routes import (
+    _base_estimator,
+    _extract_proxy_interactions,
+    fit_proxy,
+    predict_proxy,
+)
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils.modules import safe_isinstance
 
 from .proxyshap import ProxySHAP
 
@@ -55,30 +61,88 @@ def _semivalue_p(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
     raise ValueError(msg)
 
 
-def _paper_sampling_weights(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
+def _proxy_selects_linear_kernel(
+    proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral,
+) -> bool:
+    """Whether ``proxy_model`` selects (or resolves to) a linear-in-features proxy.
+
+    Mirrors :cite:t:`Witter.2025`'s reference condition, ``reg_model_class == 'linear'`` (the
+    reference's ``UniversalMSR.__init__``), which only ever sees a string tag, since the
+    reference's own ``regression_adj``/``reg_model_class`` parameter is always a string.
+    shapiq's ``proxy_model`` additionally allows passing a resolved estimator directly (optionally
+    wrapped in an HPO search), bypassing the ``"linear"`` string tag entirely
+    (:meth:`~shapiq.approximator.proxy.proxyshap.ProxySHAP.__init__`'s
+    ``isinstance(proxy_model, ProxyModel)`` branch) -- such an estimator is still routed through
+    the exact same linear coefficient read-out as the ``"linear"`` tag
+    (:func:`~shapiq.approximator.proxy._routes._extract_linear`, registered on
+    ``"sklearn.linear_model._base.LinearModel"``), so it is treated identically here: an HPO
+    wrapper is unwrapped to its *unfitted* base estimator first
+    (:func:`~shapiq.approximator.proxy._routes._base_estimator`, the same unwrap
+    :func:`~shapiq.approximator.proxy._routes.fit_proxy` itself uses to pick a feature transform),
+    then checked against that same class family.
+
+    Args:
+        proxy_model: The raw, not-yet-resolved ``proxy_model`` argument as passed to
+            :meth:`RegressionMSR.__init__` (i.e. *before*
+            :meth:`~shapiq.approximator.proxy.proxyshap.ProxySHAP.__init__` resolves a string tag
+            into an estimator).
+
+    Returns:
+        ``True`` if the linear-proxy kernel applies (see :func:`_paper_sampling_weights`),
+        ``False`` if the generic kernel applies instead.
+    """
+    if isinstance(proxy_model, str):
+        return proxy_model == "linear"
+    return safe_isinstance(_base_estimator(proxy_model), "sklearn.linear_model._base.LinearModel")
+
+
+def _paper_sampling_weights(
+    n: int,
+    index: ValidRegressionMSRIndices,
+    proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
+) -> np.ndarray:
     r"""The default ``sampling_weights`` of :class:`RegressionMSR`: the paper's own sampling kernel.
 
-    Reproduces :cite:t:`Witter.2025`'s ``UniversalMSR``/``TreeMSRAll`` sampling density
-    ``sample_dist`` exactly -- a per-INDIVIDUAL-COALITION density
-    ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``, normalized to sum to 1, where
-    ``p_0, ..., p_{n-1}`` are :func:`_semivalue_p`'s semivalue coefficients for the target
-    ``index`` -- then converts it to shapiq's per-SIZE probability-mass convention the same way the
-    reference itself does before drawing a coalition size: ``mass[s] = D(s) * C(n, s)``,
-    renormalized. shapiq's ``sampling_weights[s]`` is this per-SIZE probability mass, not the
-    reference's per-coalition density -- see the ``sampling_weights`` parameter's docstring below
-    for the conversion, needed if porting in a *different* density than this default.
+    Reproduces :cite:t:`Witter.2025`'s ``UniversalMSR`` sampling density ``sample_dist`` exactly --
+    a per-INDIVIDUAL-COALITION density, normalized to sum to 1, then converted to shapiq's
+    per-SIZE probability-mass convention the same way the reference itself does before drawing a
+    coalition size: ``mass[s] = D(s) * C(n, s)``, renormalized. shapiq's ``sampling_weights[s]`` is
+    this per-SIZE probability mass, not the reference's per-coalition density -- see the
+    ``sampling_weights`` parameter's docstring below for the conversion, needed if porting in a
+    *different* density than this default.
 
-    Computed entirely in log-space (:func:`math.lgamma`) rather than by squaring/dividing raw
-    floats, so it stays finite and correctly normalized for ``n`` up to (at least) the low
-    thousands: a direct float computation of ``p_k ** 2`` underflows to exactly ``0.0`` for
-    essentially every ``k`` once ``n`` is a few hundred or more -- e.g. Banzhaf's constant
-    ``p_k = 1 / 2 ** (n - 1)`` squared underflows below the smallest subnormal ``float64`` once
-    ``n > ~538`` -- which would silently zero out the entire distribution and divide-by-zero on
-    renormalization.
+    The reference defines **two** kernels for ``D(s)``, selected by ``reg_model_class`` (shapiq's
+    ``proxy_model``, see :func:`_proxy_selects_linear_kernel`):
+
+    * **Generic** (any ``proxy_model`` other than a linear one -- the default, e.g.
+      ``"xgboost"``/``"lightgbm"``/``"tree"``): the ``UniversalMSR``/``TreeMSRAll`` kernel
+      ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``, where ``p_0, ..., p_{n-1}``
+      are :func:`_semivalue_p`'s semivalue coefficients for the target ``index``.
+    * **Linear** (``proxy_model`` is (or resolves to) a linear-in-features proxy): for ``index=
+      "SV"``, the Leverage-SHAP density ``D(s) = (p_s + p_{s-1}) * s * (n - s)`` for
+      ``s = 1, ..., n - 1`` and ``D(0) = D(n) = 0`` -- *not* the generic formula above, which the
+      reference only uses for non-linear proxies. For ``index="BV"``, the reference instead uses a
+      constant density (``ones_like``); this happens to be mathematically identical (not merely
+      proportional) to the generic formula for Banzhaf, since Banzhaf's ``p_k`` is constant in
+      ``k`` (verified in ``test_bv_linear_default_equals_generic_and_uniform``), so this function
+      does not special-case ``index="BV"`` at all -- the generic branch already reproduces it
+      exactly.
+
+    Computed entirely in log-space (:func:`math.lgamma`, :func:`numpy.logaddexp`) rather than by
+    squaring/summing/dividing raw floats, so it stays finite and correctly normalized for ``n`` up
+    to (at least) the low thousands: a direct float computation of ``p_k ** 2`` (or, for the linear
+    kernel, ``p_k`` itself) underflows to exactly ``0.0`` for essentially every ``k`` once ``n`` is
+    a few hundred or more -- e.g. Banzhaf's constant ``p_k = 1 / 2 ** (n - 1)`` squared underflows
+    below the smallest subnormal ``float64`` once ``n > ~538`` -- which would silently zero out the
+    entire distribution and divide-by-zero on renormalization.
 
     Args:
         n: The number of players.
         index: ``"SV"`` or ``"BV"`` (the only indices :func:`_semivalue_p` supports).
+        proxy_model: The raw, not-yet-resolved ``proxy_model`` argument (see
+            :func:`_proxy_selects_linear_kernel`); selects between the linear and generic kernels
+            above. Defaults to ``"xgboost"`` (a non-linear proxy, i.e. the generic kernel), the
+            same default :class:`RegressionMSR` itself uses for ``proxy_model``.
 
     Returns:
         An array of shape ``(n + 1,)``, indexed by coalition size ``0, ..., n``: non-negative and
@@ -97,20 +161,34 @@ def _paper_sampling_weights(n: int, index: ValidRegressionMSRIndices) -> np.ndar
         msg = f"No closed-form paper sampling kernel implemented for index={index!r}."
         raise ValueError(msg)
 
-    # log(prob[size]) = log( p_{size-1}^2 * size + p_size^2 * (n - size) ), via a manual
-    # (>=1, <=2-term) logsumexp so the (up to) two summands never overflow/underflow independently
-    # before being combined.
-    log_prob = np.empty(n + 1)
-    for size in range(n + 1):
-        terms = []
-        if size > 0:
-            terms.append(2 * log_p[size - 1] + log(size))
-        if size < n:
-            terms.append(2 * log_p[size] + log(n - size))
-        m = max(terms)
-        log_prob[size] = m + log(sum(exp(t - m) for t in terms))
+    if index == "SV" and _proxy_selects_linear_kernel(proxy_model):
+        # Leverage-SHAP density: D(s) = (p_s + p_{s-1}) * s * (n - s) for s = 1, ..., n - 1;
+        # D(0) = D(n) = 0. log(p_s + p_{s-1}) via np.logaddexp (not log(exp(.)+exp(.))) so the sum
+        # never overflows/underflows before being combined -- same underflow rationale as the
+        # generic branch's manual logsumexp below, just for a plain sum instead of a sum of
+        # squares.
+        log_density = np.full(n + 1, -np.inf)
+        for size in range(1, n):
+            log_density[size] = (
+                np.logaddexp(log_p[size], log_p[size - 1]) + log(size) + log(n - size)
+            )
+    else:
+        # Generic density (also the reference's own kernel for proxy_model=<linear> +
+        # index="BV" -- see this function's docstring). log(prob[size]) =
+        # log( p_{size-1}^2 * size + p_size^2 * (n - size) ), via a manual (>=1, <=2-term)
+        # logsumexp so the (up to) two summands never overflow/underflow independently before
+        # being combined.
+        log_prob = np.empty(n + 1)
+        for size in range(n + 1):
+            terms = []
+            if size > 0:
+                terms.append(2 * log_p[size - 1] + log(size))
+            if size < n:
+                terms.append(2 * log_p[size] + log(n - size))
+            m = max(terms)
+            log_prob[size] = m + log(sum(exp(t - m) for t in terms))
+        log_density = 0.5 * log_prob  # sqrt(.) in log-space
 
-    log_density = 0.5 * log_prob  # sqrt(.) in log-space
     log_comb = np.array([lgamma(n + 1) - lgamma(s + 1) - lgamma(n - s + 1) for s in range(n + 1)])
     log_mass = log_density + log_comb  # D(s) * C(n, s), in log-space
     mass = np.exp(log_mass - log_mass.max())  # numerically stable softmax-style normalization
@@ -195,13 +273,26 @@ class RegressionMSR(ProxySHAP):
                 :meth:`approximate`), ``None`` falls back to that same bowl-shaped default instead,
                 since no closed-form paper kernel is defined outside ``{"SV", "BV"}``.
 
-                The paper kernel is, in shapiq's per-SIZE probability-mass convention (``mass[s]``
-                below): ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n - s) * [s<n])``, normalized
-                to sum to 1, then ``mass[s] = D(s) * C(n, s)``, renormalized to sum to 1 -- where
-                ``p_0, ..., p_{n-1}`` are the semivalue coefficients for ``index`` (see
-                :func:`_semivalue_p`). This exactly reproduces :cite:t:`Witter.2025`'s reference
-                ``sample_dist``, converted the way the reference itself converts it before sampling
-                a size. Empirically, this default is markedly more accurate than the previous
+                The reference actually defines **two** kernels, selected by whether ``proxy_model``
+                is (or resolves to) a linear-in-features proxy (see
+                :func:`_proxy_selects_linear_kernel`) -- in shapiq's per-SIZE probability-mass
+                convention (``mass[s]`` below):
+
+                * Non-linear ``proxy_model`` (the default, e.g. ``"xgboost"``): ``D(s) =
+                  sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n - s) * [s<n])``.
+                * Linear ``proxy_model`` (e.g. ``proxy_model="linear"``) with ``index="SV"``: the
+                  Leverage-SHAP density ``D(s) = (p_s + p_{s-1}) * s * (n - s)`` for
+                  ``s = 1, ..., n - 1`` and ``D(0) = D(n) = 0``. With ``index="BV"`` the reference
+                  uses a constant density instead, which is mathematically identical to the
+                  non-linear formula above for Banzhaf (constant ``p_k``), so this case is not
+                  distinguished separately.
+
+                Either way: ``D(s)`` is normalized to sum to 1, then ``mass[s] = D(s) * C(n, s)``,
+                renormalized to sum to 1 -- where ``p_0, ..., p_{n-1}`` are the semivalue
+                coefficients for ``index`` (see :func:`_semivalue_p`). This exactly reproduces
+                :cite:t:`Witter.2025`'s reference ``sample_dist`` (for the ``proxy_model`` actually
+                passed), converted the way the reference itself converts it before sampling a size.
+                Empirically, the non-linear kernel is markedly more accurate than the previous
                 bowl-shaped default at large budgets -- about 25% lower pooled error across an
                 8-dataset benchmark grid (pooled ratio-to-reference 0.972 vs. 1.32).
 
@@ -223,8 +314,11 @@ class RegressionMSR(ProxySHAP):
             # _paper_sampling_weights and this parameter's docstring above. Only defined for the
             # two indices the closed-form fast path covers; any other index falls through to
             # `sampling_weights=None`, letting Approximator.__init__ apply its usual bowl-shaped
-            # default exactly as before.
-            sampling_weights = _paper_sampling_weights(n, index)
+            # default exactly as before. `proxy_model` is passed through as-is (not yet resolved
+            # into an estimator -- that happens below, in super().__init__()) so
+            # _paper_sampling_weights can select the linear-proxy kernel when it applies; see
+            # _proxy_selects_linear_kernel.
+            sampling_weights = _paper_sampling_weights(n, index, proxy_model)
         super().__init__(
             n=n,
             max_order=1,
@@ -306,6 +400,15 @@ class RegressionMSR(ProxySHAP):
         # index never wastes a sampling/fitting pass before falling back.
         if self.index not in ("SV", "BV"):
             return super().approximate(budget, game, **kwargs)
+
+        # Reset both diagnostics to None *before* any computation below, not just at the end once
+        # both are freshly computed: if this is a second `approximate()` call on the same instance
+        # and something raises partway through (between setting train_residual_ratio and
+        # correction_norm further down), this guarantees the pair is never left as one fresh value
+        # next to one stale value from a prior successful call -- a caller catching the exception
+        # always sees either both None or both freshly consistent, never a stale/fresh mix.
+        self.train_residual_ratio = None
+        self.correction_norm = None
 
         # 1. Sample coalitions and evaluate the game (identical to ProxySHAP.approximate()).
         self._sampler.sample(int(budget))

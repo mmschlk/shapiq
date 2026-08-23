@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 
 import shapiq.approximator.proxy.regressionmsr as regressionmsr_mod
@@ -729,6 +730,100 @@ def test_default_sampling_weights_match_independent_reference(n, index):
     # passed), for both the fast RegressionMSR path and its ProxySHAP parent.
     fast = RegressionMSR(n=n, index=index, random_state=0)
     np.testing.assert_allclose(fast._sampler._sampling_weights, weights, rtol=1e-9)
+
+
+def _reference_leverage_shap_density_sv_linear(n: int) -> np.ndarray:
+    """Independent (non-log-space) reference for the SV kernel used when ``proxy_model`` is linear.
+
+    Recomputes :cite:t:`Witter.2025`'s reference override for ``reg_model_class == 'linear'`` with
+    Shapley weighting (the reference's ``UniversalMSR.__init__``): ``D(s) = (p_s +
+    p_{s-1}) * s * (n - s)`` for ``s = 1, ..., n - 1``, and ``D(0) = D(n) = 0`` -- deliberately
+    *not* sharing :func:`~shapiq.approximator.proxy.regressionmsr._paper_sampling_weights`'s
+    log-space implementation (nor :func:`~shapiq.approximator.proxy.regressionmsr._semivalue_p`),
+    so this is an independent check of that function's linear-kernel branch, not a self-comparison
+    tautology.
+    """
+    p = np.array(
+        [math.factorial(k) * math.factorial(n - k - 1) / math.factorial(n) for k in range(n)]
+    )
+    density = np.zeros(n + 1)
+    for s in range(1, n):
+        density[s] = (p[s] + p[s - 1]) * s * (n - s)
+    comb = np.array([math.comb(n, s) for s in range(n + 1)], dtype=float)
+    mass = density * comb
+    return mass / mass.sum()
+
+
+@pytest.mark.parametrize("n", [3, 5, 10, 60])
+def test_sv_linear_default_matches_leverage_shap_reference_and_differs_from_generic(n):
+    """For ``index="SV"`` with a linear ``proxy_model``, :func:`_paper_sampling_weights` must
+    switch to the reference's Leverage-SHAP kernel (the reference's ``reg_model_class == 'linear'``
+    override for Shapley weighting), not silently keep using the generic (tree/xgboost) kernel --
+    the M1 finding this fix addresses. Checked against
+    :func:`_reference_leverage_shap_density_sv_linear`, an independently written reference of that
+    specific kernel (not the generic one already covered by
+    ``test_default_sampling_weights_match_independent_reference``), and confirmed to actually
+    differ from the generic kernel so this branch is observable rather than accidentally reducing
+    to the same numbers.
+    """
+    linear_weights = _paper_sampling_weights(n, "SV", "linear")
+    expected = _reference_leverage_shap_density_sv_linear(n)
+
+    assert linear_weights.shape == (n + 1,)
+    assert np.all(linear_weights >= 0)
+    assert linear_weights.sum() == pytest.approx(1.0, abs=1e-9)
+    np.testing.assert_allclose(linear_weights, expected, rtol=1e-9, atol=1e-12)
+
+    generic_weights = _paper_sampling_weights(n, "SV", "xgboost")
+    assert not np.allclose(linear_weights, generic_weights)
+
+    # An actual (unresolved) linear estimator instance -- not just the "linear" string tag --
+    # must select the same kernel: RegressionMSR.__init__ passes proxy_model through unresolved,
+    # see _proxy_selects_linear_kernel.
+    instance_weights = _paper_sampling_weights(n, "SV", LinearRegression())
+    np.testing.assert_allclose(instance_weights, linear_weights, rtol=1e-12)
+
+    # And the constructed approximator actually uses the linear kernel as its default (no
+    # sampling_weights= passed) when proxy_model="linear".
+    fast = RegressionMSR(n=n, index="SV", proxy_model="linear", random_state=0)
+    np.testing.assert_allclose(fast._sampler._sampling_weights, linear_weights, rtol=1e-9)
+
+
+@pytest.mark.parametrize("n", [3, 5, 10, 60])
+def test_bv_linear_default_equals_generic_and_uniform(n):
+    """For ``index="BV"``, the reference's ``proxy_model="linear"`` override (a constant density,
+    the reference's ``ones_like``) is mathematically identical -- not just proportional -- to the
+    generic (non-linear) kernel, since Banzhaf's semivalue coefficient ``p_k`` is constant in
+    ``k``. :func:`_paper_sampling_weights` therefore does not special-case ``index="BV"`` at all;
+    this test verifies that identity directly rather than assuming it (per the M1 fix's
+    instructions), and additionally checks both against a third, independent characterization: a
+    constant per-coalition density's per-size mass is exactly the ``Binomial(n, 1/2)`` pmf
+    (``C(n, s) / 2**n``, normalized), since ``mass[s] = D(s) * C(n, s)`` with constant ``D(s)`` is
+    proportional to ``C(n, s)`` alone.
+    """
+    linear_weights = _paper_sampling_weights(n, "BV", "linear")
+    generic_weights = _paper_sampling_weights(n, "BV", "xgboost")
+    uniform_mass = np.array([math.comb(n, s) for s in range(n + 1)], dtype=float)
+    uniform_mass = uniform_mass / uniform_mass.sum()
+
+    np.testing.assert_allclose(linear_weights, generic_weights, rtol=1e-9, atol=1e-12)
+    np.testing.assert_allclose(linear_weights, uniform_mass, rtol=1e-9, atol=1e-12)
+
+
+def test_non_linear_proxies_use_generic_kernel():
+    """``_paper_sampling_weights``'s default ``proxy_model="xgboost"`` (matching
+    ``RegressionMSR``'s own default) and other non-linear proxies all select the generic kernel,
+    unaffected by the linear-kernel branch added for M1 -- i.e. the pre-existing behavior
+    ``test_default_sampling_weights_match_independent_reference`` already covers, exercised here
+    explicitly across a few non-linear proxy representations (string tags and a raw estimator
+    instance) to guard against the linear check accidentally over-triggering.
+    """
+    n = 10
+    baseline = _paper_sampling_weights(n, "SV")  # proxy_model defaults to "xgboost"
+    for proxy_model in ("xgboost", "tree", "lightgbm", DecisionTreeRegressor()):
+        np.testing.assert_allclose(
+            _paper_sampling_weights(n, "SV", proxy_model), baseline, rtol=1e-12
+        )
 
 
 @pytest.mark.parametrize("n", [3, 5, 10, 60])
