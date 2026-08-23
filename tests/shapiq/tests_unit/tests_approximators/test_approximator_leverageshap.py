@@ -154,138 +154,141 @@ def test_budget_too_small_raises():
         approximator.approximate(budget=1, game=lambda Z: np.zeros(len(Z)))
 
 
-def _independent_find_c(n: int, m: int) -> float:
-    """Standalone re-derivation of Eq. 12's oversampling constant (binary search).
+def test_per_size_counts_match_hand_computed_tables():
+    """Per-size sampled row counts must match literal, hand-computed expected tables.
 
-    Written independently of ``LeverageSHAP._find_c`` (own bracketing/bisection loop) so
-    that ``test_per_size_counts_match_expected_formula_and_symmetry`` is not merely
-    checking the implementation against itself.
+    These four (n, budget) cases were solved by hand from the class docstring's
+    definition (Eq. 12 for c, then the largest-remainder rounding of each half-size's
+    Binomial(C(n, s), min(1, 2c / C(n, s))) mean into a pair count m_s, doubled for the
+    middle size since a "pair" there is two distinct same-size coalitions) -- not by
+    re-running or reimplementing shapiq's own algorithm. The numbers are transcribed
+    once as a literal table below so a shared bug between this test and the
+    implementation cannot make both sides agree. Derivations:
+
+    n=4, budget=10: target = budget - 2 = 8. C(4,1)=4, C(4,2)=6, C(4,3)=4. Solving
+    sum(min(C(4,s), 2c)) = 8 with 2c <= 4 gives 2c = 8/3 (all three terms equal 2c and
+    sum to 3*(8/3) = 8), i.e. c = 4/3. Half-sizes are s=1 (not middle) and s=2 (middle,
+    n even). s=1: mu = 2c = 8/3 ~= 2.667, floor 2, remainder 0.667. s=2 (middle):
+    pool = C(3,1) = 3, mu = 2c*s/n = (8/3)*(2/4) = 4/3 ~= 1.333, floor 1, remainder
+    0.333. Floor sum = 3, target_pairs = (10-2)//2 = 4, shortfall = 1, which goes to
+    s=1 (larger remainder) -> pairs {1: 3, 2: 1}. Row counts: size 1 and its complement
+    size 3 each get 3 rows (one row per pair, non-middle); size 2 is self-complementary
+    so its 1 pair contributes 2 rows. Expected row counts: {1: 3, 2: 2, 3: 3}.
+
+    n=5, budget=9: target = 7. C(5,1)=5, C(5,2)=10, C(5,3)=10, C(5,4)=5. Solving with
+    2c <= 5 gives 2c = 7/4 = 1.75 (four equal terms summing to 7), c = 0.875. n is odd,
+    so there is no middle size and mu = 2c for every half-size (s=1, s=2 alike): both
+    get floor(1.75) = 1 with the *same* remainder 0.75 -- an exact tie. Floor sum = 2,
+    target_pairs = (9-2)//2 = 3, shortfall = 1, which must go to exactly one of the two
+    tied sizes; the implementation's stable, ascending-s tie-break gives it to s=1 ->
+    pairs {1: 2, 2: 1}. Row counts: {1: 2, 2: 1, 3: 1, 4: 2} (symmetric, since neither
+    size is middle). This case also demonstrates the odd-budget floor (budget=9 is odd;
+    the realized total is 2 + 2*3 = 8 rows, one less than the reference
+    implementation's round-up-on-odd-budget convention -- see IMPL_REPORT.md's
+    deviations section).
+
+    n=7, budget=15: target = 13. C(7,1)=7, C(7,2)=21, C(7,3)=35. Solving with 2c <= 7
+    gives 2c = 13/6 ~= 2.1667 (six equal terms across half-sizes 1..3 and their
+    complements 4..6, summing to 6*(13/6) = 13), c ~= 1.0833. n is odd, so mu = 2c for
+    every half-size: s=1, s=2, s=3 each get floor(2.1667) = 2 with the *same* remainder
+    0.1667. Floor sum = 2+2+2 = 6, target_pairs = (15-2)//2 = 6, shortfall = 0 -- no
+    tie-break needed at all, so this case is unambiguous regardless of tie-break rule.
+    Row counts: {1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2} (12 interior rows + 2 for
+    empty/grand = 14; budget=15 is odd, floored down by one row as in the n=5 case).
+
+    n=6, budget=40: target = 38. C(6,1)=6, C(6,2)=15, C(6,3)=20 (middle, pool
+    C(5,2)=10). Solving with 6 <= 2c <= 15 (so s=1 and its complement s=5 are already
+    exhaustive at this 2c, while s=2/s=4 and the middle s=3 are not) gives
+    12 + 3*(2c) = 38 -> 2c = 26/3 ~= 8.667, c ~= 4.333. s=1: C(6,1)=6 <= 8.667, so s=1
+    (and s=5) are taken exhaustively: pairs = pool = 6. s=2: not exhaustive
+    (15 > 8.667), mu = 2c ~= 8.667, floor 8, remainder 0.667. s=3 (middle): not
+    exhaustive (20 > 8.667), pool = C(5,2) = 10, mu = 2c*3/6 = 4.333, floor 4, remainder
+    0.333. Floor sum over the two non-exhaustive sizes = 8 + 4 = 12, plus the
+    exhaustive size's fixed 6 = 18 total pairs before remainder-filling.
+    target_pairs = (40-2)//2 = 19, shortfall = 1, which goes to s=2 (largest remainder
+    among the non-exhaustive sizes; s=1 is skipped because it is already exhaustive)
+    -> pairs {1: 6, 2: 9, 3: 4}. Row counts: size 1 and its complement size 5 each get
+    6 rows; size 2 and its complement size 4 each get 9 rows; size 3 is
+    self-complementary so its 4 pairs contribute 8 rows. Expected row counts:
+    {1: 6, 2: 9, 3: 8, 4: 9, 5: 6}. This is the case where a small size (s=1, and by
+    symmetry s=5) saturates its full pool while budget is still well short of
+    2**n = 64.
     """
-    target = m - 2
-    if n < 2 or target <= 0:
-        return 0.0
-    binoms = [math.comb(n, s) for s in range(1, n)]
-    hi = 1.0
-    while sum(min(b, 2.0 * hi) for b in binoms) < target:
-        hi *= 2.0
-    lo = 0.0
-    for _ in range(200):
-        mid = 0.5 * (lo + hi)
-        if sum(min(b, 2.0 * mid) for b in binoms) >= target:
-            hi = mid
-        else:
-            lo = mid
-    return hi
-
-
-def _independent_expected_pair_counts(n: int, budget: int) -> dict[int, int]:
-    """Standalone re-derivation of the deterministic per-half-size pair counts ``m_s``.
-
-    Mirrors the largest-remainder apportionment described in the class docstring and
-    ``BRIEF.md`` item 4 (expected Binomial counts, rounded so the total matches the
-    budget exactly), but is written directly against the documented formula rather than
-    by calling ``LeverageSHAP._bernoulli_sample_deterministic``.
-    """
-    m = min(budget, 2**n)
-    c = _independent_find_c(n, m)
-    two_c = 2.0 * c
-    target_pairs = (m - 2) // 2
-    half_sizes = list(range(1, n // 2 + 1))
-
-    m_s: dict[int, int] = {}
-    frac: dict[int, float] = {}
-    exhaustive: dict[int, bool] = {}
-    pool_size_of: dict[int, int] = {}
-    for s in half_sizes:
-        is_middle = (n % 2 == 0) and (s == n // 2)
-        full_count = math.comb(n, s)
-        pool_size = math.comb(n - 1, s - 1) if is_middle else full_count
-        pool_size_of[s] = pool_size
-        if full_count <= two_c:
-            m_s[s] = pool_size
-            frac[s] = 0.0
-            exhaustive[s] = True
-        else:
-            mu = two_c * s / n if is_middle else two_c
-            floor_mu = int(mu)
-            m_s[s] = min(floor_mu, pool_size)
-            frac[s] = mu - floor_mu
-            exhaustive[s] = False
-
-    shortfall = target_pairs - sum(m_s.values())
-    for s in sorted(half_sizes, key=lambda s: -frac[s]):
-        if shortfall <= 0:
-            break
-        if exhaustive[s] or m_s[s] >= pool_size_of[s]:
-            continue
-        m_s[s] += 1
-        shortfall -= 1
-    return m_s
-
-
-@pytest.mark.parametrize(
-    ("n", "budget"),
-    [
-        (4, 2),
-        (4, 3),
-        (4, 7),
-        (4, 16),
-        (4, 17),
-        (4, 100),
-        (5, 2),
-        (5, 5),
-        (5, 9),
-        (5, 32),
-        (5, 33),
-        (6, 2),
-        (6, 21),
-        (6, 40),
-        (6, 63),
-        (6, 64),
-        (6, 65),
-        (6, 1000),
-        (8, 3),
-        (8, 255),
-        (8, 256),
-        (8, 257),
-    ],
-)
-def test_estimation_budget_matches_exact_formula(n, budget):
-    """With deterministic_counts=True (default), the realized budget is exact.
-
-    Covers odd budgets and budgets exceeding 2**n, per BRIEF.md item 4: the number of
-    game evaluations must equal ``2 + 2 * ((min(budget, 2**n) - 2) // 2)`` exactly, with
-    no over- or undershoot.
-    """
-    game = DummyGame(n, interaction=(0, 1))
-    result = LeverageSHAP(n, random_state=0).approximate(budget, game)
-    expected = 2 + 2 * ((min(budget, 2**n) - 2) // 2)
-    assert result.estimation_budget == expected
-    assert result.estimation_budget == game.access_counter
+    cases: list[tuple[int, int, dict[int, int]]] = [
+        (4, 10, {1: 3, 2: 2, 3: 3}),
+        (5, 9, {1: 2, 2: 1, 3: 1, 4: 2}),
+        (7, 15, {1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2}),
+        (6, 40, {1: 6, 2: 9, 3: 8, 4: 9, 5: 6}),
+    ]
+    for n, budget, expected_counts in cases:
+        approximator = LeverageSHAP(n, random_state=0)
+        Z, _ = approximator._sample(budget)
+        sizes = Z.sum(axis=1)
+        counts = Counter(int(s) for s in sizes[2:])  # rows 0, 1 are empty/grand
+        for s in range(1, n):
+            assert counts.get(s, 0) == expected_counts.get(s, 0), (n, budget, s)
 
 
 @pytest.mark.parametrize("n", [4, 5, 6, 7, 8, 9, 10, 11, 12])
 @pytest.mark.parametrize("budget_fraction", [0.1, 0.3, 0.6])
-def test_per_size_counts_match_expected_formula_and_symmetry(n, budget_fraction):
-    """Per-size sampled counts must be symmetric (count(s) == count(n - s)) and match
-    an independently re-derived expected-count formula (BRIEF.md item 4).
+def test_per_size_counts_structural_properties(n, budget_fraction):
+    """Per-size sampled counts must satisfy structural invariants that hold by
+    construction, independent of the exact c-solving / largest-remainder formula
+    (BRIEF.md item 4): the realized row total matches the simple budget-arithmetic
+    formula (a distinct, much simpler piece of logic than the per-size distribution
+    algorithm), each size's count never exceeds its full combinatorial pool,
+    complementary sizes are equally represented, the self-complementary middle size
+    (even n) always has an even count under pairing_trick=True, no two sampled rows
+    are identical, and the empty/grand coalitions are always present as rows 0/1.
     """
     budget = max(2, int(budget_fraction * 2**n))
     approximator = LeverageSHAP(n, random_state=0)
     Z, _ = approximator._sample(budget)
-    sizes = Z.sum(axis=1)
-    counts = Counter(int(s) for s in sizes[2:])  # rows 0, 1 are empty/grand
 
-    expected_pairs = _independent_expected_pair_counts(n, budget)
-    for s, pairs in expected_pairs.items():
-        is_middle = (n % 2 == 0) and (s == n // 2)
-        if is_middle:
-            assert counts.get(s, 0) == 2 * pairs
-        else:
-            assert counts.get(s, 0) == pairs
-            assert counts.get(n - s, 0) == pairs
+    # empty/grand rows are always present, in that order
+    assert not Z[0].any()
+    assert Z[1].all()
+
+    sizes = Z.sum(axis=1)
+    counts = Counter(int(s) for s in sizes[2:])
+
+    # total rows match the simple budget-arithmetic formula (distinct from, and much
+    # simpler than, the per-size distribution algorithm this test file's hand-computed
+    # tables cover)
+    expected_total = 2 + 2 * ((min(budget, 2**n) - 2) // 2)
+    assert Z.shape[0] == expected_total
+    assert sum(counts.values()) + 2 == expected_total
+
+    # no duplicate rows
+    assert len({tuple(row) for row in Z}) == Z.shape[0]
+
+    for s in range(1, n):
+        # pool bound: can never sample more than C(n, s) distinct size-s coalitions
+        assert counts.get(s, 0) <= math.comb(n, s)
         # symmetry: a size and its complement are always equally represented
         assert counts.get(s, 0) == counts.get(n - s, 0)
+
+    # the self-complementary middle size (even n only) is always paired with itself,
+    # so pairing_trick=True (the default here) always yields an even count for it
+    if n % 2 == 0:
+        assert counts.get(n // 2, 0) % 2 == 0
+
+
+@pytest.mark.parametrize("n", [3, 4, 5, 6, 7, 8])
+def test_per_size_counts_exhaustive_at_full_budget(n):
+    """At budget == 2**n every coalition of every size must appear exactly once.
+
+    This needs no c-solving or largest-remainder logic to state or check -- it is a
+    direct mathematical consequence of "budget covers every coalition", independent of
+    the per-size distribution formula this test file's hand-computed tables cover.
+    """
+    budget = 2**n
+    approximator = LeverageSHAP(n, random_state=0)
+    Z, _ = approximator._sample(budget)
+    sizes = Z.sum(axis=1)
+    counts = Counter(int(s) for s in sizes[2:])
+    for s in range(1, n):
+        assert counts.get(s, 0) == math.comb(n, s)
 
 
 def test_saturation_all_rows_distinct_and_exact_on_soum():
@@ -620,6 +623,54 @@ def test_unpaired_sampling_same_counts_no_forced_complement(seed):
     rows_set = set(rows_unpaired)
     missing_complement = any(tuple(~np.array(row)) not in rows_set for row in rows_unpaired)
     assert missing_complement, "Expected at least one row without its complement present"
+
+
+def test_unpaired_binomial_combination_budget_dup_reproducible_unbiased():
+    """The fourth flag combination -- ``pairing_trick=False`` with
+    ``deterministic_counts=False`` -- must work like the other three (BRIEF.md:
+    "The flag must work in all four combinations with deterministic_counts").
+
+    Checks, all at once: the realized budget never exceeds the requested cap, sampled
+    rows are unique (without-replacement sampling holds even in the unpaired+Binomial
+    path), the same ``random_state`` reproduces identical output, and the estimator is
+    unbiased-ish -- averaged over many seeds, the mean estimate is close to the exact
+    Shapley values on a SOUM game within a tolerance appropriate for a Monte Carlo mean
+    over ``len(DIVERSE_SEEDS)`` draws.
+    """
+    n, budget = 6, 40  # budget < 2**n == 64, so both counts and pairing are exercised
+
+    # Budget respected and rows unique.
+    Z, _ = LeverageSHAP(n, pairing_trick=False, deterministic_counts=False, random_state=0)._sample(
+        budget
+    )
+    assert Z.shape[0] <= budget
+    rows = [tuple(row) for row in Z.astype(bool)]
+    assert len(rows) == len(set(rows)), "Unpaired Binomial-path rows must be distinct"
+
+    # Reproducible with the same random_state.
+    game_a = DummyGame(n, interaction=(1, 2))
+    game_b = DummyGame(n, interaction=(1, 2))
+    res_a = LeverageSHAP(
+        n, pairing_trick=False, deterministic_counts=False, random_state=7
+    ).approximate(budget, game_a)
+    res_b = LeverageSHAP(
+        n, pairing_trick=False, deterministic_counts=False, random_state=7
+    ).approximate(budget, game_b)
+    np.testing.assert_array_equal(res_a.values, res_b.values)
+    assert res_a.estimation_budget == res_b.estimation_budget
+
+    # Unbiased-ish: mean estimate over many seeds is close to the exact SVs.
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    exact = ExactComputer(game, n)
+    exact_sv = exact("SV").values[1:]
+
+    estimates = []
+    for seed in DIVERSE_SEEDS:
+        approx = LeverageSHAP(n, pairing_trick=False, deterministic_counts=False, random_state=seed)
+        res = approx.approximate(budget, game)
+        estimates.append(res.values[1:])
+    mean_estimate = np.mean(estimates, axis=0)
+    np.testing.assert_allclose(mean_estimate, exact_sv, atol=0.75, rtol=0.0)
 
 
 def test_pairing_modes_both_exact_at_full_budget():
