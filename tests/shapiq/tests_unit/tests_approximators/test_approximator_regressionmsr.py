@@ -469,6 +469,43 @@ def test_bii_index_delegates_and_matches_parent_failure():
         generic.approximate(budget, game)
 
 
+def test_fallback_forwards_kwargs_to_parent_approximate(monkeypatch):
+    """The unsupported-index fallback (``return super().approximate(budget, game, **kwargs)``)
+    must actually forward ``budget``, ``game``, and any extra ``kwargs`` unchanged to
+    ``ProxySHAP.approximate`` -- not silently drop them.
+
+    Not otherwise observable: ``ProxySHAP.approximate`` itself ignores every kwarg it is called
+    with today, so a test that only checks the final *output* cannot distinguish
+    ``super().approximate(budget, game, **kwargs)`` from ``super().approximate(budget, game)`` --
+    exactly the untested gap flagged in ``run_logs/pr_b/REREVIEW.md`` finding NM3 (a mutant
+    dropping ``**kwargs`` from the delegation call survived the full suite unchanged). Spy on
+    ``ProxySHAP.approximate`` directly (monkeypatched on the class, so the ``RegressionMSR``
+    instance still reaches it, bound, via ``super()``) to capture what it was actually called with.
+    """
+    captured = {}
+    sentinel = object()
+
+    def spy(self, budget, game, **kwargs):
+        captured["self"] = self
+        captured["budget"] = budget
+        captured["game"] = game
+        captured["kwargs"] = kwargs
+        return sentinel
+
+    monkeypatch.setattr(ProxySHAP, "approximate", spy)
+
+    n, seed, budget = 6, 0, 24
+    game = _pairwise_game(n, seed)
+    approx = RegressionMSR(n=n, index="SII", proxy_model="xgboost", random_state=seed)
+    result = approx.approximate(budget, game, foo="bar", baz=42)
+
+    assert captured["self"] is approx
+    assert captured["budget"] == budget
+    assert captured["game"] is game
+    assert captured["kwargs"] == {"foo": "bar", "baz": 42}
+    assert result is sentinel
+
+
 @pytest.mark.parametrize("index", ["SV", "BV"])
 def test_baseline_value_matches_v_of_empty_coalition(index):
     """``result.baseline_value`` and ``result[()]`` must equal the game's own ``v(empty)``, not be

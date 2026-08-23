@@ -127,6 +127,15 @@ class RegressionMSR(ProxySHAP):
                 grand coalition sizes forced to be sampled), i.e. the same
                 :meth:`~shapiq.approximator.base.Approximator._init_sampling_weights` default every
                 other approximator uses -- not uniform weights.
+
+                ``sampling_weights[s]`` is a per-SIZE probability mass (``P(a drawn coalition has
+                size s)``), the convention every other :class:`~shapiq.approximator.base.Approximator`
+                subclass uses -- not a per-individual-coalition density. The paper's reference
+                implementation (``regressionMSR/estimators/regMSR.py:108-150``) instead specifies a
+                per-coalition density ``D(s)``; porting it here requires first converting via
+                ``sampling_weights = D * binom(n, np.arange(n + 1))``, renormalized to sum to 1, or
+                the sampler silently starves middle coalition sizes (see
+                ``run_logs/bench_msr/gap_diag/GAP_REPORT.md``).
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
             random_state: The random state for reproducibility. Default is None.
 
