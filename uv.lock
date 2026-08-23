@@ -4313,7 +4313,7 @@ requires-dist = [
     { name = "xgboost", marker = "extra == 'benchmark'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
-provides-extras = ["graph", "sparse", "proxy", "shapleig", "benchmark"]
+provides-extras = ["tree", "graph", "sparse", "proxy", "shapleig", "benchmark"]
 
 [package.metadata.requires-dev]
 all-ml = [
