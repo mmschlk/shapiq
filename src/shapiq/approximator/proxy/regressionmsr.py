@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from math import factorial
+from math import exp, factorial, lgamma, log
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -53,6 +53,69 @@ def _semivalue_p(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
         return np.full(n, 1.0 / (2 ** (n - 1)))
     msg = f"No closed-form semivalue weight implemented for index={index!r}."
     raise ValueError(msg)
+
+
+def _paper_sampling_weights(n: int, index: ValidRegressionMSRIndices) -> np.ndarray:
+    r"""The default ``sampling_weights`` of :class:`RegressionMSR`: the paper's own sampling kernel.
+
+    Reproduces :cite:t:`Witter.2025`'s ``UniversalMSR``/``TreeMSRAll`` sampling density
+    ``sample_dist`` exactly (``regressionMSR/estimators/regMSR.py:108-115``) -- a per-INDIVIDUAL-
+    COALITION density ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``, normalized to
+    sum to 1, where ``p_0, ..., p_{n-1}`` are :func:`_semivalue_p`'s semivalue coefficients for the
+    target ``index`` -- then converts it to shapiq's per-SIZE probability-mass convention the same
+    way the reference itself does before drawing a coalition size: ``mass[s] = D(s) * C(n, s)``,
+    renormalized (``regMSR.py:147-150``). See ``run_logs/bench_msr/gap_diag/GAP_REPORT.md`` for the
+    units diagnosis and ``run_logs/bench_msr/bench_msr_task_v2.py``'s ``paper_sampling_weights``/
+    ``to_shapiq_sampling_weights`` for the benchmark's independently verified port of this same
+    conversion.
+
+    Computed entirely in log-space (:func:`math.lgamma`) rather than by squaring/dividing raw
+    floats, so it stays finite and correctly normalized for ``n`` up to (at least) the low
+    thousands: a direct float computation of ``p_k ** 2`` underflows to exactly ``0.0`` for
+    essentially every ``k`` once ``n`` is a few hundred or more -- e.g. Banzhaf's constant
+    ``p_k = 1 / 2 ** (n - 1)`` squared underflows below the smallest subnormal ``float64`` once
+    ``n > ~538`` -- which would silently zero out the entire distribution and divide-by-zero on
+    renormalization.
+
+    Args:
+        n: The number of players.
+        index: ``"SV"`` or ``"BV"`` (the only indices :func:`_semivalue_p` supports).
+
+    Returns:
+        An array of shape ``(n + 1,)``, indexed by coalition size ``0, ..., n``: non-negative and
+        summing to 1 (up to floating-point rounding).
+
+    Raises:
+        ValueError: If ``index`` is not ``"SV"`` or ``"BV"``. :class:`RegressionMSR` never
+            triggers this: :meth:`RegressionMSR.__init__` only calls this function when
+            ``index in ("SV", "BV")``.
+    """
+    if index == "SV":
+        log_p = np.array([lgamma(k + 1) + lgamma(n - k) - lgamma(n + 1) for k in range(n)])
+    elif index == "BV":
+        log_p = np.full(n, -(n - 1) * log(2))
+    else:
+        msg = f"No closed-form paper sampling kernel implemented for index={index!r}."
+        raise ValueError(msg)
+
+    # log(prob[size]) = log( p_{size-1}^2 * size + p_size^2 * (n - size) ), via a manual
+    # (>=1, <=2-term) logsumexp so the (up to) two summands never overflow/underflow independently
+    # before being combined.
+    log_prob = np.empty(n + 1)
+    for size in range(n + 1):
+        terms = []
+        if size > 0:
+            terms.append(2 * log_p[size - 1] + log(size))
+        if size < n:
+            terms.append(2 * log_p[size] + log(n - size))
+        m = max(terms)
+        log_prob[size] = m + log(sum(exp(t - m) for t in terms))
+
+    log_density = 0.5 * log_prob  # sqrt(.) in log-space
+    log_comb = np.array([lgamma(n + 1) - lgamma(s + 1) - lgamma(n - s + 1) for s in range(n + 1)])
+    log_mass = log_density + log_comb  # D(s) * C(n, s), in log-space
+    mass = np.exp(log_mass - log_mass.max())  # numerically stable softmax-style normalization
+    return mass / mass.sum()
 
 
 class RegressionMSR(ProxySHAP):
@@ -123,23 +186,47 @@ class RegressionMSR(ProxySHAP):
                 string tag (``"xgboost"`` (default), ``"lightgbm"``, ``"tree"``, ``"linear"``);
                 see :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP` for details.
             sampling_weights: The sampling weights for the coalitions, of shape ``(n + 1,)``. If
-                None, the bowl-shaped default ``1 / (s * (n - s))`` is used (with the empty and
-                grand coalition sizes forced to be sampled), i.e. the same
-                :meth:`~shapiq.approximator.base.Approximator._init_sampling_weights` default every
-                other approximator uses -- not uniform weights.
+                ``None`` and ``index in ("SV", "BV")``, the default is :cite:t:`Witter.2025`'s own
+                sampling kernel (:func:`_paper_sampling_weights`) -- *not* the bowl-shaped
+                ``1 / (s * (n - s))`` default every other :class:`~shapiq.approximator.base.Approximator`
+                subclass uses (:meth:`~shapiq.approximator.base.Approximator._init_sampling_weights`).
+                For any other ``index`` (the fast path does not cover it; see
+                :meth:`approximate`), ``None`` falls back to that same bowl-shaped default instead,
+                since no closed-form paper kernel is defined outside ``{"SV", "BV"}``.
+
+                The paper kernel is, in shapiq's per-SIZE probability-mass convention (``mass[s]``
+                below): ``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n - s) * [s<n])``, normalized
+                to sum to 1, then ``mass[s] = D(s) * C(n, s)``, renormalized to sum to 1 -- where
+                ``p_0, ..., p_{n-1}`` are the semivalue coefficients for ``index`` (see
+                :func:`_semivalue_p`). This exactly reproduces :cite:t:`Witter.2025`'s reference
+                implementation's ``sample_dist`` (``regressionMSR/estimators/regMSR.py:108-115``)
+                converted the way the reference itself converts it before sampling a size
+                (``regMSR.py:147-150``). Empirically, this default is markedly more accurate than
+                the previous bowl-shaped default at large budgets -- about 25% lower pooled error
+                across the benchmark's 8-dataset grid (pooled ratio-to-reference 0.972 vs. 1.32; see
+                ``run_logs/bench_msr/REPORT_v2.md``'s "Overall verdicts").
 
                 ``sampling_weights[s]`` is a per-SIZE probability mass (``P(a drawn coalition has
                 size s)``), the convention every other :class:`~shapiq.approximator.base.Approximator`
                 subclass uses -- not a per-individual-coalition density. The paper's reference
                 implementation (``regressionMSR/estimators/regMSR.py:108-150``) instead specifies a
-                per-coalition density ``D(s)``; porting it here requires first converting via
+                per-coalition density ``D(s)``; porting a *different* density here (rather than
+                using this class's built-in default) requires first converting via
                 ``sampling_weights = D * binom(n, np.arange(n + 1))``, renormalized to sum to 1, or
                 the sampler silently starves middle coalition sizes (see
-                ``run_logs/bench_msr/gap_diag/GAP_REPORT.md``).
+                ``run_logs/bench_msr/gap_diag/GAP_REPORT.md``). Passing an explicit array here
+                always overrides this class's default, for either code path above.
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
             random_state: The random state for reproducibility. Default is None.
 
         """
+        if sampling_weights is None and index in ("SV", "BV"):
+            # The paper's own kernel, not the generic bowl-shaped Approximator default -- see
+            # _paper_sampling_weights and this parameter's docstring above. Only defined for the
+            # two indices the closed-form fast path covers; any other index falls through to
+            # `sampling_weights=None`, letting Approximator.__init__ apply its usual bowl-shaped
+            # default exactly as before.
+            sampling_weights = _paper_sampling_weights(n, index)
         super().__init__(
             n=n,
             max_order=1,

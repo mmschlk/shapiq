@@ -11,6 +11,7 @@ file's tolerances/scenarios are based on.
 from __future__ import annotations
 
 import importlib.util
+import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -21,9 +22,9 @@ import shapiq.approximator.proxy.regressionmsr as regressionmsr_mod
 from shapiq.approximator import RegressionMSR
 from shapiq.approximator.proxy._routes import _extract_proxy_interactions, fit_proxy, predict_proxy
 from shapiq.approximator.proxy.proxyshap import ProxySHAP
-from shapiq.approximator.proxy.regressionmsr import _semivalue_p
+from shapiq.approximator.proxy.regressionmsr import _paper_sampling_weights, _semivalue_p
 from shapiq.game_theory.exact import ExactComputer
-from shapiq_games.synthetic import DummyGame
+from shapiq_games.synthetic import SOUM, DummyGame
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
@@ -154,12 +155,23 @@ def test_fast_path_matches_parent_path(n, index, budget, proxy_tag):
     coalitions in the identical order and fit identically-seeded proxies; the only difference is
     which code computes the residual correction (closed-form vs. a re-sampled Monte Carlo pass).
     The two must therefore agree to numerical precision, not just to the required 1e-10.
+
+    ``RegressionMSR``'s default ``sampling_weights`` (the paper kernel, for ``index in
+    {"SV", "BV"}``) now differs from ``ProxySHAP``'s own unchanged bowl-shaped default, so
+    ``sampling_weights`` is passed explicitly to both constructors here -- otherwise ``fast`` and
+    ``generic`` would sample different coalitions and this comparison would no longer be
+    apples-to-apples (see ``run_logs/pr_b/fix3``).
     """
     seed = 0
     game = _pairwise_game(n, seed)
+    weights = _paper_sampling_weights(n, index)
 
     fast = RegressionMSR(
-        n=n, index=index, proxy_model=_resolve_proxy(proxy_tag, seed), random_state=seed
+        n=n,
+        index=index,
+        proxy_model=_resolve_proxy(proxy_tag, seed),
+        sampling_weights=weights,
+        random_state=seed,
     ).approximate(budget, game)
     generic = ProxySHAP(
         n=n,
@@ -167,6 +179,7 @@ def test_fast_path_matches_parent_path(n, index, budget, proxy_tag):
         index=index,
         proxy_model=_resolve_proxy(proxy_tag, seed),
         adjustment="msr",
+        sampling_weights=weights,
         random_state=seed,
     ).approximate(budget, game)
 
@@ -216,8 +229,16 @@ def test_missing_singleton_treated_as_zero():
     for i in range(n):
         assert np.isfinite(fast[(i,)])
 
+    # matching sampling_weights: RegressionMSR's default (the paper kernel) now differs from
+    # ProxySHAP's own unchanged bowl-shaped default (see test_fast_path_matches_parent_path).
     generic = ProxySHAP(
-        n=n, max_order=1, index="SV", proxy_model="xgboost", adjustment="msr", random_state=seed
+        n=n,
+        max_order=1,
+        index="SV",
+        proxy_model="xgboost",
+        adjustment="msr",
+        sampling_weights=_paper_sampling_weights(n, "SV"),
+        random_state=seed,
     ).approximate(budget, game)
     assert np.allclose(_phi(fast, n), _phi(generic, n), atol=1e-10)
 
@@ -303,10 +324,15 @@ def test_partial_budget_msr_beats_none_on_average():
     ``run_logs/msr_verify/phase2b_accuracy.py`` (``RegressionMSR`` hardcodes
     ``adjustment="msr"``, so the no-correction reference uses ``ProxySHAP(adjustment="none")``
     directly with the same ``max_order=1``/``index="SV"`` configuration).
+    ``approx_none`` is given the same explicit ``sampling_weights`` as ``approx_msr`` (the paper
+    kernel, ``RegressionMSR``'s new default) so both draw the same coalitions per seed -- isolating
+    the effect under test (msr correction vs. none) from the unrelated question of which sampling
+    scheme is used.
     """
     n = 6
     budget = 4 * n
     n_seeds = 30
+    weights = _paper_sampling_weights(n, "SV")
     rse_msr, rse_none = [], []
     last_result = None
     for seed in range(n_seeds):
@@ -314,7 +340,9 @@ def test_partial_budget_msr_beats_none_on_average():
         exact = ExactComputer(game=game, n_players=n)(index="SV", order=1)
         phi_exact = _phi(exact, n)
 
-        approx_msr = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=seed)
+        approx_msr = RegressionMSR(
+            n=n, index="SV", proxy_model="xgboost", sampling_weights=weights, random_state=seed
+        )
         iv_msr = approx_msr.approximate(budget=budget, game=game)
         last_result = iv_msr
         rse_msr.append(_relative_squared_error(_phi(iv_msr, n), phi_exact))
@@ -325,6 +353,7 @@ def test_partial_budget_msr_beats_none_on_average():
             index="SV",
             proxy_model="xgboost",
             adjustment="none",
+            sampling_weights=weights,
             random_state=seed,
         )
         iv_none = approx_none.approximate(budget=budget, game=game)
@@ -396,6 +425,18 @@ def test_semivalue_p_raises_for_unsupported_index():
     """
     with pytest.raises(ValueError, match="No closed-form semivalue weight"):
         _semivalue_p(5, "SII")
+
+
+def test_paper_sampling_weights_raises_for_unsupported_index():
+    """``_paper_sampling_weights`` only has a closed-form kernel for ``"SV"``/``"BV"``; any other
+    index must raise, not silently fall back to (e.g.) the SV kernel.
+
+    ``RegressionMSR.__init__`` never reaches this branch itself (it only calls
+    ``_paper_sampling_weights`` when ``index in ("SV", "BV")``, per its own guard), so this branch
+    is exercised directly here to keep it covered without depending on that guard never changing.
+    """
+    with pytest.raises(ValueError, match="No closed-form paper sampling kernel"):
+        _paper_sampling_weights(5, "SII")
 
 
 @pytest.mark.parametrize("index", ["SII", "k-SII", "STII"])
@@ -603,17 +644,213 @@ def test_correction_norm_is_l2_not_l1():
 
     Recovers the per-player correction behaviorally as ``(msr singleton) - (proxy-only singleton,
     same seed/coalitions, adjustment="none")``, then compares its L2 norm to ``correction_norm``.
+
+    ``approx_none`` is given the same explicit ``sampling_weights`` as ``approx`` (``approx``'s
+    default is now the paper kernel, which ``ProxySHAP``'s own default does not use) so both draw
+    the identical coalitions -- needed for "same seed/coalitions" above to actually hold.
     """
     n, seed = 6, 0
     game = _pairwise_game(n, seed)
-    approx = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=seed)
+    weights = _paper_sampling_weights(n, "SV")
+    approx = RegressionMSR(
+        n=n, index="SV", proxy_model="xgboost", sampling_weights=weights, random_state=seed
+    )
     result = approx.approximate(budget=4 * n, game=game)
 
     approx_none = ProxySHAP(
-        n=n, max_order=1, index="SV", proxy_model="xgboost", adjustment="none", random_state=seed
+        n=n,
+        max_order=1,
+        index="SV",
+        proxy_model="xgboost",
+        adjustment="none",
+        sampling_weights=weights,
+        random_state=seed,
     )
     result_none = approx_none.approximate(budget=4 * n, game=game)
     correction = _phi(result, n) - _phi(result_none, n)
     expected_l2 = float(np.linalg.norm(correction))
 
     assert approx.correction_norm == pytest.approx(expected_l2, rel=1e-6)
+
+
+def _reference_paper_sampling_weights(n: int, index: str) -> np.ndarray:
+    """Independent (non-log-space) reference for the paper sampling kernel.
+
+    Recomputes ``regressionMSR/estimators/regMSR.py``'s ``sample_dist``
+    (``D(s) = sqrt(p_{s-1}^2 * s * [s>0] + p_s^2 * (n-s) * [s<n])``) and the per-size mass
+    conversion (``mass[s] = D(s) * C(n, s)``, renormalized) directly with plain
+    ``float``/``math.factorial``/``math.comb`` arithmetic -- deliberately *not* sharing
+    :func:`~shapiq.approximator.proxy.regressionmsr._paper_sampling_weights`'s log-space
+    implementation, so this is an independent check of that function's output, not a
+    self-comparison tautology. Only intended for the moderate ``n`` values this test file uses
+    (up to 60): unlike the log-space implementation under test, this does not defend against
+    underflow at large ``n`` (e.g. Banzhaf's ``p_k = 1 / 2 ** (n - 1)`` squared underflows past
+    ``n > ~538``).
+    """
+    if index == "SV":
+        p = np.array(
+            [math.factorial(k) * math.factorial(n - k - 1) / math.factorial(n) for k in range(n)]
+        )
+    elif index == "BV":
+        p = np.full(n, 1.0 / (2 ** (n - 1)))
+    else:
+        msg = f"unsupported index {index!r}"
+        raise ValueError(msg)
+
+    density = np.empty(n + 1)
+    for s in range(n + 1):
+        term = 0.0
+        if s > 0:
+            term += p[s - 1] ** 2 * s
+        if s < n:
+            term += p[s] ** 2 * (n - s)
+        density[s] = math.sqrt(term)
+
+    comb = np.array([math.comb(n, s) for s in range(n + 1)], dtype=float)
+    mass = density * comb
+    return mass / mass.sum()
+
+
+@pytest.mark.parametrize("index", ["SV", "BV"])
+@pytest.mark.parametrize("n", [3, 5, 10, 60])
+def test_default_sampling_weights_match_independent_reference(n, index):
+    """:func:`_paper_sampling_weights` (and hence ``RegressionMSR``'s default ``sampling_weights``
+    for ``index in {"SV", "BV"}``) matches :func:`_reference_paper_sampling_weights`, an
+    independently written, non-log-space reference implementation of the same formula, and is a
+    valid probability distribution over coalition sizes ``0, ..., n`` (non-negative, sums to 1).
+    """
+    weights = _paper_sampling_weights(n, index)
+    expected = _reference_paper_sampling_weights(n, index)
+
+    assert weights.shape == (n + 1,)
+    assert np.all(weights >= 0)
+    assert weights.sum() == pytest.approx(1.0, abs=1e-9)
+    np.testing.assert_allclose(weights, expected, rtol=1e-9, atol=1e-12)
+
+    # And the constructed approximator actually uses this as its default (no sampling_weights=
+    # passed), for both the fast RegressionMSR path and its ProxySHAP parent.
+    fast = RegressionMSR(n=n, index=index, random_state=0)
+    np.testing.assert_allclose(fast._sampler._sampling_weights, weights, rtol=1e-9)
+
+
+@pytest.mark.parametrize("n", [3, 5, 10, 60])
+def test_default_sampling_weights_finite_at_large_n(n):
+    """The log-space implementation stays finite and normalized well past the ``n`` at which a
+    naive (non-log-space) computation of the semivalue coefficients squared would underflow to
+    exactly ``0.0`` (``n > ~538`` for Banzhaf, per :func:`_paper_sampling_weights`'s docstring).
+    Also exercised directly at ``n=500`` and ``n=1000`` below, which
+    :func:`_reference_paper_sampling_weights` cannot handle at all.
+    """
+    for index in ("SV", "BV"):
+        weights = _paper_sampling_weights(n, index)
+        assert np.all(np.isfinite(weights))
+        assert np.all(weights >= 0)
+        assert weights.sum() == pytest.approx(1.0, abs=1e-9)
+
+
+@pytest.mark.parametrize("n", [500, 1000])
+@pytest.mark.parametrize("index", ["SV", "BV"])
+def test_default_sampling_weights_finite_for_large_n(n, index):
+    """At ``n=500``/``n=1000``, a naive (non-log-space) computation of ``p_k ** 2`` underflows to
+    exactly ``0.0`` for essentially every ``k`` (see :func:`_paper_sampling_weights`'s docstring),
+    which would zero out the whole distribution and divide-by-zero on renormalization. The actual
+    (log-space) implementation must still produce a finite, non-negative, normalized distribution.
+    """
+    weights = _paper_sampling_weights(n, index)
+    assert weights.shape == (n + 1,)
+    assert np.all(np.isfinite(weights))
+    assert np.all(weights >= 0)
+    assert weights.sum() == pytest.approx(1.0, abs=1e-9)
+
+
+def test_explicit_sampling_weights_override_default():
+    """An explicit ``sampling_weights=`` argument must still be used as-is, not silently replaced
+    by the new paper-kernel default -- the default only applies when ``sampling_weights is None``
+    (see ``RegressionMSR.__init__``'s ``if sampling_weights is None and index in ("SV", "BV")``
+    guard).
+    """
+    n = 7
+    rng = np.random.default_rng(0)
+    custom = rng.uniform(0.1, 1.0, size=n + 1)
+    custom = custom / custom.sum()
+
+    default_weights = _paper_sampling_weights(n, "SV")
+    # sanity: the custom weights are not (accidentally) equal to the default, so this test would
+    # actually fail if the override were silently ignored.
+    assert not np.allclose(custom, default_weights)
+
+    approx = RegressionMSR(n=n, index="SV", sampling_weights=custom, random_state=0)
+    np.testing.assert_allclose(approx._sampler._sampling_weights, custom, rtol=1e-12)
+
+
+def test_explicit_sampling_weights_override_unnormalized():
+    """An explicit ``sampling_weights=`` that isn't already normalized is accepted and normalized
+    by :class:`~shapiq.approximator.sampling.CoalitionSampler` itself (not replaced by the
+    default), exactly like it was before this default changed.
+    """
+    n = 4
+    unnormalized = np.array([1.0, 2.0, 3.0, 2.0, 1.0])  # sums to 9, not 1
+    approx = RegressionMSR(n=n, index="SV", sampling_weights=unnormalized, random_state=0)
+    np.testing.assert_allclose(
+        approx._sampler._sampling_weights, unnormalized / unnormalized.sum(), rtol=1e-12
+    )
+
+
+def test_default_sampling_weights_not_worse_than_old_default_on_soum():
+    """The new paper-kernel default should, on average, be at least as accurate as the old
+    bowl-shaped default it replaces -- not just on the tree-game family
+    ``test_partial_budget_msr_beats_none_on_average`` already covers, but on an unrelated
+    synthetic game family (:class:`~shapiq_games.synthetic.SOUM`, a sum of unanimity games).
+
+    The "old default" is recovered behaviorally: constructing a ``ProxySHAP`` with
+    ``sampling_weights=None`` still gets the old, unchanged bowl-shaped default (only
+    ``RegressionMSR``'s default changed), so that weight array is read off and passed explicitly
+    to a second ``RegressionMSR`` instance to reproduce pre-change sampling behavior exactly.
+
+    Checked via the same paired-difference standard-error margin as
+    ``test_partial_budget_msr_beats_none_on_average`` (see that test's docstring for why a bare
+    inequality is not used), but as a "not worse" bound (``mean_diff > -2 * SE``) rather than a
+    "must beat" bound: ``run_logs/bench_msr/REPORT_v2.md`` found the paper kernel beats the old
+    default by ~25% pooled across its whole benchmark grid, but this is only 30 seeds on one game
+    family/size/budget, so demanding statistically-significant *improvement* here risks flaking on
+    an off sample even though the true effect is positive.
+    """
+    n = 12
+    budget = 8 * n
+    n_seeds = 30
+
+    old_default_weights = ProxySHAP(
+        n=n, max_order=1, index="SV", proxy_model="xgboost", random_state=0
+    )._sampler._sampling_weights.copy()
+    new_default_weights = _paper_sampling_weights(n, "SV")
+    # sanity: these are genuinely different sampling schemes, so the comparison below is
+    # meaningful (not accidentally comparing identical sampling behavior against itself).
+    assert not np.allclose(old_default_weights, new_default_weights)
+
+    rse_new, rse_old = [], []
+    for seed in range(n_seeds):
+        game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=seed)
+        exact = ExactComputer(game=game, n_players=n)(index="SV", order=1)
+        phi_exact = _phi(exact, n)
+
+        approx_new = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=seed)
+        iv_new = approx_new.approximate(budget=budget, game=game)
+        rse_new.append(_relative_squared_error(_phi(iv_new, n), phi_exact))
+
+        approx_old = RegressionMSR(
+            n=n,
+            index="SV",
+            proxy_model="xgboost",
+            sampling_weights=old_default_weights,
+            random_state=seed,
+        )
+        iv_old = approx_old.approximate(budget=budget, game=game)
+        rse_old.append(_relative_squared_error(_phi(iv_old, n), phi_exact))
+
+    diffs = np.array(rse_old) - np.array(rse_new)  # positive => new default is more accurate
+    mean_diff = float(np.mean(diffs))
+    se_diff = float(np.std(diffs, ddof=1) / np.sqrt(n_seeds))
+    assert mean_diff > -2 * se_diff, (
+        f"new default is statistically significantly worse than the old default: "
+        f"mean gap {mean_diff} (2*SE={2 * se_diff})"
+    )
