@@ -331,9 +331,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 lo = mid
             if hi - lo < 1e-12 * max(1.0, hi):
                 break
-        # `hi` (not the midpoint) is returned so that at budget == 2**n every size's
+        # ``hi`` (not the midpoint) is returned so that at budget == 2**n every size's
         # layer is guaranteed exhaustive: the bisection invariant is total(hi) >= target
-        # at every iteration, so `hi` always satisfies the target while the midpoint can
+        # at every iteration, so ``hi`` always satisfies the target while the midpoint can
         # land just under it.
         return hi
 
@@ -401,49 +401,49 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     def _bernoulli_sample_deterministic(
         self, n: int, c: float, m: int
     ) -> tuple[np.ndarray, np.ndarray]:
-        r"""Deterministic analogue of `_bernoulli_sample`'s Binomial draw.
+        r"""Deterministic analogue of ``_bernoulli_sample``'s Binomial draw.
 
-        Ported in spirit from the released reference implementation's
-        `_symmetric_round_even` (leverageshap/estimators/sampling.py:226-249): fix each
-        size's pair count to the Binomial's expectation instead of sampling it, then round
-        to integers via a largest-remainder rule so the *total* number of pairs matches the
-        target exactly (paper, released-implementation remark, main.tex:478-481; stratified
-        SVARM, Kolpaczki et al. 2024 :cite:t:`Kolpaczki.2024a`). This is the
+        Fixes each size's pair count to the Binomial's expectation instead of sampling
+        it, then rounds to integers via a largest-remainder rule so the *total* number
+        of pairs matches the target exactly -- this is what the paper's released
+        implementation does, and is the same stratification idea as stratified SVARM,
+        Kolpaczki et al. 2024 :cite:t:`Kolpaczki.2024a`. This is the
         ``deterministic_counts=True`` (default) path. Row construction (paired vs.
         unpaired, per ``self.pairing_trick``) is delegated to ``_build_rows`` once every
         size's count ``m_s`` is known.
 
-        shapiq's loop (like `_bernoulli_sample`) already has only one degree of freedom per
-        half-size s = 1..floor(n/2): a single pair count m_s determines both size s and its
-        complement n-s (or, at the self-complementary middle size of even n, two rows of the
-        same size n/2). Because of this, the reference's explicit step of pairing
-        fractional remainders at index i with n-1-i is unnecessary here -- only its
-        floor-then-largest-remainder-fill idea is reused.
+        This loop (like ``_bernoulli_sample``) already has only one degree of freedom
+        per half-size ``s = 1..floor(n/2)``: a single pair count ``m_s`` determines both
+        size ``s`` and its complement ``n - s`` (or, at the self-complementary middle
+        size of even ``n``, two rows of the same size ``n/2``). Because of this, pairing
+        fractional remainders at index ``i`` with ``n - 1 - i`` is unnecessary here --
+        only the floor-then-largest-remainder-fill idea is used.
 
-        Closed form for the continuous target (replaces the Binomial mean `pool_size * 2c /
-        C(n,s)` used in `_bernoulli_sample`): for non-middle sizes `pool_size == C(n,s)`, so
-        the mean simplifies to exactly `2c`; for the middle size (even n only),
-        `pool_size == C(n-1, n/2-1) == C(n, n/2)/2`, so the mean simplifies to exactly `c`.
-        Neither closed form ever forms `C(n,s)` or `pool_size` as a float, so -- unlike the
-        Binomial branch it replaces -- this needs no Poisson-mean/int32-pool fallback for
-        huge n; the existing fallback logic in `_bernoulli_sample` is simply not needed
-        in this code path.
+        Closed form for the continuous target (replaces the Binomial mean
+        ``pool_size * 2c / C(n,s)`` used in ``_bernoulli_sample``): for non-middle sizes
+        ``pool_size == C(n,s)``, so the mean simplifies to exactly ``2c``; for the
+        middle size (even ``n`` only), ``pool_size == C(n-1, n/2-1) == C(n, n/2)/2``, so
+        the mean simplifies to exactly ``c``. Neither closed form ever forms
+        ``C(n,s)`` or ``pool_size`` as a float, so -- unlike the Binomial branch it
+        replaces -- this needs no Poisson-mean/int32-pool fallback for huge ``n``; the
+        existing fallback logic in ``_bernoulli_sample`` is simply not needed in this
+        code path.
 
         Args:
             n: Number of players.
-            c: Oversampling parameter from `_find_c` (already solved against `m`, see
-                `_sample`).
+            c: Oversampling parameter from ``_find_c`` (already solved against ``m``,
+                see ``_sample``).
             m: Target total budget, already capped at 2**n.
 
         Returns:
-            Same shape/semantics as `_bernoulli_sample`: (Z_pairs, sizes).
+            Same shape/semantics as ``_bernoulli_sample``: (Z_pairs, sizes).
         """
         if n < 2 or c <= 0.0:
             return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)
 
-        # Integer division floors any odd `m` down to the nearest even total, so the
-        # realized row count (2 + 2 * target_pairs) never overshoots `m` -- this is the
-        # exact formula documented in the class docstring's Note and `approximate()`'s
+        # Integer division floors any odd ``m`` down to the nearest even total, so the
+        # realized row count (2 + 2 * target_pairs) never overshoots ``m`` -- this is the
+        # exact formula documented in the class docstring's Note and ``approximate()``'s
         # Returns section.
         target_pairs = (m - 2) // 2
         two_c = 2.0 * c
@@ -477,17 +477,16 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         # pool_size > mu because it is not exhaustive; either way floor(mu) < pool_size
         # since both are integers and mu < pool_size. So every non-exhaustive size can
         # always absorb exactly one increment in the fill loop below without ever
-        # triggering the `m_s[s] >= pool_size_of[s]` skip on its single visit -- this
-        # holds for any c (not just one solved by `_find_c`), so the fill loop can
+        # triggering the ``m_s[s] >= pool_size_of[s]`` skip on its single visit -- this
+        # holds for any c (not just one solved by ``_find_c``), so the fill loop can
         # resolve any shortfall up to and including the number of non-exhaustive
-        # half-sizes, a bound strictly tighter than `len(half_sizes)` whenever at
-        # least one size is exhaustive. When c *is* the `_find_c(n, m)` solution (the
-        # only way `_sample` ever calls this method) the bound is normally not even
+        # half-sizes, a bound strictly tighter than ``len(half_sizes)`` whenever at
+        # least one size is exhaustive. When c *is* the ``_find_c(n, m)`` solution (the
+        # only way ``_sample`` ever calls this method) the bound is normally not even
         # reached with equality: the continuous target is met almost exactly, so
         # shortfall is the sum of one sub-1 fractional remainder per non-exhaustive
         # size and so is typically strictly less than their count. Verified
-        # empirically over ~67,000 (n, budget) pairs with zero violations
-        # (ls_verify/VERIFY_REPORT.md).
+        # empirically across a wide sweep of (n, budget) pairs with zero violations.
         shortfall = target_pairs - sum(m_s.values())
         num_non_exhaustive = sum(1 for s in half_sizes if not exhaustive[s])
         assert 0 <= shortfall <= num_non_exhaustive, (  # noqa: S101
@@ -517,8 +516,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     ) -> tuple[np.ndarray, np.ndarray]:
         """Turn per-half-size pair counts into concrete sampled coalition rows.
 
-        Shared by `_bernoulli_sample` and `_bernoulli_sample_deterministic`: both only
-        differ in *how many* pairs `counts[s]` to draw for each half-size
+        Shared by ``_bernoulli_sample`` and ``_bernoulli_sample_deterministic``: both
+        only differ in *how many* pairs ``counts[s]`` to draw for each half-size
         ``s in {1, ..., floor(n/2)}``; this method decides *which* rows to draw for a
         given count, branching on ``paired`` (the ``pairing_trick`` flag).
 
@@ -596,7 +595,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                         sizes_list.append(s)
                     # Independent draw for the complementary size n - s. The pool size is
                     # the same (C(n, s) == C(n, n - s)), but the drawn indices are not
-                    # correlated with `indices` above, so a coalition's complement is only
+                    # correlated with ``indices`` above, so a coalition's complement is only
                     # present by chance -- the defining property of the unpaired ablation.
                     indices_complement = self._sample_without_replacement(pool_size, count, py_rng)
                     for idx in indices_complement:
