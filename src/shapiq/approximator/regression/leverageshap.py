@@ -398,7 +398,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         return self._build_rows(n, counts, py_rng, paired=self.pairing_trick)
 
-    def _bernoulli_sample_deterministic(self, n: int, c: float, m: int) -> tuple[np.ndarray, np.ndarray]:
+    def _bernoulli_sample_deterministic(
+        self, n: int, c: float, m: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         r"""Deterministic analogue of `_bernoulli_sample`'s Binomial draw.
 
         Ported in spirit from the released reference implementation's

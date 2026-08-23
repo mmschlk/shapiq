@@ -10,6 +10,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
+import shapiq.approximator.regression.leverageshap as leverageshap_module
 from shapiq.approximator.regression import KernelSHAP, LeverageSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
@@ -764,8 +765,6 @@ def test_constant_game_zero_svs(seed):
 
 def test_sample_without_replacement_huge_pool_fallback(monkeypatch):
     """Use the randrange/set fallback when total exceeds sys.maxsize."""
-    import shapiq.approximator.regression.leverageshap as leverageshap_module
-
     py_rng = random.Random(123)
 
     def _should_not_be_called(*args, **kwargs):
