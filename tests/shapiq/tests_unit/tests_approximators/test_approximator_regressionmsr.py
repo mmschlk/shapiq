@@ -11,6 +11,7 @@ file's tolerances/scenarios are based on.
 from __future__ import annotations
 
 import importlib.util
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -20,8 +21,10 @@ from shapiq.approximator import RegressionMSR
 from shapiq.approximator.proxy._routes import _extract_proxy_interactions, fit_proxy
 from shapiq.approximator.proxy.proxyshap import ProxySHAP
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 _CATBOOST_AVAILABLE = importlib.util.find_spec("catboost") is not None
 if _CATBOOST_AVAILABLE:
@@ -237,7 +240,7 @@ def test_estimation_budget_matches_distinct_coalitions_sampled():
     approx = RegressionMSR(n=n, index="SV", proxy_model="xgboost", random_state=0)
     result = approx.approximate(budget=budget, game=game)
 
-    n_distinct = approx._sampler.coalitions_matrix.shape[0]  # noqa: SLF001
+    n_distinct = approx._sampler.coalitions_matrix.shape[0]
     assert result.estimation_budget == n_distinct
     assert result.estimated == (n_distinct < 2**n)
     assert result.estimation_budget <= budget
@@ -289,7 +292,11 @@ def test_partial_budget_msr_beats_none_on_average():
         rse_msr.append(_relative_squared_error(_phi(iv_msr, n), phi_exact))
 
         approx_none = ProxySHAP(
-            n=n, max_order=1, index="SV", proxy_model="xgboost", adjustment="none",
+            n=n,
+            max_order=1,
+            index="SV",
+            proxy_model="xgboost",
+            adjustment="none",
             random_state=seed,
         )
         iv_none = approx_none.approximate(budget=budget, game=game)

@@ -214,7 +214,11 @@ class RegressionMSR(ProxySHAP):
         residual_norm = float(np.linalg.norm(residual_values))
         self.train_residual_ratio = residual_norm / y_norm if y_norm > 0 else float("nan")
 
-        p = _semivalue_p(n_players, self.index)
+        # self.index is typed at the base class's broader ValidProxySHAPIndices, but
+        # RegressionMSR.__init__ only ever assigns it a ValidRegressionMSRIndices ("SV" or
+        # "BV"); ty cannot narrow an inherited attribute's type across the class hierarchy, so
+        # this is a false positive.
+        p = _semivalue_p(n_players, self.index)  # ty: ignore[invalid-argument-type]
         sizes = coalitions_matrix.sum(axis=1).astype(int)
         d_weights = self._sampler.sampling_adjustment_weights
         p_below = np.concatenate(([0.0], p))[sizes]  # p_{|S|-1}
@@ -246,7 +250,7 @@ class RegressionMSR(ProxySHAP):
         # the pre-existing BV+linear issue in item 6 of the brief), unrelated to the MSR
         # correction; computing these fields ourselves from data we already have avoids
         # depending on it.
-        result = InteractionValues(
+        return InteractionValues(
             values=interactions,
             index=proxy_interactions.index,
             max_order=proxy_interactions.max_order,
@@ -256,4 +260,3 @@ class RegressionMSR(ProxySHAP):
             estimation_budget=n_samples,
             baseline_value=baseline_value,
         )
-        return result
