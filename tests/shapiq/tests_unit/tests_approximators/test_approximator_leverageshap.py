@@ -847,6 +847,62 @@ def test_find_c_large_n_overflow_safe():
     assert total == pytest.approx(m - 2, abs=1e-3)
 
 
+def test_bernoulli_sample_degenerate_and_exhaustive_branches():
+    """_bernoulli_sample must handle its two edge regimes correctly.
+
+    With deterministic_counts=False (the legacy Binomial-count path), c <= 0.0 or
+    n < 2 must short-circuit to an empty design (no interior sizes to sample), and
+    a large c relative to n must exhaustively enumerate a size once 2c meets or
+    exceeds C(n, s), rather than drawing a Binomial count that could exceed it.
+    """
+    approx = LeverageSHAP(n=6, deterministic_counts=False, random_state=0)
+
+    # c <= 0.0: nothing to sample.
+    z, sizes = approx._bernoulli_sample(n=6, c=0.0)
+    assert z.shape == (0, 6)
+    assert sizes.shape == (0,)
+
+    # n < 2: no interior coalition sizes exist at all.
+    z, sizes = approx._bernoulli_sample(n=1, c=1.0)
+    assert z.shape == (0, 1)
+    assert sizes.shape == (0,)
+
+    # c large enough that 2c >= C(6, 1): size 1 must be exhaustively enumerated.
+    z, sizes = approx._bernoulli_sample(n=6, c=6.5)
+    assert (sizes == 1).sum() == math.comb(6, 1)
+
+
+def test_bernoulli_sample_poisson_fallback_for_huge_pool():
+    """_bernoulli_sample must fall back to a Poisson draw when a size's pool of
+    coalitions exceeds the int32 range that np.random.Generator.binomial supports.
+
+    n=40 puts C(40, 20) well above 2**31 - 1, so the middle size must use the
+    Poisson-mean fallback rather than Binomial(pool_size, p).
+    """
+    assert math.comb(40, 20) > 2**31 - 1
+    approx = LeverageSHAP(n=40, deterministic_counts=False, random_state=0)
+    z, sizes = approx._bernoulli_sample(n=40, c=5.0)
+    assert z.shape[0] == sizes.shape[0]
+    assert z.shape[1] == 40
+
+
+def test_bernoulli_sample_deterministic_exhaustive_skip_in_remainder_fill():
+    """_bernoulli_sample_deterministic's largest-remainder fill loop must skip a
+    size once it is already exhaustive, even if a frac-tie would otherwise select
+    it for one more unit of budget.
+
+    n=4, c=2.0, m=16 lands exactly on full enumeration (all 2**4 = 16 coalitions
+    including empty/full sets), which forces the remainder-fill loop to visit an
+    already-exhaustive size and take its `continue` branch instead of
+    over-allocating past that size's pool.
+    """
+    approx = LeverageSHAP(n=4, random_state=0)
+    z, sizes = approx._bernoulli_sample_deterministic(n=4, c=2.0, m=16)
+    assert z.shape[0] == sizes.shape[0]
+    for s in range(1, 4):
+        assert (sizes == s).sum() == math.comb(4, s)
+
+
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_underdetermined_efficiency_axiom(seed):
     """When budget << n, the design matrix A has fewer rows than columns (underdetermined).
