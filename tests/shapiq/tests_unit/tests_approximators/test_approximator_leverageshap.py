@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 import math
 import random
+from collections import Counter
 
 import numpy as np
 import pytest
@@ -12,7 +13,7 @@ import pytest
 from shapiq.approximator.regression import KernelSHAP, LeverageSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
-from shapiq_games.synthetic import DummyGame
+from shapiq_games.synthetic import SOUM, DummyGame
 
 # Random but pre-defined seeds to ensure reproducibility but prevent overfitting to a single seed choice
 DIVERSE_SEEDS = [
@@ -59,9 +60,10 @@ def test_approximate(n, budget, seed):
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0
     assert sv_estimates.index == "SV"
-    # estimation_budget reports the realized number of coalitions evaluated. It concentrates
-    # around ``budget`` but may over-/undershoot (random Binomial draw); it must equal the
-    # game's access count and never exceed full enumeration (2**n).
+    # estimation_budget reports the realized number of coalitions evaluated. With the
+    # default deterministic_counts=True this is exact (see test_estimation_budget_matches_
+    # exact_formula below); it must equal the game's access count and never exceed full
+    # enumeration (2**n).
     assert sv_estimates.estimation_budget == game.access_counter
     assert sv_estimates.estimation_budget <= 2**n
     assert sv_estimates.estimated != (budget >= 2**n)
@@ -151,25 +153,160 @@ def test_budget_too_small_raises():
         approximator.approximate(budget=1, game=lambda Z: np.zeros(len(Z)))
 
 
-@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
-def test_pairing_trick_is_a_noop(seed):
-    """The ``pairing_trick`` flag is inert: Algorithm 1 always samples ``(z, z̄)`` pairs.
+def _independent_find_c(n: int, m: int) -> float:
+    """Standalone re-derivation of Eq. 12's oversampling constant (binary search).
 
-    Toggling the flag must therefore produce bitwise-identical results for a fixed seed.
-    This pins down the documented no-op contract instead of merely asserting the run
-    succeeds.
+    Written independently of ``LeverageSHAP._find_c`` (own bracketing/bisection loop) so
+    that ``test_per_size_counts_match_expected_formula_and_symmetry`` is not merely
+    checking the implementation against itself.
     """
-    n, budget = 6, 40
-    game_true = DummyGame(n, interaction=(0, 1))
-    game_false = DummyGame(n, interaction=(0, 1))
+    target = m - 2
+    if n < 2 or target <= 0:
+        return 0.0
+    binoms = [math.comb(n, s) for s in range(1, n)]
+    hi = 1.0
+    while sum(min(b, 2.0 * hi) for b in binoms) < target:
+        hi *= 2.0
+    lo = 0.0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if sum(min(b, 2.0 * mid) for b in binoms) >= target:
+            hi = mid
+        else:
+            lo = mid
+    return hi
 
-    res_true = LeverageSHAP(n, pairing_trick=True, random_state=seed).approximate(budget, game_true)
-    res_false = LeverageSHAP(n, pairing_trick=False, random_state=seed).approximate(
-        budget, game_false
-    )
 
-    assert isinstance(res_true, InteractionValues)
-    np.testing.assert_array_equal(res_true.values, res_false.values)
+def _independent_expected_pair_counts(n: int, budget: int) -> dict[int, int]:
+    """Standalone re-derivation of the deterministic per-half-size pair counts ``m_s``.
+
+    Mirrors the largest-remainder apportionment described in the class docstring and
+    ``BRIEF.md`` item 4 (expected Binomial counts, rounded so the total matches the
+    budget exactly), but is written directly against the documented formula rather than
+    by calling ``LeverageSHAP._bernoulli_sample_deterministic``.
+    """
+    m = min(budget, 2**n)
+    c = _independent_find_c(n, m)
+    two_c = 2.0 * c
+    target_pairs = (m - 2) // 2
+    half_sizes = list(range(1, n // 2 + 1))
+
+    m_s: dict[int, int] = {}
+    frac: dict[int, float] = {}
+    exhaustive: dict[int, bool] = {}
+    pool_size_of: dict[int, int] = {}
+    for s in half_sizes:
+        is_middle = (n % 2 == 0) and (s == n // 2)
+        full_count = math.comb(n, s)
+        pool_size = math.comb(n - 1, s - 1) if is_middle else full_count
+        pool_size_of[s] = pool_size
+        if full_count <= two_c:
+            m_s[s] = pool_size
+            frac[s] = 0.0
+            exhaustive[s] = True
+        else:
+            mu = two_c * s / n if is_middle else two_c
+            floor_mu = int(mu)
+            m_s[s] = min(floor_mu, pool_size)
+            frac[s] = mu - floor_mu
+            exhaustive[s] = False
+
+    shortfall = target_pairs - sum(m_s.values())
+    for s in sorted(half_sizes, key=lambda s: -frac[s]):
+        if shortfall <= 0:
+            break
+        if exhaustive[s] or m_s[s] >= pool_size_of[s]:
+            continue
+        m_s[s] += 1
+        shortfall -= 1
+    return m_s
+
+
+@pytest.mark.parametrize(
+    ("n", "budget"),
+    [
+        (4, 2),
+        (4, 3),
+        (4, 7),
+        (4, 16),
+        (4, 17),
+        (4, 100),
+        (5, 2),
+        (5, 5),
+        (5, 9),
+        (5, 32),
+        (5, 33),
+        (6, 2),
+        (6, 21),
+        (6, 40),
+        (6, 63),
+        (6, 64),
+        (6, 65),
+        (6, 1000),
+        (8, 3),
+        (8, 255),
+        (8, 256),
+        (8, 257),
+    ],
+)
+def test_estimation_budget_matches_exact_formula(n, budget):
+    """With deterministic_counts=True (default), the realized budget is exact.
+
+    Covers odd budgets and budgets exceeding 2**n, per BRIEF.md item 4: the number of
+    game evaluations must equal ``2 + 2 * ((min(budget, 2**n) - 2) // 2)`` exactly, with
+    no over- or undershoot.
+    """
+    game = DummyGame(n, interaction=(0, 1))
+    result = LeverageSHAP(n, random_state=0).approximate(budget, game)
+    expected = 2 + 2 * ((min(budget, 2**n) - 2) // 2)
+    assert result.estimation_budget == expected
+    assert result.estimation_budget == game.access_counter
+
+
+@pytest.mark.parametrize("n", [4, 5, 6, 7, 8, 9, 10, 11, 12])
+@pytest.mark.parametrize("budget_fraction", [0.1, 0.3, 0.6])
+def test_per_size_counts_match_expected_formula_and_symmetry(n, budget_fraction):
+    """Per-size sampled counts must be symmetric (count(s) == count(n - s)) and match
+    an independently re-derived expected-count formula (BRIEF.md item 4).
+    """
+    budget = max(2, int(budget_fraction * 2**n))
+    approximator = LeverageSHAP(n, random_state=0)
+    Z, _ = approximator._sample(budget)
+    sizes = Z.sum(axis=1)
+    counts = Counter(int(s) for s in sizes[2:])  # rows 0, 1 are empty/grand
+
+    expected_pairs = _independent_expected_pair_counts(n, budget)
+    for s, pairs in expected_pairs.items():
+        is_middle = (n % 2 == 0) and (s == n // 2)
+        if is_middle:
+            assert counts.get(s, 0) == 2 * pairs
+        else:
+            assert counts.get(s, 0) == pairs
+            assert counts.get(n - s, 0) == pairs
+        # symmetry: a size and its complement are always equally represented
+        assert counts.get(s, 0) == counts.get(n - s, 0)
+
+
+def test_saturation_all_rows_distinct_and_exact_on_soum():
+    """At budget >= 2**n, all 2**n distinct coalitions are sampled and the estimate is
+    exact (not merely close) on a SOUM game (BRIEF.md item 4).
+    """
+    n = 6
+    budget = 2**n
+
+    approximator = LeverageSHAP(n, random_state=0)
+    Z, _ = approximator._sample(budget)
+    assert Z.shape[0] == 2**n
+    rows = {tuple(row) for row in Z}
+    assert len(rows) == 2**n
+
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    exact = ExactComputer(game, n)
+    exact_sv = exact("SV")
+
+    result = LeverageSHAP(n, random_state=1).approximate(budget, game)
+    assert result.estimated is False
+    np.testing.assert_allclose(result.values, exact_sv.values, atol=1e-10, rtol=0.0)
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
@@ -295,6 +432,52 @@ def test_reproducibility(seed):
     assert res1.estimated == res2.estimated
 
 
+def test_different_seeds_draw_different_rows():
+    """Different seeds must (usually) draw a different set of sampled coalitions.
+
+    Complements test_reproducibility (same seed -> identical .values): here we check the
+    row level directly on a SOUM game, since two different row draws could in principle
+    still yield identical Shapley-value estimates by coincidence.
+    """
+    n, budget = 6, 20  # non-exhaustive: budget < 2**n == 64
+
+    Z_a, _ = LeverageSHAP(n, random_state=0)._sample(budget)
+    Z_b, _ = LeverageSHAP(n, random_state=1)._sample(budget)
+
+    rows_a = {tuple(row) for row in Z_a.astype(bool)}
+    rows_b = {tuple(row) for row in Z_b.astype(bool)}
+    assert rows_a != rows_b
+
+
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_deterministic_counts_false_smoke(seed):
+    """``deterministic_counts=False`` (the literal Binomial Algorithm 2) must run,
+    report ``estimated``, draw distinct rows, and be seed-reproducible (BRIEF.md item 4).
+    """
+    n, budget = 6, 20
+
+    game1 = DummyGame(n, interaction=(1, 2))
+    game2 = DummyGame(n, interaction=(1, 2))
+
+    approx1 = LeverageSHAP(n, deterministic_counts=False, random_state=seed)
+    res1 = approx1.approximate(budget, game1)
+    approx2 = LeverageSHAP(n, deterministic_counts=False, random_state=seed)
+    res2 = approx2.approximate(budget, game2)
+
+    assert isinstance(res1, InteractionValues)
+    assert res1.estimated is True
+    assert res1.estimation_budget == game1.access_counter
+    assert res1.estimation_budget <= 2**n
+
+    Z, _ = LeverageSHAP(n, deterministic_counts=False, random_state=seed)._sample(budget)
+    rows = [tuple(row) for row in Z.astype(bool)]
+    assert len(rows) == len(set(rows)), "Binomial-path rows must be distinct"
+
+    # Seed-reproducible: identical seed -> identical output.
+    np.testing.assert_array_equal(res1.values, res2.values)
+    assert res1.estimation_budget == res2.estimation_budget
+
+
 def test_exact_regime_seed_independence():
     """When the budget covers the full coalition space, results must be seed-independent.
 
@@ -320,7 +503,8 @@ def test_exact_regime_seed_independence():
     assert res_a.estimated == res_b.estimated
 
 
-def test_stochastic_regime_seed_variability():
+@pytest.mark.parametrize("deterministic_counts", [True, False])
+def test_stochastic_regime_seed_variability(deterministic_counts):
     """In the sampling regime, different seeds should usually produce different estimates.
 
     This test is conservative and robust: it runs multiple seeds and asserts that at
@@ -328,15 +512,24 @@ def test_stochastic_regime_seed_variability():
     tolerance. We avoid asserting that *all* seeds must differ because low budgets can
     coincidentally yield identical samples; instead we require that variability is
     observable across several independent seeds.
+
+    Uses a SOUM game (several random basis games, n=6) rather than a DummyGame: with
+    deterministic_counts=True (the default) the per-size counts are seed-independent, so
+    the only source of variability across seeds is *which* rows get drawn within each
+    size, and the paired WLS estimator can land on the exact answer for many seeds on a
+    degenerate two-interaction game (masking variability); SOUM's richer payoff
+    structure makes different row draws produce visibly different estimates instead.
     """
     n = 6
     budget = 20  # ensure budget < 2**n so sampling occurs
 
     def make_game():
-        return DummyGame(n, interaction=(1, 2))
+        return SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=1)
 
     results = [
-        LeverageSHAP(n, random_state=s).approximate(budget, make_game()).values
+        LeverageSHAP(n, random_state=s, deterministic_counts=deterministic_counts)
+        .approximate(budget, make_game())
+        .values
         for s in DIVERSE_SEEDS
     ]
 
@@ -384,16 +577,14 @@ def test_empirical_convergence_rate():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_paired_sampling_invariant(seed):
-    """Every sampled coalition must appear together with its complement.
+    """With ``pairing_trick=True`` (the default), every sampled coalition must appear
+    together with its complement -- Algorithm 1's ``(z, z̄)`` design.
 
-    Paired ``(z, z̄)`` sampling is the variance-reduction mechanism baked into
-    Algorithm 1 (it is unconditional, not gated by the inert ``pairing_trick`` flag).
-    Rather than comparing variance across a flag that does nothing, we verify the
-    structural invariant directly: for the empty/grand pair and every interior
-    coalition in the sampled matrix, its bitwise complement is also present.
+    We verify the structural invariant directly: for the empty/grand pair and every
+    interior coalition in the sampled matrix, its bitwise complement is also present.
     """
     n, budget = 6, 40
-    approximator = LeverageSHAP(n, random_state=seed)
+    approximator = LeverageSHAP(n, pairing_trick=True, random_state=seed)
     Z, _ = approximator._sample(budget)
 
     # Represent each coalition as an immutable tuple so we can test set membership.
@@ -401,6 +592,49 @@ def test_paired_sampling_invariant(seed):
     for row in Z.astype(bool):
         complement = tuple(~row)
         assert complement in rows, "Sampled coalition is missing its complement"
+
+
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_unpaired_sampling_same_counts_no_forced_complement(seed):
+    """With ``pairing_trick=False``, per-size counts match the paired mode, rows are
+    drawn without replacement (no duplicates), and -- for a non-exhaustive budget -- at
+    least one row's complement is absent (BRIEF.md item 4, the "without paired sampling"
+    ablation).
+    """
+    n, budget = 6, 40  # budget < 2**n == 64, so sampling is non-exhaustive
+
+    Z_paired, _ = LeverageSHAP(n, pairing_trick=True, random_state=seed)._sample(budget)
+    Z_unpaired, _ = LeverageSHAP(n, pairing_trick=False, random_state=seed)._sample(budget)
+
+    # Per-size allocation is identical between modes; only which rows are drawn differs.
+    counts_paired = Counter(int(s) for s in Z_paired.sum(axis=1))
+    counts_unpaired = Counter(int(s) for s in Z_unpaired.sum(axis=1))
+    assert counts_paired == counts_unpaired
+
+    # No duplicate rows (without-replacement sampling in both modes).
+    rows_unpaired = [tuple(row) for row in Z_unpaired.astype(bool)]
+    assert len(rows_unpaired) == len(set(rows_unpaired))
+
+    # At least one sampled coalition's complement is absent: pairing is not forced.
+    rows_set = set(rows_unpaired)
+    missing_complement = any(tuple(~np.array(row)) not in rows_set for row in rows_unpaired)
+    assert missing_complement, "Expected at least one row without its complement present"
+
+
+def test_pairing_modes_both_exact_at_full_budget():
+    """Both pairing modes must reach the exact Shapley values at budget == 2**n."""
+    n = 6
+    budget = 2**n
+    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
+    exact = ExactComputer(game, n)
+    exact_sv = exact("SV")
+
+    for pairing_trick in (True, False):
+        result = LeverageSHAP(n, pairing_trick=pairing_trick, random_state=0).approximate(
+            budget, game
+        )
+        assert result.estimated is False
+        np.testing.assert_allclose(result.values, exact_sv.values, atol=1e-10, rtol=0.0)
 
 
 def test_leverageshap_vs_kernelshap_mean_error():
@@ -482,8 +716,8 @@ def test_minimal_budget_sweep(seed):
     for b in budgets:
         res = LeverageSHAP(n, random_state=seed).approximate(b, DummyGame(n, interaction=(0, 1)))
         assert res.estimation_budget is not None
-        # Realized evaluation count is capped at full enumeration; it may exceed the tiny
-        # requested budget because the Binomial draw can overshoot.
+        # With the deterministic default, the realized evaluation count is exact (see
+        # test_estimation_budget_matches_exact_formula) and capped at full enumeration.
         assert res.estimation_budget <= 2**n
         if b < 2**n:
             assert res.estimated is True
