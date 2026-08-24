@@ -20,6 +20,7 @@
 - Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
 - Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
 - `kADDSHAP` now declares `"SV"` in its `valid_indices` (like `RegressionFSII` does): with `max_order=1` it estimates Shapley values, which makes it consistent with its listing in the `SV_APPROXIMATORS` registry; the registry consistency test now also covers `SV_APPROXIMATORS`
+- `KNNExplainer`, `WeightedKNNExplainer`, and their ground-truth games now raise a `ValueError` at construction when the model was fitted on fewer training samples than `n_neighbors`, mirroring scikit-learn's own "Expected n_neighbors <= n_samples_fit" error on `predict`. Previously, `KNNExplainer` silently returned Shapley values that disagreed with `KNNExplainerGame` in this regime
 
 ### Maintenance
 

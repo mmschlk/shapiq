@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pytest
+from sklearn.neighbors import KNeighborsClassifier
 
 from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
 from shapiq.explainer.nn.games.knn import KNNExplainerGame
@@ -73,22 +74,30 @@ def test_sv_values_agree_with_ground_truth_game(
             assert np.allclose(iv_expected_array, iv_array)
 
 
-def test_knn_small_n(sklearn_knn_model, background_clf_dataset_small):
-    """Test the KNNExplainer in the case where N < k."""
+@pytest.mark.parametrize(
+    "weights, explainer_cls, game_cls",
+    [
+        ("uniform", KNNExplainer, KNNExplainerGame),
+        ("distance", WeightedKNNExplainer, WeightedKNNExplainerGame),
+    ],
+)
+def test_knn_small_training_set_rejected(
+    weights: str,
+    explainer_cls: type[Explainer],
+    game_cls: type[NNExplainerGameBase],
+    background_clf_dataset_small,
+):
+    """Models fitted on fewer training samples than ``n_neighbors`` are rejected at construction.
+
+    scikit-learn itself refuses to predict with such models ("Expected n_neighbors <=
+    n_samples_fit"), so there is no model behavior to explain.
+    """
     X, y = background_clf_dataset_small
-    X = X[:2]
-    y = y[:2]
-    n_classes = np.max(y) + 1
+    model = KNeighborsClassifier(n_neighbors=3, weights=weights)
+    model.fit(X[:2], y[:2])
 
-    for x_test in X:
-        for class_index in range(n_classes):
-            ground_truth_game = KNNExplainerGame(sklearn_knn_model, x_test, class_index)
-            iv_expected = ground_truth_game.exact_values("SV", 1)
-            knn_explainer = KNNExplainer(sklearn_knn_model, class_index=class_index)
-            iv = knn_explainer.explain(x_test)
+    with pytest.raises(ValueError, match="n_neighbors <= n_samples_fit"):
+        explainer_cls(model, class_index=0)
 
-            interactions = iv.interactions.keys()
-            iv_expected_array = np.array([iv_expected.interactions[ia] for ia in interactions])
-            iv_array = np.array([iv.interactions[ia] for ia in interactions])
-
-            assert np.allclose(iv_expected_array, iv_array)
+    with pytest.raises(ValueError, match="n_neighbors <= n_samples_fit"):
+        game_cls(model, X[0], 0)
