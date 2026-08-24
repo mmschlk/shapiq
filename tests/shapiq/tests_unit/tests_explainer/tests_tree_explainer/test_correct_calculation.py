@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.tree import InterventionalGame, InterventionalTreeExplainer
+from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
 
 SEED = 1337
 np.random.seed(SEED)
@@ -29,8 +29,8 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
     model = dt_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, index=index, max_order=order, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -44,16 +44,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for _i, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -78,6 +69,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, order):
@@ -86,8 +78,8 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
     model = dt_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         index=index,
@@ -108,16 +100,7 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for _i, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -142,6 +125,7 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, order):
@@ -149,8 +133,8 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
     model = rf_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -164,16 +148,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for _i, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -198,6 +173,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, order):
@@ -206,8 +182,8 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
     model = rf_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -228,16 +204,7 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for interaction in own_interactions:
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -262,6 +229,7 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index, order):
@@ -269,8 +237,8 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
     model = xgb_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -284,16 +252,8 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
 
     # Assertions that own Interventional Implementation matches Exact Computer
     for _, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Using 1e-5 tolerance due to float32 vs float64 precision differences in XGBoost calculations
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-5,
-            )
-        elif len(interaction) > 0:
+        # Using 1e-5 tolerance due to float32 vs float64 precision differences in XGBoost calculations
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -318,6 +278,7 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index, order):
@@ -326,8 +287,8 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
     model = xgb_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -348,16 +309,7 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for _, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -382,6 +334,7 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, index, order):
@@ -389,8 +342,8 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
     model = lightgbm_reg_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model, X_train, max_order=order, index=index, debug=False
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -404,16 +357,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
 
     # Assertions that own Interventional Implementation matches Exact Computer
     for _, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions[interaction],
-                atol=1e-6,
-            )
-        elif len(interaction) > 0:
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
@@ -438,6 +382,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
         ("CHII", 3),
         ("FBII", 3),
         ("FSII", 3),
+        ("STII", 3),
     ],
 )
 def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data, index, order):
@@ -446,8 +391,8 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
     model = lightgbm_clf_model
     point_to_explain = X_test[0:1]
 
-    # Our InterventionalTreeExplainer
-    own_interventional_explainer = InterventionalTreeExplainer(
+    # Our InterventionalTreeSHAPIQ
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
         model,
         X_train,
         max_order=order,
@@ -468,21 +413,47 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
 
     # Assertions that own Interventional Implementatoin matches Exact Computer
     for _, interaction in enumerate(own_interactions.keys()):
-        if index in ["FSII", "STII"]:
-            if len(interaction) != order:
-                continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
+        if len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
                 atol=1e-6,
             )
-        elif len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
+
+
+@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4)])
+def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, index, order):
+    """Indices with any-order closed forms match the ExactComputer on the sparse C kernel.
+
+    The dense correctness tests above (orders <= 3, few features) only exercise the
+    flatten kernel; ``max_order > 3`` routes through the sparse batched kernel, whose
+    weights come from ``weight_func`` in ``weights.cpp``. This guards the per-index
+    dispatch there (STII and FSII fell back to the top-order-only general path before).
+    """
+    X_train, X_test, _y_train, _y_test = reg_data
+    model = dt_reg_model
+    point_to_explain = X_test[0:1]
+
+    own_interventional_explainer = InterventionalTreeSHAPIQ(
+        model, X_train, index=index, max_order=order, debug=False
+    )
+    assert own_interventional_explainer._use_sparse_path
+    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
+    own_interactions = explanation.interactions
+
+    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    exact_computer = ExactComputer(interventional_game)
+    exact_values = exact_computer(index, order)
+    game_interactions = exact_values.interactions
+
+    for interaction in own_interactions:
+        if len(interaction) == 0:
+            continue
+        assert np.isclose(
+            own_interactions[interaction],
+            game_interactions.get(interaction, 0),
+            atol=1e-6,
+        )
 
 
 @pytest.mark.parametrize(("index", "order"), [("SV", 1), ("SII", 2)])
@@ -509,7 +480,7 @@ def test_interventional_float64_point_matches_model(index, order):
     point_to_explain = X[250].astype(np.float64)
     assert point_to_explain.dtype == np.float64
 
-    explainer = InterventionalTreeExplainer(model, X_train, index=index, max_order=order)
+    explainer = InterventionalTreeSHAPIQ(model, X_train, index=index, max_order=order)
     own_interactions = explainer.explain_function(point_to_explain).interactions
 
     game = InterventionalGame(model, X_train, point_to_explain)

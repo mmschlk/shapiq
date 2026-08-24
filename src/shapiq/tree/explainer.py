@@ -15,7 +15,7 @@ import numpy as np
 
 from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 from shapiq.utils.modules import safe_isinstance
 
 from .base import TreeModel
@@ -190,7 +190,7 @@ class TreeExplainer(Explainer):
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
-        self._interventional_explainer: InterventionalTreeExplainer | None = None
+        self._interventional_explainer: InterventionalTreeSHAPIQ | None = None
         self._explainers_initialized = False
 
         self._baseline_value: float | None = None
@@ -211,7 +211,7 @@ class TreeExplainer(Explainer):
                         "one to TreeExplainer(..., mode='interventional', reference_dataset=...)."
                     )
                     raise ValueError(msg)
-                self._baseline_value = InterventionalTreeExplainer.compute_empty_prediction(
+                self._baseline_value = InterventionalTreeSHAPIQ.compute_empty_prediction(
                     self._trees, self._reference_dataset
                 )
             else:
@@ -247,11 +247,11 @@ class TreeExplainer(Explainer):
         elif self.mode == "interventional":
             if self._reference_dataset is None:
                 msg = (
-                    "InterventionalTreeExplainer requires a reference_dataset; pass one to "
+                    "InterventionalTreeSHAPIQ requires a reference_dataset; pass one to "
                     "TreeExplainer(..., mode='interventional', reference_dataset=...)."
                 )
                 raise ValueError(msg)
-            self._interventional_explainer = InterventionalTreeExplainer(
+            self._interventional_explainer = InterventionalTreeSHAPIQ(
                 model=self._trees,
                 data=self._reference_dataset,
                 class_index=self._class_label,
@@ -550,7 +550,7 @@ class TreeExplainer(Explainer):
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute interaction values for ``x`` via the eagerly-built :class:`InterventionalTreeExplainer`.
+        """Compute interaction values for ``x`` via the eagerly-built :class:`InterventionalTreeSHAPIQ`.
 
         Args:
             x: The instance to explain as a 1-dimensional array.

@@ -11,6 +11,10 @@
 - adds **categorical split support** to the tree explainers: models trained with native categorical features — sklearn `HistGradientBoosting*` (`categorical_features`), LightGBM (`categorical_feature`), and XGBoost (`enable_categorical`) — are now converted and explained exactly on all paths (TreeSHAP-IQ, LinearTreeSHAP, and the interventional explainer). `TreeModel` stores per-node category sets in a CSR layout (`cat_values`/`cat_start`/`cat_size`) with the unified routing rule "category in set → left child, NaN → missing child". Previously, categorical LightGBM/XGBoost models were **silently mis-parsed** (bitset indices read as numeric thresholds), producing wrong explanations without any error
 - fixes missing-value (NaN) routing in the LinearTreeSHAP and interventional C++ kernels: `-ffast-math` had compiled away the `std::isnan` checks (now built with `-fno-finite-math-only`), and TreeSHAP-IQ now routes NaN values through the per-node missing direction exactly like `predict_one`
 
+### Breaking Changes
+
+- Renames `InterventionalTreeExplainer` to `InterventionalTreeSHAPIQ` in `shapiq.tree.interventional` for consistency with `TreeSHAPIQ` and `LinearTreeSHAP`. The old name is no longer available; import `shapiq.tree.InterventionalTreeSHAPIQ` instead.
+
 ### Bugfix
 
 - Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
