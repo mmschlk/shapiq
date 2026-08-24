@@ -61,31 +61,17 @@ def test_approximate(n, budget, seed):
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0
     assert sv_estimates.index == "SV"
-    # estimation_budget reports the realized number of coalitions evaluated. With the
-    # default deterministic_counts=True this is exact (see
-    # test_per_size_counts_structural_properties for the exact-formula check); it must
-    # equal the game's access count and never exceed full enumeration (2**n).
+    # estimation_budget must equal the game's access count and never exceed 2**n.
     assert sv_estimates.estimation_budget == game.access_counter
     assert sv_estimates.estimation_budget <= 2**n
     assert sv_estimates.estimated != (budget >= 2**n)
 
-    # The access counter should be at most 2**n, since LeverageSHAP caps the budget at 2**n and does not make redundant calls.
     assert game.access_counter <= 2**n
 
-    # Players 1 and 2 should be the most important (DummyGame interaction on
-    # (1, 2)). DummyGame(n, interaction) is v(S) = |S|/n + [1, 2 in S]: an
-    # additive "coalition size" game (Shapley value 1/n for every player) plus
-    # a pure pairwise unanimity game on {1, 2} (closed-form Shapley value 1/2
-    # for players 1 and 2, 0 for everyone else -- Shapley's own formula for a
-    # unanimity game u_T, SV_i(u_T) = 1/|T| for i in T). Exact target for
-    # players 1 and 2: 1/n + 1/2. A loose tolerance here (e.g. abs=0.15) would pass
-    # even under a wrong leverage-weight formula, since this game happens to be
-    # recovered essentially exactly by LeverageSHAP at both of this test's budgets
-    # regardless of the WLS weights, as long as the sampled design has full column
-    # rank -- verified empirically over all DIVERSE_SEEDS x {n=7, budget in (380,
-    # 100)}, max observed error ~1e-15. See test_sample_weights_match_leverage_score_
-    # formula for a test that isolates the weights directly instead of relying on
-    # this game's forgiving structure.
+    # DummyGame = additive size game + unanimity on {1, 2}: exact SV for players 1/2
+    # is 1/n + 1/2, and LeverageSHAP recovers this game to float precision at these
+    # budgets (the weights themselves are pinned by
+    # test_sample_weights_match_leverage_score_formula).
     exact_target = 1.0 / n + 0.5
     assert sv_estimates[(1,)] == pytest.approx(exact_target, abs=1e-6)
     assert sv_estimates[(2,)] == pytest.approx(exact_target, abs=1e-6)
@@ -103,27 +89,15 @@ def test_exact_matches_exactcomputer_on_small_game():
     budget = 2**n
     game = DummyGame(n, interaction=(0, 2))
 
-    # Use ExactComputer here as the ground-truth reference.
-    # The point of the test is to check that LeverageSHAP reaches the exact answer
-    # once the budget covers the full coalition space.
     exact = ExactComputer(game, n)
     exact_sv = exact("SV")
 
     approximator = LeverageSHAP(n, random_state=42)
     result = approximator.approximate(budget=budget, game=game)
 
-    # NumPy arrays need elementwise comparison, and floating-point code may differ by
-    # tiny rounding noise, so assert_allclose is the right check here.
-    # The results below should be exactly equal, but we allow for a tiny absolute tolerance
-    # to account for any minor floating-point discrepancies that may arise from different
-    # computational paths in the two methods.
     np.testing.assert_allclose(result.values, exact_sv.values, atol=1e-8, rtol=0.0)
-
-    # With a full budget, the approximation is exact, so estimated should be False. The parameter 'estimated' indicates whether the result is an estimate (True) or exact (False). Since we are using a full budget that covers all coalitions, LeverageSHAP should be able to compute the exact Shapley values, and thus estimated should be False.
     assert result.estimated is False
-    assert (
-        result.estimation_budget == budget
-    )  # The estimation budget should match the full budget used for approximation.
+    assert result.estimation_budget == budget
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
@@ -171,66 +145,34 @@ def test_budget_too_small_raises():
 def test_per_size_counts_match_hand_computed_tables():
     """Per-size sampled row counts must match literal, hand-computed expected tables.
 
-    These four (n, budget) cases were solved by hand from the class docstring's
-    definition (Eq. 12 for c, then the largest-remainder rounding of each half-size's
-    Binomial(C(n, s), min(1, 2c / C(n, s))) mean into a pair count m_s, doubled for the
-    middle size since a "pair" there is two distinct same-size coalitions) -- not by
-    re-running or reimplementing shapiq's own algorithm. The numbers are transcribed
-    once as a literal table below so a shared bug between this test and the
-    implementation cannot make both sides agree. Derivations:
+    The four (n, budget) cases were solved by hand from Eq. 12 and the
+    largest-remainder rule -- not by re-running the implementation -- so a shared bug
+    cannot make both sides agree. Derivation recipe: solve Eq. 12 for 2c; per
+    half-size, mu = 2c (or 2c*s/n at the even-n middle size, pool C(n-1, s-1));
+    exhaustive if C(n, s) <= 2c; floor the rest and fill the shortfall by largest
+    remainder; each pair yields a row and its complement (two same-size rows at the
+    middle size). Cases:
 
-    n=4, budget=10: target = budget - 2 = 8. C(4,1)=4, C(4,2)=6, C(4,3)=4. Solving
-    sum(min(C(4,s), 2c)) = 8 with 2c <= 4 gives 2c = 8/3 (all three terms equal 2c and
-    sum to 3*(8/3) = 8), i.e. c = 4/3. Half-sizes are s=1 (not middle) and s=2 (middle,
-    n even). s=1: mu = 2c = 8/3 ~= 2.667, floor 2, remainder 0.667. s=2 (middle):
-    pool = C(3,1) = 3, mu = 2c*s/n = (8/3)*(2/4) = 4/3 ~= 1.333, floor 1, remainder
-    0.333. Floor sum = 3, target_pairs = (10-2)//2 = 4, shortfall = 1, which goes to
-    s=1 (larger remainder) -> pairs {1: 3, 2: 1}. Row counts: size 1 and its complement
-    size 3 each get 3 rows (one row per pair, non-middle); size 2 is self-complementary
-    so its 1 pair contributes 2 rows. Expected row counts: {1: 3, 2: 2, 3: 3}.
+    n=4, budget=10: 2c = 8/3. s=1: floor 2, rem 0.667; s=2 (middle, pool 3): floor 1,
+    rem 0.333. target_pairs = 4, shortfall 1 -> s=1. Rows {1: 3, 2: 2, 3: 3}.
 
-    n=5, budget=9: target = 7. C(5,1)=5, C(5,2)=10, C(5,3)=10, C(5,4)=5. Solving with
-    2c <= 5 gives 2c = 7/4 = 1.75 (four equal terms summing to 7), c = 0.875. n is odd,
-    so there is no middle size and mu = 2c for every half-size (s=1, s=2 alike): both
-    get floor(1.75) = 1 with the *same* remainder 0.75 -- an exact tie. Floor sum = 2,
-    target_pairs = (9-2)//2 = 3, shortfall = 1, which must go to exactly one of the two
-    tied sizes; the implementation's stable, ascending-s tie-break gives it to s=1 ->
-    pairs {1: 2, 2: 1}. Row counts: {1: 2, 2: 1, 3: 1, 4: 2} (symmetric, since neither
-    size is middle). This case also demonstrates the odd-budget floor (budget=9 is odd;
-    the realized total is 2 + 2*3 = 8 rows -- this class always floors an odd budget
-    down to the nearest even total rather than rounding up, as documented in
-    ``_bernoulli_sample_deterministic``'s docstring).
+    n=5, budget=25: 2c = 6.5. s=1 exhaustive (5 <= 6.5): 5 pairs; s=2: floor 6,
+    rem 0.5. target_pairs = 11, shortfall 0 -- deliberately tie-free (an
+    all-non-exhaustive odd-n case ties every remainder and would pin the arbitrary
+    tie-break as expected output). Rows {1: 5, 2: 6, 3: 6, 4: 5}; the odd budget
+    floors to 24 rows.
 
-    n=7, budget=15: target = 13. C(7,1)=7, C(7,2)=21, C(7,3)=35. Solving with 2c <= 7
-    gives 2c = 13/6 ~= 2.1667 (six equal terms across half-sizes 1..3 and their
-    complements 4..6, summing to 6*(13/6) = 13), c ~= 1.0833. n is odd, so mu = 2c for
-    every half-size: s=1, s=2, s=3 each get floor(2.1667) = 2 with the *same* remainder
-    0.1667. Floor sum = 2+2+2 = 6, target_pairs = (15-2)//2 = 6, shortfall = 0 -- no
-    tie-break needed at all, so this case is unambiguous regardless of tie-break rule.
-    Row counts: {1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2} (12 interior rows + 2 for
-    empty/grand = 14; budget=15 is odd, floored down by one row as in the n=5 case).
+    n=7, budget=15: 2c = 13/6. s=1..3 each floor 2, shortfall 0. Rows {1..6: 2}
+    (14 rows; odd budget floored).
 
-    n=6, budget=40: target = 38. C(6,1)=6, C(6,2)=15, C(6,3)=20 (middle, pool
-    C(5,2)=10). Solving with 6 <= 2c <= 15 (so s=1 and its complement s=5 are already
-    exhaustive at this 2c, while s=2/s=4 and the middle s=3 are not) gives
-    12 + 3*(2c) = 38 -> 2c = 26/3 ~= 8.667, c ~= 4.333. s=1: C(6,1)=6 <= 8.667, so s=1
-    (and s=5) are taken exhaustively: pairs = pool = 6. s=2: not exhaustive
-    (15 > 8.667), mu = 2c ~= 8.667, floor 8, remainder 0.667. s=3 (middle): not
-    exhaustive (20 > 8.667), pool = C(5,2) = 10, mu = 2c*3/6 = 4.333, floor 4, remainder
-    0.333. Floor sum over the two non-exhaustive sizes = 8 + 4 = 12, plus the
-    exhaustive size's fixed 6 = 18 total pairs before remainder-filling.
-    target_pairs = (40-2)//2 = 19, shortfall = 1, which goes to s=2 (largest remainder
-    among the non-exhaustive sizes; s=1 is skipped because it is already exhaustive)
-    -> pairs {1: 6, 2: 9, 3: 4}. Row counts: size 1 and its complement size 5 each get
-    6 rows; size 2 and its complement size 4 each get 9 rows; size 3 is
-    self-complementary so its 4 pairs contribute 8 rows. Expected row counts:
-    {1: 6, 2: 9, 3: 8, 4: 9, 5: 6}. This is the case where a small size (s=1, and by
-    symmetry s=5) saturates its full pool while budget is still well short of
-    2**n = 64.
+    n=6, budget=40: 2c = 26/3. s=1 exhaustive (6 <= 8.667): 6 pairs; s=2: floor 8,
+    rem 0.667; s=3 (middle, pool 10): floor 4, rem 0.333. target_pairs = 19,
+    shortfall 1 -> s=2. Rows {1: 6, 2: 9, 3: 8, 4: 9, 5: 6} -- a small size saturates
+    its pool while budget < 2**n = 64.
     """
     cases: list[tuple[int, int, dict[int, int]]] = [
         (4, 10, {1: 3, 2: 2, 3: 3}),
-        (5, 9, {1: 2, 2: 1, 3: 1, 4: 2}),
+        (5, 25, {1: 5, 2: 6, 3: 6, 4: 5}),
         (7, 15, {1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2}),
         (6, 40, {1: 6, 2: 9, 3: 8, 4: 9, 5: 6}),
     ]
@@ -246,14 +188,10 @@ def test_per_size_counts_match_hand_computed_tables():
 @pytest.mark.parametrize("n", [4, 5, 6, 7, 8, 9, 10, 11, 12])
 @pytest.mark.parametrize("budget_fraction", [0.1, 0.3, 0.6])
 def test_per_size_counts_structural_properties(n, budget_fraction):
-    """Per-size sampled counts must satisfy structural invariants that hold by
-    construction, independent of the exact c-solving / largest-remainder formula:
-    the realized row total matches the simple budget-arithmetic
-    formula (a distinct, much simpler piece of logic than the per-size distribution
-    algorithm), each size's count never exceeds its full combinatorial pool,
-    complementary sizes are equally represented, the self-complementary middle size
-    (even n) always has an even count under pairing_trick=True, no two sampled rows
-    are identical, and the empty/grand coalitions are always present as rows 0/1.
+    """Structural invariants that hold by construction, independent of the exact
+    c-solving / largest-remainder formula: exact realized total, pool bounds,
+    complement symmetry, even middle-size count (even n, paired), no duplicate rows,
+    and empty/grand always present as rows 0/1.
     """
     budget = max(2, int(budget_fraction * 2**n))
     approximator = LeverageSHAP(n, random_state=0)
@@ -266,9 +204,6 @@ def test_per_size_counts_structural_properties(n, budget_fraction):
     sizes = Z.sum(axis=1)
     counts = Counter(int(s) for s in sizes[2:])
 
-    # total rows match the simple budget-arithmetic formula (distinct from, and much
-    # simpler than, the per-size distribution algorithm this test file's hand-computed
-    # tables cover)
     expected_total = 2 + 2 * ((min(budget, 2**n) - 2) // 2)
     assert Z.shape[0] == expected_total
     assert sum(counts.values()) + 2 == expected_total
@@ -290,12 +225,7 @@ def test_per_size_counts_structural_properties(n, budget_fraction):
 
 @pytest.mark.parametrize("n", [3, 4, 5, 6, 7, 8])
 def test_per_size_counts_exhaustive_at_full_budget(n):
-    """At budget == 2**n every coalition of every size must appear exactly once.
-
-    This needs no c-solving or largest-remainder logic to state or check -- it is a
-    direct mathematical consequence of "budget covers every coalition", independent of
-    the per-size distribution formula this test file's hand-computed tables cover.
-    """
+    """At budget == 2**n every coalition of every size must appear exactly once."""
     budget = 2**n
     approximator = LeverageSHAP(n, random_state=0)
     Z, _ = approximator._sample(budget)
@@ -306,40 +236,20 @@ def test_per_size_counts_exhaustive_at_full_budget(n):
 
 
 def test_sample_weights_match_leverage_score_formula():
-    r"""Direct, hand-derived check of the per-row IS weights ``_sample`` returns,
-    on partial (non-exhaustive) budgets.
+    r"""Hand-derived check of the per-row IS weights on partial budgets.
 
-    The class docstring's Algorithm 1 step 3 gives the formula: each row's weight
-    is ``w(||z||) / min(1, 2c * l_z)``, where ``l_z = 1/C(n, ||z||)`` is the
-    leverage score and ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight.
-    When size ``s``'s whole layer is exhaustive (``C(n, s) <= 2c``), ``min(1, ...)
-    == 1`` and the weight is exactly the raw kernel weight ``w(s)``. Otherwise
-    ``min(1, ...) == 2c/C(n, s)`` and the weight collapses algebraically to
-    ``w(s) * C(n, s) / (2c) == 1/(s * (n-s) * 2c)`` (the binomial cancels). Every
-    number below is computed from this formula and Eq. 12 by hand -- not by
-    calling ``_find_c`` or reading ``_sample``'s implementation -- so this test
-    guards against two distinct classes of bug that a purely structural test
-    would miss: always taking the exhaustive-branch weight (silently dropping
-    the IS correction and reducing to something KernelSHAP-like), and an extra
-    normalization factor sneaking into the leverage-weight branch. No "exact at
-    full budget" test in this file exercises the non-exhaustive branch at all,
-    since every size is trivially exhaustive there.
+    Weight formula (Algorithm 1 step 3): raw kernel weight ``w(s) = (s-1)!(n-s-1)!/n!``
+    for exhaustive layers (``C(n, s) <= 2c``), else ``w(s) / (2c/C(n, s)) ==
+    1/(s*(n-s)*2c)``. The numbers below come from this formula and Eq. 12 by hand,
+    guarding against bugs a structural test misses (dropping the IS correction
+    entirely, or an extra normalization factor); the full-budget tests never exercise
+    the non-exhaustive branch.
 
-    n=5, budget=12: target = budget - 2 = 10. C(5,1)=C(5,4)=5, C(5,2)=C(5,3)=10.
-    Guessing 2c <= 5 makes every one of the four binomials non-exhaustive, so
-    each contributes exactly 2c: 4*(2c) = 10 -> c = 5/4, 2c = 5/2 (consistent
-    with the guess: 2.5 <= 5). No size is exhaustive, so every row uses the
-    leverage-corrected weight 1/(s*(n-s)*2c): size 1 and its complement, size 4
-    -> 1/(1*4*2.5) = 0.1; size 2 and its complement, size 3 -> 1/(2*3*2.5) =
-    1/15.
+    n=5, budget=12: 2c = 5/2, no size exhaustive. Sizes 1/4 -> 1/(1*4*2.5) = 0.1;
+    sizes 2/3 -> 1/(2*3*2.5) = 1/15.
 
-    n=6, budget=40: target = 38. C(6,1)=C(6,5)=6, C(6,2)=C(6,4)=15, C(6,3)=20
-    (middle). Guessing 6 <= 2c <= 15 makes sizes 1/5 exhaustive and 2/3/4 not:
-    2*6 + 3*(2c) = 38 -> 2c = 26/3 (c = 13/3; consistent: 6 <= 26/3 <= 15).
-    Sizes 1 and 5 (C(n,s)=6 <= 26/3) get the raw kernel weight
-    w(1) = w(5) = 0!*4!/6! = 1/30. Sizes 2 and 4 (not exhaustive,
-    s*(n-s) = 2*4 = 8) get 1/(8*(26/3)) = 3/208. Size 3, the middle
-    (self-complementary, s*(n-s) = 3*3 = 9), gets 1/(9*(26/3)) = 1/78.
+    n=6, budget=40: 2c = 26/3, sizes 1/5 exhaustive -> w(1) = 1/30; sizes 2/4 ->
+    1/(8*26/3) = 3/208; size 3 (middle) -> 1/(9*26/3) = 1/78.
     """
     cases: list[tuple[int, int, dict[int, float]]] = [
         (5, 12, {1: 0.1, 2: 1.0 / 15, 3: 1.0 / 15, 4: 0.1}),
@@ -358,6 +268,37 @@ def test_sample_weights_match_leverage_score_formula():
         for s, w in zip(sizes[2:], weights[2:], strict=True):
             expected = expected_weight_by_size[int(s)]
             assert w == pytest.approx(expected, rel=1e-9, abs=1e-12), (n, budget, int(s), w)
+
+
+def test_saturated_layer_weight_matches_full_enumeration():
+    r"""A layer the largest-remainder fill lifts to full enumeration must get the raw
+    kernel weight ``w(s)``, not the IS weight for inclusion probability ``2c/C(n,s)``.
+
+    n=5, budget=20: 2c = 4.5 < 5 = C(5,1); both half-sizes floor to 4 pairs with
+    remainder 0.5, and the shortfall of 1 lands on s=1, fully enumerating that layer:
+    its rows must get w(1) = 1/20, not 1/18. The weight check derives each expected
+    weight from the *realized* counts (tie-break-agnostic); only the guard that some
+    layer actually saturates depends on the fill reaching s=1 -- if the tie-break
+    ever changes, pick a new (n, budget) that saturates a layer.
+    """
+    n, budget = 5, 20
+    two_c = 4.5  # hand-solved from Eq. 12 in the docstring
+
+    Z, weights = LeverageSHAP(n, random_state=0)._sample(budget)
+    sizes = Z.sum(axis=1)
+    counts = Counter(int(s) for s in sizes[2:])
+
+    saturated = {s for s in range(1, n) if counts[s] == math.comb(n, s)}
+    assert saturated, "expected the remainder fill to lift a layer to full enumeration"
+    assert all(math.comb(n, s) > two_c for s in saturated)
+
+    for s, w in zip(sizes[2:], weights[2:], strict=True):
+        size = int(s)
+        if size in saturated:
+            expected = math.factorial(size - 1) * math.factorial(n - size - 1) / math.factorial(n)
+        else:
+            expected = 1.0 / (size * (n - size) * two_c)
+        assert w == pytest.approx(expected, rel=1e-9, abs=1e-12), (size, w)
 
 
 def test_saturation_all_rows_distinct_and_exact_on_soum():
@@ -384,14 +325,10 @@ def test_saturation_all_rows_distinct_and_exact_on_soum():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_unanimity_game_exact_svs(seed):
-    """Unanimity game v(S) = 1 iff T ⊆ S is fully non-additive.
+    """Unanimity game v(S) = 1 iff T ⊆ S: exact SVs are 1/|T| inside T, 0 outside.
 
-    True Shapley values: 1/|T| for players in T, 0 for others.
-    At full budget every interior coalition has inclusion probability 1, so the IS
-    weight w(s) = (s-1)!(n-s-1)!/n! is a fixed global multiple ((n-1)x) of the Shapley
-    kernel weight. A global scale does not change the weighted-least-squares argmin, so
-    the per-run full-budget solution is *exact* (not merely unbiased in expectation).
-    We assert the exact Shapley values, plus the efficiency and ordering properties.
+    At full budget the IS weight is a global multiple of the Shapley kernel weight,
+    so the WLS solution is exact per run, not merely unbiased in expectation.
     """
     n = 6
     T = frozenset({1, 3, 5})
@@ -506,11 +443,8 @@ def test_reproducibility(seed):
 
 
 def test_different_seeds_draw_different_rows():
-    """Different seeds must (usually) draw a different set of sampled coalitions.
-
-    Complements test_reproducibility (same seed -> identical .values): here we check the
-    row level directly on a SOUM game, since two different row draws could in principle
-    still yield identical Shapley-value estimates by coincidence.
+    """Different seeds must (usually) draw a different set of sampled coalitions --
+    the row-level complement of test_reproducibility.
     """
     n, budget = 6, 20  # non-exhaustive: budget < 2**n == 64
 
@@ -553,19 +487,10 @@ def test_deterministic_counts_false_smoke(seed):
 
 def test_deterministic_counts_false_budget_varies_across_seeds():
     """Distinguishes a genuine Binomial ``deterministic_counts=False`` path from a
-    bug that silently always runs the deterministic path regardless of the flag.
-
-    Every check in ``test_deterministic_counts_false_smoke`` above (``estimated``,
-    distinct rows, same-seed reproducibility, budget <= 2**n) holds equally
-    whether or not the flag actually does anything, because the (buggy)
-    always-deterministic path is itself a valid, reproducible, distinct-rows
-    sampler. What actually distinguishes the two is the flag's defining
-    property: with ``deterministic_counts=False``, each size's pair count is a
-    genuine Binomial *draw* rather than its rounded expectation, so the
-    *realized total row count itself* is stochastic and varies across seeds --
-    unlike ``deterministic_counts=True``, whose realized budget is always the
-    exact closed form ``2 + 2 * ((min(budget, 2**n) - 2) // 2)`` regardless of
-    seed.
+    bug that silently always runs the deterministic path: only a real Binomial draw
+    makes the realized total row count vary across seeds, while the deterministic
+    mode always realizes the exact closed-form budget. The smoke test's checks all
+    hold under both paths alike, so they cannot tell the two apart.
     """
     n, budget = 6, 20
 
@@ -622,12 +547,9 @@ def test_stochastic_regime_seed_variability(deterministic_counts):
     coincidentally yield identical samples; instead we require that variability is
     observable across several independent seeds.
 
-    Uses a SOUM game (several random basis games, n=6) rather than a DummyGame: with
-    deterministic_counts=True (the default) the per-size counts are seed-independent, so
-    the only source of variability across seeds is *which* rows get drawn within each
-    size, and the paired WLS estimator can land on the exact answer for many seeds on a
-    degenerate two-interaction game (masking variability); SOUM's richer payoff
-    structure makes different row draws produce visibly different estimates instead.
+    Uses a SOUM game rather than a DummyGame: DummyGame's degenerate structure can be
+    recovered exactly for many seeds (masking variability), while SOUM's richer
+    payoffs make different row draws produce visibly different estimates.
     """
     n = 6
     budget = 20  # ensure budget < 2**n so sampling occurs
@@ -730,37 +652,18 @@ def test_unpaired_sampling_same_counts_no_forced_complement(seed):
 
 
 def test_unpaired_complement_draw_calls_independent_sample(monkeypatch):
-    """With ``pairing_trick=False``, the complement-side draw (size ``n - s``) for
-    each half-size ``s`` must be a fresh, independent call to
-    ``_sample_without_replacement``, not a reuse of the primary (size ``s``)
-    draw's index list.
+    """With ``pairing_trick=False``, the complement-side draw (size ``n - s``) must be
+    a fresh, independent ``_sample_without_replacement`` call, not a reuse of the
+    primary draw's index list.
 
-    This is a statistical-independence contract from the class docstring
-    ("drawn independently instead of in forced complementary pairs"), not a
-    count/shape/existential property, so it needs a spy on the actual sampling
-    calls rather than an assertion on ``_sample``'s output: reusing the same
-    index list for both sides would decode into *different* concrete rows
-    anyway (lexicographic combo indices for size ``s`` and size ``n - s`` are
-    unrelated encodings), so it does not literally recreate forced complement
-    pairs and would otherwise slip past every existing row-level check
-    (per-size counts, no-duplicate-rows, and the existential "some complement
-    is missing" check in the test above all still pass under that bug).
-
-    Grouping calls by their ``total`` (pool size) argument rather than by call
-    order matters: a bug where the complement side stops calling
-    ``_sample_without_replacement`` at all (aliasing the primary draw's
-    indices instead) makes each non-middle half-size collapse from 2 calls to
-    1 -- a regression a purely pairwise same-vs-different check on adjacent
-    list entries can miss (adjacent entries would then belong to two
-    *different* half-sizes, which still differ "by chance" and would let the
-    bug slip through). The call-count version below catches that regression
-    where a pairwise-adjacent check would not.
+    Needs a spy rather than row-level assertions: reused indices decode into
+    *different* rows for sizes ``s`` and ``n - s`` (unrelated lexicographic
+    encodings), so every row-level check still passes under that bug. Calls are
+    grouped by pool size (all distinct at n=10) so a complement side that stops
+    calling entirely is caught as a call-count regression too.
     """
-    # n=10, budget=80: every half-size's layer is non-exhaustive (verified by hand
-    # from Eq. 12: C(10,1)=10 already exceeds 2c here), so every draw genuinely
-    # goes through the random-index path rather than the "k >= total -> return
-    # every index" shortcut (which would make two draws for the same size
-    # trivially identical regardless of independence, not a useful check).
+    # n=10, budget=80: every half-size is non-exhaustive (C(10,1)=10 > 2c), so every
+    # draw takes the random-index path rather than the "return every index" shortcut.
     n, budget = 10, 80
 
     calls: list[tuple[int, int, tuple[int, ...]]] = []
@@ -775,11 +678,8 @@ def test_unpaired_complement_draw_calls_independent_sample(monkeypatch):
     approximator = LeverageSHAP(n, pairing_trick=False, random_state=0)
     approximator._sample(budget)
 
-    # C(10, s) for s in 1..5 (the half-sizes) are all distinct (10, 45, 120, 210,
-    # 252), so grouping by `total` unambiguously identifies which half-size each
-    # call belongs to. The middle size (s=5, n even) draws 2*count items in a
-    # single call in the unpaired branch; every non-middle size draws `count`
-    # items in exactly two independent calls (primary, then complement).
+    # C(10, s), s=1..5, are all distinct, so pool size identifies the half-size; the
+    # middle size draws once (2*count), non-middle sizes twice (primary + complement).
     by_total: dict[int, list[tuple[int, tuple[int, ...]]]] = {}
     for total, k, result in calls:
         by_total.setdefault(total, []).append((k, result))
@@ -804,24 +704,18 @@ def test_unpaired_complement_draw_calls_independent_sample(monkeypatch):
 
 def test_unpaired_binomial_combination_budget_dup_reproducible_unbiased():
     """The fourth flag combination -- ``pairing_trick=False`` with
-    ``deterministic_counts=False`` -- must work like the other three: both flags
-    are independent booleans, so all four combinations need coverage, not just
-    the two where they agree.
-
-    Checks, all at once: the realized budget never exceeds the requested cap, sampled
-    rows are unique (without-replacement sampling holds even in the unpaired+Binomial
-    path), the same ``random_state`` reproduces identical output, and the estimator is
-    unbiased-ish -- averaged over many seeds, the mean estimate is close to the exact
-    Shapley values on a SOUM game within a tolerance appropriate for a Monte Carlo mean
-    over ``len(DIVERSE_SEEDS)`` draws.
+    ``deterministic_counts=False`` -- must work like the other three: cap respected,
+    rows unique, seed-reproducible, and unbiased-ish (the seed-averaged mean estimate
+    is close to the exact SVs on a SOUM game).
     """
     n, budget = 6, 40  # budget < 2**n == 64, so both counts and pairing are exercised
 
-    # Budget respected and rows unique.
+    # Full-enumeration cap and uniqueness. (The requested budget is not a hard cap on
+    # the Binomial path -- it may over- or undershoot -- so only 2**n is asserted.)
     Z, _ = LeverageSHAP(n, pairing_trick=False, deterministic_counts=False, random_state=0)._sample(
         budget
     )
-    assert Z.shape[0] <= budget
+    assert Z.shape[0] <= 2**n
     rows = [tuple(row) for row in Z.astype(bool)]
     assert len(rows) == len(set(rows)), "Unpaired Binomial-path rows must be distinct"
 
@@ -868,33 +762,15 @@ def test_pairing_modes_both_exact_at_full_budget():
 
 
 def test_leverageshap_vs_kernelshap_mean_error():
-    """LeverageSHAP should have no larger mean error than KernelSHAP on average,
-    and should in fact be close to exact here. A one-directional
-    ``err_leverage <= err_kernel`` assertion alone, with no absolute bound,
-    would pass even if LeverageSHAP's own weighting were broken, as long as it
-    happened not to be worse than KernelSHAP on these particular seeds -- the
-    absolute near-exactness bound below is a real strengthening of that check.
+    """LeverageSHAP should have no larger mean error than KernelSHAP on average, and
+    should in fact be near-exact here.
 
-    We compare average L2 error (w.r.t. ExactComputer) across several seeds for
-    both methods at the same budget. LeverageSHAP's structured sampling (extreme
-    sizes taken exhaustively, pairing enforced) recovers this game -- additive
-    plus one pairwise interaction, i.e. degree <= 2 -- essentially exactly at
-    this budget regardless of *which* rows are drawn: empirically, mean error
-    over all of ``DIVERSE_SEEDS`` is ~5e-16 (float precision), while KernelSHAP's
-    is ~0.15 on the same seeds/budget/game. The absolute bound below (0.02) sits
-    comfortably between the two.
-
-    Note: on *this* game/budget the WLS problem happens to have an exact
-    (zero-residual) solution at the true SV regardless of which valid positive
-    weights are used, so a bug that always uses the raw Shapley-kernel weight
-    instead of the IS-reweighted one would *not* move ``err_leverage`` off its
-    ~1e-15 baseline, and this bound alone would not catch it. That class of
-    weight-formula bug is instead caught directly and reliably by
-    ``test_sample_weights_match_leverage_score_formula``, which asserts the
-    per-row weight values themselves. This test's absolute bound is kept as a
-    genuine near-exact-recovery correctness property in its own right (and
-    does catch row-selection/pairing bugs that break the design's coverage),
-    not as a substitute for the direct weight check.
+    The relative bound alone would pass with broken weighting whenever LeverageSHAP
+    merely isn't worse than KernelSHAP; the absolute bound (0.02) sits between the
+    observed ~5e-16 (LeverageSHAP) and ~0.15 (KernelSHAP) mean errors. It catches
+    row-selection/pairing bugs but not weight-formula bugs (this game's WLS solution
+    is exact for any positive weights); those are pinned directly by
+    ``test_sample_weights_match_leverage_score_formula``.
     """
     n = 6
     budget = 40
@@ -969,8 +845,6 @@ def test_minimal_budget_sweep(seed):
     for b in budgets:
         res = LeverageSHAP(n, random_state=seed).approximate(b, DummyGame(n, interaction=(0, 1)))
         assert res.estimation_budget is not None
-        # With the deterministic default, the realized evaluation count is exact (see
-        # test_per_size_counts_structural_properties) and capped at full enumeration.
         assert res.estimation_budget <= 2**n
         if b < 2**n:
             assert res.estimated is True
@@ -1071,15 +945,9 @@ def test_combo_matches_itertools_lexicographic_order(n, s):
 def test_find_c_solves_equation_12(n, m):
     """_find_c must solve Eq. 12: m - 2 == sum_{s=1}^{n-1} min(C(n, s), 2c).
 
-    The oversampling constant c drives the whole sampling rate; a regression here would
-    silently shift the budget match without failing the efficiency/ordering tests. The
-    tolerance is tightened to 1e-10: `_find_c`'s own bisection converges to
-    `|hi - lo| < 1e-12 * max(1, hi)`, and `lo`/the midpoint solve Eq. 12 to
-    within that same ~1e-12 tolerance too (the equation is smooth near the root),
-    so a looser `abs=1e-6` tolerance would be ~4 orders of magnitude too loose to
-    prefer `hi` over a converged `lo`/midpoint -- see
-    test_find_c_saturates_hard_inequality_at_full_budget below for the actual
-    (exact, tolerance-free) property that distinguishes them.
+    Tolerance 1e-10: the bisection converges to ~1e-12, so anything looser could not
+    distinguish ``hi`` from a converged ``lo``/midpoint (the saturation test below
+    checks the exact property that does).
     """
     c = LeverageSHAP._find_c(n, m)
     total = sum(min(math.comb(n, s), 2.0 * c) for s in range(1, n))
@@ -1088,20 +956,12 @@ def test_find_c_solves_equation_12(n, m):
 
 @pytest.mark.parametrize("n", [3, 4, 5, 6, 7, 8, 9, 10, 12])
 def test_find_c_saturates_hard_inequality_at_full_budget(n):
-    """At full budget, `_find_c` must return the bisection's *upper* bound `hi`,
-    not the converged midpoint or lower bound `lo`.
+    """At full budget, `_find_c` must return the bisection's *upper* bound `hi`.
 
-    `_find_c`'s own docstring/comment explains `hi` is returned deliberately so
-    that at ``m == 2**n`` every size's layer is exhaustively covered: the
-    bisection invariant ``total(hi) >= target`` holds at every iteration, so
-    ``2 * hi`` must be at least the largest binomial coefficient
-    ``max_s C(n, s)`` (the peak, hardest-to-saturate layer) exactly, with no
-    floating-point slack. `lo` and the midpoint carry no such guarantee -- they
-    can land a floating-point hair below the peak, silently failing to saturate
-    it -- and unlike the equation-residual check above, this exact inequality
-    has no continuity loophole: it is checked directly against the (exact,
-    integer) binomial coefficient rather than against Eq. 12's smooth objective,
-    so no tolerance is needed at all.
+    ``total(hi) >= target`` holds at every iteration, so ``2 * hi`` must reach the
+    peak binomial coefficient exactly -- an integer inequality needing no tolerance.
+    ``lo`` or the midpoint can land a float hair below the peak and silently fail to
+    saturate that layer.
     """
     c = LeverageSHAP._find_c(n, 2**n)
     max_binom = max(math.comb(n, s) for s in range(1, n))
@@ -1129,12 +989,9 @@ def test_find_c_large_n_overflow_safe():
 
 
 def test_bernoulli_sample_degenerate_and_exhaustive_branches():
-    """_bernoulli_sample must handle its two edge regimes correctly.
-
-    With deterministic_counts=False (the legacy Binomial-count path), c <= 0.0 or
-    n < 2 must short-circuit to an empty design (no interior sizes to sample), and
-    a large c relative to n must exhaustively enumerate a size once 2c meets or
-    exceeds C(n, s), rather than drawing a Binomial count that could exceed it.
+    """_bernoulli_sample edge regimes: c <= 0 or n < 2 short-circuit to an empty
+    design, and a size is exhaustively enumerated once 2c >= C(n, s) instead of
+    drawing a Binomial count that could exceed it.
     """
     approx = LeverageSHAP(n=6, deterministic_counts=False, random_state=0)
 
@@ -1154,11 +1011,8 @@ def test_bernoulli_sample_degenerate_and_exhaustive_branches():
 
 
 def test_bernoulli_sample_poisson_fallback_for_huge_pool():
-    """_bernoulli_sample must fall back to a Poisson draw when a size's pool of
-    coalitions exceeds the int32 range that np.random.Generator.binomial supports.
-
-    n=40 puts C(40, 20) well above 2**31 - 1, so the middle size must use the
-    Poisson-mean fallback rather than Binomial(pool_size, p).
+    """_bernoulli_sample must fall back to a Poisson draw when a size's pool exceeds
+    the int32 range numpy's Binomial supports (C(40, 20) >> 2**31 - 1).
     """
     assert math.comb(40, 20) > 2**31 - 1
     approx = LeverageSHAP(n=40, deterministic_counts=False, random_state=0)
@@ -1168,14 +1022,10 @@ def test_bernoulli_sample_poisson_fallback_for_huge_pool():
 
 
 def test_bernoulli_sample_deterministic_exhaustive_skip_in_remainder_fill():
-    """_bernoulli_sample_deterministic's largest-remainder fill loop must skip a
-    size once it is already exhaustive, even if a frac-tie would otherwise select
-    it for one more unit of budget.
+    """The remainder fill must never allocate past an already-full size's pool.
 
-    n=4, c=2.0, m=16 lands exactly on full enumeration (all 2**4 = 16 coalitions
-    including empty/full sets), which forces the remainder-fill loop to visit an
-    already-exhaustive size and take its `continue` branch instead of
-    over-allocating past that size's pool.
+    n=4, c=2.0, m=16 lands exactly on full enumeration, forcing the fill to exclude
+    an already-full size instead of over-allocating.
     """
     approx = LeverageSHAP(n=4, random_state=0)
     z, sizes = approx._bernoulli_sample_deterministic(n=4, c=2.0, m=16)
