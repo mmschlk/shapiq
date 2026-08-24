@@ -9,6 +9,7 @@ import scipy.special as sp
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion.edges import create_edge_tree
+from shapiq.tree.precision import check_features_per_path
 from shapiq.tree.validation import validate_tree_model
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
@@ -34,11 +35,19 @@ def get_N_prime(max_size: int = 10) -> np.ndarray:
     return N_prime
 
 
-def get_N_v2(D: np.ndarray) -> np.ndarray:
-    """Get N_v2 matrix for Linear Tree Shap."""
+def get_N_v2(D: np.ndarray, max_row: int | None = None) -> np.ndarray:
+    """Get N_v2 matrix for Linear Tree Shap.
+
+    Args:
+        D: The interpolation grid.
+        max_row: Highest row to construct. The kernel only reads row ``i`` for edges of height
+            ``i``, so rows above the tree's maximum edge height are never used; skipping them
+            avoids needlessly solving the worst-conditioned Vandermonde systems (issue #545).
+    """
     depth = D.shape[0]
+    last_row = depth if max_row is None else min(max_row, depth)
     Ns = np.zeros((depth + 1, depth))
-    for i in range(1, depth + 1):
+    for i in range(1, last_row + 1):
         Ns[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(1.0 / get_norm_weight(i - 1))
     return Ns
 
@@ -79,7 +88,7 @@ class LinearTreeSHAP:
         """
         self.clf = model
         self._tree = validate_tree_model(model, class_label=None)[0]
-        self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
+        self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
         self._n_features_in_tree: int = self._tree.n_features_in_tree
@@ -107,10 +116,12 @@ class LinearTreeSHAP:
             n_nodes=self._n_nodes,
             subset_updates_pos_store=self._interaction_update_positions,
         )
+        max_features_per_path = int(self.edge_tree.edge_heights.max())
+        check_features_per_path(max_features_per_path, algorithm="LinearTreeSHAP")
         self.N = get_N_prime(self.edge_tree.max_depth)
         self.Base = base_func(self.edge_tree.max_depth)
         self.Offset = np.vander(self.Base + 1).T[::-1]
-        self.N_v2 = get_N_v2(self.Base)
+        self.N_v2 = get_N_v2(self.Base, max_row=max_features_per_path)
 
     def _init_interaction_lookup_tables(self) -> None:
         """Initializes the lookup tables for the interaction subsets."""

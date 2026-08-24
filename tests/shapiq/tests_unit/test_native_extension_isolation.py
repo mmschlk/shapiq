@@ -25,6 +25,7 @@ _ALL_CEXT = (
     "shapiq.tree.interventional.cext",
     "shapiq.tree.conversion.cext",
     "shapiq.tree.linear.cext",
+    "shapiq.tree.quadrature.cext",
 )
 
 # Symbol-name fragments that must never be exported from the interventional

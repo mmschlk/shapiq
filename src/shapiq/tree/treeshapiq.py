@@ -13,6 +13,7 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
 from .conversion.edges import create_edge_tree
+from .precision import check_features_per_path
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
@@ -106,7 +107,7 @@ class TreeSHAPIQ:
         validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
         self._tree: TreeModel = validated_model[0]
-        self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
+        self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
         self._n_features_in_tree: int = self._tree.n_features_in_tree
@@ -153,8 +154,12 @@ class TreeSHAPIQ:
         self.D_powers_store: dict = {}
         self.Ns_id_store: dict = {}
         self.Ns_store: dict = {}
-        # SP is of order at most d_max
-        self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
+        # SP is of order at most d_max: the summary polynomials have degree at most the number
+        # of distinct features along a single root-to-leaf path (the maximum edge height), which
+        # can be smaller than both the tree depth and the number of features in the tree.
+        max_features_per_path = int(self._edge_tree.edge_heights.max())
+        check_features_per_path(max_features_per_path, algorithm="TreeSHAP-IQ")
+        self.n_interpolation_size = max_features_per_path
         if self._n_features_in_tree > 0:
             try:
                 self._init_summary_polynomials()

@@ -7,6 +7,8 @@ along with supporting data structures and algorithm variants.
 from .base import TreeModel
 from .interventional import InterventionalGame, InterventionalTreeSHAPIQ
 from .linear import LinearTreeSHAP
+from .precision import TreeNumericalPrecisionError, TreeNumericalPrecisionWarning
+from .quadrature import QuadratureTreeSHAP
 from .treeshapiq import TreeSHAPIQ
 
 __all__ = [
@@ -15,6 +17,9 @@ __all__ = [
     "InterventionalTreeSHAPIQ",
     "InterventionalGame",
     "LinearTreeSHAP",
+    "QuadratureTreeSHAP",
+    "TreeNumericalPrecisionError",
+    "TreeNumericalPrecisionWarning",
 ]
 
 

@@ -20,6 +20,7 @@ from shapiq.utils.modules import safe_isinstance
 
 from .base import TreeModel
 from .linear import LinearTreeSHAP
+from .quadrature import QuadratureTreeSHAP, QuadratureTreeSHAPIndices
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 TREE_MODES = Literal["pathdependent", "interventional"]
-TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
+TREE_BACKENDS = Literal["auto", "woodelf", "shapiq", "quadrature"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
@@ -127,7 +128,10 @@ class TreeExplainer(Explainer):
                 with a :class:`WoodelfNotAvailableWarning` if the optional woodelf dependency
                 is missing) and shapiq otherwise. ``"woodelf"`` forces Woodelf and raises if it
                 is not installed or cannot handle the configuration; ``"shapiq"`` forces the
-                shapiq implementation. Defaults to ``"auto"``.
+                shapiq implementation. ``"quadrature"`` forces the
+                :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` implementation
+                (path-dependent mode only), which stays numerically exact for trees whose
+                decision paths use many distinct features (issue #545). Defaults to ``"auto"``.
 
             **kwargs: Additional keyword arguments are ignored.
 
@@ -156,10 +160,15 @@ class TreeExplainer(Explainer):
         self._mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
-        if backend not in ("auto", "woodelf", "shapiq"):
-            msg = f"backend='{backend}' must be one of 'auto', 'woodelf', or 'shapiq'."
+        if backend not in ("auto", "woodelf", "shapiq", "quadrature"):
+            msg = (
+                f"backend='{backend}' must be one of 'auto', 'woodelf', 'shapiq', or 'quadrature'."
+            )
             raise ValueError(msg)
         self.backend: TREE_BACKENDS = backend
+        if backend == "quadrature" and mode != "pathdependent":
+            msg = "backend='quadrature' computes path-dependent values; use mode='pathdependent'."
+            raise ValueError(msg)
         if backend == "woodelf":
             # forced means forced: fail fast instead of silently falling back later.
             if importlib.util.find_spec("woodelf") is None:
@@ -169,17 +178,20 @@ class TreeExplainer(Explainer):
             if reason is not None:
                 msg = f"backend='woodelf' cannot be used: {reason}."
                 raise ValueError(msg)
-        elif mode == "pathdependent" and index in ("BV", "BII"):
-            # only Woodelf computes path-dependent Banzhaf indices; fail fast when it is
-            # excluded by choice or missing from the environment.
+        elif mode == "pathdependent" and index in ("BV", "BII") and backend != "quadrature":
+            # only the woodelf and quadrature backends compute path-dependent Banzhaf indices;
+            # fail fast when both are excluded by choice or missing from the environment.
             if backend == "shapiq":
                 msg = (
                     f"index='{index}' with mode='pathdependent' is only computed by the woodelf "
-                    "backend; use backend='auto' or backend='woodelf'."
+                    "and quadrature backends; use backend='auto', 'woodelf', or 'quadrature'."
                 )
                 raise ValueError(msg)
             if importlib.util.find_spec("woodelf") is None:
-                msg = f"index='{index}' with mode='pathdependent' {_WOODELF_REQUIRED}"
+                msg = (
+                    f"index='{index}' with mode='pathdependent' {_WOODELF_REQUIRED} "
+                    "Alternatively, use backend='quadrature'."
+                )
                 raise ImportError(msg)
         if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
             msg = (
@@ -190,6 +202,7 @@ class TreeExplainer(Explainer):
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
+        self._quadrature_explainers: list[QuadratureTreeSHAP] = []
         self._interventional_explainer: InterventionalTreeSHAPIQ | None = None
         self._explainers_initialized = False
 
@@ -229,9 +242,17 @@ class TreeExplainer(Explainer):
         Runs lazily on the first explanation that is not routed to Woodelf, so the (potentially
         expensive) shapiq explainers are never built when Woodelf handles the computation.
         """
-        self._explainers_initialized = True
         if self.mode == "pathdependent":
-            if self._can_use_lineartreeshap():
+            if self.backend == "quadrature":
+                self._quadrature_explainers = [
+                    QuadratureTreeSHAP(
+                        model=tree,
+                        max_order=self._max_order,
+                        index=cast("QuadratureTreeSHAPIndices", self.index),
+                    )
+                    for tree in self._trees
+                ]
+            elif self._can_use_lineartreeshap():
                 self._lineartreeshap_explainers = [
                     LinearTreeSHAP(model=tree) for tree in self._trees
                 ]
@@ -258,6 +279,10 @@ class TreeExplainer(Explainer):
                 max_order=self._max_order,
                 index=self.index,
             )
+        # only mark initialized once every per-tree explainer was built: a constructor that
+        # raises mid-ensemble (e.g. the precision guard) must re-raise on retry, not leave the
+        # explainer half-built with empty lists
+        self._explainers_initialized = True
 
     def _can_use_lineartreeshap(self) -> bool:
         """Whether the LinearTreeSHAP fast path can replace TreeSHAP-IQ for this configuration.
@@ -295,7 +320,7 @@ class TreeExplainer(Explainer):
         Returns:
             ``True`` if Woodelf should compute the explanation, ``False`` for shapiq.
         """
-        if self.backend == "shapiq":
+        if self.backend in ("shapiq", "quadrature"):
             return False
         if self.backend == "woodelf":
             return True
@@ -513,7 +538,7 @@ class TreeExplainer(Explainer):
     ) -> InteractionValues:
         """Compute first-order Shapley values for ``x`` by aggregating the per-tree LinearTreeSHAP results.
 
-        Mirrors the per-tree aggregation done by ``_explain_function_treeshapiq``: each
+        Mirrors the per-tree aggregation done by ``_explain_function_per_tree``: each
         ``LinearTreeSHAP`` in ``self._lineartreeshap_explainers`` runs against ``x``, the
         resulting :class:`~shapiq.interaction_values.InteractionValues` are summed (which also
         sums ``baseline_value`` and the ``()`` entry), and ``min_order`` is finally enforced via
@@ -564,12 +589,15 @@ class TreeExplainer(Explainer):
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
 
-    def _explain_function_treeshapiq(
+    def _explain_function_per_tree(
         self,
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Shapley Interaction values for a single instance.
+
+        Aggregates over whichever per-tree explainers ``_init_explainers`` populated: the
+        quadrature explainers for ``backend="quadrature"``, TreeSHAP-IQ otherwise.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
@@ -583,11 +611,11 @@ class TreeExplainer(Explainer):
             msg = "explain expects a single instance, not a batch."
             raise TypeError(msg)
 
-        # run treeshapiq for all trees
-        interaction_values: list[InteractionValues] = []
-        for explainer in self._treeshapiq_explainers:
-            tree_explanation = explainer.explain(x)
-            interaction_values.append(tree_explanation)
+        # run the per-tree explainers (TreeSHAP-IQ or quadrature) for all trees
+        explainers = self._quadrature_explainers or self._treeshapiq_explainers
+        interaction_values: list[InteractionValues] = [
+            explainer.explain(x) for explainer in explainers
+        ]
 
         # combine the explanations for all trees
         final_explanation = interaction_values[0]
@@ -638,10 +666,11 @@ class TreeExplainer(Explainer):
         if not self._explainers_initialized:
             self._init_explainers()
         if self.mode == "pathdependent":
-            # dispatch on whichever per-tree list _init_explainers chose to populate.
+            # dispatch on whichever per-tree list _init_explainers chose to populate; the
+            # quadrature and TreeSHAP-IQ explainers share the per-tree aggregation.
             if self._lineartreeshap_explainers:
                 return self._explain_function_lineartreeshap(x, **kwargs)
-            return self._explain_function_treeshapiq(x, **kwargs)
+            return self._explain_function_per_tree(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)
 
     def explain_X(
@@ -685,6 +714,11 @@ class TreeExplainer(Explainer):
                     woodelf_result, n_players=n_players, n_instances=len(X)
                 )
 
+        # build the per-tree explainers once up front: the joblib workers pickle this object,
+        # so initializing here avoids re-constructing them (and re-emitting construction-time
+        # warnings or errors) once per parallel task
+        if not self._explainers_initialized:
+            self._init_explainers()
         shapiq_results = super().explain_X(
             X, n_jobs=n_jobs, random_state=random_state, verbose=verbose, **kwargs
         )

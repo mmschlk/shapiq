@@ -351,8 +351,12 @@ class TreeModel:
         """
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
-            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = dict(enumerate(self.feature_ids))
+            # sorted: raw set iteration order can be non-ascending (hash-slot probing), which
+            # would pair the reduced ids with the sorted interaction lookups in the explainers
+            # and silently permute attributions between features
+            ordered_feature_ids = sorted(self.feature_ids)
+            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(ordered_feature_ids)}
+            mapping_new_old = dict(enumerate(ordered_feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
