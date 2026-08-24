@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 from shapiq import ExactComputer, Game
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.tree.explainer import TreeExplainer
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 from shapiq.typing import IndexType
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
@@ -58,12 +58,12 @@ class BruteForceComputer[In: Game, IndexT: IndexType](GroundTruthComputer[IndexT
 
 
 class InterventionalComputer(GroundTruthComputer[IndexType]):
-    """Exact computer for interventional games using the InterventionalTreeExplainer."""
+    """Exact computer for interventional games using the InterventionalTreeSHAPIQ."""
 
     def __init__(self, game: InterventionalGame) -> None:
         """Initialize the interventional computer for a given game."""
         self.game = game
-        self._computer = InterventionalTreeExplainer(
+        self._computer = InterventionalTreeSHAPIQ(
             model=self.game.model,
             data=self.game.data,
             debug=False,
@@ -71,7 +71,7 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
         )
 
     def exact_values(self, index: IndexType, order: int, **kwargs: Any) -> InteractionValues:
-        """Compute exact interaction values using the InterventionalTreeExplainer.
+        """Compute exact interaction values using the InterventionalTreeSHAPIQ.
 
         Args:
             index: The index for which to compute interaction values.
