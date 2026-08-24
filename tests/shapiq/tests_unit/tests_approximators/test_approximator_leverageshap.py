@@ -69,9 +69,7 @@ def test_approximate(n, budget, seed):
     assert game.access_counter <= 2**n
 
     # DummyGame = additive size game + unanimity on {1, 2}: exact SV for players 1/2
-    # is 1/n + 1/2, and LeverageSHAP recovers this game to float precision at these
-    # budgets (the weights themselves are pinned by
-    # test_sample_weights_match_leverage_score_formula).
+    # is 1/n + 1/2, recovered to float precision at these budgets.
     exact_target = 1.0 / n + 0.5
     assert sv_estimates[(1,)] == pytest.approx(exact_target, abs=1e-6)
     assert sv_estimates[(2,)] == pytest.approx(exact_target, abs=1e-6)
@@ -108,13 +106,9 @@ def test_tiny_n_budget_two_symmetric_game(seed):
     def symmetric_game(Z):
         return Z.astype(float).sum(axis=1)
 
-    # This is the smallest valid setting for LeverageSHAP.
-    # It checks that the solver still returns a sensible result when there are no
-    # interior coalition sizes to learn from.
     approximator = LeverageSHAP(n, random_state=seed)
     result = approximator.approximate(budget=2, game=symmetric_game)
 
-    # The game is perfectly symmetric, so the two players should receive the same SV.
     assert result.estimated is True
     np.testing.assert_allclose(result.values[1:], np.array([1.0, 1.0]), atol=1e-12, rtol=0.0)
     assert result.values[1:].sum() == pytest.approx(2.0, abs=1e-12)
@@ -143,32 +137,13 @@ def test_budget_too_small_raises():
 
 
 def test_per_size_counts_match_hand_computed_tables():
-    """Per-size sampled row counts must match literal, hand-computed expected tables.
+    """Per-size row counts must match tables hand-derived from Eq. 12 and the
+    largest-remainder rule (not from the implementation, so a shared bug cannot make
+    both sides agree):
 
-    The four (n, budget) cases were solved by hand from Eq. 12 and the
-    largest-remainder rule -- not by re-running the implementation -- so a shared bug
-    cannot make both sides agree. Derivation recipe: solve Eq. 12 for 2c; per
-    half-size, mu = 2c (or 2c*s/n at the even-n middle size, pool C(n-1, s-1));
-    exhaustive if C(n, s) <= 2c; floor the rest and fill the shortfall by largest
-    remainder; each pair yields a row and its complement (two same-size rows at the
-    middle size). Cases:
-
-    n=4, budget=10: 2c = 8/3. s=1: floor 2, rem 0.667; s=2 (middle, pool 3): floor 1,
-    rem 0.333. target_pairs = 4, shortfall 1 -> s=1. Rows {1: 3, 2: 2, 3: 3}.
-
-    n=5, budget=25: 2c = 6.5. s=1 exhaustive (5 <= 6.5): 5 pairs; s=2: floor 6,
-    rem 0.5. target_pairs = 11, shortfall 0 -- deliberately tie-free (an
-    all-non-exhaustive odd-n case ties every remainder and would pin the arbitrary
-    tie-break as expected output). Rows {1: 5, 2: 6, 3: 6, 4: 5}; the odd budget
-    floors to 24 rows.
-
-    n=7, budget=15: 2c = 13/6. s=1..3 each floor 2, shortfall 0. Rows {1..6: 2}
-    (14 rows; odd budget floored).
-
-    n=6, budget=40: 2c = 26/3. s=1 exhaustive (6 <= 8.667): 6 pairs; s=2: floor 8,
-    rem 0.667; s=3 (middle, pool 10): floor 4, rem 0.333. target_pairs = 19,
-    shortfall 1 -> s=2. Rows {1: 6, 2: 9, 3: 8, 4: 9, 5: 6} -- a small size saturates
-    its pool while budget < 2**n = 64.
+    n=4, b=10: 2c = 8/3, shortfall 1 -> s=1. n=5, b=25: 2c = 6.5, s=1 exhaustive,
+    shortfall 0 (deliberately tie-free; odd budget floors to 24 rows). n=7, b=15:
+    2c = 13/6, shortfall 0. n=6, b=40: 2c = 26/3, s=1 exhaustive, shortfall 1 -> s=2.
     """
     cases: list[tuple[int, int, dict[int, int]]] = [
         (4, 10, {1: 3, 2: 2, 3: 3}),
@@ -236,20 +211,11 @@ def test_per_size_counts_exhaustive_at_full_budget(n):
 
 
 def test_sample_weights_match_leverage_score_formula():
-    r"""Hand-derived check of the per-row IS weights on partial budgets.
-
-    Weight formula (Algorithm 1 step 3): raw kernel weight ``w(s) = (s-1)!(n-s-1)!/n!``
-    for exhaustive layers (``C(n, s) <= 2c``), else ``w(s) / (2c/C(n, s)) ==
-    1/(s*(n-s)*2c)``. The numbers below come from this formula and Eq. 12 by hand,
-    guarding against bugs a structural test misses (dropping the IS correction
-    entirely, or an extra normalization factor); the full-budget tests never exercise
-    the non-exhaustive branch.
-
-    n=5, budget=12: 2c = 5/2, no size exhaustive. Sizes 1/4 -> 1/(1*4*2.5) = 0.1;
-    sizes 2/3 -> 1/(2*3*2.5) = 1/15.
-
-    n=6, budget=40: 2c = 26/3, sizes 1/5 exhaustive -> w(1) = 1/30; sizes 2/4 ->
-    1/(8*26/3) = 3/208; size 3 (middle) -> 1/(9*26/3) = 1/78.
+    r"""Hand-derived per-row IS weights on partial budgets: kernel weight
+    ``w(s) = (s-1)!(n-s-1)!/n!`` for exhaustive layers (``C(n, s) <= 2c``), else
+    ``1/(s*(n-s)*2c)``. Catches weight bugs the structural and full-budget tests
+    cannot. n=5, b=12: 2c = 5/2 (nothing exhaustive); n=6, b=40: 2c = 26/3
+    (sizes 1/5 exhaustive).
     """
     cases: list[tuple[int, int, dict[int, float]]] = [
         (5, 12, {1: 0.1, 2: 1.0 / 15, 3: 1.0 / 15, 4: 0.1}),
@@ -271,15 +237,10 @@ def test_sample_weights_match_leverage_score_formula():
 
 
 def test_saturated_layer_weight_matches_full_enumeration():
-    r"""A layer the largest-remainder fill lifts to full enumeration must get the raw
-    kernel weight ``w(s)``, not the IS weight for inclusion probability ``2c/C(n,s)``.
-
-    n=5, budget=20: 2c = 4.5 < 5 = C(5,1); both half-sizes floor to 4 pairs with
-    remainder 0.5, and the shortfall of 1 lands on s=1, fully enumerating that layer:
-    its rows must get w(1) = 1/20, not 1/18. The weight check derives each expected
-    weight from the *realized* counts (tie-break-agnostic); only the guard that some
-    layer actually saturates depends on the fill reaching s=1 -- if the tie-break
-    ever changes, pick a new (n, budget) that saturates a layer.
+    r"""A layer the remainder fill lifts to full enumeration must get the raw kernel
+    weight, not the IS weight. n=5, b=20: 2c = 4.5, the fill saturates s=1 -> its
+    rows get w(1) = 1/20, not 1/18. Expected weights derive from the realized counts;
+    if a changed tie-break stops saturating a layer, pick a new (n, budget).
     """
     n, budget = 5, 20
     two_c = 4.5  # hand-solved from Eq. 12 in the docstring
@@ -384,36 +345,22 @@ def test_skewed_interaction_game(seed):
     would be squared and the solver would lose ~6 digits of precision.
     LeverageSHAP's lstsq-based WLS must still satisfy efficiency and rank player 0 highest.
     """
-    # Use a moderately sized game so the approximation has enough structure to expose
-    # numerical issues while still being small enough for a fast regression test.
     n = 7
-    # The first player is the special one whose presence changes the payoff scale.
     dominant = 0
 
     def skewed_game(Z):
-        # Give every coalition containing the dominant player a huge payoff multiplier,
-        # and every coalition without it a tiny multiplier, to create extreme imbalance.
         scale = np.where(Z[:, dominant], 1000.0, 0.001)
-        # Sum the contributions of all non-dominant players for each coalition row.
         other_sum = Z[:, 1:].astype(float).sum(axis=1)
-        # Return the scaled coalition value that depends strongly on whether player 0 is present.
         return scale * other_sum
 
-    # Compute the grand-coalition value, which is the reference value for the efficiency check.
     v_grand = skewed_game(np.ones((1, n)))[0]
-    # The empty coalition has no included players, so its value is set to zero explicitly.
     v_empty = 0.0
 
-    # Build the LeverageSHAP approximator with a fixed seed so the test is deterministic.
     approximator = LeverageSHAP(n, random_state=seed)
-    # Approximate Shapley values under the skewed payoff function using the chosen budget.
     result = approximator.approximate(budget=300, game=skewed_game)
 
-    # efficiency is baked in algebraically via the efficiency_shift construction, so it must
-    # hold to near machine precision even under extreme scale differences.
+    # Efficiency is enforced algebraically, so it holds even under extreme scales.
     assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, rel=1e-10)
-
-    # dominant player (index 0) must have the highest SV
     assert result[(dominant,)] == pytest.approx(max(result.values[1:]), abs=1e-6)
 
 
@@ -422,22 +369,14 @@ def test_reproducibility(seed):
     """Same seed should produce identical approximations across runs."""
     n, budget = 6, 20
 
-    # Use separate game instances so access counters don't interfere
+    # Separate game instances so access counters don't interfere.
     game1 = DummyGame(n, interaction=(1, 2))
     game2 = DummyGame(n, interaction=(1, 2))
 
-    # Run 1
-    approx1 = LeverageSHAP(n, random_state=seed)
-    res1 = approx1.approximate(budget, game1)
+    res1 = LeverageSHAP(n, random_state=seed).approximate(budget, game1)
+    res2 = LeverageSHAP(n, random_state=seed).approximate(budget, game2)
 
-    # Run 2
-    approx2 = LeverageSHAP(n, random_state=seed)
-    res2 = approx2.approximate(budget, game2)
-
-    # Values should be identical
     np.testing.assert_array_equal(res1.values, res2.values)
-
-    # Other run metadata should match exactly
     assert res1.estimation_budget == res2.estimation_budget
     assert res1.estimated == res2.estimated
 
@@ -513,13 +452,8 @@ def test_deterministic_counts_false_budget_varies_across_seeds():
 
 
 def test_exact_regime_seed_independence():
-    """When the budget covers the full coalition space, results must be seed-independent.
-
-    At full budget (2**n) every coalition size has inclusion probability that rounds to
-    ~1.0, so BernoulliSample draws the entire coalition space regardless of the random
-    seed (there is no separate deterministic branch — the sampling probabilities simply
-    saturate). Two different seeds must therefore yield identical output. This test
-    asserts that behavior.
+    """At full budget the entire coalition space is drawn, so results must be
+    seed-independent.
     """
     n = 6
     budget = 2**n
@@ -527,11 +461,9 @@ def test_exact_regime_seed_independence():
     game_a = DummyGame(n, interaction=(1, 2))
     game_b = DummyGame(n, interaction=(1, 2))
 
-    # Use two different seeds to ensure seed has no effect in exact regime
     res_a = LeverageSHAP(n, random_state=0).approximate(budget, game_a)
     res_b = LeverageSHAP(n, random_state=1).approximate(budget, game_b)
 
-    # Exact regime: outputs must be identical (bitwise for the arrays)
     np.testing.assert_array_equal(res_a.values, res_b.values)
     assert res_a.estimation_budget == res_b.estimation_budget
     assert res_a.estimated == res_b.estimated
@@ -539,17 +471,9 @@ def test_exact_regime_seed_independence():
 
 @pytest.mark.parametrize("deterministic_counts", [True, False])
 def test_stochastic_regime_seed_variability(deterministic_counts):
-    """In the sampling regime, different seeds should usually produce different estimates.
-
-    This test is conservative and robust: it runs multiple seeds and asserts that at
-    least one pair of resulting value vectors differs by more than a small numerical
-    tolerance. We avoid asserting that *all* seeds must differ because low budgets can
-    coincidentally yield identical samples; instead we require that variability is
-    observable across several independent seeds.
-
-    Uses a SOUM game rather than a DummyGame: DummyGame's degenerate structure can be
-    recovered exactly for many seeds (masking variability), while SOUM's richer
-    payoffs make different row draws produce visibly different estimates.
+    """In the sampling regime, at least one pair of seeds must produce different
+    estimates. Uses a SOUM game: DummyGame can be recovered exactly for many seeds,
+    masking the variability.
     """
     n = 6
     budget = 20  # ensure budget < 2**n so sampling occurs
@@ -588,7 +512,6 @@ def test_empirical_convergence_rate():
     def game_factory():
         return DummyGame(n, interaction=(0, 2))
 
-    # ground truth (ExactComputer expects (game, n_players))
     exact = ExactComputer(game_factory(), n)
     exact_sv = exact("SV").values[1:]
 
@@ -608,17 +531,13 @@ def test_empirical_convergence_rate():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_paired_sampling_invariant(seed):
-    """With ``pairing_trick=True`` (the default), every sampled coalition must appear
-    together with its complement -- Algorithm 1's ``(z, z̄)`` design.
-
-    We verify the structural invariant directly: for the empty/grand pair and every
-    interior coalition in the sampled matrix, its bitwise complement is also present.
+    """With ``pairing_trick=True``, every sampled coalition must appear together with
+    its complement.
     """
     n, budget = 6, 40
     approximator = LeverageSHAP(n, pairing_trick=True, random_state=seed)
     Z, _ = approximator._sample(budget)
 
-    # Represent each coalition as an immutable tuple so we can test set membership.
     rows = {tuple(row) for row in Z.astype(bool)}
     for row in Z.astype(bool):
         complement = tuple(~row)
@@ -636,16 +555,13 @@ def test_unpaired_sampling_same_counts_no_forced_complement(seed):
     Z_paired, _ = LeverageSHAP(n, pairing_trick=True, random_state=seed)._sample(budget)
     Z_unpaired, _ = LeverageSHAP(n, pairing_trick=False, random_state=seed)._sample(budget)
 
-    # Per-size allocation is identical between modes; only which rows are drawn differs.
     counts_paired = Counter(int(s) for s in Z_paired.sum(axis=1))
     counts_unpaired = Counter(int(s) for s in Z_unpaired.sum(axis=1))
     assert counts_paired == counts_unpaired
 
-    # No duplicate rows (without-replacement sampling in both modes).
     rows_unpaired = [tuple(row) for row in Z_unpaired.astype(bool)]
     assert len(rows_unpaired) == len(set(rows_unpaired))
 
-    # At least one sampled coalition's complement is absent: pairing is not forced.
     rows_set = set(rows_unpaired)
     missing_complement = any(tuple(~np.array(row)) not in rows_set for row in rows_unpaired)
     assert missing_complement, "Expected at least one row without its complement present"
@@ -710,16 +626,15 @@ def test_unpaired_binomial_combination_budget_dup_reproducible_unbiased():
     """
     n, budget = 6, 40  # budget < 2**n == 64, so both counts and pairing are exercised
 
-    # Full-enumeration cap and uniqueness. (The requested budget is not a hard cap on
-    # the Binomial path -- it may over- or undershoot -- so only 2**n is asserted.)
+    # The requested budget is not a hard cap on the Binomial path (it may over- or
+    # undershoot), so only the full-enumeration cap is asserted.
     Z, _ = LeverageSHAP(n, pairing_trick=False, deterministic_counts=False, random_state=0)._sample(
         budget
     )
     assert Z.shape[0] <= 2**n
     rows = [tuple(row) for row in Z.astype(bool)]
-    assert len(rows) == len(set(rows)), "Unpaired Binomial-path rows must be distinct"
+    assert len(rows) == len(set(rows))
 
-    # Reproducible with the same random_state.
     game_a = DummyGame(n, interaction=(1, 2))
     game_b = DummyGame(n, interaction=(1, 2))
     res_a = LeverageSHAP(
@@ -731,7 +646,6 @@ def test_unpaired_binomial_combination_budget_dup_reproducible_unbiased():
     np.testing.assert_array_equal(res_a.values, res_b.values)
     assert res_a.estimation_budget == res_b.estimation_budget
 
-    # Unbiased-ish: mean estimate over many seeds is close to the exact SVs.
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     exact = ExactComputer(game, n)
     exact_sv = exact("SV").values[1:]
@@ -794,20 +708,14 @@ def test_leverageshap_vs_kernelshap_mean_error():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_exact_matches_multiple_small_games(seed):
-    """Verify exact-match property on several small games and n values.
-
-    Ensures that when budget==2**n LeverageSHAP matches ExactComputer for
-    multiple small n and for both a DummyGame and an additive game.
-    """
+    """At budget == 2**n LeverageSHAP must match ExactComputer for several small n."""
     for n in (3, 4, 5, 6):
-        # DummyGame
         game1 = DummyGame(n, interaction=(0, 1))
         exact1 = ExactComputer(game1, n)
         exact_sv1 = exact1("SV")
         res1 = LeverageSHAP(n, random_state=seed).approximate(2**n, game1)
         np.testing.assert_allclose(res1.values, exact_sv1.values, atol=1e-8, rtol=0.0)
 
-        # Additive game
         weights = np.arange(1.0, n + 1.0)
 
         def additive_game(Z, weights=weights):
@@ -826,20 +734,16 @@ def test_null_player_axiom(seed):
     null_idx = 5
 
     def game(Z):
-        # Depend only on players 0..4, ignore player 5
         return Z[:, :null_idx].astype(float).sum(axis=1)
 
     res = LeverageSHAP(n, random_state=seed).approximate(2**n, game)
-    # value slot 0 is baseline, player entries start at index 1; check the null player
+    # Value slot 0 is the baseline; player entries start at index 1.
     np.testing.assert_allclose(res.values[1 + null_idx], 0.0, atol=1e-12, rtol=0.0)
 
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_minimal_budget_sweep(seed):
-    """Verify LeverageSHAP runs and behaves sensibly for tiny budgets.
-
-    This checks budgets at and near the minimal valid values for a small n.
-    """
+    """LeverageSHAP must behave sensibly at and near the minimal valid budgets."""
     n = 4
     budgets = [2, 3, 4, 5, 8]
     for b in budgets:
@@ -853,11 +757,8 @@ def test_minimal_budget_sweep(seed):
 
 
 def test_inf_game_values_raise():
-    """A game returning Inf values must raise ValueError, not silently return NaN Shapley values.
-
-    Before the fix, v0=inf and v_grand=inf caused efficiency_shift=nan (inf-inf),
-    which propagated through the solver into the returned InteractionValues without
-    any indication of failure.
+    """A game returning Inf values must raise ValueError instead of silently
+    propagating NaN (inf - inf) through the solver.
     """
     n = 5
 
@@ -871,12 +772,7 @@ def test_inf_game_values_raise():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_constant_game_zero_svs(seed):
-    """A constant game v(S) = c for all S must assign zero Shapley value to every player.
-
-    This puts b = 0 in the regression system (all game values equal the baseline after
-    centering), so the solver receives a zero target vector. The efficiency axiom must
-    still hold (sum of SVs == v(N) - v({}) == 0).
-    """
+    """A constant game must assign zero Shapley value to every player."""
     n = 6
     c = 7.5  # arbitrary non-zero constant
 
@@ -920,11 +816,8 @@ def test_combo_empty_combination_returns_all_false():
 
 @pytest.mark.parametrize(("n", "s"), [(5, 2), (6, 3), (7, 1), (7, 4), (4, 4)])
 def test_combo_matches_itertools_lexicographic_order(n, s):
-    """_combo (Algorithm 3) must reproduce itertools.combinations in lexicographic order.
-
-    This exercises the load-bearing while-loop recursion (not just the s == 0 early
-    return): for every index i in [0, C(n, s)) the returned boolean vector must mark
-    exactly the players of the i-th lexicographic size-s combination.
+    """_combo (Algorithm 3) must reproduce itertools.combinations in lexicographic
+    order for every index in [0, C(n, s)).
     """
     total = math.comb(n, s)
     for i, expected_players in enumerate(itertools.combinations(range(n), s)):
@@ -1036,15 +929,11 @@ def test_bernoulli_sample_deterministic_exhaustive_skip_in_remainder_fill():
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_underdetermined_efficiency_axiom(seed):
-    """When budget << n, the design matrix A has fewer rows than columns (underdetermined).
-
-    lstsq returns the minimum-norm solution in this regime. Efficiency must still hold
-    exactly because it is enforced algebraically via the efficiency_shift construction,
-    independently of the regression solve.
+    """Efficiency must hold even when the regression is underdetermined
+    (fewer interior rows than players), since it is enforced algebraically.
     """
     n = 10
-    # budget=4 gives only ~2 interior rows for n=10, far fewer than n columns
-    budget = 4
+    budget = 4  # only ~2 interior rows for n=10
 
     game = DummyGame(n, interaction=(0, 1))
     v_grand = game(np.ones((1, n), dtype=bool))[0]
@@ -1057,17 +946,11 @@ def test_underdetermined_efficiency_axiom(seed):
 
 @pytest.mark.parametrize("seed", DIVERSE_SEEDS)
 def test_negative_large_magnitude_game(seed):
-    """Game with large-magnitude negative values should not degrade numerical precision.
-
-    Tests that neither the IS weight computation nor the solver loses precision when
-    game values span a large negative range, which exercises different floating-point
-    paths than the positive skewed game.
-    """
+    """Large-magnitude negative game values must not degrade numerical precision."""
     n = 7
     scale = 1e5
 
     def large_negative_game(Z):
-        # Additive game with large negative weights — exact SVs are known analytically.
         player_weights = -scale * np.arange(1, n + 1, dtype=float)
         return Z.astype(float) @ player_weights
 
@@ -1076,11 +959,9 @@ def test_negative_large_magnitude_game(seed):
 
     result = LeverageSHAP(n, random_state=seed).approximate(budget=2**n, game=large_negative_game)
 
-    # efficiency must hold to near machine precision (algebraic, not solver-dependent)
     assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, rel=1e-10)
 
-    # exact SVs for an additive game equal the player weights; verify ordering
-    # (player n has the most negative SV, player 1 the least negative)
+    # Additive game: SVs equal the (decreasing) player weights, so ordering is known.
     svs = result.values[1:]
     for i in range(n - 1):
         assert svs[i] > svs[i + 1], (
