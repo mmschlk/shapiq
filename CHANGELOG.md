@@ -4,14 +4,27 @@
 
 ### Highlights of new Features
 
+- adds a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026). Larger inputs are computed by the vectorized Woodelf algorithms, and `TreeExplainer` now supports the Banzhaf indices `"BV"` and `"BII"`. `TreeExplainer.explain_X` explains all instances in one vectorized run and returns the new `InteractionValuesBatch`: a lazy sequence of one `InteractionValues` per instance whose `.values` attribute exposes the raw vectorized arrays (`Explainer.explain_X` is now typed as returning a `Sequence[InteractionValues]`). The fast path requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`. The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing [#572](https://github.com/mmschlk/shapiq/pull/572)
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
 - adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
+- adds `TreeExplainer` support for scikit-learn gradient boosting models: `GradientBoostingRegressor`, `GradientBoostingClassifier`, `HistGradientBoostingRegressor`, and `HistGradientBoostingClassifier` can now be converted to the internal tree format (including the constant baseline / `init_` prediction, so attributions sum to the raw model output)
+- adds **categorical split support** to the tree explainers: models trained with native categorical features — sklearn `HistGradientBoosting*` (`categorical_features`), LightGBM (`categorical_feature`), and XGBoost (`enable_categorical`) — are now converted and explained exactly on all paths (TreeSHAP-IQ, LinearTreeSHAP, and the interventional explainer). `TreeModel` stores per-node category sets in a CSR layout (`cat_values`/`cat_start`/`cat_size`) with the unified routing rule "category in set → left child, NaN → missing child". Previously, categorical LightGBM/XGBoost models were **silently mis-parsed** (bitset indices read as numeric thresholds), producing wrong explanations without any error
+- fixes missing-value (NaN) routing in the LinearTreeSHAP and interventional C++ kernels: `-ffast-math` had compiled away the `std::isnan` checks (now built with `-fno-finite-math-only`), and TreeSHAP-IQ now routes NaN values through the per-node missing direction exactly like `predict_one`
+
+### Breaking Changes
+
+- Renames `InterventionalTreeExplainer` to `InterventionalTreeSHAPIQ` in `shapiq.tree.interventional` for consistency with `TreeSHAPIQ` and `LinearTreeSHAP`. The old name is no longer available; import `shapiq.tree.InterventionalTreeSHAPIQ` instead.
 
 ### Bugfix
 
 - Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
 - Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
+- `kADDSHAP` now declares `"SV"` in its `valid_indices` (like `RegressionFSII` does): with `max_order=1` it estimates Shapley values, which makes it consistent with its listing in the `SV_APPROXIMATORS` registry; the registry consistency test now also covers `SV_APPROXIMATORS`
 - `KNNExplainer`, `WeightedKNNExplainer`, and their ground-truth games now raise a `ValueError` at construction when the model was fitted on fewer training samples than `n_neighbors`, mirroring scikit-learn's own "Expected n_neighbors <= n_samples_fit" error on `predict`. Previously, `KNNExplainer` silently returned Shapley values that disagreed with `KNNExplainerGame` in this regime
+
+### Maintenance
+
+- Removes the dead non-log weight computations from the approximator base classes, which were superseded by their log-space counterparts: `Regression._init_kernel_weights` (superseded by `_init_log_kernel_weights`) and the `MonteCarlo` family `_get_standard_form_weights`/`_weight`/`_sii_weight`/`_bii_weight`/`_chii_weight`/`_stii_weight`/`_fsii_weight`/`_fbii_weight` (superseded by `_get_standard_form_log_weights` and the `_log_*_weight` methods). All were private and unused by the `approximate()` code paths; `ExactComputer` in `shapiq.game_theory.exact` has its own independent `_stii_weight` and is unaffected
 
 ## v1.6.0 (2026-07-06)
 

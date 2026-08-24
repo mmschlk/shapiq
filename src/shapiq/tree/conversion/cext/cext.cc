@@ -282,6 +282,36 @@ static PyObject *forest_to_treemodel_list(const ParsedForest &forest, const char
 		}
 		Py_DECREF(decision_type);
 
+		// categorical splits (CSR layout): only emitted when present so numeric models'
+		// TreeModel construction stays byte-identical
+		if (!tree.cat_values.empty())
+		{
+			PyArrayObject *cat_values_arr = numpy_array_from_vector<int64_t>(tree.cat_values, NPY_INT64);
+			PyArrayObject *cat_start_arr = numpy_array_from_vector<int64_t>(tree.cat_start, NPY_INT64);
+			PyArrayObject *cat_size_arr = numpy_array_from_vector<int64_t>(tree.cat_size, NPY_INT64);
+			const bool cat_ok = cat_values_arr && cat_start_arr && cat_size_arr &&
+								PyDict_SetItemString(kwargs, "cat_values", reinterpret_cast<PyObject *>(cat_values_arr)) == 0 &&
+								PyDict_SetItemString(kwargs, "cat_start", reinterpret_cast<PyObject *>(cat_start_arr)) == 0 &&
+								PyDict_SetItemString(kwargs, "cat_size", reinterpret_cast<PyObject *>(cat_size_arr)) == 0;
+			Py_XDECREF(cat_values_arr);
+			Py_XDECREF(cat_start_arr);
+			Py_XDECREF(cat_size_arr);
+			if (!cat_ok)
+			{
+				Py_DECREF(kwargs);
+				Py_DECREF(left_arr);
+				Py_DECREF(right_arr);
+				Py_DECREF(feature_arr);
+				Py_DECREF(threshold_arr);
+				Py_DECREF(values_arr);
+				Py_DECREF(weight_arr);
+				Py_DECREF(children_missing_arr);
+				Py_DECREF(tree_model_class);
+				Py_DECREF(result);
+				return NULL;
+			}
+		}
+
 		PyObject *empty_args = PyTuple_New(0);
 		if (!empty_args)
 		{

@@ -34,13 +34,21 @@ from shapiq import TreeExplainer
 _REG_CASES = [
     ("dt_reg_model", "background_reg_dataset"),
     ("rf_reg_model", "background_reg_dataset"),
+    ("gb_reg_model", "background_reg_dataset"),
+    ("hist_gb_reg_model", "background_reg_dataset"),
+    ("hist_gb_cat_reg_model", "background_cat_dataset"),
     ("xgb_reg_model", "background_reg_dataset"),
+    ("xgb_cat_reg_model", "background_cat_dataset"),
     ("lightgbm_reg_model", "background_reg_dataset"),
+    ("lightgbm_cat_reg_model", "background_cat_dataset"),
     ("catboost_reg_model", "background_reg_dataset"),
 ]
 _CLF_CASES = [
     ("dt_clf_model", "background_clf_dataset"),
     ("rf_clf_model", "background_clf_dataset"),
+    ("gb_clf_model", "background_clf_dataset"),
+    ("hist_gb_clf_model", "background_clf_dataset"),
+    ("hist_gb_cat_clf_model", "background_cat_dataset"),
     ("xgb_clf_model", "background_clf_dataset"),
     ("lightgbm_clf_model", "background_clf_dataset"),
     ("catboost_clf_model", "background_clf_dataset"),
@@ -78,6 +86,7 @@ def _assert_efficiency(model, X: np.ndarray, *, force_treeshapiq: bool) -> None:
         TreeExplainer._can_use_lineartreeshap = lambda self: False
     try:
         explainer = TreeExplainer(model=model, max_order=1, min_order=0, index="SV")
+        explainer._init_explainers()
     finally:
         if force_treeshapiq:
             TreeExplainer._can_use_lineartreeshap = original
@@ -120,3 +129,32 @@ def test_tree_explainer_efficiency_classification(
     model = request.getfixturevalue(model_fixture)
     X, _ = request.getfixturevalue(data_fixture)
     _assert_efficiency(model, np.asarray(X), force_treeshapiq=force_treeshapiq)
+
+
+def test_interventional_sparse_matches_dense_categorical(
+    hist_gb_cat_reg_model, background_cat_dataset
+):
+    """The sparse interventional C kernel routes categorical splits like the dense Python path.
+
+    The dense path routes instances in pure Python (``TreeModel.goes_left``); the sparse path
+    routes inside the C kernel. Forcing both onto the same order must produce identical
+    interaction values, including on rows with NaN values.
+    """
+    import shapiq.tree.interventional.explainer as interventional_module
+    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
+
+    X, _ = background_cat_dataset
+    dense = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
+    budget = interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE
+    interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = 0
+    try:
+        sparse = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
+    finally:
+        interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = budget
+    assert not dense._use_sparse_path
+    assert sparse._use_sparse_path
+    for i in range(5):
+        dense_values = dense.explain_function(X[i]).dict_values
+        sparse_values = sparse.explain_function(X[i]).dict_values
+        for interaction, value in dense_values.items():
+            assert value == pytest.approx(sparse_values.get(interaction, 0.0), abs=1e-5)
