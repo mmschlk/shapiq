@@ -210,16 +210,14 @@ def test_per_size_counts_exhaustive_at_full_budget(n):
         assert counts.get(s, 0) == math.comb(n, s)
 
 
-def test_sample_weights_match_leverage_score_formula():
-    r"""Hand-derived per-row IS weights on partial budgets: kernel weight
-    ``w(s) = (s-1)!(n-s-1)!/n!`` for exhaustive layers (``C(n, s) <= 2c``), else
-    ``1/(s*(n-s)*2c)``. Catches weight bugs the structural and full-budget tests
-    cannot. n=5, b=12: 2c = 5/2 (nothing exhaustive); n=6, b=40: 2c = 26/3
-    (sizes 1/5 exhaustive).
+def test_deterministic_sample_weights_match_realized_inclusion_probability():
+    r"""A deterministic size-s stratum with ``k_s`` sampled rows has marginal
+    inclusion probability ``k_s/C(n,s)``, so its corrected kernel weight is
+    ``1/(s*(n-s)*k_s)``. This applies to partially sampled and exhaustive layers.
     """
     cases: list[tuple[int, int, dict[int, float]]] = [
-        (5, 12, {1: 0.1, 2: 1.0 / 15, 3: 1.0 / 15, 4: 0.1}),
-        (6, 40, {1: 1.0 / 30, 2: 3.0 / 208, 3: 1.0 / 78, 4: 3.0 / 208, 5: 1.0 / 30}),
+        (5, 12, {1: 1.0 / 12, 2: 1.0 / 12, 3: 1.0 / 12, 4: 1.0 / 12}),
+        (6, 40, {1: 1.0 / 30, 2: 1.0 / 72, 3: 1.0 / 72, 4: 1.0 / 72, 5: 1.0 / 30}),
     ]
     for n, budget, expected_weight_by_size in cases:
         approximator = LeverageSHAP(n, random_state=0)
@@ -236,14 +234,11 @@ def test_sample_weights_match_leverage_score_formula():
             assert w == pytest.approx(expected, rel=1e-9, abs=1e-12), (n, budget, int(s), w)
 
 
-def test_saturated_layer_weight_matches_full_enumeration():
-    r"""A layer the remainder fill lifts to full enumeration must get the raw kernel
-    weight, not the IS weight. n=5, b=20: 2c = 4.5, the fill saturates s=1 -> its
-    rows get w(1) = 1/20, not 1/18. Expected weights derive from the realized counts;
-    if a changed tie-break stops saturating a layer, pick a new (n, budget).
+def test_deterministic_weights_use_realized_counts_after_remainder_fill():
+    """Remainder rounding changes the inclusion probability for every affected layer,
+    not only a layer that becomes exhaustive.
     """
     n, budget = 5, 20
-    two_c = 4.5  # hand-solved from Eq. 12 in the docstring
 
     Z, weights = LeverageSHAP(n, random_state=0)._sample(budget)
     sizes = Z.sum(axis=1)
@@ -251,15 +246,37 @@ def test_saturated_layer_weight_matches_full_enumeration():
 
     saturated = {s for s in range(1, n) if counts[s] == math.comb(n, s)}
     assert saturated, "expected the remainder fill to lift a layer to full enumeration"
-    assert all(math.comb(n, s) > two_c for s in saturated)
 
     for s, w in zip(sizes[2:], weights[2:], strict=True):
         size = int(s)
-        if size in saturated:
+        expected = 1.0 / (size * (n - size) * counts[size])
+        assert w == pytest.approx(expected, rel=1e-9, abs=1e-12), (size, w)
+
+
+def test_odd_deterministic_budget_matches_previous_even_budget():
+    """Odd budgets floor to preserve the hard ceiling, including when solving for c."""
+    for n, budget in [(5, 25), (7, 15)]:
+        Z_odd, weights_odd = LeverageSHAP(n, random_state=0)._sample(budget)
+        Z_even, weights_even = LeverageSHAP(n, random_state=0)._sample(budget - 1)
+        np.testing.assert_array_equal(Z_odd, Z_even)
+        np.testing.assert_array_equal(weights_odd, weights_even)
+
+
+def test_binomial_sample_weights_match_algorithm_probability():
+    """The stochastic path keeps Algorithm 1's pre-draw inclusion probability."""
+    n, budget = 6, 20
+    approximator = LeverageSHAP(n, deterministic_counts=False, random_state=0)
+    c = approximator._find_c(n, budget)
+    Z, weights = approximator._sample(budget)
+    sizes = Z.sum(axis=1)
+
+    for s, weight in zip(sizes[2:], weights[2:], strict=True):
+        size = int(s)
+        if math.comb(n, size) <= 2 * c:
             expected = math.factorial(size - 1) * math.factorial(n - size - 1) / math.factorial(n)
         else:
-            expected = 1.0 / (size * (n - size) * two_c)
-        assert w == pytest.approx(expected, rel=1e-9, abs=1e-12), (size, w)
+            expected = 1.0 / (size * (n - size) * 2 * c)
+        assert weight == pytest.approx(expected, rel=1e-9, abs=1e-12)
 
 
 def test_saturation_all_rows_distinct_and_exact_on_soum():
@@ -504,13 +521,15 @@ def test_stochastic_regime_seed_variability(deterministic_counts):
 def test_empirical_convergence_rate():
     """The approximation error (w.r.t. ExactComputer) should decrease when the budget increases.
 
-    Use averaging across a few seeds to reduce stochastic noise in the test.
+    A degree-2 DummyGame is already recovered to machine precision at these budgets,
+    so use a richer SOUM game and average across seeds to expose convergence rather
+    than floating-point ordering noise.
     """
 
     n = 8
 
     def game_factory():
-        return DummyGame(n, interaction=(0, 2))
+        return SOUM(n=n, n_basis_games=20, max_interaction_size=4, random_state=42)
 
     exact = ExactComputer(game_factory(), n)
     exact_sv = exact("SV").values[1:]
@@ -684,7 +703,7 @@ def test_leverageshap_vs_kernelshap_mean_error():
     observed ~5e-16 (LeverageSHAP) and ~0.15 (KernelSHAP) mean errors. It catches
     row-selection/pairing bugs but not weight-formula bugs (this game's WLS solution
     is exact for any positive weights); those are pinned directly by
-    ``test_sample_weights_match_leverage_score_formula``.
+    ``test_deterministic_sample_weights_match_realized_inclusion_probability``.
     """
     n = 6
     budget = 40
@@ -903,15 +922,52 @@ def test_bernoulli_sample_degenerate_and_exhaustive_branches():
     assert (sizes == 1).sum() == math.comb(6, 1)
 
 
-def test_bernoulli_sample_poisson_fallback_for_huge_pool():
-    """_bernoulli_sample must fall back to a Poisson draw when a size's pool exceeds
-    the int32 range numpy's Binomial supports (C(40, 20) >> 2**31 - 1).
-    """
-    assert math.comb(40, 20) > 2**31 - 1
-    approx = LeverageSHAP(n=40, deterministic_counts=False, random_state=0)
-    z, sizes = approx._bernoulli_sample(n=40, c=5.0)
+def test_bernoulli_middle_draws_full_layer_then_halves():
+    """Algorithm 2 draws the middle count from C(n,s) trials, then floor-halves it."""
+
+    class RecordingRNG:
+        def __init__(self) -> None:
+            self.binomial_calls: list[tuple[int, float]] = []
+
+        @staticmethod
+        def integers(*args, **kwargs):
+            return 0
+
+        def binomial(self, trials: int, probability: float) -> int:
+            self.binomial_calls.append((trials, probability))
+            return 3 if trials == math.comb(4, 2) else 0
+
+        @staticmethod
+        def poisson(mean: float) -> int:  # pragma: no cover
+            msg = f"unexpected Poisson fallback with mean {mean}"
+            raise AssertionError(msg)
+
+    approx = LeverageSHAP(n=4, deterministic_counts=False, random_state=0)
+    recording_rng = RecordingRNG()
+    approx._rng = recording_rng
+    z, sizes = approx._bernoulli_sample(n=4, c=1.0)
+
+    assert [trials for trials, _ in recording_rng.binomial_calls] == [4, 6]
+    assert z.shape == (2, 4)
+    assert np.all(sizes == 2)
+
+
+def test_bernoulli_uses_int64_trials_before_poisson_fallback():
+    """Trial counts above int32 but within int64 still use an exact Binomial draw."""
+    assert 2**31 - 1 < math.comb(34, 16) <= np.iinfo(np.int64).max
+    approx = LeverageSHAP(n=34, deterministic_counts=False, random_state=0)
+    z, sizes = approx._bernoulli_sample(n=34, c=5.0)
     assert z.shape[0] == sizes.shape[0]
-    assert z.shape[1] == 40
+    assert z.shape[1] == 34
+
+
+def test_bernoulli_poisson_fallback_beyond_int64():
+    """Arbitrary-precision trial counts use the documented Poisson limit."""
+    assert math.comb(70, 35) > np.iinfo(np.int64).max
+    approx = LeverageSHAP(n=70, deterministic_counts=False, random_state=0)
+    z, sizes = approx._bernoulli_sample(n=70, c=5.0)
+    assert z.shape[0] == sizes.shape[0]
+    assert z.shape[1] == 70
 
 
 def test_bernoulli_sample_deterministic_exhaustive_skip_in_remainder_fill():

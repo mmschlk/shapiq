@@ -32,7 +32,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     statistical *leverage scores*, which have the closed form ``l_z = 1/C(n, ||z||)``
     (Lemma 3.2). Implementation of Algorithm 1:
 
-    1. Solve for the oversampling parameter ``c`` so that
+    1. For the deterministic default, normalize the budget to an even number without
+       exceeding it. Solve for the oversampling parameter ``c`` so that
        ``m - 2 = sum_{s=1}^{n-1} min(C(n, s), 2c)`` (Eq. 12); two evaluations are
        reserved for the empty and grand coalitions.
     2. Draw coalition pairs ``(z, z̄)`` without replacement (Algorithm 2). By default
@@ -41,14 +42,18 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
        exact -- stratification in the spirit of SVARM :cite:t:`Kolpaczki.2024a`; with
        ``deterministic_counts=False`` it is drawn at random as Algorithm 2 states.
        Sizes whose layer fits within ``2c`` are enumerated exhaustively.
-    3. Reweight each row by ``w(||z||) / min(1, 2c * l_z)``, where
-       ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight.
+    3. Reweight each row by the inverse of its inclusion probability. For the
+       deterministic default this probability is the realized per-size count divided
+       by ``C(n, s)``; for the Binomial variant it is ``min(1, 2c * l_z)``.
     4. Project out the efficiency constraint (Lemma 3.1), solve by weighted least
        squares, and add the efficiency offset back.
 
     Note:
-        The deterministic default matches the paper's released implementation and
-        reported experiments, and makes the evaluation count exactly
+        The deterministic default follows the fixed-per-size design used by the
+        paper's released implementation and reported experiments. To preserve
+        shapiq's hard budget ceiling, an odd budget is rounded down rather than up as
+        in that implementation; largest-remainder ties can also select a different
+        size. The evaluation count is exactly
         ``2 + 2 * ((min(budget, 2**n) - 2) // 2)``. The paper's accuracy theorem is
         proved for the Binomial ``deterministic_counts=False`` variant only
         (Musco and Witter, 2025, end of Sec. 4).
@@ -194,9 +199,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         Returns:
             Z: Boolean coalition matrix (empty and grand coalition first).
-            weights: Per-coalition IS weights (relative scale only). Fully enumerated
-                layers get the raw kernel weight ``w(s)``; empty/grand get 0 (they
-                enter via the efficiency shift, not the regression).
+            weights: Per-coalition IS weights (relative scale only), computed from
+                each layer's realized fixed-count probability in deterministic mode
+                and its Binomial inclusion probability otherwise. Empty/grand get 0
+                because they enter via the efficiency shift, not the regression.
         """
         if budget < 2:
             msg = "Budget must be at least 2 to evaluate baseline and grand coalition."
@@ -204,6 +210,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         n = self.n
         m = min(budget, 2**n)
+        if self.deterministic_counts:
+            # Paired sampling can only realize an even total. Unlike the released
+            # implementation, shapiq treats ``budget`` as a hard ceiling.
+            m = 2 + 2 * ((m - 2) // 2)
 
         z_empty = np.zeros(n, dtype=bool)
         z_grand = np.ones(n, dtype=bool)
@@ -222,17 +232,20 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             realized = dict(zip(unique_sizes.tolist(), size_counts.tolist(), strict=True))
 
             for i, s in enumerate(sizes):
-                full_count = math.comb(n, s)
-                # Fully enumerated layer (2c threshold, or lifted there by the
-                # deterministic fill): p = 1, raw kernel weight. The int comparison
-                # avoids forming float(C(n, s)), which overflows for large n.
-                if full_count <= two_c or (
-                    self.deterministic_counts and realized[int(s)] == full_count
-                ):
-                    weights_pairs[i] = (math.factorial(s - 1) * math.factorial(n - s - 1)) / fact_n
+                if self.deterministic_counts:
+                    # A fixed-size uniform draw of k_s rows has marginal inclusion
+                    # probability k_s/C(n,s). Dividing the kernel weight by it cancels
+                    # C(n,s), including when the layer is fully enumerated.
+                    weights_pairs[i] = 1.0 / (s * (n - s) * realized[int(s)])
                 else:
-                    # w(s)/p collapses to 1/(s*(n-s)*2c) -- the binomial cancels.
-                    weights_pairs[i] = 1.0 / (s * (n - s) * two_c)
+                    full_count = math.comb(n, s)
+                    if full_count <= two_c:
+                        weights_pairs[i] = (
+                            math.factorial(s - 1) * math.factorial(n - s - 1) / fact_n
+                        )
+                    else:
+                        # w(s)/p collapses to 1/(s*(n-s)*2c).
+                        weights_pairs[i] = 1.0 / (s * (n - s) * two_c)
 
             Z = np.vstack([z_empty[None, :], z_grand[None, :], Z_pairs])
         else:
@@ -282,8 +295,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     def _bernoulli_sample(self, n: int, c: float) -> tuple[np.ndarray, np.ndarray]:
         """Algorithm 2 (BernoulliSample) of Musco and Witter (2025) :cite:t:`Musco.2025`.
 
-        Draws ``m_s ~ Binomial`` pairs per half-size (the ``deterministic_counts=False``
-        path); row construction is delegated to ``_build_rows``.
+        Draws ``m_s ~ Binomial`` per half-size (the ``deterministic_counts=False``
+        path). For the self-complementary middle layer, Algorithm 2 draws against the
+        full layer and then halves the result. Row construction is delegated to
+        ``_build_rows``.
 
         Returns:
             Z_pairs: Boolean coalition matrix.
@@ -305,15 +320,16 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
             if full_count <= two_c:
                 m_s = pool_size
-            elif pool_size > 2**31 - 1:
-                # Pool exceeds int32 (numpy's Binomial limit) → Poisson with the
-                # analytic mean; avoids float(C(n, s)), and prob → 0 here so Poisson
-                # matches Binomial.
-                poisson_mean = two_c * s / n if is_middle else two_c
-                m_s = min(int(self._rng.poisson(poisson_mean)), pool_size)
+            elif full_count > np.iinfo(np.int64).max:
+                # NumPy cannot represent the Binomial trial count. Here p is tiny and
+                # the mean is fixed, so Poisson is the limiting distribution.
+                raw_count = int(self._rng.poisson(two_c))
+                m_s = raw_count // 2 if is_middle else raw_count
+                m_s = min(m_s, pool_size)
             else:
                 prob = two_c / full_count
-                m_s = int(self._rng.binomial(pool_size, prob))
+                raw_count = int(self._rng.binomial(full_count, prob))
+                m_s = raw_count // 2 if is_middle else raw_count
 
             counts[s] = m_s
 
@@ -325,8 +341,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         r"""Deterministic analogue of ``_bernoulli_sample``'s Binomial draw.
 
         Fixes each size's pair count to the Binomial expectation, largest-remainder
-        rounded so the total matches the target exactly -- what the paper's released
-        implementation does. Row construction is delegated to ``_build_rows``.
+        rounded so the total matches the target exactly, following the approach used
+        by the paper's released implementation. Row construction is delegated to
+        ``_build_rows``.
 
         Returns:
             Same shape/semantics as ``_bernoulli_sample``: (Z_pairs, sizes).
@@ -334,7 +351,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         if n < 2 or c <= 0.0:
             return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)
 
-        target_pairs = (m - 2) // 2  # odd budgets floor to the nearest even total
+        target_pairs = (m - 2) // 2
         two_c = 2.0 * c
         half_sizes = list(range(1, n // 2 + 1))
 
