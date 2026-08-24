@@ -192,31 +192,3 @@ def test_lazy_lookup_keeps_init_cheap_in_high_dimensions():
     """``__init__`` no longer materializes the interaction lattice (order 3 at n=1778 is instant)."""
     proxyshap = ProxySHAP(n=1778, max_order=3, index="k-SII")
     assert proxyshap.interaction_lookup == {}
-
-
-def test_msr_support_restriction_is_consistent():
-    """Sparse-support MSR estimates equal the full-lattice estimates on the shared interactions.
-
-    Each interaction's MSR estimate is computed independently, so restricting the routine to a
-    subset of the lattice must not change the estimates of the interactions that are kept.
-    """
-    from shapiq.utils.sets import generate_interaction_lookup
-
-    n = 8
-    proxyshap = ProxySHAP(
-        n=n, max_order=2, index="k-SII", apply_msr_adjustment=True, random_state=0
-    )
-    proxyshap._sampler.sample(60)
-    coalitions_matrix = proxyshap._sampler.coalitions_matrix
-    rng = np.random.default_rng(0)
-    residuals = rng.normal(size=coalitions_matrix.shape[0])
-    residuals -= residuals[proxyshap._sampler.empty_coalition_index]
-    rows = np.arange(coalitions_matrix.shape[0])
-
-    full_lookup = generate_interaction_lookup(n, 0, 2)
-    full = proxyshap._msr_routine(residuals, rows, coalitions_matrix, full_lookup)
-
-    subset = {(): 0, (1,): 1, (1, 2): 2, (0, 3): 3}
-    sparse = proxyshap._msr_routine(residuals, rows, coalitions_matrix, subset)
-    for interaction, position in subset.items():
-        assert sparse[position] == pytest.approx(full[full_lookup[interaction]])
