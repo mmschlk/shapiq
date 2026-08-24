@@ -7,19 +7,26 @@
 - adds a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026). Larger inputs are computed by the vectorized Woodelf algorithms, and `TreeExplainer` now supports the Banzhaf indices `"BV"` and `"BII"`. `TreeExplainer.explain_X` explains all instances in one vectorized run and returns the new `InteractionValuesBatch`: a lazy sequence of one `InteractionValues` per instance whose `.values` attribute exposes the raw vectorized arrays (`Explainer.explain_X` is now typed as returning a `Sequence[InteractionValues]`). The fast path requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`. The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing [#572](https://github.com/mmschlk/shapiq/pull/572)
 - adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
 - adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
+- `ProxySHAP` now computes the `BII` and `STII` indices in addition to `SV`, `BV`, `SII`, `k-SII`, `FSII`, and `FBII`, and is registered for both wherever `setup_approximator` resolves the `"proxyshap"` string. `MoebiusConverter` gained the matching `BII` conversion, and computes `BV` through it.
+- adds a `kfolds` parameter to `ProxySHAP` and `RegressionMSR` for out-of-fold proxy residuals, i.e. the cross-fitting variant of Witter et al. (2025). The default `kfolds=1` fits a single proxy on all sampled coalitions, which the paper recommends in practice and which keeps the estimator exact at full budget.
+- adds sampling weights for the `RegressionMSR` estimator which are coherent to the papers proposed sampling Witter et al. (2025).
 
 ### Breaking Changes
 
 - Renames `InterventionalTreeExplainer` to `InterventionalTreeSHAPIQ` in `shapiq.tree.interventional` for consistency with `TreeSHAPIQ` and `LinearTreeSHAP`. The old name is no longer available; import `shapiq.tree.InterventionalTreeSHAPIQ` instead.
+- Replaces `ProxySHAP`'s `adjustment` parameter with the boolean `apply_msr_adjustment` (default `False`). The residual correction is now a built-in closed-form MSR routine rather than a second approximator, so the `"svarm"` and `"kernel"` variants are no longer available. `random_state=None` is also no longer silently replaced by a fixed seed, which the single shared coalition sampler makes unnecessary.
+- Changes `RegressionMSR`'s default `sampling_weights` to the closed-form kernel of Witter et al. (2025), including their separate Leverage-SHAP kernel for linear proxies with `index="SV"`. Passing `sampling_weights` explicitly still overrides the default.
 
 ### Bugfix
 
 - Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
 - Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
 - `kADDSHAP` now declares `"SV"` in its `valid_indices` (like `RegressionFSII` does): with `max_order=1` it estimates Shapley values, which makes it consistent with its listing in the `SV_APPROXIMATORS` registry; the registry consistency test now also covers `SV_APPROXIMATORS`
+- Fixes the `BV` index losing `estimated` and `estimation_budget` when interactions are read out of a linear proxy: `MoebiusConverter` now computes `BV` through the base-interaction routine (as it already did for `SV`) instead of the faithful-index routine, which did not carry those fields through.
 
 ### Maintenance
 
+- Rewrites `ProxySHAP`'s MSR residual adjustment as a self-contained vectorized routine that estimates all interactions in a single matrix product over the coalitions already sampled, instead of re-sampling an independent `CoalitionSampler` and running a second Monte Carlo pass on a residual game.
 - Removes the dead non-log weight computations from the approximator base classes, which were superseded by their log-space counterparts: `Regression._init_kernel_weights` (superseded by `_init_log_kernel_weights`) and the `MonteCarlo` family `_get_standard_form_weights`/`_weight`/`_sii_weight`/`_bii_weight`/`_chii_weight`/`_stii_weight`/`_fsii_weight`/`_fbii_weight` (superseded by `_get_standard_form_log_weights` and the `_log_*_weight` methods). All were private and unused by the `approximate()` code paths; `ExactComputer` in `shapiq.game_theory.exact` has its own independent `_stii_weight` and is unaffected
 
 ## v1.6.0 (2026-07-06)
