@@ -36,6 +36,13 @@ struct ParsedTreeArrays
 	std::vector<int64_t> right_children;
 	std::vector<int64_t> default_children;
 	std::vector<double> node_sample_weights;
+	// categorical splits in CSR layout, mirroring TreeModel: cat_size[node] > 0 marks a
+	// categorical node whose left-routed category set is
+	// cat_values[cat_start[node] .. cat_start[node] + cat_size[node]).
+	// All three stay empty for trees without categorical splits.
+	std::vector<int64_t> cat_values;
+	std::vector<int64_t> cat_start;
+	std::vector<int64_t> cat_size;
 };
 
 struct ParsedForest

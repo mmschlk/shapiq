@@ -153,6 +153,306 @@ def test_sklearn_if_conversion(if_clf_model):
     assert tree_model[0].empty_prediction is not None
 
 
+def test_sklearn_gradient_boosting_conversion_predicts_raw_output(gb_reg_model, gb_clf_model):
+    """Test that GradientBoosting conversions (incl. the init_ baseline) match raw outputs."""
+    from sklearn.datasets import make_classification, make_regression
+
+    # regression: sum of converted tree predictions equals model.predict
+    X, _ = make_regression(random_state=42, n_samples=80, n_features=7)
+    expected = gb_reg_model.predict(X[:10])
+    converted = convert_tree_model(gb_reg_model)
+    assert len(converted) == gb_reg_model.n_estimators
+    np.testing.assert_allclose(_predict_tree_ensemble(converted, X[:10]), expected, rtol=1e-6)
+
+    # multiclass classification: converted trees match the per-class raw decision function,
+    # and class_label=None defaults to class 1
+    Xc, _ = make_classification(
+        random_state=42, n_samples=80, n_features=7, n_classes=3, n_informative=5
+    )
+    expected_raw = gb_clf_model.decision_function(Xc[:10])
+    for class_label in range(3):
+        converted = convert_tree_model(gb_clf_model, class_label=class_label)
+        assert len(converted) == gb_clf_model.n_estimators
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, Xc[:10]), expected_raw[:, class_label], rtol=1e-6
+        )
+    converted_default = convert_tree_model(gb_clf_model)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_default, Xc[:10]), expected_raw[:, 1], rtol=1e-6
+    )
+
+    # a custom init estimator cannot be folded into a constant baseline
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.linear_model import LinearRegression
+
+    y = X.sum(axis=1)
+    custom_init_model = GradientBoostingRegressor(
+        random_state=42, n_estimators=3, init=LinearRegression()
+    )
+    custom_init_model.fit(X, y)
+    with pytest.raises(ValueError, match="custom `init` estimator"):
+        convert_tree_model(custom_init_model)
+
+
+def test_sklearn_hist_gradient_boosting_conversion_predicts_raw_output(
+    hist_gb_reg_model, hist_gb_clf_model
+):
+    """Test that HistGradientBoosting conversions (incl. the baseline) match raw outputs."""
+    from sklearn.datasets import make_classification, make_regression
+
+    # regression: sum of converted tree predictions equals model.predict
+    X, _ = make_regression(random_state=42, n_samples=80, n_features=7)
+    expected = hist_gb_reg_model.predict(X[:10])
+    converted = convert_tree_model(hist_gb_reg_model)
+    np.testing.assert_allclose(_predict_tree_ensemble(converted, X[:10]), expected, rtol=1e-6)
+
+    # missing values are routed like the model routes them
+    x_nan = X[0].copy()
+    x_nan[0] = np.nan
+    expected_nan = float(hist_gb_reg_model.predict(x_nan.reshape(1, -1))[0])
+    prediction_nan = float(sum(tree.predict_one(x_nan) for tree in converted))
+    assert prediction_nan == pytest.approx(expected_nan, rel=1e-6)
+
+    # multiclass classification: converted trees match the per-class raw decision function,
+    # and class_label=None defaults to class 1
+    Xc, _ = make_classification(
+        random_state=42, n_samples=80, n_features=7, n_classes=3, n_informative=5
+    )
+    expected_raw = hist_gb_clf_model.decision_function(Xc[:10])
+    for class_label in range(3):
+        converted = convert_tree_model(hist_gb_clf_model, class_label=class_label)
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, Xc[:10]), expected_raw[:, class_label], rtol=1e-6
+        )
+    converted_default = convert_tree_model(hist_gb_clf_model)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_default, Xc[:10]), expected_raw[:, 1], rtol=1e-6
+    )
+
+
+def test_sklearn_hist_gradient_boosting_categorical_conversion(
+    hist_gb_cat_reg_model, hist_gb_cat_clf_model, background_cat_dataset
+):
+    """Test that categorical HistGradientBoosting conversions match the raw model output.
+
+    Covers non-contiguous raw category codes (ordinal-encoder translation), NaN routing at
+    categorical and numeric nodes, and per-class tree selection for multiclass models.
+    """
+    X, _ = background_cat_dataset
+
+    converted = convert_tree_model(hist_gb_cat_reg_model)
+    assert any(tree.has_categorical for tree in converted)
+    # all rows, including NaN rows and every trained category code
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted, X),
+        hist_gb_cat_reg_model.predict(X),
+        rtol=1e-6,
+        atol=1e-9,
+    )
+    # every raw category code at a fixed base point, NaN routing, and out-of-vocabulary
+    # codes (unknown / in-gap / negative / out-of-range values route to the missing branch
+    # in sklearn — captured exactly via the swapped-children encoding)
+    probes = []
+    for code in [2.0, 7.0, 11.0, 30.0, 41.0, 99.0, np.nan, 500.0, 3.0, -1.0, -42.0, 1e6]:
+        x = X[1].copy()
+        x[0] = code
+        probes.append(x)
+    x = X[1].copy()
+    x[0] = np.nan
+    x[1] = np.nan
+    probes.append(x)
+    probes = np.asarray(probes)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted, probes),
+        hist_gb_cat_reg_model.predict(probes),
+        rtol=1e-6,
+        atol=1e-9,
+    )
+
+    # multiclass: per-class raw parity, class_label=None defaults to class 1
+    expected_raw = hist_gb_cat_clf_model.decision_function(X[:100])
+    for class_label in range(3):
+        converted_class = convert_tree_model(hist_gb_cat_clf_model, class_label=class_label)
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted_class, X[:100]),
+            expected_raw[:, class_label],
+            rtol=1e-6,
+            atol=1e-9,
+        )
+    converted_default = convert_tree_model(hist_gb_cat_clf_model)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_default, X[:100]), expected_raw[:, 1], rtol=1e-6, atol=1e-9
+    )
+
+
+def test_tree_model_categorical_splits():
+    """Test the TreeModel categorical CSR representation and its routing semantics."""
+    from shapiq.tree.validation import validate_tree_model
+
+    model_dict = {
+        "children_left": np.array([1, -1, -1]),
+        "children_right": np.array([2, -1, -1]),
+        "children_missing": np.array([2, -1, -1]),  # NaN routes right
+        "features": np.array([0, -2, -2]),
+        "thresholds": np.array([0.5, np.nan, np.nan]),  # stale threshold, must be sanitized
+        "values": np.array([0.0, 10.0, 20.0]),
+        "node_sample_weight": np.array([10.0, 5.0, 5.0]),
+        "cat_values": np.array([5, 2]),  # intentionally unsorted
+        "cat_start": np.array([0, 0, 0]),
+        "cat_size": np.array([2, 0, 0]),
+    }
+    tree = validate_tree_model(dict(model_dict))[0]
+    assert tree.has_categorical
+    assert np.all(tree.is_categorical == [True, False, False])
+    assert np.all(tree.cat_values == [2, 5])  # sorted during init
+    assert np.isnan(tree.thresholds[0])  # categorical node threshold sanitized to NaN
+    assert tree.predict_one(np.array([2.0])) == 10.0  # in set -> left
+    assert tree.predict_one(np.array([5.9])) == 10.0  # truncates to 5 -> in set
+    assert tree.predict_one(np.array([3.0])) == 20.0  # not in set -> right
+    assert tree.predict_one(np.array([-1.0])) == 20.0  # negative -> right
+    assert tree.predict_one(np.array([np.nan])) == 20.0  # NaN -> missing child (right)
+
+    # constructor validation: partial cat kwargs and wrong lengths are rejected
+    partial = {k: v for k, v in model_dict.items() if k != "cat_start"}
+    with pytest.raises(ValueError, match="together"):
+        TreeModel(**partial)
+    wrong_length = dict(model_dict)
+    wrong_length["cat_size"] = np.array([2, 0])
+    with pytest.raises(ValueError, match="per node"):
+        TreeModel(**wrong_length)
+
+
+def test_tree_model_categorical_survives_feature_reduction():
+    """Test that categorical routing is unchanged by ``reduce_feature_complexity``."""
+    tree = TreeModel(
+        children_left=np.array([1, -1, -1]),
+        children_right=np.array([2, -1, -1]),
+        children_missing=np.array([1, -1, -1]),
+        features=np.array([8, -2, -2]),  # high feature id so the reduction actually fires
+        thresholds=np.array([np.nan, np.nan, np.nan]),
+        values=np.array([0.0, 10.0, 20.0]),
+        node_sample_weight=np.array([10.0, 5.0, 5.0]),
+        cat_values=np.array([1, 4]),
+        cat_start=np.array([0, 0, 0]),
+        cat_size=np.array([2, 0, 0]),
+    )
+    x = np.zeros(9)
+    x[8] = 4.0
+    assert tree.predict_one(x) == 10.0
+    tree.reduce_feature_complexity()
+    assert tree.n_features_in_tree == 1
+    assert tree.features[0] == 0  # remapped
+    assert np.all(tree.cat_values == [1, 4])  # node-keyed arrays untouched
+    assert tree.predict_one(x) == 10.0  # routing unchanged via the internal feature map
+    x[8] = 5.0
+    assert tree.predict_one(x) == 20.0
+
+
+def _make_categorical_dataset() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build a dataset with two categorical columns (0, 2), NaNs in columns 0/1, and labels."""
+    rng = np.random.default_rng(42)
+    n = 500
+    X = np.column_stack(
+        [
+            rng.choice([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], n),
+            rng.normal(size=n),
+            rng.integers(0, 5, n).astype(float),
+        ]
+    )
+    y = (X[:, 0] % 3) * 2 + X[:, 1] + (X[:, 2] == 1) * 3 + rng.normal(scale=0.1, size=n)
+    y_classes = rng.integers(0, 3, n)
+    X[rng.choice(n, 50, replace=False), 1] = np.nan
+    return X, y, y_classes
+
+
+def test_lightgbm_categorical_conversion_predicts_raw_score():
+    """Test that categorical LightGBM conversions match the raw model score exactly.
+
+    Covers bitset decoding, NaN / negative / unseen category routing (all to the right
+    child in LightGBM), and per-class tree selection for multiclass models.
+    """
+    lightgbm = pytest.importorskip("lightgbm")
+
+    X, y, y_classes = _make_categorical_dataset()
+    model = lightgbm.LGBMRegressor(n_estimators=5, min_child_samples=5, verbose=-1)
+    model.fit(X, y, categorical_feature=[0, 2])
+    converted = convert_tree_model(model)
+    assert any(tree.has_categorical for tree in converted)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted, X), model.predict(X, raw_score=True), rtol=1e-6
+    )
+    # unseen / negative / NaN category codes route like the model routes them
+    probes = np.repeat(X[:1], 3, axis=0)
+    probes[:, 0] = [99.0, -5.0, np.nan]
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted, probes), model.predict(probes, raw_score=True), rtol=1e-6
+    )
+
+    clf = lightgbm.LGBMClassifier(n_estimators=4, min_child_samples=5, verbose=-1)
+    clf.fit(X, y_classes, categorical_feature=[0, 2])
+    raw = clf.predict_proba(X[:80], raw_score=True)
+    for class_label in range(3):
+        converted_class = convert_tree_model(clf, class_label=class_label)
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted_class, X[:80]), raw[:, class_label], rtol=1e-6
+        )
+
+
+def test_xgboost_categorical_conversion_predicts_raw_margin():
+    """Test that categorical XGBoost conversions match the raw model margin.
+
+    Covers the CSR category decoding, the child swap (XGBoost routes in-set values to the
+    "yes"/right branch natively), NaN / unseen category routing, and per-class selection
+    for multiclass models. Inputs are cast through float32 because XGBoost compares
+    float32-cast values against float32 thresholds (the known threshold-edge behavior of
+    numeric splits, unrelated to categorical support).
+    """
+    xgboost = pytest.importorskip("xgboost")
+
+    X, y, y_classes = _make_categorical_dataset()
+    feature_types = ["c", "q", "c"]
+    X32 = X.astype(np.float32).astype(np.float64)
+
+    dtrain = xgboost.DMatrix(X, label=y, feature_types=feature_types, enable_categorical=True)
+    booster = xgboost.train({"tree_method": "hist", "max_depth": 4}, dtrain, num_boost_round=5)
+    converted = convert_tree_model(booster)
+    assert any(tree.has_categorical for tree in converted)
+    expected = booster.predict(
+        xgboost.DMatrix(X, feature_types=feature_types, enable_categorical=True),
+        output_margin=True,
+    )
+    np.testing.assert_allclose(_predict_tree_ensemble(converted, X32), expected, atol=1e-5)
+    # unseen / NaN category codes route like the model routes them
+    probes = np.repeat(X[:1], 3, axis=0)
+    probes[:, 0] = [50.0, 7.0, np.nan]
+    expected_probes = booster.predict(
+        xgboost.DMatrix(probes, feature_types=feature_types, enable_categorical=True),
+        output_margin=True,
+    )
+    probes32 = probes.astype(np.float32).astype(np.float64)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted, probes32), expected_probes, atol=1e-5
+    )
+
+    dtrain_clf = xgboost.DMatrix(
+        X, label=y_classes, feature_types=feature_types, enable_categorical=True
+    )
+    booster_clf = xgboost.train(
+        {"tree_method": "hist", "max_depth": 3, "objective": "multi:softprob", "num_class": 3},
+        dtrain_clf,
+        num_boost_round=4,
+    )
+    raw = booster_clf.predict(
+        xgboost.DMatrix(X[:80], feature_types=feature_types, enable_categorical=True),
+        output_margin=True,
+    )
+    for class_label in range(3):
+        converted_class = convert_tree_model(booster_clf, class_label=class_label)
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted_class, X32[:80]), raw[:, class_label], atol=1e-5
+        )
+
+
 def test_cpp_edge_tree_matches_python_edge_tree():
     """Test C++ edge conversion parity with the Python reference implementation."""
     children_left = np.asarray([1, 3, 5, -1, -1, -1, -1])

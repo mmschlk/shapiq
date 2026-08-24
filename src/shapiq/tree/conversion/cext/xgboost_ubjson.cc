@@ -1,5 +1,8 @@
 #include "converter.hpp"
 
+#include <limits>
+#include <utility>
+
 class ByteStream
 {
     // We assume big-endian encoding for multi-byte integers, as per UBJSON specification.
@@ -928,6 +931,53 @@ public:
         }
     }
 
+    // Returns whether the UBJSON array starting at the current byte has at
+    // least one element. Consumes only the array header, so call it on a
+    // stream copy when the array still needs to be skipped or read.
+    bool arrayHasElements()
+    {
+        if (pos >= size || data[pos] != '[')
+            return false;
+        pos++; // consume '['
+        if (pos >= size)
+            return false;
+        if (data[pos] == '$')
+        {
+            pos++;          // consume '$'
+            readByte();     // element type marker
+            if (pos >= size || data[pos] != '#')
+                throw std::runtime_error("arrayHasElements: expected '#' after '$'");
+            pos++; // consume '#'
+            uint8_t count_marker = readByte();
+            return readNonNegativeIntByMarker(count_marker) > 0;
+        }
+        if (data[pos] == '#')
+        {
+            pos++; // consume '#'
+            uint8_t count_marker = readByte();
+            return readNonNegativeIntByMarker(count_marker) > 0;
+        }
+        return data[pos] != ']';
+    }
+
+    // Reads a variable-length UBJSON integer array into `out`, resized to the array's
+    // element count. Used for the categorical-split arrays whose length is not derivable
+    // from num_nodes. Empty arrays (any form) leave `out` empty.
+    void readIntArray(std::vector<int64_t> &out)
+    {
+        out.clear();
+        ByteStream emptyPeek = *this;
+        if (!emptyPeek.arrayHasElements())
+        {
+            skipArrayValue();
+            return;
+        }
+        ByteStream countPeek = *this;
+        uint64_t count = countPeek.readArrayCount();
+        out.resize(count);
+        fillArray(out.data(), count);
+    }
+
     ParsedForest extractTreeStructure(int class_label, double margin_base_score)
     {
         // This methods parses the data, until it finds the "trees" key.
@@ -945,7 +995,15 @@ public:
         double base_score = margin_base_score;
 
         // Whether to filter: keep only trees for the requested class.
-        bool filtering = (class_label >= 0) && (num_class > 1);
+        bool filtering = (num_class > 1);
+
+        // class_label < 0 means "unspecified": default to class 1 for multiclass
+        // models and class 0 otherwise. Must stay in sync with the default applied
+        // in _xgboost_margin_base_score (xgboost.py) for the base score.
+        if (!filtering)
+            class_label = 0;
+        else if (class_label < 0)
+            class_label = 1;
 
         // Each included tree carries base_score / num_rounds so that the sum
         // across all rounds equals base_score for the selected class.
@@ -1004,15 +1062,19 @@ public:
             // base_weights → leaf/split values (stream already positioned at '[')
             treeStream.fillArray(tree.values.data(), num_nodes, base_score_per_tree);
 
-            // categories group (empty for non-categorical models — skip all)
+            // categories group: CSR metadata of categorical splits (all arrays empty for
+            // non-categorical models). categories = flat category values, categories_nodes =
+            // node ids with categorical splits, categories_segments/_sizes = per-split
+            // offset/length into categories.
+            std::vector<int64_t> cat_categories, cat_nodes, cat_segments, cat_sizes;
             treeStream.skipTo(10, "categories");
-            treeStream.skipArrayValue();
+            treeStream.readIntArray(cat_categories);
             treeStream.skipTo(16, "categories_nodes");
-            treeStream.skipArrayValue();
+            treeStream.readIntArray(cat_nodes);
             treeStream.skipTo(19, "categories_segments");
-            treeStream.skipArrayValue();
+            treeStream.readIntArray(cat_segments);
             treeStream.skipTo(16, "categories_sizes");
-            treeStream.skipArrayValue();
+            treeStream.readIntArray(cat_sizes);
 
             // default_left → default-branch indicator per node
             treeStream.skipTo(12, "default_left");
@@ -1048,7 +1110,39 @@ public:
             treeStream.skipTo(13, "split_indices");
             treeStream.fillArray(tree.feature_ids.data(), num_nodes);
 
-            // split_type: not used
+            // Materialize categorical splits: for each categorical node, decode its
+            // category segment and swap the children. XGBoost routes in-set values to the
+            // RIGHT ("yes") child; the internal convention is in-set -> LEFT, so swapping
+            // makes both the in-set direction and the unknown-category direction (native
+            // LEFT -> internal RIGHT) exact. default_children already holds a node id
+            // (mapped from default_left in the original orientation above), so the swap
+            // does not disturb missing-value routing. The bit-cast integer stored in
+            // split_conditions at these nodes is discarded (NaN threshold).
+            if (!cat_nodes.empty())
+            {
+                tree.cat_start.resize(num_nodes, 0);
+                tree.cat_size.resize(num_nodes, 0);
+                for (size_t k = 0; k < cat_nodes.size(); k++)
+                {
+                    if (k >= cat_segments.size() || k >= cat_sizes.size())
+                        throw std::runtime_error("XGBoost categorical metadata arrays have inconsistent lengths");
+                    int64_t node = cat_nodes[k];
+                    int64_t seg_start = cat_segments[k];
+                    int64_t seg_size = cat_sizes[k];
+                    if (node < 0 || node >= static_cast<int64_t>(num_nodes))
+                        throw std::runtime_error("XGBoost categorical node id out of range");
+                    if (seg_start < 0 || seg_size < 0 || seg_start + seg_size > static_cast<int64_t>(cat_categories.size()))
+                        throw std::runtime_error("XGBoost categorical segment out of range");
+                    tree.cat_start[node] = static_cast<int64_t>(tree.cat_values.size());
+                    tree.cat_size[node] = seg_size;
+                    for (int64_t c = 0; c < seg_size; c++)
+                        tree.cat_values.push_back(cat_categories[seg_start + c]);
+                    std::swap(tree.left_children[node], tree.right_children[node]);
+                    tree.thresholds[node] = std::numeric_limits<double>::quiet_NaN();
+                }
+            }
+
+            // split_type: redundant with categories_nodes — not used
             treeStream.skipTo(10, "split_type");
             treeStream.skipArrayValue();
 
