@@ -1,6 +1,7 @@
 #include "converter.hpp"
 
 #include <cctype>
+#include <limits>
 
 class StringStream
 {
@@ -173,7 +174,7 @@ public:
             parseIntSingle(num_leaves);
             num_internal = num_leaves - 1;
             num_nodes = num_internal + num_leaves; //
-            // Get num categorical features (0 for non-categorical models). NOTICE: Currently not support for categorical features.
+            // Get num categorical splits (0 for non-categorical models).
             findKey("num_cat=");
             parseIntSingle(num_cat);
             // Extract Split feature IDs
@@ -209,6 +210,16 @@ public:
             // Get Internal count
             findKey("internal_count=");
             parseIntLine(internal_count);
+            // Categorical split storage: cat_boundaries (CSR word offsets per categorical
+            // split) into cat_threshold (uint32 bitset words). Only present when num_cat > 0.
+            std::vector<int64_t> cat_boundaries, cat_threshold_words;
+            if (num_cat > 0)
+            {
+                findKey("cat_boundaries=");
+                parseIntLine(cat_boundaries);
+                findKey("cat_threshold=");
+                parseIntLine(cat_threshold_words);
+            }
             // Skip is_linear
             skipLine();
             // Skip shrinkage value
@@ -237,20 +248,60 @@ public:
                 throw std::runtime_error("LightGBM tree field length mismatch");
             }
 
-            // Process the internal nodes. We can just copy the split feature IDs, thresholds, left/right children, and sample weights. The default child is always the left child in LightGBM.
+            if (num_cat > 0)
+            {
+                tree.cat_start.resize(num_nodes, 0);
+                tree.cat_size.resize(num_nodes, 0);
+            }
+
+            // Process the internal nodes. We can just copy the split feature IDs, thresholds, left/right children, and sample weights.
             for (int i = 0; i < num_internal; i++)
             {
                 tree.node_ids[i] = i;
                 tree.feature_ids[i] = feature_ids[i];
-                tree.thresholds[i] = thresholds[i];
                 tree.values[i] = internal_values[i];
                 tree.left_children[i] = remapNodeId(num_internal, left_children[i]);
                 tree.right_children[i] = remapNodeId(num_internal, right_children[i]);
-                bool default_left = (decision_types[i] & 2) != 0;
-                tree.default_children[i] = default_left
-                                               ? remapNodeId(num_internal, left_children[i])
-                                               : remapNodeId(num_internal, right_children[i]);
                 tree.node_sample_weights[i] = internal_count[i];
+                if ((decision_types[i] & 1) != 0)
+                {
+                    // Categorical split: the threshold field holds an index into
+                    // cat_boundaries; the referenced cat_threshold words form a bitset of
+                    // the left-routed categories. LightGBM routes NaN / negative / unknown
+                    // codes to the right child.
+                    int64_t cat_idx = static_cast<int64_t>(thresholds[i]);
+                    if (cat_idx < 0 || cat_idx + 1 >= static_cast<int64_t>(cat_boundaries.size()))
+                        throw std::runtime_error("LightGBM categorical split index out of range");
+                    // Mark the threshold as NaN to indicate that this is a categorical split, not a numerical split.
+                    tree.thresholds[i] = std::numeric_limits<double>::quiet_NaN();
+                    // Store the starting index of the left-routed categories in cat_values for this node.
+                    tree.cat_start[i] = static_cast<int64_t>(tree.cat_values.size());
+                    int64_t word_start = cat_boundaries[cat_idx];
+                    int64_t word_end = cat_boundaries[cat_idx + 1];
+                    if (word_start < 0 || word_end > static_cast<int64_t>(cat_threshold_words.size()))
+                        throw std::runtime_error("LightGBM categorical bitset word out of range");
+                    for (int64_t w = word_start; w < word_end; w++)
+                    {
+                        uint32_t word = static_cast<uint32_t>(cat_threshold_words[w]);
+                        // Each bit in the word represents a category. If the bit is set, the category is routed to the left child.
+                        for (int b = 0; b < 32; b++)
+                        {
+                            if ((word >> b) & 1u)
+                                // Store the original category index as a single integer in cat_values.
+                                tree.cat_values.push_back((w - word_start) * 32 + b);
+                        }
+                    }
+                    tree.cat_size[i] = static_cast<int64_t>(tree.cat_values.size()) - tree.cat_start[i];
+                    tree.default_children[i] = remapNodeId(num_internal, right_children[i]);
+                }
+                else
+                {
+                    tree.thresholds[i] = thresholds[i];
+                    bool default_left = (decision_types[i] & 2) != 0;
+                    tree.default_children[i] = default_left
+                                                   ? remapNodeId(num_internal, left_children[i])
+                                                   : remapNodeId(num_internal, right_children[i]);
+                }
             }
             // Process the leaf nodes.
             for (int i = num_internal; i < num_nodes; i++)

@@ -119,6 +119,14 @@ def get_predict_function_and_model_type(
         "sklearn.ensemble._forest.ExtraTreesRegressor",
         "sklearn.ensemble.IsolationForest",
         "sklearn.ensemble._iforest.IsolationForest",
+        "sklearn.ensemble.GradientBoostingClassifier",
+        "sklearn.ensemble._gb.GradientBoostingClassifier",
+        "sklearn.ensemble.GradientBoostingRegressor",
+        "sklearn.ensemble._gb.GradientBoostingRegressor",
+        "sklearn.ensemble.HistGradientBoostingClassifier",
+        "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingClassifier",
+        "sklearn.ensemble.HistGradientBoostingRegressor",
+        "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingRegressor",
     ]:
         _model_type = "tree"
 

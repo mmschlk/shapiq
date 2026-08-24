@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 #ifndef UTILS_H
@@ -255,7 +256,12 @@ public:
          int64_t *children_left,
          int64_t *children_right,
          bool *children_missing,
-         std::string decision_type)
+         std::string decision_type,
+         // categorical splits in CSR layout (cat_size[node] == 0 marks a numeric node);
+         // nullptr-defaulted so numeric-only callers stay untouched
+         const int64_t *cat_values = nullptr,
+         const int64_t *cat_start = nullptr,
+         const int64_t *cat_size = nullptr)
     {
         this->leaf_predictions = leaf_predictions;
         this->thresholds = thresholds;
@@ -263,6 +269,9 @@ public:
         this->children_left = children_left;
         this->children_right = children_right;
         this->children_missing = children_missing;
+        this->cat_values = cat_values;
+        this->cat_start = cat_start;
+        this->cat_size = cat_size;
 
         this->decision_type = decision_type == "<=" ? DecisionType::LESS_EQUAL : DecisionType::LESS_THAN;
     }
@@ -273,6 +282,9 @@ public:
     int64_t *children_left;
     int64_t *children_right;
     bool *children_missing;
+    const int64_t *cat_values;
+    const int64_t *cat_start;
+    const int64_t *cat_size;
 
     bool is_leaf(int64_t node_id) const
     {
@@ -284,6 +296,14 @@ public:
         if (std::isnan(feature_value))
         {
             return this->children_missing[node_id];
+        }
+
+        if (this->cat_size != nullptr && this->cat_size[node_id] > 0)
+        {
+            // categorical split: category in the node's sorted set -> left, else right
+            const int64_t category = static_cast<int64_t>(feature_value);
+            const int64_t *begin = this->cat_values + this->cat_start[node_id];
+            return std::binary_search(begin, begin + this->cat_size[node_id], category);
         }
 
         if (this->decision_type == DecisionType::LESS_EQUAL)

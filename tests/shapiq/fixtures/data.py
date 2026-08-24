@@ -39,6 +39,30 @@ DATASETS_RANDOM_STATE = 42
 
 
 @pytest.fixture
+def background_cat_dataset() -> tuple[np.ndarray, np.ndarray]:
+    """Return a regression dataset with integer-coded categorical columns 0 and 2.
+
+    Column 0 uses non-contiguous raw category codes (to exercise ordinal-encoder
+    translation in converters) and columns 0 and 1 contain NaN values (to exercise
+    missing-value routing).
+    """
+    rng = np.random.default_rng(DATASETS_RANDOM_STATE)
+    n_samples = 300
+    X = np.column_stack(
+        [
+            rng.choice([2.0, 7.0, 11.0, 30.0, 41.0, 99.0], n_samples),
+            rng.normal(size=n_samples),
+            rng.integers(0, 4, n_samples).astype(float),
+            rng.normal(size=n_samples),
+        ]
+    )
+    y = (X[:, 0] % 2) * 3 + X[:, 1] + (X[:, 2] == 1) * 2 + 0.5 * X[:, 3]
+    X[rng.choice(n_samples, 30, replace=False), 0] = np.nan
+    X[rng.choice(n_samples, 30, replace=False), 1] = np.nan
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
 def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple dataset for the isolation forest model."""
     n_samples, n_outliers = 120, 40

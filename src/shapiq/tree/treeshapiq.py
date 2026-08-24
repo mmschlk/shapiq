@@ -105,12 +105,7 @@ class TreeSHAPIQ:
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
-        self._tree: TreeModel = copy.deepcopy(validated_model)[0]
-        # Routing convention of the converted model. XGBoost trees split with ``x < thr``
-        # (decision_type "<"); LightGBM/CatBoost/sklearn use ``x <= thr``. ``predict_one``
-        # honours this, so the explainer must too — otherwise instances that sit exactly
-        # on a split threshold are routed to the wrong leaf and efficiency breaks.
-        self._strict_lt: bool = self._tree.decision_type == "<"
+        self._tree: TreeModel = validated_model[0]
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
@@ -306,7 +301,6 @@ class TreeSHAPIQ:
 
         # get feature information
         feature_id = int(self._tree.features[parent_id])
-        feature_threshold = self._tree.thresholds[node_id]
         child_edge_feature = self._tree.features[node_id]
 
         # get height of related nodes
@@ -327,11 +321,8 @@ class TreeSHAPIQ:
 
         # if node is not a leaf -> set activations for children nodes accordingly
         if not is_leaf:
-            go_left = (
-                x[child_edge_feature] < feature_threshold
-                if self._strict_lt
-                else x[child_edge_feature] <= feature_threshold
-            )
+            feature_value = x[child_edge_feature]
+            go_left = self._tree.goes_left(node_id, feature_value)
             if go_left:
                 activations[left_child], activations[right_child] = True, False
             else:
