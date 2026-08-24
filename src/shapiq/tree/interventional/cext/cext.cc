@@ -976,30 +976,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
 // === Optimized helpers for compute_interactions_flatten ===
 
-// Compute signed weight matching the original per-index logic, for table precomputation.
-static inline double compute_signed_weight_for_table(
-    IndexType index_type, int n_features, int e, int r,
-    int s_cap_e, int s_cap_r, int s, int max_order)
-{
-    int sign = (s_cap_r % 2 == 0) ? 1 : -1;
-    switch (index_type)
-    {
-    case IndexType::SII:
-        return sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::BII:
-        return sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::CHII:
-        return sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::FBII:
-        return inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::FSII:
-        return inter_weights::fsii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    default:
-        return sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
-    }
-}
-
-// Precompute weight lookup tables.
+// Precompute weight lookup tables. The signed weights come from inter_weights::weight_func.
 // table_s1: indexed by [s_cap_e * stride^2 + e * stride + r], s_cap_e in {0,1}
 // table_s2: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2}
 // table_s3: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2,3}
@@ -1017,8 +994,8 @@ static void precompute_weight_tables(
         {
             for (int r = 0; r <= max_val; r++)
             {
-                double w = compute_signed_weight_for_table(
-                    index_type, n_features, e, r, s_cap_e, s_cap_r, 1, max_order);
+                double w = inter_weights::weight_func(
+                    n_features, e, r, s_cap_e, s_cap_r, 1, index_type, max_order);
                 table_s1[s_cap_e * table_stride * table_stride + e * table_stride + r] = (float)w;
             }
         }
@@ -1032,8 +1009,8 @@ static void precompute_weight_tables(
             {
                 for (int r = 0; r <= max_val; r++)
                 {
-                    double w = compute_signed_weight_for_table(
-                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 2, max_order);
+                    double w = inter_weights::weight_func(
+                        n_features, e, r, s_cap_e_c, s_cap_r_c, 2, index_type, max_order);
                     table_s2[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
                 }
             }
@@ -1048,8 +1025,8 @@ static void precompute_weight_tables(
             {
                 for (int r = 0; r <= max_val; r++)
                 {
-                    double w = compute_signed_weight_for_table(
-                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 3, max_order);
+                    double w = inter_weights::weight_func(
+                        n_features, e, r, s_cap_e_c, s_cap_r_c, 3, index_type, max_order);
                     table_s3[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
                 }
             }

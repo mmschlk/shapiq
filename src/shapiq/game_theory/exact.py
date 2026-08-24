@@ -1006,9 +1006,6 @@ class ExactComputer:
             case _:
                 msg = f"Index {index} not supported."
                 raise ValueError(msg)
-        # Change emptyset to baseline value, due to the definitions of players
-        probabilistic_value.baseline_value = self.baseline_value
-        probabilistic_value.values[probabilistic_value.interaction_lookup[()]] = self.baseline_value
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
