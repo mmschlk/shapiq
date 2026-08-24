@@ -812,6 +812,11 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     check was performed and ``pos`` silently walked past the buffer end.
     The fix replaces each bare ``pos += N`` with ``N`` calls to ``readByte()``,
     each of which checks bounds.
+
+    Since the categories arrays are parsed (categorical-split support) instead of
+    skipped, the float64-typed corruption is rejected even earlier as an unsupported
+    element type for an integer array — still a loud RuntimeError before any
+    out-of-bounds access.
     """
     from shapiq.tree.conversion.cext import parse_xgboost_ubjson
 
@@ -820,5 +825,7 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     # ([#i\x01) containing one float64 element whose 8 data bytes are absent.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[#i\x01D"  # count=1, type='D', no payload bytes
-    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+    with pytest.raises(
+        RuntimeError, match=r"End of stream|Unexpected end of UBJSON|Unsupported marker"
+    ):
         parse_xgboost_ubjson(truncated, -1, 0.0)
