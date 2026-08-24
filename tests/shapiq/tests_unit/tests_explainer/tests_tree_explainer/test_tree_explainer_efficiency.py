@@ -141,14 +141,14 @@ def test_interventional_sparse_matches_dense_categorical(
     interaction values, including on rows with NaN values.
     """
     import shapiq.tree.interventional.explainer as interventional_module
-    from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 
     X, _ = background_cat_dataset
-    dense = InterventionalTreeExplainer(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
+    dense = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
     budget = interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE
     interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = 0
     try:
-        sparse = InterventionalTreeExplainer(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
+        sparse = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
     finally:
         interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = budget
     assert not dense._use_sparse_path
