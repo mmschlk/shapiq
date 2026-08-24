@@ -205,7 +205,7 @@ class LinearTreeSHAP:
         weights = 1 / self.edge_tree.p_e_values
 
         # The kernel routes ``x`` honouring the model's split convention (passed as the
-        # ``decision_type`` string, same as :class:`InterventionalTreeExplainer`):
+        # ``decision_type`` string, same as :class:`InterventionalTreeSHAPIQ`):
         # XGBoost-style trees use strict ``x < threshold``, every other supported family
         # ``x <= threshold``. This must match ``TreeModel.predict_one`` exactly, otherwise
         # instances lying on a split threshold are routed to the wrong leaf and the
@@ -227,6 +227,10 @@ class LinearTreeSHAP:
             np.ascontiguousarray(X, dtype=np.float64),
             V,
             self._tree.decision_type,
+            np.ascontiguousarray(self._tree.cat_values, dtype=np.int64),
+            np.ascontiguousarray(self._tree.cat_start, dtype=np.int64),
+            np.ascontiguousarray(self._tree.cat_size, dtype=np.int64),
+            np.ascontiguousarray(self._tree.children_left_default, dtype=bool),
         )
         return V
 

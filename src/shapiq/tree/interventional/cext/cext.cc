@@ -653,6 +653,18 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args)
     return output; // Return the output numpy array containing the computed interactions
 }
 
+// Decrefs a vector of categorical CSR array triples (cat_values, cat_start, cat_size).
+static void decref_cat_array_triples(std::vector<std::tuple<PyArrayObject *, PyArrayObject *, PyArrayObject *>> &triples)
+{
+    for (auto &triple : triples)
+    {
+        Py_XDECREF(std::get<0>(triple));
+        Py_XDECREF(std::get<1>(triple));
+        Py_XDECREF(std::get<2>(triple));
+    }
+    triples.clear();
+}
+
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args)
 {
     /**
@@ -692,9 +704,21 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
     // Optional custom weight table (None when not used)
     PyObject *weight_table_obj = Py_None;
+    // Optional categorical split CSR lists (None for numeric-only ensembles): per tree,
+    // int64 arrays cat_values / cat_start / cat_size mirroring TreeModel's layout
+    PyObject *cat_values_obj = Py_None;
+    PyObject *cat_start_obj = Py_None;
+    PyObject *cat_size_obj = Py_None;
 
-    if (!PyArg_ParseTuple(args, "OOOOOOOOssii|O", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj))
+    if (!PyArg_ParseTuple(args, "OOOOOOOOssii|OOOO", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj))
     {
+        return NULL;
+    }
+
+    const bool use_categorical = (cat_values_obj != Py_None);
+    if (use_categorical && (!PyList_Check(cat_values_obj) || !PyList_Check(cat_start_obj) || !PyList_Check(cat_size_obj)))
+    {
+        PyErr_SetString(PyExc_TypeError, "cat_values, cat_start, and cat_size must be lists of numpy arrays (or None)");
         return NULL;
     }
 
@@ -734,6 +758,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     PyObject *leaf_pred_iter, *thresholds_iter, *features_iter, *children_left_iter, *children_right_iter, *children_missing_iter;
     std::vector<Tree> trees;
     std::vector<std::tuple<PyArrayObject *, PyArrayObject *, PyArrayObject *, PyArrayObject *, PyArrayObject *, PyArrayObject *>> arrays_for_decref;
+    std::vector<std::tuple<PyArrayObject *, PyArrayObject *, PyArrayObject *>> cat_arrays_for_decref;
     int num_trees = 0;
 
     while (1)
@@ -770,6 +795,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
                     Py_XDECREF(std::get<4>(arrays_tuple));
                     Py_XDECREF(std::get<5>(arrays_tuple));
                 }
+                decref_cat_array_triples(cat_arrays_for_decref);
                 PyErr_SetString(PyExc_ValueError, "Input lists of numpy arrays must be of the same length");
                 return NULL;
             }
@@ -813,8 +839,58 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
             Py_XDECREF(iterator_children_left);
             Py_XDECREF(iterator_children_right);
             Py_XDECREF(iterator_children_missing);
+            decref_cat_array_triples(cat_arrays_for_decref);
             PyErr_SetString(PyExc_TypeError, "Each tree's parameters must be numpy arrays");
             return NULL;
+        }
+
+        const int64_t *cat_values_ptr = nullptr;
+        const int64_t *cat_start_ptr = nullptr;
+        const int64_t *cat_size_ptr = nullptr;
+        if (use_categorical)
+        {
+            // borrowed references; conversion below creates owned arrays tracked for decref
+            PyObject *cat_values_item = PyList_GetItem(cat_values_obj, num_trees);
+            PyObject *cat_start_item = PyList_GetItem(cat_start_obj, num_trees);
+            PyObject *cat_size_item = PyList_GetItem(cat_size_obj, num_trees);
+            PyArrayObject *cat_values_array = cat_values_item ? (PyArrayObject *)PyArray_FROM_OTF(cat_values_item, NPY_INT64, NPY_ARRAY_IN_ARRAY) : NULL;
+            PyArrayObject *cat_start_array = cat_start_item ? (PyArrayObject *)PyArray_FROM_OTF(cat_start_item, NPY_INT64, NPY_ARRAY_IN_ARRAY) : NULL;
+            PyArrayObject *cat_size_array = cat_size_item ? (PyArrayObject *)PyArray_FROM_OTF(cat_size_item, NPY_INT64, NPY_ARRAY_IN_ARRAY) : NULL;
+            if (!cat_values_array || !cat_start_array || !cat_size_array)
+            {
+                Py_XDECREF(cat_values_array);
+                Py_XDECREF(cat_start_array);
+                Py_XDECREF(cat_size_array);
+                Py_XDECREF(leaf_predictions_array);
+                Py_XDECREF(thresholds_array);
+                Py_XDECREF(features_array);
+                Py_XDECREF(children_left_array);
+                Py_XDECREF(children_right_array);
+                Py_XDECREF(children_missing_array);
+                for (auto &arrays_tuple : arrays_for_decref)
+                {
+                    Py_XDECREF(std::get<0>(arrays_tuple));
+                    Py_XDECREF(std::get<1>(arrays_tuple));
+                    Py_XDECREF(std::get<2>(arrays_tuple));
+                    Py_XDECREF(std::get<3>(arrays_tuple));
+                    Py_XDECREF(std::get<4>(arrays_tuple));
+                    Py_XDECREF(std::get<5>(arrays_tuple));
+                }
+                decref_cat_array_triples(cat_arrays_for_decref);
+                Py_XDECREF(iterator_leaf);
+                Py_XDECREF(iterator_thresholds);
+                Py_XDECREF(iterator_features);
+                Py_XDECREF(iterator_children_left);
+                Py_XDECREF(iterator_children_right);
+                Py_XDECREF(iterator_children_missing);
+                if (!PyErr_Occurred())
+                    PyErr_SetString(PyExc_TypeError, "Each tree's categorical arrays must be int64 numpy arrays");
+                return NULL;
+            }
+            cat_arrays_for_decref.push_back(std::make_tuple(cat_values_array, cat_start_array, cat_size_array));
+            cat_values_ptr = (const int64_t *)PyArray_DATA(cat_values_array);
+            cat_start_ptr = (const int64_t *)PyArray_DATA(cat_start_array);
+            cat_size_ptr = (const int64_t *)PyArray_DATA(cat_size_array);
         }
 
         trees.push_back(Tree(
@@ -824,7 +900,10 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
             (int64_t *)PyArray_DATA(children_left_array),
             (int64_t *)PyArray_DATA(children_right_array),
             (bool *)PyArray_DATA(children_missing_array),
-            std::string(decision_type_cptr)));
+            std::string(decision_type_cptr),
+            cat_values_ptr,
+            cat_start_ptr,
+            cat_size_ptr));
         arrays_for_decref.push_back(std::make_tuple(leaf_predictions_array, thresholds_array, features_array, children_left_array, children_right_array, children_missing_array));
         num_trees++;
     }
@@ -857,6 +936,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
             Py_XDECREF(std::get<4>(arr_tuple));
             Py_XDECREF(std::get<5>(arr_tuple));
         }
+        decref_cat_array_triples(cat_arrays_for_decref);
         PyErr_SetString(PyExc_TypeError, "Reference and explain data must be numpy arrays");
         return NULL;
     }
@@ -880,6 +960,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
             Py_XDECREF(std::get<4>(arr_tuple));
             Py_XDECREF(std::get<5>(arr_tuple));
         }
+        decref_cat_array_triples(cat_arrays_for_decref);
         PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + index).c_str());
         return NULL;
     }
@@ -904,6 +985,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
                 Py_XDECREF(std::get<4>(arr_tuple));
                 Py_XDECREF(std::get<5>(arr_tuple));
             }
+            decref_cat_array_triples(cat_arrays_for_decref);
             PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
             return NULL;
         }
@@ -970,36 +1052,14 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
         Py_XDECREF(std::get<4>(arr_tuple));
         Py_XDECREF(std::get<5>(arr_tuple));
     }
+    decref_cat_array_triples(cat_arrays_for_decref);
 
     return output;
 }
 
 // === Optimized helpers for compute_interactions_flatten ===
 
-// Compute signed weight matching the original per-index logic, for table precomputation.
-static inline double compute_signed_weight_for_table(
-    IndexType index_type, int n_features, int e, int r,
-    int s_cap_e, int s_cap_r, int s, int max_order)
-{
-    int sign = (s_cap_r % 2 == 0) ? 1 : -1;
-    switch (index_type)
-    {
-    case IndexType::SII:
-        return sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::BII:
-        return sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::CHII:
-        return sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::FBII:
-        return inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    case IndexType::FSII:
-        return inter_weights::fsii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-    default:
-        return sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
-    }
-}
-
-// Precompute weight lookup tables.
+// Precompute weight lookup tables. The signed weights come from inter_weights::weight_func.
 // table_s1: indexed by [s_cap_e * stride^2 + e * stride + r], s_cap_e in {0,1}
 // table_s2: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2}
 // table_s3: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2,3}
@@ -1017,8 +1077,8 @@ static void precompute_weight_tables(
         {
             for (int r = 0; r <= max_val; r++)
             {
-                double w = compute_signed_weight_for_table(
-                    index_type, n_features, e, r, s_cap_e, s_cap_r, 1, max_order);
+                double w = inter_weights::weight_func(
+                    n_features, e, r, s_cap_e, s_cap_r, 1, index_type, max_order);
                 table_s1[s_cap_e * table_stride * table_stride + e * table_stride + r] = (float)w;
             }
         }
@@ -1032,8 +1092,8 @@ static void precompute_weight_tables(
             {
                 for (int r = 0; r <= max_val; r++)
                 {
-                    double w = compute_signed_weight_for_table(
-                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 2, max_order);
+                    double w = inter_weights::weight_func(
+                        n_features, e, r, s_cap_e_c, s_cap_r_c, 2, index_type, max_order);
                     table_s2[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
                 }
             }
@@ -1048,8 +1108,8 @@ static void precompute_weight_tables(
             {
                 for (int r = 0; r <= max_val; r++)
                 {
-                    double w = compute_signed_weight_for_table(
-                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 3, max_order);
+                    double w = inter_weights::weight_func(
+                        n_features, e, r, s_cap_e_c, s_cap_r_c, 3, index_type, max_order);
                     table_s3[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
                 }
             }

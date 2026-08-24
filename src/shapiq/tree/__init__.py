@@ -5,14 +5,14 @@ along with supporting data structures and algorithm variants.
 """
 
 from .base import TreeModel
-from .interventional import InterventionalGame, InterventionalTreeExplainer
+from .interventional import InterventionalGame, InterventionalTreeSHAPIQ
 from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ
 
 __all__ = [
     "TreeSHAPIQ",
     "TreeModel",
-    "InterventionalTreeExplainer",
+    "InterventionalTreeSHAPIQ",
     "InterventionalGame",
     "LinearTreeSHAP",
 ]

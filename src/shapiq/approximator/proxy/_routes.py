@@ -24,11 +24,12 @@ from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
 from shapiq.game import Game
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
+    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
 
 ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
@@ -110,7 +111,7 @@ def _extract_proxy_interactions(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -149,7 +150,7 @@ def _extract_linear(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -196,7 +197,7 @@ def _extract_tree(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -205,7 +206,7 @@ def _extract_tree(
 
     ``fitted`` is the tree model already fit (by :func:`fit_proxy`) on the raw coalitions.
     """
-    explainer = InterventionalTreeExplainer(
+    explainer = InterventionalTreeSHAPIQ(
         fitted,
         data=np.zeros((1, n_players)),  # reference data for boolean tree
         index=approximation_index,

@@ -169,11 +169,11 @@ def _get_tree_prediction(
     if tree.leaf_mask[node_id]:  # end of recursion (base case, return the leaf prediction)
         return tree.values[node_id]
     # not a leaf we have to go deeper
-    feature_id, threshold = tree.features[node_id], tree.thresholds[node_id]
+    feature_id = tree.features[node_id]
     is_present = bool(coalition[feature_id])
     left_child, right_child = tree.children_left[node_id], tree.children_right[node_id]
     if is_present:
-        next_node = left_child if x_explain[feature_id] <= threshold else right_child
+        next_node = left_child if tree.goes_left(node_id, x_explain[feature_id]) else right_child
         tree_prediction = _get_tree_prediction(next_node, tree, coalition, x_explain)
     else:  # feature is out of coalition we have to go both ways and average the predictions
         prediction_left = _get_tree_prediction(left_child, tree, coalition, x_explain)
