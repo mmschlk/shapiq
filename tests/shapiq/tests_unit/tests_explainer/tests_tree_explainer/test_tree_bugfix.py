@@ -16,6 +16,69 @@ _LIGHTGBM_UBUNTU_BYTES_FILE = (
 )
 
 
+def test_linear_tree_shap_does_not_mutate_caller_tree_model():
+    """Test that constructing LinearTreeSHAP leaves the caller-owned TreeModel untouched."""
+    from sklearn.tree import DecisionTreeRegressor
+
+    from shapiq.tree.linear.explainer import LinearTreeSHAP
+    from shapiq.tree.validation import validate_tree_model
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 8))
+    y = 10 * X[:, 5] - 7 * X[:, 7]
+    model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(X, y)
+
+    tree = validate_tree_model(model)[0]
+    features_before = tree.features.copy()
+    feature_ids_before = set(tree.feature_ids)
+
+    explainer = LinearTreeSHAP(tree)
+
+    assert np.array_equal(tree.features, features_before)
+    assert set(tree.feature_ids) == feature_ids_before
+    explanation = explainer.explain_function(X[0])
+    assert np.all(np.isfinite(explanation.values))
+
+
+def test_tree_explainer_does_not_mutate_caller_tree_model():
+    """Test that TreeExplainer's LinearTreeSHAP fast path does not corrupt the input tree.
+
+    Regression test for https://github.com/mmschlk/shapiq/issues/544: the mutated tree
+    silently produced wrong interventional attributions afterwards.
+    """
+    from sklearn.tree import DecisionTreeRegressor
+
+    from shapiq.tree.validation import validate_tree_model
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 8))
+    y = 10 * X[:, 5] - 7 * X[:, 7]
+    model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(X, y)
+
+    tree = validate_tree_model(model)[0]
+    features_before = tree.features.copy()
+
+    # index="SV", max_order=1 routes to the LinearTreeSHAP fast path
+    explainer = TreeExplainer(model=tree, index="SV", max_order=1, backend="shapiq")
+    explainer.explain(X[0])
+    assert np.array_equal(tree.features, features_before)
+
+    # the same tree must still yield correct interventional attributions afterwards
+    clean_tree = validate_tree_model(model)[0]
+    reference = X[:30]
+    iv_clean = TreeExplainer(
+        model=clean_tree,
+        index="SV",
+        max_order=1,
+        mode="interventional",
+        reference_dataset=reference,
+    ).explain(X[0])
+    iv_after = TreeExplainer(
+        model=tree, index="SV", max_order=1, mode="interventional", reference_dataset=reference
+    ).explain(X[0])
+    assert np.allclose(iv_clean.values, iv_after.values)
+
+
 def test_constant_tree_model_initializes_and_explains():
     """Test that a single-node constant tree contributes only to the baseline."""
     tree = TreeModel(

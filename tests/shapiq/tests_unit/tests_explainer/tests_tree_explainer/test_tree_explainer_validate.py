@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from shapiq import safe_isinstance
@@ -32,6 +33,31 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, 
     # test the unsupported model
     with pytest.raises(TypeError):
         validate_tree_model("unsupported_model")
+
+
+def test_validate_tree_model_returns_owned_copies(dt_reg_model):
+    """Test that TreeModel inputs are copied so mutating the result leaves the input intact."""
+    tree = validate_tree_model(dt_reg_model)[0]
+
+    # single TreeModel input
+    validated = validate_tree_model(tree)[0]
+    assert validated is not tree
+    original_features = tree.features.copy()
+    validated.reduce_feature_complexity()
+    assert np.array_equal(tree.features, original_features)
+
+    # list of TreeModel input
+    validated = validate_tree_model([tree])[0]
+    assert validated is not tree
+    validated.reduce_feature_complexity()
+    assert np.array_equal(tree.features, original_features)
+
+
+def test_validate_tree_model_rejects_list_with_non_tree_models(dt_reg_model):
+    """Test that a list containing non-TreeModel elements raises instead of returning []."""
+    tree = validate_tree_model(dt_reg_model)[0]
+    with pytest.raises(TypeError):
+        validate_tree_model([tree, "not_a_tree_model"])
 
 
 @pytest.mark.external_libraries

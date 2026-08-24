@@ -105,7 +105,7 @@ class TreeSHAPIQ:
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
-        self._tree: TreeModel = copy.deepcopy(validated_model)[0]
+        self._tree: TreeModel = validated_model[0]
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
