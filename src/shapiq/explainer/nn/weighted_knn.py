@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, cast, overload, override
 
 from shapiq.explainer.nn.base import NNExplainerBase
 
-from ._util import assert_valid_index_and_order, warn_ignored_parameters
+from ._util import (
+    assert_enough_training_samples,
+    assert_valid_index_and_order,
+    warn_ignored_parameters,
+)
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -64,6 +68,7 @@ class WeightedKNNExplainer(NNExplainerBase):
             raise ValueError(msg)
 
         super().__init__(model, class_index=class_index)
+        assert_enough_training_samples(model.n_neighbors, self.X_train.shape[0])
 
         self.knn_model = model
         self.k = model.n_neighbors
