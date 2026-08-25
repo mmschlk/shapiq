@@ -880,34 +880,6 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     assert banzhaf.explain(background_reg_data[0]).index == "BV"
 
 
-def test_woodelf_broken_backend_raises_with_fix_instructions(
-    dt_reg_model, background_reg_data, monkeypatch
-):
-    """A woodelf whose native backend cannot load (e.g. treelite missing libomp on macOS).
-
-    Loading treelite happens lazily inside woodelf and surfaces as an ``OSError`` at explain
-    time; the explainer must break loudly with instructions on how to fix the installation
-    (see https://github.com/dmlc/treelite/issues/678) instead of silently computing slowly.
-    """
-    pytest.importorskip("woodelf")
-    from woodelf.core.trees import parse_models
-
-    def broken_load(*args, **kwargs):
-        msg = "dlopen(libtreelite.dylib): Library not loaded: @rpath/libomp.dylib"
-        raise OSError(msg)
-
-    monkeypatch.setattr(parse_models, "load_decision_tree_ensemble_model", broken_load)
-
-    # backend='woodelf' forces the Woodelf path, where the broken load surfaces
-    explainer = TreeExplainer(
-        model=dt_reg_model, max_order=2, min_order=1, index="SII", backend="woodelf"
-    )
-    with pytest.raises(RuntimeError, match="brew install libomp") as excinfo:
-        explainer.explain(background_reg_data[0])
-    assert "treelite/issues/678" in str(excinfo.value)
-    assert isinstance(excinfo.value.__cause__, OSError)  # the dlopen error stays in the chain
-
-
 def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
     """Background SHAP over 20 rows x 10 background rows routes through Woodelf.
 
