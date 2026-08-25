@@ -141,9 +141,11 @@ def test_per_size_counts_match_hand_computed_tables():
     largest-remainder rule (not from the implementation, so a shared bug cannot make
     both sides agree):
 
-    n=4, b=10: 2c = 8/3, shortfall 1 -> s=1. n=5, b=25: 2c = 6.5, s=1 exhaustive,
-    shortfall 0 (deliberately tie-free; odd budget floors to 24 rows). n=7, b=15:
-    2c = 13/6, shortfall 0. n=6, b=40: 2c = 26/3, s=1 exhaustive, shortfall 1 -> s=2.
+    Odd budgets floor to the even realized total before c is solved.
+
+    n=4, b=10: 2c = 8/3, shortfall 1 -> s=1. n=5, b=25: floors to 24, 2c = 6, s=1
+    exhaustive, shortfall 0 (deliberately tie-free). n=7, b=15: floors to 14, 2c = 2,
+    shortfall 0. n=6, b=40: 2c = 26/3, s=1 exhaustive, shortfall 1 -> s=2.
     """
     cases: list[tuple[int, int, dict[int, int]]] = [
         (4, 10, {1: 3, 2: 2, 3: 3}),
