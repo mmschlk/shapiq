@@ -250,8 +250,8 @@ private:
 class Tree
 {
 public:
-    Tree(float *leaf_predictions,
-         float *thresholds,
+    Tree(double *leaf_predictions,
+         double *thresholds,
          int64_t *features,
          int64_t *children_left,
          int64_t *children_right,
@@ -276,8 +276,8 @@ public:
         this->decision_type = decision_type == "<=" ? DecisionType::LESS_EQUAL : DecisionType::LESS_THAN;
     }
     DecisionType decision_type;
-    float *leaf_predictions;
-    float *thresholds;
+    double *leaf_predictions;
+    double *thresholds;
     int64_t *features;
     int64_t *children_left;
     int64_t *children_right;
@@ -291,7 +291,7 @@ public:
         return this->children_left[node_id] == -1 && this->children_right[node_id] == -1;
     }
 
-    bool goes_left(float feature_value, int64_t node_id)
+    bool goes_left(double feature_value, int64_t node_id)
     {
         if (std::isnan(feature_value))
         {

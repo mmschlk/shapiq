@@ -44,10 +44,10 @@ namespace algorithms
         return num_features + (i * num_features - i * (i + 1) / 2) + (j - i - 1);
     }
 
-    void first_order_update(const StackFrame &frame, float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
+    void first_order_update(const StackFrame &frame, double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
     {
-        const float wE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
-        const float wR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
+        const double wE = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const double wR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
 
         frame.E.for_each_set_bit([&](uint64_t feature)
                                          { interactions[feature] += value * wE; });
@@ -58,12 +58,12 @@ namespace algorithms
     void second_order_update(const StackFrame &frame,
                              uint64_t *e_buffer, uint64_t *r_buffer,
                              uint64_t e_count, uint64_t r_count,
-                             float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
+                             double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
     {
 
         // Main Effect updates (diagonal elements)
-        const float wE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
-        const float wR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
+        const double wE = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const double wR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
         frame.E.for_each_set_bit([&](uint64_t feature)
                                  {
             int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, max_order);
@@ -79,7 +79,7 @@ namespace algorithms
         frame.R.fill_buffer(r_buffer);
 
         // Interaction in E (upper triangle)
-        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
+        const double wEE = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = i + 1; j < e_count; j++)
@@ -89,7 +89,7 @@ namespace algorithms
             }
         }
         // Interactions in R (upper triangle)
-        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
+        const double wRR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
         for (size_t i = 0; i < r_count; i++)
         {
             for (size_t j = i + 1; j < r_count; j++)
@@ -99,7 +99,7 @@ namespace algorithms
             }
         }
         // Cross interactions (E × R)
-        const float wER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
+        const double wER = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = 0; j < r_count; j++)
@@ -127,23 +127,23 @@ namespace algorithms
     void third_order_update(const StackFrame &frame,
                              uint64_t *e_buffer, uint64_t *r_buffer,
                              uint64_t e_count, uint64_t r_count,
-                             float value, double *interactions,
+                             double value, double *interactions,
                              inter_weights::WeightCache &weight_cache,
                              int num_features, IndexType index, int max_order, int verbose)
     {
         // Precompute all 8 weight types at the top of the function to avoid repeated cache lookups.
         // Order-1 weights
-        const float wE  = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
-        const float wR  = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
+        const double wE  = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const double wR  = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
         // Order-2 weights
-        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
-        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
-        const float wER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
+        const double wEE = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
+        const double wRR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
+        const double wER = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
         // Order-3 weights
-        const float wEEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 3, 0, 3, index, max_order));
-        const float wRRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 3, 3, index, max_order));
-        const float wEER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 1, 3, index, max_order));
-        const float wERR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 2, 3, index, max_order));
+        const double wEEE = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 3, 0, 3, index, max_order));
+        const double wRRR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 3, 3, index, max_order));
+        const double wEER = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 1, 3, index, max_order));
+        const double wERR = static_cast<double>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 2, 3, index, max_order));
 
         // Fill buffers
         frame.E.fill_buffer(e_buffer);
@@ -298,7 +298,7 @@ namespace algorithms
     }
 
     void sparse_order_update(const StackFrame &frame,
-                             float value,
+                             double value,
                              SparseInteractionMap &interactions,
                              inter_weights::WeightCache &weight_cache,
                              int num_features,
@@ -354,8 +354,8 @@ namespace algorithms
 
     void compute_interactions(Tree tree, double *interactions,
                                inter_weights::WeightCache &weight_cache,
-                               float *reference_data,
-                               float *explain_data,
+                               double *reference_data,
+                               double *explain_data,
                                int num_features,
                                IndexType index,
                                int max_order,
@@ -453,7 +453,7 @@ namespace algorithms
                     vector_buffer_R.resize(r_count);
                     r_buffer = vector_buffer_R.data();
                 }
-                float leaf_value = tree.leaf_predictions[node_id];
+                double leaf_value = tree.leaf_predictions[node_id];
                 if (max_order == 1)
                     algorithms::first_order_update(current_frame, leaf_value, interactions, weight_cache, num_features, index, max_order, verbose);
                 else if (max_order == 2)
@@ -469,8 +469,8 @@ namespace algorithms
     void compute_interactions_sparse(Tree tree,
                                       SparseInteractionMap &interactions,
                                       inter_weights::WeightCache &weight_cache,
-                                      float *reference_data,
-                                      float *explain_data,
+                                      double *reference_data,
+                                      double *explain_data,
                                       int num_features,
                                       IndexType index,
                                       int max_order,
@@ -551,17 +551,17 @@ namespace algorithms
                     vector_buffer_R.resize(r_count);
                     r_buffer = vector_buffer_R.data();
                 }
-                float leaf_value = tree.leaf_predictions[node_id];
+                double leaf_value = tree.leaf_predictions[node_id];
                 sparse_order_update(current_frame, leaf_value, interactions, weight_cache, num_features, index, max_order, e_buffer, r_buffer, e_count, r_count);
             }
         }
     }
 
 
-    void first_order_bitset_update(const BitSet E, const BitSet R, float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
+    void first_order_bitset_update(const BitSet E, const BitSet R, double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
     {
-        const float wE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, 1));
-        const float wR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 1));
+        const double wE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, 1));
+        const double wR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 1));
         E.for_each_set_bit([&](uint64_t feature)
                                          { interactions[feature] += value * wE; });
         R.for_each_set_bit([&](uint64_t feature)
@@ -571,11 +571,11 @@ namespace algorithms
     void second_order_bitset_update(const BitSet E, const BitSet R,
         uint64_t *e_buffer, uint64_t *r_buffer,
         uint64_t e_count, uint64_t r_count,
-        float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
+        double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
     {
         // Main Effect updates (diagonal elements)
-        const float wE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(),R.num_bits(), 1, 0, 1, index, 2));
-        const float wR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 2));
+        const double wE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(),R.num_bits(), 1, 0, 1, index, 2));
+        const double wR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 2));
         E.for_each_set_bit([&](uint64_t feature)
                                  {
             int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, 2);
@@ -591,7 +591,7 @@ namespace algorithms
         R.fill_buffer(r_buffer);
 
         // Interaction in E (upper triangle)
-        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, 2));
+        const double wEE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, 2));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = i + 1; j < e_count; j++)
@@ -601,7 +601,7 @@ namespace algorithms
             }
         }
         // Interactions in R (upper triangle)
-        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, 2));
+        const double wRR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, 2));
         for (size_t i = 0; i < r_count; i++)
         {
             for (size_t j = i + 1; j < r_count; j++)
@@ -611,7 +611,7 @@ namespace algorithms
             }
         }
         // Cross interactions (E × R)
-        const float wER = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, 2));
+        const double wER = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, 2));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = 0; j < r_count; j++)
@@ -627,18 +627,18 @@ namespace algorithms
     void third_order_bitset_update(const BitSet E, const BitSet R,
         uint64_t *e_buffer, uint64_t *r_buffer,
         uint64_t e_count, uint64_t r_count,
-        float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
+        double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
     {
         // Precompute all weight types
-        const float wE   = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, max_order));
-        const float wR   = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, max_order));
-        const float wEE  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, max_order));
-        const float wRR  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, max_order));
-        const float wER  = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, max_order));
-        const float wEEE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 3, 0, 3, index, max_order));
-        const float wRRR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 3, 3, index, max_order));
-        const float wEER = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 1, 3, index, max_order));
-        const float wERR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 2, 3, index, max_order));
+        const double wE   = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, max_order));
+        const double wR   = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, max_order));
+        const double wEE  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, max_order));
+        const double wRR  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, max_order));
+        const double wER  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, max_order));
+        const double wEEE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 3, 0, 3, index, max_order));
+        const double wRRR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 3, 3, index, max_order));
+        const double wEER = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 1, 3, index, max_order));
+        const double wERR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 2, 3, index, max_order));
 
         E.fill_buffer(e_buffer);
         R.fill_buffer(r_buffer);
@@ -741,7 +741,7 @@ namespace algorithms
     void any_order_bitset_update(const BitSet E, const BitSet R,
         uint64_t *e_buffer, uint64_t *r_buffer,
         uint64_t e_count, uint64_t r_count,
-        float value, SparseInteractionMap &interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
+        double value, SparseInteractionMap &interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
     {
 
         if (e_count > 0)

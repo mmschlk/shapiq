@@ -34,6 +34,13 @@ def _catboost_model_to_json_bytes(model: CatBoostModel) -> bytes:
         return path.read_bytes()
 
 
+def _mark_float32_input(trees: list[TreeModel]) -> list[TreeModel]:
+    """CatBoost casts prediction inputs to float32 before comparing against its borders."""
+    for tree in trees:
+        tree.input_precision = "float32"
+    return trees
+
+
 def parse_catboost_json_model(
     model_json: dict[str, Any],
     class_label: int | None = None,
@@ -50,7 +57,9 @@ def parse_catboost_json_model(
         A list of ``TreeModel`` instances, one per CatBoost tree.
     """
     byte_array = json.dumps(model_json, separators=(",", ":")).encode("utf-8")
-    return parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+    return _mark_float32_input(
+        parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+    )
 
 
 def convert_catboost_model(
@@ -65,7 +74,9 @@ def convert_catboost_model(
     defaults to class ``1`` for multiclass models.
     """
     byte_array = _catboost_model_to_json_bytes(model)
-    return parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+    return _mark_float32_input(
+        parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+    )
 
 
 register(CatBoost, convert_catboost_model)

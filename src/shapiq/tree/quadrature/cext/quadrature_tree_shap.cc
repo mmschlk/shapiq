@@ -259,16 +259,21 @@ inline void quadrature_inference(
     QuadWorkspace &ws,
     const double *__restrict__ t,
     const double *__restrict__ w,
+    const int *__restrict__ roots,
+    int n_trees,
     const double *__restrict__ x,
     double *__restrict__ out)
 {
     const int n_quad = ws.n_quad;
     std::fill(ws.act.begin(), ws.act.end(), false);
     ws.path_feats.clear();
-    std::fill(ws.A.begin(), ws.A.begin() + n_quad, 1.0);
 
+    for (int tree_index = 0; tree_index < n_trees; ++tree_index)
+    {
+    const int root = roots[tree_index];
+    std::fill(ws.A.begin(), ws.A.begin() + n_quad, 1.0);
     ws.stack.clear();
-    ws.stack.push_back({0, 0, 0});
+    ws.stack.push_back({root, 0, 0});
     while (!ws.stack.empty())
     {
         QuadFrame frame = ws.stack.back();
@@ -282,7 +287,7 @@ inline void quadrature_inference(
         if (frame.stage == 0)
         {
             int ancestor = tree.ancestors[node];
-            if (node != 0)
+            if (node != root)
             {
                 if (ancestor >= 0)
                     ws.act[node] = ws.act[node] && ws.act[ancestor];
@@ -334,7 +339,7 @@ inline void quadrature_inference(
                 double value = tree.values[node];
                 for (int m = 0; m < n_quad; ++m)
                     E_row[m] = A_row[m] * value;
-                if (node != 0)
+                if (node != root)
                 {
                     quad_extract(tree, ws, t, w, node, depth, out);
                     // restore the live state of this edge's feature
@@ -364,7 +369,7 @@ inline void quadrature_inference(
             for (int m = 0; m < n_quad; ++m)
                 E_row[m] += child_E[m];
         }
-        else if (node != 0)  // stage 3 on a non-root internal node
+        else if (node != root)  // stage 3 on a non-root internal node
         {
             quad_extract(tree, ws, t, w, node, depth, out);
             int ancestor = tree.ancestors[node];
@@ -384,6 +389,7 @@ inline void quadrature_inference(
             }
         }
     }
+    }
 }
 
 inline void quadrature_tree_shap(
@@ -391,6 +397,8 @@ inline void quadrature_tree_shap(
     const double *t,
     const double *w,
     int n_quad,
+    const int *roots,
+    int n_trees,
     int n_feats,
     int min_order,
     int max_order,
@@ -403,7 +411,8 @@ inline void quadrature_tree_shap(
     QuadWorkspace ws(tree, n_quad, n_feats, min_order, max_order);
     for (int i = 0; i < n_row; ++i)
     {
-        quadrature_inference(tree, ws, t, w, X + static_cast<size_t>(i) * n_col,
+        quadrature_inference(tree, ws, t, w, roots, n_trees,
+                             X + static_cast<size_t>(i) * n_col,
                              out + static_cast<size_t>(i) * out_stride);
     }
 }

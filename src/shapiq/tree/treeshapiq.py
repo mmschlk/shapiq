@@ -52,17 +52,18 @@ class TreeSHAPIQ:
         max_order: int = 2,
         min_order: int = 1,
         index: TreeSHAPIQIndices = "k-SII",
+        class_index: int | None = None,
         verbose: bool = False,
     ) -> None:
         """Initializes the TreeSHAP-IQ explainer.
 
         Args:
-            model: A single tree model to explain. Note that unlike the
-                :class:`~shapiq.tree.explainer.TreeExplainer` class, TreeSHAP-IQ only
-                supports a single tree. It can be a dictionary representation of the tree, a
-                :class:`~shapiq.tree.base.TreeModel` object, or any other single tree
-                model supported by the :meth:`~shapiq.tree.validation.validate_tree_model`
-                function.
+            model: A tree model or ensemble to explain: a dictionary representation of a tree,
+                a :class:`~shapiq.tree.base.TreeModel` (or list thereof), or any model
+                supported by :meth:`~shapiq.tree.validation.validate_tree_model`. Ensembles
+                are explained tree by tree and aggregated.
+
+            class_index: The class index for classification models. Defaults to ``None``.
 
             max_order: The maximum interaction order to be computed. An interaction order of ``1``
                 corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
@@ -103,8 +104,20 @@ class TreeSHAPIQ:
         self._index: str = index
         self._base_index: str = get_computation_index(self._index)
 
-        # validate and parse model
-        validated_model = validate_tree_model(model)  # the parsed and validated model
+        # validate and parse model; ensembles are handled by one child explainer per tree
+        validated_model = validate_tree_model(model, class_label=class_index)
+        self._tree_explainers: list[TreeSHAPIQ] = []
+        if len(validated_model) > 1:
+            self._tree_explainers = [
+                TreeSHAPIQ(
+                    tree, max_order=max_order, min_order=min_order, index=index, verbose=verbose
+                )
+                for tree in validated_model
+            ]
+            self.empty_prediction = float(
+                sum(child.empty_prediction for child in self._tree_explainers)
+            )
+            return
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
         self._tree: TreeModel = validated_model[0]
         self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
@@ -189,6 +202,12 @@ class TreeSHAPIQ:
             InteractionValues: The computed Shapley Interaction values.
 
         """
+        if self._tree_explainers:  # ensemble: aggregate the per-tree explanations
+            explanation = self._tree_explainers[0].explain(x)
+            for child in self._tree_explainers[1:]:
+                explanation += child.explain(x)
+            return explanation
+        x = self._tree.cast_input(np.asarray(x, dtype=float))
         x_relevant = x[self._relevant_features]
         n_players = max(x.shape[0], self._n_features_in_tree)
 

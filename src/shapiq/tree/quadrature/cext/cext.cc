@@ -43,6 +43,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyObject *values_obj;
     int max_depth;
     int num_nodes;
+    PyObject *roots_obj;
     PyObject *t_obj;
     PyObject *w_obj;
     int n_feats;
@@ -57,7 +58,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyObject *children_left_default_obj;
 
     if (!PyArg_ParseTuple(
-            args, "OOOOOOOOiiOOiiiOOsOOOO",
+            args, "OOOOOOOOiiOOOiiiOOsOOOO",
             &thresholds_obj,
             &features_obj,
             &children_left_obj,
@@ -68,6 +69,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             &values_obj,
             &max_depth,
             &num_nodes,
+            &roots_obj,
             &t_obj,
             &w_obj,
             &n_feats,
@@ -90,6 +92,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyArrayObject *ancestors_array = (PyArrayObject *)PyArray_FROM_OTF(ancestors_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *c_acc_array = (PyArrayObject *)PyArray_FROM_OTF(c_acc_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *values_array = (PyArrayObject *)PyArray_FROM_OTF(values_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *roots_array = (PyArrayObject *)PyArray_FROM_OTF(roots_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *t_array = (PyArrayObject *)PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *w_array = (PyArrayObject *)PyArray_FROM_OTF(w_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -100,7 +103,8 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyArrayObject *children_left_default_array = (PyArrayObject *)PyArray_FROM_OTF(children_left_default_obj, NPY_BOOL, NPY_ARRAY_IN_ARRAY);
 
     if (!thresholds_array || !features_array || !children_left_array || !children_right_array ||
-        !parents_array || !ancestors_array || !c_acc_array || !values_array || !t_array ||
+        !parents_array || !ancestors_array || !c_acc_array || !values_array || !roots_array ||
+        !t_array ||
         !w_array || !X_array || !out_array || !cat_values_array || !cat_start_array ||
         !cat_size_array || !children_left_default_array)
     {
@@ -112,6 +116,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         Py_XDECREF(ancestors_array);
         Py_XDECREF(c_acc_array);
         Py_XDECREF(values_array);
+        Py_XDECREF(roots_array);
         Py_XDECREF(t_array);
         Py_XDECREF(w_array);
         Py_XDECREF(X_array);
@@ -154,6 +159,8 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         arg_error = "invalid tree or order parameters.";
     else if (PyArray_NDIM(X_array) != 2 || PyArray_NDIM(out_array) != 2)
         arg_error = "X and out must be 2-dimensional arrays.";
+    else if (PyArray_NDIM(roots_array) != 1 || PyArray_DIM(roots_array, 0) < 1)
+        arg_error = "roots must be a 1-dimensional array with at least one entry.";
     else if (PyArray_NDIM(t_array) != 1 || PyArray_NDIM(w_array) != 1 ||
              PyArray_DIM(t_array, 0) != PyArray_DIM(w_array, 0) || PyArray_DIM(t_array, 0) < 1)
         arg_error = "quadrature nodes and weights must be 1-dimensional arrays of equal length.";
@@ -203,13 +210,26 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             arg_error = "out width does not match the number of requested interactions.";
     }
 
+    const int *roots = (const int *)PyArray_DATA(roots_array);
+    const int n_trees = (int)PyArray_DIM(roots_array, 0);
+    if (arg_error == NULL)
+    {
+        for (int ti = 0; ti < n_trees; ++ti)
+        {
+            if (roots[ti] < 0 || roots[ti] >= num_nodes)
+            {
+                arg_error = "roots entries must lie within [0, num_nodes).";
+                break;
+            }
+        }
+    }
     if (arg_error == NULL)
     {
         const int n_quad = (int)PyArray_DIM(t_array, 0);
         const int n_row = (int)PyArray_DIM(X_array, 0);
         const int n_col = (int)PyArray_DIM(X_array, 1);
         const int64_t out_stride = (int64_t)PyArray_DIM(out_array, 1);
-        quadrature_tree_shap(tree, t, w, n_quad, n_feats, min_order, max_order,
+        quadrature_tree_shap(tree, t, w, n_quad, roots, n_trees, n_feats, min_order, max_order,
                              X, n_row, n_col, out_stride, out);
     }
 
@@ -221,6 +241,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     Py_XDECREF(ancestors_array);
     Py_XDECREF(c_acc_array);
     Py_XDECREF(values_array);
+    Py_XDECREF(roots_array);
     Py_XDECREF(t_array);
     Py_XDECREF(w_array);
     Py_XDECREF(X_array);

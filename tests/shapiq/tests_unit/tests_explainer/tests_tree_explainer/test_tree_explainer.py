@@ -71,10 +71,8 @@ def test_random_forest_regression(rf_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with empty_predictions
-    assert explainer.baseline_value == sum(
-        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers],
-    )
+    # compare baseline_value with the harmonized explainer's aggregated empty prediction
+    assert explainer.baseline_value == explainer._pathdependent_explainer.empty_prediction
     assert explanation.baseline_value == explainer.baseline_value
 
     # assert efficiency: with min_order=1 the empty interaction is excluded,
@@ -370,32 +368,21 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
 
 
 def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
-    """Tests for the strange behavior of SHAP's XGBoost implementation.
+    """shapiq matches SHAP on the instance that historically exposed the float32 routing gap.
 
-    The test is used to show that the shapiq implementation is correct and the SHAP implementation
-    is doing something weird. For some instances (e.g. the one used in this test) the SHAP values
-    are different from the shapiq values. However, when we round the `thresholds` of the xgboost
-    trees in shapiq, then the computed explanations match. This is a strange behavior as rounding
-    the thresholds makes the model less true to the original model but only then the explanations
-    match.
+    This test used to assert that shapiq and SHAP *disagree* on this instance unless the
+    XGBoost thresholds were rounded — the "strange behavior" was that XGBoost (and therefore
+    SHAP) casts prediction inputs to float32 before routing, while shapiq routed the raw
+    float64 values. Since ``TreeModel.input_precision`` reproduces the cast, the values agree
+    without any rounding workaround.
     """
     explanation_instance = 0
     class_label = 1
 
-    # get the shap explanations (the following code is used to get SVs from SHAP)
-    # import shap  # noqa: ERA001
-    # model_copy = copy.deepcopy(xgb_clf_model) # noqa: ERA001
-    # explainer_shap = shap.TreeExplainer(model=model_copy)  # noqa: ERA001
-    # baseline_shap = float(explainer_shap.expected_value[class_label])  # noqa: ERA001
-    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))  # noqa: ERA001
-    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)  # noqa: ERA001
-    # sv_shap = sv_shap_all_classes[0][:, class_label]  # noqa: ERA001
-    # print(sv_shap)  # noqa: ERA001
-    # print(baseline_shap)  # noqa: ERA001
+    # reference SHAP values for this instance (see git history for the generating snippet)
     sv = [-0.00163171, 0.05075389, -0.13064955, -0.4421068, 0.00424677, -0.04832656, -0.01364264]
     sv_shap = np.array(sv)
 
-    # setup shapiq TreeSHAP
     explainer_shapiq = TreeExplainer(
         model=xgb_clf_model,
         max_order=1,
@@ -406,33 +393,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
 
-    # the SHAP sv values should be different from the shapiq values
-    assert not np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
-
-    # when we round the model thresholds of the xgb model (thresholds decide weather a feature is
-    # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
-    # fact that the shapiq implementation is correct
-    explainer_shapiq_rounded = TreeExplainer(
-        model=xgb_clf_model,
-        max_order=1,
-        index="SV",
-        class_index=class_label,
-    )
-    explainer_shapiq_rounded._init_explainers()
-    # max_order=1 SV routes through the LinearTreeSHAP path; round thresholds on whichever
-    # per-tree explainer list was populated so the mutation actually takes effect at explain time.
-    per_tree_explainers = (
-        explainer_shapiq_rounded._lineartreeshap_explainers
-        or explainer_shapiq_rounded._treeshapiq_explainers
-    )
-    for tree_explainer in per_tree_explainers:
-        tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)
-    x_explain_shapiq_rounded = copy.deepcopy(background_clf_data[explanation_instance])
-    sv_shapiq_rounded = explainer_shapiq_rounded.explain(x=x_explain_shapiq_rounded)
-    sv_shapiq_rounded_values = sv_shapiq_rounded.get_n_order_values(1)
-
-    # now the values surprisingly are the same
-    assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-5)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
 def test_iso_forest_shap(if_clf_model):
@@ -571,8 +532,7 @@ def test_interventional_dt_regression(dt_reg_model, background_reg_data):
     # the interventional path must be the one that's wired up
     explainer._init_explainers()
     assert explainer._interventional_explainer is not None
-    assert explainer._treeshapiq_explainers == []
-    assert explainer._lineartreeshap_explainers == []
+    assert explainer._pathdependent_explainer is None
 
     explanation = explainer.explain(x_explain)
     assert type(explanation).__name__ == "InteractionValues"
@@ -762,7 +722,7 @@ def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_dat
         assert not explainer._should_use_woodelf(1)
         explanation = explainer.explain(background_reg_data[0])
     assert type(explanation).__name__ == "InteractionValues"
-    assert explainer._treeshapiq_explainers  # the shapiq fallback computed the explanation
+    assert explainer._pathdependent_explainer is not None  # the shapiq fallback computed it
 
 
 def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):

@@ -92,10 +92,13 @@ def _assert_efficiency(model, X: np.ndarray, *, force_treeshapiq: bool) -> None:
             TreeExplainer._can_use_lineartreeshap = original
 
     # Sanity-check that we are actually exercising the intended code path.
+    from shapiq.tree.linear import LinearTreeSHAP
+    from shapiq.tree.treeshapiq import TreeSHAPIQ
+
     if force_treeshapiq:
-        assert explainer._treeshapiq_explainers and not explainer._lineartreeshap_explainers
+        assert isinstance(explainer._pathdependent_explainer, TreeSHAPIQ)
     else:
-        assert explainer._lineartreeshap_explainers
+        assert isinstance(explainer._pathdependent_explainer, LinearTreeSHAP)
 
     explain_points = [X[i] for i in range(min(20, len(X)))]
     explain_points += _on_threshold_points(explainer, X[0])

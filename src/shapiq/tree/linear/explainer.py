@@ -76,18 +76,28 @@ class LinearTreeSHAP:
         self,
         model: Model,
         *,
+        class_index: int | None = None,
         base_func: Callable[[int], np.ndarray] = np.polynomial.chebyshev.chebpts2,
     ) -> None:
         """Initialize the :class:`LinearTreeSHAP` explainer.
 
         Args:
-            model: A fitted single-tree model accepted by
-                :func:`~shapiq.tree.validation.validate_tree_model`.
+            model: A fitted tree model or ensemble accepted by
+                :func:`~shapiq.tree.validation.validate_tree_model`. Ensembles are explained
+                tree by tree and aggregated.
+            class_index: The class index for classification models. Defaults to ``None``.
             base_func: Callable ``int -> np.ndarray`` returning the interpolation base for the
                 given depth. Defaults to :func:`numpy.polynomial.chebyshev.chebpts2`.
         """
         self.clf = model
-        self._tree = validate_tree_model(model, class_label=None)[0]
+        validated_model = validate_tree_model(model, class_label=class_index)
+        self._tree_explainers: list[LinearTreeSHAP] = []
+        if len(validated_model) > 1:
+            self._tree_explainers = [
+                LinearTreeSHAP(tree, base_func=base_func) for tree in validated_model
+            ]
+            return
+        self._tree = validated_model[0]
         self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
@@ -203,6 +213,7 @@ class LinearTreeSHAP:
             linear_tree_shap_iterative,  # ty: ignore[unresolved-import]
         )
 
+        X = self._tree.cast_input(np.asarray(X, dtype=np.float64))
         V = np.zeros_like(X, dtype=np.float64)
         V = np.ascontiguousarray(V)
 
@@ -245,6 +256,19 @@ class LinearTreeSHAP:
         )
         return V
 
+    @property
+    def empty_prediction(self) -> float:
+        """The empty prediction (baseline value) of the explained tree or ensemble."""
+        if self._tree_explainers:
+            return float(sum(child.empty_prediction for child in self._tree_explainers))
+        if self._tree.empty_prediction is not None:
+            return float(self._tree.empty_prediction)
+        return float(np.sum(self.edge_tree.empty_predictions))
+
+    def explain(self, x: np.ndarray) -> InteractionValues:
+        """Computes the Shapley values for a single instance (alias of ``explain_function``)."""
+        return self.explain_function(x)
+
     def explain_function(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley values for a single instance.
 
@@ -254,6 +278,11 @@ class LinearTreeSHAP:
         Returns:
             The interaction values for the instance.
         """
+        if self._tree_explainers:  # ensemble: aggregate the per-tree explanations
+            explanation = self._tree_explainers[0].explain_function(x)
+            for child in self._tree_explainers[1:]:
+                explanation += child.explain_function(x)
+            return explanation
         shap_values = self.shap_values_cpp_iterative(x.reshape(1, -1)).flatten()
         shap_interactions: dict[tuple[int, ...], float] = {
             (feature,): float(shap_values[feature])

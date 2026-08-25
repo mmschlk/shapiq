@@ -72,11 +72,16 @@ def convert_xgboost_model(
     if class_label is None:
         class_label = -1  # sentinel: the parser defaults to class 1 for multiclass models
     margin_base_score = _xgboost_margin_base_score(cfg, class_label)
-    return parse_xgboost_ubjson_treemodels(
+    trees = parse_xgboost_ubjson_treemodels(
         booster.save_raw(),
         class_label,
         margin_base_score,
     )
+    for tree in trees:
+        # XGBoost casts prediction inputs to float32 before comparing against its float32
+        # thresholds; the explainers must route the same way (see TreeModel.cast_input)
+        tree.input_precision = "float32"
+    return trees
 
 
 register(XGBRegressor, convert_xgboost_model)

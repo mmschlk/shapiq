@@ -130,7 +130,8 @@ class InterventionalTreeSHAPIQ:
         tree: Validated tree (or list of trees) from
             :func:`validate_tree_model`.
         reference_data: Background dataset (shape ``(n_ref, n_features)``)
-            used to define interventional baselines, cast to ``float32``.
+            used to define interventional baselines, rounded the way the source library
+            rounds prediction inputs (see :meth:`~shapiq.tree.base.TreeModel.cast_input`).
         baseline_value: Mean tree-prediction over ``reference_data`` (scalar);
             written as the order-0 entry of the returned interactions.
         max_order: Maximum interaction order computed.
@@ -185,7 +186,11 @@ class InterventionalTreeSHAPIQ:
         if class_index is None and hasattr(model, "predict_proba"):
             class_index = 1
         self.tree = validate_tree_model(model, class_label=class_index)
-        self.reference_data: np.ndarray = data.astype(np.float32)
+        # rounded the way the source library rounds prediction inputs (see cast_input);
+        # the kernels themselves compute in float64
+        self.reference_data: np.ndarray = self.tree[0].cast_input(
+            np.asarray(data, dtype=np.float64)
+        )
         self.debug = debug
         self.max_order = max_order
         self.index = index
@@ -231,8 +236,9 @@ class InterventionalTreeSHAPIQ:
         """Compute the interventional empty prediction of a tree ensemble.
 
         The interventional empty prediction (baseline value) is the mean ensemble prediction
-        over the reference (background) dataset. The reference data is cast to ``float32`` so
-        the result matches the split routing of the interventional C kernels.
+        over the reference (background) dataset. Routing happens through
+        :meth:`~shapiq.tree.base.TreeModel.predict_one`, which rounds inputs the way the
+        source library does, so the result matches the kernels' split routing.
 
         Args:
             trees: The validated trees of the ensemble (see
@@ -242,14 +248,14 @@ class InterventionalTreeSHAPIQ:
         Returns:
             The mean ensemble prediction over the reference data.
         """
-        # the baseline is just the mean ensemble prediction over the reference data
-        reference_data = reference_data.astype(np.float32)
-        return float(predict_ensemble(trees, reference_data).mean())
+        # the baseline is just the mean ensemble prediction over the reference data;
+        # predict_ensemble routes through TreeModel.predict_one, which applies cast_input
+        return float(predict_ensemble(trees, np.asarray(reference_data, dtype=np.float64)).mean())
 
     def _preprocess_tree_sparse_path(self) -> None:
         """Flatten per-tree arrays into the layout expected by the sparse C kernel."""
-        self.values_list = [tree.values.astype(np.float32).flatten() for tree in self.tree]
-        self.threshold_list = [tree.thresholds.astype(np.float32).flatten() for tree in self.tree]
+        self.values_list = [tree.values.astype(np.float64).flatten() for tree in self.tree]
+        self.threshold_list = [tree.thresholds.astype(np.float64).flatten() for tree in self.tree]
         self.features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
         self.children_left_list = [
             tree.children_left.astype(np.int64).flatten() for tree in self.tree
@@ -271,7 +277,7 @@ class InterventionalTreeSHAPIQ:
         self.n_features = self.reference_data.shape[1]
 
         # Prepare tree arrays for C++
-        values_list = [tree.values.astype(np.float32).flatten() for tree in self.tree]
+        values_list = [tree.values.astype(np.float64).flatten() for tree in self.tree]
         features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
         children_left_list = [tree.children_left.astype(np.int64).flatten() for tree in self.tree]
         children_right_list = [tree.children_right.astype(np.int64).flatten() for tree in self.tree]
@@ -314,7 +320,7 @@ class InterventionalTreeSHAPIQ:
 
         self.E_list = E_list
         self.R_list = R_list
-        self.leaf_vals = np.array(leaf_vals_list, dtype=np.float32)
+        self.leaf_vals = np.array(leaf_vals_list, dtype=np.float64)
         n_leafs = len(E_list)
 
         # Per-leaf sizes — computed once and reused for all flattened arrays.
@@ -430,6 +436,10 @@ class InterventionalTreeSHAPIQ:
             ]
         )
 
+    def explain(self, x: np.ndarray) -> InteractionValues:
+        """Compute interaction values for a single instance (alias of ``explain_function``)."""
+        return self.explain_function(x)
+
     def explain_function(
         self,
         x: np.ndarray,
@@ -459,8 +469,8 @@ class InterventionalTreeSHAPIQ:
             compute_interactions_flatten,  # ty: ignore[unresolved-import]
         )
 
-        # Convert input to float32 for C++ kernel compatibility
-        x = np.asarray(x, dtype=np.float32)
+        # round the instance the way the source library rounds prediction inputs
+        x = self.tree[0].cast_input(np.asarray(x, dtype=np.float64))
 
         if not self.bool_tree and not self._use_sparse_path:
             self._preprocess_tree(x)
@@ -476,8 +486,8 @@ class InterventionalTreeSHAPIQ:
                 self.children_left_list,
                 self.children_right_list,
                 self.children_left_default_list,
-                self.reference_data.astype(np.float32),
-                x.astype(np.float32).flatten(),
+                self.reference_data,
+                x.flatten(),
                 self.tree[0].decision_type,
                 computation_index,
                 self.max_order,

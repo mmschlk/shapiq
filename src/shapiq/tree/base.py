@@ -91,6 +91,7 @@ class TreeModel:
     original_output_type: str = "raw"  # not used at the moment
     intercepts: NDArray[np.floating]
     coeffs: NDArray[np.floating]
+    input_precision: str = "float64"
 
     def __init__(
         self,
@@ -118,6 +119,7 @@ class TreeModel:
         cat_values: NDArray[np.int_] | None = None,
         cat_start: NDArray[np.int_] | None = None,
         cat_size: NDArray[np.int_] | None = None,
+        input_precision: str = "float64",
     ) -> None:
         """Initialize the :class:`TreeModel`.
 
@@ -159,6 +161,10 @@ class TreeModel:
                 ``cat_size``. ``None`` (default) marks a tree without categorical splits.
             cat_start: Per-node offsets into ``cat_values``.
             cat_size: Per-node category-set lengths (``0`` = numeric node).
+            input_precision: Precision in which the source library compares inputs against
+                thresholds at prediction time: ``"float32"`` for XGBoost and CatBoost (inputs
+                are cast before routing, see :meth:`cast_input`), ``"float64"`` otherwise.
+                Defaults to ``"float64"``.
         """
         self.children_left = children_left
         self.children_right = children_right
@@ -216,6 +222,10 @@ class TreeModel:
         # code path that forgets them compares against NaN instead of a stale number
         if self.has_categorical:
             self.thresholds = np.where(self.is_categorical, np.nan, self.thresholds)
+        if input_precision not in ("float64", "float32"):
+            msg = f"input_precision must be 'float64' or 'float32', got {input_precision!r}."
+            raise ValueError(msg)
+        self.input_precision = input_precision
         # setup empty prediction
         if empty_prediction is None:
             self.compute_empty_prediction()
@@ -368,6 +378,28 @@ class TreeModel:
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
+    def cast_input(self, x: NDArray[np.floating]) -> NDArray[np.floating]:
+        """Round ``x`` the way the source library rounds prediction inputs.
+
+        XGBoost and CatBoost cast inputs to float32 before comparing them against their
+        (float32) split thresholds; routing the original float64 values can reach a different
+        leaf than the model's own prediction. The float32 embedding into float64 is exact and
+        order-preserving, so the round trip below makes every downstream float64 comparison
+        bit-identical to the source library's float32 comparison. LightGBM compares in float64
+        (no cast), and sklearn's thresholds are exact midpoints of adjacent float32 values,
+        which makes its internal float32 input cast unobservable — both keep ``"float64"``.
+
+        Args:
+            x: Instance(s) in the original feature space.
+
+        Returns:
+            ``x`` unchanged for ``input_precision == "float64"``, otherwise ``x`` rounded
+            through float32 (returned as float64).
+        """
+        if self.input_precision == "float32":
+            return x.astype(np.float32).astype(np.float64)
+        return x
+
     def predict_one(self, x: NDArray[np.floating]) -> float:
         """Predicts the output of a single instance.
 
@@ -378,6 +410,7 @@ class TreeModel:
             The prediction of the instance with the tree model.
 
         """
+        x = self.cast_input(np.asarray(x, dtype=np.float64))
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]
         while not is_leaf:

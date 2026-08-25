@@ -200,9 +200,9 @@ class TreeExplainer(Explainer):
             )
             raise ValueError(msg)
 
-        self._treeshapiq_explainers: list[TreeSHAPIQ] = []
-        self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
-        self._quadrature_explainers: list[QuadratureTreeSHAP] = []
+        self._pathdependent_explainer: TreeSHAPIQ | LinearTreeSHAP | QuadratureTreeSHAP | None = (
+            None
+        )
         self._interventional_explainer: InterventionalTreeSHAPIQ | None = None
         self._explainers_initialized = False
 
@@ -244,27 +244,19 @@ class TreeExplainer(Explainer):
         """
         if self.mode == "pathdependent":
             if self.backend == "quadrature":
-                self._quadrature_explainers = [
-                    QuadratureTreeSHAP(
-                        model=tree,
-                        max_order=self._max_order,
-                        index=cast("QuadratureTreeSHAPIndices", self.index),
-                    )
-                    for tree in self._trees
-                ]
+                self._pathdependent_explainer = QuadratureTreeSHAP(
+                    model=self._trees,
+                    max_order=self._max_order,
+                    index=cast("QuadratureTreeSHAPIndices", self.index),
+                )
             elif self._can_use_lineartreeshap():
-                self._lineartreeshap_explainers = [
-                    LinearTreeSHAP(model=tree) for tree in self._trees
-                ]
+                self._pathdependent_explainer = LinearTreeSHAP(model=self._trees)
             else:
-                self._treeshapiq_explainers = [
-                    TreeSHAPIQ(
-                        model=tree,
-                        max_order=self._max_order,
-                        index=cast("TreeSHAPIQIndices", self.index),
-                    )
-                    for tree in self._trees
-                ]
+                self._pathdependent_explainer = TreeSHAPIQ(
+                    model=self._trees,
+                    max_order=self._max_order,
+                    index=cast("TreeSHAPIQIndices", self.index),
+                )
         elif self.mode == "interventional":
             if self._reference_dataset is None:
                 msg = (
@@ -531,36 +523,38 @@ class TreeExplainer(Explainer):
             baseline_value=self.baseline_value,
         )
 
-    def _explain_function_lineartreeshap(
+    def _explain_function_pathdependent(
         self,
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute first-order Shapley values for ``x`` by aggregating the per-tree LinearTreeSHAP results.
+        """Compute the explanation via the harmonized path-dependent explainer.
 
-        Mirrors the per-tree aggregation done by ``_explain_function_per_tree``: each
-        ``LinearTreeSHAP`` in ``self._lineartreeshap_explainers`` runs against ``x``, the
-        resulting :class:`~shapiq.interaction_values.InteractionValues` are summed (which also
-        sums ``baseline_value`` and the ``()`` entry), and ``min_order`` is finally enforced via
-        :meth:`InteractionValues.get_n_order` when the user asked for a stricter minimum.
+        The explainer (LinearTreeSHAP, TreeSHAP-IQ, or QuadratureTreeSHAP, chosen in
+        ``_init_explainers``) validates the model and aggregates over ensembles itself; this
+        method only enforces the requested ``min_order`` on the result.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
             **kwargs: Additional keyword arguments are ignored.
 
         Returns:
-            The aggregated Shapley values for the instance.
+            The interaction values for the instance.
         """
         if len(x.shape) != 1:
             msg = "explain expects a single instance, not a batch."
             raise TypeError(msg)
+        if self._pathdependent_explainer is None:
+            msg = "Path-dependent explainer is not initialized; mode must be 'pathdependent'."
+            raise RuntimeError(msg)
 
-        interaction_values: list[InteractionValues] = [
-            lts.explain_function(x) for lts in self._lineartreeshap_explainers
-        ]
-        final_explanation = interaction_values[0]
-        for iv in interaction_values[1:]:
-            final_explanation += iv
+        final_explanation = self._pathdependent_explainer.explain(x)
+
+        if self._min_order == 0 and final_explanation.min_order == 1:
+            final_explanation.min_order = 0
+            # add the baseline value to the empty prediction
+            # might break for some edge cases
+            final_explanation.interactions[()] = float(final_explanation.baseline_value)
 
         if self._min_order > final_explanation.min_order:
             final_explanation = final_explanation.get_n_order(
@@ -588,54 +582,6 @@ class TreeExplainer(Explainer):
             msg = "Interventional explainer is not initialized; mode must be 'interventional'."
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
-
-    def _explain_function_per_tree(
-        self,
-        x: np.ndarray,
-        **kwargs: Any,  # noqa: ARG002
-    ) -> InteractionValues:
-        """Computes the Shapley Interaction values for a single instance.
-
-        Aggregates over whichever per-tree explainers ``_init_explainers`` populated: the
-        quadrature explainers for ``backend="quadrature"``, TreeSHAP-IQ otherwise.
-
-        Args:
-            x: The instance to explain as a 1-dimensional array.
-            **kwargs: Additional keyword arguments are ignored.
-
-        Returns:
-            The interaction values for the instance.
-
-        """
-        if len(x.shape) != 1:
-            msg = "explain expects a single instance, not a batch."
-            raise TypeError(msg)
-
-        # run the per-tree explainers (TreeSHAP-IQ or quadrature) for all trees
-        explainers = self._quadrature_explainers or self._treeshapiq_explainers
-        interaction_values: list[InteractionValues] = [
-            explainer.explain(x) for explainer in explainers
-        ]
-
-        # combine the explanations for all trees
-        final_explanation = interaction_values[0]
-        if len(interaction_values) > 1:
-            for i in range(1, len(interaction_values)):
-                final_explanation += interaction_values[i]
-
-        if self._min_order == 0 and final_explanation.min_order == 1:
-            final_explanation.min_order = 0
-            # add the baseline value to the empty prediction
-            # might break for some edge cases
-            final_explanation.interactions[()] = float(final_explanation.baseline_value)
-
-        if self._min_order > final_explanation.min_order:
-            final_explanation = final_explanation.get_n_order(
-                min_order=self._min_order,
-                max_order=self._max_order,
-            )
-
-        return final_explanation
 
     def explain_function(  # type: ignore[override]
         self,
@@ -666,11 +612,7 @@ class TreeExplainer(Explainer):
         if not self._explainers_initialized:
             self._init_explainers()
         if self.mode == "pathdependent":
-            # dispatch on whichever per-tree list _init_explainers chose to populate; the
-            # quadrature and TreeSHAP-IQ explainers share the per-tree aggregation.
-            if self._lineartreeshap_explainers:
-                return self._explain_function_lineartreeshap(x, **kwargs)
-            return self._explain_function_per_tree(x, **kwargs)
+            return self._explain_function_pathdependent(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)
 
     def explain_X(
