@@ -71,6 +71,7 @@ APPROXIMATOR_CONFIGURATIONS: dict[
     },
     "proxyshap": {
         "SII": ProxySHAP,
+        "STII": ProxySHAP,
         "FSII": ProxySHAP,
         "FBII": ProxySHAP,
         "k-SII": ProxySHAP,
