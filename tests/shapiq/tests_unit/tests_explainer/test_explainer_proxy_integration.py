@@ -74,7 +74,7 @@ def test_proxyshap_tabular_exact_at_full_budget(
         n=NR_FEATURES,
         max_order=max_order,
         index=index,
-        apply_msr_adjustment=True,
+        adjustment=True,
         random_state=42,
     )
     explainer = TabularExplainer(
@@ -128,7 +128,7 @@ def test_proxyshap_tabular_custom_instance(dt_reg_model, background_reg_data):
         n=NR_FEATURES,
         max_order=2,
         index="k-SII",
-        apply_msr_adjustment=True,
+        adjustment=True,
         random_state=42,
     )
     explainer = TabularExplainer(

@@ -65,7 +65,7 @@ class RegressionMSR(ProxySHAP):
         proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         sampling_weights: np.ndarray | None = None,
         pairing_trick: bool = True,
-        kfolds: int = 1,
+        k_folds: int = 1,
         random_state: int | None = None,
     ) -> None:
         """Initialize the RegressionMSR approximator.
@@ -82,7 +82,7 @@ class RegressionMSR(ProxySHAP):
                 (Leverage SHAP) for ``"SV"`` with a linear proxy, and ``1 / sqrt(s * (n - s))``
                 for ``"SV"`` otherwise.
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
-            kfolds: Number of folds for the out-of-fold proxy residuals; see
+            k_folds: Number of folds for the out-of-fold proxy residuals; see
                 :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP`. Default is 1, which is the recommended value by Witter et al. (2025) :cite:t:`Witter.2025`.
             random_state: The random state for reproducibility. Default is None.
 
@@ -112,9 +112,9 @@ class RegressionMSR(ProxySHAP):
             max_order=1,
             index=index,
             proxy_model=proxy_model,
-            apply_msr_adjustment=True,
+            adjustment=True,
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
-            kfolds=kfolds,
+            k_folds=k_folds,
             random_state=random_state,
         )

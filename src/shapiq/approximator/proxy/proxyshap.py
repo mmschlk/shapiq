@@ -161,10 +161,10 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
     """ProxySHAP is a proxy-based approximator that uses a regression model to approximate the value function and can correct the proxy's error with an MSR residual adjustment.
 
     The regression proxy is trained on the sampled coalitions, and interaction values are read out
-    of the fitted model exactly. Optionally (``apply_msr_adjustment=True``), the proxy's residuals
+    of the fitted model exactly. Optionally (``adjustment=True``), the proxy's residuals
     (true game values minus proxy predictions) are estimated with a self-contained, fully
     vectorized MSR (maximum sample reuse) Monte Carlo routine ( unstratified SHAP-IQ :cite:t:`Fumagalli.2023`).
-    Depending on `kfold` the adjustment is computed in-sample (``kfolds=1``) or out-of-fold (``kfolds>1``) on the same sampled coalitions, and added to the proxy's interactions.
+    Depending on ``k_folds`` the adjustment is computed in-sample (``k_folds=1``) or out-of-fold (``k_folds>1``) on the same sampled coalitions, and added to the proxy's interactions.
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame
@@ -186,8 +186,8 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         index: ValidProxySHAPIndices = "k-SII",
         proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         hpo: bool = False,
-        kfolds: int = 1,
-        apply_msr_adjustment: bool = False,
+        adjustment: bool = False,
+        k_folds: int = 1,
         sampling_weights: FloatVector | None = None,
         pairing_trick: bool = True,
         random_state: int | None = None,
@@ -204,18 +204,18 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                 ``"lightgbm"``) in its default grid search (the HPO-informed proxy). Defaults to
                 ``False`` (a bare estimator). Has no effect when ``proxy_model`` is a passed-in
                 estimator/wrapper, or for the ``"tree"`` / ``"linear"`` tags.
-            kfolds: Number of folds the sampled coalitions are split into. With
-                the default ``1``, a single proxy is fit on all sampled coalitions and its
-                residuals are computed in-sample. For values ``> 1``, one proxy is fit per fold
-                (KFold) on the training split, its interactions are extracted, and its residuals
-                are computed on the held-out split only; the per-fold results are averaged.
-            apply_msr_adjustment: If ``True``, the MSR residual adjustment is applied to the proxy's
+            adjustment: If ``True``, the MSR residual adjustment is applied to the proxy's
                 interactions, covering the complete interaction lattice up to ``max_order``.
                 Defaults to ``False`` (no adjustment). Note the lattice grows as
                 ``O(n**max_order)``, so the adjustment is infeasible for high orders on
                 high-dimensional games; extraction-only runs (the default) are not affected.
                 For ``FSII``/``FBII`` only the top order is corrected (see ``top_order`` below), so
                 their lower orders are returned as the uncorrected proxy readout.
+            k_folds: Number of folds the sampled coalitions are split into. With
+                the default ``1``, a single proxy is fit on all sampled coalitions and its
+                residuals are computed in-sample. For values ``> 1``, one proxy is fit per fold
+                (KFold) on the training split, its interactions are extracted, and its residuals
+                are computed on the held-out split only; the per-fold results are averaged.
             sampling_weights: Optional array of weights for the sampling procedure. The weights must be of shape (n + 1,) and are used to determine the probability of sampling a coalition. Defaults to None.
                 `None` means uniform sampling by size and uniform within each size.
             pairing_trick: If True, the pairing trick is applied to the sampling procedure. Defaults to True.
@@ -231,15 +231,15 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             index=index,
             # FSII/FBII discrete-derivative weights exist only at top order, so the adjustment
             # lattice is restricted there and their lower orders stay uncorrected.
-            top_order=index in ("FSII", "FBII") and apply_msr_adjustment,
+            top_order=index in ("FSII", "FBII") and adjustment,
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
             random_state=random_state,
             # The interaction lookup is only needed for the MSR adjustment, which is optional. Will be generated on first use if needed.
             initialize_dict=False,
         )
-        self.kfolds = kfolds
-        self.apply_msr_adjustment = apply_msr_adjustment
+        self.adjustment = adjustment
+        self.k_folds = k_folds
         if isinstance(proxy_model, ProxyModel):
             self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
         else:
@@ -395,9 +395,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         model by :func:`_extract_proxy_interactions`, which dispatches on its type: linear models
         route to :func:`_extract_linear`, registered tree models to :func:`_extract_tree`. If
         enabled, the proxy's residuals are estimated with the vectorized MSR routine.
-        Depending on ``kfolds``, the residuals are corrected either in-sample (``kfolds=1``)
-        or out-of-fold (``kfolds>1``) and added to the proxy's interactions.
-        For ``kfolds>1``, the final interaction values are the average of the per-fold results, and the baseline is fixed to the empty-coalition value of the game.
+        Depending on ``k_folds``, the residuals are corrected either in-sample (``k_folds=1``)
+        or out-of-fold (``k_folds>1``) and added to the proxy's interactions.
+        For ``k_folds>1``, the final interaction values are the average of the per-fold results, and the baseline is fixed to the empty-coalition value of the game.
 
         Args:
             budget: Number of coalition evaluations to draw.
@@ -421,9 +421,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
 
         # 2. Split the coalitions into folds. With a single fold the proxy trains and predicts on
         # all coalitions; with cross-validation each fold's proxy predicts its held-out split.
-        if self.kfolds > 1:
+        if self.k_folds > 1:
             folder = KFold(
-                n_splits=self.kfolds,
+                n_splits=self.k_folds,
                 shuffle=True,
                 random_state=self._random_state,
             )
@@ -450,7 +450,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                 budget=n_samples,
                 n_players=n_players,
             )
-            if self.apply_msr_adjustment:
+            if self.adjustment:
                 # Normalize the residuals to 0 at the empty coalition (the *centered* game value
                 # there is 0, and the empty coalition may not be part of the held-out split, so
                 # its residual is computed explicitly).

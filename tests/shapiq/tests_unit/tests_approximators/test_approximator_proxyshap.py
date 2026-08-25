@@ -61,9 +61,7 @@ def test_approximate(n, interactions, budget):
         )
 
     # Initialize ProxySHAP approximator with the MSR residual adjustment enabled
-    proxyshap = ProxySHAP(
-        n=n, random_state=42, index="k-SII", max_order=2, apply_msr_adjustment=True
-    )
+    proxyshap = ProxySHAP(n=n, random_state=42, index="k-SII", max_order=2, adjustment=True)
 
     exact_computer = ExactComputer(game=dummy_game, n_players=n)
     gt_values = exact_computer(index="k-SII", order=2)
@@ -176,9 +174,7 @@ def test_msr_adjustment_exact_at_full_budget(index, max_order):
             [sum(1 for it in interactions if all(x[i] for i in it)) for x in X], dtype=float
         )
 
-    proxyshap = ProxySHAP(
-        n=n, max_order=max_order, index=index, apply_msr_adjustment=True, random_state=0
-    )
+    proxyshap = ProxySHAP(n=n, max_order=max_order, index=index, adjustment=True, random_state=0)
     gt_values = ExactComputer(game=game, n_players=n)(index=index, order=max_order)
     estimates = proxyshap.approximate(2**n, game)
 
