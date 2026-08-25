@@ -1,7 +1,7 @@
 """Numerical precision guards for the polynomial-based tree explainers.
 
 The path-dependent polynomial algorithms (:class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` and
-:class:`~shapiq.tree.linear.explainer.LinearTreeSHAP`) lose precision as the number of
+:class:`~shapiq.tree.linear.computer.LinearTreeSHAP`) lose precision as the number of
 *distinct features along a single root-to-leaf path* grows: their float64 round-off grows by
 roughly one order of magnitude for every two additional features per path, independent of how
 the interpolation systems are solved (see https://github.com/mmschlk/shapiq/issues/545). Tree

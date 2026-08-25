@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 from shapiq import ExactComputer, Game
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.tree.explainer import TreeExplainer
-from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
+from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.typing import IndexType
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 

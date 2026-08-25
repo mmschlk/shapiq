@@ -1,7 +1,9 @@
-"""Tree-based explanation algorithms, including TreeSHAP-IQ.
+"""Tree-based explanation algorithms for shapiq.
 
-Provides :class:`TreeSHAPIQ` for computing exact Shapley interaction values on tree ensembles,
-along with supporting data structures and algorithm variants.
+Provides :class:`TreeExplainer`, the user-facing explainer for tree ensembles, together with
+the computation algorithms it builds on: :class:`QuadratureTreeSHAP` (the numerically exact
+path-dependent default), :class:`TreeSHAPIQ`, :class:`LinearTreeSHAP`, and
+:class:`InterventionalTreeSHAPIQ`.
 """
 
 from .base import TreeModel

@@ -64,8 +64,8 @@ tree = shapiq.tree.TreeModel(
 )
 
 # %%
-# Explain with TreeSHAP-IQ
-# -------------------------
+# Explain with TreeExplainer
+# ---------------------------
 # Compute exact Shapley values for a single instance.
 
 explainer = shapiq.TreeExplainer(model=tree, index="SV", max_order=1)

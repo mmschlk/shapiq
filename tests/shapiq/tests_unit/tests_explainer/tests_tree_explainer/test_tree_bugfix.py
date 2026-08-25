@@ -20,7 +20,7 @@ def test_linear_tree_shap_does_not_mutate_caller_tree_model():
     """Test that constructing LinearTreeSHAP leaves the caller-owned TreeModel untouched."""
     from sklearn.tree import DecisionTreeRegressor
 
-    from shapiq.tree.linear.explainer import LinearTreeSHAP
+    from shapiq.tree.linear.computer import LinearTreeSHAP
     from shapiq.tree.validation import validate_tree_model
 
     rng = np.random.default_rng(0)

@@ -29,9 +29,7 @@ def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     explainer = _ = TreeExplainer(model=rf_clf_model, max_order=1, min_order=0, class_index=1)
     explanation = explainer.explain(x_explain)
 
-    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
-    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
-    # `_treeshapiq_explainers` list.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -50,8 +48,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with the per-tree empty predictions; k-SII with max_order=2 routes
-    # through Woodelf, so `_treeshapiq_explainers` is never built and we read from `_trees`.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -98,9 +95,7 @@ def test_random_forest_classification(rf_clf_model, background_clf_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
-    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
-    # `_treeshapiq_explainers` list.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -742,6 +737,28 @@ def test_woodelf_fallback_warns_without_woodelf(rf_reg_model, background_reg_dat
     assert type(explanation).__name__ == "InteractionValues"
 
 
+@pytest.mark.parametrize("index", ["k-SII", "BV"])
+def test_explain_X_pathdependent_without_woodelf(dt_reg_model, background_reg_data, index):
+    """``explain_X`` on the default path-dependent route works without woodelf.
+
+    The shapiq branch of ``explain_X`` (lazy init + per-instance quadrature + batch
+    wrapping) must produce one row per instance, each matching the single-instance
+    ``explain``.
+    """
+    max_order = 2 if index == "k-SII" else 1
+    X_explain = background_reg_data[:4]
+    explainer = TreeExplainer(
+        model=dt_reg_model, max_order=max_order, min_order=1, index=index, backend="shapiq"
+    )
+    batch = explainer.explain_X(X_explain)
+    assert len(batch) == len(X_explain)
+    for row, x in enumerate(X_explain):
+        single = explainer.explain(x)
+        assert batch[row].index == index
+        for interaction in single.interactions:
+            assert batch[row][interaction] == pytest.approx(single[interaction], abs=1e-12)
+
+
 def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
     """``backend='shapiq'`` never routes to Woodelf, even past the cut-offs, and never warns."""
     import warnings
@@ -833,20 +850,30 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     with pytest.raises(ValueError, match="backend='banzhaf-machine'"):
         TreeExplainer(model=dt_reg_model, backend="banzhaf-machine")
 
-    # backend='woodelf' with a configuration Woodelf cannot serve (already-parsed trees)
+    # backend='woodelf' with a configuration Woodelf cannot serve (already-parsed trees);
+    # the config check needs no woodelf import, so pretend the package is installed to make
+    # this case testable in every environment
+    import importlib.machinery
+
     from shapiq.tree.validation import validate_tree_model
 
+    real_find_spec = importlib.util.find_spec
+
+    def fake_installed(name, *args, **kwargs):
+        if name == "woodelf":
+            return importlib.machinery.ModuleSpec("woodelf", None)
+        return real_find_spec(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "find_spec", fake_installed)
     with pytest.raises(ValueError, match="original model object"):
         TreeExplainer(model=validate_tree_model(dt_reg_model), backend="woodelf")
 
     # without the woodelf package, forcing it raises; path-dependent Banzhaf indices do not
     # need it (the quadrature default computes them natively)
-    real_find_spec = importlib.util.find_spec
-
-    def fake_find_spec(name, *args, **kwargs):
+    def fake_missing(name, *args, **kwargs):
         return None if name == "woodelf" else real_find_spec(name, *args, **kwargs)
 
-    monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
+    monkeypatch.setattr(importlib.util, "find_spec", fake_missing)
     with pytest.raises(ImportError, match="woodelf-explainer"):
         TreeExplainer(model=dt_reg_model, backend="woodelf")
     banzhaf = TreeExplainer(model=dt_reg_model, index="BV", backend="auto")

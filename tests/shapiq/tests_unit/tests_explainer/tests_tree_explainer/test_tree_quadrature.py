@@ -61,6 +61,14 @@ def test_matches_treeshapiq_on_sklearn_regressor(
 def test_matches_treeshapiq_across_model_families(model_fixture, request):
     """Quadrature values match TreeSHAP-IQ across converter families and split conventions."""
     model = request.getfixturevalue(model_fixture)
+    if model_fixture == "catboost_clf_model":
+        # precondition of the zero-cover regression case: the fitted model must actually
+        # contain unreachable leaves, otherwise this stops testing the clamp
+        from shapiq.tree.validation import validate_tree_model
+
+        assert any(
+            np.any(np.asarray(tree.node_sample_weight) == 0) for tree in validate_tree_model(model)
+        )
     if model_fixture == "xgb_cat_reg_model":
         data = np.asarray(request.getfixturevalue("background_cat_dataset")[0], dtype=float)
     elif "clf" in model_fixture:
@@ -263,6 +271,35 @@ def test_deep_tree_quadrature_point_robustness(deep_sparse_tree):
         n_quadrature_points=default_explainer._t.shape[0] + 10,
     ).explain(x)
     assert np.allclose(default.values, more_points.values, atol=1e-10)
+
+
+@pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
+def test_zero_cover_internal_subtree(implementation):
+    """A dead subtree that re-splits the same feature must contribute exactly zero.
+
+    Regression test: inside a zero-cover subtree every cover ratio is ``0/0`` and
+    ``p_e`` is NaN (not inf, as on the subtree's entry edge). The clamp previously mapped
+    NaN to full cover ``c = 1.0``, so the same-feature A-row ratio cancelled the entry
+    edge's damping and the unreachable region contributed as if fully covered — silently
+    wrong Shapley values on e.g. CatBoost regressors with zero-weight internal nodes.
+    """
+    dead_tree = {
+        "children_left": np.asarray([1, -1, 3, -1, -1]),
+        "children_right": np.asarray([2, -1, 4, -1, -1]),
+        "children_missing": np.asarray([1, -1, 3, -1, -1]),
+        "features": np.asarray([0, -2, 0, -2, -2]),
+        "thresholds": np.asarray([0.0, -2, 1.0, -2, -2]),
+        "node_sample_weight": np.asarray([100.0, 100.0, 0.0, 0.0, 0.0]),
+        "values": np.asarray([0.0, 1.0, 0.0, 5.0, 9.0]),
+    }
+    explainer = QuadratureTreeSHAP(dead_tree, index="SV", implementation=implementation)
+    assert explainer.empty_prediction == pytest.approx(1.0)
+    # cold routing (reachable leaf): the dead region must not leak into the attribution
+    cold = explainer.explain(np.asarray([-1.0]))
+    assert cold[(0,)] == pytest.approx(0.0, abs=1e-12)
+    # hot routing into the dead region: prediction = 9.0, so SV = prediction - baseline
+    hot = explainer.explain(np.asarray([2.0]))
+    assert hot[(0,)] == pytest.approx(8.0, abs=1e-12)
 
 
 # ------------------------------- edge cases and API -------------------------------

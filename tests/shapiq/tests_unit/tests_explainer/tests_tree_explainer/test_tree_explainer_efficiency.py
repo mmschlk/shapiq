@@ -144,8 +144,8 @@ def test_interventional_sparse_matches_dense_categorical(
     routes inside the C kernel. Forcing both onto the same order must produce identical
     interaction values, including on rows with NaN values.
     """
-    import shapiq.tree.interventional.explainer as interventional_module
-    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
+    import shapiq.tree.interventional.computer as interventional_module
+    from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 
     X, _ = background_cat_dataset
     dense = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)

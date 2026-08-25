@@ -3,10 +3,10 @@
 Implements the quadrature reformulation of path-dependent TreeSHAP for Shapley values and
 any-order Shapley interactions. Shapley (interaction) values are expressed as integrals of
 weighted Banzhaf interaction polynomials over the participation probability and evaluated
-exactly with Gauss-Legendre quadrature; see `Wettenstein et al. (2026)
-<https://arxiv.org/abs/2605.04497>`_ and `TreeGrad <https://arxiv.org/abs/2602.11623>`_ for the
-first-order case. Unlike the interpolation-based :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ`
-and :class:`~shapiq.tree.linear.explainer.LinearTreeSHAP`, every maintained quantity is a
+exactly with Gauss-Legendre quadrature; see Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a`
+and, for the first-order case, TreeGrad-Ranker :cite:t:`Li.2026`. Unlike the
+interpolation-based :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ`
+and :class:`~shapiq.tree.linear.computer.LinearTreeSHAP`, every maintained quantity is a
 product of factors ``h*t + c*(1-t)`` in ``(0, 1]``, so the computation is numerically exact in
 float64 at any tree depth (issue #545).
 
@@ -56,13 +56,15 @@ class QuadratureTreeSHAP:
 
     Computes the same path-dependent Shapley (interaction) values as
     :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` but through Gauss-Legendre quadrature of the
-    weighted Banzhaf interaction polynomial, which is numerically exact in float64 for any
-    tree depth and any number of distinct features per decision path. Banzhaf indices
-    (``"BV"``/``"BII"``) are obtained from the same computation by evaluating the polynomial at
-    participation probability ``1/2`` instead of integrating.
+    weighted Banzhaf interaction polynomial :cite:t:`Wettenstein.2026a` :cite:t:`Li.2026`,
+    which is numerically exact in float64 for any tree depth and any number of distinct
+    features per decision path. Banzhaf indices (``"BV"``/``"BII"``) are obtained from the
+    same computation by evaluating the polynomial at participation probability ``1/2``
+    instead of integrating.
 
     The class explains single trees and ensembles alike (ensembles run as one batched kernel
-    call) and is also used internally by the :class:`~shapiq.tree.explainer.TreeExplainer`.
+    call) and is the default path-dependent algorithm of the
+    :class:`~shapiq.tree.explainer.TreeExplainer`.
     """
 
     def __init__(
@@ -217,12 +219,17 @@ class QuadratureTreeSHAP:
             empty_prediction += float(tree_empty)
             max_features_per_path = max(max_features_per_path, int(edge_tree.edge_heights.max()))
             max_depth = max(max_depth, int(edge_tree.max_depth))
-            with np.errstate(divide="ignore"):
-                c_acc = np.where(edge_tree.p_e_values > 0, 1.0 / edge_tree.p_e_values, 1.0)
-            # zero-cover edges (leaves no training sample reaches, e.g. in CatBoost's
+            # zero-cover edges (subtrees no training sample reaches, e.g. in CatBoost's
             # oblivious trees) contribute exactly zero in the limit c -> 0; a tiny positive
-            # cover keeps every factor u = h*t + c*(1-t) positive instead of producing 0/0
-            c_acc = np.where(np.isfinite(c_acc) & (c_acc > 0), c_acc, 1e-300)
+            # cover keeps every factor u = h*t + c*(1-t) positive instead of producing 0/0.
+            # p_e is inf on the entry edge of a dead subtree and NaN strictly inside it
+            # (0/0 cover ratios), so the clamp must test p_e itself before inverting.
+            with np.errstate(divide="ignore"):
+                c_acc = np.where(
+                    np.isfinite(edge_tree.p_e_values) & (edge_tree.p_e_values > 0),
+                    1.0 / edge_tree.p_e_values,
+                    1e-300,
+                )
 
             def rebase(indices: np.ndarray, offset: int = node_offset) -> np.ndarray:
                 rebased = np.asarray(indices, dtype=np.int64).copy()
@@ -257,6 +264,9 @@ class QuadratureTreeSHAP:
 
         # quadrature rule: exact for the degree-(d - order) integrands; Banzhaf indices are a
         # single evaluation of the weighted Banzhaf polynomial at p = 1/2
+        if n_quadrature_points is not None and n_quadrature_points < 1:
+            msg = f"n_quadrature_points={n_quadrature_points} must be a positive integer."
+            raise ValueError(msg)
         if self._base_index == "BII":
             self._t = np.array([0.5])
             self._w = np.array([1.0])
@@ -264,9 +274,6 @@ class QuadratureTreeSHAP:
             n_points = n_quadrature_points
             if n_points is None:
                 n_points = max((self.max_features_per_path + 1) // 2, 1)
-            elif n_points < 1:
-                msg = f"n_quadrature_points={n_points} must be a positive integer."
-                raise ValueError(msg)
             self._t, self._w = _gauss_legendre_unit(n_points)
 
         self._cpp_available = False

@@ -28,20 +28,18 @@ TreeSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 class TreeSHAPIQ:
     """The TreeSHAP-IQ computation class.
 
-    This class implements the TreeSHAP-IQ algorithm for computing Shapley Interaction values for
-    tree-based models. It is used internally by the
-    :class:`~shapiq.tree.explainer.TreeExplainer`. The TreeSHAP-IQ algorithm is presented
-    in `Muschalik et al. (2024)` [Mus24]_.
-
-    TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022)` [Yu22]_, but extended to
-    compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to visit each node
-    only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
-    efficiently.
+    This class implements the TreeSHAP-IQ algorithm :cite:t:`Muschalik.2024a` for computing
+    Shapley Interaction values on tree-based models. TreeSHAP-IQ extends the Linear TreeSHAP
+    algorithm :cite:t:`Yu.2022` from Shapley values to Shapley Interaction values up to a
+    given order; it visits each node only once and uses polynomial arithmetic to compute the
+    interactions efficiently.
 
     Note:
-        This class is not intended to be used directly. Instead, use the ``TreeExplainer`` class to
-        explain tree-based models which internally uses then the TreeSHAP-IQ algorithm.
+        :class:`~shapiq.tree.explainer.TreeExplainer` computes path-dependent explanations
+        with :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` by default, which stays
+        numerically exact at any tree depth. This class remains available as the standalone
+        reference implementation of TreeSHAP-IQ; it validates its own models and accepts
+        single trees and ensembles alike.
 
     """
 

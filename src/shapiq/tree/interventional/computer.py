@@ -102,8 +102,8 @@ def obtain_E_R_values_point(
 class InterventionalTreeSHAPIQ:
     """Any-order interventional Shapley-interaction explainer for tree models.
 
-    Extends interventional TreeSHAP to compute exact Shapley interactions of
-    arbitrary order over a single decision tree or a tree ensemble (as
+    Extends interventional TreeSHAP :cite:t:`Lundberg.2020` to compute exact Shapley
+    interactions of arbitrary order over a single decision tree or a tree ensemble (as
     validated by :func:`shapiq.tree.validation.validate_tree_model`). Each
     coalition's contribution is decomposed against a reference background
     dataset using the ``E``/``R`` partition (features fixed by the explained

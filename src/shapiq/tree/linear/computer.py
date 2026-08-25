@@ -55,9 +55,8 @@ def get_N_v2(D: np.ndarray, max_row: int | None = None) -> np.ndarray:
 class LinearTreeSHAP:
     """Linear TreeSHAP explainer for first-order Shapley values on tree-based models.
 
-    Implements the Linear TreeSHAP algorithm of `Yu et al. (2022)
-    <https://openreview.net/forum?id=OzbkiUo24g>`_ for exact ``order=1`` Shapley value
-    computation on a single decision tree. The heavy lifting is delegated to a C++ kernel
+    Implements the Linear TreeSHAP algorithm :cite:t:`Yu.2022` for exact ``order=1`` Shapley
+    value computation on a single decision tree. The heavy lifting is delegated to a C++ kernel
     (``linear_tree_shap_iterative``), which is faster than the any-order
     :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` algorithm when only Shapley values are
     needed.
