@@ -19,8 +19,8 @@ class TreeModel:
     """Internal representation of a single tree used by the shapiq tree explainers.
 
     Each library-specific converter (scikit-learn, XGBoost, LightGBM, CatBoost) targets this
-    common format so that the downstream algorithms (TreeSHAP-IQ, LinearTreeSHAP,
-    InterventionalTreeSHAP) only need to understand one node-array layout.
+    common format so that the downstream algorithms (QuadratureTreeSHAP, TreeSHAP-IQ,
+    LinearTreeSHAP, InterventionalTreeSHAPIQ) only need to understand one node-array layout.
 
     Constructor arguments that fall back to a computed default when ``None`` is passed are
     documented on :meth:`__init__`. The attributes below describe what is available on a fully
@@ -288,8 +288,8 @@ class TreeModel:
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
 
-        # Set decision function; untyped callers (dict conversions) reach this at runtime, and
-        # an unknown comparison would otherwise silently route like "<="
+        # untyped dict conversions reach this at runtime; unknown comparisons would
+        # otherwise silently route like "<="
         if decision_type is not None and decision_type not in ("<=", "<"):
             msg = f"decision_type must be '<=' or '<', got {decision_type!r}."
             raise ValueError(msg)
@@ -368,9 +368,8 @@ class TreeModel:
         """
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
-            # sorted: raw set iteration order can be non-ascending (hash-slot probing), which
-            # would pair the reduced ids with the sorted interaction lookups in the explainers
-            # and silently permute attributions between features
+            # sorted: raw set iteration can be non-ascending, which would permute the
+            # reduced ids against the sorted interaction lookups
             ordered_feature_ids = sorted(self.feature_ids)
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(ordered_feature_ids)}
             mapping_new_old = dict(enumerate(ordered_feature_ids))

@@ -25,7 +25,6 @@ per-tree Python objects are involved on the hot path.
 
 from __future__ import annotations
 
-from itertools import combinations
 from math import comb
 from typing import TYPE_CHECKING, Literal, get_args
 
@@ -42,7 +41,6 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
-QuadratureImplementation = Literal["auto", "numpy", "cpp"]
 
 
 def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -76,7 +74,6 @@ class QuadratureTreeSHAP:
         index: QuadratureTreeSHAPIndices = "SV",
         class_index: int | None = None,
         n_quadrature_points: int | None = None,
-        implementation: QuadratureImplementation = "auto",
     ) -> None:
         """Initializes the quadrature TreeSHAP explainer.
 
@@ -105,12 +102,9 @@ class QuadratureTreeSHAP:
                 up to ``d = 100``. Ignored for Banzhaf indices, which need a single evaluation
                 point.
 
-            implementation: ``"cpp"`` forces the C extension, ``"numpy"`` the pure-Python
-                implementation, and ``"auto"`` uses the C extension when available. Defaults to
-                ``"auto"``.
-
         Raises:
             ValueError: If the index or the interaction orders are invalid.
+            ImportError: If the C extension is not available in this build.
 
         """
         if index not in get_args(QuadratureTreeSHAPIndices):
@@ -125,19 +119,17 @@ class QuadratureTreeSHAP:
                 "greater than 0."
             )
             raise ValueError(msg)
-        if implementation not in get_args(QuadratureImplementation):
-            msg = f"implementation='{implementation}' must be one of 'auto', 'numpy', or 'cpp'."
-            raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._index: QuadratureTreeSHAPIndices = index
         self._base_index: str = get_computation_index(self._index)
 
-        # validate and parse the model; the validated trees are owned by this explainer
-        # (validate_tree_model copies TreeModel inputs)
         self._trees: list[TreeModel] = validate_tree_model(model, class_label=class_index)
         if len({tree.decision_type for tree in self._trees}) > 1:
             msg = "All trees of an ensemble must share the same decision type."
+            raise ValueError(msg)
+        if len({tree.input_precision for tree in self._trees}) > 1:
+            msg = "All trees of an ensemble must share the same input precision."
             raise ValueError(msg)
 
         # ensemble-shared feature space: the sorted union of the trees' original feature ids
@@ -154,8 +146,7 @@ class QuadratureTreeSHAP:
             self._min_order,
             self._max_order,
         )
-        # per-order position lookup over the ensemble-space feature ids, and the start offset
-        # of each order's block in the concatenated output array
+        # per-order lookups over the ensemble-space ids, and each order's output offset
         self._order_lookups: dict[int, dict[tuple, int]] = {
             order: generate_interaction_lookup(self._n_features_in_tree, order, order)
             for order in range(self._min_order, self._max_order + 1)
@@ -167,8 +158,7 @@ class QuadratureTreeSHAP:
             offset += comb(self._n_features_in_tree, order)
         self._output_size: int = offset
 
-        # concatenate all trees into one node-array block; child/parent/ancestor indices are
-        # rebased to global positions so the kernels can traverse each tree from its root
+        # concatenate all trees into one node-array block with globally rebased indices
         empty_prediction = 0.0
         max_features_per_path = 0
         max_depth = 0
@@ -219,11 +209,9 @@ class QuadratureTreeSHAP:
             empty_prediction += float(tree_empty)
             max_features_per_path = max(max_features_per_path, int(edge_tree.edge_heights.max()))
             max_depth = max(max_depth, int(edge_tree.max_depth))
-            # zero-cover edges (subtrees no training sample reaches, e.g. in CatBoost's
-            # oblivious trees) contribute exactly zero in the limit c -> 0; a tiny positive
-            # cover keeps every factor u = h*t + c*(1-t) positive instead of producing 0/0.
-            # p_e is inf on the entry edge of a dead subtree and NaN strictly inside it
-            # (0/0 cover ratios), so the clamp must test p_e itself before inverting.
+            # unreachable (zero-cover) subtrees contribute exactly zero in the limit c -> 0; a
+            # tiny positive cover realizes that limit without 0/0 factors. p_e is inf on a dead
+            # subtree's entry edge and NaN strictly inside it, so test p_e before inverting.
             with np.errstate(divide="ignore"):
                 c_acc = np.where(
                     np.isfinite(edge_tree.p_e_values) & (edge_tree.p_e_values > 0),
@@ -276,19 +264,16 @@ class QuadratureTreeSHAP:
                 n_points = max((self.max_features_per_path + 1) // 2, 1)
             self._t, self._w = _gauss_legendre_unit(n_points)
 
-        self._cpp_available = False
-        if implementation in ("auto", "cpp"):
-            try:
-                from .cext import (
-                    quadrature_tree_shap,  # ty: ignore[unresolved-import]  # noqa: F401
-                )
-
-                self._cpp_available = True
-            except ImportError:
-                if implementation == "cpp":
-                    msg = "The QuadratureTreeSHAP C extension is not available in this build."
-                    raise ImportError(msg) from None
-        self._implementation = implementation
+        try:
+            from .cext import (
+                quadrature_tree_shap,  # ty: ignore[unresolved-import]  # noqa: F401
+            )
+        except ImportError:
+            msg = (
+                "The QuadratureTreeSHAP C extension is not available in this build; "
+                "reinstall shapiq from a platform wheel."
+            )
+            raise ImportError(msg) from None
         self._kernel_args: tuple | None = None
 
     def explain(self, x: np.ndarray) -> InteractionValues:
@@ -307,10 +292,8 @@ class QuadratureTreeSHAP:
 
         if self._trivial_computation:
             interactions = np.zeros(0, dtype=float)
-        elif self._cpp_available and self._implementation in ("auto", "cpp"):
-            interactions = self._explain_cpp(x_relevant)
         else:
-            interactions = self._explain_numpy(x_relevant)
+            interactions = self._explain_cpp(x_relevant)
 
         return InteractionValues(
             values=interactions,
@@ -327,132 +310,6 @@ class QuadratureTreeSHAP:
     def explain_function(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley interaction values (alias of ``explain``)."""
         return self.explain(x)
-
-    def _explain_numpy(self, x_relevant: np.ndarray) -> np.ndarray:
-        """Reference numpy implementation of the quadrature traversal for one instance."""
-        t, w = self._t, self._w
-        one_minus_t = 1.0 - t
-        n_quad = t.shape[0]
-        arrays = self._arrays
-        children_left = arrays["children_left"]
-        children_right = arrays["children_right"]
-        parents = arrays["parents"]
-        ancestors = arrays["ancestors"]
-        features = arrays["features"]
-        thresholds = arrays["thresholds"]
-        c_acc = arrays["c_acc"]
-        values = arrays["values"]
-        cat_values = arrays["cat_values"]
-        cat_start = arrays["cat_start"]
-        cat_size = arrays["cat_size"]
-        children_left_default = arrays["children_left_default"]
-        strict = self._decision_type == "<"
-
-        offsets = self._output_offsets
-        out = np.zeros(self._output_size, dtype=float)
-
-        act = np.zeros(self._n_nodes_total, dtype=bool)
-        A = np.ones((self._max_depth + 2, n_quad))
-        E = np.zeros((self._max_depth + 2, n_quad))
-        live_g: dict[int, np.ndarray] = {}
-        path_feats: list[int] = []
-
-        def goes_left(node: int, value: float) -> bool:
-            if np.isnan(value):
-                return bool(children_left_default[node])
-            if cat_size[node] > 0:
-                start, end = cat_start[node], cat_start[node] + cat_size[node]
-                position = int(np.searchsorted(cat_values[start:end], int(value)))
-                return position < end - start and int(cat_values[start + position]) == int(value)
-            if strict:
-                return value < thresholds[node]
-            return value <= thresholds[node]
-
-        def edge_factors(node: int) -> tuple[np.ndarray, np.ndarray]:
-            """The homogenized factor ``u`` and the Banzhaf ratio ``g = (h - c)/u`` at a node."""
-            h = 1.0 if act[node] else 0.0
-            c = c_acc[node]
-            u = h * t + c * one_minus_t
-            return u, (h - c) / u
-
-        def extract(node: int, depth: int) -> None:
-            """Add the edge's contributions to all interactions it completes.
-
-            An interaction receives updates at every edge of every member feature whose other
-            members are already on the path; the ancestor term makes those updates telescope,
-            so each leaf ends up counted exactly once with each member's deepest factor.
-            """
-            feature = int(features[parents[node]])
-            ancestor = int(ancestors[node])
-            if ancestor >= 0 and not act[ancestor]:
-                return  # both telescoping terms cancel exactly once the hot chain is broken
-            _, g_new = edge_factors(node)
-            delta = g_new if ancestor < 0 else g_new - edge_factors(ancestor)[1]
-            weighted = w * E[depth] * delta
-            if self._min_order == 1:
-                out[offsets[1] + feature] += weighted.sum()
-            if self._max_order > 1:
-                others = [j for j in path_feats if j != feature]
-                for order in range(max(self._min_order, 2), self._max_order + 1):
-                    lookup = self._order_lookups[order]
-                    for subset in combinations(others, order - 1):
-                        gamma = weighted
-                        for j in subset:
-                            gamma = gamma * live_g[j]
-                        position = lookup[tuple(sorted((*subset, feature)))]
-                        out[offsets[order] + position] += gamma.sum()
-
-        def restore(node: int) -> None:
-            """Undo this edge's live-state mutation when leaving its subtree."""
-            feature = int(features[parents[node]])
-            ancestor = int(ancestors[node])
-            if ancestor >= 0:
-                live_g[feature] = edge_factors(ancestor)[1]
-            else:
-                del live_g[feature]
-                path_feats.remove(feature)
-
-        # iterative depth-first traversal per tree; stages: 0 enter, 1 after left,
-        # 2 after right, 3 leave
-        for tree_root in self._roots:
-            root = int(tree_root)
-            stack: list[tuple[int, int, int]] = [(root, 0, 0)]
-            while stack:
-                node, depth, stage = stack.pop()
-                if stage == 0:
-                    ancestor = int(ancestors[node])
-                    if node != root:
-                        if ancestor >= 0:
-                            act[node] &= act[ancestor]
-                        u_new, g_new = edge_factors(node)
-                        if ancestor >= 0:
-                            A[depth] = A[depth - 1] * (u_new / edge_factors(ancestor)[0])
-                        else:
-                            A[depth] = A[depth - 1] * u_new
-                            path_feats.append(int(features[parents[node]]))
-                        live_g[int(features[parents[node]])] = g_new
-                    left, right = int(children_left[node]), int(children_right[node])
-                    if left >= 0:
-                        go_left = goes_left(node, x_relevant[int(features[node])])
-                        act[left], act[right] = go_left, not go_left
-                        stack.append((node, depth, 3))
-                        stack.append((node, depth, 2))
-                        stack.append((right, depth + 1, 0))
-                        stack.append((node, depth, 1))
-                        stack.append((left, depth + 1, 0))
-                    else:  # leaf
-                        E[depth] = A[depth] * values[node]
-                        if node != root:
-                            extract(node, depth)
-                            restore(node)
-                elif stage == 1:
-                    E[depth] = E[depth + 1]
-                elif stage == 2:
-                    E[depth] += E[depth + 1]
-                elif node != root:  # stage 3 on a non-root internal node
-                    extract(node, depth)
-                    restore(node)
-        return out
 
     def _explain_cpp(self, x_relevant: np.ndarray) -> np.ndarray:
         """C-extension implementation: one batched kernel call over all trees."""

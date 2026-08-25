@@ -14,8 +14,18 @@ from sklearn.tree import DecisionTreeRegressor
 from shapiq.tree import QuadratureTreeSHAP, TreeExplainer, TreeSHAPIQ
 from shapiq.tree.linear import LinearTreeSHAP
 from shapiq.utils.sets import powerset
+from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.quadrature_numpy_reference import (
+    numpy_explain,
+)
 
 IMPLEMENTATIONS = ["numpy", "cpp"]
+
+
+def _explain(explainer, x, implementation):
+    """Route through the shipped C kernel or the numpy test oracle."""
+    if implementation == "numpy":
+        return numpy_explain(explainer, x)
+    return explainer.explain(x)
 
 
 def _all_interactions(n_features: int, min_order: int, max_order: int):
@@ -35,9 +45,9 @@ def test_matches_treeshapiq_on_sklearn_regressor(
     """Quadrature values match TreeSHAP-IQ on a shallow scikit-learn regressor."""
     x = background_reg_data[0]
     reference = TreeSHAPIQ(dt_reg_model, max_order=max_order, index=index).explain(x)
-    result = QuadratureTreeSHAP(
-        dt_reg_model, max_order=max_order, index=index, implementation=implementation
-    ).explain(x)
+    result = _explain(
+        QuadratureTreeSHAP(dt_reg_model, max_order=max_order, index=index), x, implementation
+    )
     assert result.baseline_value == pytest.approx(reference.baseline_value)
     n_features = background_reg_data.shape[1]
     for interaction in _all_interactions(n_features, 1, max_order):
@@ -88,7 +98,7 @@ def test_matches_lineartreeshap_shapley_values(dt_reg_model, background_reg_data
     """Order-1 quadrature values match LinearTreeSHAP."""
     x = background_reg_data[0]
     reference = LinearTreeSHAP(dt_reg_model).explain_function(x)
-    result = QuadratureTreeSHAP(dt_reg_model, index="SV", implementation=implementation).explain(x)
+    result = _explain(QuadratureTreeSHAP(dt_reg_model, index="SV"), x, implementation)
     for feature in range(background_reg_data.shape[1]):
         assert result[(feature,)] == pytest.approx(reference[(feature,)], abs=1e-10)
 
@@ -97,12 +107,9 @@ def test_numpy_and_cpp_agree(dt_reg_model, background_reg_data):
     """The two implementations agree to machine precision."""
     x = background_reg_data[0]
     for index, order in (("SV", 1), ("SII", 3), ("BII", 2)):
-        a = QuadratureTreeSHAP(
-            dt_reg_model, max_order=order, index=index, implementation="numpy"
-        ).explain(x)
-        b = QuadratureTreeSHAP(
-            dt_reg_model, max_order=order, index=index, implementation="cpp"
-        ).explain(x)
+        explainer = QuadratureTreeSHAP(dt_reg_model, max_order=order, index=index)
+        a = numpy_explain(explainer, x)
+        b = explainer.explain(x)
         assert np.allclose(a.values, b.values, atol=1e-12)
 
 
@@ -224,9 +231,7 @@ def test_matches_brute_force_interactions(index, implementation):
     model = DecisionTreeRegressor(max_depth=5, random_state=0).fit(X, y)
     x = X[0]
     paths = _paths_of_tree(model, x)
-    result = QuadratureTreeSHAP(
-        model, max_order=3, index=index, implementation=implementation
-    ).explain(x)
+    result = _explain(QuadratureTreeSHAP(model, max_order=3, index=index), x, implementation)
     for subset in _all_interactions(5, 1, 3):
         expected = _brute_interaction(paths, 5, subset, banzhaf=index == "BII")
         assert result[subset] == pytest.approx(expected, abs=1e-12)
@@ -249,11 +254,11 @@ def deep_sparse_tree():
 def test_deep_tree_efficiency(deep_sparse_tree, implementation):
     """Shapley values satisfy efficiency on trees far beyond the polynomial explainers' limit."""
     model, X = deep_sparse_tree
-    explainer = QuadratureTreeSHAP(model, index="SV", implementation=implementation)
+    explainer = QuadratureTreeSHAP(model, index="SV")
     for row in range(3):
         x = X[row]
         prediction = model.predict(x.reshape(1, -1))[0]
-        result = explainer.explain(x)
+        result = _explain(explainer, x, implementation)
         total = sum(result[(feature,)] for feature in range(80)) + result.baseline_value
         assert total == pytest.approx(prediction, abs=1e-8)
 
@@ -292,14 +297,22 @@ def test_zero_cover_internal_subtree(implementation):
         "node_sample_weight": np.asarray([100.0, 100.0, 0.0, 0.0, 0.0]),
         "values": np.asarray([0.0, 1.0, 0.0, 5.0, 9.0]),
     }
-    explainer = QuadratureTreeSHAP(dead_tree, index="SV", implementation=implementation)
+    explainer = QuadratureTreeSHAP(dead_tree, index="SV")
     assert explainer.empty_prediction == pytest.approx(1.0)
     # cold routing (reachable leaf): the dead region must not leak into the attribution
-    cold = explainer.explain(np.asarray([-1.0]))
+    cold = _explain(explainer, np.asarray([-1.0]), implementation)
     assert cold[(0,)] == pytest.approx(0.0, abs=1e-12)
     # hot routing into the dead region: prediction = 9.0, so SV = prediction - baseline
-    hot = explainer.explain(np.asarray([2.0]))
+    hot = _explain(explainer, np.asarray([2.0]), implementation)
     assert hot[(0,)] == pytest.approx(8.0, abs=1e-12)
+
+    # TreeSHAPIQ computes such trees correctly; LinearTreeSHAP cannot represent the
+    # infinite p_e chain and must refuse instead of silently returning NaN
+    reference = TreeSHAPIQ(dead_tree, max_order=1, index="SV")
+    assert reference.explain(np.asarray([-1.0]))[(0,)] == pytest.approx(0.0, abs=1e-12)
+    assert reference.explain(np.asarray([2.0]))[(0,)] == pytest.approx(8.0, abs=1e-12)
+    with pytest.raises(ValueError, match="zero-cover"):
+        LinearTreeSHAP(dead_tree)
 
 
 # ------------------------------- edge cases and API -------------------------------
@@ -340,13 +353,11 @@ def test_dict_tree_model_input():
 
 
 def test_invalid_arguments(dt_reg_model):
-    """Invalid indices, orders, and implementations are rejected."""
+    """Invalid indices and orders are rejected."""
     with pytest.raises(ValueError, match="not supported"):
         QuadratureTreeSHAP(dt_reg_model, index="STII")
     with pytest.raises(ValueError, match="order"):
         QuadratureTreeSHAP(dt_reg_model, max_order=0)
-    with pytest.raises(ValueError, match="implementation"):
-        QuadratureTreeSHAP(dt_reg_model, implementation="fortran")
 
 
 # ------------------------------- TreeExplainer integration -------------------------------
@@ -385,3 +396,12 @@ def test_tree_explainer_banzhaf_without_woodelf(dt_reg_model, background_reg_dat
     reference = QuadratureTreeSHAP(dt_reg_model, index=index, max_order=max_order).explain(x)
     for interaction in _all_interactions(background_reg_data.shape[1], 1, max_order):
         assert result[interaction] == pytest.approx(reference[interaction], abs=1e-12)
+
+
+def test_missing_cext_raises(dt_reg_model, monkeypatch):
+    """A build without the C extension fails loudly at construction (packaging error)."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "shapiq.tree.quadrature.cext", None)
+    with pytest.raises(ImportError, match="C extension"):
+        QuadratureTreeSHAP(dt_reg_model)

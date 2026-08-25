@@ -127,6 +127,14 @@ class LinearTreeSHAP:
         )
         max_features_per_path = int(self.edge_tree.edge_heights.max())
         check_features_per_path(max_features_per_path, algorithm="LinearTreeSHAP")
+        # non-finite p_e marks unreachable (zero-cover) subtrees, which the polynomial
+        # representation cannot express (it would silently return NaN for some instances)
+        if not np.isfinite(self.edge_tree.p_e_values).all():
+            msg = (
+                "This tree contains unreachable (zero-cover) subtrees, which LinearTreeSHAP "
+                "cannot represent; use QuadratureTreeSHAP (the TreeExplainer default)."
+            )
+            raise ValueError(msg)
         self.N = get_N_prime(self.edge_tree.max_depth)
         self.Base = base_func(self.edge_tree.max_depth)
         self.Offset = np.vander(self.Base + 1).T[::-1]
@@ -225,12 +233,8 @@ class LinearTreeSHAP:
         )
         weights = 1 / self.edge_tree.p_e_values
 
-        # The kernel routes ``x`` honouring the model's split convention (passed as the
-        # ``decision_type`` string, same as :class:`InterventionalTreeSHAPIQ`):
-        # XGBoost-style trees use strict ``x < threshold``, every other supported family
-        # ``x <= threshold``. This must match ``TreeModel.predict_one`` exactly, otherwise
-        # instances lying on a split threshold are routed to the wrong leaf and the
-        # Shapley efficiency property breaks.
+        # routing must match ``TreeModel.predict_one`` exactly (strict ``<`` for
+        # XGBoost-style trees), else instances on a split threshold break efficiency
         linear_tree_shap_iterative(
             np.ascontiguousarray(weights, dtype=np.float64),
             np.ascontiguousarray(self.edge_tree.empty_predictions, dtype=np.float64),

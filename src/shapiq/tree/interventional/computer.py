@@ -37,8 +37,7 @@ def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarra
     R = []
     leaf_vals = []
 
-    # Iterative DFS — avoids Python recursion overhead and recursion-depth limits.
-    # Stack entries: (node_id, e_set, r_set)
+    # iterative DFS; stack entries: (node_id, e_set, r_set)
     stack = [(0, frozenset(), frozenset())]
     while stack:
         node_id, e_set, r_set = stack.pop()
@@ -69,8 +68,7 @@ def obtain_E_R_values_point(
     R = []
     leaf_vals = []
 
-    # Iterative DFS — avoids Python recursion overhead and recursion-depth limits.
-    # Stack entries: (node_id, e_set, r_set)
+    # iterative DFS; stack entries: (node_id, e_set, r_set)
     stack = [(0, frozenset(), frozenset())]
     while stack:
         node_id, e_set, r_set = stack.pop()
@@ -182,7 +180,6 @@ class InterventionalTreeSHAPIQ:
                 When supplied, overrides ``index`` and triggers building a
                 precomputed lookup table. Defaults to ``None``.
         """
-        # If Classification model and class_index is None, set to 1
         if class_index is None and hasattr(model, "predict_proba"):
             class_index = 1
         self.tree = validate_tree_model(model, class_label=class_index)
@@ -203,12 +200,9 @@ class InterventionalTreeSHAPIQ:
             self.weight_fn = weight_fn
             self.index = "CUSTOM"
             self.look_up_table = self._build_custom_weight_table()
-        # The interventional baseline is computed lazily on first access (see baseline_value).
         self._baseline_value: float | None = None
 
-        # The sparse C path needs the per-tree flattened arrays. Populate them
-        # whenever we'll route there: max_order > 3 (always sparse) or when the
-        # dense flatten path's result buffer would exceed our memory budget.
+        # the sparse C path needs the per-tree flattened arrays
         n_features_hint = int(self.reference_data.shape[1])
         self._use_sparse_path = (
             self.max_order > 3
@@ -248,7 +242,6 @@ class InterventionalTreeSHAPIQ:
         Returns:
             The mean ensemble prediction over the reference data.
         """
-        # the baseline is just the mean ensemble prediction over the reference data;
         # predict_ensemble routes through TreeModel.predict_one, which applies cast_input
         return float(predict_ensemble(trees, np.asarray(reference_data, dtype=np.float64)).mean())
 
@@ -276,7 +269,6 @@ class InterventionalTreeSHAPIQ:
 
         self.n_features = self.reference_data.shape[1]
 
-        # Prepare tree arrays for C++
         values_list = [tree.values.astype(np.float64).flatten() for tree in self.tree]
         features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
         children_left_list = [tree.children_left.astype(np.int64).flatten() for tree in self.tree]
@@ -323,7 +315,6 @@ class InterventionalTreeSHAPIQ:
         self.leaf_vals = np.array(leaf_vals_list, dtype=np.float64)
         n_leafs = len(E_list)
 
-        # Per-leaf sizes — computed once and reused for all flattened arrays.
         e_sizes = np.array([len(e) for e in E_list], dtype=np.int64)
         r_sizes = np.array([len(r) for r in R_list], dtype=np.int64)
         er_sizes = e_sizes + r_sizes
@@ -331,7 +322,6 @@ class InterventionalTreeSHAPIQ:
         self.n_features_e = e_sizes
         self.n_features_r = r_sizes
 
-        # Build flatten numpy arrays
         if n_leafs > 0:
             self.E_R_flatten = np.concatenate(
                 [np.concatenate([e, r]) for e, r in zip(E_list, R_list, strict=False)]
@@ -476,8 +466,8 @@ class InterventionalTreeSHAPIQ:
             self._preprocess_tree(x)
         computation_index = get_computation_index(self.index)
         interactions = {}
-        # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects, pairwise, and triple interactions.
-        # We also redirect to sparse for orders <= 3 when n_features is large enough that the dense flatten buffer would blow memory (see _DENSE_FLATTEN_MAX_RESULT_SIZE). _use_sparse_path is set in __init__.
+        # the flatten kernel only covers orders <= 3 within the dense memory budget;
+        # _use_sparse_path is set in __init__
         if self._use_sparse_path:
             interactions = compute_interactions_batched_sparse(
                 self.values_list,

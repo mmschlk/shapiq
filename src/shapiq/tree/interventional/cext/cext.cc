@@ -189,7 +189,7 @@ static void decref_cat_array_triples(std::vector<std::tuple<PyArrayObject *, PyA
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args)
 {
     /**
-     * This function is an extension of the batched version of compute_interactions, which computes interactions in parallel for each tree and returns a sparse representation of the interactions as a dictionary mapping feature subsets to interaction values.
+     * Computes interactions for each tree and returns a sparse representation as a dictionary mapping feature subsets to interaction values.
      * The input parameters are the same as the batched version, but the output is different to accommodate the sparse representation.
      * This function should be used when the max_order exceeds 2.
      * The funcion has the following input parameters( in exact order):

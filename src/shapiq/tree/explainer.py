@@ -85,12 +85,11 @@ class TreeExplainer(Explainer):
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
       ``backend`` parameter overrides this routing.
 
-    The computation classes behind both modes
-    (:class:`~shapiq.tree.quadrature.QuadratureTreeSHAP`,
-    :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ`,
-    :class:`~shapiq.tree.linear.computer.LinearTreeSHAP`, and
+    The two computation classes (:class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` and
     :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`) live in
-    :mod:`shapiq.tree` and can also be used directly.
+    :mod:`shapiq.tree` and can be used directly, as can the standalone reference algorithms
+    :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` and
+    :class:`~shapiq.tree.linear.computer.LinearTreeSHAP`.
 
     Examples:
         Shapley values for a random forest — the attributions sum to the prediction
@@ -199,7 +198,6 @@ class TreeExplainer(Explainer):
             )
             raise ValueError(msg)
 
-        # validate and parse model
         self._trees: list[TreeModel] = validate_tree_model(model, class_label=class_index)
         self._n_trees = len(self._trees)
 
@@ -301,7 +299,8 @@ class TreeExplainer(Explainer):
     def _should_use_woodelf(self, number_of_explained_instances: int) -> bool:
         """Decide whether Woodelf or the shapiq implementation computes the explanation.
 
-        Path-dependent explanations are always computed by the shapiq quadrature kernel. In
+        Path-dependent explanations are computed by the shapiq quadrature kernel (unless
+        ``backend="woodelf"`` forces Woodelf). In
         interventional mode the cut-off is ``n * m >= 100``, where ``n`` is the number of
         explained instances and ``m`` is the size of the reference dataset, based on the
         experiment summarized in the report below:
@@ -477,8 +476,7 @@ class TreeExplainer(Explainer):
             baseline_value=self.baseline_value,
         )
         lowest = max(self._min_order, 1)
-        # the isinstance check narrows out the scalar ``()`` baseline entry, which the order
-        # filter drops anyway
+        # the isinstance check drops the scalar ``()`` baseline entry
         return {
             subset: values
             for subset, values in aggregated.items()
@@ -538,8 +536,6 @@ class TreeExplainer(Explainer):
 
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
-            # add the baseline value to the empty prediction
-            # might break for some edge cases
             final_explanation.interactions[()] = float(final_explanation.baseline_value)
 
         if self._min_order > final_explanation.min_order:
@@ -640,9 +636,8 @@ class TreeExplainer(Explainer):
                 woodelf_result, n_players=n_players, n_instances=len(X)
             )
 
-        # build the per-tree explainers once up front: the joblib workers pickle this object,
-        # so initializing here avoids re-constructing them (and re-emitting construction-time
-        # warnings or errors) once per parallel task
+        # initialize before joblib pickles this object, so workers don't re-construct
+        # the explainer (or re-emit construction-time warnings) once per task
         if not self._explainers_initialized:
             self._init_explainers()
         shapiq_results = super().explain_X(

@@ -92,7 +92,11 @@ def _assert_efficiency(model, X: np.ndarray, *, path: str) -> None:
         # Sanity-check that TreeExplainer actually defaults to the quadrature algorithm.
         assert isinstance(explainer._pathdependent_explainer, QuadratureTreeSHAP)
     elif path == "linear":
-        explainer = LinearTreeSHAP(model=model)
+        try:
+            explainer = LinearTreeSHAP(model=model)
+        except ValueError as error:  # trees with unreachable subtrees are refused by design
+            assert "zero-cover" in str(error)
+            pytest.skip("LinearTreeSHAP refuses trees with unreachable zero-cover subtrees")
     else:
         explainer = TreeSHAPIQ(model=model, max_order=1, index="SV")
 

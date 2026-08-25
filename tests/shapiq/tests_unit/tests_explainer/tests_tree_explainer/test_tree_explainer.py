@@ -362,7 +362,7 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
-def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
+def test_xgboost_matches_shap(xgb_clf_model, background_clf_data):
     """shapiq matches SHAP on the instance that historically exposed the float32 routing gap.
 
     This test used to assert that shapiq and SHAP *disagree* on this instance unless the
