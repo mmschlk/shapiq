@@ -13,6 +13,9 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+constraints = [{ name = "treelite", specifier = ">=4.7.1" }]
+
 [[package]]
 name = "absl-py"
 version = "2.4.0"
@@ -4608,20 +4611,20 @@ wheels = [
 
 [[package]]
 name = "treelite"
-version = "4.7.0"
+version = "4.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "packaging" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/dd/78886789f87a6d9cb3d78241fdd750c13123ea4c64df03bcc717ee5b5d26/treelite-4.7.0.tar.gz", hash = "sha256:6d1a0d990f4972e77bad6b42a6e0b7d68527d790564bd42d7d8d48ae1f14dc4c", size = 110239, upload-time = "2026-03-06T23:25:38.477Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/f1/025d77b7de934438a563e4019a4a7f2163629eaa8727fd57c4806ef3554c/treelite-4.7.1.tar.gz", hash = "sha256:afdf9ee8f2deff3b538ebfb72d67e3bdeeff63633ddb36f1ac84f0d39fc9105d", size = 110126, upload-time = "2026-08-25T00:56:30.251Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/8e/ee9595a6c6a839cc79a919312805af4ed85906a96d3ab1446b0e800805e3/treelite-4.7.0-py3-none-macosx_10_15_x86_64.macosx_11_0_x86_64.macosx_12_0_x86_64.whl", hash = "sha256:dac8a400a3f08ed4b8611289e2f92f589eadd95b97857d118597a5db7b489ecb", size = 445207, upload-time = "2026-03-06T23:25:30.974Z" },
-    { url = "https://files.pythonhosted.org/packages/8a/46/2de9011d8f618dc60087a4cfee2ab4d1caf437b83fc552554b8dd4530b26/treelite-4.7.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:54f8b46a1aaa531d1491a5429cf7ab9816341cefc462096a8c4a2a03acbcf46b", size = 418136, upload-time = "2026-03-06T23:25:32.649Z" },
-    { url = "https://files.pythonhosted.org/packages/60/6a/38c21bea47fd08d82267b36baae23edb610749bf319136fceb6871266207/treelite-4.7.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:adf49cdc004437615468b54255eb04f65e467803e8b0c2f06481fdd873f25f59", size = 939359, upload-time = "2026-03-06T23:25:33.963Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/a2/ac3aad5c77f85f47890dd929b2690c2ba3794ebcbb5384c19aa28d222066/treelite-4.7.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:d616f1df2b8c7c6497cda2b8434fbcefe07fa897d269bdde3b48b11fd62393d9", size = 956840, upload-time = "2026-03-06T23:25:35.207Z" },
-    { url = "https://files.pythonhosted.org/packages/73/a8/bea7cea3ee860ec24d0be304f9a5433f32e80b547db51bfe971fb41b3825/treelite-4.7.0-py3-none-win_amd64.whl", hash = "sha256:c9c5af96685d7636bdaaa5604973ce63cc85d4f47fc2265ab94cf5247511e0cb", size = 515640, upload-time = "2026-03-06T23:25:37.433Z" },
+    { url = "https://files.pythonhosted.org/packages/40/69/e6e4d754d39ca7640afc8c578f3aeb0a6a2f20053a24eaad715b4523553e/treelite-4.7.1-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:54430a3d0ec465479e63cb6a7875882f1d813d048a64963639e4c46cfc4d1189", size = 459839, upload-time = "2026-08-25T00:56:23.572Z" },
+    { url = "https://files.pythonhosted.org/packages/88/67/4f38a812bcf75c5774c054d5bdfd64c6e2d9e091c27f6e7cb1477702fa52/treelite-4.7.1-py3-none-macosx_12_0_arm64.whl", hash = "sha256:519134ad4d67bbfcd1bb4db4a108d95537cffe72ad78b24a3252ceff3ac4b028", size = 427430, upload-time = "2026-08-25T00:56:25.061Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/f6/89d9d345f059bc06dffd7494b5edb94dd14e15cf1cc194e66f8a674047da/treelite-4.7.1-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:7fb8e5a92751342c60be1f3e8ac68d83941c3ae0695506b0ba14679db1f7d1e4", size = 875716, upload-time = "2026-08-25T00:56:26.45Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/80/788798e6f2e7efb502ccfafec38528ae5640a7e22117a75bbd379d2e50d9/treelite-4.7.1-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:52fb6ee5191a63cb508f6e0af860a24090fae5507fe1228ea801daa0b816da06", size = 921199, upload-time = "2026-08-25T00:56:27.651Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/e8/02e4143863969c4440ca78dbea857deeb26f7d588ecbfc03d253cf437052/treelite-4.7.1-py3-none-win_amd64.whl", hash = "sha256:189aced2a79505e5e23c18495741818ee4700ff2969a5c25cee31f377d91ad87", size = 515978, upload-time = "2026-08-25T00:56:28.921Z" },
 ]
 
 [[package]]

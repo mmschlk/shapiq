@@ -366,10 +366,6 @@ class TreeExplainer(Explainer):
             The values in the Woodelf format ``{interaction_tuple: ndarray of shape
             (n_instances,)}``, or ``None`` if the configuration is not supported by Woodelf
             (e.g. an unsupported index or a too deep tree).
-
-        Raises:
-            RuntimeError: If woodelf is installed but its treelite backend cannot load its
-                native library (e.g. a missing OpenMP runtime on macOS).
         """
         try:
             import pandas as pd
@@ -404,21 +400,9 @@ class TreeExplainer(Explainer):
             return None
 
         class_index = self._class_label if self._class_label is not None else 1
-        try:
-            loaded_model = load_decision_tree_ensemble_model(
-                self.model, range(X.shape[1]), class_index=class_index
-            )
-        except OSError as error:
-            # treelite imports lazily inside woodelf's model parsing, so a macOS wheel that
-            # cannot load libomp surfaces here as an OSError.
-            msg = (
-                "woodelf is installed but its treelite backend failed to load. On macOS this "
-                "usually means the OpenMP runtime is missing: install it with "
-                "`brew install libomp` and set "
-                "`DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix libomp)/lib`. "
-                "See https://github.com/dmlc/treelite/issues/678 for details."
-            )
-            raise RuntimeError(msg) from error
+        loaded_model = load_decision_tree_ensemble_model(
+            self.model, range(X.shape[1]), class_index=class_index
+        )
 
         # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
         # yet; remove this fallback once it can.

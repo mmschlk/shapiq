@@ -329,3 +329,9 @@ dev = [
     {include-group = "lint"},
     {include-group = "all_ml"},
 ]
+
+[tool.uv]
+# Not a dependency: treelite only enters the environment through woodelf-explainer.
+# Wheels before 4.7.1 cannot find Homebrew's libomp on macOS
+# (https://github.com/dmlc/treelite/issues/678); drop this once woodelf pins it.
+constraint-dependencies = ["treelite>=4.7.1"]
