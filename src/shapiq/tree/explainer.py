@@ -211,7 +211,7 @@ class TreeExplainer(Explainer):
                 "TreeExplainer(..., mode='interventional', reference_dataset=...)."
             )
             raise ValueError(msg)
-        self._mode = mode
+        self._mode: TREE_MODES = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
         if backend not in ("auto", "woodelf", "shapiq"):

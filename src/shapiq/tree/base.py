@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -10,6 +10,9 @@ from .utils import compute_empty_prediction
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+DecisionType = Literal["<=", "<"]
+InputPrecision = Literal["float64", "float32"]
 
 
 class TreeModel:
@@ -84,14 +87,14 @@ class TreeModel:
     feature_ids: set[int]
     root_node_id: int
     n_nodes: int
-    decision_type: str
+    decision_type: DecisionType
     nodes: NDArray[np.int_]
     feature_map_original_internal: dict[int, int]
     feature_map_internal_original: dict[int, int]
-    original_output_type: str = "raw"  # not used at the moment
+    original_output_type: Literal["raw", "probability"] = "raw"  # not used at the moment
     intercepts: NDArray[np.floating]
     coeffs: NDArray[np.floating]
-    input_precision: str = "float64"
+    input_precision: InputPrecision = "float64"
 
     def __init__(
         self,
@@ -110,16 +113,16 @@ class TreeModel:
         root_node_id: int | None = None,
         n_nodes: int | None = None,
         nodes: NDArray[np.int_] | None = None,
-        decision_type: str | None = None,
+        decision_type: DecisionType | None = None,
         feature_map_original_internal: dict[int, int] | None = None,
         feature_map_internal_original: dict[int, int] | None = None,
-        original_output_type: str = "raw",  # noqa: ARG002
+        original_output_type: Literal["raw", "probability"] = "raw",  # noqa: ARG002
         intercepts: NDArray[np.floating] | None = None,  # noqa: ARG002
         coeffs: NDArray[np.floating] | None = None,  # noqa: ARG002
         cat_values: NDArray[np.int_] | None = None,
         cat_start: NDArray[np.int_] | None = None,
         cat_size: NDArray[np.int_] | None = None,
-        input_precision: str = "float64",
+        input_precision: InputPrecision = "float64",
     ) -> None:
         """Initialize the :class:`TreeModel`.
 
@@ -285,7 +288,11 @@ class TreeModel:
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
 
-        # Set decision function
+        # Set decision function; untyped callers (dict conversions) reach this at runtime, and
+        # an unknown comparison would otherwise silently route like "<="
+        if decision_type is not None and decision_type not in ("<=", "<"):
+            msg = f"decision_type must be '<=' or '<', got {decision_type!r}."
+            raise ValueError(msg)
         self.decision_type = decision_type if decision_type is not None else "<="
 
     def goes_left(self, node_id: int, value: float) -> bool:

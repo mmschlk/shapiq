@@ -38,7 +38,7 @@ from shapiq.tree.validation import validate_tree_model
 from shapiq.utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
-    from shapiq.tree.base import TreeModel
+    from shapiq.tree.base import DecisionType, TreeModel
     from shapiq.typing import Model
 
 QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
@@ -130,7 +130,7 @@ class QuadratureTreeSHAP:
             raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
-        self._index: str = index
+        self._index: QuadratureTreeSHAPIndices = index
         self._base_index: str = get_computation_index(self._index)
 
         # validate and parse the model; the validated trees are owned by this explainer
@@ -260,7 +260,7 @@ class QuadratureTreeSHAP:
         self._n_nodes_total: int = node_offset
         self._roots = np.array(roots, dtype=np.int32)
         self._arrays = {key: np.concatenate(arrs) for key, arrs in parts.items()}
-        self._decision_type: str = self._trees[0].decision_type
+        self._decision_type: DecisionType = self._trees[0].decision_type
 
         # quadrature rule: exact for the degree-(d - order) integrands; Banzhaf indices are a
         # single evaluation of the weighted Banzhaf polynomial at p = 1/2

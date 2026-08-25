@@ -99,7 +99,7 @@ class TreeSHAPIQ:
             raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
-        self._index: str = index
+        self._index: TreeSHAPIQIndices = index
         self._base_index: str = get_computation_index(self._index)
 
         # validate and parse model; ensembles are handled by one child explainer per tree
