@@ -32,7 +32,7 @@ FAITHFUL_INDEX_ORDER = [("FSII", 2), ("FBII", 2)]
 # ---------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("index", ["SV", "k-SII", "FSII", "FBII", "SII"])
+@pytest.mark.parametrize("index", ["SV", "k-SII", "FSII", "FBII", "SII", "STII"])
 def test_setup_approximator_proxyshap_string(index):
     """The ``"proxyshap"`` string resolves to a configured ProxySHAP instance."""
     approx = setup_approximator(
@@ -66,14 +66,21 @@ def test_proxyshap_tabular_exact_at_full_budget(
 ):
     """ProxySHAP matches the exact values at full budget for linear indices.
 
-    For cardinal-probabilistic indices (SV/SII/k-SII) the proxy readout plus the residual
+    For cardinal-probabilistic indices (SV/SII/k-SII) the proxy readout plus the MSR residual
     adjustment is an exact decomposition of the game, so at a full coalition budget the
     explainer must reproduce the :class:`~shapiq.game_theory.exact.ExactComputer` result.
     """
+    approximator = ProxySHAP(
+        n=NR_FEATURES,
+        max_order=max_order,
+        index=index,
+        adjustment=True,
+        random_state=42,
+    )
     explainer = TabularExplainer(
         model=dt_reg_model.predict,
         data=background_reg_data,
-        approximator="proxyshap",
+        approximator=approximator,
         index=index,
         max_order=max_order,
         random_state=42,
@@ -115,14 +122,13 @@ def test_proxyshap_tabular_faithful_runs(dt_reg_model, background_reg_data, inde
     assert np.all(np.isfinite(iv.values))
 
 
-@pytest.mark.parametrize("adjustment", ["none", "msr", "svarm", "kernel"])
-def test_proxyshap_tabular_adjustment_methods(dt_reg_model, background_reg_data, adjustment):
-    """All adjustment methods integrate through a custom ProxySHAP instance and TabularExplainer."""
+def test_proxyshap_tabular_custom_instance(dt_reg_model, background_reg_data):
+    """A custom ProxySHAP instance (MSR residual adjustment) integrates through TabularExplainer."""
     approximator = ProxySHAP(
         n=NR_FEATURES,
         max_order=2,
         index="k-SII",
-        adjustment=adjustment,
+        adjustment=True,
         random_state=42,
     )
     explainer = TabularExplainer(
@@ -148,7 +154,6 @@ def test_proxyshap_linear_proxy_tabular(dt_reg_model, background_reg_data, index
         max_order=max_order,
         index=index,
         proxy_model=LinearRegression(),
-        adjustment="none",
         random_state=42,
     )
     explainer = TabularExplainer(

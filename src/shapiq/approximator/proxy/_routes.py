@@ -9,7 +9,6 @@ kept separate from the approximator class itself:
   transform its base estimator type selects.
 * :func:`_extract_proxy_interactions`: read interaction values out of an *already-fitted* proxy
   (linear coefficient read-out vs. exact tree read-out), dispatching on the fitted model's type.
-* :class:`ResidualGame`: the game wrapping a proxy's residuals for the adjustment approximator.
 """
 
 from __future__ import annotations
@@ -21,7 +20,6 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
-from shapiq.game import Game
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
@@ -32,7 +30,7 @@ if TYPE_CHECKING:
     from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
 
-ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
+ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV"]
 
 
 def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
@@ -252,32 +250,3 @@ def extract_linear_interactions(
 
     # Now build your coefficient dict safely
     return {idx: float(coefficients[col]) for idx, col in interaction_to_col.items()}
-
-
-class ResidualGame(Game):
-    """Residual game class for adjusting the proxy model's predictions.
-
-    The residual values are precomputed on the coalitions that :class:`ProxySHAP` sampled
-    and returned for every query. This is correct only because :class:`ProxySHAP` forces a
-    fixed ``random_state`` (see its constructor) so that the adjustment approximator's
-    coalition sampler reproduces the *identical* coalitions in the identical order; the
-    ``i``-th row of any queried coalition matrix then matches the ``i``-th precomputed
-    residual.
-    """
-
-    def __init__(self, n_players: int, game_values: np.ndarray) -> None:
-        """Initialize the residual game with the given values for each coalition."""
-        super().__init__(n_players=n_players, normalize=False)
-        self.vals = game_values
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:  # noqa: ARG002
-        """Return the values of the given coalitions in the residual game.
-
-        Args:
-            coalitions: A binary matrix of shape (n_samples, n_features) where each row represents a coalition and each column represents a feature. A value of 1 indicates that the feature is included in the coalition, while a value of 0 indicates that it is not.
-            Note: The coalitions are expected to be ordered in the same way as the values in self.vals, i.e., the i-th row of coalitions corresponds to the i-th entry in self.vals. ProxySHAP guarantees this by fixing the random_state shared with the adjustment approximator.
-
-        Returns:
-            A vector of shape (n_samples,) where each entry is the value of the corresponding coalition in the residual game.
-        """
-        return self.vals
