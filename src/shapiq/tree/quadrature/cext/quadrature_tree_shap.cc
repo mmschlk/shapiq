@@ -77,7 +77,10 @@ struct QuadWorkspace
     std::vector<bool> act;       // hot-chain activation per node
     std::vector<int> path_feats;  // sorted distinct features on the current path
     std::vector<int64_t> order_offsets;  // start of each order's block in the output
-    // cum[r][v] = sum_{u < v} C(n_feats - 1 - u, r): lexicographic combination ranks in O(s)
+    // cum[r][v] = sum_{u < v} C(n_feats - 1 - u, r): lexicographic combination ranks in O(s).
+    // The rank order MUST match shapiq.utils.sets.generate_interaction_lookup (positions of
+    // itertools.combinations in lexicographic order) — the Python side pairs the output array
+    // with that lookup, so a mismatch silently misplaces values.
     std::vector<int64_t> cum;
     std::vector<QuadFrame> stack;
     std::vector<int> merged_scratch;

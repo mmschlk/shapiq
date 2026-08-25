@@ -9,6 +9,13 @@ first-order case. Unlike the interpolation-based :class:`~shapiq.tree.treeshapiq
 and :class:`~shapiq.tree.linear.explainer.LinearTreeSHAP`, every maintained quantity is a
 product of factors ``h*t + c*(1-t)`` in ``(0, 1]``, so the computation is numerically exact in
 float64 at any tree depth (issue #545).
+
+The papers (and the XGBoost implementation) parameterize edges by the marginal multiplier
+``q = h/c`` and fold the cover products into the leaf's empty prediction; this module instead
+keeps the hot indicator ``h`` and the accumulated cover ``c`` separate. The algebra is
+identical, but folding the covers in edge by edge is what bounds every intermediate product by
+one — the ``q`` form maintains ``prod(1 + (q-1)t)``, which can overflow on deep hot chains
+with small covers.
 """
 
 from __future__ import annotations
@@ -82,9 +89,11 @@ class QuadratureTreeSHAP:
 
             n_quadrature_points: Number of Gauss-Legendre points. Defaults to ``None``, which
                 uses the exact bound ``ceil(d / 2)`` where ``d`` is the maximum number of
-                distinct features along a root-to-leaf path. Fewer points trade a small,
-                smooth quadrature error for speed on extremely deep trees. Ignored for Banzhaf
-                indices, which need a single evaluation point.
+                distinct features along a root-to-leaf path. A fixed ``8`` (the rule of
+                Wettenstein et al.) is only useful on trees with more than ~16 features per
+                path — below that the default already uses fewer points — where it measured
+                13-35% faster with deviations from the exact result within ``2e-14`` up to
+                ``d = 100``. Ignored for Banzhaf indices, which need a single evaluation point.
 
             implementation: ``"cpp"`` forces the C extension, ``"numpy"`` the pure-Python
                 implementation, and ``"auto"`` uses the C extension when available. Defaults to
@@ -313,7 +322,12 @@ class QuadratureTreeSHAP:
             return u, (h - c) / u
 
         def extract(node: int, depth: int) -> None:
-            """Add the edge's contributions to all interactions it completes."""
+            """Add the edge's contributions to all interactions it completes.
+
+            An interaction receives updates at every edge of every member feature whose other
+            members are already on the path; the ancestor term makes those updates telescope,
+            so each leaf ends up counted exactly once with each member's deepest factor.
+            """
             feature = int(edge_feature[node])
             ancestor = int(ancestors[node])
             if ancestor >= 0 and not act[ancestor]:
