@@ -703,9 +703,10 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
     assert explanation[()] == pytest.approx(expected_baseline)
 
 
-def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_data, monkeypatch):
+def test_woodelf_fallback_warns_without_woodelf(rf_reg_model, background_reg_data, monkeypatch):
     """Without the optional woodelf dependency the explainer warns and falls back to shapiq."""
     import importlib.util
+    import warnings
 
     from shapiq.tree import WoodelfNotAvailableWarning
 
@@ -716,13 +717,29 @@ def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_dat
 
     monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
 
-    # max_order=2 crosses the path-dependent Woodelf cut-off, so this would route to Woodelf
-    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="SII")
+    # 100 background rows cross the interventional Woodelf cut-off, so this would route there
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=background_reg_data[:100],
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
     with pytest.warns(WoodelfNotAvailableWarning, match="woodelf"):
         assert not explainer._should_use_woodelf(1)
         explanation = explainer.explain(background_reg_data[0])
     assert type(explanation).__name__ == "InteractionValues"
-    assert explainer._pathdependent_explainer is not None  # the shapiq fallback computed it
+    assert explainer._interventional_explainer is not None  # the shapiq fallback computed it
+
+    # path-dependent explanations never route to Woodelf: the quadrature default computes
+    # every order and index natively, so no cut-off applies and nothing warns
+    pathdependent = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1, index="SII")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert not pathdependent._should_use_woodelf(1000)
+        explanation = pathdependent.explain(background_reg_data[0])
+    assert type(explanation).__name__ == "InteractionValues"
 
 
 def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
@@ -822,11 +839,8 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     with pytest.raises(ValueError, match="original model object"):
         TreeExplainer(model=validate_tree_model(dt_reg_model), backend="woodelf")
 
-    # backend='shapiq' cannot compute path-dependent Banzhaf indices
-    with pytest.raises(ValueError, match="woodelf"):
-        TreeExplainer(model=dt_reg_model, index="BV", backend="shapiq")
-
-    # without the woodelf package, forcing it (or needing it for path-dependent Banzhaf) raises
+    # without the woodelf package, forcing it raises; path-dependent Banzhaf indices do not
+    # need it (the quadrature default computes them natively)
     real_find_spec = importlib.util.find_spec
 
     def fake_find_spec(name, *args, **kwargs):
@@ -835,8 +849,8 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
     with pytest.raises(ImportError, match="woodelf-explainer"):
         TreeExplainer(model=dt_reg_model, backend="woodelf")
-    with pytest.raises(ImportError, match="woodelf-explainer"):
-        TreeExplainer(model=dt_reg_model, index="BV", backend="auto")
+    banzhaf = TreeExplainer(model=dt_reg_model, index="BV", backend="auto")
+    assert banzhaf.explain(background_reg_data[0]).index == "BV"
 
 
 def test_woodelf_broken_backend_raises_with_fix_instructions(
@@ -857,8 +871,10 @@ def test_woodelf_broken_backend_raises_with_fix_instructions(
 
     monkeypatch.setattr(parse_models, "load_decision_tree_ensemble_model", broken_load)
 
-    # max_order=2 crosses the path-dependent Woodelf cut-off, so this routes to Woodelf
-    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="SII")
+    # backend='woodelf' forces the Woodelf path, where the broken load surfaces
+    explainer = TreeExplainer(
+        model=dt_reg_model, max_order=2, min_order=1, index="SII", backend="woodelf"
+    )
     with pytest.raises(RuntimeError, match="brew install libomp") as excinfo:
         explainer.explain(background_reg_data[0])
     assert "treelite/issues/678" in str(excinfo.value)
@@ -946,11 +962,10 @@ def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg
 
 
 def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_data):
-    """Path-dependent SII with ``min_order=0``, ``max_order=3`` routes through Woodelf.
+    """Forced path-dependent Woodelf SII with ``min_order=0``, ``max_order=3`` matches shapiq.
 
-    ``max_order > 1`` crosses the path-dependent Woodelf cut-off. Orders 1-3 must match
-    :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0`` must still put the
-    baseline at the empty interaction.
+    Orders 1-3 must match :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0``
+    must still put the baseline at the empty interaction.
     """
     from shapiq.tree import TreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
@@ -958,7 +973,9 @@ def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_d
     pytest.importorskip("woodelf")
     x_explain = background_reg_data[0]
 
-    explainer = TreeExplainer(model=dt_reg_model, max_order=3, min_order=0, index="SII")
+    explainer = TreeExplainer(
+        model=dt_reg_model, max_order=3, min_order=0, index="SII", backend="woodelf"
+    )
     assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
     explanation = explainer.explain(x_explain)
 
@@ -997,11 +1014,10 @@ def test_woodelf_pathdependent_honors_class_index(
 ):
     """Woodelf must explain the class ``class_index`` asks for.
 
-    ``max_order=2`` crosses the path-dependent Woodelf cut-off, so every class here is
-    computed by Woodelf rather than the shapiq kernel. Each one must match
-    :class:`~shapiq.tree.TreeSHAPIQ` run directly on the class-selected trees. Sklearn
-    ensembles select a class by slicing leaf values and boosters by filtering trees, so
-    both mechanisms are covered.
+    ``backend='woodelf'`` forces every class here to be computed by Woodelf rather than
+    the shapiq kernel. Each one must match :class:`~shapiq.tree.TreeSHAPIQ` run directly
+    on the class-selected trees. Sklearn ensembles select a class by slicing leaf values
+    and boosters by filtering trees, so both mechanisms are covered.
     """
     from shapiq.tree import TreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
@@ -1019,6 +1035,7 @@ def test_woodelf_pathdependent_honors_class_index(
             min_order=1,
             index="SII",
             class_index=class_index,
+            backend="woodelf",
         )
         assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
         explanation = explainer.explain(x_explain)

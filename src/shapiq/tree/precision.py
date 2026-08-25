@@ -52,7 +52,7 @@ def check_features_per_path(max_features_per_path: int, *, algorithm: str) -> No
             f"{algorithm} values are numerically unreliable beyond "
             f"{ERROR_FEATURES_PER_PATH - 1} (https://github.com/mmschlk/shapiq/issues/545). "
             "Tree depth itself is not the limit, only distinct features per path. "
-            "Use TreeExplainer(..., backend='quadrature') or constrain the tree."
+            "Use QuadratureTreeSHAP (the TreeExplainer default) or constrain the tree."
         )
         raise TreeNumericalPrecisionError(msg)
     if max_features_per_path >= WARN_FEATURES_PER_PATH:
@@ -63,6 +63,7 @@ def check_features_per_path(max_features_per_path: int, *, algorithm: str) -> No
             f"A decision path in this tree uses {max_features_per_path} distinct features; "
             f"{algorithm} values are expected to carry a relative error of roughly "
             f"1e{expected_error:.0f}. From {ERROR_FEATURES_PER_PATH} features per path the "
-            "computation is refused; backend='quadrature' computes exact values."
+            "computation is refused; QuadratureTreeSHAP (the TreeExplainer default) computes "
+            "exact values."
         )
         warnings.warn(msg, TreeNumericalPrecisionWarning, stacklevel=3)

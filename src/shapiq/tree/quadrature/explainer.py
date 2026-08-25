@@ -219,6 +219,10 @@ class QuadratureTreeSHAP:
             max_depth = max(max_depth, int(edge_tree.max_depth))
             with np.errstate(divide="ignore"):
                 c_acc = np.where(edge_tree.p_e_values > 0, 1.0 / edge_tree.p_e_values, 1.0)
+            # zero-cover edges (leaves no training sample reaches, e.g. in CatBoost's
+            # oblivious trees) contribute exactly zero in the limit c -> 0; a tiny positive
+            # cover keeps every factor u = h*t + c*(1-t) positive instead of producing 0/0
+            c_acc = np.where(np.isfinite(c_acc) & (c_acc > 0), c_acc, 1e-300)
 
             def rebase(indices: np.ndarray, offset: int = node_offset) -> np.ndarray:
                 rebased = np.asarray(indices, dtype=np.int64).copy()
@@ -403,8 +407,8 @@ class QuadratureTreeSHAP:
 
         # iterative depth-first traversal per tree; stages: 0 enter, 1 after left,
         # 2 after right, 3 leave
-        for root in self._roots:
-            root = int(root)
+        for tree_root in self._roots:
+            root = int(tree_root)
             stack: list[tuple[int, int, int]] = [(root, 0, 0)]
             while stack:
                 node, depth, stage = stack.pop()

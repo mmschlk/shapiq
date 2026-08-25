@@ -1,8 +1,9 @@
 """Implementation of the TreeExplainer class.
 
-The :class:`~shapiq.tree.explainer.TreeSHAPIQ` uses the
-:class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` algorithm for computing any-order Interactions
-for tree ensembles.
+The :class:`~shapiq.tree.explainer.TreeExplainer` computes path-dependent explanations with
+the :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` algorithm and interventional
+explanations with :class:`~shapiq.tree.interventional.explainer.InterventionalTreeSHAPIQ`,
+routing large interventional inputs through the optional Woodelf fast path.
 """
 
 from __future__ import annotations
@@ -19,16 +20,14 @@ from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
 from shapiq.utils.modules import safe_isinstance
 
 from .base import TreeModel
-from .linear import LinearTreeSHAP
 from .quadrature import QuadratureTreeSHAP, QuadratureTreeSHAPIndices
-from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
 
 TREE_MODES = Literal["pathdependent", "interventional"]
-TREE_BACKENDS = Literal["auto", "woodelf", "shapiq", "quadrature"]
+TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
 TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
@@ -38,9 +37,9 @@ _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODE
 class WoodelfNotAvailableWarning(UserWarning):
     """The explanation would be computed faster with the optional woodelf dependency.
 
-    Emitted when an input crosses :class:`TreeExplainer`'s Woodelf cut-offs but the optional
-    ``woodelf-explainer`` package is not installed, so the (slower) shapiq implementation
-    computes the explanation instead. Filter it with
+    Emitted when an input crosses :class:`TreeExplainer`'s interventional Woodelf cut-off but
+    the optional ``woodelf-explainer`` package is not installed, so the (slower) shapiq
+    implementation computes the explanation instead. Filter it with
     ``warnings.filterwarnings("ignore", category=WoodelfNotAvailableWarning)`` or silence it
     for good by installing ``shapiq[tree]``.
     """
@@ -49,27 +48,24 @@ class WoodelfNotAvailableWarning(UserWarning):
 class TreeExplainer(Explainer):
     """The TreeExplainer class for tree-based models.
 
-    The explainer for tree-based models using the
-    :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` algorithm. For details, refer to
-    `Muschalik et al. (2024)` [Mus24]_.
-
-    TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022)` [Yu22]_, but extended to
-    compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to visit each node
-    only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
-    efficiently.
+    In ``"pathdependent"`` mode the explainer computes Shapley and Banzhaf (interaction)
+    values with the :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` algorithm
+    [Wet26a]_: the quadrature reformulation of Linear TreeSHAP [Yu22]_ and its any-order
+    interaction extension TreeSHAP-IQ [Mus24]_, numerically exact at any tree depth. In
+    ``"interventional"`` mode it computes interaction values against a reference dataset.
 
     The TreeExplainer can be used with a variety of tree-based models, including
     ``scikit-learn``, ``XGBoost``, ``LightGBM``, and ``CatBoost``. The explainer can handle both
     regression and classification models.
 
-    On large datasets the explainer relies on the Woodelf and WOODELF-HD algorithms. For
-    details, refer to `Nadel and Wettenstein (2026)` [Nad26]_ and
+    On large interventional inputs the explainer relies on the Woodelf and WOODELF-HD
+    algorithms. For details, refer to `Nadel and Wettenstein (2026)` [Nad26]_ and
     `Wettenstein et al. (2026)` [Wet26]_.
 
     References:
         .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read. (2022). Linear Tree Shap. In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
         .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
+        .. [Wet26a] Ron Wettenstein, Rory Mitchell, Peng Yu. (2026). Quadrature-TreeSHAP: Depth-Independent TreeSHAP and Shapley Interactions. arXiv preprint arXiv:2605.04497. https://arxiv.org/abs/2605.04497
         .. [Nad26] Nadel, A., & Wettenstein, R. (2026). From Decision Trees to Boolean Logic: A Fast and Unified SHAP Algorithm. Proceedings of the AAAI Conference on Artificial Intelligence, 40(29), 24476-24485. https://doi.org/10.1609/aaai.v40i29.39630
         .. [Wet26] Ron Wettenstein, Alexander Nadel, Udi Boker. (2026). WOODELF-HD: Efficient Background SHAP for High-Depth Decision Trees. arXiv preprint arXiv:2604.10569. https://arxiv.org/abs/2604.10569
 
@@ -94,7 +90,7 @@ class TreeExplainer(Explainer):
             model: A tree-based model to explain.
 
             mode: The mode of the explainer, either ``"pathdependent"`` or ``"interventional"``.
-            In ``"pathdependent"`` mode, the explainer computes path-dependent interaction values using the TreeSHAPIQ algorithm or the Linear TreeSHAP algorithm if the index is ``"SV"``.
+            In ``"pathdependent"`` mode, the explainer computes path-dependent interaction values using the Quadrature-TreeSHAP algorithm.
             In ``"interventional"`` mode, the explainer computes interventional interaction values using the Interventional TreeExplainer algorithm.
             Defaults to ``"pathdependent"``.
 
@@ -112,9 +108,9 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
-                indices ``["SV", "SII", "k-SII"]`` are supported, plus ``"BV"`` and ``"BII"``
-                through the woodelf backend. In ``"interventional"`` mode, further indices such
-                as ``"STII"``, ``"FSII"``, or ``"FBII"`` can be computed. Defaults to ``"SV"``.
+                indices ``["SV", "SII", "k-SII", "BV", "BII"]`` are supported. In
+                ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
+                ``"FBII"`` can be computed. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -124,14 +120,13 @@ class TreeExplainer(Explainer):
                 when ``mode="interventional"``. Defaults to ``None``.
 
             backend: Which implementation computes the explanations. With ``"auto"`` the
-                explainer picks per input: Woodelf on larger inputs (falling back to shapiq
-                with a :class:`WoodelfNotAvailableWarning` if the optional woodelf dependency
-                is missing) and shapiq otherwise. ``"woodelf"`` forces Woodelf and raises if it
-                is not installed or cannot handle the configuration; ``"shapiq"`` forces the
-                shapiq implementation. ``"quadrature"`` forces the
-                :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` implementation
-                (path-dependent mode only), which stays numerically exact for trees whose
-                decision paths use many distinct features (issue #545). Defaults to ``"auto"``.
+                explainer computes path-dependent explanations with shapiq's
+                :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` and routes larger
+                interventional inputs to Woodelf (falling back to shapiq with a
+                :class:`WoodelfNotAvailableWarning` if the optional woodelf dependency is
+                missing). ``"woodelf"`` forces Woodelf and raises if it is not installed or
+                cannot handle the configuration; ``"shapiq"`` forces the shapiq
+                implementation. Defaults to ``"auto"``.
 
             **kwargs: Additional keyword arguments are ignored.
 
@@ -160,15 +155,10 @@ class TreeExplainer(Explainer):
         self._mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
-        if backend not in ("auto", "woodelf", "shapiq", "quadrature"):
-            msg = (
-                f"backend='{backend}' must be one of 'auto', 'woodelf', 'shapiq', or 'quadrature'."
-            )
+        if backend not in ("auto", "woodelf", "shapiq"):
+            msg = f"backend='{backend}' must be one of 'auto', 'woodelf', or 'shapiq'."
             raise ValueError(msg)
         self.backend: TREE_BACKENDS = backend
-        if backend == "quadrature" and mode != "pathdependent":
-            msg = "backend='quadrature' computes path-dependent values; use mode='pathdependent'."
-            raise ValueError(msg)
         if backend == "woodelf":
             # forced means forced: fail fast instead of silently falling back later.
             if importlib.util.find_spec("woodelf") is None:
@@ -178,21 +168,6 @@ class TreeExplainer(Explainer):
             if reason is not None:
                 msg = f"backend='woodelf' cannot be used: {reason}."
                 raise ValueError(msg)
-        elif mode == "pathdependent" and index in ("BV", "BII") and backend != "quadrature":
-            # only the woodelf and quadrature backends compute path-dependent Banzhaf indices;
-            # fail fast when both are excluded by choice or missing from the environment.
-            if backend == "shapiq":
-                msg = (
-                    f"index='{index}' with mode='pathdependent' is only computed by the woodelf "
-                    "and quadrature backends; use backend='auto', 'woodelf', or 'quadrature'."
-                )
-                raise ValueError(msg)
-            if importlib.util.find_spec("woodelf") is None:
-                msg = (
-                    f"index='{index}' with mode='pathdependent' {_WOODELF_REQUIRED} "
-                    "Alternatively, use backend='quadrature'."
-                )
-                raise ImportError(msg)
         if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
             msg = (
                 f"index='{self.index}' is not supported in 'pathdependent' mode; use "
@@ -200,9 +175,7 @@ class TreeExplainer(Explainer):
             )
             raise ValueError(msg)
 
-        self._pathdependent_explainer: TreeSHAPIQ | LinearTreeSHAP | QuadratureTreeSHAP | None = (
-            None
-        )
+        self._pathdependent_explainer: QuadratureTreeSHAP | None = None
         self._interventional_explainer: InterventionalTreeSHAPIQ | None = None
         self._explainers_initialized = False
 
@@ -243,20 +216,11 @@ class TreeExplainer(Explainer):
         expensive) shapiq explainers are never built when Woodelf handles the computation.
         """
         if self.mode == "pathdependent":
-            if self.backend == "quadrature":
-                self._pathdependent_explainer = QuadratureTreeSHAP(
-                    model=self._trees,
-                    max_order=self._max_order,
-                    index=cast("QuadratureTreeSHAPIndices", self.index),
-                )
-            elif self._can_use_lineartreeshap():
-                self._pathdependent_explainer = LinearTreeSHAP(model=self._trees)
-            else:
-                self._pathdependent_explainer = TreeSHAPIQ(
-                    model=self._trees,
-                    max_order=self._max_order,
-                    index=cast("TreeSHAPIQIndices", self.index),
-                )
+            self._pathdependent_explainer = QuadratureTreeSHAP(
+                model=self._trees,
+                max_order=self._max_order,
+                index=cast("QuadratureTreeSHAPIndices", self.index),
+            )
         elif self.mode == "interventional":
             if self._reference_dataset is None:
                 msg = (
@@ -271,37 +235,18 @@ class TreeExplainer(Explainer):
                 max_order=self._max_order,
                 index=self.index,
             )
-        # only mark initialized once every per-tree explainer was built: a constructor that
-        # raises mid-ensemble (e.g. the precision guard) must re-raise on retry, not leave the
-        # explainer half-built with empty lists
+        # only mark initialized once the explainer was fully built: a constructor that raises
+        # must re-raise on retry, not leave the explainer half-built
         self._explainers_initialized = True
-
-    def _can_use_lineartreeshap(self) -> bool:
-        """Whether the LinearTreeSHAP fast path can replace TreeSHAP-IQ for this configuration.
-
-        LinearTreeSHAP is restricted to first-order Shapley values and needs at least two
-        distinct features per tree (its Chebyshev base ``chebpts2`` requires ``npts >= 2``).
-        Trivial trees (constant or single-feature) and higher-order interactions fall back to
-        TreeSHAP-IQ, which carries dedicated trivial-tree fast paths.
-        """
-        return (
-            self._max_order == 1
-            and self.index in ("SV", "SII")
-            and all(tree.n_features_in_tree >= 2 for tree in self._trees)
-        )
 
     def _should_use_woodelf(self, number_of_explained_instances: int) -> bool:
         """Decide whether Woodelf or the shapiq implementation computes the explanation.
 
-        The cut-offs are ``n * m >= 100`` for interventional and ``n >= 100`` (or
-        ``max_order > 1``, or a Banzhaf index) for path-dependent mode, where ``n`` is the number
-        of explained instances and ``m`` is the size of the reference dataset. They are based on
-        the experiments summarized in the reports below:
+        Path-dependent explanations are always computed by the shapiq quadrature kernel. In
+        interventional mode the cut-off is ``n * m >= 100``, where ``n`` is the number of
+        explained instances and ``m`` is the size of the reference dataset, based on the
+        experiment summarized in the report below:
 
-        Path-dependent experiment:
-        https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_path_dependent_experiment.html
-
-        Interventional experiment:
         https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_experiment.html
 
         This function should change when new capabilities are developed in Woodelf.
@@ -312,25 +257,21 @@ class TreeExplainer(Explainer):
         Returns:
             ``True`` if Woodelf should compute the explanation, ``False`` for shapiq.
         """
-        if self.backend in ("shapiq", "quadrature"):
+        if self.backend == "shapiq":
             return False
         if self.backend == "woodelf":
             return True
+        if self.mode != "interventional":
+            return False
 
         if self._woodelf_unsupported_reason() is not None:
             return False
 
-        if self.mode == "interventional":
-            if (
-                self._reference_dataset is not None
-                and len(self._reference_dataset) * number_of_explained_instances >= 100
-            ):
-                return self._woodelf_available()
-        elif self.mode == "pathdependent":
-            if self.max_order > 1 or number_of_explained_instances >= 100:
-                return self._woodelf_available()
-            if self.index in ("BV", "BII"):
-                return self._woodelf_available()
+        if (
+            self._reference_dataset is not None
+            and len(self._reference_dataset) * number_of_explained_instances >= 100
+        ):
+            return self._woodelf_available()
         return False
 
     def _woodelf_unsupported_reason(self) -> str | None:
@@ -438,16 +379,14 @@ class TreeExplainer(Explainer):
             raise RuntimeError(msg) from error
 
         # woodelf cannot compute path-dependent SHAP of order >= 3 on trees deeper than 16
-        # yet; remove this fallback once it can.
+        # yet; only a forced backend='woodelf' routes path-dependent explanations here.
         if self.mode == "pathdependent" and self.max_order >= 3 and loaded_model.max_depth > 16:
-            if self.backend == "woodelf":
-                msg = (
-                    "backend='woodelf' cannot compute path-dependent interactions of "
-                    f"order >= 3 on trees deeper than 16 (tree depth: "
-                    f"{loaded_model.max_depth}); use backend='auto' or backend='shapiq'."
-                )
-                raise ValueError(msg)
-            return None
+            msg = (
+                "backend='woodelf' cannot compute path-dependent interactions of "
+                f"order >= 3 on trees deeper than 16 (tree depth: "
+                f"{loaded_model.max_depth}); use backend='auto' or backend='shapiq'."
+            )
+            raise ValueError(msg)
 
         woodelf_result = hybrid_woodelf(
             model=loaded_model,
@@ -528,11 +467,11 @@ class TreeExplainer(Explainer):
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute the explanation via the harmonized path-dependent explainer.
+        """Compute the explanation via the path-dependent quadrature explainer.
 
-        The explainer (LinearTreeSHAP, TreeSHAP-IQ, or QuadratureTreeSHAP, chosen in
-        ``_init_explainers``) validates the model and aggregates over ensembles itself; this
-        method only enforces the requested ``min_order`` on the result.
+        The :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` built in ``_init_explainers``
+        validates the model and aggregates over ensembles itself; this method only enforces
+        the requested ``min_order`` on the result.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
@@ -624,7 +563,7 @@ class TreeExplainer(Explainer):
         verbose: bool = False,
         **kwargs: Any,
     ) -> InteractionValuesBatch:
-        """Explain multiple instances at once, using Woodelf on larger inputs.
+        """Explain multiple instances at once, using Woodelf on larger interventional inputs.
 
         The whole batch is computed in a single vectorized Woodelf run when the input crosses
         the cut-offs (see :meth:`_should_use_woodelf`), and by the per-instance shapiq

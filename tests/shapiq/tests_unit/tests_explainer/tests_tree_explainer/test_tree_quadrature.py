@@ -53,6 +53,9 @@ def test_matches_treeshapiq_on_sklearn_regressor(
         "lightgbm_reg_model",
         "hist_gb_reg_model",
         "gb_reg_model",
+        # CatBoost oblivious trees contain unreachable zero-cover leaves (regression test
+        # for the 0/0 these produced in the quadrature factors)
+        "catboost_clf_model",
     ],
 )
 def test_matches_treeshapiq_across_model_families(model_fixture, request):
@@ -312,37 +315,36 @@ def test_invalid_arguments(dt_reg_model):
 # ------------------------------- TreeExplainer integration -------------------------------
 
 
-def test_tree_explainer_quadrature_backend(background_reg_dataset):
-    """The quadrature backend matches the shapiq backend on a random forest."""
+def test_tree_explainer_defaults_to_quadrature(background_reg_dataset):
+    """``TreeExplainer`` computes path-dependent explanations with the quadrature algorithm.
+
+    The k-SII explanation of the ``backend="shapiq"`` front end must match the per-tree
+    :class:`TreeSHAPIQ` reference on a random forest.
+    """
     X, y = background_reg_dataset
     model = RandomForestRegressor(n_estimators=5, max_depth=4, random_state=0).fit(X, y)
     x = X[0]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        reference = TreeExplainer(model=model, index="k-SII", max_order=2, backend="shapiq")
-        result = TreeExplainer(model=model, index="k-SII", max_order=2, backend="quadrature")
-        explanation_ref = reference.explain(x)
-        explanation_quad = result.explain(x)
+        explainer = TreeExplainer(model=model, index="k-SII", max_order=2, backend="shapiq")
+        explanation = explainer.explain(x)
+        assert isinstance(explainer._pathdependent_explainer, QuadratureTreeSHAP)
+        reference = TreeSHAPIQ(model=model, index="k-SII", max_order=2).explain(x)
     for interaction in _all_interactions(X.shape[1], 1, 2):
-        assert explanation_quad[interaction] == pytest.approx(
-            explanation_ref[interaction], abs=1e-8
-        )
+        assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-8)
 
 
-def test_tree_explainer_quadrature_backend_banzhaf(dt_reg_model, background_reg_data):
-    """Path-dependent Banzhaf values work through the quadrature backend without woodelf."""
-    explainer = TreeExplainer(model=dt_reg_model, index="BV", max_order=1, backend="quadrature")
-    result = explainer.explain(background_reg_data[0])
-    assert result.index == "BV"
+@pytest.mark.parametrize("index", ["BV", "BII"])
+def test_tree_explainer_banzhaf_without_woodelf(dt_reg_model, background_reg_data, index):
+    """Path-dependent Banzhaf indices work through the default backend without woodelf."""
+    max_order = 1 if index == "BV" else 2
+    explainer = TreeExplainer(
+        model=dt_reg_model, index=index, max_order=max_order, backend="shapiq"
+    )
+    x = background_reg_data[0]
+    result = explainer.explain(x)
+    assert result.index == index
     assert np.any(result.values != 0)
-
-
-def test_tree_explainer_quadrature_backend_interventional_rejected(dt_reg_model):
-    """The quadrature backend is path-dependent only."""
-    with pytest.raises(ValueError, match="pathdependent"):
-        TreeExplainer(
-            model=dt_reg_model,
-            mode="interventional",
-            reference_dataset=np.zeros((5, 3)),
-            backend="quadrature",
-        )
+    reference = QuadratureTreeSHAP(dt_reg_model, index=index, max_order=max_order).explain(x)
+    for interaction in _all_interactions(background_reg_data.shape[1], 1, max_order):
+        assert result[interaction] == pytest.approx(reference[interaction], abs=1e-12)

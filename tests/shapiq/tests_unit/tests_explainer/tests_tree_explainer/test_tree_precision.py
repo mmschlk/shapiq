@@ -40,7 +40,7 @@ def test_check_features_per_path_bands():
     with pytest.warns(TreeNumericalPrecisionWarning, match="distinct features"):
         check_features_per_path(WARN_FEATURES_PER_PATH, algorithm="TreeSHAP-IQ")
 
-    with pytest.raises(TreeNumericalPrecisionError, match="quadrature"):
+    with pytest.raises(TreeNumericalPrecisionError, match="Quadrature"):
         check_features_per_path(ERROR_FEATURES_PER_PATH, algorithm="TreeSHAP-IQ")
 
 
@@ -60,15 +60,19 @@ def test_explainers_warn_in_degrading_band(explainer_cls):
         explainer_cls(model)
 
 
-def test_tree_explainer_propagates_guard():
-    """The guard fires through the ``TreeExplainer`` front end, also on a retry."""
+def test_tree_explainer_computes_trees_the_guard_refuses():
+    """``TreeExplainer`` computes trees beyond the polynomial explainers' reliability limit.
+
+    Its default quadrature algorithm is exact regardless of the number of distinct features
+    per path, so the guard never fires through the front end and efficiency holds.
+    """
     model, X = _sparse_indicator_tree(max_depth=ERROR_FEATURES_PER_PATH + 5)
-    explainer = TreeExplainer(model=model, index="SV", backend="shapiq")
-    with pytest.raises(TreeNumericalPrecisionError):
-        explainer.explain(X[0])
-    # a second call must re-raise the diagnostic, not fail on half-initialized state
-    with pytest.raises(TreeNumericalPrecisionError):
-        explainer.explain(X[0])
+    explainer = TreeExplainer(model=model, index="SV", min_order=1, backend="shapiq")
+    x = X[0]
+    explanation = explainer.explain(x)
+    prediction = model.predict(x.reshape(1, -1))[0]
+    total = explanation.values.sum() + explanation.baseline_value
+    assert total == pytest.approx(prediction, abs=1e-8)
 
 
 def test_deep_tree_over_few_features_is_fine():
