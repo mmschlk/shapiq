@@ -23,6 +23,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
+import pandas as pd
+
 DATA_DIR = Path(os.environ.get("SHAPIQ_BENCH_DATA", Path.home() / "bench_data"))
 
 SPECS = {
@@ -45,13 +47,11 @@ SPECS = {
 
 
 def _from_mirror(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=300) as response:  # noqa: S310
+    with urllib.request.urlopen(url, timeout=300) as response:
         return response.read()
 
 
 def main() -> int:
-    import pandas as pd
-
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     for filename, spec in SPECS.items():
         target = DATA_DIR / filename

@@ -19,11 +19,11 @@ from __future__ import annotations
 import argparse
 import platform
 import sys
-
-from bench_common import DATASETS, measure, save
+import warnings
 
 import numpy as np
 import shap
+from bench_common import DATASETS, measure, quiet, save
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from shapiq.tree import TreeExplainer
@@ -49,36 +49,29 @@ def shap_interventional(model, bg: np.ndarray):
 
 def build_model(ds: dict, n_estimators: int, max_depth: int):
     cls = RandomForestClassifier if ds["task"] == "classification" else RandomForestRegressor
-    model = cls(
-        n_estimators=n_estimators, max_depth=max_depth, random_state=0, n_jobs=1
-    ).fit(ds["X_train"], ds["y_train"])
-    return model
+    return cls(n_estimators=n_estimators, max_depth=max_depth, random_state=0, n_jobs=1).fit(
+        ds["X_train"], ds["y_train"]
+    )
 
 
-def order1(iv_batch, n_features: int) -> np.ndarray:
+def order1(iv_batch) -> np.ndarray:
     """Stack an ``InteractionValuesBatch`` into an ``(n_instances, n_features)`` array."""
     return np.array([iv.get_n_order_values(1) for iv in iv_batch])
 
 
 def agreement(model, bg: np.ndarray, X: np.ndarray) -> dict[str, float]:
     """Confirm the three backends compute the same interventional Shapley values."""
-    import warnings
-
-    from bench_common import quiet
-
     with warnings.catch_warnings(), quiet():
         warnings.simplefilter("ignore")
         a = order1(
             TreeExplainer(
                 model, mode="interventional", reference_dataset=bg, backend="shapiq"
-            ).explain_X(X),
-            X.shape[1],
+            ).explain_X(X)
         )
         b = order1(
             TreeExplainer(
                 model, mode="interventional", reference_dataset=bg, backend="woodelf"
-            ).explain_X(X),
-            X.shape[1],
+            ).explain_X(X)
         )
         c = shap_interventional(model, bg).shap_values(X, check_additivity=False)
     c = np.asarray(c)
@@ -105,8 +98,11 @@ def main() -> None:
     if len(X_pool) < max(N_EXPLAIN):
         X_pool = np.vstack([X_pool, ds["X_train"]])
 
-    print(f"dataset={ds['name']} X_train={ds['X_train'].shape} model=RF"
-          f"({args.n_estimators}x depth {args.max_depth})", flush=True)
+    print(
+        f"dataset={ds['name']} X_train={ds['X_train'].shape} model=RF"
+        f"({args.n_estimators}x depth {args.max_depth})",
+        flush=True,
+    )
     checks = {
         f"m={m}": agreement(model, ds["X_train"][:m], X_pool[:5]) for m in (20, max(N_BACKGROUND))
     }
@@ -122,11 +118,13 @@ def main() -> None:
 
             def run(backend: str, _X=X, _bg=bg):
                 if backend == "shap":
+
                     def fn():
                         return shap_interventional(model, _bg).shap_values(
                             _X, check_additivity=False
                         )
                 else:
+
                     def fn():
                         te = TreeExplainer(
                             model,
@@ -137,19 +135,18 @@ def main() -> None:
                             backend=backend,
                         )
                         return te.explain_X(_X)
+
                 return measure(fn, repeats=args.repeats, budget_s=STOP_AFTER_S)
 
             for backend in ("shapiq", "woodelf", "shap"):
                 if backend in stopped:
                     continue
                 res = run(backend)
-                records.append(
-                    {"n_background": n_bg, "n_explain": n_ex, "backend": backend, **res}
-                )
+                records.append({"n_background": n_bg, "n_explain": n_ex, "backend": backend, **res})
                 t = res.get("median_s")
                 print(
                     f"  m={n_bg:5d} n={n_ex:5d} {backend:8s} "
-                    f"{'%.4f s' % t if t is not None else res['status']}",
+                    f"{f'{t:.4f} s' if t is not None else res['status']}",
                     flush=True,
                 )
                 if t is not None and t > STOP_AFTER_S:

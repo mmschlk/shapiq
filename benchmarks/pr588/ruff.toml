@@ -13,8 +13,8 @@ ignore = [
     "E501", "COM812", "FIX002", "N802", "N803", "N806",
     "S310",     # urllib download of a pinned https dataset URL
     "RUF001", "RUF002", "RUF003",  # µ, ×, — in labels and docstrings
-    "PD901",    # `df` is fine for a five-line loader
     "PTH123",
+    "PD901",    # kept for the pinned pre-commit ruff, where this rule still exists
     "INP001",   # scripts directory, deliberately not a package
     "B023",     # closures over loop variables are bound explicitly via default args
     "PERF401",

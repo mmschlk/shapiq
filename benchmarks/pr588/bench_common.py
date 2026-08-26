@@ -16,7 +16,10 @@ import statistics
 import time
 import warnings
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # --- single thread, no progress bars -------------------------------------------------------
 for _var in (
@@ -32,6 +35,7 @@ os.environ.setdefault("TQDM_DISABLE", "1")
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from sklearn.model_selection import train_test_split  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 RESULTS = HERE / "results"
@@ -43,17 +47,15 @@ RANDOM_STATE = 0
 
 # --- datasets -------------------------------------------------------------------------------
 def _split(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    from sklearn.model_selection import train_test_split
-
     return train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
 
 
 def load_superconductivity() -> dict[str, Any]:
     """21,263 x 81 regression (UCI/OpenML ``superconductivity``); 17k rows after the split."""
-    df = pd.read_csv(DATA_DIR / "superconduct.csv")
-    df = df.drop(columns=[c for c in ("material",) if c in df.columns])
-    y = df["critical_temp"].to_numpy(dtype=float)
-    X = df.drop(columns=["critical_temp"]).to_numpy(dtype=float)
+    frame = pd.read_csv(DATA_DIR / "superconduct.csv")
+    frame = frame.drop(columns=[c for c in ("material",) if c in frame.columns])
+    y = frame["critical_temp"].to_numpy(dtype=float)
+    X = frame.drop(columns=["critical_temp"]).to_numpy(dtype=float)
     X_tr, X_te, y_tr, y_te = _split(X, y)
     return {
         "name": "superconductivity",
@@ -67,9 +69,9 @@ def load_superconductivity() -> dict[str, Any]:
 
 def load_heloc() -> dict[str, Any]:
     """10,459 x 23 binary classification (FICO HELOC / OpenML ``heloc``); 8.4k after the split."""
-    df = pd.read_csv(DATA_DIR / "heloc.csv")
-    y = (df["RiskPerformance"].astype(str).str.strip() == "Good").to_numpy(dtype=int)
-    X = df.drop(columns=["RiskPerformance"]).to_numpy(dtype=float)
+    frame = pd.read_csv(DATA_DIR / "heloc.csv")
+    y = (frame["RiskPerformance"].astype(str).str.strip() == "Good").to_numpy(dtype=int)
+    X = frame.drop(columns=["RiskPerformance"]).to_numpy(dtype=float)
     X_tr, X_te, y_tr, y_te = _split(X, y)
     return {
         "name": "heloc",
@@ -83,9 +85,9 @@ def load_heloc() -> dict[str, Any]:
 
 def load_bioresponse() -> dict[str, Any]:
     """3,751 x 1,776 sparse binary classification (OpenML ``Bioresponse``); 3k after the split."""
-    df = pd.read_csv(DATA_DIR / "bioresponse.csv")
-    y = df["Activity"].to_numpy(dtype=int)
-    X = df.drop(columns=["Activity"]).to_numpy(dtype=float)
+    frame = pd.read_csv(DATA_DIR / "bioresponse.csv")
+    y = frame["Activity"].to_numpy(dtype=int)
+    X = frame.drop(columns=["Activity"]).to_numpy(dtype=float)
     X_tr, X_te, y_tr, y_te = _split(X, y)
     return {
         "name": "bioresponse",
@@ -202,8 +204,11 @@ def measure(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             with quiet():
-                return {"status": "ok", **timed(fn, repeats=repeats, warmup=warmup, budget_s=budget_s)}
-    except catch as err:  # noqa: BLE001 - a refusal is a result, not a bug
+                return {
+                    "status": "ok",
+                    **timed(fn, repeats=repeats, warmup=warmup, budget_s=budget_s),
+                }
+    except catch as err:
         return {"status": "failed", "error": f"{type(err).__name__}: {err}"[:300]}
 
 

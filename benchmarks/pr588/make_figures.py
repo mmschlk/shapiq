@@ -9,10 +9,11 @@ Reads ``results/*.json`` written by ``bench_interventional.py`` and ``bench_dept
 from __future__ import annotations
 
 import sys
+import textwrap
 
-import matplotlib
+import matplotlib as mpl
 
-matplotlib.use("Agg")
+mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,7 +70,7 @@ plt.rcParams.update(
 
 
 def style_axes(ax) -> None:
-    ax.grid(True, which="major", axis="both", color=GRID, linewidth=0.8, zorder=0)
+    ax.grid(visible=True, which="major", axis="both", color=GRID, linewidth=0.8, zorder=0)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
@@ -166,6 +167,30 @@ def cross(ax, x, y, color):
     )
 
 
+def header(fig, title: str, caption: str) -> None:
+    """Title + caption, wrapped to the figure width and given room above the axes.
+
+    ``bbox_inches="tight"`` grows the canvas to fit any text that overflows, which would
+    silently stretch the figure and squeeze the panels; wrapping to the actual width keeps
+    the panels the size they were laid out at.
+    """
+    width_in, height_in = fig.get_size_inches()
+    lines = textwrap.wrap(" ".join(caption.split()), width=int(width_in * 16.5))
+    x = 0.11 / width_in
+    fig.suptitle(title, fontsize=15, x=x, ha="left", y=1.0, color=INK)
+    fig.text(
+        x,
+        1.0 - 0.40 / height_in,
+        "\n".join(lines),
+        fontsize=9,
+        color=INK_2,
+        ha="left",
+        va="top",
+        linespacing=1.45,
+    )
+    fig.subplots_adjust(top=1.0 - (0.78 + 0.20 * len(lines)) / height_in)
+
+
 def save_fig(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf"):
@@ -187,6 +212,7 @@ def fig1() -> None:
         1, len(backgrounds), figsize=(4.9 * len(backgrounds), 4.6), sharey=True
     )
     axes = np.atleast_1d(axes)
+    pending: list[EndLabels] = []
 
     for ax, m in zip(axes, backgrounds, strict=False):
         style_axes(ax)
@@ -233,20 +259,23 @@ def fig1() -> None:
                 color=MUTED,
                 va="bottom",
             )
-        labels.draw()
+        elif cutoff < 1:  # n * m >= 100 holds for every n on this background
+            ax.annotate(
+                "shapiq routes to Woodelf\nfor every $n$ here",
+                xy=(0.02, 0.02),
+                xycoords="axes fraction",
+                fontsize=8,
+                color=MUTED,
+                va="bottom",
+            )
+        pending.append(labels)
 
-    time_axis(axes[0])
+    time_axis(axes[0])  # log scale first: EndLabels lays out in display coordinates
     for ax in axes[1:]:
         ax.set_ylabel("")
+    for labels in pending:
+        labels.draw()
 
-    fig.suptitle(
-        "Interventional TreeSHAP: two regimes, one explainer",
-        fontsize=15,
-        x=0.010,
-        ha="left",
-        y=1.0,
-        color=INK,
-    )
     checks = meta["agreement"]
     if "max_abs_dev_shapiq_woodelf" in checks:  # older result files: a single check
         checks = {"m": checks}
@@ -254,20 +283,16 @@ def fig1() -> None:
         max(c["max_abs_dev_shapiq_woodelf"], c["max_abs_dev_shapiq_shap"])
         for c in checks.values()
     )
-    fig.text(
-        0.010,
-        0.925,
+    header(
+        fig,
+        "Interventional TreeSHAP: two regimes, one explainer",
         f"Shapley values for a {meta['model']} on {meta['dataset']} "
         f"({meta['n_train']:,}×{meta['n_features']}). End-to-end wall clock — explainer "
         f"construction plus the explanation of $n$ instances — median of {meta['repeats']} runs, "
-        f"single thread.  ✕ = curve cut off at the {meta['stop_after_s']:.0f} s measurement "
+        f"single thread. ✕ = curve cut off at the {meta['stop_after_s']:.0f} s measurement "
         f"budget. The three backends return the same values (max deviation {dev:.0e}).",
-        fontsize=9,
-        color=INK_2,
-        ha="left",
-        va="top",
     )
-    fig.subplots_adjust(left=0.065, right=0.995, top=0.80, bottom=0.115, wspace=0.10)
+    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.115, wspace=0.10)
     save_fig(fig, "fig1_interventional")
 
 
@@ -367,9 +392,7 @@ def fig2() -> None:
 
         # where the shipped numerical guard refuses the polynomial explainers outright
         refused = [
-            r["depth"]
-            for r in records
-            if r["dataset"] == ds and r.get("status") == "refused"
+            r["depth"] for r in records if r["dataset"] == ds and r.get("status") == "refused"
         ]
         if refused:
             ax.axvline(min(refused), color=MUTED, linestyle=(0, (2, 3)), linewidth=1.2, zorder=1)
@@ -397,28 +420,16 @@ def fig2() -> None:
     for labels in pending:
         labels.draw()
 
-    fig.suptitle(
+    header(
+        fig,
         "Path-dependent TreeSHAP: single-explanation runtime by tree depth",
-        fontsize=15,
-        x=0.010,
-        ha="left",
-        y=1.0,
-        color=INK,
-    )
-    fig.text(
-        0.010,
-        0.935,
         "One sklearn decision tree per depth on TabArena datasets, one explained instance. "
         f"Median of ≤{meta['repeats']} runs, warm-up and explainer construction excluded, "
         "single thread. LinearTreeSHAP computes Shapley values only; shap's order 2 is its "
         "pairwise interaction matrix. ✕ = curve cut off at the 20 s measurement budget.",
-        fontsize=9,
-        color=INK_2,
-        ha="left",
-        va="top",
     )
     method_legend(fig, methods, ncol=6)
-    fig.subplots_adjust(left=0.062, right=0.995, top=0.80, bottom=0.175, wspace=0.09)
+    fig.subplots_adjust(left=0.062, right=0.995, bottom=0.175, wspace=0.09)
     save_fig(fig, "fig2_depth_real")
 
 
@@ -528,7 +539,7 @@ def fig3() -> None:
         )
 
     depths = sorted({r["depth"] for r in records if r["dataset"] == ds})
-    ticks = [d for d in range(0, max(depths) + 1, 20)]
+    ticks = list(range(0, max(depths) + 1, 20))
     ax.set_xlim(0, max(depths) + 2)
     widen_right(ax, 0.30)
     ax.set_xticks(ticks)
@@ -572,27 +583,15 @@ def fig3() -> None:
     err_labels.draw()
     labels.draw()
 
-    fig.suptitle(
+    header(
+        fig,
         "Deep trees: only the quadrature kernel is still standing",
-        fontsize=15,
-        x=0.010,
-        ha="left",
-        y=1.0,
-        color=INK,
-    )
-    fig.text(
-        0.010,
-        0.935,
         f"Synthetic rare-indicator features (shapiq issue #545; {meta['n_samples']:,}×"
         f"{meta['n_features']}, rate {meta['indicator_rate']}), where every root-to-leaf path "
         "uses as many distinct features as the tree is deep. One instance, median of "
         f"≤{meta['repeats']} runs, single thread. Faded = still runs, but the values are wrong; "
         "✕ = LinAlgError; order-2 curves that stop early hit the 20 s measurement budget. "
         "LinearTreeSHAP computes Shapley values only.",
-        fontsize=9,
-        color=INK_2,
-        ha="left",
-        va="top",
     )
     method_legend(
         fig,
@@ -612,7 +611,7 @@ def fig3() -> None:
             ),
         ),
     )
-    fig.subplots_adjust(left=0.058, right=0.995, top=0.80, bottom=0.185, wspace=0.30)
+    fig.subplots_adjust(left=0.058, right=0.995, bottom=0.185, wspace=0.30)
     save_fig(fig, "fig3_depth_synthetic")
 
 

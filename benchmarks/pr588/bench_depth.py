@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import platform
 import sys
+import time
 import warnings
 
 import numpy as np
@@ -143,12 +144,10 @@ def run_point(
     try:
         with warnings.catch_warnings(), quiet():
             warnings.simplefilter("ignore")
-            import time
-
             t0 = time.perf_counter()
             explainer = build_explainer(method, order, model, class_index)
             record["construct_s"] = time.perf_counter() - t0
-    except Exception as err:  # noqa: BLE001 - a guard refusal is a result
+    except Exception as err:
         return {**record, "status": "refused", "error": f"{type(err).__name__}: {err}"[:200]}
     if explainer is None:
         return {**record, "status": "not_supported"}
@@ -165,7 +164,7 @@ def run_point(
                     if method == "shap"
                     else _efficiency_error(explainer.explain(x), model, x, task)
                 )
-        except Exception:  # noqa: BLE001, S110
+        except Exception:  # noqa: S110
             pass
     return record
 
@@ -193,7 +192,7 @@ def sweep(
         seen.add(key)
         scale = abs(_predict(model, x_explain, task) - float(np.mean(y)))
         print(
-            f"  [{label}] max_depth={str(depth):>4}  depth={stats['depth']:>3} "
+            f"  [{label}] max_depth={depth!s:>4}  depth={stats['depth']:>3} "
             f"leaves={stats['n_leaves']:>6} feats/path={stats['max_features_per_path']:>3}",
             flush=True,
         )
