@@ -58,3 +58,19 @@ The synthetic suite needs no download: it regenerates the rare-indicator regime 
 [issue #545](https://github.com/mmschlk/shapiq/issues/545), where CART splits on a fresh
 feature at every level so that *distinct features per decision path* equals the tree depth —
 the quantity that governs the polynomial explainers' round-off.
+
+## `ksii_aggregation.patch`
+
+The order-2 profiling in `profile_hotspots.py` traced 97% of a k-SII explanation to
+`aggregate_base_attributions`, which tests every intermediate value with `np.all(value == 0)` --
+a full numpy reduction dispatch on what is a Python float on every single-instance explanation.
+`ksii_aggregation.patch` is the fix against `src/shapiq/game_theory/aggregation.py`, kept as a
+patch rather than applied so that the figures on this branch keep measuring shipped behaviour:
+
+```bash
+git apply benchmarks/pr588/ksii_aggregation.patch
+```
+
+Measured 3.9-5.4x on the k-SII path, with identical keys and bit-identical values on both the
+scalar and the batched (array-valued) paths; `tests_game_theory` and the tree-explainer suite
+pass unchanged (461 passed, 2 skipped).
