@@ -4,8 +4,8 @@ index 464e2a8..db5655e 100644
 +++ b/src/shapiq/game_theory/aggregation.py
 @@ -15,6 +15,18 @@ if TYPE_CHECKING:
      from collections.abc import Mapping
- 
- 
+
+
 +def _is_zero(value: float | np.ndarray) -> bool:
 +    """Whether an aggregation term is (entirely) zero.
 +
@@ -20,11 +20,11 @@ index 464e2a8..db5655e 100644
 +
  def _change_index(index: str) -> str:
      """Changes the index of the interaction values to the new index.
- 
+
 @@ -89,23 +101,26 @@ def aggregate_base_attributions(
              stacklevel=2,
          )
- 
+
 -    bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
 +    # converted to python floats once: the scaling is read once per projected subset, and
 +    # indexing the numpy array there would rebuild a numpy scalar every time
@@ -50,5 +50,5 @@ index 464e2a8..db5655e 100644
 -            if np.all(transformed_interactions[interaction] == 0):
 +            if _is_zero(transformed_interactions[interaction]):
                  transformed_interactions.pop(interaction)
- 
+
      # update the index name after the aggregation (e.g., SII -> k-SII)

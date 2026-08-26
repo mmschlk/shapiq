@@ -1,65 +1,65 @@
 Q1  interventional TreeSHAP-IQ: python preprocessing vs. the C kernel
           m     explain    C kernel   python prep       shap
-         25      98.2 ms      0.18 ms        98.0 ms     2.81 ms   (35x shap)
-        100     394.9 ms      2.04 ms       392.8 ms     6.75 ms   (59x shap)
-        400    1432.3 ms      6.69 ms      1425.6 ms    20.41 ms   (70x shap)
+         25      92.8 ms      0.19 ms        92.6 ms     3.08 ms   (30x shap)
+        100     403.5 ms      0.81 ms       402.7 ms     6.85 ms   (59x shap)
+        400    1473.3 ms      7.47 ms      1465.8 ms    20.18 ms   (73x shap)
 
 Q1  fix: route the same computation through the existing sparse C kernel
-      heloc RF 20x8, SV                                 407.9 ms ->    7.50 ms  (  54x)  max|dev| 6.5e-16
-      heloc RF 20x8, k-SII order 2                      412.8 ms ->   18.75 ms  (  22x)  max|dev| 6.9e-16
-      heloc RF 20x8, FSII order 2                       403.2 ms ->   12.58 ms  (  32x)  max|dev| 5.4e-16
-      superconductivity RF 10x6 (81 features), SV       121.1 ms ->    6.21 ms  (  19x)  max|dev| 6.8e-14
-      superconductivity single tree depth 10, SV         54.9 ms ->    4.13 ms  (  13x)  max|dev| 3.6e-14
+      heloc RF 20x8, SV                                 409.4 ms ->    6.92 ms  (  59x)  max|dev| 6.5e-16
+      heloc RF 20x8, k-SII order 2                      435.2 ms ->   18.81 ms  (  23x)  max|dev| 6.9e-16
+      heloc RF 20x8, FSII order 2                       406.9 ms ->   13.09 ms  (  31x)  max|dev| 5.4e-16
+      superconductivity RF 10x6 (81 features), SV       120.8 ms ->    6.48 ms  (  19x)  max|dev| 6.8e-14
+      superconductivity single tree depth 10, SV         58.4 ms ->    4.45 ms  (  13x)  max|dev| 3.6e-14
 
 Q2  LinearTreeSHAP on bioresponse: the kernel wins, the result packaging loses
       depth   8,   68 of 1776 features used by the tree:
-        LinearTreeSHAP C kernel ..................   0.040 ms
-        LinearTreeSHAP.explain (all-feature dict)    0.346 ms
-        same, dict over the tree's features only .   0.056 ms  (max|dev| 0e+00)
-        QuadratureTreeSHAP.explain ...............   0.049 ms
+        LinearTreeSHAP C kernel ..................   0.039 ms
+        LinearTreeSHAP.explain (all-feature dict)    0.372 ms
+        same, dict over the tree's features only .   0.055 ms  (max|dev| 0e+00)
+        QuadratureTreeSHAP.explain ...............   0.047 ms
         shap shap_values .........................   0.029 ms
       depth  32,  231 of 1776 features used by the tree:
-        LinearTreeSHAP C kernel ..................   0.154 ms
-        LinearTreeSHAP.explain (all-feature dict)    0.492 ms
-        same, dict over the tree's features only .   0.217 ms  (max|dev| 0e+00)
-        QuadratureTreeSHAP.explain ...............   0.192 ms
-        shap shap_values .........................   0.412 ms
+        LinearTreeSHAP C kernel ..................   0.166 ms
+        LinearTreeSHAP.explain (all-feature dict)    0.472 ms
+        same, dict over the tree's features only .   0.201 ms  (max|dev| 0e+00)
+        QuadratureTreeSHAP.explain ...............   0.171 ms
+        shap shap_values .........................   0.395 ms
 
       the overhead tracks the input feature space, not the tree:
-        n_features    23,  114 leaves:  kernel  0.059 ms   explain  0.070 ms   packaging  0.011 ms
-        n_features   200,  100 leaves:  kernel  0.053 ms   explain  0.079 ms   packaging  0.027 ms
-        n_features  1776,   80 leaves:  kernel  0.042 ms   explain  0.335 ms   packaging  0.293 ms
+        n_features    23,  114 leaves:  kernel  0.056 ms   explain  0.060 ms   packaging  0.004 ms
+        n_features   200,  100 leaves:  kernel  0.045 ms   explain  0.080 ms   packaging  0.035 ms
+        n_features  1776,   80 leaves:  kernel  0.048 ms   explain  0.456 ms   packaging  0.408 ms
 
 Q3  QuadratureTreeSHAP at order 2: the kernel is 0.1 ms, the k-SII aggregation is not
-      superconductivity, depth 8 (69 features in the tree, 2415 outputs):
-        quadrature C kernel ......................    0.126 ms
-        k-SII explain (shipped) ..................    37.80 ms
-        k-SII explain, scalar zero-test ..........     7.29 ms  (5.2x, max|dev| 0e+00)
-        SII explain (no aggregation) .............     1.33 ms
-        shap shap_interaction_values .............     7.02 ms   <- computes SII, never k-SII
-      superconductivity, depth 12 (81 features in the tree, 3321 outputs):
-        quadrature C kernel ......................    0.711 ms
-        k-SII explain (shipped) ..................    66.39 ms
-        k-SII explain, scalar zero-test ..........    12.11 ms  (5.5x, max|dev| 0e+00)
-        SII explain (no aggregation) .............     2.46 ms
-        shap shap_interaction_values .............   121.68 ms   <- computes SII, never k-SII
-      bioresponse, depth 8 (68 features in the tree, 2346 outputs):
-        quadrature C kernel ......................    0.025 ms
-        k-SII explain (shipped) ..................    34.10 ms
-        k-SII explain, scalar zero-test ..........     6.84 ms  (5.0x, max|dev| 0e+00)
-        SII explain (no aggregation) .............     1.29 ms
-        shap shap_interaction_values .............    28.87 ms   <- computes SII, never k-SII
-      bioresponse, depth 16 (183 features in the tree, 16836 outputs):
-        quadrature C kernel ......................    0.130 ms
-        k-SII explain (shipped) ..................   237.35 ms
-        k-SII explain, scalar zero-test ..........    49.29 ms  (4.8x, max|dev| 0e+00)
-        SII explain (no aggregation) .............     9.30 ms
-        shap shap_interaction_values .............    89.19 ms   <- computes SII, never k-SII
+      superconductivity, depth 8 (69 features in the tree, 812 outputs):
+        quadrature C kernel ......................    0.135 ms
+        k-SII explain (shipped) ..................    17.22 ms
+        k-SII explain, scalar zero-test ..........     3.00 ms  (5.7x, max|dev| 0e+00)
+        SII explain (no aggregation) .............     0.57 ms
+        shap shap_interaction_values .............     6.97 ms   <- computes SII, never k-SII
+      superconductivity, depth 12 (81 features in the tree, 2608 outputs):
+        quadrature C kernel ......................    1.575 ms
+        k-SII explain (shipped) ..................    57.61 ms
+        k-SII explain, scalar zero-test ..........    10.56 ms  (5.5x, max|dev| 0e+00)
+        SII explain (no aggregation) .............     2.89 ms
+        shap shap_interaction_values .............   115.53 ms   <- computes SII, never k-SII
+      bioresponse, depth 8 (68 features in the tree, 442 outputs):
+        quadrature C kernel ......................    0.033 ms
+        k-SII explain (shipped) ..................     8.85 ms
+        k-SII explain, scalar zero-test ..........     1.54 ms  (5.8x, max|dev| 0e+00)
+        SII explain (no aggregation) .............     0.25 ms
+        shap shap_interaction_values .............    29.92 ms   <- computes SII, never k-SII
+      bioresponse, depth 16 (183 features in the tree, 2290 outputs):
+        quadrature C kernel ......................    0.314 ms
+        k-SII explain (shipped) ..................    50.22 ms
+        k-SII explain, scalar zero-test ..........     8.40 ms  (6.0x, max|dev| 0e+00)
+        SII explain (no aggregation) .............     1.53 ms
+        shap shap_interaction_values .............    82.85 ms   <- computes SII, never k-SII
       heloc, depth 16 (23 features in the tree, 276 outputs):
-        quadrature C kernel ......................    0.442 ms
-        k-SII explain (shipped) ..................     6.39 ms
-        k-SII explain, scalar zero-test ..........     1.42 ms  (4.5x, max|dev| 0e+00)
-        SII explain (no aggregation) .............     0.60 ms
-        shap shap_interaction_values .............    16.91 ms   <- computes SII, never k-SII
+        quadrature C kernel ......................    0.733 ms
+        k-SII explain (shipped) ..................     8.36 ms
+        k-SII explain, scalar zero-test ..........     1.84 ms  (4.5x, max|dev| 0e+00)
+        SII explain (no aggregation) .............     0.90 ms
+        shap shap_interaction_values .............    17.96 ms   <- computes SII, never k-SII
 
       convention check: max|shapiq SII/2 - shap off-diagonal| = 1.3e-14 on a scale of 7.4e+00
