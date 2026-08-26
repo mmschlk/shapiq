@@ -77,9 +77,7 @@ struct QuadWorkspace
     std::vector<bool> act;       // hot-chain activation per node
     std::vector<int> path_feats;  // sorted distinct features on the current path
     // Sparse interaction support: for each order >= 2 a lexicographically sorted table of the
-    // co-occurring subsets (int32 rows of length `order`). Positions in the table MUST match
-    // the Python-side per-order lookups — the output array is paired with those, so a mismatch
-    // silently misplaces values. Order 1 stays a dense per-feature block.
+    // co-occurring subsets (int32 rows of length `order`). Order 1 stays a dense per-feature block.
     const int32_t *subset_keys;
     const int64_t *subset_starts;   // per order: start of its table in subset_keys (in ints)
     const int64_t *subset_counts;   // per order: number of subsets in its table
@@ -148,6 +146,7 @@ struct QuadWorkspace
             bound <<= 1;
         int64_t hi = std::min(lo + bound + 1, count);
         lo = lo + (bound >> 1);
+        // binary search within the bracket
         while (lo < hi)
         {
             const int64_t mid = lo + ((hi - lo) >> 1);

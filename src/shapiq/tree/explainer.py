@@ -48,17 +48,19 @@ class WoodelfNotAvailableWarning(UserWarning):
 class TreeExplainer(Explainer):
     """The TreeExplainer class for tree-based models.
 
-    The ``TreeExplainer`` is the user-facing explainer for tree-based models such as decision
-    trees, random forests, and gradient-boosted ensembles from ``scikit-learn``, ``XGBoost``,
-    ``LightGBM``, and ``CatBoost`` (regression and classification alike). The model is parsed
-    once into shapiq's internal tree representation; :meth:`explain` then returns one
-    :class:`~shapiq.interaction_values.InteractionValues` object per instance. That object is
+    The ``TreeExplainer`` is the model-specific explainer for tree-based models, capable of computing attributions and interactions
+    for both path-dependent and interventional modes (details below).
+    It supports various interaction indices and can leverage the optional Woodelf package for efficient computation on large datasets.
+    We support the following model types: ``scikit-learn`` decision trees, random forests, and gradient-boosted ensembles, as well as ``XGBoost``, ``LightGBM``, and ``CatBoost`` models, for both regression and classification tasks.
+    The model may be fitted both on categorical and numerical features (except for CatBoost, which requires categorical features to be encoded as integers).
+    Attributions and interactions are returned as :class:`~shapiq.interaction_values.InteractionValues` objects. That object is
     indexed by feature tuples — ``values[(1,)]`` is the attribution of feature 1,
     ``values[(1, 2)]`` the interaction of features 1 and 2 — carries the expected model
     output as ``baseline_value``, and offers plotting shortcuts such as
     :meth:`~shapiq.interaction_values.InteractionValues.plot_force` and
-    :meth:`~shapiq.interaction_values.InteractionValues.plot_network`. :meth:`explain_X`
-    explains a whole data matrix at once.
+    :meth:`~shapiq.interaction_values.InteractionValues.plot_network`.
+
+    :meth:`explain_X` explains a whole data matrix at once, where we return a :class:`~shapiq.interaction_values.InteractionValuesBatch` object, for which ``values[(1,)]`` is a 1D array of the attributions of feature 1 for all explained instances, and ``values[(1, 2)]`` is a 1D array of the interactions of features 1 and 2 for all explained instances.
 
     Two established tree-explanation modes :cite:t:`Lundberg.2020` differ in what "feature
     :math:`i` is absent" means:
