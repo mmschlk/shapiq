@@ -90,6 +90,7 @@ def main() -> None:
     parser.add_argument("--n-estimators", type=int, default=20)
     parser.add_argument("--max-depth", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--tag", default="", help="suffix for the result file, e.g. --tag pr590")
     args = parser.parse_args()
 
     ds = DATASETS[args.dataset]()
@@ -164,6 +165,7 @@ def main() -> None:
                 "measurement": "end-to-end: explainer construction + explanation of n instances",
                 "repeats": args.repeats,
                 "stop_after_s": STOP_AFTER_S,
+                "tag": args.tag,
                 "shapiq_commit": git_commit(),
                 "platform": platform.platform(),
                 "python": sys.version.split()[0],
@@ -171,9 +173,9 @@ def main() -> None:
             },
             "records": records,
         },
-        "interventional",
+        "interventional" + (f"_{args.tag}" if args.tag else ""),
     )
-    print("saved results/interventional.json")
+    print(f"saved results/interventional{f'_{args.tag}' if args.tag else ''}.json")
 
 
 if __name__ == "__main__":

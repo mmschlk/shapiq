@@ -12,6 +12,8 @@ ignore = [
     "PLR0913", "PLR0915", "PLR0912", "PLR2004", "C901",
     "E501", "COM812", "FIX002", "N802", "N803", "N806",
     "S310",     # urllib download of a pinned https dataset URL
+    "S603",     # the one subprocess call is a fixed `git rev-parse` argv literal
+    "S301",     # pickle of our own frozen benchmark inputs
     "RUF001", "RUF002", "RUF003",  # µ, ×, — in labels and docstrings
     "PTH123",
     "PD901",    # kept for the pinned pre-commit ruff, where this rule still exists

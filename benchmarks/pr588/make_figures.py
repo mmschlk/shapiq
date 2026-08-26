@@ -4,6 +4,7 @@
     python make_figures.py fig1       # just one
 
 Reads ``results/*.json`` written by ``bench_interventional.py`` and ``bench_depth.py``.
+A trailing ``--tag NAME`` renders the ``*_NAME.json`` result files into ``*_NAME.png``.
 """
 
 from __future__ import annotations
@@ -17,9 +18,20 @@ mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from bench_common import FIGURES, load_results
+from bench_common import (
+    FIGURES,
+    load_results as _load_results,
+)
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter, LogLocator
+
+# set by ``--tag NAME``: reads ``results/<name>_NAME.json`` and writes ``figures/<fig>_NAME.png``
+TAG = ""
+
+
+def load_results(name: str) -> dict:
+    return _load_results(f"{name}_{TAG}" if TAG else name)
+
 
 # --- palette (validated categorical slots; see the dataviz palette reference) ----------------
 INK = "#0b0b0b"
@@ -191,8 +203,10 @@ def header(fig, title: str, caption: str) -> None:
     fig.subplots_adjust(top=1.0 - (0.78 + 0.20 * len(lines)) / height_in)
 
 
-def save_fig(fig, name: str) -> None:
+def save_fig(fig, name: str, *, tagged: bool = True) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
+    if TAG and tagged:
+        name = f"{name}_{TAG}"
     for ext in ("png", "pdf"):
         fig.savefig(FIGURES / f"{name}.{ext}", bbox_inches="tight")
     plt.close(fig)
@@ -614,9 +628,128 @@ def fig3() -> None:
     save_fig(fig, "fig3_depth_synthetic")
 
 
-FIGS = {"fig1": fig1, "fig2": fig2, "fig3": fig3}
+# ============================================================================================
+# Figure 4 -- what PR #590's two improvements are worth
+# ============================================================================================
+def fig4() -> None:
+    """Before/after for the two changes in PR #590, against main at 2dc08d1."""
+    before = _load_results("interventional")
+    after = _load_results("interventional_pr590")
+    ksii = _load_results("ksii_isolated")["cases"]
+    m_panel = 100
+
+    fig, (ax, ax_b) = plt.subplots(1, 2, figsize=(13.6, 5.0))
+    style_axes(ax)
+    style_axes(ax_b)
+
+    def curve(data, backend):
+        pts = sorted(
+            (r["n_explain"], r["median_s"])
+            for r in data["records"]
+            if r["backend"] == backend and r["n_background"] == m_panel and r.get("median_s")
+        )
+        return [p[0] for p in pts], [p[1] for p in pts]
+
+    labels = EndLabels(ax)
+    xs, ys = curve(before, "shapiq")
+    ax.plot(
+        xs,
+        ys,
+        color=COLORS["shapiq"],
+        linestyle=(0, (5, 2)),
+        marker="o",
+        markersize=4,
+        alpha=0.45,
+        zorder=2,
+    )
+    if xs[-1] != 1000:
+        cross(ax, xs[-1], ys[-1], COLORS["shapiq"])
+    labels.add(xs[-1], ys[-1], "shapiq on main", COLORS["shapiq"])
+    for backend, label in (("shapiq", "shapiq + PR 590"), ("woodelf", "Woodelf"), ("shap", "shap")):
+        xs, ys = curve(after, backend)
+        ax.plot(xs, ys, color=COLORS[backend], marker="o", markersize=4.5, zorder=3)
+        labels.add(xs[-1], ys[-1], label, COLORS[backend])
+    ax.set_xscale("log")
+    ax.set_xlim(0.8, 1250)
+    widen_right(ax, 0.42)
+    ax.set_xticks([1, 10, 100, 1000])
+    ax.set_xticklabels(["1", "10", "100", "1000"])
+    ax.set_xlabel("explained instances $n$")
+    ax.set_title(
+        f"1 · interventional TreeSHAP-IQ, background $m$ = {m_panel}",
+        fontsize=11,
+        pad=10,
+        loc="left",
+    )
+    time_axis(ax)
+    ax.axvline(1, color=MUTED, linestyle=(0, (2, 3)), linewidth=1.2, zorder=1)
+    ax.annotate(
+        "auto routes to Woodelf from $n$ = 1 —\nnow up to 198× slower than staying on shapiq",
+        xy=(0.97, 0.04),
+        xycoords="axes fraction",
+        fontsize=8,
+        color=MUTED,
+        va="bottom",
+        ha="right",
+    )
+    labels.draw()
+
+    # --- right panel: the k-SII aggregation, timed on its own -------------------------------
+    names = list(ksii)
+    idx = np.arange(len(names))
+    w = 0.27
+    series = (
+        ("main_ms", "main", COLORS["treeshapiq"]),
+        ("pr590_ms", "PR 590", COLORS["quadrature"]),
+        ("pr590_compact_ms", "PR 590 + compact ids", COLORS["linear"]),
+    )
+    for k, (key, label, color) in enumerate(series):
+        vals = [ksii[n][key] for n in names]
+        ax_b.bar(idx + (k - 1) * w, vals, w * 0.9, color=color, label=label, zorder=3)
+        for i, v in enumerate(vals):
+            ax_b.annotate(
+                f"{v:.1f}" if v >= 1 else f"{v:.2f}",
+                xy=(i + (k - 1) * w, v),
+                xytext=(0, 3),
+                textcoords="offset points",
+                ha="center",
+                fontsize=7.5,
+                color=INK_2,
+            )
+    ax_b.set_yscale("log")
+    ax_b.set_xticks(idx)
+    ax_b.set_xticklabels(
+        [n.replace(" d", "\ndepth ") + f"\n{ksii[n]['n_base']} interactions" for n in names],
+        fontsize=8.5,
+    )
+    ax_b.set_ylabel("aggregation time, log scale")
+    ax_b.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: fmt_time(v / 1e3)))
+    ax_b.set_title("2 · SII → k-SII aggregation, timed on its own", fontsize=11, pad=10, loc="left")
+    top = max(c[k] for c in ksii.values() for k in ("main_ms", "pr590_ms", "pr590_compact_ms"))
+    ax_b.set_ylim(top=top * 6)  # headroom so the legend clears the tallest bar
+    ax_b.legend(fontsize=9, labelcolor=INK_2, loc="upper left", ncol=3, columnspacing=1.2)
+
+    header(
+        fig,
+        "PR #590: both improvements, measured against main",
+        "Left: end-to-end cost of explaining $n$ instances against a 100-row background "
+        "(heloc, RandomForest 20 × depth 8), median of 3 runs. Right: "
+        "aggregate_base_attributions timed alone on frozen SII inputs, median of 9 runs. "
+        "Values are unchanged in both cases — the interventional path matches a brute-force "
+        "oracle to 1.7e-16 and the aggregation is bit-identical. Single thread; shap and "
+        "Woodelf are untouched by the PR and act as the control (1.01× / 1.04×).",
+    )
+    fig.subplots_adjust(left=0.062, right=0.995, bottom=0.145, wspace=0.26)
+    save_fig(fig, "fig4_pr590", tagged=False)  # already names both versions
+
+
+FIGS = {"fig1": fig1, "fig2": fig2, "fig3": fig3, "fig4": fig4}
 
 if __name__ == "__main__":
-    wanted = sys.argv[1:] or list(FIGS)
-    for key in wanted:
+    argv = sys.argv[1:]
+    if "--tag" in argv:
+        i = argv.index("--tag")
+        TAG = argv[i + 1]
+        argv = argv[:i] + argv[i + 2 :]
+    for key in argv or list(FIGS):
         FIGS[key]()

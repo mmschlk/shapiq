@@ -1,0 +1,34 @@
+{
+  "superconductivity d8": {
+    "ms": 16.808236999850124,
+    "n_base": 812,
+    "n_out": 813,
+    "max_feature_id": 80,
+    "n_distinct_features": 69,
+    "checksum": 227.133025155371
+  },
+  "superconductivity d12": {
+    "ms": 56.45233899986124,
+    "n_base": 2608,
+    "n_out": 2607,
+    "max_feature_id": 80,
+    "n_distinct_features": 81,
+    "checksum": 410.82590764822316
+  },
+  "bioresponse d16": {
+    "ms": 49.12024000009296,
+    "n_base": 2290,
+    "n_out": 2291,
+    "max_feature_id": 1614,
+    "n_distinct_features": 183,
+    "checksum": 4.720652310932534
+  },
+  "heloc d16": {
+    "ms": 5.87626099991212,
+    "n_base": 276,
+    "n_out": 277,
+    "max_feature_id": 22,
+    "n_distinct_features": 23,
+    "checksum": 2.3531943409093126
+  }
+}

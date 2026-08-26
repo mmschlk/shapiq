@@ -227,6 +227,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", choices=("real", "synthetic"), required=True)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--tag", default="", help="suffix for the result file, e.g. --tag pr590")
     parser.add_argument("--orders", type=int, nargs="+", default=[1, 2])
     parser.add_argument(
         "--ignore-guard",
@@ -290,6 +291,7 @@ def main() -> None:
                 "repeats": args.repeats,
                 "stop_after_s": STOP_AFTER_S,
                 "ignore_guard": args.ignore_guard,
+                "tag": args.tag,
                 "shapiq_commit": git_commit(),
                 "platform": platform.platform(),
                 "python": sys.version.split()[0],
@@ -297,9 +299,9 @@ def main() -> None:
             },
             "records": records,
         },
-        out,
+        out + (f"_{args.tag}" if args.tag else ""),
     )
-    print(f"saved results/{out}.json")
+    print(f"saved results/{out}{f'_{args.tag}' if args.tag else ''}.json")
 
 
 if __name__ == "__main__":

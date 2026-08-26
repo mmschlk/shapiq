@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "note": "isolated aggregate_base_attributions on frozen SII inputs, order 2",
+    "variants": [
+      "main 2dc08d1",
+      "PR 590 355c677",
+      "PR 590 + compact feature ids"
+    ]
+  },
+  "cases": {
+    "superconductivity d8": {
+      "n_base": 812,
+      "max_feature_id": 80,
+      "n_distinct_features": 69,
+      "main_ms": 16.242842999872664,
+      "pr590_ms": 0.9442190000754636,
+      "pr590_compact_ms": 0.8946780001224397
+    },
+    "superconductivity d12": {
+      "n_base": 2608,
+      "max_feature_id": 80,
+      "n_distinct_features": 81,
+      "main_ms": 54.26393500010818,
+      "pr590_ms": 2.7164470000116125,
+      "pr590_compact_ms": 2.717790999895442
+    },
+    "bioresponse d16": {
+      "n_base": 2290,
+      "max_feature_id": 1614,
+      "n_distinct_features": 183,
+      "main_ms": 46.65571099985755,
+      "pr590_ms": 12.055976000056035,
+      "pr590_compact_ms": 2.495766000038202
+    },
+    "heloc d16": {
+      "n_base": 276,
+      "max_feature_id": 22,
+      "n_distinct_features": 23,
+      "main_ms": 5.538964999914242,
+      "pr590_ms": 0.3450570000040898,
+      "pr590_compact_ms": 0.33594499996070226
+    }
+  }
+}
