@@ -9,6 +9,7 @@ import scipy.special as sp
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion.edges import create_edge_tree
+from shapiq.tree.precision import check_features_per_path
 from shapiq.tree.validation import validate_tree_model
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
@@ -34,11 +35,19 @@ def get_N_prime(max_size: int = 10) -> np.ndarray:
     return N_prime
 
 
-def get_N_v2(D: np.ndarray) -> np.ndarray:
-    """Get N_v2 matrix for Linear Tree Shap."""
+def get_N_v2(D: np.ndarray, max_row: int | None = None) -> np.ndarray:
+    """Get N_v2 matrix for Linear Tree Shap.
+
+    Args:
+        D: The interpolation grid.
+        max_row: Highest row to construct. The kernel only reads row ``i`` for edges of height
+            ``i``, so rows above the tree's maximum edge height are never used; skipping them
+            avoids needlessly solving the worst-conditioned Vandermonde systems (issue #545).
+    """
     depth = D.shape[0]
+    last_row = depth if max_row is None else min(max_row, depth)
     Ns = np.zeros((depth + 1, depth))
-    for i in range(1, depth + 1):
+    for i in range(1, last_row + 1):
         Ns[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(1.0 / get_norm_weight(i - 1))
     return Ns
 
@@ -46,9 +55,8 @@ def get_N_v2(D: np.ndarray) -> np.ndarray:
 class LinearTreeSHAP:
     """Linear TreeSHAP explainer for first-order Shapley values on tree-based models.
 
-    Implements the Linear TreeSHAP algorithm of `Yu et al. (2022)
-    <https://openreview.net/forum?id=OzbkiUo24g>`_ for exact ``order=1`` Shapley value
-    computation on a single decision tree. The heavy lifting is delegated to a C++ kernel
+    Implements the Linear TreeSHAP algorithm :cite:t:`Yu.2022` for exact ``order=1`` Shapley
+    value computation on a single decision tree. The heavy lifting is delegated to a C++ kernel
     (``linear_tree_shap_iterative``), which is faster than the any-order
     :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` algorithm when only Shapley values are
     needed.
@@ -67,19 +75,29 @@ class LinearTreeSHAP:
         self,
         model: Model,
         *,
+        class_index: int | None = None,
         base_func: Callable[[int], np.ndarray] = np.polynomial.chebyshev.chebpts2,
     ) -> None:
         """Initialize the :class:`LinearTreeSHAP` explainer.
 
         Args:
-            model: A fitted single-tree model accepted by
-                :func:`~shapiq.tree.validation.validate_tree_model`.
+            model: A fitted tree model or ensemble accepted by
+                :func:`~shapiq.tree.validation.validate_tree_model`. Ensembles are explained
+                tree by tree and aggregated.
+            class_index: The class index for classification models. Defaults to ``None``.
             base_func: Callable ``int -> np.ndarray`` returning the interpolation base for the
                 given depth. Defaults to :func:`numpy.polynomial.chebyshev.chebpts2`.
         """
         self.clf = model
-        self._tree = validate_tree_model(model, class_label=None)[0]
-        self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
+        validated_model = validate_tree_model(model, class_label=class_index)
+        self._tree_explainers: list[LinearTreeSHAP] = []
+        if len(validated_model) > 1:
+            self._tree_explainers = [
+                LinearTreeSHAP(tree, base_func=base_func) for tree in validated_model
+            ]
+            return
+        self._tree = validated_model[0]
+        self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
         self._n_features_in_tree: int = self._tree.n_features_in_tree
@@ -107,10 +125,20 @@ class LinearTreeSHAP:
             n_nodes=self._n_nodes,
             subset_updates_pos_store=self._interaction_update_positions,
         )
+        max_features_per_path = int(self.edge_tree.edge_heights.max())
+        check_features_per_path(max_features_per_path, algorithm="LinearTreeSHAP")
+        # non-finite p_e marks unreachable (zero-cover) subtrees, which the polynomial
+        # representation cannot express (it would silently return NaN for some instances)
+        if not np.isfinite(self.edge_tree.p_e_values).all():
+            msg = (
+                "This tree contains unreachable (zero-cover) subtrees, which LinearTreeSHAP "
+                "cannot represent; use QuadratureTreeSHAP (the TreeExplainer default)."
+            )
+            raise ValueError(msg)
         self.N = get_N_prime(self.edge_tree.max_depth)
         self.Base = base_func(self.edge_tree.max_depth)
         self.Offset = np.vander(self.Base + 1).T[::-1]
-        self.N_v2 = get_N_v2(self.Base)
+        self.N_v2 = get_N_v2(self.Base, max_row=max_features_per_path)
 
     def _init_interaction_lookup_tables(self) -> None:
         """Initializes the lookup tables for the interaction subsets."""
@@ -192,6 +220,7 @@ class LinearTreeSHAP:
             linear_tree_shap_iterative,  # ty: ignore[unresolved-import]
         )
 
+        X = self._tree.cast_input(np.asarray(X, dtype=np.float64))
         V = np.zeros_like(X, dtype=np.float64)
         V = np.ascontiguousarray(V)
 
@@ -204,12 +233,8 @@ class LinearTreeSHAP:
         )
         weights = 1 / self.edge_tree.p_e_values
 
-        # The kernel routes ``x`` honouring the model's split convention (passed as the
-        # ``decision_type`` string, same as :class:`InterventionalTreeSHAPIQ`):
-        # XGBoost-style trees use strict ``x < threshold``, every other supported family
-        # ``x <= threshold``. This must match ``TreeModel.predict_one`` exactly, otherwise
-        # instances lying on a split threshold are routed to the wrong leaf and the
-        # Shapley efficiency property breaks.
+        # routing must match ``TreeModel.predict_one`` exactly (strict ``<`` for
+        # XGBoost-style trees), else instances on a split threshold break efficiency
         linear_tree_shap_iterative(
             np.ascontiguousarray(weights, dtype=np.float64),
             np.ascontiguousarray(self.edge_tree.empty_predictions, dtype=np.float64),
@@ -234,6 +259,19 @@ class LinearTreeSHAP:
         )
         return V
 
+    @property
+    def empty_prediction(self) -> float:
+        """The empty prediction (baseline value) of the explained tree or ensemble."""
+        if self._tree_explainers:
+            return float(sum(child.empty_prediction for child in self._tree_explainers))
+        if self._tree.empty_prediction is not None:
+            return float(self._tree.empty_prediction)
+        return float(np.sum(self.edge_tree.empty_predictions))
+
+    def explain(self, x: np.ndarray) -> InteractionValues:
+        """Computes the Shapley values for a single instance (alias of ``explain_function``)."""
+        return self.explain_function(x)
+
     def explain_function(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley values for a single instance.
 
@@ -243,6 +281,11 @@ class LinearTreeSHAP:
         Returns:
             The interaction values for the instance.
         """
+        if self._tree_explainers:  # ensemble: aggregate the per-tree explanations
+            explanation = self._tree_explainers[0].explain_function(x)
+            for child in self._tree_explainers[1:]:
+                explanation += child.explain_function(x)
+            return explanation
         shap_values = self.shap_values_cpp_iterative(x.reshape(1, -1)).flatten()
         shap_interactions: dict[tuple[int, ...], float] = {
             (feature,): float(shap_values[feature])

@@ -1,5 +1,5 @@
 """LinearTreeShap Implementation Module."""
 
-from .explainer import LinearTreeSHAP
+from .computer import LinearTreeSHAP
 
 __all__ = ["LinearTreeSHAP"]

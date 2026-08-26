@@ -22,12 +22,12 @@ from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
+from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
-    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQIndices
+    from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
 
 ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV"]

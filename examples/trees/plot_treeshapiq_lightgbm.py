@@ -3,8 +3,9 @@ TreeSHAP-IQ for LightGBM
 =========================
 
 This example demonstrates :class:`~shapiq.TreeExplainer` on a LightGBM model
-trained on the bike-sharing dataset. TreeSHAP-IQ computes exact Shapley
-interaction values in linear time for tree ensembles.
+trained on the bike-sharing dataset. The explainer computes exact any-order
+Shapley interaction values for tree ensembles, as introduced by TreeSHAP-IQ,
+via the numerically exact Quadrature-TreeSHAP algorithm.
 """
 
 from __future__ import annotations

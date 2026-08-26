@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -11,13 +11,16 @@ from .utils import compute_empty_prediction
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+DecisionType = Literal["<=", "<"]
+InputPrecision = Literal["float64", "float32"]
+
 
 class TreeModel:
     """Internal representation of a single tree used by the shapiq tree explainers.
 
     Each library-specific converter (scikit-learn, XGBoost, LightGBM, CatBoost) targets this
-    common format so that the downstream algorithms (TreeSHAP-IQ, LinearTreeSHAP,
-    InterventionalTreeSHAP) only need to understand one node-array layout.
+    common format so that the downstream algorithms (QuadratureTreeSHAP, TreeSHAP-IQ,
+    LinearTreeSHAP, InterventionalTreeSHAPIQ) only need to understand one node-array layout.
 
     Constructor arguments that fall back to a computed default when ``None`` is passed are
     documented on :meth:`__init__`. The attributes below describe what is available on a fully
@@ -84,13 +87,14 @@ class TreeModel:
     feature_ids: set[int]
     root_node_id: int
     n_nodes: int
-    decision_type: str
+    decision_type: DecisionType
     nodes: NDArray[np.int_]
     feature_map_original_internal: dict[int, int]
     feature_map_internal_original: dict[int, int]
-    original_output_type: str = "raw"  # not used at the moment
+    original_output_type: Literal["raw", "probability"] = "raw"  # not used at the moment
     intercepts: NDArray[np.floating]
     coeffs: NDArray[np.floating]
+    input_precision: InputPrecision = "float64"
 
     def __init__(
         self,
@@ -109,15 +113,16 @@ class TreeModel:
         root_node_id: int | None = None,
         n_nodes: int | None = None,
         nodes: NDArray[np.int_] | None = None,
-        decision_type: str | None = None,
+        decision_type: DecisionType | None = None,
         feature_map_original_internal: dict[int, int] | None = None,
         feature_map_internal_original: dict[int, int] | None = None,
-        original_output_type: str = "raw",  # noqa: ARG002
+        original_output_type: Literal["raw", "probability"] = "raw",  # noqa: ARG002
         intercepts: NDArray[np.floating] | None = None,  # noqa: ARG002
         coeffs: NDArray[np.floating] | None = None,  # noqa: ARG002
         cat_values: NDArray[np.int_] | None = None,
         cat_start: NDArray[np.int_] | None = None,
         cat_size: NDArray[np.int_] | None = None,
+        input_precision: InputPrecision = "float64",
     ) -> None:
         """Initialize the :class:`TreeModel`.
 
@@ -159,6 +164,10 @@ class TreeModel:
                 ``cat_size``. ``None`` (default) marks a tree without categorical splits.
             cat_start: Per-node offsets into ``cat_values``.
             cat_size: Per-node category-set lengths (``0`` = numeric node).
+            input_precision: Precision in which the source library compares inputs against
+                thresholds at prediction time: ``"float32"`` for XGBoost and CatBoost (inputs
+                are cast before routing, see :meth:`cast_input`), ``"float64"`` otherwise.
+                Defaults to ``"float64"``.
         """
         self.children_left = children_left
         self.children_right = children_right
@@ -216,6 +225,10 @@ class TreeModel:
         # code path that forgets them compares against NaN instead of a stale number
         if self.has_categorical:
             self.thresholds = np.where(self.is_categorical, np.nan, self.thresholds)
+        if input_precision not in ("float64", "float32"):
+            msg = f"input_precision must be 'float64' or 'float32', got {input_precision!r}."
+            raise ValueError(msg)
+        self.input_precision = input_precision
         # setup empty prediction
         if empty_prediction is None:
             self.compute_empty_prediction()
@@ -275,7 +288,11 @@ class TreeModel:
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
 
-        # Set decision function
+        # untyped dict conversions reach this at runtime; unknown comparisons would
+        # otherwise silently route like "<="
+        if decision_type is not None and decision_type not in ("<=", "<"):
+            msg = f"decision_type must be '<=' or '<', got {decision_type!r}."
+            raise ValueError(msg)
         self.decision_type = decision_type if decision_type is not None else "<="
 
     def goes_left(self, node_id: int, value: float) -> bool:
@@ -351,8 +368,11 @@ class TreeModel:
         """
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
-            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = dict(enumerate(self.feature_ids))
+            # sorted: raw set iteration can be non-ascending, which would permute the
+            # reduced ids against the sorted interaction lookups
+            ordered_feature_ids = sorted(self.feature_ids)
+            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(ordered_feature_ids)}
+            mapping_new_old = dict(enumerate(ordered_feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
@@ -364,6 +384,28 @@ class TreeModel:
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
+    def cast_input(self, x: NDArray[np.floating]) -> NDArray[np.floating]:
+        """Round ``x`` the way the source library rounds prediction inputs.
+
+        XGBoost and CatBoost cast inputs to float32 before comparing them against their
+        (float32) split thresholds; routing the original float64 values can reach a different
+        leaf than the model's own prediction. The float32 embedding into float64 is exact and
+        order-preserving, so the round trip below makes every downstream float64 comparison
+        bit-identical to the source library's float32 comparison. LightGBM compares in float64
+        (no cast), and sklearn's thresholds are exact midpoints of adjacent float32 values,
+        which makes its internal float32 input cast unobservable — both keep ``"float64"``.
+
+        Args:
+            x: Instance(s) in the original feature space.
+
+        Returns:
+            ``x`` unchanged for ``input_precision == "float64"``, otherwise ``x`` rounded
+            through float32 (returned as float64).
+        """
+        if self.input_precision == "float32":
+            return x.astype(np.float32).astype(np.float64)
+        return x
+
     def predict_one(self, x: NDArray[np.floating]) -> float:
         """Predicts the output of a single instance.
 
@@ -374,6 +416,7 @@ class TreeModel:
             The prediction of the instance with the tree model.
 
         """
+        x = self.cast_input(np.asarray(x, dtype=np.float64))
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]
         while not is_leaf:

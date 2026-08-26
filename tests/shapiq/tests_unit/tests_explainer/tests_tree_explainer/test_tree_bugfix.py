@@ -20,7 +20,7 @@ def test_linear_tree_shap_does_not_mutate_caller_tree_model():
     """Test that constructing LinearTreeSHAP leaves the caller-owned TreeModel untouched."""
     from sklearn.tree import DecisionTreeRegressor
 
-    from shapiq.tree.linear.explainer import LinearTreeSHAP
+    from shapiq.tree.linear.computer import LinearTreeSHAP
     from shapiq.tree.validation import validate_tree_model
 
     rng = np.random.default_rng(0)
@@ -58,7 +58,7 @@ def test_tree_explainer_does_not_mutate_caller_tree_model():
     tree = validate_tree_model(model)[0]
     features_before = tree.features.copy()
 
-    # index="SV", max_order=1 routes to the LinearTreeSHAP fast path
+    # index="SV", max_order=1 routes to the quadrature path-dependent explainer
     explainer = TreeExplainer(model=tree, index="SV", max_order=1, backend="shapiq")
     explainer.explain(X[0])
     assert np.array_equal(tree.features, features_before)
@@ -486,7 +486,7 @@ def test_xgb_predicts_with_wrong_leaf_node():
 
     # get our tree model representation
     tree_explainer = TreeExplainer(model=model, index="SV")
-    tree_model = tree_explainer._treeshapiq_explainers[0]._tree
+    tree_model = tree_explainer._trees[0]
     prediction_tree_model = tree_model.predict_one(x_explain)
     prediction_tree_model_left = tree_model.predict_one(x_explain_left)
     # predictions of og xgb is different from our tree model

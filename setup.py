@@ -163,6 +163,15 @@ ext_modules = [
         # No OpenMP: this extension contains no #pragma omp / omp_* usage.
         **get_base_flags(),
     ),
+    Extension(
+        "shapiq.tree.quadrature.cext",
+        sources=[
+            "src/shapiq/tree/quadrature/cext/cext.cc",
+        ],
+        language="c++",
+        # No OpenMP: this extension contains no #pragma omp / omp_* usage.
+        **get_base_flags(),
+    ),
 ]
 
 setup(

@@ -29,9 +29,7 @@ def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     explainer = _ = TreeExplainer(model=rf_clf_model, max_order=1, min_order=0, class_index=1)
     explanation = explainer.explain(x_explain)
 
-    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
-    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
-    # `_treeshapiq_explainers` list.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -50,8 +48,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with the per-tree empty predictions; k-SII with max_order=2 routes
-    # through Woodelf, so `_treeshapiq_explainers` is never built and we read from `_trees`.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -71,10 +68,8 @@ def test_random_forest_regression(rf_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with empty_predictions
-    assert explainer.baseline_value == sum(
-        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers],
-    )
+    # compare baseline_value with the harmonized explainer's aggregated empty prediction
+    assert explainer.baseline_value == explainer._pathdependent_explainer.empty_prediction
     assert explanation.baseline_value == explainer.baseline_value
 
     # assert efficiency: with min_order=1 the empty interaction is excluded,
@@ -100,9 +95,7 @@ def test_random_forest_classification(rf_clf_model, background_clf_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
-    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
-    # `_treeshapiq_explainers` list.
+    # compare baseline_value with the per-tree empty predictions
     assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
@@ -369,33 +362,22 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
-def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
-    """Tests for the strange behavior of SHAP's XGBoost implementation.
+def test_xgboost_matches_shap(xgb_clf_model, background_clf_data):
+    """shapiq matches SHAP on the instance that historically exposed the float32 routing gap.
 
-    The test is used to show that the shapiq implementation is correct and the SHAP implementation
-    is doing something weird. For some instances (e.g. the one used in this test) the SHAP values
-    are different from the shapiq values. However, when we round the `thresholds` of the xgboost
-    trees in shapiq, then the computed explanations match. This is a strange behavior as rounding
-    the thresholds makes the model less true to the original model but only then the explanations
-    match.
+    This test used to assert that shapiq and SHAP *disagree* on this instance unless the
+    XGBoost thresholds were rounded — the "strange behavior" was that XGBoost (and therefore
+    SHAP) casts prediction inputs to float32 before routing, while shapiq routed the raw
+    float64 values. Since ``TreeModel.input_precision`` reproduces the cast, the values agree
+    without any rounding workaround.
     """
     explanation_instance = 0
     class_label = 1
 
-    # get the shap explanations (the following code is used to get SVs from SHAP)
-    # import shap  # noqa: ERA001
-    # model_copy = copy.deepcopy(xgb_clf_model) # noqa: ERA001
-    # explainer_shap = shap.TreeExplainer(model=model_copy)  # noqa: ERA001
-    # baseline_shap = float(explainer_shap.expected_value[class_label])  # noqa: ERA001
-    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))  # noqa: ERA001
-    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)  # noqa: ERA001
-    # sv_shap = sv_shap_all_classes[0][:, class_label]  # noqa: ERA001
-    # print(sv_shap)  # noqa: ERA001
-    # print(baseline_shap)  # noqa: ERA001
+    # reference SHAP values for this instance (see git history for the generating snippet)
     sv = [-0.00163171, 0.05075389, -0.13064955, -0.4421068, 0.00424677, -0.04832656, -0.01364264]
     sv_shap = np.array(sv)
 
-    # setup shapiq TreeSHAP
     explainer_shapiq = TreeExplainer(
         model=xgb_clf_model,
         max_order=1,
@@ -406,33 +388,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
 
-    # the SHAP sv values should be different from the shapiq values
-    assert not np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
-
-    # when we round the model thresholds of the xgb model (thresholds decide weather a feature is
-    # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
-    # fact that the shapiq implementation is correct
-    explainer_shapiq_rounded = TreeExplainer(
-        model=xgb_clf_model,
-        max_order=1,
-        index="SV",
-        class_index=class_label,
-    )
-    explainer_shapiq_rounded._init_explainers()
-    # max_order=1 SV routes through the LinearTreeSHAP path; round thresholds on whichever
-    # per-tree explainer list was populated so the mutation actually takes effect at explain time.
-    per_tree_explainers = (
-        explainer_shapiq_rounded._lineartreeshap_explainers
-        or explainer_shapiq_rounded._treeshapiq_explainers
-    )
-    for tree_explainer in per_tree_explainers:
-        tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)
-    x_explain_shapiq_rounded = copy.deepcopy(background_clf_data[explanation_instance])
-    sv_shapiq_rounded = explainer_shapiq_rounded.explain(x=x_explain_shapiq_rounded)
-    sv_shapiq_rounded_values = sv_shapiq_rounded.get_n_order_values(1)
-
-    # now the values surprisingly are the same
-    assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-5)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
 def test_iso_forest_shap(if_clf_model):
@@ -571,8 +527,7 @@ def test_interventional_dt_regression(dt_reg_model, background_reg_data):
     # the interventional path must be the one that's wired up
     explainer._init_explainers()
     assert explainer._interventional_explainer is not None
-    assert explainer._treeshapiq_explainers == []
-    assert explainer._lineartreeshap_explainers == []
+    assert explainer._pathdependent_explainer is None
 
     explanation = explainer.explain(x_explain)
     assert type(explanation).__name__ == "InteractionValues"
@@ -743,9 +698,10 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
     assert explanation[()] == pytest.approx(expected_baseline)
 
 
-def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_data, monkeypatch):
+def test_woodelf_fallback_warns_without_woodelf(rf_reg_model, background_reg_data, monkeypatch):
     """Without the optional woodelf dependency the explainer warns and falls back to shapiq."""
     import importlib.util
+    import warnings
 
     from shapiq.tree import WoodelfNotAvailableWarning
 
@@ -756,13 +712,51 @@ def test_woodelf_fallback_warns_without_woodelf(dt_reg_model, background_reg_dat
 
     monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
 
-    # max_order=2 crosses the path-dependent Woodelf cut-off, so this would route to Woodelf
-    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="SII")
+    # 100 background rows cross the interventional Woodelf cut-off, so this would route there
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=background_reg_data[:100],
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
     with pytest.warns(WoodelfNotAvailableWarning, match="woodelf"):
         assert not explainer._should_use_woodelf(1)
         explanation = explainer.explain(background_reg_data[0])
     assert type(explanation).__name__ == "InteractionValues"
-    assert explainer._treeshapiq_explainers  # the shapiq fallback computed the explanation
+    assert explainer._interventional_explainer is not None  # the shapiq fallback computed it
+
+    # path-dependent explanations never route to Woodelf: the quadrature default computes
+    # every order and index natively, so no cut-off applies and nothing warns
+    pathdependent = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1, index="SII")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert not pathdependent._should_use_woodelf(1000)
+        explanation = pathdependent.explain(background_reg_data[0])
+    assert type(explanation).__name__ == "InteractionValues"
+
+
+@pytest.mark.parametrize("index", ["k-SII", "BV"])
+def test_explain_X_pathdependent_without_woodelf(dt_reg_model, background_reg_data, index):
+    """``explain_X`` on the default path-dependent route works without woodelf.
+
+    The shapiq branch of ``explain_X`` (lazy init + per-instance quadrature + batch
+    wrapping) must produce one row per instance, each matching the single-instance
+    ``explain``.
+    """
+    max_order = 2 if index == "k-SII" else 1
+    X_explain = background_reg_data[:4]
+    explainer = TreeExplainer(
+        model=dt_reg_model, max_order=max_order, min_order=1, index=index, backend="shapiq"
+    )
+    batch = explainer.explain_X(X_explain)
+    assert len(batch) == len(X_explain)
+    for row, x in enumerate(X_explain):
+        single = explainer.explain(x)
+        assert batch[row].index == index
+        for interaction in single.interactions:
+            assert batch[row][interaction] == pytest.approx(single[interaction], abs=1e-12)
 
 
 def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
@@ -856,27 +850,34 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     with pytest.raises(ValueError, match="backend='banzhaf-machine'"):
         TreeExplainer(model=dt_reg_model, backend="banzhaf-machine")
 
-    # backend='woodelf' with a configuration Woodelf cannot serve (already-parsed trees)
+    # backend='woodelf' with a configuration Woodelf cannot serve (already-parsed trees);
+    # the config check needs no woodelf import, so pretend the package is installed to make
+    # this case testable in every environment
+    import importlib.machinery
+
     from shapiq.tree.validation import validate_tree_model
 
+    real_find_spec = importlib.util.find_spec
+
+    def fake_installed(name, *args, **kwargs):
+        if name == "woodelf":
+            return importlib.machinery.ModuleSpec("woodelf", None)
+        return real_find_spec(name, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "find_spec", fake_installed)
     with pytest.raises(ValueError, match="original model object"):
         TreeExplainer(model=validate_tree_model(dt_reg_model), backend="woodelf")
 
-    # backend='shapiq' cannot compute path-dependent Banzhaf indices
-    with pytest.raises(ValueError, match="woodelf"):
-        TreeExplainer(model=dt_reg_model, index="BV", backend="shapiq")
-
-    # without the woodelf package, forcing it (or needing it for path-dependent Banzhaf) raises
-    real_find_spec = importlib.util.find_spec
-
-    def fake_find_spec(name, *args, **kwargs):
+    # without the woodelf package, forcing it raises; path-dependent Banzhaf indices do not
+    # need it (the quadrature default computes them natively)
+    def fake_missing(name, *args, **kwargs):
         return None if name == "woodelf" else real_find_spec(name, *args, **kwargs)
 
-    monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
+    monkeypatch.setattr(importlib.util, "find_spec", fake_missing)
     with pytest.raises(ImportError, match="woodelf-explainer"):
         TreeExplainer(model=dt_reg_model, backend="woodelf")
-    with pytest.raises(ImportError, match="woodelf-explainer"):
-        TreeExplainer(model=dt_reg_model, index="BV", backend="auto")
+    banzhaf = TreeExplainer(model=dt_reg_model, index="BV", backend="auto")
+    assert banzhaf.explain(background_reg_data[0]).index == "BV"
 
 
 def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
@@ -960,11 +961,10 @@ def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg
 
 
 def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_data):
-    """Path-dependent SII with ``min_order=0``, ``max_order=3`` routes through Woodelf.
+    """Forced path-dependent Woodelf SII with ``min_order=0``, ``max_order=3`` matches shapiq.
 
-    ``max_order > 1`` crosses the path-dependent Woodelf cut-off. Orders 1-3 must match
-    :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0`` must still put the
-    baseline at the empty interaction.
+    Orders 1-3 must match :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0``
+    must still put the baseline at the empty interaction.
     """
     from shapiq.tree import TreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
@@ -972,7 +972,9 @@ def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_d
     pytest.importorskip("woodelf")
     x_explain = background_reg_data[0]
 
-    explainer = TreeExplainer(model=dt_reg_model, max_order=3, min_order=0, index="SII")
+    explainer = TreeExplainer(
+        model=dt_reg_model, max_order=3, min_order=0, index="SII", backend="woodelf"
+    )
     assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
     explanation = explainer.explain(x_explain)
 
@@ -1011,11 +1013,10 @@ def test_woodelf_pathdependent_honors_class_index(
 ):
     """Woodelf must explain the class ``class_index`` asks for.
 
-    ``max_order=2`` crosses the path-dependent Woodelf cut-off, so every class here is
-    computed by Woodelf rather than the shapiq kernel. Each one must match
-    :class:`~shapiq.tree.TreeSHAPIQ` run directly on the class-selected trees. Sklearn
-    ensembles select a class by slicing leaf values and boosters by filtering trees, so
-    both mechanisms are covered.
+    ``backend='woodelf'`` forces every class here to be computed by Woodelf rather than
+    the shapiq kernel. Each one must match :class:`~shapiq.tree.TreeSHAPIQ` run directly
+    on the class-selected trees. Sklearn ensembles select a class by slicing leaf values
+    and boosters by filtering trees, so both mechanisms are covered.
     """
     from shapiq.tree import TreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
@@ -1033,6 +1034,7 @@ def test_woodelf_pathdependent_honors_class_index(
             min_order=1,
             index="SII",
             class_index=class_index,
+            backend="woodelf",
         )
         assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
         explanation = explainer.explain(x_explain)

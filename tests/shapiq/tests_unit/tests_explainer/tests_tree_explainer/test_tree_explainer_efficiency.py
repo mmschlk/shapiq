@@ -1,10 +1,10 @@
-"""Efficiency-property regression tests for ``TreeExplainer`` across every supported model family.
+"""Efficiency-property regression tests for the tree explainers across every model family.
 
-The Shapley *efficiency* property requires that the attributions returned by
-``TreeExplainer`` sum to the prediction of the model it explains. For the converted
-internal representation this means::
+The Shapley *efficiency* property requires that the attributions returned by an explainer
+sum to the prediction of the model it explains. For the converted internal representation
+this means::
 
-    sum(sv.values)  ==  sum(tree.predict_one(x) for tree in explainer._trees)
+    sum(per-feature SV) + baseline  ==  sum(tree.predict_one(x) for tree in trees)
 
 i.e. the explainer must route ``x`` through the tree exactly like ``predict_one``
 does. This module guards two distinct routing bugs that silently broke that
@@ -19,8 +19,9 @@ invariant (both produced plausible-looking but wrong Shapley values):
   exactly on a split threshold.
 
 Both edge cases are exercised explicitly by also explaining points placed exactly
-on split thresholds, and both explainer code paths (the ``LinearTreeSHAP`` fast
-path and the ``TreeSHAPIQ`` fallback) are covered.
+on split thresholds, and all three path-dependent code paths are covered: the
+``QuadratureTreeSHAP`` default of ``TreeExplainer`` plus the standalone
+``LinearTreeSHAP`` and ``TreeSHAPIQ`` explainers.
 """
 
 from __future__ import annotations
@@ -29,6 +30,10 @@ import numpy as np
 import pytest
 
 from shapiq import TreeExplainer
+from shapiq.tree.linear import LinearTreeSHAP
+from shapiq.tree.quadrature import QuadratureTreeSHAP
+from shapiq.tree.treeshapiq import TreeSHAPIQ
+from shapiq.tree.validation import validate_tree_model
 
 # Model families covered. Each entry maps to (model fixture, dataset fixture).
 _REG_CASES = [
@@ -55,7 +60,7 @@ _CLF_CASES = [
 ]
 
 
-def _on_threshold_points(explainer: TreeExplainer, x_base: np.ndarray) -> list[np.ndarray]:
+def _on_threshold_points(trees, x_base: np.ndarray) -> list[np.ndarray]:
     """Build explain points that land exactly on split thresholds.
 
     For every finite split threshold in the converted ensemble, returns a copy of
@@ -64,7 +69,7 @@ def _on_threshold_points(explainer: TreeExplainer, x_base: np.ndarray) -> list[n
     which a ``<`` vs ``<=`` routing mismatch changes the predicted leaf.
     """
     points: list[np.ndarray] = []
-    for tree in explainer._trees:
+    for tree in trees:
         thresholds = np.asarray(tree.thresholds, dtype=np.float64)
         features = np.asarray(tree.features)
         for node_id in range(len(thresholds)):
@@ -79,56 +84,59 @@ def _on_threshold_points(explainer: TreeExplainer, x_base: np.ndarray) -> list[n
     return points
 
 
-def _assert_efficiency(model, X: np.ndarray, *, force_treeshapiq: bool) -> None:
-    """Assert sum(SV) == converted-ensemble prediction for many instances and both paths."""
-    if force_treeshapiq:
-        original = TreeExplainer._can_use_lineartreeshap
-        TreeExplainer._can_use_lineartreeshap = lambda self: False
-    try:
-        explainer = TreeExplainer(model=model, max_order=1, min_order=0, index="SV")
+def _assert_efficiency(model, X: np.ndarray, *, path: str) -> None:
+    """Assert sum(SV) + baseline == converted-ensemble prediction on the requested path."""
+    if path == "quadrature":
+        explainer = TreeExplainer(model=model, max_order=1, min_order=1, index="SV")
         explainer._init_explainers()
-    finally:
-        if force_treeshapiq:
-            TreeExplainer._can_use_lineartreeshap = original
-
-    # Sanity-check that we are actually exercising the intended code path.
-    if force_treeshapiq:
-        assert explainer._treeshapiq_explainers and not explainer._lineartreeshap_explainers
+        # Sanity-check that TreeExplainer actually defaults to the quadrature algorithm.
+        assert isinstance(explainer._pathdependent_explainer, QuadratureTreeSHAP)
+    elif path == "linear":
+        try:
+            explainer = LinearTreeSHAP(model=model)
+        except ValueError as error:  # trees with unreachable subtrees are refused by design
+            assert "zero-cover" in str(error)
+            pytest.skip("LinearTreeSHAP refuses trees with unreachable zero-cover subtrees")
     else:
-        assert explainer._lineartreeshap_explainers
+        explainer = TreeSHAPIQ(model=model, max_order=1, index="SV")
 
+    trees = validate_tree_model(model)
+    n_features = X.shape[1]
     explain_points = [X[i] for i in range(min(20, len(X)))]
-    explain_points += _on_threshold_points(explainer, X[0])
+    explain_points += _on_threshold_points(trees, X[0])
 
     for x in explain_points:
-        ensemble_prediction = float(sum(tree.predict_one(x) for tree in explainer._trees))
-        shapley_sum = float(explainer.explain(x).values.sum())
+        ensemble_prediction = float(sum(tree.predict_one(x) for tree in trees))
+        explanation = explainer.explain(x)
+        shapley_sum = float(
+            sum(explanation[(feature,)] for feature in range(n_features))
+            + explanation.baseline_value
+        )
         assert shapley_sum == pytest.approx(ensemble_prediction, rel=1e-4, abs=1e-4), (
-            f"Efficiency violated ({'TreeSHAPIQ' if force_treeshapiq else 'LinearTreeSHAP'} "
-            f"path): sum(SV)={shapley_sum} != ensemble prediction={ensemble_prediction}"
+            f"Efficiency violated ({path} path): sum(SV)+baseline={shapley_sum} != "
+            f"ensemble prediction={ensemble_prediction}"
         )
 
 
-@pytest.mark.parametrize("force_treeshapiq", [False, True], ids=["linear", "treeshapiq"])
+_PATHS = ["quadrature", "linear", "treeshapiq"]
+
+
+@pytest.mark.parametrize("path", _PATHS, ids=_PATHS)
 @pytest.mark.parametrize(("model_fixture", "data_fixture"), _REG_CASES)
-def test_tree_explainer_efficiency_regression(
-    model_fixture, data_fixture, force_treeshapiq, request
-):
-    """Efficiency holds for every regression model family on both explainer paths."""
+def test_tree_explainer_efficiency_regression(model_fixture, data_fixture, path, request):
+    """Efficiency holds for every regression model family on all explainer paths."""
     model = request.getfixturevalue(model_fixture)
     X, _ = request.getfixturevalue(data_fixture)
-    _assert_efficiency(model, np.asarray(X), force_treeshapiq=force_treeshapiq)
+    _assert_efficiency(model, np.asarray(X), path=path)
 
 
-@pytest.mark.parametrize("force_treeshapiq", [False, True], ids=["linear", "treeshapiq"])
+@pytest.mark.parametrize("path", _PATHS, ids=_PATHS)
 @pytest.mark.parametrize(("model_fixture", "data_fixture"), _CLF_CASES)
-def test_tree_explainer_efficiency_classification(
-    model_fixture, data_fixture, force_treeshapiq, request
-):
-    """Efficiency holds for every classification model family on both explainer paths."""
+def test_tree_explainer_efficiency_classification(model_fixture, data_fixture, path, request):
+    """Efficiency holds for every classification model family on all explainer paths."""
     model = request.getfixturevalue(model_fixture)
     X, _ = request.getfixturevalue(data_fixture)
-    _assert_efficiency(model, np.asarray(X), force_treeshapiq=force_treeshapiq)
+    _assert_efficiency(model, np.asarray(X), path=path)
 
 
 def test_interventional_sparse_matches_dense_categorical(
@@ -140,8 +148,8 @@ def test_interventional_sparse_matches_dense_categorical(
     routes inside the C kernel. Forcing both onto the same order must produce identical
     interaction values, including on rows with NaN values.
     """
-    import shapiq.tree.interventional.explainer as interventional_module
-    from shapiq.tree.interventional.explainer import InterventionalTreeSHAPIQ
+    import shapiq.tree.interventional.computer as interventional_module
+    from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 
     X, _ = background_cat_dataset
     dense = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
