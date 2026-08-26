@@ -1,0 +1,22 @@
+# Benchmark scripts are throw-away measurement code, not library code: they are exempt from
+# the annotation/docstring rules the package enforces, and they intentionally time third-party
+# calls inside closures.
+extend = "../../pyproject.toml"
+
+[lint]
+ignore = [
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "ANN401",  # untyped bench helpers
+    "D100", "D101", "D102", "D103", "D104", "D107",  # docstrings where they add nothing
+    "T201",     # print() is the progress report of a benchmark run
+    "BLE001",   # a refusal from an explainer is a measurement result, not a bug
+    "PLR0913", "PLR0915", "PLR0912", "PLR2004", "C901",
+    "E501", "COM812", "FIX002", "N802", "N803", "N806",
+    "S310",     # urllib download of a pinned https dataset URL
+    "RUF001", "RUF002", "RUF003",  # µ, ×, — in labels and docstrings
+    "PD901",    # `df` is fine for a five-line loader
+    "PTH123",
+    "INP001",   # scripts directory, deliberately not a package
+    "B023",     # closures over loop variables are bound explicitly via default args
+    "PERF401",
+    "TRY003", "EM101", "EM102",
+]
