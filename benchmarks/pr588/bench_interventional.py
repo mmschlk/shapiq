@@ -23,7 +23,7 @@ import warnings
 
 import numpy as np
 import shap
-from bench_common import DATASETS, measure, quiet, save
+from bench_common import DATASETS, git_commit, measure, quiet, save
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from shapiq.tree import TreeExplainer
@@ -164,6 +164,7 @@ def main() -> None:
                 "measurement": "end-to-end: explainer construction + explanation of n instances",
                 "repeats": args.repeats,
                 "stop_after_s": STOP_AFTER_S,
+                "shapiq_commit": git_commit(),
                 "platform": platform.platform(),
                 "python": sys.version.split()[0],
                 "agreement": checks,

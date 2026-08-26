@@ -40,6 +40,7 @@ import numpy as np
 import shap
 from bench_common import (
     DATASETS,
+    git_commit,
     make_sparse_indicator_data,
     measure,
     quiet,
@@ -289,6 +290,7 @@ def main() -> None:
                 "repeats": args.repeats,
                 "stop_after_s": STOP_AFTER_S,
                 "ignore_guard": args.ignore_guard,
+                "shapiq_commit": git_commit(),
                 "platform": platform.platform(),
                 "python": sys.version.split()[0],
                 **meta_extra,

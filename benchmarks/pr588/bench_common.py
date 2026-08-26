@@ -13,6 +13,7 @@ import io
 import json
 import os
 import statistics
+import subprocess
 import time
 import warnings
 from pathlib import Path
@@ -210,6 +211,20 @@ def measure(
                 }
     except catch as err:
         return {"status": "failed", "error": f"{type(err).__name__}: {err}"[:300]}
+
+
+def git_commit() -> str:
+    """The shapiq commit the measurement ran against, so a result file is traceable."""
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=HERE,
+        ).stdout.strip()
+    except Exception:
+        return "unknown"
 
 
 def save(payload: dict[str, Any], name: str) -> Path:
