@@ -280,8 +280,7 @@ def fig1() -> None:
     if "max_abs_dev_shapiq_woodelf" in checks:  # older result files: a single check
         checks = {"m": checks}
     dev = max(
-        max(c["max_abs_dev_shapiq_woodelf"], c["max_abs_dev_shapiq_shap"])
-        for c in checks.values()
+        max(c["max_abs_dev_shapiq_woodelf"], c["max_abs_dev_shapiq_shap"]) for c in checks.values()
     )
     header(
         fig,

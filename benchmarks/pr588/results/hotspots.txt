@@ -1,0 +1,31 @@
+Q1  interventional TreeSHAP-IQ: python preprocessing vs. the C kernel
+          m     explain    C kernel   python prep       shap
+         25     106.0 ms      0.19 ms       105.8 ms     2.85 ms   (37x shap)
+        100     351.1 ms      2.28 ms       348.9 ms     7.12 ms   (49x shap)
+        400    1341.5 ms      6.68 ms      1334.8 ms    22.58 ms   (59x shap)
+
+Q1  fix: route the same computation through the existing sparse C kernel
+      heloc RF 20x8, SV                                 336.8 ms ->    6.26 ms  (  54x)  max|dev| 6.5e-16
+      heloc RF 20x8, k-SII order 2                      342.4 ms ->   17.97 ms  (  19x)  max|dev| 6.9e-16
+      heloc RF 20x8, FSII order 2                       334.1 ms ->   11.90 ms  (  28x)  max|dev| 5.4e-16
+      superconductivity RF 10x6 (81 features), SV        96.6 ms ->    6.65 ms  (  15x)  max|dev| 6.8e-14
+      superconductivity single tree depth 10, SV         44.3 ms ->    4.50 ms  (  10x)  max|dev| 3.6e-14
+
+Q2  LinearTreeSHAP on bioresponse: the kernel wins, the result packaging loses
+      depth   8,   68 of 1776 features used by the tree:
+        LinearTreeSHAP C kernel ..................   0.039 ms
+        LinearTreeSHAP.explain (all-feature dict)    0.304 ms
+        same, dict over the tree's features only .   0.053 ms  (max|dev| 0e+00)
+        QuadratureTreeSHAP.explain ...............   0.043 ms
+        shap shap_values .........................   0.029 ms
+      depth  32,  231 of 1776 features used by the tree:
+        LinearTreeSHAP C kernel ..................   0.152 ms
+        LinearTreeSHAP.explain (all-feature dict)    0.416 ms
+        same, dict over the tree's features only .   0.195 ms  (max|dev| 0e+00)
+        QuadratureTreeSHAP.explain ...............   0.162 ms
+        shap shap_values .........................   0.379 ms
+
+      the overhead tracks the input feature space, not the tree:
+        n_features    23,  114 leaves:  kernel  0.049 ms   explain  0.057 ms   packaging  0.008 ms
+        n_features   200,  100 leaves:  kernel  0.045 ms   explain  0.076 ms   packaging  0.032 ms
+        n_features  1776,   80 leaves:  kernel  0.039 ms   explain  0.303 ms   packaging  0.264 ms
