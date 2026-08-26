@@ -315,6 +315,34 @@ def test_zero_cover_internal_subtree(implementation):
         LinearTreeSHAP(dead_tree)
 
 
+def test_sparse_interaction_support():
+    """Higher-order output enumerates only path-co-occurring subsets (wide models stay small).
+
+    A depth-3 tree over 200 features holds at most 3 distinct features per path, so the
+    order-3 support is at most one triple per leaf path — never the dense C(F, 3)
+    enumeration. Interactions outside the support are structurally zero and simply absent.
+    """
+    from itertools import combinations as iter_combinations
+    from math import comb
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(500, 200))
+    y = X[:, :5] @ rng.normal(size=5)
+    model = DecisionTreeRegressor(max_depth=3, random_state=0).fit(X, y)
+    explainer = QuadratureTreeSHAP(model, max_order=3, index="SII")
+    result = explainer.explain(X[0])
+    used = sorted(int(f) for f in explainer._trees[0].feature_ids)
+
+    n_pairs = sum(1 for k in result.interaction_lookup if len(k) == 2)
+    n_triples = sum(1 for k in result.interaction_lookup if len(k) == 3)
+    assert n_triples <= 8  # at most one triple per root-to-leaf path
+    assert n_pairs < comb(len(used), 2)  # strictly below the dense enumeration
+
+    missing = [pair for pair in iter_combinations(used, 2) if pair not in result.interaction_lookup]
+    assert missing  # precondition: the tree has non-co-occurring feature pairs
+    assert result[missing[0]] == 0.0  # absent interactions read as exact zeros
+
+
 # ------------------------------- edge cases and API -------------------------------
 
 

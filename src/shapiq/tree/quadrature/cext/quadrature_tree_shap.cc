@@ -76,19 +76,26 @@ struct QuadWorkspace
     std::vector<double> delta;   // n_quad weighted edge difference w * E * delta
     std::vector<bool> act;       // hot-chain activation per node
     std::vector<int> path_feats;  // sorted distinct features on the current path
-    std::vector<int64_t> order_offsets;  // start of each order's block in the output
-    // cum[r][v] = sum_{u < v} C(n_feats - 1 - u, r): lexicographic combination ranks in O(s).
-    // The rank order MUST match shapiq.utils.sets.generate_interaction_lookup (positions of
-    // itertools.combinations in lexicographic order) — the Python side pairs the output array
-    // with that lookup, so a mismatch silently misplaces values.
-    std::vector<int64_t> cum;
+    // Sparse interaction support: for each order >= 2 a lexicographically sorted table of the
+    // co-occurring subsets (int32 rows of length `order`). Positions in the table MUST match
+    // the Python-side per-order lookups — the output array is paired with those, so a mismatch
+    // silently misplaces values. Order 1 stays a dense per-feature block.
+    const int32_t *subset_keys;
+    const int64_t *subset_starts;   // per order: start of its table in subset_keys (in ints)
+    const int64_t *subset_counts;   // per order: number of subsets in its table
+    const int64_t *order_offsets;   // per order: start of its block in the output
     std::vector<QuadFrame> stack;
     std::vector<int> merged_scratch;
     std::vector<int> candidates;
     std::vector<int> chosen;
+    std::vector<int64_t> cursor;  // per order: table position of the last emitted subset
 
-    QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_)
-        : n_quad(n_quad_), n_feats(n_feats_), min_order(min_order_), max_order(max_order_)
+    QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
+                  const int32_t *subset_keys_, const int64_t *subset_starts_,
+                  const int64_t *subset_counts_, const int64_t *order_offsets_)
+        : n_quad(n_quad_), n_feats(n_feats_), min_order(min_order_), max_order(max_order_),
+          subset_keys(subset_keys_), subset_starts(subset_starts_),
+          subset_counts(subset_counts_), order_offsets(order_offsets_)
     {
         A.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 1.0);
         E.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 0.0);
@@ -98,45 +105,27 @@ struct QuadWorkspace
         act.assign(tree.num_nodes, false);
         path_feats.reserve(n_feats);
         chosen.resize(static_cast<size_t>(std::max(max_order, 1)));
+        cursor.assign(static_cast<size_t>(max_order) + 1, 0);
         stack.reserve(static_cast<size_t>(tree.max_depth) * 5 + 10);
-
-        // Pascal's triangle rows up to max_order, then the cumulative rank tables.
-        std::vector<int64_t> binom(static_cast<size_t>(n_feats + 1) * (max_order + 1), 0);
-        for (int n = 0; n <= n_feats; ++n)
-        {
-            binom[static_cast<size_t>(n) * (max_order + 1)] = 1;
-            for (int k = 1; k <= std::min(n, max_order); ++k)
-            {
-                int64_t without = (n >= 1) ? binom[static_cast<size_t>(n - 1) * (max_order + 1) + k] : 0;
-                int64_t with_last = (n >= 1 && k >= 1) ? binom[static_cast<size_t>(n - 1) * (max_order + 1) + k - 1] : 0;
-                binom[static_cast<size_t>(n) * (max_order + 1) + k] = without + with_last;
-            }
-        }
-        order_offsets.assign(max_order + 1, 0);
-        int64_t offset = 0;
-        for (int order = min_order; order <= max_order; ++order)
-        {
-            order_offsets[order] = offset;
-            offset += binom[static_cast<size_t>(n_feats) * (max_order + 1) + order];
-        }
-        cum.assign(static_cast<size_t>(max_order) * (n_feats + 2), 0);
-        for (int r = 0; r < max_order; ++r)
-        {
-            int64_t running = 0;
-            for (int v = 0; v <= n_feats; ++v)
-            {
-                cum[static_cast<size_t>(r) * (n_feats + 2) + v] = running;
-                int remaining = n_feats - 1 - v;
-                if (remaining >= r)
-                    running += binom[static_cast<size_t>(remaining) * (max_order + 1) + r];
-            }
-            cum[static_cast<size_t>(r) * (n_feats + 2) + n_feats + 1] = running;
-        }
     }
 
-    // Lexicographic rank of the sorted tuple formed by merging `feature` into the first
-    // `size` chosen path features (chosen[] sorted, feature not among them).
-    int64_t merged_rank(const int *chosen, int size, int feature)
+    // Lexicographic compare of a table row against the merged tuple (both length s).
+    static int compare_row(const int32_t *row, const int *merged, int s)
+    {
+        for (int i = 0; i < s; ++i)
+        {
+            if (row[i] != merged[i])
+                return (row[i] < merged[i]) ? -1 : 1;
+        }
+        return 0;
+    }
+
+    // Position (within the order's table) of the sorted tuple formed by merging `feature`
+    // into the first `size` chosen path features (chosen[] sorted, feature not among them).
+    // Every merged tuple lies on the current path, so it is guaranteed to be in the table.
+    // Within one edge extraction the emitted tuples are strictly increasing per order, so the
+    // search gallops forward from the per-order cursor instead of bisecting the whole table.
+    int64_t merged_position(const int *chosen, int size, int feature)
     {
         merged_scratch.resize(static_cast<size_t>(size) + 1);
         int *merged = merged_scratch.data();
@@ -147,16 +136,28 @@ struct QuadWorkspace
         merged[insert_at] = feature;
         std::memcpy(merged + insert_at + 1, chosen + insert_at,
                     static_cast<size_t>(size - insert_at) * sizeof(int));
-        int s = size + 1;
-        int64_t rank = 0;
-        int prev = -1;
-        for (int i = 0; i < s; ++i)
+        const int s = size + 1;
+        const int32_t *base = subset_keys + subset_starts[s];
+        const int64_t count = subset_counts[s];
+        int64_t lo = cursor[s];
+        if (lo >= count || compare_row(base + lo * s, merged, s) > 0)
+            lo = 0;  // cursor overshot (new extraction); restart from the table head
+        // exponential gallop: find a bracket [lo, hi) whose upper row is >= merged
+        int64_t bound = 1;
+        while (lo + bound < count && compare_row(base + (lo + bound) * s, merged, s) < 0)
+            bound <<= 1;
+        int64_t hi = std::min(lo + bound + 1, count);
+        lo = lo + (bound >> 1);
+        while (lo < hi)
         {
-            const int64_t *cum_r = cum.data() + static_cast<size_t>(s - 1 - i) * (n_feats + 2);
-            rank += cum_r[merged[i]] - cum_r[prev + 1];
-            prev = merged[i];
+            const int64_t mid = lo + ((hi - lo) >> 1);
+            if (compare_row(base + mid * s, merged, s) < 0)
+                lo = mid + 1;
+            else
+                hi = mid;
         }
-        return rank;
+        cursor[s] = lo + 1;
+        return lo;
     }
 };
 
@@ -191,8 +192,8 @@ static void quad_enumerate(
             double contribution = 0.0;
             for (int m = 0; m < n_quad; ++m)
                 contribution += weighted[m] * gamma_level[m];
-            int64_t rank = ws.merged_rank(chosen, level + 1, feature);
-            out[ws.order_offsets[order] + rank] += contribution;
+            int64_t position = ws.merged_position(chosen, level + 1, feature);
+            out[ws.order_offsets[order] + position] += contribution;
         }
         if (order < ws.max_order)
         {
@@ -402,13 +403,18 @@ inline void quadrature_tree_shap(
     int n_feats,
     int min_order,
     int max_order,
+    const int32_t *subset_keys,
+    const int64_t *subset_starts,
+    const int64_t *subset_counts,
+    const int64_t *order_offsets,
     const double *X,
     int n_row,
     int n_col,
     int64_t out_stride,
     double *out)
 {
-    QuadWorkspace ws(tree, n_quad, n_feats, min_order, max_order);
+    QuadWorkspace ws(tree, n_quad, n_feats, min_order, max_order,
+                     subset_keys, subset_starts, subset_counts, order_offsets);
     for (int i = 0; i < n_row; ++i)
     {
         quadrature_inference(tree, ws, t, w, roots, n_trees,

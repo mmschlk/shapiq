@@ -49,6 +49,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     int n_feats;
     int min_order;
     int max_order;
+    PyObject *subset_keys_obj;
+    PyObject *subset_starts_obj;
+    PyObject *subset_counts_obj;
+    PyObject *order_offsets_obj;
     PyObject *X_obj;
     PyObject *out_obj;
     const char *decision_type_cptr;
@@ -58,7 +62,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyObject *children_left_default_obj;
 
     if (!PyArg_ParseTuple(
-            args, "OOOOOOOOiiOOOiiiOOsOOOO",
+            args, "OOOOOOOOiiOOOiiiOOOOOOsOOOO",
             &thresholds_obj,
             &features_obj,
             &children_left_obj,
@@ -75,6 +79,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             &n_feats,
             &min_order,
             &max_order,
+            &subset_keys_obj,
+            &subset_starts_obj,
+            &subset_counts_obj,
+            &order_offsets_obj,
             &X_obj,
             &out_obj,
             &decision_type_cptr,
@@ -95,6 +103,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyArrayObject *roots_array = (PyArrayObject *)PyArray_FROM_OTF(roots_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *t_array = (PyArrayObject *)PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *w_array = (PyArrayObject *)PyArray_FROM_OTF(w_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *subset_keys_array = (PyArrayObject *)PyArray_FROM_OTF(subset_keys_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *subset_starts_array = (PyArrayObject *)PyArray_FROM_OTF(subset_starts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *subset_counts_array = (PyArrayObject *)PyArray_FROM_OTF(subset_counts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *order_offsets_array = (PyArrayObject *)PyArray_FROM_OTF(order_offsets_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *out_array = (PyArrayObject *)PyArray_FROM_OTF(out_obj, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY2);
     PyArrayObject *cat_values_array = (PyArrayObject *)PyArray_FROM_OTF(cat_values_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
@@ -105,8 +117,9 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     if (!thresholds_array || !features_array || !children_left_array || !children_right_array ||
         !parents_array || !ancestors_array || !c_acc_array || !values_array || !roots_array ||
         !t_array ||
-        !w_array || !X_array || !out_array || !cat_values_array || !cat_start_array ||
-        !cat_size_array || !children_left_default_array)
+        !w_array || !subset_keys_array || !subset_starts_array || !subset_counts_array ||
+        !order_offsets_array || !X_array || !out_array || !cat_values_array ||
+        !cat_start_array || !cat_size_array || !children_left_default_array)
     {
         Py_XDECREF(thresholds_array);
         Py_XDECREF(features_array);
@@ -119,6 +132,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         Py_XDECREF(roots_array);
         Py_XDECREF(t_array);
         Py_XDECREF(w_array);
+        Py_XDECREF(subset_keys_array);
+        Py_XDECREF(subset_starts_array);
+        Py_XDECREF(subset_counts_array);
+        Py_XDECREF(order_offsets_array);
         Py_XDECREF(X_array);
         Py_XDECREF(cat_values_array);
         Py_XDECREF(cat_start_array);
@@ -180,33 +197,36 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         arg_error = "X must have at least n_features columns.";
     else if (PyArray_DIM(out_array, 0) != PyArray_DIM(X_array, 0))
         arg_error = "out must have one row per row of X.";
+    else if (PyArray_NDIM(subset_keys_array) != 1 ||
+             PyArray_NDIM(subset_starts_array) != 1 || PyArray_NDIM(subset_counts_array) != 1 ||
+             PyArray_NDIM(order_offsets_array) != 1 ||
+             PyArray_DIM(subset_starts_array, 0) != max_order + 1 ||
+             PyArray_DIM(subset_counts_array, 0) != max_order + 1 ||
+             PyArray_DIM(order_offsets_array, 0) != max_order + 1)
+        arg_error = "subset table descriptors must be 1-dimensional arrays of length max_order + 1.";
     else
     {
-        // expected output width: sum of C(n_feats, order) with int64 saturation; a saturated
-        // count can never correspond to an allocatable out array, so it always mismatches
-        const int64_t cap = INT64_MAX / 4;
-        int64_t expected = 0;
-        for (int order = min_order; order <= max_order && expected < cap; ++order)
+        // the out width and every table slice must be consistent with the descriptors, or the
+        // kernel would write past the buffers
+        const int64_t *starts = (const int64_t *)PyArray_DATA(subset_starts_array);
+        const int64_t *counts = (const int64_t *)PyArray_DATA(subset_counts_array);
+        const int64_t *offsets = (const int64_t *)PyArray_DATA(order_offsets_array);
+        const int64_t n_keys = (int64_t)PyArray_DIM(subset_keys_array, 0);
+        const int64_t out_width = (int64_t)PyArray_DIM(out_array, 1);
+        int64_t expected = (min_order <= 1) ? n_feats : 0;
+        if (min_order <= 1 && offsets[1] != 0)
+            arg_error = "the order-1 block must start at output position 0.";
+        for (int order = std::max(min_order, 2); arg_error == NULL && order <= max_order; ++order)
         {
-            int64_t binom = 1;
-            for (int k = 1; k <= order; ++k)
-            {
-                int64_t factor = n_feats - k + 1;
-                if (factor <= 0)
-                {
-                    binom = 0;
-                    break;
-                }
-                if (binom > cap / factor)
-                {
-                    binom = cap;
-                    break;
-                }
-                binom = binom * factor / k;
-            }
-            expected = (binom >= cap || expected >= cap - binom) ? cap : expected + binom;
+            if (counts[order] < 0 || starts[order] < 0 ||
+                starts[order] + counts[order] * order > n_keys)
+                arg_error = "subset tables are inconsistent with the subset_keys length.";
+            else if (offsets[order] < 0 || offsets[order] + counts[order] > out_width)
+                arg_error = "an order's output block lies outside the out array.";
+            else
+                expected += counts[order];
         }
-        if (PyArray_DIM(out_array, 1) != expected)
+        if (arg_error == NULL && out_width != expected)
             arg_error = "out width does not match the number of requested interactions.";
     }
 
@@ -230,6 +250,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         const int n_col = (int)PyArray_DIM(X_array, 1);
         const int64_t out_stride = (int64_t)PyArray_DIM(out_array, 1);
         quadrature_tree_shap(tree, t, w, n_quad, roots, n_trees, n_feats, min_order, max_order,
+                             (const int32_t *)PyArray_DATA(subset_keys_array),
+                             (const int64_t *)PyArray_DATA(subset_starts_array),
+                             (const int64_t *)PyArray_DATA(subset_counts_array),
+                             (const int64_t *)PyArray_DATA(order_offsets_array),
                              X, n_row, n_col, out_stride, out);
     }
 
@@ -244,6 +268,10 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     Py_XDECREF(roots_array);
     Py_XDECREF(t_array);
     Py_XDECREF(w_array);
+    Py_XDECREF(subset_keys_array);
+    Py_XDECREF(subset_starts_array);
+    Py_XDECREF(subset_counts_array);
+    Py_XDECREF(order_offsets_array);
     Py_XDECREF(X_array);
     Py_XDECREF(cat_values_array);
     Py_XDECREF(cat_start_array);
