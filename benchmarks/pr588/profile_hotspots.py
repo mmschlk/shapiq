@@ -18,6 +18,15 @@ the kernels rather than the kernels themselves:
    :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` avoids it by building its lookup once,
    over only the features the tree splits on.
 
+3. In the same panel, QuadratureTreeSHAP's *order-2* curve loses to shap. Its kernel is not the
+   problem either -- it is 0.07 ms where the call is 38 ms. The cost is the SII -> k-SII
+   aggregation, which ``InteractionValues.__init__`` performs on every explanation, and which
+   routes every scalar zero-test through ``np.all(...)`` (9,405 numpy dispatches per
+   explanation on a depth-8 superconductivity tree). Note also that shap never performs this
+   aggregation: ``shap_interaction_values`` is the Shapley interaction index, i.e. shapiq's
+   ``SII`` (shap splits each pair symmetrically, so ``shap_ij == SII_ij / 2``). Compared
+   like-for-like the quadrature kernel wins by 5-45x.
+
 Run with no arguments; prints the measured split and the effect of each candidate fix.
 """
 
@@ -29,13 +38,16 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
+import scipy as sp
 import shap
 from bench_common import load_bioresponse, load_heloc, load_superconductivity, quiet
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
+from shapiq.game_theory import aggregation
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree import LinearTreeSHAP, QuadratureTreeSHAP, TreeExplainer
+from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -165,8 +177,7 @@ def q2(bio) -> None:
         dev = float(
             np.max(
                 np.abs(
-                    pack(range(n_features)).get_n_order_values(1)
-                    - pack(used).get_n_order_values(1)
+                    pack(range(n_features)).get_n_order_values(1) - pack(used).get_n_order_values(1)
                 )
             )
         )
@@ -201,20 +212,112 @@ def q2_scaling(bio) -> None:
         )
 
 
+def _is_zero(value) -> bool:
+    """Zero-test without a numpy dispatch on the (overwhelmingly common) scalar path."""
+    return not value.any() if isinstance(value, np.ndarray) else value == 0
+
+
+def faster_aggregation(interactions, index, order, min_order, baseline_value):  # noqa: ARG001
+    """``aggregate_base_attributions`` with the scalar zero-test taken off ``np.all``.
+
+    Identical output -- same keys, deviation exactly zero -- and roughly 5x faster.
+    """
+    bernoulli = [float(b) for b in sp.special.bernoulli(order)]
+    out = {(): baseline_value}
+    for base, value in interactions.items():
+        size = len(base)
+        for interaction in powerset(base, min_size=1, max_size=order):
+            update = bernoulli[size - len(interaction)] * value
+            if _is_zero(update):
+                continue
+            current = out.get(interaction, 0) + update
+            if _is_zero(current):
+                out.pop(interaction, None)
+            else:
+                out[interaction] = current
+    return out, aggregation._change_index(index), 0  # noqa: SLF001
+
+
+def q3(datasets) -> None:
+    print()
+    print("Q3  QuadratureTreeSHAP at order 2: the kernel is 0.1 ms, the k-SII aggregation is not")
+    original = aggregation.aggregate_base_attributions
+    for label, data, depth, task in datasets:
+        cls = DecisionTreeClassifier if task == "classification" else DecisionTreeRegressor
+        tree = cls(max_depth=depth, random_state=0).fit(data["X_train"], data["y_train"])
+        x = data["X_test"][0]
+        class_index = 1 if task == "classification" else None
+        with quiet():
+            ksii = QuadratureTreeSHAP(tree, index="k-SII", max_order=2, class_index=class_index)
+            sii = QuadratureTreeSHAP(tree, index="SII", max_order=2, class_index=class_index)
+            reference = shap.TreeExplainer(tree, feature_perturbation="tree_path_dependent")
+            x_relevant = ksii._trees[0].cast_input(  # noqa: SLF001
+                np.asarray(x, dtype=np.float64)
+            )[ksii._relevant_features]  # noqa: SLF001
+            kernel = median_ms(lambda: ksii._explain_cpp(x_relevant), runs=15)  # noqa: SLF001
+            shipped = median_ms(lambda: ksii.explain(x), runs=5, warmup=2)
+            before = ksii.explain(x)
+
+            aggregation.aggregate_base_attributions = faster_aggregation
+            patched = median_ms(lambda: ksii.explain(x), runs=5, warmup=2)
+            after = ksii.explain(x)
+            aggregation.aggregate_base_attributions = original
+
+            sii_ms = median_ms(lambda: sii.explain(x), runs=5, warmup=2)
+            shap_ms = median_ms(
+                lambda: reference.shap_interaction_values(x.reshape(1, -1)), runs=3, warmup=1
+            )
+        keys = set(before.interaction_lookup) | set(after.interaction_lookup)
+        dev = max(abs(float(before[k]) - float(after[k])) for k in keys)
+        n = ksii._n_features_in_tree  # noqa: SLF001
+        print(
+            f"      {label}, depth {depth} ({n} features in the tree,"
+            f" {ksii._output_size} outputs):\n"  # noqa: SLF001
+            f"        quadrature C kernel ...................... {kernel:8.3f} ms\n"
+            f"        k-SII explain (shipped) .................. {shipped:8.2f} ms\n"
+            f"        k-SII explain, scalar zero-test .......... {patched:8.2f} ms"
+            f"  ({shipped / patched:.1f}x, max|dev| {dev:.0e})\n"
+            f"        SII explain (no aggregation) ............. {sii_ms:8.2f} ms\n"
+            f"        shap shap_interaction_values ............. {shap_ms:8.2f} ms"
+            f"   <- computes SII, never k-SII"
+        )
+
+
+def q3_convention(data) -> None:
+    """Shap's interaction matrix is the same index shapiq calls SII, split over both cells."""
+    tree = DecisionTreeRegressor(max_depth=8, random_state=0).fit(data["X_train"], data["y_train"])
+    x = data["X_test"][0]
+    with quiet():
+        sii = QuadratureTreeSHAP(tree, index="SII", max_order=2).explain(x)
+        matrix = np.asarray(
+            shap.TreeExplainer(
+                tree, feature_perturbation="tree_path_dependent"
+            ).shap_interaction_values(x.reshape(1, -1))
+        )[0]
+    pairs = [k for k in sii.interaction_lookup if len(k) == 2]
+    half = max(abs(float(sii[k]) / 2 - matrix[k[0], k[1]]) for k in pairs)
+    scale = max(abs(float(sii[k])) for k in pairs)
+    print()
+    print(
+        f"      convention check: max|shapiq SII/2 - shap off-diagonal| = {half:.1e}"
+        f" on a scale of {scale:.1e}"
+    )
+
+
 def main() -> None:
     warnings.simplefilter("ignore")
     heloc = load_heloc()
-    forest = RandomForestClassifier(
-        n_estimators=20, max_depth=8, random_state=0, n_jobs=1
-    ).fit(heloc["X_train"], heloc["y_train"])
+    forest = RandomForestClassifier(n_estimators=20, max_depth=8, random_state=0, n_jobs=1).fit(
+        heloc["X_train"], heloc["y_train"]
+    )
     x_heloc = heloc["X_test"][0]
 
     q1(forest, x_heloc, heloc["X_train"], (25, 100, 400))
 
     superconductivity = load_superconductivity()
-    sc_forest = RandomForestRegressor(
-        n_estimators=10, max_depth=6, random_state=0, n_jobs=1
-    ).fit(superconductivity["X_train"], superconductivity["y_train"])
+    sc_forest = RandomForestRegressor(n_estimators=10, max_depth=6, random_state=0, n_jobs=1).fit(
+        superconductivity["X_train"], superconductivity["y_train"]
+    )
     sc_tree = DecisionTreeRegressor(max_depth=10, random_state=0).fit(
         superconductivity["X_train"], superconductivity["y_train"]
     )
@@ -247,6 +350,17 @@ def main() -> None:
     bio = load_bioresponse()
     q2(bio)
     q2_scaling(bio)
+
+    q3(
+        [
+            ("superconductivity", superconductivity, 8, "regression"),
+            ("superconductivity", superconductivity, 12, "regression"),
+            ("bioresponse", bio, 8, "classification"),
+            ("bioresponse", bio, 16, "classification"),
+            ("heloc", heloc, 16, "classification"),
+        ]
+    )
+    q3_convention(superconductivity)
 
 
 if __name__ == "__main__":
