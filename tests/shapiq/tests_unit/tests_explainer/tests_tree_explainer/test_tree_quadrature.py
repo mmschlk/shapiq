@@ -343,6 +343,59 @@ def test_sparse_interaction_support():
     assert result[missing[0]] == 0.0  # absent interactions read as exact zeros
 
 
+def _perfect_tree_with_distinct_features(depth: int, seed: int = 0):
+    """A perfect binary tree of the given depth splitting each node on its own feature.
+
+    Every decision node uses a distinct feature, so the tree holds ``2**depth - 1`` features
+    in total while any single root-to-leaf path holds only ``depth`` of them. That gap is
+    what lets a modest depth reach a feature space wide enough to overflow the kernel's
+    integer key encoding.
+    """
+    n_decision_nodes = 2**depth - 1
+    n_nodes = 2 ** (depth + 1) - 1
+    node = np.arange(n_nodes)
+    is_leaf = node >= n_decision_nodes
+    node_depth = np.floor(np.log2(node + 1)).astype(int)
+    rng = np.random.default_rng(seed)
+    tree = {
+        "children_left": np.where(is_leaf, -1, 2 * node + 1),
+        "children_right": np.where(is_leaf, -1, 2 * node + 2),
+        "children_missing": np.where(is_leaf, -1, 2 * node + 1),
+        "features": np.where(is_leaf, -2, node),
+        "thresholds": np.where(is_leaf, -2.0, 0.0),
+        "node_sample_weight": 2.0 ** (depth - node_depth),
+        "values": np.where(is_leaf, rng.normal(size=n_nodes), 0.0),
+    }
+    return tree, rng.normal(size=n_decision_nodes)
+
+
+def test_subset_lookup_falls_back_when_the_key_encoding_overflows():
+    """The tuple-comparison lookup is used when the integer key encoding does not fit.
+
+    The kernel maps each subset table row to one ``int64`` in base ``F`` (the number of
+    features the ensemble splits on) so a table lookup compares a single integer. The
+    encoding only exists while ``F ** max_order`` fits in an ``int64``; past that the kernel
+    searches the tables by comparing feature tuples instead. Both paths must agree.
+
+    The requested order equals the number of features per decision path, so the fallback
+    stays reachable even if the explainer were to cap the order at what the paths support.
+    """
+    depth = 8
+    tree, x = _perfect_tree_with_distinct_features(depth)
+
+    encoded = QuadratureTreeSHAP(tree, max_order=3, index="SII")
+    fallback = QuadratureTreeSHAP(tree, max_order=depth, index="SII")
+
+    from_encoding = encoded.explain(x)
+    from_tuples = fallback.explain(x)
+
+    shared = [key for key in from_encoding.interaction_lookup if len(key) <= 3]
+    assert len(shared) > 100  # precondition: the comparison covers real interactions
+    assert any(len(key) == 3 for key in shared)  # ... including orders that need the lookup
+    for interaction in shared:
+        assert from_tuples[interaction] == pytest.approx(from_encoding[interaction], abs=1e-12)
+
+
 # ------------------------------- edge cases and API -------------------------------
 
 
