@@ -13,6 +13,7 @@ bench_common.py         single-thread environment, dataset loaders, timing helpe
 bench_interventional.py interventional: shapiq vs. Woodelf vs. shap over n, to n = 10,000
 bench_depth.py          path-dependent: runtime vs. tree depth, real and synthetic trees
 bench_accuracy.py       the same trees, but measuring round-off instead of runtime
+check_shap_index.py     confirms shap's interaction values are k-SII, not SII
 bench_ksii_isolated.py  the k-SII aggregation timed alone, on frozen inputs
 profile_hotspots.py     the three diagnoses behind the fixes in #590
 run_final.sh            re-measure everything, in order, against one build
@@ -40,6 +41,15 @@ The scripts need `main`'s C extensions built in place, plus `shap` and the optio
 the extensions compile from one listed source each, and editing a file that is only
 `#include`d does not trigger a rebuild (see `CLAUDE.md`). `rm -rf build` before
 `build_ext --inplace` is the only reliable way to be sure of what is being timed.
+
+## What order 2 means
+
+Both sides of the order-2 comparison compute **k-SII with k = 2**. shap calls its output
+"Shapley interaction values", which reads like the Shapley Interaction Index, but
+`shap_interaction_values` returns the matrix layout of 2-SII: `M[i, j] + M[j, i]` is the pair
+value, and the diagonal is fixed so each row sums to the Shapley value, which is precisely the
+k = 2 aggregation term. `check_shap_index.py` measures it — shap's diagonal matches k-SII to
+2e-16 and misses SII by 4e-2 on a value scale of 0.5.
 
 ## Measurement rules
 

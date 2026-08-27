@@ -7,7 +7,10 @@ Single-explanation runtime (one instance, one tree) of the four path-dependent a
     treeshapiq  ``shapiq.tree.TreeSHAPIQ``
     shap        ``shap.TreeExplainer(..., feature_perturbation="tree_path_dependent")``
 
-at interaction order 1 (Shapley values) and order 2 (k-SII, and shap's interaction values).
+at interaction order 1 (Shapley values) and order 2 (k-SII). shap's ``shap_interaction_values``
+returns k-SII with k = 2 as well, in matrix layout -- despite the name it is not the Shapley
+Interaction Index; ``check_shap_index.py`` is the check. The order-2 comparison is therefore
+like for like.
 Explainer construction is excluded from the reported time and recorded separately.
 
 Two regimes, selected with ``--suite``:
@@ -287,7 +290,7 @@ def main() -> None:
                 "model": "single sklearn decision tree",
                 "measurement": "single-explanation runtime, construction excluded",
                 "orders": list(orders),
-                "index": {"1": "SV", "2": "k-SII (shap: interaction values)"},
+                "index": {"1": "SV", "2": "k-SII"},
                 "repeats": args.repeats,
                 "stop_after_s": STOP_AFTER_S,
                 "ignore_guard": args.ignore_guard,

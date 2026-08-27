@@ -441,9 +441,7 @@ TITLES = {
     "heloc": "path-dependent TreeSHAP  ·  heloc (8.4k × 23)",
     "bioresponse": "path-dependent TreeSHAP  ·  bioresponse (3k × 1776)",
 }
-ORDER2_NOTE = (
-    "one tree per depth, one explained instance, single thread  ·  order 2 = k-SII (shap: SII)"
-)
+ORDER2_NOTE = "one tree per depth, one explained instance, single thread  ·  order 2 = k-SII"
 
 
 def depth_real() -> None:

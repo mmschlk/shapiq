@@ -149,7 +149,7 @@ def main() -> None:
                 "suite": args.suite,
                 "measure": "|sum(values) + baseline - prediction| / |prediction - mean(y)|",
                 "orders": [1, 2],
-                "index": {"1": "SV", "2": "k-SII (shap: interaction values)"},
+                "index": {"1": "SV", "2": "k-SII"},
                 "ignore_guard": not args.keep_guard,
                 "shapiq_commit": git_commit(),
                 "platform": platform.platform(),
