@@ -1,0 +1,1205 @@
+{
+  "meta": {
+    "suite": "synthetic",
+    "measure": "|sum(values) + baseline - prediction| / |prediction - mean(y)|",
+    "orders": [
+      1,
+      2
+    ],
+    "index": {
+      "1": "SV",
+      "2": "k-SII (shap: interaction values)"
+    },
+    "ignore_guard": true,
+    "shapiq_commit": "d8b0a76",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "records": [
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 4.407234703230566e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 4.407234703230566e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 8.814469406461132e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 4.407234703230566e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 8.814469406461132e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 15,
+      "max_features_per_path": 4,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 8.80321171167348e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 2.9050598648522487e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 3.917429211694699e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 8.80321171167348e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 3.8293970945779645e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 100,
+      "max_features_per_path": 8,
+      "rel_error": 6.602408783755111e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 2.2377701063413882e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 1.0301574684542581e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 7.635271602836817e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 7.086272003414396e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 1.864808421951157e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 7.636017526205598e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 302,
+      "max_features_per_path": 12,
+      "rel_error": 4.102578528292545e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 1.813996559817121e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 1.514192574700988e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 8.743868035024864e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 3.633721529823138e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 2.425026979966046e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 8.743880255633268e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 634,
+      "max_features_per_path": 16,
+      "rel_error": 3.710100332341753e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.7364726052623571e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.8581160473680015e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.3210520791972858e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.4053024726873218e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 3.87366965789295e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.321051697554955e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1067,
+      "max_features_per_path": 20,
+      "rel_error": 1.4049971588226603e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 8.143211016613e-17,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 0.00019367556869499033,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 0.00017466636058648612,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 1.5401254995720167e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 4.80449449980167e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 0.00017466636058420602,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1558,
+      "max_features_per_path": 24,
+      "rel_error": 1.5388225858093587e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 7.283348022699059e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 0.0732683187975048,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 0.06633475331648642,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 4.707095402560899e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 1.1918205855325733e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 0.06633475331648113,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 2103,
+      "max_features_per_path": 28,
+      "rel_error": 4.7084196476559346e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 1.6259856690717036e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 0.19865501423226517,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 0.2813313480105393,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 8.276189925485541e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 5.294876409541189e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 0.2813313480105426,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 30,
+      "n_leaves": 2391,
+      "max_features_per_path": 30,
+      "rel_error": 8.276163242643792e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 4.758675734253329e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 4.645818060069258,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 5.695455541491021,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 2.676698883619417e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 2.177699064827795e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 5.695455541491026,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 2680,
+      "max_features_per_path": 32,
+      "rel_error": 2.6766982383752495e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 4.9947309661384995e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 203.22674433894633,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 46.25580049538429,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 1.1640596000480883e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 8.670852957216435e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 46.25580049538448,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 36,
+      "n_leaves": 3290,
+      "max_features_per_path": 36,
+      "rel_error": 1.1640602074073738e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 6.094735647671462e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 19.07157882131472,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 273302.397034104,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 7.446988528273748e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 8.126314196895282e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 273302.3970341051,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 40,
+      "n_leaves": 3941,
+      "max_features_per_path": 40,
+      "rel_error": 7.446988345431679e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 3.662702542820968e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 900135603.8140069,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 92431344840.09378,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 2.1592017962369167e-05,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 5.494053814231451e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 92431344840.09526,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 50,
+      "n_leaves": 5531,
+      "max_features_per_path": 50,
+      "rel_error": 2.1592017962735438e-05,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 3.5977211358573267e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 16231357362744.695,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 8.279636613313e+16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 0.0587852768996063,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 3.5977211358573267e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 8.279636613313003e+16,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 60,
+      "n_leaves": 7066,
+      "max_features_per_path": 60,
+      "rel_error": 0.0587852768996063,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 1.3250273257561104e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 5.338285971973421e+19,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 1.8792377515945258e+22,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 5813.814950338027,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 1.7667031010081472e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 1.8792377515945237e+22,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 80,
+      "n_leaves": 9797,
+      "max_features_per_path": 80,
+      "rel_error": 5813.8149503380255,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "rel_error": 1.7667031010081472e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 1,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "status": "refused",
+      "error": "LinAlgError: Singular matrix"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "status": "refused",
+      "error": "LinAlgError: Singular matrix"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 1,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "rel_error": 2257081271.7454033,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "rel_error": 1.7667031010081472e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "linear",
+      "order": 2,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "status": "refused",
+      "error": "LinAlgError: Singular matrix"
+    },
+    {
+      "dataset": "synthetic",
+      "method": "shap",
+      "order": 2,
+      "depth": 100,
+      "n_leaves": 12033,
+      "max_features_per_path": 100,
+      "rel_error": 2257081271.7454033,
+      "status": "ok"
+    }
+  ]
+}

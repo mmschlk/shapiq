@@ -28,9 +28,15 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from shapiq.tree import TreeExplainer
 
-N_EXPLAIN = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+BACKENDS = ("shapiq", "woodelf", "shap")
+
+N_EXPLAIN = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10_000]
 N_BACKGROUND = [10, 100, 1000]
 STOP_AFTER_S = 20.0  # stop extending a curve once one measurement costs this much
+
+# The grid reaches n = 10,000 explained instances. Not every backend is cheap enough to be
+# measured there: a curve stops being extended once one of its points costs more than
+# ``--stop-after``, and the figure extrapolates the (dead linear) tail from the measured rate.
 
 
 def shap_interventional(model, bg: np.ndarray):
@@ -91,30 +97,52 @@ def main() -> None:
     parser.add_argument("--max-depth", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--tag", default="", help="suffix for the result file, e.g. --tag pr590")
+    parser.add_argument(
+        "--n-explain", type=int, nargs="+", default=None, help="override the n grid"
+    )
+    parser.add_argument(
+        "--n-background", type=int, nargs="+", default=None, help="override the m grid"
+    )
+    parser.add_argument(
+        "--backends", nargs="+", default=["shapiq", "woodelf", "shap"], choices=BACKENDS
+    )
+    parser.add_argument("--stop-after", type=float, default=STOP_AFTER_S)
+    parser.add_argument(
+        "--skip-checks", action="store_true", help="the extension sweep re-uses the base run's"
+    )
     args = parser.parse_args()
+
+    n_explain = args.n_explain or N_EXPLAIN
+    n_background = args.n_background or N_BACKGROUND
+    stop_after = args.stop_after
 
     ds = DATASETS[args.dataset]()
     model = build_model(ds, args.n_estimators, args.max_depth)
     X_pool = ds["X_test"]
-    if len(X_pool) < max(N_EXPLAIN):
-        X_pool = np.vstack([X_pool, ds["X_train"]])
+    while len(X_pool) < max(n_explain):
+        X_pool = np.vstack([X_pool, ds["X_train"], ds["X_test"]])
 
     print(
         f"dataset={ds['name']} X_train={ds['X_train'].shape} model=RF"
         f"({args.n_estimators}x depth {args.max_depth})",
         flush=True,
     )
-    checks = {
-        f"m={m}": agreement(model, ds["X_train"][:m], X_pool[:5]) for m in (20, max(N_BACKGROUND))
-    }
+    checks = (
+        {}
+        if args.skip_checks
+        else {
+            f"m={m}": agreement(model, ds["X_train"][:m], X_pool[:5])
+            for m in (20, max(n_background))
+        }
+    )
     for key, value in checks.items():
         print(f"backend agreement (order-1 SV) {key}: {value}", flush=True)
 
     records: list[dict] = []
-    for n_bg in N_BACKGROUND:
+    for n_bg in n_background:
         bg = ds["X_train"][:n_bg]
         stopped: set[str] = set()
-        for n_ex in N_EXPLAIN:
+        for n_ex in n_explain:
             X = X_pool[:n_ex]
 
             def run(backend: str, _X=X, _bg=bg):
@@ -137,9 +165,9 @@ def main() -> None:
                         )
                         return te.explain_X(_X)
 
-                return measure(fn, repeats=args.repeats, budget_s=STOP_AFTER_S)
+                return measure(fn, repeats=args.repeats, budget_s=stop_after)
 
-            for backend in ("shapiq", "woodelf", "shap"):
+            for backend in args.backends:
                 if backend in stopped:
                     continue
                 res = run(backend)
@@ -150,7 +178,7 @@ def main() -> None:
                     f"{f'{t:.4f} s' if t is not None else res['status']}",
                     flush=True,
                 )
-                if t is not None and t > STOP_AFTER_S:
+                if t is not None and t > stop_after:
                     stopped.add(backend)
 
     save(
@@ -164,7 +192,10 @@ def main() -> None:
                 "mode": "interventional",
                 "measurement": "end-to-end: explainer construction + explanation of n instances",
                 "repeats": args.repeats,
-                "stop_after_s": STOP_AFTER_S,
+                "stop_after_s": stop_after,
+                "n_explain": n_explain,
+                "n_background": n_background,
+                "backends": list(args.backends),
                 "tag": args.tag,
                 "shapiq_commit": git_commit(),
                 "platform": platform.platform(),

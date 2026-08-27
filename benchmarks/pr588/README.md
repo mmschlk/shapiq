@@ -1,15 +1,23 @@
-# PR #588 runtime figures
+# Tree-explainer runtime figures
 
-Benchmark scripts behind the three figures for the write-up on
-[PR #588](https://github.com/mmschlk/shapiq/pull/588) (Quadrature-TreeSHAP + the
-numerical-precision fix for the path-dependent explainers).
+Benchmark scripts behind the figures for the write-up on the tree-explainer work:
+[#588](https://github.com/mmschlk/shapiq/pull/588) (Quadrature-TreeSHAP + the
+numerical-precision fix for the path-dependent explainers) and
+[#590](https://github.com/mmschlk/shapiq/pull/590) (InterventionalTreeSHAPIQ in C++ +
+the vectorized k-SII aggregation). Both are merged; every result file here is measured
+against `main` with those in it.
 
 ```
 fetch_data.py           download the three TabArena datasets into $SHAPIQ_BENCH_DATA
 bench_common.py         single-thread environment, dataset loaders, timing helpers
-bench_interventional.py figure 1  -- interventional: shapiq vs. Woodelf vs. shap over n
-bench_depth.py          figures 2 & 3 -- path-dependent: runtime vs. tree depth
-make_figures.py         render results/*.json into figures/*.png|pdf
+bench_interventional.py interventional: shapiq vs. Woodelf vs. shap over n, to n = 10,000
+bench_depth.py          path-dependent: runtime vs. tree depth, real and synthetic trees
+bench_accuracy.py       the same trees, but measuring round-off instead of runtime
+bench_ksii_isolated.py  the k-SII aggregation timed alone, on frozen inputs
+profile_hotspots.py     the three diagnoses behind the fixes in #590
+run_final.sh            re-measure everything, in order, against one build
+make_panels.py          render results/*.json as one plot per panel (the post figures)
+make_figures.py         render the same results as the original multi-panel figures
 ```
 
 ## Running
@@ -17,16 +25,21 @@ make_figures.py         render results/*.json into figures/*.png|pdf
 ```bash
 export SHAPIQ_BENCH_DATA=~/bench_data
 uv run python benchmarks/pr588/fetch_data.py
-uv run python benchmarks/pr588/bench_interventional.py --dataset heloc --repeats 3
-uv run python benchmarks/pr588/bench_depth.py --suite real --repeats 5
-uv run python benchmarks/pr588/bench_depth.py --suite synthetic --repeats 5 --ignore-guard \
-    --n-samples 20000 --n-features 120
-uv run python benchmarks/pr588/make_figures.py
+rm -rf build && uv run python setup.py build_ext --inplace   # never skip this
+benchmarks/pr588/run_final.sh                                # ~50 min, single thread
+uv run python benchmarks/pr588/make_panels.py
 ```
 
-The scripts need the branch of PR #588 with its C extensions built in place
-(`uv run python setup.py build_ext --inplace`), plus `shap` and the optional
+`run_final.sh` is the whole measurement, in the order the figures need it. The individual
+scripts take `--tag <name>` so two versions' results can sit side by side.
+
+The scripts need `main`'s C extensions built in place, plus `shap` and the optional
 `woodelf-explainer` package (`uv sync --extra tree`).
+
+**Rebuild before measuring.** A stale in-place build silently measures the previous version:
+the extensions compile from one listed source each, and editing a file that is only
+`#include`d does not trigger a rebuild (see `CLAUDE.md`). `rm -rf build` before
+`build_ext --inplace` is the only reliable way to be sure of what is being timed.
 
 ## Measurement rules
 

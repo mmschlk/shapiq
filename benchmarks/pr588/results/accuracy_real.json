@@ -1,0 +1,2864 @@
+{
+  "meta": {
+    "suite": "real",
+    "measure": "|sum(values) + baseline - prediction| / |prediction - mean(y)|",
+    "orders": [
+      1,
+      2
+    ],
+    "index": {
+      "1": "SV",
+      "2": "k-SII (shap: interaction values)"
+    },
+    "ignore_guard": true,
+    "shapiq_commit": "d8b0a76",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "records": [
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.1472231989997e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 3.248487431293008e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 9.745462293879024e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 4.2230336606809105e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 3.248487431293008e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 3.248487431293008e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 4.2230336606809105e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 6.496974862586016e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 3.6536271405113586e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 4.749715282664766e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 1.0960881421534076e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 3.6536271405113586e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 4.749715282664766e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 6,
+      "rel_error": 3.6536271405113586e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 3.9495826766913504e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 3.4767453139888645e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 3.5045592765007756e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 231,
+      "max_features_per_path": 8,
+      "rel_error": 5.562792502382183e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 1.4730858080844622e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 3.6909532551557e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 6.590987955635178e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 3.6909532551557e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 700,
+      "max_features_per_path": 10,
+      "rel_error": 6.590987955635178e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 5.373867314588679e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 3.517733544129749e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 7.072009385998701e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 1.0747734629177358e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 8.060800971883018e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 7.072009385998701e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 1663,
+      "max_features_per_path": 12,
+      "rel_error": 1.3434668286471697e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 3.2056203971655496e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 2.089025992739573e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 1.741096812951443e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 2.089025992739573e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 3202,
+      "max_features_per_path": 14,
+      "rel_error": 2.0312796151100167e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 8.417349953181881e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 9.639791436523218e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 9.63979433835124e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "rel_error": 5.803656043171477e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 5.803656043171477e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 2.914388003811568e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 2.1827068210623857e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 2.9018280215857385e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 2.1827068152587296e-07,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 8570,
+      "max_features_per_path": 20,
+      "rel_error": 5.803656043171477e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 5.803656043171477e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 1.633420090059386e-05,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 1.3028393707327412e-05,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 1.1607312086342953e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 5.803656043171477e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 1.3028393707907779e-05,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 10830,
+      "max_features_per_path": 24,
+      "rel_error": 1.2187677690660101e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 3.231790599858163e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 0.00017170443942976168,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 0.0001461213274081087,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 2.7793399158780204e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 9.69537179957449e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 0.0001461213274077855,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 11791,
+      "max_features_per_path": 27,
+      "rel_error": 2.7470220098794387e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 0.11200783016271736,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 0.013995888975015015,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 3.7143398676297453e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 0.013995888975015015,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 12011,
+      "max_features_per_path": 30,
+      "rel_error": 3.65630330719803e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 1,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 2.1814623207538624,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 0.0038855584486634817,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 1,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 4.2076506312993205e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 8.705484064757215e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "linear",
+      "order": 2,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 0.0038855584486631916,
+      "status": "ok"
+    },
+    {
+      "dataset": "superconductivity",
+      "method": "shap",
+      "order": 2,
+      "depth": 37,
+      "n_leaves": 12032,
+      "max_features_per_path": 30,
+      "rel_error": 4.178632351083463e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 1,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 6.188288798097438e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 6.188288798097438e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 6.188288798097438e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 3,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 2.7457284710123355e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 2.7457284710123355e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 8.237185413037007e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 2.7457284710123355e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 2.7457284710123355e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 8.237185413037007e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 63,
+      "max_features_per_path": 5,
+      "rel_error": 2.7457284710123355e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 2.678143865794517e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 8.302245983963002e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 2.4103294792150652e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 2.678143865794517e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 5.356287731589034e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 2.4103294792150652e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 196,
+      "max_features_per_path": 7,
+      "rel_error": 8.034431597383551e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 5.33062817795866e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 6.983122913125844e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 4.680291540247703e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 2.6653140889793303e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 5.33062817795866e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 4.680291540247703e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 419,
+      "max_features_per_path": 9,
+      "rel_error": 3.198376906775196e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 2.2108279768908467e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 3.871186639697535e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 2.4614481524088374e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 3.871186639697535e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 719,
+      "max_features_per_path": 11,
+      "rel_error": 2.4614481524088374e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 1.3544350306302097e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 2.642317419250233e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 4.3300352641630745e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 4.3300352641630745e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 2.6423607196028747e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 993,
+      "max_features_per_path": 13,
+      "rel_error": 4.3300352641630745e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 4.257211753913238e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 1.678703738803068e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 7.523770332690867e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 5.108654104695886e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 4.257211753913238e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 7.523770332690867e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 1181,
+      "max_features_per_path": 14,
+      "rel_error": 5.108654104695886e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 4.257211753913238e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 8.612606731064627e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 8.837971601123883e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 7.66298115704383e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 8.514423507826476e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 8.838014173241422e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 1397,
+      "max_features_per_path": 15,
+      "rel_error": 7.66298115704383e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 1.8298402870364988e-06,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 6.074428985783978e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 1.873173171721825e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 6.074428985783978e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 1466,
+      "max_features_per_path": 17,
+      "rel_error": 1.8306010541826925e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 4.257211753913238e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 1,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 3.380356461610582e-06,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 1.0294836292642285e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 1,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 1.1409327500487478e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 4.257211753913238e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "linear",
+      "order": 2,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "heloc",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 1.029484054985404e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "heloc",
+      "method": "shap",
+      "order": 2,
+      "depth": 27,
+      "n_leaves": 1484,
+      "max_features_per_path": 17,
+      "rel_error": 1.1366755382948346e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 2,
+      "n_leaves": 4,
+      "max_features_per_path": 2,
+      "rel_error": 4.4015811428929626e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 1.2533208265919874e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 6.266604132959938e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 6.266604132959937e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 5.639943719663944e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 4,
+      "n_leaves": 16,
+      "max_features_per_path": 4,
+      "rel_error": 6.266604132959937e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 3.872682262647019e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 5.421755167705827e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 4.647218715176423e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 3.872682262647019e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 3.872682262647019e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 5.034486941441125e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 6,
+      "n_leaves": 43,
+      "max_features_per_path": 6,
+      "rel_error": 3.872682262647019e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 3.2594658136367286e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 3.748385685682238e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 1.2385970091819567e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 9.778397440910184e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 3.2594658136367286e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 1.2060023510455895e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 8,
+      "n_leaves": 80,
+      "max_features_per_path": 8,
+      "rel_error": 3.2594658136367286e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 1.9654424857186146e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 7.588573437359572e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 7.2112084801015975e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 1.9654424857186146e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 3.930884971437229e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 7.2131739225873156e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 10,
+      "n_leaves": 136,
+      "max_features_per_path": 10,
+      "rel_error": 3.930884971437229e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 1.4031813389318047e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 9.620516833203861e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 1.0096040332882633e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 6.730693555255089e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 9.620516833203861e-12,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 12,
+      "n_leaves": 183,
+      "max_features_per_path": 12,
+      "rel_error": 6.730693555255089e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 2.1583507368520165e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 1.852729893230366e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 5.7882735534403524e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 1.852729893230366e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 14,
+      "n_leaves": 225,
+      "max_features_per_path": 14,
+      "rel_error": 5.7882735534403524e-15,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 9.647122589067254e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 1.3008483983459841e-09,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 4.033481248734197e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 9.647122589067254e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 4.033486072295491e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 16,
+      "n_leaves": 259,
+      "max_features_per_path": 16,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 0.0,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 3.56094106651521e-10,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 3.044006249091918e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 7.645344651835798e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 4.823561294533627e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 3.044006224974111e-08,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 20,
+      "n_leaves": 313,
+      "max_features_per_path": 20,
+      "rel_error": 7.669462458308467e-14,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 4.823561294533627e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 4.369715860694927e-06,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 2.901500316862282e-06,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 2.575781731280957e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 4.823561294533627e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 2.901500316862282e-06,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 24,
+      "n_leaves": 326,
+      "max_features_per_path": 24,
+      "rel_error": 2.58060529257549e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 2.0572384644073317e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 0.0007271393290949323,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 0.00042575706089788404,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 5.67386368483542e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 4.1144769288146634e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 0.0004257570608976783,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 28,
+      "n_leaves": 352,
+      "max_features_per_path": 28,
+      "rel_error": 5.684149877157458e-13,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 2.0572384644073317e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 0.013598047498284135,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 0.0058072070988286605,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 1,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 1.6413677088273895e-11,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "quadrature",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 4.1144769288146634e-16,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "linear",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "status": "not_supported"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "treeshapiq",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 0.0058072070988290725,
+      "status": "ok"
+    },
+    {
+      "dataset": "bioresponse",
+      "method": "shap",
+      "order": 2,
+      "depth": 32,
+      "n_leaves": 358,
+      "max_features_per_path": 28,
+      "rel_error": 1.6414088535966775e-11,
+      "status": "ok"
+    }
+  ]
+}

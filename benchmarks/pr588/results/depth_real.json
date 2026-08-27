@@ -15,7 +15,8 @@
     "repeats": 5,
     "stop_after_s": 20.0,
     "ignore_guard": false,
-    "shapiq_commit": "950ebaa",
+    "tag": "",
+    "shapiq_commit": "d8b0a76",
     "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
     "python": "3.12.3",
     "datasets": [
@@ -34,12 +35,12 @@
       "max_features_per_path": 2,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0015053179999995336,
+      "construct_s": 0.0021695509999517526,
       "status": "ok",
-      "median_s": 1.732600003379048e-05,
-      "min_s": 1.2405999996190076e-05,
+      "median_s": 1.3414000022748951e-05,
+      "min_s": 1.2497000170696992e-05,
       "n_runs": 5,
-      "warmup_s": 0.00011604500002704299,
+      "warmup_s": 0.00023335500009125099,
       "efficiency_error": 0.0
     },
     {
@@ -51,12 +52,12 @@
       "max_features_per_path": 2,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0006524509999508155,
+      "construct_s": 0.0008407390000684245,
       "status": "ok",
-      "median_s": 4.867900008775905e-05,
-      "min_s": 3.533500000685308e-05,
+      "median_s": 4.62970001535723e-05,
+      "min_s": 3.334199982418795e-05,
       "n_runs": 5,
-      "warmup_s": 0.00044189799996274814,
+      "warmup_s": 0.0008502979999320814,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -68,12 +69,12 @@
       "max_features_per_path": 2,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0005362379999951372,
+      "construct_s": 0.0006941139999980805,
       "status": "ok",
-      "median_s": 0.0002817639999648236,
-      "min_s": 0.0002616080000734655,
+      "median_s": 0.0002183839997087489,
+      "min_s": 0.00017556700004206505,
       "n_runs": 5,
-      "warmup_s": 0.00038813799994841247,
+      "warmup_s": 0.00044930800004294724,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -85,12 +86,12 @@
       "max_features_per_path": 2,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0002890460000344319,
+      "construct_s": 0.0003545029999258986,
       "status": "ok",
-      "median_s": 7.879000008870207e-06,
-      "min_s": 6.655999982285721e-06,
+      "median_s": 5.276000138110248e-06,
+      "min_s": 4.248000095685711e-06,
       "n_runs": 5,
-      "warmup_s": 3.882399994381558e-05,
+      "warmup_s": 3.489799973976915e-05,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -102,12 +103,12 @@
       "max_features_per_path": 2,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0005153199999767821,
+      "construct_s": 0.0005056219997641165,
       "status": "ok",
-      "median_s": 8.829099999729806e-05,
-      "min_s": 8.535100005246932e-05,
+      "median_s": 0.00012213699983476545,
+      "min_s": 0.00010990700002366793,
       "n_runs": 5,
-      "warmup_s": 0.00017294799999945099
+      "warmup_s": 0.00033485899984952994
     },
     {
       "dataset": "superconductivity",
@@ -118,7 +119,7 @@
       "max_features_per_path": 2,
       "method": "linear",
       "order": 2,
-      "construct_s": 7.539999842265388e-07,
+      "construct_s": 6.100003702158574e-07,
       "status": "not_supported"
     },
     {
@@ -130,12 +131,12 @@
       "max_features_per_path": 2,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.0007620930000484805,
+      "construct_s": 0.0005469230000016978,
       "status": "ok",
-      "median_s": 0.0006064200000537312,
-      "min_s": 0.0005924519999780387,
+      "median_s": 0.0004884669997409219,
+      "min_s": 0.00044603600008485955,
       "n_runs": 5,
-      "warmup_s": 0.0008354400000598616
+      "warmup_s": 0.0006446300003517536
     },
     {
       "dataset": "superconductivity",
@@ -146,12 +147,12 @@
       "max_features_per_path": 2,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00021195900001202972,
+      "construct_s": 0.00021496999988812604,
       "status": "ok",
-      "median_s": 8.916999945540738e-06,
-      "min_s": 7.613000093442679e-06,
+      "median_s": 7.653000011487165e-06,
+      "min_s": 6.6739999056153465e-06,
       "n_runs": 5,
-      "warmup_s": 4.1426000052524614e-05
+      "warmup_s": 3.041499985556584e-05
     },
     {
       "dataset": "superconductivity",
@@ -162,12 +163,12 @@
       "max_features_per_path": 4,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0009115330000213362,
+      "construct_s": 0.0008389370000259078,
       "status": "ok",
-      "median_s": 1.7152999930658552e-05,
-      "min_s": 1.6056999925240234e-05,
+      "median_s": 2.4964000203908654e-05,
+      "min_s": 1.986500001294189e-05,
       "n_runs": 5,
-      "warmup_s": 9.345899991330953e-05,
+      "warmup_s": 7.247499979712302e-05,
       "efficiency_error": 7.105427357601002e-15
     },
     {
@@ -179,12 +180,12 @@
       "max_features_per_path": 4,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0006685920000109036,
+      "construct_s": 0.0005001540002922411,
       "status": "ok",
-      "median_s": 4.3740000023717585e-05,
-      "min_s": 3.7722999991274264e-05,
+      "median_s": 2.7644000056170626e-05,
+      "min_s": 2.68300000243471e-05,
       "n_runs": 5,
-      "warmup_s": 9.141800001088995e-05,
+      "warmup_s": 7.256700018842821e-05,
       "efficiency_error": 2.1316282072803006e-14
     },
     {
@@ -196,12 +197,12 @@
       "max_features_per_path": 4,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0010284119999823815,
+      "construct_s": 0.0007074320001265733,
       "status": "ok",
-      "median_s": 0.0013091350000422608,
-      "min_s": 0.0012513420000459519,
+      "median_s": 0.0009408579999217181,
+      "min_s": 0.0008862439999575145,
       "n_runs": 5,
-      "warmup_s": 0.0016160100000206512,
+      "warmup_s": 0.0011291529999652994,
       "efficiency_error": 9.947598300641403e-14
     },
     {
@@ -213,12 +214,12 @@
       "max_features_per_path": 4,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00021857299998373492,
+      "construct_s": 0.00027332599984219996,
       "status": "ok",
-      "median_s": 7.699999969190685e-06,
-      "min_s": 6.955000003472378e-06,
+      "median_s": 7.804999768268317e-06,
+      "min_s": 7.341000127780717e-06,
       "n_runs": 5,
-      "warmup_s": 3.534400002536131e-05,
+      "warmup_s": 3.455000023677712e-05,
       "efficiency_error": 7.105427357601002e-15
     },
     {
@@ -230,12 +231,12 @@
       "max_features_per_path": 4,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0006722120000404175,
+      "construct_s": 0.0007739630000287434,
       "status": "ok",
-      "median_s": 0.0007683080000333575,
-      "min_s": 0.0007603909999716052,
+      "median_s": 0.00017403700030627078,
+      "min_s": 0.00015437100000781356,
       "n_runs": 5,
-      "warmup_s": 0.0009363479999819901
+      "warmup_s": 0.000426629000230605
     },
     {
       "dataset": "superconductivity",
@@ -246,7 +247,7 @@
       "max_features_per_path": 4,
       "method": "linear",
       "order": 2,
-      "construct_s": 7.019999657131848e-07,
+      "construct_s": 7.610001375724096e-07,
       "status": "not_supported"
     },
     {
@@ -258,12 +259,12 @@
       "max_features_per_path": 4,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.0035422729999936564,
+      "construct_s": 0.0024510039997949207,
       "status": "ok",
-      "median_s": 0.004205924999951094,
-      "min_s": 0.003951737000079447,
+      "median_s": 0.0019971279998571845,
+      "min_s": 0.0019799179999608896,
       "n_runs": 5,
-      "warmup_s": 0.005174099999976534
+      "warmup_s": 0.0022333880001497164
     },
     {
       "dataset": "superconductivity",
@@ -274,12 +275,12 @@
       "max_features_per_path": 4,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0002670339999895077,
+      "construct_s": 0.00018519999957788968,
       "status": "ok",
-      "median_s": 3.519699998832948e-05,
-      "min_s": 3.456799993273307e-05,
+      "median_s": 3.2917999760684324e-05,
+      "min_s": 3.1878000299911946e-05,
       "n_runs": 5,
-      "warmup_s": 7.129599998734193e-05
+      "warmup_s": 5.451000015455065e-05
     },
     {
       "dataset": "superconductivity",
@@ -290,12 +291,12 @@
       "max_features_per_path": 6,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0012215380000952791,
+      "construct_s": 0.0008708440000191331,
       "status": "ok",
-      "median_s": 3.652899999906367e-05,
-      "min_s": 3.313000001980981e-05,
+      "median_s": 3.110000034212135e-05,
+      "min_s": 2.6106000404979568e-05,
       "n_runs": 5,
-      "warmup_s": 0.00011176599991813418,
+      "warmup_s": 8.871999989423784e-05,
       "efficiency_error": 7.105427357601002e-15
     },
     {
@@ -307,12 +308,12 @@
       "max_features_per_path": 6,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0010092979999853924,
+      "construct_s": 0.000708137999936298,
       "status": "ok",
-      "median_s": 6.230000008144998e-05,
-      "min_s": 5.890399995678308e-05,
+      "median_s": 4.027800014227978e-05,
+      "min_s": 3.96209998143604e-05,
       "n_runs": 5,
-      "warmup_s": 0.00012133099994571239,
+      "warmup_s": 9.686599969427334e-05,
       "efficiency_error": 7.105427357601002e-15
     },
     {
@@ -324,12 +325,12 @@
       "max_features_per_path": 6,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.004768862999981138,
+      "construct_s": 0.0032724549996601127,
       "status": "ok",
-      "median_s": 0.005061017000002721,
-      "min_s": 0.004942505000030906,
+      "median_s": 0.003526804999637534,
+      "min_s": 0.0033481730001767573,
       "n_runs": 5,
-      "warmup_s": 0.005450918999940768,
+      "warmup_s": 0.003710356999818032,
       "efficiency_error": 9.237055564881302e-14
     },
     {
@@ -341,12 +342,12 @@
       "max_features_per_path": 6,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0002561869999908595,
+      "construct_s": 0.00021756799969807616,
       "status": "ok",
-      "median_s": 1.820199997837335e-05,
-      "min_s": 1.4587999999093881e-05,
+      "median_s": 1.1875999916810542e-05,
+      "min_s": 1.133599971581134e-05,
       "n_runs": 5,
-      "warmup_s": 3.798899990670179e-05,
+      "warmup_s": 3.3565999729034957e-05,
       "efficiency_error": 2.1316282072803006e-14
     },
     {
@@ -358,12 +359,12 @@
       "max_features_per_path": 6,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0014238570000770778,
+      "construct_s": 0.0011028429998987122,
       "status": "ok",
-      "median_s": 0.004715736999969522,
-      "min_s": 0.00466374799998448,
+      "median_s": 0.000454217999958928,
+      "min_s": 0.00040957700002763886,
       "n_runs": 5,
-      "warmup_s": 0.005028072999948563
+      "warmup_s": 0.0007019980002951343
     },
     {
       "dataset": "superconductivity",
@@ -374,7 +375,7 @@
       "max_features_per_path": 6,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.2870000318798702e-06,
+      "construct_s": 9.82000074145617e-07,
       "status": "not_supported"
     },
     {
@@ -386,12 +387,12 @@
       "max_features_per_path": 6,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.09997984699998597,
+      "construct_s": 0.06587084200009485,
       "status": "ok",
-      "median_s": 0.028315906999978324,
-      "min_s": 0.025754491999919082,
+      "median_s": 0.00941911700010678,
+      "min_s": 0.009326703999704478,
       "n_runs": 5,
-      "warmup_s": 0.02693052200004331
+      "warmup_s": 0.010351171999900544
     },
     {
       "dataset": "superconductivity",
@@ -402,12 +403,12 @@
       "max_features_per_path": 6,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00030878000006850925,
+      "construct_s": 0.0003627139999480278,
       "status": "ok",
-      "median_s": 0.0006997140000066793,
-      "min_s": 0.0006853039999441535,
+      "median_s": 0.0006300269997154828,
+      "min_s": 0.0006054230002519034,
       "n_runs": 5,
-      "warmup_s": 0.0009482059999754711
+      "warmup_s": 0.0007590089999212069
     },
     {
       "dataset": "superconductivity",
@@ -418,12 +419,12 @@
       "max_features_per_path": 8,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0021546259999922768,
+      "construct_s": 0.0012548640002023603,
       "status": "ok",
-      "median_s": 0.00013892900005885167,
-      "min_s": 0.00010971400001835718,
+      "median_s": 6.768699995518546e-05,
+      "min_s": 4.988099999536644e-05,
       "n_runs": 5,
-      "warmup_s": 0.00025087199992412934,
+      "warmup_s": 0.00012289500000406406,
       "efficiency_error": 0.0
     },
     {
@@ -435,12 +436,12 @@
       "max_features_per_path": 8,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0022425359999260763,
+      "construct_s": 0.0011447169999883045,
       "status": "ok",
-      "median_s": 0.0002733659999876181,
-      "min_s": 0.00013756999999259278,
+      "median_s": 9.5062999662332e-05,
+      "min_s": 9.029200009535998e-05,
       "n_runs": 5,
-      "warmup_s": 0.0003166209999108105,
+      "warmup_s": 0.00017860999969343538,
       "efficiency_error": 1.0089706847793423e-12
     },
     {
@@ -452,12 +453,12 @@
       "max_features_per_path": 8,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0221546779999926,
+      "construct_s": 0.014042969000001904,
       "status": "ok",
-      "median_s": 0.021211417000017718,
-      "min_s": 0.020955905000050734,
+      "median_s": 0.013915386999997281,
+      "min_s": 0.013219917999776953,
       "n_runs": 5,
-      "warmup_s": 0.020914058000016666,
+      "warmup_s": 0.01504614399982529,
       "efficiency_error": 8.881784197001252e-13
     },
     {
@@ -469,12 +470,12 @@
       "max_features_per_path": 8,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.000281616000052054,
+      "construct_s": 0.00032266000016534235,
       "status": "ok",
-      "median_s": 6.202299994129135e-05,
-      "min_s": 5.760900000950642e-05,
+      "median_s": 4.895800020676688e-05,
+      "min_s": 4.7171000005619135e-05,
       "n_runs": 5,
-      "warmup_s": 8.301399998345005e-05,
+      "warmup_s": 9.787899989532889e-05,
       "efficiency_error": 0.0
     },
     {
@@ -486,12 +487,12 @@
       "max_features_per_path": 8,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0038717099999985294,
+      "construct_s": 0.003257530000155384,
       "status": "ok",
-      "median_s": 0.03089403499996024,
-      "min_s": 0.018720009000048776,
+      "median_s": 0.0014423669999814592,
+      "min_s": 0.0013090689999444294,
       "n_runs": 5,
-      "warmup_s": 0.026839837000011357
+      "warmup_s": 0.0016453250000267872
     },
     {
       "dataset": "superconductivity",
@@ -502,7 +503,7 @@
       "max_features_per_path": 8,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.6670001059537753e-06,
+      "construct_s": 8.499996511091013e-07,
       "status": "not_supported"
     },
     {
@@ -514,12 +515,12 @@
       "max_features_per_path": 8,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 1.1096407490000502,
+      "construct_s": 0.692659163999906,
       "status": "ok",
-      "median_s": 0.10204872199994952,
-      "min_s": 0.09990216400001373,
+      "median_s": 0.04617492299985315,
+      "min_s": 0.04558177799981422,
       "n_runs": 5,
-      "warmup_s": 0.10789843400004884
+      "warmup_s": 0.04687740099961957
     },
     {
       "dataset": "superconductivity",
@@ -530,12 +531,12 @@
       "max_features_per_path": 8,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00037736299998414324,
+      "construct_s": 0.0003105259997937537,
       "status": "ok",
-      "median_s": 0.006916595999996389,
-      "min_s": 0.006910540000035326,
+      "median_s": 0.005988092000279721,
+      "min_s": 0.005906578999656631,
       "n_runs": 5,
-      "warmup_s": 0.007658464000087406
+      "warmup_s": 0.006005709999953979
     },
     {
       "dataset": "superconductivity",
@@ -546,12 +547,12 @@
       "max_features_per_path": 10,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0024589319999677173,
+      "construct_s": 0.0023670270002185134,
       "status": "ok",
-      "median_s": 0.0001494240000283753,
-      "min_s": 0.00013035599999966507,
+      "median_s": 0.0001428460000170162,
+      "min_s": 0.00011473799986561062,
       "n_runs": 5,
-      "warmup_s": 0.00030766899999434827,
+      "warmup_s": 0.0002483469997969223,
       "efficiency_error": 0.0
     },
     {
@@ -563,12 +564,12 @@
       "max_features_per_path": 10,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0023295899999311587,
+      "construct_s": 0.00196575700010726,
       "status": "ok",
-      "median_s": 0.0003423959999508952,
-      "min_s": 0.00028098100005991,
+      "median_s": 0.00026414600006319233,
+      "min_s": 0.00024753400020927074,
       "n_runs": 5,
-      "warmup_s": 0.000456764999967163,
+      "warmup_s": 0.00033726300034686574,
       "efficiency_error": 6.366462912410498e-12
     },
     {
@@ -580,12 +581,12 @@
       "max_features_per_path": 10,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.07575147000000015,
+      "construct_s": 0.04789993900021727,
       "status": "ok",
-      "median_s": 0.07065422900006979,
-      "min_s": 0.06587094500002877,
+      "median_s": 0.04314437899984114,
+      "min_s": 0.04156495300003371,
       "n_runs": 5,
-      "warmup_s": 0.06703014799995799,
+      "warmup_s": 0.04127637400006279,
       "efficiency_error": 1.5916157281026244e-12
     },
     {
@@ -597,12 +598,12 @@
       "max_features_per_path": 10,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003451339999855918,
+      "construct_s": 0.0003810530001828738,
       "status": "ok",
-      "median_s": 0.00026207799999156123,
-      "min_s": 0.00026046999994377984,
+      "median_s": 0.00019631999975899816,
+      "min_s": 0.00019133599971610238,
       "n_runs": 5,
-      "warmup_s": 0.0002841570000100546,
+      "warmup_s": 0.0002789850000226579,
       "efficiency_error": 2.842170943040401e-14
     },
     {
@@ -614,12 +615,12 @@
       "max_features_per_path": 10,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.009168928000008236,
+      "construct_s": 0.00753477499984001,
       "status": "ok",
-      "median_s": 0.03854396500003077,
-      "min_s": 0.03779433700003665,
+      "median_s": 0.0029033579999122594,
+      "min_s": 0.0027566839999053627,
       "n_runs": 5,
-      "warmup_s": 0.03855460000011135
+      "warmup_s": 0.003193645999999717
     },
     {
       "dataset": "superconductivity",
@@ -630,7 +631,7 @@
       "max_features_per_path": 10,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.3799999578623101e-06,
+      "construct_s": 9.149998732027598e-07,
       "status": "not_supported"
     },
     {
@@ -642,12 +643,12 @@
       "max_features_per_path": 10,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 4.709369723999998,
+      "construct_s": 3.0255798339999274,
       "status": "ok",
-      "median_s": 0.2908977820000018,
-      "min_s": 0.28137795899999674,
+      "median_s": 0.164330444999905,
+      "min_s": 0.16205339399994045,
       "n_runs": 5,
-      "warmup_s": 0.28766888600000584
+      "warmup_s": 0.1672570519999681
     },
     {
       "dataset": "superconductivity",
@@ -658,12 +659,12 @@
       "max_features_per_path": 10,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00043286200002512487,
+      "construct_s": 0.00038143799974932335,
       "status": "ok",
-      "median_s": 0.03581801899997572,
-      "min_s": 0.035633087000064734,
+      "median_s": 0.028847177999978157,
+      "min_s": 0.02879478900013055,
       "n_runs": 5,
-      "warmup_s": 0.03619466999998622
+      "warmup_s": 0.029039397000360623
     },
     {
       "dataset": "superconductivity",
@@ -674,12 +675,12 @@
       "max_features_per_path": 12,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.004161892000070111,
+      "construct_s": 0.003976401999807422,
       "status": "ok",
-      "median_s": 0.00028048499996202736,
-      "min_s": 0.0002561600000490216,
+      "median_s": 0.0002586760001577204,
+      "min_s": 0.0002492369999345101,
       "n_runs": 5,
-      "warmup_s": 0.0004470489999448546,
+      "warmup_s": 0.0003844139996544982,
       "efficiency_error": 2.842170943040401e-14
     },
     {
@@ -691,12 +692,12 @@
       "max_features_per_path": 12,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0031179039999642555,
+      "construct_s": 0.002652890999797819,
       "status": "ok",
-      "median_s": 0.0006395340000153737,
-      "min_s": 0.0006158769999728975,
+      "median_s": 0.0005651579999721434,
+      "min_s": 0.0005447579997053253,
       "n_runs": 5,
-      "warmup_s": 0.000794632000065576,
+      "warmup_s": 0.0006830799998169823,
       "efficiency_error": 1.8604850993142463e-10
     },
     {
@@ -708,12 +709,12 @@
       "max_features_per_path": 12,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.182912956999985,
+      "construct_s": 0.11868020400015666,
       "status": "ok",
-      "median_s": 0.15670235800007504,
-      "min_s": 0.15569214000004195,
+      "median_s": 0.10506305900025836,
+      "min_s": 0.1034887619998699,
       "n_runs": 5,
-      "warmup_s": 0.15714505300002202,
+      "warmup_s": 0.120540457000061,
       "efficiency_error": 3.7402969610411674e-10
     },
     {
@@ -725,12 +726,12 @@
       "max_features_per_path": 12,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003967589999547272,
+      "construct_s": 0.0004448340000635653,
       "status": "ok",
-      "median_s": 0.0007476670000414742,
-      "min_s": 0.0007238059999963298,
+      "median_s": 0.0006188030001794687,
+      "min_s": 0.0006051649997971253,
       "n_runs": 5,
-      "warmup_s": 0.0008354580000968781,
+      "warmup_s": 0.0007667750001019158,
       "efficiency_error": 5.684341886080802e-14
     },
     {
@@ -742,12 +743,12 @@
       "max_features_per_path": 12,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.019343266000078074,
+      "construct_s": 0.016434691999620554,
       "status": "ok",
-      "median_s": 0.05845406699995692,
-      "min_s": 0.05765541800008123,
+      "median_s": 0.0050914360003844195,
+      "min_s": 0.004944593999880453,
       "n_runs": 5,
-      "warmup_s": 0.0589789399999745
+      "warmup_s": 0.005641116999868245
     },
     {
       "dataset": "superconductivity",
@@ -758,7 +759,7 @@
       "max_features_per_path": 12,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.3069999340586946e-06,
+      "construct_s": 8.389997674385086e-07,
       "status": "not_supported"
     },
     {
@@ -770,12 +771,12 @@
       "max_features_per_path": 12,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 12.792327706999913,
+      "construct_s": 8.110002583000096,
       "status": "ok",
-      "median_s": 0.7306614320000335,
-      "min_s": 0.6844172800000479,
+      "median_s": 0.4906408140000167,
+      "min_s": 0.48375019600007363,
       "n_runs": 5,
-      "warmup_s": 0.7339891950000492
+      "warmup_s": 0.5034275830003025
     },
     {
       "dataset": "superconductivity",
@@ -786,12 +787,12 @@
       "max_features_per_path": 12,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005362819999845669,
+      "construct_s": 0.0005098169999655511,
       "status": "ok",
-      "median_s": 0.11896351500001856,
-      "min_s": 0.1175539179999987,
+      "median_s": 0.09649720199968215,
+      "min_s": 0.09579630799998995,
       "n_runs": 5,
-      "warmup_s": 0.13103255099997568
+      "warmup_s": 0.09548568299987892
     },
     {
       "dataset": "superconductivity",
@@ -802,12 +803,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.008749899999997979,
+      "construct_s": 0.008110825999665394,
       "status": "ok",
-      "median_s": 0.0006936050000376781,
-      "min_s": 0.0006648500000210333,
+      "median_s": 0.0004904630000055477,
+      "min_s": 0.00047831099982431624,
       "n_runs": 5,
-      "warmup_s": 0.0009174010000378985,
+      "warmup_s": 0.0007736049997220107,
       "efficiency_error": 0.0
     },
     {
@@ -819,12 +820,12 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.007416101999979219,
+      "construct_s": 0.004665490000206773,
       "status": "ok",
-      "median_s": 0.0014370669999834718,
-      "min_s": 0.0013198600000805527,
+      "median_s": 0.00111796700002742,
+      "min_s": 0.0010423140001876163,
       "n_runs": 5,
-      "warmup_s": 0.0017064129999653233,
+      "warmup_s": 0.00119459999996252,
       "efficiency_error": 1.5698731203883654e-09
     },
     {
@@ -836,12 +837,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.42062306800005445,
+      "construct_s": 0.2338347079999039,
       "status": "ok",
-      "median_s": 0.31311472400000184,
-      "min_s": 0.3080357130000948,
+      "median_s": 0.22299322400021993,
+      "min_s": 0.2098735489998944,
       "n_runs": 5,
-      "warmup_s": 0.3390533959999402,
+      "warmup_s": 0.22159926500035,
       "efficiency_error": 1.0228973224002402e-10
     },
     {
@@ -853,12 +854,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0005583659999501833,
+      "construct_s": 0.0005469910001920653,
       "status": "ok",
-      "median_s": 0.001816789999907087,
-      "min_s": 0.001786041000059413,
+      "median_s": 0.001470058999984758,
+      "min_s": 0.0014689750000798085,
       "n_runs": 5,
-      "warmup_s": 0.001897580999980164,
+      "warmup_s": 0.001615548000245326,
       "efficiency_error": 8.526512829121202e-14
     },
     {
@@ -870,12 +871,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.039055634999954236,
+      "construct_s": 0.02827893000039694,
       "status": "ok",
-      "median_s": 0.06848976900005255,
-      "min_s": 0.06775629699995989,
+      "median_s": 0.007187739000073634,
+      "min_s": 0.0070164540002224385,
       "n_runs": 5,
-      "warmup_s": 0.06972550599994065
+      "warmup_s": 0.008204402000046684
     },
     {
       "dataset": "superconductivity",
@@ -886,7 +887,7 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.5399999711007695e-06,
+      "construct_s": 1.0409999049443286e-06,
       "status": "not_supported"
     },
     {
@@ -898,12 +899,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 26.80550257599998,
+      "construct_s": 16.875024719000066,
       "status": "ok",
-      "median_s": 1.5059544050000113,
-      "min_s": 1.4697794930000327,
+      "median_s": 1.1575327770001422,
+      "min_s": 1.1098199060002116,
       "n_runs": 5,
-      "warmup_s": 1.4978504110000586
+      "warmup_s": 1.244704703000025
     },
     {
       "dataset": "superconductivity",
@@ -914,12 +915,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0006961779999983264,
+      "construct_s": 0.0006119219997344771,
       "status": "ok",
-      "median_s": 0.2836372530000517,
-      "min_s": 0.27856555599998956,
+      "median_s": 0.22656694599982075,
+      "min_s": 0.22601986200015745,
       "n_runs": 5,
-      "warmup_s": 0.27666662599995107
+      "warmup_s": 0.2271470870000485
     },
     {
       "dataset": "superconductivity",
@@ -930,12 +931,12 @@
       "max_features_per_path": 16,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.010776471999975001,
+      "construct_s": 0.01051016100018387,
       "status": "ok",
-      "median_s": 0.0008671220000451285,
-      "min_s": 0.0008551180000040404,
+      "median_s": 0.0008215630000449892,
+      "min_s": 0.0008000760003596952,
       "n_runs": 5,
-      "warmup_s": 0.0011891960000411927,
+      "warmup_s": 0.0010269330000483023,
       "efficiency_error": 0.0
     },
     {
@@ -947,12 +948,12 @@
       "max_features_per_path": 16,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.008708235000085551,
+      "construct_s": 0.006892811999932746,
       "status": "ok",
-      "median_s": 0.002058059999967554,
-      "min_s": 0.0019828719999850364,
+      "median_s": 0.0018363379999755125,
+      "min_s": 0.001782957000159513,
       "n_runs": 5,
-      "warmup_s": 0.002435440999988714,
+      "warmup_s": 0.0019728900001609873,
       "efficiency_error": 4.122149732666003e-08
     },
     {
@@ -964,12 +965,12 @@
       "max_features_per_path": 16,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.6132849709999846,
+      "construct_s": 0.3934080690000883,
       "status": "ok",
-      "median_s": 0.5218885859999318,
-      "min_s": 0.505621187000088,
+      "median_s": 0.34729701700007354,
+      "min_s": 0.3361931320000622,
       "n_runs": 5,
-      "warmup_s": 0.5078967729999704,
+      "warmup_s": 0.4091139009997278,
       "efficiency_error": 4.720806145996903e-08
     },
     {
@@ -981,12 +982,12 @@
       "max_features_per_path": 16,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0006721649999690271,
+      "construct_s": 0.0008370749997084204,
       "status": "ok",
-      "median_s": 0.003447103999974388,
-      "min_s": 0.003413447999946584,
+      "median_s": 0.0028627470001083566,
+      "min_s": 0.00281814999971175,
       "n_runs": 5,
-      "warmup_s": 0.0035594889999401857,
+      "warmup_s": 0.0029469799997059454,
       "efficiency_error": 0.0
     },
     {
@@ -998,12 +999,12 @@
       "max_features_per_path": 16,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.05415383199999724,
+      "construct_s": 0.05041201299991371,
       "status": "ok",
-      "median_s": 0.07513586899995062,
-      "min_s": 0.07451255700004822,
+      "median_s": 0.011267049000252882,
+      "min_s": 0.010748036000222783,
       "n_runs": 5,
-      "warmup_s": 0.07472317999997813
+      "warmup_s": 0.011194613999577996
     },
     {
       "dataset": "superconductivity",
@@ -1014,8 +1015,24 @@
       "max_features_per_path": 16,
       "method": "linear",
       "order": 2,
-      "construct_s": 2.227999971182726e-06,
+      "construct_s": 1.7399997886968777e-06,
       "status": "not_supported"
+    },
+    {
+      "dataset": "superconductivity",
+      "requested_depth": 16,
+      "prediction_scale": 48.97207763345091,
+      "depth": 16,
+      "n_leaves": 5086,
+      "max_features_per_path": 16,
+      "method": "treeshapiq",
+      "order": 2,
+      "construct_s": 28.087475885999993,
+      "status": "ok",
+      "median_s": 1.9253661920001832,
+      "min_s": 1.7963484370002334,
+      "n_runs": 5,
+      "warmup_s": 2.1099702220003564
     },
     {
       "dataset": "superconductivity",
@@ -1026,12 +1043,12 @@
       "max_features_per_path": 16,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0006613739999465906,
+      "construct_s": 0.0007483199997295742,
       "status": "ok",
-      "median_s": 0.5435468150000133,
-      "min_s": 0.5301601579999442,
+      "median_s": 0.457774402999803,
+      "min_s": 0.4446048869999686,
       "n_runs": 5,
-      "warmup_s": 0.5392478549999851
+      "warmup_s": 0.4335110340002757
     },
     {
       "dataset": "superconductivity",
@@ -1042,12 +1059,12 @@
       "max_features_per_path": 20,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.01846205699996517,
+      "construct_s": 0.022912513999926887,
       "status": "ok",
-      "median_s": 0.0015248439999595576,
-      "min_s": 0.0014955190000591756,
+      "median_s": 0.0014664059999631718,
+      "min_s": 0.0014415790001294226,
       "n_runs": 5,
-      "warmup_s": 0.0016913650000560665,
+      "warmup_s": 0.0016454209999210434,
       "efficiency_error": 2.842170943040401e-14
     },
     {
@@ -1059,12 +1076,12 @@
       "max_features_per_path": 20,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.013846239000031346,
+      "construct_s": 0.010972038000090834,
       "status": "ok",
-      "median_s": 0.003548625999997057,
-      "min_s": 0.003441420999934053,
+      "median_s": 0.0031436929998562846,
+      "min_s": 0.003061430999878212,
       "n_runs": 5,
-      "warmup_s": 0.003918617999943308,
+      "warmup_s": 0.003493633999823942,
       "efficiency_error": 1.4272363557665813e-05
     },
     {
@@ -1076,12 +1093,12 @@
       "max_features_per_path": 20,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 1.173758905999989,
+      "construct_s": 0.6360720689999653,
       "status": "ok",
-      "median_s": 0.8979420680000203,
-      "min_s": 0.868600119000007,
+      "median_s": 0.5879182219996437,
+      "min_s": 0.5793322039999111,
       "n_runs": 5,
-      "warmup_s": 0.8742915510000557,
+      "warmup_s": 0.5968439379998927,
       "efficiency_error": 1.0689168789213e-05
     },
     {
@@ -1093,12 +1110,12 @@
       "max_features_per_path": 20,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0012186799999653886,
+      "construct_s": 0.0010279590001118777,
       "status": "ok",
-      "median_s": 0.0077007660000845135,
-      "min_s": 0.007631389000039235,
+      "median_s": 0.006173272000069119,
+      "min_s": 0.006003349000366143,
       "n_runs": 5,
-      "warmup_s": 0.007802419000086047,
+      "warmup_s": 0.006196332999934384,
       "efficiency_error": 0.0
     },
     {
@@ -1110,12 +1127,12 @@
       "max_features_per_path": 20,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.09898921500007418,
+      "construct_s": 0.08545084299976224,
       "status": "ok",
-      "median_s": 0.086314338999955,
-      "min_s": 0.08510209299993221,
+      "median_s": 0.015493027000047732,
+      "min_s": 0.014189524000357778,
       "n_runs": 5,
-      "warmup_s": 0.08885112799998751
+      "warmup_s": 0.016272588999981963
     },
     {
       "dataset": "superconductivity",
@@ -1126,7 +1143,7 @@
       "max_features_per_path": 20,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.2879999076176318e-06,
+      "construct_s": 1.3180001587898005e-06,
       "status": "not_supported"
     },
     {
@@ -1138,12 +1155,12 @@
       "max_features_per_path": 20,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.001087148999999954,
+      "construct_s": 0.0008716130000721023,
       "status": "ok",
-      "median_s": 1.187616569999932,
-      "min_s": 1.18214753999996,
+      "median_s": 0.9386256410002716,
+      "min_s": 0.934247566999602,
       "n_runs": 5,
-      "warmup_s": 1.1721383880000076
+      "warmup_s": 0.9490426469997146
     },
     {
       "dataset": "superconductivity",
@@ -1154,12 +1171,12 @@
       "max_features_per_path": 24,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.02276136500006487,
+      "construct_s": 0.020180346999950416,
       "status": "ok",
-      "median_s": 0.002084815999978673,
-      "min_s": 0.0019825809999929334,
+      "median_s": 0.0019501330002640316,
+      "min_s": 0.0018394539997643733,
       "n_runs": 5,
-      "warmup_s": 0.002432494000004226,
+      "warmup_s": 0.002230180999958975,
       "efficiency_error": 2.842170943040401e-14
     },
     {
@@ -1171,12 +1188,12 @@
       "max_features_per_path": 24,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.019429310999953486,
+      "construct_s": 0.014791792000323767,
       "status": "ok",
-      "median_s": 0.004590736999944056,
-      "min_s": 0.004557718999990357,
+      "median_s": 0.004142221000165591,
+      "min_s": 0.004098771999906603,
       "n_runs": 5,
-      "warmup_s": 0.005149303000052896,
+      "warmup_s": 0.0041205259999514965,
       "efficiency_error": 0.0007999197545700554
     },
     {
@@ -1188,12 +1205,12 @@
       "max_features_per_path": 24,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 1.7498574620000227,
+      "construct_s": 0.8431682400000682,
       "status": "ok",
-      "median_s": 1.1459815140000273,
-      "min_s": 1.1140868359999558,
+      "median_s": 0.7716383369997857,
+      "min_s": 0.7522292220000963,
       "n_runs": 5,
-      "warmup_s": 1.1183891619999713,
+      "warmup_s": 0.8353995329998725,
       "efficiency_error": 0.0006380275080744013
     },
     {
@@ -1205,12 +1222,12 @@
       "max_features_per_path": 24,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0013673810000227604,
+      "construct_s": 0.0015019410002423683,
       "status": "ok",
-      "median_s": 0.011400290000096902,
-      "min_s": 0.011138543000015488,
+      "median_s": 0.00909644599960302,
+      "min_s": 0.009064593999937642,
       "n_runs": 5,
-      "warmup_s": 0.011265820000062376,
+      "warmup_s": 0.010425169999962236,
       "efficiency_error": 5.684341886080801e-13
     },
     {
@@ -1222,12 +1239,12 @@
       "max_features_per_path": 24,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.11957827399999132,
+      "construct_s": 0.09464233300013802,
       "status": "ok",
-      "median_s": 0.08705712300002233,
-      "min_s": 0.08670587100004923,
+      "median_s": 0.017878395000025193,
+      "min_s": 0.017300902999977552,
       "n_runs": 5,
-      "warmup_s": 0.08698788099991361
+      "warmup_s": 0.019007242000043334
     },
     {
       "dataset": "superconductivity",
@@ -1238,7 +1255,7 @@
       "max_features_per_path": 24,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.6320000213454477e-06,
+      "construct_s": 1.8809996618074365e-06,
       "status": "not_supported"
     },
     {
@@ -1250,12 +1267,12 @@
       "max_features_per_path": 24,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0012316160000409582,
+      "construct_s": 0.0011879319999934523,
       "status": "ok",
-      "median_s": 1.7317736569999624,
-      "min_s": 1.7257449740000084,
+      "median_s": 1.4488725989999693,
+      "min_s": 1.4095057740000811,
       "n_runs": 5,
-      "warmup_s": 1.7314327240000011
+      "warmup_s": 1.442310154000097
     },
     {
       "dataset": "superconductivity",
@@ -1266,12 +1283,12 @@
       "max_features_per_path": 27,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.02579639999999017,
+      "construct_s": 0.022214397999960056,
       "status": "ok",
-      "median_s": 0.0023134129999107245,
-      "min_s": 0.0022654360000160523,
+      "median_s": 0.0021340309999686724,
+      "min_s": 0.00212615000009464,
       "n_runs": 5,
-      "warmup_s": 0.002559322000024622,
+      "warmup_s": 0.002454129999932775,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -1283,12 +1300,12 @@
       "max_features_per_path": 27,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.022235800000089512,
+      "construct_s": 0.01792478100014705,
       "status": "ok",
-      "median_s": 0.005077218999986144,
-      "min_s": 0.0049540149998392735,
+      "median_s": 0.004501675999563304,
+      "min_s": 0.004412941000282444,
       "n_runs": 5,
-      "warmup_s": 0.005647262999900704,
+      "warmup_s": 0.004887144000349508,
       "efficiency_error": 0.007550200940599439
     },
     {
@@ -1300,12 +1317,12 @@
       "max_features_per_path": 27,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 1.6489054819999183,
+      "construct_s": 0.8979047110001375,
       "status": "ok",
-      "median_s": 1.2453529260001233,
-      "min_s": 1.2269930289999138,
+      "median_s": 0.8612889659998473,
+      "min_s": 0.8542993399996703,
       "n_runs": 5,
-      "warmup_s": 1.2262346190000244,
+      "warmup_s": 0.8347928519997367,
       "efficiency_error": 0.0064252583526922535
     },
     {
@@ -1317,12 +1334,12 @@
       "max_features_per_path": 27,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.001735774000053425,
+      "construct_s": 0.0017602319999241445,
       "status": "ok",
-      "median_s": 0.013659344999950918,
-      "min_s": 0.013572259999818925,
+      "median_s": 0.010966786000153661,
+      "min_s": 0.010800438999922335,
       "n_runs": 5,
-      "warmup_s": 0.013522173999945153,
+      "warmup_s": 0.010962177000237716,
       "efficiency_error": 1.2221335055073723e-12
     },
     {
@@ -1334,12 +1351,12 @@
       "max_features_per_path": 27,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.13291658399998596,
+      "construct_s": 0.10486277800009702,
       "status": "ok",
-      "median_s": 0.09117559599985725,
-      "min_s": 0.09062620500003504,
+      "median_s": 0.020141298999988066,
+      "min_s": 0.01990255900000193,
       "n_runs": 5,
-      "warmup_s": 0.09293060400000286
+      "warmup_s": 0.020332191999841598
     },
     {
       "dataset": "superconductivity",
@@ -1350,7 +1367,7 @@
       "max_features_per_path": 27,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.421999968442833e-06,
+      "construct_s": 1.496999630035134e-06,
       "status": "not_supported"
     },
     {
@@ -1362,12 +1379,12 @@
       "max_features_per_path": 27,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0014015049998761242,
+      "construct_s": 0.001182848000098602,
       "status": "ok",
-      "median_s": 2.114817032000019,
-      "min_s": 2.068834552999988,
+      "median_s": 1.6620078859996283,
+      "min_s": 1.6598304990002362,
       "n_runs": 5,
-      "warmup_s": 2.0709968860001027
+      "warmup_s": 1.6909823350001716
     },
     {
       "dataset": "superconductivity",
@@ -1378,12 +1395,12 @@
       "max_features_per_path": 30,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.028038441000035164,
+      "construct_s": 0.022363342000062403,
       "status": "ok",
-      "median_s": 0.0026389960000869905,
-      "min_s": 0.0023755859999710083,
+      "median_s": 0.0022405430004255322,
+      "min_s": 0.0022302000002127897,
       "n_runs": 5,
-      "warmup_s": 0.003497336999998879,
+      "warmup_s": 0.0024928210000325635,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -1419,12 +1436,12 @@
       "max_features_per_path": 30,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0016179409999494965,
+      "construct_s": 0.00126815900011934,
       "status": "ok",
-      "median_s": 0.01404154900001231,
-      "min_s": 0.013850912999942011,
+      "median_s": 0.01112706399999297,
+      "min_s": 0.011085809000178415,
       "n_runs": 5,
-      "warmup_s": 0.014320443000087835,
+      "warmup_s": 0.011346097000114241,
       "efficiency_error": 1.8189894035458565e-12
     },
     {
@@ -1436,12 +1453,12 @@
       "max_features_per_path": 30,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.14080823499989492,
+      "construct_s": 0.10367457499978627,
       "status": "ok",
-      "median_s": 0.09045638999987204,
-      "min_s": 0.08927420300005906,
+      "median_s": 0.019996104999790987,
+      "min_s": 0.019762067000101524,
       "n_runs": 5,
-      "warmup_s": 0.09778611799993087
+      "warmup_s": 0.020672219000061887
     },
     {
       "dataset": "superconductivity",
@@ -1452,7 +1469,7 @@
       "max_features_per_path": 30,
       "method": "linear",
       "order": 2,
-      "construct_s": 2.2819999685452785e-06,
+      "construct_s": 2.4820001272019e-06,
       "status": "not_supported"
     },
     {
@@ -1464,12 +1481,12 @@
       "max_features_per_path": 30,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0015009290000307374,
+      "construct_s": 0.0012417399998412293,
       "status": "ok",
-      "median_s": 2.165027916999861,
-      "min_s": 2.1415862150001885,
+      "median_s": 1.8092741860000388,
+      "min_s": 1.7689082750002854,
       "n_runs": 5,
-      "warmup_s": 2.2149788630001694
+      "warmup_s": 1.740820259999964
     },
     {
       "dataset": "superconductivity",
@@ -1480,12 +1497,12 @@
       "max_features_per_path": 30,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.027619000999948184,
+      "construct_s": 0.025039221000042744,
       "status": "ok",
-      "median_s": 0.002398756999809848,
-      "min_s": 0.002335845000061454,
+      "median_s": 0.002432982000300399,
+      "min_s": 0.0023083459996087186,
       "n_runs": 5,
-      "warmup_s": 0.002614218999951845,
+      "warmup_s": 0.002749994999703631,
       "efficiency_error": 1.4210854715202004e-14
     },
     {
@@ -1521,12 +1538,12 @@
       "max_features_per_path": 30,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0014863460000924533,
+      "construct_s": 0.0014391490003617946,
       "status": "ok",
-      "median_s": 0.014277485000093293,
-      "min_s": 0.014126060000080543,
+      "median_s": 0.0117113370001789,
+      "min_s": 0.011560802000076364,
       "n_runs": 5,
-      "warmup_s": 0.014247273000137284,
+      "warmup_s": 0.011975897999946028,
       "efficiency_error": 2.0605739337042905e-12
     },
     {
@@ -1538,12 +1555,12 @@
       "max_features_per_path": 30,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.13264408700001695,
+      "construct_s": 0.11319703400022263,
       "status": "ok",
-      "median_s": 0.09188294899990979,
-      "min_s": 0.08953415699988909,
+      "median_s": 0.021004962000006344,
+      "min_s": 0.020900195999729476,
       "n_runs": 5,
-      "warmup_s": 0.0902715330000774
+      "warmup_s": 0.022512459000154195
     },
     {
       "dataset": "superconductivity",
@@ -1554,7 +1571,7 @@
       "max_features_per_path": 30,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.939999947353499e-06,
+      "construct_s": 1.886000063677784e-06,
       "status": "not_supported"
     },
     {
@@ -1566,12 +1583,12 @@
       "max_features_per_path": 30,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0013754890001109743,
+      "construct_s": 0.0014810620000389463,
       "status": "ok",
-      "median_s": 2.2253099360000306,
-      "min_s": 2.166984558999957,
+      "median_s": 1.7511716819999492,
+      "min_s": 1.743466724999962,
       "n_runs": 5,
-      "warmup_s": 2.1998310219998984
+      "warmup_s": 1.8168451179999465
     },
     {
       "dataset": "heloc",
@@ -1582,12 +1599,12 @@
       "max_features_per_path": 1,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0006817240000600577,
+      "construct_s": 0.0005421099999693979,
       "status": "ok",
-      "median_s": 1.3124999895808287e-05,
-      "min_s": 1.1371999789844267e-05,
+      "median_s": 7.980000191309955e-06,
+      "min_s": 6.962000043131411e-06,
       "n_runs": 5,
-      "warmup_s": 6.564099999195605e-05,
+      "warmup_s": 6.247100009204587e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1599,12 +1616,12 @@
       "max_features_per_path": 1,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.00047232499991878285,
+      "construct_s": 0.0003807329999290232,
       "status": "ok",
-      "median_s": 2.687899996089982e-05,
-      "min_s": 2.441100014038966e-05,
+      "median_s": 1.7704999663692433e-05,
+      "min_s": 1.6372999652958242e-05,
       "n_runs": 5,
-      "warmup_s": 7.950600002004649e-05,
+      "warmup_s": 6.259500014493824e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1616,12 +1633,12 @@
       "max_features_per_path": 1,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0003167270001540601,
+      "construct_s": 0.0003775860000132525,
       "status": "ok",
-      "median_s": 9.929000043484848e-06,
-      "min_s": 8.949999937613029e-06,
+      "median_s": 7.709999863436678e-06,
+      "min_s": 6.990000201767543e-06,
       "n_runs": 5,
-      "warmup_s": 3.815500008386152e-05,
+      "warmup_s": 3.4454999877198134e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1633,12 +1650,12 @@
       "max_features_per_path": 1,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003076589998727286,
+      "construct_s": 0.00021841499983565882,
       "status": "ok",
-      "median_s": 1.0421000069982256e-05,
-      "min_s": 9.757000043464359e-06,
+      "median_s": 7.745999937469605e-06,
+      "min_s": 6.966000000829808e-06,
       "n_runs": 5,
-      "warmup_s": 4.7339000047941227e-05,
+      "warmup_s": 4.53669999842532e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1650,12 +1667,12 @@
       "max_features_per_path": 1,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.00044749299991053704,
+      "construct_s": 0.0003635690000010072,
       "status": "ok",
-      "median_s": 2.5470000082350452e-05,
-      "min_s": 2.4033999807215878e-05,
+      "median_s": 5.085400016469066e-05,
+      "min_s": 4.739299993161694e-05,
       "n_runs": 5,
-      "warmup_s": 0.00012120599990339542
+      "warmup_s": 0.0001524660001450684
     },
     {
       "dataset": "heloc",
@@ -1666,7 +1683,7 @@
       "max_features_per_path": 1,
       "method": "linear",
       "order": 2,
-      "construct_s": 5.720000899600564e-07,
+      "construct_s": 5.290003173286095e-07,
       "status": "not_supported"
     },
     {
@@ -1678,12 +1695,12 @@
       "max_features_per_path": 1,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.0003205420000540471,
+      "construct_s": 0.0003103750000263972,
       "status": "ok",
-      "median_s": 2.7409000040279352e-05,
-      "min_s": 2.5328999981866218e-05,
+      "median_s": 5.035300000599818e-05,
+      "min_s": 4.9763000333769014e-05,
       "n_runs": 5,
-      "warmup_s": 5.080999994788726e-05
+      "warmup_s": 8.940700035964255e-05
     },
     {
       "dataset": "heloc",
@@ -1694,12 +1711,12 @@
       "max_features_per_path": 1,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00024432000009255717,
+      "construct_s": 0.00018614000009620213,
       "status": "ok",
-      "median_s": 1.3119000186634366e-05,
-      "min_s": 1.227500001732551e-05,
+      "median_s": 1.0077999831992202e-05,
+      "min_s": 9.656999736762373e-06,
       "n_runs": 5,
-      "warmup_s": 4.7499000174866524e-05
+      "warmup_s": 4.373899992060615e-05
     },
     {
       "dataset": "heloc",
@@ -1710,12 +1727,12 @@
       "max_features_per_path": 3,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0007229070001812943,
+      "construct_s": 0.000514654999733466,
       "status": "ok",
-      "median_s": 1.6232999996645958e-05,
-      "min_s": 1.4392999901247094e-05,
+      "median_s": 1.0814000233949628e-05,
+      "min_s": 1.0200999895459972e-05,
       "n_runs": 5,
-      "warmup_s": 9.4600000011269e-05,
+      "warmup_s": 5.463900015456602e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1727,12 +1744,12 @@
       "max_features_per_path": 3,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0005993669999497797,
+      "construct_s": 0.00045429200008584303,
       "status": "ok",
-      "median_s": 3.276000006735558e-05,
-      "min_s": 3.068499995606544e-05,
+      "median_s": 2.0407000192790292e-05,
+      "min_s": 1.9521000012900913e-05,
       "n_runs": 5,
-      "warmup_s": 8.018800008358085e-05,
+      "warmup_s": 6.125700019765645e-05,
       "efficiency_error": 0.0
     },
     {
@@ -1744,12 +1761,12 @@
       "max_features_per_path": 3,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0008789290000095207,
+      "construct_s": 0.0006410109999706037,
       "status": "ok",
-      "median_s": 0.0015022309999039862,
-      "min_s": 0.0014536969999880966,
+      "median_s": 0.0008940109996729007,
+      "min_s": 0.000880727000094339,
       "n_runs": 5,
-      "warmup_s": 0.0019348360001458786,
+      "warmup_s": 0.0010276769999109092,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -1761,12 +1778,12 @@
       "max_features_per_path": 3,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00024190399994949985,
+      "construct_s": 0.00018200299973614165,
       "status": "ok",
-      "median_s": 1.1963000133619062e-05,
-      "min_s": 1.0518999943087692e-05,
+      "median_s": 8.868999884725781e-06,
+      "min_s": 8.370999694307102e-06,
       "n_runs": 5,
-      "warmup_s": 4.4502000037027756e-05,
+      "warmup_s": 3.6515000374492956e-05,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -1778,12 +1795,12 @@
       "max_features_per_path": 3,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0005764840000210825,
+      "construct_s": 0.0005068570003459172,
       "status": "ok",
-      "median_s": 0.0004280929999822547,
-      "min_s": 0.00038021299997126334,
+      "median_s": 0.00013697500025955378,
+      "min_s": 0.00011955599984503351,
       "n_runs": 5,
-      "warmup_s": 0.0005242350000571605
+      "warmup_s": 0.0002445790000820125
     },
     {
       "dataset": "heloc",
@@ -1794,7 +1811,7 @@
       "max_features_per_path": 3,
       "method": "linear",
       "order": 2,
-      "construct_s": 6.640000265178969e-07,
+      "construct_s": 5.749998308601789e-07,
       "status": "not_supported"
     },
     {
@@ -1806,12 +1823,12 @@
       "max_features_per_path": 3,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.0020409169999311416,
+      "construct_s": 0.0013710749999518157,
       "status": "ok",
-      "median_s": 0.0035412649999670975,
-      "min_s": 0.003117979999842646,
+      "median_s": 0.001916988000175479,
+      "min_s": 0.0019128529997942678,
       "n_runs": 5,
-      "warmup_s": 0.0037460480000390817
+      "warmup_s": 0.002109325999754219
     },
     {
       "dataset": "heloc",
@@ -1822,12 +1839,12 @@
       "max_features_per_path": 3,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00041184499991686607,
+      "construct_s": 0.00018082399992636056,
       "status": "ok",
-      "median_s": 2.8160000056232093e-05,
-      "min_s": 2.674000006663846e-05,
+      "median_s": 2.441000015096506e-05,
+      "min_s": 2.3299000076804077e-05,
       "n_runs": 5,
-      "warmup_s": 0.00016191600002457562
+      "warmup_s": 5.2894999953423394e-05
     },
     {
       "dataset": "heloc",
@@ -1838,12 +1855,12 @@
       "max_features_per_path": 5,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0008896169999843551,
+      "construct_s": 0.0005974599998808117,
       "status": "ok",
-      "median_s": 2.3646000045118853e-05,
-      "min_s": 2.239999980702123e-05,
+      "median_s": 1.7010000192385633e-05,
+      "min_s": 1.6571999822190264e-05,
       "n_runs": 5,
-      "warmup_s": 8.778300002632022e-05,
+      "warmup_s": 8.44550004330813e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -1855,12 +1872,12 @@
       "max_features_per_path": 5,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0007483009999305068,
+      "construct_s": 0.0005264569999781088,
       "status": "ok",
-      "median_s": 5.345999989003758e-05,
-      "min_s": 4.977999992661353e-05,
+      "median_s": 4.059200000483543e-05,
+      "min_s": 3.4095000046363566e-05,
       "n_runs": 5,
-      "warmup_s": 0.00010489300007066049,
+      "warmup_s": 9.340799988422077e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -1872,12 +1889,12 @@
       "max_features_per_path": 5,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0026144240000576247,
+      "construct_s": 0.0016923059997679957,
       "status": "ok",
-      "median_s": 0.0056990269999914744,
-      "min_s": 0.005436927000118885,
+      "median_s": 0.003676559000268753,
+      "min_s": 0.0036165740002616076,
       "n_runs": 5,
-      "warmup_s": 0.006050573000038639,
+      "warmup_s": 0.0037709830003223033,
       "efficiency_error": 3.3306690738754696e-16
     },
     {
@@ -1889,12 +1906,12 @@
       "max_features_per_path": 5,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00031066599990481336,
+      "construct_s": 0.00022730799992132233,
       "status": "ok",
-      "median_s": 2.641800006131234e-05,
-      "min_s": 1.7469999875174835e-05,
+      "median_s": 1.4124000244919444e-05,
+      "min_s": 1.3496000065060798e-05,
       "n_runs": 5,
-      "warmup_s": 5.8174999821858364e-05,
+      "warmup_s": 4.65289999738161e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -1906,12 +1923,12 @@
       "max_features_per_path": 5,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0010915719999502471,
+      "construct_s": 0.0009065489998647536,
       "status": "ok",
-      "median_s": 0.0018913869998868904,
-      "min_s": 0.0017956609999600914,
+      "median_s": 0.00022420300001613214,
+      "min_s": 0.0002186870001423813,
       "n_runs": 5,
-      "warmup_s": 0.0020768650001627975
+      "warmup_s": 0.00042171999984930153
     },
     {
       "dataset": "heloc",
@@ -1922,7 +1939,7 @@
       "max_features_per_path": 5,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.0930000371445203e-06,
+      "construct_s": 5.960000635241158e-07,
       "status": "not_supported"
     },
     {
@@ -1934,12 +1951,12 @@
       "max_features_per_path": 5,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.018493347999992693,
+      "construct_s": 0.011925835000056395,
       "status": "ok",
-      "median_s": 0.015437248999887743,
-      "min_s": 0.014994377999983044,
+      "median_s": 0.008242786999744567,
+      "min_s": 0.008125586000005569,
       "n_runs": 5,
-      "warmup_s": 0.016399464999949487
+      "warmup_s": 0.008466724999834696
     },
     {
       "dataset": "heloc",
@@ -1950,12 +1967,12 @@
       "max_features_per_path": 5,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00027632299998003873,
+      "construct_s": 0.0002551490001678758,
       "status": "ok",
-      "median_s": 0.0002261510001062561,
-      "min_s": 0.00021611699980894628,
+      "median_s": 0.00020575799999278388,
+      "min_s": 0.00019737599996005883,
       "n_runs": 5,
-      "warmup_s": 0.00027398200018069474
+      "warmup_s": 0.0002488430000084918
     },
     {
       "dataset": "heloc",
@@ -1966,12 +1983,12 @@
       "max_features_per_path": 7,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.001108440000052724,
+      "construct_s": 0.0009815610001169262,
       "status": "ok",
-      "median_s": 5.6892999964475166e-05,
-      "min_s": 3.650700000434881e-05,
+      "median_s": 3.239600027882261e-05,
+      "min_s": 2.680099987628637e-05,
       "n_runs": 5,
-      "warmup_s": 0.00012538900000436115,
+      "warmup_s": 9.68540002759255e-05,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -1983,12 +2000,12 @@
       "max_features_per_path": 7,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0010086390000196843,
+      "construct_s": 0.000846743000238348,
       "status": "ok",
-      "median_s": 0.00012060199992447451,
-      "min_s": 9.397799999533163e-05,
+      "median_s": 7.449000031556352e-05,
+      "min_s": 7.137100010368158e-05,
       "n_runs": 5,
-      "warmup_s": 0.00015204100009214017,
+      "warmup_s": 0.00013567299993155757,
       "efficiency_error": 3.4416913763379853e-15
     },
     {
@@ -2000,12 +2017,12 @@
       "max_features_per_path": 7,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.008557089999840173,
+      "construct_s": 0.004944429000261152,
       "status": "ok",
-      "median_s": 0.018391233000102147,
-      "min_s": 0.018154889000015828,
+      "median_s": 0.01207660099998975,
+      "min_s": 0.012048029999732535,
       "n_runs": 5,
-      "warmup_s": 0.018127522999975554,
+      "warmup_s": 0.012307787999816355,
       "efficiency_error": 9.992007221626409e-16
     },
     {
@@ -2017,12 +2034,12 @@
       "max_features_per_path": 7,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00028378699994391354,
+      "construct_s": 0.0002839799999492243,
       "status": "ok",
-      "median_s": 4.777799995281384e-05,
-      "min_s": 4.390100002638064e-05,
+      "median_s": 4.098700037502567e-05,
+      "min_s": 3.465100007815636e-05,
       "n_runs": 5,
-      "warmup_s": 9.444500005884038e-05,
+      "warmup_s": 7.714000003034016e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -2034,12 +2051,12 @@
       "max_features_per_path": 7,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0021901689999594964,
+      "construct_s": 0.001781900000423775,
       "status": "ok",
-      "median_s": 0.003960047999953531,
-      "min_s": 0.003897220999988349,
+      "median_s": 0.00038173100028870977,
+      "min_s": 0.00035955300018031267,
       "n_runs": 5,
-      "warmup_s": 0.004652368000051865
+      "warmup_s": 0.0005692869999620598
     },
     {
       "dataset": "heloc",
@@ -2050,7 +2067,7 @@
       "max_features_per_path": 7,
       "method": "linear",
       "order": 2,
-      "construct_s": 2.055000095424475e-06,
+      "construct_s": 1.193000116472831e-06,
       "status": "not_supported"
     },
     {
@@ -2062,12 +2079,12 @@
       "max_features_per_path": 7,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.10097667300010471,
+      "construct_s": 0.059326554000108445,
       "status": "ok",
-      "median_s": 0.04823763799981862,
-      "min_s": 0.046137872999906904,
+      "median_s": 0.02768433900018863,
+      "min_s": 0.02738493800006836,
       "n_runs": 5,
-      "warmup_s": 0.04665497700011656
+      "warmup_s": 0.02808407000020452
     },
     {
       "dataset": "heloc",
@@ -2078,12 +2095,12 @@
       "max_features_per_path": 7,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00031620000004295434,
+      "construct_s": 0.00033038800029316917,
       "status": "ok",
-      "median_s": 0.0013089320000290172,
-      "min_s": 0.001288408999926105,
+      "median_s": 0.0011192320002919587,
+      "min_s": 0.0011185489997842524,
       "n_runs": 5,
-      "warmup_s": 0.0015624990001015249
+      "warmup_s": 0.0011854350000248814
     },
     {
       "dataset": "heloc",
@@ -2094,12 +2111,12 @@
       "max_features_per_path": 9,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0019445499999619642,
+      "construct_s": 0.001505601999724604,
       "status": "ok",
-      "median_s": 7.663399992452469e-05,
-      "min_s": 6.791500004510453e-05,
+      "median_s": 6.293899969023187e-05,
+      "min_s": 5.439099959403393e-05,
       "n_runs": 5,
-      "warmup_s": 0.00019860399993376632,
+      "warmup_s": 0.000147495999954117,
       "efficiency_error": 0.0
     },
     {
@@ -2111,12 +2128,12 @@
       "max_features_per_path": 9,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0013715620000311901,
+      "construct_s": 0.001005440999961138,
       "status": "ok",
-      "median_s": 0.0001928039998801978,
-      "min_s": 0.00015793800002938951,
+      "median_s": 0.00015494899980694754,
+      "min_s": 0.00013939200016466202,
       "n_runs": 5,
-      "warmup_s": 0.00030905000016900885,
+      "warmup_s": 0.00022115999991001445,
       "efficiency_error": 2.919886554764162e-14
     },
     {
@@ -2128,12 +2145,12 @@
       "max_features_per_path": 9,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.016363653000098566,
+      "construct_s": 0.010360613000102603,
       "status": "ok",
-      "median_s": 0.04426529500005927,
-      "min_s": 0.043268424999951094,
+      "median_s": 0.027266424000117695,
+      "min_s": 0.02717709799981094,
       "n_runs": 5,
-      "warmup_s": 0.044108013000141,
+      "warmup_s": 0.027531318999990617,
       "efficiency_error": 1.949551631241775e-13
     },
     {
@@ -2145,12 +2162,12 @@
       "max_features_per_path": 9,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00032838299989634834,
+      "construct_s": 0.00033027799963747384,
       "status": "ok",
-      "median_s": 9.905899992190825e-05,
-      "min_s": 9.65890001225489e-05,
+      "median_s": 9.379399989484227e-05,
+      "min_s": 8.43789998725697e-05,
       "n_runs": 5,
-      "warmup_s": 0.00031663599997955316,
+      "warmup_s": 0.00013122599966663984,
       "efficiency_error": 1.1102230246251565e-15
     },
     {
@@ -2162,12 +2179,12 @@
       "max_features_per_path": 9,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.003704804000108197,
+      "construct_s": 0.002852286999768694,
       "status": "ok",
-      "median_s": 0.0053356230000645155,
-      "min_s": 0.005303055000013046,
+      "median_s": 0.000594146999901568,
+      "min_s": 0.000564148000194109,
       "n_runs": 5,
-      "warmup_s": 0.00567702500006817
+      "warmup_s": 0.0008670590000292577
     },
     {
       "dataset": "heloc",
@@ -2178,7 +2195,7 @@
       "max_features_per_path": 9,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.419000000169035e-06,
+      "construct_s": 8.209999577957205e-07,
       "status": "not_supported"
     },
     {
@@ -2190,12 +2207,12 @@
       "max_features_per_path": 9,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.21643267600006766,
+      "construct_s": 0.14051860499967006,
       "status": "ok",
-      "median_s": 0.10613383600002635,
-      "min_s": 0.10543767599983767,
+      "median_s": 0.06197320299997955,
+      "min_s": 0.06179781399987405,
       "n_runs": 5,
-      "warmup_s": 0.10741558099994108
+      "warmup_s": 0.061770237000018824
     },
     {
       "dataset": "heloc",
@@ -2206,12 +2223,12 @@
       "max_features_per_path": 9,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0003982680000262917,
+      "construct_s": 0.0003745679996427498,
       "status": "ok",
-      "median_s": 0.003919589999895834,
-      "min_s": 0.00388663099988662,
+      "median_s": 0.0033615299998928094,
+      "min_s": 0.0032409629998255696,
       "n_runs": 5,
-      "warmup_s": 0.004026835000104256
+      "warmup_s": 0.0034845479999603413
     },
     {
       "dataset": "heloc",
@@ -2222,12 +2239,12 @@
       "max_features_per_path": 11,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0021524670000871993,
+      "construct_s": 0.0016449849999844446,
       "status": "ok",
-      "median_s": 0.0001145769999766344,
-      "min_s": 0.0001020090001020435,
+      "median_s": 9.898799999064067e-05,
+      "min_s": 8.980900020105764e-05,
       "n_runs": 5,
-      "warmup_s": 0.00027397799999562267,
+      "warmup_s": 0.00019787499968515476,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -2239,12 +2256,12 @@
       "max_features_per_path": 11,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0016458999998576473,
+      "construct_s": 0.0013301959997988888,
       "status": "ok",
-      "median_s": 0.00036975499983782356,
-      "min_s": 0.0002856759999758651,
+      "median_s": 0.0002671679999366461,
+      "min_s": 0.0002390119998381124,
       "n_runs": 5,
-      "warmup_s": 0.0003836610001144436,
+      "warmup_s": 0.00038474299981317017,
       "efficiency_error": 1.0980105713542798e-13
     },
     {
@@ -2256,12 +2273,12 @@
       "max_features_per_path": 11,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.027275894000013068,
+      "construct_s": 0.017473220999818295,
       "status": "ok",
-      "median_s": 0.08144247499990342,
-      "min_s": 0.08036585600007129,
+      "median_s": 0.05328038200013907,
+      "min_s": 0.05188577500030078,
       "n_runs": 5,
-      "warmup_s": 0.0800625649999347,
+      "warmup_s": 0.04964529800008677,
       "efficiency_error": 1.9206858326015208e-14
     },
     {
@@ -2273,12 +2290,12 @@
       "max_features_per_path": 11,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003699520000282064,
+      "construct_s": 0.00038907399994059233,
       "status": "ok",
-      "median_s": 0.0005218420001256163,
-      "min_s": 0.00030369999990398355,
+      "median_s": 0.00017375100014760392,
+      "min_s": 0.00016662000007272582,
       "n_runs": 5,
-      "warmup_s": 0.00026219400001536997,
+      "warmup_s": 0.00026201600030617556,
       "efficiency_error": 1.2212453270876722e-15
     },
     {
@@ -2290,12 +2307,12 @@
       "max_features_per_path": 11,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.006010377000166045,
+      "construct_s": 0.004615812999873015,
       "status": "ok",
-      "median_s": 0.006502005000129429,
-      "min_s": 0.0061665579999043985,
+      "median_s": 0.0008963179998318083,
+      "min_s": 0.0008539139998902101,
       "n_runs": 5,
-      "warmup_s": 0.0070556020000367425
+      "warmup_s": 0.0011006279996763624
     },
     {
       "dataset": "heloc",
@@ -2306,7 +2323,7 @@
       "max_features_per_path": 11,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.740000016070553e-06,
+      "construct_s": 8.219999472203199e-07,
       "status": "not_supported"
     },
     {
@@ -2318,12 +2335,12 @@
       "max_features_per_path": 11,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.38429706399983843,
+      "construct_s": 0.26315412700023444,
       "status": "ok",
-      "median_s": 0.1846184319999793,
-      "min_s": 0.1811179850001281,
+      "median_s": 0.11898348199974862,
+      "min_s": 0.11555520799993246,
       "n_runs": 5,
-      "warmup_s": 0.18526897699985057
+      "warmup_s": 0.1214907140001742
     },
     {
       "dataset": "heloc",
@@ -2334,12 +2351,12 @@
       "max_features_per_path": 11,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005202489999192039,
+      "construct_s": 0.000440385999809223,
       "status": "ok",
-      "median_s": 0.00810509899997669,
-      "min_s": 0.008051570000134234,
+      "median_s": 0.006731837000188534,
+      "min_s": 0.006685568000193598,
       "n_runs": 5,
-      "warmup_s": 0.008510781000040879
+      "warmup_s": 0.007004867999967246
     },
     {
       "dataset": "heloc",
@@ -2350,12 +2367,12 @@
       "max_features_per_path": 13,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0028945520000434044,
+      "construct_s": 0.0020639269996536314,
       "status": "ok",
-      "median_s": 0.0001633689998925547,
-      "min_s": 0.00014375499995367136,
+      "median_s": 0.0001499859999967157,
+      "min_s": 0.0001292790002480615,
       "n_runs": 5,
-      "warmup_s": 0.0003017970000200876,
+      "warmup_s": 0.0002583269997558091,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -2367,12 +2384,12 @@
       "max_features_per_path": 13,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0021447389999593724,
+      "construct_s": 0.00165102199980538,
       "status": "ok",
-      "median_s": 0.0004944320000959124,
-      "min_s": 0.00045096700000613055,
+      "median_s": 0.00035010300007343176,
+      "min_s": 0.000324313999954029,
       "n_runs": 5,
-      "warmup_s": 0.0005840630001330283,
+      "warmup_s": 0.00048660799984645564,
       "efficiency_error": 6.94777568810423e-13
     },
     {
@@ -2384,12 +2401,12 @@
       "max_features_per_path": 13,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.03777146600009473,
+      "construct_s": 0.02464149700017515,
       "status": "ok",
-      "median_s": 0.11231938399987484,
-      "min_s": 0.10938398500002222,
+      "median_s": 0.07102057399970363,
+      "min_s": 0.07056215400007204,
       "n_runs": 5,
-      "warmup_s": 0.11066603199992642,
+      "warmup_s": 0.07009956000001694,
       "efficiency_error": 1.3549827926340186e-11
     },
     {
@@ -2401,12 +2418,12 @@
       "max_features_per_path": 13,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00041136200002256373,
+      "construct_s": 0.0004834289998143504,
       "status": "ok",
-      "median_s": 0.0003419399999984307,
-      "min_s": 0.0003220909998162824,
+      "median_s": 0.00029591399970740895,
+      "min_s": 0.00027581699987422326,
       "n_runs": 5,
-      "warmup_s": 0.000424551999913092,
+      "warmup_s": 0.00032235399976343615,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -2418,12 +2435,12 @@
       "max_features_per_path": 13,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.007155480999927022,
+      "construct_s": 0.005835735999880853,
       "status": "ok",
-      "median_s": 0.0071193570001923945,
-      "min_s": 0.006629150999970079,
+      "median_s": 0.0009898859998429543,
+      "min_s": 0.0009871000002021901,
       "n_runs": 5,
-      "warmup_s": 0.006979468000054112
+      "warmup_s": 0.0013142249999873457
     },
     {
       "dataset": "heloc",
@@ -2434,7 +2451,7 @@
       "max_features_per_path": 13,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.4600000213249587e-06,
+      "construct_s": 1.4760003068658989e-06,
       "status": "not_supported"
     },
     {
@@ -2446,12 +2463,12 @@
       "max_features_per_path": 13,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.5305842779998784,
+      "construct_s": 0.3562754979998317,
       "status": "ok",
-      "median_s": 0.25343636799993874,
-      "min_s": 0.2489273360001789,
+      "median_s": 0.16794215600020834,
+      "min_s": 0.1628940179998608,
       "n_runs": 5,
-      "warmup_s": 0.284429677000162
+      "warmup_s": 0.1762909330000184
     },
     {
       "dataset": "heloc",
@@ -2462,12 +2479,12 @@
       "max_features_per_path": 13,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0004163060000337282,
+      "construct_s": 0.0004868529999839666,
       "status": "ok",
-      "median_s": 0.013400414999978238,
-      "min_s": 0.013097584999968603,
+      "median_s": 0.010841251000329066,
+      "min_s": 0.010809654999775375,
       "n_runs": 5,
-      "warmup_s": 0.013926524999988033
+      "warmup_s": 0.011059273000228131
     },
     {
       "dataset": "heloc",
@@ -2478,12 +2495,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.002604883999993035,
+      "construct_s": 0.0023069990002113627,
       "status": "ok",
-      "median_s": 0.0001958400000603433,
-      "min_s": 0.0001844360001541645,
+      "median_s": 0.00017436899997846922,
+      "min_s": 0.0001511190002929652,
       "n_runs": 5,
-      "warmup_s": 0.0003032160000202566,
+      "warmup_s": 0.00026684500016926904,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -2495,12 +2512,12 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0021427400001812202,
+      "construct_s": 0.0018958720002046903,
       "status": "ok",
-      "median_s": 0.0005304019998675358,
-      "min_s": 0.0004718529999081511,
+      "median_s": 0.00043065499994554557,
+      "min_s": 0.00040349500022784923,
       "n_runs": 5,
-      "warmup_s": 0.0005859550001332536,
+      "warmup_s": 0.0006133679999038577,
       "efficiency_error": 8.755662861403835e-12
     },
     {
@@ -2512,12 +2529,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.04492704699987371,
+      "construct_s": 0.030510632999721565,
       "status": "ok",
-      "median_s": 0.13602076500001203,
-      "min_s": 0.1349511009998423,
+      "median_s": 0.08923136999965209,
+      "min_s": 0.08806575000016892,
       "n_runs": 5,
-      "warmup_s": 0.13949226499994438,
+      "warmup_s": 0.08969302200011953,
       "efficiency_error": 3.924194302840078e-12
     },
     {
@@ -2529,12 +2546,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0004177319999598694,
+      "construct_s": 0.00042442599988135044,
       "status": "ok",
-      "median_s": 0.00043536399994081876,
-      "min_s": 0.00041726800009200815,
+      "median_s": 0.00036782100005439133,
+      "min_s": 0.00034834000007322174,
       "n_runs": 5,
-      "warmup_s": 0.0005250690001048497,
+      "warmup_s": 0.0004693279997809441,
       "efficiency_error": 2.6645352591003757e-15
     },
     {
@@ -2546,12 +2563,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.008198798999956125,
+      "construct_s": 0.006661164999968605,
       "status": "ok",
-      "median_s": 0.006468461000167736,
-      "min_s": 0.006452029000001858,
+      "median_s": 0.0011704559997269826,
+      "min_s": 0.0011287759998594993,
       "n_runs": 5,
-      "warmup_s": 0.006895785000097021
+      "warmup_s": 0.0013863569997738523
     },
     {
       "dataset": "heloc",
@@ -2562,7 +2579,7 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.348000068901456e-06,
+      "construct_s": 1.2360001164779533e-06,
       "status": "not_supported"
     },
     {
@@ -2574,12 +2591,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.6282324219998827,
+      "construct_s": 0.42519485100001475,
       "status": "ok",
-      "median_s": 0.3132082489998993,
-      "min_s": 0.3108833129999766,
+      "median_s": 0.20495927399997527,
+      "min_s": 0.20435655300025246,
       "n_runs": 5,
-      "warmup_s": 0.32481821800001853
+      "warmup_s": 0.206748177999998
     },
     {
       "dataset": "heloc",
@@ -2590,12 +2607,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00048515899993617495,
+      "construct_s": 0.00045147899982111994,
       "status": "ok",
-      "median_s": 0.01694866999991973,
-      "min_s": 0.016842781999912404,
+      "median_s": 0.014233924000109255,
+      "min_s": 0.014020842999798333,
       "n_runs": 5,
-      "warmup_s": 0.01693755099995542
+      "warmup_s": 0.014322842999717977
     },
     {
       "dataset": "heloc",
@@ -2606,12 +2623,12 @@
       "max_features_per_path": 15,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.002894036000043343,
+      "construct_s": 0.00246907500013549,
       "status": "ok",
-      "median_s": 0.00021656800004166143,
-      "min_s": 0.00019443899986981705,
+      "median_s": 0.00021405500001492328,
+      "min_s": 0.0001894349998110556,
       "n_runs": 5,
-      "warmup_s": 0.0003288479999810079,
+      "warmup_s": 0.0003464359997451538,
       "efficiency_error": 4.440892098500626e-16
     },
     {
@@ -2623,12 +2640,12 @@
       "max_features_per_path": 15,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0025758110000424495,
+      "construct_s": 0.0020280999997339677,
       "status": "ok",
-      "median_s": 0.0006109339999511576,
-      "min_s": 0.0005638039999666944,
+      "median_s": 0.0005491219999385066,
+      "min_s": 0.0005109139997330203,
       "n_runs": 5,
-      "warmup_s": 0.0007214620000013383,
+      "warmup_s": 0.000620137000169052,
       "efficiency_error": 4.492101801645276e-09
     },
     {
@@ -2640,12 +2657,12 @@
       "max_features_per_path": 15,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.051873347000082504,
+      "construct_s": 0.03463503800003309,
       "status": "ok",
-      "median_s": 0.16019163999999364,
-      "min_s": 0.15958697999985816,
+      "median_s": 0.10613939500035485,
+      "min_s": 0.10532583499980319,
       "n_runs": 5,
-      "warmup_s": 0.16014187300015692,
+      "warmup_s": 0.10730441800023982,
       "efficiency_error": 4.60964599824365e-11
     },
     {
@@ -2657,12 +2674,12 @@
       "max_features_per_path": 15,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0005010950001178571,
+      "construct_s": 0.00045609900007548276,
       "status": "ok",
-      "median_s": 0.0006051930001831352,
-      "min_s": 0.0005952410001555108,
+      "median_s": 0.0004891830003543873,
+      "min_s": 0.00048313399975086213,
       "n_runs": 5,
-      "warmup_s": 0.0007222690001071896,
+      "warmup_s": 0.0005618679997496656,
       "efficiency_error": 3.9968028886505635e-15
     },
     {
@@ -2674,12 +2691,12 @@
       "max_features_per_path": 15,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.009643740000001344,
+      "construct_s": 0.00783686700015096,
       "status": "ok",
-      "median_s": 0.0068576610001400695,
-      "min_s": 0.006713480000144045,
+      "median_s": 0.0013169409999136406,
+      "min_s": 0.0012931090000165568,
       "n_runs": 5,
-      "warmup_s": 0.007323420999910013
+      "warmup_s": 0.0018709010000748094
     },
     {
       "dataset": "heloc",
@@ -2690,7 +2707,7 @@
       "max_features_per_path": 15,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.3549999948736513e-06,
+      "construct_s": 8.550000529794488e-07,
       "status": "not_supported"
     },
     {
@@ -2702,12 +2719,12 @@
       "max_features_per_path": 15,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.7257685070001116,
+      "construct_s": 0.5604555320001054,
       "status": "ok",
-      "median_s": 0.3718387689998508,
-      "min_s": 0.36840581899991776,
+      "median_s": 0.25344663800024136,
+      "min_s": 0.24886109399994893,
       "n_runs": 5,
-      "warmup_s": 0.3759623180001199
+      "warmup_s": 0.26249961699977575
     },
     {
       "dataset": "heloc",
@@ -2718,12 +2735,12 @@
       "max_features_per_path": 15,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005101730000660609,
+      "construct_s": 0.0004932480001116346,
       "status": "ok",
-      "median_s": 0.023095674999922267,
-      "min_s": 0.02304440800003249,
+      "median_s": 0.01949556699992172,
+      "min_s": 0.01931654499958313,
       "n_runs": 5,
-      "warmup_s": 0.023152612999865596
+      "warmup_s": 0.01984303600011117
     },
     {
       "dataset": "heloc",
@@ -2734,12 +2751,12 @@
       "max_features_per_path": 17,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.00292794900019544,
+      "construct_s": 0.0027722360000552726,
       "status": "ok",
-      "median_s": 0.0002589620000890136,
-      "min_s": 0.00021888500009481504,
+      "median_s": 0.00021989699962432496,
+      "min_s": 0.00019892199998139404,
       "n_runs": 5,
-      "warmup_s": 0.00034917399989353726,
+      "warmup_s": 0.00037634999989677453,
       "efficiency_error": 0.0
     },
     {
@@ -2751,12 +2768,12 @@
       "max_features_per_path": 17,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0027661510000598355,
+      "construct_s": 0.0025173270000777848,
       "status": "ok",
-      "median_s": 0.0006312539999271394,
-      "min_s": 0.0005792990000372811,
+      "median_s": 0.0005673189998560701,
+      "min_s": 0.0005638610000460176,
       "n_runs": 5,
-      "warmup_s": 0.0007768499999656342,
+      "warmup_s": 0.0006784039997000946,
       "efficiency_error": 9.543950056922768e-07
     },
     {
@@ -2768,12 +2785,12 @@
       "max_features_per_path": 17,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.05448780500000794,
+      "construct_s": 0.03730284399989614,
       "status": "ok",
-      "median_s": 0.16960697099989375,
-      "min_s": 0.16947520200005783,
+      "median_s": 0.1111116829997627,
+      "min_s": 0.10950944300020637,
       "n_runs": 5,
-      "warmup_s": 0.17014073599989388,
+      "warmup_s": 0.11154884600000514,
       "efficiency_error": 3.1682572121383146e-09
     },
     {
@@ -2785,12 +2802,12 @@
       "max_features_per_path": 17,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0005014700000174344,
+      "construct_s": 0.0005568190003941709,
       "status": "ok",
-      "median_s": 0.0006634779999785678,
-      "min_s": 0.0006248529998629238,
+      "median_s": 0.0005494739998539444,
+      "min_s": 0.0005228260001786111,
       "n_runs": 5,
-      "warmup_s": 0.0008169409998117771,
+      "warmup_s": 0.000597509999806789,
       "efficiency_error": 9.769962616701378e-15
     },
     {
@@ -2802,12 +2819,12 @@
       "max_features_per_path": 17,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0098585359999106,
+      "construct_s": 0.007942830000047252,
       "status": "ok",
-      "median_s": 0.006752704000064114,
-      "min_s": 0.0067327530000511615,
+      "median_s": 0.0013858150000487512,
+      "min_s": 0.0013470909998432035,
       "n_runs": 5,
-      "warmup_s": 0.0070356700000502315
+      "warmup_s": 0.001748540000335197
     },
     {
       "dataset": "heloc",
@@ -2818,7 +2835,7 @@
       "max_features_per_path": 17,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.478999820392346e-06,
+      "construct_s": 9.93999947240809e-07,
       "status": "not_supported"
     },
     {
@@ -2830,12 +2847,12 @@
       "max_features_per_path": 17,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.7585436830001981,
+      "construct_s": 0.5203324029998839,
       "status": "ok",
-      "median_s": 0.412205485999948,
-      "min_s": 0.4043203960000028,
+      "median_s": 0.27027544399970793,
+      "min_s": 0.26488283799972123,
       "n_runs": 5,
-      "warmup_s": 0.40569387099981213
+      "warmup_s": 0.26542253500019797
     },
     {
       "dataset": "heloc",
@@ -2846,12 +2863,12 @@
       "max_features_per_path": 17,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0004967200000010052,
+      "construct_s": 0.0007654490000277292,
       "status": "ok",
-      "median_s": 0.025886485999990327,
-      "min_s": 0.02557414000011704,
+      "median_s": 0.021483902999989368,
+      "min_s": 0.021264367000185302,
       "n_runs": 5,
-      "warmup_s": 0.025964158000078896
+      "warmup_s": 0.02137838400039982
     },
     {
       "dataset": "heloc",
@@ -2862,12 +2879,12 @@
       "max_features_per_path": 17,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.003455110999993849,
+      "construct_s": 0.002660760999788181,
       "status": "ok",
-      "median_s": 0.0005524910000076488,
-      "min_s": 0.00023459599992747826,
+      "median_s": 0.00022235599999476108,
+      "min_s": 0.00019890800012944965,
       "n_runs": 5,
-      "warmup_s": 0.00038889999996172264,
+      "warmup_s": 0.0003230489996894903,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -2879,12 +2896,12 @@
       "max_features_per_path": 17,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.003817232000074,
+      "construct_s": 0.002502274000107718,
       "status": "ok",
-      "median_s": 0.0007633469999746012,
-      "min_s": 0.0007020279999778722,
+      "median_s": 0.0005623740003102284,
+      "min_s": 0.0005336970002645103,
       "n_runs": 5,
-      "warmup_s": 0.0008656149998387264,
+      "warmup_s": 0.0007252700002027268,
       "efficiency_error": 1.7631021391739665e-06
     },
     {
@@ -2896,12 +2913,12 @@
       "max_features_per_path": 17,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.05784827499996936,
+      "construct_s": 0.036715982999794505,
       "status": "ok",
-      "median_s": 0.18176066199998786,
-      "min_s": 0.17948827600002915,
+      "median_s": 0.11732606499981557,
+      "min_s": 0.11665927100011686,
       "n_runs": 5,
-      "warmup_s": 0.19089078299998619,
+      "warmup_s": 0.11307523499999661,
       "efficiency_error": 5.369507061203649e-10
     },
     {
@@ -2913,12 +2930,12 @@
       "max_features_per_path": 17,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0006623389999731444,
+      "construct_s": 0.0006090130000302452,
       "status": "ok",
-      "median_s": 0.0007131630000003497,
-      "min_s": 0.0006806080000387738,
+      "median_s": 0.0005590430000665947,
+      "min_s": 0.0005388750000747677,
       "n_runs": 5,
-      "warmup_s": 0.0008151439999437571,
+      "warmup_s": 0.0005991159996483475,
       "efficiency_error": 5.950795411990839e-14
     },
     {
@@ -2930,12 +2947,12 @@
       "max_features_per_path": 17,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.010551692000035473,
+      "construct_s": 0.008493046999774378,
       "status": "ok",
-      "median_s": 0.0071540720000484725,
-      "min_s": 0.007021979999990435,
+      "median_s": 0.00136583099993004,
+      "min_s": 0.001335827000275458,
       "n_runs": 5,
-      "warmup_s": 0.008047324000017397
+      "warmup_s": 0.001564430000144057
     },
     {
       "dataset": "heloc",
@@ -2946,7 +2963,7 @@
       "max_features_per_path": 17,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.4229999578674324e-06,
+      "construct_s": 1.0889998520724475e-06,
       "status": "not_supported"
     },
     {
@@ -2958,12 +2975,12 @@
       "max_features_per_path": 17,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.7902915910001411,
+      "construct_s": 0.5398602899999787,
       "status": "ok",
-      "median_s": 0.4348728319998827,
-      "min_s": 0.42502495999997336,
+      "median_s": 0.27767076000009183,
+      "min_s": 0.27510699100002967,
       "n_runs": 5,
-      "warmup_s": 0.4382892799999354
+      "warmup_s": 0.278018702999816
     },
     {
       "dataset": "heloc",
@@ -2974,12 +2991,12 @@
       "max_features_per_path": 17,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.000492294999958176,
+      "construct_s": 0.0005037139999330975,
       "status": "ok",
-      "median_s": 0.02702685899998869,
-      "min_s": 0.026820964999842545,
+      "median_s": 0.022017885999957798,
+      "min_s": 0.021883955000248534,
       "n_runs": 5,
-      "warmup_s": 0.026622452000083285
+      "warmup_s": 0.022605942999689432
     },
     {
       "dataset": "bioresponse",
@@ -2990,12 +3007,12 @@
       "max_features_per_path": 2,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0007041320000098494,
+      "construct_s": 0.0007210340004348836,
       "status": "ok",
-      "median_s": 1.192699983221246e-05,
-      "min_s": 1.0517999953663093e-05,
+      "median_s": 8.820999937597662e-06,
+      "min_s": 8.156000149028841e-06,
       "n_runs": 5,
-      "warmup_s": 7.364899988715479e-05,
+      "warmup_s": 6.626399999731802e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3007,12 +3024,12 @@
       "max_features_per_path": 2,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0005577239999183803,
+      "construct_s": 0.00045915800001239404,
       "status": "ok",
-      "median_s": 0.000303842999983317,
-      "min_s": 0.00029206800013525935,
+      "median_s": 0.0002559720001045207,
+      "min_s": 0.00022795699987909757,
       "n_runs": 5,
-      "warmup_s": 0.000581786000111606,
+      "warmup_s": 0.00047560199982399354,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3024,12 +3041,12 @@
       "max_features_per_path": 2,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0005949489998329227,
+      "construct_s": 0.0005941169997640827,
       "status": "ok",
-      "median_s": 0.0002842400001554779,
-      "min_s": 0.00026430100001562096,
+      "median_s": 0.00019678299986480852,
+      "min_s": 0.00017230000003110035,
       "n_runs": 5,
-      "warmup_s": 0.00033811899993452244,
+      "warmup_s": 0.00030092699989836547,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3041,12 +3058,12 @@
       "max_features_per_path": 2,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00021905299990976346,
+      "construct_s": 0.0002694919999157719,
       "status": "ok",
-      "median_s": 2.1048999997219653e-05,
-      "min_s": 1.828399990699836e-05,
+      "median_s": 1.528899974800879e-05,
+      "min_s": 1.4374999864230631e-05,
       "n_runs": 5,
-      "warmup_s": 5.768500000158383e-05,
+      "warmup_s": 6.325700041998061e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3058,12 +3075,12 @@
       "max_features_per_path": 2,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0004935969998314249,
+      "construct_s": 0.0005678980000993761,
       "status": "ok",
-      "median_s": 8.965400002125534e-05,
-      "min_s": 8.742900013203325e-05,
+      "median_s": 0.00013466599966704962,
+      "min_s": 0.00012870999989900156,
       "n_runs": 5,
-      "warmup_s": 0.00015889500014054647
+      "warmup_s": 0.0002504439999029273
     },
     {
       "dataset": "bioresponse",
@@ -3074,7 +3091,7 @@
       "max_features_per_path": 2,
       "method": "linear",
       "order": 2,
-      "construct_s": 6.450000000768341e-07,
+      "construct_s": 1.0680000741558615e-06,
       "status": "not_supported"
     },
     {
@@ -3086,12 +3103,12 @@
       "max_features_per_path": 2,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.0007443949998560129,
+      "construct_s": 0.0006067119998078851,
       "status": "ok",
-      "median_s": 0.000652822000120068,
-      "min_s": 0.0006194610000420653,
+      "median_s": 0.0005482209999172483,
+      "min_s": 0.00045982899973751046,
       "n_runs": 5,
-      "warmup_s": 0.0007310249998226936
+      "warmup_s": 0.0006568970002263086
     },
     {
       "dataset": "bioresponse",
@@ -3102,12 +3119,12 @@
       "max_features_per_path": 2,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0001803000000109023,
+      "construct_s": 0.0001944020000337332,
       "status": "ok",
-      "median_s": 0.028500418000021455,
-      "min_s": 0.028341166000018347,
+      "median_s": 0.012187004999759665,
+      "min_s": 0.011753128999771434,
       "n_runs": 5,
-      "warmup_s": 0.3436203320000004
+      "warmup_s": 0.0339035239999248
     },
     {
       "dataset": "bioresponse",
@@ -3118,12 +3135,12 @@
       "max_features_per_path": 4,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0008688310001616628,
+      "construct_s": 0.0007293849998859514,
       "status": "ok",
-      "median_s": 1.9273000134489848e-05,
-      "min_s": 1.8242000123791513e-05,
+      "median_s": 1.7823999769461807e-05,
+      "min_s": 1.5191999864327954e-05,
       "n_runs": 5,
-      "warmup_s": 8.12219998351793e-05,
+      "warmup_s": 7.876900008341181e-05,
       "efficiency_error": 0.0
     },
     {
@@ -3135,12 +3152,12 @@
       "max_features_per_path": 4,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0006984569999985979,
+      "construct_s": 0.0006265100000746315,
       "status": "ok",
-      "median_s": 0.00034722300006251317,
-      "min_s": 0.0003321029998915037,
+      "median_s": 0.00024987799997688853,
+      "min_s": 0.0002264230001856049,
       "n_runs": 5,
-      "warmup_s": 0.0005408380000062607,
+      "warmup_s": 0.00039875999982541543,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -3152,12 +3169,12 @@
       "max_features_per_path": 4,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0011574920001748978,
+      "construct_s": 0.0009283039998990716,
       "status": "ok",
-      "median_s": 0.0013489069999650383,
-      "min_s": 0.001121562000207632,
+      "median_s": 0.0007981329999893205,
+      "min_s": 0.0007786369997120346,
       "n_runs": 5,
-      "warmup_s": 0.0015456329999778973,
+      "warmup_s": 0.0009137439997175534,
       "efficiency_error": 9.992007221626409e-16
     },
     {
@@ -3169,12 +3186,12 @@
       "max_features_per_path": 4,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00026489900005799427,
+      "construct_s": 0.0003060699996240146,
       "status": "ok",
-      "median_s": 1.7760999980964698e-05,
-      "min_s": 1.530800000182353e-05,
+      "median_s": 1.2476999927457655e-05,
+      "min_s": 1.1889999768754933e-05,
       "n_runs": 5,
-      "warmup_s": 5.620899992209161e-05,
+      "warmup_s": 6.275800024013733e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3186,12 +3203,12 @@
       "max_features_per_path": 4,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0006473660000665404,
+      "construct_s": 0.0005721649999941292,
       "status": "ok",
-      "median_s": 0.0009254719998352812,
-      "min_s": 0.000887765000015861,
+      "median_s": 0.004903601000023627,
+      "min_s": 0.004795617000127095,
       "n_runs": 5,
-      "warmup_s": 0.0011302880000130244
+      "warmup_s": 0.00871899100002338
     },
     {
       "dataset": "bioresponse",
@@ -3202,7 +3219,7 @@
       "max_features_per_path": 4,
       "method": "linear",
       "order": 2,
-      "construct_s": 6.699999630654929e-07,
+      "construct_s": 9.88000010693213e-07,
       "status": "not_supported"
     },
     {
@@ -3214,12 +3231,12 @@
       "max_features_per_path": 4,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.004717813000070237,
+      "construct_s": 0.003174261999902228,
       "status": "ok",
-      "median_s": 0.004580544999953418,
-      "min_s": 0.004341700000168203,
+      "median_s": 0.006694434999644727,
+      "min_s": 0.006565742000020691,
       "n_runs": 5,
-      "warmup_s": 0.004522277999967628
+      "warmup_s": 0.006700191000163613
     },
     {
       "dataset": "bioresponse",
@@ -3230,12 +3247,12 @@
       "max_features_per_path": 4,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00029318800011424173,
+      "construct_s": 0.0003453770000305667,
       "status": "ok",
-      "median_s": 0.028212957000050665,
-      "min_s": 0.028076688999817634,
+      "median_s": 0.012417217999882268,
+      "min_s": 0.012252297000031831,
       "n_runs": 5,
-      "warmup_s": 0.028498254000169254
+      "warmup_s": 0.022804188000009162
     },
     {
       "dataset": "bioresponse",
@@ -3246,12 +3263,12 @@
       "max_features_per_path": 6,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0010723559998950805,
+      "construct_s": 0.0008376460000363295,
       "status": "ok",
-      "median_s": 3.3769999845389975e-05,
-      "min_s": 3.305699988231936e-05,
+      "median_s": 3.181300007781829e-05,
+      "min_s": 2.360400003453833e-05,
       "n_runs": 5,
-      "warmup_s": 0.0001425660000222706,
+      "warmup_s": 9.582300026522717e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3263,12 +3280,12 @@
       "max_features_per_path": 6,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0009513659999811352,
+      "construct_s": 0.000782736000019213,
       "status": "ok",
-      "median_s": 0.0003431669999827136,
-      "min_s": 0.0003200509997896006,
+      "median_s": 0.00030941099976189435,
+      "min_s": 0.00024136100000760052,
       "n_runs": 5,
-      "warmup_s": 0.0005003459998533799,
+      "warmup_s": 0.0004417479999574425,
       "efficiency_error": 1.4432899320127035e-15
     },
     {
@@ -3280,12 +3297,12 @@
       "max_features_per_path": 6,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.0035945520000950637,
+      "construct_s": 0.0028857859997515334,
       "status": "ok",
-      "median_s": 0.0032251810000616388,
-      "min_s": 0.003202162999969005,
+      "median_s": 0.0022322869999698014,
+      "min_s": 0.002123296000263508,
       "n_runs": 5,
-      "warmup_s": 0.003512795999995433,
+      "warmup_s": 0.0024360580000575283,
       "efficiency_error": 1.3322676295501878e-15
     },
     {
@@ -3297,12 +3314,12 @@
       "max_features_per_path": 6,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0002595349999410246,
+      "construct_s": 0.0002179819998673338,
       "status": "ok",
-      "median_s": 2.1066000044811517e-05,
-      "min_s": 1.9381999891265878e-05,
+      "median_s": 2.205400005550473e-05,
+      "min_s": 1.7317000128969084e-05,
       "n_runs": 5,
-      "warmup_s": 6.860200005576189e-05,
+      "warmup_s": 5.319899992173305e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3314,12 +3331,12 @@
       "max_features_per_path": 6,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.001173569000002317,
+      "construct_s": 0.0009371649998684006,
       "status": "ok",
-      "median_s": 0.0037661419999039936,
-      "min_s": 0.0037079740000081074,
+      "median_s": 0.005488318000061554,
+      "min_s": 0.0049640510001154325,
       "n_runs": 5,
-      "warmup_s": 0.0038942659998610907
+      "warmup_s": 0.008524395000222285
     },
     {
       "dataset": "bioresponse",
@@ -3330,7 +3347,7 @@
       "max_features_per_path": 6,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.258000111192814e-06,
+      "construct_s": 1.0530002327868715e-06,
       "status": "not_supported"
     },
     {
@@ -3342,12 +3359,12 @@
       "max_features_per_path": 6,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.06359836800015728,
+      "construct_s": 0.04538925899987589,
       "status": "ok",
-      "median_s": 0.019454345999974976,
-      "min_s": 0.01909584200006975,
+      "median_s": 0.011506526000175654,
+      "min_s": 0.010780088000046817,
       "n_runs": 5,
-      "warmup_s": 0.02025253200008592
+      "warmup_s": 0.0137018350001199
     },
     {
       "dataset": "bioresponse",
@@ -3358,12 +3375,12 @@
       "max_features_per_path": 6,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00036011800011692685,
+      "construct_s": 0.000295424999876559,
       "status": "ok",
-      "median_s": 0.028258367000034923,
-      "min_s": 0.027704532000143445,
+      "median_s": 0.010712669999975333,
+      "min_s": 0.010640724000040791,
       "n_runs": 5,
-      "warmup_s": 0.028086633000157235
+      "warmup_s": 0.02067461300021023
     },
     {
       "dataset": "bioresponse",
@@ -3374,12 +3391,12 @@
       "max_features_per_path": 8,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0017182960000354797,
+      "construct_s": 0.0009879150002234383,
       "status": "ok",
-      "median_s": 0.00010129499992217461,
-      "min_s": 9.744299995873007e-05,
+      "median_s": 3.5975999708171e-05,
+      "min_s": 3.5617999856185634e-05,
       "n_runs": 5,
-      "warmup_s": 0.00023575899990646576,
+      "warmup_s": 0.00010682000038286787,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3391,12 +3408,12 @@
       "max_features_per_path": 8,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.002023689999987255,
+      "construct_s": 0.0011434970001573674,
       "status": "ok",
-      "median_s": 0.0008252350000930164,
-      "min_s": 0.000689439999860042,
+      "median_s": 0.00025932700009434484,
+      "min_s": 0.0002396099998804857,
       "n_runs": 5,
-      "warmup_s": 0.0009468990001550992,
+      "warmup_s": 0.0004540909999377618,
       "efficiency_error": 1.27675647831893e-14
     },
     {
@@ -3408,12 +3425,12 @@
       "max_features_per_path": 8,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.011927564000188795,
+      "construct_s": 0.005403525000019727,
       "status": "ok",
-      "median_s": 0.006612111999857007,
-      "min_s": 0.006573997999794301,
+      "median_s": 0.00479488799965111,
+      "min_s": 0.004193122000287985,
       "n_runs": 5,
-      "warmup_s": 0.006681941999886476,
+      "warmup_s": 0.005197883000164438,
       "efficiency_error": 4.218847493575595e-15
     },
     {
@@ -3425,12 +3442,12 @@
       "max_features_per_path": 8,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00028914399990753736,
+      "construct_s": 0.0002690409996830567,
       "status": "ok",
-      "median_s": 3.151900000375463e-05,
-      "min_s": 3.0209999977159896e-05,
+      "median_s": 5.495200002769707e-05,
+      "min_s": 2.867700004571816e-05,
       "n_runs": 5,
-      "warmup_s": 7.082699994498398e-05,
+      "warmup_s": 0.00015754800006106962,
       "efficiency_error": 3.3306690738754696e-16
     },
     {
@@ -3442,12 +3459,12 @@
       "max_features_per_path": 8,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0020041500001752866,
+      "construct_s": 0.0020902349997413694,
       "status": "ok",
-      "median_s": 0.008886378999932276,
-      "min_s": 0.008824259999983042,
+      "median_s": 0.007251654999890889,
+      "min_s": 0.00673900500032687,
       "n_runs": 5,
-      "warmup_s": 0.009223431000009441
+      "warmup_s": 0.012026326999603043
     },
     {
       "dataset": "bioresponse",
@@ -3458,7 +3475,7 @@
       "max_features_per_path": 8,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.3169999419915257e-06,
+      "construct_s": 1.2460000107239466e-06,
       "status": "not_supported"
     },
     {
@@ -3470,12 +3487,12 @@
       "max_features_per_path": 8,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 0.3307995980001124,
+      "construct_s": 0.22806027200022072,
       "status": "ok",
-      "median_s": 0.053781571999934386,
-      "min_s": 0.052263982000113174,
+      "median_s": 0.02621537699997134,
+      "min_s": 0.02461721800000305,
       "n_runs": 5,
-      "warmup_s": 0.0569870119998086
+      "warmup_s": 0.03095988299992314
     },
     {
       "dataset": "bioresponse",
@@ -3486,12 +3503,12 @@
       "max_features_per_path": 8,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.000331560999939029,
+      "construct_s": 0.00031225900011122576,
       "status": "ok",
-      "median_s": 0.03092187000015656,
-      "min_s": 0.030558939000002283,
+      "median_s": 0.018301004000022658,
+      "min_s": 0.015433101000326133,
       "n_runs": 5,
-      "warmup_s": 0.08442782599991006
+      "warmup_s": 0.026118930999928125
     },
     {
       "dataset": "bioresponse",
@@ -3502,12 +3519,12 @@
       "max_features_per_path": 10,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0014693929999793909,
+      "construct_s": 0.0012973900002180017,
       "status": "ok",
-      "median_s": 9.249599997929181e-05,
-      "min_s": 8.395300005759054e-05,
+      "median_s": 5.7729999753064476e-05,
+      "min_s": 5.5703000271023484e-05,
       "n_runs": 5,
-      "warmup_s": 0.00018491600008019304,
+      "warmup_s": 0.00018991299975823495,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -3519,12 +3536,12 @@
       "max_features_per_path": 10,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0016139019999172888,
+      "construct_s": 0.0013899249997848528,
       "status": "ok",
-      "median_s": 0.00037428399991767947,
-      "min_s": 0.0003428930001518893,
+      "median_s": 0.0002774390000013227,
+      "min_s": 0.00026283099987267633,
       "n_runs": 5,
-      "warmup_s": 0.0006064290000722394,
+      "warmup_s": 0.0005303590000949043,
       "efficiency_error": 4.2865710980777294e-13
     },
     {
@@ -3536,12 +3553,12 @@
       "max_features_per_path": 10,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.019293321000077412,
+      "construct_s": 0.012660858999879565,
       "status": "ok",
-      "median_s": 0.011184210000010353,
-      "min_s": 0.010966965999841705,
+      "median_s": 0.007358818000284373,
+      "min_s": 0.007274993000009999,
       "n_runs": 5,
-      "warmup_s": 0.01159427799984769,
+      "warmup_s": 0.0075063979998049035,
       "efficiency_error": 4.0734082773496993e-13
     },
     {
@@ -3553,12 +3570,12 @@
       "max_features_per_path": 10,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00032930099996519857,
+      "construct_s": 0.00026395300028525526,
       "status": "ok",
-      "median_s": 5.555799998546718e-05,
-      "min_s": 5.4639999916616944e-05,
+      "median_s": 5.155600001671701e-05,
+      "min_s": 4.537900031209574e-05,
       "n_runs": 5,
-      "warmup_s": 0.00010133199998563214,
+      "warmup_s": 8.811900033833808e-05,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3570,12 +3587,12 @@
       "max_features_per_path": 10,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0034672080000746064,
+      "construct_s": 0.0026962469996760774,
       "status": "ok",
-      "median_s": 0.018656774999953996,
-      "min_s": 0.018592270999988614,
+      "median_s": 0.008606188999692677,
+      "min_s": 0.00823906799996621,
       "n_runs": 5,
-      "warmup_s": 0.019559968000066874
+      "warmup_s": 0.013110379999943689
     },
     {
       "dataset": "bioresponse",
@@ -3586,7 +3603,7 @@
       "max_features_per_path": 10,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.3010001111979363e-06,
+      "construct_s": 1.35000027512433e-06,
       "status": "not_supported"
     },
     {
@@ -3598,12 +3615,12 @@
       "max_features_per_path": 10,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 1.5234119240001291,
+      "construct_s": 1.005038949000209,
       "status": "ok",
-      "median_s": 0.14641610300009233,
-      "min_s": 0.1461135419999664,
+      "median_s": 0.07451671500029988,
+      "min_s": 0.07210866999957943,
       "n_runs": 5,
-      "warmup_s": 0.14858597700003884
+      "warmup_s": 0.08320206700000199
     },
     {
       "dataset": "bioresponse",
@@ -3614,12 +3631,12 @@
       "max_features_per_path": 10,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0004134379998959048,
+      "construct_s": 0.0003489850000732986,
       "status": "ok",
-      "median_s": 0.03739462399994409,
-      "min_s": 0.03632054600006995,
+      "median_s": 0.02032452599996759,
+      "min_s": 0.01934939900002064,
       "n_runs": 5,
-      "warmup_s": 0.11351592200003324
+      "warmup_s": 0.03068192299997463
     },
     {
       "dataset": "bioresponse",
@@ -3630,12 +3647,12 @@
       "max_features_per_path": 12,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0017775859998891974,
+      "construct_s": 0.0016808940004011674,
       "status": "ok",
-      "median_s": 0.00012079699990863446,
-      "min_s": 0.00010565499997028382,
+      "median_s": 8.006999996723607e-05,
+      "min_s": 7.215200002974598e-05,
       "n_runs": 5,
-      "warmup_s": 0.00021095200008858228,
+      "warmup_s": 0.00017041599994627177,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -3647,12 +3664,12 @@
       "max_features_per_path": 12,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0020816200001263496,
+      "construct_s": 0.0017827890001171909,
       "status": "ok",
-      "median_s": 0.00047065800004020275,
-      "min_s": 0.00043051299985563674,
+      "median_s": 0.0002975299998979608,
+      "min_s": 0.0002924969999185123,
       "n_runs": 5,
-      "warmup_s": 0.0006108759998824098,
+      "warmup_s": 0.0005210760000409209,
       "efficiency_error": 4.62907490117459e-12
     },
     {
@@ -3664,12 +3681,12 @@
       "max_features_per_path": 12,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.03445284800000081,
+      "construct_s": 0.021324389000255906,
       "status": "ok",
-      "median_s": 0.015547697000101834,
-      "min_s": 0.015314221000153339,
+      "median_s": 0.010474718999830657,
+      "min_s": 0.010247238999909314,
       "n_runs": 5,
-      "warmup_s": 0.01578173500001867,
+      "warmup_s": 0.010577321999790001,
       "efficiency_error": 3.173794560495935e-12
     },
     {
@@ -3681,12 +3698,12 @@
       "max_features_per_path": 12,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003579350000109116,
+      "construct_s": 0.00028229300005477853,
       "status": "ok",
-      "median_s": 8.927899989430443e-05,
-      "min_s": 8.666899998388544e-05,
+      "median_s": 0.00011868999990838347,
+      "min_s": 7.664299982934608e-05,
       "n_runs": 5,
-      "warmup_s": 0.00015769199990245397,
+      "warmup_s": 0.00011939399973925902,
       "efficiency_error": 3.3306690738754696e-16
     },
     {
@@ -3698,12 +3715,12 @@
       "max_features_per_path": 12,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.004787445999909323,
+      "construct_s": 0.005269962000056694,
       "status": "ok",
-      "median_s": 0.028461548999985098,
-      "min_s": 0.028328482999995686,
+      "median_s": 0.00896183100030612,
+      "min_s": 0.008539794000171241,
       "n_runs": 5,
-      "warmup_s": 0.029202010000062728
+      "warmup_s": 0.014120914000159246
     },
     {
       "dataset": "bioresponse",
@@ -3714,7 +3731,7 @@
       "max_features_per_path": 12,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.6020001112337923e-06,
+      "construct_s": 1.2939999578520656e-06,
       "status": "not_supported"
     },
     {
@@ -3726,12 +3743,12 @@
       "max_features_per_path": 12,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 3.4299214079999274,
+      "construct_s": 2.2590228549997846,
       "status": "ok",
-      "median_s": 0.2937321110000539,
-      "min_s": 0.29111867300002814,
+      "median_s": 0.15086098200026754,
+      "min_s": 0.14947441000003892,
       "n_runs": 5,
-      "warmup_s": 0.2987531910000598
+      "warmup_s": 0.15969255900017743
     },
     {
       "dataset": "bioresponse",
@@ -3742,12 +3759,12 @@
       "max_features_per_path": 12,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00042939000013575424,
+      "construct_s": 0.0003546630000528239,
       "status": "ok",
-      "median_s": 0.04944773200008967,
-      "min_s": 0.04767484099988906,
+      "median_s": 0.03290127499985829,
+      "min_s": 0.03174412300040785,
       "n_runs": 5,
-      "warmup_s": 0.20324952900000426
+      "warmup_s": 0.03921893699998691
     },
     {
       "dataset": "bioresponse",
@@ -3758,12 +3775,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.002013332000160517,
+      "construct_s": 0.001911370000016177,
       "status": "ok",
-      "median_s": 0.00016139600006681576,
-      "min_s": 0.00013300700015861366,
+      "median_s": 9.457099986320827e-05,
+      "min_s": 8.423100007348694e-05,
       "n_runs": 5,
-      "warmup_s": 0.0002211359999364504,
+      "warmup_s": 0.00019503200019244105,
       "efficiency_error": 0.0
     },
     {
@@ -3775,12 +3792,12 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0023697139999967476,
+      "construct_s": 0.001962135999747261,
       "status": "ok",
-      "median_s": 0.00044466300005296944,
-      "min_s": 0.00037673399992854684,
+      "median_s": 0.0003349680000610533,
+      "min_s": 0.0003019859996129526,
       "n_runs": 5,
-      "warmup_s": 0.0005990419999761798,
+      "warmup_s": 0.0005918990000282065,
       "efficiency_error": 9.935607891975451e-12
     },
     {
@@ -3792,12 +3809,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.049161737999838806,
+      "construct_s": 0.03047304100027759,
       "status": "ok",
-      "median_s": 0.020502230000147392,
-      "min_s": 0.019980010999915976,
+      "median_s": 0.013057632999789348,
+      "min_s": 0.012801504999970348,
       "n_runs": 5,
-      "warmup_s": 0.020100764000062554,
+      "warmup_s": 0.01315557899988562,
       "efficiency_error": 8.528733275170453e-12
     },
     {
@@ -3809,12 +3826,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0002948699998341908,
+      "construct_s": 0.00031341500016424106,
       "status": "ok",
-      "median_s": 0.00013147899994692125,
-      "min_s": 0.00012734599999930651,
+      "median_s": 0.0001043780002873973,
+      "min_s": 9.930500027621747e-05,
       "n_runs": 5,
-      "warmup_s": 0.00018840600000658014,
+      "warmup_s": 0.00014758599991182564,
       "efficiency_error": 2.6645352591003757e-15
     },
     {
@@ -3826,12 +3843,12 @@
       "max_features_per_path": 14,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.0065639689998988615,
+      "construct_s": 0.005066318999979558,
       "status": "ok",
-      "median_s": 0.040674642000112726,
-      "min_s": 0.039483084999801576,
+      "median_s": 0.01110388500001136,
+      "min_s": 0.01063900500003001,
       "n_runs": 5,
-      "warmup_s": 0.04075662300010663
+      "warmup_s": 0.018187934000252426
     },
     {
       "dataset": "bioresponse",
@@ -3842,7 +3859,7 @@
       "max_features_per_path": 14,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.6480000795127125e-06,
+      "construct_s": 1.5040000107546803e-06,
       "status": "not_supported"
     },
     {
@@ -3854,12 +3871,12 @@
       "max_features_per_path": 14,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 6.037116913000091,
+      "construct_s": 3.8721281800003453,
       "status": "ok",
-      "median_s": 0.5396884350000164,
-      "min_s": 0.5308512369999789,
+      "median_s": 0.3260238279999612,
+      "min_s": 0.3231269279999651,
       "n_runs": 5,
-      "warmup_s": 0.5314943450000555
+      "warmup_s": 0.3285913340000661
     },
     {
       "dataset": "bioresponse",
@@ -3870,12 +3887,12 @@
       "max_features_per_path": 14,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0004989790002127847,
+      "construct_s": 0.0004768040003000351,
       "status": "ok",
-      "median_s": 0.0676722719999816,
-      "min_s": 0.0661258000000089,
+      "median_s": 0.049964318000093044,
+      "min_s": 0.04878897500020685,
       "n_runs": 5,
-      "warmup_s": 0.08987153399993986
+      "warmup_s": 0.05347886500021559
     },
     {
       "dataset": "bioresponse",
@@ -3886,12 +3903,12 @@
       "max_features_per_path": 16,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.002573327999925823,
+      "construct_s": 0.0023557479998999042,
       "status": "ok",
-      "median_s": 0.00022670999987894902,
-      "min_s": 0.0001759889998993458,
+      "median_s": 0.00014436300034503802,
+      "min_s": 0.00013540899999497924,
       "n_runs": 5,
-      "warmup_s": 0.00026127000000997214,
+      "warmup_s": 0.0003919709997717291,
       "efficiency_error": 4.440892098500626e-16
     },
     {
@@ -3903,12 +3920,12 @@
       "max_features_per_path": 16,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.00277404899998146,
+      "construct_s": 0.0034368349997748737,
       "status": "ok",
-      "median_s": 0.0004894769999737036,
-      "min_s": 0.00045798499991178687,
+      "median_s": 0.00033502499991300283,
+      "min_s": 0.00030474300001515076,
       "n_runs": 5,
-      "warmup_s": 0.0005771789999471366,
+      "warmup_s": 0.0006193230001372285,
       "efficiency_error": 5.988241014165396e-10
     },
     {
@@ -3920,12 +3937,12 @@
       "max_features_per_path": 16,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.06269207900004403,
+      "construct_s": 0.04456143100014742,
       "status": "ok",
-      "median_s": 0.023294428000099288,
-      "min_s": 0.023226621000048908,
+      "median_s": 0.0165030029997979,
+      "min_s": 0.01590136499999062,
       "n_runs": 5,
-      "warmup_s": 0.023500411999975768,
+      "warmup_s": 0.016458004000014625,
       "efficiency_error": 1.8567458681673088e-10
     },
     {
@@ -3937,12 +3954,12 @@
       "max_features_per_path": 16,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00038762600001973624,
+      "construct_s": 0.00040882699977373704,
       "status": "ok",
-      "median_s": 0.00017208500003107474,
-      "min_s": 0.00016571700007261825,
+      "median_s": 0.00016055699961725622,
+      "min_s": 0.00014289299997471971,
       "n_runs": 5,
-      "warmup_s": 0.0002629119999255636,
+      "warmup_s": 0.00028169499955765787,
       "efficiency_error": 0.0
     },
     {
@@ -3954,12 +3971,12 @@
       "max_features_per_path": 16,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.011909814000091501,
+      "construct_s": 0.005922855000335403,
       "status": "ok",
-      "median_s": 0.04867608700010351,
-      "min_s": 0.04848014999993211,
+      "median_s": 0.012733209999623796,
+      "min_s": 0.012354807000065193,
       "n_runs": 5,
-      "warmup_s": 0.0528446509999867
+      "warmup_s": 0.02009874299983494
     },
     {
       "dataset": "bioresponse",
@@ -3970,7 +3987,7 @@
       "max_features_per_path": 16,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.7749998733052053e-06,
+      "construct_s": 1.686999894445762e-06,
       "status": "not_supported"
     },
     {
@@ -3982,12 +3999,12 @@
       "max_features_per_path": 16,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 8.68707815200014,
+      "construct_s": 5.805894144000376,
       "status": "ok",
-      "median_s": 0.7543316370001776,
-      "min_s": 0.7277328400000442,
+      "median_s": 0.5452009360001284,
+      "min_s": 0.5435164189998432,
       "n_runs": 5,
-      "warmup_s": 0.9942435800001022
+      "warmup_s": 0.5554442509996989
     },
     {
       "dataset": "bioresponse",
@@ -3998,12 +4015,12 @@
       "max_features_per_path": 16,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005026960000122926,
+      "construct_s": 0.000726951000160625,
       "status": "ok",
-      "median_s": 0.08814270100015165,
-      "min_s": 0.08581273599997985,
+      "median_s": 0.06581766599992989,
+      "min_s": 0.06528751700034263,
       "n_runs": 5,
-      "warmup_s": 0.08736666999993759
+      "warmup_s": 0.06858770799999547
     },
     {
       "dataset": "bioresponse",
@@ -4014,12 +4031,12 @@
       "max_features_per_path": 20,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0027654749999328487,
+      "construct_s": 0.0023604900002283102,
       "status": "ok",
-      "median_s": 0.00029672200003005855,
-      "min_s": 0.00019588199984355015,
+      "median_s": 0.00013158799993107095,
+      "min_s": 0.00011186699975951342,
       "n_runs": 5,
-      "warmup_s": 0.0003165499999795429,
+      "warmup_s": 0.0002617840000311844,
       "efficiency_error": 0.0
     },
     {
@@ -4031,12 +4048,12 @@
       "max_features_per_path": 20,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.003689615999974194,
+      "construct_s": 0.0033313680000901513,
       "status": "ok",
-      "median_s": 0.00044986400007474003,
-      "min_s": 0.0004010770001059427,
+      "median_s": 0.00035932800028604106,
+      "min_s": 0.00034083599985024193,
       "n_runs": 5,
-      "warmup_s": 0.0006983690000197385,
+      "warmup_s": 0.0006641109998781758,
       "efficiency_error": 1.639219870952502e-10
     },
     {
@@ -4048,12 +4065,12 @@
       "max_features_per_path": 20,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.08719890299994404,
+      "construct_s": 0.056444625000040105,
       "status": "ok",
-      "median_s": 0.030319152000174654,
-      "min_s": 0.029977280999901268,
+      "median_s": 0.021170524000353907,
+      "min_s": 0.02027180799996131,
       "n_runs": 5,
-      "warmup_s": 0.030195454000022437,
+      "warmup_s": 0.021243753999897308,
       "efficiency_error": 1.4012575544342099e-08
     },
     {
@@ -4065,12 +4082,12 @@
       "max_features_per_path": 20,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003478889998405066,
+      "construct_s": 0.0003236389998164668,
       "status": "ok",
-      "median_s": 0.00026429500007907336,
-      "min_s": 0.0002395999999862397,
+      "median_s": 0.00024350200010303524,
+      "min_s": 0.00020731199992951588,
       "n_runs": 5,
-      "warmup_s": 0.00031083099997886166,
+      "warmup_s": 0.0003027409998139774,
       "efficiency_error": 3.519406988061746e-14
     },
     {
@@ -4082,12 +4099,12 @@
       "max_features_per_path": 20,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.009703037999997832,
+      "construct_s": 0.0079805820000729,
       "status": "ok",
-      "median_s": 0.06845104199987873,
-      "min_s": 0.06731860600007167,
+      "median_s": 0.018202849999852333,
+      "min_s": 0.016058354000051622,
       "n_runs": 5,
-      "warmup_s": 0.06783807600004366
+      "warmup_s": 0.024593717999778164
     },
     {
       "dataset": "bioresponse",
@@ -4098,7 +4115,7 @@
       "max_features_per_path": 20,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.7630000002100132e-06,
+      "construct_s": 1.0950002433673944e-06,
       "status": "not_supported"
     },
     {
@@ -4110,12 +4127,12 @@
       "max_features_per_path": 20,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 15.328595019999966,
+      "construct_s": 9.417207351000343,
       "status": "ok",
-      "median_s": 1.3723492629999328,
-      "min_s": 1.28765195699998,
+      "median_s": 1.0298682319998989,
+      "min_s": 0.9924265909999122,
       "n_runs": 5,
-      "warmup_s": 1.6433496889999333
+      "warmup_s": 1.3867538360000253
     },
     {
       "dataset": "bioresponse",
@@ -4126,12 +4143,12 @@
       "max_features_per_path": 20,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0004831349999676604,
+      "construct_s": 0.00044649399978879956,
       "status": "ok",
-      "median_s": 0.1337699349999184,
-      "min_s": 0.1297312609999608,
+      "median_s": 0.1031901100000141,
+      "min_s": 0.1002163869998185,
       "n_runs": 5,
-      "warmup_s": 0.1345411199999944
+      "warmup_s": 0.10726428999987547
     },
     {
       "dataset": "bioresponse",
@@ -4142,12 +4159,12 @@
       "max_features_per_path": 24,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0028436549998787086,
+      "construct_s": 0.00263697799982765,
       "status": "ok",
-      "median_s": 0.0001598809999450168,
-      "min_s": 0.00015205999989120755,
+      "median_s": 0.00015354700008174405,
+      "min_s": 0.00012134400003560586,
       "n_runs": 5,
-      "warmup_s": 0.00028919400006088836,
+      "warmup_s": 0.00023570600023958832,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -4159,12 +4176,12 @@
       "max_features_per_path": 24,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0039048600001478917,
+      "construct_s": 0.0033287199998994765,
       "status": "ok",
-      "median_s": 0.0008730890001515945,
-      "min_s": 0.0007885630000146193,
+      "median_s": 0.00040708899996388936,
+      "min_s": 0.0003555630000846577,
       "n_runs": 5,
-      "warmup_s": 0.0008518689999164053,
+      "warmup_s": 0.0005979879997539683,
       "efficiency_error": 2.0115258678732317e-06
     },
     {
@@ -4176,12 +4193,12 @@
       "max_features_per_path": 24,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.08974645600005715,
+      "construct_s": 0.05640858099968682,
       "status": "ok",
-      "median_s": 0.03136190899999747,
-      "min_s": 0.03103045799980464,
+      "median_s": 0.02333856899986131,
+      "min_s": 0.022235155999624112,
       "n_runs": 5,
-      "warmup_s": 0.03227629599996362,
+      "warmup_s": 0.021545051999964926,
       "efficiency_error": 1.3356573125289373e-06
     },
     {
@@ -4193,12 +4210,12 @@
       "max_features_per_path": 24,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003583949999210745,
+      "construct_s": 0.0004309050000301795,
       "status": "ok",
-      "median_s": 0.0002873989999443438,
-      "min_s": 0.0002660939999259426,
+      "median_s": 0.00022451799986811238,
+      "min_s": 0.00022024599957148894,
       "n_runs": 5,
-      "warmup_s": 0.0003767040000184352,
+      "warmup_s": 0.00031514500005869195,
       "efficiency_error": 1.1857181902996672e-13
     },
     {
@@ -4210,12 +4227,12 @@
       "max_features_per_path": 24,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.009951313999863487,
+      "construct_s": 0.008146158999807085,
       "status": "ok",
-      "median_s": 0.07262234200015882,
-      "min_s": 0.07002506499998162,
+      "median_s": 0.01146296800015989,
+      "min_s": 0.011280758999873797,
       "n_runs": 5,
-      "warmup_s": 0.07079870400002619
+      "warmup_s": 0.018052569999781554
     },
     {
       "dataset": "bioresponse",
@@ -4226,7 +4243,7 @@
       "max_features_per_path": 24,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.5539999367319979e-06,
+      "construct_s": 1.219999830937013e-06,
       "status": "not_supported"
     },
     {
@@ -4238,12 +4255,12 @@
       "max_features_per_path": 24,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 15.106480834000195,
+      "construct_s": 10.248315955999715,
       "status": "ok",
-      "median_s": 1.6342658749999828,
-      "min_s": 1.6066310520000116,
+      "median_s": 1.2548394989998997,
+      "min_s": 1.23483569300015,
       "n_runs": 5,
-      "warmup_s": 2.2919872730001316
+      "warmup_s": 1.318157980000251
     },
     {
       "dataset": "bioresponse",
@@ -4254,12 +4271,12 @@
       "max_features_per_path": 24,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005461820001073647,
+      "construct_s": 0.0004766020001625293,
       "status": "ok",
-      "median_s": 0.14221646999999393,
-      "min_s": 0.1398004210000181,
+      "median_s": 0.10917096799994397,
+      "min_s": 0.10606097600020803,
       "n_runs": 5,
-      "warmup_s": 0.3948971139998321
+      "warmup_s": 0.11190509299967744
     },
     {
       "dataset": "bioresponse",
@@ -4270,12 +4287,12 @@
       "max_features_per_path": 28,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.003092546000061702,
+      "construct_s": 0.002853756999684265,
       "status": "ok",
-      "median_s": 0.00017447899995204352,
-      "min_s": 0.00016674600010446738,
+      "median_s": 0.00015509000013480545,
+      "min_s": 0.00013228700026957085,
       "n_runs": 5,
-      "warmup_s": 0.00042547399993964063,
+      "warmup_s": 0.0003216360000806162,
       "efficiency_error": 1.1102230246251565e-16
     },
     {
@@ -4287,12 +4304,12 @@
       "max_features_per_path": 28,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.005108547999952862,
+      "construct_s": 0.0038420740002038656,
       "status": "ok",
-      "median_s": 0.0004714110000350047,
-      "min_s": 0.00044837099994765595,
+      "median_s": 0.00040493799997420865,
+      "min_s": 0.0003729750001184584,
       "n_runs": 5,
-      "warmup_s": 0.0007779310001296835,
+      "warmup_s": 0.0006474950000665558,
       "efficiency_error": 0.00039241285793500946
     },
     {
@@ -4304,12 +4321,12 @@
       "max_features_per_path": 28,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.10859558499987543,
+      "construct_s": 0.0672951810001905,
       "status": "ok",
-      "median_s": 0.03895848599995588,
-      "min_s": 0.03833685300014622,
+      "median_s": 0.02584275199978947,
+      "min_s": 0.025006387999837898,
       "n_runs": 5,
-      "warmup_s": 0.03653635399996347,
+      "warmup_s": 0.02653252300024178,
       "efficiency_error": 0.00022976689386455806
     },
     {
@@ -4321,12 +4338,12 @@
       "max_features_per_path": 28,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.00033247599981223175,
+      "construct_s": 0.0003326289997858112,
       "status": "ok",
-      "median_s": 0.0003915140000572137,
-      "min_s": 0.0003582150000056572,
+      "median_s": 0.0003161670001645689,
+      "min_s": 0.00030911800013200263,
       "n_runs": 5,
-      "warmup_s": 0.00042927700019390613,
+      "warmup_s": 0.0004803949996130541,
       "efficiency_error": 3.0619951019161817e-13
     },
     {
@@ -4338,12 +4355,12 @@
       "max_features_per_path": 28,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.011840722999977515,
+      "construct_s": 0.009386701000039466,
       "status": "ok",
-      "median_s": 0.08552965800004131,
-      "min_s": 0.08282526099992538,
+      "median_s": 0.01292408900008013,
+      "min_s": 0.012406891999944492,
       "n_runs": 5,
-      "warmup_s": 0.0835765580000043
+      "warmup_s": 0.17459954000014477
     },
     {
       "dataset": "bioresponse",
@@ -4354,7 +4371,7 @@
       "max_features_per_path": 28,
       "method": "linear",
       "order": 2,
-      "construct_s": 1.9899998733308166e-06,
+      "construct_s": 1.8540004020906053e-06,
       "status": "not_supported"
     },
     {
@@ -4366,12 +4383,12 @@
       "max_features_per_path": 28,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 19.758945051999945,
+      "construct_s": 13.741763835999791,
       "status": "ok",
-      "median_s": 2.256515966999814,
-      "min_s": 2.220203101999914,
+      "median_s": 1.9594964489997437,
+      "min_s": 1.7413410219996877,
       "n_runs": 5,
-      "warmup_s": 3.4850720940000883
+      "warmup_s": 2.693416868999975
     },
     {
       "dataset": "bioresponse",
@@ -4382,12 +4399,12 @@
       "max_features_per_path": 28,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.0005540859999655368,
+      "construct_s": 0.0006081380001887737,
       "status": "ok",
-      "median_s": 0.19415158200013138,
-      "min_s": 0.19094495699982872,
+      "median_s": 0.15801268799987156,
+      "min_s": 0.15556827999989764,
       "n_runs": 5,
-      "warmup_s": 0.1936853820000124
+      "warmup_s": 0.23011325800007398
     },
     {
       "dataset": "bioresponse",
@@ -4398,12 +4415,12 @@
       "max_features_per_path": 28,
       "method": "quadrature",
       "order": 1,
-      "construct_s": 0.0031998300000850577,
+      "construct_s": 0.00304940300020462,
       "status": "ok",
-      "median_s": 0.0002035919999343605,
-      "min_s": 0.0001910399998905632,
+      "median_s": 0.00018083799977830495,
+      "min_s": 0.00013993599986861227,
       "n_runs": 5,
-      "warmup_s": 0.00048060600011012866,
+      "warmup_s": 0.00029743599998255377,
       "efficiency_error": 2.220446049250313e-16
     },
     {
@@ -4415,12 +4432,12 @@
       "max_features_per_path": 28,
       "method": "linear",
       "order": 1,
-      "construct_s": 0.0060943309999856865,
+      "construct_s": 0.003952425999614206,
       "status": "ok",
-      "median_s": 0.00047642200001973833,
-      "min_s": 0.0004534289998900931,
+      "median_s": 0.00037284100017132005,
+      "min_s": 0.00034773200013660244,
       "n_runs": 5,
-      "warmup_s": 0.0007374780000191095,
+      "warmup_s": 0.0006097039999986009,
       "efficiency_error": 0.007338412966574004
     },
     {
@@ -4432,12 +4449,12 @@
       "max_features_per_path": 28,
       "method": "treeshapiq",
       "order": 1,
-      "construct_s": 0.1126574279999204,
+      "construct_s": 0.06742847799978335,
       "status": "ok",
-      "median_s": 0.038705727999968076,
-      "min_s": 0.0380921869998474,
+      "median_s": 0.025740173000031064,
+      "min_s": 0.0255450260001453,
       "n_runs": 5,
-      "warmup_s": 0.03898700600007032,
+      "warmup_s": 0.026406714000131615,
       "efficiency_error": 0.003133956097667978
     },
     {
@@ -4449,12 +4466,12 @@
       "max_features_per_path": 28,
       "method": "shap",
       "order": 1,
-      "construct_s": 0.0003544500000316475,
+      "construct_s": 0.00038986700019449927,
       "status": "ok",
-      "median_s": 0.00043752200008384534,
-      "min_s": 0.0004145959999277693,
+      "median_s": 0.00032738199979576166,
+      "min_s": 0.00031205100003717234,
       "n_runs": 5,
-      "warmup_s": 0.00047435500005121867,
+      "warmup_s": 0.00041628000008131494,
       "efficiency_error": 8.857914401971811e-12
     },
     {
@@ -4466,12 +4483,12 @@
       "max_features_per_path": 28,
       "method": "quadrature",
       "order": 2,
-      "construct_s": 0.012367042000050787,
+      "construct_s": 0.009163432000150351,
       "status": "ok",
-      "median_s": 0.08707589300001928,
-      "min_s": 0.08575517700001001,
+      "median_s": 0.013124438999966515,
+      "min_s": 0.012893496000287996,
       "n_runs": 5,
-      "warmup_s": 0.08913656899994749
+      "warmup_s": 0.01974876700023742
     },
     {
       "dataset": "bioresponse",
@@ -4482,7 +4499,7 @@
       "max_features_per_path": 28,
       "method": "linear",
       "order": 2,
-      "construct_s": 2.353999889237457e-06,
+      "construct_s": 1.6290000530716497e-06,
       "status": "not_supported"
     },
     {
@@ -4494,12 +4511,12 @@
       "max_features_per_path": 28,
       "method": "treeshapiq",
       "order": 2,
-      "construct_s": 20.913230388999864,
+      "construct_s": 13.709907981000015,
       "status": "ok",
-      "median_s": 2.4237381010000263,
-      "min_s": 2.4046906790001685,
+      "median_s": 1.997850711999945,
+      "min_s": 1.9144153140000526,
       "n_runs": 5,
-      "warmup_s": 3.8548044449998997
+      "warmup_s": 2.8608388850002484
     },
     {
       "dataset": "bioresponse",
@@ -4510,12 +4527,12 @@
       "max_features_per_path": 28,
       "method": "shap",
       "order": 2,
-      "construct_s": 0.00048609400005261705,
+      "construct_s": 0.001215477000187093,
       "status": "ok",
-      "median_s": 0.20250486300005832,
-      "min_s": 0.19713497000020652,
+      "median_s": 0.16279109000015524,
+      "min_s": 0.1595597129999078,
       "n_runs": 5,
-      "warmup_s": 0.2008781330000602
+      "warmup_s": 0.22239894700032892
     }
   ]
 }

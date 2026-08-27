@@ -79,7 +79,7 @@ def freeze_inputs() -> dict:
 def main() -> None:
     warnings.simplefilter("ignore")
     label = sys.argv[1] if len(sys.argv) > 1 else "current"
-    cases = pickle.loads(CACHE.read_bytes()) if CACHE.exists() else freeze_inputs()  # noqa: S301
+    cases = pickle.loads(CACHE.read_bytes()) if CACHE.exists() else freeze_inputs()
 
     out = {}
     for name, (interactions, baseline) in cases.items():
