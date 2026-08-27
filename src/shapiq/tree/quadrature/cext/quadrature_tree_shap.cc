@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -87,6 +88,13 @@ struct QuadWorkspace
     std::vector<int> candidates;
     std::vector<int> chosen;
     std::vector<int64_t> cursor;  // per order: table position of the last emitted subset
+    // Integer-key view of the subset tables: (a, b, c) -> (a * n_feats + b) * n_feats + c.
+    // Only rows of the same order are ever compared, and this is monotone in the row's
+    // lexicographic order, so the search is unchanged -- each comparison is just one int64
+    // compare instead of an `order`-long loop.
+    std::vector<int64_t> row_keys;    // keys of every table row, orders 2..max_order
+    std::vector<int64_t> key_starts;  // per order: start of its keys in row_keys
+    bool keys_ok = false;             // false when n_feats^max_order overflows int64
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
                   const int32_t *subset_keys_, const int64_t *subset_starts_,
@@ -105,6 +113,47 @@ struct QuadWorkspace
         chosen.resize(static_cast<size_t>(std::max(max_order, 1)));
         cursor.assign(static_cast<size_t>(max_order) + 1, 0);
         stack.reserve(static_cast<size_t>(tree.max_depth) * 5 + 10);
+        build_row_keys();
+    }
+
+    // Encode every subset table row as one int64. Left disabled (keys_ok false, so the
+    // tuple-comparison path is used) when n_feats^max_order does not fit in an int64.
+    void build_row_keys()
+    {
+        constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+        if (max_order < 2 || n_feats <= 0)
+            return;
+        int64_t cap = 1;
+        for (int i = 0; i < max_order; ++i)
+        {
+            if (cap > kMax / n_feats)
+                return;
+            cap *= n_feats;
+        }
+        key_starts.assign(static_cast<size_t>(max_order) + 1, 0);
+        int64_t total = 0;
+        for (int s = 2; s <= max_order; ++s)
+        {
+            key_starts[s] = total;
+            total += subset_counts[s];
+        }
+        row_keys.resize(static_cast<size_t>(total));
+        for (int s = 2; s <= max_order; ++s)
+        {
+            const int32_t *row = subset_keys + subset_starts[s];
+            int64_t *dst = row_keys.data() + key_starts[s];
+            for (int64_t r = 0; r < subset_counts[s]; ++r, row += s)
+                dst[r] = row_key(row, s);
+        }
+        keys_ok = true;
+    }
+
+    int64_t row_key(const int32_t *row, int s) const
+    {
+        int64_t key = 0;
+        for (int i = 0; i < s; ++i)
+            key = key * n_feats + row[i];
+        return key;
     }
 
     // Lexicographic compare of a table row against the merged tuple (both length s).
@@ -124,6 +173,56 @@ struct QuadWorkspace
     // Within one edge extraction the emitted tuples are strictly increasing per order, so the
     // search gallops forward from the per-order cursor instead of bisecting the whole table.
     int64_t merged_position(const int *chosen, int size, int feature)
+    {
+        if (!keys_ok)
+            return merged_position_tuple(chosen, size, feature);
+        const int s = size + 1;
+        // Key of the merged tuple, with the pivot spliced in -- no tuple is materialized.
+        // A fixed `s` iterations rather than two data-dependent loops: the trip count is
+        // then predictable, where the first loop's exit point varies with every call.
+        int64_t merged_key = 0;
+        int taken = 0;
+        bool placed = false;
+        for (int i = 0; i < s; i++)
+        {
+            int current_feature;
+            if (!placed && (taken == size || chosen[taken] > feature))
+            {
+                current_feature = feature;
+                placed = true;
+            }
+            else
+            {
+                current_feature = chosen[taken];
+                taken++;
+            }
+            merged_key = merged_key * n_feats + current_feature;
+        }
+
+        const int64_t *keys = row_keys.data() + key_starts[s];
+        const int64_t count = subset_counts[s];
+        int64_t lo = cursor[s];
+        if (lo >= count || keys[lo] > merged_key)
+            lo = 0;  // cursor overshot (new extraction); restart from the table head
+        int64_t bound = 1;
+        while (lo + bound < count && keys[lo + bound] < merged_key)
+            bound <<= 1;
+        int64_t hi = std::min(lo + bound + 1, count);
+        lo = lo + (bound >> 1);
+        while (lo < hi)
+        {
+            const int64_t mid = lo + ((hi - lo) >> 1);
+            if (keys[mid] < merged_key)
+                lo = mid + 1;
+            else
+                hi = mid;
+        }
+        cursor[s] = lo + 1;
+        return lo;
+    }
+
+    // Original tuple-comparison search; used when the int64 encoding would overflow.
+    int64_t merged_position_tuple(const int *chosen, int size, int feature)
     {
         merged_scratch.resize(static_cast<size_t>(size) + 1);
         int *merged = merged_scratch.data();
