@@ -6,6 +6,7 @@
 This release focuses on a greatly improved support of tree-based models as provided by sklearn, XGBoost, LightGBM, or CatBoost.
 
 `TreeExplainer` remains the single entry point for explaining tree-based models and routes to the fastest available algorithms.
+With this release, tree explanations are numerically stable at any tree depth and substantially faster on all kinds of trees, in both `pathdependent` and `interventional` mode.
 In `mode="pathdependent"`, explanations are now computed by the new `QuadratureTreeSHAP` algorithm, which replaces the polynomial algorithms `LinearTreeSHAP` and `TreeSHAPIQ` as the default.
 In `mode="interventional"`, smaller inputs are computed by `InterventionalTreeSHAPIQ` and larger inputs route to the new vectorized Woodelf fast path.
 All four algorithms share a common interface and can also be used directly, independently of `TreeExplainer`.
@@ -13,7 +14,8 @@ All four algorithms share a common interface and can also be used directly, inde
 #### Woodelf-IQ integration [#572](https://github.com/mmschlk/shapiq/pull/572)
 
 Together with Ron Wettenstein, we add a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026).
-Larger interventional inputs are computed by the vectorized Woodelf algorithms, and `TreeExplainer` now supports the Banzhaf indices `"BV"` and `"BII"`.
+Woodelf is very fast. It computes explanations fully vectorized over all explained instances and reference rows scaling much more favorably with large explanation points or reference data than existing algorithms.
+It is also not limited to Shapley values and also computes interaction indices `"SII"` and `"k-SII"` and Banzhaf values `"BV"` `"BII"`.
 `TreeExplainer.explain_X` explains all instances in one vectorized run and returns the new `InteractionValuesBatch`: a lazy sequence of one `InteractionValues` per instance whose `.values` attribute exposes the raw vectorized arrays (`Explainer.explain_X` is now typed as returning a `Sequence[InteractionValues]`).
 The fast path requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`.
 The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing, whose cut-off between the two backends was benchmarked and set to `n * m >= 100_000` (`n` explained instances × `m` reference rows) [#591](https://github.com/mmschlk/shapiq/pull/591).
