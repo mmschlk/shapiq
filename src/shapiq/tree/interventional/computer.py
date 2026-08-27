@@ -31,72 +31,6 @@ InterventionalTreeSHAPIQIndices = Literal[
 ]
 
 
-def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
-    """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf is reachable by having the feature equal to 1 (E) or equal to 0 (R)."""
-    E = []
-    R = []
-    leaf_vals = []
-
-    # iterative DFS; stack entries: (node_id, e_set, r_set)
-    stack = [(0, frozenset(), frozenset())]
-    while stack:
-        node_id, e_set, r_set = stack.pop()
-        if tree.children_left[node_id] == tree.children_right[node_id]:  # leaf
-            E.append(np.array(sorted(e_set), dtype=np.int64))
-            R.append(np.array(sorted(r_set), dtype=np.int64))
-            leaf_vals.append(tree.values[node_id].item())
-            continue
-
-        feature = int(tree.features[node_id])
-
-        # Go left: feature must be 0 → add to R (unless already constrained to 1).
-        if feature not in e_set:
-            stack.append((tree.children_left[node_id], e_set, r_set | {feature}))
-
-        # Go right: feature must be 1 → add to E (unless already constrained to 0).
-        if feature not in r_set:
-            stack.append((tree.children_right[node_id], e_set | {feature}, r_set))
-
-    return E, R, leaf_vals
-
-
-def obtain_E_R_values_point(
-    tree: TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray
-) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
-    """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf was reached due to features in point_to_explain (E) or due to features in reference_point (R)."""
-    E = []
-    R = []
-    leaf_vals = []
-
-    # iterative DFS; stack entries: (node_id, e_set, r_set)
-    stack = [(0, frozenset(), frozenset())]
-    while stack:
-        node_id, e_set, r_set = stack.pop()
-        if tree.children_left[node_id] == tree.children_right[node_id]:  # leaf
-            E.append(np.array(sorted(e_set), dtype=np.int64))
-            R.append(np.array(sorted(r_set), dtype=np.int64))
-            leaf_vals.append(tree.values[node_id].item())
-            continue
-
-        feature = int(tree.features[node_id])
-        explain_goes_left = tree.goes_left(node_id, point_to_explain[feature])
-        child_node_explain = (
-            tree.children_left[node_id] if explain_goes_left else tree.children_right[node_id]
-        )
-        ref_goes_left = tree.goes_left(node_id, reference_point[feature])
-        child_node_ref = (
-            tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]
-        )
-        if child_node_explain != child_node_ref:
-            if feature not in r_set:  # Feature is not fixed by the reference point
-                stack.append((child_node_explain, e_set | {feature}, r_set))
-            if feature not in e_set:  # Feature is not fixed by the explain point
-                stack.append((child_node_ref, e_set, r_set | {feature}))
-        else:
-            stack.append((child_node_explain, e_set, r_set))
-    return E, R, leaf_vals
-
-
 class InterventionalTreeSHAPIQ:
     """Any-order interventional Shapley-interaction explainer for tree models.
 
@@ -316,41 +250,6 @@ class InterventionalTreeSHAPIQ:
             children_left_list,
             children_right_list,
             self.n_features,
-        )
-
-        self.e_length = len(self.E_R_flatten)
-        self.n_leafs = int(self.leaf_id[-1]) + 1 if len(self.leaf_id) > 0 else 0
-
-    def _preprocess_tree(self, explain_point: np.ndarray) -> None:
-        """Gather E and R statistics for the given explain point using the C++ DFS.
-
-        Args:
-            explain_point: The instance to explain as a 1-dimensional array.
-        """
-        from .cext import preprocess_trees_point  # ty: ignore[unresolved-import]
-
-        self.n_features = self.reference_data.shape[1]
-
-        (
-            self.E_R_flatten,
-            self.leaf_vals_flatten,
-            self.e_size_flatten,
-            self.r_size_flatten,
-            self.feature_in_E,
-            self.leaf_id,
-        ) = preprocess_trees_point(
-            self.values_list,
-            self.threshold_list,
-            self.features_list,
-            self.children_left_list,
-            self.children_right_list,
-            self.children_left_default_list,
-            self.reference_data,
-            explain_point.flatten(),
-            self.tree[0].decision_type,
-            self.cat_values_list,  # per-tree categorical split sets (CSR layout)
-            self.cat_start_list,
-            self.cat_size_list,
         )
 
         self.e_length = len(self.E_R_flatten)
