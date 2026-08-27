@@ -312,8 +312,9 @@ class TreeExplainer(Explainer):
         ``n * m >= 100_000`` (:data:`_WOODELF_INTERVENTIONAL_CUTOFF`), where ``n`` is the
         number of explained instances and ``m`` is the size of the reference dataset.
 
-        The value was re-measured after the C++ cohort kernel sped
-        :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ` up by ~2
+        The value was re-measured after the improvements to
+        :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ` in
+        `PR #590 <https://github.com/mmschlk/shapiq/pull/590>`_ sped it up by ~2
         orders of magnitude (the previous cut-off of ``100`` predates that). End-to-end
         timings (explainer construction + ``explain_X``) of both backends over sklearn
         random forests and XGBoost ensembles (50-300 trees, depth 3-8, 10-50 features,
