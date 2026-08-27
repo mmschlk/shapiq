@@ -15,9 +15,19 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - Each C extension compiles from ONE listed source (`setup.py`); companion files
   like `linear/cext/linear_tree_shap.cc` or `interventional/cext/utils.cpp` are
   `#include`d and NOT tracked by setuptools. Editing only an included file does
-  NOT trigger a rebuild — `touch` the listed `cext.cc` (or `rm -rf build`)
-  before `uv run python setup.py build_ext --inplace`, or you will silently
-  test a stale `.so`.
+  NOT trigger a rebuild, or you will silently test a stale `.so`.
+  **`touch`ing the listed `cext.cc` is not enough either** — observed 2026-08-26:
+  after `touch src/shapiq/tree/interventional/cext/cext.cc`,
+  `uv run python setup.py build_ext --inplace` finished in ~2s, re-linked and
+  copied a `.so`, and recompiled NO object file (`build/temp.*/**/cext.o` kept
+  its old mtime). Only `rm -rf build` actually recompiles. Use:
+
+  ```bash
+  rm -rf build && uv run python setup.py build_ext --inplace
+  ```
+
+  and verify with `stat -f "%Sm %N" build/temp.*/src/shapiq/tree/*/cext/cext.o`
+  that the object file is fresh before trusting a benchmark or a test result.
 - The kernels are built with `-ffast-math`, which compiles `std::isnan` to
   `false` and silently breaks missing-value (NaN) routing.
   `-fno-finite-math-only` must stay AFTER `-ffast-math` in `setup.py`.
