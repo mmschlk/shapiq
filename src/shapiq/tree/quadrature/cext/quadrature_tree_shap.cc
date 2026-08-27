@@ -92,8 +92,7 @@ struct QuadWorkspace
     // Only rows of the same order are ever compared, and this is monotone in the row's
     // lexicographic order, so the search is unchanged -- each comparison is just one int64
     // compare instead of an `order`-long loop.
-    std::vector<int64_t> row_keys;    // keys of every table row, orders 2..max_order
-    std::vector<int64_t> key_starts;  // per order: start of its keys in row_keys
+    std::vector<std::vector<int64_t>> row_keys;  // per order: one key per table row
     bool keys_ok = false;             // false when n_feats^max_order overflows int64
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
@@ -130,20 +129,16 @@ struct QuadWorkspace
                 return;
             cap *= n_feats;
         }
-        key_starts.assign(static_cast<size_t>(max_order) + 1, 0);
-        int64_t total = 0;
-        for (int s = 2; s <= max_order; ++s)
-        {
-            key_starts[s] = total;
-            total += subset_counts[s];
-        }
-        row_keys.resize(static_cast<size_t>(total));
+        row_keys.resize(static_cast<size_t>(max_order) + 1);
         for (int s = 2; s <= max_order; ++s)
         {
             const int32_t *row = subset_keys + subset_starts[s];
-            int64_t *dst = row_keys.data() + key_starts[s];
-            for (int64_t r = 0; r < subset_counts[s]; ++r, row += s)
-                dst[r] = row_key(row, s);
+            row_keys[s].resize(static_cast<size_t>(subset_counts[s]));
+            for (int64_t r = 0; r < subset_counts[s]; ++r)
+            {
+                row_keys[s][r] = row_key(row, s);
+                row += s; // Move the pointer to the next row in the subset_keys array
+            }
         }
         keys_ok = true;
     }
@@ -199,8 +194,8 @@ struct QuadWorkspace
             merged_key = merged_key * n_feats + current_feature;
         }
 
-        const int64_t *keys = row_keys.data() + key_starts[s];
-        const int64_t count = subset_counts[s];
+        const int64_t *keys = row_keys[s].data();
+        const int64_t count = static_cast<int64_t>(row_keys[s].size());
         int64_t lo = cursor[s];
         if (lo >= count || keys[lo] > merged_key)
             lo = 0;  // cursor overshot (new extraction); restart from the table head
