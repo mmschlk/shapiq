@@ -4,6 +4,7 @@
 #include <cstring>
 #include <limits>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // MSVC uses __restrict instead of __restrict__
@@ -92,7 +93,8 @@ struct QuadWorkspace
     // Only rows of the same order are ever compared, and this is monotone in the row's
     // lexicographic order, so the search is unchanged -- each comparison is just one int64
     // compare instead of an `order`-long loop.
-    std::vector<std::vector<int64_t>> row_keys;  // per order: one key per table row
+    // Per order, a map from row key to the row's index in that order's table.
+    std::vector<std::unordered_map<int64_t, int32_t>> row_index;
     bool keys_ok = false;             // false when n_feats^max_order overflows int64
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
@@ -129,14 +131,14 @@ struct QuadWorkspace
                 return;
             cap *= n_feats;
         }
-        row_keys.resize(static_cast<size_t>(max_order) + 1);
+        row_index.resize(static_cast<size_t>(max_order) + 1);
         for (int s = 2; s <= max_order; ++s)
         {
+            row_index[s].reserve(static_cast<size_t>(subset_counts[s]));
             const int32_t *row = subset_keys + subset_starts[s];
-            row_keys[s].resize(static_cast<size_t>(subset_counts[s]));
             for (int64_t r = 0; r < subset_counts[s]; ++r)
             {
-                row_keys[s][r] = row_key(row, s);
+                row_index[s][row_key(row, s)] = static_cast<int32_t>(r);
                 row += s; // Move the pointer to the next row in the subset_keys array
             }
         }
@@ -194,26 +196,8 @@ struct QuadWorkspace
             merged_key = merged_key * n_feats + current_feature;
         }
 
-        const int64_t *keys = row_keys[s].data();
-        const int64_t count = static_cast<int64_t>(row_keys[s].size());
-        int64_t lo = cursor[s];
-        if (lo >= count || keys[lo] > merged_key)
-            lo = 0;  // cursor overshot (new extraction); restart from the table head
-        int64_t bound = 1;
-        while (lo + bound < count && keys[lo + bound] < merged_key)
-            bound <<= 1;
-        int64_t hi = std::min(lo + bound + 1, count);
-        lo = lo + (bound >> 1);
-        while (lo < hi)
-        {
-            const int64_t mid = lo + ((hi - lo) >> 1);
-            if (keys[mid] < merged_key)
-                lo = mid + 1;
-            else
-                hi = mid;
-        }
-        cursor[s] = lo + 1;
-        return lo;
+        // The merged tuple always lies on the current path, so the key is always present.
+        return row_index[s].find(merged_key)->second;
     }
 
     // Original tuple-comparison search; used when the int64 encoding would overflow.
