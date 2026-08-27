@@ -31,72 +31,6 @@ InterventionalTreeSHAPIQIndices = Literal[
 ]
 
 
-def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
-    """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf is reachable by having the feature equal to 1 (E) or equal to 0 (R)."""
-    E = []
-    R = []
-    leaf_vals = []
-
-    # iterative DFS; stack entries: (node_id, e_set, r_set)
-    stack = [(0, frozenset(), frozenset())]
-    while stack:
-        node_id, e_set, r_set = stack.pop()
-        if tree.children_left[node_id] == tree.children_right[node_id]:  # leaf
-            E.append(np.array(sorted(e_set), dtype=np.int64))
-            R.append(np.array(sorted(r_set), dtype=np.int64))
-            leaf_vals.append(tree.values[node_id].item())
-            continue
-
-        feature = int(tree.features[node_id])
-
-        # Go left: feature must be 0 → add to R (unless already constrained to 1).
-        if feature not in e_set:
-            stack.append((tree.children_left[node_id], e_set, r_set | {feature}))
-
-        # Go right: feature must be 1 → add to E (unless already constrained to 0).
-        if feature not in r_set:
-            stack.append((tree.children_right[node_id], e_set | {feature}, r_set))
-
-    return E, R, leaf_vals
-
-
-def obtain_E_R_values_point(
-    tree: TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray
-) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
-    """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf was reached due to features in point_to_explain (E) or due to features in reference_point (R)."""
-    E = []
-    R = []
-    leaf_vals = []
-
-    # iterative DFS; stack entries: (node_id, e_set, r_set)
-    stack = [(0, frozenset(), frozenset())]
-    while stack:
-        node_id, e_set, r_set = stack.pop()
-        if tree.children_left[node_id] == tree.children_right[node_id]:  # leaf
-            E.append(np.array(sorted(e_set), dtype=np.int64))
-            R.append(np.array(sorted(r_set), dtype=np.int64))
-            leaf_vals.append(tree.values[node_id].item())
-            continue
-
-        feature = int(tree.features[node_id])
-        explain_goes_left = tree.goes_left(node_id, point_to_explain[feature])
-        child_node_explain = (
-            tree.children_left[node_id] if explain_goes_left else tree.children_right[node_id]
-        )
-        ref_goes_left = tree.goes_left(node_id, reference_point[feature])
-        child_node_ref = (
-            tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]
-        )
-        if child_node_explain != child_node_ref:
-            if feature not in r_set:  # Feature is not fixed by the reference point
-                stack.append((child_node_explain, e_set | {feature}, r_set))
-            if feature not in e_set:  # Feature is not fixed by the explain point
-                stack.append((child_node_ref, e_set, r_set | {feature}))
-        else:
-            stack.append((child_node_explain, e_set, r_set))
-    return E, R, leaf_vals
-
-
 class InterventionalTreeSHAPIQ:
     """Any-order interventional Shapley-interaction explainer for tree models.
 
@@ -192,6 +126,7 @@ class InterventionalTreeSHAPIQ:
         self.max_order = max_order
         self.index = index
         self.n_players = data.shape[1]
+        self.n_features = self.reference_data.shape[1]
         self.index_func = index_func
         self.bool_tree = bool_tree
         self.look_up_table: np.ndarray | None = None
@@ -209,7 +144,9 @@ class InterventionalTreeSHAPIQ:
             or _dense_flatten_result_size(n_features_hint, self.max_order)
             > _DENSE_FLATTEN_MAX_RESULT_SIZE
         )
-        if self._use_sparse_path:
+        # the sparse C path and the per-explanation dense preprocessing (see
+        # _preprocess_tree) both consume the flattened per-tree arrays
+        if self._use_sparse_path or not self.bool_tree:
             self._preprocess_tree_sparse_path()
         if self.bool_tree:
             self._preprocess_boolean_tree()
@@ -230,9 +167,12 @@ class InterventionalTreeSHAPIQ:
         """Compute the interventional empty prediction of a tree ensemble.
 
         The interventional empty prediction (baseline value) is the mean ensemble prediction
-        over the reference (background) dataset. Routing happens through
-        :meth:`~shapiq.tree.base.TreeModel.predict_one`, which rounds inputs the way the
-        source library does, so the result matches the kernels' split routing.
+        over the reference (background) dataset. Inputs are rounded the way the source library
+        rounds prediction inputs (see :meth:`~shapiq.tree.base.TreeModel.cast_input`), so the
+        result matches the kernels' split routing. Routing runs in the C++
+        ``predict_ensemble_sum`` kernel; trees with a remapped feature space or a non-zero root
+        (which the C kernels do not model) fall back to the Python
+        :func:`~shapiq.tree.base.predict_ensemble` path.
 
         Args:
             trees: The validated trees of the ensemble (see
@@ -242,8 +182,31 @@ class InterventionalTreeSHAPIQ:
         Returns:
             The mean ensemble prediction over the reference data.
         """
+        reference_data = np.asarray(reference_data, dtype=np.float64)
+        plain_trees = all(
+            tree.root_node_id == 0
+            and all(k == v for k, v in tree.feature_map_internal_original.items())
+            for tree in trees
+        )
+        if plain_trees:
+            from .cext import predict_ensemble_sum  # ty: ignore[unresolved-import]
+
+            predictions = predict_ensemble_sum(
+                [tree.values.astype(np.float64).flatten() for tree in trees],
+                [tree.thresholds.astype(np.float64).flatten() for tree in trees],
+                [tree.features.astype(np.int64).flatten() for tree in trees],
+                [tree.children_left.astype(np.int64).flatten() for tree in trees],
+                [tree.children_right.astype(np.int64).flatten() for tree in trees],
+                [tree.children_left_default.astype(bool).flatten() for tree in trees],
+                trees[0].cast_input(reference_data),
+                trees[0].decision_type,
+                [tree.cat_values.astype(np.int64).flatten() for tree in trees],
+                [tree.cat_start.astype(np.int64).flatten() for tree in trees],
+                [tree.cat_size.astype(np.int64).flatten() for tree in trees],
+            )
+            return float(predictions.mean())
         # predict_ensemble routes through TreeModel.predict_one, which applies cast_input
-        return float(predict_ensemble(trees, np.asarray(reference_data, dtype=np.float64)).mean())
+        return float(predict_ensemble(trees, reference_data).mean())
 
     def _preprocess_tree_sparse_path(self) -> None:
         """Flatten per-tree arrays into the layout expected by the sparse C kernel."""
@@ -291,59 +254,6 @@ class InterventionalTreeSHAPIQ:
 
         self.e_length = len(self.E_R_flatten)
         self.n_leafs = int(self.leaf_id[-1]) + 1 if len(self.leaf_id) > 0 else 0
-
-    def _preprocess_tree(self, explain_point: np.ndarray) -> None:
-        """Gather E and R statistics for the given explain point.
-
-        Args:
-            explain_point: The instance to explain as a 1-dimensional array.
-        """
-        self.n_features = self.reference_data.shape[1]
-        E_list: list[np.ndarray] = []
-        R_list: list[np.ndarray] = []
-        leaf_vals_list: list[float] = []
-
-        for r in self.reference_data:
-            for tree in self.tree:
-                E, R, leaf_vals = obtain_E_R_values_point(tree, explain_point, r)
-                E_list.extend(E)
-                R_list.extend(R)
-                leaf_vals_list.extend(leaf_vals)
-
-        self.E_list = E_list
-        self.R_list = R_list
-        self.leaf_vals = np.array(leaf_vals_list, dtype=np.float64)
-        n_leafs = len(E_list)
-
-        e_sizes = np.array([len(e) for e in E_list], dtype=np.int64)
-        r_sizes = np.array([len(r) for r in R_list], dtype=np.int64)
-        er_sizes = e_sizes + r_sizes
-
-        self.n_features_e = e_sizes
-        self.n_features_r = r_sizes
-
-        if n_leafs > 0:
-            self.E_R_flatten = np.concatenate(
-                [np.concatenate([e, r]) for e, r in zip(E_list, R_list, strict=False)]
-            ).astype(np.int64)
-            self.feature_in_E = np.concatenate(
-                [
-                    np.concatenate(
-                        [np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)]
-                    )
-                    for e, r in zip(e_sizes, r_sizes, strict=False)
-                ]
-            )
-        else:
-            self.E_R_flatten = np.array([], dtype=np.int64)
-            self.feature_in_E = np.array([], dtype=np.int64)
-
-        self.leaf_id = np.repeat(np.arange(n_leafs, dtype=np.int64), er_sizes)
-        self.leaf_vals_flatten = np.repeat(self.leaf_vals, er_sizes)
-        self.e_size_flatten = np.repeat(e_sizes, er_sizes)
-        self.r_size_flatten = np.repeat(r_sizes, er_sizes)
-        self.e_length = len(self.E_R_flatten)
-        self.n_leafs = n_leafs
 
     def _build_custom_weight_table(self) -> np.ndarray:
         """Precompute the flat weight lookup table for the custom weight function.
@@ -456,17 +366,16 @@ class InterventionalTreeSHAPIQ:
         """
         from .cext import (
             compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
+            compute_interactions_cohort,  # ty: ignore[unresolved-import]
             compute_interactions_flatten,  # ty: ignore[unresolved-import]
         )
 
         # round the instance the way the source library rounds prediction inputs
         x = self.tree[0].cast_input(np.asarray(x, dtype=np.float64))
 
-        if not self.bool_tree and not self._use_sparse_path:
-            self._preprocess_tree(x)
         computation_index = get_computation_index(self.index)
         interactions = {}
-        # the flatten kernel only covers orders <= 3 within the dense memory budget;
+        # the dense kernels only cover orders <= 3 within the dense memory budget;
         # _use_sparse_path is set in __init__
         if self._use_sparse_path:
             interactions = compute_interactions_batched_sparse(
@@ -487,7 +396,7 @@ class InterventionalTreeSHAPIQ:
                 self.cat_start_list,
                 self.cat_size_list,
             )
-        else:
+        elif self.bool_tree:
             interactions = compute_interactions_flatten(
                 self.leaf_vals_flatten,
                 self.E_R_flatten,
@@ -505,6 +414,27 @@ class InterventionalTreeSHAPIQ:
                     self.reference_data.shape[0]
                 ),  # number of reference samples for scaling the results
                 self.look_up_table,  # optional custom weight table (None → built-in index)
+            )
+        else:
+            # fused dense path: cohort DFS shares one tree walk across all reference
+            # samples and updates the interaction buffer at each leaf
+            interactions = compute_interactions_cohort(
+                self.values_list,
+                self.threshold_list,
+                self.features_list,
+                self.children_left_list,
+                self.children_right_list,
+                self.children_left_default_list,
+                self.reference_data,
+                x.flatten(),
+                self.tree[0].decision_type,
+                computation_index,
+                self.max_order,
+                self.debug,  # whether to print debug information
+                self.look_up_table,  # optional custom weight table (None → built-in index)
+                self.cat_values_list,  # per-tree categorical split sets (CSR layout)
+                self.cat_start_list,
+                self.cat_size_list,
             )
 
         interactions[()] = self.baseline_value

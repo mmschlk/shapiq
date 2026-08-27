@@ -19,11 +19,17 @@ using namespace std;
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args);
 static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args);
+static PyObject *preprocess_trees_point(PyObject *self, PyObject *args);
+static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args);
+static PyObject *predict_ensemble_sum(PyObject *self, PyObject *args);
 
 static PyMethodDef module_methods[] = {
     {"compute_interactions_batched_sparse", compute_interactions_batched_sparse, METH_VARARGS, "Compute sparse feature interactions in batches using the interventional algorithm."},
     {"compute_interactions_flatten", compute_interactions_flatten, METH_VARARGS, "Compute feature interactions with flattened input."},
     {"preprocess_boolean_trees", preprocess_boolean_trees, METH_VARARGS, "Preprocess boolean trees: DFS traversal to produce flattened E/R arrays."},
+    {"preprocess_trees_point", preprocess_trees_point, METH_VARARGS, "Preprocess trees for one explain point against every reference sample: DFS traversal to produce flattened E/R arrays."},
+    {"compute_interactions_cohort", compute_interactions_cohort, METH_VARARGS, "Fused dense kernel: cohort DFS sharing one tree walk across all reference samples, updating interactions at each leaf."},
+    {"predict_ensemble_sum", predict_ensemble_sum, METH_VARARGS, "Route every row of X through every tree and return the per-row sum of leaf predictions."},
     {NULL, NULL, 0, NULL}};
 /** Define the Python Module for both Python 3 and Python 2 Version.
  * This code is mostly copied from https://github.com/yupbank/linear_tree_shap/blob/main/linear_tree_shap/cext/_cext.cc
@@ -1491,4 +1497,1009 @@ static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args)
     PyTuple_SetItem(result, 5, np_lid);           // leaf_id
 
     return result;
+}
+
+// === preprocess_trees_point ===
+// C port of InterventionalTreeSHAPIQ._preprocess_tree / obtain_E_R_values_point:
+// for every reference sample and every tree, DFS the tree routing the explain
+// point vs. the reference point, and emit the 6 flat arrays consumed by
+// compute_interactions_flatten. Row layout per leaf: E features ascending, then
+// R features ascending (BitSet iteration order matches the sorted numpy sets).
+static PyObject *preprocess_trees_point(PyObject *self, PyObject *args)
+{
+    PyObject *values_list_obj;
+    PyObject *thresholds_list_obj;
+    PyObject *features_list_obj;
+    PyObject *children_left_list_obj;
+    PyObject *children_right_list_obj;
+    PyObject *children_missing_list_obj;
+    PyObject *reference_data_obj;
+    PyObject *explain_point_obj;
+    const char *decision_type_cptr;
+    // Optional categorical split CSR lists (None for numeric-only ensembles)
+    PyObject *cat_values_obj = Py_None;
+    PyObject *cat_start_obj = Py_None;
+    PyObject *cat_size_obj = Py_None;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOOOs|OOO",
+                          &values_list_obj, &thresholds_list_obj, &features_list_obj,
+                          &children_left_list_obj, &children_right_list_obj,
+                          &children_missing_list_obj,
+                          &reference_data_obj, &explain_point_obj,
+                          &decision_type_cptr,
+                          &cat_values_obj, &cat_start_obj, &cat_size_obj))
+    {
+        return NULL;
+    }
+
+    const bool use_categorical = (cat_values_obj != Py_None);
+    if (!PyList_Check(values_list_obj) || !PyList_Check(thresholds_list_obj) ||
+        !PyList_Check(features_list_obj) || !PyList_Check(children_left_list_obj) ||
+        !PyList_Check(children_right_list_obj) || !PyList_Check(children_missing_list_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "All tree inputs must be lists of numpy arrays");
+        return NULL;
+    }
+    if (use_categorical && (!PyList_Check(cat_values_obj) || !PyList_Check(cat_start_obj) || !PyList_Check(cat_size_obj)))
+    {
+        PyErr_SetString(PyExc_TypeError, "cat_values, cat_start, and cat_size must be lists of numpy arrays (or None)");
+        return NULL;
+    }
+
+    Py_ssize_t num_trees = PyList_Size(values_list_obj);
+    if (num_trees != PyList_Size(thresholds_list_obj) ||
+        num_trees != PyList_Size(features_list_obj) ||
+        num_trees != PyList_Size(children_left_list_obj) ||
+        num_trees != PyList_Size(children_right_list_obj) ||
+        num_trees != PyList_Size(children_missing_list_obj) ||
+        (use_categorical && (num_trees != PyList_Size(cat_values_obj) ||
+                             num_trees != PyList_Size(cat_start_obj) ||
+                             num_trees != PyList_Size(cat_size_obj))))
+    {
+        PyErr_SetString(PyExc_ValueError, "All tree lists must have the same length");
+        return NULL;
+    }
+
+    // Every converted array is tracked here; the Tree structs hold raw pointers
+    // into them, so they are released only after the DFS is done.
+    std::vector<PyArrayObject *> arrays_for_decref;
+    auto cleanup_arrays = [&arrays_for_decref]()
+    {
+        for (PyArrayObject *arr : arrays_for_decref)
+            Py_XDECREF(arr);
+    };
+    auto convert_item = [&arrays_for_decref](PyObject *list_obj, Py_ssize_t idx, int np_type) -> PyArrayObject *
+    {
+        PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(list_obj, idx), np_type, NPY_ARRAY_IN_ARRAY);
+        if (arr)
+            arrays_for_decref.push_back(arr);
+        return arr;
+    };
+
+    PyArrayObject *reference_data_array = (PyArrayObject *)PyArray_FROM_OTF(reference_data_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+    if (reference_data_array)
+        arrays_for_decref.push_back(reference_data_array);
+    PyArrayObject *explain_point_array = (PyArrayObject *)PyArray_FROM_OTF(explain_point_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+    if (explain_point_array)
+        arrays_for_decref.push_back(explain_point_array);
+    if (!reference_data_array || !explain_point_array || PyArray_NDIM(reference_data_array) != 2)
+    {
+        cleanup_arrays();
+        PyErr_SetString(PyExc_TypeError, "reference_data must be a 2-D float64 numpy array and explain_point a float64 numpy array");
+        return NULL;
+    }
+
+    const double *reference_data = (const double *)PyArray_DATA(reference_data_array);
+    const double *explain_data = (const double *)PyArray_DATA(explain_point_array);
+    const int64_t n_ref = (int64_t)PyArray_DIM(reference_data_array, 0);
+    const int64_t n_features = (int64_t)PyArray_DIM(reference_data_array, 1);
+
+    std::vector<Tree> trees;
+    trees.reserve(static_cast<size_t>(num_trees));
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        PyArrayObject *vals_arr = convert_item(values_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *thr_arr = convert_item(thresholds_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *feat_arr = convert_item(features_list_obj, t, NPY_INT64);
+        PyArrayObject *cl_arr = convert_item(children_left_list_obj, t, NPY_INT64);
+        PyArrayObject *cr_arr = convert_item(children_right_list_obj, t, NPY_INT64);
+        PyArrayObject *cm_arr = convert_item(children_missing_list_obj, t, NPY_BOOL);
+        PyArrayObject *cat_values_arr = NULL, *cat_start_arr = NULL, *cat_size_arr = NULL;
+        if (use_categorical)
+        {
+            cat_values_arr = convert_item(cat_values_obj, t, NPY_INT64);
+            cat_start_arr = convert_item(cat_start_obj, t, NPY_INT64);
+            cat_size_arr = convert_item(cat_size_obj, t, NPY_INT64);
+        }
+        if (!vals_arr || !thr_arr || !feat_arr || !cl_arr || !cr_arr || !cm_arr ||
+            (use_categorical && (!cat_values_arr || !cat_start_arr || !cat_size_arr)))
+        {
+            cleanup_arrays();
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tree arrays");
+            return NULL;
+        }
+        trees.push_back(Tree(
+            (double *)PyArray_DATA(vals_arr),
+            (double *)PyArray_DATA(thr_arr),
+            (int64_t *)PyArray_DATA(feat_arr),
+            (int64_t *)PyArray_DATA(cl_arr),
+            (int64_t *)PyArray_DATA(cr_arr),
+            (bool *)PyArray_DATA(cm_arr),
+            std::string(decision_type_cptr),
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_values_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_start_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_size_arr) : nullptr));
+    }
+
+    // Output buffers (one row per (leaf, feature in E or R) pair)
+    std::vector<int64_t> features_out;
+    std::vector<double> leaf_vals_out;
+    std::vector<int64_t> e_sizes_out;
+    std::vector<int64_t> r_sizes_out;
+    std::vector<int64_t> fie_out;
+    std::vector<int64_t> lid_out;
+
+    // Reserve estimated space: ~32 (leaf, feature) rows per (reference, tree) pair
+    size_t est = static_cast<size_t>(n_ref) * static_cast<size_t>(num_trees) * 32;
+    features_out.reserve(est);
+    leaf_vals_out.reserve(est);
+    e_sizes_out.reserve(est);
+    r_sizes_out.reserve(est);
+    fie_out.reserve(est);
+    lid_out.reserve(est);
+
+    int64_t leaf_counter = 0;
+
+    Py_BEGIN_ALLOW_THREADS
+    std::vector<StackFrame> stack;
+    stack.reserve(256);
+    BitSet empty_set(n_features);
+
+    // Match the Python loop order: reference samples outer, trees inner.
+    for (int64_t i = 0; i < n_ref; i++)
+    {
+        const double *reference_sample = reference_data + i * n_features;
+        for (Py_ssize_t t = 0; t < num_trees; t++)
+        {
+            Tree &tree = trees[t];
+            stack.push_back(StackFrame(0, empty_set, empty_set, 0, 0));
+            while (!stack.empty())
+            {
+                StackFrame frame = std::move(stack.back());
+                stack.pop_back();
+                int64_t node_id = frame.node_id;
+
+                bool is_leaf = (tree.children_left[node_id] == tree.children_right[node_id]);
+                if (is_leaf)
+                {
+                    const double leaf_val = tree.leaf_predictions[node_id];
+                    const int64_t e_size = static_cast<int64_t>(frame.E.num_bits());
+                    const int64_t r_size = static_cast<int64_t>(frame.R.num_bits());
+
+                    // Append E features (feature_in_E = 1)
+                    frame.E.for_each_set_bit([&](uint64_t feat)
+                    {
+                        features_out.push_back(static_cast<int64_t>(feat));
+                        leaf_vals_out.push_back(leaf_val);
+                        e_sizes_out.push_back(e_size);
+                        r_sizes_out.push_back(r_size);
+                        fie_out.push_back(1);
+                        lid_out.push_back(leaf_counter);
+                    });
+                    // Append R features (feature_in_E = 0)
+                    frame.R.for_each_set_bit([&](uint64_t feat)
+                    {
+                        features_out.push_back(static_cast<int64_t>(feat));
+                        leaf_vals_out.push_back(leaf_val);
+                        e_sizes_out.push_back(e_size);
+                        r_sizes_out.push_back(r_size);
+                        fie_out.push_back(0);
+                        lid_out.push_back(leaf_counter);
+                    });
+                    leaf_counter++;
+                    continue;
+                }
+
+                const int64_t feature = tree.features[node_id];
+                const int64_t child_explain = tree.goes_left(explain_data[feature], node_id)
+                                                  ? tree.children_left[node_id]
+                                                  : tree.children_right[node_id];
+                const int64_t child_ref = tree.goes_left(reference_sample[feature], node_id)
+                                              ? tree.children_left[node_id]
+                                              : tree.children_right[node_id];
+
+                if (child_explain != child_ref)
+                {
+                    if (!frame.R.contains(feature)) // feature is not fixed by the reference point
+                    {
+                        BitSet next_E = frame.E;
+                        next_E.add(feature);
+                        stack.push_back(StackFrame(child_explain, next_E, frame.R));
+                    }
+                    if (!frame.E.contains(feature)) // feature is not fixed by the explain point
+                    {
+                        BitSet next_R = frame.R;
+                        next_R.add(feature);
+                        stack.push_back(StackFrame(child_ref, frame.E, next_R));
+                    }
+                }
+                else
+                {
+                    stack.push_back(StackFrame(child_explain, frame.E, frame.R));
+                }
+            }
+        }
+    }
+    Py_END_ALLOW_THREADS
+
+    cleanup_arrays();
+
+    // Convert output vectors to numpy arrays
+    npy_intp n_total = static_cast<npy_intp>(features_out.size());
+
+    PyObject *np_features = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_leaf_vals = PyArray_SimpleNew(1, &n_total, NPY_FLOAT64);
+    PyObject *np_e_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_r_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_fie = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_lid = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+
+    if (!np_features || !np_leaf_vals || !np_e_sizes || !np_r_sizes || !np_fie || !np_lid)
+    {
+        Py_XDECREF(np_features);
+        Py_XDECREF(np_leaf_vals);
+        Py_XDECREF(np_e_sizes);
+        Py_XDECREF(np_r_sizes);
+        Py_XDECREF(np_fie);
+        Py_XDECREF(np_lid);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output arrays");
+        return NULL;
+    }
+
+    if (n_total > 0)
+    {
+        memcpy(PyArray_DATA((PyArrayObject *)np_features), features_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_leaf_vals), leaf_vals_out.data(), n_total * sizeof(double));
+        memcpy(PyArray_DATA((PyArrayObject *)np_e_sizes), e_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_r_sizes), r_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_fie), fie_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_lid), lid_out.data(), n_total * sizeof(int64_t));
+    }
+
+    // Return tuple of 6 arrays
+    PyObject *result = PyTuple_New(6);
+    PyTuple_SetItem(result, 0, np_features);      // E_R_flatten
+    PyTuple_SetItem(result, 1, np_leaf_vals);     // leaf_vals_flatten
+    PyTuple_SetItem(result, 2, np_e_sizes);       // e_size_flatten
+    PyTuple_SetItem(result, 3, np_r_sizes);       // r_size_flatten
+    PyTuple_SetItem(result, 4, np_fie);           // feature_in_E
+    PyTuple_SetItem(result, 5, np_lid);           // leaf_id
+
+    return result;
+}
+
+// === compute_interactions_cohort ===
+// Fused dense kernel: one DFS per tree carries the COHORT of reference samples
+// that reached the current (node, E, R) state, instead of one DFS per reference.
+// At each split the cohort is partitioned into references that route like the
+// explain point (E/R unchanged) and references that diverge (spawning the same
+// E- and R-branches obtain_E_R_values_point creates per reference). At a leaf,
+// all m cohort members contribute the identical (E, R, leaf_value) term, so the
+// dense interaction buffer is updated ONCE with value scaled by m. Exact — the
+// per-leaf weights depend only on (|E|, |R|, s_cap_e), never on the reference.
+
+// Longest root-to-leaf path measured in internal nodes: bounds |E| + |R|, so the
+// weight tables only need this stride instead of n_features + 1.
+static int cohort_max_depth(const Tree &tree)
+{
+    std::vector<std::pair<int64_t, int>> stack;
+    stack.push_back({0, 0});
+    int best = 0;
+    while (!stack.empty())
+    {
+        auto [node_id, depth] = stack.back();
+        stack.pop_back();
+        if (tree.children_left[node_id] == tree.children_right[node_id])
+        {
+            best = std::max(best, depth);
+            continue;
+        }
+        stack.push_back({tree.children_left[node_id], depth + 1});
+        stack.push_back({tree.children_right[node_id], depth + 1});
+    }
+    return best;
+}
+
+struct CohortFrame
+{
+    CohortFrame(int64_t node_id, const BitSet &E, const BitSet &R, int begin, int end)
+        : node_id(node_id), E(E), R(R), begin(begin), end(end)
+    {
+    }
+    int64_t node_id;
+    BitSet E;
+    BitSet R;
+    int begin; // slice [begin, end) into the per-tree reference index buffer
+    int end;
+};
+
+// Per-leaf dense update: identical math to compute_order{1,2,3}_leafparallel, but
+// fed from the leaf's (feature, in_E) pairs directly instead of flat rows, and with
+// the leaf value pre-scaled by the cohort size.
+template <IndexType IT>
+static inline void cohort_leaf_update(
+    const int32_t *__restrict__ leaf_feats,
+    const int32_t *__restrict__ leaf_fie,
+    int n_leaf_feats,
+    int e, int r,
+    double scaled_val, // leaf_prediction * cohort_size * inv_scaling
+    int n_features,
+    const double *__restrict__ table_s1,
+    const double *__restrict__ table_s2,
+    const double *__restrict__ table_s3,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    double *__restrict__ local_result)
+{
+    const double er = (double)(e + r);
+    for (int i = 0; i < n_leaf_feats; i++)
+    {
+        const int fi = leaf_feats[i];
+        const int fiei = leaf_fie[i];
+
+        // Order-1 contribution
+        double w1;
+        if constexpr (IT == IndexType::BII)
+        {
+            double sign = 1.0 - 2.0 * (1.0 - (double)fiei);
+            w1 = sign * exp2(-(er - 1.0));
+        }
+        else if constexpr (IT == IndexType::CUSTOM)
+        {
+            w1 = (double)weight_cache.get_weight(
+                n_features, e, r, fiei, 1 - fiei, 1, IT, max_order);
+        }
+        else
+        {
+            w1 = table_s1[fiei * table_stride * table_stride + e * table_stride + r];
+        }
+        local_result[fi] += scaled_val * w1;
+
+        if (max_order < 2)
+            continue;
+
+        // Order-2 (and order-3): interactions within the same leaf
+        for (int j = i + 1; j < n_leaf_feats; j++)
+        {
+            const int fj = leaf_feats[j];
+            const int s_cap_e_2 = fiei + leaf_fie[j];
+            double w2;
+            if constexpr (IT == IndexType::BII)
+            {
+                int s_cap_r_2 = 2 - s_cap_e_2;
+                double sign_2 = (s_cap_r_2 % 2 == 0) ? 1.0 : -1.0;
+                w2 = sign_2 * exp2(-(er - 2.0));
+            }
+            else if constexpr (IT == IndexType::CUSTOM)
+            {
+                int s_cap_r_2 = 2 - s_cap_e_2;
+                w2 = (double)weight_cache.get_weight(
+                    n_features, e, r, s_cap_e_2, s_cap_r_2, 2, IT, max_order);
+            }
+            else
+            {
+                w2 = table_s2[s_cap_e_2 * table_stride * table_stride + e * table_stride + r];
+            }
+            // Compact upper-triangle index; leaf features arrive unsorted (E then R)
+            int fi2 = fi, fj2 = fj;
+            if (fi2 > fj2) std::swap(fi2, fj2);
+            int idx2 = n_features + (fi2 * n_features - fi2 * (fi2 + 1) / 2) + (fj2 - fi2 - 1);
+            local_result[idx2] += scaled_val * w2;
+
+            if (max_order < 3)
+                continue;
+
+            // Order-3
+            for (int k = j + 1; k < n_leaf_feats; k++)
+            {
+                const int fk = leaf_feats[k];
+                const int s_cap_e_3 = s_cap_e_2 + leaf_fie[k];
+                double w3;
+                if constexpr (IT == IndexType::BII)
+                {
+                    int s_cap_r_3 = 3 - s_cap_e_3;
+                    double sign_3 = (s_cap_r_3 % 2 == 0) ? 1.0 : -1.0;
+                    w3 = sign_3 * exp2(-(er - 3.0));
+                }
+                else if constexpr (IT == IndexType::CUSTOM)
+                {
+                    int s_cap_r_3 = 3 - s_cap_e_3;
+                    w3 = (double)weight_cache.get_weight(
+                        n_features, e, r, s_cap_e_3, s_cap_r_3, 3, IT, max_order);
+                }
+                else
+                {
+                    w3 = table_s3[s_cap_e_3 * table_stride * table_stride + e * table_stride + r];
+                }
+                local_result[index3(fi, fj, fk, n_features)] += scaled_val * w3;
+            }
+        }
+    }
+}
+
+// Cohort DFS over one tree, accumulating into local_result.
+// ref_order is a scratch permutation of [0, n_ref); slices are partitioned in
+// place. This is safe because a split hands the SAME slice to both divergence
+// branches: LIFO order fully explores one branch (which only permutes members
+// within the slice) before the other starts, and set membership is preserved.
+template <IndexType IT>
+static void cohort_process_tree(
+    Tree &tree,
+    const double *__restrict__ reference_data,
+    const double *__restrict__ explain_data,
+    int n_ref,
+    int n_features,
+    double inv_scaling,
+    const double *__restrict__ table_s1,
+    const double *__restrict__ table_s2,
+    const double *__restrict__ table_s3,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    std::vector<int> &ref_order,       // scratch, size n_ref
+    std::vector<int32_t> &leaf_feats,  // scratch, size >= max depth
+    std::vector<int32_t> &leaf_fie,    // scratch, size >= max depth
+    std::vector<CohortFrame> &stack,   // scratch
+    double *__restrict__ local_result)
+{
+    for (int i = 0; i < n_ref; i++)
+        ref_order[i] = i;
+
+    BitSet empty_set(n_features);
+    stack.clear();
+    stack.push_back(CohortFrame(0, empty_set, empty_set, 0, n_ref));
+
+    while (!stack.empty())
+    {
+        CohortFrame frame = std::move(stack.back());
+        stack.pop_back();
+        const int64_t node_id = frame.node_id;
+
+        bool is_leaf = (tree.children_left[node_id] == tree.children_right[node_id]);
+        if (is_leaf)
+        {
+            const int cohort_size = frame.end - frame.begin;
+            const int e = (int)frame.E.num_bits();
+            const int r = (int)frame.R.num_bits();
+            if (e + r == 0)
+                continue; // no constrained features -> no rows (baseline-only leaf)
+
+            int n_leaf_feats = 0;
+            frame.E.for_each_set_bit([&](uint64_t feat)
+            {
+                leaf_feats[n_leaf_feats] = (int32_t)feat;
+                leaf_fie[n_leaf_feats] = 1;
+                n_leaf_feats++;
+            });
+            frame.R.for_each_set_bit([&](uint64_t feat)
+            {
+                leaf_feats[n_leaf_feats] = (int32_t)feat;
+                leaf_fie[n_leaf_feats] = 0;
+                n_leaf_feats++;
+            });
+
+            const double scaled_val = tree.leaf_predictions[node_id] * (double)cohort_size * inv_scaling;
+            cohort_leaf_update<IT>(
+                leaf_feats.data(), leaf_fie.data(), n_leaf_feats, e, r, scaled_val,
+                n_features, table_s1, table_s2, table_s3, table_stride,
+                weight_cache, max_order, local_result);
+            continue;
+        }
+
+        const int64_t feature = tree.features[node_id];
+        const bool explain_left = tree.goes_left(explain_data[feature], node_id);
+        const int64_t child_explain = explain_left ? tree.children_left[node_id] : tree.children_right[node_id];
+        const int64_t child_other = explain_left ? tree.children_right[node_id] : tree.children_left[node_id];
+
+        // Partition the cohort: [begin, mid) routes like the explain point, [mid, end) diverges.
+        const double *ref_col = reference_data + feature;
+        int *slice_begin = ref_order.data() + frame.begin;
+        int *slice_end = ref_order.data() + frame.end;
+        int *mid_ptr = std::partition(slice_begin, slice_end, [&](int ref_idx)
+        {
+            return tree.goes_left(ref_col[(int64_t)ref_idx * n_features], node_id) == explain_left;
+        });
+        const int mid = frame.begin + (int)(mid_ptr - slice_begin);
+
+        if (mid > frame.begin) // agreeing cohort: descend with E, R unchanged
+        {
+            stack.push_back(CohortFrame(child_explain, frame.E, frame.R, frame.begin, mid));
+        }
+        if (mid < frame.end) // diverging cohort: same two branches as the per-reference DFS
+        {
+            if (!frame.R.contains(feature)) // feature is not fixed by the reference point
+            {
+                BitSet next_E = frame.E;
+                next_E.add(feature);
+                stack.push_back(CohortFrame(child_explain, next_E, frame.R, mid, frame.end));
+            }
+            if (!frame.E.contains(feature)) // feature is not fixed by the explain point
+            {
+                BitSet next_R = frame.R;
+                next_R.add(feature);
+                stack.push_back(CohortFrame(child_other, frame.E, next_R, mid, frame.end));
+            }
+        }
+    }
+}
+
+// Dense result buffer -> {tuple: value} dict, skipping zeros.
+// Same layout as compute_interactions_flatten's output conversion.
+static PyObject *cohort_result_to_dict(const double *result, int n_features, int max_order)
+{
+    PyObject *output = PyDict_New();
+    if (!output)
+        return NULL;
+    for (int i = 0; i < n_features; i++)
+    {
+        if (result[i] == 0.0) continue;
+        PyObject *key = PyTuple_New(1);
+        PyTuple_SET_ITEM(key, 0, PyLong_FromLong(i));
+        PyObject *value = PyFloat_FromDouble(result[i]);
+        PyDict_SetItem(output, key, value);
+        Py_DECREF(key);
+        Py_DECREF(value);
+    }
+    if (max_order >= 2)
+    {
+        int pair_offset = 0;
+        for (int pi = 0; pi < n_features; pi++)
+        {
+            for (int pj = pi + 1; pj < n_features; pj++)
+            {
+                double v = result[n_features + pair_offset++];
+                if (v == 0.0) continue;
+                PyObject *key = PyTuple_New(2);
+                PyTuple_SET_ITEM(key, 0, PyLong_FromLong(pi));
+                PyTuple_SET_ITEM(key, 1, PyLong_FromLong(pj));
+                PyObject *value = PyFloat_FromDouble(v);
+                PyDict_SetItem(output, key, value);
+                Py_DECREF(key);
+                Py_DECREF(value);
+            }
+        }
+    }
+    if (max_order >= 3)
+    {
+        int base3 = n_features + n_features * (n_features - 1) / 2;
+        int offset3 = 0;
+        for (int kk = 2; kk < n_features; kk++)
+        {
+            for (int jj = 1; jj < kk; jj++)
+            {
+                for (int ii = 0; ii < jj; ii++)
+                {
+                    double v = result[base3 + offset3++];
+                    if (v == 0.0) continue;
+                    PyObject *key = PyTuple_New(3);
+                    PyTuple_SET_ITEM(key, 0, PyLong_FromLong(ii));
+                    PyTuple_SET_ITEM(key, 1, PyLong_FromLong(jj));
+                    PyTuple_SET_ITEM(key, 2, PyLong_FromLong(kk));
+                    PyObject *value = PyFloat_FromDouble(v);
+                    PyDict_SetItem(output, key, value);
+                    Py_DECREF(key);
+                    Py_DECREF(value);
+                }
+            }
+        }
+    }
+    return output;
+}
+
+static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args)
+{
+    PyObject *values_list_obj;
+    PyObject *thresholds_list_obj;
+    PyObject *features_list_obj;
+    PyObject *children_left_list_obj;
+    PyObject *children_right_list_obj;
+    PyObject *children_missing_list_obj;
+    PyObject *reference_data_obj;
+    PyObject *explain_point_obj;
+    const char *decision_type_cptr;
+    const char *index_cptr;
+    int max_order;
+    int verbose;
+    // Optional custom weight table and categorical split CSR lists (None when unused)
+    PyObject *weight_table_obj = Py_None;
+    PyObject *cat_values_obj = Py_None;
+    PyObject *cat_start_obj = Py_None;
+    PyObject *cat_size_obj = Py_None;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOOOssii|OOOO",
+                          &values_list_obj, &thresholds_list_obj, &features_list_obj,
+                          &children_left_list_obj, &children_right_list_obj,
+                          &children_missing_list_obj,
+                          &reference_data_obj, &explain_point_obj,
+                          &decision_type_cptr, &index_cptr,
+                          &max_order, &verbose,
+                          &weight_table_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj))
+    {
+        return NULL;
+    }
+
+    if (max_order < 1 || max_order > 3)
+    {
+        PyErr_SetString(PyExc_ValueError, "compute_interactions_cohort only supports 1 <= max_order <= 3");
+        return NULL;
+    }
+
+    const bool use_categorical = (cat_values_obj != Py_None);
+    if (!PyList_Check(values_list_obj) || !PyList_Check(thresholds_list_obj) ||
+        !PyList_Check(features_list_obj) || !PyList_Check(children_left_list_obj) ||
+        !PyList_Check(children_right_list_obj) || !PyList_Check(children_missing_list_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "All tree inputs must be lists of numpy arrays");
+        return NULL;
+    }
+    if (use_categorical && (!PyList_Check(cat_values_obj) || !PyList_Check(cat_start_obj) || !PyList_Check(cat_size_obj)))
+    {
+        PyErr_SetString(PyExc_TypeError, "cat_values, cat_start, and cat_size must be lists of numpy arrays (or None)");
+        return NULL;
+    }
+
+    Py_ssize_t num_trees = PyList_Size(values_list_obj);
+    if (num_trees != PyList_Size(thresholds_list_obj) ||
+        num_trees != PyList_Size(features_list_obj) ||
+        num_trees != PyList_Size(children_left_list_obj) ||
+        num_trees != PyList_Size(children_right_list_obj) ||
+        num_trees != PyList_Size(children_missing_list_obj) ||
+        (use_categorical && (num_trees != PyList_Size(cat_values_obj) ||
+                             num_trees != PyList_Size(cat_start_obj) ||
+                             num_trees != PyList_Size(cat_size_obj))))
+    {
+        PyErr_SetString(PyExc_ValueError, "All tree lists must have the same length");
+        return NULL;
+    }
+    if (num_trees == 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Input lists of numpy arrays must not be empty");
+        return NULL;
+    }
+
+    IndexType index_type;
+    if (!parse_index_type(std::string(index_cptr), index_type))
+    {
+        PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + std::string(index_cptr)).c_str());
+        return NULL;
+    }
+
+    // Every converted array is tracked here; the Tree structs hold raw pointers
+    // into them, so they are released only after the DFS is done.
+    std::vector<PyArrayObject *> arrays_for_decref;
+    auto cleanup_arrays = [&arrays_for_decref]()
+    {
+        for (PyArrayObject *arr : arrays_for_decref)
+            Py_XDECREF(arr);
+    };
+    auto convert_item = [&arrays_for_decref](PyObject *list_obj, Py_ssize_t idx, int np_type) -> PyArrayObject *
+    {
+        PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(list_obj, idx), np_type, NPY_ARRAY_IN_ARRAY);
+        if (arr)
+            arrays_for_decref.push_back(arr);
+        return arr;
+    };
+
+    PyArrayObject *reference_data_array = (PyArrayObject *)PyArray_FROM_OTF(reference_data_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+    if (reference_data_array)
+        arrays_for_decref.push_back(reference_data_array);
+    PyArrayObject *explain_point_array = (PyArrayObject *)PyArray_FROM_OTF(explain_point_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+    if (explain_point_array)
+        arrays_for_decref.push_back(explain_point_array);
+    if (!reference_data_array || !explain_point_array || PyArray_NDIM(reference_data_array) != 2)
+    {
+        cleanup_arrays();
+        PyErr_SetString(PyExc_TypeError, "reference_data must be a 2-D float64 numpy array and explain_point a float64 numpy array");
+        return NULL;
+    }
+
+    const double *reference_data = (const double *)PyArray_DATA(reference_data_array);
+    const double *explain_data = (const double *)PyArray_DATA(explain_point_array);
+    const int n_ref = (int)PyArray_DIM(reference_data_array, 0);
+    const int n_features = (int)PyArray_DIM(reference_data_array, 1);
+
+    std::vector<Tree> trees;
+    trees.reserve(static_cast<size_t>(num_trees));
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        PyArrayObject *vals_arr = convert_item(values_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *thr_arr = convert_item(thresholds_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *feat_arr = convert_item(features_list_obj, t, NPY_INT64);
+        PyArrayObject *cl_arr = convert_item(children_left_list_obj, t, NPY_INT64);
+        PyArrayObject *cr_arr = convert_item(children_right_list_obj, t, NPY_INT64);
+        PyArrayObject *cm_arr = convert_item(children_missing_list_obj, t, NPY_BOOL);
+        PyArrayObject *cat_values_arr = NULL, *cat_start_arr = NULL, *cat_size_arr = NULL;
+        if (use_categorical)
+        {
+            cat_values_arr = convert_item(cat_values_obj, t, NPY_INT64);
+            cat_start_arr = convert_item(cat_start_obj, t, NPY_INT64);
+            cat_size_arr = convert_item(cat_size_obj, t, NPY_INT64);
+        }
+        if (!vals_arr || !thr_arr || !feat_arr || !cl_arr || !cr_arr || !cm_arr ||
+            (use_categorical && (!cat_values_arr || !cat_start_arr || !cat_size_arr)))
+        {
+            cleanup_arrays();
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tree arrays");
+            return NULL;
+        }
+        trees.push_back(Tree(
+            (double *)PyArray_DATA(vals_arr),
+            (double *)PyArray_DATA(thr_arr),
+            (int64_t *)PyArray_DATA(feat_arr),
+            (int64_t *)PyArray_DATA(cl_arr),
+            (int64_t *)PyArray_DATA(cr_arr),
+            (bool *)PyArray_DATA(cm_arr),
+            std::string(decision_type_cptr),
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_values_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_start_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_size_arr) : nullptr));
+    }
+
+    // Extract custom weight table pointer if provided
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    if (weight_table_obj != Py_None)
+    {
+        PyArrayObject *weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            cleanup_arrays();
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        arrays_for_decref.push_back(weight_table_array);
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+
+    int result_size = 0;
+    for (int order = 1; order <= max_order; order++)
+    {
+        result_size += static_cast<int>(inter_weights::binom(n_features, order));
+    }
+    double *result = new double[result_size]();
+
+    Py_BEGIN_ALLOW_THREADS
+
+    // |E| + |R| never exceeds the longest root-to-leaf path, so the weight tables
+    // only need that stride (mirrors the max_e/max_r scan in the flatten kernel).
+    int max_depth = 0;
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        max_depth = std::max(max_depth, cohort_max_depth(trees[t]));
+    }
+    max_depth = std::min(max_depth, n_features); // |E|, |R| are feature sets, so also bounded by n_features
+    const int table_stride = max_depth + 1;
+
+    double *table_s1 = nullptr;
+    double *table_s2 = nullptr;
+    double *table_s3 = nullptr;
+    if (index_type != IndexType::CUSTOM)
+    {
+        table_s1 = new double[2 * table_stride * table_stride];
+        if (max_order >= 2)
+            table_s2 = new double[3 * table_stride * table_stride];
+        if (max_order >= 3)
+            table_s3 = new double[4 * table_stride * table_stride];
+        precompute_weight_tables(index_type, n_features, max_order, table_s1, table_s2, table_s3, table_stride);
+    }
+
+    const double inv_scaling = (n_ref > 0) ? 1.0 / (double)n_ref : 0.0;
+
+#pragma omp parallel
+    {
+        double *local_result = new double[result_size]();
+        inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+                                                      ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+                                                      : inter_weights::WeightCache((uint64_t)(3 * n_features));
+        std::vector<int> ref_order(n_ref);
+        std::vector<int32_t> leaf_feats(max_depth + 1);
+        std::vector<int32_t> leaf_fie(max_depth + 1);
+        std::vector<CohortFrame> stack;
+        stack.reserve(256);
+
+#pragma omp for schedule(dynamic, 1) nowait
+        for (Py_ssize_t t = 0; t < num_trees; t++)
+        {
+            DISPATCH_INDEX_TYPE(cohort_process_tree, index_type,
+                trees[t], reference_data, explain_data, n_ref, n_features,
+                inv_scaling, table_s1, table_s2, table_s3, table_stride,
+                weight_cache, max_order,
+                ref_order, leaf_feats, leaf_fie, stack, local_result);
+        }
+
+#pragma omp critical
+        {
+            for (int k = 0; k < result_size; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+
+    delete[] table_s1;
+    delete[] table_s2;
+    delete[] table_s3;
+
+    Py_END_ALLOW_THREADS
+
+    cleanup_arrays();
+
+    PyObject *output = cohort_result_to_dict(result, n_features, max_order);
+    delete[] result;
+    return output;
+}
+
+// === predict_ensemble_sum ===
+// C port of shapiq.tree.base.predict_ensemble: route every row of X through
+// every tree (same goes_left semantics as the interaction kernels — NaN routing,
+// categorical splits, decision type) and return the per-row sum of leaf values.
+// Used for the interventional baseline_value, which was a Python while loop
+// over every (row, tree) pair.
+static PyObject *predict_ensemble_sum(PyObject *self, PyObject *args)
+{
+    PyObject *values_list_obj;
+    PyObject *thresholds_list_obj;
+    PyObject *features_list_obj;
+    PyObject *children_left_list_obj;
+    PyObject *children_right_list_obj;
+    PyObject *children_missing_list_obj;
+    PyObject *x_data_obj;
+    const char *decision_type_cptr;
+    PyObject *cat_values_obj = Py_None;
+    PyObject *cat_start_obj = Py_None;
+    PyObject *cat_size_obj = Py_None;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOOs|OOO",
+                          &values_list_obj, &thresholds_list_obj, &features_list_obj,
+                          &children_left_list_obj, &children_right_list_obj,
+                          &children_missing_list_obj,
+                          &x_data_obj, &decision_type_cptr,
+                          &cat_values_obj, &cat_start_obj, &cat_size_obj))
+    {
+        return NULL;
+    }
+
+    const bool use_categorical = (cat_values_obj != Py_None);
+    if (!PyList_Check(values_list_obj) || !PyList_Check(thresholds_list_obj) ||
+        !PyList_Check(features_list_obj) || !PyList_Check(children_left_list_obj) ||
+        !PyList_Check(children_right_list_obj) || !PyList_Check(children_missing_list_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "All tree inputs must be lists of numpy arrays");
+        return NULL;
+    }
+    if (use_categorical && (!PyList_Check(cat_values_obj) || !PyList_Check(cat_start_obj) || !PyList_Check(cat_size_obj)))
+    {
+        PyErr_SetString(PyExc_TypeError, "cat_values, cat_start, and cat_size must be lists of numpy arrays (or None)");
+        return NULL;
+    }
+
+    Py_ssize_t num_trees = PyList_Size(values_list_obj);
+    if (num_trees != PyList_Size(thresholds_list_obj) ||
+        num_trees != PyList_Size(features_list_obj) ||
+        num_trees != PyList_Size(children_left_list_obj) ||
+        num_trees != PyList_Size(children_right_list_obj) ||
+        num_trees != PyList_Size(children_missing_list_obj) ||
+        (use_categorical && (num_trees != PyList_Size(cat_values_obj) ||
+                             num_trees != PyList_Size(cat_start_obj) ||
+                             num_trees != PyList_Size(cat_size_obj))))
+    {
+        PyErr_SetString(PyExc_ValueError, "All tree lists must have the same length");
+        return NULL;
+    }
+
+    std::vector<PyArrayObject *> arrays_for_decref;
+    auto cleanup_arrays = [&arrays_for_decref]()
+    {
+        for (PyArrayObject *arr : arrays_for_decref)
+            Py_XDECREF(arr);
+    };
+    auto convert_item = [&arrays_for_decref](PyObject *list_obj, Py_ssize_t idx, int np_type) -> PyArrayObject *
+    {
+        PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(list_obj, idx), np_type, NPY_ARRAY_IN_ARRAY);
+        if (arr)
+            arrays_for_decref.push_back(arr);
+        return arr;
+    };
+
+    PyArrayObject *x_data_array = (PyArrayObject *)PyArray_FROM_OTF(x_data_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+    if (x_data_array)
+        arrays_for_decref.push_back(x_data_array);
+    if (!x_data_array || PyArray_NDIM(x_data_array) != 2)
+    {
+        cleanup_arrays();
+        PyErr_SetString(PyExc_TypeError, "X must be a 2-D float64 numpy array");
+        return NULL;
+    }
+
+    const double *x_data = (const double *)PyArray_DATA(x_data_array);
+    const npy_intp n_rows = PyArray_DIM(x_data_array, 0);
+    const npy_intp n_features = PyArray_DIM(x_data_array, 1);
+
+    std::vector<Tree> trees;
+    trees.reserve(static_cast<size_t>(num_trees));
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        PyArrayObject *vals_arr = convert_item(values_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *thr_arr = convert_item(thresholds_list_obj, t, NPY_FLOAT64);
+        PyArrayObject *feat_arr = convert_item(features_list_obj, t, NPY_INT64);
+        PyArrayObject *cl_arr = convert_item(children_left_list_obj, t, NPY_INT64);
+        PyArrayObject *cr_arr = convert_item(children_right_list_obj, t, NPY_INT64);
+        PyArrayObject *cm_arr = convert_item(children_missing_list_obj, t, NPY_BOOL);
+        PyArrayObject *cat_values_arr = NULL, *cat_start_arr = NULL, *cat_size_arr = NULL;
+        if (use_categorical)
+        {
+            cat_values_arr = convert_item(cat_values_obj, t, NPY_INT64);
+            cat_start_arr = convert_item(cat_start_obj, t, NPY_INT64);
+            cat_size_arr = convert_item(cat_size_obj, t, NPY_INT64);
+        }
+        if (!vals_arr || !thr_arr || !feat_arr || !cl_arr || !cr_arr || !cm_arr ||
+            (use_categorical && (!cat_values_arr || !cat_start_arr || !cat_size_arr)))
+        {
+            cleanup_arrays();
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tree arrays");
+            return NULL;
+        }
+        trees.push_back(Tree(
+            (double *)PyArray_DATA(vals_arr),
+            (double *)PyArray_DATA(thr_arr),
+            (int64_t *)PyArray_DATA(feat_arr),
+            (int64_t *)PyArray_DATA(cl_arr),
+            (int64_t *)PyArray_DATA(cr_arr),
+            (bool *)PyArray_DATA(cm_arr),
+            std::string(decision_type_cptr),
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_values_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_start_arr) : nullptr,
+            use_categorical ? (const int64_t *)PyArray_DATA(cat_size_arr) : nullptr));
+    }
+
+    npy_intp out_dim = n_rows;
+    PyObject *out_array = PyArray_SimpleNew(1, &out_dim, NPY_FLOAT64);
+    if (!out_array)
+    {
+        cleanup_arrays();
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
+        return NULL;
+    }
+    double *out = (double *)PyArray_DATA((PyArrayObject *)out_array);
+
+    Py_BEGIN_ALLOW_THREADS
+#pragma omp parallel for schedule(static)
+    for (npy_intp i = 0; i < n_rows; i++)
+    {
+        const double *row = x_data + i * n_features;
+        double total = 0.0;
+        for (size_t t = 0; t < trees.size(); t++)
+        {
+            Tree &tree = trees[t];
+            int64_t node = 0;
+            while (tree.children_left[node] != tree.children_right[node])
+            {
+                const int64_t feature = tree.features[node];
+                node = tree.goes_left(row[feature], node)
+                           ? tree.children_left[node]
+                           : tree.children_right[node];
+            }
+            total += tree.leaf_predictions[node];
+        }
+        out[i] = total;
+    }
+    Py_END_ALLOW_THREADS
+
+    cleanup_arrays();
+    return out_array;
 }
