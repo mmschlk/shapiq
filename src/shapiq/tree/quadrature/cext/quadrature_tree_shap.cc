@@ -316,9 +316,12 @@ inline void quadrature_inference(
                         A_row[m] = A_prev[m] * u_new;
                         g_row[m] = (h - c) / u_new;
                     }
-                    ws.path_feats.insert(
-                        std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
-                        feature);
+                    // Only the interaction enumeration reads this; for order 1 the sorted
+                    // insert/erase pair is pure overhead on every first-occurrence edge.
+                    if (ws.max_order > 1)
+                        ws.path_feats.insert(
+                            std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
+                            feature);
                 }
             }
             int left = tree.children_left[node];
@@ -352,7 +355,7 @@ inline void quadrature_inference(
                         for (int m = 0; m < n_quad; ++m)
                             g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
                     }
-                    else
+                    else if (ws.max_order > 1)
                     {
                         ws.path_feats.erase(
                             std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -382,7 +385,7 @@ inline void quadrature_inference(
                 for (int m = 0; m < n_quad; ++m)
                     g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
             }
-            else
+            else if (ws.max_order > 1)
             {
                 ws.path_feats.erase(
                     std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
