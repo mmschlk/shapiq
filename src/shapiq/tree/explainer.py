@@ -33,6 +33,12 @@ TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII"
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
 
+_WOODELF_INTERVENTIONAL_CUTOFF = 100_000
+"""Interventional inputs with ``n_explained * n_reference`` at or above this route to Woodelf.
+
+See :meth:`TreeExplainer._should_use_woodelf` for the measurements behind the value.
+"""
+
 
 class WoodelfNotAvailableWarning(UserWarning):
     """The explanation would be computed faster with the optional woodelf dependency.
@@ -302,12 +308,22 @@ class TreeExplainer(Explainer):
         """Decide whether Woodelf or the shapiq implementation computes the explanation.
 
         Path-dependent explanations are computed by the shapiq quadrature kernel (unless
-        ``backend="woodelf"`` forces Woodelf). In
-        interventional mode the cut-off is ``n * m >= 100``, where ``n`` is the number of
-        explained instances and ``m`` is the size of the reference dataset, based on the
-        experiment summarized in the report below:
+        ``backend="woodelf"`` forces Woodelf). In interventional mode the cut-off is
+        ``n * m >= 100_000`` (:data:`_WOODELF_INTERVENTIONAL_CUTOFF`), where ``n`` is the
+        number of explained instances and ``m`` is the size of the reference dataset.
 
-        https://ron-wettenstein.github.io/TreeBranchMarks/benchmarks/reports/woodelf_vs_shapiq_experiment.html
+        The value was re-measured after the C++ cohort kernel sped
+        :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ` up by ~2
+        orders of magnitude (the previous cut-off of ``100`` predates that). End-to-end
+        timings (explainer construction + ``explain_X``) of both backends over sklearn
+        random forests and XGBoost ensembles (50-300 trees, depth 3-8, 10-50 features,
+        400-25k leaves) for ``"SV"`` and order-2 ``"k-SII"`` put the break-even between
+        ``n * m ~= 1e4`` (small ensembles, where Woodelf's fixed per-tree preprocessing
+        cost is also tiny) and ``n * m ~= 1e6`` (large forests). The penalty is
+        asymmetric: below the break-even, Woodelf's fixed preprocessing cost makes it up
+        to hundreds of times slower, while above it shapiq's per-instance loop trails by
+        a low single-digit factor near the boundary; ``1e5`` balances the worst-case
+        absolute losses across the measured model shapes and ``n``/``m`` splits.
 
         This function should change when new capabilities are developed in Woodelf.
 
@@ -329,7 +345,8 @@ class TreeExplainer(Explainer):
 
         if (
             self._reference_dataset is not None
-            and len(self._reference_dataset) * number_of_explained_instances >= 100
+            and len(self._reference_dataset) * number_of_explained_instances
+            >= _WOODELF_INTERVENTIONAL_CUTOFF
         ):
             return self._woodelf_available()
         return False

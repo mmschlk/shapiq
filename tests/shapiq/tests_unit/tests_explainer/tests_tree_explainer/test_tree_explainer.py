@@ -659,7 +659,7 @@ def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_da
     assert wrapper.baseline_value == pytest.approx(direct.baseline_value)
 
 
-def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
+def test_baseline_value_per_mode(rf_reg_model, background_reg_data, monkeypatch):
     """``baseline_value`` is the empty prediction of the mode the explainer runs in.
 
     Path-dependent: the sum of the per-tree (coverage-weighted) empty predictions.
@@ -668,7 +668,9 @@ def test_baseline_value_per_mode(rf_reg_model, background_reg_data):
     """
     from shapiq.tree import InterventionalTreeSHAPIQ
 
-    reference = background_reg_data  # 100 rows: 100 * 1 >= 100 routes even explain() to Woodelf
+    # lower the cut-off so the 100-row reference routes even explain() to Woodelf
+    monkeypatch.setattr("shapiq.tree.explainer._WOODELF_INTERVENTIONAL_CUTOFF", 100)
+    reference = background_reg_data  # 100 rows: 100 * 1 >= 100 crosses the patched cut-off
     x_explain = background_reg_data[0]
 
     pathdependent = TreeExplainer(model=rf_reg_model, max_order=1, index="SV")
@@ -712,7 +714,8 @@ def test_woodelf_fallback_warns_without_woodelf(rf_reg_model, background_reg_dat
 
     monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
 
-    # 100 background rows cross the interventional Woodelf cut-off, so this would route there
+    # 100 background rows cross the (patched) interventional cut-off, so this would route there
+    monkeypatch.setattr("shapiq.tree.explainer._WOODELF_INTERVENTIONAL_CUTOFF", 100)
     explainer = TreeExplainer(
         model=rf_reg_model,
         mode="interventional",
@@ -759,10 +762,11 @@ def test_explain_X_pathdependent_without_woodelf(dt_reg_model, background_reg_da
             assert batch[row][interaction] == pytest.approx(single[interaction], abs=1e-12)
 
 
-def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
+def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data, monkeypatch):
     """``backend='shapiq'`` never routes to Woodelf, even past the cut-offs, and never warns."""
     import warnings
 
+    monkeypatch.setattr("shapiq.tree.explainer._WOODELF_INTERVENTIONAL_CUTOFF", 100)
     reference = background_reg_data[:10]
     x_explain = background_reg_data[0]
 
@@ -775,7 +779,7 @@ def test_backend_shapiq_forces_shapiq(rf_reg_model, background_reg_data):
         index="SV",
         backend="shapiq",
     )
-    assert not explainer._should_use_woodelf(20)  # 10 * 20 >= 100 would cross the cut-off
+    assert not explainer._should_use_woodelf(20)  # 10 * 20 crosses the patched cut-off
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # forcing shapiq is a choice, not something to warn about
         explanation = explainer.explain(x_explain)
@@ -880,16 +884,19 @@ def test_backend_validation_raises(dt_reg_model, background_reg_data, monkeypatc
     assert banzhaf.explain(background_reg_data[0]).index == "BV"
 
 
-def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, background_reg_data):
+def test_woodelf_interventional_matches_direct_explainer(
+    rf_reg_model, background_reg_data, monkeypatch
+):
     """Background SHAP over 20 rows x 10 background rows routes through Woodelf.
 
-    ``10 * 20 >= 100`` crosses the interventional Woodelf cut-off, so ``explain_X`` no longer
+    ``10 * 20 >= 100`` crosses the patched interventional cut-off, so ``explain_X`` no longer
     runs the shapiq kernel. The per-feature values must still match the direct
     :class:`InterventionalTreeSHAPIQ`.
     """
     from shapiq.tree import InterventionalTreeSHAPIQ
 
     pytest.importorskip("woodelf")
+    monkeypatch.setattr("shapiq.tree.explainer._WOODELF_INTERVENTIONAL_CUTOFF", 100)
     reference = background_reg_data[:10]
     x_explain = background_reg_data[10:30]
     n_features = background_reg_data.shape[1]
@@ -915,17 +922,18 @@ def test_woodelf_interventional_matches_direct_explainer(rf_reg_model, backgroun
             assert woodelf_value == pytest.approx(direct_iv[(feature,)], abs=1e-5)
 
 
-def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg_data):
+def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg_data, monkeypatch):
     """``explain_X`` returns a lazy sequence of ``InteractionValues`` (the base contract).
 
-    ``10 * 20 >= 100`` crosses the interventional cut-off, so the batch is computed by Woodelf —
-    but the result must still behave like one :class:`InteractionValues` per instance, matching
-    the per-instance ``explain`` (which stays under the cut-off and runs the shapiq kernel),
-    while exposing the raw vectorized arrays via ``.values``.
+    ``10 * 20 >= 100`` crosses the patched interventional cut-off, so the batch is computed by
+    Woodelf — but the result must still behave like one :class:`InteractionValues` per instance,
+    matching the per-instance ``explain`` (which stays under the cut-off and runs the shapiq
+    kernel), while exposing the raw vectorized arrays via ``.values``.
     """
     pytest.importorskip("woodelf")
     from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 
+    monkeypatch.setattr("shapiq.tree.explainer._WOODELF_INTERVENTIONAL_CUTOFF", 100)
     reference = background_reg_data[:10]
     X_explain = background_reg_data[10:30]
 
