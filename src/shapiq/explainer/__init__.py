@@ -22,6 +22,7 @@ from .nn.threshold_nn import ThresholdNNExplainer
 from .nn.weighted_knn import WeightedKNNExplainer
 from .tabpfn import TabPFNExplainer
 from .tabular import TabularExplainer
+from .vision import VisionLanguageExplainer
 
 __all__ = [
     "Explainer",
@@ -29,6 +30,7 @@ __all__ = [
     "TabPFNExplainer",
     "AgnosticExplainer",
     "TreeExplainer",
+    "VisionLanguageExplainer",
     "KNNExplainer",
     "WeightedKNNExplainer",
     "ThresholdNNExplainer",

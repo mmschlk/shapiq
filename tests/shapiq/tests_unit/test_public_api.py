@@ -78,7 +78,7 @@ def test_all_concrete_subclasses_in_all(module_path: str, base_path: str, label:
     exported = set(module.__all__)
     missing = concrete - exported
 
-    pkg_init = f"src/shapiq/{module_path.split('.')[-1]}/__init__.py"
+    pkg_init = f"src/shapiq/{module_path.rsplit('.', maxsplit=1)[-1]}/__init__.py"
     assert not missing, (
         f"Concrete {label} subclasses not listed in {module_path}.__all__: "
         f"{missing}. Add them to {pkg_init}."
