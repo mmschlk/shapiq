@@ -2,7 +2,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // MSVC uses __restrict instead of __restrict__
@@ -87,6 +89,13 @@ struct QuadWorkspace
     std::vector<int> candidates;
     std::vector<int> chosen;
     std::vector<int64_t> cursor;  // per order: table position of the last emitted subset
+    // Integer-key view of the subset tables: (a, b, c) -> (a * n_feats + b) * n_feats + c.
+    // Only rows of the same order are ever compared, and this is monotone in the row's
+    // lexicographic order, so the search is unchanged -- each comparison is just one int64
+    // compare instead of an `order`-long loop.
+    // Per order, a map from row key to the row's index in that order's table.
+    std::vector<std::unordered_map<int64_t, int32_t>> row_index;
+    bool keys_ok = false;             // false when n_feats^max_order overflows int64
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
                   const int32_t *subset_keys_, const int64_t *subset_starts_,
@@ -105,6 +114,43 @@ struct QuadWorkspace
         chosen.resize(static_cast<size_t>(std::max(max_order, 1)));
         cursor.assign(static_cast<size_t>(max_order) + 1, 0);
         stack.reserve(static_cast<size_t>(tree.max_depth) * 5 + 10);
+        build_row_keys();
+    }
+
+    // Encode every subset table row as one int64. Left disabled (keys_ok false, so the
+    // tuple-comparison path is used) when n_feats^max_order does not fit in an int64.
+    void build_row_keys()
+    {
+        constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+        if (max_order < 2 || n_feats <= 0)
+            return;
+        int64_t cap = 1;
+        for (int i = 0; i < max_order; ++i)
+        {
+            if (cap > kMax / n_feats)
+                return;
+            cap *= n_feats;
+        }
+        row_index.resize(static_cast<size_t>(max_order) + 1);
+        for (int s = 2; s <= max_order; ++s)
+        {
+            row_index[s].reserve(static_cast<size_t>(subset_counts[s]));
+            const int32_t *row = subset_keys + subset_starts[s];
+            for (int64_t r = 0; r < subset_counts[s]; ++r)
+            {
+                row_index[s][row_key(row, s)] = static_cast<int32_t>(r);
+                row += s; // Move the pointer to the next row in the subset_keys array
+            }
+        }
+        keys_ok = true;
+    }
+
+    int64_t row_key(const int32_t *row, int s) const
+    {
+        int64_t key = 0;
+        for (int i = 0; i < s; ++i)
+            key = key * n_feats + row[i];
+        return key;
     }
 
     // Lexicographic compare of a table row against the merged tuple (both length s).
@@ -124,6 +170,38 @@ struct QuadWorkspace
     // Within one edge extraction the emitted tuples are strictly increasing per order, so the
     // search gallops forward from the per-order cursor instead of bisecting the whole table.
     int64_t merged_position(const int *chosen, int size, int feature)
+    {
+        if (!keys_ok)
+            return merged_position_tuple(chosen, size, feature);
+        const int s = size + 1;
+        // Key of the merged tuple, with the pivot spliced in -- no tuple is materialized.
+        // A fixed `s` iterations rather than two data-dependent loops: the trip count is
+        // then predictable, where the first loop's exit point varies with every call.
+        int64_t merged_key = 0;
+        int taken = 0;
+        bool placed = false;
+        for (int i = 0; i < s; i++)
+        {
+            int current_feature;
+            if (!placed && (taken == size || chosen[taken] > feature))
+            {
+                current_feature = feature;
+                placed = true;
+            }
+            else
+            {
+                current_feature = chosen[taken];
+                taken++;
+            }
+            merged_key = merged_key * n_feats + current_feature;
+        }
+
+        // The merged tuple always lies on the current path, so the key is always present.
+        return row_index[s].find(merged_key)->second;
+    }
+
+    // Original tuple-comparison search; used when the int64 encoding would overflow.
+    int64_t merged_position_tuple(const int *chosen, int size, int feature)
     {
         merged_scratch.resize(static_cast<size_t>(size) + 1);
         int *merged = merged_scratch.data();
@@ -316,9 +394,12 @@ inline void quadrature_inference(
                         A_row[m] = A_prev[m] * u_new;
                         g_row[m] = (h - c) / u_new;
                     }
-                    ws.path_feats.insert(
-                        std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
-                        feature);
+                    // Only the interaction enumeration reads this; for order 1 the sorted
+                    // insert/erase pair is pure overhead on every first-occurrence edge.
+                    if (ws.max_order > 1)
+                        ws.path_feats.insert(
+                            std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
+                            feature);
                 }
             }
             int left = tree.children_left[node];
@@ -352,7 +433,7 @@ inline void quadrature_inference(
                         for (int m = 0; m < n_quad; ++m)
                             g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
                     }
-                    else
+                    else if (ws.max_order > 1)
                     {
                         ws.path_feats.erase(
                             std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -382,7 +463,7 @@ inline void quadrature_inference(
                 for (int m = 0; m < n_quad; ++m)
                     g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
             }
-            else
+            else if (ws.max_order > 1)
             {
                 ws.path_feats.erase(
                     std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
