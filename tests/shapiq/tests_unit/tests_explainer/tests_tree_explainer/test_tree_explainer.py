@@ -985,8 +985,8 @@ def deep_dt_reg_model(background_reg_dataset):
 
 _WOODELF_INTERVENTIONAL_INDICES = ["SII", "BII", "STII", "FSII", "FBII"]
 # As the shapiq backend does not support path-dependent STII, FSII and FBII,
-# only SII and BII are tested for path-dependent mode.
-_WOODELF_PATHDEPENDENT_INDICES = ["SII", "BII"]
+# only SII, BII and Moebius are tested for path-dependent mode.
+_WOODELF_PATHDEPENDENT_INDICES = ["SII", "BII", "Moebius"]
 
 
 def _assert_woodelf_matches_shapiq(
@@ -1009,8 +1009,9 @@ def _assert_woodelf_matches_shapiq(
     assert {len(interaction) for interaction in interactions} == set(range(max_order + 1))
     for interaction in interactions:
         if interaction:  # skip the empty interaction, checked against the baseline above
+            # Woodelf accumulates in float32, so large values need the relative bound
             assert explanation[interaction] == pytest.approx(
-                reference_explanation[interaction], abs=1e-5
+                reference_explanation[interaction], abs=1e-5, rel=1e-6
             )
 
 

@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from shapiq.tree.base import DecisionType, TreeModel
     from shapiq.typing import Model
 
-QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
+QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "Moebius"]
 
 
 def _collect_cooccurring_subsets(
@@ -98,7 +98,7 @@ class QuadratureTreeSHAP:
     which is numerically exact in float64 for any tree depth and any number of distinct
     features per decision path. Banzhaf indices (``"BV"``/``"BII"``) are obtained from the
     same computation by evaluating the polynomial at participation probability ``1/2``
-    instead of integrating.
+    instead of integrating, and ``"Moebius"`` by evaluating it at ``0``.
 
     The returned :class:`~shapiq.interaction_values.InteractionValues` enumerates exactly the
     interactions whose features co-occur on at least one decision path — every other
@@ -134,8 +134,8 @@ class QuadratureTreeSHAP:
                 to ``1``.
 
             index: The interaction index to compute. ``"SV"``, ``"SII"``, and ``"k-SII"`` are
-                computed from the SII base; ``"BV"`` and ``"BII"`` from the Banzhaf base.
-                Defaults to ``"SV"``.
+                computed from the SII base; ``"BV"`` and ``"BII"`` from the Banzhaf base;
+                ``"Moebius"`` returns the Moebius coefficients. Defaults to ``"SV"``.
 
             class_index: The class index for classification models. Defaults to ``None``.
 
@@ -145,8 +145,8 @@ class QuadratureTreeSHAP:
                 (the rule of Wettenstein et al.) is only useful on trees with more than ~16
                 features per path — below that the default already uses fewer points — where it
                 measured 13-35% faster with deviations from the exact result within ``2e-14``
-                up to ``d = 100``. Ignored for Banzhaf indices, which need a single evaluation
-                point.
+                up to ``d = 100``. Ignored for the Banzhaf indices and the Moebius transform,
+                which need a single evaluation point.
 
         Raises:
             ValueError: If the index or the interaction orders are invalid.
@@ -321,13 +321,14 @@ class QuadratureTreeSHAP:
         self._arrays = {key: np.concatenate(arrs) for key, arrs in parts.items()}
         self._decision_type: DecisionType = self._trees[0].decision_type
 
-        # quadrature rule: exact for the degree-(d - order) integrands; Banzhaf indices are a
-        # single evaluation of the weighted Banzhaf polynomial at p = 1/2
+        # quadrature rule: exact for the degree-(d - order) integrands. Banzhaf indices and the
+        # Moebius transform are single evaluations of the weighted Banzhaf polynomial, at
+        # p = 1/2 and p = 0 respectively.
         if n_quadrature_points is not None and n_quadrature_points < 1:
             msg = f"n_quadrature_points={n_quadrature_points} must be a positive integer."
             raise ValueError(msg)
-        if self._base_index == "BII":
-            self._t = np.array([0.5])
+        if self._base_index in ("BII", "Moebius"):
+            self._t = np.array([0.5 if self._base_index == "BII" else 0.0])
             self._w = np.array([1.0])
         else:
             n_points = n_quadrature_points
