@@ -984,6 +984,8 @@ def deep_dt_reg_model(background_reg_dataset):
 
 
 _WOODELF_INTERVENTIONAL_INDICES = ["SII", "BII", "STII", "FSII", "FBII"]
+# As shapiq backend does not support path-dependent STII, FSII, FBII, 
+# only SII and BII are tested for path-dependent mode.
 _WOODELF_PATHDEPENDENT_INDICES = ["SII", "BII"]
 
 
