@@ -69,7 +69,7 @@ STYLE = {
 # they stay legible where they cross an older one -- the halo is a path effect on the real line
 # rather than a second wider line underneath, which keeps dashes, markers and z-order honest.
 NEW = {"quadrature", "woodelf", "shapiq"}
-LW_NEW, LW_OLD, HALO = 2.9, 1.8, 2.6
+LW_NEW, LW_OLD, HALO = 2.4, 1.8, 2.2
 
 
 def series(method: str, order: int) -> tuple[dict, dict, str, str]:
@@ -266,6 +266,8 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
     is faded. That is what goes here, and nothing else. It sits below the axes -- placed inside
     them it lands on exactly the curves it is there to explain.
     """
+    if not entries:
+        return
     ax.legend(
         handles=entries,
         loc="upper left",
@@ -281,16 +283,25 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
     )
 
 
+# Colour carries the release, so it is the first thing the key explains. Each swatch is drawn
+# at its group's own width, which is what makes the v1.7.0 curves stand out on the panel -- so
+# the key shows that difference instead of spending a row spelling it out.
+COLOUR_KEYS = (
+    Line2D([], [], color=QUAD, linewidth=LW_NEW, label=f"shapiq {V_NEW}"),
+    Line2D([], [], color=POLY, linewidth=LW_OLD, label=f"shapiq {V_OLD}"),
+    Line2D([], [], color=SHAP, linewidth=LW_OLD, label="shap"),
+)
 ORDER_KEYS = (
     key_line(
-        linestyle="-", linewidth=1.9, marker="o", markersize=4, label="order 1 (Shapley values)"
+        linestyle="-", linewidth=1.6, marker="o", markersize=4, label="order 1 (Shapley values)"
     ),
-    key_line(linestyle=DASH, linewidth=1.9, marker="s", markersize=3.5, label="order 2 (k-SII)"),
-)
-NEW_KEY = key_line(
-    linewidth=LW_NEW,
-    path_effects=[pe.Stroke(linewidth=LW_NEW + HALO, foreground=GRID), pe.Normal()],
-    label=f"new in shapiq {V_NEW}",
+    key_line(
+        linestyle=(0, (4, 1.8)),
+        linewidth=1.6,
+        marker="s",
+        markersize=3.5,
+        label="order 2 (k-SII)",
+    ),
 )
 FADE_KEY = key_line(
     linewidth=1.0,
@@ -299,16 +310,6 @@ FADE_KEY = key_line(
     markersize=3,
     markerfacecolor="none",
     label="fewer than six correct digits left",
-)
-BUDGET_KEY = Line2D(
-    [],
-    [],
-    color=INK_2,
-    linestyle="none",
-    marker="x",
-    markersize=7,
-    markeredgewidth=2,
-    label="over the 20 s budget",
 )
 EXTRAPOLATED_KEY = key_line(linestyle=DOT, linewidth=1.8, label="extrapolated")
 
@@ -412,7 +413,9 @@ def interventional() -> None:
             f"interventional TreeSHAP  ·  background $m$ = {m}",
             f"{meta['model']} on {meta['dataset']}, Shapley values, end-to-end, single thread",
         )
-        encoding_legend(ax, [NEW_KEY, *([EXTRAPOLATED_KEY] if extrapolated else [])])
+        # No colour key here: this panel has no order encoding, and both shapiq curves are
+        # v1.7.0, so colour separates two methods that each line already names.
+        encoding_legend(ax, [EXTRAPOLATED_KEY] if extrapolated else [])
         labels.draw()
         save(fig, f"panel_interventional_m{m}")
         for label, rate in rates.items():
@@ -440,7 +443,7 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
     hairline rather than stopping or being drawn as if it were still a result.
     """
     fig, ax = new_panel()
-    labels, faded, over_budget = EndLabels(ax), False, False
+    labels, faded = EndLabels(ax), False
     depths = sorted({r["depth"] for r in records if r["dataset"] == dataset})
     for method, order in SERIES:
         pts = sorted(
@@ -474,32 +477,14 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
                 markerfacecolor="none",
                 zorder=2,
             )
-        if xs[-1] < depths[-1] and not any(
-            r["dataset"] == dataset
-            and r["method"] == method
-            and r["order"] == order
-            and r["depth"] > xs[-1]
-            and r.get("status") == "refused"
-            for r in records
-        ):
-            over_budget = True
-            ax.plot(
-                xs[-1], ys[-1], marker="x", markersize=7, markeredgewidth=2, color=color, zorder=5
-            )
         labels.add(xs[-1], ys[-1], label, color)
     ax.set_xlabel("tree depth")
     ax.set_xticks(xticks or depths[:: max(1, round(len(depths) / 7))])
     time_axis(ax)
     titles(ax, title, subtitle)
-    encoding_legend(
-        ax,
-        [
-            *ORDER_KEYS,
-            NEW_KEY,
-            *([FADE_KEY] if faded else []),
-            *([BUDGET_KEY] if over_budget else []),
-        ],
-    )
+    # two columns, so the colour keys fill the first and the encoding keys the second --
+    # matplotlib fills column-major, and three columns would split the colours across two
+    encoding_legend(ax, [*COLOUR_KEYS, *ORDER_KEYS, *([FADE_KEY] if faded else [])], ncol=2)
     labels.draw()
     return fig, ax
 
@@ -588,7 +573,7 @@ def synthetic() -> None:
         "|Σ values + baseline − prediction| / |prediction − mean|; exact arithmetic gives 0"
         "\norder 2 tracks order 1 exactly: k-SII is efficient at every order",
     )
-    encoding_legend(ax, [NEW_KEY])
+    encoding_legend(ax, list(COLOUR_KEYS), ncol=3)
     labels.draw()
     save(fig, "panel_synthetic_accuracy")
 
