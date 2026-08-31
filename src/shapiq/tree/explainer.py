@@ -410,12 +410,12 @@ class TreeExplainer(Explainer):
             import pandas as pd
             from woodelf.core.cube_metric import (
                 BanzhafValues,
+                FaithfulBanzhafInteractionValues,
+                FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                ShapleyTaylorInteractionValues,
                 ShapleyValues,
-                FaithfulShapleyInteractionValues,
-                FaithfulBanzhafInteractionValues,
-                ShapleyTaylorInteractionValues
             )
             from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
             from woodelf.woodelf_sparse import hybrid_woodelf
@@ -430,12 +430,12 @@ class TreeExplainer(Explainer):
 
         index_to_metric_class = {
             "SII": GeneralShapleyInteractionValues,
-            "k-SII": GeneralShapleyInteractionValues, # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
+            "k-SII": GeneralShapleyInteractionValues,  # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
             # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
             "BII": GeneralBanzhafInteractionValues,
             "STII": ShapleyTaylorInteractionValues,
             "FSII": FaithfulShapleyInteractionValues,
-            "FBII": FaithfulBanzhafInteractionValues
+            "FBII": FaithfulBanzhafInteractionValues,
         }
         if self._index == "SV":
             metric = ShapleyValues()
