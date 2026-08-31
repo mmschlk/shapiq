@@ -968,40 +968,103 @@ def test_explain_X_returns_interaction_values_batch(rf_reg_model, background_reg
             )
 
 
-def test_woodelf_pathdependent_matches_treeshapiq(dt_reg_model, background_reg_data):
-    """Forced path-dependent Woodelf SII with ``min_order=0``, ``max_order=3`` matches shapiq.
+@pytest.fixture
+def deep_dt_reg_model(background_reg_dataset):
+    """A decision tree deep enough that its Moebius sets exceed ``max_order=3``.
 
-    Orders 1-3 must match :class:`TreeSHAPIQ` run directly per tree, and ``min_order=0``
-    must still put the baseline at the empty interaction.
+    The shared depth-3 fixtures cannot tell the interaction indices apart: when no Moebius set
+    is larger than ``max_order``, STII, FSII and FBII all reduce to the plain Moebius transform
+    and become numerically identical. Depth 6 separates them while staying under the depth-16
+    limit of Woodelf's path-dependent kernel.
     """
-    from shapiq.tree import TreeSHAPIQ
-    from shapiq.tree.validation import validate_tree_model
+    from sklearn.tree import DecisionTreeRegressor
 
-    pytest.importorskip("woodelf")
-    x_explain = background_reg_data[0]
+    X, y = background_reg_dataset
+    return DecisionTreeRegressor(random_state=42, max_depth=6).fit(X, y)
 
-    explainer = TreeExplainer(
-        model=dt_reg_model, max_order=3, min_order=0, index="SII", backend="woodelf"
-    )
-    assert explainer._should_use_woodelf(1)  # guard: Woodelf, not the fallback
-    explanation = explainer.explain(x_explain)
 
-    per_tree = [
-        TreeSHAPIQ(model=tree, max_order=3, index="SII").explain(x_explain)
-        for tree in validate_tree_model(dt_reg_model)
-    ]
-    reference = sum(per_tree[1:], start=per_tree[0])
+_WOODELF_INTERVENTIONAL_INDICES = ["SII", "BII", "STII", "FSII", "FBII"]
+# As the shapiq backend does not support path-dependent STII, FSII and FBII,
+# only SII and BII are tested for path-dependent mode.
+_WOODELF_PATHDEPENDENT_INDICES = ["SII", "BII"]
 
-    assert explanation.min_order == 0
-    assert explanation.max_order == 3
-    assert explanation[()] == pytest.approx(explainer.baseline_value)
+
+def _assert_woodelf_matches_shapiq(
+    woodelf_explainer, shapiq_explainer, x_explain, index, min_order, max_order
+):
+    """Assert the two explainers explain ``x_explain`` the same way."""
+    assert woodelf_explainer._should_use_woodelf(1)  # guard: Woodelf on one side ...
+    assert not shapiq_explainer._should_use_woodelf(1)  # ... and the shapiq kernel on the other
+
+    explanation = woodelf_explainer.explain(x_explain)
+    reference_explanation = shapiq_explainer.explain(x_explain)
+
+    assert explanation.index == index
+    assert explanation.min_order == min_order
+    assert explanation.max_order == max_order
+    assert explanation[()] == pytest.approx(woodelf_explainer.baseline_value)
 
     # a subset missing on one side is an exact zero there, so compare over the union
-    interactions = set(explanation.interactions) | set(reference.interactions)
-    assert {len(interaction) for interaction in interactions} == {0, 1, 2, 3}
+    interactions = set(explanation.interactions) | set(reference_explanation.interactions)
+    assert {len(interaction) for interaction in interactions} == set(range(max_order + 1))
     for interaction in interactions:
         if interaction:  # skip the empty interaction, checked against the baseline above
-            assert explanation[interaction] == pytest.approx(reference[interaction], abs=1e-5)
+            assert explanation[interaction] == pytest.approx(
+                reference_explanation[interaction], abs=1e-5
+            )
+
+
+@pytest.mark.parametrize("index", _WOODELF_PATHDEPENDENT_INDICES)
+def test_woodelf_pathdependent_matches_shapiq(deep_dt_reg_model, background_reg_data, index):
+    """Forced path-dependent Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq."""
+    pytest.importorskip("woodelf")
+    woodelf_explainer = TreeExplainer(
+        model=deep_dt_reg_model, max_order=3, min_order=0, index=index, backend="woodelf"
+    )
+    shap_explainer = TreeExplainer(
+        model=deep_dt_reg_model, max_order=3, min_order=0, index=index, backend="shapiq"
+    )
+    _assert_woodelf_matches_shapiq(
+        woodelf_explainer,
+        shap_explainer,
+        background_reg_data[0],
+        index=index,
+        min_order=0,
+        max_order=3,
+    )
+
+
+@pytest.mark.parametrize("index", _WOODELF_INTERVENTIONAL_INDICES)
+def test_woodelf_interventional_matches_shapiq(deep_dt_reg_model, background_reg_data, index):
+    """Forced interventional Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq."""
+    pytest.importorskip("woodelf")
+    reference_dataset = background_reg_data[:10]
+    woodelf_explainer = TreeExplainer(
+        model=deep_dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference_dataset,
+        max_order=3,
+        min_order=0,
+        index=index,
+        backend="woodelf",
+    )
+    shap_explainer = TreeExplainer(
+        model=deep_dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference_dataset,
+        max_order=3,
+        min_order=0,
+        index=index,
+        backend="shapiq",
+    )
+    _assert_woodelf_matches_shapiq(
+        woodelf_explainer,
+        shap_explainer,
+        background_reg_data[10],
+        index=index,
+        min_order=0,
+        max_order=3,
+    )
 
 
 @pytest.mark.parametrize(

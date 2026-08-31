@@ -358,7 +358,7 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "k-SII", "BII"):
+        if self.index not in ("SV", "BV", "SII", "k-SII", "BII", "STII", "FSII", "FBII"):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -410,8 +410,11 @@ class TreeExplainer(Explainer):
             import pandas as pd
             from woodelf.core.cube_metric import (
                 BanzhafValues,
+                FaithfulBanzhafInteractionValues,
+                FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                ShapleyTaylorInteractionValues,
                 ShapleyValues,
             )
             from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
@@ -425,16 +428,22 @@ class TreeExplainer(Explainer):
         if self._reference_dataset is not None and self.mode == "interventional":
             background_dataset = pd.DataFrame(self._reference_dataset)
 
+        index_to_metric_class = {
+            "SII": GeneralShapleyInteractionValues,
+            "k-SII": GeneralShapleyInteractionValues,  # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
+            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
+            "BII": GeneralBanzhafInteractionValues,
+            "STII": ShapleyTaylorInteractionValues,
+            "FSII": FaithfulShapleyInteractionValues,
+            "FBII": FaithfulBanzhafInteractionValues,
+        }
         if self._index == "SV":
             metric = ShapleyValues()
         elif self._index == "BV":
             metric = BanzhafValues()
-        elif self._index in ("SII", "k-SII"):
-            # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
-            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
-            metric = GeneralShapleyInteractionValues(max(self._min_order, 1), self._max_order)
-        elif self._index == "BII":
-            metric = GeneralBanzhafInteractionValues(max(self._min_order, 1), self._max_order)
+        elif self._index in index_to_metric_class:
+            metric_class = index_to_metric_class[self._index]
+            metric = metric_class(max(self._min_order, 1), self._max_order)
         else:  # pre-validated in __init__ / _woodelf_unsupported_reason; defensive
             msg = f"index='{self._index}' is not supported by Woodelf."
             raise ValueError(msg)
