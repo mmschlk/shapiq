@@ -18,6 +18,7 @@ Conventions, kept identical across every panel:
 
 from __future__ import annotations
 
+import itertools
 import sys
 
 import matplotlib as mpl
@@ -31,7 +32,9 @@ from bench_common import (
     FIGURES,
     load_results as _load_results,
 )
+from matplotlib.legend_handler import HandlerPatch
 from matplotlib.lines import Line2D
+from matplotlib.patches import FancyBboxPatch, Patch
 from matplotlib.ticker import FuncFormatter, LogLocator
 
 TAG = ""
@@ -50,19 +53,20 @@ DOT = (0, (1, 2.2))
 # The release a method ships in, not the build it was timed on -- every curve here is measured
 # against the same working tree. The tag says "this is what you get when you upgrade".
 V_NEW, V_OLD = "v1.7.0", "v1.6.0"
+SEP = "  ·  "  # library from algorithm, and where an over-long label wraps
 
 # (result key, order) -> (colour, linestyle, name)
 STYLE = {
-    ("quadrature", 1): (QUAD, "-", f"shapiq {V_NEW}\nQuadrature-TreeSHAP"),
-    ("quadrature", 2): (QUAD, DASH, f"shapiq {V_NEW}\nQuadrature-TreeSHAP (order 2)"),
-    ("linear", 1): (POLY, "-", f"shapiq {V_OLD}\nLinearTreeSHAP"),
-    ("treeshapiq", 1): (POLY, DASH, f"shapiq {V_OLD}\nTreeSHAP-IQ"),
-    ("treeshapiq", 2): (POLY, DASH, f"shapiq {V_OLD}\nTreeSHAP-IQ (order 2)"),
-    ("shap", 1): (SHAP, "-", "shap\nTreeSHAP"),
-    ("shap", 2): (SHAP, DASH, "shap\nTreeSHAP (order 2)"),
+    ("quadrature", 1): (QUAD, "-", f"shapiq {V_NEW}{SEP}Quadrature-TreeSHAP"),
+    ("quadrature", 2): (QUAD, DASH, f"shapiq {V_NEW}{SEP}Quadrature-TreeSHAP (order 2)"),
+    ("linear", 1): (POLY, "-", f"shapiq {V_OLD}{SEP}LinearTreeSHAP"),
+    ("treeshapiq", 1): (POLY, DASH, f"shapiq {V_OLD}{SEP}TreeSHAP-IQ"),
+    ("treeshapiq", 2): (POLY, DASH, f"shapiq {V_OLD}{SEP}TreeSHAP-IQ (order 2)"),
+    ("shap", 1): (SHAP, "-", f"shap{SEP}TreeSHAP"),
+    ("shap", 2): (SHAP, DASH, f"shap{SEP}TreeSHAP (order 2)"),
     # interventional panel
-    ("woodelf", 1): (QUAD, "-", f"shapiq {V_NEW}\nWoodelf"),
-    ("shapiq", 1): (POLY, "-", f"shapiq {V_NEW}\nInterventional TreeSHAP-IQ"),
+    ("woodelf", 1): (QUAD, "-", f"shapiq {V_NEW}{SEP}Woodelf"),
+    ("shapiq", 1): (POLY, "-", f"shapiq {V_NEW}{SEP}Interventional TreeSHAP-IQ"),
 }
 
 # What v1.7.0 brings. These curves are drawn heavier and carry a thin surface-coloured halo, so
@@ -177,54 +181,53 @@ class EndLabels:
     Direct labels are what let a six-series chart be read without hopping to a legend, but the
     ends of log-scale runtime curves bunch together. The layout runs in display space, so the
     separation is a fixed number of text lines no matter how the axes are scaled.
+
+    A label is written on one line whenever one line fits. What it has to fit inside is a
+    budget: the reserve is taken out of the plotting area, so an unbounded longest label buys
+    a wide empty margin for every panel. Only the labels that break the budget wrap, at the
+    separator between the library and the algorithm.
     """
 
-    def __init__(self, ax, *, size: float = 8.5, pad_frac: float = 0.025) -> None:
+    def __init__(self, ax, *, size: float = 8.5, pad_frac: float = 0.025, budget: float = 0.30):
         self.ax = ax
         self.size = size
         self.pad_frac = pad_frac
+        self.budget = budget  # fraction of the axes width one label may claim
         self.items: list[tuple[float, float, str, str]] = []
 
     def add(self, x: float, y: float, text: str, color: str) -> None:
         self.items.append((x, y, text, color))
 
-    def draw(self) -> None:
-        """Place the labels, then widen the axes until every one of them fits inside it.
+    def _wrap(self, ann, limit: float, renderer) -> None:
+        """Break one over-long label at its separator, longest-piece-first."""
+        text = ann.get_text()
+        if "\n" in text or SEP not in text:
+            return
+        if ann.get_window_extent(renderer=renderer).width <= limit:
+            return
+        ann.set_text(text.replace(SEP, "\n", 1))
 
-        The width a label needs is only knowable once it has been laid out, so the reserve is
-        measured rather than guessed: each label hangs off its line end by a fixed offset in
-        points, and the x-limit grows until nothing sticks out past the axes. Guessing a
-        fraction instead leaves the longest name clipped on exactly the panels that need it.
+    def draw(self) -> None:
+        """Lay the labels out, then widen the axes just enough to hold the widest one.
+
+        The width a label needs is only knowable once it has been laid out, so both the wrap
+        decision and the reserve are measured rather than guessed.
         """
         if not self.items:
             return
         ax = self.ax
         fig = ax.figure
-        px_per_line = self.size * 1.35 * fig.dpi / 72.0
-        gaps = [px_per_line * (t.count("\n") + 1) for _x, _y, t, _c in self.items]
-        ys = [ax.transData.transform((x, y))[1] for x, y, _t, _c in self.items]
-        order = np.argsort(ys)
-        placed, last = list(ys), -np.inf
-        for idx in order:  # one upward pass is enough for a handful of series
-            placed[idx] = max(ys[idx], last)
-            last = placed[idx] + gaps[idx]
-        # the upward pass can push the top label off the axes; drop the whole stack back down
-        excess = (
-            max(y + g / 2 for y, g in zip(placed, gaps, strict=False)) - ax.get_window_extent().y1
-        )
-        if excess > 0:
-            placed = [y - excess for y in placed]
         anns = [
             ax.annotate(
                 text,
-                xy=(x, ax.transData.inverted().transform((0, y_px))[1]),
-                xytext=(6, 0),
+                xy=(x, y),
+                xytext=(5, 0),
                 textcoords="offset points",
                 fontsize=self.size,
                 color=color,
                 va="center",
                 ha="left",
-                linespacing=1.35,
+                linespacing=1.3,
                 clip_on=False,
                 annotation_clip=False,
                 zorder=6,
@@ -232,8 +235,37 @@ class EndLabels:
                 # another line -- the patch keeps the text readable without a leader
                 bbox={"facecolor": SURFACE, "edgecolor": "none", "pad": 1.2, "alpha": 0.85},
             )
-            for (x, _y, text, color), y_px in zip(self.items, placed, strict=False)
+            for x, y, text, color in self.items
         ]
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        limit = ax.get_window_extent().width * self.budget
+        for ann in anns:
+            self._wrap(ann, limit, renderer)
+
+        px_per_line = self.size * 1.3 * fig.dpi / 72.0
+        heights = [px_per_line * (a.get_text().count("\n") + 1) for a in anns]
+        ys = [ax.transData.transform((x, y))[1] for x, y, _t, _c in self.items]
+        order = list(np.argsort(ys))
+        # Labels are centred on their anchor, so neighbours need half of each height between
+        # them -- spacing by one label's full height alone lets a two-line sticker run into
+        # the one above it.
+        placed = list(ys)
+        for prev, idx in itertools.pairwise(order):
+            gap = (heights[prev] + heights[idx]) / 2
+            placed[idx] = max(placed[idx], placed[prev] + gap)
+        # If that pushes the top label off the axes, clamp it and settle the stack downwards,
+        # so only the crowded top is compressed and the lower labels stay on their lines.
+        top = ax.get_window_extent().y1 - heights[order[-1]] / 2
+        if placed[order[-1]] > top:
+            placed[order[-1]] = top
+            for nxt, idx in itertools.pairwise(reversed(order)):
+                gap = (heights[nxt] + heights[idx]) / 2
+                placed[idx] = min(placed[idx], placed[nxt] - gap)
+        inverse = ax.transData.inverted()
+        for ann, (x, _y, _t, _c), y_px in zip(anns, self.items, placed, strict=False):
+            ann.xy = (x, inverse.transform((0, y_px))[1])
+
         for _ in range(6):
             fig.canvas.draw()
             renderer = fig.canvas.get_renderer()
@@ -241,7 +273,7 @@ class EndLabels:
             overflow = max(a.get_window_extent(renderer=renderer).x1 for a in anns) - box.x1
             if overflow <= 1.0:
                 break
-            widen_right(ax, (overflow + 22.0) / box.width)
+            widen_right(ax, (overflow + 14.0) / box.width)
 
 
 def widen_right(ax, frac: float) -> None:
@@ -251,6 +283,43 @@ def widen_right(ax, frac: float) -> None:
         ax.set_xlim(x0, 10 ** (np.log10(x1) + (np.log10(x1) - np.log10(x0)) * frac))
     else:
         ax.set_xlim(x0, x1 + (x1 - x0) * frac)
+
+
+class RoundedSwatch(HandlerPatch):
+    """Draw a legend patch as a rounded box rather than a sharp rectangle."""
+
+    def create_artists(
+        self,
+        legend,  # noqa: ARG002
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,  # noqa: ARG002
+        trans,
+    ):
+        # The legend's handlelength is set for the dashed order keys, which need the room to
+        # show a dash pattern. A swatch stretched to that length reads as a thick line, so the
+        # box takes its own size here and sits centred in the handle slot.
+        box_h = height * 1.7
+        box_w = box_h * 1.9
+        box = FancyBboxPatch(
+            (-xdescent + (width - box_w) / 2, -ydescent + (height - box_h) / 2),
+            box_w,
+            box_h,
+            boxstyle=f"round,pad=0,rounding_size={box_h * 0.38:.2f}",
+            facecolor=orig_handle.get_facecolor(),
+            edgecolor="none",
+            mutation_aspect=1.0,
+        )
+        box.set_transform(trans)
+        return [box]
+
+
+def key_patch(color: str, label: str) -> Patch:
+    """A colour swatch for the legend -- rendered as a rounded box by ``RoundedSwatch``."""
+    return Patch(facecolor=color, edgecolor="none", label=label)
 
 
 def key_line(**kwargs) -> Line2D:
@@ -280,16 +349,16 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
         columnspacing=2.0,
         borderaxespad=0.0,
         frameon=False,
+        handler_map={Patch: RoundedSwatch()},
     )
 
 
-# Colour carries the release, so it is the first thing the key explains. Each swatch is drawn
-# at its group's own width, which is what makes the v1.7.0 curves stand out on the panel -- so
-# the key shows that difference instead of spending a row spelling it out.
+# Colour carries the release, so it is the first thing the key explains -- as a rounded swatch,
+# which reads as "this colour" rather than as one more line style to decode.
 COLOUR_KEYS = (
-    Line2D([], [], color=QUAD, linewidth=LW_NEW, label=f"shapiq {V_NEW}"),
-    Line2D([], [], color=POLY, linewidth=LW_OLD, label=f"shapiq {V_OLD}"),
-    Line2D([], [], color=SHAP, linewidth=LW_OLD, label="shap"),
+    key_patch(QUAD, f"shapiq {V_NEW}"),
+    key_patch(POLY, f"shapiq {V_OLD}"),
+    key_patch(SHAP, "shap"),
 )
 ORDER_KEYS = (
     key_line(
@@ -403,7 +472,10 @@ def interventional() -> None:
                 ax.plot(gx, gy, color=color, linestyle=DOT, linewidth=1.8, zorder=2)
                 end_x, end_y, note, extrapolated = gx[-1], gy[-1], " (extrapolated)", True
                 rates[label] = rate
-            labels.add(end_x, end_y, f"{label}\n{fmt_time(end_y)}{note}", color)
+            # this panel keeps the stacked sticker -- the runtime is the point of the label,
+            # and it needs its own line
+            stacked = label.replace(SEP, "\n")
+            labels.add(end_x, end_y, f"{stacked}\n{fmt_time(end_y)}{note}", color)
         count_ticks(ax, ticks)
         ax.set_xlim(0.8, x_max)
         time_axis(ax)
