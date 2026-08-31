@@ -32,7 +32,7 @@ from bench_common import (
     FIGURES,
     load_results as _load_results,
 )
-from matplotlib.legend_handler import HandlerPatch
+from matplotlib.legend_handler import HandlerPatch, HandlerTuple
 from matplotlib.lines import Line2D
 from matplotlib.patches import FancyBboxPatch, Patch
 from matplotlib.ticker import FuncFormatter, LogLocator
@@ -53,20 +53,22 @@ DOT = (0, (1, 2.2))
 # The release a method ships in, not the build it was timed on -- every curve here is measured
 # against the same working tree. The tag says "this is what you get when you upgrade".
 V_NEW, V_OLD = "v1.7.0", "v1.6.0"
-SEP = "  ·  "  # library from algorithm, and where an over-long label wraps
+SEP = " ("  # where an over-long sticker wraps: the algorithm, then its order
 
-# (result key, order) -> (colour, linestyle, name)
+# (result key, order) -> (colour, linestyle, name). The stickers carry the algorithm alone;
+# which library and release it belongs to is the colour key's job, and repeating it on every
+# sticker only widened the reserve the labels take out of the plotting area.
 STYLE = {
-    ("quadrature", 1): (QUAD, "-", f"shapiq {V_NEW}{SEP}Quadrature-TreeSHAP"),
-    ("quadrature", 2): (QUAD, DASH, f"shapiq {V_NEW}{SEP}Quadrature-TreeSHAP (order 2)"),
-    ("linear", 1): (POLY, "-", f"shapiq {V_OLD}{SEP}LinearTreeSHAP"),
-    ("treeshapiq", 1): (POLY, DASH, f"shapiq {V_OLD}{SEP}TreeSHAP-IQ"),
-    ("treeshapiq", 2): (POLY, DASH, f"shapiq {V_OLD}{SEP}TreeSHAP-IQ (order 2)"),
-    ("shap", 1): (SHAP, "-", f"shap{SEP}TreeSHAP"),
-    ("shap", 2): (SHAP, DASH, f"shap{SEP}TreeSHAP (order 2)"),
+    ("quadrature", 1): (QUAD, "-", "Quadrature-TreeSHAP"),
+    ("quadrature", 2): (QUAD, DASH, "Quadrature-TreeSHAP (order 2)"),
+    ("linear", 1): (POLY, "-", "LinearTreeSHAP"),
+    ("treeshapiq", 1): (POLY, DASH, "TreeSHAP-IQ"),
+    ("treeshapiq", 2): (POLY, DASH, "TreeSHAP-IQ (order 2)"),
+    ("shap", 1): (SHAP, "-", "TreeSHAP"),
+    ("shap", 2): (SHAP, DASH, "TreeSHAP (order 2)"),
     # interventional panel
-    ("woodelf", 1): (QUAD, "-", f"shapiq {V_NEW}{SEP}Woodelf"),
-    ("shapiq", 1): (POLY, "-", f"shapiq {V_NEW}{SEP}Interventional TreeSHAP-IQ"),
+    ("woodelf", 1): (QUAD, "-", "Woodelf"),
+    ("shapiq", 1): (POLY, "-", "Interventional TreeSHAP-IQ"),
 }
 
 # What v1.7.0 brings. These curves are drawn heavier and carry a thin surface-coloured halo, so
@@ -205,7 +207,7 @@ class EndLabels:
             return
         if ann.get_window_extent(renderer=renderer).width <= limit:
             return
-        ann.set_text(text.replace(SEP, "\n", 1))
+        ann.set_text(text.replace(SEP, "\n(", 1))
 
     def _relax(self, ys: list[float], heights: list[float]) -> list[float]:
         """Separate overlapping stickers by moving both neighbours, not just the upper one.
@@ -355,7 +357,7 @@ def row_major(entries: list, ncol: int) -> list:
     ]
 
 
-def encoding_legend(ax, entries, ncol: int = 3) -> None:
+def encoding_legend(ax, entries, ncol: int = 3, labels: list[str] | None = None) -> None:
     """A key for the visual variables, not a list of series -- the series name their own lines.
 
     What the reader cannot infer from a direct label is what the *encoding* means: which order a
@@ -367,6 +369,7 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
         return
     ax.legend(
         handles=entries,
+        **({"labels": labels} if labels else {}),
         loc="upper center",
         bbox_to_anchor=(0.5, -0.155),
         ncol=ncol,
@@ -377,7 +380,7 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
         columnspacing=2.0,
         borderaxespad=0.0,
         frameon=False,
-        handler_map={Patch: RoundedSwatch()},
+        handler_map={Patch: RoundedSwatch(), tuple: HandlerTuple(ndivide=None, pad=0.4)},
     )
 
 
@@ -388,6 +391,13 @@ COLOUR_KEYS = (
     key_patch(POLY, f"shapiq {V_OLD}"),
     key_patch(SHAP, "shap"),
 )
+# On the interventional panel both shapiq curves are v1.7.0, so its key pairs the two swatches
+# under one label rather than claiming a colour stands for a release it does not.
+INTERVENTIONAL_KEYS = (
+    (key_patch(QUAD, ""), key_patch(POLY, "")),
+    key_patch(SHAP, "shap"),
+)
+INTERVENTIONAL_LABELS = [f"shapiq {V_NEW}", "shap"]
 ORDER_KEYS = (
     key_line(
         linestyle="-", linewidth=1.6, marker="o", markersize=4, label="order 1 (Shapley values)"
@@ -513,9 +523,9 @@ def interventional() -> None:
             f"interventional TreeSHAP  ·  background $m$ = {m}",
             f"{meta['model']} on {meta['dataset']}, Shapley values, end-to-end, single thread",
         )
-        # No colour key here: this panel has no order encoding, and both shapiq curves are
-        # v1.7.0, so colour separates two methods that each line already names.
-        encoding_legend(ax, [EXTRAPOLATED_KEY] if extrapolated else [])
+        keys = [*INTERVENTIONAL_KEYS, *([EXTRAPOLATED_KEY] if extrapolated else [])]
+        key_labels = [*INTERVENTIONAL_LABELS, *(["extrapolated"] if extrapolated else [])]
+        encoding_legend(ax, keys, ncol=len(keys), labels=key_labels)
         labels.draw()
         save(fig, f"panel_interventional_m{m}")
         for label, rate in rates.items():
