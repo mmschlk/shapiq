@@ -24,12 +24,14 @@ import matplotlib as mpl
 
 mpl.use("Agg")
 
+import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
 from bench_common import (
     FIGURES,
     load_results as _load_results,
 )
+from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter, LogLocator
 
 TAG = ""
@@ -45,48 +47,63 @@ QUAD, POLY, SHAP = "#2a78d6", "#eb6834", "#4a3aa7"  # validated all-pairs, light
 DASH = (0, (5, 2))
 DOT = (0, (1, 2.2))
 
-# (result key, order) -> (colour, linestyle, legend name)
+# The release a method ships in, not the build it was timed on -- every curve here is measured
+# against the same working tree. The tag says "this is what you get when you upgrade".
+V_NEW, V_OLD = "v1.7.0", "v1.6.0"
+
+# (result key, order) -> (colour, linestyle, name)
 STYLE = {
-    ("quadrature", 1): (QUAD, "-", "shapiq - Quadrature-TreeSHAP"),
-    ("quadrature", 2): (QUAD, DASH, "shapiq - Quadrature-TreeSHAP, order 2"),
-    ("linear", 1): (POLY, "-", "shapiq - LinearTreeSHAP"),
-    ("treeshapiq", 1): (POLY, DASH, "shapiq - TreeSHAP-IQ"),
-    ("treeshapiq", 2): (POLY, DASH, "shapiq - TreeSHAP-IQ, order 2"),
-    ("shap", 1): (SHAP, "-", "shap - TreeSHAP"),
-    ("shap", 2): (SHAP, DASH, "shap - TreeSHAP, order 2"),
+    ("quadrature", 1): (QUAD, "-", f"shapiq {V_NEW}\nQuadrature-TreeSHAP"),
+    ("quadrature", 2): (QUAD, DASH, f"shapiq {V_NEW}\nQuadrature-TreeSHAP (order 2)"),
+    ("linear", 1): (POLY, "-", f"shapiq {V_OLD}\nLinearTreeSHAP"),
+    ("treeshapiq", 1): (POLY, DASH, f"shapiq {V_OLD}\nTreeSHAP-IQ"),
+    ("treeshapiq", 2): (POLY, DASH, f"shapiq {V_OLD}\nTreeSHAP-IQ (order 2)"),
+    ("shap", 1): (SHAP, "-", "shap\nTreeSHAP"),
+    ("shap", 2): (SHAP, DASH, "shap\nTreeSHAP (order 2)"),
     # interventional panel
-    ("woodelf", 1): (QUAD, "-", "shapiq - Woodelf"),
-    ("shapiq", 1): (POLY, "-", "shapiq - TreeSHAP-IQ"),
+    ("woodelf", 1): (QUAD, "-", f"shapiq {V_NEW}\nWoodelf"),
+    ("shapiq", 1): (POLY, "-", f"shapiq {V_NEW}\nInterventional TreeSHAP-IQ"),
 }
 
-# Direct labels sit on the line, so a series that shares its colour *and* its algorithm with
-# the line above it only has to say which order it is.
-DIRECT = {("quadrature", 2): "order 2", ("shap", 2): "order 2"}
+# What v1.7.0 brings. These curves are drawn heavier and carry a thin surface-coloured halo, so
+# they stay legible where they cross an older one -- the halo is a path effect on the real line
+# rather than a second wider line underneath, which keeps dashes, markers and z-order honest.
+NEW = {"quadrature", "woodelf", "shapiq"}
+LW_NEW, LW_OLD, HALO = 2.9, 1.8, 2.6
 
 
-def direct_label(method: str, order: int) -> str:
-    return DIRECT.get((method, order), STYLE[(method, order)][2])
+def series(method: str, order: int) -> tuple[dict, dict, str, str]:
+    """Line kwargs, marker kwargs, colour and name, with v1.7.0 given the heavier treatment.
 
-
-plt.rcParams.update(
-    {
-        "figure.facecolor": SURFACE,
-        "axes.facecolor": SURFACE,
-        "savefig.facecolor": SURFACE,
-        "font.family": "DejaVu Sans",
-        "font.size": 10,
-        "axes.edgecolor": GRID,
-        "axes.labelcolor": INK_2,
-        "xtick.color": INK_2,
-        "ytick.color": INK_2,
-        "xtick.labelsize": 9.5,
-        "ytick.labelsize": 9.5,
-        "legend.frameon": False,
-        "lines.linewidth": 2.0,
-        "lines.solid_capstyle": "round",
-        "figure.dpi": 200,
+    Line and markers are two artists on purpose. A path effect on a single artist strokes the
+    markers as well, and matplotlib draws the whole marker pass after the whole line pass -- so
+    the halo of each marker lands *on top of* the line it is meant to protect and beads it into
+    a dashed-looking curve. Stroking only the line and laying plain markers over it keeps the
+    curve continuous.
+    """
+    color, style, label = STYLE[(method, order)]
+    is_new = method in NEW
+    width = LW_NEW if is_new else LW_OLD
+    zorder = 4 if is_new else 3
+    line = {"color": color, "linestyle": style, "linewidth": width, "zorder": zorder}
+    if is_new:
+        line["path_effects"] = [
+            pe.Stroke(linewidth=width + HALO, foreground=SURFACE),
+            pe.Normal(),
+        ]
+    marks = {
+        "color": color,
+        "linestyle": "none",
+        "marker": "o" if order == 1 else "s",
+        "markersize": (4.2 if is_new else 3.4) if order == 1 else (3.8 if is_new else 3.0),
+        "zorder": zorder + 0.4,
     }
-)
+    return line, marks, color, label
+
+
+def plot_series(ax, xs, ys, line: dict, marks: dict) -> None:
+    ax.plot(xs, ys, **line)
+    ax.plot(xs, ys, **marks)
 
 
 def load_results(name: str) -> dict:
@@ -115,7 +132,7 @@ def first_unreliable(xs, acc: dict, dataset: str, method: str, order: int) -> in
     return None
 
 
-def new_panel(size=(8.6, 4.4)):
+def new_panel(size=(8.6, 5.0)):
     """A panel with a fixed layout.
 
     The margins are set here rather than left to ``bbox_inches="tight"``: the direct labels
@@ -124,7 +141,7 @@ def new_panel(size=(8.6, 4.4)):
     x-limit until the label column fits *inside* the axes, where these margins can hold it.
     """
     fig, ax = plt.subplots(figsize=size)
-    fig.subplots_adjust(left=0.115, right=0.988, top=0.845, bottom=0.135)
+    fig.subplots_adjust(left=0.115, right=0.988, top=0.845, bottom=0.265)
     ax.grid(visible=True, which="major", color=GRID, linewidth=0.8, zorder=0)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -224,7 +241,7 @@ class EndLabels:
             overflow = max(a.get_window_extent(renderer=renderer).x1 for a in anns) - box.x1
             if overflow <= 1.0:
                 break
-            widen_right(ax, (overflow + 10.0) / box.width)
+            widen_right(ax, (overflow + 22.0) / box.width)
 
 
 def widen_right(ax, frac: float) -> None:
@@ -234,6 +251,66 @@ def widen_right(ax, frac: float) -> None:
         ax.set_xlim(x0, 10 ** (np.log10(x1) + (np.log10(x1) - np.log10(x0)) * frac))
     else:
         ax.set_xlim(x0, x1 + (x1 - x0) * frac)
+
+
+def key_line(**kwargs) -> Line2D:
+    """A neutral proxy line for the encoding legend -- grey, so it reads as a key, not a series."""
+    return Line2D([], [], color=INK_2, **kwargs)
+
+
+def encoding_legend(ax, entries, ncol: int = 3) -> None:
+    """A key for the visual variables, not a list of series -- the series name their own lines.
+
+    What the reader cannot infer from a direct label is what the *encoding* means: which order a
+    dash stands for, that the heavy outlined curves are the new release, and why part of a line
+    is faded. That is what goes here, and nothing else. It sits below the axes -- placed inside
+    them it lands on exactly the curves it is there to explain.
+    """
+    ax.legend(
+        handles=entries,
+        loc="upper left",
+        bbox_to_anchor=(-0.015, -0.155),
+        ncol=ncol,
+        fontsize=8.5,
+        labelcolor=INK_2,
+        handlelength=2.6,
+        handletextpad=0.7,
+        columnspacing=2.0,
+        borderaxespad=0.0,
+        frameon=False,
+    )
+
+
+ORDER_KEYS = (
+    key_line(
+        linestyle="-", linewidth=1.9, marker="o", markersize=4, label="order 1 (Shapley values)"
+    ),
+    key_line(linestyle=DASH, linewidth=1.9, marker="s", markersize=3.5, label="order 2 (k-SII)"),
+)
+NEW_KEY = key_line(
+    linewidth=LW_NEW,
+    path_effects=[pe.Stroke(linewidth=LW_NEW + HALO, foreground=GRID), pe.Normal()],
+    label=f"new in shapiq {V_NEW}",
+)
+FADE_KEY = key_line(
+    linewidth=1.0,
+    alpha=0.5,
+    marker="o",
+    markersize=3,
+    markerfacecolor="none",
+    label="fewer than six correct digits left",
+)
+BUDGET_KEY = Line2D(
+    [],
+    [],
+    color=INK_2,
+    linestyle="none",
+    marker="x",
+    markersize=7,
+    markeredgewidth=2,
+    label="over the 20 s budget",
+)
+EXTRAPOLATED_KEY = key_line(linestyle=DOT, linewidth=1.8, label="extrapolated")
 
 
 def fmt_time(seconds: float) -> str:
@@ -302,7 +379,7 @@ def interventional() -> None:
     for m in sorted({r["n_background"] for r in records}):
         fig, ax = new_panel()
         labels = EndLabels(ax, size=9)
-        rates = {}
+        rates, extrapolated = {}, False
         for backend in ("shap", "shapiq", "woodelf"):
             pts = sorted(
                 {
@@ -317,13 +394,13 @@ def interventional() -> None:
                 continue
             xs = [p[0] for p in pts]
             ys = [p[1] for p in pts]
-            color, style, label = STYLE[(backend, 1)]
-            ax.plot(xs, ys, color=color, linestyle=style, marker="o", markersize=3.5, zorder=3)
+            line, marks, color, label = series(backend, 1)
+            plot_series(ax, xs, ys, line, marks)
             end_x, end_y, note = xs[-1], ys[-1], ""
             if end_x < x_max:  # measurement was cut off -- show where the line goes, dotted
                 gx, gy, rate = extrapolate(xs, ys, x_max)
                 ax.plot(gx, gy, color=color, linestyle=DOT, linewidth=1.8, zorder=2)
-                end_x, end_y, note = gx[-1], gy[-1], " (extrapolated)"
+                end_x, end_y, note, extrapolated = gx[-1], gy[-1], " (extrapolated)", True
                 rates[label] = rate
             labels.add(end_x, end_y, f"{label}\n{fmt_time(end_y)}{note}", color)
         count_ticks(ax, ticks)
@@ -335,6 +412,7 @@ def interventional() -> None:
             f"interventional TreeSHAP  ·  background $m$ = {m}",
             f"{meta['model']} on {meta['dataset']}, Shapley values, end-to-end, single thread",
         )
+        encoding_legend(ax, [NEW_KEY, *([EXTRAPOLATED_KEY] if extrapolated else [])])
         labels.draw()
         save(fig, f"panel_interventional_m{m}")
         for label, rate in rates.items():
@@ -377,19 +455,10 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
             continue
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
-        color, style, _ = STYLE[(method, order)]
-        marker, size = ("o", 3.5) if order == 1 else ("s", 3)
+        line, marks, color, label = series(method, order)
         cut = first_unreliable(xs, acc, dataset, method, order)
         good = slice(None) if cut is None else slice(0, cut)
-        ax.plot(
-            xs[good],
-            ys[good],
-            color=color,
-            linestyle=style,
-            marker=marker,
-            markersize=size,
-            zorder=3,
-        )
+        plot_series(ax, xs[good], ys[good], line, marks)
         if cut is not None:
             faded = True
             tail = slice(max(cut - 1, 0), None)
@@ -397,11 +466,11 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
                 xs[tail],
                 ys[tail],
                 color=color,
-                linestyle=style,
+                linestyle=line["linestyle"],
                 linewidth=1.0,
                 alpha=0.35,
-                marker=marker,
-                markersize=size - 1,
+                marker=marks["marker"],
+                markersize=marks["markersize"] - 1,
                 markerfacecolor="none",
                 zorder=2,
             )
@@ -415,14 +484,22 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
         ):
             over_budget = True
             ax.plot(
-                xs[-1], ys[-1], marker="x", markersize=7, markeredgewidth=2, color=color, zorder=4
+                xs[-1], ys[-1], marker="x", markersize=7, markeredgewidth=2, color=color, zorder=5
             )
-        labels.add(xs[-1], ys[-1], direct_label(method, order), color)
+        labels.add(xs[-1], ys[-1], label, color)
     ax.set_xlabel("tree depth")
     ax.set_xticks(xticks or depths[:: max(1, round(len(depths) / 7))])
     time_axis(ax)
-    notes = [n for n, on in ((FADE_NOTE, faded), (BUDGET_NOTE, over_budget)) if on]
-    titles(ax, title, subtitle + ("\n" + "  ·  ".join(notes) if notes else ""))
+    titles(ax, title, subtitle)
+    encoding_legend(
+        ax,
+        [
+            *ORDER_KEYS,
+            NEW_KEY,
+            *([FADE_KEY] if faded else []),
+            *([BUDGET_KEY] if over_budget else []),
+        ],
+    )
     labels.draw()
     return fig, ax
 
@@ -430,10 +507,6 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
 # The accuracy panel is order 1 only: k-SII is efficient at every order, so an algorithm's
 # order-2 curve lies on top of its order-1 curve and drawing both just doubles the ink.
 SERIES_ACC = (("quadrature", 1), ("linear", 1), ("treeshapiq", 1), ("shap", 1))
-ACC_LABEL = {"treeshapiq": "shapiq - TreeSHAP-IQ"}
-
-FADE_NOTE = "faded = fewer than six correct digits left"
-BUDGET_NOTE = "✕ = over the 20 s budget"
 
 
 TITLES = {
@@ -492,19 +565,9 @@ def synthetic() -> None:
         )
         if not pts:
             continue
-        color, style, _ = STYLE[(method, order)]
-        ax.plot(
-            [p[0] for p in pts],
-            [p[1] for p in pts],
-            color=color,
-            linestyle=style,
-            marker="o" if order == 1 else "s",
-            markersize=3.5 if order == 1 else 3,
-            zorder=3,
-        )
-        labels.add(
-            pts[-1][0], pts[-1][1], ACC_LABEL.get(method, direct_label(method, order)), color
-        )
+        line, marks, color, label = series(method, order)
+        plot_series(ax, [p[0] for p in pts], [p[1] for p in pts], line, marks)
+        labels.add(pts[-1][0], pts[-1][1], label, color)
     ax.axhline(TOL, color=MUTED, linestyle=DASH, linewidth=1.2, zorder=1)
     ax.annotate(
         "fewer than six correct digits above this line",
@@ -525,6 +588,7 @@ def synthetic() -> None:
         "|Σ values + baseline − prediction| / |prediction − mean|; exact arithmetic gives 0"
         "\norder 2 tracks order 1 exactly: k-SII is efficient at every order",
     )
+    encoding_legend(ax, [NEW_KEY])
     labels.draw()
     save(fig, "panel_synthetic_accuracy")
 
