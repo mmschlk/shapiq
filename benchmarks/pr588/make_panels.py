@@ -207,6 +207,33 @@ class EndLabels:
             return
         ann.set_text(text.replace(SEP, "\n", 1))
 
+    def _relax(self, ys: list[float], heights: list[float]) -> list[float]:
+        """Separate overlapping stickers by moving both neighbours, not just the upper one.
+
+        A single upward pass anchors the bottom sticker on its line and shifts everything else
+        up, which drags the whole stack away from the curves it labels. Pushing each colliding
+        pair apart by half the overlap instead spreads the displacement, so the bottom sticker
+        can drop below its line end when that is what makes room -- and every sticker ends up
+        as close to its own curve as the crowding allows.
+        """
+        box = self.ax.get_window_extent()
+        order = list(np.argsort(ys))
+        placed = list(ys)
+        for _ in range(60):
+            worst = 0.0
+            for lower, upper in itertools.pairwise(order):
+                need = (heights[lower] + heights[upper]) / 2
+                overlap = need - (placed[upper] - placed[lower])
+                if overlap > 0.5:
+                    placed[lower] -= overlap / 2
+                    placed[upper] += overlap / 2
+                    worst = max(worst, overlap)
+            for i, height in enumerate(heights):  # never leave the axes
+                placed[i] = min(max(placed[i], box.y0 + height / 2), box.y1 - height / 2)
+            if worst <= 0.5:
+                break
+        return placed
+
     def draw(self) -> None:
         """Lay the labels out, then widen the axes just enough to hold the widest one.
 
@@ -246,22 +273,7 @@ class EndLabels:
         px_per_line = self.size * 1.3 * fig.dpi / 72.0
         heights = [px_per_line * (a.get_text().count("\n") + 1) for a in anns]
         ys = [ax.transData.transform((x, y))[1] for x, y, _t, _c in self.items]
-        order = list(np.argsort(ys))
-        # Labels are centred on their anchor, so neighbours need half of each height between
-        # them -- spacing by one label's full height alone lets a two-line sticker run into
-        # the one above it.
-        placed = list(ys)
-        for prev, idx in itertools.pairwise(order):
-            gap = (heights[prev] + heights[idx]) / 2
-            placed[idx] = max(placed[idx], placed[prev] + gap)
-        # If that pushes the top label off the axes, clamp it and settle the stack downwards,
-        # so only the crowded top is compressed and the lower labels stay on their lines.
-        top = ax.get_window_extent().y1 - heights[order[-1]] / 2
-        if placed[order[-1]] > top:
-            placed[order[-1]] = top
-            for nxt, idx in itertools.pairwise(reversed(order)):
-                gap = (heights[nxt] + heights[idx]) / 2
-                placed[idx] = min(placed[idx], placed[nxt] - gap)
+        placed = self._relax(ys, heights)
         inverse = ax.transData.inverted()
         for ann, (x, _y, _t, _c), y_px in zip(anns, self.items, placed, strict=False):
             ann.xy = (x, inverse.transform((0, y_px))[1])
@@ -327,6 +339,22 @@ def key_line(**kwargs) -> Line2D:
     return Line2D([], [], color=INK_2, **kwargs)
 
 
+def row_major(entries: list, ncol: int) -> list:
+    """Reorder handles so matplotlib's column-major fill lays them out row by row.
+
+    ``Axes.legend`` has no row-major option: with three columns it puts the first two handles
+    in column one. Transposing here is what lets the key read as "the three releases, then the
+    three encodings" instead of interleaving them.
+    """
+    rows = -(-len(entries) // ncol)
+    return [
+        entries[row * ncol + col]
+        for col in range(ncol)
+        for row in range(rows)
+        if row * ncol + col < len(entries)
+    ]
+
+
 def encoding_legend(ax, entries, ncol: int = 3) -> None:
     """A key for the visual variables, not a list of series -- the series name their own lines.
 
@@ -339,8 +367,8 @@ def encoding_legend(ax, entries, ncol: int = 3) -> None:
         return
     ax.legend(
         handles=entries,
-        loc="upper left",
-        bbox_to_anchor=(-0.015, -0.155),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.155),
         ncol=ncol,
         fontsize=8.5,
         labelcolor=INK_2,
@@ -378,7 +406,7 @@ FADE_KEY = key_line(
     marker="o",
     markersize=3,
     markerfacecolor="none",
-    label="fewer than six correct digits left",
+    label="numerically instable",
 )
 EXTRAPOLATED_KEY = key_line(linestyle=DOT, linewidth=1.8, label="extrapolated")
 
@@ -554,9 +582,8 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
     ax.set_xticks(xticks or depths[:: max(1, round(len(depths) / 7))])
     time_axis(ax)
     titles(ax, title, subtitle)
-    # two columns, so the colour keys fill the first and the encoding keys the second --
-    # matplotlib fills column-major, and three columns would split the colours across two
-    encoding_legend(ax, [*COLOUR_KEYS, *ORDER_KEYS, *([FADE_KEY] if faded else [])], ncol=2)
+    keys = [*COLOUR_KEYS, *ORDER_KEYS, *([FADE_KEY] if faded else [])]
+    encoding_legend(ax, row_major(keys, 3), ncol=3)
     labels.draw()
     return fig, ax
 
@@ -627,7 +654,7 @@ def synthetic() -> None:
         labels.add(pts[-1][0], pts[-1][1], label, color)
     ax.axhline(TOL, color=MUTED, linestyle=DASH, linewidth=1.2, zorder=1)
     ax.annotate(
-        "fewer than six correct digits above this line",
+        "numerically instable above this line",
         xy=(0.02, TOL),
         xycoords=("axes fraction", "data"),
         xytext=(0, 4),
