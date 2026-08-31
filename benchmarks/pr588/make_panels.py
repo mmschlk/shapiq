@@ -12,8 +12,9 @@ Conventions, kept identical across every panel:
   for shapiq's polynomial family, violet for shap;
 * ``LinearTreeSHAP`` and ``TreeSHAP-IQ`` share the orange, because order 1 of TreeSHAP-IQ *is*
   LinearTreeSHAP -- solid is order 1, dashed is order 2, so one colour reads as one algorithm;
-* every series is named ``"<library> - <algorithm>"``;
-* text is kept to a title, a one-line subtitle and the legend.
+* every curve is named at its own line end; the library and release come from the colour key,
+  except on the interventional panel, which carries no key and names them on the sticker;
+* text is kept to a title, a short subtitle and the key.
 """
 
 from __future__ import annotations
@@ -112,6 +113,26 @@ def plot_series(ax, xs, ys, line: dict, marks: dict) -> None:
     ax.plot(xs, ys, **marks)
 
 
+plt.rcParams.update(
+    {
+        "figure.facecolor": SURFACE,
+        "axes.facecolor": SURFACE,
+        "savefig.facecolor": SURFACE,
+        "font.family": "DejaVu Sans",
+        "font.size": 10,
+        "axes.edgecolor": GRID,
+        "axes.labelcolor": INK_2,
+        "xtick.color": INK_2,
+        "ytick.color": INK_2,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.frameon": False,
+        "lines.solid_capstyle": "round",
+        "figure.dpi": 200,
+    }
+)
+
+
 def load_results(name: str) -> dict:
     return _load_results(f"{name}_{TAG}" if TAG else name)
 
@@ -138,16 +159,19 @@ def first_unreliable(xs, acc: dict, dataset: str, method: str, order: int) -> in
     return None
 
 
-def new_panel(size=(8.6, 5.0)):
+def new_panel(*, legend: bool = True):
     """A panel with a fixed layout.
 
     The margins are set here rather than left to ``bbox_inches="tight"``: the direct labels
     are drawn outside the data area, and a tight bounding box grows the canvas to swallow
     them, so otherwise every panel comes out a different width. ``EndLabels`` then grows the
     x-limit until the label column fits *inside* the axes, where these margins can hold it.
+    A panel without a key reclaims the band the key would have used, instead of carrying an
+    empty strip under its x label.
     """
-    fig, ax = plt.subplots(figsize=size)
-    fig.subplots_adjust(left=0.115, right=0.988, top=0.845, bottom=0.265)
+    bottom = 0.295 if legend else 0.135
+    fig, ax = plt.subplots(figsize=(8.6, 5.0 if legend else 4.4))
+    fig.subplots_adjust(left=0.115, right=0.988, top=0.845, bottom=bottom)
     ax.grid(visible=True, which="major", color=GRID, linewidth=0.8, zorder=0)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -190,11 +214,20 @@ class EndLabels:
     separator between the library and the algorithm.
     """
 
-    def __init__(self, ax, *, size: float = 8.5, pad_frac: float = 0.025, budget: float = 0.30):
+    def __init__(
+        self,
+        ax,
+        *,
+        size: float = 8.5,
+        pad_frac: float = 0.025,
+        budget: float = 0.30,
+        always_wrap: bool = False,
+    ):
         self.ax = ax
         self.size = size
         self.pad_frac = pad_frac
         self.budget = budget  # fraction of the axes width one label may claim
+        self.always_wrap = always_wrap  # break at SEP even when the one-line form would fit
         self.items: list[tuple[float, float, str, str]] = []
 
     def add(self, x: float, y: float, text: str, color: str) -> None:
@@ -205,7 +238,7 @@ class EndLabels:
         text = ann.get_text()
         if "\n" in text or SEP not in text:
             return
-        if ann.get_window_extent(renderer=renderer).width <= limit:
+        if not self.always_wrap and ann.get_window_extent(renderer=renderer).width <= limit:
             return
         ann.set_text(text.replace(SEP, "\n(", 1))
 
@@ -371,7 +404,7 @@ def encoding_legend(ax, entries, ncol: int = 3, labels: list[str] | None = None)
         handles=entries,
         **({"labels": labels} if labels else {}),
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.155),
+        bbox_to_anchor=(0.5, -0.235),
         ncol=ncol,
         fontsize=8.5,
         labelcolor=INK_2,
@@ -391,13 +424,8 @@ COLOUR_KEYS = (
     key_patch(POLY, f"shapiq {V_OLD}"),
     key_patch(SHAP, "shap"),
 )
-# On the interventional panel both shapiq curves are v1.7.0, so its key pairs the two swatches
-# under one label rather than claiming a colour stands for a release it does not.
-INTERVENTIONAL_KEYS = (
-    (key_patch(QUAD, ""), key_patch(POLY, "")),
-    key_patch(SHAP, "shap"),
-)
-INTERVENTIONAL_LABELS = [f"shapiq {V_NEW}", "shap"]
+# The interventional panel carries no key, so its stickers name the library themselves.
+LIBRARY = {"woodelf": f"shapiq {V_NEW}", "shapiq": f"shapiq {V_NEW}", "shap": "shap"}
 ORDER_KEYS = (
     key_line(
         linestyle="-", linewidth=1.6, marker="o", markersize=4, label="order 1 (Shapley values)"
@@ -418,7 +446,6 @@ FADE_KEY = key_line(
     markerfacecolor="none",
     label="numerically instable",
 )
-EXTRAPOLATED_KEY = key_line(linestyle=DOT, linewidth=1.8, label="extrapolated")
 
 
 def fmt_time(seconds: float) -> str:
@@ -485,9 +512,9 @@ def interventional() -> None:
     ticks = [1, 10, 100, 1000, 10_000]
 
     for m in sorted({r["n_background"] for r in records}):
-        fig, ax = new_panel()
+        fig, ax = new_panel(legend=False)
         labels = EndLabels(ax, size=9)
-        rates, extrapolated = {}, False
+        rates = {}
         for backend in ("shap", "shapiq", "woodelf"):
             pts = sorted(
                 {
@@ -504,16 +531,26 @@ def interventional() -> None:
             ys = [p[1] for p in pts]
             line, marks, color, label = series(backend, 1)
             plot_series(ax, xs, ys, line, marks)
-            end_x, end_y, note = xs[-1], ys[-1], ""
+            end_x, end_y = xs[-1], ys[-1]
             if end_x < x_max:  # measurement was cut off -- show where the line goes, dotted
                 gx, gy, rate = extrapolate(xs, ys, x_max)
                 ax.plot(gx, gy, color=color, linestyle=DOT, linewidth=1.8, zorder=2)
-                end_x, end_y, note, extrapolated = gx[-1], gy[-1], " (extrapolated)", True
+                # with no key on this panel, the dotted tail says what it is where it runs
+                mid = len(gx) // 2
+                ax.annotate(
+                    "extrapolated",
+                    xy=(gx[mid], gy[mid]),
+                    xytext=(0, -13),
+                    textcoords="offset points",
+                    fontsize=8,
+                    color=color,
+                    alpha=0.8,
+                    ha="center",
+                    va="top",
+                )
+                end_x, end_y = gx[-1], gy[-1]
                 rates[label] = rate
-            # this panel keeps the stacked sticker -- the runtime is the point of the label,
-            # and it needs its own line
-            stacked = label.replace(SEP, "\n")
-            labels.add(end_x, end_y, f"{stacked}\n{fmt_time(end_y)}{note}", color)
+            labels.add(end_x, end_y, f"{LIBRARY[backend]}\n{label}", color)
         count_ticks(ax, ticks)
         ax.set_xlim(0.8, x_max)
         time_axis(ax)
@@ -523,9 +560,6 @@ def interventional() -> None:
             f"interventional TreeSHAP  ·  background $m$ = {m}",
             f"{meta['model']} on {meta['dataset']}, Shapley values, end-to-end, single thread",
         )
-        keys = [*INTERVENTIONAL_KEYS, *([EXTRAPOLATED_KEY] if extrapolated else [])]
-        key_labels = [*INTERVENTIONAL_LABELS, *(["extrapolated"] if extrapolated else [])]
-        encoding_legend(ax, keys, ncol=len(keys), labels=key_labels)
         labels.draw()
         save(fig, f"panel_interventional_m{m}")
         for label, rate in rates.items():
@@ -553,7 +587,7 @@ def _depth_panel(records, dataset, title, subtitle, acc, xticks=None):
     hairline rather than stopping or being drawn as if it were still a result.
     """
     fig, ax = new_panel()
-    labels, faded = EndLabels(ax), False
+    labels, faded = EndLabels(ax, always_wrap=True), False
     depths = sorted({r["depth"] for r in records if r["dataset"] == dataset})
     for method, order in SERIES:
         pts = sorted(
