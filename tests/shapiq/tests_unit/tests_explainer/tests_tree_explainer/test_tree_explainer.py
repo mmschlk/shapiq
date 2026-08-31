@@ -990,8 +990,7 @@ _WOODELF_PATHDEPENDENT_INDICES = ["SII", "BII"]
 def _assert_woodelf_matches_shapiq(
     woodelf_explainer, shapiq_explainer, x_explain, index, min_order, max_order
 ):
-    """Assert the two explainers explain ``x_explain`` the same way.
-    """
+    """Assert the two explainers explain ``x_explain`` the same way."""
     assert woodelf_explainer._should_use_woodelf(1)  # guard: Woodelf on one side ...
     assert not shapiq_explainer._should_use_woodelf(1)  # ... and the shapiq kernel on the other
 
@@ -1015,8 +1014,7 @@ def _assert_woodelf_matches_shapiq(
 
 @pytest.mark.parametrize("index", _WOODELF_PATHDEPENDENT_INDICES)
 def test_woodelf_pathdependent_matches_shapiq(deep_dt_reg_model, background_reg_data, index):
-    """Forced path-dependent Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq.
-    """
+    """Forced path-dependent Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq."""
     pytest.importorskip("woodelf")
     woodelf_explainer = TreeExplainer(
         model=deep_dt_reg_model, max_order=3, min_order=0, index=index, backend="woodelf"
@@ -1036,8 +1034,7 @@ def test_woodelf_pathdependent_matches_shapiq(deep_dt_reg_model, background_reg_
 
 @pytest.mark.parametrize("index", _WOODELF_INTERVENTIONAL_INDICES)
 def test_woodelf_interventional_matches_shapiq(deep_dt_reg_model, background_reg_data, index):
-    """Forced interventional Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq.
-    """
+    """Forced interventional Woodelf with ``min_order=0``, ``max_order=3`` matches shapiq."""
     pytest.importorskip("woodelf")
     reference_dataset = background_reg_data[:10]
     woodelf_explainer = TreeExplainer(
