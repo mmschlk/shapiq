@@ -645,15 +645,17 @@ TITLES = {
 ORDER2_NOTE = "one tree per depth, one explained instance, single thread  ·  order 2 = k-SII"
 
 
-# Where to spell out the speed-up on the panel itself: (slower series, faster series).
-RATIO_ARROW = {"superconductivity": (("shap", 2), ("quadrature", 2))}
+# Where to spell out the speed-up on the panel itself: (slower series, faster series, depth).
+RATIO_ARROW = {"superconductivity": (("shap", 2), ("quadrature", 2), 28)}
 
 
-def ratio_arrow(ax, records, dataset: str, slower, faster) -> None:
+def ratio_arrow(ax, records, dataset: str, slower, faster, at: int | None = None) -> None:
     """A two-headed arrow between two curves at the deepest tree, labelled with their ratio.
 
     The number is read back out of the result file rather than written into the figure, so it
-    cannot drift away from the measurement it claims to summarize.
+    cannot drift away from the measurement it claims to summarize. ``at`` picks the depth to
+    anchor on; without it, or when that depth has no measurement on both curves, the arrow
+    falls back to the deepest tree they share.
     """
 
     def curve(series):
@@ -671,7 +673,7 @@ def ratio_arrow(ax, records, dataset: str, slower, faster) -> None:
     shared = set(hi) & set(lo)
     if not shared:
         return
-    depth = max(shared)
+    depth = at if at in shared else max(shared)
     y_hi, y_lo = hi[depth], lo[depth]
     ax.annotate(
         "",
@@ -707,8 +709,8 @@ def depth_real() -> None:
     for dataset in ("superconductivity", "heloc", "bioresponse"):
         fig, ax = _depth_panel(records, dataset, TITLES[dataset], ORDER2_NOTE, acc)
         if dataset in RATIO_ARROW:
-            slower, faster = RATIO_ARROW[dataset]
-            ratio_arrow(ax, records, dataset, slower, faster)
+            slower, faster, at = RATIO_ARROW[dataset]
+            ratio_arrow(ax, records, dataset, slower, faster, at=at)
         save(fig, f"panel_depth_{dataset}")
 
 
