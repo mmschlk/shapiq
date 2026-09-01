@@ -197,20 +197,26 @@ def _game_value(paths, coalition):
     return total
 
 
-def _brute_interaction(paths, n_features, subset, *, banzhaf):
+def _coalition_weight(index, n_features, order, size):
+    """Weight of a coalition of ``size`` players outside an ``order``-sized subset."""
+    if index == "BII":
+        return 1.0 / 2 ** (n_features - order)
+    if index == "Moebius":  # the Moebius coefficient is the discrete derivative at {}
+        return 1.0 if size == 0 else 0.0
+    return (
+        factorial(size) * factorial(n_features - order - size) / factorial(n_features - order + 1)
+    )
+
+
+def _brute_interaction(paths, n_features, subset, *, index):
     subset = set(subset)
     order = len(subset)
     others = [f for f in range(n_features) if f not in subset]
     total = 0.0
     for size in range(len(others) + 1):
-        if banzhaf:
-            weight = 1.0 / 2 ** (n_features - order)
-        else:
-            weight = (
-                factorial(size)
-                * factorial(n_features - order - size)
-                / factorial(n_features - order + 1)
-            )
+        weight = _coalition_weight(index, n_features, order, size)
+        if weight == 0.0:
+            continue
         for coalition in combinations(others, size):
             derivative = 0.0
             for included in range(order + 1):
@@ -222,9 +228,9 @@ def _brute_interaction(paths, n_features, subset, *, banzhaf):
 
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
-@pytest.mark.parametrize("index", ["SII", "BII"])
+@pytest.mark.parametrize("index", ["SII", "BII", "Moebius"])
 def test_matches_brute_force_interactions(index, implementation):
-    """Quadrature SII and BII match exact brute-force enumeration on a small tree."""
+    """Quadrature SII, BII and Moebius match exact brute-force enumeration on a small tree."""
     rng = np.random.default_rng(0)
     X = rng.random((400, 5))
     y = X @ rng.normal(size=5) + np.sin(9 * X[:, 0]) * X[:, 1]
@@ -233,7 +239,7 @@ def test_matches_brute_force_interactions(index, implementation):
     paths = _paths_of_tree(model, x)
     result = _explain(QuadratureTreeSHAP(model, max_order=3, index=index), x, implementation)
     for subset in _all_interactions(5, 1, 3):
-        expected = _brute_interaction(paths, 5, subset, banzhaf=index == "BII")
+        expected = _brute_interaction(paths, 5, subset, index=index)
         assert result[subset] == pytest.approx(expected, abs=1e-12)
 
 

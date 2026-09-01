@@ -9,21 +9,33 @@ from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
 SEED = 1337
 np.random.seed(SEED)
 
+# ``(index, max_order)`` pairs each interventional kernel result is checked against the
+# ExactComputer oracle with. The single-tree regressor below only runs the order-<= 2 half.
+INDICES_AND_ORDERS_UP_TO_2 = [
+    ("SV", 1),
+    ("BV", 1),
+    ("FBII", 1),
+    ("SII", 2),
+    ("BII", 2),
+    ("CHII", 2),
+    ("FBII", 2),
+    ("FSII", 2),
+    ("STII", 2),
+    ("Moebius", 2),
+]
+INDICES_AND_ORDERS = [
+    *INDICES_AND_ORDERS_UP_TO_2,
+    ("SII", 3),
+    ("BII", 3),
+    ("CHII", 3),
+    ("FBII", 3),
+    ("FSII", 3),
+    ("STII", 3),
+    ("Moebius", 3),
+]
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FBII", 1),
-        ("FSII", 2),
-        ("STII", 2),
-    ],
-)
+
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS_UP_TO_2)
 def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, order):
     X_train, X_test, _y_train, _y_test = reg_data
     model = dt_reg_model
@@ -52,26 +64,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, order):
     CLASS_INDEX = 1
     X_train, X_test, _, _ = cls_data
@@ -108,26 +101,7 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, order):
     X_train, X_test, _y_train, _y_test = reg_data
     model = rf_reg_model
@@ -156,26 +130,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, order):
     CLASS_INDEX = 1
     X_train, X_test, _, _ = cls_data
@@ -212,26 +167,7 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index, order):
     X_train, X_test, _, _ = reg_data
     model = xgb_reg_model
@@ -261,26 +197,7 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index, order):
     CLASS_INDEX = 1
     X_train, X_test, _y_train, _y_test = cls_data
@@ -317,26 +234,7 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, index, order):
     X_train, X_test, _y_train, _y_test = reg_data
     model = lightgbm_reg_model
@@ -365,26 +263,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
             )
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
+@pytest.mark.parametrize(("index", "order"), INDICES_AND_ORDERS)
 def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data, index, order):
     CLASS_INDEX = 1
     X_train, X_test, _, _ = cls_data
@@ -421,7 +300,7 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
             )
 
 
-@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4)])
+@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4), ("Moebius", 4)])
 def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, index, order):
     """Indices with any-order closed forms match the ExactComputer on the sparse C kernel.
 

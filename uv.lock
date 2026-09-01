@@ -3908,7 +3908,7 @@ requires-dist = [
     { name = "tabpfn", marker = "extra == 'benchmark'" },
     { name = "torch", marker = "extra == 'shapleig'", specifier = ">=2.9.1" },
     { name = "tqdm" },
-    { name = "woodelf-explainer", marker = "extra == 'tree'", specifier = ">=0.4.6" },
+    { name = "woodelf-explainer", marker = "extra == 'tree'", specifier = ">=0.4.7" },
     { name = "xgboost", marker = "extra == 'benchmark'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
@@ -4822,7 +4822,7 @@ wheels = [
 
 [[package]]
 name = "woodelf-explainer"
-version = "0.4.6"
+version = "0.4.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -4831,9 +4831,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "treelite" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/62/2bc67e6a2d56835d81aa8256086246d63d421e49fab48d81a8cfc69ce442/woodelf_explainer-0.4.6.tar.gz", hash = "sha256:6ec24ba8290d2e545bc28e30cdbf77da34f77b944db2c1f0c5c740ed7fb9f7ca", size = 82701, upload-time = "2026-08-12T10:36:33.568Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/80/dec757c306feef43e085fc525151b020f64d84a9028c0e30c776c10650db/woodelf_explainer-0.4.7.tar.gz", hash = "sha256:6bee99036ca1185624c595901f90cbeabd240218a4921e48ca2312ef37e7d334", size = 85658, upload-time = "2026-08-31T15:58:27.273Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/9c/9beb79b75a87a99f260a6534af404ed6d695d1d9662ecbc7abc1077c36d0/woodelf_explainer-0.4.6-py3-none-any.whl", hash = "sha256:827d014f2d5753d5a337db1a207e2aed1c40c8142e27f771cddefe751ad19c13", size = 82795, upload-time = "2026-08-12T10:36:32.317Z" },
+    { url = "https://files.pythonhosted.org/packages/20/19/c21aabfc28cd6c06a266669d49d7033765232580d61ed3922b27a89ba5f9/woodelf_explainer-0.4.7-py3-none-any.whl", hash = "sha256:e7bd9946810b8f09efe4387e566ae368312d1824ca4831b9d179e07205f7d7af", size = 84461, upload-time = "2026-08-31T15:58:26.035Z" },
 ]
 
 [[package]]

@@ -24,11 +24,12 @@ from .quadrature import QuadratureTreeSHAP, QuadratureTreeSHAPIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
+    from shapiq.explainer.custom_types import ExplainerIndices
     from shapiq.typing import Model
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
+TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII", "Moebius"]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -81,13 +82,15 @@ class TreeExplainer(Explainer):
       in float64 at any tree depth. The algorithm descends from Linear TreeSHAP
       :cite:t:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
       by TreeSHAP-IQ :cite:t:`Muschalik.2024a`; Banzhaf indices fall out of the same
-      polynomials by evaluation at participation probability 1/2. Supported indices:
-      ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, and ``"BII"``.
+      polynomials by evaluation at participation probability 1/2, and the Moebius
+      coefficients by evaluation at 0. Supported indices:
+      ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, ``"BII"``, and ``"Moebius"``.
 
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
-      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
+      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
+      ``"Moebius"`` transform is available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
       :cite:t:`Nadel.2026` :cite:t:`Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
@@ -174,9 +177,9 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
-                indices ``["SV", "SII", "k-SII", "BV", "BII"]`` are supported. In
+                indices ``["SV", "SII", "k-SII", "BV", "BII", "Moebius"]`` are supported. In
                 ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
-                ``"FBII"`` can be computed. Defaults to ``"SV"``.
+                ``"FBII"`` can be computed on top of those. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -197,7 +200,9 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        super().__init__(model, index=index, max_order=max_order)
+        # "Moebius" is only computed by TreeExplainer, so it is not part of the shared
+        # ``ExplainerIndices`` the base class (and the approximators) are typed with.
+        super().__init__(model, index=cast("ExplainerIndices", index), max_order=max_order)
 
         if min_order < 0 or min_order > self._max_order:
             msg = (
@@ -233,7 +238,14 @@ class TreeExplainer(Explainer):
             if reason is not None:
                 msg = f"backend='woodelf' cannot be used: {reason}."
                 raise ValueError(msg)
-        if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
+        if mode == "pathdependent" and self.index not in (
+            "SV",
+            "SII",
+            "k-SII",
+            "BV",
+            "BII",
+            "Moebius",
+        ):
             msg = (
                 f"index='{self.index}' is not supported in 'pathdependent' mode; use "
                 "mode='interventional' with a reference_dataset."
@@ -358,7 +370,17 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "k-SII", "BII"):
+        if self.index not in (
+            "SV",
+            "BV",
+            "SII",
+            "k-SII",
+            "BII",
+            "STII",
+            "FSII",
+            "FBII",
+            "Moebius",
+        ):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -410,8 +432,12 @@ class TreeExplainer(Explainer):
             import pandas as pd
             from woodelf.core.cube_metric import (
                 BanzhafValues,
+                FaithfulBanzhafInteractionValues,
+                FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                MobiusCoefficients,
+                ShapleyTaylorInteractionValues,
                 ShapleyValues,
             )
             from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
@@ -425,16 +451,23 @@ class TreeExplainer(Explainer):
         if self._reference_dataset is not None and self.mode == "interventional":
             background_dataset = pd.DataFrame(self._reference_dataset)
 
+        index_to_metric_class = {
+            "SII": GeneralShapleyInteractionValues,
+            "k-SII": GeneralShapleyInteractionValues,  # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
+            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
+            "BII": GeneralBanzhafInteractionValues,
+            "STII": ShapleyTaylorInteractionValues,
+            "FSII": FaithfulShapleyInteractionValues,
+            "FBII": FaithfulBanzhafInteractionValues,
+            "Moebius": MobiusCoefficients,
+        }
         if self._index == "SV":
             metric = ShapleyValues()
         elif self._index == "BV":
             metric = BanzhafValues()
-        elif self._index in ("SII", "k-SII"):
-            # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
-            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
-            metric = GeneralShapleyInteractionValues(max(self._min_order, 1), self._max_order)
-        elif self._index == "BII":
-            metric = GeneralBanzhafInteractionValues(max(self._min_order, 1), self._max_order)
+        elif self._index in index_to_metric_class:
+            metric_class = index_to_metric_class[self._index]
+            metric = metric_class(max(self._min_order, 1), self._max_order)
         else:  # pre-validated in __init__ / _woodelf_unsupported_reason; defensive
             msg = f"index='{self._index}' is not supported by Woodelf."
             raise ValueError(msg)
