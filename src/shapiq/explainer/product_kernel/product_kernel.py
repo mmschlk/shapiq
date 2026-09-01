@@ -1,3 +1,5 @@
+"""Implementation of the ProductKernelComputer for product kernel-based models."""
+
 from __future__ import annotations
 
 import math
@@ -195,7 +197,7 @@ class ProductKernelComputer:
         u = self.compute_kernel_matrix(x)
         n_samples, n_features = u.shape
 
-        # leading: (ref_samples x features), include alpha_i * (u_{i,j} - 1) for each reference 
+        # leading: (ref_samples x features), include alpha_i * (u_{i,j} - 1) for each reference
         # row i and feature j.
         leading = self.model.alpha[:, None] * (u - 1.0)
 
@@ -203,23 +205,23 @@ class ProductKernelComputer:
         chunk = max(1, _MAX_CHUNK_ELEMENTS // max(n_samples * n_features, 1))
         values = np.zeros(n_features, dtype=np.float64)  # (features,)
         for start in range(0, len(self._nodes), chunk):
-            # nodes: (nodes x 1 x 1), tau_q, - the gauss legendre node q, broadcast over 
+            # nodes: (nodes x 1 x 1), tau_q, - the gauss legendre node q, broadcast over
             # reference points and features
             nodes = self._nodes[start : start + chunk][:, None, None]
             # log_factors: (nodes x ref_samples x features)
-            # log T_{q,j} for T_{q,j} = (1 - tau_q) + tau_q u_j; for every node q and feature j, 
-            # computed for every reference point. 
+            # log T_{q,j} for T_{q,j} = (1 - tau_q) + tau_q u_j; for every node q and feature j,
+            # computed for every reference point.
             log_factors = np.log((1.0 - nodes) + nodes * u[None, :, :])
-            # log_products: (nodes x ref_samples), log P_q, for every node q and reference point, 
+            # log_products: (nodes x ref_samples), log P_q, for every node q and reference point,
             # shared by all features.
             log_products = log_factors.sum(axis=-1)
             # leave_one_out: (nodes x ref_samples x features), the leave-one-out product
-            # prod_{j != l} T_{q,j} = P_q / T_{q,l}. We broadcast log_products to 
+            # prod_{j != l} T_{q,j} = P_q / T_{q,l}. We broadcast log_products to
             # (nodes x ref_samples x features), subtract log_factors, then exponentiate.
             leave_one_out = np.exp(log_products[:, :, None] - log_factors)
             # weights: (nodes,), the gauss legendre weights
             weights = self._weights[start : start + chunk]
-            # An inner product between weights (nodes,) and leave_one_out (nodes x ref_samples x features) 
+            # An inner product between weights (nodes,) and leave_one_out (nodes x ref_samples x features)
             # along the nodes axis, yielding (ref_samples x features).
             # integrated: (ref_samples x features) include the quadrature sum over the node axis, i.e.
             # the integral term of the Shapley formula for every (reference point, feature)
@@ -261,9 +263,9 @@ class ProductKernelComputer:
         interactions: dict[tuple[int, ...], float] = {}
         for order in self._orders:
             # subsets: (interactions x order), every feature subset T of this order
-            subsets = np.array(
-                list(combinations(range(n_features), order)), dtype=np.intp
-            ).reshape(-1, order)
+            subsets = np.array(list(combinations(range(n_features), order)), dtype=np.intp).reshape(
+                -1, order
+            )
             # leading: (ref_samples x interactions), alpha_i * prod_{j in T} (u_{i,j} - 1)
             leading = self.model.alpha[:, None] * np.prod(u[:, subsets] - 1.0, axis=-1)
             values = np.zeros(len(subsets), dtype=np.float64)  # (interactions,)
@@ -286,7 +288,7 @@ class ProductKernelComputer:
                     # leave_t_out: (nodes x ref_samples x interactions), the leave-T-out product
                     # prod_{j not in T} T_{q,j} = P_q / prod_{j in T} T_{q,j}, in log-space.
                     # log_factors.sum(axis=-1) compute the ``prod_{j in T} T_{q,j}`` expression -
-                    # as we are in log-space the prod is replaced by a sum. 
+                    # as we are in log-space the prod is replaced by a sum.
                     leave_t_out = np.exp(
                         log_products[:, :, None] - log_factors[:, :, chunk_subsets].sum(axis=-1)
                     )
@@ -294,11 +296,14 @@ class ProductKernelComputer:
                     integrated = np.tensordot(weights, leave_t_out, axes=(0, 0))
                     # scale by the marginal factor and sum the reference points away
                     stop = subset_start + len(chunk_subsets)
-                    values[subset_start:stop] += (
-                        integrated * leading[:, subset_start:stop]
-                    ).sum(axis=0)
+                    values[subset_start:stop] += (integrated * leading[:, subset_start:stop]).sum(
+                        axis=0
+                    )
 
             interactions.update(
-                {tuple(int(j) for j in subset): float(v) for subset, v in zip(subsets, values)}
+                {
+                    tuple(int(j) for j in subset): float(v)
+                    for subset, v in zip(subsets, values, strict=False)
+                }
             )
         return interactions

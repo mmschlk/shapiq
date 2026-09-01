@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import warnings
 
 import numpy as np
 import pytest
@@ -21,7 +20,6 @@ from shapiq.explainer.product_kernel.game import (
 from shapiq.explainer.product_kernel.product_kernel import (
     ProductKernelInteractionSizeWarning,
 )
-from shapiq.explainer.product_kernel.validation import validate_pk_model
 from shapiq.game_theory.exact import ExactComputer
 
 
@@ -239,9 +237,9 @@ def test_interactions_against_exact_computer(svr_model, background_reg_data, ind
     x_explain = background_reg_data[0]
     n_players = svr_model.n_features_in_
 
-    explanation = ProductKernelExplainer(
-        model=svr_model, index=index, max_order=order
-    ).explain(x_explain)
+    explanation = ProductKernelExplainer(model=svr_model, index=index, max_order=order).explain(
+        x_explain
+    )
 
     game = ProductKernelGame(
         model=convert_svm(svr_model),

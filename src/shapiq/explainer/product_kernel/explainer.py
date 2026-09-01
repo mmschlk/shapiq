@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from shapiq import InteractionValues
 from shapiq.explainer.base import Explainer
-from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.game_theory import get_computation_index
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
     from sklearn.gaussian_process import GaussianProcessRegressor
     from sklearn.svm import SVC, SVR
 
+    from shapiq.explainer.custom_types import ExplainerIndices
     from shapiq.typing import Model
 
     from .base import ProductKernelModel
@@ -120,6 +120,7 @@ class ProductKernelExplainer(Explainer):
         """
         n_players = self.converted_model.d
 
+        interactions: dict[tuple[int, ...], float] = {}
         if self._max_order == 1:
             # the first-order route skips building the subset lattice altogether
             values = self.explainer.compute_values(x)
