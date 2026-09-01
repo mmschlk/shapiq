@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.7.1 (TBD)
+
+### QuadraSHAP for `ProductKernelExplainer`
+
+`ProductKernelComputer` now computes Shapley values by Gauss-Legendre quadrature of the product-game integral (Mohammadi et al., 2026) instead of the elementary-symmetric-polynomial recursion of PKeX-Shapley (Mohammadi et al., 2025).
+This reduces the cost per explained instance from `O(n d^3)` to `O(n d^2)`, where `n` is the number of reference points (the support vectors of an SVM, the training set of a Gaussian process) and `d` the number of features.
+In practice we measure speedups of 17x, 26x, 50x and 91x for models with `d = 20, 40, 80, 160` respectively.
+
+The new `n_quadrature_points` argument on `ProductKernelExplainer` and `ProductKernelComputer` trades exactness for speed with a geometrically decaying error; it defaults to the exact bound.
+
+**Public API change:** `ProductKernelComputer.compute_kernel_vectors`, `.compute_shapley_value`, `.compute_elementary_symmetric_polynomials`, and `.precompute_weights` are removed, replaced by `.compute_kernel_matrix(x)` and `.compute_shapley_values(x)`, which return the `(n, d)` kernel factors and all `d` Shapley values at once.
+`ProductKernelExplainer` itself is unchanged.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.
