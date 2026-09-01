@@ -26,10 +26,15 @@ class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
     The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
-    classification models. See [quadrashap]_ for details.
+    classification models. The product-kernel game explained here, and the attribution method
+    defined on it, were proposed by [pkex-shapley]_. This explainer computes the same values
+    with the faster algorithm of [quadrashap]_, which replaces that paper's
+    elementary-symmetric-polynomial recursion by Gauss-Legendre quadrature of a one-dimensional
+    integral.
 
 
     References:
+        .. [pkex-shapley] Majid Mohammadi, Siu Lun Chau and Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
         .. [quadrashap] Majid Mohammadi, Grigory Reznikov, Pavel Sinitcyn, Krikamol Muandet and Siu Lun Chau. (2026). QuadraSHAP: Stable and Scalable Shapley Values for Product Games via Gauss-Legendre Quadrature. https://arxiv.org/abs/2605.05870
 
     Attributes:
