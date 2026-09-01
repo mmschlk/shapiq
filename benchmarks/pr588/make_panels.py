@@ -645,27 +645,70 @@ TITLES = {
 ORDER2_NOTE = "one tree per depth, one explained instance, single thread  ·  order 2 = k-SII"
 
 
+# Where to spell out the speed-up on the panel itself: (slower series, faster series).
+RATIO_ARROW = {"superconductivity": (("shap", 2), ("quadrature", 2))}
+
+
+def ratio_arrow(ax, records, dataset: str, slower, faster) -> None:
+    """A two-headed arrow between two curves at the deepest tree, labelled with their ratio.
+
+    The number is read back out of the result file rather than written into the figure, so it
+    cannot drift away from the measurement it claims to summarize.
+    """
+
+    def curve(series):
+        method, order = series
+        return {
+            r["depth"]: r["median_s"]
+            for r in records
+            if r["dataset"] == dataset
+            and r["method"] == method
+            and r["order"] == order
+            and r.get("status") == "ok"
+        }
+
+    hi, lo = curve(slower), curve(faster)
+    shared = set(hi) & set(lo)
+    if not shared:
+        return
+    depth = max(shared)
+    y_hi, y_lo = hi[depth], lo[depth]
+    ax.annotate(
+        "",
+        xy=(depth, y_lo),
+        xytext=(depth, y_hi),
+        arrowprops={
+            "arrowstyle": "<->",
+            "color": INK_2,
+            "linewidth": 1.4,
+            "shrinkA": 4,
+            "shrinkB": 4,
+        },
+        zorder=6,
+    )
+    ax.annotate(
+        f"{y_hi / y_lo:.0f}× faster",
+        xy=(depth, (y_hi * y_lo) ** 0.5),
+        xytext=(-7, 0),
+        textcoords="offset points",
+        ha="right",
+        va="center",
+        fontsize=9.5,
+        color=INK,
+        fontweight="bold",
+        zorder=7,
+        bbox={"facecolor": SURFACE, "edgecolor": "none", "pad": 1.5, "alpha": 0.85},
+    )
+
+
 def depth_real() -> None:
     records = load_results("depth_real")["records"]
     acc = accuracy_map("real")
     for dataset in ("superconductivity", "heloc", "bioresponse"):
         fig, ax = _depth_panel(records, dataset, TITLES[dataset], ORDER2_NOTE, acc)
-        refused = [
-            r["depth"] for r in records if r["dataset"] == dataset and r.get("status") == "refused"
-        ]
-        if refused:
-            ax.axvline(min(refused), color=MUTED, linestyle=DASH, linewidth=1.2, zorder=1)
-            ax.annotate(
-                "polynomial explainers refuse\n(features per path > 30)",
-                xy=(min(refused), 0.02),
-                xycoords=("data", "axes fraction"),
-                xytext=(-6, 0),
-                textcoords="offset points",
-                fontsize=8,
-                color=MUTED,
-                va="bottom",
-                ha="right",
-            )
+        if dataset in RATIO_ARROW:
+            slower, faster = RATIO_ARROW[dataset]
+            ratio_arrow(ax, records, dataset, slower, faster)
         save(fig, f"panel_depth_{dataset}")
 
 
