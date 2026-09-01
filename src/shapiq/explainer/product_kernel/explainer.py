@@ -25,11 +25,11 @@ class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
     The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
-    classification models. See [pkex-shapley]_ for details.
+    classification models. See [quadrashap]_ for details.
 
 
     References:
-        .. [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
+        .. [quadrashap] Majid Mohammadi, Grigory Reznikov, Pavel Sinitcyn, Krikamol Muandet and Siu Lun Chau. (2026). QuadraSHAP: Stable and Scalable Shapley Values for Product Games via Gauss-Legendre Quadrature. https://arxiv.org/abs/2605.05870
 
     Attributes:
         model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.
@@ -40,6 +40,7 @@ class ProductKernelExplainer(Explainer):
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
         min_order: The minimum interaction order to be computed. Defaults to ``0``.
         index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
+        n_quadrature_points: The number of Gauss-Legendre nodes used for the computation.
     """
 
     def __init__(
@@ -51,6 +52,7 @@ class ProductKernelExplainer(Explainer):
         min_order: int = 0,
         max_order: int = 1,
         index: ProductKernelSHAPIQIndices = "SV",
+        n_quadrature_points: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the ProductKernelExplainer.
@@ -64,6 +66,10 @@ class ProductKernelExplainer(Explainer):
                 corresponds to the Shapley value. Defaults to ``1``.
 
             index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
+
+            n_quadrature_points: The number of Gauss-Legendre nodes. Defaults to ``None``,
+                which uses the exact bound ``ceil(d / 2)`` for ``d`` features. Lower values
+                trade exactness for speed with a geometrically decaying error.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -91,6 +97,7 @@ class ProductKernelExplainer(Explainer):
             model=self.converted_model,
             max_order=max_order,
             index=index,
+            n_quadrature_points=n_quadrature_points,
         )
 
         self.empty_prediction = self._compute_baseline_value()
@@ -111,12 +118,8 @@ class ProductKernelExplainer(Explainer):
         """
         n_players = self.converted_model.d
 
-        # compute the kernel vectors for the instance x
-        kernel_vectors = self.explainer.compute_kernel_vectors(self.converted_model.X_train, x)
-
-        shapley_values = {}
-        for j in range(self.converted_model.d):
-            shapley_values.update({(j,): self.explainer.compute_shapley_value(kernel_vectors, j)})
+        values = self.explainer.compute_shapley_values(x)
+        shapley_values = {(j,): float(values[j]) for j in range(n_players)}
 
         return InteractionValues(
             values=shapley_values,
