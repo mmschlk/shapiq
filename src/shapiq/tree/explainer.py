@@ -89,7 +89,8 @@ class TreeExplainer(Explainer):
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
-      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
+      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
+      ``"Moebius"`` transform is available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
       :cite:t:`Nadel.2026` :cite:t:`Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
@@ -178,7 +179,7 @@ class TreeExplainer(Explainer):
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
                 indices ``["SV", "SII", "k-SII", "BV", "BII", "Moebius"]`` are supported. In
                 ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
-                ``"FBII"`` can be computed. Defaults to ``"SV"``.
+                ``"FBII"`` can be computed on top of those. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -248,14 +249,6 @@ class TreeExplainer(Explainer):
             msg = (
                 f"index='{self.index}' is not supported in 'pathdependent' mode; use "
                 "mode='interventional' with a reference_dataset."
-            )
-            raise ValueError(msg)
-        if mode == "interventional" and self.index == "Moebius":
-            # the interventional kernel has no Moebius leaf weight yet; only the
-            # path-dependent quadrature kernel computes this index.
-            msg = (
-                "index='Moebius' is not supported in 'interventional' mode; use "
-                "mode='pathdependent'."
             )
             raise ValueError(msg)
 
