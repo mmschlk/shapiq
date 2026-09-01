@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 
 import numpy as np
 import pytest
@@ -17,13 +18,20 @@ from shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_s
 from shapiq.explainer.product_kernel.game import (
     ProductKernelGame,
 )
+from shapiq.explainer.product_kernel.product_kernel import (
+    ProductKernelInteractionSizeWarning,
+)
+from shapiq.explainer.product_kernel.validation import validate_pk_model
 from shapiq.game_theory.exact import ExactComputer
 
 
 def test_invalid_application(bin_svc_model, background_clf_dataset_binary):
     """Test the product kernel explainer with an invalid application."""
-    with pytest.raises(ValueError):
-        _ = ProductKernelExplainer(model=bin_svc_model, max_order=2, index="SV")
+    with pytest.raises(ValueError, match="not supported"):
+        _ = ProductKernelExplainer(model=bin_svc_model, max_order=2, index="FSII")
+
+    with pytest.raises(ValueError, match="min_order"):
+        _ = ProductKernelExplainer(model=bin_svc_model, max_order=2, index="SII", min_order=3)
 
     non_rbf_svm = copy.deepcopy(bin_svc_model)
     non_rbf_svm.kernel = "linear"
@@ -222,3 +230,40 @@ def test_banzhaf_ignores_quadrature_points(svr_model, background_reg_data):
 
     for player in range(n_players):
         assert default[(player,)] == with_points[(player,)]
+
+
+@pytest.mark.parametrize("index", ["SII", "k-SII", "BII", "Moebius"])
+@pytest.mark.parametrize("order", [2, 3])
+def test_interactions_against_exact_computer(svr_model, background_reg_data, index, order):
+    """Test that every interaction index matches the exact computer at any order."""
+    x_explain = background_reg_data[0]
+    n_players = svr_model.n_features_in_
+
+    explanation = ProductKernelExplainer(
+        model=svr_model, index=index, max_order=order
+    ).explain(x_explain)
+
+    game = ProductKernelGame(
+        model=convert_svm(svr_model),
+        n_players=n_players,
+        explain_point=x_explain,
+        normalize=False,
+    )
+    # the k-SII aggregation depends on the truncation order, so the exact computer needs it too
+    exact = ExactComputer(game=game, n_players=n_players)(explanation.index, order=order)
+
+    assert explanation.max_order == order
+    for interaction in explanation.interaction_lookup:
+        if interaction:
+            assert explanation[interaction] == pytest.approx(exact[interaction], abs=1e-10)
+
+
+def test_many_interactions_warns():
+    """Test that an explanation enumerating very many interactions warns."""
+    rng = np.random.default_rng(0)
+    d = 300
+    model = ProductKernelModel(
+        X_train=rng.normal(size=(2, d)), alpha=rng.normal(size=2), n=2, d=d, gamma=0.1
+    )
+    with pytest.warns(ProductKernelInteractionSizeWarning, match="45,150 interactions"):
+        _ = ProductKernelComputer(model, index="SII", max_order=2)

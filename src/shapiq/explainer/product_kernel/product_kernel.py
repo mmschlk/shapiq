@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal
+import warnings
+from itertools import combinations
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 
@@ -10,10 +12,17 @@ from shapiq.game_theory.indices import get_computation_index
 if TYPE_CHECKING:
     from shapiq.explainer.product_kernel.base import ProductKernelModel
 
-ProductKernelSHAPIQIndices = Literal["SV", "BV"]
+ProductKernelSHAPIQIndices = Literal["SV", "BV", "SII", "k-SII", "BII", "Moebius"]
 
 #: Element budget for one quadrature chunk (~32 MiB per float64 temporary).
 _MAX_CHUNK_ELEMENTS = 1 << 22
+
+#: Interaction count above which an explanation becomes slow enough to warn about.
+_INTERACTION_WARNING_THRESHOLD = 10_000
+
+
+class ProductKernelInteractionSizeWarning(UserWarning):
+    """Warns that the requested interaction order enumerates very many interactions."""
 
 
 def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -48,6 +57,7 @@ class ProductKernelComputer:
         model: ProductKernelModel,
         *,
         max_order: int = 1,
+        min_order: int = 1,
         index: ProductKernelSHAPIQIndices = "SV",
         n_quadrature_points: int | None = None,
     ) -> None:
@@ -58,8 +68,12 @@ class ProductKernelComputer:
 
             max_order: The maximum interaction order to be computed. Defaults to ``1``.
 
-            index: The type of value to be computed, either ``"SV"`` (Shapley value) or
-                ``"BV"`` (Banzhaf value). Defaults to ``"SV"``.
+            min_order: The minimum interaction order to be computed. Order ``0`` is treated as
+                ``1``, since the empty interaction carries the baseline value. Defaults to ``1``.
+
+            index: The type of value to be computed. ``"SV"``, ``"SII"`` and ``"k-SII"`` are
+                computed from the Shapley base, ``"BV"`` and ``"BII"`` from the Banzhaf base,
+                and ``"Moebius"`` returns the Moebius coefficients. Defaults to ``"SV"``.
 
             n_quadrature_points: Number of Gauss-Legendre nodes. Defaults to ``None``, which
                 uses the exact bound ``ceil(d / 2)`` for ``d`` features. Smaller values trade
@@ -72,6 +86,12 @@ class ProductKernelComputer:
             ValueError: If ``n_quadrature_points`` is not positive.
 
         """
+        if index not in get_args(ProductKernelSHAPIQIndices):
+            msg = (
+                f"Index '{index}' is not supported by ProductKernelComputer. Supported indices "
+                f"are {get_args(ProductKernelSHAPIQIndices)}."
+            )
+            raise ValueError(msg)
         if n_quadrature_points is not None and n_quadrature_points < 1:
             msg = f"n_quadrature_points must be positive, got {n_quadrature_points}."
             raise ValueError(msg)
@@ -79,14 +99,31 @@ class ProductKernelComputer:
         self.model = model
         self.kernel_type = self.model.kernel_type
         self.max_order = max_order
+        self.min_order = min_order
         self.index = index
         self.d = model.d
 
-        if get_computation_index(index) == "BII":
+        self._orders = tuple(range(max(min_order, 1), max_order + 1))
+
+        base_index = get_computation_index(index)
+        if base_index == "Moebius":
+            # at t = 0 every remaining factor collapses to 1, leaving prod_{j in T} (u_j - 1)
+            self._nodes, self._weights = np.array([0.0]), np.array([1.0])
+        elif base_index == "BII":
             self._nodes, self._weights = np.array([0.5]), np.array([1.0])
         else:
             n_points = n_quadrature_points or math.ceil(self.d / 2)
             self._nodes, self._weights = _gauss_legendre_unit(max(n_points, 1))
+
+        n_interactions = sum(math.comb(self.d, order) for order in self._orders)
+        if n_interactions > _INTERACTION_WARNING_THRESHOLD:
+            msg = (
+                f"Explaining {self.d} features up to order {max_order} enumerates "
+                f"{n_interactions:,} interactions per instance. Every interaction of a product "
+                f"kernel is generically non-zero, so this cannot be sparsified; consider a lower "
+                f"max_order."
+            )
+            warnings.warn(msg, ProductKernelInteractionSizeWarning, stacklevel=3)
 
     def compute_kernel_matrix(self, x: np.ndarray) -> np.ndarray:
         """Compute the per-feature kernel factors of the explained instance.
@@ -110,7 +147,9 @@ class ProductKernelComputer:
         return np.exp(-gamma * (self.model.X_train - np.asarray(x)[None, :]) ** 2)
 
     def compute_values(self, x: np.ndarray) -> np.ndarray:
-        r"""Compute the Shapley or Banzhaf values of all features of an instance.
+        r"""Compute the first-order values of all features of an instance.
+
+        Use :meth:`compute_interaction_values` for interactions of order two and above.
 
         Evaluates the quadrature form of the product-game Shapley value
 
@@ -188,3 +227,78 @@ class ProductKernelComputer:
             # scale by the marginal factor and sum the reference points away: -> (features,)
             values += (integrated * leading).sum(axis=0)
         return values
+
+    def compute_interaction_values(self, x: np.ndarray) -> dict[tuple[int, ...], float]:
+        r"""Compute the interaction values of all feature subsets of an instance.
+
+        Lifts :meth:`compute_values` from single features to every order in
+        ``min_order..max_order``, using the same quadrature rule and the same shared
+        log-space product :math:`P_q`; see that method for the polynomial itself.
+
+        The discrete derivative of a product game with respect to a subset :math:`T` is
+        :math:`\Delta_T v(S) = \prod_{j \in T}(u_j - 1) \prod_{j \in S} u_j`, so an order-k
+        interaction is the first-order expression with two substitutions: the marginal factor
+        :math:`(u_\ell - 1)` becomes :math:`\prod_{j \in T}(u_j - 1)`, and the leave-one-out
+        product becomes the leave-:math:`T`-out product
+
+        .. math::
+            \prod_{j \notin T} T_{q,j} = \frac{P_q}{\prod_{j \in T} T_{q,j}}.
+
+        :math:`P_q` is still formed once per node and shared by every subset, so the extra
+        cost per interaction is one length-k sum in log-space.
+
+        Args:
+            x: The instance (1D array) for which to compute the values.
+
+        Returns:
+            A mapping from each feature subset to its interaction value.
+
+        """
+        # u: (ref_samples x features), u[i, j] = k_j(x_j, X_train[i, j])
+        u = self.compute_kernel_matrix(x)
+        n_samples, n_features = u.shape
+
+        interactions: dict[tuple[int, ...], float] = {}
+        for order in self._orders:
+            # subsets: (interactions x order), every feature subset T of this order
+            subsets = np.array(
+                list(combinations(range(n_features), order)), dtype=np.intp
+            ).reshape(-1, order)
+            # leading: (ref_samples x interactions), alpha_i * prod_{j in T} (u_{i,j} - 1)
+            leading = self.model.alpha[:, None] * np.prod(u[:, subsets] - 1.0, axis=-1)
+            values = np.zeros(len(subsets), dtype=np.float64)  # (interactions,)
+
+            # chunk both axes so the (nodes x ref_samples x ...) temporaries stay in budget
+            node_chunk = max(1, _MAX_CHUNK_ELEMENTS // max(n_samples * n_features, 1))
+            subset_chunk = max(1, _MAX_CHUNK_ELEMENTS // max(n_samples * node_chunk, 1))
+            for node_start in range(0, len(self._nodes), node_chunk):
+                # nodes: (nodes x 1 x 1), tau_q, broadcast over reference points and features
+                nodes = self._nodes[node_start : node_start + node_chunk][:, None, None]
+                # log_factors: (nodes x ref_samples x features), log T_{q,j} for
+                # T_{q,j} = (1 - tau_q) + tau_q u_j
+                log_factors = np.log((1.0 - nodes) + nodes * u[None, :, :])
+                # log_products: (nodes x ref_samples), log P_q, shared by all interactions
+                log_products = log_factors.sum(axis=-1)
+                weights = self._weights[node_start : node_start + node_chunk]  # (nodes,)
+
+                for subset_start in range(0, len(subsets), subset_chunk):
+                    chunk_subsets = subsets[subset_start : subset_start + subset_chunk]
+                    # leave_t_out: (nodes x ref_samples x interactions), the leave-T-out product
+                    # prod_{j not in T} T_{q,j} = P_q / prod_{j in T} T_{q,j}, in log-space.
+                    # log_factors.sum(axis=-1) compute the ``prod_{j in T} T_{q,j}`` expression -
+                    # as we are in log-space the prod is replaced by a sum. 
+                    leave_t_out = np.exp(
+                        log_products[:, :, None] - log_factors[:, :, chunk_subsets].sum(axis=-1)
+                    )
+                    # integrated: (ref_samples x interactions), the quadrature sum over the nodes
+                    integrated = np.tensordot(weights, leave_t_out, axes=(0, 0))
+                    # scale by the marginal factor and sum the reference points away
+                    stop = subset_start + len(chunk_subsets)
+                    values[subset_start:stop] += (
+                        integrated * leading[:, subset_start:stop]
+                    ).sum(axis=0)
+
+            interactions.update(
+                {tuple(int(j) for j in subset): float(v) for subset, v in zip(subsets, values)}
+            )
+        return interactions

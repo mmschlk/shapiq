@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from shapiq import InteractionValues
 from shapiq.explainer.base import Explainer
+from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.game_theory import get_computation_index
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
@@ -81,16 +82,12 @@ class ProductKernelExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        if max_order > 1:
-            msg = "ProductKernelExplainer currently only supports max_order=1."
+        super().__init__(model, index=cast("ExplainerIndices", index), max_order=max_order)
+
+        if min_order > self._max_order:
+            msg = f"min_order must not exceed max_order, got {min_order=}, {self._max_order=}."
             raise ValueError(msg)
-
-        super().__init__(model, index=index, max_order=max_order)
-
         self._min_order = min_order
-        self._max_order = max_order
-
-        self._index = index
         self._base_index: str = get_computation_index(self._index)
 
         # validate model
@@ -98,8 +95,10 @@ class ProductKernelExplainer(Explainer):
 
         self.explainer = ProductKernelComputer(
             model=self.converted_model,
-            max_order=max_order,
-            index=index,
+            max_order=self._max_order,
+            min_order=min_order,
+            # the computer re-checks this at runtime and rejects unsupported indices
+            index=cast("ProductKernelSHAPIQIndices", self._index),
             n_quadrature_points=n_quadrature_points,
         )
 
@@ -121,11 +120,15 @@ class ProductKernelExplainer(Explainer):
         """
         n_players = self.converted_model.d
 
-        values = self.explainer.compute_values(x)
-        attributions = {(j,): float(values[j]) for j in range(n_players)}
+        if self._max_order == 1:
+            # the first-order route skips building the subset lattice altogether
+            values = self.explainer.compute_values(x)
+            interactions = {(player,): float(values[player]) for player in range(n_players)}
+        else:
+            interactions = self.explainer.compute_interaction_values(x)
 
         return InteractionValues(
-            values=attributions,
+            values=interactions,
             index=self._base_index,
             min_order=self._min_order,
             max_order=self.max_order,

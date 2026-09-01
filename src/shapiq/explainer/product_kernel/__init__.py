@@ -2,6 +2,11 @@
 
 from .base import ProductKernelModel
 from .explainer import ProductKernelExplainer
-from .product_kernel import ProductKernelComputer
+from .product_kernel import ProductKernelComputer, ProductKernelInteractionSizeWarning
 
-__all__ = ["ProductKernelModel", "ProductKernelExplainer", "ProductKernelComputer"]
+__all__ = [
+    "ProductKernelComputer",
+    "ProductKernelExplainer",
+    "ProductKernelInteractionSizeWarning",
+    "ProductKernelModel",
+]
