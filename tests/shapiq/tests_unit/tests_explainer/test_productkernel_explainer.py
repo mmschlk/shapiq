@@ -154,12 +154,13 @@ def test_invalid_quadrature_points(svr_model):
         _ = ProductKernelExplainer(model=svr_model, n_quadrature_points=-3)
 
 
-def test_svr_quadrature_is_exact(svr_model, background_reg_data):
-    """Test that the default quadrature rule reproduces the exact Shapley values."""
+@pytest.mark.parametrize("index", ["SV", "BV"])
+def test_svr_quadrature_is_exact(svr_model, background_reg_data, index):
+    """Test that the default rule reproduces the exact values for both supported indices."""
     x_explain = background_reg_data[0]
     n_players = svr_model.n_features_in_
 
-    explanation = ProductKernelExplainer(model=svr_model).explain(x_explain)
+    explanation = ProductKernelExplainer(model=svr_model, index=index).explain(x_explain)
 
     game = ProductKernelGame(
         model=convert_svm(svr_model),
@@ -167,7 +168,7 @@ def test_svr_quadrature_is_exact(svr_model, background_reg_data):
         explain_point=x_explain,
         normalize=False,
     )
-    exact = ExactComputer(game=game, n_players=n_players)("SV")
+    exact = ExactComputer(game=game, n_players=n_players)(index)
 
     for player in range(n_players):
         assert explanation[(player,)] == pytest.approx(exact[(player,)], abs=1e-10)
@@ -193,7 +194,7 @@ def test_single_feature_model():
     model = ProductKernelModel(X_train=x_train, alpha=alpha, n=5, d=1, gamma=1.0)
     x_explain = rng.normal(size=1)
 
-    values = ProductKernelComputer(model).compute_shapley_values(x_explain)
+    values = ProductKernelComputer(model).compute_values(x_explain)
 
     # with one player the Shapley value is the full marginal contribution v({0}) - v({})
     kernel = np.exp(-model.gamma * (x_train[:, 0] - x_explain[0]) ** 2)
@@ -206,4 +207,18 @@ def test_unsupported_kernel_type():
         X_train=np.zeros((2, 2)), alpha=np.zeros(2), n=2, d=2, gamma=1.0, kernel_type="linear"
     )
     with pytest.raises(NotImplementedError, match="linear"):
-        ProductKernelComputer(model).compute_shapley_values(np.zeros(2))
+        ProductKernelComputer(model).compute_values(np.zeros(2))
+
+
+def test_banzhaf_ignores_quadrature_points(svr_model, background_reg_data):
+    """Test that ``n_quadrature_points`` has no effect on Banzhaf values."""
+    x_explain = background_reg_data[0]
+    n_players = svr_model.n_features_in_
+
+    default = ProductKernelExplainer(model=svr_model, index="BV").explain(x_explain)
+    with_points = ProductKernelExplainer(
+        model=svr_model, index="BV", n_quadrature_points=99
+    ).explain(x_explain)
+
+    for player in range(n_players):
+        assert default[(player,)] == with_points[(player,)]

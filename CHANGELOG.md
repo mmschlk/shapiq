@@ -8,9 +8,11 @@
 This reduces the cost per explained instance from `O(n d^3)` to `O(n d^2)`, where `n` is the number of reference points (the support vectors of an SVM, the training set of a Gaussian process) and `d` the number of features.
 In practice we measure speedups of 27x, 37x, 53x and 95x on the Shapley computation for models with `d = 20, 40, 80, 160` respectively.
 
+`ProductKernelExplainer` now also computes Banzhaf values (`index="BV"`, previously `"SV"` only).
+
 The new `n_quadrature_points` argument on `ProductKernelExplainer` and `ProductKernelComputer` trades exactness for speed with a geometrically decaying error; it defaults to the exact bound.
 
-**Public API change:** `ProductKernelComputer.compute_kernel_vectors`, `.compute_shapley_value`, `.compute_elementary_symmetric_polynomials`, and `.precompute_weights` are removed, replaced by `.compute_kernel_matrix(x)` and `.compute_shapley_values(x)`, which return the `(n, d)` kernel factors and all `d` Shapley values at once.
+**Public API change:** `ProductKernelComputer.compute_kernel_vectors`, `.compute_shapley_value`, `.compute_elementary_symmetric_polynomials`, and `.precompute_weights` are removed, replaced by `.compute_kernel_matrix(x)` and `.compute_values(x)`, which return the `(n, d)` kernel factors and all `d` values at once.
 `ProductKernelExplainer` itself is unchanged.
 
 ## v1.7.0 (2026-08-27)

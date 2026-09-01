@@ -39,7 +39,8 @@ class ProductKernelExplainer(Explainer):
              For further details, see the `validate_pk_model` function in `shapiq.explainer.product_kernel.validation`.
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
         min_order: The minimum interaction order to be computed. Defaults to ``0``.
-        index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
+        index: The type of value to be computed, either ``"SV"`` (Shapley value) or ``"BV"``
+            (Banzhaf value).
         n_quadrature_points: The number of Gauss-Legendre nodes used for the computation.
     """
 
@@ -65,11 +66,13 @@ class ProductKernelExplainer(Explainer):
             max_order: The maximum interaction order to be computed. An interaction order of ``1``
                 corresponds to the Shapley value. Defaults to ``1``.
 
-            index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
+            index: The type of value to be computed, either ``"SV"`` (Shapley value) or
+                ``"BV"`` (Banzhaf value). Defaults to ``"SV"``.
 
             n_quadrature_points: The number of Gauss-Legendre nodes. Defaults to ``None``,
                 which uses the exact bound ``ceil(d / 2)`` for ``d`` features. Lower values
-                trade exactness for speed with a geometrically decaying error.
+                trade exactness for speed with a geometrically decaying error. Ignored for
+                ``"BV"``, which is a single evaluation point.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -107,10 +110,10 @@ class ProductKernelExplainer(Explainer):
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute Shapley values for all features of an instance.
+        """Compute Shapley or Banzhaf values for all features of an instance.
 
         Args:
-           x: The instance (1D array) for which to compute Shapley values.
+           x: The instance (1D array) for which to compute the values.
            **kwargs: Additional keyword arguments are ignored.
 
         Returns:
@@ -118,11 +121,11 @@ class ProductKernelExplainer(Explainer):
         """
         n_players = self.converted_model.d
 
-        values = self.explainer.compute_shapley_values(x)
-        shapley_values = {(j,): float(values[j]) for j in range(n_players)}
+        values = self.explainer.compute_values(x)
+        attributions = {(j,): float(values[j]) for j in range(n_players)}
 
         return InteractionValues(
-            values=shapley_values,
+            values=attributions,
             index=self._base_index,
             min_order=self._min_order,
             max_order=self.max_order,

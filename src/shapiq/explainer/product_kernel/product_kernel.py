@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from shapiq.game_theory.indices import get_computation_index
+
 if TYPE_CHECKING:
     from shapiq.explainer.product_kernel.base import ProductKernelModel
 
-ProductKernelSHAPIQIndices = Literal["SV"]
+ProductKernelSHAPIQIndices = Literal["SV", "BV"]
 
 #: Element budget for one quadrature chunk (~32 MiB per float64 temporary).
 _MAX_CHUNK_ELEMENTS = 1 << 22
@@ -23,9 +25,11 @@ def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
 class ProductKernelComputer:
     """The Product Kernel Computer for product kernel-based models.
 
-    This class computes the Shapley values for product kernel-based models.
+    This class computes the Shapley and Banzhaf values for product kernel-based models.
+
     The Shapley values are computed by Gauss-Legendre quadrature of the product-game integral,
     which is exact with ``ceil(d / 2)`` nodes for ``d`` features. See [quadrashap]_ for details.
+    The Banzhaf values are computed by a single ``t = 1/2`` evaluation of this product-game polynomial.
 
     References:
         -- [quadrashap] Majid Mohammadi, Grigory Reznikov, Pavel Sinitcyn, Krikamol Muandet and Siu Lun Chau. (2026). QuadraSHAP: Stable and Scalable Shapley Values for Product Games via Gauss-Legendre Quadrature. https://arxiv.org/abs/2605.05870
@@ -34,7 +38,7 @@ class ProductKernelComputer:
         model: The product kernel model to explain.
         kernel_type: The type of kernel to be used. Defaults to ``"rbf"``.
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
-        index: The type of interaction to be computed. Defaults to ``"SV"``.
+        index: The type of value to be computed, ``"SV"`` or ``"BV"``. Defaults to ``"SV"``.
         d: The number of features in the model.
 
     """
@@ -54,13 +58,15 @@ class ProductKernelComputer:
 
             max_order: The maximum interaction order to be computed. Defaults to ``1``.
 
-            index: The type of interaction to be computed. Defaults to ``"SV"``.
+            index: The type of value to be computed, either ``"SV"`` (Shapley value) or
+                ``"BV"`` (Banzhaf value). Defaults to ``"SV"``.
 
             n_quadrature_points: Number of Gauss-Legendre nodes. Defaults to ``None``, which
                 uses the exact bound ``ceil(d / 2)`` for ``d`` features. Smaller values trade
                 exactness for speed with a geometrically decaying error and are worthwhile
                 only for very high-dimensional models, where a few hundred nodes already
-                reach float64 precision.
+                reach float64 precision. Ignored for ``"BV"``, which is a single evaluation
+                point rather than a quadrature rule.
 
         Raises:
             ValueError: If ``n_quadrature_points`` is not positive.
@@ -76,14 +82,17 @@ class ProductKernelComputer:
         self.index = index
         self.d = model.d
 
-        n_points = n_quadrature_points or math.ceil(self.d / 2)
-        self._nodes, self._weights = _gauss_legendre_unit(max(n_points, 1))
+        if get_computation_index(index) == "BII":
+            self._nodes, self._weights = np.array([0.5]), np.array([1.0])
+        else:
+            n_points = n_quadrature_points or math.ceil(self.d / 2)
+            self._nodes, self._weights = _gauss_legendre_unit(max(n_points, 1))
 
     def compute_kernel_matrix(self, x: np.ndarray) -> np.ndarray:
         """Compute the per-feature kernel factors of the explained instance.
 
         Args:
-            x: The instance (1D array) for which to compute Shapley values.
+            x: The instance (1D array) for which to compute the values.
 
         Returns:
             The ``(n, d)`` matrix ``u`` with ``u[i, j] = k_j(x_j, X_train[i, j])``.
@@ -100,8 +109,8 @@ class ProductKernelComputer:
         gamma = 1.0 if self.model.gamma is None else self.model.gamma
         return np.exp(-gamma * (self.model.X_train - np.asarray(x)[None, :]) ** 2)
 
-    def compute_shapley_values(self, x: np.ndarray) -> np.ndarray:
-        r"""Compute the Shapley values of all features of an instance.
+    def compute_values(self, x: np.ndarray) -> np.ndarray:
+        r"""Compute the Shapley or Banzhaf values of all features of an instance.
 
         Evaluates the quadrature form of the product-game Shapley value
 
@@ -133,11 +142,14 @@ class ProductKernelComputer:
             \phi_\ell = (u_\ell - 1) \sum_{q=1}^{m_q} \omega_q
             \exp\big(\log P_q - \log T_{q,\ell}\big),
 
+        For ``index="BV"`` the very same expression runs with the single node
+        :math:`\tau = 1/2` and weight :math:`\omega = 1`.
+
         Args:
-            x: The instance (1D array) for which to compute Shapley values.
+            x: The instance (1D array) for which to compute the values.
 
         Returns:
-            The Shapley values as a 1D array of length ``d``.
+            The Shapley (or Banzhaf) values as a 1D array of length ``d``.
 
         """
         # u: (ref_samples x features), u[i, j] = k_j(x_j, X_train[i, j])
@@ -150,7 +162,7 @@ class ProductKernelComputer:
 
         # chunk the nodes so the (nodes x ref_samples x features) temporaries stay in budget
         chunk = max(1, _MAX_CHUNK_ELEMENTS // max(n_samples * n_features, 1))
-        shapley_values = np.zeros(n_features, dtype=np.float64)  # (features,)
+        values = np.zeros(n_features, dtype=np.float64)  # (features,)
         for start in range(0, len(self._nodes), chunk):
             # nodes: (nodes x 1 x 1), tau_q, - the gauss legendre node q, broadcast over 
             # reference points and features
@@ -174,5 +186,5 @@ class ProductKernelComputer:
             # the integral term of the Shapley formula for every (reference point, feature)
             integrated = np.tensordot(weights, leave_one_out, axes=(0, 0))
             # scale by the marginal factor and sum the reference points away: -> (features,)
-            shapley_values += (integrated * leading).sum(axis=0)
-        return shapley_values
+            values += (integrated * leading).sum(axis=0)
+        return values
