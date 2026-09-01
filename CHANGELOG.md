@@ -6,7 +6,7 @@
 
 `ProductKernelComputer` now computes Shapley values by Gauss-Legendre quadrature of the product-game integral (Mohammadi et al., 2026) instead of the elementary-symmetric-polynomial recursion of PKeX-Shapley (Mohammadi et al., 2025).
 This reduces the cost per explained instance from `O(n d^3)` to `O(n d^2)`, where `n` is the number of reference points (the support vectors of an SVM, the training set of a Gaussian process) and `d` the number of features.
-In practice we measure speedups of 17x, 26x, 50x and 91x for models with `d = 20, 40, 80, 160` respectively.
+In practice we measure speedups of 27x, 37x, 53x and 95x on the Shapley computation for models with `d = 20, 40, 80, 160` respectively.
 
 The new `n_quadrature_points` argument on `ProductKernelExplainer` and `ProductKernelComputer` trades exactness for speed with a geometrically decaying error; it defaults to the exact bound.
 
