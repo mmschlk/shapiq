@@ -111,21 +111,21 @@ def lightgbm_basic(background_reg_dataset) -> Model:
 
 
 @pytest.fixture
-def sequential_model_1_class() -> Model:
+def sequential_model_1_class(background_reg_dataset) -> Model:
     """Return a keras nn with output dimension 1."""
-    return _sequential_model(1)
+    return _sequential_model(1, background_reg_dataset)
 
 
 @pytest.fixture
-def sequential_model_2_classes() -> Model:
+def sequential_model_2_classes(background_reg_dataset) -> Model:
     """Return a keras nn with output dimension 2."""
-    return _sequential_model(2)
+    return _sequential_model(2, background_reg_dataset)
 
 
 @pytest.fixture
-def sequential_model_3_classes() -> Model:
+def sequential_model_3_classes(background_reg_dataset) -> Model:
     """Return a keras nn with output dimension 3."""
-    return _sequential_model(3)
+    return _sequential_model(3, background_reg_dataset)
 
 
 def _sequential_model(output_shape_nr, background_reg_dataset) -> Model:
