@@ -117,9 +117,7 @@ class LinearGaussianSCM(Game):
                 the features.
         """
         if mode not in ("marginal", "conditional", "causal"):
-            msg = (
-                f"mode must be 'marginal', 'conditional', or 'causal'; got {mode!r}."
-            )
+            msg = f"mode must be 'marginal', 'conditional', or 'causal'; got {mode!r}."
             raise ValueError(msg)
 
         self.coefficients = np.asarray(coefficients, dtype=float).reshape(-1)
@@ -145,8 +143,7 @@ class LinearGaussianSCM(Game):
         )
         if self.mean.shape != (n_players,):
             msg = (
-                f"mean has shape {self.mean.shape}, expected ({n_players},) to match "
-                f"coefficients."
+                f"mean has shape {self.mean.shape}, expected ({n_players},) to match coefficients."
             )
             raise ValueError(msg)
 
@@ -180,7 +177,9 @@ class LinearGaussianSCM(Game):
             normalization_value=self._empty_value,
         )
 
-    def _conditional_mean(self, target: list[int], given: list[int], x_given: np.ndarray) -> np.ndarray:
+    def _conditional_mean(
+        self, target: list[int], given: list[int], x_given: np.ndarray
+    ) -> np.ndarray:
         """Return E[X_target | X_given = x_given] for the Gaussian features."""
         if not target:
             return np.zeros(0)

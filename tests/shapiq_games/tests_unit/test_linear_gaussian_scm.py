@@ -26,9 +26,7 @@ def _shapley_values(game: LinearGaussianSCM) -> np.ndarray:
 def test_confounded_chain_matches_closed_form(mode: str) -> None:
     """The three value functions reproduce their analytically derived attributions."""
     game = ConfoundedChainSCM(mode=mode)
-    np.testing.assert_allclose(
-        _shapley_values(game), EXPECTED_SHAPLEY_VALUES[mode], atol=1e-4
-    )
+    np.testing.assert_allclose(_shapley_values(game), EXPECTED_SHAPLEY_VALUES[mode], atol=1e-4)
 
 
 @pytest.mark.parametrize("mode", ["marginal", "conditional", "causal"])

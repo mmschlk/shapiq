@@ -73,7 +73,10 @@ values = {mode: games[mode](coalitions) for mode in MODES}
 
 print(f"\n{'S':<12}{'marginal':>12}{'conditional':>13}{'causal':>10}")
 for i, label in enumerate(labels):
-    row = "".join(f"{values[mode][i]:>12.4f}" if mode != "conditional" else f"{values[mode][i]:>13.4f}" for mode in MODES)
+    row = "".join(
+        f"{values[mode][i]:>12.4f}" if mode != "conditional" else f"{values[mode][i]:>13.4f}"
+        for mode in MODES
+    )
     print(f"{label:<12}{row}")
 
 # %%
