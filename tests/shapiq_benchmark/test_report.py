@@ -153,3 +153,27 @@ def test_pending_zero_energy_game_is_excluded_from_all_methods(tmp_path: Path) -
     assert data["games"][0]["metadata"]["zero_truth_energy"]
     assert data["presets"][0]["excluded_zero_energy_games"] == ["game"]
     assert data["presets"][0]["rows"][0]["planned"] == 0
+
+
+def test_compact_export_preserves_hardware_and_instance_identity(tmp_path: Path) -> None:
+    """Repeated worker details are losslessly shared without losing replicate provenance."""
+    result = result_fixture()
+    result["suite"]["game_seeds"] = [0, 1, 2, 3]
+    result["games"][0]["metadata"].update(
+        case_id="recipe", instance_seed=2, replicate_unit="fitted model", input_id="point2"
+    )
+    worker = {"cpu_model": "test CPU", "affinity": [3], "thread_pools": [{"num_threads": 1}]}
+    result["records"][0]["worker"] = worker
+    result["suite"]["budgets"].append(16)
+    result["records"].append({**result["records"][0], "budget": 16, "wall_seconds": None})
+    output = tmp_path / "site"
+    data = report([write(tmp_path, result)], output)
+    exported = json.loads((output / "data.json").read_text())
+    assert len(exported["workers"]) == 1
+    for original, compact in zip(data["records"], exported["records"], strict=True):
+        restored = dict(compact)
+        restored["worker"] = exported["workers"][restored.pop("worker_id")]
+        assert restored == {key: value for key, value in original.items() if value is not None}
+    assert exported["suite"]["game_seeds"] == [0, 1, 2, 3]
+    assert exported["games"][0]["metadata"]["case_id"] == "recipe"
+    assert exported["games"][0]["metadata"]["instance_seed"] == 2

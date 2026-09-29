@@ -18,7 +18,9 @@ from shapiq_benchmark.media import EXTRA_CATALOG, make_extra
 CATALOG = {**FAMILY_CATALOG, **EXTRA_CATALOG}
 
 
-def prepare_families(names: list[str], targets: list[dict], output: Path) -> tuple[list, list]:
+def prepare_families(
+    names: list[str], targets: list[dict], output: Path, *, instance_seed: int | None = None
+) -> tuple[list, list]:
     """Qualify each recipe, preserving unavailable families in the coverage catalog.
 
     Sampled games are explicitly frozen in canonical bitmask order. Their exact
@@ -46,9 +48,15 @@ def prepare_families(names: list[str], targets: list[dict], output: Path) -> tup
     output.mkdir(parents=True, exist_ok=True)
     games, coverage = [], []
     for name in names:
-        entry = {"family": name, **CATALOG[name], "status": "unavailable"}
+        instance_id = name if instance_seed is None else f"{name}-i{instance_seed}"
+        entry = {"family": instance_id, **CATALOG[name], "status": "unavailable"}
         try:
-            game, metadata = make_extra(name) if name in EXTRA_CATALOG else make_family(name)
+            factory = make_extra if name in EXTRA_CATALOG else make_family
+            game, metadata = (
+                factory(name)
+                if instance_seed is None
+                else factory(name, instance_seed=instance_seed)
+            )
             n = game.n_players
             if not 1 <= n <= 12:
                 message = "Exhaustive family preparation is limited to twelve players."
@@ -72,7 +80,7 @@ def prepare_families(names: list[str], targets: list[dict], output: Path) -> tup
                     rtol=1e-8,
                     atol=1e-10,
                 )
-            artifact = output / f"{name}.npz"
+            artifact = output / f"{instance_id}.npz"
             np.savez_compressed(artifact, values=values)
             exact = ExactComputer(table_game(values, n), n_players=n)
             qualified = []
@@ -86,7 +94,7 @@ def prepare_families(names: list[str], targets: list[dict], output: Path) -> tup
                 slug = re.sub(r"[^a-zA-Z0-9_-]", "-", index).lower()
                 qualified.append(
                     {
-                        "id": f"{name}-{slug}-{order}",
+                        "id": f"{instance_id}-{slug}-{order}",
                         "family": metadata.get("application_family", name),
                         "stratum": f"{name}_{metadata.get('dataset', 'fixed')}_{n}",
                         "n_players": n,
@@ -98,7 +106,8 @@ def prepare_families(names: list[str], targets: list[dict], output: Path) -> tup
                         "metadata": {
                             **metadata,
                             "case_id": name,
-                            "cluster_id": name,
+                            "instance_seed": instance_seed or 0,
+                            "cluster_id": metadata.get("cluster_id", instance_id),
                             "truth_method": "exhaustive frozen table",
                             "truth_queries": 2**n,
                             "materialization": "ascending bitmask, player zero least significant, one full batch",
@@ -110,6 +119,6 @@ def prepare_families(names: list[str], targets: list[dict], output: Path) -> tup
         except Exception as error:  # noqa: BLE001 -- one broken family must not erase the inventory
             entry.update(reason=f"Preparation failed: {type(error).__name__}")
             # Full diagnostics remain local; public metadata excludes raw exception text.
-            (output / f"{name}-error.txt").write_text(f"{type(error).__name__}: {error}\n")
+            (output / f"{instance_id}-error.txt").write_text(f"{type(error).__name__}: {error}\n")
         coverage.append(entry)
     return games, coverage

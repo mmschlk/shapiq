@@ -78,3 +78,50 @@ def test_image_adapter_preserves_the_active_game() -> None:
 
     active = ActiveImage(Original(), [0, 2])
     np.testing.assert_equal(active(np.array([[0, 0], [1, 0], [0, 1], [1, 1]])), [0, 1, 2, 3])
+
+
+def test_four_constructions_have_shared_strata_and_one_estimator_seed(tmp_path: Path) -> None:
+    """Instances share panel strata but have distinct artifacts and independent cluster IDs."""
+    suite = {
+        "families": ["local_baseline_forest", "dummy"],
+        "targets": [{"index": "SV", "order": 1}, {"index": "k-SII", "order": 2}],
+        "methods": ["KernelSHAP"],
+        "relative_budgets": [1, 2],
+        "game_seeds": [0, 1, 2, 3],
+        "seeds": [0],
+    }
+    path = tmp_path / "suite.json"
+    path.write_text(json.dumps(suite))
+    snapshot = prepare(path, tmp_path / "snapshot")
+    assert len(snapshot["games"]) == 16
+    assert len(snapshot["artifacts"]) == 8
+    assert snapshot["suite"]["seeds"] == [0]
+    for name in suite["families"]:
+        games = [g for g in snapshot["games"] if g["metadata"]["case_id"] == name]
+        assert len({g["stratum"] for g in games}) == 1
+        assert len({g["metadata"]["cluster_id"] for g in games}) == 4
+        assert {g["metadata"]["instance_seed"] for g in games} == set(range(4))
+        assert len({g["id"] for g in games}) == 8
+        assert all("-i" in g["artifact"] for g in games)
+    assert load_snapshot(tmp_path / "snapshot")[0] == snapshot
+
+
+@pytest.mark.parametrize("seeds", [[], [0, 0], [-1], [True], [1.5], "0123"])
+def test_invalid_game_seeds_rejected(tmp_path: Path, seeds: object) -> None:
+    """Invalid construction grids must fail before any family preparation."""
+    path = tmp_path / "suite.json"
+    path.write_text(
+        json.dumps(
+            {
+                "families": ["dummy"],
+                "targets": [{"index": "SV", "order": 1}],
+                "methods": ["KernelSHAP"],
+                "relative_budgets": [1],
+                "seeds": [0],
+                "game_seeds": seeds,
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="game_seeds"):
+        prepare(path, tmp_path / "snapshot")
+    assert not (tmp_path / "snapshot").exists()

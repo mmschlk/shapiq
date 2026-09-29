@@ -1,4 +1,4 @@
-"""Fixed-panel weighted accuracy, paired comparisons, and retrospective method history.
+"""Observed-cell weighted accuracy, paired comparisons, and complete-panel history.
 
 Families, strata, games, budgets, then seeds receive equal conditional weight.
 Elo uses a batch Bradley-Terry fit: weighted ties count as half wins, logit skills
@@ -45,11 +45,16 @@ L2 = 0.001
 
 
 def weighted_median(values: np.ndarray, weights: np.ndarray) -> float:
-    """Return the lower weighted median (first cumulative mass reaching one half)."""
+    """Return the weighted median, averaging neighbors at exactly half the mass."""
+    positive = weights > 0
+    values, weights = values[positive], weights[positive]
     order = np.argsort(values, kind="stable")
     cumulative = np.cumsum(weights[order]) / math.fsum(weights)
-    position = np.searchsorted(cumulative + 1e-14, 0.5, side="left")
-    return float(values[order[min(position, len(order) - 1)]])
+    position = min(np.searchsorted(cumulative + 1e-14, 0.5, side="left"), len(order) - 1)
+    value = float(values[order[position]])
+    if abs(cumulative[position] - 0.5) <= 1e-14 and position + 1 < len(order):
+        return value / 2 + float(values[order[position + 1]]) / 2
+    return value
 
 
 def budget_grid(budgets: list[int] | dict[str, list[int]], game: dict) -> list[int]:
@@ -81,15 +86,20 @@ def weights_for(
 def comparisons(
     values: np.ndarray, weights: np.ndarray, methods: list[str]
 ) -> tuple[list[dict], list[float] | None]:
-    """Compute weighted paired outcomes and an order-independent Elo-scale fit."""
-    matches, a_indices, b_indices, scores = [], [], [], []
+    """Fit Elo on finite overlaps with original panel mass; require a connected pool."""
+    matches, a_indices, b_indices, scores, masses = [], [], [], [], []
+    neighbors = [set() for _ in methods]
     for a, b in itertools.combinations(range(len(methods)), 2):
-        tolerance = 1e-12 + 0.01 * np.maximum(values[a], values[b])
-        ties = np.abs(values[a] - values[b]) <= tolerance
-        wins = (values[a] < values[b]) & ~ties
+        observed = np.isfinite(values[a]) & np.isfinite(values[b])
+        if not observed.any():
+            continue
+        left, right, pair_weights = values[a, observed], values[b, observed], weights[observed]
+        tolerance = 1e-12 + 0.01 * np.maximum(left, right)
+        ties = np.abs(left - right) <= tolerance
+        wins = (left < right) & ~ties
         losses = ~wins & ~ties
         win_weight, tie_weight, loss_weight = [
-            float(weights[mask].sum()) for mask in (wins, ties, losses)
+            float(pair_weights[mask].sum()) for mask in (wins, ties, losses)
         ]
         score = win_weight + tie_weight / 2
         matches.append(
@@ -99,7 +109,8 @@ def comparisons(
                 "wins": int(wins.sum()),
                 "ties": int(ties.sum()),
                 "losses": int(losses.sum()),
-                "n_pairs": len(weights),
+                "n_pairs": int(observed.sum()),
+                "observed_weight": float(pair_weights.sum()),
                 "win_weight": win_weight,
                 "tie_weight": tie_weight,
                 "loss_weight": loss_weight,
@@ -109,17 +120,28 @@ def comparisons(
         a_indices.append(a)
         b_indices.append(b)
         scores.append(score)
+        masses.append(float(pair_weights.sum()))
+        neighbors[a].add(b)
+        neighbors[b].add(a)
     if len(methods) < 2:
         return matches, None
-    a_indices, b_indices, scores = np.array(a_indices), np.array(b_indices), np.array(scores)
+    reached, pending = set(), [0]
+    while pending:
+        current = pending.pop()
+        if current not in reached:
+            reached.add(current)
+            pending.extend(neighbors[current] - reached)
+    if len(reached) != len(methods):
+        return matches, None
+    a_indices, b_indices, scores, masses = map(np.asarray, (a_indices, b_indices, scores, masses))
 
     def objective(skills: np.ndarray) -> tuple[float, np.ndarray]:
         difference = skills[a_indices] - skills[b_indices]
         loss = (
-            np.sum(np.logaddexp(0, difference) - scores * difference)
+            np.sum(masses * np.logaddexp(0, difference) - scores * difference)
             + L2 * np.dot(skills, skills) / 2
         )
-        residual = expit(difference) - scores
+        residual = masses * expit(difference) - scores
         gradient = L2 * skills
         np.add.at(gradient, a_indices, residual)
         np.add.at(gradient, b_indices, -residual)
@@ -141,7 +163,7 @@ def comparisons(
 
 def release_history(rows: list[dict]) -> dict:
     """Build dated horizontal method lines and separate mean/median frontiers."""
-    eligible = [row for row in rows if row["eligible"]]
+    eligible = [row for row in rows if row.get("complete", row["eligible"])]
     methods: list[dict] = [
         {
             "method": row["method"],
@@ -243,7 +265,7 @@ def bootstrap(
 
 
 def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
-    """Compute reproducible fixed presets without mixing targets or incomplete competitors."""
+    """Summarize observed cells; preserve complete panels for uncertainty and history."""
     methods = sorted(data["methods"])
     seeds = sorted(data["suite"]["seeds"])
     suite = data["suite"]
@@ -321,22 +343,26 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                     measured = [
                         records.get((game, method, budget, seed)) for game, budget, seed in cells
                     ]
-                    valid = [
-                        row
-                        for row in measured
-                        if row
-                        and row["status"] == "ok"
-                        and row.get("nmse") is not None
-                        and math.isfinite(row["nmse"])
-                    ]
-                    complete = len(cells) > 0 and len(valid) == len(cells)
-                    sample = np.array([row["nmse"] for row in valid])
+                    sample = np.array(
+                        [
+                            row["nmse"]
+                            if row and row["status"] == "ok" and row.get("nmse") is not None
+                            else np.nan
+                            for row in measured
+                        ]
+                    )
+                    observed = np.isfinite(sample)
+                    valid = int(observed.sum())
+                    mass = float(weights[observed].sum())
+                    complete = len(cells) > 0 and valid == len(cells)
                     rows.append(
                         {
                             "method": method,
-                            "eligible": complete,
+                            "eligible": valid > 0,
+                            "complete": complete,
+                            "coverage_weight": mass,
                             "planned": len(cells),
-                            "valid": len(valid),
+                            "valid": valid,
                             "failed": sum(
                                 row is not None and row["status"] == "failed" for row in measured
                             ),
@@ -345,20 +371,38 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                                 for row in measured
                             ),
                             "missing": sum(row is None for row in measured),
-                            "mean": float(np.dot(sample, weights)) if complete else None,
-                            "median": weighted_median(sample, weights) if complete else None,
+                            "mean": float(np.dot(sample[observed], weights[observed]) / mass)
+                            if valid
+                            else None,
+                            "median": weighted_median(sample[observed], weights[observed])
+                            if valid
+                            else None,
                             "elo": None,
                             "ci": None,
                         }
                     )
-                    if complete:
+                    if valid:
                         eligible.append(method)
                         values.append(sample)
                 array = np.array(values)
                 _, ratings = comparisons(array, weights, eligible)
+                complete_methods = [row["method"] for row in rows if row["complete"]]
+                complete_values = array[[eligible.index(name) for name in complete_methods]]
                 intervals, uncertainty = bootstrap(
-                    games, grid, seeds, cells, array, eligible, draws=bootstrap_draws
+                    games,
+                    grid,
+                    seeds,
+                    cells,
+                    complete_values,
+                    complete_methods,
+                    draws=bootstrap_draws,
                 )
+                if complete_methods != eligible and intervals:
+                    for interval in intervals.values():
+                        interval["elo"] = None
+                    uncertainty["reason"] += (
+                        " Elo intervals withheld: partial competitors are outside the complete-panel bootstrap."
+                    )
                 for row in rows:
                     if row["eligible"]:
                         row["elo"] = (
@@ -379,12 +423,16 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                 }
                 identity = {
                     **key,
+                    "summary_protocol": "available-cells-v2",
+                    "median_convention": "midpoint at exactly half the cumulative weight",
                     "snapshot_id": data.get("snapshot_id"),
                     "method_sources": data["methods"],
                 }
                 summaries.append(
                     {
                         **key,
+                        "summary_protocol": "available-cells-v2",
+                        "median_convention": "midpoint at exactly half the cumulative weight",
                         "id": hashlib.sha256(
                             json.dumps(identity, sort_keys=True).encode()
                         ).hexdigest(),
@@ -395,7 +443,8 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         "history": release_history(rows),
                         "uncertainty": uncertainty,
                         "elo_l2": L2,
-                        "weighting": "equal family / stratum / game / budget / seed",
+                        "weighting": "equal family / stratum / game / budget / seed; renormalized over observed cells",
+                        "elo_pairing": "finite overlapping cells; original panel weight; connected pool required",
                     }
                 )
     return summaries

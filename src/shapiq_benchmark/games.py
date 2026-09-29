@@ -13,9 +13,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 from shapiq.explainer.nn.games.knn import KNNExplainerGame
 from shapiq.explainer.nn.knn import KNNExplainer
+from shapiq.explainer.product_kernel import ProductKernelExplainer
+from shapiq.explainer.product_kernel.base import ProductKernelModel
+from shapiq.explainer.product_kernel.conversion import convert_svm
+from shapiq.explainer.product_kernel.game import ProductKernelGame
 from shapiq.game_theory import ExactComputer
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.game import InterventionalGame
@@ -58,12 +63,14 @@ def tree_game(
     background: np.ndarray,
     point: np.ndarray,
     parameters: dict | None = None,
+    *,
+    class_index: int = 1,
 ) -> tuple:
     """Construct the frozen recipe's probability-scale interventional game."""
     model = RandomForestClassifier(**(TREE_PARAMETERS if parameters is None else parameters)).fit(
         x, y
     )
-    return model, InterventionalGame(model, background, point, class_index=1)
+    return model, InterventionalGame(model, background, point, class_index=class_index)
 
 
 def knn_game(
@@ -96,12 +103,13 @@ def validate_truth(oracle: Callable, truth: InteractionValues, *, exhaustive: bo
         message = "Structured truth is nonfinite."
         raise ValueError(message)
     np.testing.assert_allclose(truth.baseline_value, endpoints[0], rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(
-        sum(value for key, value in truth.dict_values.items() if key),
-        endpoints[1] - endpoints[0],
-        rtol=1e-8,
-        atol=1e-10,
-    )
+    if truth.index in ("SV", "k-SII", "STII", "FSII"):
+        np.testing.assert_allclose(
+            sum(value for key, value in truth.dict_values.items() if key),
+            endpoints[1] - endpoints[0],
+            rtol=1e-8,
+            atol=1e-10,
+        )
     coalitions = np.random.default_rng(0).integers(0, 2, size=(12, n)).astype(bool)
     values = oracle(coalitions)
     np.testing.assert_allclose(values[::-1], oracle(coalitions[::-1]), rtol=0, atol=0)
@@ -115,7 +123,7 @@ def validate_truth(oracle: Callable, truth: InteractionValues, *, exhaustive: bo
         expected = ExactComputer(oracle, n_players=n)(
             cast("IndexType", truth.index), order=truth.max_order
         )
-        coordinates = truth.dict_values.keys() | expected.dict_values.keys()
+        coordinates = (truth.dict_values.keys() | expected.dict_values.keys()) - {()}
         errors = [abs(truth[key] - expected[key]) for key in coordinates]
         np.testing.assert_allclose(
             [truth[key] for key in coordinates],
@@ -139,7 +147,7 @@ def truth_dict(truth: InteractionValues) -> dict:
 
 
 def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
-    """Freeze Breast Cancer tree explanations and nearest-neighbor data valuation."""
+    """Freeze seeded tree, nearest-neighbor, and product-kernel games with exact truth."""
     ids = [spec.get("id") for spec in specs]
     if (
         not ids
@@ -163,21 +171,54 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
         if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
             message = "Structured inputs must be numeric and finite."
             raise ValueError(message)
-        train, test = train_test_split(np.arange(len(x)), test_size=0.2, random_state=0, stratify=y)
-        background_indices = np.random.default_rng(0).choice(train, 16, replace=False)
+        seed = spec.get("instance_seed", 0)
+        if type(seed) is not int or not 0 <= seed < 2**32:
+            message = "Structured instance_seed must be an unsigned 32-bit integer."
+            raise ValueError(message)
         kind = spec["oracle"]
+        population = (
+            np.flatnonzero(y < 2)
+            if kind == "product_kernel" and dataset_name == "digits"
+            else np.arange(len(x))
+        )
+        train, test = train_test_split(
+            population, test_size=0.2, random_state=seed, stratify=y[population]
+        )
+        background_indices = np.random.default_rng(seed).choice(train, 16, replace=False)
         index, order = spec["index"], spec["order"]
-        if kind == "tree" and (index, order) in (("SV", 1), ("k-SII", 2)):
-            point, background = x[test[0]], x[background_indices]
-            model, oracle = tree_game(x[train], y[train], background, point)
+        if kind == "tree" and (index, order) in (
+            ("SV", 1),
+            ("k-SII", 2),
+            ("SII", 2),
+            ("STII", 2),
+            ("FSII", 2),
+            ("FBII", 2),
+        ):
+            # sklearn predicts on float32 inputs; exact tree routing must see those same values.
+            tree_x = x.astype(np.float32).astype(np.float64)
+            point, background = tree_x[test[0]], tree_x[background_indices]
+            parameters = {**TREE_PARAMETERS, "random_state": seed}
+            class_index = int(np.flatnonzero(np.unique(y[train]) == y[test[0]])[0])
+            model, oracle = tree_game(
+                tree_x[train], y[train], background, point, parameters, class_index=class_index
+            )
             truth = InterventionalTreeSHAPIQ(
-                model, background, class_index=1, index=index, max_order=order
+                model, background, class_index=class_index, index=index, max_order=order
             ).explain(point)
             small_model, small_oracle = tree_game(
-                x[train, :8], y[train], background[:, :8], point[:8]
+                tree_x[train, :8],
+                y[train],
+                background[:, :8],
+                point[:8],
+                parameters,
+                class_index=class_index,
             )
             small_truth = InterventionalTreeSHAPIQ(
-                small_model, background[:, :8], class_index=1, index=index, max_order=order
+                small_model,
+                background[:, :8],
+                class_index=class_index,
+                index=index,
+                max_order=order,
             ).explain(point[:8])
             error = validate_truth(small_oracle, small_truth, exhaustive=True)
             active = {
@@ -187,22 +228,26 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 if feature >= 0
             }
             arrays = {
-                "x_train": x[train],
+                "x_train": tree_x[train],
                 "y_train": y[train],
                 "background": background,
                 "point": point,
             }
             metadata = {
                 "model": "RandomForestClassifier",
-                "model_parameters": TREE_PARAMETERS,
+                "model_parameters": parameters,
+                "class_index": class_index,
+                "point_label": int(y[test[0]]),
+                "background_indices": background_indices.tolist(),
                 "model_sha256": model_hash(model),
                 "test_accuracy": model.score(x[test], y[test]),
                 "active_players": len(active),
                 "active_players_definition": "features used in any forest split",
                 "background_size": len(background),
-                "semantics": "mean class-1 probability over fixed joint background rows",
+                "semantics": "mean held-out true-class probability over fixed joint background rows",
                 "truth_method": "InterventionalTreeSHAPIQ",
                 "player_unit": "feature",
+                "preprocessing": "inputs rounded to sklearn's float32 prediction precision",
             }
             n = x.shape[1]
             family = "local_explanation"
@@ -249,12 +294,59 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "player_unit": "training example",
             }
             n, family = count, "data_valuation"
+        elif kind == "product_kernel" and (index, order) == ("SV", 1):
+            scaler = StandardScaler().fit(x[train])
+            scaled = scaler.transform(x)
+            selected, point = train[:128], scaled[test[0]]
+            model = SVC(kernel="rbf", gamma="scale", random_state=seed).fit(
+                scaled[selected], y[selected]
+            )
+            converted = convert_svm(model)
+            if converted.gamma is None:
+                message = "RBF conversion must preserve the fitted kernel bandwidth."
+                raise ValueError(message)
+            n = x.shape[1]
+            oracle = ProductKernelGame(n, point, converted)
+            truth = ProductKernelExplainer(model).explain(point)
+            small_model = SVC(kernel="rbf", gamma="scale", random_state=seed).fit(
+                scaled[selected, :8], y[selected]
+            )
+            small_oracle = ProductKernelGame(8, point[:8], convert_svm(small_model))
+            small_truth = ProductKernelExplainer(small_model).explain(point[:8])
+            error = validate_truth(small_oracle, small_truth, exhaustive=True)
+            arrays = {
+                "x_train": scaled[selected],
+                "y_train": y[selected],
+                "point": point,
+                "support_vectors": converted.X_train,
+                "alpha": converted.alpha,
+                "scaler_mean": scaler.mean_,
+                "scaler_scale": scaler.scale_,
+                "selected_rows": selected,
+            }
+            metadata = {
+                "model": "SVC",
+                "model_parameters": model.get_params(),
+                "classes": model.classes_.tolist(),
+                "gamma": float(converted.gamma),
+                "intercept": float(converted.intercept),
+                "test_accuracy": model.score(scaled[test], y[test]),
+                "preprocessing": "StandardScaler fitted on training split only",
+                "semantics": "RBF decision margin with omitted feature kernel factors set to one",
+                "truth_method": "ProductKernelExplainer",
+                "player_unit": "feature",
+                "active_players": int(np.count_nonzero(np.ptp(scaled[train], axis=0))),
+                "active_players_definition": "features varying in the training split",
+            }
+            family = "local_explanation"
         else:
             message = f"Unsupported structured game specification: {spec}."
             raise ValueError(message)
         validate_truth(oracle, truth, exhaustive=False)
         artifact = output / f"{spec['id']}.npz"
-        np.savez_compressed(artifact, **arrays, train_indices=train, test_indices=test)
+        np.savez_compressed(
+            artifact, allow_pickle=False, **arrays, train_indices=train, test_indices=test
+        )
         games.append(
             {
                 "id": spec["id"],
@@ -268,6 +360,10 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "truth": truth_dict(truth),
                 "metadata": {
                     **metadata,
+                    "instance_seed": seed,
+                    "case_id": spec.get("basecase_id", spec["id"]),
+                    "recipe": spec.get("basecase_id", spec["id"]),
+                    "cluster_id": f"{spec.get('basecase_id', spec['id'])}-i{seed}",
                     "dataset": dataset_name,
                     "data_sha256": hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest(),
                     "sklearn_version": importlib.metadata.version("scikit-learn"),
@@ -296,7 +392,12 @@ def load_game(game: dict, root: Path) -> Callable:
         x, y, point = artifact["x_train"], artifact["y_train"], artifact["point"]
         if game["oracle"] == "tree":
             model, oracle = tree_game(
-                x, y, artifact["background"], point, game["metadata"]["model_parameters"]
+                x,
+                y,
+                artifact["background"],
+                point,
+                game["metadata"]["model_parameters"],
+                class_index=game["metadata"].get("class_index", 1),
             )
             if model_hash(model) != game["metadata"]["model_sha256"]:
                 message = "Reconstructed tree model differs from the frozen model."
@@ -309,6 +410,16 @@ def load_game(game: dict, root: Path) -> Callable:
                 message = "Reconstructed KNN class differs from the snapshot."
                 raise ValueError(message)
             np.testing.assert_array_equal(oracle.sortperm, artifact["sortperm"])
+        elif game["oracle"] == "product_kernel":
+            converted = ProductKernelModel(
+                X_train=artifact["support_vectors"].copy(),
+                alpha=artifact["alpha"].copy(),
+                n=len(artifact["alpha"]),
+                d=game["n_players"],
+                gamma=game["metadata"]["gamma"],
+                intercept=game["metadata"]["intercept"],
+            )
+            oracle = ProductKernelGame(game["n_players"], point, converted)
         else:
             message = "Unknown oracle type."
             raise ValueError(message)

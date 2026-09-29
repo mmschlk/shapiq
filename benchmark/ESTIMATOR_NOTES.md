@@ -1,8 +1,8 @@
 # Understanding surprising estimator results
 
-These findings concern the **published September 29, 2026 sweep with budgets
+The published comparisons below concern the **September 29, 2026 sweep with budgets
 2d, 8d, and 64d**, two estimator seeds, and the library defaults at source commit
-`15ea510f`. They are not results for the expanded nine-budget grid. The frozen
+`15ea510f`. Observations from the new nine-budget grid are labeled separately. The frozen
 inputs and raw measurements are in the
 [original reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-families-2026-09-29).
 
@@ -67,9 +67,11 @@ eight failures are four-player cases at 2d: eight queries are below the default
 minimum of ten. Interaction targets are unsupported, not failed.
 
 At low budgets, the current implementation also deliberately differs from the
-[OddSHAP paper](https://arxiv.org/abs/2602.01399). Below 10d it limits the active
-singleton support to `ceil(B / 10)`; omitted players receive zero. Its default
-LightGBM proxy can remain constant with very small training sets. A diagnostic
+[OddSHAP paper](https://arxiv.org/abs/2602.01399), which falls back to a tree proxy
+in this regime. Below 10d, unless the budget already covers every coalition,
+shapiq limits the active singleton support to `ceil(B / 10)`; omitted players
+receive zero. Its default LightGBM proxy can remain constant with very small
+training sets. A diagnostic
 additive eight-player game with true values `[1, 2, 3, 4, 5, 6, 7, 8]` returned
 approximately `[12.439, 23.561, 0, 0, 0, 0, 0, 0]` at 2d, omitted one player at
 8d, and recovered the values at 16d. This identifies a low-budget implementation
@@ -90,7 +92,7 @@ SPEX can request repeated coalitions: an eight-player diagnostic at 64d charged
 504 queries but visited 226 distinct coalitions. Every request remains charged,
 consistently with the other estimators. The
 [SPEX paper](https://arxiv.org/abs/2502.13870) targets sparse interaction recovery;
-these small dense games and tiny budgets need not favor that design.
+the small-game and tiny-budget settings need not favor that design.
 
 The investigation also found a reproducibility issue: the optional sparse
 transform dependency uses global NumPy and Python random generators, beyond the
@@ -121,13 +123,47 @@ queries cheap and exposes that computational overhead. Changing refit frequency,
 warm starts, or candidate counts would be a separate configuration; do not tune
 these silently to remove timeouts.
 
+## New-grid observation: ProxySPEX at the smallest budgets
+
+On the nine-budget grid, ProxySPEX fails at 0.5d for eight-player games and at
+0.5d and 1d for four-player games. Its default LightGBM proxy uses hyperparameter
+search with five-fold cross-validation. Two or four sampled coalitions cannot
+form five folds, so fitting raises `n_splits=5 > n_samples`. This is a limitation
+of the installed default configuration, not the SPEX transform's query-block
+minimum or a constructor-level budget check. At 1d, eight-player cases already
+complete successfully, although some validation folds then have only one row,
+so their R² search scores are undefined. Successful output does not establish
+useful hyperparameter selection at such small sample sizes.
+
+ProxySHAP and RegressionMSR default to a bare XGBoost proxy without that search,
+and `k_folds=1`; they do not inherit this five-fold requirement. Their shared
+coalition sampler requires at least two queries for the endpoints. Custom proxy
+models, hyperparameter search, or extra folds can introduce other constraints.
+Disabling ProxySPEX's search would be a separate configuration, so the benchmark
+retains and reports these failures.
+
+## Why some chart errors are almost zero
+
+The initial `local_baseline_forest` example declares eight feature players, but
+its frozen payoff table depends on only player zero: it has two distinct payoffs
+and zero additive residual. Several estimators therefore recover its values at
+2d (16 queries); errors around 1e-30 are numerical roundoff, not a budget mismatch.
+Charts now aggregate the selected game families, while retaining
+this easy game in the dataset.
+
+The horizontal budget coordinate is the requested query cap divided by the
+player count. Estimators may use fewer queries; hover details show actual usage
+in the same relative units. For an eight-player game, the entire coalition space
+fits in 32d, so exact recovery at larger budgets can also be legitimate. The
+30-player tree and 128-player KNN cases remain useful for studying scaling.
+
 ## Limits of this comparison
 
 Most family representatives have only four or eight players. Once a budget
 covers all coalitions, estimators that enumerate the game can achieve numerical
 precision. That regime says little about their scaling on larger problems.
-The larger tree and KNN cases are useful checks, but one instance of each does
-not establish a general ranking. The original sweep's two seeds are especially
+The expanded suite adds four instances of larger tree, product-kernel and KNN
+cases; these structured families still do not represent every large-player game. The original sweep's two seeds are especially
 limited for heavy-tailed errors such as LeverageSHAP's 2d results.
 
 Small-game timings include estimator work against **saved payoff tables**;

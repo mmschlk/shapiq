@@ -2,7 +2,13 @@
 
 **Status: design reference.** Implementation and runnable commands are documented
 in [README.md](README.md); this document also retains deferred research ideas.
-Current budget policy supersedes earlier alternatives below: show only queries
+Current display policy supersedes earlier alternatives below: partial-coverage
+methods receive available-result nMSE ranks and matched-result Elo, with coverage
+shown explicitly. Historical frontiers retain complete-panel comparisons.
+Current repetition policy is four constructed game instances per recipe/dataset
+and one estimator run per instance/budget. Family plots and tables default to
+weighted median nMSE, with the midpoint at an exact half-weight boundary.
+For budgets, show only queries
 per player, with the public grid `0.5, 1, 2, 4, 8, 16, 32, 64, 128 × d`.
 Inventory checked on 2026-09-29
 against shapiq commit `6321cbdaefee7af7a4bea58ca15e7cf2450f4691`.

@@ -41,7 +41,7 @@ def overall(data: dict, *, draws: int = 20) -> dict:
     )
 
 
-def test_equal_family_weight_and_lower_weighted_median() -> None:
+def test_equal_family_weight_and_midpoint_weighted_median() -> None:
     """Adding more points to one family must not let it dominate the overall score."""
     data = fixture_data(
         [{"family": "a", "stratum": "a"}, *[{"family": "b", "stratum": "b"}] * 3],
@@ -49,8 +49,8 @@ def test_equal_family_weight_and_lower_weighted_median() -> None:
     )
     row = overall(data)["rows"][0]
     assert row["mean"] == pytest.approx(5)
-    assert row["median"] == 0
-    assert weighted_median(np.array([1, 9]), np.array([0.5, 0.5])) == 1
+    assert row["median"] == 5
+    assert weighted_median(np.array([1, 9]), np.array([0.5, 0.5])) == 5
 
 
 def test_equal_stratum_weight() -> None:
@@ -62,8 +62,8 @@ def test_equal_stratum_weight() -> None:
     assert overall(data)["rows"][0]["mean"] == pytest.approx(4)
 
 
-def test_incomplete_method_cannot_change_ratings_or_history() -> None:
-    """Selective successful cells cannot change the complete comparison pool."""
+def test_partial_method_enters_rankings_without_changing_history() -> None:
+    """Successful cells get scores and matched Elo; history keeps the complete panel."""
     data = fixture_data([{"family": "a", "stratum": "one"}], {"KernelSHAP": [0.2], "SVARM": [0.1]})
     before = overall(data)
     data["methods"]["SHAPIQ"] = {}
@@ -72,12 +72,14 @@ def test_incomplete_method_cannot_change_ratings_or_history() -> None:
     )
     after = overall(data)
     assert before["history"] == after["history"]
-
-    def ratings(result: dict) -> dict:
-        return {row["method"]: row["elo"] for row in result["rows"] if row["eligible"]}
-
-    assert ratings(before) == ratings(after)
-    assert next(row for row in after["rows"] if row["method"] == "SHAPIQ")["mean"] is None
+    rows = {row["method"]: row for row in after["rows"]}
+    partial = rows["SHAPIQ"]
+    assert partial["eligible"] and not partial["complete"]
+    assert partial["valid"] == 1 and partial["planned"] == 2
+    assert partial["mean"] == partial["median"] == 0
+    assert partial["coverage_weight"] == 0.5
+    assert partial["elo"] > rows["SVARM"]["elo"] > rows["KernelSHAP"]["elo"]
+    assert partial["ci"] is None
 
 
 def test_ties_and_input_order_do_not_change_elo() -> None:
@@ -208,7 +210,7 @@ def test_unequal_game_budget_counts_preserve_game_weights_and_bootstrap() -> Non
     assert weights.sum() == pytest.approx(1)
     assert weights == pytest.approx([0.25, 0.25, 0.125, 0.125, 0.125, 0.125])
     assert result["rows"][0]["mean"] == pytest.approx(5)
-    assert result["rows"][0]["median"] == 0
+    assert result["rows"][0]["median"] == 5
     assert result["rows"][0]["ci"]["mean"] == pytest.approx(original["rows"][0]["ci"]["mean"])
     assert result["game_budgets"] == {"0": [16], "1": [16, 32]}
 
@@ -236,8 +238,9 @@ def test_relative_presets_keep_missing_cells_and_exact_game_grids() -> None:
     assert row["planned"] == 4
     assert row["valid"] == 2
     assert row["missing"] == 2
-    assert row["eligible"] is False
-    assert row["mean"] is None
+    assert row["eligible"] is True
+    assert row["complete"] is False
+    assert row["mean"] == 1
     assert all(p["panel"] == "real" for p in panels)
     signatures = [
         tuple((key, tuple(value)) for key, value in p["game_budgets"].items()) for p in panels
@@ -264,3 +267,107 @@ def test_synthetic_games_never_enter_real_panels() -> None:
     assert diagnostic["game_ids"] == ["1"]
     assert diagnostic["rows"][0]["mean"] == 1000
     assert real["id"] != diagnostic["id"]
+
+
+def test_partial_cells_renormalize_original_weights() -> None:
+    """Observed-cell averaging preserves hierarchical mass, not a raw row average."""
+    data = fixture_data(
+        [
+            {"family": "a", "stratum": "a"},
+            {"family": "b", "stratum": "b"},
+            {"family": "b", "stratum": "b"},
+        ],
+        {"Partial": [4, 8, 20], "None": [0, 0, 0]},
+    )
+    # Weights .25,.25,.125,.125,.125,.125; successes at positions 0,2,3.
+    for row in data["records"]:
+        if row["method"] == "None" or (row["game_id"], row["seed"]) not in {
+            ("0", 0),
+            ("1", 0),
+            ("1", 1),
+        }:
+            row["status"] = "failed"
+        elif row["game_id"] == "1" and row["seed"] == 1:
+            row["nmse"] = 12
+    result = overall(data)
+    rows = {r["method"]: r for r in result["rows"]}
+    assert rows["Partial"]["mean"] == 7
+    assert rows["Partial"]["median"] == 6
+    assert rows["Partial"]["coverage_weight"] == 0.5
+    assert rows["Partial"]["valid"] == 3 and rows["Partial"]["planned"] == 6
+    assert rows["None"]["mean"] is None and rows["None"]["median"] is None
+    assert rows["None"]["eligible"] is False
+    assert all(r["elo"] is None for r in result["rows"])
+    assert result["summary_protocol"] == "available-cells-v2"
+
+
+def test_partial_elo_uses_overlap_mass_and_ignores_nonfinite_cells() -> None:
+    """One observed win has less evidence than four, and missing cells are never losses."""
+    weights = np.full(4, 0.25)
+    complete = np.array([[0.0, 0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 1.0]])
+    matches, full = comparisons(complete, weights, ["a", "b"])
+    partial = np.array([[0.0, np.nan, np.nan, np.nan], [1.0, 1.0, np.inf, 1.0]])
+    matches, ratings = comparisons(partial, weights, ["a", "b"])
+    assert matches[0]["n_pairs"] == matches[0]["wins"] == 1
+    assert matches[0]["losses"] == 0
+    assert matches[0]["observed_weight"] == matches[0]["score_a"] == 0.25
+    assert 1000 < ratings[0] < full[0]
+    assert ratings[1] < 1000
+    skills = (np.array(ratings) - 1000) * np.log(10) / 400
+    residual = 0.25 / (1 + np.exp(skills[1] - skills[0])) - 0.25
+    np.testing.assert_allclose(0.001 * skills + [residual, -residual], 0, atol=1e-7)
+    _, reverse = comparisons(partial[::-1], weights, ["b", "a"])
+    np.testing.assert_allclose(reverse[::-1], ratings)
+
+
+def test_disconnected_elo_is_withheld_and_overlap_chain_is_identified() -> None:
+    """L2 alone cannot identify global ranks across disconnected comparison graphs."""
+    weights = np.array([0.5, 0.5])
+    disconnected = np.array([[1.0, np.nan], [2.0, np.nan], [np.nan, 3.0]])
+    matches, ratings = comparisons(disconnected, weights, list("abc"))
+    assert len(matches) == 1 and ratings is None
+    connected = np.array([[1.0, np.nan], [2.0, 2.0], [np.nan, 3.0]])
+    matches, ratings = comparisons(connected, weights, list("abc"))
+    assert len(matches) == 2 and ratings[0] > ratings[1] > ratings[2]
+    assert np.mean(ratings) == pytest.approx(1000)
+
+
+def test_partial_pool_keeps_complete_accuracy_intervals_but_withholds_elo_intervals() -> None:
+    """A complete-subset Elo interval must not accompany a larger-pool point estimate."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one", "metadata": {"cluster_id": str(i)}} for i in range(3)],
+        {"KernelSHAP": [1, 2, 4], "SVARM": [4, 2, 1]},
+    )
+    before = overall(data)
+    data["methods"]["SHAPIQ"] = {}
+    data["records"].append(
+        {"game_id": "0", "method": "SHAPIQ", "budget": 16, "seed": 0, "status": "ok", "nmse": 0.5}
+    )
+    after = overall(data)
+    assert before["history"] == after["history"]
+    assert "Elo intervals withheld" in after["uncertainty"]["reason"]
+    for row in after["rows"]:
+        if row["complete"]:
+            previous = next(r for r in before["rows"] if r["method"] == row["method"])
+            assert row["ci"]["mean"] == pytest.approx(previous["ci"]["mean"])
+            assert row["ci"]["median"] == pytest.approx(previous["ci"]["median"])
+            assert row["ci"]["elo"] is None
+        else:
+            assert row["ci"] is None
+
+
+@pytest.mark.parametrize(
+    "values", [[2.0, 100.0], [0.0] * 99 + [1.0] * 99, [1.0, 4.0, 9.0], [1e308, 1e308]]
+)
+def test_equal_weight_median_matches_numpy(values: list[float]) -> None:
+    """An even number of equally weighted runs cannot select the better half's endpoint."""
+    sample = np.asarray(values)
+    expected = sample[0] if sample[0] == 1e308 else float(np.median(sample))
+    assert weighted_median(sample, np.ones(len(sample))) == expected
+
+
+def test_weighted_median_skips_zero_mass_and_only_interpolates_half_boundary() -> None:
+    """Zero-weight values do not become neighbors; unequal mass crosses without interpolation."""
+    assert weighted_median(np.array([2.0, 999.0, 100.0]), np.array([0.5, 0.0, 0.5])) == 51
+    assert weighted_median(np.array([2.0, 100.0]), np.array([0.6, 0.4])) == 2
+    assert weighted_median(np.array([2.0, 100.0]), np.array([0.4, 0.6])) == 100

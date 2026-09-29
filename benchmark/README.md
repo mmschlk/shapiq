@@ -5,8 +5,8 @@
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
 Compare all 22 public estimator classes across representatives of every shipped
-game family. Filter by target, game, player count, or budget; compare mean nMSE
-and Elo in the table, then explore each game's accuracy against **queries per
+game family. Filter by target, game family, player count, or budget; compare median/mean nMSE
+and Elo in the table, then explore family-level median nMSE against **queries per
 player (`B/d`)** and time. Publication history appears below. Hover or focus a
 method to highlight it across charts and rows; colors also have distinct markers
 and line patterns.
@@ -24,11 +24,14 @@ comparison locally without uploading anything.
 | --- | --- |
 | Small games | 31 recipes, covering all shipped game families |
 | Targets | SV, k-SII, SII, STII, FSII, FBII; interactions at order two |
-| Larger games | 30-player forest SV and k-SII; 128-player KNN valuation SV |
+| Larger games | Forests with 30/64 features (all six targets); product-kernel games with 30/64 features (SV); KNN with 128/256 training-example players (SV) |
 | Estimators | All 22 public classes, with library defaults unless target configuration requires otherwise |
 | Budgets | `B/d = 0.5, 1, 2, 4, 8, 16, 32, 64, 128`, rounded up to whole queries per game |
-| Repetitions | Two estimator seeds |
-| Planned matrix | 189 game/target settings; 74,844 cells including unsupported combinations |
+| Repetitions | Four constructed game instances per recipe/dataset; one estimator run per instance and budget |
+| Planned matrix | 808 game/target instances; 159,984 cells including unsupported combinations, if every recipe qualifies |
+
+The expanded four-instance suite is being prepared and measured. The website
+continues to show the previous published data until its replacement is audited.
 
 The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
 777 failed cells**, with none pending. Failures comprise 754 SPEX minimum-budget
@@ -47,9 +50,18 @@ they never enter the real-game ranking.
 
 Small games use exact enumeration of their saved payoff tables. For stochastic
 imputers and global games, preparation freezes one canonical-order realization:
-truth is exact for that table, not for the population expectation. Large tree and
+truth is exact for that table, not for the population expectation. Large tree, product-kernel and
 KNN games use existing structured exact solvers, checked against enumeration on
 an eight-player counterpart. KNN players are training examples, not features.
+
+`game_seeds: [0, 1, 2, 3]` changes game construction: data splits, fitted models,
+backgrounds and held-out points as applicable. Text and image games use four
+distinct inputs to the same pretrained model. `seeds: [0]` runs each estimator
+once on each instance at each budget; it does not repeat the estimator four
+times on one frozen game. California Housing and Iris keep their native eight
+and four features. The larger settings use naturally larger datasets.
+Different constructions can still yield identical or zero-energy payoffs on
+easy problems; those outcomes are retained, with zero-energy nMSE excluded.
 
 Table-backed timings measure estimator work against cached payoffs; large-game
 timings include live coalition calls. Concurrent sweep timings are diagnostic.
@@ -150,40 +162,50 @@ use a new output directory after changing code or limits.
 ## Read the rankings
 
 Select a target first; different interaction definitions never share a ranking.
-Choose a budget in multiples of the player count, or use **budget cap** to select the largest
-measured budget within your limit for each game. Missing cells remain missing.
-The two main charts show a selected game's mean nMSE across seeds. **All methods**
-includes methods that succeed at only some budgets, but every plotted point
-requires every seed for that cell.
+Choose a budget in multiples of the player count, or use **budget cap** to select
+the largest measured budget within your limit for each game. Missing cells remain missing.
+The two main charts aggregate the selected game families, using the same weights
+as the table. Each point reports coverage on hover. The time chart groups runs
+with matching CPU and thread profiles; it may combine cached and live oracles.
 
 nMSE is squared coefficient error divided by ground-truth coefficient energy,
 excluding the baseline. Zero-energy games have undefined nMSE and are excluded
 for every method. Aggregate means give equal weight at each level:
-family → stratum → game → budget → seed. The median is the lower weighted median.
-The default view shows compatible estimator families; **Show all variants** exposes
+family → stratum → game instance → budget → estimator seed. At an exact half-weight
+boundary, the median is the midpoint of the neighboring values, matching the
+ordinary median for equal weights. For example, errors 2 and 100 give median 51.
+The default view shows compatible estimator families; the **All variants** dropdown option exposes
 the underlying classes without combining their scores. The target column marks
 value and interaction support. [Estimator notes](ESTIMATOR_NOTES.md) explain
 LeverageSHAP’s low-budget instability and the OddSHAP, SPEX, and ShaplEIG findings.
 
-Only methods with valid results for every selected cell receive an aggregate
-rank; failure, unsupported, and pending counts explain incomplete coverage.
+The table defaults to median nMSE, with complete coverage ahead of incomplete
+coverage. Click column headers to sort by a different score, name, or coverage.
+Methods with any successful scored runs retain their nMSE scores. Their planned
+panel weights are renormalized over those runs; missing or failed results are
+never treated as zero error. **Coverage** shows successful versus planned cells,
+with failure details in its tooltip. Different coverage means different evidence
+behind the scores, so use a common game and budget when making close comparisons.
 
-Fixed presets also provide **Elo rankings**, calculated from matching cells with
-the same weights. Errors within `1e-12 + 0.01 × max(error_A, error_B)` tie. Ratings
+Fixed presets also provide **Elo rankings** from cells where both estimators
+succeeded. Each pair keeps its original panel weights, so less overlap supplies
+less evidence. Global ratings require a connected comparison graph. Errors within `1e-12 + 0.01 × max(error_A, error_B)` tie. Ratings
 use a batch Bradley–Terry fit centered at 1000, a 400-point logistic scale, and
 `0.001` L2 regularization. They describe head-to-head outcomes rather than error
 magnitude and depend on the selected methods. Custom panels retain nMSE rankings
 but withhold preset-specific Elo and history.
 
 History places each current implementation's score at its verified first-publication
-date and shows the best eligible mean or median so far. This is retrospective
+date and shows the best mean or median among methods with complete coverage.
+History keeps a common panel so its frontier remains comparable. This is retrospective
 performance on today's frozen panel, not a reconstruction of historical results.
 Unverified dates are omitted from history without removing methods from accuracy
 rankings; included dates link to primary sources.
 
 Bootstrap intervals require at least two independent model clusters in every
-stratum. The current suite has one per stratum, so intervals are unavailable.
-More seeds or explanation points alone do not create independent models.
+stratum. Four independent fitted models can support these intervals, but four inputs to
+one pretrained model still form one model cluster. More explanation points alone
+do not create independent models. Partial panels do not receive intervals.
 
 ## Export and publish
 

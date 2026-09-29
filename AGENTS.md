@@ -106,3 +106,25 @@ uv run pre-commit run --all-files
   estimator `random_state` alone does not seed those draws. Isolated benchmark
   cells must seed both globals before estimator construction. Older SPEX records
   without this protocol are not reproducible from their recorded seed alone.
+
+- Browser weighted medians must use the same relative `1e-14` half-mass tolerance
+  as Python. With 198 equal-weight cells split between zero and one, ordinary
+  cumulative rounding otherwise misses the required midpoint of 0.5.
+  Partial summaries renormalize successful weight; no successes means no score.
+
+- The frozen `local_baseline_forest` explanation has eight declared players but
+  only player zero affects the payoff; near-zero error at 2d is legitimate.
+  Declared dimensionality alone does not establish game difficulty. Budget
+  charts show the requested cap; actual query usage can be smaller.
+- `InterventionalTreeSHAPIQ` and `ExactComputer` agree on nonempty SII/FBII
+  coefficients but use different empty-coefficient conventions. For benchmark
+  qualification, compare nonempty coefficients and check the actual oracle
+  baseline separately; do not impose efficiency on SII/FBII coefficient sums.
+- `ProductKernelExplainer` currently rejects a `ProductKernelModel` through its
+  base explainer despite accepting that type in its annotation. Pass the fitted
+  sklearn SVC/SVR, or use `ProductKernelComputer` with serialized kernel arrays.
+- sklearn forests cast prediction inputs to float32, whereas exact tree routing
+  can use their original float64 values. A breast-cancer seed exposed a 0.027
+  Shapley discrepancy despite matching endpoint predictions. Round benchmark
+  tree inputs through float32 before passing the same values to both paths;
+  retain exhaustive small-game qualification across construction seeds.

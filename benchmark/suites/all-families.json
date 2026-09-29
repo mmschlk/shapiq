@@ -1,5 +1,5 @@
 {
-  "name": "all-families-relative-v2",
+  "name": "all-families-four-instances-v3",
   "families": [
     "local_baseline",
     "local_baseline_forest",
@@ -63,21 +63,116 @@
     {
       "id": "breast-cancer-tree-sv",
       "oracle": "tree",
+      "dataset": "breast_cancer",
       "index": "SV",
       "order": 1
     },
     {
-      "id": "breast-cancer-tree-pairs",
+      "id": "breast-cancer-tree-k-sii",
       "oracle": "tree",
+      "dataset": "breast_cancer",
       "index": "k-SII",
       "order": 2
     },
     {
-      "id": "breast-cancer-knn-sv",
+      "id": "breast-cancer-tree-sii",
+      "oracle": "tree",
+      "dataset": "breast_cancer",
+      "index": "SII",
+      "order": 2
+    },
+    {
+      "id": "breast-cancer-tree-stii",
+      "oracle": "tree",
+      "dataset": "breast_cancer",
+      "index": "STII",
+      "order": 2
+    },
+    {
+      "id": "breast-cancer-tree-fsii",
+      "oracle": "tree",
+      "dataset": "breast_cancer",
+      "index": "FSII",
+      "order": 2
+    },
+    {
+      "id": "breast-cancer-tree-fbii",
+      "oracle": "tree",
+      "dataset": "breast_cancer",
+      "index": "FBII",
+      "order": 2
+    },
+    {
+      "id": "digits-tree-sv",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "SV",
+      "order": 1
+    },
+    {
+      "id": "digits-tree-k-sii",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "k-SII",
+      "order": 2
+    },
+    {
+      "id": "digits-tree-sii",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "SII",
+      "order": 2
+    },
+    {
+      "id": "digits-tree-stii",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "STII",
+      "order": 2
+    },
+    {
+      "id": "digits-tree-fsii",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "FSII",
+      "order": 2
+    },
+    {
+      "id": "digits-tree-fbii",
+      "oracle": "tree",
+      "dataset": "digits",
+      "index": "FBII",
+      "order": 2
+    },
+    {
+      "id": "breast-cancer-knn-128-sv",
       "oracle": "knn",
+      "dataset": "breast_cancer",
       "index": "SV",
       "order": 1,
       "n_players": 128
+    },
+    {
+      "id": "breast-cancer-knn-256-sv",
+      "oracle": "knn",
+      "dataset": "breast_cancer",
+      "index": "SV",
+      "order": 1,
+      "n_players": 256
+    },
+    {
+      "id": "breast-cancer-product-kernel-sv",
+      "oracle": "product_kernel",
+      "dataset": "breast_cancer",
+      "index": "SV",
+      "order": 1
+    },
+    {
+      "id": "digits-product-kernel-sv",
+      "oracle": "product_kernel",
+      "dataset": "digits",
+      "index": "SV",
+      "order": 1
     }
   ],
   "methods": [
@@ -116,7 +211,12 @@
     128
   ],
   "seeds": [
+    0
+  ],
+  "game_seeds": [
     0,
-    1
+    1,
+    2,
+    3
   ]
 }

@@ -23,12 +23,45 @@ def prepare(suite_path: Path, output: Path) -> dict:
     """Train once, enumerate 256 coalitions, and store non-executable artifacts."""
     suite = json.loads(suite_path.read_text())
     validate_suite(suite)
+    game_seeds = suite.get("game_seeds")
+    if game_seeds is not None and (
+        not isinstance(game_seeds, list)
+        or not game_seeds
+        or any(type(seed) is not int or seed < 0 for seed in game_seeds)
+        or len(set(game_seeds)) != len(game_seeds)
+    ):
+        message = "game_seeds must be a nonempty list of unique nonnegative integers."
+        raise ValueError(message)
+    specs = suite.get("games", [])
+    if game_seeds is not None:
+        specs = [
+            {
+                **spec,
+                "id": f"{spec['id']}-i{seed}",
+                "instance_seed": seed,
+                "basecase_id": spec.get(
+                    "basecase_id",
+                    (
+                        f"{spec.get('dataset', 'breast_cancer')}-{spec['oracle']}-"
+                        f"{spec.get('n_players', 'native')}"
+                    ),
+                ),
+            }
+            for spec in specs
+            for seed in game_seeds
+        ]
     if "families" in suite:
         from shapiq_benchmark.materialize import prepare_families
 
-        games, coverage = prepare_families(suite["families"], suite["targets"], output)
-        if suite.get("games"):
-            structured = prepare_structured(suite["games"], output)
+        games, coverage = [], []
+        for seed in game_seeds if game_seeds is not None else [None]:
+            instances, entries = prepare_families(
+                suite["families"], suite["targets"], output, instance_seed=seed
+            )
+            games.extend(instances)
+            coverage.extend(entries)
+        if specs:
+            structured = prepare_structured(specs, output)
             games.extend(structured)
             coverage.extend(
                 {
@@ -41,8 +74,11 @@ def prepare(suite_path: Path, output: Path) -> dict:
             )
         return write_snapshot(suite, games, output, coverage=coverage)
     if "games" in suite:
-        games = prepare_structured(suite["games"], output)
+        games = prepare_structured(specs, output)
         return write_snapshot(suite, games, output)
+    if game_seeds is not None:
+        message = "Use family or structured recipes for multiple game constructions."
+        raise ValueError(message)
     if suite["game"] != "california_tree":
         message = "The pilot supports only california_tree."
         raise ValueError(message)

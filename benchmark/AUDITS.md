@@ -160,3 +160,34 @@ Reviewer: `audit_phase1`, independent of the implementation authors.
   remain diagnostic because workers run concurrently.
 - Required pre-commit passes formatting and lint hooks, with only the eight
   previously documented Woodelf import / unused-ignore type diagnostics.
+
+## Four construction instances and larger structured games
+
+Reviewers: `brand_relative_ui`, `investigate_optional`, and `investigate_leverage`,
+reviewing modules they did not implement.
+
+- Separated four game-construction seeds from one estimator seed. Verified stable
+  recipe/stratum identity, distinct instance IDs and artifacts, and shared model
+  clusters for four text/image inputs to one pretrained model.
+- Qualified 64 larger instances: 30/64-feature forests across all six targets,
+  30/64-feature RBF product kernels for SV, and 128/256-player KNN for SV.
+  Maximum discrepancy against exhaustive eight-player truth was 3.34e-11.
+- Fixed float32 tree-routing disagreement in the benchmark adapter. Checked
+  output class/scale, saved-array reconstruction, and nonempty SII/FBII truth
+  without imposing an invalid efficiency constraint.
+- Checked available-result nMSE, matched-cell Elo, connected comparison graphs,
+  and complete-panel history. Medians now average neighboring values at an exact
+  half-weight boundary, replacing the earlier lower-median convention.
+- Browser fixtures verify four cells rather than sixteen, median 4 for errors
+  1/3/5/7, stable setting counts, compact worker-reference hydration, legacy
+  reports, and mobile layout. Worker deduplication preserves per-run hardware.
+- Cluster bootstrap intervals remain descriptive: they do not model dependence
+  between distinct masking recipes that share a fitted model. Overall panels
+  containing single pretrained-model strata withhold these intervals.
+- All 165 benchmark tests pass. Repository pre-commit formatting/lint checks pass;
+  the type-check hook still reports eight existing diagnostics in optional
+  Woodelf imports and tree-conversion ignore comments.
+- Distinct constructions need not produce distinct payoff functions: two small
+  baseline instances are zero-energy games, and some small KNN tables coincide
+  despite different data rows. Zero-energy cases are excluded uniformly, and
+  coverage remains explicit; no instance is replaced after inspecting scores.

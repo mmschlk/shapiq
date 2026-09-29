@@ -99,3 +99,31 @@ def test_synthetics_are_separate_diagnostics() -> None:
     assert FAMILY_CATALOG["local_marginal"]["application_family"] == "local_explanation"
     assert FAMILY_CATALOG["interventional_tree"]["application_family"] == "local_explanation"
     assert FAMILY_CATALOG["dataset_valuation"]["application_family"] == "data_valuation"
+
+
+@pytest.mark.parametrize(
+    "name", ["local_baseline_forest", "data_valuation", "product_kernel", "knn"]
+)
+def test_construction_seeds_change_instances_reproducibly(name: str) -> None:
+    """Four construction seeds change data/model inputs, not only estimator sampling."""
+    metadata_by_seed = []
+    with threadpool_limits(limits=1):
+        for seed in range(4):
+            game, metadata = make_family(name, instance_seed=seed)
+            repeated, repeated_metadata = make_family(name, instance_seed=seed)
+            assert metadata == repeated_metadata
+            assert metadata["instance_seed"] == seed
+            assert set(metadata["train_indices"]).isdisjoint(metadata["test_indices"])
+            coalitions = np.random.default_rng(55).integers(0, 2, size=(8, game.n_players))
+            np.testing.assert_allclose(game(coalitions), repeated(coalitions), rtol=0, atol=0)
+            metadata_by_seed.append(metadata)
+    assert len({tuple(m["train_indices"]) for m in metadata_by_seed}) == 4
+    assert len({m["point_row"] for m in metadata_by_seed}) == 4
+
+
+@pytest.mark.parametrize("name", ["dummy", "unanimity"])
+def test_fixed_synthetic_recipes_vary_interaction_support(name: str) -> None:
+    """Changing construction seeds must not emit four copies of a fixed diagnostic."""
+    coalitions = ((np.arange(256)[:, None] >> np.arange(8)) & 1).astype(bool)
+    values = [make_family(name, instance_seed=seed)[0](coalitions) for seed in range(4)]
+    assert len({value.tobytes() for value in values}) == 4

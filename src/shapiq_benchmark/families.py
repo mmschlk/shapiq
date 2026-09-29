@@ -225,8 +225,8 @@ FAMILY_CATALOG = {
 }
 
 
-@lru_cache(maxsize=2)
-def _dataset(name: str) -> tuple:
+@lru_cache(maxsize=8)
+def _dataset(name: str, instance_seed: int = 0) -> tuple:
     """Load a bundled dataset and retain explicit original row identities."""
     if name == "iris":
         data = load_iris()
@@ -237,7 +237,7 @@ def _dataset(name: str) -> tuple:
     train, test = train_test_split(
         np.arange(len(x)),
         test_size=0.2,
-        random_state=0,
+        random_state=instance_seed,
         stratify=y if name == "iris" else None,
     )
     return x, y, train[:512], test[:128]
@@ -247,7 +247,7 @@ def _negative_mse(y: np.ndarray, prediction: np.ndarray) -> float:
     return -float(mean_squared_error(y, prediction))
 
 
-def make_family(name: str) -> tuple:
+def make_family(name: str, *, instance_seed: int = 0) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
     Missing optional dependencies and broken constructors propagate to the
@@ -257,13 +257,20 @@ def make_family(name: str) -> tuple:
     metadata = dict(FAMILY_CATALOG[name])
     module, attribute = metadata["class"].rsplit(".", 1)
     cls = getattr(importlib.import_module(module), attribute)
-    metadata.update(recipe=name, random_state=0, parameters={})
+    metadata.update(
+        recipe=name, instance_seed=instance_seed, random_state=instance_seed, parameters={}
+    )
     if metadata["synthetic"]:
+        interaction = (
+            np.arange(3)
+            if instance_seed == 0
+            else np.sort(np.random.default_rng(instance_seed).choice(8, 3, replace=False))
+        )
         parameters = {
-            "unanimity": {"interaction_binary": np.array([1, 1, 1, 0, 0, 0, 0, 0])},
-            "soum": {"n": 8, "n_basis_games": 12, "random_state": 0},
-            "dummy": {"n": 8, "interaction": (0, 1, 2)},
-            "random": {"n": 8, "random_state": 0},
+            "unanimity": {"interaction_binary": np.isin(np.arange(8), interaction).astype(int)},
+            "soum": {"n": 8, "n_basis_games": 12, "random_state": instance_seed},
+            "dummy": {"n": 8, "interaction": tuple(int(i) for i in interaction)},
+            "random": {"n": 8, "random_state": instance_seed},
         }[name]
         game = cls(**parameters)
         metadata.update(
@@ -280,7 +287,7 @@ def make_family(name: str) -> tuple:
 
     neighbors = name in ("knn", "tnn", "weighted_knn", "binary_weighted_knn")
     dataset = "iris" if neighbors or name == "uncertainty" else "california_housing"
-    x, y, train, test = _dataset(dataset)
+    x, y, train, test = _dataset(dataset, instance_seed)
     x_train, y_train, x_test, y_test = (
         x[train].copy(),
         y[train].copy(),
@@ -296,17 +303,24 @@ def make_family(name: str) -> tuple:
         background_indices=train[:16].tolist(),
     )
     model = DecisionTreeRegressor(
-        max_depth=4 if name == "interventional_tree" else 3, min_samples_leaf=5, random_state=0
+        max_depth=4 if name == "interventional_tree" else 3,
+        min_samples_leaf=5,
+        random_state=instance_seed,
     ).fit(x_train, y_train)
     if name == "local_baseline_forest":
-        model = RandomForestRegressor(n_estimators=8, max_depth=4, random_state=0, n_jobs=1).fit(
-            x_train, y_train
-        )
+        model = RandomForestRegressor(
+            n_estimators=8, max_depth=4, random_state=instance_seed, n_jobs=1
+        ).fit(x_train, y_train)
     metadata["model"] = type(model).__name__
     metadata["model_parameters"] = model.get_params()
     point, background = x_test[0], x_train[:16]
     if name.startswith("local_"):
-        kwargs = {"model": model.predict, "data": background, "x": point, "random_state": 0}
+        kwargs = {
+            "model": model.predict,
+            "data": background,
+            "x": point,
+            "random_state": instance_seed,
+        }
         if name == "local_marginal":
             kwargs["sample_size"] = 16
         elif name in ("local_gaussian", "local_copula"):
@@ -326,7 +340,7 @@ def make_family(name: str) -> tuple:
             loss_function=mean_squared_error,
             n_samples_eval=16,
             n_samples_empty=128,
-            random_state=0,
+            random_state=instance_seed,
         )
         metadata["parameters"] = {"n_samples_eval": 16, "n_samples_empty": 128}
         metadata["background_indices"] = train[:128].tolist()
@@ -349,9 +363,9 @@ def make_family(name: str) -> tuple:
             fit_function=model.fit,
             predict_function=model.predict,
             loss_function=_negative_mse,
-            random_state=0,
+            random_state=instance_seed,
         )
-        permuted = pool[np.random.default_rng(0).permutation(len(pool))]
+        permuted = pool[np.random.default_rng(instance_seed).permutation(len(pool))]
         metadata.update(train_indices=permuted[:8].tolist(), test_indices=permuted[8:].tolist())
         metadata["parameters"] = {"n_data_points": 8, "empty_data_value": 0}
     elif name == "dataset_valuation":
@@ -364,7 +378,7 @@ def make_family(name: str) -> tuple:
             fit_function=model.fit,
             predict_function=model.predict,
             loss_function=_negative_mse,
-            random_state=0,
+            random_state=instance_seed,
         )
         metadata["group_indices"] = [train[g].tolist() for g in groups]
         metadata["parameters"] = {"n_players": 8, "empty_data_value": 0}
@@ -380,7 +394,7 @@ def make_family(name: str) -> tuple:
         }
         if name == "forest_ensemble":
             forest = RandomForestRegressor(
-                n_estimators=8, max_depth=3, random_state=0, n_jobs=1
+                n_estimators=8, max_depth=3, random_state=instance_seed, n_jobs=1
             ).fit(x_train, y_train)
             game = cls(random_forest=forest, **kwargs)
             metadata.update(model=type(forest).__name__, model_parameters=forest.get_params())
@@ -389,7 +403,10 @@ def make_family(name: str) -> tuple:
                 Ridge(alpha=1),
                 SVR(),
                 KNeighborsRegressor(n_neighbors=3, n_jobs=1),
-                *[DecisionTreeRegressor(max_depth=d, random_state=d) for d in (1, 2, 3, 4, 5)],
+                *[
+                    DecisionTreeRegressor(max_depth=d, random_state=instance_seed + d)
+                    for d in (1, 2, 3, 4, 5)
+                ],
             ]
             for member in members:
                 member.fit(x_train, y_train)
@@ -402,11 +419,15 @@ def make_family(name: str) -> tuple:
                 },
             )
     elif name == "uncertainty":
-        forest = RandomForestClassifier(n_estimators=8, max_depth=3, random_state=0, n_jobs=1).fit(
-            x_train, y_train
-        )
+        forest = RandomForestClassifier(
+            n_estimators=8, max_depth=3, random_state=instance_seed, n_jobs=1
+        ).fit(x_train, y_train)
         game = cls(
-            data=x_train[:20], model=forest, x=point, random_state=0, uncertainty_to_explain="total"
+            data=x_train[:20],
+            model=forest,
+            x=point,
+            random_state=instance_seed,
+            uncertainty_to_explain="total",
         )
         metadata.update(
             model=type(forest).__name__,
@@ -420,7 +441,7 @@ def make_family(name: str) -> tuple:
         if name == "cluster":
             kwargs.update(
                 cluster_method="kmeans",
-                random_state=0,
+                random_state=instance_seed,
                 cluster_params={"n_clusters": 3, "n_init": 1, "max_iter": 50},
             )
         game = cls(**kwargs)

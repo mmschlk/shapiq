@@ -57,6 +57,9 @@ METADATA_FIELDS = (
     "synthetic",
     "stochastic_frozen",
     "case_id",
+    "instance_seed",
+    "replicate_unit",
+    "input_id",
     "class",
 )
 
@@ -153,6 +156,7 @@ def merge_results(paths: list[Path]) -> dict:
                 "name",
                 "budgets",
                 "seeds",
+                "game_seeds",
                 "methods",
                 "budgets_by_game",
                 "relative_budgets",
@@ -181,7 +185,7 @@ def merge_results(paths: list[Path]) -> dict:
 
 
 def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
-    """Write data and the three dependency-free website files."""
+    """Write data and the dependency-free website assets."""
     data = merge_results(paths)
     assets = SITE_DIR
     public = public or output.resolve() == assets.resolve()
@@ -194,7 +198,21 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)
-    (output / "data.json").write_text(json.dumps(data, indent=2, allow_nan=False) + "\n")
+    # Store repeated hardware descriptions once; the browser restores row references.
+    workers, worker_ids = {}, {}
+    records = []
+    for row in data["records"]:
+        record = {key: value for key, value in row.items() if value is not None}
+        worker = record.pop("worker", None)
+        if worker is not None:
+            worker_id = worker_ids.setdefault(identity(worker), f"w{len(worker_ids)}")
+            workers[worker_id] = worker
+            record["worker_id"] = worker_id
+        records.append(record)
+    exported = {**data, "workers": workers, "records": records}
+    (output / "data.json").write_text(
+        json.dumps(exported, separators=(",", ":"), allow_nan=False) + "\n"
+    )
     return data
 
 
