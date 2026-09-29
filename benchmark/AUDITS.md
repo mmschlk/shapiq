@@ -191,3 +191,7 @@ reviewing modules they did not implement.
   baseline instances are zero-energy games, and some small KNN tables coincide
   despite different data rows. Zero-energy cases are excluded uniformly, and
   coverage remains explicit; no instance is replaced after inspecting scores.
+- A second export audit round-tripped all 24,948 prior published records through
+  compact JSON and verified identical browser tables, filters, curves, history,
+  and hardware details. Removed unused per-game presets after removing that UI;
+  overall/family preset views remain identical. All 36 summary/report tests pass.

@@ -312,7 +312,6 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
             (family, [game for game in target_games if game["family"] == family])
             for family in sorted({game["family"] for game in target_games})
         )
-        subsets.extend((game["family"], [game]) for game in target_games)
         seen = set()
         for family, panel_games in subsets:
             grids = [(None, {game["id"]: game_grids[game["id"]] for game in panel_games})]

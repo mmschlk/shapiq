@@ -187,7 +187,7 @@ never treated as zero error. **Coverage** shows successful versus planned cells,
 with failure details in its tooltip. Different coverage means different evidence
 behind the scores, so use a common game and budget when making close comparisons.
 
-Fixed presets also provide **Elo rankings** from cells where both estimators
+Overall and family presets also provide **Elo rankings** from cells where both estimators
 succeeded. Each pair keeps its original panel weights, so less overlap supplies
 less evidence. Global ratings require a connected comparison graph. Errors within `1e-12 + 0.01 × max(error_A, error_B)` tie. Ratings
 use a batch Bradley–Terry fit centered at 1000, a 400-point logistic scale, and
