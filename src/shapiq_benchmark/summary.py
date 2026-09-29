@@ -130,7 +130,8 @@ def comparisons(
         np.zeros(len(methods)),
         jac=True,
         method="L-BFGS-B",
-        options={"gtol": 1e-10, "ftol": 1e-12, "maxiter": 1000},
+        # A tighter gradient tolerance can falsely fail at line-search roundoff.
+        options={"gtol": 1e-8, "ftol": 1e-12, "maxiter": 1000, "maxls": 100},
     )
     if not fit.success or not np.all(np.isfinite(fit.x)):
         message = "Bradley-Terry fit did not converge."

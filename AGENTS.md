@@ -95,3 +95,10 @@ uv run pre-commit run --all-files
   rounding when qualifying a frozen table.
 - Full estimator extras increase worker import time. Timeout regression fixtures
   need enough startup allowance for a valid second worker (ten seconds here).
+
+- Reading actively replaced benchmark checkpoints over Hopper's shared filesystem
+  can transiently raise `ESTALE` (stale file handle). Retry monitoring reads;
+  export the final report after workers have stopped writing.
+- Fully ordered five-method Elo panels can reach numerical line-search roundoff
+  before an overly tight gradient tolerance. Keep the convergence guard and the
+  strict-order regression test when changing Bradley–Terry optimizer settings.

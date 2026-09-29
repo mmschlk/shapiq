@@ -116,3 +116,26 @@ Reviewer: `audit_phase1`, independent of the implementation authors.
 - The reproduction bundle accepts multiple raw shards while retaining each run's
   hardware metadata. All 19 bundle tests passed independently, including later
   shard privacy/provenance conflicts, sanitization, checksums, and round-trip merge.
+- The full clean-source campaign at `15ea510f` completed all 24,948 cells across
+  Slurm jobs 360594, 360602, and 360608: 9,357 successful, 14,814 unsupported,
+  and 777 failed, with none pending. All 34 preparation entries qualified.
+- Actual worker metadata verifies EPYC 9754, distinct pinned cores, and one native
+  thread. An independent reviewer recomputed the first 703 successful scores.
+- The expanded export exposed numerical line-search failures on seven Elo panels.
+  A five-method strict-order fixture reproduces the failure. After measurement
+  finished, gradient tolerance was changed to 1e-8 and line-search allowance to
+  100; the rating objective and convergence guard remain unchanged. All 876
+  expanded presets and all 120 fixture permutations pass with the adjustment.
+  An independent Newton solution agrees within 0.000018 Elo points.
+- Independent browser checks on 24,898 records passed all six targets, 22 methods,
+  Python/browser summary parity, Elo sorting, B/d and absolute axes, game changes,
+  coordinated hover/focus, and 390px layout without overflow or script errors.
+- Final verification passed all 122 benchmark tests. Formatting/lint hooks pass;
+  only the eight documented pre-existing type diagnostics remain.
+- The final independent audit recomputed every one of the 9,357 successful scores,
+  verified query limits, core/thread settings, all 100 archive checksum entries,
+  authenticated the snapshot, and remerged all 64 extracted shards. No private
+  methods, raw exception messages, or local paths were found in the archive.
+- Final browser SV rankings match Python at all budgets and 2d/8d/64d; Elo,
+  history, and the 128-player KNN partial curves render correctly. No script
+  errors or mobile overflow remain. No audit blockers remain.

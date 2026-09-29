@@ -95,6 +95,33 @@ def test_ties_and_input_order_do_not_change_elo() -> None:
     assert overall(data) == result
 
 
+def test_strict_five_method_order_converges() -> None:
+    """A real-panel ordering must not fail when line search reaches roundoff."""
+    values = np.array([[2, 2], [1, 1], [3, 3], [5, 5], [4, 4]])
+    weights, methods = np.array([0.5, 0.5]), list("abcde")
+    matches, ratings = comparisons(values, weights, methods)
+    ratings = np.array(ratings)
+    assert np.all(np.isfinite(ratings))
+    assert ratings.mean() == pytest.approx(1000)
+    assert np.argsort(-ratings).tolist() == [1, 0, 2, 4, 3]
+
+    # Check stationarity independently from the optimizer's success flag.
+    skills = (ratings - 1000) * np.log(10) / 400
+    gradient = 0.001 * skills
+    for match in matches:
+        a, b = methods.index(match["a"]), methods.index(match["b"])
+        residual = 1 / (1 + np.exp(skills[b] - skills[a])) - match["score_a"]
+        gradient[a] += residual
+        gradient[b] -= residual
+    assert np.max(np.abs(gradient)) < 1e-7
+
+    permutation = np.array([4, 2, 0, 3, 1])
+    _, reordered = comparisons(values[permutation], weights, [methods[i] for i in permutation])
+    np.testing.assert_allclose(
+        np.array(reordered)[np.argsort(permutation)], ratings, atol=2e-5, rtol=0
+    )
+
+
 def test_unknown_dates_do_not_set_frontier() -> None:
     """An excellent but undated estimator stays in accuracy rankings, outside history."""
     data = fixture_data(
