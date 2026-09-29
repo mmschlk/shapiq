@@ -34,18 +34,19 @@ function selection() {
 }
 function summary(rows, planned) {
   const good = rows.filter(r => r.status === "ok" && Number.isFinite(r.nmse));
-  return {average: mean(good.map(r => r.nmse)), median: median(good.map(r => r.nmse)), valid: good.length, planned, failed: rows.filter(r => r.status !== "ok").length, missing: planned-rows.length, complete: planned > 0 && good.length === planned};
+  return {average: mean(good.map(r => r.nmse)), median: median(good.map(r => r.nmse)), valid: good.length, planned, failed: rows.filter(r => r.status === "failed").length, unsupported: rows.filter(r => r.status === "unsupported").length, missing: planned-rows.length, complete: planned > 0 && good.length === planned};
 }
 function render() {
   const s = selection(), planned = s.games.length * s.budgets.length * data.suite.seeds.length;
   selectedRows = s.rows;
+  $("gameDetails").textContent = s.games.map(g => `${g.id}: ${g.n_players} ${g.metadata.player_unit || "feature"} players${g.metadata.active_players !== undefined ? ` (${g.metadata.active_players} active)` : ""}`).join(" · ");
   $("panelSummary").textContent = `${s.games.length} games · ${s.budgets.length} budgets · ${data.suite.seeds.length} seeds`;
   const summaries = s.methods.map(method => ({method, ...summary(s.rows.filter(r => r.method === method), planned)})).sort((a,b) => Number(b.complete)-Number(a.complete) || a.average-b.average);
   $("ranking").replaceChildren();
   let rank = 0;
   summaries.forEach(item => {
     const tr = document.createElement("tr");
-    const cells = [item.complete ? ++rank : "Unranked", item.method, item.complete ? format(item.average) : "—", item.complete ? format(item.median) : "—", `${item.valid} / ${item.planned}`, `${item.failed} / ${item.missing}`];
+    const cells = [item.complete ? ++rank : "Unranked", item.method, item.complete ? format(item.average) : "—", item.complete ? format(item.median) : "—", `${item.valid} / ${item.planned}`, `${item.failed} / ${item.unsupported} / ${item.missing}`];
     cells.forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.append(td); });
     $("ranking").append(tr);
   });

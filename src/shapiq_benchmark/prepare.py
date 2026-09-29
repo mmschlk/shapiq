@@ -14,6 +14,7 @@ from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.datasets import load_california_housing
 from shapiq.game_theory import ExactComputer
+from shapiq_benchmark.games import prepare_structured
 from shapiq_benchmark.runner import digest, identity, provenance, table_game, validate_suite
 
 
@@ -21,6 +22,9 @@ def prepare(suite_path: Path, output: Path) -> dict:
     """Train once, enumerate 256 coalitions, and store non-executable artifacts."""
     suite = json.loads(suite_path.read_text())
     validate_suite(suite)
+    if "games" in suite:
+        games = prepare_structured(suite["games"], output)
+        return write_snapshot(suite, games, output)
     if suite["game"] != "california_tree":
         message = "The pilot supports only california_tree."
         raise ValueError(message)
@@ -85,12 +89,17 @@ def prepare(suite_path: Path, output: Path) -> dict:
             "truth_queries": 2**n,
         },
     }
-    snapshot = {
+    return write_snapshot(suite, [game], output)
+
+
+def write_snapshot(suite: dict, games: list[dict], output: Path) -> dict:
+    """Write one content-addressed manifest for either preparation route."""
+    snapshot: dict = {
         "schema_version": 1,
         "suite": suite,
         "provenance": provenance(),
-        "artifacts": {artifact.name: digest(artifact)},
-        "games": [game],
+        "artifacts": {game["artifact"]: digest(output / game["artifact"]) for game in games},
+        "games": games,
     }
     snapshot["snapshot_id"] = identity(snapshot)
     (output / "snapshot.json").write_text(json.dumps(snapshot, indent=2, allow_nan=False) + "\n")

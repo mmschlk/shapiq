@@ -111,11 +111,12 @@ def test_candidate_is_local_only_and_provenance_retained(tmp_path: Path) -> None
     assert not (tmp_path / "public").exists()
 
 
-def test_failed_record_has_safe_error_type(tmp_path: Path) -> None:
+@pytest.mark.parametrize("status", ["failed", "unsupported"])
+def test_failed_record_has_safe_error_type(tmp_path: Path, status: str) -> None:
     """Exception diagnostics must not leak local filenames into public reports."""
     result = result_fixture()
     result["records"][0].update(
-        status="failed", error="ValueError: /private/model.py", nmse=None, mse=None
+        status=status, error="ValueError: /private/model.py", nmse=None, mse=None
     )
     data = merge_results([write(tmp_path, result)])
     assert data["records"][0]["error_type"] == "ValueError"

@@ -37,6 +37,17 @@ METADATA_FIELDS = (
     "background_size",
     "semantics",
     "truth_method",
+    "test_accuracy",
+    "active_players",
+    "player_unit",
+    "small_validation_players",
+    "small_validation_max_error",
+    "model_sha256",
+    "n_neighbors",
+    "nonzero_coefficients",
+    "active_players_definition",
+    "class_index",
+    "point_label",
 )
 
 
@@ -71,7 +82,7 @@ def merge_results(paths: list[Path]) -> dict:
                 or row["method"] not in result["methods"]
                 or row["budget"] not in result["suite"]["budgets"]
                 or row["seed"] not in result["suite"]["seeds"]
-                or row["status"] not in ("ok", "failed")
+                or row["status"] not in ("ok", "failed", "unsupported")
             ):
                 message = "Result cell is outside its declared panel."
                 raise ValueError(message)

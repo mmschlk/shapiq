@@ -19,9 +19,10 @@
     <label>Budget<select id="budget"></select></label>
     <label class="methods">Estimators<select id="methods" multiple size="3" aria-describedby="methodHelp"></select><small id="methodHelp">Ctrl/Cmd-click to select several</small></label>
   </section>
+  <p id="gameDetails" class="caption"></p>
   <div class="sectionTitle"><h2>Performance at a glance</h2><span id="panelSummary"></span></div>
   <p class="caption">nMSE is squared coefficient error divided by truth energy; lower is better. Scores use the same selected games, budgets, and seeds. Incomplete panels are unranked.</p>
-  <div class="tableWrap"><table><thead><tr><th>Rank</th><th>Estimator</th><th>Mean nMSE</th><th>Median nMSE</th><th>Valid / planned</th><th>Failed / missing</th></tr></thead><tbody id="ranking"></tbody></table></div>
+  <div class="tableWrap"><table><thead><tr><th>Rank</th><th>Estimator</th><th>Mean nMSE</th><th>Median nMSE</th><th>Valid / planned</th><th>Failed / unsupported / missing</th></tr></thead><tbody id="ranking"></tbody></table></div>
   <section class="charts"><article><h2>Error by query budget</h2><p class="caption">Mean nMSE; complete budget panels only. Linear axes.</p><div id="budgetChart"></div></article><article><h2>Error by measured time</h2><p class="caption">Diagnostic timings only. Series are separated by software provenance; hardware is not qualified.</p><div id="timeChart"></div></article></section>
   <section class="details"><h2>Inspect and reproduce</h2><p id="snapshot"></p><p>Each coalition row counts toward the query budget, including repeats and endpoints. Zero-energy truth has undefined nMSE. Family and player filters change the comparison panel; a single small pilot is not a universal ranking.</p><div class="actions"><button id="downloadJson">Download selected JSON</button><button id="downloadCsv">Download selected CSV</button><label class="upload">Open local report<input id="upload" type="file" accept=".json,application/json"></label></div><p class="caption">Local files stay in your browser. Open an exported data.json; there is no upload service.</p></section>
 </main><footer>Open methodology · Exact ground truth · No backend required</footer>

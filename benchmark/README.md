@@ -1,5 +1,7 @@
 # Shapiq estimator benchmark
 
+[Open the live research preview](https://www.rtealwitter.com/shapiq/).
+
 An offline benchmark and static comparison website. Python prepares frozen games,
 runs estimators, and writes results; the browser only reads those results. A local
 paper implementation uses the same runner without uploading anything.
@@ -61,6 +63,27 @@ when the repository variable `BENCHMARK_PAGES` is `true` and Pages uses GitHub
 Actions as its source. It does not run experiments or publish local results.
 The static page uses ordinary HTML/CSS/JavaScript and SVG charts; no frontend
 framework, external chart download, database, or build step is required.
+
+## Larger games and interactions
+
+```bash
+uv run python -m shapiq_benchmark.prepare --suite benchmark/suites/structured.json --output benchmark/results/structured
+uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/structured --output benchmark/results/structured-baselines
+uv run python -m shapiq_benchmark.report --results benchmark/results/structured-baselines/results.json --output benchmark/results/structured-report
+```
+
+The structured suite uses existing shapiq games: a real fitted forest with all
+30 Breast Cancer features (SV and pairwise k-SII), and KNN data valuation with
+128 training examples as players (SV). Each truth route must first agree with
+exhaustive enumeration on an eight-player counterpart. Large games use their
+structured exact solvers and live coalition calls, not powerset tables.
+
+Model reconstruction is checked against the frozen recipe; arrays are stored
+without pickle. Preparation and truth computation happen outside estimator
+budgets. Unsupported method/target combinations remain visible separately from
+failed runs. Tree probabilities, empirical background rows, and the KNN utility
+are explicit in each snapshot. These panels illustrate scale; they do not yet
+represent all models, datasets, or applications.
 
 ## Implementation phases
 

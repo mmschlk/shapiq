@@ -23,12 +23,24 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq import InteractionValues
-from shapiq.approximator import SVARM, KernelSHAP, PermutationSamplingSV
+from shapiq.approximator import (
+    SHAPIQ,
+    SVARM,
+    SVARMIQ,
+    KernelSHAP,
+    KernelSHAPIQ,
+    PermutationSamplingSV,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-METHODS = {cls.__name__: cls for cls in (KernelSHAP, PermutationSamplingSV, SVARM)}
+from shapiq_benchmark.games import load_game
+
+METHODS = {
+    cls.__name__: cls
+    for cls in (KernelSHAP, PermutationSamplingSV, SVARM, KernelSHAPIQ, SHAPIQ, SVARMIQ)
+}
 
 
 def digest(path: Path) -> str:
@@ -49,7 +61,9 @@ def provenance() -> dict:
     source_root = Path(__file__).resolve().parents[1]
     source_hash = hashlib.sha256()
     for package in ("shapiq", "shapiq_benchmark"):
-        for path in sorted((source_root / package).rglob("*.py")):
+        for path in sorted(
+            p for p in (source_root / package).rglob("*") if p.suffix in (".py", ".so")
+        ):
             source_hash.update(str(path.relative_to(source_root)).encode())
             source_hash.update(path.read_bytes())
     try:
@@ -243,8 +257,8 @@ def run(snapshot_path: Path, output: Path, candidate: str | None = None) -> dict
     snapshot, root = load_snapshot(snapshot_path)
     factories = {
         name: (
-            lambda n, index, order, seed, cls=METHODS[name]: (  # noqa: ARG005
-                cls(n=n, random_state=seed)
+            lambda n, index, order, seed, cls=METHODS[name]: cls(
+                n=n, index=index, max_order=order, random_state=seed
             )
         )
         for name in snapshot["suite"]["methods"]
@@ -269,8 +283,7 @@ def run(snapshot_path: Path, output: Path, candidate: str | None = None) -> dict
     }
     output.mkdir(parents=True, exist_ok=True)
     for game in snapshot["games"]:
-        with np.load(root / game["artifact"], allow_pickle=False) as artifact:
-            oracle = table_game(artifact["values"].copy(), game["n_players"])
+        oracle = load_game(game, root)
         for name, factory in factories.items():
             for budget in snapshot["suite"]["budgets"]:
                 for seed in snapshot["suite"]["seeds"]:
@@ -284,9 +297,16 @@ def run(snapshot_path: Path, output: Path, candidate: str | None = None) -> dict
                         "nmse": None,
                         "mse": None,
                         "error": None,
-                        "timing_scope": "estimator_with_table_oracle",
+                        "timing_scope": f"estimator_with_{game.get('oracle', 'table')}_oracle",
                         "official_timing": False,
                     }
+                    if not candidate and game["index"] not in METHODS[name].valid_indices:
+                        record.update(
+                            status="unsupported", queries=0, requested_queries=0, seconds=None
+                        )
+                        result["records"].append(record)
+                        write_results(result, output)
+                        continue
                     start = time.perf_counter()
                     try:
                         estimator = factory(
