@@ -54,6 +54,10 @@ METADATA_FIELDS = (
     "point_label",
     "cluster_id",
     "zero_truth_energy",
+    "synthetic",
+    "stochastic_frozen",
+    "case_id",
+    "class",
 )
 
 
@@ -86,7 +90,10 @@ def merge_results(paths: list[Path]) -> dict:
             if (
                 row["game_id"] not in game_ids
                 or row["method"] not in result["methods"]
-                or row["budget"] not in result["suite"]["budgets"]
+                or row["budget"]
+                not in result["suite"]
+                .get("budgets_by_game", {})
+                .get(row["game_id"], result["suite"]["budgets"])
                 or row["seed"] not in result["suite"]["seeds"]
                 or row["status"] not in ("ok", "failed", "unsupported")
             ):
@@ -142,10 +149,18 @@ def merge_results(paths: list[Path]) -> dict:
         "snapshot_provenance": first["snapshot_provenance"],
         "suite": {
             key: first["suite"][key]
-            for key in ("name", "budgets", "seeds", "methods")
+            for key in (
+                "name",
+                "budgets",
+                "seeds",
+                "methods",
+                "budgets_by_game",
+                "relative_budgets",
+            )
             if key in first["suite"]
         },
         "games": games,
+        "coverage": first.get("coverage", []),
         "methods": {
             name: {
                 key: value

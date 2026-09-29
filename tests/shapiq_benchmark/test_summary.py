@@ -7,7 +7,7 @@ import copy
 import numpy as np
 import pytest
 
-from shapiq_benchmark.summary import summarize, weighted_median
+from shapiq_benchmark.summary import comparisons, summarize, weighted_median, weights_for
 
 
 def fixture_data(games: list[dict], methods: dict[str, list[float]]) -> dict:
@@ -85,7 +85,11 @@ def test_ties_and_input_order_do_not_change_elo() -> None:
     data = fixture_data([{"family": "a", "stratum": "one"}], {"KernelSHAP": [1], "SVARM": [1.005]})
     result = overall(data)
     assert [row["elo"] for row in result["rows"]] == pytest.approx([1000, 1000])
-    assert result["matches"][0]["ties"] == 2
+    matches, _ = comparisons(
+        np.array([[1, 1], [1.005, 1.005]]), np.array([0.5, 0.5]), ["KernelSHAP", "SVARM"]
+    )
+    assert matches[0]["ties"] == 2
+    assert "matches" not in result
     data["records"].reverse()
     data["methods"] = dict(reversed(data["methods"].items()))
     assert overall(data) == result
@@ -160,3 +164,76 @@ def test_preset_identity_includes_snapshot_and_method_source() -> None:
     assert newer != old
     data["methods"]["KernelSHAP"] = {"source_sha256": "changed"}
     assert overall(data)["id"] != newer
+
+
+def test_unequal_game_budget_counts_preserve_game_weights_and_bootstrap() -> None:
+    """Extra planned budgets within one game cannot increase its aggregate weight."""
+    games = [
+        {"family": "a", "stratum": "one", "metadata": {"cluster_id": str(i)}} for i in range(2)
+    ]
+    data = fixture_data(games, {"KernelSHAP": [0, 10], "SVARM": [1, 11]})
+    original = overall(data)
+    data["suite"].update(budgets=[16, 32], budgets_by_game={"0": [16], "1": [16, 32]})
+    data["records"] += [{**row, "budget": 32} for row in data["records"] if row["game_id"] == "1"]
+    result = overall(data)
+    cells, weights = weights_for(data["games"], data["suite"]["budgets_by_game"], [0, 1])
+    assert len(cells) == 6
+    assert weights.sum() == pytest.approx(1)
+    assert weights == pytest.approx([0.25, 0.25, 0.125, 0.125, 0.125, 0.125])
+    assert result["rows"][0]["mean"] == pytest.approx(5)
+    assert result["rows"][0]["median"] == 0
+    assert result["rows"][0]["ci"]["mean"] == pytest.approx(original["rows"][0]["ci"]["mean"])
+    assert result["game_budgets"] == {"0": [16], "1": [16, 32]}
+
+
+def test_relative_presets_keep_missing_cells_and_exact_game_grids() -> None:
+    """A ratio is a fixed per-game budget, including cells with no successful run."""
+    data = fixture_data(
+        [
+            {"family": "a", "stratum": "one", "n_players": 8},
+            {"family": "b", "stratum": "one", "n_players": 16},
+        ],
+        {"KernelSHAP": [1, 2]},
+    )
+    data["suite"].update(
+        budgets=[16, 32, 64, 128],
+        budgets_by_game={"0": [16, 64], "1": [32, 128]},
+        relative_budgets=[2, 8],
+    )
+    # Game 1 has an available result at 16, but none at its planned B/d=2 budget 32.
+    panels = summarize(data, bootstrap_draws=0)
+    relative = next(p for p in panels if p["family"] is None and p["relative_budget"] == 2)
+    assert relative["game_budgets"] == {"0": [16], "1": [32]}
+    assert relative["budgets"] == [16, 32]
+    row = relative["rows"][0]
+    assert row["planned"] == 4
+    assert row["valid"] == 2
+    assert row["missing"] == 2
+    assert row["eligible"] is False
+    assert row["mean"] is None
+    assert all(p["panel"] == "real" for p in panels)
+    signatures = [
+        tuple((key, tuple(value)) for key, value in p["game_budgets"].items()) for p in panels
+    ]
+    assert len(signatures) == len(set(signatures))
+    assert {tuple(p["game_ids"]) for p in panels} == {("0", "1"), ("0",), ("1",)}
+
+
+def test_synthetic_games_never_enter_real_panels() -> None:
+    """A diagnostic game sharing the target and family remains a separate population."""
+    data = fixture_data(
+        [
+            {"family": "a", "stratum": "one"},
+            {"family": "a", "stratum": "one", "metadata": {"synthetic": True}},
+        ],
+        {"KernelSHAP": [1, 1000]},
+    )
+    panels = summarize(data, bootstrap_draws=0)
+    assert len(panels) == 2
+    real = next(panel for panel in panels if panel["panel"] == "real")
+    diagnostic = next(panel for panel in panels if panel["panel"] == "diagnostic")
+    assert real["game_ids"] == ["0"]
+    assert real["rows"][0]["mean"] == 1
+    assert diagnostic["game_ids"] == ["1"]
+    assert diagnostic["rows"][0]["mean"] == 1000
+    assert real["id"] != diagnostic["id"]

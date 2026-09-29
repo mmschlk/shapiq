@@ -84,3 +84,14 @@ uv run pre-commit run --all-files
   preset identity still includes the originally selected game IDs.
 - A public reproduction ZIP is a separate export path from the website. Do not
   retain raw estimator exception messages in either: they can contain local paths.
+
+- Sparse estimator interaction keys can contain `numpy.int64`; convert them to
+  Python integers before serializing benchmark results. Set success only after
+  serialization succeeds, and clear score fields on any output failure.
+- The legacy ResNet image game uses fixed gray 127 masking (the callable-model
+  path uses mean color). Its SLIC clipping reports one unused final player;
+  benchmark preparation can remove that verified null player without changing
+  the library game. Set inference batch size one to avoid float32 batch-dependent
+  rounding when qualifying a frozen table.
+- Full estimator extras increase worker import time. Timeout regression fixtures
+  need enough startup allowance for a valid second worker (ten seconds here).

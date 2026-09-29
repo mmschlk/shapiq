@@ -52,8 +52,13 @@ def weighted_median(values: np.ndarray, weights: np.ndarray) -> float:
     return float(values[order[min(position, len(order) - 1)]])
 
 
+def budget_grid(budgets: list[int] | dict[str, list[int]], game: dict) -> list[int]:
+    """Return the planned absolute budget grid for one game."""
+    return budgets[game["id"]] if isinstance(budgets, dict) else budgets
+
+
 def weights_for(
-    games: list[dict], budgets: list[int], seeds: list[int]
+    games: list[dict], budgets: list[int] | dict[str, list[int]], seeds: list[int]
 ) -> tuple[list[tuple], np.ndarray]:
     """Enumerate the common panel and its fixed hierarchical weights."""
     families = sorted({game["family"] for game in games})
@@ -64,9 +69,10 @@ def weights_for(
             group = [
                 game for game in games if (game["family"], game["stratum"]) == (family, stratum)
             ]
-            weight = 1 / (len(families) * len(strata) * len(group) * len(budgets) * len(seeds))
             for game in group:
-                for budget, seed in itertools.product(budgets, seeds):
+                grid = budget_grid(budgets, game)
+                weight = 1 / (len(families) * len(strata) * len(group) * len(grid) * len(seeds))
+                for budget, seed in itertools.product(grid, seeds):
                     cells.append((game["id"], budget, seed))
                     weights.append(weight)
     return cells, np.array(weights)
@@ -169,7 +175,7 @@ def release_history(rows: list[dict]) -> dict:
 
 def bootstrap(
     games: list[dict],
-    budgets: list[int],
+    budgets: list[int] | dict[str, list[int]],
     seeds: list[int],
     cells: list[tuple],
     values: np.ndarray,
@@ -205,11 +211,12 @@ def bootstrap(
             selected = generator.choice(names, size=len(names), replace=True)
             n_games = sum(len(clusters[name]) for name in selected)
             n_strata = sum(key[0] == family for key in groups)
-            weight = 1 / (len(families) * n_strata * n_games * len(budgets) * len(seeds))
             for cluster in selected:
                 sampled_seeds = generator.choice(seeds, size=len(seeds), replace=True)
                 for game in clusters[cluster]:
-                    for budget, seed in itertools.product(budgets, sampled_seeds):
+                    grid = budget_grid(budgets, game)
+                    weight = 1 / (len(families) * n_strata * n_games * len(grid) * len(seeds))
+                    for budget, seed in itertools.product(grid, sampled_seeds):
                         positions.append(lookup[(game["id"], budget, int(seed))])
                         weights.append(weight)
         weights = np.asarray(weights)
@@ -238,7 +245,14 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
     """Compute reproducible fixed presets without mixing targets or incomplete competitors."""
     methods = sorted(data["methods"])
     seeds = sorted(data["suite"]["seeds"])
-    budgets = sorted(data["suite"]["budgets"])
+    suite = data["suite"]
+    budgets = sorted(suite["budgets"])
+    game_grids = {
+        game["id"]: sorted(suite["budgets_by_game"][game["id"]])
+        if "budgets_by_game" in suite
+        else budgets
+        for game in data["games"]
+    }
     records = {
         (row["game_id"], row["method"], row["budget"], row["seed"]): row for row in data["records"]
     }
@@ -249,20 +263,58 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
         game["id"] for game in data["games"] if game.get("metadata", {}).get("zero_truth_energy")
     }
     zero_games.update(row["game_id"] for row in data["records"] if row.get("zero_truth_energy"))
-    targets = sorted({(game["index"], game["order"]) for game in data["games"]})
+    targets = sorted(
+        {
+            (game["index"], game["order"], bool(game.get("metadata", {}).get("synthetic")))
+            for game in data["games"]
+        }
+    )
     summaries = []
-    for index, order in targets:
-        target_games = [
-            game for game in data["games"] if (game["index"], game["order"]) == (index, order)
-        ]
-        for family in [None, *sorted({game["family"] for game in target_games})]:
-            panel_games = sorted(
-                [game for game in target_games if family is None or game["family"] == family],
-                key=lambda game: game["id"],
-            )
-            for grid in sorted({tuple(budgets), *((budget,) for budget in budgets)}):
+    for index, order, synthetic in targets:
+        target_games = sorted(
+            [
+                game
+                for game in data["games"]
+                if (
+                    game["index"],
+                    game["order"],
+                    bool(game.get("metadata", {}).get("synthetic")),
+                )
+                == (index, order, synthetic)
+            ],
+            key=lambda game: game["id"],
+        )
+        subsets = [(None, target_games)]
+        subsets.extend(
+            (family, [game for game in target_games if game["family"] == family])
+            for family in sorted({game["family"] for game in target_games})
+        )
+        subsets.extend((game["family"], [game]) for game in target_games)
+        seen = set()
+        for family, panel_games in subsets:
+            grids = [(None, {game["id"]: game_grids[game["id"]] for game in panel_games})]
+            if "budgets_by_game" in suite:
+                grids.extend(
+                    (
+                        ratio,
+                        {
+                            game["id"]: [math.ceil(ratio * game["n_players"])]
+                            for game in panel_games
+                        },
+                    )
+                    for ratio in sorted(suite.get("relative_budgets", []))
+                )
+            else:
+                grids.extend(
+                    (None, {game["id"]: [budget] for game in panel_games}) for budget in budgets
+                )
+            for relative_budget, grid in grids:
+                signature = tuple((game_id, tuple(values)) for game_id, values in grid.items())
+                if signature in seen:
+                    continue
+                seen.add(signature)
                 games = [game for game in panel_games if game["id"] not in zero_games]
-                cells, weights = weights_for(games, list(grid), seeds)
+                cells, weights = weights_for(games, grid, seeds)
                 rows, eligible, values = [], [], []
                 for method in methods:
                     measured = [
@@ -302,9 +354,9 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         eligible.append(method)
                         values.append(sample)
                 array = np.array(values)
-                matches, ratings = comparisons(array, weights, eligible)
+                _, ratings = comparisons(array, weights, eligible)
                 intervals, uncertainty = bootstrap(
-                    games, list(grid), seeds, cells, array, eligible, draws=bootstrap_draws
+                    games, grid, seeds, cells, array, eligible, draws=bootstrap_draws
                 )
                 for row in rows:
                     if row["eligible"]:
@@ -317,7 +369,10 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                     "order": order,
                     "family": family,
                     "game_ids": [game["id"] for game in panel_games],
-                    "budgets": list(grid),
+                    "budgets": sorted({budget for values in grid.values() for budget in values}),
+                    "game_budgets": grid,
+                    "relative_budget": relative_budget,
+                    "panel": "diagnostic" if synthetic else "real",
                     "seeds": seeds,
                     "methods": methods,
                 }
@@ -336,7 +391,6 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                             game["id"] for game in panel_games if game["id"] in zero_games
                         ),
                         "rows": rows,
-                        "matches": matches,
                         "history": release_history(rows),
                         "uncertainty": uncertainty,
                         "elo_l2": L2,

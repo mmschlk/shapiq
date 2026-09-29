@@ -1,11 +1,20 @@
 "use strict";
 const $ = id => document.getElementById(id);
-const palette = ["#167c69", "#4c65bd", "#bf7538", "#965fa6", "#64842e", "#a94863"];
-let data, selectedRows = [];
+const palette = ["#0072B2", "#C04B00", "#007C59", "#A34B87", "#947000", "#287FA8"];
+let data, selectedRows = [], chartNames = [];
+const methodIndex = method => Math.max(0,Object.keys(data?.methods||{}).sort().indexOf(method));
+const colorFor = method => palette[methodIndex(method) % palette.length];
+const dashFor = method => ["","7 3","2 3","9 3 2 3"][Math.floor(methodIndex(method)/palette.length)%4];
+const isSynthetic = game => Boolean(game.metadata?.synthetic);
 const mean = values => values.reduce((a, b) => a + b, 0) / values.length;
 
 const format = n => Number.isFinite(n) ? n.toPrecision(4) : "—";
 const target = game => `${game.index} · order ${game.order}`;
+const gameLabel = (game, includeTarget=false) => {
+  const name=game.metadata?.recipe||game.metadata?.case_id||game.id;
+  const label=String(name).replace(/[_-]+/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  return `${label} · d=${game.n_players}${includeTarget?` · ${target(game)}`:""}`;
+};
 function options(id, values, all) {
   $(id).replaceChildren();
   if (all) $(id).add(new Option(all, ""));
@@ -16,28 +25,60 @@ function load(value) {
   data = value;
   options("target", [...new Set(data.games.map(target))]);
   options("family", [...new Set(data.games.map(g => g.family))], "All families");
+  [...$("family").options].forEach(option=>{if(option.value)option.textContent=option.value.replaceAll("_"," ").replace(/^./,c=>c.toUpperCase());});
   options("game", data.games.map(g => g.id), "All matching games");
-  options("budget", data.suite.budgets.map(String), "All budgets");
+  [...$("game").options].forEach(option=>{if(option.value)option.textContent=gameLabel(data.games.find(g=>g.id===option.value),true);});
+  $("budget").replaceChildren(new Option("All relative budgets", ""));
+  const relative=document.createElement("optgroup");relative.label="Queries per player · B/d";
+  const ratios=data.suite.relative_budgets||[...new Set(data.games.flatMap(g=>gameBudgets(g).map(b=>b/g.n_players)))].sort((a,b)=>a-b);
+  ratios.forEach(r=>relative.append(new Option(`${Number(r.toPrecision(4))} × players`, `r:${r}`)));$("budget").append(relative);
+  const absolute=document.createElement("optgroup");absolute.label="Absolute query budgets";
+  data.suite.budgets.forEach(b=>absolute.append(new Option(`${b} queries`, `a:${b}`)));$("budget").append(absolute);
   options("methods", Object.keys(data.methods));
   [...$("methods").options].forEach(option => option.selected = true);
   $("snapshot").textContent = `Snapshot ${data.snapshot_id}. ${data.games.length} frozen game(s), ${data.suite.seeds.length} seed(s).`;
-  $("notice").textContent = "Research preview · Real measurements on a limited panel. Timings are diagnostic, not a hardware-standardized ranking.";
+  $("notice").textContent = "";
+  $("methodCount").textContent = Object.keys(data.methods).length;
+  $("gameCount").textContent = new Set(data.games.filter(g => !isSynthetic(g)).map(g=>g.metadata?.case_id||g.id)).size;
+  $("runCount").textContent = new Intl.NumberFormat().format(data.records.filter(r => r.status !== "unsupported").length);
+  $("methodSearch").value="";
+  buildMethodPicker();
+  renderCoverage();
   render();
 }
+function buildMethodPicker() {
+  $("methodOptions").replaceChildren();
+  [...$("methods").options].forEach(option=>{
+    const label=document.createElement("label"),input=document.createElement("input");label.className="methodOption";label.hidden=!option.value.toLowerCase().includes($("methodSearch").value.toLowerCase());
+    input.type="checkbox";input.checked=option.selected;input.value=option.value;
+    input.addEventListener("change",()=>{option.selected=input.checked;render();});
+    label.append(input,document.createTextNode(option.value));$("methodOptions").append(label);
+  });
+}
+function renderCoverage(){
+  $("libraryCoverage").replaceChildren();
+  const coverage=data.coverage||[];
+  if(!coverage.length){const p=document.createElement("p");p.textContent=`${data.games.length} measured game definitions. See the methodology for scope.`;$("libraryCoverage").append(p);return;}
+  coverage.forEach(item=>{const row=document.createElement("div");row.className="coverageItem";[item.family,item.status,item.reason||""].forEach((value,i)=>{const field=document.createElement(i===0?"strong":"span");field.textContent=value;row.append(field);});$("libraryCoverage").append(row);});
+}
+const gameBudgets = game => data.suite.budgets_by_game?.[game.id] || data.suite.budgets;
 function selection() {
-  const games = data.games.filter(g => target(g) === $("target").value && (!$("family").value || g.family === $("family").value) && (!$("game").value || g.id === $("game").value) && g.n_players >= Number($("minPlayers").value) && g.n_players <= Number($("maxPlayers").value));
-  const methods = [...$("methods").selectedOptions].map(o => o.value);
-  const budgets = data.suite.budgets.filter(b => !$("budget").value || b === Number($("budget").value));
+  const games = data.games.filter(g => isSynthetic(g) === ($("panel").value === "diagnostic") && target(g) === $("target").value && (!$("family").value || g.family === $("family").value) && (!$("game").value || g.id === $("game").value) && g.n_players >= Number($("minPlayers").value) && g.n_players <= Number($("maxPlayers").value));
+  const methods = [...$("methods").selectedOptions].map(o => o.value), game_budgets={};
   const cells = games.flatMap(g => {
+    const chosen=$("budget").value;
+    let budgets=chosen.startsWith("r:")?[Math.ceil(Number(chosen.slice(2))*g.n_players)]:chosen.startsWith("a:")?[Number(chosen.slice(2))]:gameBudgets(g);
     const cap = $("cap").value === "" ? null : Number($("cap").value) * ($("capUnits").value === "perPlayer" ? g.n_players : 1);
-    const allowed = cap === null ? budgets : [Math.max(-1, ...budgets.filter(b => b <= cap))];
-    return allowed.flatMap(budget => data.suite.seeds.map(seed => ({game_id:g.id,budget,seed})));
+    if(cap!==null)budgets=[Math.max(-1,...budgets.filter(b=>b<=cap))];
+    game_budgets[g.id]=budgets;
+    return budgets.flatMap(budget => data.suite.seeds.map(seed => ({game_id:g.id,budget,seed})));
   });
   const keys = new Set(cells.map(cellKey));
   const rows = data.records.filter(r => methods.includes(r.method) && keys.has(cellKey(r)));
-  // A zero-energy game is excluded for every method, never selectively by estimator.
-  const zero = new Set([...data.records.filter(r => r.zero_truth_energy).map(r => r.game_id), ...data.games.filter(g=>g.metadata.zero_truth_energy).map(g=>g.id)]);
-  return {panel_ids:games.map(g=>g.id), games:games.filter(g => !zero.has(g.id)), methods, budgets, rows:rows.filter(r => !zero.has(r.game_id)), cells:cells.filter(r => !zero.has(r.game_id)), excluded:games.filter(g => zero.has(g.id)).length};
+  const zero = new Set([...data.records.filter(r => r.zero_truth_energy).map(r => r.game_id), ...data.games.filter(g=>g.metadata?.zero_truth_energy).map(g=>g.id)]);
+  return {panel_ids:games.map(g=>g.id), games:games.filter(g => !zero.has(g.id)), methods, game_budgets,
+    budgets:[...new Set(Object.values(game_budgets).flat())].sort((a,b)=>a-b), rows:rows.filter(r => !zero.has(r.game_id)),
+    cells:cells.filter(r => !zero.has(r.game_id)), excluded:games.filter(g => zero.has(g.id)).length};
 }
 const cellKey = r => JSON.stringify([r.game_id,r.budget,r.seed]);
 function weightedCells(s) {
@@ -58,49 +99,57 @@ function summary(rows, s) {
 }
 const same = (a,b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 function render() {
-  const s = selection(); selectedRows=s.rows;
-  const preset = (data.presets || []).find(p => same(p.game_ids,s.panel_ids) && same(p.methods,s.methods) && same(p.budgets,s.budgets) && s.cells.length === s.games.length*s.budgets.length*data.suite.seeds.length);
-  $("gameDetails").textContent=s.games.map(g=>`${g.id}: ${g.n_players} ${g.metadata.player_unit || "feature"} players${g.metadata.active_players !== undefined ? ` (${g.metadata.active_players} active)` : ""}`).join(" · ");
-  $("panelSummary").textContent=`${s.games.length} games · ${s.cells.length} planned cells per method · ${s.excluded} zero-energy games excluded`;
-  const summaries=s.methods.map(method=>({method,...summary(s.rows.filter(r=>r.method===method),s)})).sort((a,b)=>Number(b.complete)-Number(a.complete)||a.average-b.average);
+  const s = selection(); selectedRows=s.rows;$("chartTooltip").hidden=true;
+  const preset=(data.presets||[]).find(p=>same(p.game_ids,s.panel_ids)&&same(p.methods,s.methods)&&(!p.panel||p.panel===$("panel").value)&&s.panel_ids.every(id=>same(p.game_budgets?.[id]||p.budgets,s.game_budgets[id])));
+  const selectedGame=$("chartGame").value;options("chartGame",s.games.map(g=>g.id));[...$("chartGame").options].forEach(option=>option.textContent=gameLabel(s.games.find(g=>g.id===option.value)));if(s.games.some(g=>g.id===selectedGame))$("chartGame").value=selectedGame;
+  const chartGame=s.games.find(g=>g.id===$("chartGame").value), chartPanel={...s,games:chartGame?[chartGame]:[],cells:s.cells.filter(c=>c.game_id===chartGame?.id),rows:s.rows.filter(r=>r.game_id===chartGame?.id)};
+  const chartBudgets=chartGame?s.game_budgets[chartGame.id]:[], relative=$("budgetAxis").value==="relative";
+  const pointRows=(method,budget)=>chartPanel.rows.filter(r=>r.method===method&&r.budget===budget);
+  const complete=rows=>rows.length===data.suite.seeds.length&&rows.every(r=>r.status==="ok"&&Number.isFinite(r.nmse));
+  const allCurves=$("chartLimit").value==="all";
+  chartNames=s.methods.map(method=>({method,...summary(chartPanel.rows.filter(r=>r.method===method),chartPanel)})).filter(item=>allCurves?chartBudgets.some(budget=>complete(pointRows(item.method,budget))):item.complete).sort((a,b)=>allCurves?a.method.localeCompare(b.method):a.average-b.average||a.method.localeCompare(b.method)).slice(0,allCurves?Infinity:5).map(item=>item.method);
+  $("budgetChartNote").textContent=allCurves?"Mean across seeds · Each point requires all seeds":"Mean across seeds · Top 5 complete across plotted budgets";
+  $("chartGameMeta").textContent=chartGame?`${chartGame.n_players} players · ${data.suite.seeds.length} seeds · ${chartNames.length} methods`:"No matching game";
+  $("gameDetails").textContent=s.games.map(g=>`${g.id}: ${g.n_players} ${g.metadata?.player_unit || "feature"} players${g.metadata?.active_players !== undefined ? ` (${g.metadata.active_players} model-used)` : ""}`).join(" · ");
+  $("panelSummary").textContent=`${s.games.length} games · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} zero-energy excluded` : ""}`;
+  $("methodLabel").textContent = `${s.methods.length} selected ⌄`;
+  const sortByElo=$("rankingMetric").value==="elo";
+  const summaries=s.methods.map(method=>({method,...summary(s.rows.filter(r=>r.method===method),s),elo:preset?.rows.find(r=>r.method===method)?.elo})).sort((a,b)=>sortByElo?(Number(Number.isFinite(b.elo))-Number(Number.isFinite(a.elo))||(b.elo??-Infinity)-(a.elo??-Infinity)||a.method.localeCompare(b.method)):(Number(b.complete)-Number(a.complete)||a.average-b.average||a.method.localeCompare(b.method)));
   $("ranking").replaceChildren(); let rank=0;
   summaries.forEach(item=>{
-    const stats=preset?.rows.find(r=>r.method===item.method);
-    const cells=[item.complete?++rank:"Unranked",item.method,item.complete?format(item.average):"—",item.complete?format(item.median):"—",format(stats?.elo),`${item.valid} / ${item.planned}`,`${item.failed} / ${item.unsupported} / ${item.missing}`];
-    appendRow("ranking",cells);
+    const stats=preset?.rows.find(r=>r.method===item.method), tr=document.createElement("tr");
+    const state=item.complete?"Complete":[item.failed?`${item.failed} failed`:"",item.unsupported?`${item.unsupported} unsupported`:"",item.missing?`${item.missing} missing`:"",item.valid<item.planned&&!item.failed&&!item.unsupported&&!item.missing?"Undefined nMSE":""].filter(Boolean).join(" · ");
+    [(sortByElo?Number.isFinite(item.elo):item.complete)?++rank:"—",item.method,item.complete?format(item.average):"—",item.complete?format(item.median):"—",format(stats?.elo),`${item.valid} / ${item.planned}`,state||"No games"].forEach((value,i)=>{
+      const td=document.createElement("td");
+      if(i===1){const dot=document.createElement("span");dot.className="methodDot";dot.style.background=chartNames.includes(item.method)?colorFor(item.method):"#c9c0d4";td.append(dot,document.createTextNode(value));}
+      else if(i===5||i===6){const pill=document.createElement("span");pill.className=(i===5?"coveragePill":"statusText")+(item.complete?" complete":"");pill.textContent=value;td.append(pill);}
+      else {td.textContent=value;if(i===2&&item.complete)td.className="scoreStrong";}
+      tr.append(td);
+    });tr.tabIndex=0;bindHighlight(tr,item.method,`${item.method} · ${item.complete?`mean nMSE ${format(item.average)}`:"Incomplete panel"}${chartNames.includes(item.method)?"":" · not shown in the current chart"}`);$("ranking").append(tr);
   });
-  $("statisticsNote").textContent=preset ? `Elo-style ratings use a batch Bradley–Terry fit, centered at 1000; they are specific to this method set and panel. ${preset.uncertainty.reason || "Exploratory paired cluster intervals are available in the exported data."}` : "Custom panel: weighted summaries and paired comparisons are shown. Elo and release history require a precomputed target/family/budget preset with the full method set.";
+  if(!summaries.length)appendRow("ranking",["—","Select an estimator","—","—","—","—","—"]);
+  $("statisticsNote").textContent=preset ? `Elo-style ratings use a batch Bradley–Terry fit, centered at 1000; they are specific to this method set and panel. ${preset.uncertainty.reason || "Exploratory paired cluster intervals are available in the exported data."}` : "Custom panel: weighted summaries are shown. Elo and release history require a precomputed target/family/budget preset with the full method set.";
   $("failures").replaceChildren(); const failures=new Map();
   s.rows.filter(r=>r.status!=="ok").forEach(r=>{const key=`${r.method}: ${r.status}${r.error_type?` (${r.error_type})`:""}`;failures.set(key,(failures.get(key)||0)+1);});
   for(const [description,count] of failures){const item=document.createElement("li");item.textContent=`${description} — ${count} run(s)`;$("failures").append(item);}
-  const slice = budget => ({...s,cells:s.cells.filter(c=>c.budget===budget)});
-  const budgetSeries=s.methods.map(method=>({name:method,points:s.budgets.flatMap(budget=>{
-    const panel=slice(budget); if(panel.cells.length!==s.games.length*data.suite.seeds.length) return [];
-    const item=summary(s.rows.filter(r=>r.method===method&&r.budget===budget),panel);
-    return item.complete?[{x:budget,y:item.average}]:[];
+
+  const budgetSeries=chartNames.map(method=>({name:method,method,color:colorFor(method),points:chartBudgets.flatMap(budget=>{
+    const rows=pointRows(method,budget);return complete(rows)?[{x:relative?budget/chartGame.n_players:budget,y:mean(rows.map(r=>r.nmse)),budget}]:[];
   })}));
-  chart("budgetChart",budgetSeries,"Requested coalition budget");
+  chart("budgetChart",budgetSeries,relative?"Queries per player · B / d":"Coalition queries · B");
   const timeSeries=[];
-  s.methods.forEach(method=>[...new Set(s.rows.filter(r=>r.method===method).map(r=>r.run_id))].forEach(run=>{
-    const points=s.budgets.flatMap(budget=>{
-      const panel=slice(budget);if(panel.cells.length!==s.games.length*data.suite.seeds.length)return [];
-      const rows=s.rows.filter(r=>r.method===method&&r.budget===budget&&r.run_id===run),item=summary(rows,panel),weights=weightedCells(panel);
-      return item.complete&&rows.every(r=>Number.isFinite(r.seconds))?[{x:rows.reduce((sum,r)=>sum+r.seconds*weights.get(cellKey(r)),0),y:item.average}]:[];
-    });if(points.length)timeSeries.push({name:`${method} · ${run.slice(0,7)}`,points});
+  chartNames.forEach(method=>[...new Set(chartPanel.rows.filter(r=>r.method===method).map(r=>r.run_id))].forEach(run=>{
+    const points=chartBudgets.flatMap(budget=>{const rows=pointRows(method,budget).filter(r=>r.run_id===run);
+      return complete(rows)&&rows.every(r=>Number.isFinite(r.seconds))?[{x:mean(rows.map(r=>r.seconds)),y:mean(rows.map(r=>r.nmse)),budget}]:[];
+    });if(points.length)timeSeries.push({name:method,method,color:colorFor(method),profile:run,points:points.sort((a,b)=>a.x-b.x)});
   }));
-  chart("timeChart",timeSeries,"Weighted mean seconds (diagnostic)");
-  $("pairs").replaceChildren();const eligible=summaries.filter(r=>r.complete),weights=weightedCells(s);
-  eligible.forEach((a,i)=>eligible.slice(i+1).forEach(b=>{
-    const byCell=new Map(s.rows.filter(r=>r.method===b.method).map(r=>[cellKey(r),r.nmse]));let wins=0,ties=0,losses=0;
-    s.rows.filter(r=>r.method===a.method).forEach(r=>{const other=byCell.get(cellKey(r)),w=weights.get(cellKey(r));if(Math.abs(r.nmse-other)<=1e-12+.01*Math.max(r.nmse,other))ties+=w;else if(r.nmse<other)wins+=w;else losses+=w;});
-    appendRow("pairs",[a.method,b.method,[wins,ties,losses].map(n=>(100*n).toFixed(1)+"%").join(" / ")]);
-  }));
+  chart("timeChart",timeSeries,"Mean seconds · diagnostic");
   const metric=$("historyMetric").value,history=preset?.history,end=new Date().getUTCFullYear()+new Date().getUTCMonth()/12;
   const year=date=>{const d=new Date(date+"T00:00:00Z");return d.getUTCFullYear()+(d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/31557600000;};
-  const historySeries=(history?.methods||[]).map(m=>({name:m.method,points:[{x:year(m.date),y:m[metric]},{x:end,y:m[metric]}]}));
+  const historySeries=(history?.methods||[]).map(m=>({name:m.method,method:m.method,color:colorFor(m.method),points:[{x:year(m.date),y:m[metric]},{x:end,y:m[metric]}]}));
   const frontier=history?.[metric]||[],steps=[];
   frontier.forEach((p,i)=>{if(i)steps.push({x:year(p.date),y:frontier[i-1].value});steps.push({x:year(p.date),y:p.value});});
-  if(steps.length){steps.push({x:end,y:steps.at(-1).y});historySeries.push({name:"Best dated result",color:"#162e35",points:steps});}
+  if(steps.length){steps.push({x:end,y:steps.at(-1).y});historySeries.push({name:"Best dated result",color:"#28213e",points:steps});}
   chart("historyChart",historySeries,"Publication year",true,metric);
   $("historySources").replaceChildren();
   (history?.methods||[]).forEach(m=>{const a=document.createElement("a");if(!/^https:\/\/arxiv\.org\//.test(m.url))return;a.href=m.url;a.textContent=`${m.method} (${m.date})`;a.rel="noopener";$("historySources").append(a,document.createTextNode(" · "));});
@@ -108,34 +157,68 @@ function render() {
   const workers=s.rows.map(r=>r.worker).filter(Boolean);
   $("hardware").textContent=workers.length?`Measured workers: ${[...new Set(workers.map(w=>w.cpu_model))].join("; ")}. Profiles: ${[...new Set(s.rows.map(r=>r.timing_profile).filter(Boolean))].join(", ")}. Per-run placement and thread details are included in JSON downloads.`:"Worker hardware was not recorded in this older result.";
 }
-function appendRow(id,values){const tr=document.createElement("tr");values.forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.append(td);});$(id).append(tr);}
+function appendRow(id,values){const tr=document.createElement("tr");values.forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.append(td);});$(id).append(tr);return tr;}
+function highlight(method) {
+  document.querySelectorAll("[data-method]").forEach(node=>{
+    node.classList.toggle("dimmed",Boolean(method)&&node.dataset.method!==method);
+    node.classList.toggle("emphasis",Boolean(method)&&node.dataset.method===method);
+  });
+}
+function bindHighlight(node,method,message) {
+  if(!method)return;
+  node.dataset.method=method;
+  node.setAttribute("aria-describedby","chartTooltip");
+  const show=event=>{
+    highlight(method);
+    const tip=$("chartTooltip"),rect=node.getBoundingClientRect();tip.textContent=message;tip.hidden=false;
+    const left=Number.isFinite(event.clientX)?event.clientX:rect.left+rect.width/2,top=Number.isFinite(event.clientY)?event.clientY:rect.bottom;
+    tip.style.left=`${Math.max(10,Math.min(left+13,window.innerWidth-tip.offsetWidth-10))}px`;
+    tip.style.top=`${Math.max(10,Math.min(top+13,window.innerHeight-tip.offsetHeight-10))}px`;
+  };
+  const clear=()=>{highlight(null);$("chartTooltip").hidden=true;};
+  node.addEventListener("pointerenter",show);node.addEventListener("pointermove",show);
+  node.addEventListener("pointerleave",clear);node.addEventListener("focus",show);node.addEventListener("blur",clear);
+}
 function chart(id, series, xlabel, dates=false, metric="mean") {
-  const box = $(id); box.replaceChildren();
-  const points = series.flatMap(s => s.points);
-  if (!points.length) { const p = document.createElement("p"); p.className = "caption"; p.textContent = "No complete comparison panel for these filters."; box.append(p); return; }
-  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 480 275"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `Mean normalized error versus ${xlabel}`);
-  const xMin = dates ? Math.floor(Math.min(...points.map(p=>p.x))) : 0;
-  const xMax = dates ? Math.max(xMin+1,...points.map(p=>p.x)) : Math.max(...points.map(p => p.x), 1e-12) * 1.08, yMax = Math.max(...points.map(p => p.y), 1e-12) * 1.08;
-  const x = value => 62 + (value-xMin) / (xMax-xMin) * 393, y = value => 228 - value / yMax * 205;
-  function element(tag, attributes, text) { const node = document.createElementNS(ns, tag); Object.entries(attributes).forEach(([key,value]) => node.setAttribute(key,value)); if (text !== undefined) node.textContent = text; svg.append(node); return node; }
-  for (let i=0; i<=4; i++) {
-    const yy = y(yMax*i/4), xx = x(xMin+(xMax-xMin)*i/4);
-    element("line", {x1:62,x2:455,y1:yy,y2:yy,stroke:"#e1e8e3"});
-    element("text", {x:55,y:yy+4,"text-anchor":"end","font-size":10,fill:"#647773"}, (yMax*i/4).toPrecision(2));
-    element("text", {x:xx,y:246,"text-anchor":"middle","font-size":10,fill:"#647773"}, dates ? String(Math.floor(xMin+(xMax-xMin)*i/4)) : (xMax*i/4).toPrecision(2));
+  const box=$(id);box.replaceChildren();
+  const points=series.flatMap(s=>s.points);
+  if(!points.length){const p=document.createElement("p");p.className="emptyNote";p.textContent="No complete results in this view.";box.append(p);return;}
+  const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 480 275");svg.setAttribute("role","img");svg.setAttribute("aria-label",`${metric==="median"?"Median":"Mean"} normalized error versus ${xlabel}`);
+  const xMin=dates?Math.floor(Math.min(...points.map(p=>p.x))):0;
+  const xMax=dates?Math.max(xMin+1,...points.map(p=>p.x)):Math.max(...points.map(p=>p.x),1e-12)*1.08;
+  const yMax=Math.max(...points.map(p=>p.y),1e-12)*1.08;
+  const x=value=>62+(value-xMin)/(xMax-xMin)*393,y=value=>228-value/yMax*205;
+  function element(tag,attributes,text,parent=svg){const node=document.createElementNS(ns,tag);Object.entries(attributes).forEach(([key,value])=>node.setAttribute(key,value));if(text!==undefined)node.textContent=text;parent.append(node);return node;}
+  const tick=value=>value===0?"0":Math.abs(value)>=1000?`${Number((value/1000).toPrecision(2))}k`:Math.abs(value)<.001?value.toExponential(1):String(Number(value.toPrecision(2)));
+  for(let i=0;i<=4;i++){
+    const yy=y(yMax*i/4),xx=x(xMin+(xMax-xMin)*i/4);
+    element("line",{x1:62,x2:455,y1:yy,y2:yy,stroke:"#e9e5f0","stroke-dasharray":"3 4"});
+    element("text",{x:55,y:yy+4,"text-anchor":"end","font-size":10,fill:"#776b87"},tick(yMax*i/4));
+    element("text",{x:xx,y:246,"text-anchor":"middle","font-size":10,fill:"#776b87"},dates?String(Math.floor(xMin+(xMax-xMin)*i/4)):tick(xMax*i/4));
   }
-  element("text", {x:255,y:272,"text-anchor":"middle","font-size":11,fill:"#52666a"}, xlabel);
-  element("text", {x:62,y:12,"font-size":11,fill:"#52666a"}, `${metric === "median" ? "Median" : "Mean"} nMSE ↓`);
-  const legend = document.createElement("div"); legend.className = "legend";
-  series.forEach((s,i) => {
-    const color = s.color || palette[i % palette.length];
-    element("polyline", {points:s.points.map(p => `${x(p.x)},${y(p.y)}`).join(" "),fill:"none",stroke:color,"stroke-width":2});
-    s.points.forEach(p => { const dot = element("circle", {cx:x(p.x),cy:y(p.y),r:4,fill:color}); const title = document.createElementNS(ns,"title"); title.textContent = `${s.name}: ${format(p.x)}, nMSE ${format(p.y)}`; dot.append(title); });
-    const label = document.createElement("span"); label.style.borderColor = color; label.textContent = s.name; legend.append(label);
+  element("text",{x:255,y:272,"text-anchor":"middle","font-size":11,fill:"#776b87"},xlabel);
+  element("text",{x:62,y:12,"font-size":10,fill:"#776b87"},`${metric==="median"?"Median":"Mean"} nMSE ↓`);
+  const legend=document.createElement("div");legend.className="legend";
+  series.forEach(s=>{
+    const method=s.method||s.name,color=s.color||colorFor(method),dash=s.name==="Best dated result"?"":dashFor(method),marker=Math.floor(methodIndex(method)/palette.length)%4;
+    const group=element("g",{class:"series","data-method":method});
+    const line=element("polyline",{points:s.points.map(p=>`${x(p.x)},${y(p.y)}`).join(" "),fill:"none",stroke:color,"stroke-width":s.name==="Best dated result"?2.8:2.2,"stroke-dasharray":dash,"stroke-linejoin":"round","stroke-linecap":"round",tabindex:0,role:"img","aria-label":`${s.name} error curve`},undefined,group);
+    bindHighlight(line,method,`${s.name}${s.profile?` · run ${s.profile.slice(0,7)}`:""}`);
+    s.points.forEach(p=>{
+      const cx=x(p.x),cy=y(p.y),base={fill:"#fff",stroke:color,"stroke-width":1.7,tabindex:0,role:"img"};let dot;
+      if(marker===1)dot=element("rect",{...base,x:cx-3,y:cy-3,width:6,height:6},undefined,group);
+      else if(marker===2)dot=element("polygon",{...base,points:`${cx},${cy-4} ${cx+4},${cy+3} ${cx-4},${cy+3}`},undefined,group);
+      else if(marker===3)dot=element("polygon",{...base,points:`${cx},${cy-4} ${cx+4},${cy} ${cx},${cy+4} ${cx-4},${cy}`},undefined,group);
+      else dot=element("circle",{...base,cx,cy,r:3.5},undefined,group);
+      const label=`${s.name}\n${metric==="median"?"Median":"Mean"} nMSE: ${format(p.y)}\n${xlabel}: ${format(p.x)}${p.budget!==undefined?`\nBudget: ${p.budget} queries`:""}`;
+      dot.setAttribute("aria-label",label);element("title",{},label,dot);bindHighlight(dot,method,label);
+    });
+    const label=document.createElement("button"),swatch=document.createElement("span");label.type="button";swatch.className="legendSwatch";swatch.style.borderTop=`2px ${dash?"dashed":"solid"} ${color}`;label.append(swatch,document.createTextNode(s.name));bindHighlight(label,method,`${s.name}${s.profile?` · run ${s.profile.slice(0,7)}`:""}`);legend.append(label);
   });
   box.append(svg,legend);
 }
+
 function download(kind) {
   const s = selection();
   let content, type;
@@ -143,8 +226,20 @@ function download(kind) {
   else { const fields = ["game_id","method","budget","seed","status","nmse","mse","queries","seconds","timing_profile","run_id"]; const quote = value => `"${String(value ?? "").replaceAll('"','""')}"`; content = [fields.join(","), ...selectedRows.map(row => fields.map(field => quote(row[field])).join(","))].join("\n"); type="text/csv"; }
   const url = URL.createObjectURL(new Blob([content], {type})), link = document.createElement("a"); link.href=url; link.download=`shapiq-selection.${kind}`; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-["target","family","game","minPlayers","maxPlayers","budget","methods","cap","capUnits","historyMetric"].forEach(id => $(id).addEventListener("change", () => {if(data) render();}));
+["panel","target","family","game","minPlayers","maxPlayers","budget","methods","cap","capUnits","historyMetric","chartGame","chartLimit","budgetAxis","rankingMetric"].forEach(id => $(id).addEventListener("change", () => {if(["panel","target","family"].includes(id))$("game").value="";if(id==="panel")$("family").value="";if(data) render();}));
 $("downloadJson").addEventListener("click", () => {if(data) download("json");});
 $("downloadCsv").addEventListener("click", () => {if(data) download("csv");});
 $("upload").addEventListener("change", async event => { try { const file=event.target.files[0]; if(file) load(JSON.parse(await file.text())); } catch(error) { $("notice").textContent=error.message; } });
-fetch("data.json").then(response => {if(!response.ok) throw Error("No bundled data"); return response.json();}).then(load).catch(() => {$("notice").textContent="Open a local exported data.json below, or serve this directory with python -m http.server.";});
+fetch("data.json").then(response => {if(!response.ok) throw Error("No bundled data"); return response.json();}).then(load).catch(() => {$("notice").textContent="Open a local report to get started.";});
+
+document.querySelectorAll("[data-axis]").forEach(button=>button.addEventListener("click",()=>{
+  $("budgetAxis").value=button.dataset.axis;
+  document.querySelectorAll("[data-axis]").forEach(item=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-pressed",String(active));});
+  if(data)render();
+}));
+$("methodSearch").addEventListener("input",event=>document.querySelectorAll(".methodOption").forEach(label=>label.hidden=!label.textContent.toLowerCase().includes(event.target.value.toLowerCase())));
+["selectAll","selectNone"].forEach(id=>$(id).addEventListener("click",()=>{[...$("methods").options].forEach(option=>option.selected=id==="selectAll");buildMethodPicker();if(data)render();}));
+document.addEventListener("click",event=>document.querySelectorAll(".toolbar details[open]").forEach(details=>{if(!details.contains(event.target))details.open=false;}));
+document.addEventListener("keydown",event=>{if(event.key==="Escape"){document.querySelectorAll(".toolbar details[open]").forEach(details=>details.open=false);highlight(null);$("chartTooltip").hidden=true;}});
+
+window.addEventListener("resize",()=>{highlight(null);$("chartTooltip").hidden=true;});

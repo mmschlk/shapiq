@@ -104,7 +104,7 @@ def provenance() -> dict:
     }
     source_root = Path(__file__).resolve().parents[1]
     source_hash = hashlib.sha256()
-    for package in ("shapiq", "shapiq_benchmark"):
+    for package in ("shapiq", "shapiq_benchmark", "shapiq_games"):
         for path in sorted(
             p for p in (source_root / package).rglob("*") if p.suffix in (".py", ".so")
         ):
@@ -119,7 +119,15 @@ def provenance() -> dict:
         ).strip()
         dirty = bool(
             subprocess.check_output(  # noqa: S603 -- fixed read-only git commands
-                ["git", "status", "--porcelain", "--", "src/shapiq", "src/shapiq_benchmark"],  # noqa: S607
+                [  # noqa: S607 -- fixed read-only git executable
+                    "git",
+                    "status",
+                    "--porcelain",
+                    "--",
+                    "src/shapiq",
+                    "src/shapiq_benchmark",
+                    "src/shapiq_games",
+                ],
                 cwd=source_root.parent,
                 text=True,
                 stderr=subprocess.DEVNULL,
@@ -144,7 +152,11 @@ def provenance() -> dict:
 
 def validate_suite(suite: dict) -> None:
     """Reject ambiguous or empty run matrices before doing any work."""
-    for name in ("budgets", "seeds", "methods"):
+    for name in (
+        "seeds",
+        "methods",
+        *(["budgets"] if "budgets" in suite else ["relative_budgets"]),
+    ):
         values = suite[name]
         if not values or len(values) != len(set(values)):
             message = f"Suite {name} must be nonempty and unique."
@@ -152,9 +164,21 @@ def validate_suite(suite: dict) -> None:
     for name in ("budgets", "seeds"):
         if any(
             type(value) is not int or value < (1 if name == "budgets" else 0)
-            for value in suite[name]
+            for value in suite.get(name, [])
         ):
             message = f"Suite {name} must contain valid integers."
+            raise ValueError(message)
+    for ratio in suite.get("relative_budgets", []):
+        if type(ratio) not in (int, float) or not math.isfinite(ratio) or ratio <= 0:
+            message = "Relative budgets must be finite positive numbers."
+            raise ValueError(message)
+    for grid in suite.get("budgets_by_game", {}).values():
+        if (
+            not grid
+            or len(set(grid)) != len(grid)
+            or any(type(b) is not int or b <= 0 or b not in suite["budgets"] for b in grid)
+        ):
+            message = "Per-game budget grids must contain unique declared positive integers."
             raise ValueError(message)
     if any(name not in METHODS for name in suite["methods"]):
         message = "Suite contains an unknown method."
@@ -328,12 +352,13 @@ def run_one(
             message = "Estimator caught a budget exception."
             raise BudgetExceededError(message)  # noqa: TRY301
         record.update(score(estimate, game))
-        record["status"] = "ok"
         record["estimate"] = {
-            "coordinates": [list(key) for key in estimate.dict_values],
+            "coordinates": [[int(i) for i in key] for key in estimate.dict_values],
             "values": [float(value) for value in estimate.dict_values.values()],
         }
+        record["status"] = "ok"
     except Exception as error:  # noqa: BLE001 -- preserve failed candidate runs
+        record.update(status="failed", nmse=None, mse=None)
         record["error"] = f"{type(error).__name__}: {error}"
     record.update(
         queries=counted.queries,
@@ -354,6 +379,8 @@ def run(
     max_runs: int | None = None,
     max_seconds: float = 600,
     timing_profile: str = "diagnostic",
+    method_names: list[str] | None = None,
+    game_ids: list[str] | None = None,
 ) -> dict:
     """Checkpoint a finite matrix of isolated cells and safely resume identical campaigns."""
     from shapiq_benchmark.execution import (
@@ -380,6 +407,24 @@ def run(
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         snapshot_path = snapshot_path.resolve()
         snapshot, _ = load_snapshot(snapshot_path)
+        if method_names is not None and (
+            candidate
+            or not method_names
+            or len(set(method_names)) != len(method_names)
+            or not set(method_names) <= set(snapshot["suite"]["methods"])
+        ):
+            message = "--methods must select unique suite methods and cannot accompany a candidate."
+            raise ValueError(message)
+        selected_games = snapshot["games"]
+        if game_ids is not None:
+            if (
+                not game_ids
+                or len(set(game_ids)) != len(game_ids)
+                or not set(game_ids) <= {g["id"] for g in selected_games}
+            ):
+                message = "--games must select unique snapshot game IDs."
+                raise ValueError(message)
+            selected_games = [g for g in selected_games if g["id"] in game_ids]
         software = provenance()
         methods = {
             name: {
@@ -387,7 +432,7 @@ def run(
                 "software_sha256": identity(software),
                 "private": False,
             }
-            for name in snapshot["suite"]["methods"]
+            for name in (method_names or snapshot["suite"]["methods"])
         }
         if candidate:
             filename, function = candidate.rsplit(":", 1)
@@ -409,6 +454,7 @@ def run(
             "threads": 1,
             "timing_profile": timing_profile,
             "hardware": hardware(),
+            "game_ids": [game["id"] for game in selected_games],
         }
         result: dict = {
             "schema_version": 1,
@@ -418,6 +464,7 @@ def run(
             "methods": methods,
             "suite": snapshot["suite"],
             "games": snapshot["games"],
+            "coverage": snapshot.get("coverage", []),
             "records": [],
         }
         result["resume_key"] = identity(
@@ -451,9 +498,11 @@ def run(
             raise ValueError(message)
         planned = [
             (game, name, budget, seed)
-            for game in snapshot["games"]
+            for game in selected_games
             for name in methods
-            for budget in snapshot["suite"]["budgets"]
+            for budget in snapshot["suite"]
+            .get("budgets_by_game", {})
+            .get(game["id"], snapshot["suite"]["budgets"])
             for seed in snapshot["suite"]["seeds"]
         ]
         planned_keys = {(game["id"], name, budget, seed) for game, name, budget, seed in planned}
@@ -536,6 +585,8 @@ def main() -> None:
     parser.add_argument(
         "--candidate", help="Trusted local Python file:factory (runs only this candidate)"
     )
+    parser.add_argument("--methods", nargs="+", help="Run only these suite methods")
+    parser.add_argument("--games", nargs="+", help="Run only these snapshot game IDs")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--list-methods", action="store_true")
     parser.add_argument(
@@ -561,6 +612,8 @@ def main() -> None:
         max_runs=args.max_runs,
         max_seconds=args.max_seconds,
         timing_profile=args.timing_profile,
+        method_names=args.methods,
+        game_ids=args.games,
     )
 
 

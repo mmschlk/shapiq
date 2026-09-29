@@ -1,0 +1,116 @@
+{
+  "name": "all-families-v1",
+  "families": [
+    "local_baseline",
+    "local_baseline_forest",
+    "local_marginal",
+    "local_gaussian",
+    "local_copula",
+    "local_conditional",
+    "global_fidelity",
+    "feature_selection",
+    "data_valuation",
+    "dataset_valuation",
+    "ensemble",
+    "forest_ensemble",
+    "uncertainty",
+    "cluster",
+    "unsupervised",
+    "pathdependent_tree",
+    "interventional_tree",
+    "product_kernel",
+    "knn",
+    "tnn",
+    "weighted_knn",
+    "binary_weighted_knn",
+    "unanimity",
+    "soum",
+    "dummy",
+    "random",
+    "text",
+    "image",
+    "tabpfn",
+    "causal_global",
+    "causal_local"
+  ],
+  "targets": [
+    {
+      "index": "SV",
+      "order": 1
+    },
+    {
+      "index": "k-SII",
+      "order": 2
+    },
+    {
+      "index": "SII",
+      "order": 2
+    },
+    {
+      "index": "STII",
+      "order": 2
+    },
+    {
+      "index": "FSII",
+      "order": 2
+    },
+    {
+      "index": "FBII",
+      "order": 2
+    }
+  ],
+  "games": [
+    {
+      "id": "breast-cancer-tree-sv",
+      "oracle": "tree",
+      "index": "SV",
+      "order": 1
+    },
+    {
+      "id": "breast-cancer-tree-pairs",
+      "oracle": "tree",
+      "index": "k-SII",
+      "order": 2
+    },
+    {
+      "id": "breast-cancer-knn-sv",
+      "oracle": "knn",
+      "index": "SV",
+      "order": 1,
+      "n_players": 128
+    }
+  ],
+  "methods": [
+    "PermutationSamplingSII",
+    "PermutationSamplingSTII",
+    "PermutationSamplingSV",
+    "StratifiedSamplingSV",
+    "OwenSamplingSV",
+    "KernelSHAP",
+    "LeverageSHAP",
+    "RegressionFSII",
+    "RegressionFBII",
+    "KernelSHAPIQ",
+    "InconsistentKernelSHAPIQ",
+    "ProxySPEX",
+    "ProxySHAP",
+    "OddSHAP",
+    "RegressionMSR",
+    "ShaplEIG",
+    "SHAPIQ",
+    "SVARM",
+    "SVARMIQ",
+    "kADDSHAP",
+    "SPEX",
+    "UnbiasedKernelSHAP"
+  ],
+  "relative_budgets": [
+    2,
+    8,
+    64
+  ],
+  "seeds": [
+    0,
+    1
+  ]
+}

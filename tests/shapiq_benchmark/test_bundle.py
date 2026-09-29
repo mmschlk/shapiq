@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from shapiq_benchmark.bundle import bundle
+from shapiq_benchmark.bundle import bundle, main
 from shapiq_benchmark.report import merge_results
 from shapiq_benchmark.runner import digest, identity, load_snapshot
 
@@ -166,3 +166,95 @@ def test_symlinks_and_input_replacement_rejected(tmp_path: Path) -> None:
     artifact.symlink_to(real)
     with pytest.raises(ValueError, match="without symlinks"):
         bundle(snapshot, results, tmp_path / "download.zip")
+
+
+def shard_inputs(tmp_path: Path) -> tuple[Path, list[Path]]:
+    """Split two seed slots into separate compatible raw result files."""
+    snapshot, first_path = inputs(tmp_path)
+    manifest = snapshot / "snapshot.json"
+    frozen = json.loads(manifest.read_text())
+    frozen["suite"]["seeds"] = [0, 1]
+    frozen["snapshot_id"] = identity(
+        {key: value for key, value in frozen.items() if key != "snapshot_id"}
+    )
+    manifest.write_text(json.dumps(frozen))
+    first = json.loads(first_path.read_text())
+    first.update(snapshot_id=frozen["snapshot_id"], suite=frozen["suite"])
+    first_path.write_text(json.dumps(first))
+    second = json.loads(json.dumps(first))
+    second["records"][0].update(
+        seed=1, status="failed", mse=None, nmse=None, error="ValueError: /private/path/shard.py"
+    )
+    second_path = tmp_path / "second.json"
+    second_path.write_text(json.dumps(second))
+    return snapshot, [first_path, second_path]
+
+
+def test_shard_bundle_cli_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Multiple CLI inputs produce separately reusable, sanitized, checksummed shards."""
+    snapshot, paths = shard_inputs(tmp_path)
+    output = tmp_path / "download.zip"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "bundle",
+            "--snapshot",
+            str(snapshot),
+            "--results",
+            *map(str, paths),
+            "--output",
+            str(output),
+        ],
+    )
+    main()
+    with zipfile.ZipFile(output) as archive:
+        assert "baselines/shard-0000.json" in archive.namelist()
+        assert "baselines/shard-0001.json" in archive.namelist()
+        assert "baselines/results.json" not in archive.namelist()
+        assert all(b"/private/path" not in archive.read(name) for name in archive.namelist())
+        assert (
+            "--results local_benchmark/bundle/baselines/*.json"
+            in archive.read("README.md").decode()
+        )
+        for entry in archive.read("SHA256SUMS").decode().splitlines():
+            checksum, name = entry.split("  ", 1)
+            assert hashlib.sha256(archive.read(name)).hexdigest() == checksum
+        archive.extractall(tmp_path / "download")
+    merged = merge_results(sorted((tmp_path / "download/baselines").glob("*.json")))
+    assert len(merged["records"]) == 2
+    assert {row["seed"] for row in merged["records"]} == {0, 1}
+    assert merged["records"][1]["error_type"] == "ValueError"
+    assert json.loads(paths[1].read_text())["records"][0]["error"].endswith(
+        "/private/path/shard.py"
+    )
+
+
+@pytest.mark.parametrize("problem", ["snapshot", "private", "source", "duplicate"])
+def test_later_shard_validation(tmp_path: Path, problem: str) -> None:
+    """Validate every shard, including cross-file conflicts, before creating an archive."""
+    snapshot, paths = shard_inputs(tmp_path)
+    second = json.loads(paths[1].read_text())
+    if problem == "snapshot":
+        second["snapshot_provenance"] = {"git_commit": "other"}
+    elif problem == "private":
+        second["methods"]["KernelSHAP"]["private"] = True
+    elif problem == "source":
+        second["methods"]["KernelSHAP"]["source_sha256"] = "different"
+    else:
+        second["records"][0]["seed"] = 0
+    paths[1].write_text(json.dumps(second))
+    output = tmp_path / "download.zip"
+    with pytest.raises(ValueError):
+        bundle(snapshot, paths, output)
+    assert not output.exists()
+
+
+def test_shard_inputs_cannot_be_overwritten(tmp_path: Path) -> None:
+    """The output protection includes later shards, not just the first result file."""
+    snapshot, paths = shard_inputs(tmp_path)
+    original = paths[1].read_bytes()
+    with pytest.raises(ValueError, match="replace an input"):
+        bundle(snapshot, paths, paths[1])
+    assert paths[1].read_bytes() == original
+    with pytest.raises(ValueError, match="At least one result"):
+        bundle(snapshot, [], tmp_path / "download.zip")

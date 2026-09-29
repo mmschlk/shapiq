@@ -74,14 +74,14 @@ def test_timeout_preserves_next_seed_and_changed_candidate_refuses_resume(tmp_pa
         "    return KernelSHAP(n=n,random_state=seed)\n"
     )
     spec = f"{candidate}:factory"
-    result = run(path, tmp_path / "results", spec, timeout=4)
+    result = run(path, tmp_path / "results", spec, timeout=10)
     assert result["records"][0]["status"] == "failed"
     assert "TimeoutError" in result["records"][0]["error"]
     assert result["records"][0]["queries"] is None
     assert result["records"][1]["status"] == "ok"
     candidate.write_text(candidate.read_text() + "# changed source\n")
     with pytest.raises(ValueError, match="identical snapshot"):
-        run(path, tmp_path / "results", spec, timeout=4, resume=True)
+        run(path, tmp_path / "results", spec, timeout=10, resume=True)
 
 
 def test_catalog_has_all_public_estimators() -> None:
@@ -179,3 +179,22 @@ def test_missing_optional_backend_has_useful_error(monkeypatch: pytest.MonkeyPat
     )
     with pytest.raises(ImportError, match="optional backend"):
         builtin_factory("SPEX", {"n_players": 3, "index": "SV", "order": 1}, 0)
+
+
+def test_shards_keep_shared_panel_and_use_game_budget_grid(tmp_path: Path) -> None:
+    """Disjoint method shards can join without inventing unmeasured absolute-budget cells."""
+    path = snapshot(tmp_path)
+    data = json.loads(path.read_text())
+    data["suite"].update(
+        methods=["KernelSHAP", "SVARM"], budgets=[4, 8], budgets_by_game={"tiny": [8]}
+    )
+    data.pop("snapshot_id")
+    data["snapshot_id"] = identity(data)
+    path.write_text(json.dumps(data))
+    result = run(path, tmp_path / "shard", method_names=["KernelSHAP"], game_ids=["tiny"])
+    assert result["suite"]["methods"] == ["KernelSHAP", "SVARM"]
+    assert list(result["methods"]) == ["KernelSHAP"]
+    assert len(result["records"]) == 2
+    assert {row["budget"] for row in result["records"]} == {8}
+    with pytest.raises(ValueError, match="unique snapshot"):
+        run(path, tmp_path / "invalid", game_ids=["not-there"])

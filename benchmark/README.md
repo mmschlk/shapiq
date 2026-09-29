@@ -55,7 +55,7 @@ uv run python -m http.server 8000 --bind 127.0.0.1 --directory benchmark/results
 Open `http://localhost:8000`. The report compares matching snapshot results and
 rejects conflicting method versions or duplicate measurements. It removes truth,
 raw coefficient arrays, and local file paths. You can also open `index.html`
-directly and select the exported `data.json` through **Open local report**.
+directly and select the exported `data.json` through **Open local**.
 
 For a public preview, export baseline results with `--public --output benchmark/site`.
 Private candidates are rejected. The Pages workflow deploys only this public site
@@ -152,12 +152,13 @@ results for every selected cell to receive an aggregate rank. Zero-energy games
 are excluded for every method and their count is disclosed. Separate failure,
 unsupported, and pending counts show why coverage is incomplete.
 
-Paired win/tie/loss comparisons use identical cells and the same weights. Errors
+The Elo calculation compares identical cells with the same weights. Errors
 within `1e-12 + 0.01 × max(error_A, error_B)` tie. Fixed target/family/budget presets
 also include an **Elo-style rating**: a batch Bradley–Terry fit, centered at 1000
 with a 400-point logistic scale and fixed `0.001` L2 regularization. These ratings
 summarize pairwise outcomes, not error magnitude, and depend on the method set.
-Custom panels show paired comparisons but withhold preset-specific Elo/history.
+Custom panels retain nMSE rankings but withhold preset-specific Elo/history.
+The website shows the Elo ranking rather than individual win/tie/loss pairs.
 
 Release history evaluates current implementations on the current frozen panel
 and places their horizontal score lines at verified first-publication dates.
@@ -210,3 +211,44 @@ Review the implementation in this order: `prepare.py` / `games.py` freeze truth,
 `runner.py` / `execution.py` measure cells, `summary.py` computes fixed statistics,
 `report.py` exports the website, and `bundle.py` packages reproduction data.
 Existing estimator algorithms were not modified.
+
+## Full library-family sweep
+
+The expanded suite exercises one bounded representative for each shipped game
+family, including local/conditional explanations, global fidelity, feature/data/
+grouped-data valuation, ensembles, uncertainty, clustering, dependence, tree and
+product-kernel games, nearest-neighbor variants, text, images, TabPFN, and causal
+attribution. Synthetic payoff and causal examples have a separate **Diagnostics**
+panel; they never enter the real-game ranking. Dataset-specific wrappers are not
+all separate workloads. The coverage drawer identifies the concrete recipe for
+each family, including any preparation failure.
+
+```bash
+uv sync --locked --extra benchmark --extra sparse --extra shapleig --extra proxy
+uv run --no-sync python -m shapiq_benchmark.prepare --suite benchmark/suites/all-families.json --output benchmark/results/all-families
+sbatch --output=benchmark/results/sweep-%j.log benchmark/sweep.sbatch benchmark/results/all-families benchmark/results/all-family-runs
+uv run --no-sync python -m shapiq_benchmark.report --results benchmark/results/all-family-runs/shard-*/results.json --public --output benchmark/site
+```
+
+This uses all 22 estimator classes, six separate targets (SV, k-SII, SII, STII,
+FSII, FBII), two seeds, and `B/d = 2, 8, 64`. Each game's absolute budgets are
+`ceil(ratio × players)`, stored in `budgets_by_game`. Unsupported combinations,
+insufficient budgets, and timeouts remain visible. The sweep runs disjoint game
+panels on fixed cores, with a 120-second worker cap and bounded total job time.
+Resubmit unchanged to resume; no completed cell is overwritten. Concurrent
+accuracy-sweep timings remain diagnostic and carry their actual worker profile.
+`--games` and `--methods` also allow a small local subset with the ordinary runner.
+
+Small families use exact enumerated tables. Stochastic imputers/global games are
+explicitly frozen in canonical coalition order: their truth is exact for that
+saved realization, not an exact population expectation. Table timings measure
+estimator work against cached payoffs; the larger tree/KNN panels call live games.
+Original zero-energy cases are retained and excluded consistently from nMSE.
+
+The website defaults to relative budgets. Its two main charts show mean nMSE
+across seeds on the selected game, against either `B/d` (or absolute `B`) and
+measured time. Choose **All methods** to see methods that succeed only at some
+budgets; each plotted point still requires every seed. The table can sort by
+mean nMSE or Elo. Hover or keyboard-focus a method to highlight it across plots
+and rows; color is reinforced by dash patterns and marker shapes. Publication
+history appears below, and detailed methodology stays in expandable sections.

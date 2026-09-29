@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,23 @@ def prepare(suite_path: Path, output: Path) -> dict:
     """Train once, enumerate 256 coalitions, and store non-executable artifacts."""
     suite = json.loads(suite_path.read_text())
     validate_suite(suite)
+    if "families" in suite:
+        from shapiq_benchmark.materialize import prepare_families
+
+        games, coverage = prepare_families(suite["families"], suite["targets"], output)
+        if suite.get("games"):
+            structured = prepare_structured(suite["games"], output)
+            games.extend(structured)
+            coverage.extend(
+                {
+                    "family": g["id"],
+                    "status": "measured",
+                    "source": "src/shapiq_benchmark/games.py",
+                    "game_ids": [g["id"]],
+                }
+                for g in structured
+            )
+        return write_snapshot(suite, games, output, coverage=coverage)
     if "games" in suite:
         games = prepare_structured(suite["games"], output)
         return write_snapshot(suite, games, output)
@@ -92,8 +110,26 @@ def prepare(suite_path: Path, output: Path) -> dict:
     return write_snapshot(suite, [game], output)
 
 
-def write_snapshot(suite: dict, games: list[dict], output: Path) -> dict:
+def write_snapshot(
+    suite: dict, games: list[dict], output: Path, *, coverage: list | None = None
+) -> dict:
     """Write one content-addressed manifest for either preparation route."""
+    if suite.get("relative_budgets"):
+        suite = {
+            **suite,
+            "budgets_by_game": {
+                game["id"]: sorted(
+                    {math.ceil(ratio * game["n_players"]) for ratio in suite["relative_budgets"]}
+                )
+                for game in games
+            },
+        }
+        suite["budgets"] = sorted(
+            {budget for grid in suite["budgets_by_game"].values() for budget in grid}
+        )
+    if not games:
+        message = "No family qualified; inspect the local preparation diagnostics."
+        raise ValueError(message)
     snapshot: dict = {
         "schema_version": 1,
         "suite": suite,
@@ -101,9 +137,12 @@ def write_snapshot(suite: dict, games: list[dict], output: Path) -> dict:
         "artifacts": {game["artifact"]: digest(output / game["artifact"]) for game in games},
         "games": games,
     }
+    if coverage is not None:
+        snapshot["coverage"] = coverage
     snapshot["snapshot_id"] = identity(snapshot)
-    (output / "snapshot.json").write_text(json.dumps(snapshot, indent=2, allow_nan=False) + "\n")
-    return snapshot
+    serialized = json.dumps(snapshot, indent=2, allow_nan=False) + "\n"
+    (output / "snapshot.json").write_text(serialized)
+    return json.loads(serialized)
 
 
 def main() -> None:

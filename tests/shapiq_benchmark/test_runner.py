@@ -19,6 +19,7 @@ from shapiq_benchmark.runner import (
     identity,
     load_snapshot,
     run,
+    run_one,
     score,
     table_game,
 )
@@ -165,3 +166,21 @@ def test_candidate_with_dataclass(tmp_path: Path) -> None:
     )
     _, factory, _ = candidate_factory(f"{path}:factory")
     assert factory(2, "SV", 1, 0).n == 2
+
+
+def test_numpy_coordinates_are_json_serializable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sparse estimators may return numpy integer keys; result persistence must accept them."""
+
+    class Sparse:
+        def approximate(self, budget: int, game: object) -> InteractionValues:
+            return estimate({(np.int64(0),): 2.0})
+
+    np.savez(tmp_path / "game.npz", values=np.array([0.0, 2.0, 0.0, 2.0]))
+    monkeypatch.setattr("shapiq_benchmark.runner.builtin_factory", lambda *args: Sparse())
+    result = run_one({**game_spec(), "artifact": "game.npz"}, tmp_path, "ProxySPEX", 4, 0)
+    assert result["status"] == "ok"
+    coordinates = json.loads(json.dumps(result))["estimate"]["coordinates"]
+    assert [0] in coordinates
+    assert all(type(index) is int for coordinate in coordinates for index in coordinate)

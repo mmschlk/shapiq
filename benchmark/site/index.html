@@ -2,33 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3fb">
   <title>shapiq · Estimator benchmark</title><link rel="stylesheet" href="style.css">
   <script defer src="app.js"></script>
 </head>
 <body>
-<header><a class="brand" href="https://github.com/mmschlk/shapiq">shapiq <span>/ benchmark</span></a><span class="badge">Research preview</span></header>
+<header>
+  <a class="brand" href="https://github.com/mmschlk/shapiq"><span class="brandMark">φ</span>shapiq<span class="brandSuffix">/ benchmark</span></a>
+  <div class="headerActions"><span class="preview"><i></i> Research preview</span><label class="localButton" for="upload">Open local ↗</label><input id="upload" type="file" accept=".json,application/json" hidden></div>
+</header>
 <main>
-  <section class="intro"><p class="eyebrow">Transparent comparisons. Reproducible games.</p><h1>Find the estimator<br>for your budget.</h1><p>Compare Shapley estimators on frozen games with exact ground truth. Explore error, query budgets, and coverage—or inspect a private local experiment.</p></section>
-  <div id="notice" role="status">Loading benchmark data…</div>
-  <section class="toolbar" aria-label="Benchmark filters">
-    <label>Target<select id="target"></select></label>
-    <label>Game family<select id="family"></select></label>
-    <label>Game<select id="game"></select></label>
-    <label>Minimum players<input id="minPlayers" type="number" min="1" value="1"></label>
-    <label>Maximum players<input id="maxPlayers" type="number" min="1" value="10000"></label>
-    <label>Measured budget<select id="budget"></select></label>
-    <label>Budget cap<input id="cap" type="number" min="0" placeholder="Optional"></label>
-    <label>Cap units<select id="capUnits"><option value="absolute">Coalition queries</option><option value="perPlayer">Queries per player</option></select></label>
-    <label class="methods">Estimators<select id="methods" multiple size="3" aria-describedby="methodHelp"></select><small id="methodHelp">Ctrl/Cmd-click to select several</small></label>
+  <section class="hero">
+    <div><p class="eyebrow">THE SHAPLEY ESTIMATOR BENCHMARK</p><h1>Better estimates.<br><span>Fewer queries.</span></h1><p class="heroDescription">Find the right estimator for your game and budget.</p></div>
+    <div class="heroStats"><div><strong id="methodCount">—</strong><span>estimators</span></div><div><strong id="gameCount">—</strong><span>game settings</span></div><div><strong id="runCount">—</strong><span>measured runs</span></div><p><span class="miniStar">✳</span> Exact ground truth. Open results.</p></div>
   </section>
-  <p id="gameDetails" class="caption"></p>
-  <div class="sectionTitle"><h2>Performance at a glance</h2><span id="panelSummary"></span></div>
-  <p class="caption">nMSE is squared coefficient error divided by truth energy; lower is better. Weights are equal across families, then strata, games, budgets, and seeds. Median is the lower weighted median. A cap selects the largest measured budget within it for each game; unavailable games remain missing. Incomplete panels are unranked.</p>
-  <div class="tableWrap"><table><thead><tr><th>Rank</th><th>Estimator</th><th>Mean nMSE</th><th>Median nMSE</th><th>Elo-style rating</th><th>Valid / planned</th><th>Failed / unsupported / missing</th></tr></thead><tbody id="ranking"></tbody></table></div>
-  <p id="statisticsNote" class="caption"></p>
-  <section class="charts"><article><h2>Error by query budget</h2><p class="caption">Mean nMSE; complete budget panels only. Linear axes.</p><div id="budgetChart"></div></article><article><h2>Error by measured time</h2><p class="caption">Diagnostic timings only. Series are separated by run provenance. Resource checks do not yet qualify a timing leaderboard.</p><div id="timeChart"></div></article></section>
-  <section class="charts"><article><h2>Paired comparisons</h2><p class="caption">Weighted win / tie / loss percentages on the identical panel. A tie is within 1% relative error plus 1e-12. Only complete methods participate.</p><div class="tableWrap"><table><thead><tr><th>Estimator A</th><th>Estimator B</th><th>A wins / ties / loses</th></tr></thead><tbody id="pairs"></tbody></table></div></article><article><h2>Progress by release date</h2><label>Summary<select id="historyMetric"><option value="mean">Mean nMSE</option><option value="median">Median nMSE</option></select></label><p class="caption">Retrospective evaluation on today's frozen panel. Lines start at verified publication dates; the dark step line tracks the best result among methods with verified dates. This is not a historical leaderboard.</p><div id="historyChart"></div><p id="historySources" class="caption"></p></article></section>
-  <details class="runFailures"><summary>Failed and unsupported runs</summary><ul id="failures"></ul></details>
-  <section class="details"><h2>Inspect and reproduce</h2><p id="snapshot"></p><p id="hardware" class="caption"></p><p><a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-preview-2026-09-29">Download the frozen games and baseline results</a> to evaluate your own estimator on this exact panel.</p><p>Each coalition row counts toward the query budget, including repeats and endpoints. Zero-energy truth has undefined nMSE. Family and player filters change the comparison panel; a single small pilot is not a universal ranking.</p><div class="actions"><button id="downloadJson">Download selected JSON</button><button id="downloadCsv">Download selected CSV</button><label class="upload">Open local report<input id="upload" type="file" accept=".json,application/json"></label></div><p class="caption">Local files stay in your browser. Open an exported data.json; there is no upload service.</p></section>
-</main><footer><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/DESIGN.md">Methodology</a> · <a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md">Reproduce these comparisons</a> · Exact ground truth</footer>
+  <div id="notice" role="status">Loading results…</div>
+  <section class="toolbar" aria-label="Benchmark filters">
+    <label>PANEL<select id="panel"><option value="real">Real games</option><option value="diagnostic">Diagnostics</option></select></label>
+    <label>EXPLANATION<select id="target"></select></label>
+    <label>GAME FAMILY<select id="family"></select></label>
+    <label>QUERY BUDGET<select id="budget"></select></label>
+    <details class="methodPicker"><summary><span>ESTIMATORS</span><strong id="methodLabel">All selected <span>⌄</span></strong></summary><div class="pickerPanel"><input id="methodSearch" type="search" placeholder="Find an estimator…" aria-label="Search estimators"><div class="pickerActions"><button id="selectAll" type="button">Select all</button><button id="selectNone" type="button">Clear</button></div><div id="methodOptions"></div></div></details>
+    <select id="methods" multiple hidden aria-label="Selected estimators"></select>
+    <details class="advanced"><summary aria-label="More filters">Tune filters <span>＋</span></summary><div class="advancedPanel"><label>Game<select id="game"></select></label><div class="fieldPair"><label>Min players<input id="minPlayers" type="number" min="1" value="1"></label><label>Max players<input id="maxPlayers" type="number" min="1" value="10000"></label></div><div class="fieldPair"><label>Budget cap<input id="cap" type="number" min="0" placeholder="No cap"></label><label>Units<select id="capUnits"><option value="perPlayer">Queries / player</option><option value="absolute">Queries</option></select></label></div><p>A cap selects the largest measured budget within it.</p></div></details>
+  </section>
+  <div class="viewbar"><span class="viewTitle">Explore the results</span><span id="panelSummary"></span></div>
+  <section id="overview" class="tabPanel">
+    <article class="leaderboard"><div class="tableHeading"><h2>The leaderboard</h2><label class="rankingControl"><span class="srOnly">Ranking metric</span><select id="rankingMetric"><option value="mean">Rank by nMSE</option><option value="elo">Rank by Elo</option></select></label></div><div class="tableWrap"><table><thead><tr><th>#</th><th>Estimator</th><th>Mean nMSE ↓</th><th>Median nMSE</th><th>Elo</th><th>Coverage</th><th>Status</th></tr></thead><tbody id="ranking"></tbody></table></div></article>
+    <div class="chartControls"><label>CHART GAME<select id="chartGame"></select></label><span id="chartGameMeta"></span><label class="chartLimitLabel"><span class="srOnly">Methods to chart</span><select id="chartLimit"><option value="5">Top 5 methods</option><option value="all">All methods</option></select></label><div class="axisToggle" aria-label="Budget axis"><button class="active" data-axis="relative" aria-pressed="true">B / d</button><button data-axis="absolute" aria-pressed="false">Absolute B</button></div><select id="budgetAxis" hidden><option value="relative">relative</option><option value="absolute">absolute</option></select></div>
+    <div class="charts">
+      <article class="chartCard budgetCard"><div class="cardHeading"><div><p class="eyebrow">ACCURACY</p><h2>Make every query count.</h2></div><span class="chartBadge">Lower is better ↘</span></div><div id="budgetChart"></div><p class="chartNote" id="budgetChartNote">Mean across seeds · Top 5 complete across plotted budgets</p></article>
+      <article class="chartCard timeCard"><div class="cardHeading"><div><p class="eyebrow">EFFICIENCY</p><h2>Error, against the clock.</h2></div><span class="chartBadge lavender">Diagnostic</span></div><div id="timeChart"></div><p class="chartNote">Mean across seeds · Separate run profiles</p></article>
+    </div>
+
+  </section>
+  <section id="history" class="historySection"><article class="chartCard historyCard"><div class="cardHeading"><div><p class="eyebrow">THE PROGRESS OF ESTIMATION</p><h2>Good ideas stand the test of time.</h2></div><label class="compactSelect"><span class="srOnly">Summary metric</span><select id="historyMetric"><option value="mean">Mean nMSE</option><option value="median">Median nMSE</option></select></label></div><p class="chartNote">Current implementations, grouped by first verified publication.</p><div id="historyChart"></div><details class="sourceDetails"><summary>Publication sources</summary><p id="historySources"></p></details></article></section>
+  <section class="belowFold"><details class="coverageDetails"><summary>Library game coverage <span>＋</span></summary><div id="libraryCoverage"></div></details><details class="methodology"><summary>About the numbers <span>＋</span></summary><div class="methodologyContent"><p>nMSE is squared coefficient error divided by ground-truth energy. Lower is better. Weights are equal across families, strata, games, budgets, and seeds. Median means the lower weighted median.</p><p>Incomplete panels remain unranked. Zero-energy games are excluded for every estimator. Paired ties use 1% relative error plus 1e-12. Ratings and history require a fixed, precomputed panel; ratings are specific to its competitor set.</p><p id="statisticsNote"></p><p>Charts show each game separately, averaged across seeds. The default budget axis is B/d: coalition queries divided by the number of players. Colors, dashes, and markers identify estimators; hover or focus to highlight them. Top methods require complete results across all plotted budgets and are selected by mean nMSE. All methods includes estimators with at least one complete budget point; each point requires all seeds. Timings are diagnostic; resource checks alone do not qualify a timing leaderboard. The history is a retrospective comparison, not historical measurements.</p><p id="gameDetails"></p><p id="hardware"></p><p id="snapshot"></p><p><a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-preview-2026-09-29" id="reproductionLink">Get the frozen games and baseline results ↗</a></p></div></details>
+    <details class="runFailures"><summary>Run diagnostics <span>＋</span></summary><ul id="failures"></ul></details>
+    <div class="downloadActions"><span>Take the data with you.</span><button id="downloadJson">JSON ↓</button><button id="downloadCsv">CSV ↓</button></div>
+  </section>
+</main><footer><span>Built for better explanations.</span><div><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/DESIGN.md">Methodology ↗</a><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md">Reproduce ↗</a></div></footer>
+<div id="chartTooltip" class="chartTooltip" role="tooltip" hidden></div>
 </body></html>

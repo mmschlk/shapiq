@@ -93,3 +93,26 @@ Reviewer: `games_benchmarks`, independent of all implementation authors.
   Slurm job `360547` completed in 4m35s with 60 valid and 12 unsupported cells;
   every accuracy result exactly matched the previously audited campaign.
   The release archive checksums and website snapshot identity were verified.
+
+## Expanded families and website redesign
+
+Reviewer: `audit_phase1`, independent of the implementation authors.
+
+- All 115 benchmark tests passed after adding family preparation, per-game
+  relative budgets, shard selection, and NumPy coefficient serialization.
+- The reviewer separately passed 54 focused backend tests and browser fixtures
+  for 8- and 128-player relative budgets, zero-energy exclusion, real/diagnostic
+  separation, Elo ordering, partial curves, separate timing profiles, linked
+  hover highlighting, and a 390px layout without overflow.
+- Every family recipe uses existing shipped games. Frozen stochastic realizations
+  are explicitly distinguished from population expectations. Original zero-energy
+  cases are retained; a prespecified forest companion supplies a nonconstant
+  baseline-imputation example without selecting explanation points by their scores.
+- The existing image wrapper includes an unused segment index and has small
+  batch-dependent inference roundoff. Qualification removes only the verified null
+  player and fixes inference batch size to one before saving exact table truth.
+- Required pre-commit passes all formatting/lint hooks. Its type-check hook still
+  reports eight pre-existing optional Woodelf import / unused-ignore diagnostics.
+- The reproduction bundle accepts multiple raw shards while retaining each run's
+  hardware metadata. All 19 bundle tests passed independently, including later
+  shard privacy/provenance conflicts, sanitization, checksums, and round-trip merge.
