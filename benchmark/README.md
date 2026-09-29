@@ -4,6 +4,9 @@
 results, website, or deployment have been created. Inventory checked on 2026-09-29
 against shapiq commit `6321cbdaefee7af7a4bea58ca15e7cf2450f4691`.
 
+[Discuss the proposal in issue #601](https://github.com/mmschlk/shapiq/issues/601)
+or [review the document in draft PR #602](https://github.com/mmschlk/shapiq/pull/602).
+
 ## The idea in two minutes
 
 Build a public website that answers **“Which estimator works best for games like
