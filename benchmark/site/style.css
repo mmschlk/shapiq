@@ -1083,6 +1083,7 @@ footer a {
 
 .variantToggle {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   color: var(--muted);
