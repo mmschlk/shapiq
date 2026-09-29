@@ -144,11 +144,18 @@
                   <th title="Supported explanation types in this benchmark">
                     Estimates
                   </th>
-                  <th>Mean nMSE ↓</th>
-                  <th>Median nMSE</th>
+                  <th
+                    title="Available successful runs; coverage differs between estimators"
+                  >
+                    Mean nMSE ↓
+                  </th>
+                  <th
+                    title="Available successful runs; coverage differs between estimators"
+                  >
+                    Median nMSE
+                  </th>
                   <th>Elo</th>
                   <th>Coverage</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="ranking"></tbody>
@@ -229,15 +236,17 @@
             <p>
               nMSE is squared coefficient error divided by ground-truth energy.
               Lower is better. Weights are equal across families, strata, games,
-              budgets, and seeds. Median means the lower weighted median.
+              budgets, and seeds. Table scores renormalize these weights over
+              available successful runs; coverage can differ between estimators.
+              Median means the lower weighted median of those runs.
             </p>
             <p>
               The default view hides incompatible and legacy variants; all raw
-              results and Elo competitors are retained. “Both” means values and
-              interactions. Capabilities reflect targets exercised in this
-              benchmark. Incomplete panels remain unranked. Zero-energy games
-              are excluded for every estimator. Paired ties use 1% relative
-              error plus 1e-12. Ratings and history require a fixed, precomputed
+              results and Elo competitors are retained. Capabilities reflect
+              targets exercised in this benchmark. Methods with successful runs
+              are ranked with their coverage shown. Zero-energy games are
+              excluded for every estimator. Paired ties use 1% relative error
+              plus 1e-12. Ratings and history require a fixed, precomputed
               panel; ratings are specific to its competitor set.
             </p>
             <p id="statisticsNote"></p>
@@ -250,8 +259,8 @@
               methods includes estimators with at least one complete budget
               point; each point requires all seeds. Timings are diagnostic;
               resource checks alone do not qualify a timing leaderboard. The
-              history is a retrospective comparison, not historical
-              measurements.
+              history compares complete-coverage methods retrospectively; it
+              does not show historical measurements.
             </p>
             <p id="gameDetails"></p>
             <p id="hardware"></p>
@@ -282,6 +291,9 @@
         <a
           href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/DESIGN.md"
           >Methodology ↗</a
+        ><a
+          href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ESTIMATOR_NOTES.md"
+          >Estimator notes ↗</a
         ><a
           href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md"
           >Reproduce ↗</a

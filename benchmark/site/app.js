@@ -63,7 +63,7 @@ function capability(method) {
     (name) => !name.startsWith("SV ·") && !name.startsWith("BV ·"),
   );
   return values && interactions
-    ? "Both"
+    ? "Values + Interactions"
     : values
       ? "Values"
       : interactions
@@ -275,17 +275,29 @@ function weightedCells(s) {
 }
 function summary(rows, s) {
   const good = rows.filter((r) => r.status === "ok" && Number.isFinite(r.nmse)),
-    weights = weightedCells(s);
+    weights = weightedCells(s),
+    successfulWeight = good.reduce(
+      (sum, r) => sum + weights.get(cellKey(r)),
+      0,
+    );
   let cumulative = 0,
     median = null;
   [...good]
     .sort((a, b) => a.nmse - b.nmse)
     .forEach((r) => {
       cumulative += weights.get(cellKey(r));
-      if (median === null && cumulative >= 0.5 - 1e-12) median = r.nmse;
+      if (
+        median === null &&
+        cumulative / successfulWeight + 1e-14 >= 0.5
+      )
+        median = r.nmse;
     });
   return {
-    average: good.reduce((sum, r) => sum + r.nmse * weights.get(cellKey(r)), 0),
+    average:
+      successfulWeight > 0
+        ? good.reduce((sum, r) => sum + r.nmse * weights.get(cellKey(r)), 0) /
+          successfulWeight
+        : null,
     median,
     valid: good.length,
     planned: s.cells.length,
@@ -391,8 +403,9 @@ function render() {
         ? Number(Number.isFinite(b.elo)) - Number(Number.isFinite(a.elo)) ||
           (b.elo ?? -Infinity) - (a.elo ?? -Infinity) ||
           a.method.localeCompare(b.method)
-        : Number(b.complete) - Number(a.complete) ||
-          a.average - b.average ||
+        : Number(Number.isFinite(b.average)) -
+            Number(Number.isFinite(a.average)) ||
+          (a.average ?? Infinity) - (b.average ?? Infinity) ||
           a.method.localeCompare(b.method),
     );
   $("ranking").replaceChildren();
@@ -416,14 +429,15 @@ function render() {
           .filter(Boolean)
           .join(" · ");
     [
-      (sortByElo ? Number.isFinite(item.elo) : item.complete) ? ++rank : "—",
+      (sortByElo ? Number.isFinite(item.elo) : Number.isFinite(item.average))
+        ? ++rank
+        : "—",
       methodLabel(item.method),
       capability(item.method),
-      item.complete ? format(item.average) : "—",
-      item.complete ? format(item.median) : "—",
+      format(item.average),
+      format(item.median),
       format(stats?.elo),
       `${item.valid} / ${item.planned}`,
-      state || "No games",
     ].forEach((value, i) => {
       const td = document.createElement("td");
       if (i === 1) {
@@ -434,16 +448,19 @@ function render() {
           : "#c9c0d4";
         td.append(dot, document.createTextNode(value));
         td.title = item.method;
-      } else if (i === 6 || i === 7) {
+      } else if (i === 6) {
         const pill = document.createElement("span");
-        pill.className =
-          (i === 6 ? "coveragePill" : "statusText") +
-          (item.complete ? " complete" : "");
+        pill.className = "coveragePill" + (item.complete ? " complete" : "");
+        td.title = state || "No games";
         pill.textContent = value;
         td.append(pill);
       } else {
         td.textContent = value;
-        if (i === 3 && item.complete) td.className = "scoreStrong";
+        if (i === 3 && Number.isFinite(item.average))
+          td.className = "scoreStrong";
+        if (i === 3 || i === 4)
+          td.title =
+            "Available successful runs; weights renormalized over observed results. Coverage differs between estimators.";
       }
       tr.append(td);
     });
@@ -451,21 +468,12 @@ function render() {
     bindHighlight(
       tr,
       item.method,
-      `${item.method} · ${item.complete ? `mean nMSE ${format(item.average)}` : "Incomplete panel"}${chartNames.includes(item.method) ? "" : " · not shown in the current chart"}`,
+      `${item.method} · ${Number.isFinite(item.average) ? `mean nMSE ${format(item.average)} over available successful runs` : "No successful runs"} · ${item.valid}/${item.planned} coverage${state ? ` · ${state}` : ""}${chartNames.includes(item.method) ? "" : " · not shown in the current chart"}`,
     );
     $("ranking").append(tr);
   });
   if (!summaries.length)
-    appendRow("ranking", [
-      "—",
-      "Select an estimator",
-      "—",
-      "—",
-      "—",
-      "—",
-      "—",
-      "—",
-    ]);
+    appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
   $("statisticsNote").textContent = preset
     ? `Elo-style ratings use a batch Bradley–Terry fit, centered at 1000; they are specific to this method set and panel. Display filters keep the full competitor set and its ratings unchanged. ${preset.uncertainty.reason || "Exploratory paired cluster intervals are available in the exported data."}`
     : "Custom panel: weighted summaries are shown. Elo and release history require a precomputed target/family/budget preset with the full method set.";

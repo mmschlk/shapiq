@@ -543,13 +543,7 @@ td:nth-child(2) {
   background: #edf5ef;
   color: #38664f;
 }
-.statusText {
-  font-size: 9px;
-  color: #57677f;
-}
-.statusText.complete {
-  color: #477057;
-}
+
 tbody tr:last-child td {
   border-bottom: 0;
 }
