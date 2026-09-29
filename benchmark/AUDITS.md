@@ -139,3 +139,24 @@ Reviewer: `audit_phase1`, independent of the implementation authors.
 - Final browser SV rankings match Python at all budgets and 2d/8d/64d; Elo,
   history, and the 128-player KNN partial curves render correctly. No script
   errors or mobile overflow remain. No audit blockers remain.
+
+## Relative budgets, branding, and estimator investigation
+
+- The public suite now specifies nine queries-per-player points from 0.5d to
+  128d. The pilot and auxiliary suites also specify relative budgets.
+- Independent reviewer `investigate_leverage` passed all 38 runner, materialization,
+  report, and campaign tests, including worker timeout/recovery. The full suite
+  passed its other 122 tests; that timeout fixture initially encountered the
+  intentional source-change guard during a concurrent edit, then passed after
+  source was frozen.
+- A candidate regression covers Python and NumPy randomness during import,
+  construction, and execution. An actual SPEX run with seeds 0, 1, 0 reproduces
+  seed-zero estimates exactly while seed one differs. The corrected RNG protocol
+  is recorded in provenance; old SPEX results are not reused.
+- LeverageSHAP's independent constrained solve agrees within 1.8e-11; all 325
+  existing estimator tests pass. No estimator algorithms or defaults changed.
+- Both static exports include the official logo and favicon. The sweep requests
+  all 128 physical cores on himem02 with one native thread per worker; timings
+  remain diagnostic because workers run concurrently.
+- Required pre-commit passes formatting and lint hooks, with only the eight
+  previously documented Woodelf import / unused-ignore type diagnostics.

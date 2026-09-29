@@ -2,6 +2,8 @@
 
 **Status: design reference.** Implementation and runnable commands are documented
 in [README.md](README.md); this document also retains deferred research ideas.
+Current budget policy supersedes earlier alternatives below: show only queries
+per player, with the public grid `0.5, 1, 2, 4, 8, 16, 32, 64, 128 × d`.
 Inventory checked on 2026-09-29
 against shapiq commit `6321cbdaefee7af7a4bea58ca15e7cf2450f4691`.
 
@@ -75,7 +77,7 @@ resource cost. Use our own visual design and scientific definitions.
 Shapiq Benchmark                         Suite v1 | Methodology | Download
 
 Target: Shapley values       Games: tabular explanation     Players: 8–16
-Budget: 1,024 evaluations    [absolute / fraction of all coalitions]
+Budget: 16 × players    [0.5, 1, 2, 4, 8, 16, 32, 64, 128]
 Methods: all eligible       Hardware: CPU reference        Reset | Copy link
 
 Leaderboard     Error vs budget     Error vs seconds     Head-to-head     History
@@ -85,7 +87,7 @@ Every chart: selected games, target, budget rule, sample count, data version
 ```
 
 Filters should include game family, dataset, model family, player count, target
-index, maximum order, scored interaction order, absolute budget, relative budget,
+index, maximum order, scored interaction order, budget in multiples of players,
 and timing mode. “Similar games” initially means these understandable filters and
 curated presets (for example, small tabular games or large sparse synthetic games).
 An automatic similarity model would add complexity before we know it is useful.
@@ -623,13 +625,13 @@ LeverageSHAP's default even-budget rounding; OddSHAP's minimum budget and docume
 low-budget implementation differences; and permutation methods' indivisible
 iterations. Capture warnings and actual backend/proxy parameters alongside results.
 
-Offer absolute budgets and `B / 2^n` (fraction of the coalition space). Use named
-low/medium/high regimes with explicit numeric boundaries in the suite manifest.
+Use only `B/d` (queries per player) in the interface. The public grid is
+`{0.5, 1, 2, 4, 8, 16, 32, 64, 128}`; each run receives `ceil(ratio × d)` queries.
 For a user cap between measured points, choose the largest **requested grid cap**
 no greater than the input that is common to the eligible methods for that task;
 show the selected cap. Never choose a run based on its observed error. Below the
 smallest common cap, show insufficient data. Relative grids may produce different
-absolute caps for different player counts; tooltips must say so.
+evaluation counts for different player counts. Keep integer counts in raw data.
 
 ### 4. Separate runtime measurements
 
@@ -960,15 +962,12 @@ runs resume, runtime profiles stay separate, and public files remain untouched.
 | Core v1 | Local/tree SV and pairwise k-SII, plus high-player KNN SV. Product-kernel SV is optional. | First substantive comparison after the small public preview; explicit measured/planned/blocked coverage. No requirement to finish all views or methods before publishing. |
 | Extended releases | Grouped-data and ensemble panels, other existing families/datasets/targets as exact truth permits. New SCM integration and exact algorithms require separate research scope. | Expand coverage without making new game development a website dependency. |
 
-Use native feature counts for the real-data pilot, and the declared group/member
-counts for valuation/ensemble games. Start with budget caps
-`{32, 128, 512, 2048}` intersected with valid caps for each small task. Tiny
-synthetic smoke fixtures do not contribute to headline performance. Use the
-absolute/`B/n` grids above for high-player games.
-For the core suite propose powers-of-two absolute caps and relative caps
-`{1%, 2%, 5%, 10%, 20%, 50%, 100%}` where feasible. Deduplicate rounded caps.
-Do not automatically run `2^n` for a large game; full enumeration is an optional
-exact reference when affordable, and need not make every estimator exact.
+Use native feature counts for the real-data pilot, and declared group/member
+counts for valuation and ensemble games. Use the shared queries-per-player grid
+`{0.5, 1, 2, 4, 8, 16, 32, 64, 128}`, deduplicating rounded evaluation counts.
+The quick pilot retains three relative points (`4d, 8d, 16d`). Synthetic smoke
+fixtures do not contribute to headline performance. Do not automatically run
+`2^d` for a large game; full enumeration is only a reference when affordable.
 
 Start production with 10 independent estimator seeds, then increase if pilot
 uncertainty warrants it. Include multiple independent game/model seeds; many

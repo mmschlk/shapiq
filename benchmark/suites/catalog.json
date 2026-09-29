@@ -1,5 +1,5 @@
 {
-  "name": "catalog-probe-v1",
+  "name": "catalog-probe-relative-v2",
   "game": "california_tree",
   "methods": [
     "PermutationSamplingSII",
@@ -25,8 +25,8 @@
     "SPEX",
     "UnbiasedKernelSHAP"
   ],
-  "budgets": [
-    64
+  "relative_budgets": [
+    8
   ],
   "seeds": [
     0

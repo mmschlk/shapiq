@@ -15,6 +15,7 @@ import inspect
 import json
 import math
 import platform
+import random
 import subprocess
 import sys
 import time
@@ -137,6 +138,7 @@ def provenance() -> dict:
         commit, dirty = None, None
     return {
         **versions,
+        "rng_protocol": "cell-seed-python-numpy-v1",
         "python": platform.python_version(),
         "installed_packages": {
             dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()
@@ -337,6 +339,10 @@ def run_one(
 ) -> dict:
     """Evaluate a cell; imports/oracle reconstruction/scoring are outside estimator timing."""
     counted = CountedGame(load_game(game, root), game["n_players"], budget)
+    # Optional backends such as sparse-transform use global RNGs rather than the
+    # estimator's Generator. Each isolated cell must seed both before construction.
+    random.seed(seed)
+    np.random.seed(seed % 2**32)  # noqa: NPY002 -- backend uses the legacy 32-bit RNG
     factory = candidate_factory(candidate)[1] if candidate else None
     record: dict = {"status": "failed", "nmse": None, "mse": None, "error": None}
     start = time.perf_counter()

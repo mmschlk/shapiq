@@ -184,3 +184,34 @@ def test_numpy_coordinates_are_json_serializable(
     coordinates = json.loads(json.dumps(result))["estimate"]["coordinates"]
     assert [0] in coordinates
     assert all(type(index) is int for coordinate in coordinates for index in coordinate)
+
+
+def test_global_rng_backends_repeat_across_cells(tmp_path: Path) -> None:
+    """Dependencies drawing during import, construction, and execution use the cell seed."""
+    np.savez(tmp_path / "game.npz", values=np.array([0.0, 2.0, 0.0, 2.0]))
+    path = tmp_path / "global_rng_candidate.py"
+    path.write_text("""import random
+import numpy as np
+from shapiq import InteractionValues
+python_import = random.random()
+numpy_import = np.random.random()
+class Candidate:
+    def __init__(self):
+        self.python_draw = python_import + random.random()
+        self.numpy_draw = numpy_import + np.random.random()
+    def approximate(self, budget, game):
+        return InteractionValues(
+            {(0,): self.python_draw + random.random(),
+             (1,): self.numpy_draw + np.random.random()},
+            index="SV", n_players=2, min_order=0, max_order=1)
+def factory(n, index, order, seed):
+    return Candidate()
+""")
+    game = {**game_spec(), "artifact": "game.npz"}
+    spec = f"{path}:factory"
+    first = run_one(game, tmp_path, "candidate", 4, 17, spec)
+    other = run_one(game, tmp_path, "candidate", 4, 18, spec)
+    repeated = run_one(game, tmp_path, "candidate", 4, 17, spec)
+    assert first["status"] == other["status"] == repeated["status"] == "ok"
+    assert first["estimate"] == repeated["estimate"]
+    assert first["estimate"] != other["estimate"]

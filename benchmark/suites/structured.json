@@ -1,11 +1,11 @@
 {
-  "name": "structured-v1",
+  "name": "structured-relative-v2",
   "games": [
     {"id": "breast-cancer-tree-sv", "oracle": "tree", "index": "SV", "order": 1},
     {"id": "breast-cancer-tree-pairs", "oracle": "tree", "index": "k-SII", "order": 2},
     {"id": "breast-cancer-knn-sv", "oracle": "knn", "index": "SV", "order": 1, "n_players": 128}
   ],
   "methods": ["KernelSHAP", "PermutationSamplingSV", "SVARM", "KernelSHAPIQ", "SHAPIQ", "SVARMIQ"],
-  "budgets": [256, 512],
+  "relative_budgets": [0.5, 1, 2, 4, 8, 16, 32, 64, 128],
   "seeds": [0, 1]
 }

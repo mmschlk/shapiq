@@ -102,3 +102,7 @@ uv run pre-commit run --all-files
 - Fully ordered five-method Elo panels can reach numerical line-search roundoff
   before an overly tight gradient tolerance. Keep the convergence guard and the
   strict-order regression test when changing Bradley–Terry optimizer settings.
+- SPEX's sparse-transform dependency samples through global NumPy/Python RNGs;
+  estimator `random_state` alone does not seed those draws. Isolated benchmark
+  cells must seed both globals before estimator construction. Older SPEX records
+  without this protocol are not reproducible from their recorded seed alone.

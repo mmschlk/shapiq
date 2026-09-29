@@ -3,15 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#f5f3fb" />
+    <meta name="theme-color" content="#f4f7fc" />
     <title>shapiq · Estimator benchmark</title>
+    <link rel="icon" href="shapiq.ico" />
     <link rel="stylesheet" href="style.css" />
     <script defer src="app.js"></script>
   </head>
   <body>
     <header>
       <a class="brand" href="https://github.com/mmschlk/shapiq"
-        ><span class="brandMark">φ</span>shapiq<span class="brandSuffix"
+        ><img class="brandMark" src="shapiq.svg" alt="" />shapiq<span
+          class="brandSuffix"
           >/ benchmark</span
         ></a
       >
@@ -54,7 +56,7 @@
         >
         <label>EXPLANATION<select id="target"></select></label>
         <label>GAME FAMILY<select id="family"></select></label>
-        <label>QUERY BUDGET<select id="budget"></select></label>
+        <label>BUDGET / PLAYER<select id="budget"></select></label>
         <details class="methodPicker">
           <summary>
             <span>ESTIMATORS</span
@@ -101,20 +103,14 @@
                   value="10000"
               /></label>
             </div>
-            <div class="fieldPair">
-              <label
-                >Budget cap<input
-                  id="cap"
-                  type="number"
-                  min="0"
-                  placeholder="No cap" /></label
-              ><label
-                >Units<select id="capUnits">
-                  <option value="perPlayer">Queries / player</option>
-                  <option value="absolute">Queries</option>
-                </select></label
-              >
-            </div>
+            <label
+              >Budget cap · × players<input
+                id="cap"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="No cap"
+            /></label>
             <p>A cap selects the largest measured budget within it.</p>
           </div>
         </details>
@@ -127,6 +123,10 @@
         <article class="leaderboard">
           <div class="tableHeading">
             <h2>The leaderboard</h2>
+            <label class="variantToggle"
+              ><input id="showVariants" type="checkbox" /> Show all
+              variants</label
+            >
             <label class="rankingControl"
               ><span class="srOnly">Ranking metric</span
               ><select id="rankingMetric">
@@ -141,6 +141,9 @@
                 <tr>
                   <th>#</th>
                   <th>Estimator</th>
+                  <th title="Supported explanation types in this benchmark">
+                    Estimates
+                  </th>
                   <th>Mean nMSE ↓</th>
                   <th>Median nMSE</th>
                   <th>Elo</th>
@@ -162,17 +165,6 @@
               <option value="all">All methods</option>
             </select></label
           >
-          <div class="axisToggle" aria-label="Budget axis">
-            <button class="active" data-axis="relative" aria-pressed="true">
-              B / d</button
-            ><button data-axis="absolute" aria-pressed="false">
-              Absolute B
-            </button>
-          </div>
-          <select id="budgetAxis" hidden>
-            <option value="relative">relative</option>
-            <option value="absolute">absolute</option>
-          </select>
         </div>
         <div class="charts">
           <article class="chartCard budgetCard">
@@ -240,23 +232,26 @@
               budgets, and seeds. Median means the lower weighted median.
             </p>
             <p>
-              Incomplete panels remain unranked. Zero-energy games are excluded
-              for every estimator. Paired ties use 1% relative error plus 1e-12.
-              Ratings and history require a fixed, precomputed panel; ratings
-              are specific to its competitor set.
+              The default view hides incompatible and legacy variants; all raw
+              results and Elo competitors are retained. “Both” means values and
+              interactions. Capabilities reflect targets exercised in this
+              benchmark. Incomplete panels remain unranked. Zero-energy games
+              are excluded for every estimator. Paired ties use 1% relative
+              error plus 1e-12. Ratings and history require a fixed, precomputed
+              panel; ratings are specific to its competitor set.
             </p>
             <p id="statisticsNote"></p>
             <p>
               Charts show each game separately, averaged across seeds. The
-              default budget axis is B/d: coalition queries divided by the
-              number of players. Colors, dashes, and markers identify
-              estimators; hover or focus to highlight them. Top methods require
-              complete results across all plotted budgets and are selected by
-              mean nMSE. All methods includes estimators with at least one
-              complete budget point; each point requires all seeds. Timings are
-              diagnostic; resource checks alone do not qualify a timing
-              leaderboard. The history is a retrospective comparison, not
-              historical measurements.
+              budget axis is B/d: coalition queries divided by the number of
+              players. Colors, dashes, and markers identify estimators; hover or
+              focus to highlight them. Top methods require complete results
+              across all plotted budgets and are selected by mean nMSE. All
+              methods includes estimators with at least one complete budget
+              point; each point requires all seeds. Timings are diagnostic;
+              resource checks alone do not qualify a timing leaderboard. The
+              history is a retrospective comparison, not historical
+              measurements.
             </p>
             <p id="gameDetails"></p>
             <p id="hardware"></p>

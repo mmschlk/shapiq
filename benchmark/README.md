@@ -26,11 +26,11 @@ comparison locally without uploading anything.
 | Targets | SV, k-SII, SII, STII, FSII, FBII; interactions at order two |
 | Larger games | 30-player forest SV and k-SII; 128-player KNN valuation SV |
 | Estimators | All 22 public classes, with library defaults unless target configuration requires otherwise |
-| Budgets | `B/d = 2, 8, 64`, rounded up to whole queries per game |
+| Budgets | `B/d = 0.5, 1, 2, 4, 8, 16, 32, 64, 128`, rounded up to whole queries per game |
 | Repetitions | Two estimator seeds |
-| Planned matrix | 189 game/target settings; 24,948 cells including unsupported combinations |
+| Planned matrix | 189 game/target settings; 74,844 cells including unsupported combinations |
 
-The completed Hopper sweep records **9,357 successful, 14,814 unsupported, and
+The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
 777 failed cells**, with none pending. Failures comprise 754 SPEX minimum-budget
 errors, eight OddSHAP minimum-budget errors, and 15 ShaplEIG timeouts. All 34
 preparation entries qualified. Successful zero-energy cases remain excluded
@@ -112,13 +112,13 @@ sbatch --output=benchmark/results/sweep-%j.log benchmark/sweep.sbatch benchmark/
 ```
 
 Preparation may download optional model weights and records unavailable families.
-Each game's absolute budgets are `ceil(ratio × players)`, saved in
+Each game's evaluation counts are `ceil(ratio × players)`, saved in
 `budgets_by_game`. The adapter passes target, order, and seed to supported
 constructor parameters; other settings retain library defaults. For example,
 `kADDSHAP` uses order one for SV. These are reproducible configurations, not a
 search for each paper's best tuning.
 
-The sweep reserves `himem02` exclusively, divides games among 64 fixed physical
+The sweep reserves `himem02` exclusively, divides games among 128 fixed physical
 cores, and uses one native thread per worker. All estimators for a game share
 the same core. Each cell runs in its own subprocess with a 120-second timeout
 and a 12 GiB virtual-memory limit; the job is bounded to 30 minutes.
@@ -150,7 +150,7 @@ use a new output directory after changing code or limits.
 ## Read the rankings
 
 Select a target first; different interaction definitions never share a ranking.
-Choose a relative or absolute budget, or use **budget cap** to select the largest
+Choose a budget in multiples of the player count, or use **budget cap** to select the largest
 measured budget within your limit for each game. Missing cells remain missing.
 The two main charts show a selected game's mean nMSE across seeds. **All methods**
 includes methods that succeed at only some budgets, but every plotted point
@@ -160,6 +160,11 @@ nMSE is squared coefficient error divided by ground-truth coefficient energy,
 excluding the baseline. Zero-energy games have undefined nMSE and are excluded
 for every method. Aggregate means give equal weight at each level:
 family → stratum → game → budget → seed. The median is the lower weighted median.
+The default view shows compatible estimator families; **Show all variants** exposes
+the underlying classes without combining their scores. The target column marks
+value and interaction support. [Estimator notes](ESTIMATOR_NOTES.md) explain
+LeverageSHAP’s low-budget instability and the OddSHAP, SPEX, and ShaplEIG findings.
+
 Only methods with valid results for every selected cell receive an aggregate
 rank; failure, unsupported, and pending counts explain incomplete coverage.
 
@@ -193,7 +198,7 @@ Both public exports reject private candidates. The website omits exact truth,
 raw coefficient arrays, and local paths; the ZIP includes the frozen numerical
 artifacts needed for reproduction, with hashes and provenance verified.
 
-GitHub Pages deploys the four static site assets when `BENCHMARK_PAGES=true` and
+GitHub Pages deploys the six static site assets when `BENCHMARK_PAGES=true` and
 Pages uses GitHub Actions. It does not run experiments or upload local results.
 Large numerical artifacts belong in the separate release archive. Hosting needs
 no server, account system, database, or upload API.

@@ -6,14 +6,14 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #28213e;
-  background: #f6f4fb;
+  color: #182c50;
+  background: #f4f7fc;
   font-synthesis: none;
-  --ink: #28213e;
-  --muted: #726881;
-  --line: #e9e5f0;
-  --coral: #d86a58;
-  --purple: #715aad;
+  --ink: #182c50;
+  --muted: #596980;
+  --line: #dfe6f0;
+  --red: #e3326a;
+  --blue: #426be0;
   --mint: #80b9a7;
 }
 * {
@@ -68,14 +68,9 @@ header {
   letter-spacing: -1px;
 }
 .brandMark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: var(--ink);
-  color: #f0d2ba;
-  font: italic 28px Georgia;
+  width: 35px;
+  height: 44px;
+  object-fit: contain;
 }
 .brandSuffix {
   font-size: 15px;
@@ -105,12 +100,12 @@ header {
 .localButton {
   font-size: 12px;
   padding: 10px 14px;
-  border: 1px solid #dcd6e8;
+  border: 1px solid #d7e1ef;
   border-radius: 9px;
   cursor: pointer;
   color: var(--ink);
   font-weight: 600;
-  background: #faf9fd;
+  background: #f8faff;
 }
 .hero {
   display: flex;
@@ -134,11 +129,11 @@ h1 {
   margin: 0;
 }
 h1 span {
-  color: var(--coral);
+  color: var(--red);
 }
 .heroDescription {
   font-size: 14px;
-  color: #726881;
+  color: #596980;
   margin: 18px 0 0;
 }
 .heroStats {
@@ -148,10 +143,9 @@ h1 span {
   max-width: 400px;
   text-align: center;
   padding: 28px 26px;
-  background: linear-gradient(130deg, #eee9f8, #f9f7fc);
-  border: 1px solid #e8e1f4;
+  background: linear-gradient(130deg, #e8efff, #f7faff);
+  border: 1px solid #dce6fb;
   border-radius: 24px;
-  transform: rotate(-1deg);
 }
 .heroStats div {
   min-width: 68px;
@@ -163,10 +157,10 @@ h1 span {
   letter-spacing: -1.5px;
 }
 .heroStats div:nth-child(2) strong {
-  color: var(--purple);
+  color: var(--blue);
 }
 .heroStats div:nth-child(3) strong {
-  color: #ab5945;
+  color: #bf2355;
 }
 .heroStats span {
   font-size: 10px;
@@ -181,10 +175,10 @@ h1 span {
   align-items: center;
   margin: 0;
   font-size: 10px;
-  color: #726881;
+  color: #596980;
 }
 .heroStats .miniStar {
-  color: var(--purple);
+  color: var(--blue);
   font-size: 17px;
 }
 #notice {
@@ -294,7 +288,7 @@ input {
 .pickerActions button {
   border: 0;
   background: transparent;
-  color: var(--purple);
+  color: var(--blue);
   padding: 4px;
   font-size: 11px;
 }
@@ -312,10 +306,10 @@ input {
   border-radius: 5px;
 }
 .methodOption:hover {
-  background: #f6f3fc;
+  background: #f0f5ff;
 }
 .methodOption input {
-  accent-color: var(--purple);
+  accent-color: var(--blue);
   margin: 0;
 }
 #methodOptions {
@@ -333,7 +327,7 @@ input {
   padding: 15px 0 0 10px;
 }
 .advanced summary span {
-  color: var(--purple);
+  color: var(--blue);
   margin-left: 5px;
 }
 .advancedPanel {
@@ -369,7 +363,7 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2ddea;
+  border-bottom: 1px solid #dce4f0;
   margin: 29px 0 24px;
   gap: 12px;
 }
@@ -418,12 +412,12 @@ input {
   white-space: nowrap;
 }
 .chartBadge.lavender {
-  color: #705895;
-  background: #f2edfa;
+  color: #3456ad;
+  background: #edf2ff;
 }
 .chartNote {
   font-size: 9px;
-  color: #6d607a;
+  color: #57677f;
   line-height: 1.5;
   margin: 13px 0 0;
 }
@@ -440,7 +434,7 @@ svg {
   row-gap: 9px;
   margin: 14px 0 0;
   font-size: 9px;
-  color: #797187;
+  color: #637087;
   min-height: 12px;
 }
 .legend span {
@@ -468,6 +462,7 @@ svg {
   align-items: center;
   padding: 23px 24px 17px;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .tableHeading h2 {
   margin: 0;
@@ -494,14 +489,14 @@ th,
 td {
   padding: 13px 19px;
   text-align: right;
-  border-bottom: 1px solid #f0edf5;
+  border-bottom: 1px solid #edf1f7;
 }
 th {
   font-size: 9px;
   letter-spacing: 0.025em;
-  color: #6d607a;
+  color: #57677f;
   font-weight: 550;
-  background: #fbfafd;
+  background: #fafcff;
 }
 th:nth-child(2),
 td:nth-child(2) {
@@ -511,19 +506,19 @@ td:nth-child(2) {
   font-weight: 600;
 }
 #ranking tr:hover {
-  background: #fcfbfe;
+  background: #fafcff;
 }
 #ranking tr:first-child {
-  background: #f7f5fc;
+  background: #f2f6fd;
 }
 #ranking td:first-child {
-  color: #6d607a;
+  color: #57677f;
   padding-left: 25px;
   width: 42px;
   text-align: center;
 }
 #ranking td:nth-child(2) {
-  color: #403851;
+  color: #263d5b;
   font-size: 12px;
 }
 #ranking .methodDot {
@@ -535,14 +530,14 @@ td:nth-child(2) {
 }
 .scoreStrong {
   font-weight: 650;
-  color: #51476c;
+  color: #34527c;
 }
 .coveragePill {
   font-size: 10px;
   padding: 4px 8px;
   border-radius: 6px;
-  background: #f2eff8;
-  color: #6f587e;
+  background: #eff4fc;
+  color: #516482;
 }
 .coveragePill.complete {
   background: #edf5ef;
@@ -550,7 +545,7 @@ td:nth-child(2) {
 }
 .statusText {
   font-size: 9px;
-  color: #6d607a;
+  color: #57677f;
 }
 .statusText.complete {
   color: #477057;
@@ -582,20 +577,20 @@ tbody tr:last-child td {
 }
 .sourceDetails a {
   text-decoration: none;
-  color: #715794;
+  color: #3456ad;
 }
 .belowFold {
   margin-top: 30px;
 }
 .belowFold details {
-  border-top: 1px solid #e3deed;
+  border-top: 1px solid #dde5f0;
   padding: 17px 0;
   font-size: 11px;
-  color: #72647e;
+  color: #596980;
 }
 .belowFold summary {
   list-style: none;
-  color: #645a76;
+  color: #526780;
   display: flex;
   justify-content: space-between;
 }
@@ -603,7 +598,7 @@ tbody tr:last-child td {
   display: none;
 }
 .belowFold summary > span {
-  color: #6d607a;
+  color: #57677f;
 }
 .methodologyContent {
   display: grid;
@@ -634,15 +629,15 @@ tbody tr:last-child td {
   margin-right: auto;
 }
 .downloadActions button {
-  border: 1px solid #e2dcea;
+  border: 1px solid #dce4f0;
   border-radius: 7px;
-  background: #fbfafd;
+  background: #fafcff;
   font-size: 10px;
   padding: 8px 12px;
-  color: #756784;
+  color: #596980;
 }
 .emptyNote {
-  color: #6d607a;
+  color: #57677f;
   font-size: 11px;
   line-height: 1.7;
   padding: 18px 0;
@@ -670,7 +665,7 @@ footer {
   gap: 18px;
   border-top: 1px solid var(--line);
   font-size: 10px;
-  color: #726881;
+  color: #596980;
   margin-top: 20px;
   padding-top: 24px;
   padding-bottom: 30px;
@@ -903,10 +898,10 @@ footer a {
 }
 .coverageItem strong {
   font-weight: 600;
-  color: #665974;
+  color: #526780;
 }
 .coverageItem span:last-child {
-  color: #6d607a;
+  color: #57677f;
   line-height: 1.5;
 }
 @media (max-width: 720px) {
@@ -945,7 +940,7 @@ footer a {
 .chartControls > label:first-child select {
   width: 100%;
   font-size: 11px;
-  background: #faf9fd;
+  background: #f8faff;
 }
 .chartControls #chartGameMeta {
   font-size: 10px;
@@ -955,28 +950,6 @@ footer a {
 .chartLimitLabel select {
   font-size: 10px;
   background: transparent;
-}
-.axisToggle {
-  display: flex;
-  padding: 3px;
-  border: 1px solid #e2dcec;
-  border-radius: 8px;
-  background: #eeebf5;
-  gap: 2px;
-}
-.axisToggle button {
-  font-size: 10px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #6d607a;
-  white-space: nowrap;
-}
-.axisToggle button.active {
-  color: var(--ink);
-  background: white;
-  box-shadow: 0 1px 3px #3224480b;
 }
 .historySection {
   margin-top: 25px;
@@ -989,7 +962,7 @@ footer a {
   background: transparent;
   padding: 0;
   font-size: 9px;
-  color: #797187;
+  color: #637087;
   font-weight: 450;
   text-align: left;
   transition: opacity 0.15s;
@@ -1025,10 +998,10 @@ footer a {
   opacity: 0.38;
 }
 #ranking tr.emphasis {
-  background: #eee9f9;
+  background: #e8f0ff;
 }
 #ranking tr:focus-visible {
-  outline: 2px solid #b8a8dd;
+  outline: 2px solid #426be0;
   outline-offset: -2px;
 }
 .chartTooltip {
@@ -1039,7 +1012,7 @@ footer a {
   white-space: pre-line;
   padding: 12px 15px;
   border-radius: 10px;
-  background: #2d263f;
+  background: #182c50;
   color: #fff;
   box-shadow: 0 8px 30px #25153826;
   font-size: 10px;
@@ -1084,10 +1057,6 @@ footer a {
     margin-left: 0;
     margin-right: auto;
   }
-  .axisToggle button {
-    font-size: 9px;
-    padding: 6px 10px;
-  }
   .legend button {
     font-size: 9px;
   }
@@ -1099,7 +1068,7 @@ footer a {
 .rankingControl select {
   font-size: 10px;
   border: 1px solid var(--line);
-  background: #faf9fd;
+  background: #f8faff;
   padding: 7px 10px;
 }
 .tableHeading .rankingControl {
@@ -1116,4 +1085,26 @@ footer a {
   #overview > .leaderboard {
     margin-bottom: 24px;
   }
+}
+
+.variantToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-left: auto;
+  cursor: pointer;
+}
+.variantToggle input {
+  accent-color: var(--blue);
+}
+.tableHeading .rankingControl {
+  margin-left: 0;
+}
+#ranking td:nth-child(3),
+th:nth-child(3) {
+  text-align: left;
+  font-size: 10px;
+  color: var(--muted);
 }

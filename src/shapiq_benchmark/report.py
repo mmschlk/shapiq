@@ -190,7 +190,7 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
         raise ValueError(message)
     data["presets"] = summarize(data)
     output.mkdir(parents=True, exist_ok=True)
-    for name in ("index.html", "app.js", "style.css"):
+    for name in ("index.html", "app.js", "style.css", "shapiq.svg", "shapiq.ico"):
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)

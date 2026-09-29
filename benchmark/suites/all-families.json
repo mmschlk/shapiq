@@ -1,5 +1,5 @@
 {
-  "name": "all-families-v1",
+  "name": "all-families-relative-v2",
   "families": [
     "local_baseline",
     "local_baseline_forest",
@@ -105,9 +105,15 @@
     "UnbiasedKernelSHAP"
   ],
   "relative_budgets": [
+    0.5,
+    1,
     2,
+    4,
     8,
-    64
+    16,
+    32,
+    64,
+    128
   ],
   "seeds": [
     0,

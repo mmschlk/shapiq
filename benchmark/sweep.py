@@ -14,7 +14,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("snapshot", type=Path)
 parser.add_argument("output", type=Path)
-parser.add_argument("--workers", type=int, default=64)
+parser.add_argument("--workers", type=int, default=128)
 parser.add_argument("--timeout", type=float, default=120)
 parser.add_argument("--seconds", type=float, default=1620)
 args = parser.parse_args()
