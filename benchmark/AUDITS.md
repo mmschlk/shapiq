@@ -14,3 +14,15 @@ Reviewer: `audit_phase1`. All identified blockers resolved.
   dataclass adapter imports; added regression coverage.
 - Seven targeted tests pass. The real California pilot completed 27/27 runs.
 - Runtime is diagnostic table-oracle time, not a qualified hardware leaderboard.
+
+## Phase 2 — static public and private reports
+
+Reviewer: `audit_phase1` (independent of the implementation). All blockers resolved.
+
+- Confirmed strict snapshot/method joins, conflicting duplicate rejection, planned
+  coverage, target separation, stripped truth/coefficients, and safe DOM rendering.
+- Fixed public export defaults/canonical-site protection, deployment permissions,
+  explicit asset staging, and separate timing identities for separate result files.
+- Eighteen runner/report tests pass. Headless Chromium verified the real public
+  table, budget filtering, private candidate comparison, and 390px mobile layout.
+- Fixed the mobile filter-grid overflow found by browser testing.

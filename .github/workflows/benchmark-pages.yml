@@ -1,0 +1,50 @@
+name: Benchmark Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, benchmark]
+    paths:
+      - 'benchmark/site/**'
+      - '.github/workflows/benchmark-pages.yml'
+
+# Opt in per repository; forks and unrelated Pages sites stay untouched.
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.BENCHMARK_PAGES == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate public snapshot
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('benchmark/site/data.json').read_text())
+          assert data['schema_version'] == 1 and data['records']
+          assert not any(method.get('private', True) for method in data['methods'].values())
+          assert all('truth' not in game and 'artifact' not in game for game in data['games'])
+          assert all('estimate' not in record for record in data['records'])
+          PY
+          mkdir -p "$RUNNER_TEMP/benchmark-site"
+          cp benchmark/site/{index.html,app.js,style.css,data.json} "$RUNNER_TEMP/benchmark-site/"
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: ${{ runner.temp }}/benchmark-site
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        id: deployment

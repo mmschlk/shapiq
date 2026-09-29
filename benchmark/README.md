@@ -43,6 +43,25 @@ are trusted Python code, not a security sandbox. Only the candidate runs; saved
 baseline accuracy results can be compared later. Runtime comparisons require
 rerunning both on the same hardware. Nothing uploads automatically.
 
+## Open the interactive report
+
+```bash
+uv run python -m shapiq_benchmark.report --results benchmark/results/baselines/results.json benchmark/results/candidate/results.json --output benchmark/results/local-report
+uv run python -m http.server 8000 --bind 127.0.0.1 --directory benchmark/results/local-report
+```
+
+Open `http://localhost:8000`. The report compares matching snapshot results and
+rejects conflicting method versions or duplicate measurements. It removes truth,
+raw coefficient arrays, and local file paths. You can also open `index.html`
+directly and select the exported `data.json` through **Open local report**.
+
+For a public preview, export baseline results with `--public --output benchmark/site`.
+Private candidates are rejected. The Pages workflow deploys only this public site
+when the repository variable `BENCHMARK_PAGES` is `true` and Pages uses GitHub
+Actions as its source. It does not run experiments or publish local results.
+The static page uses ordinary HTML/CSS/JavaScript and SVG charts; no frontend
+framework, external chart download, database, or build step is required.
+
 ## Implementation phases
 
 1. Frozen local pilot, measured budgets, nMSE, JSON/CSV, and local candidate adapter.
