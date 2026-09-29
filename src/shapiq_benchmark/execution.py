@@ -162,13 +162,13 @@ def worker(source: Path, destination: Path) -> None:
     result: dict = {"status": "failed", "queries": None, "requested_queries": None, "seconds": None}
     try:
         if request["memory_gb"] is not None:
-            import resource  # noqa: PLC0415 -- POSIX-only optional worker memory limit
+            import resource
 
             size = int(request["memory_gb"] * 1024**3)
             resource.setrlimit(resource.RLIMIT_AS, (size, size))
-        from threadpoolctl import threadpool_info, threadpool_limits  # noqa: PLC0415
+        from threadpoolctl import threadpool_info, threadpool_limits
 
-        from shapiq_benchmark.runner import (  # noqa: PLC0415
+        from shapiq_benchmark.runner import (
             digest,
             load_snapshot,
             provenance,

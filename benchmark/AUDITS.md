@@ -61,3 +61,26 @@ Reviewers: `audit_phase1`, with the final optional-backend diagnostic checked by
   Optional-backend errors now report the missing dependency directly.
 - Resource qualification is verified; runtime remains diagnostic. No estimator
   algorithm was changed to improve its benchmark score.
+
+## Phase 5 — comparisons, chronology, and reproduction
+
+Reviewer: `games_benchmarks`, independent of all implementation authors.
+
+- Checked hierarchical means/lower weighted medians, complete-panel eligibility,
+  ties, order-independent regularized Bradley–Terry ratings, clustered uncertainty,
+  and unknown-date exclusion. Fifteen chronology dates were checked against the
+  linked primary arXiv submission histories by the implementation researcher.
+- Fixed browser/Python disagreement for a pending zero-energy game and preserved
+  original panel IDs for preset matching. The reviewer verified parity across
+  15 actual and nine imbalanced synthetic presets.
+- The reviewer extracted an actual reproduction archive, executed a private
+  candidate, generated a seven-method local report, and verified public rejection.
+- Public archives now remove raw exception text as well as private candidates;
+  the audit found that website sanitization alone did not protect the archive.
+- Headless Chromium verified target switching, paired tables/history, budget caps,
+  missing-budget coverage, and a 390px layout without overflow or script errors.
+- Confidence intervals are intentionally unavailable for the current one-model
+  strata. More seeds do not remedy missing independent model replication.
+- Final review approved the archive sanitization: all 13 bundle tests passed, and
+  the reviewer's original private-path reproducer confirmed no leak in any ZIP
+  member and no mutation of the source results. No audit blockers remain.

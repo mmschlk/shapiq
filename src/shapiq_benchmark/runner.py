@@ -356,7 +356,7 @@ def run(
     timing_profile: str = "diagnostic",
 ) -> dict:
     """Checkpoint a finite matrix of isolated cells and safely resume identical campaigns."""
-    from shapiq_benchmark.execution import (  # noqa: PLC0415 -- worker startup stays lightweight
+    from shapiq_benchmark.execution import (
         hardware,
         isolated,
         verify_profile,
@@ -373,7 +373,7 @@ def run(
         message = "Campaign limits must be finite and positive; max_seconds must exceed a full cell timeout."
         raise ValueError(message)
     verify_profile(timing_profile)
-    import fcntl  # noqa: PLC0415 -- POSIX campaign locking
+    import fcntl
 
     output.mkdir(parents=True, exist_ok=True)
     with (output / ".campaign.lock").open("a") as lock:

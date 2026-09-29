@@ -6,7 +6,7 @@ An offline benchmark and static comparison website. Python prepares frozen games
 runs estimators, and writes results; the browser only reads those results. A local
 paper implementation uses the same runner without uploading anything.
 
-Implementation is proceeding in five independently reviewed phases on this branch.
+Implemented in five independently reviewed phases on this branch.
 The [design and scientific protocol](DESIGN.md) explain the longer-term scope.
 [Issue #601](https://github.com/mmschlk/shapiq/issues/601) is the discussion home;
 [PR #602](https://github.com/mmschlk/shapiq/pull/602) contains the implementation.
@@ -137,3 +137,76 @@ the default diagnostic profile and are not silently pooled with Hopper results.
 Each phase is audited by an agent who did not implement it, with findings addressed
 before the next phase. The audit record and runnable commands are updated as work
 lands. No new SCM integration or exact algorithm is required for these phases.
+
+## Read the comparisons correctly
+
+Select a target first: Shapley values and pairwise k-SII never share a ranking.
+Then choose a family, player range, and measured budget. An optional **budget cap**
+selects the largest measured budget at or below your limit for each game, either
+in absolute queries or queries per player. Games with no available budget remain
+missing, so filtering cannot silently reward an estimator for easier coverage.
+
+Mean nMSE uses equal family → stratum → game → budget → seed weights. The median
+is the lower weighted median under those same weights. A method must have valid
+results for every selected cell to receive an aggregate rank. Zero-energy games
+are excluded for every method and their count is disclosed. Separate failure,
+unsupported, and pending counts show why coverage is incomplete.
+
+Paired win/tie/loss comparisons use identical cells and the same weights. Errors
+within `1e-12 + 0.01 × max(error_A, error_B)` tie. Fixed target/family/budget presets
+also include an **Elo-style rating**: a batch Bradley–Terry fit, centered at 1000
+with a 400-point logistic scale and fixed `0.001` L2 regularization. These ratings
+summarize pairwise outcomes, not error magnitude, and depend on the method set.
+Custom panels show paired comparisons but withhold preset-specific Elo/history.
+
+Release history evaluates current implementations on the current frozen panel
+and places their horizontal score lines at verified first-publication dates.
+The step line shows the best eligible mean or median so far. This is a
+retrospective comparison, not a reconstruction of what was measured historically.
+Unverified dates are listed and omitted from that chart, without removing methods
+from the accuracy ranking. Every included date links to its primary source.
+
+The exporter supports paired model-cluster/seed bootstrap intervals when every
+stratum has at least two independent model clusters. The current preview has
+only one fitted model per stratum, so intervals are unavailable. Adding seeds or
+explanation points alone does not create independent model replication.
+
+## Reproduce the public preview exactly
+
+Download the ZIP from the [preview release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-preview-2026-09-29).
+It contains the frozen snapshot, exact truth, baseline results, checksums, and
+commands for comparing a local candidate. This avoids refitting a subtly
+different game. The archive README records the preparation commit and versions.
+Use a local report to view private results; publishing is always separate.
+
+To make a new public reproduction archive from your own measured baseline:
+
+```bash
+uv run python -m shapiq_benchmark.bundle --snapshot benchmark/results/structured --results benchmark/results/structured-baselines/results.json --output benchmark/results/structured-bundle.zip
+```
+
+The exporter verifies hashes and matching provenance and rejects private methods.
+The Pages workflow publishes only four small static files; frozen numerical
+artifacts belong in a release archive. No server, account, database, or upload API
+is involved.
+
+## What is measured, and what remains
+
+All five implementation phases are working; see [independent audits](AUDITS.md).
+The public preview is deliberately small: three real-data game/target settings,
+six estimator configurations, two budgets, and two seeds (72 planned cells).
+The separate catalog probe covers all 22 public estimator classes, with missing
+optional backends and failures visible. This is infrastructure and a reproducible
+starting panel, not a claim that every shapiq game and estimator has been qualified.
+
+Before a scientific leaderboard release, expand the frozen suite across datasets,
+independent fitted models, budgets, and qualified game families; validate optional
+estimator backends; and qualify runtime repeatability. The current structured
+adapters also support the 64-feature Digits dataset and larger KNN player sets;
+64-feature tree truth and 1,024-player KNN truth were checked, but the public
+estimator campaign stops at 128 players. SOUM does not contribute to this preview.
+
+Review the implementation in this order: `prepare.py` / `games.py` freeze truth,
+`runner.py` / `execution.py` measure cells, `summary.py` computes fixed statistics,
+`report.py` exports the website, and `bundle.py` packages reproduction data.
+Existing estimator algorithms were not modified.

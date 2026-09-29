@@ -70,7 +70,7 @@ def test_export_strips_private_artifacts(tmp_path: Path) -> None:
     assert "/private" not in text
     assert "123.4" not in text
     assert "43.2" not in text
-    assert data["games"][0]["metadata"] == {"dataset": "test"}
+    assert data["games"][0]["metadata"] == {"dataset": "test", "zero_truth_energy": False}
     assert (output / "index.html").exists()
     assert data["records"][0]["run_id"] in data["runs"]
 
@@ -142,3 +142,14 @@ def test_canonical_site_rejects_private_by_default(
     with pytest.raises(ValueError, match="private candidate"):
         report([write(tmp_path, result)], canonical)
     assert not canonical.exists()
+
+
+def test_pending_zero_energy_game_is_excluded_from_all_methods(tmp_path: Path) -> None:
+    """Frozen truth identifies undefined nMSE even before any worker finishes."""
+    result = result_fixture()
+    result["games"][0]["truth"]["energy"] = 0.0
+    result["records"] = []
+    data = report([write(tmp_path, result)], tmp_path / "report")
+    assert data["games"][0]["metadata"]["zero_truth_energy"]
+    assert data["presets"][0]["excluded_zero_energy_games"] == ["game"]
+    assert data["presets"][0]["rows"][0]["planned"] == 0

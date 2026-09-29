@@ -76,3 +76,11 @@ uv run pre-commit run --all-files
   follow constructor checks, not inherited registries alone. `kADDSHAP` with
   `max_order=1` returns SV; its default order-two configuration is a different
   target/configuration and must not be silently relabeled as SV.
+
+## Benchmark export gotchas
+
+- Zero-energy truth must be identified from the frozen game, even if every run is
+  pending. Both Python summaries and browser filters exclude it for all methods;
+  preset identity still includes the originally selected game IDs.
+- A public reproduction ZIP is a separate export path from the website. Do not
+  retain raw estimator exception messages in either: they can contain local paths.

@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const palette = ["#167c69", "#4c65bd", "#bf7538", "#965fa6", "#64842e", "#a94863"];
 let data, selectedRows = [];
 const mean = values => values.reduce((a, b) => a + b, 0) / values.length;
-const median = values => { const a = [...values].sort((a,b) => a-b); return (a[Math.floor((a.length-1)/2)] + a[Math.floor(a.length/2)]) / 2; };
+
 const format = n => Number.isFinite(n) ? n.toPrecision(4) : "—";
 const target = game => `${game.index} · order ${game.order}`;
 function options(id, values, all) {
@@ -28,65 +28,108 @@ function selection() {
   const games = data.games.filter(g => target(g) === $("target").value && (!$("family").value || g.family === $("family").value) && (!$("game").value || g.id === $("game").value) && g.n_players >= Number($("minPlayers").value) && g.n_players <= Number($("maxPlayers").value));
   const methods = [...$("methods").selectedOptions].map(o => o.value);
   const budgets = data.suite.budgets.filter(b => !$("budget").value || b === Number($("budget").value));
-  const ids = new Set(games.map(g => g.id));
-  const rows = data.records.filter(r => ids.has(r.game_id) && methods.includes(r.method) && budgets.includes(r.budget));
-  return {games, methods, budgets, rows};
-}
-function summary(rows, planned) {
-  const good = rows.filter(r => r.status === "ok" && Number.isFinite(r.nmse));
-  return {average: mean(good.map(r => r.nmse)), median: median(good.map(r => r.nmse)), valid: good.length, planned, failed: rows.filter(r => r.status === "failed").length, unsupported: rows.filter(r => r.status === "unsupported").length, missing: planned-rows.length, complete: planned > 0 && good.length === planned};
-}
-function render() {
-  const s = selection(), planned = s.games.length * s.budgets.length * data.suite.seeds.length;
-  selectedRows = s.rows;
-  $("gameDetails").textContent = s.games.map(g => `${g.id}: ${g.n_players} ${g.metadata.player_unit || "feature"} players${g.metadata.active_players !== undefined ? ` (${g.metadata.active_players} active)` : ""}`).join(" · ");
-  $("panelSummary").textContent = `${s.games.length} games · ${s.budgets.length} budgets · ${data.suite.seeds.length} seeds`;
-  const summaries = s.methods.map(method => ({method, ...summary(s.rows.filter(r => r.method === method), planned)})).sort((a,b) => Number(b.complete)-Number(a.complete) || a.average-b.average);
-  $("ranking").replaceChildren();
-  let rank = 0;
-  summaries.forEach(item => {
-    const tr = document.createElement("tr");
-    const cells = [item.complete ? ++rank : "Unranked", item.method, item.complete ? format(item.average) : "—", item.complete ? format(item.median) : "—", `${item.valid} / ${item.planned}`, `${item.failed} / ${item.unsupported} / ${item.missing}`];
-    cells.forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.append(td); });
-    $("ranking").append(tr);
+  const cells = games.flatMap(g => {
+    const cap = $("cap").value === "" ? null : Number($("cap").value) * ($("capUnits").value === "perPlayer" ? g.n_players : 1);
+    const allowed = cap === null ? budgets : [Math.max(-1, ...budgets.filter(b => b <= cap))];
+    return allowed.flatMap(budget => data.suite.seeds.map(seed => ({game_id:g.id,budget,seed})));
   });
-  const budgetSeries = s.methods.map(method => ({name: method, points: s.budgets.flatMap(budget => {
-    const rows = s.rows.filter(r => r.method === method && r.budget === budget);
-    const item = summary(rows, s.games.length * data.suite.seeds.length);
-    return item.complete ? [{x: budget, y: item.average}] : [];
-  })}));
-  chart("budgetChart", budgetSeries, "Requested coalition budget");
-  const timeSeries = [];
-  s.methods.forEach(method => [...new Set(s.rows.filter(r => r.method === method).map(r => r.run_id))].forEach(run => {
-    const points = s.budgets.flatMap(budget => {
-      const rows = s.rows.filter(r => r.method === method && r.budget === budget && r.run_id === run);
-      const item = summary(rows, s.games.length * data.suite.seeds.length);
-      return item.complete && rows.every(r => Number.isFinite(r.seconds)) ? [{x: mean(rows.map(r => r.seconds)), y: item.average}] : [];
-    });
-    if (points.length) timeSeries.push({name: `${method} · ${run.slice(0,7)}`, points});
-  }));
-  chart("timeChart", timeSeries, "Mean measured seconds (diagnostic)");
+  const keys = new Set(cells.map(cellKey));
+  const rows = data.records.filter(r => methods.includes(r.method) && keys.has(cellKey(r)));
+  // A zero-energy game is excluded for every method, never selectively by estimator.
+  const zero = new Set([...data.records.filter(r => r.zero_truth_energy).map(r => r.game_id), ...data.games.filter(g=>g.metadata.zero_truth_energy).map(g=>g.id)]);
+  return {panel_ids:games.map(g=>g.id), games:games.filter(g => !zero.has(g.id)), methods, budgets, rows:rows.filter(r => !zero.has(r.game_id)), cells:cells.filter(r => !zero.has(r.game_id)), excluded:games.filter(g => zero.has(g.id)).length};
 }
-function chart(id, series, xlabel) {
+const cellKey = r => JSON.stringify([r.game_id,r.budget,r.seed]);
+function weightedCells(s) {
+  const families = [...new Set(s.games.map(g => g.family))];
+  const weights = new Map();
+  s.games.forEach(g => {
+    const family = s.games.filter(x => x.family === g.family), strata = [...new Set(family.map(x => x.stratum))];
+    const count = family.filter(x => x.stratum === g.stratum).length, cells = s.cells.filter(c => c.game_id === g.id);
+    cells.forEach(c => weights.set(cellKey(c), 1 / families.length / strata.length / count / cells.length));
+  });
+  return weights;
+}
+function summary(rows, s) {
+  const good = rows.filter(r => r.status === "ok" && Number.isFinite(r.nmse)), weights = weightedCells(s);
+  let cumulative=0, median=null;
+  [...good].sort((a,b)=>a.nmse-b.nmse).forEach(r => { cumulative += weights.get(cellKey(r)); if(median === null && cumulative >= .5-1e-12) median=r.nmse; });
+  return {average:good.reduce((sum,r)=>sum+r.nmse*weights.get(cellKey(r)),0), median, valid:good.length, planned:s.cells.length, failed:rows.filter(r=>r.status==="failed").length, unsupported:rows.filter(r=>r.status==="unsupported").length, missing:s.cells.length-rows.length, complete:s.cells.length>0 && good.length===s.cells.length};
+}
+const same = (a,b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+function render() {
+  const s = selection(); selectedRows=s.rows;
+  const preset = (data.presets || []).find(p => same(p.game_ids,s.panel_ids) && same(p.methods,s.methods) && same(p.budgets,s.budgets) && s.cells.length === s.games.length*s.budgets.length*data.suite.seeds.length);
+  $("gameDetails").textContent=s.games.map(g=>`${g.id}: ${g.n_players} ${g.metadata.player_unit || "feature"} players${g.metadata.active_players !== undefined ? ` (${g.metadata.active_players} active)` : ""}`).join(" · ");
+  $("panelSummary").textContent=`${s.games.length} games · ${s.cells.length} planned cells per method · ${s.excluded} zero-energy games excluded`;
+  const summaries=s.methods.map(method=>({method,...summary(s.rows.filter(r=>r.method===method),s)})).sort((a,b)=>Number(b.complete)-Number(a.complete)||a.average-b.average);
+  $("ranking").replaceChildren(); let rank=0;
+  summaries.forEach(item=>{
+    const stats=preset?.rows.find(r=>r.method===item.method);
+    const cells=[item.complete?++rank:"Unranked",item.method,item.complete?format(item.average):"—",item.complete?format(item.median):"—",format(stats?.elo),`${item.valid} / ${item.planned}`,`${item.failed} / ${item.unsupported} / ${item.missing}`];
+    appendRow("ranking",cells);
+  });
+  $("statisticsNote").textContent=preset ? `Elo-style ratings use a batch Bradley–Terry fit, centered at 1000; they are specific to this method set and panel. ${preset.uncertainty.reason || "Exploratory paired cluster intervals are available in the exported data."}` : "Custom panel: weighted summaries and paired comparisons are shown. Elo and release history require a precomputed target/family/budget preset with the full method set.";
+  $("failures").replaceChildren(); const failures=new Map();
+  s.rows.filter(r=>r.status!=="ok").forEach(r=>{const key=`${r.method}: ${r.status}${r.error_type?` (${r.error_type})`:""}`;failures.set(key,(failures.get(key)||0)+1);});
+  for(const [description,count] of failures){const item=document.createElement("li");item.textContent=`${description} — ${count} run(s)`;$("failures").append(item);}
+  const slice = budget => ({...s,cells:s.cells.filter(c=>c.budget===budget)});
+  const budgetSeries=s.methods.map(method=>({name:method,points:s.budgets.flatMap(budget=>{
+    const panel=slice(budget); if(panel.cells.length!==s.games.length*data.suite.seeds.length) return [];
+    const item=summary(s.rows.filter(r=>r.method===method&&r.budget===budget),panel);
+    return item.complete?[{x:budget,y:item.average}]:[];
+  })}));
+  chart("budgetChart",budgetSeries,"Requested coalition budget");
+  const timeSeries=[];
+  s.methods.forEach(method=>[...new Set(s.rows.filter(r=>r.method===method).map(r=>r.run_id))].forEach(run=>{
+    const points=s.budgets.flatMap(budget=>{
+      const panel=slice(budget);if(panel.cells.length!==s.games.length*data.suite.seeds.length)return [];
+      const rows=s.rows.filter(r=>r.method===method&&r.budget===budget&&r.run_id===run),item=summary(rows,panel),weights=weightedCells(panel);
+      return item.complete&&rows.every(r=>Number.isFinite(r.seconds))?[{x:rows.reduce((sum,r)=>sum+r.seconds*weights.get(cellKey(r)),0),y:item.average}]:[];
+    });if(points.length)timeSeries.push({name:`${method} · ${run.slice(0,7)}`,points});
+  }));
+  chart("timeChart",timeSeries,"Weighted mean seconds (diagnostic)");
+  $("pairs").replaceChildren();const eligible=summaries.filter(r=>r.complete),weights=weightedCells(s);
+  eligible.forEach((a,i)=>eligible.slice(i+1).forEach(b=>{
+    const byCell=new Map(s.rows.filter(r=>r.method===b.method).map(r=>[cellKey(r),r.nmse]));let wins=0,ties=0,losses=0;
+    s.rows.filter(r=>r.method===a.method).forEach(r=>{const other=byCell.get(cellKey(r)),w=weights.get(cellKey(r));if(Math.abs(r.nmse-other)<=1e-12+.01*Math.max(r.nmse,other))ties+=w;else if(r.nmse<other)wins+=w;else losses+=w;});
+    appendRow("pairs",[a.method,b.method,[wins,ties,losses].map(n=>(100*n).toFixed(1)+"%").join(" / ")]);
+  }));
+  const metric=$("historyMetric").value,history=preset?.history,end=new Date().getUTCFullYear()+new Date().getUTCMonth()/12;
+  const year=date=>{const d=new Date(date+"T00:00:00Z");return d.getUTCFullYear()+(d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/31557600000;};
+  const historySeries=(history?.methods||[]).map(m=>({name:m.method,points:[{x:year(m.date),y:m[metric]},{x:end,y:m[metric]}]}));
+  const frontier=history?.[metric]||[],steps=[];
+  frontier.forEach((p,i)=>{if(i)steps.push({x:year(p.date),y:frontier[i-1].value});steps.push({x:year(p.date),y:p.value});});
+  if(steps.length){steps.push({x:end,y:steps.at(-1).y});historySeries.push({name:"Best so far",color:"#162e35",points:steps});}
+  chart("historyChart",historySeries,"Publication year",true,metric);
+  $("historySources").replaceChildren();
+  (history?.methods||[]).forEach(m=>{const a=document.createElement("a");if(!/^https:\/\/arxiv\.org\//.test(m.url))return;a.href=m.url;a.textContent=`${m.method} (${m.date})`;a.rel="noopener";$("historySources").append(a,document.createTextNode(" · "));});
+  if(history?.unknown_dates?.length)$("historySources").append(document.createTextNode(`Dates unverified: ${history.unknown_dates.join(", ")}.`));
+  const workers=s.rows.map(r=>r.worker).filter(Boolean);
+  $("hardware").textContent=workers.length?`Measured workers: ${[...new Set(workers.map(w=>w.cpu_model))].join("; ")}. Profiles: ${[...new Set(s.rows.map(r=>r.timing_profile).filter(Boolean))].join(", ")}. Per-run placement and thread details are included in JSON downloads.`:"Worker hardware was not recorded in this older result.";
+}
+function appendRow(id,values){const tr=document.createElement("tr");values.forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.append(td);});$(id).append(tr);}
+function chart(id, series, xlabel, dates=false, metric="mean") {
   const box = $(id); box.replaceChildren();
   const points = series.flatMap(s => s.points);
   if (!points.length) { const p = document.createElement("p"); p.className = "caption"; p.textContent = "No complete comparison panel for these filters."; box.append(p); return; }
   const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 480 275"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `Mean normalized error versus ${xlabel}`);
-  const xMax = Math.max(...points.map(p => p.x), 1e-12) * 1.08, yMax = Math.max(...points.map(p => p.y), 1e-12) * 1.08;
-  const x = value => 62 + value / xMax * 393, y = value => 228 - value / yMax * 205;
+  const xMin = dates ? Math.floor(Math.min(...points.map(p=>p.x))) : 0;
+  const xMax = dates ? Math.max(xMin+1,...points.map(p=>p.x)) : Math.max(...points.map(p => p.x), 1e-12) * 1.08, yMax = Math.max(...points.map(p => p.y), 1e-12) * 1.08;
+  const x = value => 62 + (value-xMin) / (xMax-xMin) * 393, y = value => 228 - value / yMax * 205;
   function element(tag, attributes, text) { const node = document.createElementNS(ns, tag); Object.entries(attributes).forEach(([key,value]) => node.setAttribute(key,value)); if (text !== undefined) node.textContent = text; svg.append(node); return node; }
   for (let i=0; i<=4; i++) {
-    const yy = y(yMax*i/4), xx = x(xMax*i/4);
+    const yy = y(yMax*i/4), xx = x(xMin+(xMax-xMin)*i/4);
     element("line", {x1:62,x2:455,y1:yy,y2:yy,stroke:"#e1e8e3"});
     element("text", {x:55,y:yy+4,"text-anchor":"end","font-size":10,fill:"#647773"}, (yMax*i/4).toPrecision(2));
-    element("text", {x:xx,y:246,"text-anchor":"middle","font-size":10,fill:"#647773"}, (xMax*i/4).toPrecision(2));
+    element("text", {x:xx,y:246,"text-anchor":"middle","font-size":10,fill:"#647773"}, dates ? String(Math.floor(xMin+(xMax-xMin)*i/4)) : (xMax*i/4).toPrecision(2));
   }
   element("text", {x:255,y:272,"text-anchor":"middle","font-size":11,fill:"#52666a"}, xlabel);
-  element("text", {x:62,y:12,"font-size":11,fill:"#52666a"}, "Mean nMSE ↓");
+  element("text", {x:62,y:12,"font-size":11,fill:"#52666a"}, `${metric === "median" ? "Median" : "Mean"} nMSE ↓`);
   const legend = document.createElement("div"); legend.className = "legend";
   series.forEach((s,i) => {
-    const color = palette[i % palette.length];
+    const color = s.color || palette[i % palette.length];
     element("polyline", {points:s.points.map(p => `${x(p.x)},${y(p.y)}`).join(" "),fill:"none",stroke:color,"stroke-width":2});
     s.points.forEach(p => { const dot = element("circle", {cx:x(p.x),cy:y(p.y),r:4,fill:color}); const title = document.createElementNS(ns,"title"); title.textContent = `${s.name}: ${format(p.x)}, nMSE ${format(p.y)}`; dot.append(title); });
     const label = document.createElement("span"); label.style.borderColor = color; label.textContent = s.name; legend.append(label);
@@ -96,11 +139,11 @@ function chart(id, series, xlabel) {
 function download(kind) {
   const s = selection();
   let content, type;
-  if (kind === "json") { content = JSON.stringify({snapshot_id:data.snapshot_id, selection:{games:s.games.map(g=>g.id), methods:s.methods, budgets:s.budgets, seeds:data.suite.seeds}, runs:data.runs, records:selectedRows}, null, 2); type = "application/json"; }
-  else { const fields = ["game_id","method","budget","seed","status","nmse","mse","queries","seconds","run_id"]; const quote = value => `"${String(value ?? "").replaceAll('"','""')}"`; content = [fields.join(","), ...selectedRows.map(row => fields.map(field => quote(row[field])).join(","))].join("\n"); type="text/csv"; }
+  if (kind === "json") { content = JSON.stringify({snapshot_id:data.snapshot_id, selection:{games:s.games.map(g=>g.id), methods:s.methods, budgets:s.budgets, cells:s.cells, seeds:data.suite.seeds}, runs:data.runs, records:selectedRows}, null, 2); type = "application/json"; }
+  else { const fields = ["game_id","method","budget","seed","status","nmse","mse","queries","seconds","timing_profile","run_id"]; const quote = value => `"${String(value ?? "").replaceAll('"','""')}"`; content = [fields.join(","), ...selectedRows.map(row => fields.map(field => quote(row[field])).join(","))].join("\n"); type="text/csv"; }
   const url = URL.createObjectURL(new Blob([content], {type})), link = document.createElement("a"); link.href=url; link.download=`shapiq-selection.${kind}`; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-["target","family","game","minPlayers","maxPlayers","budget","methods"].forEach(id => $(id).addEventListener("change", () => {if(data) render();}));
+["target","family","game","minPlayers","maxPlayers","budget","methods","cap","capUnits","historyMetric"].forEach(id => $(id).addEventListener("change", () => {if(data) render();}));
 $("downloadJson").addEventListener("click", () => {if(data) download("json");});
 $("downloadCsv").addEventListener("click", () => {if(data) download("csv");});
 $("upload").addEventListener("change", async event => { try { const file=event.target.files[0]; if(file) load(JSON.parse(await file.text())); } catch(error) { $("notice").textContent=error.message; } });

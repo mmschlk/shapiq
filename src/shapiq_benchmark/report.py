@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 
 from shapiq_benchmark.runner import identity
+from shapiq_benchmark.summary import summarize
 
 SITE_DIR = Path(__file__).resolve().parents[2] / "benchmark" / "site"
 
@@ -51,6 +52,8 @@ METADATA_FIELDS = (
     "active_players_definition",
     "class_index",
     "point_label",
+    "cluster_id",
+    "zero_truth_energy",
 )
 
 
@@ -123,9 +126,12 @@ def merge_results(paths: list[Path]) -> dict:
         {
             **{key: game[key] for key in GAME_FIELDS},
             "metadata": {
-                key: value
-                for key, value in game.get("metadata", {}).items()
-                if key in METADATA_FIELDS
+                **{
+                    key: value
+                    for key, value in game.get("metadata", {}).items()
+                    if key in METADATA_FIELDS
+                },
+                "zero_truth_energy": game["truth"].get("energy") == 0,
             },
         }
         for game in first["games"]
@@ -167,6 +173,7 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
     if public and any(method.get("private", True) for method in data["methods"].values()):
         message = "Public reports cannot include private candidate methods."
         raise ValueError(message)
+    data["presets"] = summarize(data)
     output.mkdir(parents=True, exist_ok=True)
     for name in ("index.html", "app.js", "style.css"):
         source, destination = assets / name, output / name

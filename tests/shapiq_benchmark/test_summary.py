@@ -1,0 +1,162 @@
+"""Fixed-panel aggregation must resist imbalance, missingness, and result ordering."""
+
+from __future__ import annotations
+
+import copy
+
+import numpy as np
+import pytest
+
+from shapiq_benchmark.summary import summarize, weighted_median
+
+
+def fixture_data(games: list[dict], methods: dict[str, list[float]]) -> dict:
+    """Build one complete outcome per method, game, and seed."""
+    return {
+        "games": [
+            {"id": str(i), "index": "SV", "order": 1, **game} for i, game in enumerate(games)
+        ],
+        "methods": {name: {} for name in methods},
+        "suite": {"budgets": [16], "seeds": [0, 1]},
+        "records": [
+            {
+                "game_id": str(i),
+                "method": method,
+                "budget": 16,
+                "seed": seed,
+                "status": "ok",
+                "nmse": value,
+            }
+            for method, values in methods.items()
+            for i, value in enumerate(values)
+            for seed in (0, 1)
+        ],
+    }
+
+
+def overall(data: dict, *, draws: int = 20) -> dict:
+    """Select the full-family preset."""
+    return next(
+        panel for panel in summarize(data, bootstrap_draws=draws) if panel["family"] is None
+    )
+
+
+def test_equal_family_weight_and_lower_weighted_median() -> None:
+    """Adding more points to one family must not let it dominate the overall score."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "a"}, *[{"family": "b", "stratum": "b"}] * 3],
+        {"KernelSHAP": [0, 10, 10, 10]},
+    )
+    row = overall(data)["rows"][0]
+    assert row["mean"] == pytest.approx(5)
+    assert row["median"] == 0
+    assert weighted_median(np.array([1, 9]), np.array([0.5, 0.5])) == 1
+
+
+def test_equal_stratum_weight() -> None:
+    """Many instances within a stratum do not increase that stratum's influence."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one"}, *[{"family": "a", "stratum": "two"}] * 3],
+        {"KernelSHAP": [2, 6, 6, 6]},
+    )
+    assert overall(data)["rows"][0]["mean"] == pytest.approx(4)
+
+
+def test_incomplete_method_cannot_change_ratings_or_history() -> None:
+    """Selective successful cells cannot change the complete comparison pool."""
+    data = fixture_data([{"family": "a", "stratum": "one"}], {"KernelSHAP": [0.2], "SVARM": [0.1]})
+    before = overall(data)
+    data["methods"]["SHAPIQ"] = {}
+    data["records"].append(
+        {"game_id": "0", "method": "SHAPIQ", "budget": 16, "seed": 0, "status": "ok", "nmse": 0}
+    )
+    after = overall(data)
+    assert before["history"] == after["history"]
+
+    def ratings(result: dict) -> dict:
+        return {row["method"]: row["elo"] for row in result["rows"] if row["eligible"]}
+
+    assert ratings(before) == ratings(after)
+    assert next(row for row in after["rows"] if row["method"] == "SHAPIQ")["mean"] is None
+
+
+def test_ties_and_input_order_do_not_change_elo() -> None:
+    """Batch ratings remain symmetric and independent of insertion or match order."""
+    data = fixture_data([{"family": "a", "stratum": "one"}], {"KernelSHAP": [1], "SVARM": [1.005]})
+    result = overall(data)
+    assert [row["elo"] for row in result["rows"]] == pytest.approx([1000, 1000])
+    assert result["matches"][0]["ties"] == 2
+    data["records"].reverse()
+    data["methods"] = dict(reversed(data["methods"].items()))
+    assert overall(data) == result
+
+
+def test_unknown_dates_do_not_set_frontier() -> None:
+    """An excellent but undated estimator stays in accuracy rankings, outside history."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one"}], {"KernelSHAP": [1], "SVARM": [0.5], "Undated": [0.01]}
+    )
+    history = overall(data)["history"]
+    assert history["unknown_dates"] == ["Undated"]
+    assert [point["value"] for point in history["mean"]] == [1, 0.5]
+    assert history["mean"][0]["date"] == "2017-05-22"
+    assert history["methods"][0]["url"] == "https://arxiv.org/abs/1705.07874"
+
+
+def test_zero_truth_is_excluded_for_every_method() -> None:
+    """Degenerate games do not become selective omissions or automatic wins."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one"}] * 2, {"KernelSHAP": [0, 2], "SVARM": [0, 1]}
+    )
+    for row in data["records"]:
+        if row["game_id"] == "0":
+            row.update(nmse=None, zero_truth_energy=True)
+    result = overall(data)
+    assert result["excluded_zero_energy_games"] == ["0"]
+    assert all(row["eligible"] and row["planned"] == 2 for row in result["rows"])
+
+
+def test_cluster_intervals_require_replication() -> None:
+    """Explanation points from one fitted model do not manufacture independent units."""
+    games = [{"family": "a", "stratum": "one"}] * 3
+    data = fixture_data(games, {"KernelSHAP": [1, 2, 4], "SVARM": [4, 2, 1]})
+    assert overall(data)["uncertainty"]["available"] is False
+    replicated = copy.deepcopy(data)
+    for i, game in enumerate(replicated["games"]):
+        game["metadata"] = {"cluster_id": str(i)}
+    result = overall(replicated)
+    assert result["uncertainty"]["available"] is True
+    assert all(row["ci"]["mean"][0] < row["ci"]["mean"][1] for row in result["rows"])
+    assert all(row["ci"]["elo"][0] < row["ci"]["elo"][1] for row in result["rows"])
+
+
+def test_bootstrap_keeps_budget_grid_fixed_and_pairs_methods() -> None:
+    """Adding a fixed offset at a second budget shifts every paired mean draw by half."""
+    games = [
+        {"family": "a", "stratum": "one", "metadata": {"cluster_id": str(i)}} for i in range(3)
+    ]
+    data = fixture_data(games, {"KernelSHAP": [1, 2, 4], "SVARM": [1, 2, 4]})
+    original = overall(data)
+    assert original["rows"][0]["ci"] == original["rows"][1]["ci"]
+    data["suite"]["budgets"] = [16, 32]
+    data["records"] += [{**row, "budget": 32, "nmse": row["nmse"] + 100} for row in data["records"]]
+    panel = next(
+        item
+        for item in summarize(data, bootstrap_draws=20)
+        if item["family"] is None and item["budgets"] == [16, 32]
+    )
+    assert panel["rows"][0]["mean"] == pytest.approx(original["rows"][0]["mean"] + 50)
+    assert panel["rows"][0]["ci"]["mean"] == pytest.approx(
+        np.array(original["rows"][0]["ci"]["mean"]) + 50
+    )
+
+
+def test_preset_identity_includes_snapshot_and_method_source() -> None:
+    """Identical labels cannot give changed benchmark or estimator versions the same ID."""
+    data = fixture_data([{"family": "a", "stratum": "one"}], {"KernelSHAP": [1]})
+    old = overall(data)["id"]
+    data["snapshot_id"] = "new-snapshot"
+    newer = overall(data)["id"]
+    assert newer != old
+    data["methods"]["KernelSHAP"] = {"source_sha256": "changed"}
+    assert overall(data)["id"] != newer
