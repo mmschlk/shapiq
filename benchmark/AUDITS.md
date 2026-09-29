@@ -84,3 +84,12 @@ Reviewer: `games_benchmarks`, independent of all implementation authors.
 - Final review approved the archive sanitization: all 13 bundle tests passed, and
   the reviewer's original private-path reproducer confirmed no leak in any ZIP
   member and no mutation of the source results. No audit blockers remain.
+- Final verification: `uv run pytest tests/shapiq_benchmark -q` passed all 76 tests,
+  including the existing setup and optional-dependency checks. Required all-file
+  pre-commit passes every formatting/lint hook; its type-check hook still reports
+  30 pre-existing optional-import/unused-ignore diagnostics. Focused type checks
+  pass for all seven new modules.
+- Published preview data was regenerated at clean source commit `4fd1eeb6`.
+  Slurm job `360547` completed in 4m35s with 60 valid and 12 unsupported cells;
+  every accuracy result exactly matched the previously audited campaign.
+  The release archive checksums and website snapshot identity were verified.

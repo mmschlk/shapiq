@@ -100,7 +100,7 @@ function render() {
   const historySeries=(history?.methods||[]).map(m=>({name:m.method,points:[{x:year(m.date),y:m[metric]},{x:end,y:m[metric]}]}));
   const frontier=history?.[metric]||[],steps=[];
   frontier.forEach((p,i)=>{if(i)steps.push({x:year(p.date),y:frontier[i-1].value});steps.push({x:year(p.date),y:p.value});});
-  if(steps.length){steps.push({x:end,y:steps.at(-1).y});historySeries.push({name:"Best so far",color:"#162e35",points:steps});}
+  if(steps.length){steps.push({x:end,y:steps.at(-1).y});historySeries.push({name:"Best dated result",color:"#162e35",points:steps});}
   chart("historyChart",historySeries,"Publication year",true,metric);
   $("historySources").replaceChildren();
   (history?.methods||[]).forEach(m=>{const a=document.createElement("a");if(!/^https:\/\/arxiv\.org\//.test(m.url))return;a.href=m.url;a.textContent=`${m.method} (${m.date})`;a.rel="noopener";$("historySources").append(a,document.createTextNode(" · "));});
