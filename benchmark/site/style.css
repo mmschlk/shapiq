@@ -927,16 +927,8 @@ footer a {
   gap: 15px;
   margin: 0 0 18px;
 }
-.chartControls > label:first-child {
-  max-width: 370px;
-  flex: 1;
-}
-.chartControls > label:first-child select {
-  width: 100%;
-  font-size: 11px;
-  background: #f8faff;
-}
-.chartControls #chartGameMeta {
+
+.chartControls #chartPanelMeta {
   font-size: 10px;
   color: var(--muted);
   margin-right: auto;
@@ -1023,10 +1015,8 @@ footer a {
   .chartControls {
     flex-wrap: wrap;
   }
-  .chartControls > label:first-child {
-    max-width: 320px;
-  }
-  .chartControls #chartGameMeta {
+
+  .chartControls #chartPanelMeta {
     font-size: 9px;
   }
   .chartLimitLabel {
@@ -1039,11 +1029,8 @@ footer a {
     margin-top: 0;
     margin-bottom: 17px;
   }
-  .chartControls > label:first-child {
-    flex-basis: 100%;
-    max-width: none;
-  }
-  .chartControls #chartGameMeta {
+
+  .chartControls #chartPanelMeta {
     flex-basis: 100%;
     margin-bottom: 2px;
   }
@@ -1059,15 +1046,6 @@ footer a {
   }
 }
 
-.rankingControl select {
-  font-size: 10px;
-  border: 1px solid var(--line);
-  background: #f8faff;
-  padding: 7px 10px;
-}
-.tableHeading .rankingControl {
-  margin-left: auto;
-}
 #ranking tr.dimmed {
   opacity: 0.8;
 }
@@ -1091,15 +1069,32 @@ footer a {
   margin-left: auto;
   cursor: pointer;
 }
-.variantToggle input {
-  accent-color: var(--blue);
-}
-.tableHeading .rankingControl {
-  margin-left: 0;
-}
 #ranking td:nth-child(3),
 th:nth-child(3) {
   text-align: left;
   font-size: 10px;
   color: var(--muted);
+}
+
+.variantToggle select {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  background: #f8faff;
+  padding: 8px 10px;
+}
+th button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+th button:hover,
+th[aria-sort="ascending"],
+th[aria-sort="descending"] {
+  color: var(--blue);
+}
+.sortArrow {
+  margin-left: 3px;
 }
