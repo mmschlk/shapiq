@@ -85,6 +85,47 @@ failed runs. Tree probabilities, empirical background rows, and the KNN utility
 are explicit in each snapshot. These panels illustrate scale; they do not yet
 represent all models, datasets, or applications.
 
+## Run a bounded campaign and resume it
+
+```bash
+uv run python -m shapiq_benchmark.runner --list-methods
+uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/resumable --max-runs 3
+uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/resumable --resume
+```
+
+Each cell runs in a separate subprocess. `--timeout` caps the whole worker,
+including imports and game reconstruction; `seconds` measures estimator
+construction plus approximation only. `--memory-gb` optionally caps worker virtual
+address space on POSIX. Workers use one native thread. A failed or timed-out cell
+is recorded and does not stop the next cell. Completed failures are retained on
+resume; use a new output directory after fixing a method or changing limits.
+
+`--max-runs` and `--max-seconds` bound each campaign invocation. A cell needs its
+full time allowance before starting; otherwise it remains pending for resume.
+Existing outputs require `--resume`, with matching snapshot, code, methods,
+software, hardware, and per-cell limits. Checkpoints are written after each cell.
+The [catalog suite](suites/catalog.json) lists all 22 public estimators for a small
+coverage probe. Optional backends are not installed automatically; unavailable
+implementations and unsupported targets remain visible. The common adapter passes
+the requested target/order and seed to supported constructor parameters; other
+parameters keep library defaults. In particular, the SV configuration of
+`kADDSHAP` uses order one, not its default order-two target. These are explicit
+configurations, not a search for each paper's best tuned result.
+
+For a short controlled Hopper run, submit from the repository root:
+
+```bash
+mkdir -p benchmark/results
+sbatch --output=benchmark/results/timing-%j.log benchmark/hopper.sbatch benchmark/results/structured benchmark/results/hopper-structured
+```
+
+The script reserves `himem02` exclusively and binds one physical core. The worker
+checks the EPYC 9754 model, affinity, full-node allocation, and thread settings.
+Results record actual worker placement, Slurm job ID, and native thread pools.
+These checks verify the execution configuration; the preview still labels times
+as diagnostic pending a larger timing qualification study. Other machines use
+the default diagnostic profile and are not silently pooled with Hopper results.
+
 ## Implementation phases
 
 1. Frozen local pilot, measured budgets, nMSE, JSON/CSV, and local candidate adapter.

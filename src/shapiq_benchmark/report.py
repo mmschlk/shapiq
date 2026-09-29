@@ -26,6 +26,9 @@ ROW_FIELDS = (
     "timing_scope",
     "official_timing",
     "zero_truth_energy",
+    "wall_seconds",
+    "timing_profile",
+    "worker",
     "error_type",
 )
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
@@ -89,7 +92,7 @@ def merge_results(paths: list[Path]) -> dict:
             for field in ("nmse", "mse", "seconds", "queries", "requested_queries"):
                 value = row.get(field)
                 if value is not None and (
-                    not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0
+                    not isinstance(value, int | float) or not math.isfinite(value) or value < 0
                 ):
                     message = f"Invalid numeric result: {field}."
                     raise ValueError(message)
@@ -141,7 +144,7 @@ def merge_results(paths: list[Path]) -> dict:
             name: {
                 key: value
                 for key, value in metadata.items()
-                if key in ("source_sha256", "private", "factory")
+                if key in ("source_sha256", "software_sha256", "private", "factory")
             }
             for name, metadata in methods.items()
         },

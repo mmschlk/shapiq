@@ -66,3 +66,13 @@ uv run pre-commit run --all-files
 - Nearest-neighbor explanation games use training rows as players, not features.
   Unweighted KNN utility divides by fixed `k`, even for coalitions smaller than
   `k`; preserve that rule when comparing with `KNNExplainer` ground truth.
+- Hopper's login host has a different CPU model from its Slurm compute nodes.
+  Record worker affinity and CPU model. `OverSubscribe=NO` alone does not prove
+  an exclusive node: also verify that the job owns the node's full CPU count.
+  Slurm logs that must be read from the login host need a shared workspace path;
+  `/tmp` on a compute node is node-local.
+- `RegressionMSR.valid_indices` is inherited from `ProxySHAP` and is broader than
+  its constructor's actual SV/BV support. Benchmark capability catalogs must
+  follow constructor checks, not inherited registries alone. `kADDSHAP` with
+  `max_order=1` returns SV; its default order-two configuration is a different
+  target/configuration and must not be silently relabeled as SV.

@@ -1,7 +1,8 @@
 # An interactive benchmark for Shapley estimators
 
-**Status: proposal for discussion; this branch adds only this plan.** No benchmark
-results, website, or deployment have been created. Inventory checked on 2026-09-29
+**Status: design reference.** Implementation and runnable commands are documented
+in [README.md](README.md); this document also retains deferred research ideas.
+Inventory checked on 2026-09-29
 against shapiq commit `6321cbdaefee7af7a4bea58ca15e7cf2450f4691`.
 
 [Discuss the proposal in issue #601](https://github.com/mmschlk/shapiq/issues/601)

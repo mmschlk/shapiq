@@ -1,0 +1,34 @@
+{
+  "name": "catalog-probe-v1",
+  "game": "california_tree",
+  "methods": [
+    "PermutationSamplingSII",
+    "PermutationSamplingSTII",
+    "PermutationSamplingSV",
+    "StratifiedSamplingSV",
+    "OwenSamplingSV",
+    "KernelSHAP",
+    "LeverageSHAP",
+    "RegressionFSII",
+    "RegressionFBII",
+    "KernelSHAPIQ",
+    "InconsistentKernelSHAPIQ",
+    "ProxySPEX",
+    "ProxySHAP",
+    "OddSHAP",
+    "RegressionMSR",
+    "ShaplEIG",
+    "SHAPIQ",
+    "SVARM",
+    "SVARMIQ",
+    "kADDSHAP",
+    "SPEX",
+    "UnbiasedKernelSHAP"
+  ],
+  "budgets": [
+    64
+  ],
+  "seeds": [
+    0
+  ]
+}

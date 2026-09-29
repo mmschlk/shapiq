@@ -285,7 +285,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
 
 def load_game(game: dict, root: Path) -> Callable:
     """Rebuild a live oracle from verified arrays and the qualified sklearn version."""
-    from shapiq_benchmark.runner import table_game  # noqa: PLC0415 -- avoid a runner import cycle
+    from shapiq_benchmark.runner import table_game
 
     with np.load(root / game["artifact"], allow_pickle=False) as artifact:
         if game.get("oracle", "table") == "table":

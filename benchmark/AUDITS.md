@@ -42,3 +42,22 @@ Reviewer: `audit_phase1`. All blockers resolved.
 - Independently prepared 64-feature Digits tree interactions and 1,024-row KNN
   truth without large powerset tables. Small-counterpart maximum errors were
   below 4e-16 for all qualified routes. No estimator campaign at 1,024 was run.
+
+## Phase 4 — bounded campaigns and Hopper
+
+Reviewers: `audit_phase1`, with the final optional-backend diagnostic checked by
+`games_benchmarks`. All identified blockers resolved.
+
+- Checked subprocess isolation, process-group cleanup (including a child left by
+  a successful worker), time/memory limits, checkpoint locking, strict resume,
+  per-worker source verification, and actual thread/placement metadata.
+- Fixed full-node qualification, changed-source detection, worker failure handling,
+  and reservation of a full cell allowance before starting another cell.
+- Eleven campaign tests pass. A real exclusive EPYC 9754 run completed 72 cells:
+  60 successful and 12 unsupported, resumed across Slurm jobs 360541 and 360544.
+  The final reviewer independently inspected that checkpoint and worker metadata.
+- A separate 22-method catalog probe completed: 16 successful, three unsupported,
+  and three failed (two missing optional backends; one ProxySPEX worker failure).
+  Optional-backend errors now report the missing dependency directly.
+- Resource qualification is verified; runtime remains diagnostic. No estimator
+  algorithm was changed to improve its benchmark score.
