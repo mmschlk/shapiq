@@ -23,12 +23,19 @@ The recommended design is deliberately small:
    Plotly.js. GitHub Pages hosts it; no running Python service or database.
 
 Start with a working local comparison of three estimators, then publish a small
-website with a leaderboard and error-versus-budget chart. Add interactions, real
-games, controlled runtime comparisons, head-to-head ratings, and history in later
+website with a leaderboard and error-versus-budget chart. Use real games from the
+start; add interactions, controlled runtime comparisons, head-to-head ratings, and history in later
 working increments. Researchers should also be able to add an estimator **locally**, evaluate
 it on the same frozen suite, and open a private comparison report without editing
 shapiq's source or publishing anything. Start with a small, trustworthy suite, then expand through an explicit
 coverage checklist to every supported estimator and constructible game family.
+
+**Initial scope: benchmark existing games and solvers.** Use trees for large-feature
+SV and interaction panels, and unweighted KNN data valuation for large-training-set
+SV panels. Product kernels are optional existing-game coverage. New SCM integration,
+new game definitions, and new exact interaction algorithms are deferred research,
+not requirements for this website. The longer-term designs below preserve the
+research without making it a dependency of the first release.
 
 “All games at all budgets” needs a reproducible interpretation: games have
 unbounded parameter choices, exact enumeration costs grow exponentially, and some
@@ -296,11 +303,13 @@ provides a useful cross-application starting point.
 | Global predictive importance and feature selection | Features; labelled predictive loss after either masking a fixed model or retraining on selected features. | Add as separate games after defining loss, empty-coalition predictor, and deterministic fitting/evaluation. |
 | Text and image explanation | Tokens or image regions; a specified prediction under a specified masking/removal rule. | Early expansion with actual inputs, pinned pretrained models, explicit grouping and output scale. |
 
-A small representative pilot can start with **28 game instances**: 20 local
+A possible later representative pilot has **28 game instances**: 20 local
 explanations (two datasets × two model families × five held-out points), four
 grouped-data games (two datasets × two partitions), and four ensemble games
 (two datasets × two constructions). This is a scoped pilot, not evidence covering
-all applications. Use the same frozen games for SV and qualified interaction
+all applications, and is not a release prerequisite. The first release prioritizes
+existing local/tree and KNN games; grouped-data and ensemble panels can follow.
+Use the same frozen games for SV and qualified interaction
 targets. Add the high-player panels below before claiming dimensional scalability.
 
 Fit models and preprocessing on training data, select hyperparameters using
@@ -334,20 +343,45 @@ points from one fitted model must not outweigh an entire other application.
 
 ## High-player games with exact ground truth
 
-**Add large games through structured truth solvers, while keeping estimator access
-generic.** Evaluate the same real fitted model or frozen SCM through two interfaces:
+**Reuse existing games and structured truth solvers, while keeping estimator access
+generic.** Evaluate the same fitted model through two interfaces:
 `game(coalitions)` for counted estimator queries and a private exact-truth adapter
 for the evaluator. Do not enumerate or store `2^n` coalition values for these games.
 Persist the model/game recipe and exact coefficients instead. No estimator gets
 the source model, graph, truth, or a table of equivalence classes for free.
 
-### Three routes, with different readiness
+### Existing routes and deferred research
 
 | Route | Available foundation | First admitted targets | Scaling gate |
 | --- | --- | --- | --- |
 | Real fitted trees | Current `InterventionalTreeSHAPIQ` and path-dependent `QuadratureTreeSHAP`. | SV and pairwise SII/k-SII first. Interventional STII/FSII and further supported targets after separate checks. | Tree count/depth, distinct path features, background size, and output support. |
+| KNN training-data valuation | Current `KNNExplainerGame` and `KNNExplainer`. | SV only; include in the initial high-player scope. | Training-set size, feature dimension, distance computation, and estimator runtime. |
 | Real fitted product-kernel models | Current `ProductKernelGame` and `ProductKernelExplainer`. | SV now; interactions require a qualified extension. | Player count, support-vector count, numerical stability, and truth runtime. |
-| Causal intervention games | External [`exactdoshap`](https://github.com/rtealwitter/exactdoshap) class-based solver, connected through a small adapter. | SV first; implement and validate the published SII/k-SII extension separately. | Number of intervention-equivalence classes, graph/oracle cost, and output size. |
+| Causal intervention games — deferred | External [`exactdoshap`](https://github.com/rtealwitter/exactdoshap) class-based solver; integration is outside initial scope. | Future SV, then a separately implemented and validated SII/k-SII extension. | Number of intervention-equivalence classes, graph/oracle cost, and output size. |
+
+### KNN: existing high-player data valuation
+
+Reuse [`KNNExplainerGame`](../src/shapiq/explainer/nn/games/knn.py) with
+[`KNNExplainer`](../src/shapiq/explainer/nn/knn.py). Players are training examples,
+not input features. For a fixed held-out point and class, the coalition utility
+is the number of matching labels among its at most `k` nearest members, divided
+by the fixed `k`; preserve this rule even for coalitions smaller than `k`.
+The exact SV algorithm uses a distance ordering and recurrence, with `O(n log n)`
+sorting/recurrence cost plus the distance computation. It does not enumerate `2^n`.
+
+Start with one real classification dataset and a small enumerated counterpart.
+Then pilot frozen training subsets of 128, 512, and 1,024 rows before considering
+larger sets. These counts are proposed qualification points, not measured capacity.
+Freeze preprocessing, distance metric, `k`, training rows and ordering, held-out
+points, class indices, and tie behavior. Check game/solver agreement coordinatewise
+on the small case. Keep this data-valuation panel separate from feature attribution;
+the current nearest-neighbor explainers support SV only, not interaction truth.
+
+Existing threshold-neighbor and weighted-neighbor games are optional later coverage.
+Qualify their precise utilities, empty-coalition baselines, numerical behavior,
+and, for weighted KNN, discretized weights before including them. Unweighted KNN
+is sufficient for the first large-training-set panel; no new valuation game or
+exact algorithm is needed.
 
 ### Trees: the first high-player implementation
 
@@ -406,7 +440,10 @@ individual values. Gaussian-process support can follow after checking conversion
 restrictions; the current bare-RBF converter needs particular care with anisotropic
 kernels and target normalization. SVR/SVC keeps the first implementation smaller.
 
-### SCMs: reuse exact do-Shapley, with explicit tractability checks
+### SCMs: deferred research, outside the first release
+
+The following design is retained for future work. It is not an implementation
+phase or prerequisite for the benchmark website.
 
 An analytic SCM coalition function does **not** by itself remove the exponential
 Shapley summation. The relevant reuse is
@@ -479,18 +516,17 @@ cap. Fraction-of-all-coalitions is a secondary annotation here, not a practical
 default slider. Keep results separate by player band, game semantics, target,
 and model family; do not let cheap small games determine the large-game rank.
 
-Add only three explicit truth adapters to the existing benchmark machinery:
-tree, product kernel, and do-SCM. `prepare.py` calls them without `Game.precompute()`
+Start with explicit tree and unweighted-KNN truth adapters in the existing benchmark
+machinery; add product-kernel SV only as optional coverage. `prepare.py` calls them without `Game.precompute()`
 on the large game, and writes ordinary exact-value artifacts. The runner and
 local-candidate workflow stay the same. Game/truth objects must remain separate
 so caches containing truth-preparation evaluations are not available to estimators.
-Count coalition requests consistently even when equivalent SCM interventions
-share work internally; expose unique classes/simulation cost as secondary fields.
+Count coalition requests consistently even when the oracle shares work internally.
 
 Deliver in this order: **(1)** one real high-player tree game plus its small
 validation counterpart; **(2)** a small tree panel spanning player bands and SV/
-pairwise targets; **(3)** product-kernel SV, then qualified interactions;
-**(4)** do-SCM SV, then its interaction extension. Run a cost pilot for each before
+pairwise targets; **(3)** unweighted-KNN SV on increasing training-set sizes;
+**(4)** optionally product-kernel SV using the existing solver. Run a cost pilot for each before
 expanding. Keep synthetic structural stress tests separately weighted from real
 fitted-model or learned/domain-based SCM panels. No full high-player campaign is
 executed by this planning document.
@@ -919,9 +955,9 @@ runs resume, runtime profiles stay separate, and public files remain untouched.
 | Suite | Proposed scope | Purpose |
 | --- | --- | --- |
 | Smoke | Begin with three SV methods and tiny deterministic games; extend qualification cases as each method/target is added. | Catch wrong targets, hidden query use, malformed outputs, and broken adapters. Not published as performance evidence. |
-| Pilot | The small real-workload panel above, plus a high-player tree candidate; 3–5 budgets and 3 seeds initially. Keep synthetic correctness checks separate. | Measure truth cost, per-method runtime/memory, dependency viability, and storage. |
-| Core v1 | Qualified SV and pairwise k-SII on local tabular, grouped-data and ensemble panels; include a qualified high-player tree panel. Add kernels/SCMs as each exact route passes qualification. | First substantive comparison after the small public preview; explicit measured/planned/blocked coverage. No requirement to finish all views or methods before publishing. |
-| Extended releases | More game families, all datasets that pass qualification, higher orders, wider kernel/SCM panels, image/language/TabPFN cases, other indices. | Expand toward full catalog coverage without weakening ground-truth rules. |
+| Pilot | One small real local game, then one high-player tree and one unweighted-KNN candidate; 3 budgets and 3 seeds initially. Keep synthetic correctness checks separate. | Measure truth cost, per-method runtime/memory, dependency viability, and storage. |
+| Core v1 | Local/tree SV and pairwise k-SII, plus high-player KNN SV. Product-kernel SV is optional. | First substantive comparison after the small public preview; explicit measured/planned/blocked coverage. No requirement to finish all views or methods before publishing. |
+| Extended releases | Grouped-data and ensemble panels, other existing families/datasets/targets as exact truth permits. New SCM integration and exact algorithms require separate research scope. | Expand coverage without making new game development a website dependency. |
 
 Use native feature counts for the real-data pilot, and the declared group/member
 counts for valuation/ensemble games. Start with budget caps
@@ -1115,16 +1151,18 @@ Implement only the corresponding parts of the proposed file layout at each phase
 | --- | --- | --- |
 | 1. Working local benchmark | Three SV estimators on real fitted-model games, exact truth, measured budgets, nMSE, and JSON/CSV results. Include a minimal local-estimator adapter and separate synthetic correctness fixtures. | One command produces reproducible real-workload comparisons; another researcher can add a candidate without editing shapiq source. |
 | 2. Minimal website and private report | One static page with a table, error-versus-budget chart, method/budget/game-instance filters, and download. Deploy a small public preview on Pages; use the same assets for a local candidate report. | Every displayed number traces to a real run; the page works locally and under the Pages subpath. It visibly identifies the small preview suite. |
-| 3. Representative and high-player panels | Add grouped-data and ensemble games, pairwise k-SII, a qualified high-player tree panel, repeat/coverage summaries, and controlled Hopper timing. | Small truth counterparts match enumeration; large-game exact truth avoids powerset enumeration; per-family/player-band budget and time curves are reproducible. |
-| 4. Broader coverage and reliable campaigns | Add product-kernel and do-SCM routes in the sequence above, remaining estimators/game families/targets, resumable campaigns, and resource limits in small batches. | Each addition passes qualification and gets a versioned coverage update; interrupted campaigns resume without mixing snapshots. |
+| 3. Existing high-player games and interactions | Add qualified high-player tree SV/pairwise k-SII and unweighted-KNN SV, repeat/coverage summaries, and controlled Hopper timing. | Small truth counterparts match enumeration; large-game exact truth avoids powerset enumeration; per-family/player-band budget and time curves are reproducible. |
+| 4. Broader coverage and reliable campaigns | Add remaining compatible estimators and existing game families/targets, optionally product-kernel SV, resumable campaigns, and resource limits in small batches. | Each addition passes qualification and gets a versioned coverage update; interrupted campaigns resume without mixing snapshots. No new exact algorithm is required. |
 | 5. Rich comparisons and history | Add paired win rates first, then preset Elo/uncertainty and release-date frontiers, followed by richer presets and overall regime summaries. | Shared-panel fixtures validate every summary; dates have sources; incomplete methods cannot improve official ranks. |
 
 **Concrete Phase 1 proposal:** `KernelSHAP`, `PermutationSamplingSV`, and `SVARM`;
 SV only; California Housing and Adult Census, two qualified model families
 (boosted trees and MLP), and five frozen held-out points per model: 20 games.
 With three budget caps and three estimator seeds this gives **540 planned runs**,
-plus separate tiny synthetic correctness checks. Qualify one California model
-and point first, then expand to this manifest. Obtain truth by enumeration of the
+plus separate tiny synthetic correctness checks. The first acceptance milestone is
+one California model and point, three budgets, and three seeds: **27 planned runs**.
+Expand to the 20-game manifest only after this works; it does not block Phase 2.
+Obtain truth by enumeration of the
 fixed empirical-background game, cross-checking a matched tree route where possible.
 Save the manifest, code/source hashes, measured query counts, per-run statuses,
 and coefficient-aligned MSE/nMSE. This supersedes the earlier SOUM-first proposal.
@@ -1139,8 +1177,9 @@ available early instead of waiting for the whole benchmark catalog.
 
 In Phase 3, begin interactions with `KernelSHAPIQ`, `SHAPIQ`, and `SVARMIQ` on the
 same pairwise k-SII tasks. Introduce the other interaction definitions as separate
-panels later. Expand to the 28-game pilot and the first high-player tree panel
-after measuring truth/estimation cost. Set the campaign cap before expanding;
+panels later. Qualify the first high-player tree and KNN panels after measuring
+truth/estimation cost; the 28-game pilot is an optional subsequent expansion.
+Set the campaign cap before expanding;
 do not advertise dimensional scalability from the small enumerable games alone.
 
 Phase 5 can start after Phase 3 while Phase 4 grows the catalog: history and
@@ -1180,9 +1219,10 @@ agreement in the feature-request issue before committing substantial compute:
 1. **Home and ownership:** keep the runner with the current in-repository helpers
    and host under shapiq Pages, or revive the separate benchmark repository? The
    recommendation is the current repository initially, with one dataset owner.
-2. **First official panels:** local tabular, grouped-data and ensemble utility,
-   plus high-player real-tree games; extend to product kernels and do-SCMs as
-   exact routes qualify. Synthetic diagnostics have no default headline weight.
+2. **First official panels:** existing local/tree explanation games, including
+   high-player trees, plus unweighted-KNN data valuation. Product-kernel SV and
+   other existing families can follow; SCM integration and new algorithms are
+   deferred. Synthetic diagnostics have no default headline weight.
    Which real-workload families and player bands should receive equal weight?
 3. **Metric and failures:** accept energy-normalized MSE, mean plus median,
    family/stratum weighting, and provisional status for incomplete methods?
