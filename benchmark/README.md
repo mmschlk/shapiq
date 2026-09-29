@@ -22,9 +22,10 @@ The recommended design is deliberately small:
 3. **One static HTML/CSS/JavaScript site** filters those files and draws charts with
    Plotly.js. GitHub Pages hosts it; no running Python service or database.
 
-The first release should show a leaderboard, error versus evaluation budget,
-error versus runtime, direct head-to-head comparisons, and a historical progress
-chart. Researchers should also be able to add an estimator **locally**, evaluate
+Start with a working local comparison of three estimators, then publish a small
+website with a leaderboard and error-versus-budget chart. Add interactions, real
+games, controlled runtime comparisons, head-to-head ratings, and history in later
+working increments. Researchers should also be able to add an estimator **locally**, evaluate
 it on the same frozen suite, and open a private comparison report without editing
 shapiq's source or publishing anything. Start with a small, trustworthy suite, then expand through an explicit
 coverage checklist to every supported estimator and constructible game family.
@@ -49,6 +50,7 @@ and gives decisions a durable, reviewable home. Implementation follows in small 
 - [The code to write](#the-code-to-write)
 - [Evaluate a paper or a new estimator locally](#evaluate-a-paper-or-a-new-estimator-locally)
 - [What to run and how much it costs](#what-to-run-and-how-much-it-costs)
+- [Standardizing CPU measurements on Hopper](#standardizing-cpu-measurements-on-hopper)
 - [Hosting and publication](#hosting-and-publication)
 - [Small implementation steps](#small-implementation-steps)
 - [Decisions for discussion](#decisions-for-discussion)
@@ -386,6 +388,9 @@ execution components plus their total. Use an idle dedicated machine, fixed
 thread counts, pinned software, hardware/OS/CPU/GPU metadata, and GPU synchronization
 where relevant. Warm-up policy must be identical and explicit. Do not parallelize
 competing timed runs on one device or combine hardware profiles in a time ranking.
+The proposed [Hopper reference profile](#standardizing-cpu-measurements-on-hopper)
+makes these rules concrete. Parallel accuracy runs may record diagnostic runtime,
+but that runtime does not enter the controlled timing leaderboard.
 
 Initially plot nMSE against measured time at the fixed budget grid. A time-cap
 selector uses the median runtime across all planned successful repeats for each
@@ -545,6 +550,7 @@ not a request to create scaffolding in this planning PR.
 | File or area | Responsibility | Reuse |
 | --- | --- | --- |
 | `benchmark/suites/{smoke,pilot,core,extended}.json` | Explicit games, methods, targets, budgets, seeds, resource limits, weights. | Existing dataset/model setup and game constructors. |
+| `benchmark/hardware/hopper-epyc9754-1c-v1.json` and a small Slurm launcher | Reference CPU, allocation/thread policy, environment and runtime checks. | Slurm binding, system metadata, existing Python environment. |
 | `src/shapiq_benchmark/catalog.py` | Method/game records, constructor adapters, capabilities, dates, sources. | Public estimator classes; audited target routes. |
 | `src/shapiq_benchmark/prepare.py` | Deterministic game artifacts, truth, hashes, qualification checks. | `Game`, exact computers, SOUM/Möbius conversion. |
 | `src/shapiq_benchmark/run.py` | CLI, local adapter loading, expansion/dry-run, isolated jobs, budget counter, timers, resume. | Existing `Benchmark` wrappers; standard library processes. |
@@ -690,9 +696,9 @@ runs resume, runtime profiles stay separate, and public files remain untouched.
 
 | Suite | Proposed scope | Purpose |
 | --- | --- | --- |
-| Smoke | Tiny deterministic games, all registered methods/targets when dependencies permit, a few budgets, 2 seeds. | Catch wrong targets, hidden query use, malformed outputs, and broken adapters. Not published as performance evidence. |
+| Smoke | Begin with three SV methods and tiny deterministic games; extend qualification cases as each method/target is added. | Catch wrong targets, hidden query use, malformed outputs, and broken adapters. Not published as performance evidence. |
 | Pilot | SOUM/unanimity plus a few small tabular games, 3–5 budgets, 3 seeds. | Measure truth cost, per-method runtime/memory, dependency viability, and storage. |
-| Core v1 | Qualified SV plus pairwise k-SII/SII/STII/FSII panels; synthetic and feasible tabular families; every compatible estimator qualified for these panels. | First public comparison, all five main views, explicit coverage for methods still blocked. |
+| Core v1 | Qualified SV and a first pairwise k-SII panel; synthetic and feasible tabular families, initially a small set of methods. Add SII/STII/FSII and the remaining methods incrementally. | First substantive comparison after the small public preview; explicit measured/planned/blocked coverage. No requirement to finish all views or methods before publishing. |
 | Extended releases | More game families, all datasets that pass qualification, higher orders, large structured games, expensive image/language/TabPFN/valuation cases, other indices. | Expand toward full catalog coverage without weakening ground-truth rules. |
 
 Suggested pilot grids: `n ∈ {8, 12, 16}` for synthetic games; budgets
@@ -750,6 +756,91 @@ GitHub Actions runs tiny validation checks and publishes finished data. Preserve
 the existing C-extension build precautions in [AGENTS.md](../AGENTS.md) when
 benchmarking source changes; stale native objects can invalidate timing/results.
 
+## Standardizing CPU measurements on Hopper
+
+**Recommendation: use an AMD EPYC 9754 compute node, one physical core and one
+software thread per estimator, as the initial runtime reference.** Call the
+proposed profile `hopper-epyc9754-1c-v1`. This is a profile to implement and qualify,
+not a claim that performance measurements have already been taken.
+
+### Hardware actually inspected
+
+On 2026-09-29, `lscpu` on the current `hopper.cluster` host reported two AMD EPYC
+9124 sockets, 16 cores per socket, and one hardware thread per core. That host
+is absent from the Slurm compute-node list, and the current shell has no Slurm
+allocation. Do not use its CPU identity as the identity of cluster jobs.
+
+Three brief, single-CPU Slurm metadata tasks verified the following compute nodes:
+
+| Node | CPU | Topology reported inside the allocation | Other observations |
+| --- | --- | --- | --- |
+| `gpu04` | AMD EPYC 9754 128-Core Processor | 1 socket, 128 cores, 1 hardware thread/core, 1 NUMA node | The metadata task used only a CPU, with affinity restricted to one core. |
+| `himem01` | AMD EPYC 9754 128-Core Processor | 1 socket, 128 cores, 1 hardware thread/core, 1 NUMA node | CPU-only node; `performance` governor, boost enabled; one-core task affinity verified. |
+| `himem02` | AMD EPYC 9754 128-Core Processor | 1 socket, 128 cores, 1 hardware thread/core, 1 NUMA node | CPU-only node; `performance` governor, boost enabled; one-core task affinity verified. |
+
+These were hardware inspections, not benchmarks. Other cluster nodes were not
+hardware-qualified. Slurm currently advertises no CPU feature labels on these
+nodes, so do not invent an `--constraint=epyc9754` selector. Initially choose one
+verified node explicitly and recheck the model inside every job. Prefer
+`himem01` for the reference campaign; qualify `himem02` separately before pooling
+its timings. The same CPU model alone does not establish equivalent performance.
+
+### The reference profile
+
+| Setting | Proposed rule |
+| --- | --- |
+| CPU/device | AMD EPYC 9754; CPU execution only; record actual hostname, family/model/stepping and microcode. |
+| Resources used by each estimator | One process using one pinned physical core; one software thread in numerical libraries and model backends. |
+| Memory | Start the pilot with a 16 GiB job limit; record peak memory. Increase only with a new declared profile if the pilot demonstrates a need. |
+| Isolation | Official timings use an exclusive CPU-only node allocation or an administrator-arranged equivalent quiet window, one timed run at a time. Shared-node timings remain exploratory. |
+| Frequency policy | Record governor and boost state; retain the observed `performance` governor with boost enabled. Do not claim a fixed GHz or change host-wide settings. |
+| Environment | Pin shapiq commit, Python/dependency versions, native build, BLAS/OpenMP implementation, OS/kernel, and thread settings. |
+| Timing | Exclude queue/environment setup/import/data-load/truth costs from estimation time; report relevant setup separately. Include estimator initialization and execution, including proxy fitting. |
+| Repeats | Fixed warm-up policy, reproducibly shuffled method order, repeated measured runs and median/spread; keep all planned repetitions and failures. |
+| Modes | Cached oracle first; live-game timings are a separate result group under the same hardware profile. |
+
+Set `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`,
+`BLIS_NUM_THREADS`, and `NUMEXPR_NUM_THREADS` to 1 before importing numerical
+packages. Set estimator/backend options such as `n_jobs`, `nthread`, and PyTorch
+thread counts explicitly as applicable. Inspect loaded native pools with
+[`threadpoolctl`](https://github.com/joblib/threadpoolctl); environment variables
+alone do not establish that every library obeyed the policy. Verify process
+affinity inside the worker. Record effective settings, not just requested ones.
+
+The shell used for this inspection already had several thread variables set to
+1, which is why `nproc` printed 1 despite affinity covering all 32 host CPUs.
+Thread configuration is not a CPU reservation. Use Slurm allocation and binding
+for resource ownership; record `os.sched_getaffinity(0)` and hardware topology
+rather than treating `nproc` as the machine's physical core count.
+
+The eventual Slurm launcher should request one node, one task, one CPU per task,
+and bind the worker with `srun --cpu-bind=cores`; its worker preflight checks the
+CPU model, effective affinity, thread pools, and environment hash. Official
+timing requests additionally use `sbatch --exclusive` on the selected CPU-only
+node when cluster policy permits. **Exclusive allocation reserves the whole
+node**, even though the estimator uses one core, so reserve short timing campaigns
+after the pilot rather than doing all development this way. See Slurm's
+[CPU binding guide](https://slurm.schedmd.com/cpu_management.html) and
+[exclusive-allocation documentation](https://slurm.schedmd.com/sbatch.html#OPT_exclusive).
+
+Use normal shared Slurm allocations to prepare truth and run independent accuracy
+jobs in parallel, subject to a campaign concurrency cap. Rerun the selected
+budget points sequentially in the controlled timing allocation; do not reuse
+contended sweep runtimes as official seconds. Time-curve errors must come from
+those same timed runs, not be joined to whichever accuracy repeat looked best.
+
+Run a short fixed calibration workload before and after timing batches to detect
+load/environment drift. Establish a tolerance in the pilot, then freeze it before
+production. Quarantine an entire failed batch under that rule, record the reason,
+and rerun it; never remove individual slow observations after seeing rankings.
+Calibration is a diagnostic, not a multiplier that converts another machine's
+seconds into “Hopper-equivalent” seconds.
+
+Start with this one-core profile because it is easy to audit. A later eight-core
+or GPU profile can capture methods that benefit from parallelism, but has its own
+rankings. Accuracy comparisons remain usable on a researcher's local hardware
+when task/protocol hashes match; their runtime ranks require locally rerun baselines.
+
 ## Hosting and publication
 
 **GitHub Pages is a good first host** because it serves static HTML, CSS, and
@@ -792,16 +883,43 @@ sources when redistribution is restricted. Publish metrics independently of raw 
 
 ## Small implementation steps
 
-| Step / reviewable PR | Deliverable | Done when |
+Build in **working increments**. The complete catalog and all advanced statistics
+are the destination; they are not prerequisites for the first useful comparison.
+Implement only the corresponding parts of the proposed file layout at each phase.
+
+| Phase | Smallest useful deliverable | Done when |
 | --- | --- | --- |
-| 1. Catalog and protocol | Explicit 22-method catalog, game/dataset discovery report, target adapters, date metadata, frozen smoke/pilot manifests. | Every discovered method/family has a status; aliases, dependencies, truth routes, and unsupported cells are documented. |
-| 2. Truth and metrics | Game qualification, exact artifacts, nMSE, budget counter, validated metric semantics. | Tiny hand-computed games pass; structured truth agrees with enumeration; batching/zero/baseline/coordinate tests pass. |
-| 3. Runner and pilot | Resumable jobs, accurate accounting, time/memory limits, failure records, pilot cost report. | Stop/resume does not duplicate or mix runs; actual budget and timing are auditable; core campaign fits an explicit resource budget. |
-| 4. Aggregation and comparisons | Weighting, means/medians, coverage policy, paired matrix, preset batch ratings/intervals, historical frontier. | Known synthetic fixtures reproduce expected scores; shuffled result order changes nothing; missing/disconnected/degenerate cases are explicit. |
-| 5. Static website | Filters, leaderboard, budget/time/history charts, head-to-head matrix, methodology, CSV/share links. | Browser results match Python fixtures; no stale ratings; keyboard/mobile/empty-state/base-path checks pass on a realistic data shard. |
-| 5a. Local evaluation | Adapter example, reproduction bundle, candidate-only runs, private report using the shared site assets. | An external estimator works without source edits; matched baseline accuracy is reusable; incompatible tasks/timings are flagged; no public output is changed. |
-| 6. Core campaign and Pages | Reviewed result release, publication workflow, public site. | All published numbers trace to raw runs; coverage and runtime provenance are visible; another person can reproduce a small published slice. |
-| 7. Expansion | Remaining game families, datasets, targets, orders, optional methods, structured track. | Each addition passes the same qualification process and gets a versioned coverage update. |
+| 1. Working local benchmark | Three SV estimators on one synthetic family, exact truth, measured budgets, nMSE, and JSON/CSV results. Include a minimal local-estimator adapter. | One command produces reproducible comparisons; another researcher can add a candidate without editing shapiq source. |
+| 2. Minimal website and private report | One static page with a table, error-versus-budget chart, method/budget/game-instance filters, and download. Deploy a small public preview on Pages; use the same assets for a local candidate report. | Every displayed number traces to a real run; the page works locally and under the Pages subpath. It visibly identifies the small preview suite. |
+| 3. Useful real-world and interaction panels | Add one feasible tabular family, a pairwise k-SII panel, proper repeat/coverage summaries, and the qualified Hopper runtime profile. | Exact truth agrees with small enumerated checks; budget and controlled runtime curves are reproducible on the named CPU profile. |
+| 4. Broader coverage and reliable campaigns | Add remaining estimators, game families, interaction targets/orders, resumable campaigns, resource limits, and qualified optional dependencies in small batches. | Each addition passes qualification and gets a versioned coverage update; interrupted campaigns resume without mixing snapshots. |
+| 5. Rich comparisons and history | Add paired win rates first, then preset Elo/uncertainty and release-date frontiers, followed by richer presets and overall regime summaries. | Shared-panel fixtures validate every summary; dates have sources; incomplete methods cannot improve official ranks. |
+
+**Concrete Phase 1 proposal:** `KernelSHAP`, `PermutationSamplingSV`, and `SVARM`;
+SV only; SOUM with 8 players, 8 basis games, and basis orders 1–3; five fixed game
+seeds; caps of 32, 64, and 128 coalition evaluations; three estimator seeds.
+That is **135 short runs**, plus tiny unanimity/dummy correctness checks. Cross-check
+SOUM truth with enumeration on these small games. Save the manifest, code/source
+hashes, measured query counts, per-run statuses, and coefficient-aligned MSE/nMSE.
+Use simple serial execution and a handful of explicit constructor adapters. Log
+runtime as diagnostic data initially; do not present it as qualified CPU timing.
+The count is a proposed test matrix, not an assertion that these runs have executed.
+
+Phase 1's local adapter is deliberately small: an external factory plus the same
+counted oracle and result contract. Phase 2 adds the downloadable reproduction
+bundle and private interactive report. This makes the paper-review workflow
+available early instead of waiting for the whole benchmark catalog.
+
+In Phase 3, begin interactions with `KernelSHAPIQ`, `SHAPIQ`, and `SVARMIQ` on the
+same pairwise k-SII tasks. Introduce the other interaction definitions as separate
+panels later. A small California Housing tabular game is a candidate for the
+first real-data panel, subject to deterministic game/truth qualification. Measure
+pilot cost and set the campaign cap before expanding it.
+
+Phase 5 can start after Phase 3 while Phase 4 grows the catalog: history and
+head-to-head views do not require every game to be finished. Each phase leaves
+a usable artifact. No “all estimators/all games” milestone blocks an initial
+local tool or public preview, and preview results are never labelled comprehensive.
 
 Each implementation PR should have one purpose; separate metric/library fixes
 from website changes. Use focused scientific tests, not snapshots of incidental
@@ -816,7 +934,9 @@ legacy game collection is deprecated but still imported by newer helpers;
 estimator convenience registries are not exhaustive; reported estimator budgets
 need independent measurement; cached games change the meaning of runtime; raw
 `RandomGame` is batch-dependent; legacy product-kernel games are placeholders;
-and existing metric semantics need validation. They are recorded here to respect
+and existing metric semantics need validation. Hopper's current shell host and
+Slurm compute nodes have different CPU models, and thread-limited `nproc` output
+does not establish an allocation. They are recorded here to respect
 the requested one-file, plan-only branch. Copy the verified guidance into
 `AGENTS.md` with the relevant implementation/fix PRs.
 
@@ -835,8 +955,9 @@ agreement in the feature-request issue before committing substantial compute:
    family/stratum weighting, and provisional status for incomplete methods?
 4. **Head-to-head:** accept direct win rates plus batch Elo-scale ratings for
    published presets, and the proposed tie tolerance?
-5. **Compute and maintenance:** identify a reference machine, campaign resource
-   cap after the pilot, and maintainers for result review and refreshes.
+5. **Compute and maintenance:** qualify the proposed EPYC 9754 one-core Hopper
+   profile and a short exclusive timing window; set the campaign resource cap
+   after the pilot, and name maintainers for result review and refreshes.
 6. **History:** accept first public method dates and the retrospective label;
    audit the remaining methods and implementation dates before publication.
 
