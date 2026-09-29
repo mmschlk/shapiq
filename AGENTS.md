@@ -53,3 +53,16 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 ```bash
 uv run pre-commit run --all-files
 ```
+
+## Benchmark integration notes
+
+- The core `src/shapiq/tree/interventional/game.py` and the legacy
+  `src/shapiq_games/benchmark/interventionaltreeshapiq_xai/base.py` both define
+  `InterventionalGame`, but their classifier output handling differs. Use the
+  core game and verify that its output scale matches the exact solver.
+- `PathdependentComputer` passes index/order to an explanation call that can
+  ignore them. Configure the exact tree solver with the target/order at
+  construction and validate its returned metadata.
+- Nearest-neighbor explanation games use training rows as players, not features.
+  Unweighted KNN utility divides by fixed `k`, even for coalitions smaller than
+  `k`; preserve that rule when comparing with `KNNExplainer` ground truth.

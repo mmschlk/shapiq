@@ -1,0 +1,7 @@
+{
+  "name": "california-pilot-v1",
+  "game": "california_tree",
+  "methods": ["KernelSHAP", "PermutationSamplingSV", "SVARM"],
+  "budgets": [32, 64, 128],
+  "seeds": [0, 1, 2]
+}
