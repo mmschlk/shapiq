@@ -228,3 +228,120 @@ def test_larger_gaussian_recipes_explain_wine_class_probability(name: str, playe
         model.predict_proba(x[test[:1]])[0, 1]
     )
     assert np.isfinite(game(np.zeros((1, players), dtype=bool))).all()
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "local_baseline",
+        "local_baseline_forest",
+        "local_marginal",
+        "global_fidelity",
+        "pathdependent_tree",
+        "interventional_tree",
+    ],
+)
+def test_classification_explanation_uses_probability(name: str) -> None:
+    """Classifier explanations target a declared probability, never an ordinal class number."""
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.tree import DecisionTreeClassifier
+
+    from shapiq_benchmark.families import _dataset
+
+    game, metadata = make_family(name, dataset="wine", n_players=11, instance_seed=1)
+    x, y, train, test, _ = _dataset("wine", 1)
+    x = x[:, metadata["feature_indices"]]
+    if name == "local_baseline_forest":
+        model = RandomForestClassifier(n_estimators=8, max_depth=4, random_state=1, n_jobs=1)
+    else:
+        model = DecisionTreeClassifier(
+            max_depth=4 if name == "interventional_tree" else 3, min_samples_leaf=5, random_state=1
+        )
+    model.fit(x[train], y[train])
+    assert metadata["class_index"] == 1 and metadata["output_scale"] == "class probability"
+    if name == "global_fidelity":
+        np.testing.assert_array_equal(
+            game.model(x[test[:5]]), model.predict_proba(x[test[:5]])[:, 1]
+        )
+    else:
+        actual = game(np.ones((1, 11), dtype=bool))[0]
+        if game.normalize:
+            actual += game.normalization_value
+        assert actual == pytest.approx(model.predict_proba(x[test[:1]])[0, 1])
+
+
+@pytest.mark.parametrize("name", ["feature_selection", "data_valuation", "dataset_valuation"])
+def test_classifier_retraining_uses_accuracy_even_for_one_class(name: str) -> None:
+    """Singleton training coalitions remain valid classifier games with a bounded utility."""
+    from sklearn.metrics import accuracy_score
+    from sklearn.tree import DecisionTreeClassifier
+
+    from shapiq_benchmark.families import _dataset
+
+    game, metadata = make_family(name, dataset="wine", n_players=11, instance_seed=1)
+    x, y, _, _, _ = _dataset("wine", 1)
+    x = x[:, metadata["feature_indices"]]
+    train, test = np.array(metadata["train_indices"]), np.array(metadata["test_indices"])
+    coalition = np.zeros((1, 11), dtype=bool)
+    coalition[0, 0] = True
+    if name == "feature_selection":
+        train_x, test_x, labels = x[train, :1], x[test, :1], y[train]
+    else:
+        selected = train[:1] if name == "data_valuation" else np.array(metadata["group_indices"][0])
+        train_x, test_x, labels = x[selected], x[test], y[selected]
+    model = DecisionTreeClassifier(max_depth=3, min_samples_leaf=5, random_state=1).fit(
+        train_x, labels
+    )
+    expected = accuracy_score(y[test], model.predict(test_x))
+    assert game(coalition)[0] == pytest.approx(expected)
+    assert game(np.zeros((1, 11), dtype=bool))[0] == 0
+    assert metadata["output_scale"] == "accuracy"
+
+
+@pytest.mark.parametrize("name", ["ensemble", "forest_ensemble"])
+def test_classifier_ensemble_uses_majority_vote_accuracy(name: str) -> None:
+    """The shipped classification ensemble aggregates votes rather than numeric class averages."""
+    from scipy.stats import mode
+    from sklearn.metrics import accuracy_score
+
+    with threadpool_limits(limits=1):
+        game, metadata = make_family(name, dataset="wine", n_players=11, instance_seed=1)
+        expected = accuracy_score(game._y_test, mode(game.predictions, axis=0)[0].ravel())
+        assert game(np.ones((1, 11), dtype=bool))[0] == pytest.approx(expected)
+        assert game.dataset_type == "classification" and metadata["output_scale"] == "accuracy"
+
+
+def test_digits_gaussian_selects_training_eligible_columns() -> None:
+    """Binary/constant pixels are filtered without consulting labels or the explained point."""
+    from shapiq_benchmark.families import _dataset, feature_subset
+
+    x, _, train, _, _ = _dataset("digits", 2)
+    eligible = np.array([i for i in range(x.shape[1]) if len(np.unique(x[train, i])) > 2])
+    expected = eligible[feature_subset(x[:, eligible], 12, 2)]
+    for name in ("local_gaussian", "local_copula"):
+        game, metadata = make_family(name, dataset="digits", n_players=12, instance_seed=2)
+        assert metadata["feature_indices"] == expected.tolist()
+        assert "training columns" in metadata["parameters"]["feature_rule"]
+        assert np.isfinite(game(np.ones((1, 12), dtype=bool))).all()
+
+
+def test_binary_classification_product_kernel_matches_decision_score() -> None:
+    """Kernel payoffs explain binary SVC scores, not probabilities or multiclass label codes."""
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import SVC
+
+    from shapiq_benchmark.families import _dataset
+
+    game, metadata = make_family(
+        "product_kernel", dataset="breast_cancer", n_players=11, instance_seed=1
+    )
+    x, y, train, test, _ = _dataset("breast_cancer", 1)
+    x = x[:, metadata["feature_indices"]]
+    scaler = StandardScaler().fit(x[train])
+    model = SVC(kernel="rbf", gamma="scale").fit(scaler.transform(x[train[:128]]), y[train[:128]])
+    assert game(np.ones((1, 11), dtype=bool))[0] == pytest.approx(
+        model.decision_function(scaler.transform(x[test[:1]]))[0]
+    )
+    assert metadata["output_scale"] == "binary SVC decision score"
+    with pytest.raises(ValueError, match="two classes"):
+        make_family("product_kernel", dataset="wine", n_players=11)

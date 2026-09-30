@@ -477,3 +477,22 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   same eight existing optional-import/ignore diagnostics. The preparation wrapper
   retains its audited four-seed merge, with an eight-hour limit per child and an
   eight-hour-thirty-minute Slurm allocation for the larger exact tables.
+
+## Compatible dataset × recipe matrix
+
+- An independent audit reconstructed all 1,363 candidate decisions: 196 selected
+  tabular settings and 1,167 explicit exclusions. Generic exact tables are bounded
+  to 11/12 players; larger structured settings keep their original payoff and
+  target restrictions. Selection and runtime qualification remain distinct.
+- All 760 new core constructions passed finite-payoff probes. All 296 legacy
+  constructions retained bit-identical payoffs and metadata. Classifier recipes
+  use the appropriate probabilities, accuracy, votes or decision margin; Gaussian
+  Digits recipes choose nonbinary columns using training data only.
+- All 275 benchmark tests pass; the final structured-dimension guard also passes
+  all 12 matrix tests. Formatting/lint pass, with the same eight pre-existing type
+  diagnostics. Public export preserves the safe matrix inventory.
+- Four Breast Cancer/Digits TabPFN cost pilots passed on Hopper (job 360869).
+  Estimated full-table time is about 18 minutes at 11 players and 37 minutes at
+  12, with peak RSS below 1.2 GiB. These are preparation estimates, not measured
+  estimator performance. Together with causal probes they support a 12-hour
+  per-seed preparation limit; full preparation remains the qualification gate.

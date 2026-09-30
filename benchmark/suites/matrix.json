@@ -1,0 +1,49 @@
+{
+  "name": "all-datasets-ground-truth-matrix-v1",
+  "base_suite": "all-families.json",
+  "datasets": [
+    "california_housing",
+    "diabetes",
+    "bike_sharing",
+    "iris",
+    "wine",
+    "breast_cancer",
+    "digits"
+  ],
+  "families": [
+    "local_baseline",
+    "local_baseline_forest",
+    "local_marginal",
+    "local_gaussian",
+    "local_copula",
+    "local_conditional",
+    "global_fidelity",
+    "feature_selection",
+    "data_valuation",
+    "dataset_valuation",
+    "ensemble",
+    "forest_ensemble",
+    "uncertainty",
+    "cluster",
+    "unsupervised",
+    "pathdependent_tree",
+    "interventional_tree",
+    "product_kernel",
+    "knn",
+    "tnn",
+    "weighted_knn",
+    "binary_weighted_knn",
+    "tabpfn"
+  ],
+  "player_counts": [
+    11,
+    12,
+    16,
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "include_native_width": true
+}

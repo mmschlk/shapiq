@@ -227,6 +227,8 @@ def merge_results(paths: list[Path]) -> dict:
             for key in (
                 "name",
                 "min_players",
+                "matrix_definition",
+                "matrix_coverage",
                 "budgets",
                 "seeds",
                 "game_seeds",

@@ -13,14 +13,14 @@ from functools import lru_cache
 
 import numpy as np
 from scipy.spatial.distance import pdist
-from sklearn.datasets import load_diabetes, load_iris, load_wine
+from sklearn.datasets import load_breast_cancer, load_diabetes, load_digits, load_iris, load_wine
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, RadiusNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVR
+from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.datasets import load_bike_sharing, load_california_housing
@@ -225,11 +225,78 @@ FAMILY_CATALOG = {
     for name, (cls, semantics, unit, stochastic) in _RECIPES.items()
 }
 
+DATASETS = {
+    "california_housing": {
+        "task": "regression",
+        "n_features": 8,
+        "source": "shapiq.datasets.load_california_housing",
+    },
+    "diabetes": {
+        "task": "regression",
+        "n_features": 10,
+        "source": "sklearn.datasets.load_diabetes",
+    },
+    "bike_sharing": {
+        "task": "regression",
+        "n_features": 12,
+        "source": "shapiq.datasets.load_bike_sharing",
+    },
+    "iris": {
+        "task": "classification",
+        "n_features": 4,
+        "n_classes": 3,
+        "source": "sklearn.datasets.load_iris",
+    },
+    "wine": {
+        "task": "classification",
+        "n_features": 13,
+        "n_classes": 3,
+        "source": "sklearn.datasets.load_wine",
+    },
+    "breast_cancer": {
+        "task": "classification",
+        "n_features": 30,
+        "n_classes": 2,
+        "source": "sklearn.datasets.load_breast_cancer",
+    },
+    "digits": {
+        "task": "classification",
+        "n_features": 64,
+        "n_classes": 10,
+        "source": "sklearn.datasets.load_digits",
+    },
+}
+
+
+def dataset_compatibility(name: str, dataset: str) -> str | None:
+    """Explain unsupported dataset/recipe pairs without constructing models."""
+    if dataset not in DATASETS:
+        return "Unknown dataset."
+    if name not in FAMILY_CATALOG or FAMILY_CATALOG[name]["synthetic"]:
+        return "Not a tabular recipe."
+    classification = DATASETS[dataset]["task"] == "classification"
+    if (
+        name in ("uncertainty", "knn", "tnn", "weighted_knn", "binary_weighted_knn")
+        and not classification
+    ):
+        return "Requires class labels."
+    if name in ("local_gaussian", "local_copula") and dataset == "bike_sharing":
+        return "Gaussian imputation rejects the binary calendar features."
+    if name == "product_kernel" and classification and DATASETS[dataset]["n_classes"] != 2:
+        return "The product-kernel classifier requires two classes."
+    return None
+
 
 @lru_cache(maxsize=20)
 def _dataset(name: str, instance_seed: int = 0) -> tuple:
     """Load a bundled dataset and retain explicit original row identities."""
-    loaders = {"iris": load_iris, "wine": load_wine, "diabetes": load_diabetes}
+    loaders = {
+        "iris": load_iris,
+        "wine": load_wine,
+        "diabetes": load_diabetes,
+        "breast_cancer": load_breast_cancer,
+        "digits": load_digits,
+    }
     if name in loaders:
         data = loaders[name]()
         x, y = data.data, data.target
@@ -246,7 +313,7 @@ def _dataset(name: str, instance_seed: int = 0) -> tuple:
         np.arange(len(x)),
         test_size=0.2,
         random_state=instance_seed,
-        stratify=y if name in ("iris", "wine") else None,
+        stratify=y if DATASETS[name]["task"] == "classification" else None,
     )
     return x, y, train[:512], test[:128], feature_names
 
@@ -316,19 +383,21 @@ def make_family(
         return game, metadata
 
     neighbors = name in ("knn", "tnn", "weighted_knn", "binary_weighted_knn")
-    gaussian_classifier = name in ("local_gaussian", "local_copula") and dataset == "wine"
-    classification = neighbors or name == "uncertainty" or gaussian_classifier
-    dataset = dataset or ("iris" if classification else "california_housing")
-    if (dataset in ("iris", "wine")) != classification:
-        message = (
-            "Choose a classification dataset for neighbor/uncertainty games, regression otherwise."
-        )
+    dataset = dataset or ("iris" if neighbors or name == "uncertainty" else "california_housing")
+    if message := dataset_compatibility(name, dataset):
         raise ValueError(message)
+    classification = DATASETS[dataset]["task"] == "classification"
     x, y, train, test, feature_names = _dataset(dataset, instance_seed)
     data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()
     features = feature_subset(
         x, n_players if metadata["player_unit"] == "feature" else None, instance_seed
     )
+    if name in ("local_gaussian", "local_copula") and dataset == "digits":
+        eligible = np.array([i for i in range(x.shape[1]) if len(np.unique(x[train, i])) > 2])
+        features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
+        metadata["parameters"]["feature_rule"] = (
+            "seeded subset of training columns with more than two unique values"
+        )
     x = x[:, features]
     x_train, y_train, x_test, y_test = (
         x[train].copy(),
@@ -346,17 +415,21 @@ def make_family(
         point_row=int(test[0]),
         background_indices=train[:16].tolist(),
     )
-    model_class = DecisionTreeClassifier if gaussian_classifier else DecisionTreeRegressor
+    model_class = DecisionTreeClassifier if classification else DecisionTreeRegressor
     model = model_class(
         max_depth=4 if name == "interventional_tree" else 3,
         min_samples_leaf=5,
         random_state=instance_seed,
     ).fit(x_train, y_train)
     if name == "local_baseline_forest":
-        model = RandomForestRegressor(
-            n_estimators=8, max_depth=4, random_state=instance_seed, n_jobs=1
-        ).fit(x_train, y_train)
-    if gaussian_classifier:
+        forest_class = RandomForestClassifier if classification else RandomForestRegressor
+        model = forest_class(n_estimators=8, max_depth=4, random_state=instance_seed, n_jobs=1).fit(
+            x_train, y_train
+        )
+    if classification and (
+        name.startswith("local_")
+        or name in ("global_fidelity", "pathdependent_tree", "interventional_tree")
+    ):
         metadata.update(class_index=1, output_scale="class probability")
 
     def predict_class_one(rows: np.ndarray) -> np.ndarray:
@@ -367,7 +440,7 @@ def make_family(
     point, background = x_test[0], x_train[:16]
     if name.startswith("local_"):
         kwargs = {
-            "model": predict_class_one if gaussian_classifier else model.predict,
+            "model": predict_class_one if classification else model.predict,
             "data": background,
             "x": point,
             "random_state": instance_seed,
@@ -380,14 +453,14 @@ def make_family(
         elif name == "local_conditional":
             kwargs.update(data=x_train[:64], sample_size=8, conditional_budget=16)
             metadata["background_indices"] = train[:64].tolist()
-        metadata["parameters"] = {
-            key: value for key, value in kwargs.items() if key not in ("model", "data", "x")
-        }
+        metadata["parameters"].update(
+            {key: value for key, value in kwargs.items() if key not in ("model", "data", "x")}
+        )
         game = cls(**kwargs)
     elif name == "global_fidelity":
         game = cls(
             data=x_train[:128],
-            model=model.predict,
+            model=predict_class_one if classification else model.predict,
             loss_function=mean_squared_error,
             n_samples_eval=16,
             n_samples_empty=128,
@@ -403,7 +476,7 @@ def make_family(
             y_test=y_test,
             fit_function=model.fit,
             predict_function=model.predict,
-            loss_function=_negative_mse,
+            loss_function=accuracy_score if classification else _negative_mse,
         )
     elif name == "data_valuation":
         count = n_players or 8
@@ -414,7 +487,7 @@ def make_family(
             y_data=y[pool],
             fit_function=model.fit,
             predict_function=model.predict,
-            loss_function=_negative_mse,
+            loss_function=accuracy_score if classification else _negative_mse,
             random_state=instance_seed,
         )
         permuted = pool[np.random.default_rng(instance_seed).permutation(len(pool))]
@@ -432,7 +505,7 @@ def make_family(
             y_test=y_test,
             fit_function=model.fit,
             predict_function=model.predict,
-            loss_function=_negative_mse,
+            loss_function=accuracy_score if classification else _negative_mse,
             random_state=instance_seed,
         )
         metadata["group_indices"] = [train[g].tolist() for g in groups]
@@ -444,12 +517,13 @@ def make_family(
             "y_train": y_train,
             "x_test": x_test,
             "y_test": y_test,
-            "dataset_type": "regression",
-            "loss_function": _negative_mse,
+            "dataset_type": "classification" if classification else "regression",
+            "loss_function": accuracy_score if classification else _negative_mse,
             "verbose": False,
         }
         if name == "forest_ensemble":
-            forest = RandomForestRegressor(
+            forest_class = RandomForestClassifier if classification else RandomForestRegressor
+            forest = forest_class(
                 n_estimators=count, max_depth=3, random_state=instance_seed, n_jobs=1
             ).fit(x_train, y_train)
             game = cls(random_forest=forest, **kwargs)
@@ -459,11 +533,15 @@ def make_family(
                 message = "The heterogeneous ensemble requires at least four model players."
                 raise ValueError(message)
             members = [
-                Ridge(alpha=1),
-                SVR(),
-                KNeighborsRegressor(n_neighbors=3, n_jobs=1),
+                LogisticRegression(max_iter=200, random_state=instance_seed)
+                if classification
+                else Ridge(alpha=1),
+                SVC(random_state=instance_seed) if classification else SVR(),
+                (KNeighborsClassifier if classification else KNeighborsRegressor)(
+                    n_neighbors=3, n_jobs=1
+                ),
                 *[
-                    DecisionTreeRegressor(max_depth=d, random_state=instance_seed + d)
+                    model_class(max_depth=d, random_state=instance_seed + d)
                     for d in range(1, count - 2)
                 ],
             ]
@@ -516,12 +594,27 @@ def make_family(
             parameters={k: v for k, v in kwargs.items() if k != "data"},
         )
     elif name == "pathdependent_tree":
-        game = cls(x=point, tree_model=model, verbose=False)
+        game = cls(
+            x=point.astype(np.float32).astype(float) if classification else point,
+            tree_model=model,
+            verbose=False,
+            **({"class_label": 1} if classification else {}),
+        )
     elif name == "interventional_tree":
-        game = cls(model=model, reference_data=background, target_instance=point)
+        game = cls(
+            model=model,
+            reference_data=background.astype(np.float32).astype(float)
+            if classification
+            else background,
+            target_instance=point.astype(np.float32).astype(float) if classification else point,
+            **({"class_index": 1} if classification else {}),
+        )
     elif name == "product_kernel":
         scaler = StandardScaler().fit(x_train)
-        svm = SVR(kernel="rbf", gamma="scale").fit(scaler.transform(x_train[:128]), y_train[:128])
+        svm_class = SVC if classification else SVR
+        svm = svm_class(kernel="rbf", gamma="scale").fit(
+            scaler.transform(x_train[:128]), y_train[:128]
+        )
         game = cls(
             n_players=x.shape[1],
             explain_point=scaler.transform(x_test[:1])[0],
@@ -538,6 +631,8 @@ def make_family(
                 "scale": scaler.scale_.tolist(),
             },
         )
+        if classification:
+            metadata.update(class_index=1, output_scale="binary SVC decision score")
     elif neighbors:
         scaler = StandardScaler().fit(x_train)
         if n_players is None:
@@ -574,7 +669,9 @@ def make_family(
         fitted.fit(scaler.transform(x_train[selected]), y_train[selected])
         kwargs = {"model": fitted, "x": scaler.transform(x_test[:1])[0], "class_index": class_index}
         if name == "binary_weighted_knn":
-            kwargs["class_index_other"] = next(label for label in range(3) if label != class_index)
+            kwargs["class_index_other"] = next(
+                int(label) for label in fitted.classes_ if label != class_index
+            )
         game = cls(**kwargs)
         metadata.update(
             model=type(fitted).__name__,
@@ -598,6 +695,19 @@ def make_family(
     else:
         message = f"No recipe for {name}"
         raise ValueError(message)
+    if classification and name in (
+        "feature_selection",
+        "data_valuation",
+        "dataset_valuation",
+        "ensemble",
+        "forest_ensemble",
+    ):
+        metadata["semantics"] = (
+            "held-out accuracy of selected model majority votes; empty zero"
+            if name in ("ensemble", "forest_ensemble")
+            else "held-out accuracy after retraining on selected players; empty zero"
+        )
+        metadata["output_scale"] = "accuracy"
     metadata["n_players"] = game.n_players
     metadata["normalize"] = game.normalize
     metadata["normalization_value"] = float(game.normalization_value)

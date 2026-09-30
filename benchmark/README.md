@@ -23,6 +23,7 @@ comparison locally without uploading anything.
 
 | Responsibility | Files |
 | --- | --- |
+| Select compatible dataset/recipe/player combinations | `matrix.py`, `benchmark/suites/matrix.json` |
 | Construct and qualify games | `prepare.py`, `families.py`, `media.py`, `materialize.py`, `games.py` |
 | Run, count queries and checkpoint | `runner.py`, `execution.py` |
 | Calculate scores, Elo and history | `summary.py` |
@@ -71,6 +72,47 @@ The earlier 74-setting preparation finished in job `360843`; its queued sweep
 suite. The completed frozen preparation remains archived separately. Publication
 requires an audited export and a data-manifest update; a completion watcher will
 wake the agent to carry out that work for the replacement campaign.
+
+The selected-pairing replacement is submitted as preparation **360853** and
+sweep **360868**, using frozen source `218d1390` with the LeverageSHAP and OddSHAP
+fixes. Its completion watcher is armed.
+
+### Broader dataset × game matrix
+
+[suites/matrix.json](suites/matrix.json) crosses 23 tabular recipes with seven
+datasets: California Housing, Diabetes, Bike Sharing, Iris, Wine, Breast Cancer
+and Digits. Players can mean features, training rows, groups or models depending
+on the recipe. Each selected setting gets **four independently constructed games**
+and one estimator evaluation per game and budget.
+
+The filter checks the task type, available features and exact-reference support.
+Generic recipes use exhaustive coalition tables only at **11 or 12 players**.
+Larger candidates are excluded unless an existing, qualified structured adapter
+provides exact truth for that particular game and explanation target. This is an
+implementation limit, not a claim that larger exact games are impossible. The
+13 retained structured settings are distinct tree, KNN and product-kernel games;
+they do not silently replace excluded recipes. Feature counts are never padded.
+
+The expansion selects **196 of 1,363 tabular candidates**, documenting a reason
+for each of the 1,167 exclusions. With 12 non-tabular and 13 structured settings,
+that is **221 settings, 5,084 game/target definitions and 1,006,632 planned cells**.
+Unsupported estimator targets remain visible as coverage, separate from failures.
+Selection is a plan: preparation must still qualify every constructed game.
+
+```bash
+uv run python -m shapiq_benchmark.matrix \
+  --config benchmark/suites/matrix.json \
+  --output benchmark/results/matrix-campaign/suite.json
+```
+
+The generated suite records selected combinations and exclusion reasons in
+`matrix_coverage`. The frozen snapshot, public export and reproduction archive
+retain this inventory. Generated suites and results stay outside Git. The broader
+campaign follows the selected-pairing run; each has its own completion watcher,
+audit and publication. An older campaign must never overwrite a newer live dataset.
+Preparation allows 12 hours per seed; the sweep allows 24 hours, with the same
+120-second/12-GiB per-evaluation limits and standardized Hopper allocation.
+Unfinished cells resume from checkpoints before final publication.
 
 The **published dataset** still contains 37 settings × four constructions,
 808 game/target definitions and 159,984 cells. All its recipes qualified.

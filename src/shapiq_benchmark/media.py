@@ -154,11 +154,11 @@ def make_extra(
         from tabpfn import TabPFNClassifier
 
         from shapiq.imputer.tabpfn_imputer import TabPFNImputer
-        from shapiq_benchmark.families import _dataset, feature_subset
+        from shapiq_benchmark.families import DATASETS, _dataset, feature_subset
 
         dataset = dataset or "iris"
-        if dataset not in ("iris", "wine"):
-            message = "TabPFN recipes require the iris or wine classification dataset."
+        if dataset not in DATASETS or DATASETS[dataset]["task"] != "classification":
+            message = "TabPFN recipes require a registered classification dataset."
             raise ValueError(message)
         x, y, train, test, names = _dataset(dataset, instance_seed)
         data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()

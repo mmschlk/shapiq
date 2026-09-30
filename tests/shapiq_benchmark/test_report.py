@@ -292,3 +292,31 @@ def test_public_report_retains_player_floor_and_classifier_output(tmp_path: Path
     metadata = exported["games"][0]["metadata"]
     assert metadata["class_index"] == 1 and metadata["output_scale"] == "class probability"
     assert "/private" not in json.dumps(exported)
+
+
+def test_public_report_retains_matrix_exclusions(tmp_path: Path) -> None:
+    """A reader must distinguish planned exact-table cases from excluded large games."""
+    result = result_fixture()
+    result["suite"]["matrix_definition"] = {"datasets": ["digits"], "player_counts": [12, 64]}
+    result["suite"]["matrix_coverage"] = {
+        "candidates": [
+            {
+                "recipe": "feature_selection",
+                "dataset": "digits",
+                "n_players": 12,
+                "status": "selected",
+                "reason": "exhaustive_table",
+            },
+            {
+                "recipe": "feature_selection",
+                "dataset": "digits",
+                "n_players": 64,
+                "status": "excluded",
+                "reason": "unqualified_large_adapter",
+            },
+        ]
+    }
+    exported = report([write(tmp_path, result)], tmp_path / "site", public=True)
+    for key in ("matrix_definition", "matrix_coverage"):
+        assert exported["suite"][key] == result["suite"][key]
+    assert "/private" not in json.dumps(exported)

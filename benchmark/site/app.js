@@ -362,11 +362,11 @@ function renderCoverage() {
     ],
     feature_selection: [
       "Feature selection",
-      "Retrain a model on selected features and measure held-out prediction error.",
+      "Retrain on selected features and measure held-out regression error or classification accuracy.",
     ],
     data_valuation: [
       "Training-example valuation",
-      "Retrain on selected training examples and measure held-out prediction error.",
+      "Retrain on selected training examples and measure held-out regression error or classification accuracy.",
     ],
     dataset_valuation: [
       "Dataset-group valuation",
@@ -374,11 +374,11 @@ function renderCoverage() {
     ],
     ensemble: [
       "Ensemble selection",
-      "Evaluate the average predictions of selected regression models.",
+      "Combine selected models by averaging regression predictions or voting on classes, then measure held-out performance.",
     ],
     forest_ensemble: [
       "Forest ensemble selection",
-      "Treat individual trees as players and evaluate their average predictions.",
+      "Treat individual trees as players and evaluate their average regression predictions or class votes.",
     ],
     uncertainty: [
       "Prediction uncertainty",
