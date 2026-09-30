@@ -240,6 +240,14 @@ Both public exports reject private candidates. The website omits exact truth,
 raw coefficient arrays, and local paths; the ZIP includes the frozen numerical
 artifacts needed for reproduction, with hashes and provenance verified.
 
+Generated `data.json` is a release asset, excluded from Git.
+[site/data-source.json](site/data-source.json) pins its URL and SHA-256; Pages
+downloads it and verifies its checksum and public-export checks before deploying.
+Updating that small manifest publishes a new audited dataset. Local reports
+still write their own `data.json` directly. To preview the current public data
+from a fresh checkout, download the pinned asset into `benchmark/site/data.json`
+or open it with **Open local**.
+
 GitHub Pages deploys the six static site assets when `BENCHMARK_PAGES=true` and
 Pages uses GitHub Actions. It does not run experiments or upload local results.
 Large numerical artifacts belong in the separate release archive. Hosting needs

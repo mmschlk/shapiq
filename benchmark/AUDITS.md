@@ -226,3 +226,17 @@ Independent reviewers: `investigate_leverage` and `investigate_optional`.
   2,401 eligible summaries across 288 family/overall presets, checked Elo
   objectives and ProxySHAP chronology, and exercised six targets and 60 family
   views in the browser. The larger four-instance campaign remains separate.
+
+## Generated data outside the source-code PR
+
+Reviewer: `investigate_optional`.
+
+- The results JSON is an ignored local export and a public release asset. A small
+  URL/SHA-256 manifest pins the bytes used by Pages; the browser still requests
+  `data.json` from the same site URL.
+- Independently downloaded 12,344,319 bytes / 24,948 records and verified exact
+  identity with the audited report. Executed the deployment script in a fresh
+  checkout without data and confirmed that it stages the same six site assets.
+- Tampered bytes fail the checksum before writing; private methods, exact truth,
+  artifact references and raw estimates also fail the publication checks.
+  All 14 report tests pass, including local private-candidate exports.

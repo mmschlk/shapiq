@@ -205,3 +205,6 @@ scripts/
 
 # CatBoost training artifacts (written by catboost fits in tests)
 catboost_info/
+
+# Generated website results are published as checksummed release assets.
+/benchmark/site/data.json

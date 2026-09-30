@@ -29,16 +29,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Validate public snapshot
+      - name: Download and validate public snapshot
         run: |
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
-          data = json.loads(Path('benchmark/site/data.json').read_text())
+          from urllib.request import urlopen
+          source = json.loads(Path('benchmark/site/data-source.json').read_text())
+          with urlopen(source['url'], timeout=120) as response:
+              payload = response.read()
+          assert hashlib.sha256(payload).hexdigest() == source['sha256'], 'Dataset checksum mismatch'
+          data = json.loads(payload)
           assert data['schema_version'] == 1 and data['records']
           assert not any(method.get('private', True) for method in data['methods'].values())
           assert all('truth' not in game and 'artifact' not in game for game in data['games'])
           assert all('estimate' not in record for record in data['records'])
+          Path('benchmark/site/data.json').write_bytes(payload)
           PY
           mkdir -p "$RUNNER_TEMP/benchmark-site"
           cp benchmark/site/{index.html,app.js,style.css,shapiq.svg,methods.js,data.json} "$RUNNER_TEMP/benchmark-site/"
