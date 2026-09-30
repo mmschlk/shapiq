@@ -284,3 +284,20 @@ Independent reviewer: `investigate_optional`.
 - XML comparison confirms the SVG keeps its colored geometry/styles while
   removing only the lower wordmark and invisible sizing rectangle, with a tighter
   viewport. No framework or dependency was added.
+
+## Separate LeverageSHAP restoration
+
+[PR #603](https://github.com/mmschlk/shapiq/pull/603) is based on upstream `main`
+in an isolated worktree; no estimator code changed in this benchmark branch.
+Independent reviewer: `investigate_optional`.
+
+- Traced the historical `0.001` ridge safeguard, its August removal and the
+  sampler-only alignment PR. Verified original/current weight normalization in
+  36 cases. Same-sample diagnostics isolate the missing low-budget stabilization.
+- All 325 existing LeverageSHAP tests pass unchanged, plus 16 new checks and 12
+  neighboring tests (353 total). Independent review verified 160 exact zero-ridge
+  comparisons, 108 exact unaffected-path comparisons and 52 constrained ridge
+  references. It caught and resolved a tiny-penalty numerical-nullspace issue;
+  extreme-penalty probes preserve finite results and efficiency.
+- The fix keeps queries unchanged and documents bias. Public measurements and
+  the running four-instance campaign retain their original frozen source.

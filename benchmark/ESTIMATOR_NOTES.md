@@ -67,14 +67,19 @@ already handled singularity. That addresses solving a singular system, but does
 not prevent statistical amplification along small nonzero singular directions.
 [Shapiq PR #583](https://github.com/mmschlk/shapiq/pull/583), merged August 25,
 aligned the sampler without adding regularization to shapiq's existing solver.
+That PR's comparison covered `5d–160d`, above the safeguard's `3d` threshold,
+so it could not detect the missing low-budget behavior.
 
 The old and current fixed-count implementations use the same weight scale.
 Applying the historical `0.001` Gram penalty to the **same** 20 sampled designs at
 `2d` changes diagnostic mean nMSE from 21,588 to 2.129 for KNN128, and from 32.148
 to 0.1766 for the 30-player tree. These are private diagnostic comparisons, not
 replacement leaderboard scores. Ridge introduces bias and need not improve every
-game. Restoration is being developed in a separate estimator branch; the current
-benchmark source and measurements remain unchanged.
+game. [Restoration PR #603](https://github.com/mmschlk/shapiq/pull/603) uses the
+historical penalty and requested-budget threshold, with `ridge=0` as an opt-out.
+It bypasses exhaustive samples and removes the old condition-number gate, which
+is unreliable because efficiency already makes the Gram matrix singular. The
+current benchmark source and measurements remain unchanged.
 
 The [LeverageSHAP paper, Section 5](https://arxiv.org/html/2410.01917v2#S5)
 starts its experiments at 5d and reports medians and quartiles over 100 runs.
