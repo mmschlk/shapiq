@@ -496,3 +496,8 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   12, with peak RSS below 1.2 GiB. These are preparation estimates, not measured
   estimator performance. Together with causal probes they support a 12-hour
   per-seed preparation limit; full preparation remains the qualification gate.
+- Frozen source `f0199253` passes all 456 OddSHAP/LeverageSHAP tests. Independent
+  review verified source hashes, estimator fixes, all seven compiled extensions,
+  exact regeneration of the expanded suite and the preparation wrapper changes.
+  Jobs 360871/360872 follow the selected-pairing campaign with separate completion
+  watchers; the sweep starts only after successful preparation.

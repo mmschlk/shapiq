@@ -114,6 +114,14 @@ Preparation allows 12 hours per seed; the sweep allows 24 hours, with the same
 120-second/12-GiB per-evaluation limits and standardized Hopper allocation.
 Unfinished cells resume from checkpoints before final publication.
 
+Submitted: matrix preparation **360871**, following the selected-pairing sweep,
+then matrix sweep **360872** after successful preparation. Both use frozen source
+[`f0199253`](https://github.com/rtealwitter/shapiq/commit/f019925396f016cf4fa11f33101f025cbbbefa9a),
+including the LeverageSHAP and OddSHAP fixes. Separate watchers are armed for
+both campaigns; they wake this session on completion or failure to audit, resume
+if necessary, and publish verified results. These are queued experiments, not
+results already available on the website.
+
 The **published dataset** still contains 37 settings × four constructions,
 808 game/target definitions and 159,984 cells. All its recipes qualified.
 The full rerun completed on Hopper
