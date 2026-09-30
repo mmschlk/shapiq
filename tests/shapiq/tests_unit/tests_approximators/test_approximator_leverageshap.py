@@ -1025,3 +1025,104 @@ def test_negative_large_magnitude_game(seed):
         assert svs[i] > svs[i + 1], (
             f"Expected sv[{i}] > sv[{i + 1}], got {svs[i]:.6f} vs {svs[i + 1]:.6f}"
         )
+
+
+@pytest.mark.parametrize("ridge", [-1, np.nan, np.inf, -np.inf])
+def test_invalid_ridge(ridge):
+    """Reject invalid penalties before querying a game."""
+    with pytest.raises(ValueError, match="ridge must be finite and nonnegative"):
+        LeverageSHAP(3, ridge=ridge)
+
+
+def test_low_budget_ridge_stabilizes_unanimity_game():
+    """A three-way interaction gives a reproducible nearly square design outlier."""
+    queries = []
+
+    def game(coalitions):
+        queries.append(coalitions.copy())
+        return np.all(coalitions[:, :3], axis=1).astype(float)
+
+    truth = np.zeros(32)
+    truth[:3] = 1 / 3
+    unregularized = LeverageSHAP(32, random_state=0, ridge=0).approximate(64, game)
+    stabilized = LeverageSHAP(32, random_state=0).approximate(64, game)
+    energy = np.sum(truth**2)
+    assert np.sum((unregularized.values[1:] - truth) ** 2) / energy > 600
+    assert np.sum((stabilized.values[1:] - truth) ** 2) / energy < 1
+    np.testing.assert_array_equal(queries[0], queries[1])
+    assert stabilized.estimation_budget == unregularized.estimation_budget == 64
+    assert stabilized.values[1:].sum() == pytest.approx(1)
+
+
+@pytest.mark.parametrize(("scale", "offset"), [(1, 0), (-3, 7)])
+def test_ridge_matches_analytic_constrained_solution(monkeypatch, scale, offset):
+    """For one pair, lambda=2/3 halves the identifiable additive contrast.
+
+    With z=100, its centered row is a=(2/3,-1/3,-1/3). Both weights
+    are 1/2, so the Gram eigenvalue on a is 2/3. The penalty halves a,
+    giving (2/3,1/6,1/6) after the efficiency offset. Dummy values become
+    nonzero: the stabilization intentionally introduces additive-game bias.
+    """
+    coalitions = np.array([[0, 0, 0], [1, 1, 1], [1, 0, 0], [0, 1, 1]], dtype=bool)
+    weights = np.array([0, 0, 0.5, 0.5])
+    monkeypatch.setattr(LeverageSHAP, "_sample", lambda self, budget: (coalitions, weights))
+
+    def game(z):
+        return scale * z[:, 0] + offset
+
+    result = LeverageSHAP(3, ridge=2 / 3).approximate(4, game)
+    np.testing.assert_allclose(result.values[1:], scale * np.array([2 / 3, 1 / 6, 1 / 6]))
+    assert result.values[0] == result.baseline_value == offset
+    assert result.values[1:].sum() == pytest.approx(scale)
+    original = LeverageSHAP(3, ridge=0).approximate(4, game)
+    np.testing.assert_allclose(original.values[1:], [scale, 0, 0], atol=1e-14)
+
+
+def test_ridge_budget_boundary_uses_requested_budget():
+    """An odd cap above 3d stays unregularized even if sampling rounds to 3d."""
+
+    def game(z):
+        return np.all(z[:, :3], axis=1).astype(float)
+
+    unregularized = LeverageSHAP(8, random_state=0, ridge=0).approximate(24, game)
+    below = LeverageSHAP(8, random_state=0).approximate(24, game)
+    above = LeverageSHAP(8, random_state=0).approximate(25, game)
+    assert not np.allclose(below.values, unregularized.values)
+    np.testing.assert_array_equal(above.values, unregularized.values)
+    assert below.estimation_budget == above.estimation_budget == 24
+
+
+@pytest.mark.parametrize(("n", "budget"), [(1, 2), (3, 2), (3, 8), (3, 9), (8, 32)])
+def test_ridge_bypassed_outside_partial_low_budget(n, budget):
+    """Endpoints alone, full census, and budgets above 3d retain the old solve."""
+
+    def game(z):
+        return z @ np.arange(1, n + 1)
+
+    original = LeverageSHAP(n, random_state=0, ridge=0).approximate(budget, game)
+    result = LeverageSHAP(n, random_state=0, ridge=1).approximate(budget, game)
+    np.testing.assert_array_equal(result.values, original.values)
+
+
+def test_ridge_bypasses_realized_binomial_census(monkeypatch):
+    """A random-count draw may cover every coalition below the requested cap."""
+    coalitions, weights = LeverageSHAP(3)._sample(8)
+    monkeypatch.setattr(LeverageSHAP, "_sample", lambda self, budget: (coalitions, weights))
+    result = LeverageSHAP(3, ridge=1, deterministic_counts=False).approximate(
+        6, lambda z: z[:, 0].astype(float)
+    )
+    np.testing.assert_allclose(result.values[1:], [1, 0, 0], atol=1e-14)
+    assert result.estimation_budget == 8
+
+
+@pytest.mark.parametrize("ridge", [1e-30, 1e-300])
+def test_tiny_ridge_preserves_efficiency_and_unregularized_limit(ridge):
+    """Numerical null directions must not be amplified when ridge tends to zero."""
+
+    def game(z):
+        return np.all(z, axis=1).astype(float)
+
+    original = LeverageSHAP(3, random_state=0, ridge=0).approximate(6, game)
+    result = LeverageSHAP(3, random_state=0, ridge=ridge).approximate(6, game)
+    np.testing.assert_allclose(result.values, original.values, atol=1e-14)
+    assert result.values[1:].sum() == pytest.approx(1, abs=1e-14)
