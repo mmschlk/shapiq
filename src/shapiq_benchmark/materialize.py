@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
-import os
 import random
 import re
 import time
-from itertools import combinations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,74 +15,23 @@ if TYPE_CHECKING:
 import numpy as np
 
 from shapiq.game_theory import ExactComputer
+
+# Keep the existing materialize imports available to scripts and local candidates.
+from shapiq_benchmark.exact import exact_table_truth
 from shapiq_benchmark.families import FAMILY_CATALOG, MAX_ENUMERATION_PLAYERS, make_family
 from shapiq_benchmark.games import truth_dict
 from shapiq_benchmark.media import EXTRA_CATALOG, make_extra
+from shapiq_benchmark.payoff_cache import (
+    CHUNK_PROTOCOL,
+    CHUNK_SIZE,
+    COST_PROTOCOL,
+    chunk_identity as _chunk_identity,
+    cost_batch as _cost_batch,
+    read_chunk as _read_chunk,
+    write_chunk,
+)
 
 CATALOG = {**FAMILY_CATALOG, **EXTRA_CATALOG}
-CHUNK_SIZE = 4096
-CHUNK_PROTOCOL = "ascending-4096-fresh-seeded-recipe-v1"
-COST_PROTOCOL = "batch-amortized-wall-seconds-v1"
-
-
-def _cost_batch(start: int, stop: int, seconds: float) -> dict:
-    """Record measured batch work without local host names or paths."""
-    from shapiq_benchmark.execution import THREAD_VARIABLES, hardware
-
-    observed = hardware()
-    return {
-        "start": start,
-        "stop": stop,
-        "seconds": seconds,
-        "cpu_model": observed["cpu_model"],
-        "affinity": observed["affinity"],
-        "threads": {name: os.environ.get(name) for name in THREAD_VARIABLES},
-    }
-
-
-def _chunk_identity(spec: dict, seed: int, start: int, source: dict) -> dict:
-    software = {
-        key: source.get(key)
-        for key in ("python", "numpy", "scikit-learn", "shapiq", "installed_packages")
-    }
-    return {
-        "spec": spec,
-        "instance_seed": seed,
-        "start": start,
-        "stop": min(start + CHUNK_SIZE, 2 ** spec["n_players"]),
-        "protocol": CHUNK_PROTOCOL,
-        "source_sha256": source["source_sha256"],
-        "software_sha256": hashlib.sha256(
-            json.dumps(software, sort_keys=True).encode()
-        ).hexdigest(),
-    }
-
-
-def _read_chunk(path: Path, expected: dict) -> tuple:
-    """Reject incomplete, corrupt, or incompatible checkpointed payoff work."""
-    with np.load(path, allow_pickle=False) as saved:
-        values, costs = saved["values"], saved["evaluation_seconds"]
-        manifest = json.loads(str(saved["manifest"]))
-    count = expected["stop"] - expected["start"]
-    batch = manifest["batch"]
-    if (
-        manifest["identity"] != expected
-        or values.shape != (count,)
-        or costs.shape != (count,)
-        or not np.isfinite(values).all()
-        or not np.isfinite(costs).all()
-        or np.any(costs < 0)
-        or batch["start"] != expected["start"]
-        or batch["stop"] != expected["stop"]
-        or not math.isfinite(batch["seconds"])
-        or batch["seconds"] < 0
-        or not math.isclose(batch["seconds"], float(np.sum(costs)), rel_tol=1e-12, abs_tol=0)
-        or hashlib.sha256(values.tobytes() + costs.tobytes()).hexdigest()
-        != manifest["payload_sha256"]
-    ):
-        message = "Cached payoff chunk is incomplete or does not match its source/recipe/protocol."
-        raise ValueError(message)
-    return values, costs, manifest
 
 
 def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Path) -> Path:
@@ -139,104 +85,9 @@ def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Pat
         "identity": expected,
         "metadata": metadata,
         "batch": _cost_batch(start, stop, elapsed),
-        "payload_sha256": hashlib.sha256(values.tobytes() + costs.tobytes()).hexdigest(),
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    with temporary.open("wb") as stream:
-        np.savez_compressed(
-            stream,
-            values=values,
-            evaluation_seconds=costs,
-            manifest=json.dumps(manifest, allow_nan=False),
-        )
-    temporary.replace(path)
+    write_chunk(path, values, costs, manifest)
     return path
-
-
-def exact_table_truth(values: np.ndarray, n: int, targets: list[dict]) -> dict:
-    """Combine an exhaustive bitmask table into the six supported low-order indices.
-
-    Direct first/second differences avoid high-order Möbius cancellation and the
-    library FII solver's square diagonal matrix. Weights are the library's
-    discrete-derivative formulas; at order two, faithful and k-SII singleton
-    coefficients are their first-order values minus half the incident pairs.
-    Storage is O(2**n); pair differences are reused for every interaction index.
-    """
-    supported = {("SV", 1), *((index, 2) for index in ("SII", "k-SII", "STII", "FSII", "FBII"))}
-    if any((target["index"], target["order"]) not in supported for target in targets):
-        message = "Large exhaustive tables support SV and the five order-two interaction targets."
-        raise ValueError(message)
-    if values.shape != (2**n,) or not np.isfinite(values).all():
-        message = "Exact truth requires one finite payoff per coalition."
-        raise ValueError(message)
-    values = np.asarray(values, dtype=np.longdouble)
-    baseline = float(values[0])
-    sizes = np.zeros(2 ** (n - 1), dtype=np.uint8)
-    for bit in range(n - 1):
-        step = 1 << bit
-        sizes[step : 2 * step] = sizes[:step] + 1
-    weights = np.array([np.longdouble(1) / (n * math.comb(n - 1, size)) for size in range(n)])
-    rest = np.arange(2 ** (n - 1), dtype=np.uint32)
-    shapley, banzhaf = {}, {}
-    for player in range(n):
-        bit = 1 << player
-        absent = (rest & (bit - 1)) | ((rest >> player) << (player + 1))
-        delta = values[absent | bit] - values[absent]
-        # Complementary coalitions have equal weights. Pair before summation to
-        # preserve cancellation, including exactly zero SV for even parity games.
-        symmetric = (delta + delta[::-1]) / 2
-        shapley[player] = np.sum(symmetric * weights[sizes])
-        banzhaf[player] = np.mean(symmetric)
-    pairs = {index: {} for index in ("SII", "STII", "FSII", "FBII")}
-    if any(target["order"] == 2 for target in targets):
-        rest = np.arange(2 ** (n - 2), dtype=np.uint32)
-        pair_sizes = sizes[: len(rest)]
-        sii = np.array(
-            [np.longdouble(1) / ((n - 1) * math.comb(n - 2, size)) for size in range(n - 1)]
-        )
-        fsii = np.array(
-            [sii[size] * 6 * (size + 1) * (n - size - 1) / (n * (n + 1)) for size in range(n - 1)]
-        )
-        stii = np.array([np.longdouble(2) / (n * math.comb(n - 1, size)) for size in range(n - 1)])
-        for left, right in combinations(range(n), 2):
-            a, b = 1 << left, 1 << right
-            absent = (rest & (a - 1)) | ((rest >> left) << (left + 1))
-            absent = (absent & (b - 1)) | ((absent >> right) << (right + 1))
-            delta = (
-                values[absent | a | b] - values[absent | a] - values[absent | b] + values[absent]
-            )
-            symmetric = (delta + delta[::-1]) / 2
-            pairs["SII"][left, right] = np.sum(symmetric * sii[pair_sizes])
-            pairs["FSII"][left, right] = np.sum(symmetric * fsii[pair_sizes])
-            pairs["STII"][left, right] = np.sum(delta * stii[pair_sizes])
-            pairs["FBII"][left, right] = np.mean(symmetric)
-    results = {}
-    for target in targets:
-        index, order = target["index"], target["order"]
-        selected = pairs["SII" if index == "k-SII" else index] if order == 2 else {}
-        singles = banzhaf if index == "FBII" else shapley
-        coefficients = {(player,): value for player, value in singles.items()}
-        if index == "STII":
-            coefficients = {(player,): values[1 << player] - values[0] for player in range(n)}
-        if index in ("k-SII", "FSII", "FBII"):
-            for (left, right), value in selected.items():
-                coefficients[left,] -= value / 2
-                coefficients[right,] -= value / 2
-        coefficients.update(selected)
-        output_baseline = baseline
-        if index == "FBII":
-            output_baseline = float(
-                np.mean(values) - sum(banzhaf.values()) / 2 + sum(selected.values()) / 4
-            )
-        numbers = [float(value) for value in coefficients.values()]
-        results[index, order] = {
-            "coordinates": [list(players) for players in coefficients],
-            "values": numbers,
-            "baseline": output_baseline,
-            "energy": math.fsum(value**2 for value in numbers),
-        }
-    return results
 
 
 def prepare_families(

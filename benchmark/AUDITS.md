@@ -549,3 +549,23 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   including an exhaustively prepared Digits clustering table. Deadline/resume
   again preserved every artifact and snapshot byte. The earlier pending
   matrix20 jobs 360894/360895 were cancelled before execution.
+
+## Modular cleanup (September 30)
+
+- Exact table calculations and authenticated payoff checkpoints now have their
+  own modules. Independent before/after checks produced identical metadata for
+  18 target definitions and byte-identical small, chunked and classifier tables.
+  The numerical function bodies are unchanged.
+- The preparation driver separates planning, worker execution and assembly.
+  All 1,564 case configurations and 81,100 planned tasks match the previous
+  version. Independent checks preserve CPU assignments, commands, timeouts,
+  failures and deadline handling.
+- Chart rendering moves into one ordinary JavaScript file, loaded by both local
+  exports and Pages. The controller retains filters, tables and page state;
+  there is still no frontend build or additional dependency. Desktop and
+  720/390/320-pixel browser comparisons preserve DOM, geometry and interactions;
+  chart function bodies are unchanged. All 35 report tests pass, including the
+  new asset-export check.
+- All 314 benchmark tests pass. Formatting and lint pass; type checking retains
+  the same eight pre-existing optional-import/ignore diagnostics. Frozen
+  campaign sources, submitted jobs and completion watchers are unchanged.

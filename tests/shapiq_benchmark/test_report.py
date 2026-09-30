@@ -72,6 +72,7 @@ def test_export_strips_private_artifacts(tmp_path: Path) -> None:
     assert "43.2" not in text
     assert data["games"][0]["metadata"] == {"dataset": "test", "zero_truth_energy": False}
     assert (output / "index.html").exists()
+    assert (output / "charts.js").exists()
     assert data["records"][0]["run_id"] in data["runs"]
 
 

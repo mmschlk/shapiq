@@ -25,16 +25,22 @@ comparison locally without uploading anything.
 | --- | --- |
 | Select compatible dataset/recipe/player combinations | `matrix.py`, `benchmark/suites/matrix.json` |
 | Prepare a matrix in parallel and resume checkpoints | `benchmark/prepare_matrix.py` |
-| Construct and qualify games | `prepare.py`, `families.py`, `media.py`, `materialize.py`, `games.py` |
+| Construct game recipes | `families.py`, `media.py`, `games.py` |
+| Freeze and qualify game snapshots | `prepare.py`, `materialize.py` |
+| Compute exact values and interactions from a table | `exact.py` |
+| Authenticate payoff checkpoints and record evaluation costs | `payoff_cache.py` |
 | Run, count queries and checkpoint | `runner.py`, `execution.py` |
 | Calculate scores, Elo and history | `summary.py` |
 | Export the website and reproduction archive | `report.py`, `bundle.py` |
 | Render the interface | `benchmark/site/app.js`, `style.css`, `index.html` |
+| Draw performance and history charts | `benchmark/site/charts.js` |
 | Describe estimators and link sources | `benchmark/site/methods.js` |
 
-Python files above live in `src/shapiq_benchmark/`. The browser's `render()`
-coordinates separate functions for the leaderboard, performance plots, history,
-run issues and hardware details. There is no frontend build step.
+Python files above live in `src/shapiq_benchmark/`. Start with `prepare.py` for
+snapshot construction and `runner.py` for estimator execution. The parallel
+preparation script separates task planning, worker execution and final assembly.
+In the browser, `app.js` manages data, filters and tables; `charts.js` draws the
+charts. Both are ordinary scripts with no frontend build step.
 
 ## What the expanded suite covers
 
