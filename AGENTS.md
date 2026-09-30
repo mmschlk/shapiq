@@ -56,6 +56,15 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- Paired LeverageSHAP at a budget of `2 * n` has only `n - 1` independent
+  interior directions for `n - 1` free coefficients. Large errors near this
+  interpolation threshold can be statistical instability despite an accurate
+  SVD solve; regularization changes the estimator and must be explicit.
+  The reference repository added a low-budget `0.001 I` ridge safeguard in
+  `f3c0427`, then removed it in August 2026 audit commit `04cc121`. Shapiq PR #583
+  aligned sampling without restoring it. Check reference history before assuming
+  minimum-norm least squares preserves the author's intended low-budget behavior.
+
 - The core `src/shapiq/tree/interventional/game.py` and the legacy
   `src/shapiq_games/benchmark/interventionaltreeshapiq_xai/base.py` both define
   `InterventionalGame`, but their classifier output handling differs. Use the

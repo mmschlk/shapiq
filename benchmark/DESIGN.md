@@ -4,7 +4,7 @@
 in [README.md](README.md); this document also retains deferred research ideas.
 Current display policy supersedes earlier alternatives below: partial-coverage
 methods receive available-result nMSE ranks and matched-result Elo, with coverage
-shown explicitly. Historical frontiers retain complete-panel comparisons.
+shown explicitly. Historical method lines retain complete-panel comparisons.
 Current repetition policy is four constructed game instances per recipe/dataset
 and one estimator run per instance/budget. Family plots and tables default to
 weighted median nMSE, with the midpoint at an exact half-weight boundary.
@@ -105,7 +105,7 @@ An automatic similarity model would add complexity before we know it is useful.
 | Runtime curve | What accuracy can I obtain in a given time? | Separate cached-oracle and live-game timing, one hardware profile at a time. |
 | Overall budget summary | Which method works well across the selected budget regime? | Average over a fixed declared budget grid; show the grid and target. |
 | Head-to-head | How often does A beat B on the same tasks? | Win/tie/loss matrix, paired counts, plus Elo-scale ratings for published presets. |
-| History | When did methods capable of lower error become available? | Method release markers, horizontal score lines, and a best-so-far step curve. |
+| History | When did methods capable of lower error become available? | Individual horizontal score lines from verified release dates, with endpoint labels and paper links. |
 | Coverage | What has actually been tested? | Every estimator/family/target with status and exclusion reason. |
 
 Show “lower is better” beside error metrics. Display exact-zero errors explicitly
@@ -584,7 +584,7 @@ Example: truth `[1, -1]` and prediction `[0, 0]` give MSE = 1 and nMSE = 1.
 Scaling both truth and prediction leaves nMSE unchanged. Do not normalize by the
 sum of attributions: positive and negative effects can cancel.
 Show reference lines at 1 (zero prediction) and 0 (exact answer), outside the
-estimator inventory, Elo competitors, and release-history frontier.
+estimator inventory, Elo competitors, and release-history lines.
 `Game(normalize=True)` centers game outputs; it does not perform nMSE normalization.
 
 Exclude the empty-coalition/baseline coefficient. Align values by coalition key,
@@ -779,19 +779,19 @@ when verified, while offering “since KernelSHAP” as a display range.
 For a fixed suite version, target/order, budget rule, and hardware/timing mode:
 
 1. Compute each complete eligible method's mean or median nMSE on the
-   **same frozen task panel**. Provisional methods cannot set the frontier.
-2. Draw a horizontal line from its release date to the present at that score.
-3. Draw a step function `frontier(t) = min(score[m] for release[m] <= t)`.
-   A new release lowers the frontier only when it improves that score.
-4. Label the method responsible for each step, link its paper, and expose its
-   coverage and uncertainty. Mean and median have separate frontiers.
+   **same frozen task panel**. Omit methods with incomplete coverage from history.
+2. Draw one horizontal line per method from its release date to the present.
+3. Label each line's endpoint with the method name and publication year, using
+   light connectors to separate crowded labels. On narrow screens, show the
+   ordered names and endpoint scores below the plot.
+4. Let each label expand a description and paper/implementation links below the
+   chart. The plot contains individual method lines, without a best-so-far curve.
 
-This delivers the requested staircase. Label it **“Retrospective performance of
-current implementations, grouped by method release date.”** It is not a claim
-that these datasets, implementations, or timings existed then. Never recompute
-older steps on different game subsets or pool unmatched targets. Freeze the
-panel across the whole timeline; a coverage change requires a new suite version.
-Missing dates/measurements cannot create a frontier step.
+Label this **“Retrospective performance of current implementations, grouped by
+method release date.”** It is not a claim that these datasets, implementations,
+or timings existed then. Never score older methods on different game subsets or
+pool unmatched targets. Freeze the panel across the whole timeline; a coverage
+change requires a new suite version. Omit unverified dates and missing scores.
 
 ## The code to write
 
@@ -1160,7 +1160,7 @@ Implement only the corresponding parts of the proposed file layout at each phase
 | 2. Minimal website and private report | One static page with a table, error-versus-budget chart, method/budget/game-instance filters, and download. Deploy a small public preview on Pages; use the same assets for a local candidate report. | Every displayed number traces to a real run; the page works locally and under the Pages subpath. It visibly identifies the small preview suite. |
 | 3. Existing high-player games and interactions | Add qualified high-player tree SV/pairwise k-SII and unweighted-KNN SV, repeat/coverage summaries, and controlled Hopper timing. | Small truth counterparts match enumeration; large-game exact truth avoids powerset enumeration; per-family/player-band budget and time curves are reproducible. |
 | 4. Broader coverage and reliable campaigns | Add remaining compatible estimators and existing game families/targets, optionally product-kernel SV, resumable campaigns, and resource limits in small batches. | Each addition passes qualification and gets a versioned coverage update; interrupted campaigns resume without mixing snapshots. No new exact algorithm is required. |
-| 5. Rich comparisons and history | Add paired win rates first, then preset Elo/uncertainty and release-date frontiers, followed by richer presets and overall regime summaries. | Shared-panel fixtures validate every summary; dates have sources; incomplete methods cannot improve official ranks. |
+| 5. Rich comparisons and history | Add paired win rates first, then preset Elo/uncertainty and individual release-date score lines, followed by richer presets and overall regime summaries. | Shared-panel fixtures validate every summary; dates have sources; incomplete methods cannot improve official ranks. |
 
 **Concrete Phase 1 proposal:** `KernelSHAP`, `PermutationSamplingSV`, and `SVARM`;
 SV only; California Housing and Adult Census, two qualified model families

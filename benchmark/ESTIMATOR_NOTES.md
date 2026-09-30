@@ -50,8 +50,31 @@ an orthonormal basis reproduces the original problematic estimates within
 baseline, sampling-weight, or solver error explaining the spike.
 
 Disabling pairing moves the instability toward 1d and worsens the KNN results at
-4d and above. Keep the shipped defaults. Regularization or adaptive pairing
-would define a separate estimator configuration, not an invisible correction.
+4d and above. Published runs retain their frozen defaults; any corrected
+estimator needs a separately identified evaluation.
+
+### Historical regularization was removed
+
+The author's implementation previously included a low-budget ridge safeguard.
+[Commit f3c0427](https://github.com/rtealwitter/leverageshap/commit/f3c0427e23ee627e64beb8f51a78f6a9352b0d18)
+added it in November 2025: for budgets at most `3d`, a condition-number check
+could add `0.001 I` to the projected regression's Gram matrix. The warning
+incorrectly called the penalty `0.000001`; the executed penalty was `0.001`.
+
+[Audit commit 04cc121](https://github.com/rtealwitter/leverageshap/commit/04cc121295d508d0e45aaf5bd224724aad122cba)
+removed that safeguard in August 2026, reasoning that minimum-norm least squares
+already handled singularity. That addresses solving a singular system, but does
+not prevent statistical amplification along small nonzero singular directions.
+[Shapiq PR #583](https://github.com/mmschlk/shapiq/pull/583), merged August 25,
+aligned the sampler without adding regularization to shapiq's existing solver.
+
+The old and current fixed-count implementations use the same weight scale.
+Applying the historical `0.001` Gram penalty to the **same** 20 sampled designs at
+`2d` changes diagnostic mean nMSE from 21,588 to 2.129 for KNN128, and from 32.148
+to 0.1766 for the 30-player tree. These are private diagnostic comparisons, not
+replacement leaderboard scores. Ridge introduces bias and need not improve every
+game. Restoration is being developed in a separate estimator branch; the current
+benchmark source and measurements remain unchanged.
 
 The [LeverageSHAP paper, Section 5](https://arxiv.org/html/2410.01917v2#S5)
 starts its experiments at 5d and reports medians and quartiles over 100 runs.

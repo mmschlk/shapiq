@@ -269,3 +269,18 @@ Independent reviewer: `investigate_leverage`.
   one/all 22 methods, ties, zeros, sub-floor values, empty results and widths from
   320 to 1,280 pixels. Numeric aggregation, filters and log-scale fixtures remain
   unchanged. JavaScript syntax/format checks pass; no new type diagnostics.
+
+## Simplified arrows, history and logo
+
+Independent reviewer: `investigate_optional`.
+
+- Replaced remaining font-based sorting arrows with the shared vector chevron;
+  show direction only for the active sort. Enlarged/aligned disclosure arrows
+  and explicitly disabled native WebKit select arrows. Chromium did not reproduce
+  duplicate native arrows, so that was not established as the original cause.
+- Compared all seven headers in both directions against the previous renderer:
+  every score and row order matches. Verified arrow states, mobile layouts and
+  removal of the best-dated-result curve.
+- XML comparison confirms the SVG keeps its colored geometry/styles while
+  removing only the lower wordmark and invisible sizing rectangle, with a tighter
+  viewport. No framework or dependency was added.

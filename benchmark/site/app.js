@@ -680,13 +680,6 @@ function renderLeaderboard(s, preset, visibleMethods) {
               : "ascending"
           : "none",
       );
-    button.querySelector(".sortArrow").textContent = active
-      ? tableSort.key === "default"
-        ? "↺"
-        : tableSort.descending
-          ? "↓"
-          : "↑"
-      : "↕";
   });
   const sortByElo = tableSort.key === "elo";
   const summaries = visibleMethods
@@ -848,30 +841,6 @@ function renderHistory(s, preset) {
         { x: end, y: metric === "median" ? method.median : method.average },
       ],
     }));
-  const frontier = [],
-    steps = [];
-  historyMethods
-    .map((method) => ({
-      date: method.date,
-      value: metric === "median" ? method.median : method.average,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.value - b.value)
-    .forEach((entry) => {
-      if (!frontier.length || entry.value < frontier.at(-1).value)
-        frontier.push(entry);
-    });
-  frontier.forEach((p, i) => {
-    if (i) steps.push({ x: year(p.date), y: frontier[i - 1].value });
-    steps.push({ x: year(p.date), y: p.value });
-  });
-  if (steps.length) {
-    steps.push({ x: end, y: steps.at(-1).y });
-    historySeries.push({
-      name: "Best dated result",
-      color: "#28213e",
-      points: steps,
-    });
-  }
   chart("historyChart", historySeries, "Publication year", true, metric);
   $("historySources").replaceChildren();
   (history?.methods || []).forEach((m) => {
@@ -1155,10 +1124,10 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
   series.forEach((s) => {
     const method = s.method || s.name,
       color = s.color || colorFor(method),
-      dash = s.name === "Best dated result" ? "" : dashFor(method),
+      dash = dashFor(method),
       marker = Math.floor(methodIndex(method) / palette.length) % 4;
     const group = element("g", {
-      class: s.name === "Best dated result" ? "series frontier" : "series",
+      class: "series",
       "data-method": method,
     });
     const line = element(
@@ -1167,7 +1136,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         points: s.points.map((p) => `${x(p.x)},${y(p.y)}`).join(" "),
         fill: "none",
         stroke: color,
-        "stroke-width": s.name === "Best dated result" ? 2.8 : 2.2,
+        "stroke-width": 2.2,
         "stroke-dasharray": dash,
         "stroke-linejoin": "round",
         "stroke-linecap": "round",

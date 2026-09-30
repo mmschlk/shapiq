@@ -16,7 +16,7 @@
   --red: #e3326a;
   --blue: #426be0;
   --mint: #80b9a7;
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23596980' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 5.5 5 5 5-5' fill='none' stroke='%23596980' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 * {
   box-sizing: border-box;
@@ -107,7 +107,7 @@ header {
 }
 .brandMark {
   width: 35px;
-  height: 44px;
+  height: 39px;
   object-fit: contain;
 }
 .brandSuffix {
@@ -271,7 +271,7 @@ h1 span {
   font-weight: 500;
   display: flex;
   justify-content: space-between;
-  padding: 2px 4px 2px 0;
+  padding: 2px 8px 2px 0;
 }
 .pickerPanel {
   position: absolute;
@@ -513,12 +513,6 @@ svg {
 .series {
   transition: opacity 0.15s;
 }
-.series.frontier {
-  opacity: 0.38;
-}
-.series.frontier.emphasis {
-  opacity: 0.8;
-}
 .series.dimmed {
   opacity: 0.12;
 }
@@ -708,7 +702,20 @@ th[aria-sort="descending"] {
   color: var(--blue);
 }
 .sortArrow {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
   margin-left: 3px;
+  vertical-align: middle;
+  background: var(--chevron) center / 14px no-repeat;
+  opacity: 0;
+}
+th[aria-sort="ascending"] .sortArrow {
+  transform: rotate(180deg);
+}
+th[aria-sort="ascending"] .sortArrow,
+th[aria-sort="descending"] .sortArrow {
+  opacity: 1;
 }
 .methodLink {
   padding: 0;
@@ -876,6 +883,7 @@ th[aria-sort="descending"] {
 
 /* Estimator details and disclosure arrows */
 select {
+  -webkit-appearance: none;
   appearance: none;
 }
 select,
@@ -886,17 +894,17 @@ select,
   background-image: var(--chevron);
   background-repeat: no-repeat;
   background-position: right 8px center;
-  background-size: 12px;
-  padding-right: 28px;
+  background-size: 14px;
+  padding-right: 30px;
 }
 .methodPicker strong::after,
 .detailToggle::after {
   content: "";
   display: inline-block;
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  background: var(--chevron) center / 12px no-repeat;
+  width: 14px;
+  height: 14px;
+  background: var(--chevron) center / 14px no-repeat;
 }
 .methodPicker[open] strong::after,
 .detailToggle[aria-expanded="true"]::after {

@@ -218,10 +218,12 @@ use a batch Bradley–Terry fit centered at 1000, a 400-point logistic scale, an
 magnitude and depend on the selected methods. Custom panels retain nMSE rankings
 but withhold preset-specific Elo and history.
 
-History places each current implementation's score at its verified first-publication
-date and shows the best mean or median among methods with complete coverage.
-History keeps a common panel so its frontier remains comparable. This is retrospective
-performance on today's frozen panel, not a reconstruction of historical results.
+History shows one horizontal mean or median nMSE line per method with complete
+coverage, beginning at its verified first-publication date. Each method uses the
+same frozen panel. Names and publication years align with line endpoints on the
+right; narrow screens show an ordered list with endpoint scores below the plot.
+This is retrospective performance on today's frozen panel, not a reconstruction
+of historical results.
 Unverified dates are omitted from history without removing methods from accuracy
 rankings; included dates link to primary sources.
 
