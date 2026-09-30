@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, RadiusNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.datasets import load_bike_sharing, load_california_housing
 from shapiq.explainer.product_kernel.conversion import convert_svm
@@ -316,7 +316,8 @@ def make_family(
         return game, metadata
 
     neighbors = name in ("knn", "tnn", "weighted_knn", "binary_weighted_knn")
-    classification = neighbors or name == "uncertainty"
+    gaussian_classifier = name in ("local_gaussian", "local_copula") and dataset == "wine"
+    classification = neighbors or name == "uncertainty" or gaussian_classifier
     dataset = dataset or ("iris" if classification else "california_housing")
     if (dataset in ("iris", "wine")) != classification:
         message = (
@@ -345,7 +346,8 @@ def make_family(
         point_row=int(test[0]),
         background_indices=train[:16].tolist(),
     )
-    model = DecisionTreeRegressor(
+    model_class = DecisionTreeClassifier if gaussian_classifier else DecisionTreeRegressor
+    model = model_class(
         max_depth=4 if name == "interventional_tree" else 3,
         min_samples_leaf=5,
         random_state=instance_seed,
@@ -354,12 +356,18 @@ def make_family(
         model = RandomForestRegressor(
             n_estimators=8, max_depth=4, random_state=instance_seed, n_jobs=1
         ).fit(x_train, y_train)
+    if gaussian_classifier:
+        metadata.update(class_index=1, output_scale="class probability")
+
+    def predict_class_one(rows: np.ndarray) -> np.ndarray:
+        return model.predict_proba(rows)[:, 1]
+
     metadata["model"] = type(model).__name__
     metadata["model_parameters"] = model.get_params()
     point, background = x_test[0], x_train[:16]
     if name.startswith("local_"):
         kwargs = {
-            "model": model.predict,
+            "model": predict_class_one if gaussian_classifier else model.predict,
             "data": background,
             "x": point,
             "random_state": instance_seed,

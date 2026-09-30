@@ -10,7 +10,7 @@ import pytest
 
 from shapiq_benchmark.materialize import prepare_families
 from shapiq_benchmark.prepare import prepare
-from shapiq_benchmark.runner import load_snapshot
+from shapiq_benchmark.runner import identity, load_snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,3 +160,70 @@ def test_invalid_game_seeds_rejected(tmp_path: Path, seeds: object) -> None:
     with pytest.raises(ValueError, match="game_seeds"):
         prepare(path, tmp_path / "snapshot")
     assert not (tmp_path / "snapshot").exists()
+
+
+@pytest.mark.parametrize("minimum", [0, -1, True, 11.0, "11"])
+def test_invalid_minimum_players_fails_before_preparation(tmp_path: Path, minimum: object) -> None:
+    """A requested dimensionality floor must be an unambiguous positive integer."""
+    suite = {
+        "families": ["dummy"],
+        "targets": [{"index": "SV", "order": 1}],
+        "methods": ["KernelSHAP"],
+        "relative_budgets": [1],
+        "seeds": [0],
+        "min_players": minimum,
+    }
+    path = tmp_path / "suite.json"
+    path.write_text(json.dumps(suite))
+    with pytest.raises(ValueError, match="min_players"):
+        prepare(path, tmp_path / "snapshot")
+    assert not (tmp_path / "snapshot").exists()
+
+
+def test_minimum_players_rejects_explicit_and_actual_small_games(tmp_path: Path) -> None:
+    """Neither a bad config nor a smaller-than-requested factory output may become a snapshot."""
+    from shapiq_benchmark.prepare import write_snapshot
+
+    suite = {
+        "families": [{"id": "small", "family": "dummy", "n_players": 8}],
+        "targets": [{"index": "SV", "order": 1}],
+        "methods": ["KernelSHAP"],
+        "relative_budgets": [1],
+        "seeds": [0],
+        "min_players": 11,
+    }
+    path = tmp_path / "suite.json"
+    path.write_text(json.dumps(suite))
+    with pytest.raises(ValueError, match="below min_players"):
+        prepare(path, tmp_path / "snapshot")
+    assert not (tmp_path / "snapshot").exists()
+    with pytest.raises(ValueError, match="Constructed games violate"):
+        write_snapshot(suite, [{"n_players": 10}], tmp_path)
+    assert not (tmp_path / "snapshot.json").exists()
+
+
+def test_eleven_player_snapshot_retains_exact_truth_and_relative_grid(tmp_path: Path) -> None:
+    """The new dimensionality floor accepts genuine higher-dimensional game construction."""
+    suite = {
+        "families": [{"id": "dummy-11", "family": "dummy", "n_players": 11}],
+        "targets": [{"index": "SV", "order": 1}],
+        "methods": ["KernelSHAP"],
+        "relative_budgets": [0.5, 128],
+        "seeds": [0],
+        "min_players": 11,
+    }
+    path = tmp_path / "suite.json"
+    path.write_text(json.dumps(suite))
+    snapshot = prepare(path, tmp_path / "snapshot")
+    (game,) = snapshot["games"]
+    assert game["n_players"] == 11
+    assert snapshot["suite"]["budgets_by_game"][game["id"]] == [6, 1408]
+    assert len(np.load(tmp_path / "snapshot" / game["artifact"])["values"]) == 2048
+    assert load_snapshot(tmp_path / "snapshot")[0] == snapshot
+    snapshot["suite"]["min_players"] = 12
+    snapshot["snapshot_id"] = identity(
+        {key: value for key, value in snapshot.items() if key != "snapshot_id"}
+    )
+    (tmp_path / "snapshot" / "snapshot.json").write_text(json.dumps(snapshot))
+    with pytest.raises(ValueError, match="min_players"):
+        load_snapshot(tmp_path / "snapshot")

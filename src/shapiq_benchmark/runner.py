@@ -154,6 +154,10 @@ def provenance() -> dict:
 
 def validate_suite(suite: dict) -> None:
     """Reject ambiguous or empty run matrices before doing any work."""
+    minimum = suite.get("min_players", 1)
+    if type(minimum) is not int or minimum < 1:
+        message = "min_players must be a positive integer."
+        raise ValueError(message)
     for name in (
         "seeds",
         "methods",
@@ -203,6 +207,9 @@ def load_snapshot(path: Path) -> tuple[dict, Path]:
             message = f"Artifact hash mismatch: {relative}"
             raise ValueError(message)
     for game in snapshot["games"]:
+        if game["n_players"] < snapshot["suite"].get("min_players", 1):
+            message = "Game is below the suite min_players constraint."
+            raise ValueError(message)
         if game["artifact"] not in snapshot["artifacts"]:
             message = "Game artifact is not authenticated by the snapshot."
             raise ValueError(message)

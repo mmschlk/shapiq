@@ -40,31 +40,37 @@ run issues and hardware details. There is no frontend build step.
 
 | Dimension | Coverage |
 | --- | --- |
-| Small games | 31 game kinds, with 61 dataset/player settings; exhaustive truth through 12 players |
+| Enumerated games | 31 game kinds, with 58 settings at 11/12 players |
 | Targets | SV, k-SII, SII, STII, FSII, FBII; interactions at order two |
 | Larger games | Forests with 30/64 features (all six targets); product-kernel games with 30/64 features (SV); KNN with 16/32/64/128/256/512 training-example players (SV) |
 | Estimators | All 22 public classes, with library defaults unless target configuration requires otherwise |
 | Budgets | `B/d = 0.5, 1, 2, 4, 8, 16, 32, 64, 128`, rounded up to whole queries per game |
 | Repetitions | Four constructed game instances per recipe/dataset; one estimator run per instance and budget |
-| Planned panel | 74 settings × four constructions; 1,556 game/target definitions if all qualify |
-| Planned matrix | 308,088 cells including unsupported combinations |
+| Minimum players | Every game must have at least 11 players; all nine budgets remain below the full coalition count |
+| Planned panel | 71 settings × four constructions; 1,484 game/target definitions if all qualify |
+| Planned matrix | 293,832 cells including unsupported combinations |
 
-The expansion adds Diabetes (10 features), Bike Sharing (12 features), and
-seeded subsets of Wine (6/12 features). Valuation and ensemble games add 4/12
-row, group, or model players. Neighbor games add 4/12 Wine training rows, plus
-larger exact KNN games on Breast Cancer and Digits. Player counts describe real
-features, rows, groups or models; no dummy players are added. These new settings
-are undergoing preparation and qualification, and are not yet on the website.
+The replacement suite requires **at least 11 players in every game**, rather
+than merely filtering small games from the display. Regression-feature games
+use actual Bike Sharing features; Gaussian imputers, uncertainty and TabPFN use
+Wine classification games. Valuation and ensemble games use Diabetes or Bike
+Sharing with 11/12 row, group or model players. Neighbor games use 11/12 Wine
+training rows, plus larger exact KNN games on Breast Cancer and Digits. Text and
+image games use longer inputs and finer nonempty segmentations. Four constructed
+instances remain required for each setting. Real-game dimensions come from those
+inputs or model components; synthetic diagnostics can deliberately include dummy
+players, and not every declared feature must affect a fitted model's output.
 
-Hopper preparation job `360843` constructs the four seeds in parallel, checks all
-settings and merges an authenticated snapshot. Sweep job `360844` starts only if
-preparation succeeds, with an eight-hour limit and resumable checkpoints.
-Both use frozen source
-[`1f834686`](https://github.com/rtealwitter/shapiq/commit/1f834686), including the
-separate LeverageSHAP (#603) and OddSHAP (#605) changes. New local artifacts are
-`benchmark/results/diversity-snapshot` and `benchmark/results/diversity-runs`;
-preparation logs and orchestration are under `benchmark/results/diversity-campaign`.
-Publication still requires an audited export and an explicit data-manifest update.
+At 11 players, the maximum budget is `128 × 11 = 1,408 < 2,048` coalitions.
+This prevents full enumeration within the budget grid; easy games can still have
+near-zero estimation error. Preparation rejects any constructed game below the
+minimum. New results are not yet on the website.
+
+The earlier 74-setting preparation finished in job `360843`; its queued sweep
+`360844` was cancelled before execution to replace it with this minimum-player
+suite. The completed frozen preparation remains archived separately. Publication
+requires an audited export and a data-manifest update; a completion watcher will
+wake the agent to carry out that work for the replacement campaign.
 
 The **published dataset** still contains 37 settings × four constructions,
 808 game/target definitions and 159,984 cells. All its recipes qualified.
@@ -112,8 +118,8 @@ an eight-player counterpart. KNN players are training examples, not features.
 backgrounds and held-out points as applicable. Text and image games use four
 distinct inputs to the same pretrained model. `seeds: [0]` runs each estimator
 once on each instance at each budget; it does not repeat the estimator four
-times on one frozen game. California Housing and Iris keep their native eight
-and four features. Other settings use naturally larger datasets or explicitly
+times on one frozen game. Legacy recipes retain their original defaults for
+reproduction; the new public suite explicitly selects larger datasets or
 recorded feature subsets selected by seed without using labels. Each dataset
 and player-count setting has its own stratum, so adding instances to a family
 does not increase that family's overall weight.
@@ -239,8 +245,13 @@ for every method. Aggregate means give equal weight at each level:
 family → stratum → game instance → budget → estimator seed. At an exact half-weight
 boundary, the median is the midpoint of the neighboring values, matching the
 ordinary median for equal weights. For example, errors 2 and 100 give median 51.
-The default view shows compatible estimator families; the **All variants** dropdown option exposes
-the underlying classes without combining their scores. The target column marks
+The default SV view groups KernelSHAPIQ under KernelSHAP and SVARMIQ under SVARM:
+each pair uses the same estimator configuration at order one. The **All variants**
+dropdown restores their individual records; interaction views retain their own
+methods. Scores are never pooled, and the representative keeps its own publication
+date. ProxySHAP and RegressionMSR remain separate because their default residual
+adjustment and sampling differ. Hiding variants does not change the full-panel Elo
+fit. The target column marks
 value and interaction support. [Estimator notes](ESTIMATOR_NOTES.md) explain
 LeverageSHAP’s low-budget instability and the OddSHAP, SPEX, and ShaplEIG findings.
 

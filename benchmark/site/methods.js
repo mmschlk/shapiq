@@ -155,7 +155,7 @@ window.METHOD_DETAILS = {
     }
   },
   "RegressionMSR": {
-    "description": "Combines exact attributions of a fitted surrogate with a Monte Carlo correction for the surrogate’s residual error. This implementation supports individual Shapley and Banzhaf values.",
+    "description": "Combines exact attributions of a fitted surrogate with a Monte Carlo correction for the surrogate’s residual error. Unlike the benchmark’s ProxySHAP default, it enables residual adjustment and uses a different sampling distribution. This implementation supports individual Shapley and Banzhaf values.",
     "paper": {
       "title": "Regression-adjusted Monte Carlo Estimators for Shapley Values and Probabilistic Values",
       "url": "https://arxiv.org/abs/2506.11849"

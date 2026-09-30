@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 from shapiq_benchmark.media import make_extra
 
@@ -60,3 +57,69 @@ def test_image_instances_use_distinct_shipped_inputs(monkeypatch: pytest.MonkeyP
     assert all(
         game.n_players == 8 and game.game.model_function.batch_size == 1 for game, _ in games
     )
+
+
+@pytest.mark.parametrize("n_players", [11, 12])
+def test_larger_images_keep_only_nonempty_segments(
+    monkeypatch: pytest.MonkeyPatch, n_players: int
+) -> None:
+    """Requested player counts refer to active segments, never the legacy null slot."""
+
+    class Image:
+        def __init__(self, *, n_superpixel_resnet: int, **kwargs: object) -> None:
+            self.n_players = n_superpixel_resnet
+            self.model_function = SimpleNamespace(
+                superpixels=np.arange(1, self.n_players), batch_size=0
+            )
+
+        def __call__(self, rows: np.ndarray) -> np.ndarray:
+            return rows[:, :-1].sum(axis=1)
+
+    monkeypatch.setattr("shapiq_games.benchmark.local_xai.benchmark_image.ImageClassifier", Image)
+    for seed in range(4):
+        game, metadata = make_extra("image", instance_seed=seed, n_players=n_players)
+        assert game.n_players == n_players
+        assert metadata["parameters"]["requested_superpixels"] == n_players + 1
+        np.testing.assert_array_equal(game(np.eye(n_players, dtype=bool)), np.ones(n_players))
+
+
+@pytest.mark.parametrize("name", ["causal_global", "causal_local"])
+@pytest.mark.parametrize("n_players", [11, 12])
+def test_larger_causal_games_use_requested_covariates(
+    monkeypatch: pytest.MonkeyPatch, name: str, n_players: int
+) -> None:
+    """The actual SCM dimensions and local inputs agree with the declared players."""
+
+    def factory(*, n: int, d: int, seed: int, **kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            X=np.random.default_rng(seed).normal(size=(n, d)),
+            A=np.arange(n) % 2,
+            Y=np.arange(n, dtype=float),
+            tau_hat=np.ones(n),
+            n_players=d,
+        )
+
+    def local(*, X: np.ndarray, x_i: np.ndarray, **kwargs: object) -> SimpleNamespace:
+        assert x_i.shape == (X.shape[1],)
+        return SimpleNamespace(n_players=X.shape[1])
+
+    monkeypatch.setattr("shapiq_games.benchmark.causal_xai.benchmark.CurthVDS", factory)
+    monkeypatch.setattr("shapiq_games.benchmark.causal_xai.base.LocalConfoundingXAI", local)
+    for seed in range(4):
+        game, metadata = make_extra(name, instance_seed=seed, n_players=n_players)
+        assert game.n_players == n_players
+        assert metadata["parameters"]["d"] == n_players
+        assert metadata["parameters"]["seed"] == seed
+
+
+def test_requested_text_players_must_match_tokenizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unexpected tokenizer counts fail preparation rather than adding dummy players."""
+    config = SimpleNamespace(_commit_hash="test-revision")
+    monkeypatch.setattr(
+        "shapiq_games.benchmark.local_xai.benchmark_language.SentimentAnalysis",
+        lambda *args, **kwargs: SimpleNamespace(
+            n_players=10, _classifier=SimpleNamespace(model=SimpleNamespace(config=config))
+        ),
+    )
+    with pytest.raises(ValueError, match="Requested 11 active players"):
+        make_extra("text", n_players=11)

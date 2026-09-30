@@ -204,3 +204,27 @@ def test_explicit_player_count_rejects_invalid_or_unbounded_sizes(players: objec
     """The adapter must never quietly materialize exponentially larger games."""
     with pytest.raises(ValueError, match="n_players"):
         make_family("uncertainty", dataset="wine", n_players=players)
+
+
+@pytest.mark.parametrize("name", ["local_gaussian", "local_copula"])
+@pytest.mark.parametrize("players", [11, 12])
+def test_larger_gaussian_recipes_explain_wine_class_probability(name: str, players: int) -> None:
+    """Continuous-feature classification respects Gaussian imputation and output semantics."""
+    from sklearn.tree import DecisionTreeClassifier
+
+    from shapiq_benchmark.families import _dataset
+
+    game, metadata = make_family(name, dataset="wine", n_players=players, instance_seed=2)
+    x, y, train, test, _ = _dataset("wine", 2)
+    x = x[:, metadata["feature_indices"]]
+    model = DecisionTreeClassifier(max_depth=3, min_samples_leaf=5, random_state=2).fit(
+        x[train], y[train]
+    )
+    assert game.n_players == players
+    assert metadata["model"] == "DecisionTreeClassifier"
+    assert metadata["class_index"] == 1 and metadata["output_scale"] == "class probability"
+    assert model.classes_[1] == 1
+    assert game(np.ones((1, players), dtype=bool))[0] == pytest.approx(
+        model.predict_proba(x[test[:1]])[0, 1]
+    )
+    assert np.isfinite(game(np.zeros((1, players), dtype=bool))).all()

@@ -23,6 +23,15 @@ def prepare(suite_path: Path, output: Path) -> dict:
     """Construct the selected recipes and save authenticated artifacts with exact truth."""
     suite = json.loads(suite_path.read_text())
     validate_suite(suite)
+    minimum = suite.get("min_players", 1)
+    for spec in [*suite.get("families", []), *suite.get("games", [])]:
+        if (
+            isinstance(spec, dict)
+            and type(spec.get("n_players")) is int
+            and spec["n_players"] < minimum
+        ):
+            message = f"Recipe {spec.get('id')} is below min_players={minimum}."
+            raise ValueError(message)
     game_seeds = suite.get("game_seeds")
     if game_seeds is not None and (
         not isinstance(game_seeds, list)
@@ -150,6 +159,10 @@ def write_snapshot(
     suite: dict, games: list[dict], output: Path, *, coverage: list | None = None
 ) -> dict:
     """Write one content-addressed manifest for either preparation route."""
+    minimum = suite.get("min_players", 1)
+    if any(game["n_players"] < minimum for game in games):
+        message = f"Constructed games violate min_players={minimum}; snapshot not written."
+        raise ValueError(message)
     if suite.get("relative_budgets"):
         suite = {
             **suite,

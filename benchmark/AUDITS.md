@@ -446,3 +446,34 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   discrepancy with identical old/new results, recorded in AGENTS.md for separate
   investigation. Tiny-budget outputs are not guaranteed accurate. Current public
   results still refer to the old guard until a versioned rerun is published.
+
+## Minimum eleven players and SV display grouping
+
+- The replacement suite declares a minimum of eleven players. Invalid minima,
+  explicit undersized recipes, actual undersized constructions and undersized
+  authenticated snapshots are rejected. At the smallest admitted dimension,
+  `128d = 1,408 < 2^d = 2,048`; larger budgets are not added. This prevents full
+  enumeration within the grid, not exact recovery of easy games.
+- All 192 non-media constructions passed actual player-count and finite-payoff
+  checks. Gaussian imputers reject Bike Sharing's binary columns, so those
+  recipes use Wine's continuous features and a recorded classifier probability.
+  Independent reconstruction matched that probability for all sixteen cases.
+- All eight authored text inputs have the requested 11/12 tokenizer players;
+  all eight image configurations have the requested nonempty segments. Existing
+  model, masking, null-slot removal and legacy defaults are preserved.
+- All sixteen causal cost probes passed on Hopper. Extrapolated preparation for
+  the four causal tables totals 260–285 minutes per construction seed, before
+  other recipes. These estimates inform resource limits, not benchmark scores.
+- The default SV display groups only KernelSHAPIQ under KernelSHAP and SVARMIQ
+  under SVARM. Each pair shares the same base configuration and produced identical
+  values and query sequences in 36 bounded comparisons. ProxySHAP and RegressionMSR
+  differed in all 36 cases; FSII, kADD and inconsistent regression paths also
+  differed and are not asserted equivalent.
+- Independent browser comparison found unchanged scores, Elo, curve coordinates
+  and underlying selections with All variants enabled. Interaction views and
+  local reports without the canonical method still expose the original classes.
+  Grouping does not pool measurements or move publication dates. Mobile checks pass.
+- All 250 benchmark tests pass. Formatting/lint pass; type checking retains the
+  same eight existing optional-import/ignore diagnostics. The preparation wrapper
+  retains its audited four-seed merge, with an eight-hour limit per child and an
+  eight-hour-thirty-minute Slurm allocation for the larger exact tables.

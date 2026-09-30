@@ -56,6 +56,11 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- Gaussian and Gaussian-copula imputers reject categorical columns, including
+  Bike Sharing's binary calendar features. Higher-dimensional recipes for these
+  games use continuous Wine features and a classifier's class-one probability;
+  do not bypass the categorical guard or regress on arbitrary class labels.
+
 - Increasing neighbor-game input dimensionality while retaining a fixed radius can
   produce constant TNN games (observed with Wine's 13 features and radius 2).
   New configurable TNN recipes set the radius from the median nonzero pairwise

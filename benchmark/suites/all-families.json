@@ -1,90 +1,23 @@
 {
-  "name": "all-families-player-diversity-v4",
+  "name": "all-families-minimum-eleven-v5",
   "families": [
-    "local_baseline",
-    "local_baseline_forest",
-    "local_marginal",
-    "local_gaussian",
-    "local_copula",
-    "local_conditional",
-    "global_fidelity",
-    "feature_selection",
-    "data_valuation",
-    "dataset_valuation",
-    "ensemble",
-    "forest_ensemble",
-    "uncertainty",
-    "cluster",
-    "unsupervised",
-    "pathdependent_tree",
-    "interventional_tree",
-    "product_kernel",
-    "knn",
-    "tnn",
-    "weighted_knn",
-    "binary_weighted_knn",
-    "unanimity",
-    "soum",
-    "dummy",
-    "random",
-    "text",
-    "image",
-    "tabpfn",
-    "causal_global",
-    "causal_local",
     {
-      "id": "global_fidelity-diabetes-10",
-      "family": "global_fidelity",
-      "dataset": "diabetes",
-      "n_players": 10
+      "id": "local_baseline-bike_sharing-11",
+      "family": "local_baseline",
+      "dataset": "bike_sharing",
+      "n_players": 11
     },
     {
-      "id": "global_fidelity-bike_sharing-12",
-      "family": "global_fidelity",
+      "id": "local_baseline-bike_sharing-12",
+      "family": "local_baseline",
       "dataset": "bike_sharing",
       "n_players": 12
     },
     {
-      "id": "feature_selection-diabetes-10",
-      "family": "feature_selection",
-      "dataset": "diabetes",
-      "n_players": 10
-    },
-    {
-      "id": "feature_selection-bike_sharing-12",
-      "family": "feature_selection",
-      "dataset": "bike_sharing",
-      "n_players": 12
-    },
-    {
-      "id": "cluster-diabetes-10",
-      "family": "cluster",
-      "dataset": "diabetes",
-      "n_players": 10
-    },
-    {
-      "id": "cluster-bike_sharing-12",
-      "family": "cluster",
-      "dataset": "bike_sharing",
-      "n_players": 12
-    },
-    {
-      "id": "unsupervised-diabetes-10",
-      "family": "unsupervised",
-      "dataset": "diabetes",
-      "n_players": 10
-    },
-    {
-      "id": "unsupervised-bike_sharing-12",
-      "family": "unsupervised",
-      "dataset": "bike_sharing",
-      "n_players": 12
-    },
-    {
-      "id": "local_baseline_forest-diabetes-10",
+      "id": "local_baseline_forest-bike_sharing-11",
       "family": "local_baseline_forest",
-      "dataset": "diabetes",
-      "n_players": 10
+      "dataset": "bike_sharing",
+      "n_players": 11
     },
     {
       "id": "local_baseline_forest-bike_sharing-12",
@@ -93,10 +26,82 @@
       "n_players": 12
     },
     {
-      "id": "data_valuation-diabetes-4",
+      "id": "local_marginal-bike_sharing-11",
+      "family": "local_marginal",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "local_marginal-bike_sharing-12",
+      "family": "local_marginal",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "local_gaussian-wine-11",
+      "family": "local_gaussian",
+      "dataset": "wine",
+      "n_players": 11
+    },
+    {
+      "id": "local_gaussian-wine-12",
+      "family": "local_gaussian",
+      "dataset": "wine",
+      "n_players": 12
+    },
+    {
+      "id": "local_copula-wine-11",
+      "family": "local_copula",
+      "dataset": "wine",
+      "n_players": 11
+    },
+    {
+      "id": "local_copula-wine-12",
+      "family": "local_copula",
+      "dataset": "wine",
+      "n_players": 12
+    },
+    {
+      "id": "local_conditional-bike_sharing-11",
+      "family": "local_conditional",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "local_conditional-bike_sharing-12",
+      "family": "local_conditional",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "global_fidelity-bike_sharing-11",
+      "family": "global_fidelity",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "global_fidelity-bike_sharing-12",
+      "family": "global_fidelity",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "feature_selection-bike_sharing-11",
+      "family": "feature_selection",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "feature_selection-bike_sharing-12",
+      "family": "feature_selection",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "data_valuation-diabetes-11",
       "family": "data_valuation",
       "dataset": "diabetes",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "data_valuation-bike_sharing-12",
@@ -105,10 +110,10 @@
       "n_players": 12
     },
     {
-      "id": "dataset_valuation-diabetes-4",
+      "id": "dataset_valuation-diabetes-11",
       "family": "dataset_valuation",
       "dataset": "diabetes",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "dataset_valuation-bike_sharing-12",
@@ -117,10 +122,10 @@
       "n_players": 12
     },
     {
-      "id": "ensemble-diabetes-4",
+      "id": "ensemble-diabetes-11",
       "family": "ensemble",
       "dataset": "diabetes",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "ensemble-bike_sharing-12",
@@ -129,10 +134,10 @@
       "n_players": 12
     },
     {
-      "id": "forest_ensemble-diabetes-4",
+      "id": "forest_ensemble-diabetes-11",
       "family": "forest_ensemble",
       "dataset": "diabetes",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "forest_ensemble-bike_sharing-12",
@@ -141,10 +146,10 @@
       "n_players": 12
     },
     {
-      "id": "uncertainty-wine-6",
+      "id": "uncertainty-wine-11",
       "family": "uncertainty",
       "dataset": "wine",
-      "n_players": 6
+      "n_players": 11
     },
     {
       "id": "uncertainty-wine-12",
@@ -153,22 +158,70 @@
       "n_players": 12
     },
     {
-      "id": "tabpfn-wine-6",
-      "family": "tabpfn",
-      "dataset": "wine",
-      "n_players": 6
+      "id": "cluster-bike_sharing-11",
+      "family": "cluster",
+      "dataset": "bike_sharing",
+      "n_players": 11
     },
     {
-      "id": "tabpfn-wine-12",
-      "family": "tabpfn",
-      "dataset": "wine",
+      "id": "cluster-bike_sharing-12",
+      "family": "cluster",
+      "dataset": "bike_sharing",
       "n_players": 12
     },
     {
-      "id": "knn-wine-4",
+      "id": "unsupervised-bike_sharing-11",
+      "family": "unsupervised",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "unsupervised-bike_sharing-12",
+      "family": "unsupervised",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "pathdependent_tree-bike_sharing-11",
+      "family": "pathdependent_tree",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "pathdependent_tree-bike_sharing-12",
+      "family": "pathdependent_tree",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "interventional_tree-bike_sharing-11",
+      "family": "interventional_tree",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "interventional_tree-bike_sharing-12",
+      "family": "interventional_tree",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "product_kernel-bike_sharing-11",
+      "family": "product_kernel",
+      "dataset": "bike_sharing",
+      "n_players": 11
+    },
+    {
+      "id": "product_kernel-bike_sharing-12",
+      "family": "product_kernel",
+      "dataset": "bike_sharing",
+      "n_players": 12
+    },
+    {
+      "id": "knn-wine-11",
       "family": "knn",
       "dataset": "wine",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "knn-wine-12",
@@ -177,10 +230,10 @@
       "n_players": 12
     },
     {
-      "id": "tnn-wine-4",
+      "id": "tnn-wine-11",
       "family": "tnn",
       "dataset": "wine",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "tnn-wine-12",
@@ -189,10 +242,10 @@
       "n_players": 12
     },
     {
-      "id": "weighted_knn-wine-4",
+      "id": "weighted_knn-wine-11",
       "family": "weighted_knn",
       "dataset": "wine",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "weighted_knn-wine-12",
@@ -201,15 +254,87 @@
       "n_players": 12
     },
     {
-      "id": "binary_weighted_knn-wine-4",
+      "id": "binary_weighted_knn-wine-11",
       "family": "binary_weighted_knn",
       "dataset": "wine",
-      "n_players": 4
+      "n_players": 11
     },
     {
       "id": "binary_weighted_knn-wine-12",
       "family": "binary_weighted_knn",
       "dataset": "wine",
+      "n_players": 12
+    },
+    {
+      "id": "unanimity-11",
+      "family": "unanimity",
+      "n_players": 11
+    },
+    {
+      "id": "soum-12",
+      "family": "soum",
+      "n_players": 12
+    },
+    {
+      "id": "dummy-11",
+      "family": "dummy",
+      "n_players": 11
+    },
+    {
+      "id": "random-12",
+      "family": "random",
+      "n_players": 12
+    },
+    {
+      "id": "text-11",
+      "family": "text",
+      "n_players": 11
+    },
+    {
+      "id": "text-12",
+      "family": "text",
+      "n_players": 12
+    },
+    {
+      "id": "image-11",
+      "family": "image",
+      "n_players": 11
+    },
+    {
+      "id": "image-12",
+      "family": "image",
+      "n_players": 12
+    },
+    {
+      "id": "tabpfn-wine-11",
+      "family": "tabpfn",
+      "dataset": "wine",
+      "n_players": 11
+    },
+    {
+      "id": "tabpfn-wine-12",
+      "family": "tabpfn",
+      "dataset": "wine",
+      "n_players": 12
+    },
+    {
+      "id": "causal_global-11",
+      "family": "causal_global",
+      "n_players": 11
+    },
+    {
+      "id": "causal_global-12",
+      "family": "causal_global",
+      "n_players": 12
+    },
+    {
+      "id": "causal_local-11",
+      "family": "causal_local",
+      "n_players": 11
+    },
+    {
+      "id": "causal_local-12",
+      "family": "causal_local",
       "n_players": 12
     }
   ],
@@ -461,5 +586,6 @@
     1,
     2,
     3
-  ]
+  ],
+  "min_players": 11
 }

@@ -54,6 +54,7 @@ METADATA_FIELDS = (
     "nonzero_coefficients",
     "active_players_definition",
     "class_index",
+    "output_scale",
     "point_label",
     "cluster_id",
     "zero_truth_energy",
@@ -225,6 +226,7 @@ def merge_results(paths: list[Path]) -> dict:
             key: first["suite"][key]
             for key in (
                 "name",
+                "min_players",
                 "budgets",
                 "seeds",
                 "game_seeds",

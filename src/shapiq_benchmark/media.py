@@ -62,8 +62,15 @@ def make_extra(
     """Prepare actual downloaded-model games; missing access propagates as coverage failure."""
     import torch
 
-    if name != "tabpfn" and (dataset is not None or n_players is not None):
-        message = "Dataset/player overrides are currently supported only for TabPFN media recipes."
+    if name != "tabpfn" and dataset is not None:
+        message = "Dataset overrides are supported only for TabPFN media recipes."
+        raise ValueError(message)
+    if (
+        name != "tabpfn"
+        and n_players is not None
+        and (type(n_players) is not int or n_players not in (11, 12))
+    ):
+        message = "Text, image, and causal player overrides must be eleven or twelve."
         raise ValueError(message)
     torch.set_num_threads(1)
     torch.manual_seed(instance_seed)
@@ -83,11 +90,20 @@ def make_extra(
             "A funny story with a warm heart.",
             "A slow story with a strong cast.",
         )
+        if n_players is not None:
+            sentences = (
+                "A thoughtful film with a moving and deeply satisfying ending.",
+                "A dull film with a weak and very predictable ending.",
+                "A funny story with a warm and truly lovely heart.",
+                "A slow story with a strong and surprisingly good cast.",
+            )
         sentence = sentences[instance_seed]
+        if n_players == 12:
+            sentence = sentence.replace("A ", "A really ", 1)
         game = SentimentAnalysis(sentence, device="cpu", mask_strategy="mask")
         metadata.update(
             dataset="authored sentiment examples",
-            input_id=f"sentence-{instance_seed}",
+            input_id=f"sentence-{instance_seed}" + (f"-{n_players}tokens" if n_players else ""),
             cluster_id="pretrained-lvwerra-distilbert-imdb",
             replicate_unit="explanation input",
             text=sentence,
@@ -102,8 +118,11 @@ def make_extra(
 
         directory = Path(__file__).resolve().parents[1] / "shapiq_games/benchmark/imagenet_examples"
         path = sorted(directory.glob("*.JPEG"))[instance_seed]
+        requested_segments = n_players + 1 if n_players is not None else 9
         original = ImageClassifier(
-            model_name="resnet_18", n_superpixel_resnet=9, x_explain_path=str(path)
+            model_name="resnet_18",
+            n_superpixel_resnet=requested_segments,
+            x_explain_path=str(path),
         )
         original.model_function.batch_size = 1
         mask = original.model_function.superpixels
@@ -123,7 +142,7 @@ def make_extra(
             model="torchvision ResNet18 IMAGENET1K_V1",
             player_unit="superpixel",
             parameters={
-                "requested_superpixels": 9,
+                "requested_superpixels": requested_segments,
                 "inference_batch_size": 1,
                 "active_player_indices": active,
             },
@@ -173,7 +192,8 @@ def make_extra(
         from shapiq_games.benchmark.causal_xai.base import LocalConfoundingXAI
         from shapiq_games.benchmark.causal_xai.benchmark import CurthVDS
 
-        base = CurthVDS(n=64, d=4, seed=instance_seed, n_estimators=1, device="cpu")
+        dimension = n_players if n_players is not None else 4
+        base = CurthVDS(n=64, d=dimension, seed=instance_seed, n_estimators=1, device="cpu")
         game = (
             base
             if name == "causal_global"
@@ -195,7 +215,7 @@ def make_extra(
             ).hexdigest(),
             parameters={
                 "n": 64,
-                "d": 4,
+                "d": dimension,
                 "seed": instance_seed,
                 "n_estimators": 1,
                 "mode": "signed",
@@ -205,5 +225,8 @@ def make_extra(
             semantics="shipped signed confounding attribution",
             stochastic_frozen=True,
         )
+    if n_players is not None and game.n_players != n_players:
+        message = f"Requested {n_players} active players but the game has {game.n_players}."
+        raise ValueError(message)
     metadata["n_players"] = game.n_players
     return game, metadata

@@ -279,3 +279,16 @@ def test_compact_export_preserves_hardware_and_instance_identity(tmp_path: Path)
     assert exported["suite"]["game_seeds"] == [0, 1, 2, 3]
     assert exported["games"][0]["metadata"]["case_id"] == "recipe"
     assert exported["games"][0]["metadata"]["instance_seed"] == 2
+
+
+def test_public_report_retains_player_floor_and_classifier_output(tmp_path: Path) -> None:
+    """Publication must retain the selection constraint and the explained output scale."""
+    result = result_fixture()
+    result["suite"]["min_players"] = 11
+    result["games"][0]["n_players"] = 11
+    result["games"][0]["metadata"].update(class_index=1, output_scale="class probability")
+    exported = report([write(tmp_path, result)], tmp_path / "site", public=True)
+    assert exported["suite"]["min_players"] == 11
+    metadata = exported["games"][0]["metadata"]
+    assert metadata["class_index"] == 1 and metadata["output_scale"] == "class probability"
+    assert "/private" not in json.dumps(exported)

@@ -105,8 +105,19 @@ const methodNames = {
 };
 const methodLabel = (method) =>
   Object.hasOwn(methodNames, method) ? methodNames[method] : method;
+// These pairs use identical base configurations for SV under the benchmark defaults.
+const svRepresentatives = {
+  KernelSHAPIQ: "KernelSHAP",
+  SVARMIQ: "SVARM",
+};
 function showMethod(method) {
   if ($("showVariants").value === "all") return true;
+  if (
+    $("target").value === "SV · order 1" &&
+    Object.hasOwn(svRepresentatives, method) &&
+    Object.hasOwn(data.methods, svRepresentatives[method])
+  )
+    return false;
   const targets = methodTargets.get(method);
   return (
     method !== "InconsistentKernelSHAPIQ" &&
@@ -141,6 +152,15 @@ function methodDetails(method, showHeading = false) {
   description.textContent =
     details?.description ||
     "Local estimator. See the implementation supplied with this report.";
+  if ($("target").value === "SV · order 1") {
+    const aliases = Object.keys(svRepresentatives).filter(
+      (alias) =>
+        svRepresentatives[alias] === method &&
+        Object.hasOwn(data.methods, alias),
+    );
+    if (aliases.length)
+      description.textContent += ` For Shapley values, ${aliases.join(", ")} uses the same estimator configuration. Its separate results are available under All variants.`;
+  }
   links.className = "methodSources";
   [details?.paper, details?.implementation]
     .filter(Boolean)
