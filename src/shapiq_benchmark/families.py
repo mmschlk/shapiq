@@ -402,6 +402,12 @@ def make_family(
         metadata["parameters"]["feature_rule"] = (
             "seeded subset of training columns with more than two unique values"
         )
+    if name == "cluster" and dataset == "digits":
+        eligible = np.flatnonzero(np.ptp(x[train[:128]], axis=0) > 0)
+        features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
+        metadata["parameters"]["feature_rule"] = (
+            "seeded subset of columns nonconstant on the clustering training rows"
+        )
     x = x[:, features]
     x_train, y_train, x_test, y_test = (
         x[train].copy(),
@@ -595,7 +601,10 @@ def make_family(
                 "mean": scaler.mean_.tolist(),
                 "scale": scaler.scale_.tolist(),
             },
-            parameters={k: v for k, v in kwargs.items() if k != "data"},
+            parameters={
+                **metadata["parameters"],
+                **{k: v for k, v in kwargs.items() if k != "data"},
+            },
         )
     elif name == "pathdependent_tree":
         game = cls(

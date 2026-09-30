@@ -11,6 +11,27 @@ from threadpoolctl import threadpool_limits
 from shapiq_benchmark.families import FAMILY_CATALOG, make_family
 
 
+@pytest.mark.parametrize("players", [11, 20])
+@pytest.mark.parametrize("seed", range(4))
+@pytest.mark.filterwarnings(
+    "ignore:Number of distinct clusters:sklearn.exceptions.ConvergenceWarning"
+)
+def test_digits_cluster_singletons_have_defined_scores(players: int, seed: int) -> None:
+    """Blank border pixels cannot form a valid clustering game on their own."""
+    from shapiq_benchmark.families import _dataset
+
+    with threadpool_limits(limits=1):
+        game, metadata = make_family(
+            "cluster", dataset="digits", n_players=players, instance_seed=seed
+        )
+        x, _, train, _, _ = _dataset("digits", seed)
+        selected = metadata["feature_indices"]
+        assert len(selected) == players
+        assert (np.ptp(x[train[:128]][:, selected], axis=0) > 0).all()
+        assert "nonconstant" in metadata["parameters"]["feature_rule"]
+        assert np.isfinite(game(np.eye(players, dtype=bool))).all()
+
+
 @pytest.mark.parametrize("name", FAMILY_CATALOG)
 def test_recipe_is_bounded_reproducible_and_explicit(name: str) -> None:
     """Fresh recipes reproduce sampled realizations; deterministic ones ignore batching."""

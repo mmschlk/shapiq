@@ -56,6 +56,10 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- Digits includes constant border pixels. Clustering scores are undefined for a
+  singleton coalition whose column is constant on the actual clustering rows.
+  Select nonconstant columns using those training rows and record their original
+  IDs; random multi-feature probes alone do not expose this failure.
 - `ExactComputer.compute_fii` allocates a dense diagonal matrix with `2**d`
   rows and columns (8 TiB at 20 players). Benchmark tables above twelve players
   use qualified direct first/second discrete-derivative formulas for the six
