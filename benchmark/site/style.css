@@ -8,7 +8,7 @@
     "Segoe UI",
     sans-serif;
   color: #182c50;
-  background: #f4f7fc;
+  background: linear-gradient(145deg, #f3f7ff, #f9f7fb 70%, #f4f7fc);
   font-synthesis: none;
   --ink: #182c50;
   --muted: #596980;
@@ -16,6 +16,7 @@
   --red: #e3326a;
   --blue: #426be0;
   --mint: #80b9a7;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23596980' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 * {
   box-sizing: border-box;
@@ -398,7 +399,9 @@ h1 span {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 24px 23px 18px;
-  box-shadow: 0 5px 10px #40324e02;
+  box-shadow:
+    0 8px 28px #294c8610,
+    0 1px 3px #294c8606;
 }
 .cardHeading {
   display: flex;
@@ -510,6 +513,12 @@ svg {
 .series {
   transition: opacity 0.15s;
 }
+.series.frontier {
+  opacity: 0.38;
+}
+.series.frontier.emphasis {
+  opacity: 0.8;
+}
 .series.dimmed {
   opacity: 0.12;
 }
@@ -552,6 +561,7 @@ svg {
 
 /* Leaderboard */
 .leaderboard {
+  box-shadow: 0 8px 28px #294c860c;
   margin: 24px 0 0;
   background: white;
   border: 1px solid var(--line);
@@ -660,6 +670,7 @@ tbody tr:last-child td {
   outline-offset: -2px;
 }
 #overview > .leaderboard {
+  box-shadow: 0 8px 28px #294c860c;
   margin: 0 0 28px;
 }
 .variantToggle {
@@ -718,11 +729,7 @@ th[aria-sort="descending"] {
   padding: 29px 32px;
 }
 .historyCard #historyChart {
-  max-width: 1050px;
-  margin: auto;
-}
-.historyCard svg {
-  max-height: 470px;
+  width: 100%;
 }
 .compactSelect select {
   font-size: 11px;
@@ -746,7 +753,11 @@ th[aria-sort="descending"] {
 .historyCard .legend {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 14px 20px;
+  gap: 8px 12px;
+  max-width: 900px;
+}
+.historyCard .legendItem:has(> button[aria-expanded="true"]) {
+  grid-column: 1 / -1 !important;
 }
 .historyCard .legend button {
   font-size: 11px;
@@ -838,41 +849,78 @@ th[aria-sort="descending"] {
   margin: 14px 0 6px;
 }
 
-/* Estimator details */
-#methodDialog {
-  width: min(540px, calc(100vw - 32px));
-  padding: 30px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  color: var(--ink);
+/* Estimator details and disclosure arrows */
+select {
+  appearance: none;
+}
+select,
+.toolbar > label > select,
+.chartLimitLabel select,
+.variantToggle select,
+.chartFamilyLabel select {
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  padding-right: 28px;
+}
+.methodPicker strong::after,
+.detailToggle::after {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  background: var(--chevron) center / 12px no-repeat;
+}
+.methodPicker[open] strong::after,
+.detailToggle[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+.methodPicker strong,
+.methodLink {
+  align-items: center;
+  gap: 6px;
+}
+.methodLink {
+  display: inline-flex;
+}
+.legendItem {
+  min-width: 0;
+  max-width: 100%;
+}
+.methodDetails {
+  margin-top: 10px;
+  padding: 12px;
+  border-left: 2px solid var(--line);
+  background: #f8faff;
+  border-radius: 0 6px 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
   line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: min(72ch, calc(100vw - 100px));
 }
-#methodDialog::backdrop {
-  background: #182c5070;
+.methodDetails p {
+  margin: 0 0 8px;
 }
-#methodDialog h2 {
-  clear: both;
-  padding-top: 12px;
-  margin-bottom: 12px;
-}
-#methodDialog p {
-  color: var(--muted);
-}
-#closeMethod {
-  float: right;
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-}
-#methodLinks {
+.methodSources {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 6px 15px;
 }
-#methodLinks a {
+.methodSources a {
   color: var(--blue);
-  font-size: 13px;
+}
+#ranking .methodDetailRow > td {
+  padding: 0 24px 16px;
+  text-align: left;
+  width: auto;
+}
+#ranking tr:has(+ .methodDetailRow:last-child[hidden]) td {
+  border-bottom: 0;
 }
 
 /* Footer */
@@ -1133,7 +1181,7 @@ footer a {
     width: 100%;
   }
   .historyCard .legend {
-    gap: 12px;
+    gap: 8px;
   }
   .historyCard .legend button {
     font-size: 10px;

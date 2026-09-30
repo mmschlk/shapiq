@@ -127,15 +127,18 @@ function capability(method) {
         ? "Interactions"
         : "Unverified";
 }
-function showMethodDetails(method) {
+function methodDetails(method) {
   const details = Object.hasOwn(window.METHOD_DETAILS || {}, method)
     ? window.METHOD_DETAILS[method]
     : null;
-  $("methodTitle").textContent = methodLabel(method);
-  $("methodDescription").textContent =
+  const content = document.createElement("div"),
+    description = document.createElement("p"),
+    links = document.createElement("div");
+  content.className = "methodDetails";
+  description.textContent =
     details?.description ||
     "Local estimator. See the implementation supplied with this report.";
-  $("methodLinks").replaceChildren();
+  links.className = "methodSources";
   [details?.paper, details?.implementation]
     .filter(Boolean)
     .forEach((source) => {
@@ -145,11 +148,23 @@ function showMethodDetails(method) {
       link.textContent = source.title;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      $("methodLinks").append(link);
+      links.append(link);
     });
-  highlight(null);
-  $("chartTooltip").hidden = true;
-  $("methodDialog").showModal();
+  content.append(description, links);
+  return content;
+}
+let nextMethodDetailsId = 0;
+function bindMethodDetails(button, panel) {
+  panel.id = `method-details-${++nextMethodDetailsId}`;
+  panel.hidden = true;
+  button.classList.add("detailToggle");
+  button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-controls", panel.id);
+  button.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    button.setAttribute("aria-expanded", String(!panel.hidden));
+    $("chartTooltip").hidden = true;
+  });
 }
 function options(id, values, all) {
   $(id).replaceChildren();
@@ -492,7 +507,7 @@ function render() {
     `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
   $("panelSummary").textContent =
     `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} zero-energy excluded` : ""}`;
-  $("methodLabel").textContent = `${visibleMethods.length} shown ⌄`;
+  $("methodLabel").textContent = `${visibleMethods.length} shown`;
   renderLeaderboard(s, preset, visibleMethods);
   renderRunIssues(s);
   renderPerformanceCharts(chartPanel, chartPending);
@@ -675,7 +690,13 @@ function renderLeaderboard(s, preset, visibleMethods) {
   let rank = 0;
   summaries.forEach((item) => {
     const stats = preset?.rows.find((r) => r.method === item.method),
-      tr = document.createElement("tr");
+      tr = document.createElement("tr"),
+      detailRow = document.createElement("tr"),
+      detailCell = document.createElement("td");
+    detailRow.className = "methodDetailRow";
+    detailCell.colSpan = 7;
+    detailCell.append(methodDetails(item.method));
+    detailRow.append(detailCell);
     const state = item.complete
       ? "Complete"
       : [
@@ -714,7 +735,7 @@ function renderLeaderboard(s, preset, visibleMethods) {
         button.className = "methodLink";
         button.textContent = value;
         button.title = `About ${item.method}`;
-        button.addEventListener("click", () => showMethodDetails(item.method));
+        bindMethodDetails(button, detailRow);
         bindHighlight(button, item.method, `About ${item.method}`);
         td.append(dot, button);
       } else if (i === 6) {
@@ -739,7 +760,7 @@ function renderLeaderboard(s, preset, visibleMethods) {
       item.method,
       `${item.method} · ${Number.isFinite(item.average) ? `median nMSE ${format(item.median)} over available successful runs` : "No successful runs"} · ${item.valid}/${item.planned} coverage${state ? ` · ${state}` : ""}${chartNames.includes(item.method) ? "" : " · not shown in the current chart"}`,
     );
-    $("ranking").append(tr);
+    $("ranking").append(tr, detailRow);
   });
   if (!summaries.length)
     appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
@@ -927,7 +948,9 @@ function balanceHistoryLegend(legend) {
       legend.children[position++].style.gridColumn = `span ${12 / items}`;
   }
 }
+let historyChartState;
 function chart(id, series, xlabel, dates = false, metric = "mean") {
+  if (dates) historyChartState = { series, xlabel, metric };
   const box = $(id);
   box.replaceChildren();
   const points = series.flatMap((s) => s.points);
@@ -940,7 +963,12 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
   }
   const ns = "http://www.w3.org/2000/svg",
     svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 480 275");
+  const width = dates ? Math.max(240, box.clientWidth) : 480,
+    height = dates ? Math.min(360, Math.max(275, width * 0.32)) : 275,
+    plotWidth = width - 87,
+    plotBottom = height - 47,
+    plotHeight = plotBottom - 23;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
@@ -967,8 +995,10 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     yLow + 1,
     Math.ceil(Math.log10(Math.max(...points.map((p) => p.y), errorFloor))),
   );
-  const xPosition = (value) => 62 + ((value - xLow) / (xHigh - xLow)) * 393;
-  const yPosition = (value) => 228 - ((value - yLow) / (yHigh - yLow)) * 205;
+  const xPosition = (value) =>
+    62 + ((value - xLow) / (xHigh - xLow)) * plotWidth;
+  const yPosition = (value) =>
+    plotBottom - ((value - yLow) / (yHigh - yLow)) * plotHeight;
   const x = (value) => xPosition(dates ? value : logX(value));
   const y = (value) => yPosition(Math.log10(Math.max(value, errorFloor)));
   const hasErrorFloor = points.some((p) => p.y <= errorFloor);
@@ -998,13 +1028,27 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     if (values.at(-1) !== high) values.push(high);
     return values;
   };
+  element("rect", {
+    x: 62,
+    y: 23,
+    width: plotWidth,
+    height: plotHeight,
+    fill: "#f8faff",
+    rx: 6,
+  });
   if (hasErrorFloor)
-    element("rect", { x: 62, y: 218, width: 393, height: 12, fill: "#edf2ff" });
+    element("rect", {
+      x: 62,
+      y: plotBottom - 10,
+      width: plotWidth,
+      height: 12,
+      fill: "#edf2ff",
+    });
   ticks(yLow, yHigh).forEach((exponent) => {
     const yy = yPosition(exponent);
     element("line", {
       x1: 62,
-      x2: 455,
+      x2: width - 25,
       y1: yy,
       y2: yy,
       stroke: "#dfe6f0",
@@ -1026,7 +1070,23 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
           : tick(10 ** exponent),
     );
   });
-  ticks(xLow, xHigh, queryAxis ? 8 : 4).forEach((value) => {
+  const xTicks = ticks(
+    xLow,
+    xHigh,
+    dates
+      ? Math.max(2, Math.min(7, Math.floor(plotWidth / 75)))
+      : queryAxis
+        ? 8
+        : 4,
+  );
+  // Keep both end labels; omit a nearby interior year on narrow screens.
+  if (
+    dates &&
+    xTicks.length > 2 &&
+    xPosition(xTicks.at(-1)) - xPosition(xTicks.at(-2)) < 40
+  )
+    xTicks.splice(-2, 1);
+  xTicks.forEach((value) => {
     const label = dates
       ? String(value)
       : hasTimeFloor && value === -9
@@ -1036,7 +1096,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       "text",
       {
         x: xPosition(value),
-        y: 246,
+        y: height - 29,
         "text-anchor": "middle",
         "font-size": 10,
         fill: "#596980",
@@ -1047,8 +1107,8 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
   element(
     "text",
     {
-      x: 255,
-      y: 272,
+      x: 62 + plotWidth / 2,
+      y: height - 3,
       "text-anchor": "middle",
       "font-size": 11,
       fill: "#596980",
@@ -1067,7 +1127,10 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       color = s.color || colorFor(method),
       dash = s.name === "Best dated result" ? "" : dashFor(method),
       marker = Math.floor(methodIndex(method) / palette.length) % 4;
-    const group = element("g", { class: "series", "data-method": method });
+    const group = element("g", {
+      class: s.name === "Best dated result" ? "series frontier" : "series",
+      "data-method": method,
+    });
     const line = element(
       "polyline",
       {
@@ -1146,14 +1209,20 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         `${s.name}${s.releaseYear ? ` (${s.releaseYear})` : ""}`,
       ),
     );
-    if (Object.hasOwn(data.methods, method))
-      label.addEventListener("click", () => showMethodDetails(method));
+    const item = document.createElement("div");
+    item.className = "legendItem";
+    item.append(label);
+    if (Object.hasOwn(data.methods, method)) {
+      const details = methodDetails(method);
+      bindMethodDetails(label, details);
+      item.append(details);
+    }
     bindHighlight(
       label,
       method,
       `${s.name}${s.profile ? ` · ${s.profile}` : ""}`,
     );
-    legend.append(label);
+    legend.append(item);
   });
   box.append(svg);
   if (hasErrorFloor || hasTimeFloor) {
@@ -1312,20 +1381,20 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("resize", () => {
-  balanceHistoryLegend($("historyChart").querySelector(".legend"));
+  if (historyChartState) {
+    const expanded = new Set(
+      [
+        ...$("historyChart").querySelectorAll('button[aria-expanded="true"]'),
+      ].map((button) => button.dataset.method),
+    );
+    const { series, xlabel, metric } = historyChartState;
+    chart("historyChart", series, xlabel, true, metric);
+    $("historyChart")
+      .querySelectorAll(".detailToggle")
+      .forEach((button) => {
+        if (expanded.has(button.dataset.method)) button.click();
+      });
+  }
   highlight(null);
   $("chartTooltip").hidden = true;
-});
-
-$("closeMethod").addEventListener("click", () => $("methodDialog").close());
-$("methodDialog").addEventListener("click", (event) => {
-  const rect = $("methodDialog").getBoundingClientRect();
-  if (
-    event.target === $("methodDialog") &&
-    (event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom)
-  )
-    $("methodDialog").close();
 });

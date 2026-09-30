@@ -240,3 +240,20 @@ Reviewer: `investigate_optional`.
 - Tampered bytes fail the checksum before writing; private methods, exact truth,
   artifact references and raw estimates also fail the publication checks.
   All 14 report tests pass, including local private-candidate exports.
+
+## Inline estimator details and visual polish
+
+Independent reviewers: `investigate_leverage` and `investigate_optional`.
+
+- Replaced the estimator dialog with inline table and legend disclosures using
+  shared rendering/toggle helpers. Verified native keyboard interaction, focus,
+  unique disclosure IDs, all 22 source links and safe private-method fallback.
+- Unified dropdown chevrons, tightened history legends, added subtle shading,
+  and softened the best-dated-result line. History now draws across its container
+  with readable text; resize preserves expanded details. Mobile year labels do
+  not overlap, and pages do not overflow at 320 pixels.
+- Independent browser fixtures confirm unchanged scores, independent family
+  selection, full budget curves and logarithmic display floors. All 24,948
+  published measurements and 288 presets remain unchanged. JavaScript syntax
+  and formatting checks pass; repository pre-commit retains only the eight
+  previously documented type diagnostics.

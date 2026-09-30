@@ -8,8 +8,9 @@ Compare all 22 public estimator classes across representatives of every shipped
 game family. Filter by target, game family, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
 player (`B/d`)** and time. Publication history appears below. Hover or focus a
-method to highlight it across charts and rows; click its name for a description,
-paper and implementation. Colors also have distinct markers and line patterns.
+method to highlight it across charts and rows; click its name to expand a
+description, paper and implementation inline. Colors also have distinct markers
+and line patterns.
 
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
