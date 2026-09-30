@@ -781,8 +781,8 @@ For a fixed suite version, target/order, budget rule, and hardware/timing mode:
 1. Compute each complete eligible method's mean or median nMSE on the
    **same frozen task panel**. Omit methods with incomplete coverage from history.
 2. Draw one horizontal line per method from its release date to the present.
-3. Label each line's endpoint with the method name and publication year, using
-   light connectors to separate crowded labels. On narrow screens, show the
+3. List method names and publication years on the right in endpoint-error order,
+   separating crowded labels without connector lines. On narrow screens, show the
    ordered names and endpoint scores below the plot.
 4. Let each label expand a description and paper/implementation links below the
    chart. The plot contains individual method lines, without a best-so-far curve.

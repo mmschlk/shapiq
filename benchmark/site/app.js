@@ -1222,19 +1222,6 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         label.style.left = `${width - labelWidth}px`;
         label.style.top = `${labelY}px`;
         label.style.width = `${labelWidth - 4}px`;
-        element(
-          "polyline",
-          {
-            class: "endpointConnector",
-            points: `${x(endpoint.x)},${y(endpoint.y)} ${62 + plotWidth + 10},${y(endpoint.y)} ${width - labelWidth - 8},${labelY}`,
-            fill: "none",
-            stroke: color,
-            "stroke-width": 1,
-            "stroke-opacity": 0.35,
-          },
-          undefined,
-          group,
-        );
       }
     }
     if (Object.hasOwn(data.methods, method)) {

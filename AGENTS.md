@@ -137,3 +137,7 @@ uv run pre-commit run --all-files
   Shapley discrepancy despite matching endpoint predictions. Round benchmark
   tree inputs through float32 before passing the same values to both paths;
   retain exhaustive small-game qualification across construction seeds.
+
+- Specialized select padding (for example `.compactSelect select`) can override
+  generic chevron clearance through CSS specificity. Verify computed right
+  padding on every styled select; otherwise the arrow can overlap its text.

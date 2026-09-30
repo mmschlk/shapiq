@@ -11,8 +11,8 @@ player (`B/d`)** and time. Publication history appears below. Hover or focus a
 method to highlight it across charts and rows; click its name to expand a
 description, paper and implementation inline. Colors also have distinct markers
 and line patterns.
-History labels sit beside their line endings, with connectors for crowded
-results. On narrow screens, an ordered list below the plot shows their nMSE.
+History labels sit in endpoint-error order on the right, spaced for readability.
+On narrow screens, an ordered list below the plot shows their nMSE.
 
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
@@ -49,9 +49,14 @@ run issues and hardware details. There is no frontend build step.
 | Prepared panel | 37 setups × four constructions; 808 game/target instances, including all six targets where supported |
 | Planned matrix | 159,984 cells including unsupported combinations |
 
-All four-instance recipes qualified. The expanded suite is being measured on
-Hopper (job `360655`, frozen source `1472a003`). The website
-continues to show the previous published data until its replacement is audited.
+All four-instance recipes qualified. The complete matrix is being rerun on
+Hopper (job `360683`) with the corrected LeverageSHAP from PR #603. Execution is
+frozen at [`d4ac18e6`](https://github.com/rtealwitter/shapiq/commit/d4ac18e674841f79c1ca25d8cfbf550e84dc21a7)
+on `benchmark-ridge-run`, which combines this benchmark with the separate estimator
+fix. The frozen games retain their original preparation source `1472a003` and
+snapshot identity. Previous job `360655` was stopped; its checkpoints are kept
+separately and are not reused in this full rerun. The website continues to show
+the previous published data until the replacement is complete and audited.
 
 The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
 777 failed cells**, with none pending. Failures comprise 754 SPEX minimum-budget

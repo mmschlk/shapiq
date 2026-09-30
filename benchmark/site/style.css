@@ -516,7 +516,7 @@ svg {
 .series.dimmed {
   opacity: 0.12;
 }
-.series.emphasis > polyline:not(.endpointConnector) {
+.series.emphasis > polyline {
   stroke-width: 3.5;
 }
 .chartTooltip {
@@ -890,6 +890,7 @@ select,
 .toolbar > label > select,
 .chartLimitLabel select,
 .variantToggle select,
+.compactSelect select,
 .chartFamilyLabel select {
   background-image: var(--chevron);
   background-repeat: no-repeat;

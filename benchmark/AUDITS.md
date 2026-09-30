@@ -301,3 +301,19 @@ Independent reviewer: `investigate_optional`.
   extreme-penalty probes preserve finite results and efficiency.
 - The fix keeps queries unchanged and documents bias. Public measurements and
   the running four-instance campaign retain their original frozen source.
+
+## Corrected full rerun and final history-control cleanup
+
+Independent reviewers: `investigate_optional` (execution preflight) and
+`investigate_leverage` (browser changes).
+
+- Job `360683` reruns every cell using clean execution commit `d4ac18e6`, with
+  LeverageSHAP source identical to PR #603. All 188 original frozen artifacts,
+  808 game definitions and 159,984 planned cells authenticate unchanged. Seven
+  compiled extensions match the prior environment; preparation and execution
+  provenance remain distinct. Initial LeverageSHAP/KernelSHAP smoke checks pass.
+- Corrected Median nMSE control spacing from 12 to 30 pixels after identifying
+  a CSS-specificity override, and removed only history-label connector lines.
+  Across six viewport widths and both metrics, score rows, all 13 real history
+  curve coordinates, label ordering/positions and chart geometry are identical.
+  Hover, keyboard, empty views, and one/all-method tie/zero fixtures also pass.
