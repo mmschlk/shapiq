@@ -427,6 +427,11 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   and fit mobile screens. The six preparation-cost probes passed on Hopper;
   the 12-player TabPFN probe suggests roughly 32 minutes per full payoff table,
   before exact-coefficient work. This is a scheduling estimate, not a timing score.
+- All 231 benchmark tests pass. The frozen execution checkout also passes 456
+  combined LeverageSHAP/OddSHAP tests; both estimator sources match their separate
+  PRs byte for byte, and compiled extensions are unchanged. Independent review of
+  parallel preparation reproduced the serial snapshot identity exactly and checked
+  resource limits, complete-coverage checks and atomic snapshot publication.
 
 ## OddSHAP guard-only pull request
 

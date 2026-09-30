@@ -386,7 +386,7 @@ function renderCoverage() {
     ],
     knn: [
       "Nearest-neighbor valuation",
-      "Treat training examples as players and score the selected nearest neighbors’ agreement with the test label, including 128- and 256-player cases.",
+      "Treat training examples as players and score the selected nearest neighbors’ agreement with the test label, including larger games with exact ground truth.",
     ],
     tnn: [
       "Threshold-neighbor valuation",

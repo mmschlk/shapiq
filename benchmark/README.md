@@ -56,6 +56,16 @@ larger exact KNN games on Breast Cancer and Digits. Player counts describe real
 features, rows, groups or models; no dummy players are added. These new settings
 are undergoing preparation and qualification, and are not yet on the website.
 
+Hopper preparation job `360843` constructs the four seeds in parallel, checks all
+settings and merges an authenticated snapshot. Sweep job `360844` starts only if
+preparation succeeds, with an eight-hour limit and resumable checkpoints.
+Both use frozen source
+[`1f834686`](https://github.com/rtealwitter/shapiq/commit/1f834686), including the
+separate LeverageSHAP (#603) and OddSHAP (#605) changes. New local artifacts are
+`benchmark/results/diversity-snapshot` and `benchmark/results/diversity-runs`;
+preparation logs and orchestration are under `benchmark/results/diversity-campaign`.
+Publication still requires an audited export and an explicit data-manifest update.
+
 The **published dataset** still contains 37 settings × four constructions,
 808 game/target definitions and 159,984 cells. All its recipes qualified.
 The full rerun completed on Hopper
