@@ -12,7 +12,8 @@ import importlib
 from functools import lru_cache
 
 import numpy as np
-from sklearn.datasets import load_iris
+from scipy.spatial.distance import pdist
+from sklearn.datasets import load_diabetes, load_iris, load_wine
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
@@ -22,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.datasets import load_california_housing
+from shapiq.datasets import load_bike_sharing, load_california_housing
 from shapiq.explainer.product_kernel.conversion import convert_svm
 
 _LEGACY = "shapiq_games.benchmark."
@@ -225,29 +226,50 @@ FAMILY_CATALOG = {
 }
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=20)
 def _dataset(name: str, instance_seed: int = 0) -> tuple:
     """Load a bundled dataset and retain explicit original row identities."""
-    if name == "iris":
-        data = load_iris()
+    loaders = {"iris": load_iris, "wine": load_wine, "diabetes": load_diabetes}
+    if name in loaders:
+        data = loaders[name]()
         x, y = data.data, data.target
+        feature_names = list(data.feature_names)
     else:
-        x, y = load_california_housing()
+        loaders = {"california_housing": load_california_housing, "bike_sharing": load_bike_sharing}
+        if name not in loaders:
+            message = f"Unknown benchmark dataset: {name}"
+            raise ValueError(message)
+        x, y = loaders[name]()
+        feature_names = list(x.columns)
         x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
     train, test = train_test_split(
         np.arange(len(x)),
         test_size=0.2,
         random_state=instance_seed,
-        stratify=y if name == "iris" else None,
+        stratify=y if name in ("iris", "wine") else None,
     )
-    return x, y, train[:512], test[:128]
+    return x, y, train[:512], test[:128], feature_names
+
+
+def feature_subset(x: np.ndarray, count: int | None, seed: int) -> np.ndarray:
+    """Select original columns by seed, without using targets or benchmark scores."""
+    if count is None:
+        return np.arange(x.shape[1])
+    if type(count) is not int or not 1 <= count <= min(12, x.shape[1]):
+        message = "Feature players must be between one and the dataset width, at most twelve."
+        raise ValueError(message)
+    if count == x.shape[1]:
+        return np.arange(count)
+    return np.sort(np.random.default_rng(seed).choice(x.shape[1], count, replace=False))
 
 
 def _negative_mse(y: np.ndarray, prediction: np.ndarray) -> float:
     return -float(mean_squared_error(y, prediction))
 
 
-def make_family(name: str, *, instance_seed: int = 0) -> tuple:
+def make_family(
+    name: str, *, instance_seed: int = 0, dataset: str | None = None, n_players: int | None = None
+) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
     Missing optional dependencies and broken constructors propagate to the
@@ -255,22 +277,30 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
     Nothing here downloads models or substitutes a different payoff on failure.
     """
     metadata = dict(FAMILY_CATALOG[name])
+    configured = dataset is not None or n_players is not None
     module, attribute = metadata["class"].rsplit(".", 1)
     cls = getattr(importlib.import_module(module), attribute)
     metadata.update(
         recipe=name, instance_seed=instance_seed, random_state=instance_seed, parameters={}
     )
+    if n_players is not None and (type(n_players) is not int or not 1 <= n_players <= 12):
+        message = "Exhaustive recipe n_players must be an integer between one and twelve."
+        raise ValueError(message)
     if metadata["synthetic"]:
+        if dataset is not None:
+            message = "Synthetic recipes do not accept a dataset."
+            raise ValueError(message)
+        n = n_players or 8
         interaction = (
-            np.arange(3)
+            np.arange(min(3, n))
             if instance_seed == 0
-            else np.sort(np.random.default_rng(instance_seed).choice(8, 3, replace=False))
+            else np.sort(np.random.default_rng(instance_seed).choice(n, min(3, n), replace=False))
         )
         parameters = {
-            "unanimity": {"interaction_binary": np.isin(np.arange(8), interaction).astype(int)},
-            "soum": {"n": 8, "n_basis_games": 12, "random_state": instance_seed},
-            "dummy": {"n": 8, "interaction": tuple(int(i) for i in interaction)},
-            "random": {"n": 8, "random_state": instance_seed},
+            "unanimity": {"interaction_binary": np.isin(np.arange(n), interaction).astype(int)},
+            "soum": {"n": n, "n_basis_games": 12, "random_state": instance_seed},
+            "dummy": {"n": n, "interaction": tuple(int(i) for i in interaction)},
+            "random": {"n": n, "random_state": instance_seed},
         }[name]
         game = cls(**parameters)
         metadata.update(
@@ -286,8 +316,19 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
         return game, metadata
 
     neighbors = name in ("knn", "tnn", "weighted_knn", "binary_weighted_knn")
-    dataset = "iris" if neighbors or name == "uncertainty" else "california_housing"
-    x, y, train, test = _dataset(dataset, instance_seed)
+    classification = neighbors or name == "uncertainty"
+    dataset = dataset or ("iris" if classification else "california_housing")
+    if (dataset in ("iris", "wine")) != classification:
+        message = (
+            "Choose a classification dataset for neighbor/uncertainty games, regression otherwise."
+        )
+        raise ValueError(message)
+    x, y, train, test, feature_names = _dataset(dataset, instance_seed)
+    data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()
+    features = feature_subset(
+        x, n_players if metadata["player_unit"] == "feature" else None, instance_seed
+    )
+    x = x[:, features]
     x_train, y_train, x_test, y_test = (
         x[train].copy(),
         y[train].copy(),
@@ -296,7 +337,9 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
     )
     metadata.update(
         dataset=dataset,
-        data_sha256=hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest(),
+        data_sha256=data_hash,
+        feature_indices=features.tolist(),
+        feature_names=[str(feature_names[i]) for i in features],
         train_indices=train.tolist(),
         test_indices=test.tolist(),
         point_row=int(test[0]),
@@ -355,9 +398,10 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
             loss_function=_negative_mse,
         )
     elif name == "data_valuation":
-        pool = np.concatenate((train[:8], test))
+        count = n_players or 8
+        pool = np.concatenate((train[:count], test))
         game = cls(
-            n_data_points=8,
+            n_data_points=count,
             x_data=x[pool],
             y_data=y[pool],
             fit_function=model.fit,
@@ -366,10 +410,13 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
             random_state=instance_seed,
         )
         permuted = pool[np.random.default_rng(instance_seed).permutation(len(pool))]
-        metadata.update(train_indices=permuted[:8].tolist(), test_indices=permuted[8:].tolist())
-        metadata["parameters"] = {"n_data_points": 8, "empty_data_value": 0}
+        metadata.update(
+            train_indices=permuted[:count].tolist(), test_indices=permuted[count:].tolist()
+        )
+        metadata["parameters"] = {"n_data_points": count, "empty_data_value": 0}
     elif name == "dataset_valuation":
-        groups = np.array_split(np.arange(len(train)), 8)
+        count = n_players or 8
+        groups = np.array_split(np.arange(len(train)), count)
         game = cls(
             x_train=[x_train[g] for g in groups],
             y_train=[y_train[g] for g in groups],
@@ -381,8 +428,9 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
             random_state=instance_seed,
         )
         metadata["group_indices"] = [train[g].tolist() for g in groups]
-        metadata["parameters"] = {"n_players": 8, "empty_data_value": 0}
+        metadata["parameters"] = {"n_players": count, "empty_data_value": 0}
     elif name in ("ensemble", "forest_ensemble"):
+        count = n_players or 8
         kwargs = {
             "x_train": x_train,
             "y_train": y_train,
@@ -394,18 +442,21 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
         }
         if name == "forest_ensemble":
             forest = RandomForestRegressor(
-                n_estimators=8, max_depth=3, random_state=instance_seed, n_jobs=1
+                n_estimators=count, max_depth=3, random_state=instance_seed, n_jobs=1
             ).fit(x_train, y_train)
             game = cls(random_forest=forest, **kwargs)
             metadata.update(model=type(forest).__name__, model_parameters=forest.get_params())
         else:
+            if count < 4:
+                message = "The heterogeneous ensemble requires at least four model players."
+                raise ValueError(message)
             members = [
                 Ridge(alpha=1),
                 SVR(),
                 KNeighborsRegressor(n_neighbors=3, n_jobs=1),
                 *[
                     DecisionTreeRegressor(max_depth=d, random_state=instance_seed + d)
-                    for d in (1, 2, 3, 4, 5)
+                    for d in range(1, count - 2)
                 ],
             ]
             for member in members:
@@ -464,7 +515,9 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
         scaler = StandardScaler().fit(x_train)
         svm = SVR(kernel="rbf", gamma="scale").fit(scaler.transform(x_train[:128]), y_train[:128])
         game = cls(
-            n_players=8, explain_point=scaler.transform(x_test[:1])[0], model=convert_svm(svm)
+            n_players=x.shape[1],
+            explain_point=scaler.transform(x_test[:1])[0],
+            model=convert_svm(svm),
         )
         metadata.update(
             model=type(svm).__name__,
@@ -479,10 +532,29 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
         )
     elif neighbors:
         scaler = StandardScaler().fit(x_train)
-        selected = np.concatenate([np.flatnonzero(y_train == label)[:3] for label in (0, 1, 2)])[:8]
+        if n_players is None:
+            selected = np.concatenate(
+                [np.flatnonzero(y_train == label)[:3] for label in (0, 1, 2)]
+            )[:8]
+        else:
+            selected, _ = train_test_split(
+                np.arange(len(train)),
+                train_size=n_players,
+                stratify=y_train,
+                random_state=instance_seed,
+            )
         class_index = int(y_test[0])
+        radius = 2.0
+        if name == "tnn" and configured:
+            # Set geometry from training inputs alone, before inspecting any coalition scores.
+            distances = pdist(scaler.transform(x_train))
+            distances = distances[distances > 0]
+            if not len(distances):
+                message = "A data-scaled TNN radius requires distinct training inputs."
+                raise ValueError(message)
+            radius = float(np.median(distances))
         fitted = (
-            RadiusNeighborsClassifier(radius=2.0, n_jobs=1)
+            RadiusNeighborsClassifier(radius=radius, n_jobs=1)
             if name == "tnn"
             else KNeighborsClassifier(
                 n_neighbors=3,
@@ -510,6 +582,11 @@ def make_family(name: str, *, instance_seed: int = 0) -> tuple:
                 "scale": scaler.scale_.tolist(),
             },
         )
+        if name == "tnn" and configured:
+            metadata["parameters"].update(
+                radius=radius,
+                radius_rule="median nonzero pairwise Euclidean distance on standardized training rows",
+            )
     else:
         message = f"No recipe for {name}"
         raise ValueError(message)

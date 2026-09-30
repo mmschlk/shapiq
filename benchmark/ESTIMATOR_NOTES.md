@@ -178,13 +178,18 @@ checks. It also does not make those tiny-budget estimates informative. Even
 budget ten already has this behavior. These are analytic diagnostics, not new
 leaderboard measurements or a claim about every possible game.
 
-If accepting smaller budgets is pursued later, the narrow change is an explicit
-two-query minimum while preserving the existing support-selection behavior.
-Validate boundaries (including odd budgets and nondefault interaction factors),
-query counts, deterministic tie behavior and unchanged outputs for previously
-accepted calls. Then evaluate the newly accepted cases on the frozen benchmark
-under a separately versioned estimator implementation before publishing scores.
-For now, only reporting changes; the OddSHAP implementation remains unchanged.
+[PR #605](https://github.com/mmschlk/shapiq/pull/605), assigned to Fabian Fumagalli,
+now removes only that guard. The existing sampler still requires two endpoint
+queries. Singleton selection, surrogate fitting and regression remain exactly
+as implemented in shapiq. All 115 OddSHAP tests pass; an independent check found
+bit-identical outputs and query counts for 244 previously accepted configurations,
+and finite, budget-respecting outputs for 64 newly accepted configurations.
+This does not promise useful accuracy at tiny budgets. The published benchmark
+still uses the earlier implementation until a separately versioned rerun is ready.
+
+The audit also found a pre-existing efficiency discrepancy with a nondefault
+interaction factor of three. Old and proposed implementations return identical
+outputs in that case; it is separate from removing the budget restriction.
 
 ## SPEX: minimum query blocks and random seeds
 

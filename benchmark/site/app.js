@@ -452,6 +452,18 @@ function renderCoverage() {
       `${sklearn}fetch_california_housing.html`,
     ],
     iris: ["Iris flower measurements and species", `${sklearn}load_iris.html`],
+    diabetes: [
+      "Diabetes measurements and disease progression",
+      `${sklearn}load_diabetes.html`,
+    ],
+    bike_sharing: [
+      "Bike Sharing weather, calendar features and rental counts",
+      "https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset",
+    ],
+    wine: [
+      "Wine chemical measurements and classes",
+      `${sklearn}load_wine.html`,
+    ],
     breast_cancer: [
       "Wisconsin breast-cancer measurements and labels",
       `${sklearn}load_breast_cancer.html`,
@@ -473,11 +485,13 @@ function renderCoverage() {
   const groups = new Map();
   for (const game of data.games) {
     const metadata = game.metadata || {};
-    const kind = Object.hasOwn(descriptions, metadata.case_id)
-      ? metadata.case_id
-      : Object.hasOwn(structuredKinds, metadata.truth_method)
-        ? structuredKinds[metadata.truth_method]
-        : metadata.case_id || game.family;
+    const kind =
+      metadata.game_kind ||
+      (Object.hasOwn(descriptions, metadata.case_id)
+        ? metadata.case_id
+        : Object.hasOwn(structuredKinds, metadata.truth_method)
+          ? structuredKinds[metadata.truth_method]
+          : metadata.case_id || game.family);
     if (!groups.has(kind)) groups.set(kind, []);
     groups.get(kind).push(game);
   }

@@ -405,3 +405,39 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   under-budget cases and 303 remaining timeouts. The ZIP passes all 318 internal
   checksums and preserves every other baseline field and frozen artifact.
   Formatting/lint pass; the same eight existing type diagnostics remain.
+
+## Player counts and dataset diversity
+
+- Expanded the declared suite from 37 to 74 settings, retaining four construction
+  seeds and one estimator run per cell. Added real feature, row, group and model
+  player counts rather than padding games with dummy players. New settings remain
+  separate from the published dataset until preparation, execution and export.
+- An independent audit passed 141 family/materialization/structured/summary tests.
+  All 52 legacy constructor/seed comparisons retained identical payoffs and prior
+  metadata; four legacy TabPFN data splits were unchanged. All eight old large-KNN
+  artifacts and truths also match the published snapshot.
+- All 36 structured KNN settings qualified and reloaded. A missing-class failure
+  in the new Digits 16-player recipe was caught and fixed with explicit stratified
+  training-row selection; legacy selection is unchanged.
+- Sixteen new SV/SII definitions matched an independent factorial-weight reference.
+  New threshold-neighbor radii matched an independent training-distance calculation;
+  all eight Wine payoff tables were finite. Seed two remains constant at both
+  player counts and is retained under the existing zero-energy exclusion rule.
+- Coverage paragraphs still group the 31 game kinds, link their data sources,
+  and fit mobile screens. The six preparation-cost probes passed on Hopper;
+  the 12-player TabPFN probe suggests roughly 32 minutes per full payoff table,
+  before exact-coefficient work. This is a scheduling estimate, not a timing score.
+
+## OddSHAP guard-only pull request
+
+- Separate PR #605 removes the interaction-factor budget guard and is assigned to
+  Fabian Fumagalli. It retains shapiq's existing proxy, singleton selection and
+  regression; the sampler still rejects budgets below two before game calls.
+- All 115 OddSHAP tests pass. Independent comparison covered 244 previously
+  accepted configurations with identical outputs and queries, 64 newly accepted
+  configurations with finite budget-respecting outputs, and 72 invalid calls.
+  Full-census small-game checks remain exact.
+- Nondefault interaction-factor checks also exposed an existing efficiency
+  discrepancy with identical old/new results, recorded in AGENTS.md for separate
+  investigation. Tiny-budget outputs are not guaranteed accurate. Current public
+  results still refer to the old guard until a versioned rerun is published.

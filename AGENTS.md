@@ -56,6 +56,13 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- Increasing neighbor-game input dimensionality while retaining a fixed radius can
+  produce constant TNN games (observed with Wine's 13 features and radius 2).
+  New configurable TNN recipes set the radius from the median nonzero pairwise
+  distance of standardized training rows, with the rule recorded in metadata;
+  legacy recipes retain radius 2. Never tune the radius against benchmark errors
+  or choose held-out examples to force nonzero truth.
+
 - Paired LeverageSHAP at a budget of `2 * n` has only `n - 1` independent
   interior directions for `n - 1` free coefficients. Large errors near this
   interpolation threshold can be statistical instability despite an accurate
@@ -75,6 +82,10 @@ uv run pre-commit run --all-files
 - Nearest-neighbor explanation games use training rows as players, not features.
   Unweighted KNN utility divides by fixed `k`, even for coalitions smaller than
   `k`; preserve that rule when comparing with `KNNExplainer` ground truth.
+- A small first-n training prefix can omit the held-out true class (Digits with
+  16 players, seed zero, omitted class seven). New structured KNN recipes request
+  stratified row selection explicitly. Keep legacy first-n recipes unchanged;
+  never change the held-out label to make a constructor succeed.
 - Hopper's login host has a different CPU model from its Slurm compute nodes.
   Record worker affinity and CPU model. `OverSubscribe=NO` alone does not prove
   an exclusive node: also verify that the job owns the node's full CPU count.
@@ -147,3 +158,9 @@ uv run pre-commit run --all-files
   different from the paper's low-budget tree-surrogate fallback. Do not diagnose
   these `ValueError`s as numerical failures or remove the guard without choosing
   and documenting the intended low-budget estimator behavior.
+
+- OddSHAP can have a pre-existing efficiency residual with a nondefault support
+  factor: eight players, `interaction_factor=3`, seed zero, budgets 8/9, and
+  `7 + sum((i+1)*z_i) + 2*z_0*z_1*z_2`. Independent guard-removal auditing
+  reproduced identical old/new outputs; investigate that regression numerical
+  issue separately rather than attributing it to newly accepted tiny budgets.

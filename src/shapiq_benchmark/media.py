@@ -56,10 +56,15 @@ class ActiveImage:
         return self.game(full)
 
 
-def make_extra(name: str, *, instance_seed: int = 0) -> tuple:
+def make_extra(
+    name: str, *, instance_seed: int = 0, dataset: str | None = None, n_players: int | None = None
+) -> tuple:
     """Prepare actual downloaded-model games; missing access propagates as coverage failure."""
     import torch
 
+    if name != "tabpfn" and (dataset is not None or n_players is not None):
+        message = "Dataset/player overrides are currently supported only for TabPFN media recipes."
+        raise ValueError(message)
     torch.set_num_threads(1)
     torch.manual_seed(instance_seed)
     metadata = {
@@ -127,16 +132,19 @@ def make_extra(name: str, *, instance_seed: int = 0) -> tuple:
             stochastic_frozen=False,
         )
     elif name == "tabpfn":
-        from sklearn.datasets import load_iris
-        from sklearn.model_selection import train_test_split
         from tabpfn import TabPFNClassifier
 
         from shapiq.imputer.tabpfn_imputer import TabPFNImputer
+        from shapiq_benchmark.families import _dataset, feature_subset
 
-        x, y = load_iris(return_X_y=True)
-        train, test = train_test_split(
-            np.arange(len(x)), test_size=0.2, random_state=instance_seed, stratify=y
-        )
+        dataset = dataset or "iris"
+        if dataset not in ("iris", "wine"):
+            message = "TabPFN recipes require the iris or wine classification dataset."
+            raise ValueError(message)
+        x, y, train, test, names = _dataset(dataset, instance_seed)
+        data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()
+        features = feature_subset(x, n_players, instance_seed)
+        x = x[:, features]
         train = train[:64]
         model = TabPFNClassifier(device="cpu", n_estimators=1, random_state=instance_seed)
         game = TabPFNImputer(
@@ -148,8 +156,10 @@ def make_extra(name: str, *, instance_seed: int = 0) -> tuple:
         )
         game.fit(x[test[0]])
         metadata.update(
-            dataset="iris",
-            data_sha256=hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest(),
+            dataset=dataset,
+            data_sha256=data_hash,
+            feature_indices=features.tolist(),
+            feature_names=[str(names[i]) for i in features],
             train_indices=train.tolist(),
             test_indices=test.tolist(),
             point_row=int(test[0]),

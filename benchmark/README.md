@@ -40,16 +40,25 @@ run issues and hardware details. There is no frontend build step.
 
 | Dimension | Coverage |
 | --- | --- |
-| Small games | 31 recipes, covering all shipped game families |
+| Small games | 31 game kinds, with 61 dataset/player settings; exhaustive truth through 12 players |
 | Targets | SV, k-SII, SII, STII, FSII, FBII; interactions at order two |
-| Larger games | Forests with 30/64 features (all six targets); product-kernel games with 30/64 features (SV); KNN with 128/256 training-example players (SV) |
+| Larger games | Forests with 30/64 features (all six targets); product-kernel games with 30/64 features (SV); KNN with 16/32/64/128/256/512 training-example players (SV) |
 | Estimators | All 22 public classes, with library defaults unless target configuration requires otherwise |
 | Budgets | `B/d = 0.5, 1, 2, 4, 8, 16, 32, 64, 128`, rounded up to whole queries per game |
 | Repetitions | Four constructed game instances per recipe/dataset; one estimator run per instance and budget |
-| Prepared panel | 37 setups × four constructions; 808 game/target instances, including all six targets where supported |
-| Planned matrix | 159,984 cells including unsupported combinations |
+| Planned panel | 74 settings × four constructions; 1,556 game/target definitions if all qualify |
+| Planned matrix | 308,088 cells including unsupported combinations |
 
-All four-instance recipes qualified. The full rerun completed on Hopper
+The expansion adds Diabetes (10 features), Bike Sharing (12 features), and
+seeded subsets of Wine (6/12 features). Valuation and ensemble games add 4/12
+row, group, or model players. Neighbor games add 4/12 Wine training rows, plus
+larger exact KNN games on Breast Cancer and Digits. Player counts describe real
+features, rows, groups or models; no dummy players are added. These new settings
+are undergoing preparation and qualification, and are not yet on the website.
+
+The **published dataset** still contains 37 settings × four constructions,
+808 game/target definitions and 159,984 cells. All its recipes qualified.
+The full rerun completed on Hopper
 (job `360683`) on September 29 at 21:48 PDT, after 3 hours 42 minutes. It recorded
 **58,517 successful, 94,284 unsupported and 7,183 failed cells**, with none pending.
 Failures include insufficient-budget errors and 303 worker timeouts; the website
@@ -79,7 +88,7 @@ every dataset-specific wrapper or a representative sample of every application.
 The coverage drawer describes each game kind and links its implementation and
 data sources. Known unsupported explanation types are compatibility metadata;
 under-budget runs are listed separately from timeouts and other failed attempts.
-Both remain unscored and reduce coverage; the estimator implementations are unchanged.
+Both remain unscored and reduce coverage; reporting does not change estimator behavior.
 Synthetic payoff and causal examples appear separately under **Diagnostics**;
 they never enter the real-game ranking.
 
@@ -94,7 +103,14 @@ backgrounds and held-out points as applicable. Text and image games use four
 distinct inputs to the same pretrained model. `seeds: [0]` runs each estimator
 once on each instance at each budget; it does not repeat the estimator four
 times on one frozen game. California Housing and Iris keep their native eight
-and four features. The larger settings use naturally larger datasets.
+and four features. Other settings use naturally larger datasets or explicitly
+recorded feature subsets selected by seed without using labels. Each dataset
+and player-count setting has its own stratum, so adding instances to a family
+does not increase that family's overall weight.
+New neighbor settings select training rows by stratified sampling. New threshold
+neighbor settings use the median positive pairwise distance of standardized
+training inputs as their radius; held-out points and benchmark scores do not
+choose it. Legacy settings retain their original row selection and radius.
 Different constructions can still yield identical or zero-energy payoffs on
 easy problems; those outcomes are retained, with zero-energy nMSE excluded.
 
@@ -168,7 +184,8 @@ search for each paper's best tuning.
 The sweep reserves `himem02` exclusively, divides games among 128 fixed physical
 cores, and uses one native thread per worker. All estimators for a game share
 the same core. Each cell runs in its own subprocess with a 120-second timeout
-and a 12 GiB virtual-memory limit; the job is bounded to 30 minutes.
+and a 12 GiB virtual-memory limit. The template defaults to 30 minutes; the
+command above requests four hours with a shorter runner deadline for checkpoints.
 Resubmit the same command to resume unfinished shards. Keep the snapshot, source,
 installed packages, allocation, and limits unchanged during a campaign.
 

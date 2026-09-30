@@ -127,3 +127,80 @@ def test_fixed_synthetic_recipes_vary_interaction_support(name: str) -> None:
     coalitions = ((np.arange(256)[:, None] >> np.arange(8)) & 1).astype(bool)
     values = [make_family(name, instance_seed=seed)[0](coalitions) for seed in range(4)]
     assert len({value.tobytes() for value in values}) == 4
+
+
+@pytest.mark.parametrize(
+    ("name", "dataset", "players", "features"),
+    [
+        ("local_baseline_forest", "diabetes", 10, 10),
+        ("uncertainty", "wine", 6, 6),
+        ("uncertainty", "wine", 12, 12),
+        ("data_valuation", "diabetes", 4, 10),
+        ("dataset_valuation", "diabetes", 4, 10),
+        ("ensemble", "diabetes", 4, 10),
+        ("forest_ensemble", "diabetes", 12, 10),
+        ("knn", "wine", 4, 13),
+        ("weighted_knn", "wine", 12, 13),
+    ],
+)
+def test_explicit_recipe_preserves_player_unit_and_selected_data(
+    name: str, dataset: str, players: int, features: int
+) -> None:
+    """Feature counts and row/group/model counts must not be confused."""
+    with threadpool_limits(limits=1):
+        game, metadata = make_family(name, dataset=dataset, n_players=players, instance_seed=2)
+        repeated, again = make_family(name, dataset=dataset, n_players=players, instance_seed=2)
+        assert game.n_players == players
+        assert metadata == again and metadata["dataset"] == dataset
+        assert len(metadata["feature_indices"]) == len(metadata["feature_names"]) == features
+        assert len(set(metadata["feature_indices"])) == features
+        assert not set(metadata["train_indices"]) & set(metadata["test_indices"])
+        coalitions = np.random.default_rng(0).integers(0, 2, (8, players)).astype(bool)
+        values = game(coalitions)
+        assert np.isfinite(values).all()
+        np.testing.assert_array_equal(values, repeated(coalitions))
+        if name == "dataset_valuation":
+            assert len(metadata["group_indices"]) == players
+            assert sorted(i for group in metadata["group_indices"] for i in group) == sorted(
+                metadata["train_indices"]
+            )
+        if name in ("knn", "weighted_knn"):
+            assert len(metadata["train_indices"]) == players
+
+
+def test_classification_feature_selection_is_seeded_and_reproducible() -> None:
+    """Each construction records its actual subset of the native thirteen wine features."""
+    selected = []
+    for seed in range(4):
+        _, metadata = make_family("uncertainty", dataset="wine", n_players=6, instance_seed=seed)
+        selected.append(tuple(metadata["feature_indices"]))
+        assert len(selected[-1]) == 6 and all(0 <= i < 13 for i in selected[-1])
+    assert len(set(selected)) == 4
+
+
+def test_configured_tnn_radius_uses_training_geometry_only() -> None:
+    """Dimension changes use a declared training-only radius, preserving the legacy rule."""
+    from scipy.spatial.distance import pdist
+    from sklearn.preprocessing import StandardScaler
+
+    from shapiq_benchmark.families import _dataset
+
+    _, legacy = make_family("tnn")
+    assert legacy["model_parameters"]["radius"] == 2.0
+    x, _, train, _, _ = _dataset("wine", 2)
+    distances = pdist(StandardScaler().fit_transform(x[train]))
+    expected = np.median(distances[distances > 0])
+    for players in (4, 12):
+        game, metadata = make_family("tnn", dataset="wine", n_players=players, instance_seed=2)
+        assert game.n_players == players
+        assert metadata["model_parameters"]["radius"] == expected
+        assert metadata["parameters"]["radius"] == expected
+        assert "training rows" in metadata["parameters"]["radius_rule"]
+        assert metadata["preprocessing_fit_indices"] == train.tolist()
+
+
+@pytest.mark.parametrize("players", [True, 0, 13, 2.5])
+def test_explicit_player_count_rejects_invalid_or_unbounded_sizes(players: object) -> None:
+    """The adapter must never quietly materialize exponentially larger games."""
+    with pytest.raises(ValueError, match="n_players"):
+        make_family("uncertainty", dataset="wine", n_players=players)

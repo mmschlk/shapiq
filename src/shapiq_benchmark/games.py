@@ -260,6 +260,14 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             scaled = scaler.transform(x)
             point = scaled[test[0]]
             selected = train[:count]
+            row_selection = spec.get("row_selection", "first")
+            if row_selection not in ("first", "stratified"):
+                message = "KNN row_selection must be first or stratified."
+                raise ValueError(message)
+            if row_selection == "stratified" and count < len(train):
+                selected, _ = train_test_split(
+                    train, train_size=count, stratify=y[train], random_state=seed
+                )
             point_label = int(y[test[0]])
             model, oracle = knn_game(scaled[selected], y[selected], point, point_label=point_label)
             truth = KNNExplainer(model, class_index=oracle.class_index).explain(point)
@@ -286,6 +294,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "model": "KNeighborsClassifier",
                 "model_parameters": model.get_params(),
                 "n_neighbors": 3,
+                "row_selection": row_selection,
                 "class_index": oracle.class_index,
                 "point_label": point_label,
                 "test_accuracy": model.score(scaled[test], y[test]),

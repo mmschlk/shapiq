@@ -180,7 +180,7 @@ def test_large_knn_instances_change_selected_training_players(
                 "n_players": n_players,
                 "instance_seed": seed,
             }
-            for seed in (0, 1)
+            for seed in range(4)
         ],
         tmp_path,
     )
@@ -194,8 +194,44 @@ def test_large_knn_instances_change_selected_training_players(
         assert oracle.model.classes_[oracle.class_index] == game["metadata"]["point_label"]
         with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
             selected_rows.append(arrays["selected_rows"])
-    assert not np.array_equal(*selected_rows)
+            np.testing.assert_array_equal(
+                arrays["selected_rows"], arrays["train_indices"][:n_players]
+            )
+    assert all(not np.array_equal(selected_rows[0], rows) for rows in selected_rows[1:])
     assert games[0]["metadata"]["point_row"] != games[1]["metadata"]["point_row"]
+
+
+@pytest.mark.parametrize(
+    "dataset,n_players",
+    [("breast_cancer", n) for n in (16, 32, 64)] + [("digits", n) for n in (16, 32, 64, 512)],
+)
+@pytest.mark.parametrize("seed", range(4))
+def test_stratified_knn_preserves_classes_and_exact_truth(
+    tmp_path: Path, dataset: str, n_players: int, seed: int
+) -> None:
+    """Small new valued subsets retain all labels without altering the held-out truth."""
+    spec = {
+        "id": "knn",
+        "oracle": "knn",
+        "dataset": dataset,
+        "index": "SV",
+        "order": 1,
+        "n_players": n_players,
+        "instance_seed": seed,
+        "row_selection": "stratified",
+    }
+    game = prepare_structured([spec], tmp_path)[0]
+    assert game["metadata"]["row_selection"] == "stratified"
+    assert game["metadata"]["small_validation_max_error"] < 1e-10
+    with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
+        assert len(np.unique(arrays["selected_rows"])) == n_players
+        assert set(arrays["selected_rows"]) <= set(arrays["train_indices"])
+        assert game["metadata"]["point_row"] not in arrays["selected_rows"]
+        assert len(np.unique(arrays["y_train"])) == (10 if dataset == "digits" else 2)
+        assert game["metadata"]["point_label"] in arrays["y_train"]
+    oracle = load_game(game, tmp_path)
+    endpoints = oracle(np.array([np.zeros(n_players), np.ones(n_players)], dtype=bool))
+    assert endpoints[1] - endpoints[0] == pytest.approx(sum(game["truth"]["values"]))
 
 
 @pytest.mark.parametrize("dataset,n_players", [("breast_cancer", 30), ("digits", 64)])

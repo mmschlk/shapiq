@@ -106,6 +106,41 @@ def test_four_constructions_have_shared_strata_and_one_estimator_seed(tmp_path: 
     assert load_snapshot(tmp_path / "snapshot")[0] == snapshot
 
 
+def test_explicit_variants_keep_kind_but_have_independent_panel_settings(tmp_path: Path) -> None:
+    """Native and subset dimensions have separate identities without losing family grouping."""
+    specs = [
+        "uncertainty",
+        {"id": "uncertainty-wine-6", "family": "uncertainty", "dataset": "wine", "n_players": 6},
+    ]
+    targets = [{"index": "SV", "order": 1}, {"index": "SII", "order": 2}]
+    games, coverage = prepare_families(specs, targets, tmp_path, instance_seed=1)
+    assert len(games) == 4 and all(entry["status"] == "measured" for entry in coverage)
+    assert {g["metadata"]["game_kind"] for g in games} == {"uncertainty"}
+    assert {g["metadata"]["case_id"] for g in games} == {"uncertainty", "uncertainty-wine-6"}
+    assert {g["n_players"] for g in games} == {4, 6}
+    assert len({g["stratum"] for g in games}) == len({g["artifact"] for g in games}) == 2
+    for game in games:
+        values = np.load(tmp_path / game["artifact"])["values"]
+        assert len(values) == 2 ** game["n_players"]
+        assert game["truth"]["baseline"] == pytest.approx(values[0])
+
+
+@pytest.mark.parametrize(
+    "specs",
+    [
+        ["dummy", {"id": "dummy", "family": "dummy"}],
+        [{"id": "../escape", "family": "dummy"}],
+        [{"id": "typo", "family": "dummy", "players": 4}],
+        [{"id": "too-large", "family": "dummy", "n_players": 13}],
+    ],
+)
+def test_invalid_family_specs_fail_before_creating_artifacts(tmp_path: Path, specs: list) -> None:
+    """Configuration mistakes must not turn into ambiguous missing benchmark cases."""
+    with pytest.raises(ValueError):
+        prepare_families(specs, [{"index": "SV", "order": 1}], tmp_path)
+    assert not list(tmp_path.iterdir())
+
+
 @pytest.mark.parametrize("seeds", [[], [0, 0], [-1], [True], [1.5], "0123"])
 def test_invalid_game_seeds_rejected(tmp_path: Path, seeds: object) -> None:
     """Invalid construction grids must fail before any family preparation."""
