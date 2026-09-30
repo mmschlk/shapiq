@@ -80,9 +80,13 @@ suite. The completed frozen preparation remains archived separately. Publication
 requires an audited export and a data-manifest update; a completion watcher will
 wake the agent to carry out that work for the replacement campaign.
 
-The selected-pairing replacement is submitted as preparation **360853** and
-sweep **360873**, using frozen source `218d1390` with the LeverageSHAP and OddSHAP
-fixes. Its completion watcher is armed.
+The selected-pairing preparation uses frozen source `218d1390` with the
+LeverageSHAP and OddSHAP fixes. Job **360853** saved every payoff table, but two
+exact-reference calculations hit the worker's memory limit. Recovery **361008**
+qualified those saved tables in fresh processes, preserving all original bytes;
+the complete snapshot has **1,484 game/target definitions and 324 artifacts**.
+Replacement sweep **361009** is queued for the exclusive benchmark node, and its
+completion watcher is armed. The cancelled sweep **360873** never evaluated cells.
 
 ### Broader dataset × game matrix
 

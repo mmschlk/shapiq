@@ -173,6 +173,13 @@ uv run pre-commit run --all-files
   generic chevron clearance through CSS specificity. Verify computed right
   padding on every styled select; otherwise the arrow can overlap its text.
 
+- Long-lived preparation workers can hit their address-space limit during exact
+  qualification after successfully saving all payoffs. The min11 causal-local
+  12-player failures were 128 MiB allocations for a 4096-by-4096 FII matrix,
+  not failed oracle evaluations. Inspect saved NPZ files before recomputing a
+  costly game; qualify them in a fresh process, authenticate the saved bytes,
+  and preserve the original snapshots for the recovery audit.
+
 - OddSHAP's default rejects budgets below `min(10, 2**n)` before any oracle
   calls. PR #560 deliberately screens singleton terms below `10*n`; this is
   different from the paper's low-budget tree-surrogate fallback. Do not diagnose

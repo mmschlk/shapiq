@@ -569,3 +569,22 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
 - All 314 benchmark tests pass. Formatting and lint pass; type checking retains
   the same eight pre-existing optional-import/ignore diagnostics. Frozen
   campaign sources, submitted jobs and completion watchers are unchanged.
+
+## Selected-pairing preparation recovery (September 30)
+
+- Preparation 360853 saved every payoff table but reached its 12-GiB
+  address-space limit during exact FII qualification for causal-local 12-player
+  seeds 0 and 2. Its dependent sweep 360873 was cancelled without running.
+- Recovery 361008 completed in 27 seconds using the same frozen implementation
+  and saved payoffs in fresh processes. Successful seeds 1 and 3 served as
+  controls; their complete definitions matched exactly. Original preparation
+  files remain intact, with a separate recovery input checksum manifest.
+- An independent audit authenticated all 1,484 definitions and 324 artifacts,
+  verified all 1,472 previously qualified definitions and original file hashes
+  were unchanged, and recomputed all six exact targets for the four recovered
+  causal-local tables. The final snapshot is
+  `0d205e4015d5a81e8b3538578180de58dfd9b97c0a778d3596f2d91c7433e212`.
+- Replacement sweep 361009 is queued with the same exclusive-node resources and
+  estimator limits. Matrix preparation 360900 follows it; evaluation 360901 is
+  unchanged. Both completion watchers remain armed. No new estimator results
+  have been published from this recovery.
