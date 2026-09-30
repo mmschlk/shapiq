@@ -55,8 +55,13 @@ frozen at [`d4ac18e6`](https://github.com/rtealwitter/shapiq/commit/d4ac18e67484
 on `benchmark-ridge-run`, which combines this benchmark with the separate estimator
 fix. The frozen games retain their original preparation source `1472a003` and
 snapshot identity. Previous job `360655` was stopped; its checkpoints are kept
-separately and are not reused in this full rerun. The website continues to show
-the previous published data until the replacement is complete and audited.
+separately and are not reused in this full rerun. The website now shows an audited
+**provisional checkpoint** captured September 29 at 18:13 PDT: 2,215 successful,
+9,306 unsupported and 65 failed cells; 148,398 of 159,984 cells remain pending.
+The 65 failures are ProxySPEX minimum-sample errors. No LeverageSHAP evaluations
+had completed at capture time. Missing scores stay missing; coverage and rankings
+will change as the sweep progresses. The full rerun continues independently.
+Published checkpoints are static snapshots, updated after export and audit.
 
 The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
 777 failed cells**, with none pending. Failures comprise 754 SPEX minimum-budget
@@ -135,7 +140,7 @@ You can also open the site's `index.html` and choose an exported `data.json`
 through **Open local**.
 
 For the full public panel, download its frozen snapshot and baseline results from
-the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-families-2026-09-29).
+the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-provisional-2026-09-29).
 The archive includes exact truth, checksums, software provenance, and local
 candidate commands, so there is no need to refit the games. Use `--games` and
 `--methods` to select a smaller experiment when needed.

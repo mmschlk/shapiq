@@ -9,6 +9,7 @@ const palette = [
   "#287FA8",
 ];
 let data,
+  pendingRuns = 0,
   selectedRows = [],
   chartNames = [],
   methodTargets = new Map(),
@@ -206,6 +207,7 @@ function load(value) {
       return { ...record, worker: value.workers[record.worker_id] };
     }),
   };
+  pendingRuns = countPendingRuns();
   chartFamilyExplicit = false;
   const gamesById = new Map(data.games.map((game) => [game.id, game]));
   methodTargets = new Map(
@@ -341,6 +343,14 @@ function renderCoverage() {
 }
 const gameBudgets = (game) =>
   data.suite.budgets_by_game?.[game.id] || data.suite.budgets;
+function countPendingRuns() {
+  const planned =
+    data.games.reduce((sum, game) => sum + gameBudgets(game).length, 0) *
+    Object.keys(data.methods).length *
+    data.suite.seeds.length;
+  return Math.max(0, planned - data.records.length);
+}
+
 function selection(family = $("family").value, allBudgets = false) {
   const games = data.games.filter(
     (g) =>
@@ -505,11 +515,19 @@ function render() {
     s.cells.length > 0 &&
     !s.rows.some((row) => row.status !== "unsupported") &&
     s.rows.length < s.cells.length * s.methods.length;
-  $("notice").textContent = tablePending
+  const selectionNotice = tablePending
     ? "Table results pending for this budget. Charts show all measured budgets."
     : chartPending
       ? "Chart results pending for this selection."
       : "";
+  $("notice").textContent = [
+    pendingRuns
+      ? `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+      : "",
+    selectionNotice,
+  ]
+    .filter(Boolean)
+    .join(" ");
   $("budgetChartNote").textContent = allCurves
     ? "Family-balanced median · Coverage on hover"
     : "Family-balanced median · Complete coverage preferred";
@@ -943,7 +961,9 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
   if (!points.length) {
     const p = document.createElement("p");
     p.className = "emptyNote";
-    p.textContent = "No successful results in this view.";
+    p.textContent = dates
+      ? "History requires complete coverage and a verified publication date."
+      : "No successful results in this view.";
     box.append(p);
     return;
   }

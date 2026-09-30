@@ -317,3 +317,27 @@ Independent reviewers: `investigate_optional` (execution preflight) and
   Across six viewport widths and both metrics, score rows, all 13 real history
   curve coordinates, label ordering/positions and chart geometry are identical.
   Hover, keyboard, empty views, and one/all-method tie/zero fixtures also pass.
+
+## Provisional corrected-run publication
+
+Independent reviewers: `investigate_optional` (checkpoint/export) and
+`investigate_leverage` (browser).
+
+- Froze all 128 checkpoints before exporting, leaving the active run untouched.
+  Verified 11,586 unique cells: 2,215 successful, 9,306 unsupported and 65 failed;
+  148,398 of 159,984 planned cells remain pending. Every successful score was
+  independently recomputed. Failures are ProxySPEX minimum-sample errors.
+- Preparation remains `1472a003`; every execution record uses clean corrected
+  source `d4ac18e6`. All 2,280 observed workers meet the pinned-core, CPU model,
+  single-thread and resource-limit protocol. No LeverageSHAP scores had completed
+  at capture, and no earlier measurements are substituted.
+- A generic provisional notice reports missing cells without changing scoring.
+  The report and reproduction archive are separate checksummed release assets;
+  generated measurements remain outside Git. Public JSON exactly matches the
+  frozen records; the ZIP passes all 318 internal checksums. Both exports omit
+  raw exception text and local paths.
+- Browser comparison preserves scores for all six targets, retains null missing
+  scores and reports the exact pending count. Desktop and 390/320-pixel layouts
+  pass after resize rendering settles. Empty history explains its complete-panel
+  requirement. Formatting/lint pass; the same eight existing type diagnostics
+  remain in optional Woodelf imports and tree-conversion ignore comments.

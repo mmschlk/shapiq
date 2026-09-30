@@ -67,14 +67,14 @@ window.METHOD_DETAILS = {
     }
   },
   "LeverageSHAP": {
-    "description": "Samples coalitions using regression leverage scores, then solves a weighted regression constrained to satisfy efficiency. It estimates individual Shapley values.",
+    "description": "Estimates Shapley values using leverage-score sampling and efficiency-constrained regression. Budgets at most 3× players use a 0.001 ridge safeguard, except when all coalitions are evaluated.",
     "paper": {
       "title": "Provably Accurate Shapley Value Estimation via Leverage Score Sampling",
       "url": "https://arxiv.org/abs/2410.01917"
     },
     "implementation": {
       "title": "shapiq implementation",
-      "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/regression/leverageshap.py#L26"
+      "url": "https://github.com/rtealwitter/shapiq/blob/d4ac18e674841f79c1ca25d8cfbf550e84dc21a7/src/shapiq/approximator/regression/leverageshap.py#L26"
     }
   },
   "RegressionFSII": {
