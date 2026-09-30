@@ -769,6 +769,7 @@ they seed the catalog rather than complete it:
 | ProxySPEX | 2025-05-23 | [Butler et al.](https://arxiv.org/abs/2505.17495) |
 | RegressionMSR | 2025-06-13 | [Witter et al.](https://arxiv.org/abs/2506.11849) |
 | OddSHAP | 2026-02-01 | [OddSHAP paper](https://arxiv.org/abs/2602.01399) |
+| ProxySHAP | 2026-05-21 | [Thies et al.](https://arxiv.org/abs/2605.22738) |
 | ShaplEIG | 2026-06-01 | [ShaplEIG paper](https://arxiv.org/abs/2606.02247) |
 
 Audit the remaining methods, aliases, and implementation dates before including

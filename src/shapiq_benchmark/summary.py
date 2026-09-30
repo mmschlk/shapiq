@@ -36,6 +36,7 @@ RELEASES = {
     "ProxySPEX": ("2025-05-23", "https://arxiv.org/abs/2505.17495"),
     "RegressionMSR": ("2025-06-13", "https://arxiv.org/abs/2506.11849"),
     "OddSHAP": ("2026-02-01", "https://arxiv.org/abs/2602.01399"),
+    "ProxySHAP": ("2026-05-21", "https://arxiv.org/abs/2605.22738"),
     "ShaplEIG": ("2026-06-01", "https://arxiv.org/abs/2606.02247"),
 }
 HISTORY_LABEL = (

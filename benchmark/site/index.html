@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#f4f7fc" />
     <title>shapiq · Estimator benchmark</title>
-    <link rel="icon" href="shapiq.ico" />
+    <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
+    <script defer src="methods.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -205,6 +206,9 @@
           </div>
         </article>
         <div class="chartControls">
+          <label class="chartFamilyLabel"
+            >Plot family<select id="chartFamily"></select
+          ></label>
           <span id="chartPanelMeta"></span
           ><label class="chartLimitLabel"
             ><span class="srOnly">Methods to chart</span
@@ -218,8 +222,7 @@
           <article class="chartCard budgetCard">
             <div class="cardHeading">
               <div>
-                <p class="eyebrow">ACCURACY</p>
-                <h2>Make every query count.</h2>
+                <h2>Error vs queries</h2>
               </div>
               <span class="chartBadge">Lower is better ↘</span>
             </div>
@@ -231,8 +234,7 @@
           <article class="chartCard timeCard">
             <div class="cardHeading">
               <div>
-                <p class="eyebrow">EFFICIENCY</p>
-                <h2>Error, against the clock.</h2>
+                <h2>Error vs time</h2>
               </div>
               <span class="chartBadge lavender">Diagnostic</span>
             </div>
@@ -247,8 +249,7 @@
         <article class="chartCard historyCard">
           <div class="cardHeading">
             <div>
-              <p class="eyebrow">THE PROGRESS OF ESTIMATION</p>
-              <h2>Good ideas stand the test of time.</h2>
+              <h2>Historical progress</h2>
             </div>
             <label class="compactSelect"
               ><span class="srOnly">Summary metric</span
@@ -270,29 +271,37 @@
       </section>
       <section class="belowFold">
         <details class="coverageDetails">
-          <summary>Games included <span>＋</span></summary>
+          <summary>Games and benchmark coverage <span>＋</span></summary>
+          <p class="drawerIntro">
+            Counts group repeated instances and explanation types into game
+            settings.
+          </p>
           <div id="libraryCoverage"></div>
         </details>
         <details class="methodology">
-          <summary>About the numbers <span>＋</span></summary>
+          <summary>How to read the scores <span>＋</span></summary>
           <div class="methodologyContent">
             <p>
-              Lower nMSE is better. Families, strata, games, budgets, and seeds
-              have equal weight at each level. Scores use available successful
-              runs; coverage is shown. At exactly half the weight, the median
-              averages the two neighboring values.
+              <strong>nMSE.</strong> Squared estimation error divided by the sum
+              of squared exact values. Zero is exact; lower is better. Games
+              with zero exact-value energy are excluded.
             </p>
             <p>
-              The table and family plots use the same weights. Hover for
-              coverage and actual queries used. Timings are diagnostic and
-              grouped by matching hardware and thread settings. Cached-table
-              timings exclude original model cost; live-oracle timings include
-              evaluation cost. Zero-energy games are excluded for everyone.
+              <strong>Median and mean.</strong> The median describes typical
+              error; the mean is more sensitive to outliers. Scores balance each
+              family and setup, then instances, budgets, and runs. A median
+              exactly between two values averages them.
             </p>
             <p>
-              Complete coverage comes first by default; click a heading to sort.
-              History uses complete-coverage methods. All variants and raw
-              results remain available.
+              <strong>Coverage.</strong> Successful runs out of planned runs.
+              Missing or failed runs are never counted as zero error. Complete
+              coverage appears first; partial scores use the available results.
+              History uses complete coverage.
+            </p>
+            <p>
+              <strong>Time.</strong> Diagnostic runtime on matching hardware and
+              thread settings. Cached games exclude the original model's
+              evaluation cost; live games include it.
             </p>
             <p id="statisticsNote"></p>
             <p id="gameDetails"></p>
@@ -308,7 +317,12 @@
           </div>
         </details>
         <details class="runFailures">
-          <summary>Most common run issues <span>＋</span></summary>
+          <summary>Failed and unsupported runs <span>＋</span></summary>
+          <p class="drawerIntro">
+            Unsupported runs use an explanation type the estimator cannot
+            compute. Failed runs exceeded a limit or raised an error. The six
+            most frequent issues appear below.
+          </p>
           <ul id="failures"></ul>
         </details>
         <div class="downloadActions">
@@ -333,6 +347,18 @@
         >
       </div>
     </footer>
+    <dialog id="methodDialog" aria-labelledby="methodTitle">
+      <button
+        id="closeMethod"
+        type="button"
+        aria-label="Close estimator details"
+      >
+        Close ×
+      </button>
+      <h2 id="methodTitle"></h2>
+      <p id="methodDescription"></p>
+      <div id="methodLinks"></div>
+    </dialog>
     <div id="chartTooltip" class="chartTooltip" role="tooltip" hidden></div>
   </body>
 </html>

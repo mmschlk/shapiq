@@ -496,7 +496,6 @@ def run(
         elif resume:
             message = "No existing campaign to resume."
             raise ValueError(message)
-        output.mkdir(parents=True, exist_ok=True)
         keys = ("game_id", "method", "budget", "seed")
         completed = {tuple(row[key] for key in keys) for row in result["records"]}
         if len(completed) != len(result["records"]):

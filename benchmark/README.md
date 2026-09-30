@@ -8,13 +8,28 @@ Compare all 22 public estimator classes across representatives of every shipped
 game family. Filter by target, game family, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
 player (`B/d`)** and time. Publication history appears below. Hover or focus a
-method to highlight it across charts and rows; colors also have distinct markers
-and line patterns.
+method to highlight it across charts and rows; click its name for a description,
+paper and implementation. Colors also have distinct markers and line patterns.
 
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
 step. You can evaluate a private estimator with the same runner and view the
 comparison locally without uploading anything.
+
+## Code map
+
+| Responsibility | Files |
+| --- | --- |
+| Construct and qualify games | `prepare.py`, `families.py`, `media.py`, `materialize.py`, `games.py` |
+| Run, count queries and checkpoint | `runner.py`, `execution.py` |
+| Calculate scores, Elo and history | `summary.py` |
+| Export the website and reproduction archive | `report.py`, `bundle.py` |
+| Render the interface | `benchmark/site/app.js`, `style.css`, `index.html` |
+| Describe estimators and link sources | `benchmark/site/methods.js` |
+
+Python files above live in `src/shapiq_benchmark/`. The browser's `render()`
+coordinates separate functions for the leaderboard, performance plots, history,
+run issues and hardware details. There is no frontend build step.
 
 ## What the expanded suite covers
 
@@ -28,9 +43,11 @@ comparison locally without uploading anything.
 | Estimators | All 22 public classes, with library defaults unless target configuration requires otherwise |
 | Budgets | `B/d = 0.5, 1, 2, 4, 8, 16, 32, 64, 128`, rounded up to whole queries per game |
 | Repetitions | Four constructed game instances per recipe/dataset; one estimator run per instance and budget |
-| Planned matrix | 808 game/target instances; 159,984 cells including unsupported combinations, if every recipe qualifies |
+| Prepared panel | 37 setups × four constructions; 808 game/target instances, including all six targets where supported |
+| Planned matrix | 159,984 cells including unsupported combinations |
 
-The expanded four-instance suite is being prepared and measured. The website
+All four-instance recipes qualified. The expanded suite is being measured on
+Hopper (job `360655`, frozen source `1472a003`). The website
 continues to show the previous published data until its replacement is audited.
 
 The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
@@ -120,7 +137,7 @@ candidate commands, so there is no need to refit the games. Use `--games` and
 ```bash
 uv sync --locked --extra benchmark --extra sparse --extra shapleig --extra proxy
 uv run --no-sync python -m shapiq_benchmark.prepare --suite benchmark/suites/all-families.json --output benchmark/results/all-families
-sbatch --output=benchmark/results/sweep-%j.log benchmark/sweep.sbatch benchmark/results/all-families benchmark/results/all-family-runs
+sbatch --partition=main --time=04:00:00 --output=benchmark/results/sweep-%j.log benchmark/sweep.sbatch benchmark/results/all-families benchmark/results/all-family-runs --seconds 14040
 ```
 
 Preparation may download optional model weights and records unavailable families.
@@ -164,8 +181,11 @@ use a new output directory after changing code or limits.
 Select a target first; different interaction definitions never share a ranking.
 Choose a budget in multiples of the player count, or use **budget cap** to select
 the largest measured budget within your limit for each game. Missing cells remain missing.
-The two main charts aggregate the selected game families, using the same weights
-as the table. Each point reports coverage on hover. The time chart groups runs
+The **Plot family** selector controls both query and time charts independently
+of the table. Charts show all measured budgets, with the same weighting rule as
+the table; each point reports coverage on hover. Both axes use logarithmic
+scales, except historical publication years. Errors at or below `1e-12` share a
+labeled lower band; hover retains the actual value. The time chart groups runs
 with matching CPU and thread profiles; it may combine cached and live oracles.
 
 nMSE is squared coefficient error divided by ground-truth coefficient energy,

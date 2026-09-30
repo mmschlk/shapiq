@@ -13,7 +13,8 @@ let data,
   chartNames = [],
   methodTargets = new Map(),
   unsupportedTargets = new Map(),
-  tableSort = { key: "default", descending: false };
+  tableSort = { key: "default", descending: false },
+  chartFamilyExplicit = false;
 const methodIndex = (method) =>
   Math.max(
     0,
@@ -31,6 +32,23 @@ const replicationLabel = () =>
   data.suite.game_seeds?.length
     ? `${data.suite.game_seeds.length} game instances per setting · ${data.suite.seeds.length} estimator run${data.suite.seeds.length === 1 ? "" : "s"} per instance and budget`
     : `${data.suite.seeds.length} estimator seeds per game`;
+const familyNames = {
+  local_explanation: "Model explanations",
+  data_valuation: "Training data valuation",
+  ensemble_selection: "Ensemble selection",
+  feature_selection: "Feature selection",
+  global_fidelity: "Global model fidelity",
+  image_explanation: "Image explanations",
+  text_explanation: "Text explanations",
+  uncertainty: "Predictive uncertainty",
+  cluster: "Clustering",
+  unsupervised: "Unsupervised learning",
+  synthetic: "Synthetic diagnostics",
+};
+const familyLabel = (family) =>
+  Object.hasOwn(familyNames, family)
+    ? familyNames[family]
+    : family.replaceAll("_", " ");
 const targetLabel = (value) =>
   ({
     SV: "Shapley Values",
@@ -75,14 +93,15 @@ function rankingOrder(a, b) {
 
 const format = (n) => (Number.isFinite(n) ? n.toPrecision(4) : "—");
 const target = (game) => `${game.index} · order ${game.order}`;
+const methodNames = {
+  PermutationSamplingSV: "Permutation · values",
+  PermutationSamplingSII: "Permutation · SII",
+  PermutationSamplingSTII: "Permutation · STII",
+  RegressionFBII: "Regression · FBII",
+  RegressionFSII: "Regression · FSII",
+};
 const methodLabel = (method) =>
-  ({
-    PermutationSamplingSV: "Permutation · values",
-    PermutationSamplingSII: "Permutation · SII",
-    PermutationSamplingSTII: "Permutation · STII",
-    RegressionFBII: "Regression · FBII",
-    RegressionFSII: "Regression · FSII",
-  })[method] || method;
+  Object.hasOwn(methodNames, method) ? methodNames[method] : method;
 function showMethod(method) {
   if ($("showVariants").value === "all") return true;
   const targets = methodTargets.get(method);
@@ -107,6 +126,30 @@ function capability(method) {
       : interactions
         ? "Interactions"
         : "Unverified";
+}
+function showMethodDetails(method) {
+  const details = Object.hasOwn(window.METHOD_DETAILS || {}, method)
+    ? window.METHOD_DETAILS[method]
+    : null;
+  $("methodTitle").textContent = methodLabel(method);
+  $("methodDescription").textContent =
+    details?.description ||
+    "Local estimator. See the implementation supplied with this report.";
+  $("methodLinks").replaceChildren();
+  [details?.paper, details?.implementation]
+    .filter(Boolean)
+    .forEach((source) => {
+      if (!source.url?.startsWith("https://")) return;
+      const link = document.createElement("a");
+      link.href = source.url;
+      link.textContent = source.title;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      $("methodLinks").append(link);
+    });
+  highlight(null);
+  $("chartTooltip").hidden = true;
+  $("methodDialog").showModal();
 }
 function options(id, values, all) {
   $(id).replaceChildren();
@@ -135,6 +178,7 @@ function load(value) {
       return { ...record, worker: value.workers[record.worker_id] };
     }),
   };
+  chartFamilyExplicit = false;
   const gamesById = new Map(data.games.map((game) => [game.id, game]));
   methodTargets = new Map(
     Object.keys(data.methods).map((method) => [method, new Set()]),
@@ -160,10 +204,7 @@ function load(value) {
     "All families",
   );
   [...$("family").options].forEach((option) => {
-    if (option.value)
-      option.textContent = option.value
-        .replaceAll("_", " ")
-        .replace(/^./, (c) => c.toUpperCase());
+    if (option.value) option.textContent = familyLabel(option.value);
   });
   $("budget").replaceChildren(new Option("All relative budgets", ""));
   const relative = document.createElement("optgroup");
@@ -254,32 +295,44 @@ function renderCoverage() {
     row.className = "coverageItem";
     const label = document.createElement("strong"),
       count = document.createElement("span");
-    label.textContent = family.replaceAll("_", " ");
-    count.textContent = `${cases.size} settings`;
+    const instances = new Set(
+      data.games
+        .filter((game) => game.family === family)
+        .map((game) =>
+          JSON.stringify([
+            game.metadata?.case_id || game.id,
+            game.metadata?.instance_seed ?? 0,
+          ]),
+        ),
+    );
+    label.textContent = familyLabel(family);
+    count.textContent = `${cases.size} setups · ${instances.size} instances`;
     row.append(label, count);
     $("libraryCoverage").append(row);
   });
 }
 const gameBudgets = (game) =>
   data.suite.budgets_by_game?.[game.id] || data.suite.budgets;
-function selection() {
+function selection(family = $("family").value, allBudgets = false) {
   const games = data.games.filter(
     (g) =>
       isSynthetic(g) === ($("panel").value === "diagnostic") &&
       target(g) === $("target").value &&
-      (!$("family").value || g.family === $("family").value) &&
+      (!family || g.family === family) &&
       g.n_players >= Number($("minPlayers").value) &&
       g.n_players <= Number($("maxPlayers").value),
   );
   const methods = [...$("methods").selectedOptions].map((o) => o.value),
     game_budgets = {};
   const cells = games.flatMap((g) => {
-    const chosen = $("budget").value;
+    const chosen = allBudgets ? "" : $("budget").value;
     let budgets = chosen.startsWith("r:")
       ? [Math.ceil(Number(chosen.slice(2)) * g.n_players)]
       : gameBudgets(g);
     const cap =
-      $("cap").value === "" ? null : Number($("cap").value) * g.n_players;
+      allBudgets || $("cap").value === ""
+        ? null
+        : Number($("cap").value) * g.n_players;
     if (cap !== null)
       budgets = [Math.max(-1, ...budgets.filter((b) => b <= cap))];
     game_budgets[g.id] = budgets;
@@ -381,15 +434,84 @@ function render() {
         same(p.game_budgets?.[id] || p.budgets, s.game_budgets[id]),
       ),
   );
-  const gamesById = new Map(s.games.map((g) => [g.id, g]));
-  const chartRatios = $("budget").value.startsWith("r:")
-    ? [Number($("budget").value.slice(2))]
-    : [
-        ...new Set(
-          s.cells.map((c) => c.budget / gamesById.get(c.game_id).n_players),
+  const allChartGames = selection("", true);
+  const chartFamilies = [
+    ...new Set(allChartGames.games.map((game) => game.family)),
+  ];
+  const previousFamily = chartFamilyExplicit
+    ? $("chartFamily").value
+    : $("family").value;
+  options("chartFamily", chartFamilies, "All families");
+  [...$("chartFamily").options].forEach((option) => {
+    if (option.value) option.textContent = familyLabel(option.value);
+  });
+  $("chartFamily").value = chartFamilies.includes(previousFamily)
+    ? previousFamily
+    : "";
+  const chartPanel = selection($("chartFamily").value, true);
+  const allCurves = $("chartLimit").value === "all";
+  chartNames = visibleMethods
+    .map((method) => ({
+      method,
+      ...summary(
+        chartPanel.rows.filter((r) => r.method === method),
+        chartPanel,
+      ),
+    }))
+    .filter((item) => Number.isFinite(item.median))
+    .sort((a, b) =>
+      allCurves
+        ? a.method.localeCompare(b.method)
+        : Number(b.complete) - Number(a.complete) ||
+          a.median - b.median ||
+          a.method.localeCompare(b.method),
+    )
+    .slice(0, allCurves ? Infinity : 5)
+    .map((item) => item.method);
+  const chartPending =
+    chartPanel.cells.length > 0 &&
+    !chartPanel.rows.some((r) => r.status !== "unsupported") &&
+    chartPanel.rows.length <
+      chartPanel.cells.length * chartPanel.methods.length;
+  const tablePending =
+    s.cells.length > 0 &&
+    !s.rows.some((row) => row.status !== "unsupported") &&
+    s.rows.length < s.cells.length * s.methods.length;
+  $("notice").textContent = tablePending
+    ? "Table results pending for this budget. Charts show all measured budgets."
+    : chartPending
+      ? "Chart results pending for this selection."
+      : "";
+  $("budgetChartNote").textContent = allCurves
+    ? "Family-balanced median · Coverage on hover"
+    : "Family-balanced median · Complete coverage preferred";
+  const gameUnit = data.suite.game_seeds?.length ? "game instances" : "games";
+  $("chartPanelMeta").textContent =
+    `${chartPanel.games.length} ${gameUnit} · All measured budgets`;
+  $("gameDetails").textContent =
+    `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
+  $("panelSummary").textContent =
+    `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} zero-energy excluded` : ""}`;
+  $("methodLabel").textContent = `${visibleMethods.length} shown ⌄`;
+  renderLeaderboard(s, preset, visibleMethods);
+  renderRunIssues(s);
+  renderPerformanceCharts(chartPanel, chartPending);
+  renderHistory(s, preset);
+  renderHardware(s);
+}
+
+function renderPerformanceCharts(chartPanel, chartPending) {
+  const gamesById = new Map(chartPanel.games.map((g) => [g.id, g]));
+  const chartRatios =
+    data.suite.relative_budgets ||
+    [
+      ...new Set(
+        chartPanel.cells.map(
+          (cell) => cell.budget / gamesById.get(cell.game_id).n_players,
         ),
-      ].sort((a, b) => a - b);
-  const panelAt = (ratio, games = s.games) => {
+      ),
+    ].sort((a, b) => a - b);
+  const panelAt = (ratio, games = chartPanel.games) => {
     const cells = games.flatMap((g) =>
       data.suite.seeds.map((seed) => ({
         game_id: g.id,
@@ -397,7 +519,7 @@ function render() {
         seed,
       })),
     );
-    return { ...s, games, cells };
+    return { ...chartPanel, games, cells };
   };
   const rowsAt = (rows, panel) => {
     const keys = new Set(panel.cells.map(cellKey));
@@ -424,43 +546,98 @@ function render() {
         : null,
     };
   };
-  const allCurves = $("chartLimit").value === "all";
-  chartNames = visibleMethods
-    .map((method) => ({
-      method,
-      ...summary(
-        s.rows.filter((r) => r.method === method),
-        s,
-      ),
-    }))
-    .filter((item) => Number.isFinite(item.median))
-    .sort((a, b) =>
-      allCurves
-        ? a.method.localeCompare(b.method)
-        : Number(b.complete) - Number(a.complete) ||
-          a.median - b.median ||
-          a.method.localeCompare(b.method),
-    )
-    .slice(0, allCurves ? Infinity : 5)
-    .map((item) => item.method);
-  const pending =
-    s.cells.length > 0 &&
-    !s.rows.some((r) => r.status !== "unsupported") &&
-    s.rows.length < s.cells.length * s.methods.length;
-  $("notice").textContent = pending
-    ? "Results pending for this budget and selection."
-    : "";
-  $("budgetChartNote").textContent = allCurves
-    ? "Family-balanced median · Coverage on hover"
-    : "Family-balanced median · Complete coverage preferred";
-  const gameUnit = data.suite.game_seeds?.length ? "game instances" : "games";
-  $("chartPanelMeta").textContent =
-    `${new Set(s.games.map((g) => g.family)).size} families · ${s.games.length} ${gameUnit} · ${chartNames.length} methods`;
-  $("gameDetails").textContent =
-    `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
-  $("panelSummary").textContent =
-    `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} zero-energy excluded` : ""}`;
-  $("methodLabel").textContent = `${visibleMethods.length} shown ⌄`;
+  const budgetSeries = chartNames.map((method) => ({
+    name: methodLabel(method),
+    method,
+    color: colorFor(method),
+    points: chartRatios
+      .map((ratio) => {
+        const panel = panelAt(ratio);
+        return point(
+          rowsAt(
+            chartPanel.rows.filter((r) => r.method === method),
+            panel,
+          ),
+          panel,
+          ratio,
+        );
+      })
+      .filter(Boolean),
+  }));
+  chart(
+    "budgetChart",
+    budgetSeries,
+    "Query budget per player · B / d",
+    false,
+    "median",
+  );
+  const profiles = new Map();
+  chartPanel.rows.forEach((row) => {
+    const worker = row.worker;
+    const verified =
+      worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
+    const key = JSON.stringify([
+      row.timing_profile,
+      worker?.cpu_model,
+      worker?.machine,
+      worker?.thread_pools,
+      worker?.thread_environment,
+      ...(verified ? [] : [row.run_id, row.game_id]),
+    ]);
+    if (!profiles.has(key))
+      profiles.set(key, {
+        rows: [],
+        games: new Set(),
+        label: `${worker?.cpu_model || "Unverified hardware"} · ${row.timing_profile || "diagnostic"}`,
+      });
+    const profile = profiles.get(key);
+    profile.rows.push(row);
+    profile.games.add(row.game_id);
+  });
+  const timeSeries = [];
+  chartNames.forEach((method) =>
+    profiles.forEach((profile) => {
+      const games = chartPanel.games.filter((g) => profile.games.has(g.id));
+      const points = chartRatios
+        .map((ratio) => {
+          const panel = panelAt(ratio, games);
+          const rows = rowsAt(
+            profile.rows.filter(
+              (r) => r.method === method && Number.isFinite(r.seconds),
+            ),
+            panel,
+          );
+          const result = point(rows, panel, ratio);
+          if (result)
+            result.x = summary(
+              rows.map((r) => ({
+                ...r,
+                nmse: Number.isFinite(r.nmse) ? r.seconds : null,
+              })),
+              panel,
+            ).average;
+          return result;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.x - b.x);
+      if (points.length)
+        timeSeries.push({
+          name: methodLabel(method),
+          method,
+          color: colorFor(method),
+          profile: profile.label,
+          points,
+        });
+    }),
+  );
+  chart("timeChart", timeSeries, "Mean seconds · diagnostic", false, "median");
+  if (chartPending)
+    ["budgetChart", "timeChart"].forEach(
+      (id) => ($(id).textContent = "Results pending for this selection."),
+    );
+}
+
+function renderLeaderboard(s, preset, visibleMethods) {
   document.querySelectorAll("[data-sort]").forEach((button) => {
     const active = tableSort.key === button.dataset.sort;
     button
@@ -532,8 +709,14 @@ function render() {
         dot.style.background = chartNames.includes(item.method)
           ? colorFor(item.method)
           : "#c9c0d4";
-        td.append(dot, document.createTextNode(value));
-        td.title = item.method;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "methodLink";
+        button.textContent = value;
+        button.title = `About ${item.method}`;
+        button.addEventListener("click", () => showMethodDetails(item.method));
+        bindHighlight(button, item.method, `About ${item.method}`);
+        td.append(dot, button);
       } else if (i === 6) {
         const pill = document.createElement("span");
         pill.className = "coveragePill" + (item.complete ? " complete" : "");
@@ -561,14 +744,30 @@ function render() {
   if (!summaries.length)
     appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
   $("statisticsNote").textContent = preset
-    ? `Elo-style ratings use a batch Bradley–Terry fit, centered at 1000; they are specific to this method set and panel. Display filters keep the full competitor set and its ratings unchanged. ${preset.uncertainty.reason || "Exploratory paired cluster intervals are available in the exported data."}`
-    : "Custom panel: weighted summaries are shown. Elo and release history require a precomputed target/family/budget preset with the full method set.";
+    ? "Elo. Paired comparisons of shared successful runs. Ratings depend on the selected panel and competitor set; hiding variants does not change them."
+    : "Elo. Available for preset panels with the full competitor set. Custom filters still show error and coverage.";
+}
+
+function renderRunIssues(s) {
   $("failures").replaceChildren();
   const failures = new Map();
   s.rows
     .filter((r) => r.status !== "ok")
     .forEach((r) => {
-      const key = `${r.method}: ${r.status}${r.error_type ? ` (${r.error_type})` : ""}`;
+      const explanation =
+        r.status === "unsupported"
+          ? "not supported for this explanation"
+          : {
+              TimeoutError: "time limit reached",
+              MemoryError: "memory allocation failed",
+              ValueError:
+                "input, configuration, or numerical validation failed",
+              ModuleNotFoundError: "optional dependency unavailable",
+              ImportError: "dependency could not load",
+              LinAlgError: "linear algebra failed",
+              BudgetExceededError: "query budget exceeded",
+            }[r.error_type] || "estimator error";
+      const key = `${methodLabel(r.method)}: ${explanation}`;
       failures.set(key, (failures.get(key) || 0) + 1);
     });
   for (const [description, count] of [...failures]
@@ -578,96 +777,9 @@ function render() {
     item.textContent = `${description} — ${count} run(s)`;
     $("failures").append(item);
   }
+}
 
-  const budgetSeries = chartNames.map((method) => ({
-    name: methodLabel(method),
-    method,
-    color: colorFor(method),
-    points: chartRatios
-      .map((ratio) => {
-        const panel = panelAt(ratio);
-        return point(
-          rowsAt(
-            s.rows.filter((r) => r.method === method),
-            panel,
-          ),
-          panel,
-          ratio,
-        );
-      })
-      .filter(Boolean),
-  }));
-  chart(
-    "budgetChart",
-    budgetSeries,
-    "Query budget per player · B / d",
-    false,
-    "median",
-  );
-  const profiles = new Map();
-  s.rows.forEach((row) => {
-    const worker = row.worker;
-    const verified =
-      worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
-    const key = JSON.stringify([
-      row.timing_profile,
-      worker?.cpu_model,
-      worker?.machine,
-      worker?.thread_pools,
-      worker?.thread_environment,
-      ...(verified ? [] : [row.run_id, row.game_id]),
-    ]);
-    if (!profiles.has(key))
-      profiles.set(key, {
-        rows: [],
-        games: new Set(),
-        label: `${worker?.cpu_model || "Unverified hardware"} · ${row.timing_profile || "diagnostic"}`,
-      });
-    const profile = profiles.get(key);
-    profile.rows.push(row);
-    profile.games.add(row.game_id);
-  });
-  const timeSeries = [];
-  chartNames.forEach((method) =>
-    profiles.forEach((profile) => {
-      const games = s.games.filter((g) => profile.games.has(g.id));
-      const points = chartRatios
-        .map((ratio) => {
-          const panel = panelAt(ratio, games);
-          const rows = rowsAt(
-            profile.rows.filter(
-              (r) => r.method === method && Number.isFinite(r.seconds),
-            ),
-            panel,
-          );
-          const result = point(rows, panel, ratio);
-          if (result)
-            result.x = summary(
-              rows.map((r) => ({
-                ...r,
-                nmse: Number.isFinite(r.nmse) ? r.seconds : null,
-              })),
-              panel,
-            ).average;
-          return result;
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.x - b.x);
-      if (points.length)
-        timeSeries.push({
-          name: methodLabel(method),
-          method,
-          color: colorFor(method),
-          profile: profile.label,
-          points,
-        });
-    }),
-  );
-  chart("timeChart", timeSeries, "Mean seconds · diagnostic", false, "median");
-  if (pending)
-    ["budgetChart", "timeChart"].forEach(
-      (id) => ($(id).textContent = "Results pending for this selection."),
-    );
+function renderHistory(s, preset) {
   const metric = $("historyMetric").value,
     history = preset?.history,
     end = new Date().getUTCFullYear() + new Date().getUTCMonth() / 12;
@@ -692,6 +804,7 @@ function render() {
     .map((method) => ({
       name: methodLabel(method.method),
       method: method.method,
+      releaseYear: method.date.slice(0, 4),
       color: colorFor(method.method),
       points: [
         {
@@ -741,11 +854,15 @@ function render() {
         `Dates unverified: ${history.unknown_dates.join(", ")}.`,
       ),
     );
+}
+
+function renderHardware(s) {
   const workers = s.rows.map((r) => r.worker).filter(Boolean);
   $("hardware").textContent = workers.length
     ? `Measured workers: ${[...new Set(workers.map((w) => w.cpu_model))].join("; ")}. Profiles: ${[...new Set(s.rows.map((r) => r.timing_profile).filter(Boolean))].join(", ")}. Per-run placement and thread details are included in JSON downloads.`
     : "Worker hardware was not recorded in this older result.";
 }
+
 function appendRow(id, values) {
   const tr = document.createElement("tr");
   values.forEach((value) => {
@@ -795,6 +912,21 @@ function bindHighlight(node, method, message) {
   node.addEventListener("focus", show);
   node.addEventListener("blur", clear);
 }
+function balanceHistoryLegend(legend) {
+  if (!legend?.children.length) return;
+  const columns =
+    window.innerWidth <= 720 ? 2 : window.innerWidth <= 1050 ? 3 : 4;
+  const count = legend.children.length,
+    rows = Math.ceil(count / columns);
+  const perRow = Math.floor(count / rows),
+    extra = count % rows;
+  let position = 0;
+  for (let row = 0; row < rows; row++) {
+    const items = perRow + (row < extra ? 1 : 0);
+    for (let item = 0; item < items; item++)
+      legend.children[position++].style.gridColumn = `span ${12 / items}`;
+  }
+}
 function chart(id, series, xlabel, dates = false, metric = "mean") {
   const box = $(id);
   box.replaceChildren();
@@ -814,13 +946,34 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     "aria-label",
     `${metric === "median" ? "Median" : "Mean"} normalized error versus ${xlabel}`,
   );
-  const xMin = dates ? Math.floor(Math.min(...points.map((p) => p.x))) : 0;
-  const xMax = dates
-    ? Math.max(xMin + 1, ...points.map((p) => p.x))
-    : Math.max(...points.map((p) => p.x), 1e-12) * 1.08;
-  const yMax = Math.max(...points.map((p) => p.y), 1e-12) * 1.08;
-  const x = (value) => 62 + ((value - xMin) / (xMax - xMin)) * 393,
-    y = (value) => 228 - (value / yMax) * 205;
+  const queryAxis = id === "budgetChart";
+  const errorFloor = 1e-12,
+    timeFloor = 1e-9;
+  const logX = (value) =>
+    queryAxis ? Math.log2(value) : Math.log10(Math.max(value, timeFloor));
+  const xLow = dates
+    ? Math.floor(Math.min(...points.map((p) => p.x)))
+    : Math.floor(Math.min(...points.map((p) => logX(p.x))));
+  const xHigh = Math.max(
+    xLow + 1,
+    dates
+      ? Math.ceil(Math.max(...points.map((p) => p.x)))
+      : Math.ceil(Math.max(...points.map((p) => logX(p.x)))),
+  );
+  const yLow = Math.floor(
+    Math.log10(Math.max(Math.min(...points.map((p) => p.y)), errorFloor)),
+  );
+  const yHigh = Math.max(
+    yLow + 1,
+    Math.ceil(Math.log10(Math.max(...points.map((p) => p.y), errorFloor))),
+  );
+  const xPosition = (value) => 62 + ((value - xLow) / (xHigh - xLow)) * 393;
+  const yPosition = (value) => 228 - ((value - yLow) / (yHigh - yLow)) * 205;
+  const x = (value) => xPosition(dates ? value : logX(value));
+  const y = (value) => yPosition(Math.log10(Math.max(value, errorFloor)));
+  const hasErrorFloor = points.some((p) => p.y <= errorFloor);
+  const hasTimeFloor =
+    !dates && !queryAxis && points.some((p) => p.x <= timeFloor);
   function element(tag, attributes, text, parent = svg) {
     const node = document.createElementNS(ns, tag);
     Object.entries(attributes).forEach(([key, value]) =>
@@ -838,9 +991,17 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         : Math.abs(value) < 0.001
           ? value.toExponential(1)
           : String(Number(value.toPrecision(2)));
-  for (let i = 0; i <= 4; i++) {
-    const yy = y((yMax * i) / 4),
-      xx = x(xMin + ((xMax - xMin) * i) / 4);
+  const ticks = (low, high, intervals = 4) => {
+    const step = Math.max(1, Math.ceil((high - low) / intervals));
+    const values = [];
+    for (let value = low; value <= high; value += step) values.push(value);
+    if (values.at(-1) !== high) values.push(high);
+    return values;
+  };
+  if (hasErrorFloor)
+    element("rect", { x: 62, y: 218, width: 393, height: 12, fill: "#edf2ff" });
+  ticks(yLow, yHigh).forEach((exponent) => {
+    const yy = yPosition(exponent);
     element("line", {
       x1: 62,
       x2: 455,
@@ -858,22 +1019,31 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         "font-size": 10,
         fill: "#596980",
       },
-      tick((yMax * i) / 4),
+      hasErrorFloor && exponent === -12
+        ? "≤1e-12"
+        : Math.abs(exponent) > 3
+          ? `1e${exponent}`
+          : tick(10 ** exponent),
     );
+  });
+  ticks(xLow, xHigh, queryAxis ? 8 : 4).forEach((value) => {
+    const label = dates
+      ? String(value)
+      : hasTimeFloor && value === -9
+        ? "≤1e-9"
+        : tick((queryAxis ? 2 : 10) ** value);
     element(
       "text",
       {
-        x: xx,
+        x: xPosition(value),
         y: 246,
         "text-anchor": "middle",
         "font-size": 10,
         fill: "#596980",
       },
-      dates
-        ? String(Math.floor(xMin + ((xMax - xMin) * i) / 4))
-        : tick((xMax * i) / 4),
+      label,
     );
-  }
+  });
   element(
     "text",
     {
@@ -883,12 +1053,12 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       "font-size": 11,
       fill: "#596980",
     },
-    xlabel,
+    `${xlabel}${dates ? "" : " · log"}`,
   );
   element(
     "text",
     { x: 62, y: 12, "font-size": 10, fill: "#596980" },
-    `${metric === "median" ? "Median" : "Mean"} nMSE ↓`,
+    `${metric === "median" ? "Median" : "Mean"} nMSE · log ↓`,
   );
   const legend = document.createElement("div");
   legend.className = "legend";
@@ -970,7 +1140,14 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     label.type = "button";
     swatch.className = "legendSwatch";
     swatch.style.borderTop = `2px ${dash ? "dashed" : "solid"} ${color}`;
-    label.append(swatch, document.createTextNode(s.name));
+    label.append(
+      swatch,
+      document.createTextNode(
+        `${s.name}${s.releaseYear ? ` (${s.releaseYear})` : ""}`,
+      ),
+    );
+    if (Object.hasOwn(data.methods, method))
+      label.addEventListener("click", () => showMethodDetails(method));
     bindHighlight(
       label,
       method,
@@ -978,7 +1155,24 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     );
     legend.append(label);
   });
-  box.append(svg, legend);
+  box.append(svg);
+  if (hasErrorFloor || hasTimeFloor) {
+    const note = document.createElement("p");
+    note.className = "scaleNote";
+    note.textContent = [
+      hasErrorFloor
+        ? "nMSE ≤1e-12, including zero, shares the bottom band. Exact values on hover."
+        : "",
+      hasTimeFloor
+        ? "Zero and sub-nanosecond times share the ≤1e-9 s position."
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    box.append(note);
+  }
+  box.append(legend);
+  if (dates) balanceHistoryLegend(legend);
 }
 
 function download(kind) {
@@ -1044,10 +1238,12 @@ function download(kind) {
   "cap",
   "historyMetric",
   "chartLimit",
+  "chartFamily",
   "showVariants",
 ].forEach((id) =>
   $(id).addEventListener("change", () => {
     if (id === "panel") $("family").value = "";
+    if (id === "chartFamily") chartFamilyExplicit = true;
     if (data) render();
   }),
 );
@@ -1116,6 +1312,20 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("resize", () => {
+  balanceHistoryLegend($("historyChart").querySelector(".legend"));
   highlight(null);
   $("chartTooltip").hidden = true;
+});
+
+$("closeMethod").addEventListener("click", () => $("methodDialog").close());
+$("methodDialog").addEventListener("click", (event) => {
+  const rect = $("methodDialog").getBoundingClientRect();
+  if (
+    event.target === $("methodDialog") &&
+    (event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom)
+  )
+    $("methodDialog").close();
 });

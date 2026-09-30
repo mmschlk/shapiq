@@ -1,3 +1,4 @@
+/* Base */
 :root {
   font-family:
     Inter,
@@ -51,6 +52,42 @@ footer {
   margin: auto;
   padding: 25px 54px;
 }
+label {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  font-weight: 650;
+  color: var(--muted);
+}
+select,
+input {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Header */
 header {
   display: flex;
   align-items: center;
@@ -107,6 +144,8 @@ header {
   font-weight: 600;
   background: #f8faff;
 }
+
+/* Hero */
 .hero {
   display: flex;
   justify-content: space-between;
@@ -114,14 +153,8 @@ header {
   gap: 30px;
   padding: 31px 0 34px;
 }
-.eyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  margin: 0 0 12px;
-}
 h1 {
+  color: var(--blue);
   font-size: clamp(40px, 4.5vw, 64px);
   line-height: 1.04;
   letter-spacing: -0.052em;
@@ -130,11 +163,6 @@ h1 {
 }
 h1 span {
   color: var(--red);
-}
-.heroDescription {
-  font-size: 14px;
-  color: #596980;
-  margin: 18px 0 0;
 }
 .heroStats {
   display: grid;
@@ -189,6 +217,8 @@ h1 span {
 #notice:empty {
   display: none;
 }
+
+/* Filters */
 .toolbar {
   display: grid;
   grid-template-columns: 0.85fr 1.1fr 1.1fr 0.9fr 1.05fr auto;
@@ -204,29 +234,6 @@ h1 span {
 .toolbar > label {
   border-right: 1px solid var(--line);
   padding-right: 14px;
-}
-label {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  font-weight: 650;
-  color: var(--muted);
-}
-select,
-input {
-  min-width: 0;
-  max-width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--ink);
-  padding: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
 }
 .toolbar > label > select {
   border: 0;
@@ -373,6 +380,13 @@ input {
   text-align: right;
   padding-bottom: 12px;
 }
+.viewTitle {
+  font-size: 12px;
+  font-weight: 650;
+  padding-bottom: 12px;
+}
+
+/* Charts and hover states */
 .charts {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -391,10 +405,6 @@ input {
   align-items: start;
   justify-content: space-between;
   gap: 12px;
-}
-.cardHeading .eyebrow {
-  margin-bottom: 9px;
-  font-size: 8px;
 }
 .cardHeading h2 {
   font-size: 18px;
@@ -442,13 +452,105 @@ svg {
   align-items: center;
   gap: 5px;
   overflow-wrap: anywhere;
+  border: 0;
 }
-.legend i {
-  height: 6px;
-  width: 6px;
-  min-width: 6px;
-  border-radius: 50%;
+.emptyNote {
+  color: #57677f;
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 18px 0;
 }
+.chartCard .emptyNote {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chartControls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0 0 18px;
+}
+.chartControls #chartPanelMeta {
+  font-size: 10px;
+  color: var(--muted);
+  margin-right: auto;
+}
+.chartLimitLabel select {
+  font-size: 10px;
+  background: transparent;
+}
+.legend button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 9px;
+  color: #637087;
+  font-weight: 450;
+  text-align: left;
+  transition: opacity 0.15s;
+}
+.legend .legendSwatch {
+  width: 15px;
+  height: 0;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.legend button.emphasis {
+  color: var(--ink);
+  font-weight: 650;
+}
+.legend button.dimmed {
+  opacity: 0.3;
+}
+.series {
+  transition: opacity 0.15s;
+}
+.series.dimmed {
+  opacity: 0.12;
+}
+.series.emphasis > polyline {
+  stroke-width: 3.5;
+}
+.chartTooltip {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  max-width: 280px;
+  white-space: pre-line;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: #182c50;
+  color: #fff;
+  box-shadow: 0 8px 30px #25153826;
+  font-size: 10px;
+  line-height: 1.8;
+}
+.chartFamilyLabel {
+  min-width: 205px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.chartFamilyLabel select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  border: 1px solid var(--line);
+  background: white;
+  font-size: 12px;
+}
+.scaleNote {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 6px 0;
+}
+
+/* Leaderboard */
 .leaderboard {
   margin: 24px 0 0;
   background: white;
@@ -469,10 +571,6 @@ svg {
   font-size: 18px;
   letter-spacing: -0.035em;
   font-weight: 650;
-}
-.tableHeading > span {
-  font-size: 10px;
-  color: var(--muted);
 }
 .tableWrap {
   overflow: auto;
@@ -543,10 +641,79 @@ td:nth-child(2) {
   background: #edf5ef;
   color: #38664f;
 }
-
 tbody tr:last-child td {
   border-bottom: 0;
 }
+#ranking tr {
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+#ranking tr.dimmed {
+  opacity: 0.8;
+}
+#ranking tr.emphasis {
+  background: #e8f0ff;
+}
+#ranking tr:focus-visible {
+  outline: 2px solid #426be0;
+  outline-offset: -2px;
+}
+#overview > .leaderboard {
+  margin: 0 0 28px;
+}
+.variantToggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-left: auto;
+  cursor: pointer;
+}
+#ranking td:nth-child(3),
+th:nth-child(3) {
+  text-align: left;
+  font-size: 10px;
+  color: var(--muted);
+}
+.variantToggle select {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  background: #f8faff;
+  padding: 8px 10px;
+}
+th button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+th button:hover,
+th[aria-sort="ascending"],
+th[aria-sort="descending"] {
+  color: var(--blue);
+}
+.sortArrow {
+  margin-left: 3px;
+}
+.methodLink {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.methodLink:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+/* History */
 .historyCard {
   padding: 29px 32px;
 }
@@ -573,6 +740,20 @@ tbody tr:last-child td {
   text-decoration: none;
   color: #3456ad;
 }
+.historySection {
+  margin-top: 25px;
+}
+.historyCard .legend {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+.historyCard .legend button {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Coverage and notes */
 .belowFold {
   margin-top: 30px;
 }
@@ -584,9 +765,12 @@ tbody tr:last-child td {
 }
 .belowFold summary {
   list-style: none;
-  color: #526780;
   display: flex;
   justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 3px 0;
 }
 .belowFold summary::-webkit-details-marker {
   display: none;
@@ -599,17 +783,17 @@ tbody tr:last-child td {
   grid-template-columns: 1fr 1fr;
   gap: 4px 36px;
   padding-top: 15px;
-  font-size: 11px;
-  line-height: 1.8;
   overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.8;
 }
 .methodologyContent p {
   margin: 4px 0;
 }
 .runFailures ul {
-  font-size: 11px;
-  line-height: 1.8;
   padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
 }
 .downloadActions {
   display: flex;
@@ -630,29 +814,68 @@ tbody tr:last-child td {
   padding: 8px 12px;
   color: #596980;
 }
-.emptyNote {
+.coverageItem {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto;
+  gap: 15px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.coverageItem strong {
+  font-weight: 600;
+  color: #526780;
+}
+.coverageItem span:last-child {
   color: #57677f;
-  font-size: 11px;
+  line-height: 1.5;
+}
+.drawerIntro {
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 14px 0 6px;
+}
+
+/* Estimator details */
+#methodDialog {
+  width: min(540px, calc(100vw - 32px));
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
   line-height: 1.7;
-  padding: 18px 0;
 }
-.chartCard .emptyNote {
-  min-height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+#methodDialog::backdrop {
+  background: #182c5070;
 }
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+#methodDialog h2 {
+  clear: both;
+  padding-top: 12px;
+  margin-bottom: 12px;
+}
+#methodDialog p {
+  color: var(--muted);
+}
+#closeMethod {
+  float: right;
+  padding: 4px 0;
   border: 0;
+  background: none;
+  color: var(--muted);
 }
+#methodLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+#methodLinks a {
+  color: var(--blue);
+  font-size: 13px;
+}
+
+/* Footer */
 footer {
   display: flex;
   justify-content: space-between;
@@ -671,6 +894,8 @@ footer div {
 footer a {
   text-decoration: none;
 }
+
+/* Responsive layouts */
 @media (min-width: 1450px) {
   .hero {
     padding-top: 42px;
@@ -716,6 +941,15 @@ footer a {
   .chartBadge {
     display: none;
   }
+  .chartControls {
+    flex-wrap: wrap;
+  }
+  .chartControls #chartPanelMeta {
+    font-size: 9px;
+  }
+  .chartLimitLabel {
+    margin-left: auto;
+  }
 }
 @media (max-width: 720px) {
   header,
@@ -750,10 +984,6 @@ footer a {
   h1 {
     font-size: 46px;
   }
-  .heroDescription {
-    font-size: 12px;
-    margin-top: 14px;
-  }
   .heroStats {
     transform: none;
     margin-top: 25px;
@@ -778,18 +1008,14 @@ footer a {
     gap: 17px 15px;
     border-radius: 13px;
   }
-  .toolbar > label:nth-child(2) {
-    border-right: 0;
-    padding-right: 0;
-  }
-  .toolbar > label:nth-child(3) {
-    border-right: 1px solid var(--line);
-  }
   .methodPicker strong {
     font-size: 11px;
   }
   .advanced {
     margin: 0;
+    grid-column: auto;
+    justify-self: start;
+    padding-top: 20px;
   }
   .pickerPanel {
     left: -16px;
@@ -837,12 +1063,6 @@ footer a {
   .tableHeading h2 {
     font-size: 16px;
   }
-  .tableHeading > span {
-    font-size: 9px;
-    max-width: 100px;
-    text-align: right;
-    line-height: 1.5;
-  }
   .leaderboard {
     border-radius: 15px;
     margin-top: 18px;
@@ -880,156 +1100,18 @@ footer a {
   .downloadActions > span {
     font-size: 10px;
   }
-}
-
-.coverageItem {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) 1fr 2fr;
-  gap: 15px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 10px;
-}
-.coverageItem strong {
-  font-weight: 600;
-  color: #526780;
-}
-.coverageItem span:last-child {
-  color: #57677f;
-  line-height: 1.5;
-}
-@media (max-width: 720px) {
   .coverageItem {
     grid-template-columns: 1fr 1fr;
-  }
-  .coverageItem span:last-child {
-    grid-column: 1/-1;
   }
   .toolbar > label {
     border-right: 0 !important;
     padding-right: 0 !important;
   }
-  .advanced {
-    grid-column: auto;
-    justify-self: start;
-    padding-top: 20px;
-  }
-}
-
-.viewTitle {
-  font-size: 12px;
-  font-weight: 650;
-  padding-bottom: 12px;
-}
-.chartControls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin: 0 0 18px;
-}
-
-.chartControls #chartPanelMeta {
-  font-size: 10px;
-  color: var(--muted);
-  margin-right: auto;
-}
-.chartLimitLabel select {
-  font-size: 10px;
-  background: transparent;
-}
-.historySection {
-  margin-top: 25px;
-}
-.legend button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font-size: 9px;
-  color: #637087;
-  font-weight: 450;
-  text-align: left;
-  transition: opacity 0.15s;
-}
-.legend .legendSwatch {
-  width: 15px;
-  height: 0;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.legend button.emphasis {
-  color: var(--ink);
-  font-weight: 650;
-}
-.legend button.dimmed {
-  opacity: 0.3;
-}
-.series {
-  transition: opacity 0.15s;
-}
-.series.dimmed {
-  opacity: 0.12;
-}
-.series.emphasis > polyline {
-  stroke-width: 3.5;
-}
-#ranking tr {
-  transition:
-    opacity 0.15s,
-    background 0.15s;
-}
-#ranking tr.dimmed {
-  opacity: 0.38;
-}
-#ranking tr.emphasis {
-  background: #e8f0ff;
-}
-#ranking tr:focus-visible {
-  outline: 2px solid #426be0;
-  outline-offset: -2px;
-}
-.chartTooltip {
-  position: fixed;
-  z-index: 30;
-  pointer-events: none;
-  max-width: 280px;
-  white-space: pre-line;
-  padding: 12px 15px;
-  border-radius: 10px;
-  background: #182c50;
-  color: #fff;
-  box-shadow: 0 8px 30px #25153826;
-  font-size: 10px;
-  line-height: 1.8;
-}
-.legend span {
-  border: 0;
-}
-.tableWrap th:nth-child(2),
-.tableWrap td:nth-child(2) {
-  text-align: left;
-}
-@media (max-width: 1050px) {
-  .chartControls {
-    flex-wrap: wrap;
-  }
-
-  .chartControls #chartPanelMeta {
-    font-size: 9px;
-  }
-  .chartLimitLabel {
-    margin-left: auto;
-  }
-}
-@media (max-width: 720px) {
   .chartControls {
     gap: 10px;
     margin-top: 0;
     margin-bottom: 17px;
   }
-
   .chartControls #chartPanelMeta {
     flex-basis: 100%;
     margin-bottom: 2px;
@@ -1044,57 +1126,16 @@ footer a {
   .historySection {
     margin-top: 18px;
   }
-}
-
-#ranking tr.dimmed {
-  opacity: 0.8;
-}
-
-#overview > .leaderboard {
-  margin: 0 0 28px;
-}
-@media (max-width: 720px) {
   #overview > .leaderboard {
     margin-bottom: 24px;
   }
-}
-
-.variantToggle {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 10px;
-  margin-left: auto;
-  cursor: pointer;
-}
-#ranking td:nth-child(3),
-th:nth-child(3) {
-  text-align: left;
-  font-size: 10px;
-  color: var(--muted);
-}
-
-.variantToggle select {
-  font-size: 11px;
-  border: 1px solid var(--line);
-  background: #f8faff;
-  padding: 8px 10px;
-}
-th button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  white-space: nowrap;
-}
-th button:hover,
-th[aria-sort="ascending"],
-th[aria-sort="descending"] {
-  color: var(--blue);
-}
-.sortArrow {
-  margin-left: 3px;
+  .chartFamilyLabel {
+    width: 100%;
+  }
+  .historyCard .legend {
+    gap: 12px;
+  }
+  .historyCard .legend button {
+    font-size: 10px;
+  }
 }

@@ -1,4 +1,4 @@
-"""Freeze a small real-data explanation game and its exhaustive ground truth."""
+"""Freeze family, structured, or pilot games with exact ground truth and provenance."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from shapiq_benchmark.runner import digest, identity, provenance, table_game, va
 
 
 def prepare(suite_path: Path, output: Path) -> dict:
-    """Train once, enumerate 256 coalitions, and store non-executable artifacts."""
+    """Construct the selected recipes and save authenticated artifacts with exact truth."""
     suite = json.loads(suite_path.read_text())
     validate_suite(suite)
     game_seeds = suite.get("game_seeds")
@@ -182,7 +182,7 @@ def write_snapshot(
 
 
 def main() -> None:
-    """Prepare the command-line pilot snapshot."""
+    """Prepare a frozen benchmark snapshot from a suite configuration."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

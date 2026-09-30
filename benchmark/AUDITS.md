@@ -195,3 +195,34 @@ reviewing modules they did not implement.
   compact JSON and verified identical browser tables, filters, curves, history,
   and hardware details. Removed unused per-game presets after removing that UI;
   overall/family preset views remain identical. All 36 summary/report tests pass.
+
+## Plot controls, estimator sources and behavior-preserving cleanup
+
+Independent reviewers: `investigate_leverage` and `investigate_optional`.
+
+- Verified independent plot-family selection, full budget curves, weighted
+  midpoint medians, log-axis handling of zero/roundoff, and unchanged table and
+  history selection. Raw values remain available on hover below the display floor.
+- Verified all 22 estimator descriptions and pinned implementation locations.
+  Primary-paper links include the user-supplied ProxySHAP paper; its verified
+  first-publication date is May 21, 2026.
+- Checked keyboard opening/closing and focus restoration for the estimator
+  dialog, mobile layout, safe literal rendering, and private-method fallback.
+  Report export and Pages deployment copy the same six assets. The official SVG
+  keeps its geometry/colors with its white background removed.
+- Refactored the 424-line page renderer into an 80-line coordinator and named
+  section renderers. An independent source reconstruction confirmed every
+  original statement/formula and execution order. No build system was added.
+- Reduced CSS from 1,204 to 1,141 lines, grouped component rules and consolidated
+  responsive blocks. All computed styles and element rectangles match across
+  30 viewport/state combinations; independent desktop/mobile screenshots are
+  pixel-identical. Numeric and interaction browser fixtures still pass.
+- Backend cleanup removes one redundant directory creation and updates stale
+  preparation docstrings. All 165 benchmark tests pass. Required formatting and
+  lint checks pass; the type hook retains the eight previously recorded,
+  unrelated diagnostics.
+- Refreshed the previous public report after cleanup: all 24,948 measurement
+  rows, worker details and provenance remain unchanged. Independently recomputed
+  2,401 eligible summaries across 288 family/overall presets, checked Elo
+  objectives and ProxySHAP chronology, and exercised six targets and 60 family
+  views in the browser. The larger four-instance campaign remains separate.
