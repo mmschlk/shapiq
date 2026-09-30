@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Restore LeverageSHAP’s historical low-budget ridge safeguard (`ridge=1e-3`) for requested budgets at most three times the player count. This reduces extreme regression outliers but introduces bias; set `ridge=0` for unregularized behavior. Exhaustive evaluation and higher budgets remain unregularized.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.
