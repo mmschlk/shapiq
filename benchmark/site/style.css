@@ -522,7 +522,7 @@ svg {
 .series.dimmed {
   opacity: 0.12;
 }
-.series.emphasis > polyline {
+.series.emphasis > polyline:not(.endpointConnector) {
   stroke-width: 3.5;
 }
 .chartTooltip {
@@ -670,7 +670,6 @@ tbody tr:last-child td {
   outline-offset: -2px;
 }
 #overview > .leaderboard {
-  box-shadow: 0 8px 28px #294c860c;
   margin: 0 0 28px;
 }
 .variantToggle {
@@ -729,6 +728,7 @@ th[aria-sort="descending"] {
   padding: 29px 32px;
 }
 .historyCard #historyChart {
+  position: relative;
   width: 100%;
 }
 .compactSelect select {
@@ -750,18 +750,43 @@ th[aria-sort="descending"] {
 .historySection {
   margin-top: 25px;
 }
-.historyCard .legend {
+.historyCard .historyLegend {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 8px 12px;
-  max-width: 900px;
+  gap: 8px;
 }
-.historyCard .legendItem:has(> button[aria-expanded="true"]) {
-  grid-column: 1 / -1 !important;
+.historyLegend .legendItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 10px;
+}
+.historyLegend .methodDetails {
+  grid-column: 1 / -1;
+}
+.historyLegend .endpointValue {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .historyCard .legend button {
   font-size: 11px;
   line-height: 1.5;
+}
+.historyCard .endpointLegend {
+  display: block;
+  margin-top: 0;
+  min-height: 0;
+}
+.endpointLegend .legendItem {
+  display: contents;
+}
+.endpointLegend .legendItem > button {
+  position: absolute;
+  transform: translateY(-50%);
+}
+.endpointLegend .endpointValue {
+  display: none;
 }
 
 /* Coverage and notes */
@@ -902,6 +927,11 @@ select,
   white-space: normal;
   overflow-wrap: anywhere;
   max-width: min(72ch, calc(100vw - 100px));
+}
+.methodDetails h3 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 13px;
 }
 .methodDetails p {
   margin: 0 0 8px;
@@ -1179,9 +1209,6 @@ footer a {
   }
   .chartFamilyLabel {
     width: 100%;
-  }
-  .historyCard .legend {
-    gap: 8px;
   }
   .historyCard .legend button {
     font-size: 10px;

@@ -127,7 +127,7 @@ function capability(method) {
         ? "Interactions"
         : "Unverified";
 }
-function methodDetails(method) {
+function methodDetails(method, showHeading = false) {
   const details = Object.hasOwn(window.METHOD_DETAILS || {}, method)
     ? window.METHOD_DETAILS[method]
     : null;
@@ -150,17 +150,30 @@ function methodDetails(method) {
       link.rel = "noopener noreferrer";
       links.append(link);
     });
+  if (showHeading) {
+    const heading = document.createElement("h3");
+    heading.textContent = methodLabel(method);
+    content.append(heading);
+  }
   content.append(description, links);
   return content;
 }
 let nextMethodDetailsId = 0;
-function bindMethodDetails(button, panel) {
+function bindMethodDetails(button, panel, exclusiveRoot = null) {
   panel.id = `method-details-${++nextMethodDetailsId}`;
   panel.hidden = true;
   button.classList.add("detailToggle");
   button.setAttribute("aria-expanded", "false");
   button.setAttribute("aria-controls", panel.id);
   button.addEventListener("click", () => {
+    if (panel.hidden && exclusiveRoot) {
+      exclusiveRoot
+        .querySelectorAll('button[aria-expanded="true"]')
+        .forEach((other) => {
+          other.setAttribute("aria-expanded", "false");
+          $(other.getAttribute("aria-controls")).hidden = true;
+        });
+    }
     panel.hidden = !panel.hidden;
     button.setAttribute("aria-expanded", String(!panel.hidden));
     $("chartTooltip").hidden = true;
@@ -933,20 +946,24 @@ function bindHighlight(node, method, message) {
   node.addEventListener("focus", show);
   node.addEventListener("blur", clear);
 }
-function balanceHistoryLegend(legend) {
-  if (!legend?.children.length) return;
-  const columns =
-    window.innerWidth <= 720 ? 2 : window.innerWidth <= 1050 ? 3 : 4;
-  const count = legend.children.length,
-    rows = Math.ceil(count / columns);
-  const perRow = Math.floor(count / rows),
-    extra = count % rows;
-  let position = 0;
-  for (let row = 0; row < rows; row++) {
-    const items = perRow + (row < extra ? 1 : 0);
-    for (let item = 0; item < items; item++)
-      legend.children[position++].style.gridColumn = `span ${12 / items}`;
+function endpointLabelPositions(series, y, top, bottom) {
+  const ordered = [...series].sort(
+    (a, b) =>
+      b.points.at(-1).y - a.points.at(-1).y || a.name.localeCompare(b.name),
+  );
+  const positions = [];
+  ordered.forEach((item, i) => {
+    positions.push(
+      Math.max(y(item.points.at(-1).y), i ? positions[i - 1] + 24 : top),
+    );
+  });
+  // Work back from the bottom when a cluster would extend beyond the plot.
+  if (positions.at(-1) > bottom) {
+    positions[positions.length - 1] = bottom;
+    for (let i = positions.length - 2; i >= 0; i--)
+      positions[i] = Math.min(positions[i], positions[i + 1] - 24);
   }
+  return new Map(ordered.map((item, i) => [item, positions[i]]));
 }
 let historyChartState;
 function chart(id, series, xlabel, dates = false, metric = "mean") {
@@ -963,9 +980,16 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
   }
   const ns = "http://www.w3.org/2000/svg",
     svg = document.createElementNS(ns, "svg");
-  const width = dates ? Math.max(240, box.clientWidth) : 480,
-    height = dates ? Math.min(360, Math.max(275, width * 0.32)) : 275,
-    plotWidth = width - 87,
+  const rightLabels = dates && window.innerWidth > 720,
+    labelWidth = rightLabels ? 236 : 0,
+    width = dates ? Math.max(240, box.clientWidth) : 480,
+    height = dates
+      ? Math.max(
+          Math.min(360, Math.max(275, width * 0.32)),
+          rightLabels ? series.length * 24 + 70 : 0,
+        )
+      : 275,
+    plotWidth = width - 87 - labelWidth,
     plotBottom = height - 47,
     plotHeight = plotBottom - 23;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -1048,7 +1072,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     const yy = yPosition(exponent);
     element("line", {
       x1: 62,
-      x2: width - 25,
+      x2: 62 + plotWidth,
       y1: yy,
       y2: yy,
       stroke: "#dfe6f0",
@@ -1121,7 +1145,13 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     `${metric === "median" ? "Median" : "Mean"} nMSE · log ↓`,
   );
   const legend = document.createElement("div");
-  legend.className = "legend";
+  legend.className = dates
+    ? `legend historyLegend${rightLabels ? " endpointLegend" : ""}`
+    : "legend";
+  const labelPositions = dates
+      ? endpointLabelPositions(series, y, 23, plotBottom)
+      : new Map(),
+    legendItems = new Map();
   series.forEach((s) => {
     const method = s.method || s.name,
       color = s.color || colorFor(method),
@@ -1212,17 +1242,44 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     const item = document.createElement("div");
     item.className = "legendItem";
     item.append(label);
+    if (dates) {
+      const endpoint = s.points.at(-1),
+        value = document.createElement("span");
+      value.className = "endpointValue";
+      value.textContent = `${format(endpoint.y)} nMSE`;
+      item.append(value);
+      if (rightLabels) {
+        const labelY = labelPositions.get(s);
+        label.style.left = `${width - labelWidth}px`;
+        label.style.top = `${labelY}px`;
+        label.style.width = `${labelWidth - 4}px`;
+        element(
+          "polyline",
+          {
+            class: "endpointConnector",
+            points: `${x(endpoint.x)},${y(endpoint.y)} ${62 + plotWidth + 10},${y(endpoint.y)} ${width - labelWidth - 8},${labelY}`,
+            fill: "none",
+            stroke: color,
+            "stroke-width": 1,
+            "stroke-opacity": 0.35,
+          },
+          undefined,
+          group,
+        );
+      }
+    }
     if (Object.hasOwn(data.methods, method)) {
-      const details = methodDetails(method);
-      bindMethodDetails(label, details);
+      const details = methodDetails(method, dates);
+      bindMethodDetails(label, details, dates ? legend : null);
       item.append(details);
     }
     bindHighlight(
       label,
       method,
-      `${s.name}${s.profile ? ` · ${s.profile}` : ""}`,
+      `${s.name}${s.profile ? ` · ${s.profile}` : ""}${dates ? ` · ${metric === "median" ? "Median" : "Mean"} nMSE ${format(s.points.at(-1).y)}` : ""}`,
     );
-    legend.append(item);
+    legendItems.set(s, item);
+    if (!dates) legend.append(item);
   });
   box.append(svg);
   if (hasErrorFloor || hasTimeFloor) {
@@ -1240,8 +1297,11 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       .join(" ");
     box.append(note);
   }
+  if (dates)
+    labelPositions.forEach((position, item) =>
+      legend.append(legendItems.get(item)),
+    );
   box.append(legend);
-  if (dates) balanceHistoryLegend(legend);
 }
 
 function download(kind) {

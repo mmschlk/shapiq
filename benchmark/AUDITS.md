@@ -257,3 +257,15 @@ Independent reviewers: `investigate_leverage` and `investigate_optional`.
   published measurements and 288 presets remain unchanged. JavaScript syntax
   and formatting checks pass; repository pre-commit retains only the eight
   previously documented type diagnostics.
+
+## History labels at curve endpoints
+
+Independent reviewer: `investigate_leverage`.
+
+- Right-side labels follow endpoint error order, with faint connectors and
+  spacing for ties. Narrow screens use an ordered list with nMSE values. Method
+  details expand below the figure and remain open across responsive changes.
+- Verified exact connector endpoints and label alignment, nonoverlapping labels,
+  one/all 22 methods, ties, zeros, sub-floor values, empty results and widths from
+  320 to 1,280 pixels. Numeric aggregation, filters and log-scale fixtures remain
+  unchanged. JavaScript syntax/format checks pass; no new type diagnostics.

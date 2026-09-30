@@ -11,6 +11,8 @@ player (`B/d`)** and time. Publication history appears below. Hover or focus a
 method to highlight it across charts and rows; click its name to expand a
 description, paper and implementation inline. Colors also have distinct markers
 and line patterns.
+History labels sit beside their line endings, with connectors for crowded
+results. On narrow screens, an ordered list below the plot shows their nMSE.
 
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
