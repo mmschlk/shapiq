@@ -45,8 +45,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     3. Reweight each row by the inverse of its inclusion probability. For the
        deterministic default this probability is the realized per-size count divided
        by ``C(n, s)``; for the Binomial variant it is ``min(1, 2c * l_z)``.
-    4. Project out the efficiency constraint (Lemma 3.1), solve by weighted least
-       squares, and add the efficiency offset back.
+    4. Project out the efficiency constraint (Lemma 3.1), solve the weighted
+       regression (with the low-budget ridge safeguard), and add the efficiency offset back.
 
     Note:
         The deterministic default follows the fixed-per-size design used by the
@@ -55,8 +55,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         in that implementation; largest-remainder ties can also select a different
         size. The evaluation count is exactly
         ``2 + 2 * ((min(budget, 2**n) - 2) // 2)``. The paper's accuracy theorem is
-        proved for the Binomial ``deterministic_counts=False`` variant only
-        (Musco and Witter, 2025, end of Sec. 4).
+        proved for the unregularized Binomial ``deterministic_counts=False`` variant
+        (Musco and Witter, 2025, end of Sec. 4). The default low-budget ``ridge``
+        safeguard restores a later practical implementation choice; set ``ridge=0.0``
+        to use the unregularized regression at every budget.
 
     Example:
         >>> from shapiq.approximator import LeverageSHAP
@@ -83,6 +85,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         deterministic_counts: bool = True,
+        ridge: float = 1e-3,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the LeverageSHAP approximator.
@@ -105,8 +108,24 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 rounded, exact total); if ``False``, draw it at random. See the class
                 docstring's Note.
 
+            ridge: Nonnegative, finite low-budget ridge penalty. Defaults to ``1e-3``,
+                restoring the safeguard from the authors' implementation (commit
+                ``f3c0427``, removed in ``04cc121``). Applied only when the requested
+                budget is at most ``3 * n`` and the sample omits some coalitions. This
+                is the penalty added to the weighted Gram matrix, not its square root.
+                It stabilizes near-singular sampled regressions by shrinking toward
+                equal attribution, introducing bias even on additive games; lower
+                estimation error is not guaranteed. Set ``0.0`` for the original
+                unregularized Algorithm 1. Unlike the historical implementation, the
+                safeguard does not test the Gram matrix's condition number: efficiency
+                already makes that matrix singular, so the test depends on roundoff.
+
             **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
+        if not np.isfinite(ridge) or ridge < 0:
+            msg = "ridge must be finite and nonnegative."
+            raise ValueError(msg)
+        self.ridge = float(ridge)
         self.deterministic_counts = deterministic_counts
         self.pairing_trick = pairing_trick
         super().__init__(
@@ -167,12 +186,28 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         else:
             A = Z_int - (s_int / n)[:, np.newaxis]
             b = (v_int - v0) - efficiency_shift * s_int
-            phi_perp = solve_regression(
-                X=A,
-                y=b,
-                kernel_weights=w_is,
-                use_svd=True,
-            )
+            if self.ridge > 0 and budget <= 3 * n and n_evaluations < 2**n:
+                # Economy SVD avoids normal equations and an n-by-n penalty matrix.
+                sqrt_weights = np.sqrt(w_is)
+                weighted_A = sqrt_weights[:, np.newaxis] * A
+                U, singular_values, Vt = np.linalg.svd(weighted_A, full_matrices=False)
+                # Match lstsq's numerical rank, including the efficiency null direction.
+                cutoff = np.finfo(float).eps * max(weighted_A.shape) * singular_values[0]
+                gains = np.divide(
+                    singular_values,
+                    singular_values**2 + self.ridge,
+                    out=np.zeros_like(singular_values),
+                    where=singular_values > cutoff,
+                )
+                phi_perp = Vt.T @ (gains * (U.T @ (sqrt_weights * b)))
+                phi_perp -= phi_perp.mean()  # Preserve efficiency despite roundoff.
+            else:
+                phi_perp = solve_regression(
+                    X=A,
+                    y=b,
+                    kernel_weights=w_is,
+                    use_svd=True,
+                )
             sv = np.concatenate([[v0], phi_perp + efficiency_shift])
         return InteractionValues(
             values=sv,
