@@ -535,3 +535,17 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   estimated work is 7.7–7.9 CPU-days per table; measured peak RSS stays below
   1.2 GiB. This is a small-batch extrapolation, not a runtime guarantee. The
   earlier pending 12-player-cap matrix jobs 360871/360872 were cancelled.
+- Clean frozen source `e497a15a` passes all 456 OddSHAP/LeverageSHAP tests.
+  Hopper job 360893 tested the actual CLI deadline, resumption, mixed table/KNN
+  preparation and repeated assembly: all 13 definitions qualified, and the
+  cached artifacts and snapshot were byte-identical on resume. Replacement
+  preparation 360900 and evaluation 360901 are submitted with a separate watcher.
+
+- Final boundary checks exposed constant Digits border pixels with undefined
+  singleton clustering scores. The recipe now selects nonconstant columns using
+  its actual training rows, recording original IDs and the rule. All 676 selected
+  feature-game instances pass singleton/endpoint/pair probes; all 95 family/matrix
+  tests pass. Frozen source `0762a2e5` passed Hopper test 360899 with 19 definitions,
+  including an exhaustively prepared Digits clustering table. Deadline/resume
+  again preserved every artifact and snapshot byte. The earlier pending
+  matrix20 jobs 360894/360895 were cancelled before execution.

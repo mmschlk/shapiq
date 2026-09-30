@@ -94,6 +94,9 @@ provides exact truth for that particular game and explanation target. This is an
 implementation limit, not a claim that larger exact games are impossible. The
 13 retained structured settings are distinct tree, KNN and product-kernel games;
 they do not silently replace excluded recipes. Feature counts are never padded.
+Digits clustering uses pixels that vary on its training rows so singleton
+coalitions have defined scores; the original feature IDs and selection rule are
+recorded.
 
 The expansion selects **356 of 1,524 tabular candidates**, documenting a reason
 for each of the 1,168 exclusions. With 12 non-tabular and 13 structured settings,
@@ -118,8 +121,13 @@ with 384 GiB allocated and a 12-GiB address-space limit per worker. Jobs have a
 retains the same 120-second/12-GiB per-cell limits and a 24-hour job window.
 
 The earlier pending matrix jobs 360871/360872 were cancelled before execution
-when the enumeration cap increased. The selected-pairing campaign remains
-unchanged. Replacement job IDs and frozen source are recorded below once queued.
+when the enumeration cap increased. Replacement preparation **360900** follows
+the selected-pairing sweep; evaluation **360901** starts after successful
+preparation. Both use frozen source
+[`0762a2e5`](https://github.com/rtealwitter/shapiq/commit/0762a2e503ad0d5852308b06427feabedd2a534d),
+including both estimator fixes. Separate watchers are armed for both campaigns
+to wake this session for audit, resumption if necessary, and verified publication.
+New results are still pending.
 
 ### Evaluate once, reuse the table
 

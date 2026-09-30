@@ -859,7 +859,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
     ? "Cached games with recorded costs · Batch-amortized evaluation estimate"
     : "Family-balanced median · Measured runtime on comparable timing profiles";
   chartPanel.rows.forEach((row) => {
-    if (!Number.isFinite(row[timeMetric])) return;
+    if (estimatedTime && !gamesById.get(row.game_id)?.metadata?.evaluation_timing) return;
     const worker = row.worker;
     const verified =
       worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
