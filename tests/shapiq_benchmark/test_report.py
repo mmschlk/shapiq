@@ -123,6 +123,108 @@ def test_failed_record_has_safe_error_type(tmp_path: Path, status: str) -> None:
     assert "error" not in data["records"][0]
 
 
+@pytest.mark.parametrize(
+    ("method", "error", "minimum"),
+    [
+        (
+            "OddSHAP",
+            "ValueError: The budget is too small for OddSHAP. Received budget=8, "
+            "but at least 10 evaluations are required. Please increase the budget.",
+            10,
+        ),
+        ("ShaplEIG", "ValueError: Budget (8) must exceed the initial design size (9).", 10),
+        (
+            "SPEX",
+            "ValueError: Insufficient budget to compute the transform. "
+            "Increase the budget or use a different approximator.",
+            None,
+        ),
+        *[
+            (
+                "ProxySPEX",
+                "ValueError: Cannot have number of splits n_splits=5 greater than "
+                f"the number of samples: n_samples={samples}.",
+                None,
+            )
+            for samples in (2, 4)
+        ],
+    ],
+)
+def test_known_budget_failures_are_classified_without_changing_scores(
+    tmp_path: Path, method: str, error: str, minimum: int | None
+) -> None:
+    """Specific guards become actionable metadata, retaining unsuccessful coverage."""
+    result = result_fixture()
+    result["suite"]["methods"] = [method]
+    result["methods"] = {method: result["methods"]["baseline"]}
+    result["records"][0].update(method=method, status="failed", error=error, nmse=None, mse=None)
+    row = merge_results([write(tmp_path, result)])["records"][0]
+    assert row["failure_reason"] == "insufficient_budget"
+    assert row.get("minimum_budget") == minimum
+    assert row["status"] == "failed" and row["nmse"] is None and row["mse"] is None
+    assert row["error_type"] == "ValueError" and "error" not in row
+
+
+@pytest.mark.parametrize(
+    ("method", "error"),
+    [
+        ("OddSHAP", "ValueError: /private/model.py has invalid parameters"),
+        ("ShaplEIG", "TimeoutError: worker wall-time limit exceeded."),
+        (
+            "KernelSHAP",
+            "ValueError: Insufficient budget to compute the transform. "
+            "Increase the budget or use a different approximator.",
+        ),
+        (
+            "ProxySPEX",
+            "ValueError: Cannot have number of splits n_splits=2 greater than "
+            "the number of samples: n_samples=1.",
+        ),
+        (
+            "OddSHAP",
+            "ValueError: The budget is too small for OddSHAP. Received budget=8, "
+            "but at least 10 evaluations are required. Please increase the budget. /private/path",
+        ),
+    ],
+)
+def test_unrelated_failures_are_not_budget_classified(
+    tmp_path: Path, method: str, error: str
+) -> None:
+    """Neither generic exceptions nor similar messages from other methods qualify."""
+    result = result_fixture()
+    result["methods"] = {method: result["methods"]["baseline"]}
+    result["records"][0].update(
+        method=method,
+        status="failed",
+        error=error,
+        nmse=None,
+        mse=None,
+        failure_reason="/private/reason",
+        minimum_budget="/private/path",
+    )
+    row = merge_results([write(tmp_path, result)])["records"][0]
+    assert "failure_reason" not in row and "minimum_budget" not in row
+    assert "/private" not in json.dumps(row)
+
+
+@pytest.mark.parametrize("minimum", ["/private/path", True, -1, 0, 1, 8, 1.5])
+def test_sanitized_budget_metadata_rejects_unsafe_minimum(tmp_path: Path, minimum: object) -> None:
+    """Bundle re-exports retain the category but only valid integer lower bounds."""
+    result = result_fixture()
+    result["methods"] = {"OddSHAP": result["methods"]["baseline"]}
+    result["records"][0].update(
+        method="OddSHAP",
+        status="failed",
+        nmse=None,
+        mse=None,
+        failure_reason="insufficient_budget",
+        minimum_budget=minimum,
+    )
+    row = merge_results([write(tmp_path, result)])["records"][0]
+    assert row["failure_reason"] == "insufficient_budget"
+    assert "minimum_budget" not in row
+
+
 def test_nonfinite_metrics_rejected(tmp_path: Path) -> None:
     """A malformed results file must not create invalid chart data."""
     result = result_fixture()

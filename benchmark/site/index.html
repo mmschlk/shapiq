@@ -308,7 +308,7 @@
             <p id="snapshot"></p>
             <p>
               <a
-                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-2026-09-30"
+                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-budget-report-2026-09-30"
                 id="reproductionLink"
                 >Get the frozen games and baseline results ↗</a
               >
@@ -316,11 +316,20 @@
           </div>
         </details>
         <details class="runFailures">
-          <summary>Failed runs <span>＋</span></summary>
+          <summary>Under-budget runs <span>＋</span></summary>
           <p class="drawerIntro">
-            Failed runs exceeded a limit or raised an error. The six most
-            frequent failures appear below. Unsupported estimator/explanation
-            combinations are incompatibilities and are excluded from this list.
+            The requested budget was too small for these estimators. These runs
+            remain unscored and reduce coverage. The six most frequent cases
+            appear below.
+          </p>
+          <ul id="underBudget"></ul>
+        </details>
+        <details class="runFailures">
+          <summary>Other failed runs <span>＋</span></summary>
+          <p class="drawerIntro">
+            Timeouts and other errors, excluding insufficient budgets and
+            unsupported explanation types. The six most frequent issues appear
+            below.
           </p>
           <ul id="failures"></ul>
         </details>

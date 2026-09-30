@@ -29,6 +29,8 @@ const dashFor = (method) =>
     Math.floor(methodIndex(method) / palette.length) % 4
   ];
 const isSynthetic = (game) => Boolean(game.metadata?.synthetic);
+const isUnderBudget = (row) =>
+  row.status === "failed" && row.failure_reason === "insufficient_budget";
 const replicationLabel = () =>
   data.suite.game_seeds?.length
     ? `${data.suite.game_seeds.length} game instances per setting · ${data.suite.seeds.length} estimator run${data.suite.seeds.length === 1 ? "" : "s"} per instance and budget`
@@ -640,6 +642,7 @@ function summary(rows, s) {
     valid: good.length,
     planned: s.cells.length,
     failed: rows.filter((r) => r.status === "failed").length,
+    underBudget: rows.filter(isUnderBudget).length,
     unsupported: rows.filter((r) => r.status === "unsupported").length,
     missing: s.cells.length - rows.length,
     complete: s.cells.length > 0 && good.length === s.cells.length,
@@ -914,7 +917,10 @@ function renderLeaderboard(s, preset, visibleMethods) {
     const state = item.complete
       ? "Complete"
       : [
-          item.failed ? `${item.failed} failed` : "",
+          item.underBudget ? `${item.underBudget} under budget` : "",
+          item.failed > item.underBudget
+            ? `${item.failed - item.underBudget} failed`
+            : "",
           item.unsupported ? `${item.unsupported} unsupported` : "",
           item.missing ? `${item.missing} missing` : "",
           item.valid < item.planned &&
@@ -984,13 +990,17 @@ function renderLeaderboard(s, preset, visibleMethods) {
 }
 
 function renderRunIssues(s) {
-  $("failures").replaceChildren();
-  const failures = new Map();
-  s.rows
-    .filter((r) => r.status === "failed")
-    .forEach((r) => {
-      const explanation =
-        {
+  const groups = { underBudget: new Map(), failures: new Map() },
+    players = new Map(s.games.map((game) => [game.id, game.n_players]));
+  for (const row of s.rows.filter((r) => r.status === "failed")) {
+    const underBudget = isUnderBudget(row);
+    const explanation = underBudget
+      ? Number.isFinite(row.minimum_budget)
+        ? `requires at least ${Number(format(row.minimum_budget / players.get(row.game_id)))} × players`
+        : row.method === "ProxySPEX"
+          ? "too few samples for five-fold proxy fitting"
+          : "budget below the sparse transform's minimum"
+      : {
           TimeoutError: "time limit reached",
           MemoryError: "memory allocation failed",
           ValueError: "input, configuration, or numerical validation failed",
@@ -998,21 +1008,28 @@ function renderRunIssues(s) {
           ImportError: "dependency could not load",
           LinAlgError: "linear algebra failed",
           BudgetExceededError: "query budget exceeded",
-        }[r.error_type] || "estimator error";
-      const key = `${methodLabel(r.method)}: ${explanation}`;
-      failures.set(key, (failures.get(key) || 0) + 1);
-    });
-  for (const [description, count] of [...failures]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)) {
-    const item = document.createElement("li");
-    item.textContent = `${description} — ${count} run(s)`;
-    $("failures").append(item);
+        }[row.error_type] || "estimator error";
+    const group = groups[underBudget ? "underBudget" : "failures"];
+    const key = `${methodLabel(row.method)}: ${explanation}`;
+    group.set(key, (group.get(key) || 0) + 1);
   }
-  if (!failures.size) {
-    const item = document.createElement("li");
-    item.textContent = "No failed runs in this selection.";
-    $("failures").append(item);
+  for (const [id, counts] of Object.entries(groups)) {
+    $(id).replaceChildren();
+    for (const [description, count] of [...counts]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)) {
+      const item = document.createElement("li");
+      item.textContent = `${description} — ${count} run(s)`;
+      $(id).append(item);
+    }
+    if (!counts.size) {
+      const item = document.createElement("li");
+      item.textContent =
+        id === "underBudget"
+          ? "No under-budget runs in this selection."
+          : "No other failed runs in this selection.";
+      $(id).append(item);
+    }
   }
 }
 

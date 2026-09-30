@@ -141,53 +141,50 @@ that at least ten evaluations are required. This restriction is deliberate:
 `10d` to ten by allowing singleton screening; existing unit tests explicitly
 require the rejection below ten. It is not a newly introduced numerical defect.
 
-### Proposed fix, in reviewable phases
+### Reporting decision and guard-only experiment
 
-1. **Explain the limitation accurately.** Add a narrowly defined, safe
-   insufficient-budget reason and required-query count to benchmark error
-   metadata/export, displayed as “budget below OddSHAP's minimum (10 queries)”.
-   Keep failed scores missing and preserve coverage; do not expose arbitrary
-   exception strings or relabel budget limitations as unsupported targets.
-   Update the existing release through a separately audited export if desired;
-   changing the display requires no new estimator evaluations.
-2. **Add the paper's low-budget behavior in a separate estimator PR.**
-   [Algorithm 1](https://arxiv.org/html/2602.01399v1#S4) uses exact Shapley values
-   of its fitted tree surrogate when `B < interaction_factor * d`. Propose that
-   branch using the already sampled coalitions and fitted proxy, with no extra
-   game calls. Reuse the existing proxy Fourier conversion and odd-coefficient
-   Shapley transform where possible, avoiding a second TreeSHAP dependency.
-   Keep an explicit minimum of two queries for the empty/full
-   coalitions. Preserve the existing full-enumeration path and higher-budget
-   regression. This is an intentional change to the documented low-budget
-   behavior, including successful calls between ten and `10d`, not simply
-   removal of an erroneous guard. Do not lower `interaction_factor` or tune
-   proxy parameters just to improve the benchmark. Full paper parity of the
-   higher-order support-selection rule is a separate question.
-3. **Validate the surrogate semantics and boundaries before accepting it.**
-   Compute exact values for the Boolean coalition proxy; verify that the chosen
-   tree/Fourier routine represents that same game, rather than an unrelated
-   background-distribution explanation. Check against exhaustive small-proxy
-   truth. Explicitly document the proxy baseline and efficiency convention:
-   proxy endpoints need not equal the original game's endpoints, so silently
-   forcing original-game efficiency would define another estimator. Test tiny
-   and odd budgets (including three queries), a nondefault interaction factor,
-   the ten-query and `10d` boundaries, full enumeration,
-   deterministic seeds, finite output, constant proxies, and strict query caps.
-   Preserve unaffected high-budget results. Existing tests for the old rejection
-   policy must change intentionally alongside the documentation.
-4. **Evaluate before replacing results.** Rerun all 1,332 applicable OddSHAP SV
-   cells on the same frozen games and Hopper protocol, comparing paired errors,
-   runtime, coverage and actual query use with the archived version. This covers
-   previously successful low-budget cells as well as all 264 rejected cells.
-   Audit independently before publication; preserve source identity and previous
-   measurements rather than mixing implementations under one method provenance.
+The benchmark now separates **under-budget runs** from other failed attempts.
+Known budget guards receive a safe structured reason at export, without
+publishing raw exceptions. They remain unscored and reduce coverage. Unsupported
+explanation types are a separate compatibility question. No estimator default,
+algorithm, query budget, or measured score changes with this reporting update.
 
-At two to eight observations, the default LightGBM surrogate may be constant.
-Returning an estimate therefore does not guarantee a useful estimate or an
-accuracy improvement. The paper's experiments start at `d+1` queries; our 0.5d
-and 1d settings need explicit qualification. These phases are a plan only: no
-OddSHAP algorithm, public score, or default has been changed by this investigation.
-Independent review verified the counts, paper comparison, and proposed phases.
+The current OddSHAP low-budget strategy is intentionally retained; the paper's
+proxy fallback is not being substituted. To test removing only the guard, an
+isolated scratch copy of `approximate` omitted its budget precondition while
+leaving sampling, surrogate fitting, support selection and regression unchanged.
+No production source was edited.
+
+Across 88 configurations (four- and eight-player additive, symmetric,
+three-player unanimity, and single-active-player games; budgets 0, 1, 2, 3, 4, 5, 8, 9, 10, 16, 32):
+
+- Every tested budget of at least two returned finite values, used at most the
+  requested queries, preserved the original baseline and satisfied efficiency
+  to numerical precision. Budgets zero and one still fail in the sampler before
+  querying the game, because both endpoints are required.
+- Previously accepted budgets 10, 16 and 32 produced bit-identical results.
+- For budgets below ten, `ceil(B / interaction_factor) = 1`, so only one
+  singleton enters the regression. The efficiency constraint then forces that
+  player's value to equal the entire full-minus-empty payoff difference.
+- With the installed default LightGBM proxy, every tested proxy at budgets up to
+  ten was constant. All singleton relevance scores tied; the deterministic
+  tie-break chose player zero. On an eight-player symmetric game with true
+  values `[1/8, ..., 1/8]`, the result was `[1, 0, ..., 0]` (nMSE 7). A game
+  depending only on player one instead credited dummy player zero (nMSE 2).
+
+Removing the ten-query guard therefore permits outputs and extends the existing
+one-singleton behavior; it does not create a numerical solver failure in these
+checks. It also does not make those tiny-budget estimates informative. Even
+budget ten already has this behavior. These are analytic diagnostics, not new
+leaderboard measurements or a claim about every possible game.
+
+If accepting smaller budgets is pursued later, the narrow change is an explicit
+two-query minimum while preserving the existing support-selection behavior.
+Validate boundaries (including odd budgets and nondefault interaction factors),
+query counts, deterministic tie behavior and unchanged outputs for previously
+accepted calls. Then evaluate the newly accepted cases on the frozen benchmark
+under a separately versioned estimator implementation before publishing scores.
+For now, only reporting changes; the OddSHAP implementation remains unchanged.
 
 ## SPEX: minimum query blocks and random seeds
 

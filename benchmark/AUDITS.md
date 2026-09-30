@@ -381,3 +381,27 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   the frozen preparation commit and the dataset mappings for all 31 game kinds.
   Formatting/lint and JavaScript syntax pass; repository-wide type checking
   retains the eight previously recorded optional-import/ignore diagnostics.
+
+## Under-budget reporting and unchanged OddSHAP behavior
+
+- Public exports recognize only exact known budget/sample guards for OddSHAP,
+  ShaplEIG, SPEX and ProxySPEX. Safe reason/minimum metadata survives reproduction
+  ZIP round trips; generic validation errors and exception paths are not exposed
+  or reclassified. Status, score, timing and coverage fields remain unchanged.
+- Separate drawers distinguish under-budget outcomes from other failures. Known
+  thresholds display relative to player count; coverage tooltips show both counts.
+- A scratch-only guard removal tested 88 OddSHAP configurations. All 48 newly
+  accepted calls respected the query cap and returned finite efficient values;
+  24 previously accepted cases were bit-identical. Tiny-budget constant proxies
+  selected one tied singleton, assigning all credit to player zero. The existing
+  OddSHAP implementation and public scores remain unchanged.
+- Independent backend review passed all 51 report/bundle tests, checked exact
+  known-error matching and sanitized round trips, and verified unchanged public
+  fields against archived measurements. Browser review found identical scores,
+  sorting, curves and tooltips; the default panel's 204 OddSHAP budget rejections
+  appear only under insufficient budgets. Mobile layouts pass.
+- Full export comparison verified all 159,984 records and 720 presets unchanged
+  after removing only the new reason/minimum fields. There are 6,880 recognized
+  under-budget cases and 303 remaining timeouts. The ZIP passes all 318 internal
+  checksums and preserves every other baseline field and frozen artifact.
+  Formatting/lint pass; the same eight existing type diagnostics remain.

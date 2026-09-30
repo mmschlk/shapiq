@@ -78,7 +78,8 @@ images, TabPFN, and causal attribution. These are **family representatives**, no
 every dataset-specific wrapper or a representative sample of every application.
 The coverage drawer describes each game kind and links its implementation and
 data sources. Known unsupported explanation types are compatibility metadata;
-the failed-run list shows only attempts that raised an error or exceeded a limit.
+under-budget runs are listed separately from timeouts and other failed attempts.
+Both remain unscored and reduce coverage; the estimator implementations are unchanged.
 Synthetic payoff and causal examples appear separately under **Diagnostics**;
 they never enter the real-game ranking.
 
@@ -144,7 +145,7 @@ You can also open the site's `index.html` and choose an exported `data.json`
 through **Open local**.
 
 For the full public panel, download its frozen snapshot and baseline results from
-the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-2026-09-30).
+the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-budget-report-2026-09-30).
 The archive includes exact truth, checksums, software provenance, and local
 candidate commands, so there is no need to refit the games. Use `--games` and
 `--methods` to select a smaller experiment when needed.

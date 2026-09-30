@@ -143,6 +143,40 @@ def test_failed_baseline_omits_private_exception_text(tmp_path: Path) -> None:
     assert json.loads(results.read_text())["records"][0]["error"] == data["records"][0]["error"]
 
 
+def test_budget_category_survives_bundle_reexport(tmp_path: Path) -> None:
+    """Sanitized downloads preserve actionable limits without retaining raw errors."""
+    snapshot, results = inputs(tmp_path)
+    manifest = snapshot / "snapshot.json"
+    frozen = json.loads(manifest.read_text())
+    frozen["suite"]["methods"] = ["OddSHAP"]
+    frozen["snapshot_id"] = identity({k: v for k, v in frozen.items() if k != "snapshot_id"})
+    manifest.write_text(json.dumps(frozen))
+    data = json.loads(results.read_text())
+    data.update(snapshot_id=frozen["snapshot_id"], suite=frozen["suite"])
+    data["methods"] = {"OddSHAP": data["methods"]["KernelSHAP"]}
+    data["records"][0].update(
+        method="OddSHAP",
+        status="failed",
+        mse=None,
+        nmse=None,
+        error="ValueError: The budget is too small for OddSHAP. Received budget=2, "
+        "but at least 10 evaluations are required. Please increase the budget.",
+    )
+    results.write_text(json.dumps(data))
+    output = tmp_path / "download.zip"
+    bundle(snapshot, results, output)
+    with zipfile.ZipFile(output) as archive:
+        published = json.loads(archive.read("baselines/results.json"))
+    row = published["records"][0]
+    assert "error" not in row
+    assert row["failure_reason"] == "insufficient_budget" and row["minimum_budget"] == 10
+    restored = tmp_path / "restored.json"
+    restored.write_text(json.dumps(published))
+    merged = merge_results([restored])["records"][0]
+    assert merged["failure_reason"] == "insufficient_budget" and merged["minimum_budget"] == 10
+    assert merged["status"] == "failed" and merged["nmse"] is None
+
+
 @pytest.mark.parametrize("relative", ["../outside.npz", "/tmp/outside.npz", "a/../game.npz"])
 def test_unsafe_artifact_paths_rejected(tmp_path: Path, relative: str) -> None:
     """Reject unsafe names before reading or hashing their referenced files."""

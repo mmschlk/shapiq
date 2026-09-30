@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import shutil
 from pathlib import Path
 
@@ -31,6 +32,8 @@ ROW_FIELDS = (
     "timing_profile",
     "worker",
     "error_type",
+    "failure_reason",
+    "minimum_budget",
 )
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
 METADATA_FIELDS = (
@@ -62,6 +65,63 @@ METADATA_FIELDS = (
     "input_id",
     "class",
 )
+
+
+def budget_failure(row: dict) -> dict:
+    """Recognize documented budget guards without publishing exception messages."""
+    if row["status"] != "failed":
+        return {}
+    method, error = row["method"], row.get("error")
+    known_methods = {"OddSHAP", "ShaplEIG", "SPEX", "ProxySPEX"}
+    if not error:
+        # A reproduction bundle has already removed the original exception text.
+        if method not in known_methods or row.get("failure_reason") != "insufficient_budget":
+            return {}
+        details = {"failure_reason": "insufficient_budget"}
+        minimum = row.get("minimum_budget")
+        if method in {"OddSHAP", "ShaplEIG"} and type(minimum) is int and minimum > row["budget"]:
+            details["minimum_budget"] = minimum
+        return details
+    minimum = None
+    if method == "OddSHAP":
+        match = re.fullmatch(
+            r"ValueError: The budget is too small for OddSHAP\. Received budget=(\d+), "
+            r"but at least (\d+) evaluations are required\. Please increase the budget\.",
+            error,
+        )
+        if match and int(match[1]) == row["budget"] < int(match[2]):
+            minimum = int(match[2])
+        else:
+            return {}
+    elif method == "ShaplEIG":
+        match = re.fullmatch(
+            r"ValueError: Budget \((\d+)\) must exceed the initial design size \((\d+)\)\.",
+            error,
+        )
+        if match and int(match[1]) == row["budget"] <= int(match[2]):
+            minimum = int(match[2]) + 1
+        else:
+            return {}
+    elif method == "SPEX":
+        if error != (
+            "ValueError: Insufficient budget to compute the transform. "
+            "Increase the budget or use a different approximator."
+        ):
+            return {}
+    elif method == "ProxySPEX":
+        match = re.fullmatch(
+            r"ValueError: Cannot have number of splits n_splits=5 greater than "
+            r"the number of samples: n_samples=([1-4])\.",
+            error,
+        )
+        if not match:
+            return {}
+    else:
+        return {}
+    return {
+        "failure_reason": "insufficient_budget",
+        **({"minimum_budget": minimum} if minimum is not None else {}),
+    }
 
 
 def merge_results(paths: list[Path]) -> dict:
@@ -125,6 +185,13 @@ def merge_results(paths: list[Path]) -> dict:
             else:
                 cells[key] = cell
     for cell in cells.values():
+        details = budget_failure(cell["record"])
+        cell["record"] = {
+            key: value
+            for key, value in cell["record"].items()
+            if key not in ("failure_reason", "minimum_budget")
+        }
+        cell["record"].update(details)
         error = cell["record"].get("error")
         if error:
             prefix = error.split(":", 1)[0]

@@ -59,16 +59,19 @@ def bundle(snapshot_dir: Path, results: Path | list[Path], output: Path) -> None
             raise ValueError(message)
     sanitized = merge_results(result_paths)  # Validate all shards together, including conflicts.
     cell_fields = ("game_id", "method", "budget", "seed")
-    error_types = {
-        tuple(row[field] for field in cell_fields): row.get("error_type")
+    failure_fields = ("error_type", "failure_reason", "minimum_budget")
+    failures = {
+        tuple(row[field] for field in cell_fields): {
+            field: row[field] for field in failure_fields if field in row
+        }
         for row in sanitized["records"]
     }
     for baseline in baselines:
         for row in baseline["records"]:
             row.pop("error", None)
-            error_type = error_types[tuple(row[field] for field in cell_fields)]
-            if error_type is not None:
-                row["error_type"] = error_type
+            for field in failure_fields:
+                row.pop(field, None)
+            row.update(failures[tuple(row[field] for field in cell_fields)])
     inputs = [manifest, *result_paths, *(path for _, path in artifacts)]
     if output.resolve() in {path.resolve() for path in inputs}:
         message = "Bundle output must not replace an input file."
