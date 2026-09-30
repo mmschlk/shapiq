@@ -141,3 +141,9 @@ uv run pre-commit run --all-files
 - Specialized select padding (for example `.compactSelect select`) can override
   generic chevron clearance through CSS specificity. Verify computed right
   padding on every styled select; otherwise the arrow can overlap its text.
+
+- OddSHAP's default rejects budgets below `min(10, 2**n)` before any oracle
+  calls. PR #560 deliberately screens singleton terms below `10*n`; this is
+  different from the paper's low-budget tree-surrogate fallback. Do not diagnose
+  these `ValueError`s as numerical failures or remove the guard without choosing
+  and documenting the intended low-budget estimator behavior.

@@ -114,6 +114,81 @@ approximately `[12.439, 23.561, 0, 0, 0, 0, 0, 0]` at 2d, omitted one player at
 limitation, not a coefficient-ordering error in the benchmark. Keep it visible
 and investigate changes to the estimator separately.
 
+### Completed rerun: the 204 displayed failures
+
+The current real-game SV panel has **894 successful and 204 failed OddSHAP
+cells**, after excluding synthetic diagnostics and zero-energy truth. Every
+failure is the same explicit precondition: `budget < min(interaction_factor,
+2**n)`, with the default `interaction_factor=10`. All made **zero oracle calls**;
+none is a regression solver failure, timeout, or missing dependency.
+
+| Players | Instances affected | Failing relative budgets | Failed cells |
+| --- | ---: | --- | ---: |
+| 4 | 8 | 0.5d, 1d, 2d (2, 4, 8 queries) | 24 |
+| 8 | 90 | 0.5d, 1d (4, 8 queries) | 180 |
+
+Across the entire campaign there are 264 such failures; the displayed panel
+excludes 56 synthetic and four zero-energy cells. OddSHAP succeeded on all 1,068
+remaining applicable cells, and its 5,940 unsupported interaction cells are
+separate. Independent review reproduced this breakdown from all frozen shards.
+A direct counted-call probe also reproduces the guard for every failing
+player/budget combination.
+
+The generic website wording comes from sanitizing exceptions to `ValueError`
+and displaying one shared label for that type. The original exception says
+that at least ten evaluations are required. This restriction is deliberate:
+[PR #560](https://github.com/mmschlk/shapiq/pull/560) lowered the minimum from
+`10d` to ten by allowing singleton screening; existing unit tests explicitly
+require the rejection below ten. It is not a newly introduced numerical defect.
+
+### Proposed fix, in reviewable phases
+
+1. **Explain the limitation accurately.** Add a narrowly defined, safe
+   insufficient-budget reason and required-query count to benchmark error
+   metadata/export, displayed as “budget below OddSHAP's minimum (10 queries)”.
+   Keep failed scores missing and preserve coverage; do not expose arbitrary
+   exception strings or relabel budget limitations as unsupported targets.
+   Update the existing release through a separately audited export if desired;
+   changing the display requires no new estimator evaluations.
+2. **Add the paper's low-budget behavior in a separate estimator PR.**
+   [Algorithm 1](https://arxiv.org/html/2602.01399v1#S4) uses exact Shapley values
+   of its fitted tree surrogate when `B < interaction_factor * d`. Propose that
+   branch using the already sampled coalitions and fitted proxy, with no extra
+   game calls. Reuse the existing proxy Fourier conversion and odd-coefficient
+   Shapley transform where possible, avoiding a second TreeSHAP dependency.
+   Keep an explicit minimum of two queries for the empty/full
+   coalitions. Preserve the existing full-enumeration path and higher-budget
+   regression. This is an intentional change to the documented low-budget
+   behavior, including successful calls between ten and `10d`, not simply
+   removal of an erroneous guard. Do not lower `interaction_factor` or tune
+   proxy parameters just to improve the benchmark. Full paper parity of the
+   higher-order support-selection rule is a separate question.
+3. **Validate the surrogate semantics and boundaries before accepting it.**
+   Compute exact values for the Boolean coalition proxy; verify that the chosen
+   tree/Fourier routine represents that same game, rather than an unrelated
+   background-distribution explanation. Check against exhaustive small-proxy
+   truth. Explicitly document the proxy baseline and efficiency convention:
+   proxy endpoints need not equal the original game's endpoints, so silently
+   forcing original-game efficiency would define another estimator. Test tiny
+   and odd budgets (including three queries), a nondefault interaction factor,
+   the ten-query and `10d` boundaries, full enumeration,
+   deterministic seeds, finite output, constant proxies, and strict query caps.
+   Preserve unaffected high-budget results. Existing tests for the old rejection
+   policy must change intentionally alongside the documentation.
+4. **Evaluate before replacing results.** Rerun all 1,332 applicable OddSHAP SV
+   cells on the same frozen games and Hopper protocol, comparing paired errors,
+   runtime, coverage and actual query use with the archived version. This covers
+   previously successful low-budget cells as well as all 264 rejected cells.
+   Audit independently before publication; preserve source identity and previous
+   measurements rather than mixing implementations under one method provenance.
+
+At two to eight observations, the default LightGBM surrogate may be constant.
+Returning an estimate therefore does not guarantee a useful estimate or an
+accuracy improvement. The paper's experiments start at `d+1` queries; our 0.5d
+and 1d settings need explicit qualification. These phases are a plan only: no
+OddSHAP algorithm, public score, or default has been changed by this investigation.
+Independent review verified the counts, paper comparison, and proposed phases.
+
 ## SPEX: minimum query blocks and random seeds
 
 All 754 failed SPEX cells in the original sweep were below the sparse
