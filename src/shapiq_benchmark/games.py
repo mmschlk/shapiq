@@ -394,7 +394,11 @@ def load_game(game: dict, root: Path) -> Callable:
 
     with np.load(root / game["artifact"], allow_pickle=False) as artifact:
         if game.get("oracle", "table") == "table":
-            return table_game(artifact["values"].copy(), game["n_players"])
+            return table_game(
+                artifact["values"].copy(),
+                game["n_players"],
+                artifact["evaluation_seconds"].copy() if "evaluation_seconds" in artifact else None,
+            )
         if importlib.metadata.version("scikit-learn") != game["metadata"]["sklearn_version"]:
             message = "Live oracle reconstruction requires the snapshot's scikit-learn version."
             raise ValueError(message)

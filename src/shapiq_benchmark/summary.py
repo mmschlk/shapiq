@@ -287,6 +287,12 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
         game["id"] for game in data["games"] if game.get("metadata", {}).get("zero_truth_energy")
     }
     zero_games.update(row["game_id"] for row in data["records"] if row.get("zero_truth_energy"))
+    excluded_games = {
+        game["id"]
+        for game in data["games"]
+        if game.get("metadata", {}).get("score_eligible") is False
+    }
+    unscored_games = zero_games | excluded_games
     targets = sorted(
         {
             (game["index"], game["order"], bool(game.get("metadata", {}).get("synthetic")))
@@ -336,7 +342,7 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                 if signature in seen:
                     continue
                 seen.add(signature)
-                games = [game for game in panel_games if game["id"] not in zero_games]
+                games = [game for game in panel_games if game["id"] not in unscored_games]
                 cells, weights = weights_for(games, grid, seeds)
                 rows, eligible, values = [], [], []
                 for method in methods:
@@ -423,6 +429,11 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                 }
                 identity = {
                     **key,
+                    **(
+                        {"min_signal_ratio": suite["min_signal_ratio"]}
+                        if "min_signal_ratio" in suite
+                        else {}
+                    ),
                     "summary_protocol": "available-cells-v2",
                     "median_convention": "midpoint at exactly half the cumulative weight",
                     "snapshot_id": data.get("snapshot_id"),
@@ -438,6 +449,9 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         ).hexdigest(),
                         "excluded_zero_energy_games": sorted(
                             game["id"] for game in panel_games if game["id"] in zero_games
+                        ),
+                        "excluded_score_games": sorted(
+                            game["id"] for game in panel_games if game["id"] in excluded_games
                         ),
                         "rows": rows,
                         "history": release_history(rows),

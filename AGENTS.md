@@ -56,6 +56,17 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- `ExactComputer.compute_fii` allocates a dense diagonal matrix with `2**d`
+  rows and columns (8 TiB at 20 players). Benchmark tables above twelve players
+  use qualified direct first/second discrete-derivative formulas for the six
+  supported targets. A Möbius-transform shortcut amplified roundoff on parity
+  games; retain tests for exactly zero SV and tiny genuine signals.
+- Larger benchmark payoff tables use independently cached 4096-coalition chunks,
+  each reconstructing the same seeded recipe. This deliberately freezes a
+  batch-dependent realization; it is not independent Monte Carlo noise between
+  chunks. Recorded per-coalition oracle costs are batch-amortized wall-time
+  estimates, not individual timings or measured uncached estimator runtime.
+
 - Gaussian and Gaussian-copula imputers reject categorical columns, including
   Bike Sharing's binary calendar features. Higher-dimensional recipes for these
   games use continuous Wine features and a classifier's class-one probability;

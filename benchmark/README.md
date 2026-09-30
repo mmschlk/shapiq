@@ -24,6 +24,7 @@ comparison locally without uploading anything.
 | Responsibility | Files |
 | --- | --- |
 | Select compatible dataset/recipe/player combinations | `matrix.py`, `benchmark/suites/matrix.json` |
+| Prepare a matrix in parallel and resume checkpoints | `benchmark/prepare_matrix.py` |
 | Construct and qualify games | `prepare.py`, `families.py`, `media.py`, `materialize.py`, `games.py` |
 | Run, count queries and checkpoint | `runner.py`, `execution.py` |
 | Calculate scores, Elo and history | `summary.py` |
@@ -74,7 +75,7 @@ requires an audited export and a data-manifest update; a completion watcher will
 wake the agent to carry out that work for the replacement campaign.
 
 The selected-pairing replacement is submitted as preparation **360853** and
-sweep **360868**, using frozen source `218d1390` with the LeverageSHAP and OddSHAP
+sweep **360873**, using frozen source `218d1390` with the LeverageSHAP and OddSHAP
 fixes. Its completion watcher is armed.
 
 ### Broader dataset × game matrix
@@ -86,23 +87,24 @@ on the recipe. Each selected setting gets **four independently constructed games
 and one estimator evaluation per game and budget.
 
 The filter checks the task type, available features and exact-reference support.
-Generic recipes use exhaustive coalition tables only at **11 or 12 players**.
+Generic recipes use exhaustive coalition tables through **20 players**. The grid
+includes 11, 12, 16 and 20, plus compatible native widths such as Wine’s 13.
 Larger candidates are excluded unless an existing, qualified structured adapter
 provides exact truth for that particular game and explanation target. This is an
 implementation limit, not a claim that larger exact games are impossible. The
 13 retained structured settings are distinct tree, KNN and product-kernel games;
 they do not silently replace excluded recipes. Feature counts are never padded.
 
-The expansion selects **196 of 1,363 tabular candidates**, documenting a reason
-for each of the 1,167 exclusions. With 12 non-tabular and 13 structured settings,
-that is **221 settings, 5,084 game/target definitions and 1,006,632 planned cells**.
+The expansion selects **356 of 1,524 tabular candidates**, documenting a reason
+for each of the 1,168 exclusions. With 12 non-tabular and 13 structured settings,
+that is **381 settings, 8,924 game/target definitions and 1,766,952 planned cells**.
 Unsupported estimator targets remain visible as coverage, separate from failures.
 Selection is a plan: preparation must still qualify every constructed game.
 
 ```bash
 uv run python -m shapiq_benchmark.matrix \
   --config benchmark/suites/matrix.json \
-  --output benchmark/results/matrix-campaign/suite.json
+  --output benchmark/results/matrix20-campaign/suite.json
 ```
 
 The generated suite records selected combinations and exclusion reasons in
@@ -110,17 +112,59 @@ The generated suite records selected combinations and exclusion reasons in
 retain this inventory. Generated suites and results stay outside Git. The broader
 campaign follows the selected-pairing run; each has its own completion watcher,
 audit and publication. An older campaign must never overwrite a newer live dataset.
-Preparation allows 12 hours per seed; the sweep allows 24 hours, with the same
-120-second/12-GiB per-evaluation limits and standardized Hopper allocation.
-Unfinished cells resume from checkpoints before final publication.
+Preparation uses 64 pinned single-thread workers on an exclusive Hopper node,
+with 384 GiB allocated and a 12-GiB address-space limit per worker. Jobs have a
+72-hour window; completed chunks and tables survive resubmission. Evaluation
+retains the same 120-second/12-GiB per-cell limits and a 24-hour job window.
 
-Submitted: matrix preparation **360871**, following the selected-pairing sweep,
-then matrix sweep **360872** after successful preparation. Both use frozen source
-[`f0199253`](https://github.com/rtealwitter/shapiq/commit/f019925396f016cf4fa11f33101f025cbbbefa9a),
-including the LeverageSHAP and OddSHAP fixes. Separate watchers are armed for
-both campaigns; they wake this session on completion or failure to audit, resume
-if necessary, and publish verified results. These are queued experiments, not
-results already available on the website.
+The earlier pending matrix jobs 360871/360872 were cancelled before execution
+when the enumeration cap increased. The selected-pairing campaign remains
+unchanged. Replacement job IDs and frozen source are recorded below once queued.
+
+### Evaluate once, reuse the table
+
+A 20-player game has 1,048,576 coalitions; its float64 payoff array is **8 MiB**.
+Preparation saves every payoff in canonical bitmask order, along with the recipe,
+construction seed, data identities, selected rows/features and source provenance.
+All estimators use this same table, with the same query limits. No model is
+retrained just to repeat an estimator evaluation.
+
+Above 12 players, preparation checkpoints blocks of 4,096 coalitions. Each block
+reconstructs the same seeded recipe and resets its random streams. For sampled
+games, this defines a documented frozen realization; shared random draws across
+blocks are not independent Monte Carlo samples. Smaller games keep their existing
+full-batch protocol. Checksums and recipe/source identities prevent mixing caches.
+
+Exact SV and order-two interactions are combined from the saved table using
+vectorized first/second differences, without another oracle call or a huge
+regression matrix. Independent checks agree with the existing definitions and
+preserve both exactly zero and genuinely tiny attributions. The six targets take
+about four seconds to combine at 20 players on the qualification machine; game
+evaluation can take much longer. Hopper TabPFN probes suggest roughly eight
+CPU-days per 20-player table, motivating parallel checkpoints. These are cost
+estimates, not guaranteed completion times.
+
+The new matrix excludes an enumerated game/target from rankings when
+`RMS(truth) / std(all coalition payoffs) < min_signal_ratio` (currently `1e-6`).
+This scale-independent check applies to the whole coefficient vector, not each
+player. Exclusions are uniform across methods and retain raw truth/results for
+inspection. Larger structured games retain the zero-energy check; their full
+payoff variation is not enumerated. The policy is part of the frozen suite.
+
+### Cached runtime and estimated evaluation cost
+
+The **measured runtime** includes cheap table lookups. New tables also record
+original evaluation time, divided equally among coalitions in each preparation
+batch. Each accepted estimator query—including repeated queries—is charged that
+saved cost without sleeping. **Estimated uncached time** is measured runtime,
+minus actual lookup time, plus those recorded costs. It excludes recipe/model
+construction, just as the estimator timer does.
+
+Both timings remain available. Estimates are diagnostic: batching, warm caches
+and concurrent preparation affect cost, so this is not a fresh end-to-end timing
+measurement. The plot labels the estimate and uses only games with recorded
+costs and matching timing profiles. Older cached tables have no inferred costs;
+structured live-oracle runs keep their measured timings.
 
 The **published dataset** still contains 37 settings × four constructions,
 808 game/target definitions and 159,984 cells. All its recipes qualified.

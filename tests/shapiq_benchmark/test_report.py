@@ -75,6 +75,45 @@ def test_export_strips_private_artifacts(tmp_path: Path) -> None:
     assert data["records"][0]["run_id"] in data["runs"]
 
 
+def test_estimated_runtime_export(tmp_path: Path) -> None:
+    """Estimated oracle costs survive export without replacing measured elapsed time."""
+    data = result_fixture()
+    timing = {
+        "cache_lookup_seconds": 0.001,
+        "estimated_oracle_seconds": 10.0,
+        "estimated_uncached_seconds": 10.009,
+    }
+    data["records"][0].update(timing)
+    data["games"][0]["metadata"]["oracle_cost_protocol"] = "batch-amortized-wall-seconds-v1"
+    exported = merge_results([write(tmp_path, data)])
+    assert exported["records"][0]["seconds"] == 0.01
+    assert all(exported["records"][0][key] == value for key, value in timing.items())
+    assert (
+        exported["games"][0]["metadata"]["oracle_cost_protocol"]
+        == "batch-amortized-wall-seconds-v1"
+    )
+    data["records"][0]["estimated_uncached_seconds"] = -1
+    with pytest.raises(ValueError, match="Invalid numeric"):
+        merge_results([write(tmp_path, data)])
+
+
+def test_frozen_signal_policy_export(tmp_path: Path) -> None:
+    """Publish a frozen exclusion policy without rewriting the measured error."""
+    data = result_fixture()
+    data["suite"]["min_signal_ratio"] = 1e-6
+    fields = {
+        "score_eligible": False,
+        "signal_ratio": 1e-10,
+        "score_exclusion_reason": "low_signal",
+    }
+    data["games"][0]["metadata"].update(fields)
+    exported = merge_results([write(tmp_path, data)])
+    assert exported["suite"]["min_signal_ratio"] == 1e-6
+    assert all(exported["games"][0]["metadata"][key] == value for key, value in fields.items())
+    assert exported["records"][0]["nmse"] == 0.1
+    assert exported["records"][0]["status"] == "ok"
+
+
 @pytest.mark.parametrize("change", ["snapshot", "suite", "game", "method", "cell", "provenance"])
 def test_conflicting_panels_rejected(tmp_path: Path, change: str) -> None:
     """Sharing a filename or label must not silently join incompatible measurements."""

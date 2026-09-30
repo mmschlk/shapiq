@@ -131,7 +131,7 @@ def test_explicit_variants_keep_kind_but_have_independent_panel_settings(tmp_pat
         ["dummy", {"id": "dummy", "family": "dummy"}],
         [{"id": "../escape", "family": "dummy"}],
         [{"id": "typo", "family": "dummy", "players": 4}],
-        [{"id": "too-large", "family": "dummy", "n_players": 13}],
+        [{"id": "too-large", "family": "dummy", "n_players": 21}],
     ],
 )
 def test_invalid_family_specs_fail_before_creating_artifacts(tmp_path: Path, specs: list) -> None:

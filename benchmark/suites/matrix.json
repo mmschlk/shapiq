@@ -1,5 +1,5 @@
 {
-  "name": "all-datasets-ground-truth-matrix-v1",
+  "name": "all-datasets-ground-truth-matrix-v2",
   "base_suite": "all-families.json",
   "datasets": [
     "california_housing",
@@ -39,11 +39,13 @@
     11,
     12,
     16,
+    20,
     32,
     64,
     128,
     256,
     512
   ],
-  "include_native_width": true
+  "include_native_width": true,
+  "min_signal_ratio": 0.000001
 }

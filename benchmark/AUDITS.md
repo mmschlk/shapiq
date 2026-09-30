@@ -501,3 +501,37 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   exact regeneration of the expanded suite and the preparation wrapper changes.
   Jobs 360871/360872 follow the selected-pairing campaign with separate completion
   watchers; the sweep starts only after successful preparation.
+
+## Twenty-player enumeration, cached costs and signal qualification
+
+- The matrix now selects 356 of 1,524 tabular candidates through 20 players,
+  including native Wine at 13. All 620 new setting/seed dimensionality checks
+  and 112 bounded construction/payoff probes pass. The full plan has 381
+  settings, 8,924 game/target definitions and 1,766,952 planned cells.
+- Exact interactions use first/second differences of the saved table, avoiding
+  the existing FII solver's enormous diagonal matrix. Independent direct and
+  constrained-regression references agree within 2.7e-15 relative error on
+  small random, shifted and near-null games. Analytic 20-player constant,
+  unanimity and parity cases pass for all six targets. Exactly zero SV and real
+  1e-12 perturbations remain distinct; no coefficient threshold is applied.
+- Larger tables use authenticated 4,096-coalition checkpoints. Tests cover
+  interrupted preparation, reuse without oracle calls, missing chunks, tampered
+  payloads, mismatched recipes/source and canonical mixed-game assembly. The
+  parallel driver binds its own source hash and locks the staging directory;
+  snapshot and plan manifests are written atomically.
+- Query cost accounting independently passed duplicate/endpoint/overflow/failure
+  checks. Measured runtime is retained; estimated uncached runtime substitutes
+  recorded batch-amortized evaluation costs for cache lookup time. No sleeping
+  or inferred historical costs are introduced. Desktop/mobile browser checks
+  confirm both modes, unchanged accuracy and uniform signal exclusions.
+- The new matrix declares a scale-independent 1e-6 minimum signal ratio. Ranking
+  exclusions use the full target coordinate count, including sparse zeros.
+  Independent checks match physically removing excluded games for accuracy,
+  Elo and history while retaining original panel identities and raw results.
+- All 305 benchmark tests passed before the final cache-validation guards;
+  focused checks cover those guards separately. Formatting/lint pass; the same
+  eight pre-existing optional-import/ignore type diagnostics remain.
+- Hopper pilot 360874 passed four TabPFN 16/20-player probes. At 20 players,
+  estimated work is 7.7–7.9 CPU-days per table; measured peak RSS stays below
+  1.2 GiB. This is a small-batch extrapolation, not a runtime guarantee. The
+  earlier pending 12-player-cap matrix jobs 360871/360872 were cancelled.

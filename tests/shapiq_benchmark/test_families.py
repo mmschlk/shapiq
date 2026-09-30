@@ -199,11 +199,24 @@ def test_configured_tnn_radius_uses_training_geometry_only() -> None:
         assert metadata["preprocessing_fit_indices"] == train.tolist()
 
 
-@pytest.mark.parametrize("players", [True, 0, 13, 2.5])
+@pytest.mark.parametrize("players", [True, 0, 21, 2.5])
 def test_explicit_player_count_rejects_invalid_or_unbounded_sizes(players: object) -> None:
     """The adapter must never quietly materialize exponentially larger games."""
     with pytest.raises(ValueError, match="n_players"):
         make_family("uncertainty", dataset="wine", n_players=players)
+
+
+@pytest.mark.parametrize("players", [13, 16, 20])
+def test_larger_recipe_uses_real_features(players: int) -> None:
+    """The raised cap retains native columns and finite classifier payoffs."""
+    with threadpool_limits(limits=1):
+        game, metadata = make_family(
+            "local_baseline", dataset="breast_cancer", n_players=players, instance_seed=2
+        )
+        assert game.n_players == players
+        assert len(set(metadata["feature_indices"])) == players
+        coalitions = np.random.default_rng(0).integers(0, 2, (8, players)).astype(bool)
+        assert np.isfinite(game(coalitions)).all()
 
 
 @pytest.mark.parametrize("name", ["local_gaussian", "local_copula"])

@@ -25,6 +25,9 @@ ROW_FIELDS = (
     "queries",
     "requested_queries",
     "seconds",
+    "cache_lookup_seconds",
+    "estimated_oracle_seconds",
+    "estimated_uncached_seconds",
     "timing_scope",
     "official_timing",
     "zero_truth_energy",
@@ -69,6 +72,11 @@ METADATA_FIELDS = (
     "replicate_unit",
     "input_id",
     "class",
+    "oracle_cost_protocol",
+    "evaluation_timing",
+    "score_eligible",
+    "signal_ratio",
+    "score_exclusion_reason",
 )
 
 
@@ -167,7 +175,16 @@ def merge_results(paths: list[Path]) -> dict:
             ):
                 message = "Result cell is outside its declared panel."
                 raise ValueError(message)
-            for field in ("nmse", "mse", "seconds", "queries", "requested_queries"):
+            for field in (
+                "nmse",
+                "mse",
+                "seconds",
+                "queries",
+                "requested_queries",
+                "cache_lookup_seconds",
+                "estimated_oracle_seconds",
+                "estimated_uncached_seconds",
+            ):
                 value = row.get(field)
                 if value is not None and (
                     not isinstance(value, int | float) or not math.isfinite(value) or value < 0
@@ -227,6 +244,7 @@ def merge_results(paths: list[Path]) -> dict:
             for key in (
                 "name",
                 "min_players",
+                "min_signal_ratio",
                 "matrix_definition",
                 "matrix_coverage",
                 "budgets",

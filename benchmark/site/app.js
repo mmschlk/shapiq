@@ -231,6 +231,14 @@ function load(value) {
   };
   pendingRuns = countPendingRuns();
   chartFamilyExplicit = false;
+  const hasEvaluationCosts = data.records.some((row) =>
+    Number.isFinite(row.estimated_uncached_seconds),
+  );
+  $("timeMetric").options[1].disabled = !hasEvaluationCosts;
+  $("timeMetric").value = hasEvaluationCosts ? "estimated_uncached_seconds" : "seconds";
+  $("signalRule").textContent = data.suite.min_signal_ratio
+    ? `Enumerated games also require RMS ground truth ≥ ${data.suite.min_signal_ratio} × payoff standard deviation. The same exclusions apply to every method.`
+    : "";
   const gamesById = new Map(data.games.map((game) => [game.id, game]));
   methodTargets = new Map(
     Object.keys(data.methods).map((method) => [method, new Set()]),
@@ -610,7 +618,7 @@ function selection(family = $("family").value, allBudgets = false) {
   );
   const zero = new Set([
     ...data.records.filter((r) => r.zero_truth_energy).map((r) => r.game_id),
-    ...data.games.filter((g) => g.metadata?.zero_truth_energy).map((g) => g.id),
+    ...data.games.filter((g) => g.metadata?.zero_truth_energy || g.metadata?.score_eligible === false).map((g) => g.id),
   ]);
   return {
     panel_ids: games.map((g) => g.id),
@@ -764,7 +772,7 @@ function render() {
   $("gameDetails").textContent =
     `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
   $("panelSummary").textContent =
-    `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} zero-energy excluded` : ""}`;
+    `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} negligible-truth cases excluded` : ""}`;
   $("methodLabel").textContent = `${visibleMethods.length} shown`;
   renderLeaderboard(s, preset, visibleMethods);
   renderRunIssues(s);
@@ -845,7 +853,13 @@ function renderPerformanceCharts(chartPanel, chartPending) {
     "median",
   );
   const profiles = new Map();
+  const timeMetric = $("timeMetric").value;
+  const estimatedTime = timeMetric === "estimated_uncached_seconds";
+  $("timeChartNote").textContent = estimatedTime
+    ? "Cached games with recorded costs · Batch-amortized evaluation estimate"
+    : "Family-balanced median · Measured runtime on comparable timing profiles";
   chartPanel.rows.forEach((row) => {
+    if (!Number.isFinite(row[timeMetric])) return;
     const worker = row.worker;
     const verified =
       worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
@@ -855,6 +869,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
       worker?.machine,
       worker?.thread_pools,
       worker?.thread_environment,
+      ...(estimatedTime ? [gamesById.get(row.game_id)?.metadata?.evaluation_timing] : []),
       ...(verified ? [] : [row.run_id, row.game_id]),
     ]);
     if (!profiles.has(key))
@@ -876,7 +891,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
           const panel = panelAt(ratio, games);
           const rows = rowsAt(
             profile.rows.filter(
-              (r) => r.method === method && Number.isFinite(r.seconds),
+              (r) => r.method === method && Number.isFinite(r[timeMetric]),
             ),
             panel,
           );
@@ -885,7 +900,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
             result.x = summary(
               rows.map((r) => ({
                 ...r,
-                nmse: Number.isFinite(r.nmse) ? r.seconds : null,
+                nmse: Number.isFinite(r.nmse) ? r[timeMetric] : null,
               })),
               panel,
             ).average;
@@ -903,7 +918,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
         });
     }),
   );
-  chart("timeChart", timeSeries, "Mean seconds · diagnostic", false, "median");
+  chart("timeChart", timeSeries, estimatedTime ? "Mean estimated uncached seconds" : "Mean seconds · diagnostic", false, "median");
   if (chartPending)
     ["budgetChart", "timeChart"].forEach(
       (id) => ($(id).textContent = "Results pending for this selection."),
@@ -1556,6 +1571,8 @@ function download(kind) {
       "mse",
       "queries",
       "seconds",
+      "estimated_oracle_seconds",
+      "estimated_uncached_seconds",
       "timing_profile",
       "run_id",
     ];
@@ -1587,6 +1604,7 @@ function download(kind) {
   "historyMetric",
   "chartLimit",
   "chartFamily",
+  "timeMetric",
   "showVariants",
 ].forEach((id) =>
   $(id).addEventListener("change", () => {

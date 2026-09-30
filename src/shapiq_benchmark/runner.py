@@ -158,6 +158,15 @@ def validate_suite(suite: dict) -> None:
     if type(minimum) is not int or minimum < 1:
         message = "min_players must be a positive integer."
         raise ValueError(message)
+    signal = suite.get("min_signal_ratio")
+    if "min_signal_ratio" in suite and (
+        not isinstance(signal, int | float)
+        or isinstance(signal, bool)
+        or not math.isfinite(signal)
+        or signal <= 0
+    ):
+        message = "min_signal_ratio must be finite and positive."
+        raise ValueError(message)
     for name in (
         "seeds",
         "methods",
@@ -231,6 +240,9 @@ class CountedGame:
         self.queries = 0
         self.requested = 0
         self.exceeded = False
+        self.evaluation_seconds = getattr(game, "evaluation_seconds", None)
+        self.estimated_oracle_seconds = 0.0
+        self.cache_lookup_seconds = 0.0
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Validate binary coalitions and charge before calling the oracle."""
@@ -249,20 +261,40 @@ class CountedGame:
             message = "Coalition-query budget exceeded."
             raise BudgetExceededError(message)
         self.queries += len(coalitions)
-        values = np.asarray(self._game(coalitions.astype(bool)))
+        binary = coalitions.astype(bool)
+        start = time.perf_counter() if self.evaluation_seconds is not None else None
+        values = np.asarray(self._game(binary))
+        if start is not None and self.evaluation_seconds is not None:
+            self.cache_lookup_seconds += time.perf_counter() - start
+            positions = binary.astype(np.int64) @ (2 ** np.arange(self.n_players, dtype=np.int64))
+            self.estimated_oracle_seconds += float(self.evaluation_seconds[positions].sum())
         if values.shape != (len(coalitions),) or not np.all(np.isfinite(values)):
             message = "Game returned invalid values."
             raise ValueError(message)
         return values
 
 
-def table_game(values: np.ndarray, n_players: int) -> Callable:
-    """Return the table oracle, with player zero as the least significant bit."""
+def table_game(
+    values: np.ndarray, n_players: int, evaluation_seconds: np.ndarray | None = None
+) -> Callable:
+    """Return a table oracle with optional measured, batch-amortized coalition costs."""
     if values.shape != (2**n_players,) or not np.all(np.isfinite(values)):
         message = "Invalid coalition table."
         raise ValueError(message)
+    if evaluation_seconds is not None and (
+        evaluation_seconds.shape != values.shape
+        or not np.all(np.isfinite(evaluation_seconds))
+        or np.any(evaluation_seconds < 0)
+    ):
+        message = "Invalid coalition evaluation costs."
+        raise ValueError(message)
     weights = 2 ** np.arange(n_players, dtype=np.int64)
-    return lambda coalitions: values[np.asarray(coalitions, dtype=np.int64) @ weights]
+
+    def oracle(coalitions: np.ndarray) -> np.ndarray:
+        return values[np.asarray(coalitions, dtype=np.int64) @ weights]
+
+    setattr(oracle, "evaluation_seconds", evaluation_seconds)  # noqa: B010 -- callable metadata
+    return oracle
 
 
 def score(estimate: InteractionValues, game: dict) -> dict:
@@ -344,7 +376,12 @@ def candidate_factory(spec: str) -> tuple[str, Any, dict]:
 def run_one(
     game: dict, root: Path, method: str, budget: int, seed: int, candidate: str | None = None
 ) -> dict:
-    """Evaluate a cell; imports/oracle reconstruction/scoring are outside estimator timing."""
+    """Time the estimator excluding imports, oracle reconstruction, and scoring.
+
+    Saved batch-amortized oracle costs yield a separate uncached-time estimate:
+    measured estimator time minus cache calls plus charged original-game costs.
+    This estimate is not a measurement of execution against the original game.
+    """
     counted = CountedGame(load_game(game, root), game["n_players"], budget)
     # Optional backends such as sparse-transform use global RNGs rather than the
     # estimator's Generator. Each isolated cell must seed both before construction.
@@ -378,6 +415,13 @@ def run_one(
         requested_queries=counted.requested,
         seconds=record.get("seconds", time.perf_counter() - start),
     )
+    if record["status"] == "ok" and counted.evaluation_seconds is not None:
+        record.update(
+            cache_lookup_seconds=counted.cache_lookup_seconds,
+            estimated_oracle_seconds=counted.estimated_oracle_seconds,
+            estimated_uncached_seconds=max(0.0, record["seconds"] - counted.cache_lookup_seconds)
+            + counted.estimated_oracle_seconds,
+        )
     return record
 
 

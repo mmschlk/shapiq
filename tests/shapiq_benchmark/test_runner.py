@@ -22,6 +22,7 @@ from shapiq_benchmark.runner import (
     run_one,
     score,
     table_game,
+    validate_suite,
 )
 
 if TYPE_CHECKING:
@@ -55,6 +56,74 @@ def test_counted_oracle() -> None:
     assert oracle.exceeded
     with pytest.raises(BudgetExceededError):
         oracle(np.empty((0, 2)))
+
+
+def test_cached_oracle_costs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Repeated and endpoint queries incur saved cost; denied queries incur none."""
+    clock = iter([10.0, 10.25, 20.0, 20.5])
+    monkeypatch.setattr("shapiq_benchmark.runner.time.perf_counter", lambda: next(clock))
+    oracle = CountedGame(table_game(np.arange(4.0), 2, np.array([1.0, 2.0, 3.0, 4.0])), 2, 4)
+    np.testing.assert_array_equal(oracle(np.array([[0, 0], [1, 1], [1, 1]])), [0, 3, 3])
+    np.testing.assert_array_equal(oracle(np.array([1, 0])), [1])
+    assert oracle.estimated_oracle_seconds == 11
+    assert oracle.cache_lookup_seconds == 0.75
+    with pytest.raises(BudgetExceededError):
+        oracle(np.array([0, 0]))
+    assert oracle.estimated_oracle_seconds == 11
+    assert oracle.queries == 4
+
+
+@pytest.mark.parametrize(
+    "costs",
+    [
+        np.zeros(3),
+        np.array([0.0, 0.0, 0.0, -1.0]),
+        np.array([0.0, 0.0, 0.0, np.nan]),
+        np.array([0.0, 0.0, 0.0, np.inf]),
+    ],
+)
+def test_invalid_cached_costs(costs: np.ndarray) -> None:
+    """Malformed costs cannot silently become plausible estimated runtime."""
+    with pytest.raises(ValueError, match="evaluation costs"):
+        table_game(np.zeros(4), 2, costs)
+
+
+@pytest.mark.parametrize("threshold", [None, True, 0, -1, float("nan"), float("inf")])
+def test_invalid_signal_threshold(threshold: object) -> None:
+    """A declared scientific exclusion policy must have an unambiguous threshold."""
+    with pytest.raises(ValueError, match="min_signal_ratio"):
+        validate_suite({"min_signal_ratio": threshold})
+
+
+@pytest.mark.parametrize("with_costs", [False, True])
+def test_runtime_estimate_is_separate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, with_costs: bool
+) -> None:
+    """Subtract only cache calls, keep measured runtime, and retain legacy missingness."""
+    arrays = {"values": np.array([0.0, 2.0, 0.0, 2.0])}
+    if with_costs:
+        arrays["evaluation_seconds"] = np.array([1.0, 2.0, 3.0, 4.0])
+    np.savez(tmp_path / "game.npz", **arrays)
+    game = {**game_spec(), "artifact": "game.npz"}
+
+    class Candidate:
+        def approximate(self, budget: int, game: CountedGame) -> InteractionValues:
+            game(np.array([[0, 0], [1, 1], [1, 1]]))
+            return estimate({(0,): 2.0})
+
+    monkeypatch.setattr("shapiq_benchmark.runner.builtin_factory", lambda *_: Candidate())
+    clock = iter([0.0, 2.0, 2.5, 5.0, 6.0] if with_costs else [0.0, 5.0, 6.0])
+    monkeypatch.setattr("shapiq_benchmark.runner.time.perf_counter", lambda: next(clock))
+    record = run_one(game, tmp_path, "test", 3, 0)
+    assert record["status"] == "ok"
+    assert record["seconds"] == 5
+    assert record["queries"] == 3
+    if with_costs:
+        assert record["cache_lookup_seconds"] == 0.5
+        assert record["estimated_oracle_seconds"] == 9
+        assert record["estimated_uncached_seconds"] == 13.5
+    else:
+        assert "estimated_uncached_seconds" not in record
 
 
 def test_coordinate_alignment_and_zero_energy() -> None:

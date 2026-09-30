@@ -149,6 +149,33 @@ def test_zero_truth_is_excluded_for_every_method() -> None:
     assert all(row["eligible"] and row["planned"] == 2 for row in result["rows"])
 
 
+def test_signal_policy_excludes_games_for_all_methods_without_changing_raw_scores() -> None:
+    """A target-specific frozen exclusion applies before weighting, Elo, and history."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one"}] * 2,
+        {"KernelSHAP": [1e20, 2], "SVARM": [0, 1]},
+    )
+    data["suite"]["min_signal_ratio"] = 1e-6
+    data["games"][0]["metadata"] = {"score_eligible": False, "signal_ratio": 1e-10}
+    original = copy.deepcopy(data)
+    result = overall(data)
+    assert result["excluded_score_games"] == ["0"]
+    assert result["excluded_zero_energy_games"] == []
+    assert [row["mean"] for row in result["rows"]] == [2, 1]
+    assert all(row["complete"] and row["planned"] == 2 for row in result["rows"])
+    assert [row["mean"] for row in result["history"]["methods"]] == [2, 1]
+    assert data == original
+    # Exclusion holds even before any estimator has completed that game.
+    data["records"] = [row for row in data["records"] if row["game_id"] != "0"]
+    assert overall(data) == result
+    data["suite"]["min_signal_ratio"] = 1e-4
+    assert overall(data)["id"] != result["id"]
+    data["games"][1]["metadata"] = {"score_eligible": False}
+    empty = overall(data)
+    assert all(row["mean"] is None and row["elo"] is None for row in empty["rows"])
+    assert not empty["history"]["methods"]
+
+
 def test_cluster_intervals_require_replication() -> None:
     """Explanation points from one fitted model do not manufacture independent units."""
     games = [{"family": "a", "stratum": "one"}] * 3

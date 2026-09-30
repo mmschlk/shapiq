@@ -163,6 +163,14 @@ def write_snapshot(
     if any(game["n_players"] < minimum for game in games):
         message = f"Constructed games violate min_players={minimum}; snapshot not written."
         raise ValueError(message)
+    if "min_signal_ratio" in suite:
+        for game in games:
+            metadata = game["metadata"]
+            ratio = metadata.get("signal_ratio")
+            if ratio is not None:
+                metadata["score_eligible"] = ratio >= suite["min_signal_ratio"]
+                if not metadata["score_eligible"]:
+                    metadata["score_exclusion_reason"] = "near_zero_truth_relative_to_payoff"
     if suite.get("relative_budgets"):
         suite = {
             **suite,
@@ -190,7 +198,9 @@ def write_snapshot(
         snapshot["coverage"] = coverage
     snapshot["snapshot_id"] = identity(snapshot)
     serialized = json.dumps(snapshot, indent=2, allow_nan=False) + "\n"
-    (output / "snapshot.json").write_text(serialized)
+    temporary = output / "snapshot.json.tmp"
+    temporary.write_text(serialized)
+    temporary.replace(output / "snapshot.json")
     return json.loads(serialized)
 
 

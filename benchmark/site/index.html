@@ -236,10 +236,16 @@
               <div>
                 <h2>Error vs time</h2>
               </div>
-              <span class="chartBadge lavender">Diagnostic</span>
+              <label class="compactSelect">
+                <span class="srOnly">Time measurement</span>
+                <select id="timeMetric">
+                  <option value="seconds">Measured runtime</option>
+                  <option value="estimated_uncached_seconds">Estimated uncached time</option>
+                </select>
+              </label>
             </div>
             <div id="timeChart"></div>
-            <p class="chartNote">
+            <p class="chartNote" id="timeChartNote">
               Family-balanced median · Comparable timing profiles
             </p>
           </article>
@@ -284,6 +290,7 @@
               <strong>nMSE.</strong> Squared estimation error divided by the sum
               of squared exact values. Zero is exact; lower is better. Games
               with zero exact-value energy are excluded.
+              <span id="signalRule"></span>
             </p>
             <p>
               <strong>Median and mean.</strong> The median describes typical
@@ -299,8 +306,10 @@
             </p>
             <p>
               <strong>Time.</strong> Diagnostic runtime on matching hardware and
-              thread settings. Cached games exclude the original model's
-              evaluation cost; live games include it.
+              thread settings. For cached games, measured runtime includes lookups
+              rather than original model evaluations. Where recorded, estimated uncached
+              time adds the saved evaluation costs, shared across each preparation
+              batch. It is an estimate, not a fresh end-to-end measurement.
             </p>
             <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
             <p id="gameDetails"></p>

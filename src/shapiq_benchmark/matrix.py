@@ -5,10 +5,16 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import re
 from pathlib import Path
 
-from shapiq_benchmark.families import DATASETS, FAMILY_CATALOG, dataset_compatibility
+from shapiq_benchmark.families import (
+    DATASETS,
+    FAMILY_CATALOG,
+    MAX_ENUMERATION_PLAYERS,
+    dataset_compatibility,
+)
 
 REASON_LABELS = {
     "dataset_recipe": "Dataset/task is not supported by this bounded recipe adapter",
@@ -26,7 +32,14 @@ COMPATIBILITY_REASONS = {
     "Gaussian imputation rejects the binary calendar features.": "binary_calendar_features",
     "The product-kernel classifier requires two classes.": "requires_binary_target",
 }
-DEFINITION_FIELDS = ("name", "datasets", "families", "player_counts", "include_native_width")
+DEFINITION_FIELDS = (
+    "name",
+    "datasets",
+    "families",
+    "player_counts",
+    "include_native_width",
+    "min_signal_ratio",
+)
 
 
 def expand_matrix(config: dict, base: dict) -> dict:
@@ -37,6 +50,9 @@ def expand_matrix(config: dict, base: dict) -> dict:
         or not re.fullmatch(r"[a-zA-Z0-9_-]+", config["name"])
         or not isinstance(config["base_suite"], str)
         or type(config["include_native_width"]) is not bool
+        or type(config["min_signal_ratio"]) not in (int, float)
+        or not math.isfinite(config["min_signal_ratio"])
+        or config["min_signal_ratio"] <= 0
     ):
         message = "Matrix configuration has invalid fields or types"
         raise ValueError(message)
@@ -83,7 +99,7 @@ def expand_matrix(config: dict, base: dict) -> dict:
                     reason = "below_minimum"
                 elif unit == "feature" and count > info["n_features"]:
                     reason = "insufficient_features"
-                elif count > 12:
+                elif count > MAX_ENUMERATION_PLAYERS:
                     reason = "unqualified_large_adapter"
                 row = {
                     "recipe": family,
@@ -108,6 +124,7 @@ def expand_matrix(config: dict, base: dict) -> dict:
     extras = [spec for spec in base["families"] if spec["family"] not in recipes]
     suite["families"] = selected + extras
     suite["name"] = config["name"]
+    suite["min_signal_ratio"] = config["min_signal_ratio"]
     suite["matrix_definition"] = {key: copy.deepcopy(config[key]) for key in DEFINITION_FIELDS}
     structured = []
     for spec in base["games"]:
@@ -137,7 +154,10 @@ def expand_matrix(config: dict, base: dict) -> dict:
                 "reason": "qualified_structured",
             }
         )
-    if any(spec["n_players"] < minimum or spec["n_players"] > 12 for spec in extras):
+    if any(
+        spec["n_players"] < minimum or spec["n_players"] > MAX_ENUMERATION_PLAYERS
+        for spec in extras
+    ):
         message = "Non-tabular table recipes must retain the bounded player range"
         raise ValueError(message)
     if len({spec["id"] for spec in suite["families"]}) != len(suite["families"]):
@@ -147,7 +167,7 @@ def expand_matrix(config: dict, base: dict) -> dict:
         len(suite["families"]) * len(base["targets"]) + len(base["games"])
     )
     suite["matrix_coverage"] = {
-        "selection_note": "Selected means planned, not measured; runtime qualification is recorded separately. Structured entries have distinct payoffs and target support, not replacements for excluded generic recipes.",
+        "selection_note": f"Exact table selection is limited to {MAX_ENUMERATION_PLAYERS} players. Selected means planned, not measured; runtime qualification is recorded separately. Structured entries have distinct payoffs and target support, not replacements for excluded generic recipes.",
         "reason_labels": REASON_LABELS,
         "table_targets": base["targets"],
         "candidates": candidates,

@@ -26,6 +26,8 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from shapiq.datasets import load_bike_sharing, load_california_housing
 from shapiq.explainer.product_kernel.conversion import convert_svm
 
+MAX_ENUMERATION_PLAYERS = 20
+
 _LEGACY = "shapiq_games.benchmark."
 _NN = "shapiq.explainer.nn.games."
 _IMPUTER = "shapiq.imputer."
@@ -322,8 +324,8 @@ def feature_subset(x: np.ndarray, count: int | None, seed: int) -> np.ndarray:
     """Select original columns by seed, without using targets or benchmark scores."""
     if count is None:
         return np.arange(x.shape[1])
-    if type(count) is not int or not 1 <= count <= min(12, x.shape[1]):
-        message = "Feature players must be between one and the dataset width, at most twelve."
+    if type(count) is not int or not 1 <= count <= min(MAX_ENUMERATION_PLAYERS, x.shape[1]):
+        message = "Feature players must be between one and the dataset width, at most twenty."
         raise ValueError(message)
     if count == x.shape[1]:
         return np.arange(count)
@@ -350,8 +352,10 @@ def make_family(
     metadata.update(
         recipe=name, instance_seed=instance_seed, random_state=instance_seed, parameters={}
     )
-    if n_players is not None and (type(n_players) is not int or not 1 <= n_players <= 12):
-        message = "Exhaustive recipe n_players must be an integer between one and twelve."
+    if n_players is not None and (
+        type(n_players) is not int or not 1 <= n_players <= MAX_ENUMERATION_PLAYERS
+    ):
+        message = "Exhaustive recipe n_players must be an integer between one and twenty."
         raise ValueError(message)
     if metadata["synthetic"]:
         if dataset is not None:
