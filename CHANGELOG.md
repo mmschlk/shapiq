@@ -4,8 +4,8 @@
 
 ### Bugfix
 
-- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), making the estimated not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
-Folds are now split within each coalition size (complement pairs kept together), with training coalitions get a weight of `1`and held-out coalitions a weight depending on how many unseend coalitions of their size exist.
+- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
+Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 
 ## v1.7.0 (2026-08-27)
 
