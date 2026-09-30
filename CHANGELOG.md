@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Allow OddSHAP budgets from two evaluations upward, using its existing singleton
+  screening and constrained regression. `interaction_factor` still controls the
+  active support size; the sampler retains its two-endpoint minimum.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.
