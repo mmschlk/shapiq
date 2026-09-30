@@ -112,10 +112,8 @@ class OddSHAP(Approximator):
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
         ``n * interaction_factor``, this implementation expands the selection of
-        active terms also to individuals, allowing a minimum budget of
-        ``interaction_factor``. Below that, it raises ``ValueError``
-        (no silent downgrade to another estimator), unless the budget already covers
-        the full coalition space (``budget >= 2**n``). It therefore does not reproduce
+        active terms also to individuals, allowing budgets of at least two
+        evaluations for the empty and grand coalitions. It therefore does not reproduce
         the low-budget, high-dimension regime of the paper's Figure 2.
 
         The active support's candidate budget (``ceil(budget / interaction_factor)``)
@@ -224,27 +222,11 @@ class OddSHAP(Approximator):
             Estimated first-order Shapley values.
 
         Raises:
-            ValueError: If ``budget < min(interaction_factor, 2**n)``, i.e. the
-                budget is below the eta-based minimum and does not cover the full
-                coalition space either. Algorithm 1 of the paper falls back to TreeSHAP
-                in this regime; this implementation deliberately raises instead, so an
-                under-budgeted call never silently returns a different estimator's
-                values.
+            ValueError: If ``budget < 2``, as both the empty and grand coalitions
+                must be evaluated.
             RuntimeError: If the sampled coalitions do not contain the empty or grand coalition.
         """
         del kwargs
-
-        # Fail fast before any (possibly expensive) game evaluation. A budget that
-        # covers the full coalition space is always sufficient, even when 2**n is
-        # smaller than the eta-based minimum (small n).
-        minimum_budget = min(self.interaction_factor, 2**self.n)
-        if budget < minimum_budget:
-            msg = (
-                "The budget is too small for OddSHAP. "
-                f"Received budget={budget}, but at least {minimum_budget} evaluations are required. "
-                "Please increase the budget."
-            )
-            raise ValueError(msg)
 
         self._sampler.sample(budget)
         coalitions = self._sampler.coalitions_matrix
