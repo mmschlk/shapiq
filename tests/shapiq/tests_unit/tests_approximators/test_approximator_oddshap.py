@@ -9,9 +9,9 @@ individuals first (all ``n`` of them ranked, even those the surrogate never
 split on), and only the remainder is spent screening higher-order odd
 interactions. The active support is then solved with a constrained weighted
 Fourier regression (row-paired for efficiency, see below) and the odd
-coefficients are transformed into Shapley values. Budgets below
-``interaction_factor`` are rejected with a ``ValueError`` (there is
-deliberately no fallback to another estimator).
+coefficients are transformed into Shapley values. Budgets of at least two
+are supported without falling back to another estimator; both endpoint
+coalitions must be evaluated.
 
 The constraint system enforces the exact identities
     beta_empty = (f(N) + f(empty)) / 2,
@@ -267,19 +267,18 @@ def test_different_seed_differs():
 # -----------------------------------------------------------------------------
 # Budget validation
 #
-# Sub-budget calls raise instead of silently falling back to TreeSHAP (a
-# deliberate divergence from Algorithm 1); verify the threshold is enforced.
+# Small budgets use the same regression; only the sampler's two-endpoint
+# minimum is required.
 # -----------------------------------------------------------------------------
 
 
-def test_low_budget_raises_value_error():
-    """budget < interaction_factor must raise ValueError, not silently fall back."""
-    n = 8
-    game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
-    approx = OddSHAP(n=n, random_state=0)
-    budget = approx.interaction_factor - 1
-    with pytest.raises(ValueError, match="too small"):
-        approx.approximate(budget, game)
+@pytest.mark.parametrize("budget", [-1, 0, 1])
+def test_budget_below_two_raises_before_evaluation(budget):
+    """Both endpoint evaluations are required, independent of the support factor."""
+    game = MagicMock(side_effect=AssertionError("Game must not be evaluated"))
+    with pytest.raises(ValueError, match="minimum sampling budget of 2"):
+        OddSHAP(n=8, random_state=0).approximate(budget, game)
+    game.assert_not_called()
 
 
 def test_full_enumeration_bypasses_minimum_budget():
@@ -293,17 +292,33 @@ def test_full_enumeration_bypasses_minimum_budget():
     assert np.sum(iv.values[1:]) == pytest.approx(v_full - v_empty, abs=1e-6)
 
 
-def test_small_budget_below_full_enumeration_still_raises():
-    """Below both the eta-based minimum and 2**n the ValueError is kept, and the
-    message reports the effective minimum (10 = interaction_factor, not 2**4 = 16)."""
-    n = 4
-    game = DummyGame(n=n, interaction=(1, 2))
-    with pytest.raises(ValueError, match="at least 10 evaluations"):
-        OddSHAP(n=n, random_state=0).approximate(9, game)
+@pytest.mark.parametrize("n", [4, 8])
+@pytest.mark.parametrize("budget", [2, 3, 4, 8, 9])
+@pytest.mark.parametrize("interaction_factor", [10, 20])
+def test_small_budgets_preserve_query_cap_and_efficiency(n, budget, interaction_factor):
+    """The existing regression handles small budgets without extra oracle calls."""
+    queries = 0
+    weights = np.arange(1, n + 1, dtype=float)
+
+    def game(coalitions):
+        nonlocal queries
+        queries += len(coalitions)
+        assert queries <= budget
+        return 3.0 + coalitions @ weights + 2.0 * coalitions[:, 0] * coalitions[:, 1]
+
+    result = OddSHAP(n=n, interaction_factor=interaction_factor, random_state=0).approximate(
+        budget, game
+    )
+    assert 2 <= queries <= budget
+    assert np.isfinite(result.values).all()
+    assert result.baseline_value == pytest.approx(3.0)
+    assert result[()] == pytest.approx(3.0)
+    assert sum(result[(i,)] for i in range(n)) == pytest.approx(weights.sum() + 2.0)
+    assert result.estimation_budget == budget
 
 
 def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
-    """At budget = interaction_factor (the minimum permitted), `_select_active_terms`
+    """At budget = interaction_factor, `_select_active_terms`
     should be called with the paper's candidate count `ceil(budget / interaction_factor)`.
     """
     n = 8
