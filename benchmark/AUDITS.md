@@ -341,3 +341,43 @@ Independent reviewers: `investigate_optional` (checkpoint/export) and
   pass after resize rendering settles. Empty history explains its complete-panel
   requirement. Formatting/lint pass; the same eight existing type diagnostics
   remain in optional Woodelf imports and tree-conversion ignore comments.
+
+## Completed corrected-run publication
+
+Independent reviewers: `investigate_optional` (campaign and exports) and
+`investigate_leverage` (browser).
+
+- Job `360683` finished normally after 3:41:53. All 128 shards are complete,
+  covering exactly 159,984 unique planned cells: 58,517 successful, 94,284
+  unsupported and 7,183 failed. No cells remain pending. Every successful score
+  was independently recomputed against the unchanged frozen truth.
+- All 65,397 recorded workers match the fixed CPU/affinity/thread protocol and
+  execution source `d4ac18e6`; preparation provenance remains `1472a003`.
+  The failure total comprises 6,880 minimum-budget/sample errors and 303 timeouts.
+- Publication replaces the early provisional dataset with the full nine-budget,
+  four-construction campaign. The previous release remains available separately.
+  Failed results stay unscored and continue to reduce reported coverage.
+- Final public JSON matches every frozen record after lossless compaction. The
+  reproduction ZIP passes all 318 internal checksums and preserves exact baseline
+  fields except intentional exception-text sanitization. No private methods or
+  local paths enter either public asset.
+- The completed dataset renders all six targets, all nine relative budgets, and
+  65,700 evaluated attempts without a provisional notice. All 1,332 LeverageSHAP
+  SV cells succeeded. Desktop and mobile layouts pass.
+
+## Simpler details and game descriptions
+
+- Removed only estimator-name chevrons; names still open inline details by mouse
+  or keyboard. Ordinary select controls retain their arrows. Elo and Hardware
+  use the same bold labels as the other score explanations.
+- Failed-run summaries now include only `failed` records. Known unsupported
+  explanation types remain compatibility metadata rather than apparent failures;
+  selections with no failed attempts say so explicitly.
+- Coverage paragraphs describe each frozen game kind, its dataset and player
+  counts, and link to the preparation-version implementation and data sources.
+  Larger structured games join their matching kind instead of duplicating
+  descriptions across instances and explanation indices.
+- Independent source checks verified all 28 distinct implementation paths at
+  the frozen preparation commit and the dataset mappings for all 31 game kinds.
+  Formatting/lint and JavaScript syntax pass; repository-wide type checking
+  retains the eight previously recorded optional-import/ignore diagnostics.

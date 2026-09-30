@@ -306,40 +306,230 @@ function buildMethodPicker() {
   });
 }
 function renderCoverage() {
-  $("libraryCoverage").replaceChildren();
-  const coverage = data.coverage || [];
-  if (!coverage.length) {
-    const p = document.createElement("p");
-    p.textContent = `${data.games.length} measured game definitions. See the methodology for scope.`;
-    $("libraryCoverage").append(p);
-    return;
+  const container = $("libraryCoverage");
+  container.replaceChildren();
+  // Names describe the frozen recipes, not every dataset wrapper in the library.
+  const descriptions = {
+    local_baseline: [
+      "Baseline feature removal",
+      "Explain a decision tree by replacing absent features with fixed mean values.",
+    ],
+    local_baseline_forest: [
+      "Forest baseline feature removal",
+      "Explain an eight-tree forest using fixed mean values for absent features.",
+    ],
+    local_marginal: [
+      "Marginal feature removal",
+      "Average predictions over fixed background rows when features are absent.",
+    ],
+    local_gaussian: [
+      "Gaussian conditional explanations",
+      "Fill absent features using a fitted conditional Gaussian distribution.",
+    ],
+    local_copula: [
+      "Gaussian-copula explanations",
+      "Use a Gaussian copula to model dependencies when filling absent features.",
+    ],
+    local_conditional: [
+      "Tree-based conditional explanations",
+      "Use tree embeddings to sample absent features conditionally.",
+    ],
+    global_fidelity: [
+      "Global prediction fidelity",
+      "Measure how well selected features preserve the full model’s predictions across examples.",
+    ],
+    feature_selection: [
+      "Feature selection",
+      "Retrain a model on selected features and measure held-out prediction error.",
+    ],
+    data_valuation: [
+      "Training-example valuation",
+      "Retrain on selected training examples and measure held-out prediction error.",
+    ],
+    dataset_valuation: [
+      "Dataset-group valuation",
+      "Treat groups of training rows as players and evaluate models trained on selected groups.",
+    ],
+    ensemble: [
+      "Ensemble selection",
+      "Evaluate the average predictions of selected regression models.",
+    ],
+    forest_ensemble: [
+      "Forest ensemble selection",
+      "Treat individual trees as players and evaluate their average predictions.",
+    ],
+    uncertainty: [
+      "Prediction uncertainty",
+      "Explain how features affect a forest’s predictive entropy.",
+    ],
+    cluster: [
+      "Clustering",
+      "Measure the quality of K-means clusters formed from selected features.",
+    ],
+    unsupervised: [
+      "Feature dependence",
+      "Measure total correlation among selected, discretized features.",
+    ],
+    pathdependent_tree: [
+      "Path-dependent tree explanations",
+      "Explain tree predictions using training-path frequencies for absent features.",
+    ],
+    interventional_tree: [
+      "Interventional tree explanations",
+      "Explain tree predictions by averaging over reference rows; larger cases use exact tree ground truth.",
+    ],
+    product_kernel: [
+      "Product-kernel explanations",
+      "Explain RBF support-vector scores by including selected feature factors; larger cases have exact kernel ground truth.",
+    ],
+    knn: [
+      "Nearest-neighbor valuation",
+      "Treat training examples as players and score the selected nearest neighbors’ agreement with the test label, including 128- and 256-player cases.",
+    ],
+    tnn: [
+      "Threshold-neighbor valuation",
+      "Score label agreement among selected training examples within a fixed distance of a test point.",
+    ],
+    weighted_knn: [
+      "Weighted nearest-neighbor valuation",
+      "Evaluate selected training examples using distance-weighted class votes.",
+    ],
+    binary_weighted_knn: [
+      "Binary weighted-neighbor valuation",
+      "Compare distance-weighted votes for the explained class against a fixed alternative class.",
+    ],
+    unanimity: [
+      "Unanimity games",
+      "Synthetic checks where a coalition scores only when it contains a designated group of players.",
+    ],
+    soum: [
+      "Sums of unanimity games",
+      "Synthetic combinations of fixed player groups, used as controlled interaction checks.",
+    ],
+    dummy: [
+      "Dummy-player checks",
+      "Synthetic additive contributions plus a fixed interaction test which players affect each term.",
+    ],
+    random: [
+      "Random games",
+      "Synthetic random coalition payoffs are frozen into a reproducible table.",
+    ],
+    text: [
+      "Text explanations",
+      "Mask tokens in four authored sentences and explain an IMDb-trained DistilBERT sentiment model.",
+    ],
+    image: [
+      "Image explanations",
+      "Mask superpixels in four bundled images and explain a pretrained ResNet18 classifier.",
+    ],
+    tabpfn: [
+      "TabPFN explanations",
+      "Remove features from a TabPFN classifier’s training context and explain a class probability.",
+    ],
+    causal_global: [
+      "Global confounding explanations",
+      "Use simulated treatments and outcomes to attribute confounding across a dataset.",
+    ],
+    causal_local: [
+      "Local confounding explanations",
+      "Use the same causal simulation to attribute confounding for one example.",
+    ],
+  };
+  const structuredKinds = {
+    InterventionalTreeSHAPIQ: "interventional_tree",
+    KNNExplainer: "knn",
+    ProductKernelExplainer: "product_kernel",
+  };
+  const commit = data.snapshot_provenance?.git_commit;
+  const sourceBase = `https://github.com/rtealwitter/shapiq/blob/${/^[a-f0-9]{40}$/.test(commit || "") ? commit : "benchmark"}/`;
+  const sklearn =
+    "https://scikit-learn.org/stable/modules/generated/sklearn.datasets.";
+  const datasets = {
+    california_housing: [
+      "California Housing census features and house values",
+      `${sklearn}fetch_california_housing.html`,
+    ],
+    iris: ["Iris flower measurements and species", `${sklearn}load_iris.html`],
+    breast_cancer: [
+      "Wisconsin breast-cancer measurements and labels",
+      `${sklearn}load_breast_cancer.html`,
+    ],
+    digits: ["Handwritten digit images", `${sklearn}load_digits.html`],
+    "authored sentiment examples": [
+      "Four authored sentiment sentences",
+      `${sourceBase}src/shapiq_benchmark/media.py`,
+    ],
+    "ImageNet bundled examples": [
+      "Bundled ImageNet images",
+      "https://www.image-net.org/",
+    ],
+    "Curth-VDS synthetic": [
+      "Curth-VDS simulated causal data",
+      `${sourceBase}src/shapiq_games/benchmark/causal_xai/benchmark.py`,
+    ],
+  };
+  const groups = new Map();
+  for (const game of data.games) {
+    const metadata = game.metadata || {};
+    const kind = Object.hasOwn(descriptions, metadata.case_id)
+      ? metadata.case_id
+      : Object.hasOwn(structuredKinds, metadata.truth_method)
+        ? structuredKinds[metadata.truth_method]
+        : metadata.case_id || game.family;
+    if (!groups.has(kind)) groups.set(kind, []);
+    groups.get(kind).push(game);
   }
-  const families = [...new Set(data.games.map((g) => g.family))];
-  families.forEach((family) => {
-    const cases = new Set(
-      data.games
-        .filter((g) => g.family === family)
-        .map((g) => g.metadata?.case_id || g.id),
+  function link(label, url) {
+    const anchor = document.createElement("a");
+    anchor.textContent = label;
+    anchor.href = url;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    return anchor;
+  }
+  for (const [kind, games] of groups) {
+    const metadata = games[0].metadata || {};
+    const [name, description] = Object.hasOwn(descriptions, kind)
+      ? descriptions[kind]
+      : [
+          familyLabel(kind),
+          metadata.semantics || "A frozen game with exact reference values.",
+        ];
+    const paragraph = document.createElement("p");
+    paragraph.className = "drawerIntro";
+    const heading = document.createElement("strong");
+    heading.textContent = `${name}. `;
+    paragraph.append(heading, document.createTextNode(`${description} `));
+    const sources = [
+      ...new Set(games.map((game) => game.metadata?.dataset).filter(Boolean)),
+    ];
+    sources.forEach((dataset, index) => {
+      paragraph.append(document.createTextNode(index ? "; " : "Data: "));
+      const source = Object.hasOwn(datasets, dataset)
+        ? datasets[dataset]
+        : null;
+      paragraph.append(
+        source ? link(...source) : document.createTextNode(dataset),
+      );
+    });
+    const players = [...new Set(games.map((game) => game.n_players))].sort(
+      (a, b) => a - b,
     );
-    const row = document.createElement("div");
-    row.className = "coverageItem";
-    const label = document.createElement("strong"),
-      count = document.createElement("span");
-    const instances = new Set(
-      data.games
-        .filter((game) => game.family === family)
-        .map((game) =>
-          JSON.stringify([
-            game.metadata?.case_id || game.id,
-            game.metadata?.instance_seed ?? 0,
-          ]),
-        ),
+    paragraph.append(
+      document.createTextNode(
+        `${sources.length ? ". " : ""}${players.join(", ")} players. `,
+      ),
     );
-    label.textContent = familyLabel(family);
-    count.textContent = `${cases.size} setups · ${instances.size} instances`;
-    row.append(label, count);
-    $("libraryCoverage").append(row);
-  });
+    const gameClass = games.find((game) => game.metadata?.class)?.metadata
+      .class;
+    const source =
+      typeof gameClass === "string" &&
+      /^shapiq(?:_games)?(?:\.[A-Za-z_][A-Za-z_0-9]*)+$/.test(gameClass)
+        ? `src/${gameClass.split(".").slice(0, -1).join("/")}.py`
+        : "src/shapiq_benchmark/games.py";
+    paragraph.append(link("shapiq implementation", sourceBase + source));
+    container.append(paragraph);
+  }
 }
 const gameBudgets = (game) =>
   data.suite.budgets_by_game?.[game.id] || data.suite.budgets;
@@ -789,29 +979,26 @@ function renderLeaderboard(s, preset, visibleMethods) {
   if (!summaries.length)
     appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
   $("statisticsNote").textContent = preset
-    ? "Elo. Paired comparisons of shared successful runs. Ratings depend on the selected panel and competitor set; hiding variants does not change them."
-    : "Elo. Available for preset panels with the full competitor set. Custom filters still show error and coverage.";
+    ? "Paired comparisons of shared successful runs. Ratings depend on the selected panel and competitor set; hiding variants does not change them."
+    : "Available for preset panels with the full competitor set. Custom filters still show error and coverage.";
 }
 
 function renderRunIssues(s) {
   $("failures").replaceChildren();
   const failures = new Map();
   s.rows
-    .filter((r) => r.status !== "ok")
+    .filter((r) => r.status === "failed")
     .forEach((r) => {
       const explanation =
-        r.status === "unsupported"
-          ? "not supported for this explanation"
-          : {
-              TimeoutError: "time limit reached",
-              MemoryError: "memory allocation failed",
-              ValueError:
-                "input, configuration, or numerical validation failed",
-              ModuleNotFoundError: "optional dependency unavailable",
-              ImportError: "dependency could not load",
-              LinAlgError: "linear algebra failed",
-              BudgetExceededError: "query budget exceeded",
-            }[r.error_type] || "estimator error";
+        {
+          TimeoutError: "time limit reached",
+          MemoryError: "memory allocation failed",
+          ValueError: "input, configuration, or numerical validation failed",
+          ModuleNotFoundError: "optional dependency unavailable",
+          ImportError: "dependency could not load",
+          LinAlgError: "linear algebra failed",
+          BudgetExceededError: "query budget exceeded",
+        }[r.error_type] || "estimator error";
       const key = `${methodLabel(r.method)}: ${explanation}`;
       failures.set(key, (failures.get(key) || 0) + 1);
     });
@@ -820,6 +1007,11 @@ function renderRunIssues(s) {
     .slice(0, 6)) {
     const item = document.createElement("li");
     item.textContent = `${description} — ${count} run(s)`;
+    $("failures").append(item);
+  }
+  if (!failures.size) {
+    const item = document.createElement("li");
+    item.textContent = "No failed runs in this selection.";
     $("failures").append(item);
   }
 }

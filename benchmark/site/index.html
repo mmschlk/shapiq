@@ -273,8 +273,7 @@
         <details class="coverageDetails">
           <summary>Games and benchmark coverage <span>＋</span></summary>
           <p class="drawerIntro">
-            Counts group repeated instances and explanation types into game
-            settings.
+            Four instances per game setting, with exact ground truth.
           </p>
           <div id="libraryCoverage"></div>
         </details>
@@ -303,13 +302,13 @@
               thread settings. Cached games exclude the original model's
               evaluation cost; live games include it.
             </p>
-            <p id="statisticsNote"></p>
+            <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
             <p id="gameDetails"></p>
-            <p id="hardware"></p>
+            <p><strong>Hardware.</strong> <span id="hardware"></span></p>
             <p id="snapshot"></p>
             <p>
               <a
-                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-provisional-2026-09-29"
+                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-2026-09-30"
                 id="reproductionLink"
                 >Get the frozen games and baseline results ↗</a
               >
@@ -317,11 +316,11 @@
           </div>
         </details>
         <details class="runFailures">
-          <summary>Failed and unsupported runs <span>＋</span></summary>
+          <summary>Failed runs <span>＋</span></summary>
           <p class="drawerIntro">
-            Unsupported runs use an explanation type the estimator cannot
-            compute. Failed runs exceeded a limit or raised an error. The six
-            most frequent issues appear below.
+            Failed runs exceeded a limit or raised an error. The six most
+            frequent failures appear below. Unsupported estimator/explanation
+            combinations are incompatibilities and are excluded from this list.
           </p>
           <ul id="failures"></ul>
         </details>

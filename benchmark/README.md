@@ -49,19 +49,21 @@ run issues and hardware details. There is no frontend build step.
 | Prepared panel | 37 setups × four constructions; 808 game/target instances, including all six targets where supported |
 | Planned matrix | 159,984 cells including unsupported combinations |
 
-All four-instance recipes qualified. The complete matrix is being rerun on
-Hopper (job `360683`) with the corrected LeverageSHAP from PR #603. Execution is
-frozen at [`d4ac18e6`](https://github.com/rtealwitter/shapiq/commit/d4ac18e674841f79c1ca25d8cfbf550e84dc21a7)
-on `benchmark-ridge-run`, which combines this benchmark with the separate estimator
-fix. The frozen games retain their original preparation source `1472a003` and
-snapshot identity. Previous job `360655` was stopped; its checkpoints are kept
-separately and are not reused in this full rerun. The website now shows an audited
-**provisional checkpoint** captured September 29 at 18:13 PDT: 2,215 successful,
-9,306 unsupported and 65 failed cells; 148,398 of 159,984 cells remain pending.
-The 65 failures are ProxySPEX minimum-sample errors. No LeverageSHAP evaluations
-had completed at capture time. Missing scores stay missing; coverage and rankings
-will change as the sweep progresses. The full rerun continues independently.
-Published checkpoints are static snapshots, updated after export and audit.
+All four-instance recipes qualified. The full rerun completed on Hopper
+(job `360683`) on September 29 at 21:48 PDT, after 3 hours 42 minutes. It recorded
+**58,517 successful, 94,284 unsupported and 7,183 failed cells**, with none pending.
+Failures include insufficient-budget errors and 303 worker timeouts; the website
+keeps each method's actual coverage visible. All nine relative budgets and all
+four game constructions are included. Zero-energy games remain excluded from
+nMSE rankings for every estimator.
+
+Execution is frozen at
+[`d4ac18e6`](https://github.com/rtealwitter/shapiq/commit/d4ac18e674841f79c1ca25d8cfbf550e84dc21a7)
+on `benchmark-ridge-run`, including corrected LeverageSHAP from PR #603. The frozen
+games retain preparation source `1472a003` and their original snapshot identity.
+The superseded run and provisional release remain separate; no earlier scores
+are reused. Published datasets are static snapshots, updated after export and
+independent audit, rather than live feeds from the compute cluster.
 
 The previous three-budget Hopper sweep recorded **9,357 successful, 14,814 unsupported, and
 777 failed cells**, with none pending. Failures comprise 754 SPEX minimum-budget
@@ -74,7 +76,9 @@ feature/data/grouped-data valuation, ensembles, uncertainty, clustering,
 dependence, tree and product-kernel games, nearest-neighbor variants, text,
 images, TabPFN, and causal attribution. These are **family representatives**, not
 every dataset-specific wrapper or a representative sample of every application.
-The coverage drawer identifies each concrete recipe and its preparation status.
+The coverage drawer describes each game kind and links its implementation and
+data sources. Known unsupported explanation types are compatibility metadata;
+the failed-run list shows only attempts that raised an error or exceeded a limit.
 Synthetic payoff and causal examples appear separately under **Diagnostics**;
 they never enter the real-game ranking.
 
@@ -140,7 +144,7 @@ You can also open the site's `index.html` and choose an exported `data.json`
 through **Open local**.
 
 For the full public panel, download its frozen snapshot and baseline results from
-the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-provisional-2026-09-29).
+the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-ridge-2026-09-30).
 The archive includes exact truth, checksums, software provenance, and local
 candidate commands, so there is no need to refit the games. Use `--games` and
 `--methods` to select a smaller experiment when needed.

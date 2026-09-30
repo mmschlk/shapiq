@@ -857,23 +857,6 @@ th[aria-sort="descending"] .sortArrow {
   padding: 8px 12px;
   color: #596980;
 }
-.coverageItem {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto;
-  gap: 15px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-  line-height: 1.8;
-}
-.coverageItem strong {
-  font-weight: 600;
-  color: #526780;
-}
-.coverageItem span:last-child {
-  color: #57677f;
-  line-height: 1.5;
-}
 .drawerIntro {
   max-width: 760px;
   font-size: 13px;
@@ -898,8 +881,7 @@ select,
   background-size: 14px;
   padding-right: 30px;
 }
-.methodPicker strong::after,
-.detailToggle::after {
+.methodPicker strong::after {
   content: "";
   display: inline-block;
   flex-shrink: 0;
@@ -907,8 +889,7 @@ select,
   height: 14px;
   background: var(--chevron) center / 14px no-repeat;
 }
-.methodPicker[open] strong::after,
-.detailToggle[aria-expanded="true"]::after {
+.methodPicker[open] strong::after {
   transform: rotate(180deg);
 }
 .methodPicker strong,
@@ -1186,9 +1167,6 @@ footer a {
   }
   .downloadActions > span {
     font-size: 10px;
-  }
-  .coverageItem {
-    grid-template-columns: 1fr 1fr;
   }
   .toolbar > label {
     border-right: 0 !important;

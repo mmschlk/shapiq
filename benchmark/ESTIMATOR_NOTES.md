@@ -1,10 +1,17 @@
 # Understanding surprising estimator results
 
-The published comparisons below concern the **September 29, 2026 sweep with budgets
+The historical comparisons below concern the **September 29, 2026 sweep with budgets
 2d, 8d, and 64d**, two estimator seeds, and the library defaults at source commit
 `15ea510f`. Observations from the new nine-budget grid are labeled separately. The frozen
 inputs and raw measurements are in the
 [original reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-families-2026-09-29).
+
+The current website instead shows the completed nine-budget, four-instance rerun
+at execution commit `d4ac18e6`, with the restored LeverageSHAP safeguard.
+LeverageSHAP succeeded on all 1,332 SV cells (148 games × nine budgets), with
+no failed SV evaluations. Its unsupported interaction targets are separate.
+The historical results below are retained to explain the investigation, not as
+current leaderboard measurements.
 
 ## LeverageSHAP: an instability near 2d
 
@@ -79,7 +86,8 @@ game. [Restoration PR #603](https://github.com/mmschlk/shapiq/pull/603) uses the
 historical penalty and requested-budget threshold, with `ridge=0` as an opt-out.
 It bypasses exhaustive samples and removes the old condition-number gate, which
 is unreliable because efficiency already makes the Gram matrix singular. The
-current benchmark source and measurements remain unchanged.
+original measurements remain unchanged in their archived release; the current
+website uses the separately identified corrected rerun.
 
 The [LeverageSHAP paper, Section 5](https://arxiv.org/html/2410.01917v2#S5)
 starts its experiments at 5d and reports medians and quartiles over 100 runs.
