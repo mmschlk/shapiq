@@ -609,3 +609,16 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   matrix evaluation 360901 follows both. The matrix jobs already explicitly
   select their correct frozen source. Both completion watchers remain armed;
   publication still requires an independently audited, complete corrected run.
+
+## OddSHAP withdrawal (October 1)
+
+- Removed 7,272 superseded OddSHAP records from the live dataset and reproduction
+  baselines at the user's request. Every other measurement, including corrected
+  LeverageSHAP, is unchanged; the filtered view has 152,712 records and 21 methods.
+- Recomputed all 720 summary presets, including Elo and history. Independent
+  checks found no OddSHAP records or summary entries, verified every retained
+  public record and all reproduction ZIP checksums, and confirmed original game
+  artifacts and preparation identity are unchanged.
+- Separately deleted 13,356 records each for LeverageSHAP and OddSHAP from the
+  unpublished wrong-source campaign, in both JSON and CSV across all 128 shards.
+  Its remaining records are quarantined and cannot be used as corrected results.

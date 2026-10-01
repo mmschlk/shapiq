@@ -189,7 +189,11 @@ costs and matching timing profiles. Older cached tables have no inferred costs;
 structured live-oracle runs keep their measured timings.
 
 The **published dataset** still contains 37 settings × four constructions,
-808 game/target definitions and 159,984 cells. All its recipes qualified.
+808 game/target definitions. All its recipes qualified. The current filtered
+view removes OddSHAP's superseded measurements pending its corrected rerun;
+it contains **152,712 cells across 21 methods: 57,449 successful, 88,344 unsupported
+and 6,919 failed**, with none pending. Other measurements, including corrected
+LeverageSHAP, are unchanged. Rankings, Elo and history were recomputed.
 The full rerun completed on Hopper
 (job `360683`) on September 29 at 21:48 PDT, after 3 hours 42 minutes. It recorded
 **58,517 successful, 94,284 unsupported and 7,183 failed cells**, with none pending.
@@ -293,7 +297,7 @@ You can also open the site's `index.html` and choose an exported `data.json`
 through **Open local**.
 
 For the full public panel, download its frozen snapshot and baseline results from
-the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-budget-report-2026-09-30).
+the [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-odd-withdrawal-2026-10-01).
 The archive includes exact truth, checksums, software provenance, and local
 candidate commands, so there is no need to refit the games. Use `--games` and
 `--methods` to select a smaller experiment when needed.
