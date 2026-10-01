@@ -2,12 +2,62 @@
 
 from __future__ import annotations
 
+import sys
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+from shapiq_benchmark.families import _dataset, feature_subset
 from shapiq_benchmark.media import make_extra
+
+
+@pytest.mark.parametrize(
+    ("dataset", "n_players"),
+    [
+        (dataset, count)
+        for dataset, counts in (
+            ("wine", (11, 12, 13)),
+            ("breast_cancer", (11, 12, 16, 20)),
+            ("digits", (11, 12, 16, 20, None)),
+            ("iris", (None,)),
+        )
+        for count in counts
+    ],
+)
+def test_tabpfn_feature_selection_uses_actual_training_rows(
+    monkeypatch: pytest.MonkeyPatch, dataset: str, n_players: int | None
+) -> None:
+    """All matrix instances admit every singleton, retaining original columns and legacy recipes."""
+
+    def imputer(
+        model: object, x_train: np.ndarray, *args: object, **kwargs: object
+    ) -> SimpleNamespace:
+        return SimpleNamespace(x_train=x_train, n_players=x_train.shape[1], fit=lambda point: None)
+
+    monkeypatch.setitem(
+        sys.modules, "tabpfn", SimpleNamespace(TabPFNClassifier=lambda **kwargs: None)
+    )
+    monkeypatch.setattr("shapiq.imputer.tabpfn_imputer.TabPFNImputer", imputer)
+    for seed in range(4):
+        game, metadata = make_extra(
+            "tabpfn", dataset=dataset, n_players=n_players, instance_seed=seed
+        )
+        x, _, train, _, names = _dataset(dataset, seed)
+        features = metadata["feature_indices"]
+        assert game.n_players == (n_players or x.shape[1])
+        assert metadata["train_indices"] == train[:64].tolist()
+        assert metadata["feature_names"] == [str(names[i]) for i in features]
+        np.testing.assert_array_equal(game.x_train, x[train[:64]][:, features])
+        if n_players is not None:
+            assert np.all(np.ptp(game.x_train, axis=0) > 0)
+        if dataset == "digits" and n_players is not None:
+            assert metadata["parameters"]["feature_rule"] == (
+                "seeded subset of columns nonconstant on the 64 TabPFN training rows"
+            )
+        else:
+            np.testing.assert_array_equal(features, feature_subset(x, n_players, seed))
+            assert metadata["parameters"] == {"n_estimators": 1, "device": "cpu", "class_index": 1}
 
 
 def test_text_instances_use_distinct_inputs_and_shared_model(

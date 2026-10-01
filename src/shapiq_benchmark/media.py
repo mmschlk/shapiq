@@ -162,9 +162,16 @@ def make_extra(
             raise ValueError(message)
         x, y, train, test, names = _dataset(dataset, instance_seed)
         data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()
-        features = feature_subset(x, n_players, instance_seed)
-        x = x[:, features]
         train = train[:64]
+        features = feature_subset(x, n_players, instance_seed)
+        parameters = {"n_estimators": 1, "device": "cpu", "class_index": 1}
+        eligible = np.flatnonzero(np.ptp(x[train], axis=0) > 0)
+        if n_players is not None and len(eligible) < x.shape[1]:
+            features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
+            parameters["feature_rule"] = (
+                "seeded subset of columns nonconstant on the 64 TabPFN training rows"
+            )
+        x = x[:, features]
         model = TabPFNClassifier(device="cpu", n_estimators=1, random_state=instance_seed)
         game = TabPFNImputer(
             model,
@@ -183,7 +190,7 @@ def make_extra(
             test_indices=test.tolist(),
             point_row=int(test[0]),
             model="TabPFNClassifier",
-            parameters={"n_estimators": 1, "device": "cpu", "class_index": 1},
+            parameters=parameters,
             player_unit="feature",
             semantics="remove-and-contextualize class-one probability",
             stochastic_frozen=True,

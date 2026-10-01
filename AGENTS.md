@@ -60,6 +60,12 @@ uv run pre-commit run --all-files
   singleton coalition whose column is constant on the actual clustering rows.
   Select nonconstant columns using those training rows and record their original
   IDs; random multi-feature probes alone do not expose this failure.
+- TabPFN also rejects nonempty coalitions containing only constant columns.
+  Its 64 training rows can have additional constant Digits pixels beyond those
+  constant in the full dataset. Configurable TabPFN recipes select nonconstant
+  columns on those exact rows and record the rule and original column IDs.
+  Changing that selection defines a new game: do not reuse its old payoff chunks
+  or replace undefined coalitions with the empty-coalition prediction.
 - `ExactComputer.compute_fii` allocates a dense diagonal matrix with `2**d`
   rows and columns (8 TiB at 20 players). Benchmark tables above twelve players
   use qualified direct first/second discrete-derivative formulas for the six
