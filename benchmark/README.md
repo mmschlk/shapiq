@@ -99,6 +99,18 @@ nodes were verified as AMD EPYC 9754 with 128 physical cores and SMT disabled;
 jobs retain exclusive allocations and single-threaded workers. Timing remains
 diagnostic, with actual host and affinity recorded. Completion watchers are armed.
 
+### Next implementation phases
+
+The **[full benchmark roadmap](ROADMAP.md)** lists all 63 datasets, stronger model
+profiles, their game-construction mappings and seven implementation phases. It is
+the plan for future runs: the first full release has 64 stronger-model games,
+then expands constructions, models, datasets and large-player exact games until
+the declared compatible matrix is covered. Each phase ends in an independent
+audit and a verified website release.
+
+The inventory below is implemented, but its current shallow-model configuration
+is not the proposed final benchmark. Active frozen jobs retain their identities.
+
 ### Expanded matrix using shapiq's datasets
 
 [suites/matrix.json](suites/matrix.json) now selects **63 datasets**: the six
@@ -212,8 +224,6 @@ for each of the 1,168 exclusions. With 12 non-tabular and 13 structured settings
 that is **381 settings, 8,924 game/target definitions and 1,766,952 planned cells**.
 Unsupported estimator targets remain visible as coverage, separate from failures.
 Selection is a plan: preparation must still qualify every constructed game.
-
-
 
 The generated suite records selected combinations and exclusion reasons in
 `matrix_coverage`. The frozen snapshot, public export and reproduction archive
