@@ -6,6 +6,8 @@ import sys
 
 import numpy as np
 import pytest
+from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
@@ -177,3 +179,61 @@ def test_refine_zero_total_energy():
 
     assert result == four_dict
     assert len(result) == len(four_dict)
+
+
+@pytest.mark.parametrize("budget", [2, 4, 6, 9])
+@pytest.mark.parametrize(("index", "max_order"), [("SV", 1), ("k-SII", 2)])
+@skip_if_no_lightgbm
+def test_default_search_tiny_budget(budget, index, max_order):
+    """Tiny budgets fit the same proxy as hpo=False without spending extra queries."""
+    observed = []
+
+    def game(coalitions):
+        observed.append(len(coalitions))
+        return 1 + coalitions @ np.arange(1, 9) + 2 * np.prod(coalitions[:, :2], axis=1)
+
+    tuned = ProxySPEX(n=8, index=index, max_order=max_order, random_state=0)
+    bare = ProxySPEX(n=8, index=index, max_order=max_order, hpo=False, random_state=0)
+    actual = tuned.approximate(budget, game)
+    expected = bare.approximate(budget, game)
+
+    assert observed == [budget, budget]
+    assert np.isfinite(actual.values).all()
+    assert actual.index == index
+    assert actual.interaction_lookup == expected.interaction_lookup
+    np.testing.assert_array_equal(actual.values, expected.values)
+    assert not hasattr(tuned.proxy_model, "best_estimator_")
+
+
+@skip_if_no_lightgbm
+def test_default_search_restored_after_tiny_budget(monkeypatch):
+    """Reusing an approximator still searches at a sufficient budget, then falls back again."""
+    approximator = ProxySPEX(n=8, index="SV", max_order=1, random_state=0)
+    search = approximator.proxy_model
+    calls = []
+    original_fit = search.fit
+
+    def fit(X, y):
+        calls.append(len(X))
+        return original_fit(X, y)
+
+    monkeypatch.setattr(search, "fit", fit)
+
+    def game(X):
+        return 1 + X @ np.arange(1, 9)
+
+    for budget in [2, 20, 4]:
+        result = approximator.approximate(budget, game)
+        assert np.isfinite(result.values).all()
+        assert approximator.proxy_model is search
+    assert calls == [20]
+    assert hasattr(search, "best_estimator_")
+
+
+def test_custom_search_retains_tiny_budget_policy():
+    """User-provided cross-validation settings are never bypassed."""
+    search = GridSearchCV(DecisionTreeRegressor(random_state=0), {"max_depth": [1]}, cv=5)
+    approximator = ProxySPEX(n=8, proxy_model=search, random_state=0)
+    with pytest.raises(ValueError, match="n_splits=5"):
+        approximator.approximate(4, lambda X: X.sum(axis=1))
+    assert approximator.proxy_model is search
