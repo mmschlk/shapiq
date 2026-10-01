@@ -716,3 +716,19 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   eight pre-existing sklearn/Woodelf diagnostics outside this change. Independent
   GPU audit verified device validation, timing synchronization, cache identity and
   public provenance; its current-device metadata correction is included.
+
+## First stronger-model preparation (October 1)
+
+- Preparation 361441 finished all64games/384targetdefinitions on himem02 from
+  frozen source893a5da7, including allfour approved estimator fixes. Allgames
+  have12players, fourseeds andnine relativebudgets. Snapshot
+  `6b46e9398d166e4baac217473a872c49fdeea40cbb8489f833fef2423c9c9629`.
+- Independent audit authenticated allpayoff/model artifacts, disjoint splits and
+  shared32models. Allmodels beat held-out dummy loss; all384targets pass the
+  signal gate (minimumratio0.129). Directdifference references agree with stored
+  SV/interaction coefficients; worstFSII disagreement is8.84e-19nMSE.
+- Deeper models do not imply high-order games: first-order Fourier energy is
+  60–99%; energy above orderthree reaches2.07%. Retain these games without
+  claiming this cohort has strong high-order interactions.
+- Sweep361442 runs76,032plannedcells on128pinned EPYC9754cores, with600second
+  limits and a completion watcher. Publication awaits independent results audit.

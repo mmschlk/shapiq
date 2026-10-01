@@ -106,9 +106,10 @@ implemented and qualified. Each phase requires an independent audit before
 its results replace the preview. Device choices and model parameters are part
 of the recorded recipe, and the website shows actual dataset/model provenance.
 
-Preparation **361441** is running from frozen source `893a5da7`, including the
-approved LeverageSHAP, OddSHAP, ProxySPEX and SVARM fixes. Its completion watcher
-is armed; preparation must pass audit before the estimator sweep is submitted.
+Preparation **361441** completed and passed independent audit. Sweep **361442**
+uses frozen source `893a5da7`, including the approved LeverageSHAP, OddSHAP,
+ProxySPEX and SVARM fixes, with a completion watcher armed. Its 76,032 planned
+cells use 128 pinned CPU workers and a 600-second per-cell limit.
 The stronger-model measurements have not yet replaced the public preview.
 
 Use GPUs for game preparation when measured faster: the first fixed-TabPFN
@@ -116,6 +117,20 @@ pilot strongly favored the L40S. RF and the initial XGBoost cohort stay on CPUs;
 GP and other workloads need their own measurements. Estimator evaluation keeps
 its standardized single-CPU profile. Cached-query charges retain their actual
 preparation hardware; they are estimates, not measured uncached runtime.
+
+For the shipped TabPFN contextualization game, a GPU recipe explicitly adds
+`"device": "cuda"` to its family specification, for example:
+
+```json
+{"id": "tabpfn-adult-d12-cuda", "family": "tabpfn", "dataset": "adult_census", "n_players": 12, "device": "cuda"}
+```
+
+Submit its suite from the frozen checkout with
+`sbatch benchmark/prepare_gpu.sbatch SUITE STAGE SNAPSHOT`. The launcher allocates
+one L40S and runs one preparation worker. CPU remains the default; unavailable
+CUDA fails explicitly. GPU recipes use float32, separate authenticated payoff
+caches and recorded backend versions. This enables preparation, not automatic
+publication: the full saved table still needs its usual exact-reference audit.
 
 Cached payoff tables also yield a Boolean Fourier spectrum without additional
 queries. It describes game complexity alongside predictive validation scores;
