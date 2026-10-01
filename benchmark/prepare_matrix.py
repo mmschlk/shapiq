@@ -263,6 +263,9 @@ def main() -> None:
     temporary.replace(plan_path)
     deadline = time.monotonic() + args.seconds
 
+    from shapiq_benchmark.datasets import warm_dataset_caches
+
+    warm_dataset_caches(suite)
     run_tasks(range(evaluation_count), cpus, args, deadline)
     run_tasks(range(evaluation_count, len(tasks)), cpus, args, deadline)
     assemble(suite, specs, args.stage, args.destination, expected)

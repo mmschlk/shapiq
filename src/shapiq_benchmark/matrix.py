@@ -9,6 +9,7 @@ import math
 import re
 from pathlib import Path
 
+from shapiq_benchmark.datasets import feature_limit
 from shapiq_benchmark.families import (
     DATASETS,
     FAMILY_CATALOG,
@@ -22,6 +23,8 @@ REASON_LABELS = {
     "binary_calendar_features": "Gaussian imputation rejects Bike Sharing's binary calendar features",
     "requires_binary_target": "The product-kernel classifier requires two classes",
     "below_minimum": "Below the suite's minimum player count",
+    "insufficient_continuous_features": "Too few noncategorical features for this recipe",
+    "insufficient_class_players": "Fewer training-example players than target classes",
     "insufficient_features": "Fewer native features than requested players; no padding",
     "unqualified_large_adapter": "No qualified large-player ground-truth adapter for this recipe configuration",
     "exhaustive_table": "Exact enumeration of a frozen coalition table planned",
@@ -99,6 +102,15 @@ def expand_matrix(config: dict, base: dict) -> dict:
                     reason = "below_minimum"
                 elif unit == "feature" and count > info["n_features"]:
                     reason = "insufficient_features"
+                elif unit == "feature" and count > feature_limit(family, dataset):
+                    reason = "insufficient_continuous_features"
+                elif family in (
+                    "knn",
+                    "tnn",
+                    "weighted_knn",
+                    "binary_weighted_knn",
+                ) and count < info.get("n_classes", 0):
+                    reason = "insufficient_class_players"
                 elif count > MAX_ENUMERATION_PLAYERS:
                     reason = "unqualified_large_adapter"
                 row = {

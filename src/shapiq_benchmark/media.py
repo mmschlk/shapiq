@@ -154,6 +154,7 @@ def make_extra(
         from tabpfn import TabPFNClassifier
 
         from shapiq.imputer.tabpfn_imputer import TabPFNImputer
+        from shapiq_benchmark.datasets import dataset_details
         from shapiq_benchmark.families import DATASETS, _dataset, feature_subset
 
         dataset = dataset or "iris"
@@ -183,6 +184,7 @@ def make_extra(
         game.fit(x[test[0]])
         metadata.update(
             dataset=dataset,
+            **dataset_details(dataset),
             data_sha256=data_hash,
             feature_indices=features.tolist(),
             feature_names=[str(names[i]) for i in features],

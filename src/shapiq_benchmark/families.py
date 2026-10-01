@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-from functools import lru_cache
 
 import numpy as np
 from scipy.spatial.distance import pdist
-from sklearn.datasets import load_breast_cancer, load_diabetes, load_digits, load_iris, load_wine
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import accuracy_score, mean_squared_error
@@ -23,8 +21,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.datasets import load_bike_sharing, load_california_housing
 from shapiq.explainer.product_kernel.conversion import convert_svm
+from shapiq_benchmark.datasets import (
+    DATASETS,
+    dataset_details,
+    load_dataset as _dataset,
+)
 
 MAX_ENUMERATION_PLAYERS = 20
 
@@ -227,48 +229,6 @@ FAMILY_CATALOG = {
     for name, (cls, semantics, unit, stochastic) in _RECIPES.items()
 }
 
-DATASETS = {
-    "california_housing": {
-        "task": "regression",
-        "n_features": 8,
-        "source": "shapiq.datasets.load_california_housing",
-    },
-    "diabetes": {
-        "task": "regression",
-        "n_features": 10,
-        "source": "sklearn.datasets.load_diabetes",
-    },
-    "bike_sharing": {
-        "task": "regression",
-        "n_features": 12,
-        "source": "shapiq.datasets.load_bike_sharing",
-    },
-    "iris": {
-        "task": "classification",
-        "n_features": 4,
-        "n_classes": 3,
-        "source": "sklearn.datasets.load_iris",
-    },
-    "wine": {
-        "task": "classification",
-        "n_features": 13,
-        "n_classes": 3,
-        "source": "sklearn.datasets.load_wine",
-    },
-    "breast_cancer": {
-        "task": "classification",
-        "n_features": 30,
-        "n_classes": 2,
-        "source": "sklearn.datasets.load_breast_cancer",
-    },
-    "digits": {
-        "task": "classification",
-        "n_features": 64,
-        "n_classes": 10,
-        "source": "sklearn.datasets.load_digits",
-    },
-}
-
 
 def dataset_compatibility(name: str, dataset: str) -> str | None:
     """Explain unsupported dataset/recipe pairs without constructing models."""
@@ -287,37 +247,6 @@ def dataset_compatibility(name: str, dataset: str) -> str | None:
     if name == "product_kernel" and classification and DATASETS[dataset]["n_classes"] != 2:
         return "The product-kernel classifier requires two classes."
     return None
-
-
-@lru_cache(maxsize=20)
-def _dataset(name: str, instance_seed: int = 0) -> tuple:
-    """Load a bundled dataset and retain explicit original row identities."""
-    loaders = {
-        "iris": load_iris,
-        "wine": load_wine,
-        "diabetes": load_diabetes,
-        "breast_cancer": load_breast_cancer,
-        "digits": load_digits,
-    }
-    if name in loaders:
-        data = loaders[name]()
-        x, y = data.data, data.target
-        feature_names = list(data.feature_names)
-    else:
-        loaders = {"california_housing": load_california_housing, "bike_sharing": load_bike_sharing}
-        if name not in loaders:
-            message = f"Unknown benchmark dataset: {name}"
-            raise ValueError(message)
-        x, y = loaders[name]()
-        feature_names = list(x.columns)
-        x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
-    train, test = train_test_split(
-        np.arange(len(x)),
-        test_size=0.2,
-        random_state=instance_seed,
-        stratify=y if DATASETS[name]["task"] == "classification" else None,
-    )
-    return x, y, train[:512], test[:128], feature_names
 
 
 def feature_subset(x: np.ndarray, count: int | None, seed: int) -> np.ndarray:
@@ -396,18 +325,42 @@ def make_family(
     features = feature_subset(
         x, n_players if metadata["player_unit"] == "feature" else None, instance_seed
     )
-    if name in ("local_gaussian", "local_copula") and dataset == "digits":
-        eligible = np.array([i for i in range(x.shape[1]) if len(np.unique(x[train, i])) > 2])
+    if name in ("local_gaussian", "local_copula") and (
+        dataset == "digits" or "categorical_features" in DATASETS[dataset]
+    ):
+        categorical = DATASETS[dataset].get("categorical_features", [])
+        eligible = np.array(
+            [
+                i
+                for i in range(x.shape[1])
+                if categorical != "all"
+                and feature_names[i] not in categorical
+                and len(np.unique(x[train, i])) > 2
+            ],
+            dtype=int,
+        )
         features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
         metadata["parameters"]["feature_rule"] = (
-            "seeded subset of training columns with more than two unique values"
+            "seeded subset of noncategorical training columns with more than two unique values"
         )
-    if name == "cluster" and dataset == "digits":
+    if name == "cluster" and (dataset == "digits" or "categorical_features" in DATASETS[dataset]):
         eligible = np.flatnonzero(np.ptp(x[train[:128]], axis=0) > 0)
+        rule = "seeded subset of columns nonconstant on the clustering training rows"
+        if "categorical_features" in DATASETS[dataset]:
+            categorical = DATASETS[dataset]["categorical_features"]
+            eligible = np.array(
+                [
+                    i
+                    for i in eligible
+                    if categorical != "all"
+                    and feature_names[i] not in categorical
+                    and len(np.unique(x[train[:128], i])) > 3
+                ],
+                dtype=int,
+            )
+            rule = "seeded subset of noncategorical clustering columns with more than three values"
         features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
-        metadata["parameters"]["feature_rule"] = (
-            "seeded subset of columns nonconstant on the clustering training rows"
-        )
+        metadata["parameters"]["feature_rule"] = rule
     x = x[:, features]
     x_train, y_train, x_test, y_test = (
         x[train].copy(),
@@ -417,6 +370,7 @@ def make_family(
     )
     metadata.update(
         dataset=dataset,
+        **dataset_details(dataset),
         data_sha256=data_hash,
         feature_indices=features.tolist(),
         feature_names=[str(feature_names[i]) for i in features],
@@ -659,7 +613,7 @@ def make_family(
                 stratify=y_train,
                 random_state=instance_seed,
             )
-        class_index = int(y_test[0])
+        point_label = y_test[0].item()
         radius = 2.0
         if name == "tnn" and configured:
             # Set geometry from training inputs alone, before inspecting any coalition scores.
@@ -680,10 +634,15 @@ def make_family(
             )
         )
         fitted.fit(scaler.transform(x_train[selected]), y_train[selected])
+        matches = np.flatnonzero(fitted.classes_ == point_label)
+        if not len(matches):
+            message = "Selected neighbor training rows omit the held-out observation's class."
+            raise ValueError(message)
+        class_index = int(matches[0])
         kwargs = {"model": fitted, "x": scaler.transform(x_test[:1])[0], "class_index": class_index}
         if name == "binary_weighted_knn":
             kwargs["class_index_other"] = next(
-                int(label) for label in fitted.classes_ if label != class_index
+                i for i in range(len(fitted.classes_)) if i != class_index
             )
         game = cls(**kwargs)
         metadata.update(
@@ -691,7 +650,8 @@ def make_family(
             model_parameters=fitted.get_params(),
             train_indices=train[selected].tolist(),
             class_index=class_index,
-            point_label=int(y_test[0]),
+            point_label=point_label,
+            class_labels=fitted.classes_.tolist(),
             preprocessing_fit_indices=train.tolist(),
             parameters={"class_index_other": kwargs.get("class_index_other"), "n_bits": None},
             preprocessing={

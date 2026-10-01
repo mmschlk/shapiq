@@ -211,3 +211,20 @@ uv run pre-commit run --all-files
   `7 + sum((i+1)*z_i) + 2*z_0*z_1*z_2`. Independent guard-removal auditing
   reproduced identical old/new outputs; investigate that regression numerical
   issue separately rather than attributing it to newly accepted tiny budgets.
+
+- Expanded benchmark datasets must use their shipped loader outputs, not docstring
+  dimensions: Ionosphere drops a constant column and returns 33 features, despite
+  its 34-feature example. Mushroom retains missing cells and a constant column;
+  NHANES retains missing features and signed, censored survival labels. Benchmark
+  median repair uses training rows only; NHANES regression is explicitly a surrogate.
+  Shapiq Wine Quality is regression with 12 columns including binary `type_white`,
+  unlike sklearn Wine classification. Never silently rebind historical `wine` IDs.
+- TabArena task types come from OpenML task metadata, not numeric target dtype.
+  Shipped loaders may encode/impute on the full dataset and cache CSVs beside their
+  module. First uncached loads need optional `openml` and `pyarrow`; do not install
+  into a shared environment while frozen jobs are running. Categorical singleton
+  KMeans games can have nearly zero within-cluster variance and huge Calinski–Harabasz
+  scores; new recipes select noncategorical columns with more than three values.
+  TabArena cache writes are nonatomic and initial OpenML arrays can round differently
+  from CSV reloads. Warm caches before parallel workers and freeze the reloaded CSV
+  representation, not the first-download return value.

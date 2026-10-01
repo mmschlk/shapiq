@@ -99,9 +99,97 @@ nodes were verified as AMD EPYC 9754 with 128 physical cores and SMT disabled;
 jobs retain exclusive allocations and single-threaded workers. Timing remains
 diagnostic, with actual host and affinity recorded. Completion watchers are armed.
 
-### Broader dataset × game matrix
+### Expanded matrix using shapiq's datasets
 
-[suites/matrix.json](suites/matrix.json) crosses 23 tabular recipes with seven
+[suites/matrix.json](suites/matrix.json) now selects **63 datasets**: the six
+retained small datasets, shapiq's **Wine Quality**, **Adult Census**, **Mushroom**,
+**Ionosphere**, **NHANES I**, **Communities and Crime**, and **all 51 TabArena
+loaders** shipped in `shapiq_games.datasets`. Wine Quality is a regression dataset
+with 12 columns (including wine type); it replaces sklearn's 13-column Wine
+classification dataset in this new matrix. The old `wine` key remains available
+only for explicitly selected historical recipes.
+
+The implementation stays close to the library: [datasets.py](../src/shapiq_benchmark/datasets.py)
+invokes the declared shapiq loader, and [families.py](../src/shapiq_benchmark/families.py)
+passes its data to shipped game constructors. The explicit
+[dataset catalog](../src/shapiq_benchmark/dataset_catalog.py) records loader names,
+source links, dimensions, task types and categorical columns. TabArena task types
+were verified against OpenML tasks; numeric target codes alone do not determine
+whether a task is classification or regression.
+
+Each compatible dataset × recipe × player count gets **four construction seeds**.
+Player counts remain at least **11**, with enumeration capped at **20**. The
+expansion currently selects **3,730 tabular settings** from **13,866 candidates**,
+plus the existing 12 special and 13 structured settings: **89,900 game/target
+definitions** before runtime qualification. This is a preparation plan, not
+completed results or a change to the currently running frozen campaigns.
+
+Dataset size and player count mean different things. A larger dataset supplies
+more rows and columns, but these bounded recipes still use at most **512 training
+rows and 128 held-out rows**; some games use smaller documented backgrounds.
+Feature games select original columns, row games select training examples, and
+ensemble games select models. We do not train on a million rows for every coalition.
+
+Models are fixed by recipe, not another Cartesian-product axis:
+
+| Recipe | Model |
+| --- | --- |
+| Ordinary local/global explanations; feature/data/group valuation | Decision tree, depth 3, minimum leaf size 5 |
+| Forest local explanation | 8-tree random forest, depth 4 |
+| Path-dependent / interventional tree | Decision tree, depth 3 / 4 |
+| Uncertainty | 8-tree random forest classifier, depth 3 |
+| Product kernel | RBF SVC/SVR with `gamma="scale"` |
+| Heterogeneous ensemble | Logistic regression/Ridge, SVC/SVR, 3-NN, then trees of varying depth |
+| Forest ensemble | One tree per player, depth 3 |
+| Neighbor games | 3-NN, distance-weighted 3-NN, or radius neighbors |
+| Clustering / unsupervised dependence | 3-cluster K-means / no fitted prediction model |
+| TabPFN | CPU classifier with one ensemble member |
+
+The dataset task chooses classifier versus regressor where supported. These are
+bounded benchmark choices; the shipped game constructors accept other models.
+Shallow trees may use fewer features than the declared player count. Broader model
+choices are a separate expansion, not implied by adding datasets.
+
+Compatibility and preprocessing are explicit:
+
+- Use the loader's encoding and target unchanged. Shapiq may already preprocess
+  using the full dataset. Remaining missing inputs (notably Mushroom and NHANES)
+  use medians computed only from the recorded training rows.
+- Gaussian/Gaussian-copula imputation and clustering select noncategorical columns;
+  Gaussian columns need more than two observed values and clustering columns
+  more than three. Combinations with too few eligible columns are excluded or
+  fail qualification, rather than padding features or clipping scores.
+- Classification-only games exclude regression targets. Binary product-kernel
+  games require two classes. Neighbor games need enough players for the classes.
+- NHANES's signed survival labels are retained as a **regression surrogate**.
+  This does not claim to fit a censoring-aware survival model.
+- Constants, missing data, rare classes and near-zero truth are still checked at
+  construction/qualification. Selection does not guarantee a valid measured game.
+
+TabArena downloads use the shipped OpenML loaders and their CSV cache. Install
+`openml` and a parquet engine such as `pyarrow` in the **preparation environment**
+before the first uncached load (`pip install "shapiq[benchmark]"`). The matrix
+preparation driver warms these caches before starting parallel workers, and games
+always reload the CSV representation so first-download rounding cannot differ.
+Copy the warmed caches into a new frozen checkout before an offline run. Never change the shared environment of running
+jobs. Cached CSVs are ignored by Git; no dataset or result payload is committed.
+
+Generate a separate suite; do not overwrite the running campaign's frozen suite:
+
+```bash
+uv run python -m shapiq_benchmark.matrix \
+  --config benchmark/suites/matrix.json \
+  --output benchmark/results/dataset-expansion/suite.json
+```
+
+Full enumeration requires a new immutable source checkout, its own staging/cache
+identity and completion watcher. Existing matrix20 chunks are not automatically
+compatible with this expansion. The active seven-dataset jobs below continue
+unchanged, preserving completed work and their existing watchers.
+
+### Already-running seven-dataset matrix
+
+The [frozen v2 configuration](https://github.com/rtealwitter/shapiq/blob/0762a2e503ad0d5852308b06427feabedd2a534d/benchmark/suites/matrix.json) crosses 23 tabular recipes with seven
 datasets: California Housing, Diabetes, Bike Sharing, Iris, Wine, Breast Cancer
 and Digits. Players can mean features, training rows, groups or models depending
 on the recipe. Each selected setting gets **four independently constructed games**
@@ -125,11 +213,7 @@ that is **381 settings, 8,924 game/target definitions and 1,766,952 planned cell
 Unsupported estimator targets remain visible as coverage, separate from failures.
 Selection is a plan: preparation must still qualify every constructed game.
 
-```bash
-uv run python -m shapiq_benchmark.matrix \
-  --config benchmark/suites/matrix.json \
-  --output benchmark/results/matrix20-campaign/suite.json
-```
+
 
 The generated suite records selected combinations and exclusion reasons in
 `matrix_coverage`. The frozen snapshot, public export and reproduction archive

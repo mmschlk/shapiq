@@ -42,13 +42,14 @@ def test_selected_matrix_keeps_real_dimensions_and_base_protocol(matrix_inputs: 
     selected = [
         row for row in suite["matrix_coverage"]["candidates"] if row["status"] == "selected"
     ]
-    assert len(selected) == 356
-    assert len({(row["recipe"], row["dataset"], row["n_players"]) for row in selected}) == 356
+    assert len(selected) == 3730
+    assert len({(row["recipe"], row["dataset"], row["n_players"]) for row in selected}) == 3730
     for row in selected:
-        assert row["n_players"] in (11, 12, 13, 16, 20)
+        assert row["n_players"] >= 11
+        assert row["n_players"] <= 20
         if row["player_unit"] == "feature":
             assert row["n_players"] <= DATASETS[row["dataset"]]["n_features"]
-    assert suite["matrix_coverage"]["counts"]["game_definitions"] == 8924
+    assert suite["matrix_coverage"]["counts"]["game_definitions"] == 89900
     assert all(row["reason"] in REASON_LABELS for row in suite["matrix_coverage"]["candidates"])
     assert "base_suite" not in suite["matrix_definition"]
 
@@ -72,7 +73,7 @@ def test_feature_width_is_not_training_row_count_and_large_adapters_stay_distinc
     assert rows["product_kernel", "digits", 64]["reason"] == "requires_binary_target"
     assert rows["local_gaussian", "bike_sharing", 11]["reason"] == "binary_calendar_features"
     assert rows["tabpfn", "diabetes", 11]["reason"] == "requires_class_labels"
-    assert rows["local_baseline", "wine", 13]["status"] == "selected"
+    assert rows["local_baseline", "wine_quality", 12]["status"] == "selected"
     assert rows["local_baseline", "breast_cancer", 20]["status"] == "selected"
     assert rows["data_valuation", "iris", 20]["status"] == "selected"
     assert rows["local_baseline", "bike_sharing", 16]["reason"] == "insufficient_features"

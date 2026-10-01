@@ -640,3 +640,36 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   (SVARM stratification performance) passed independent audits and are assigned
   to Max and Santo. These algorithm/version changes are not mixed into retries
   of the original implementations.
+
+## Shipped dataset expansion (October 1)
+
+- Registered Adult Census, Mushroom, Ionosphere, NHANES I, Communities and Crime,
+  Wine Quality and all 51 shipped TabArena loaders. OpenML task metadata verifies
+  38 classification and 13 regression TabArena datasets. Actual loader outputs
+  match catalog dimensions, classes and categorical names for all 51, and all
+  reload offline from their CSV caches without OpenML installed. Raw evidence is
+  kept outside Git in `benchmark/results/dataset-expansion/`.
+- Four-seed checks pass for the six other additions. Remaining Mushroom/NHANES
+  missing inputs use exactly training-only medians; original finite values and
+  targets remain unchanged. NHANES is explicitly a signed-target regression
+  surrogate. Wine Quality has its own identity; legacy Wine remains reproducible.
+- Independent review caught and verified fixes for neighbor games with noncontiguous
+  numeric labels and preservation of Breast Cancer's original data bytes. Renaming
+  class labels now leaves all four neighbor-game utilities unchanged.
+- Gaussian and new clustering recipes filter categorical/ineligible columns instead
+  of padding. Categorical singleton clustering was independently shown to produce
+  huge Calinski–Harabasz scores from degenerate within-cluster variance; these
+  combinations are excluded from the expanded matrix.
+- Independent cache tests verify first-download arrays are discarded in favor of
+  the CSV representation, repeated construction is byte-identical, truncated
+  caches fail the row-count guard, and the matrix driver warms caches under its
+  stage lock before starting workers. Separate campaigns must not concurrently
+  warm the same previously absent caches.
+- The expanded configuration contains 63 datasets and 3,730 selected tabular
+  settings; it is not yet a launched or published campaign. Existing frozen
+  campaigns, estimator versions, results and completion watchers are unchanged.
+  Optional OpenML dependencies were tested in an isolated overlay; `uv lock` did
+  not sync or mutate the shared environment used by running jobs.
+- Final validation: all 340 benchmark tests pass. Pre-commit formatting/lint checks
+  pass; the type checker retains the same eight pre-existing sklearn/Woodelf
+  diagnostics outside this change.
