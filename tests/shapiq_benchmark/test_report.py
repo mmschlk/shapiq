@@ -360,3 +360,34 @@ def test_public_report_retains_matrix_exclusions(tmp_path: Path) -> None:
     for key in ("matrix_definition", "matrix_coverage"):
         assert exported["suite"][key] == result["suite"][key]
     assert "/private" not in json.dumps(exported)
+
+
+def test_public_model_protocol_and_spectrum_survive_export(tmp_path: Path) -> None:
+    """Public provenance contains concrete scientific settings, not private cache locations."""
+    data = result_fixture()
+    data["suite"]["protocol"] = {"name": "Stronger models", "phase": 2}
+    metadata = data["games"][0]["metadata"]
+    metadata.update(
+        model_profile="random_forest",
+        preparation_hardware={"device": "cuda", "gpu_model": "NVIDIA L40S"},
+        model_parameters={"n_estimators": 100},
+        training_rows=5000,
+        validation_rows=1000,
+        test_rows=1000,
+        background_size=16,
+        dataset_source="shapiq_games.datasets.load_adult_census",
+        fourier_spectrum={"degree_mass": [0, 0.2, 0.3, 0.5], "constant": False},
+    )
+    exported = report([write(tmp_path, data)], tmp_path / "site", public=True)
+    assert exported["suite"]["protocol"] == data["suite"]["protocol"]
+    actual = exported["games"][0]["metadata"]
+    for key in (
+        "model_profile",
+        "preparation_hardware",
+        "model_parameters",
+        "training_rows",
+        "fourier_spectrum",
+    ):
+        assert actual[key] == metadata[key]
+    assert (tmp_path / "site/protocol.js").exists()
+    assert "/private" not in json.dumps(exported)

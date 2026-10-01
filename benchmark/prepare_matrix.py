@@ -219,12 +219,22 @@ def main() -> None:
     args = parser.parse_args()
     if args.task is not None:
         os.sched_setaffinity(0, {args.cpu})
-        resource.setrlimit(resource.RLIMIT_AS, (12 * 1024**3, 12 * 1024**3))
         plan = json.loads((args.stage / "plan.json").read_text())
+        task = plan["tasks"][args.task]
+        if task["spec"].get("device") != "cuda":
+            resource.setrlimit(resource.RLIMIT_AS, (12 * 1024**3, 12 * 1024**3))
+        else:
+            # CUDA reserves virtual address space far beyond physical GPU/RAM usage.
+            # Slurm's memory allocation, not a CPU address-space cap, bounds this worker.
+            from shapiq_benchmark.media import preparation_backend
+
+            if preparation_backend("cuda") != plan.get("preparation_hardware"):
+                message = "CUDA preparation hardware changed since planning"
+                raise ValueError(message)
         if plan["driver_sha256"] != hashlib.sha256(Path(__file__).read_bytes()).hexdigest():
             message = "Preparation driver changed after planning"
             raise ValueError(message)
-        execute(plan["tasks"][args.task], plan["suite"], args.stage, plan["provenance"])
+        execute(task, plan["suite"], args.stage, plan["provenance"])
         return
 
     from shapiq_benchmark.runner import provenance, validate_suite
@@ -249,6 +259,13 @@ def main() -> None:
         "tasks": tasks,
         "driver_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
+    if any(spec["spec"].get("device") == "cuda" for spec in specs):
+        from shapiq_benchmark.media import preparation_backend
+
+        if args.workers != 1:
+            message = "CUDA preparation uses one worker per allocated GPU; launch separate stages."
+            raise ValueError(message)
+        plan["preparation_hardware"] = preparation_backend("cuda")
     args.stage.mkdir(parents=True, exist_ok=True)
     # Retain this descriptor until the process exits; children never acquire it.
     lock = (args.stage / "prepare.lock").open("a")

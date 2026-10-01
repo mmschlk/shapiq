@@ -228,3 +228,13 @@ uv run pre-commit run --all-files
   TabArena cache writes are nonatomic and initial OpenML arrays can round differently
   from CSV reloads. Warm caches before parallel workers and freeze the reloaded CSV
   representation, not the first-download return value.
+
+- Model-cache identities need ordered feature names, array shapes/dtypes and loader
+  source as well as numeric bytes. Renaming a feature without changing values
+  must not reuse stale reproduction metadata.
+- New website scripts must be added to both report.py's export assets and the
+  explicit GitHub Pages workflow copy list; local previews alone do not catch a
+  missing deployed script.
+- CUDA preparation must not inherit the CPU worker's 12-GiB address-space cap:
+  CUDA reserves much larger virtual ranges. Use Slurm memory limits, one worker
+  per GPU, synchronized timing and explicit backend/precision in cache identities.

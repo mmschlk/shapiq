@@ -20,18 +20,43 @@ from shapiq.game_theory import ExactComputer
 from shapiq_benchmark.exact import exact_table_truth
 from shapiq_benchmark.families import FAMILY_CATALOG, MAX_ENUMERATION_PLAYERS, make_family
 from shapiq_benchmark.games import truth_dict
-from shapiq_benchmark.media import EXTRA_CATALOG, make_extra
+from shapiq_benchmark.media import EXTRA_CATALOG, make_extra, preparation_backend
 from shapiq_benchmark.payoff_cache import (
     CHUNK_PROTOCOL,
     CHUNK_SIZE,
     COST_PROTOCOL,
-    chunk_identity as _chunk_identity,
+    chunk_identity as _base_chunk_identity,
     cost_batch as _cost_batch,
     read_chunk as _read_chunk,
     write_chunk,
 )
+from shapiq_benchmark.spectrum import fourier_spectrum
 
 CATALOG = {**FAMILY_CATALOG, **EXTRA_CATALOG}
+
+
+def _chunk_identity(spec: dict, seed: int, start: int, source: dict) -> dict:
+    """Bind CUDA chunks to the actual device and precision before reading any payoff."""
+    identity = _base_chunk_identity(spec, seed, start, source)
+    if spec.get("device") == "cuda":
+        identity["preparation_hardware"] = preparation_backend("cuda")
+    return identity
+
+
+def _synchronize(spec: dict) -> None:
+    """Include completed CUDA work in the measured oracle cost."""
+    if spec.get("device") == "cuda":
+        import torch
+
+        torch.cuda.synchronize()
+
+
+def _timing_batch(start: int, stop: int, elapsed: float, metadata: dict) -> dict:
+    """Keep accelerator details alongside CPU details in cached timing records."""
+    batch = _cost_batch(start, stop, elapsed)
+    if "preparation_hardware" in metadata:
+        batch["preparation_hardware"] = metadata["preparation_hardware"]
+    return batch
 
 
 def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Path) -> Path:
@@ -67,15 +92,22 @@ def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Pat
     game, metadata = factory(
         spec["family"],
         instance_seed=instance_seed,
-        **{key: spec[key] for key in ("dataset", "n_players") if key in spec},
+        **{
+            key: spec[key]
+            for key in ("dataset", "n_players", "model_profile", "device")
+            if key in spec
+        },
+        **({"model_cache": str(output.parent / ".models")} if "model_profile" in spec else {}),
     )
     if game.n_players != n:
         message = "Constructed player count does not match the chunk recipe."
         raise ValueError(message)
     stop = expected["stop"]
     coalitions = ((np.arange(start, stop)[:, None] >> np.arange(n)) & 1).astype(bool)
+    _synchronize(spec)
     started = time.perf_counter()
     values = np.asarray(game(coalitions), dtype=float)
+    _synchronize(spec)
     elapsed = time.perf_counter() - started
     if values.shape != (stop - start,) or not np.isfinite(values).all():
         message = "The game returned invalid payoff chunk values."
@@ -84,7 +116,7 @@ def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Pat
     manifest = {
         "identity": expected,
         "metadata": metadata,
-        "batch": _cost_batch(start, stop, elapsed),
+        "batch": _timing_batch(start, stop, elapsed, metadata),
     }
     write_chunk(path, values, costs, manifest)
     return path
@@ -103,12 +135,17 @@ def prepare_families(
     specs = [{"id": entry, "family": entry} if isinstance(entry, str) else entry for entry in names]
     if not specs or any(
         not isinstance(spec, dict)
-        or set(spec) - {"id", "family", "dataset", "n_players"}
+        or set(spec) - {"id", "family", "dataset", "n_players", "model_profile", "device"}
         or not isinstance(spec.get("family"), str)
         or spec.get("family") not in CATALOG
         or not isinstance(spec.get("id"), str)
         or not re.fullmatch(r"[a-zA-Z0-9_-]+", spec["id"])
         or ("dataset" in spec and not isinstance(spec["dataset"], str))
+        or ("model_profile" in spec and not isinstance(spec["model_profile"], str))
+        or (
+            "device" in spec
+            and (spec["family"] != "tabpfn" or spec["device"] not in ("cpu", "cuda"))
+        )
         or (
             "n_players" in spec
             and (
@@ -147,7 +184,13 @@ def prepare_families(
         entry = {"family": instance_id, **CATALOG[name], "status": "unavailable"}
         try:
             factory = make_extra if name in EXTRA_CATALOG else make_family
-            options = {key: spec[key] for key in ("dataset", "n_players") if key in spec}
+            options = {
+                key: spec[key]
+                for key in ("dataset", "n_players", "model_profile", "device")
+                if key in spec
+            }
+            if "model_profile" in spec:
+                options["model_cache"] = str(output.parent / ".models")
             if instance_seed is not None:
                 options["instance_seed"] = instance_seed
             game, metadata = factory(name, **options)
@@ -160,15 +203,17 @@ def prepare_families(
             batches = []
             if n <= 12:
                 coalitions = ((np.arange(2**n)[:, None] >> np.arange(n)) & 1).astype(bool)
+                _synchronize(spec)
                 started = time.perf_counter()
                 batch = np.asarray(game(coalitions), dtype=float)
+                _synchronize(spec)
                 elapsed = time.perf_counter() - started
                 if batch.shape != values.shape:
                     message = "The family produced incorrectly shaped batch values."
                     raise ValueError(message)  # noqa: TRY301
                 values[:] = batch
                 costs[:] = elapsed / len(values)
-                batches.append(_cost_batch(0, len(values), elapsed))
+                batches.append(_timing_batch(0, len(values), elapsed, metadata))
             else:
                 source = provenance()
                 chunk_spec = {**spec, "n_players": n}
@@ -208,7 +253,14 @@ def prepare_families(
                 evaluation_batches=json.dumps(batches, allow_nan=False),
             )
             profiles = {
-                json.dumps({key: batch[key] for key in ("cpu_model", "threads")}, sort_keys=True)
+                json.dumps(
+                    {
+                        key: batch[key]
+                        for key in ("cpu_model", "threads", "preparation_hardware")
+                        if key in batch
+                    },
+                    sort_keys=True,
+                )
                 for batch in batches
             }
             metadata["evaluation_timing"] = {
@@ -219,6 +271,7 @@ def prepare_families(
             exact = ExactComputer(table_game(values, n), n_players=n) if n <= 12 else None
             large_truth = exact_table_truth(values, n, targets) if n > 12 else {}
             payoff_std = float(np.std(values, dtype=np.longdouble))
+            metadata["fourier_spectrum"] = fourier_spectrum(values, n)
             qualified = []
             for target in targets:
                 index, order = target["index"], target["order"]

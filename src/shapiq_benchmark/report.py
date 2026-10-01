@@ -40,6 +40,28 @@ ROW_FIELDS = (
 )
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
 METADATA_FIELDS = (
+    "preparation_hardware",
+    "model_profile",
+    "model_parameters",
+    "training_profile",
+    "training_rows",
+    "validation_rows",
+    "test_rows",
+    "quality",
+    "structure",
+    "fourier_spectrum",
+    "dataset_source",
+    "dataset_source_url",
+    "dataset_target_note",
+    "dataset_preprocessing",
+    "output_class",
+    "classes",
+    "model_key",
+    "model_artifact_sha256",
+    "model_source_sha256",
+    "model_packages",
+    "best_iteration",
+    "split_rules",
     "dataset",
     "data_sha256",
     "model",
@@ -243,6 +265,8 @@ def merge_results(paths: list[Path]) -> dict:
             key: first["suite"][key]
             for key in (
                 "name",
+                "protocol",
+                "phase_plan",
                 "min_players",
                 "min_signal_ratio",
                 "matrix_definition",
@@ -287,7 +311,15 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
         raise ValueError(message)
     data["presets"] = summarize(data)
     output.mkdir(parents=True, exist_ok=True)
-    for name in ("index.html", "app.js", "charts.js", "style.css", "shapiq.svg", "methods.js"):
+    for name in (
+        "index.html",
+        "app.js",
+        "charts.js",
+        "style.css",
+        "shapiq.svg",
+        "methods.js",
+        "protocol.js",
+    ):
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)

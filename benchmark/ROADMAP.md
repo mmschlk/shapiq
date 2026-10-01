@@ -1,8 +1,9 @@
 # Roadmap to the full benchmark
 
 This is the implementation plan for the next benchmark generation. The dataset
-loaders are implemented; the stronger models and phases below are planned.
-Existing frozen jobs and published results keep their identities. This roadmap
+loaders and initial random-forest/XGBoost profiles are implemented. Later model
+profiles and constructions remain planned. Superseded jobs were cancelled;
+published results keep their identities. This roadmap
 supersedes executing the entire new dataset matrix with the old shallow models.
 
 The finished benchmark covers **all 63 datasets in the target catalog**, the model profiles
@@ -36,6 +37,33 @@ claim its benchmark is complete.
 - Each phase ends with an independent audit, a versioned export and live-site
   verification. Local candidate estimators use the same snapshots without
   publication. Failed, excluded and pending configurations remain visible.
+
+### CPU and GPU preparation
+
+Use GPUs when representative measurements show a worthwhile gain. The first
+Hopper L40S pilot found fixed TabPFN prediction about 91× faster warm (9× on
+the first call) than one EPYC 9754 core; XGBoost's small fit gained only 1.1×
+and warm prediction 2×. These are model-call timings, not end-to-end campaign
+speedups. A second pilot of the actual shipped TabPFN contextualization game
+(Adult Census, 12 players, 64 context rows, 32 coalitions) measured warm batches
+of 8.94 seconds on one CPU core versus 3.64 seconds on an L40S: about **2.5×**.
+Enable explicit CUDA float32 preparation for this recipe, with one worker per
+GPU. Keep the initial RF/XGBoost cohort on CPUs. GP and neural-model acceleration
+require their own measurements.
+
+Device selection is explicit in each recipe. CPU and GPU realizations may differ
+numerically and must have separate authenticated snapshots. Record device,
+backend versions and precision; retain one pinned standardized CPU per estimator.
+Cached-query charges describe the hardware that generated the table, not a
+counterfactual CPU cost. Compare timing within the same frozen game and hardware
+profile. Do not silently combine CPU and GPU oracle costs as standardized runtime.
+
+For enumerated games, compute the uniform-coalition Boolean Fourier spectrum
+from the cached payoffs, with no additional model queries. Report variance by
+interaction degree and effective order alongside predictive validation scores.
+This describes the frozen game (including any frozen imputation noise), not
+Shapley interaction indices. It does not automatically discard easy games or
+select examples based on estimator rankings.
 
 ## Datasets and rollout order
 
@@ -144,7 +172,9 @@ constructors and optional backends wherever possible.
 | LightGBM | Up to 200 trees; 63 leaves; minimum leaf size 10; learning rate 0.05; validation early stopping; one CPU thread | Same eligible constructions as XGBoost | Phase 4 |
 | MLP | Two hidden layers, 128 and 64 units; scaled inputs; validation early stopping | Local/global prediction, feature/data/group valuation, heterogeneous ensemble | Phase 4 |
 | RBF SVM | SVC/SVR; training-only scaling; small validation grid for C/gamma | Product-kernel games, baseline/marginal local prediction, heterogeneous ensemble | Phase 3 |
-| TabPFN | CPU; start with one ensemble member; record backend/version and contextualization rows | Remove-and-contextualize classifier/regressor games; existing causal construction models | Phase 5 |
+| Fixed TabPFN predictor | One ensemble member initially; measured row cap; GPU where qualified faster | Baseline/marginal local prediction with a fixed fitted context | Phase 5 |
+| TabPFN contextualization | One ensemble member; record backend/device and contextualization rows | Remove-and-contextualize classifier/regressor games; existing causal construction models | Phase 5 |
+| Gaussian-process surrogate | Training-only scaling; validation-chosen kernel and bounded fitting rows; qualify GPU backend separately | Baseline/marginal local prediction | Phase 5 |
 | Linear control | Logistic classification / ridge regression with scaled inputs | Baseline/marginal local prediction, feature/data/group valuation, heterogeneous ensemble | Phase 3 |
 | Neighbor models | Unweighted 3-NN, distance-weighted 3-NN, radius neighbors | KNN, TNN, weighted KNN and binary-weighted KNN games | Phase 3 |
 | K-means / no model | Three clusters / total-correlation statistic | Clustering / unsupervised dependence | Phase 3 |

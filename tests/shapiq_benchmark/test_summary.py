@@ -398,3 +398,26 @@ def test_weighted_median_skips_zero_mass_and_only_interpolates_half_boundary() -
     assert weighted_median(np.array([2.0, 999.0, 100.0]), np.array([0.5, 0.0, 0.5])) == 51
     assert weighted_median(np.array([2.0, 100.0]), np.array([0.6, 0.4])) == 2
     assert weighted_median(np.array([2.0, 100.0]), np.array([0.4, 0.6])) == 100
+
+
+def test_model_dataset_presets_match_filtered_games_with_legacy_members() -> None:
+    """Model filters have fresh scores and Elo, even with an unprofiled game in the cohort."""
+    games = [
+        {"family": "local", "stratum": str(i), "metadata": metadata}
+        for i, metadata in enumerate(
+            [
+                {"model_profile": "rf", "dataset": "adult"},
+                {"model_profile": "xgb", "dataset": "adult"},
+                {"model_profile": "rf", "dataset": "wine"},
+                {"model": "legacy", "dataset": "wine"},
+            ]
+        )
+    ]
+    data = fixture_data(games, {"KernelSHAP": [1, 9, 3, 7], "SVARM": [2, 1, 4, 8]})
+    panels = summarize(data, bootstrap_draws=0)
+    rf = next(p for p in panels if p["game_ids"] == ["0", "2"])
+    rf_score = next(row for row in rf["rows"] if row["method"] == "KernelSHAP")
+    assert rf_score["mean"] == 2
+    assert rf_score["elo"] is not None
+    assert any(p["game_ids"] == ["1"] for p in panels)
+    assert any(p["game_ids"] == ["3"] for p in panels)

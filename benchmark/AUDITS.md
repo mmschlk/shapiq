@@ -673,3 +673,46 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
 - Final validation: all 340 benchmark tests pass. Pre-commit formatting/lint checks
   pass; the type checker retains the same eight pre-existing sklearn/Woodelf
   diagnostics outside this change.
+
+## Stronger-model profiles and explicit provenance (October 1)
+
+- Cancelled jobs 360900, 360901, 361328 and 361353 and disabled their campaign
+  watchers at the user's request. Retained their outputs privately; they are
+  superseded and must not be resumed or published.
+- Phase two declares 64 local games: four datasets, RF/XGBoost, baseline/marginal
+  construction and four seeds. Each has 12 players and the existing nine budgets.
+  Models use disjoint fitting/validation/test partitions, held-out quality scores,
+  source/data/parameter identities and authenticated shared artifacts. Later
+  phases produce planned inventories, not runnable promises.
+- Independent model audit caught a cache-identity omission: names, shapes and
+  dtypes now accompany dataset bytes. Independent integration checks verified RF
+  and XGBoost coalition predictions, exact SV and pairwise SII, shared model
+  artifacts, 96 dense-Hadamard comparisons and 24 Parseval identities.
+- Fourier diagnostics describe the frozen payoff table and do not filter games.
+  A seeded constant example remains visible but ineligible for normalized scores.
+- Independent browser audit checked actual public-export metadata, dataset/model
+  filters, exact Elo preset matching, literal untrusted text, safe links and
+  desktop/mobile rendering. Fixed exported row-count display and included the new
+  protocol script in both local export and the Pages workflow. Earlier results
+  remain explicitly labeled as an earlier preview.
+
+## Measured GPU preparation (October 1)
+
+- Slurm pilot 361436 compared one EPYC 9754 core with one L40S. Fixed TabPFN
+  prediction (1,024 rows, 256 context rows) was about 91× faster warm and 9× on
+  the first call. XGBoost's small fit gained only 1.1×; warm prediction gained
+  about 2× and included CPU-input fallback/transfer overhead. Initial RF/XGBoost
+  production recipes remain CPU-based. These are not campaign speedup claims.
+- Pilot 361440 measured the shipped TabPFN remove-and-contextualize game using
+  Adult Census, 12 players, 64 context rows and the same 32 coalitions: CPU warm
+  batches averaged 8.94s; CUDA float32 batches averaged 3.64s (~2.5×). Setup was
+  5.51s versus 0.55s. CPU and GPU values differed slightly and therefore require
+  distinct frozen identities, rather than reusing CPU truth for GPU payoffs.
+- GPU preparation is explicit, records backend/device/precision, and uses one
+  worker per allocated GPU. Estimators still execute on standardized CPUs.
+  Oracle cost estimates retain the preparation hardware in public provenance.
+- Final validation: 379 benchmark tests pass; desktop/mobile browser checks pass.
+  Pre-commit formatting and lint checks pass. The type checker retains the same
+  eight pre-existing sklearn/Woodelf diagnostics outside this change. Independent
+  GPU audit verified device validation, timing synchronization, cache identity and
+  public provenance; its current-device metadata correction is included.

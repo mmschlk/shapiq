@@ -23,6 +23,9 @@ comparison locally without uploading anything.
 
 | Responsibility | Files |
 | --- | --- |
+| Declare rollout, budgets, datasets and model/construction pairings | `protocol.py` |
+| Fit and reuse stronger models with held-out quality checks | `models.py` |
+| Describe frozen game complexity | `spectrum.py` |
 | Select compatible dataset/recipe/player combinations | `matrix.py`, `benchmark/suites/matrix.json` |
 | Prepare a matrix in parallel and resume checkpoints | `benchmark/prepare_matrix.py` |
 | Construct game recipes | `families.py`, `media.py`, `games.py` |
@@ -34,6 +37,7 @@ comparison locally without uploading anything.
 | Export the website and reproduction archive | `report.py`, `bundle.py` |
 | Render the interface | `benchmark/site/app.js`, `style.css`, `index.html` |
 | Draw performance and history charts | `benchmark/site/charts.js` |
+| Show dataset, model and game provenance | `benchmark/site/protocol.js` |
 | Describe estimators and link sources | `benchmark/site/methods.js` |
 
 Python files above live in `src/shapiq_benchmark/`. Start with `prepare.py` for
@@ -74,42 +78,46 @@ This prevents full enumeration within the budget grid; easy games can still have
 near-zero estimation error. Preparation rejects any constructed game below the
 minimum. New results are not yet on the website.
 
-The earlier 74-setting preparation finished in job `360843`; its queued sweep
-`360844` was cancelled before execution to replace it with this minimum-player
-suite. The completed frozen preparation remains archived separately. Publication
-requires an audited export and a data-manifest update; a completion watcher will
-wake the agent to carry out that work for the replacement campaign.
+### Current rollout
 
-The selected-pairing preparation uses frozen source `218d1390` with the
-LeverageSHAP and OddSHAP fixes. Job **360853** saved every payoff table, but two
-exact-reference calculations hit the worker's memory limit. Recovery **361008**
-qualified those saved tables in fresh processes, preserving all original bytes;
-the complete snapshot has **1,484 game/target definitions and 324 artifacts**.
-Sweep **361009** completed but imported a different checkout through the shared
-editable Python environment. Its results are archived and will not be published.
-Corrected sweep **361328** uses an explicit import path and checks source and
-environment against the prepared snapshot before execution. It is running on
-`gpu15`, alongside matrix preparation **360900** on `himem02`. The cancelled
-sweep **360873** never evaluated cells.
+The old preparations and sweeps **360900, 360901, 361328 and 361353 were
+cancelled at the user's request**. Their completion watchers are disabled and
+those outputs will not be published. The website still contains the earlier
+preview, explicitly labeled with its actual models and player counts.
 
-Job **361353** independently retries only the published campaign's 303 timeout
-cells on `himem01`, using the original estimator implementations and a 600-second
-limit. It preserves successful records and writes separate checkpoints. All three
-nodes were verified as AMD EPYC 9754 with 128 physical cores and SMT disabled;
-jobs retain exclusive allocations and single-threaded workers. Timing remains
-diagnostic, with actual host and affinity recorded. Completion watchers are armed.
+The **[roadmap](ROADMAP.md)** lists all 63 datasets, model profiles and
+construction mappings. The first replacement cohort is **64 games**: four
+datasets × two models × two local constructions × four seeds, with 12 real
+features, six explanation targets and nine relative budgets. Random forests
+have 100 trees without a depth cap; XGBoost uses up to 200 depth-eight trees
+with validation-based early stopping. Fit, validation and held-out partitions
+are disjoint; fitting is capped at 5,000 rows. Each fitted model is authenticated
+and reused across its game constructions.
 
-### Next implementation phases
+Generate the executable manifest with:
 
-The **[full benchmark roadmap](ROADMAP.md)** lists all 63 datasets, stronger model
-profiles, their game-construction mappings and seven implementation phases. It is
-the plan for future runs: the first full release has 64 stronger-model games,
-then expands constructions, models, datasets and large-player exact games until
-the declared compatible matrix is covered. Each phase ends in an independent
-audit and a verified website release.
+```bash
+UV_NO_SYNC=1 uv run python -m shapiq_benchmark.protocol --phase 2 --output /tmp/phase2.json
+```
 
-The inventory below is implemented, but its current shallow-model configuration
-is not the proposed final benchmark. Active frozen jobs retain their identities.
+Only phase two currently produces executable configurations. Later phases
+produce clearly marked compatibility inventories until their adapters are
+implemented and qualified. Each phase requires an independent audit before
+its results replace the preview. Device choices and model parameters are part
+of the recorded recipe, and the website shows actual dataset/model provenance.
+
+Use GPUs for game preparation when measured faster: the first fixed-TabPFN
+pilot strongly favored the L40S. RF and the initial XGBoost cohort stay on CPUs;
+GP and other workloads need their own measurements. Estimator evaluation keeps
+its standardized single-CPU profile. Cached-query charges retain their actual
+preparation hardware; they are estimates, not measured uncached runtime.
+
+Cached payoff tables also yield a Boolean Fourier spectrum without additional
+queries. It describes game complexity alongside predictive validation scores;
+it is not an automatic exclusion rule or a Shapley interaction index.
+
+The inventory below describes the previous shallow recipes, retained for
+reproduction. It is not the configuration of the stronger-model rollout.
 
 ### Expanded matrix using shapiq's datasets
 
@@ -134,7 +142,7 @@ Player counts remain at least **11**, with enumeration capped at **20**. The
 expansion currently selects **3,730 tabular settings** from **13,866 candidates**,
 plus the existing 12 special and 13 structured settings: **89,900 game/target
 definitions** before runtime qualification. This is a preparation plan, not
-completed results or a change to the currently running frozen campaigns.
+completed results or a change to the cancelled frozen campaigns.
 
 Dataset size and player count mean different things. A larger dataset supplies
 more rows and columns, but these bounded recipes still use at most **512 training

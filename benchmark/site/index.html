@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="style.css" />
     <script defer src="methods.js"></script>
     <script defer src="charts.js"></script>
+    <script defer src="protocol.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -45,6 +46,7 @@
         </div>
       </section>
       <div id="notice" role="status">Loading results…</div>
+      <p class="protocolSummary" id="protocolSummary"></p>
       <section class="toolbar" aria-label="Benchmark filters">
         <label
           >PANEL<select id="panel">
@@ -85,6 +87,8 @@
             Tune filters <span>＋</span>
           </summary>
           <div class="advancedPanel">
+            <label>Dataset<select id="dataset"></select></label>
+            <label>Prediction model<select id="model"></select></label>
             <div class="fieldPair">
               <label
                 >Min players<input
@@ -241,7 +245,9 @@
                 <span class="srOnly">Time measurement</span>
                 <select id="timeMetric">
                   <option value="seconds">Measured runtime</option>
-                  <option value="estimated_uncached_seconds">Estimated uncached time</option>
+                  <option value="estimated_uncached_seconds">
+                    Estimated uncached time
+                  </option>
                 </select>
               </label>
             </div>
@@ -277,10 +283,25 @@
         </article>
       </section>
       <section class="belowFold">
+        <details id="protocol" class="protocolDetails">
+          <summary>Where the benchmark comes from <span>＋</span></summary>
+          <div id="protocolOverview" class="methodologyContent"></div>
+          <p class="drawerIntro">
+            Each setting combines a dataset, a prediction model, and a rule for
+            valuing a coalition. These are the settings in the loaded report;
+            planned extensions are listed in the
+            <a
+              href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ROADMAP.md"
+              >rollout plan</a
+            >.
+          </p>
+          <div id="protocolSettings"></div>
+        </details>
         <details class="coverageDetails">
           <summary>Games and benchmark coverage <span>＋</span></summary>
           <p class="drawerIntro">
-            Four instances per game setting, with exact ground truth.
+            Game constructions represented in this report, with exact ground
+            truth.
           </p>
           <div id="libraryCoverage"></div>
         </details>
@@ -307,10 +328,12 @@
             </p>
             <p>
               <strong>Time.</strong> Diagnostic runtime on matching hardware and
-              thread settings. For cached games, measured runtime includes lookups
-              rather than original model evaluations. Where recorded, estimated uncached
-              time adds the saved evaluation costs, shared across each preparation
-              batch. It is an estimate, not a fresh end-to-end measurement.
+              thread settings. For cached games, measured runtime includes
+              lookups rather than original model evaluations. Where recorded,
+              estimated uncached time adds the saved evaluation costs, shared
+              across each preparation batch. It is an estimate, not a fresh
+              end-to-end measurement. CPU and GPU preparation costs belong to
+              different hardware profiles, shown in the game details.
             </p>
             <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
             <p id="gameDetails"></p>

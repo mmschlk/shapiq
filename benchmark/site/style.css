@@ -1201,3 +1201,41 @@ footer a {
     font-size: 10px;
   }
 }
+
+/* Provenance follows the loaded snapshot, including older local reports. */
+.protocolSummary {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+.protocolSummary a {
+  margin-left: 6px;
+}
+#protocolOverview {
+  padding: 18px 22px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(120deg, #eef3ff, #fff5f6);
+}
+.belowFold .protocolSetting {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-top: 8px;
+  background: #ffffffa6;
+}
+.protocolSetting summary {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.protocolSetting p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.protocolSetting pre {
+  overflow: auto;
+  max-height: 220px;
+  font-size: 11px;
+}

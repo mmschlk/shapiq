@@ -42,6 +42,24 @@ EXTRA_CATALOG = {
 }
 
 
+def preparation_backend(device: str) -> dict:
+    """Describe an explicitly requested CUDA oracle; never silently fall back to CPU."""
+    import torch
+
+    if device != "cuda" or not torch.cuda.is_available():
+        message = "CUDA preparation requires an available, explicitly requested GPU."
+        raise ValueError(message)
+    current = torch.cuda.current_device()
+    return {
+        "device": "cuda",
+        "gpu_model": torch.cuda.get_device_name(current),
+        "compute_capability": list(torch.cuda.get_device_capability(current)),
+        "torch_version": str(torch.__version__),
+        "cuda_version": torch.version.cuda,
+        "inference_precision": "float32",
+    }
+
+
 class ActiveImage:
     """Remove the unused final player reported by the legacy SLIC clipping path."""
 
@@ -57,11 +75,20 @@ class ActiveImage:
 
 
 def make_extra(
-    name: str, *, instance_seed: int = 0, dataset: str | None = None, n_players: int | None = None
+    name: str,
+    *,
+    instance_seed: int = 0,
+    dataset: str | None = None,
+    n_players: int | None = None,
+    device: str = "cpu",
 ) -> tuple:
     """Prepare actual downloaded-model games; missing access propagates as coverage failure."""
     import torch
 
+    if device not in ("cpu", "cuda") or (device != "cpu" and name != "tabpfn"):
+        message = "Only TabPFN preparation supports an explicit CUDA device."
+        raise ValueError(message)
+    backend = preparation_backend(device) if device == "cuda" else None
     if name != "tabpfn" and dataset is not None:
         message = "Dataset overrides are supported only for TabPFN media recipes."
         raise ValueError(message)
@@ -81,6 +108,8 @@ def make_extra(
         "random_state": instance_seed,
         "instance_seed": instance_seed,
     }
+    if backend is not None:
+        metadata["preparation_hardware"] = backend
     if name == "text":
         from shapiq_games.benchmark.local_xai.benchmark_language import SentimentAnalysis
 
@@ -165,7 +194,7 @@ def make_extra(
         data_hash = hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest()
         train = train[:64]
         features = feature_subset(x, n_players, instance_seed)
-        parameters = {"n_estimators": 1, "device": "cpu", "class_index": 1}
+        parameters = {"n_estimators": 1, "device": device, "class_index": 1}
         eligible = np.flatnonzero(np.ptp(x[train], axis=0) > 0)
         if n_players is not None and len(eligible) < x.shape[1]:
             features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
@@ -173,7 +202,12 @@ def make_extra(
                 "seeded subset of columns nonconstant on the 64 TabPFN training rows"
             )
         x = x[:, features]
-        model = TabPFNClassifier(device="cpu", n_estimators=1, random_state=instance_seed)
+        model_options = {"inference_precision": torch.float32} if device == "cuda" else {}
+        if device == "cuda":
+            parameters["inference_precision"] = "float32"
+        model = TabPFNClassifier(
+            device=device, n_estimators=1, random_state=instance_seed, **model_options
+        )
         game = TabPFNImputer(
             model,
             x[train],

@@ -235,7 +235,9 @@ function load(value) {
     Number.isFinite(row.estimated_uncached_seconds),
   );
   $("timeMetric").options[1].disabled = !hasEvaluationCosts;
-  $("timeMetric").value = hasEvaluationCosts ? "estimated_uncached_seconds" : "seconds";
+  $("timeMetric").value = hasEvaluationCosts
+    ? "estimated_uncached_seconds"
+    : "seconds";
   $("signalRule").textContent = data.suite.min_signal_ratio
     ? `Enumerated games also require RMS ground truth ≥ ${data.suite.min_signal_ratio} × payoff standard deviation. The same exclusions apply to every method.`
     : "";
@@ -266,6 +268,20 @@ function load(value) {
   [...$("family").options].forEach((option) => {
     if (option.value) option.textContent = familyLabel(option.value);
   });
+  options(
+    "dataset",
+    [
+      ...new Set(
+        data.games.map((g) => g.metadata?.dataset || "Unrecorded dataset"),
+      ),
+    ].sort(),
+    "All datasets",
+  );
+  options(
+    "model",
+    [...new Set(data.games.map(modelProfile))].sort(),
+    "All prediction models",
+  );
   $("budget").replaceChildren(new Option("All relative budgets", ""));
   const relative = document.createElement("optgroup");
   relative.label = "Queries per player · B/d";
@@ -309,6 +325,7 @@ function load(value) {
   );
   $("methodSearch").value = "";
   buildMethodPicker();
+  renderProtocol();
   renderCoverage();
   render();
 }
@@ -342,11 +359,11 @@ function renderCoverage() {
   const descriptions = {
     local_baseline: [
       "Baseline feature removal",
-      "Explain a decision tree by replacing absent features with fixed mean values.",
+      "Explain a fitted prediction model by replacing absent features with fixed mean values.",
     ],
     local_baseline_forest: [
       "Forest baseline feature removal",
-      "Explain an eight-tree forest using fixed mean values for absent features.",
+      "Explain a fitted forest using fixed mean values for absent features.",
     ],
     local_marginal: [
       "Marginal feature removal",
@@ -591,6 +608,9 @@ function selection(family = $("family").value, allBudgets = false) {
       isSynthetic(g) === ($("panel").value === "diagnostic") &&
       target(g) === $("target").value &&
       (!family || g.family === family) &&
+      (!$("dataset").value ||
+        (g.metadata?.dataset || "Unrecorded dataset") === $("dataset").value) &&
+      (!$("model").value || modelProfile(g) === $("model").value) &&
       g.n_players >= Number($("minPlayers").value) &&
       g.n_players <= Number($("maxPlayers").value),
   );
@@ -618,7 +638,12 @@ function selection(family = $("family").value, allBudgets = false) {
   );
   const zero = new Set([
     ...data.records.filter((r) => r.zero_truth_energy).map((r) => r.game_id),
-    ...data.games.filter((g) => g.metadata?.zero_truth_energy || g.metadata?.score_eligible === false).map((g) => g.id),
+    ...data.games
+      .filter(
+        (g) =>
+          g.metadata?.zero_truth_energy || g.metadata?.score_eligible === false,
+      )
+      .map((g) => g.id),
   ]);
   return {
     panel_ids: games.map((g) => g.id),
@@ -967,9 +992,14 @@ function download(kind) {
           methods: s.methods,
           budgets: s.budgets,
           cells: s.cells,
+          model: $("model").value || null,
+          dataset: $("dataset").value || null,
           seeds: data.suite.seeds,
           game_seeds: data.suite.game_seeds,
         },
+        games: s.games,
+        protocol: data.suite.protocol || null,
+        snapshot_provenance: data.snapshot_provenance,
         runs: data.runs,
         records: selectedRows,
       },
@@ -1013,6 +1043,8 @@ function download(kind) {
   "panel",
   "target",
   "family",
+  "dataset",
+  "model",
   "minPlayers",
   "maxPlayers",
   "budget",

@@ -27,6 +27,8 @@ from shapiq_benchmark.datasets import (
     dataset_details,
     load_dataset as _dataset,
 )
+from shapiq_benchmark.execution import hardware
+from shapiq_benchmark.models import prepare_model
 
 MAX_ENUMERATION_PLAYERS = 20
 
@@ -266,7 +268,13 @@ def _negative_mse(y: np.ndarray, prediction: np.ndarray) -> float:
 
 
 def make_family(
-    name: str, *, instance_seed: int = 0, dataset: str | None = None, n_players: int | None = None
+    name: str,
+    *,
+    instance_seed: int = 0,
+    dataset: str | None = None,
+    n_players: int | None = None,
+    model_profile: str | None = None,
+    model_cache: str | None = None,
 ) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
@@ -274,6 +282,8 @@ def make_family(
     preparation caller, which must preserve the failure as coverage information.
     Nothing here downloads models or substitutes a different payoff on failure.
     """
+    if model_profile is not None:
+        return _prediction_game(name, dataset, n_players, instance_seed, model_profile, model_cache)
     metadata = dict(FAMILY_CATALOG[name])
     configured = dataset is not None or n_players is not None
     module, attribute = metadata["class"].rsplit(".", 1)
@@ -684,4 +694,43 @@ def make_family(
     metadata["n_players"] = game.n_players
     metadata["normalize"] = game.normalize
     metadata["normalization_value"] = float(game.normalization_value)
+    return game, metadata
+
+
+def _prediction_game(
+    name: str,
+    dataset: str | None,
+    n_players: int | None,
+    seed: int,
+    profile: str,
+    cache_dir: str | None,
+) -> tuple:
+    """Use one qualified fitted model across the baseline and marginal games."""
+    if name not in ("local_baseline", "local_marginal") or dataset is None or n_players is None:
+        message = "Explicit model profiles currently require a bounded baseline/marginal recipe."
+        raise ValueError(message)
+    prepared = prepare_model(dataset, n_players, seed, profile, cache_dir=cache_dir)
+    metadata = {**FAMILY_CATALOG[name], **prepared.metadata}
+    module, attribute = metadata["class"].rsplit(".", 1)
+    constructor = getattr(importlib.import_module(module), attribute)
+    options = {"sample_size": 16} if name == "local_marginal" else {}
+    game = constructor(
+        model=prepared.predict,
+        data=prepared.x_train[:16],
+        x=prepared.x_test[0],
+        random_state=seed,
+        **options,
+    )
+    metadata.update(
+        recipe=name,
+        model=type(prepared.model).__name__,
+        model_profile=profile,
+        preparation_hardware={"device": "cpu", "cpu_model": hardware()["cpu_model"]},
+        parameters={"random_state": seed, **options},
+        background_size=len(prepared.x_train[:16]),
+        point_row=metadata["test_indices"][0],
+        output_scale="class probability" if metadata["task"] == "classification" else "prediction",
+        normalize=game.normalize,
+        normalization_value=float(game.normalization_value),
+    )
     return game, metadata

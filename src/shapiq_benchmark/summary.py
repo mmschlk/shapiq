@@ -319,6 +319,35 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
             (family, [game for game in target_games if game["family"] == family])
             for family in sorted({game["family"] for game in target_games})
         )
+        if any(game.get("metadata", {}).get("model_profile") for game in target_games):
+            # Exact presets for the website's model/dataset filters. Legacy reports
+            # keep their original panels; only named-profile cohorts add these.
+            scoped = []
+            for family, panel in subsets:
+
+                def model_key(game: dict) -> str:
+                    metadata = game.get("metadata", {})
+                    return (
+                        metadata.get("model_profile")
+                        or metadata.get("model")
+                        or "No model recorded"
+                    )
+
+                def dataset_key(game: dict) -> str:
+                    return game.get("metadata", {}).get("dataset") or "Unrecorded dataset"
+
+                models = [None, *sorted({model_key(g) for g in panel})]
+                datasets = [None, *sorted({dataset_key(g) for g in panel})]
+                for model, dataset in itertools.product(models, datasets):
+                    group = [
+                        g
+                        for g in panel
+                        if (model is None or model_key(g) == model)
+                        and (dataset is None or dataset_key(g) == dataset)
+                    ]
+                    if group:
+                        scoped.append((family, group))
+            subsets = scoped
         seen = set()
         for family, panel_games in subsets:
             grids = [(None, {game["id"]: game_grids[game["id"]] for game in panel_games})]

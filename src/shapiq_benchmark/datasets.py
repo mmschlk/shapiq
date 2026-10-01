@@ -57,14 +57,8 @@ DATASETS = {
 DATASETS.update(ADDITIONAL_DATASETS)
 
 
-@lru_cache(maxsize=8)
-def load_dataset(name: str, instance_seed: int = 0) -> tuple:
-    """Load once per seed, retaining original column and row identities.
-
-    Added datasets use the shipped loader unchanged. Any remaining missing inputs
-    are filled with training-only medians; targets are never imputed or relabeled.
-    Loader preprocessing may itself use the full dataset, as documented upstream.
-    """
+def load_raw_dataset(name: str) -> tuple:
+    """Read the shipped loader's stable representation and validate its catalog identity."""
     info = DATASETS[name]
     module, attribute = info["source"].rsplit(".", 1)
     loader = getattr(importlib.import_module(module), attribute)
@@ -92,6 +86,15 @@ def load_dataset(name: str, instance_seed: int = 0) -> tuple:
     if classification and len(np.unique(y)) != info["n_classes"]:
         message = f"Dataset {name} class count disagrees with its declared task."
         raise ValueError(message)
+    return x, y, feature_names
+
+
+@lru_cache(maxsize=8)
+def load_dataset(name: str, instance_seed: int = 0) -> tuple:
+    """Reproduce the bounded legacy split and training-only missing-input repair."""
+    info = DATASETS[name]
+    x, y, feature_names = load_raw_dataset(name)
+    classification = info["task"] == "classification"
     train, test = train_test_split(
         np.arange(len(x)),
         test_size=0.2,

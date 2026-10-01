@@ -173,3 +173,62 @@ def test_requested_text_players_must_match_tokenizer(monkeypatch: pytest.MonkeyP
     )
     with pytest.raises(ValueError, match="Requested 11 active players"):
         make_extra("text", n_players=11)
+
+
+def test_cuda_tabpfn_is_explicit_and_records_precision(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GPU construction fixes precision and retains the actual accelerator identity."""
+    import torch
+
+    from shapiq_benchmark import media
+
+    settings = []
+    backend = {"device": "cuda", "gpu_model": "test GPU", "inference_precision": "float32"}
+    monkeypatch.setattr(media, "preparation_backend", lambda device: backend)
+    monkeypatch.setitem(
+        sys.modules,
+        "tabpfn",
+        SimpleNamespace(TabPFNClassifier=lambda **kwargs: settings.append(kwargs)),
+    )
+    monkeypatch.setattr(
+        "shapiq.imputer.tabpfn_imputer.TabPFNImputer",
+        lambda model, rows, *args, **kwargs: SimpleNamespace(
+            n_players=rows.shape[1], fit=lambda point: None
+        ),
+    )
+    _, metadata = make_extra("tabpfn", device="cuda")
+    assert settings[0]["device"] == "cuda"
+    assert settings[0]["inference_precision"] == torch.float32
+    assert metadata["preparation_hardware"] == backend
+    assert metadata["parameters"]["inference_precision"] == "float32"
+
+
+def test_cuda_unavailable_never_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A CUDA recipe must not silently become a CPU oracle with another timing profile."""
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    with pytest.raises(ValueError, match="available, explicitly requested GPU"):
+        make_extra("tabpfn", device="cuda")
+
+
+@pytest.mark.parametrize(("name", "device"), [("image", "cuda"), ("tabpfn", "auto")])
+def test_gpu_requires_a_qualified_recipe(name: str, device: str) -> None:
+    """Other media backends are not accelerated merely because CUDA is installed."""
+    with pytest.raises(ValueError, match="Only TabPFN"):
+        make_extra(name, device=device)
+
+
+def test_cuda_payoff_identity_and_timing_include_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Different GPU hardware cannot reuse a payoff chunk or lose its cost provenance."""
+    from shapiq_benchmark import materialize
+
+    backend = {"device": "cuda", "gpu_model": "L40S", "inference_precision": "float32"}
+    monkeypatch.setattr(materialize, "preparation_backend", lambda device: dict(backend))
+    spec = {"id": "tabpfn-cuda", "family": "tabpfn", "n_players": 13, "device": "cuda"}
+    first = materialize._chunk_identity(spec, 0, 0, {"source_sha256": "source"})
+    backend["gpu_model"] = "another GPU"
+    second = materialize._chunk_identity(spec, 0, 0, {"source_sha256": "source"})
+    assert first != second
+    assert first["spec"]["device"] == "cuda"
+    batch = materialize._timing_batch(0, 2, 1.0, {"preparation_hardware": backend})
+    assert batch["preparation_hardware"] == backend
