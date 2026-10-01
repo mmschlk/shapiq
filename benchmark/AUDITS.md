@@ -733,3 +733,17 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
 - Sweep 361442 runs 76,032 planned cells on 128 pinned EPYC 9754 cores, with
   600-second limits and a completion watcher. Publication awaits an independent
   results audit.
+
+## Provenance tables (October 1)
+
+- Replaced repeated game paragraphs and per-setting drawers with a construction
+  overview and Games, Datasets, Models, and Run settings tables. All tables use
+  the loaded report; model parameters, data counts and source links are recorded
+  facts, with explicit fallbacks when legacy exports omit them.
+- Independent browser audit checked the real public legacy report and a real
+  phase-two public export: 31/8/13/37 and 2/4/2/16 construction/dataset/model/
+  combination counts respectively. Source paths exist at their pinned commits.
+- Desktop, 390-pixel mobile, keyboard details controls, filters and injection
+  checks pass. Tables scroll inside the page on narrow screens. JavaScript syntax,
+  formatting and lint checks pass; the existing eight unrelated Python type-check
+  diagnostics remain unchanged. No experiment code or running jobs changed.

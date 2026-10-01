@@ -1219,23 +1219,71 @@ footer a {
   border-radius: 12px;
   background: linear-gradient(120deg, #eef3ff, #fff5f6);
 }
-.belowFold .protocolSetting {
-  padding: 12px 16px;
+/* Scope provenance tables so leaderboard column styling does not leak in. */
+.provenanceTableWrap {
+  overflow-x: auto;
+  margin-top: 16px;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  margin-top: 8px;
-  background: #ffffffa6;
+  border-radius: 12px;
+  background: #ffffffb3;
 }
-.protocolSetting summary {
-  font-size: 12px;
-  line-height: 1.7;
+.provenanceTable {
+  white-space: normal;
+  table-layout: fixed;
+  min-width: 670px;
+  line-height: 1.65;
 }
-.protocolSetting p {
-  font-size: 12px;
-  line-height: 1.8;
+.provenanceTable th,
+.provenanceTable td {
+  text-align: left;
+  vertical-align: top;
+  padding: 13px 16px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
 }
-.protocolSetting pre {
-  overflow: auto;
-  max-height: 220px;
+.provenanceTable thead th {
   font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  background: #eef3fc;
+}
+.provenanceTable tbody th {
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: normal;
+}
+.provenanceTable tr:last-child > * {
+  border-bottom: 0;
+}
+.provenanceTable tbody tr:hover {
+  background: #f1f5ff;
+}
+.provenanceTable td > div > div + div {
+  margin-top: 5px;
+}
+.provenanceTable a {
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+.provenanceHeading {
+  margin: 24px 0 6px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.provenanceNote {
+  line-height: 1.8;
+  font-size: 12px;
+}
+.protocolDetails[open] > summary > span {
+  transform: rotate(45deg);
+}
+@media (max-width: 600px) {
+  #protocolOverview {
+    padding: 14px;
+  }
+  .provenanceTable {
+    min-width: 620px;
+  }
 }

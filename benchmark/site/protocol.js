@@ -1,6 +1,6 @@
 "use strict";
 
-// Report metadata is the source of truth. A newer roadmap never relabels old results.
+// Describe the loaded snapshot, never planned games from a newer roadmap.
 const modelProfile = (game) =>
   game.metadata?.model_profile || game.metadata?.model || "No model recorded";
 const sourceRoot = () => {
@@ -17,6 +17,19 @@ function sourceLink(label, url) {
   }
   return link;
 }
+const distinct = (values) => [
+  ...new Set(values.filter((v) => v !== undefined && v !== null && v !== "")),
+];
+const readable = (name) => name.replaceAll("_", " ");
+function grouped(games, key) {
+  const groups = new Map();
+  for (const game of games) {
+    const name = key(game);
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(game);
+  }
+  return groups;
+}
 function protocolParagraph(label, text) {
   const paragraph = document.createElement("p"),
     heading = document.createElement("strong");
@@ -24,13 +37,545 @@ function protocolParagraph(label, text) {
   paragraph.append(heading, document.createTextNode(text));
   return paragraph;
 }
+function protocolTable(id, headings, rows) {
+  const container = $(id),
+    wrapper = document.createElement("div"),
+    table = document.createElement("table"),
+    head = document.createElement("thead"),
+    body = document.createElement("tbody");
+  wrapper.className = "provenanceTableWrap";
+  wrapper.tabIndex = 0;
+  wrapper.setAttribute("role", "region");
+  wrapper.setAttribute("aria-label", headings.join(", "));
+  table.className = "provenanceTable";
+  const header = document.createElement("tr");
+  headings.forEach((label) => {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    header.append(cell);
+  });
+  head.append(header);
+  rows.forEach((values) => {
+    const row = document.createElement("tr");
+    values.forEach((value, index) => {
+      const cell = document.createElement(index ? "td" : "th");
+      if (!index) cell.scope = "row";
+      cell.append(
+        value instanceof Node ? value : document.createTextNode(String(value)),
+      );
+      row.append(cell);
+    });
+    body.append(row);
+  });
+  table.append(head, body);
+  wrapper.append(table);
+  container.replaceChildren(wrapper);
+}
+function lines(...items) {
+  const block = document.createElement("div");
+  for (const item of items.filter(Boolean)) {
+    const line = document.createElement("div");
+    line.append(item instanceof Node ? item : document.createTextNode(item));
+    block.append(line);
+  }
+  return block;
+}
+const gameKind = (game) => {
+  const m = game.metadata || {};
+  return (
+    m.game_kind ||
+    m.recipe ||
+    {
+      InterventionalTreeSHAPIQ: "interventional_tree",
+      KNNExplainer: "knn",
+      ProductKernelExplainer: "product_kernel",
+    }[m.truth_method] ||
+    m.case_id ||
+    game.family
+  );
+};
+const gameName = (game) =>
+  gameDescriptions[gameKind(game)]?.[0] || readable(gameKind(game));
+function adapterPath(game) {
+  if (game.metadata?.model_profile) return "src/shapiq_benchmark/models.py";
+  if (
+    ["text", "image", "tabpfn", "causal_local", "causal_global"].includes(
+      gameKind(game),
+    )
+  )
+    return "src/shapiq_benchmark/media.py";
+  return game.metadata?.class
+    ? "src/shapiq_benchmark/families.py"
+    : "src/shapiq_benchmark/games.py";
+}
+function implementation(game) {
+  const cls = game.metadata?.class;
+  const module =
+    typeof cls === "string" &&
+    /^shapiq(?:_games)?(?:\.[A-Za-z_][A-Za-z_0-9]*)+$/.test(cls)
+      ? `src/${cls.split(".").slice(0, -1).join("/")}.py`
+      : adapterPath(game);
+  return sourceLink(
+    cls?.split(".").at(-1) || "Benchmark adapter",
+    sourceRoot() + module,
+  );
+}
+const gameDescriptions = {
+  local_baseline: [
+    "Baseline feature removal",
+    "Explain a fitted prediction model by replacing absent features with fixed mean values.",
+  ],
+  local_baseline_forest: [
+    "Forest baseline feature removal",
+    "Explain a fitted forest using fixed mean values for absent features.",
+  ],
+  local_marginal: [
+    "Marginal feature removal",
+    "Average predictions over fixed background rows when features are absent.",
+  ],
+  local_gaussian: [
+    "Gaussian conditional explanations",
+    "Fill absent features using a fitted conditional Gaussian distribution.",
+  ],
+  local_copula: [
+    "Gaussian-copula explanations",
+    "Use a Gaussian copula to model dependencies when filling absent features.",
+  ],
+  local_conditional: [
+    "Tree-based conditional explanations",
+    "Use tree embeddings to sample absent features conditionally.",
+  ],
+  global_fidelity: [
+    "Global prediction fidelity",
+    "Measure how well selected features preserve the full model’s predictions across examples.",
+  ],
+  feature_selection: [
+    "Feature selection",
+    "Retrain on selected features and measure held-out regression error or classification accuracy.",
+  ],
+  data_valuation: [
+    "Training-example valuation",
+    "Retrain on selected training examples and measure held-out regression error or classification accuracy.",
+  ],
+  dataset_valuation: [
+    "Dataset-group valuation",
+    "Treat groups of training rows as players and evaluate models trained on selected groups.",
+  ],
+  ensemble: [
+    "Ensemble selection",
+    "Combine selected models by averaging regression predictions or voting on classes, then measure held-out performance.",
+  ],
+  forest_ensemble: [
+    "Forest ensemble selection",
+    "Treat individual trees as players and evaluate their average regression predictions or class votes.",
+  ],
+  uncertainty: [
+    "Prediction uncertainty",
+    "Explain how features affect a forest’s predictive entropy.",
+  ],
+  cluster: [
+    "Clustering",
+    "Measure the quality of K-means clusters formed from selected features.",
+  ],
+  unsupervised: [
+    "Feature dependence",
+    "Measure total correlation among selected, discretized features.",
+  ],
+  pathdependent_tree: [
+    "Path-dependent tree explanations",
+    "Explain tree predictions using training-path frequencies for absent features.",
+  ],
+  interventional_tree: [
+    "Interventional tree explanations",
+    "Explain tree predictions by averaging over reference rows; larger cases use exact tree ground truth.",
+  ],
+  product_kernel: [
+    "Product-kernel explanations",
+    "Explain RBF support-vector scores by including selected feature factors; larger cases have exact kernel ground truth.",
+  ],
+  knn: [
+    "Nearest-neighbor valuation",
+    "Treat training examples as players and score the selected nearest neighbors’ agreement with the test label, including larger games with exact ground truth.",
+  ],
+  tnn: [
+    "Threshold-neighbor valuation",
+    "Score label agreement among selected training examples within a fixed distance of a test point.",
+  ],
+  weighted_knn: [
+    "Weighted nearest-neighbor valuation",
+    "Evaluate selected training examples using distance-weighted class votes.",
+  ],
+  binary_weighted_knn: [
+    "Binary weighted-neighbor valuation",
+    "Compare distance-weighted votes for the explained class against a fixed alternative class.",
+  ],
+  unanimity: [
+    "Unanimity games",
+    "Synthetic checks where a coalition scores only when it contains a designated group of players.",
+  ],
+  soum: [
+    "Sums of unanimity games",
+    "Synthetic combinations of fixed player groups, used as controlled interaction checks.",
+  ],
+  dummy: [
+    "Dummy-player checks",
+    "Synthetic additive contributions plus a fixed interaction test which players affect each term.",
+  ],
+  random: [
+    "Random games",
+    "Synthetic random coalition payoffs are frozen into a reproducible table.",
+  ],
+  text: [
+    "Text explanations",
+    "Mask tokens in four authored sentences and explain an IMDb-trained DistilBERT sentiment model.",
+  ],
+  image: [
+    "Image explanations",
+    "Mask superpixels in four bundled images and explain a pretrained ResNet18 classifier.",
+  ],
+  tabpfn: [
+    "TabPFN explanations",
+    "Remove features from a TabPFN classifier’s training context and explain a class probability.",
+  ],
+  causal_global: [
+    "Global confounding explanations",
+    "Use simulated treatments and outcomes to attribute confounding across a dataset.",
+  ],
+  causal_local: [
+    "Local confounding explanations",
+    "Use the same causal simulation to attribute confounding for one example.",
+  ],
+};
+function legacyDatasetSources() {
+  const sklearn =
+    "https://scikit-learn.org/stable/modules/generated/sklearn.datasets.";
+  return {
+    adult_census: [
+      "Census demographics and whether annual income exceeds $50,000",
+      "https://archive.ics.uci.edu/dataset/2/adult",
+    ],
+    mushroom: [
+      "Mushroom characteristics and edible / poisonous labels",
+      "https://archive.ics.uci.edu/dataset/73/mushroom",
+    ],
+    ionosphere: [
+      "Radar measurements and good / bad ionosphere returns",
+      "https://archive.ics.uci.edu/dataset/52/ionosphere",
+    ],
+    wine_quality: [
+      "Red and white wine measurements and quality scores",
+      "https://archive.ics.uci.edu/dataset/186/wine+quality",
+    ],
+    communities_and_crime: [
+      "Community demographics and violent-crime rates",
+      "https://shap.readthedocs.io/en/latest/generated/shap.datasets.communitiesandcrime.html",
+    ],
+    nhanesi: [
+      "NHANES I health survey and survival follow-up",
+      "https://shap.readthedocs.io/en/latest/generated/shap.datasets.nhanesi.html",
+    ],
+    "synthetic diagnostic": [
+      "Generated coalition payoffs; no external dataset",
+      sourceRoot() + "src/shapiq_games/synthetic/",
+    ],
+    california_housing: [
+      "California Housing census features and house values",
+      `${sklearn}fetch_california_housing.html`,
+    ],
+    iris: ["Iris flower measurements and species", `${sklearn}load_iris.html`],
+    diabetes: [
+      "Diabetes measurements and disease progression",
+      `${sklearn}load_diabetes.html`,
+    ],
+    bike_sharing: [
+      "Bike Sharing weather, calendar features and rental counts",
+      "https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset",
+    ],
+    wine: [
+      "Wine chemical measurements and classes",
+      `${sklearn}load_wine.html`,
+    ],
+    breast_cancer: [
+      "Wisconsin breast-cancer measurements and labels",
+      `${sklearn}load_breast_cancer.html`,
+    ],
+    digits: ["Handwritten digit images", `${sklearn}load_digits.html`],
+    "authored sentiment examples": [
+      "Four authored sentiment sentences",
+      `${sourceRoot()}src/shapiq_benchmark/media.py`,
+    ],
+    "ImageNet bundled examples": [
+      "Bundled ImageNet images",
+      "https://www.image-net.org/",
+    ],
+    "Curth-VDS synthetic": [
+      "Curth-VDS simulated causal data",
+      `${sourceRoot()}src/shapiq_games/benchmark/causal_xai/benchmark.py`,
+    ],
+  };
+}
+function renderGames() {
+  const rows = [...grouped(data.games, gameKind)].map(([kind, games]) => {
+    const values = (key) => distinct(games.map((g) => g.metadata?.[key]));
+    const spectra = [
+      ...grouped(
+        games.filter((g) => g.metadata?.fourier_spectrum),
+        (g) => g.metadata.case_id + ":" + g.metadata.instance_seed,
+      ).values(),
+    ].map((group) => group[0].metadata.fourier_spectrum);
+    const fourthOrder = spectra.map((s) =>
+      s.degree_mass.slice(4).reduce((a, b) => a + b, 0),
+    );
+    const spectrum = fourthOrder.length
+      ? `Order 4+ Fourier energy: ${(100 * Math.min(...fourthOrder)).toFixed(1)}–${(100 * Math.max(...fourthOrder)).toFixed(1)}% across recorded instances.`
+      : "";
+    return [
+      gameName(games[0]),
+      lines(
+        gameDescriptions[kind]?.[1] ||
+          values("semantics").join("; ") ||
+          "Frozen coalition payoffs.",
+        spectrum,
+      ),
+      lines(
+        `${distinct(games.map((g) => g.n_players))
+          .sort((a, b) => a - b)
+          .join(", ")} players`,
+        values("player_unit").join(" / ") || "Player unit not recorded",
+      ),
+      lines(
+        ...values("truth_method"),
+        ...distinct(games.map((g) => g.metadata?.class || adapterPath(g))).map(
+          (cls) =>
+            implementation(
+              games.find((g) => (g.metadata?.class || adapterPath(g)) === cls),
+            ),
+        ),
+      ),
+    ];
+  });
+  protocolTable(
+    "protocolGames",
+    [
+      "Game construction",
+      "What the coalition is worth",
+      "Players",
+      "Exact reference & source",
+    ],
+    rows,
+  );
+}
+function renderDatasets() {
+  const legacy = legacyDatasetSources();
+  const rows = [
+    ...grouped(data.games, (g) => g.metadata?.dataset || "No dataset recorded"),
+  ].map(([name, games]) => {
+    const declared = data.suite.protocol?.datasets?.find((d) => d.id === name);
+    const values = (key) => distinct(games.map((g) => g.metadata?.[key]));
+    const loader = values("dataset_source")[0] || declared?.source;
+    let loaderURL;
+    if (loader?.startsWith("sklearn."))
+      loaderURL = `https://scikit-learn.org/stable/modules/generated/${loader}.html`;
+    else if (loader?.startsWith("shapiq"))
+      loaderURL =
+        sourceRoot() +
+        (loader.startsWith("shapiq_games.")
+          ? "src/shapiq_games/datasets/_all.py"
+          : "src/shapiq/datasets/_all.py");
+    const origin =
+      values("dataset_source_url")[0] ||
+      declared?.source_url ||
+      legacy[name]?.[1];
+    const counts = [
+      ["training_rows", "train_indices", "fitting"],
+      ["validation_rows", "validation_indices", "validation"],
+      ["test_rows", "test_indices", "held-out"],
+      ["background_size", "background_indices", "background"],
+    ].flatMap(([count, indices, label]) => {
+      const numbers = distinct(
+        games.map((g) => g.metadata?.[count] ?? g.metadata?.[indices]?.length),
+      ).sort((a, b) => a - b);
+      return numbers.length ? [`${numbers.join(" / ")} ${label} rows`] : [];
+    });
+    return [
+      declared?.label || readable(name),
+      lines(
+        legacy[name]?.[0],
+        declared?.task
+          ? `${declared.task}${declared.n_features ? ` · ${declared.n_features} source columns` : ""}`
+          : "",
+        ...values("dataset_target_note"),
+        ...values("dataset_preprocessing"),
+      ),
+      counts.length
+        ? counts.join("; ")
+        : "Row counts not recorded in this export.",
+      lines(
+        loaderURL
+          ? sourceLink(loader.split(".").at(-1), loaderURL)
+          : sourceLink(
+              "Recorded data adapter",
+              sourceRoot() + adapterPath(games[0]),
+            ),
+        origin
+          ? sourceLink("Original data", origin)
+          : "Original source not recorded.",
+      ),
+    ];
+  });
+  protocolTable(
+    "protocolDatasets",
+    [
+      "Dataset / input source",
+      "Data & target",
+      "Rows used across settings",
+      "Sources",
+    ],
+    rows,
+  );
+}
+function renderModels() {
+  const rows = [...grouped(data.games, modelProfile)].map(([name, games]) => {
+    const values = (key) => distinct(games.map((g) => g.metadata?.[key]));
+    const parameters = new Map();
+    games.forEach((g) =>
+      Object.entries(g.metadata?.model_parameters || {}).forEach(
+        ([key, value]) => {
+          if (key === "random_state") return;
+          if (!parameters.has(key)) parameters.set(key, []);
+          parameters
+            .get(key)
+            .push(value === null ? "unlimited" : String(value));
+        },
+      ),
+    );
+    const settings = [...parameters].map(
+      ([key, values]) => `${readable(key)}: ${distinct(values).join(" / ")}`,
+    );
+    const output = values("output_scale");
+    return [
+      lines(
+        readable(name),
+        ...values("model").filter((model) => model !== name),
+      ),
+      lines(
+        ...settings,
+        !settings.length ? "Parameters not recorded in this export." : "",
+      ),
+      output.length
+        ? output.join("; ")
+        : "See the game’s payoff rule; output scale was not separately recorded.",
+      lines(
+        ...distinct(games.map(adapterPath)).map((path) =>
+          sourceLink("Model setup in shapiq", sourceRoot() + path),
+        ),
+      ),
+    ];
+  });
+  protocolTable(
+    "protocolModels",
+    [
+      "Model used by the game",
+      "Recorded parameters",
+      "Explained output",
+      "Source",
+    ],
+    rows,
+  );
+}
+function renderRunSettings() {
+  const protocol = data.suite.protocol;
+  const settings = $("protocolSettings");
+  settings.replaceChildren(
+    protocolParagraph(
+      "Budgets",
+      `${data.suite.relative_budgets?.length ? data.suite.relative_budgets.join(", ") + " × d" : "This report’s relative budgets are derived from its recorded query caps"}. Caps round up to whole queries; actual usage may be smaller. Cached lookups count as queries.`,
+    ),
+    protocolParagraph(
+      "Replication",
+      `${replicationLabel()}. Game seeds: ${data.suite.game_seeds?.join(", ") || "not recorded"}; estimator seeds: ${data.suite.seeds.join(", ")}. Game seeds determine the recorded data split, player selection and model fit, where applicable.`,
+    ),
+    protocolParagraph(
+      "Explanation targets",
+      distinct(data.games.map((g) => target(g)))
+        .map(targetLabel)
+        .join("; ") +
+        ". Shapley values assign scores to players; interaction indices score groups of players.",
+    ),
+    protocolParagraph(
+      "Ground truth",
+      protocol?.exact_reference ||
+        "Exact references use the methods listed under Games. Enumerated games share a frozen payoff table; larger structured games use their recorded exact solver.",
+    ),
+  );
+  if (protocol?.minimum_players)
+    settings.append(
+      protocolParagraph(
+        "Eligibility",
+        `At least ${protocol.minimum_players} players; enumeration up to ${protocol.maximum_enumerated_players}. ${protocol.minimum_signal_ratio ? `RMS ground-truth attribution / payoff standard deviation must be at least ${protocol.minimum_signal_ratio}. ` : ""}Only compatible dataset, model and construction combinations are scheduled.`,
+      ),
+    );
+  if (protocol?.hardware)
+    settings.append(protocolParagraph("Hardware", protocol.hardware));
+  const prep = distinct(
+    data.games.map((g) => {
+      const h = g.metadata?.preparation_hardware;
+      return h
+        ? [
+            h.gpu_model || h.cpu_model || h.device,
+            h.inference_precision,
+            h.torch_version && `PyTorch ${h.torch_version}`,
+            h.cuda_version && `CUDA ${h.cuda_version}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : null;
+    }),
+  );
+  if (prep.length)
+    settings.append(
+      protocolParagraph(
+        "Preparation hardware",
+        prep.join("; ") +
+          ". Cached-query charges retain this hardware; estimator CPU timing is recorded separately.",
+      ),
+    );
+  const reproduce = protocolParagraph(
+    "Reproduce",
+    `Snapshot ${data.snapshot_id.slice(0, 12)}. `,
+  );
+  reproduce.append(
+    sourceLink("Frozen source", sourceRoot()),
+    document.createTextNode(" · "),
+    sourceLink("Game adapters", sourceRoot() + "src/shapiq_benchmark/"),
+  );
+  settings.append(reproduce);
+  const pairs = [
+    ...grouped(data.games, (g) =>
+      JSON.stringify([
+        gameKind(g),
+        g.metadata?.dataset,
+        modelProfile(g),
+        g.n_players,
+      ]),
+    ),
+  ].map(([, games]) => [
+    gameName(games[0]),
+    readable(games[0].metadata?.dataset || "No dataset recorded"),
+    readable(modelProfile(games[0])),
+    games[0].n_players,
+  ]);
+  protocolTable(
+    "protocolCombinations",
+    ["Construction", "Dataset / input", "Model", "d"],
+    pairs,
+  );
+}
 function renderProtocol() {
   const protocol = data.suite.protocol;
-  const models = [...new Set(data.games.map(modelProfile))];
-  const datasets = [
-    ...new Set(data.games.map((g) => g.metadata?.dataset).filter(Boolean)),
-  ];
-  const players = data.games.map((game) => game.n_players);
+  const datasets = distinct(data.games.map((g) => g.metadata?.dataset));
+  const players = data.games.map((g) => g.n_players);
   const summary = $("protocolSummary");
   summary.replaceChildren(
     document.createTextNode(
@@ -39,185 +584,32 @@ function renderProtocol() {
   );
   const jump = document.createElement("a");
   jump.href = "#protocol";
-  jump.textContent = "Datasets, models & budgets";
+  jump.textContent = "How the benchmark is built";
   jump.addEventListener("click", () => {
     $("protocol").open = true;
   });
   summary.append(jump);
-  const overview = $("protocolOverview");
-  overview.replaceChildren();
-  overview.append(
+  $("protocolOverview").replaceChildren(
+    protocolParagraph(
+      "Dataset + model + coalition rule",
+      "A dataset supplies examples, a model supplies predictions, and a game construction defines what a selected coalition is worth. Each seeded combination becomes one fixed game. Some constructions use raw data or synthetic payoffs without a prediction model.",
+    ),
+    protocolParagraph(
+      "What players mean",
+      "d counts features for prediction explanations, training examples or groups for data valuation, models for ensemble selection, and tokens or regions for text and images. It is not always the dataset’s number of columns.",
+    ),
+    protocolParagraph(
+      "Selected combinations",
+      "Only compatible combinations are included: the task, available players, model output and exact solver must match. The tables below describe this loaded report; Run settings lists its actual pairings.",
+    ),
     protocolParagraph(
       "This report",
       protocol?.description ||
-        "Earlier frozen configurations. The stronger-model rollout is separate; its datasets and models are not yet measured here.",
+        "Earlier frozen configurations. The stronger-model rollout is separate; its new datasets and models are not measured in this report yet.",
     ),
   );
-  overview.append(
-    protocolParagraph(
-      "Budgets",
-      `The benchmark grid is 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 × d. ${data.suite.relative_budgets?.length ? `This report schedules ${data.suite.relative_budgets.join(", ")} × d.` : "This older report's relative budgets are derived from its recorded query caps."} Caps round up to whole queries; actual usage may be smaller. Cached lookups count as queries.`,
-    ),
-  );
-  overview.append(
-    protocolParagraph(
-      "Players",
-      "d counts what a coalition selects: features for prediction explanations, training examples or groups for valuation, models for ensemble selection, and tokens or image regions for text and images. It is not always the dataset's column count.",
-    ),
-  );
-  overview.append(
-    protocolParagraph(
-      "Instances",
-      `${replicationLabel()}. The construction seed controls the recorded data split, player selection and fitted model. These are separate from estimator randomness.`,
-    ),
-  );
-  overview.append(
-    protocolParagraph(
-      "Prediction models",
-      `${models.join(", ")}. These define the games; the estimators in the leaderboard approximate their Shapley values or interactions.`,
-    ),
-  );
-  const provenance = protocolParagraph(
-    "Reproduce",
-    `Snapshot ${data.snapshot_id.slice(0, 12)}. `,
-  );
-  provenance.append(
-    sourceLink("Source at preparation", sourceRoot()),
-    document.createTextNode(" · "),
-    sourceLink(
-      "Configuration and adapters",
-      sourceRoot() + "src/shapiq_benchmark/",
-    ),
-  );
-  if (protocol?.source_url)
-    provenance.append(
-      document.createTextNode(" · "),
-      sourceLink("Experiment configuration", protocol.source_url),
-    );
-  overview.append(provenance);
-
-  const settings = new Map();
-  data.games.forEach((game) => {
-    const m = game.metadata || {};
-    const key = JSON.stringify([
-      m.dataset,
-      m.game_kind || m.recipe || m.case_id || game.family,
-      modelProfile(game),
-      game.n_players,
-    ]);
-    if (!settings.has(key)) settings.set(key, []);
-    settings.get(key).push(game);
-  });
-  const container = $("protocolSettings");
-  container.replaceChildren();
-  for (const games of settings.values()) {
-    const game = games[0],
-      m = game.metadata || {};
-    const detail = document.createElement("details"),
-      title = document.createElement("summary");
-    detail.className = "protocolSetting";
-    title.textContent = `${m.dataset || "No dataset recorded"} · ${(m.game_kind || m.recipe || m.case_id || game.family).replaceAll("_", " ")} · ${modelProfile(game)} · ${game.n_players} ${m.player_unit || "player"}${game.n_players === 1 ? "" : "s"}`;
-    detail.append(title);
-    detail.append(
-      protocolParagraph(
-        "Payoff",
-        m.semantics ||
-          "See the recorded construction in the reproduction download.",
-      ),
-    );
-    if (m.output_scale)
-      detail.append(protocolParagraph("Output", m.output_scale));
-    if (m.preparation_hardware)
-      detail.append(
-        protocolParagraph(
-          "Preparation hardware",
-          [
-            m.preparation_hardware.gpu_model ||
-              m.preparation_hardware.cpu_model ||
-              m.preparation_hardware.device,
-            m.preparation_hardware.inference_precision,
-            m.preparation_hardware.torch_version
-              ? `PyTorch ${m.preparation_hardware.torch_version}`
-              : null,
-            m.preparation_hardware.cuda_version
-              ? `CUDA ${m.preparation_hardware.cuda_version}`
-              : null,
-          ].filter(Boolean).join(" · ") +
-            ". Cached-query time charges refer to this preparation hardware; estimator execution uses its separately recorded CPU.",
-        ),
-      );
-    const rowCounts = [
-      ["training_rows", "train_indices", "fitting"],
-      ["validation_rows", "validation_indices", "validation"],
-      ["test_rows", "test_indices", "held-out"],
-      ["background_size", "background_indices", "background"],
-    ].flatMap(([count, indices, label]) => {
-      const counts = [
-        ...new Set(
-          games
-            .map((g) => g.metadata?.[count] ?? g.metadata?.[indices]?.length)
-            .filter(Number.isFinite),
-        ),
-      ].sort((a, b) => a - b);
-      return counts.length ? [`${counts.join("/")} ${label} rows`] : [];
-    });
-    detail.append(
-      protocolParagraph(
-        "Data used",
-        rowCounts.length
-          ? rowCounts.join("; ") +
-              ". Counts vary across instances where listed. Full row and column identities are in the reproduction download."
-          : "Row counts and model settings were not included in this older website export. Use the reproduction download for the frozen recipe.",
-      ),
-    );
-    if (m.dataset_target_note)
-      detail.append(protocolParagraph("Dataset target", m.dataset_target_note));
-    if (m.dataset_source)
-      detail.append(protocolParagraph("Loader", m.dataset_source));
-    const source = document.createElement("p");
-    if (m.dataset_source_url)
-      source.append(
-        sourceLink("Underlying dataset", m.dataset_source_url),
-        document.createTextNode(" · "),
-      );
-    if (m.dataset_source?.startsWith("shapiq"))
-      source.append(
-        sourceLink(
-          "shapiq dataset loader",
-          sourceRoot() + "src/shapiq_games/datasets/",
-        ),
-        document.createTextNode(" · "),
-      );
-    const module =
-      typeof m.class === "string" &&
-      /^shapiq(?:_games)?(?:\.[A-Za-z_][A-Za-z_0-9]*)+$/.test(m.class)
-        ? `src/${m.class.split(".").slice(0, -1).join("/")}.py`
-        : "src/shapiq_benchmark/games.py";
-    source.append(sourceLink("Game implementation", sourceRoot() + module));
-    detail.append(source);
-    if (m.fourier_spectrum?.degree_mass) {
-      const mass = m.fourier_spectrum.degree_mass;
-      const percent = (value) => `${(100 * value).toFixed(1)}%`;
-      detail.append(
-        protocolParagraph(
-          "Interaction structure",
-          m.fourier_spectrum.constant
-            ? "Constant payoff: no nonconstant Fourier energy."
-            : `Uniform-coalition Fourier energy: ${percent(mass[1] || 0)} at order 1, ${percent((mass[2] || 0) + (mass[3] || 0))} at orders 2–3, ${percent(mass.slice(4).reduce((a, b) => a + b, 0))} at orders 4+. This describes the first listed frozen instance, not Shapley interaction indices.${m.stochastic_frozen ? " Frozen sampling noise can contribute to this spectrum." : ""}`,
-        ),
-      );
-    }
-    if (m.model_parameters) {
-      const parameters = document.createElement("pre");
-      parameters.textContent = JSON.stringify(m.model_parameters, null, 2);
-      detail.append(
-        protocolParagraph(
-          "Model parameters",
-          "Recorded parameters for the first listed construction instance; full per-instance metadata is in the download.",
-        ),
-        parameters,
-      );
-    }
-    container.append(detail);
-  }
+  renderGames();
+  renderDatasets();
+  renderModels();
+  renderRunSettings();
 }

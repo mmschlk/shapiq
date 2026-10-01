@@ -14,6 +14,10 @@ and line patterns.
 History labels sit in endpoint-error order on the right, spaced for readability.
 On narrow screens, an ordered list below the plot shows their nMSE.
 
+Below the charts, expandable tables explain game constructions, datasets, models
+and the combinations actually included in the loaded report. Run settings record
+budgets, seeds, exact references and hardware, with links to the frozen source.
+
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
 step. You can evaluate a private estimator with the same runner and view the

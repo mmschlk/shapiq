@@ -284,26 +284,47 @@
       </section>
       <section class="belowFold">
         <details id="protocol" class="protocolDetails">
-          <summary>Where the benchmark comes from <span>＋</span></summary>
+          <summary>How games are constructed <span>＋</span></summary>
           <div id="protocolOverview" class="methodologyContent"></div>
-          <p class="drawerIntro">
-            Each setting combines a dataset, a prediction model, and a rule for
-            valuing a coalition. These are the settings in the loaded report;
-            planned extensions are listed in the
-            <a
-              href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ROADMAP.md"
-              >rollout plan</a
-            >.
-          </p>
-          <div id="protocolSettings"></div>
         </details>
-        <details class="coverageDetails">
-          <summary>Games and benchmark coverage <span>＋</span></summary>
+        <details class="protocolDetails">
+          <summary>Games <span>＋</span></summary>
           <p class="drawerIntro">
-            Game constructions represented in this report, with exact ground
-            truth.
+            Coalition rules represented in this report. d is the number of
+            players.
           </p>
-          <div id="libraryCoverage"></div>
+          <div id="protocolGames"></div>
+          <p class="provenanceNote">
+            Where available, Fourier energy describes the frozen payoff’s
+            interaction structure, not Shapley interaction indices. Frozen
+            sampling noise can contribute.
+          </p>
+        </details>
+        <details class="protocolDetails">
+          <summary>Datasets <span>＋</span></summary>
+          <p class="drawerIntro">
+            Actual input sources, targets and row counts. Counts can differ
+            across settings and seeds.
+          </p>
+          <div id="protocolDatasets"></div>
+        </details>
+        <details class="protocolDetails">
+          <summary>Models <span>＋</span></summary>
+          <p class="drawerIntro">
+            These models define game payoffs. The estimators in the ranking
+            approximate their Shapley values and interactions.
+          </p>
+          <div id="protocolModels"></div>
+        </details>
+        <details class="protocolDetails">
+          <summary>Run settings &amp; reproduction <span>＋</span></summary>
+          <div id="protocolSettings" class="methodologyContent"></div>
+          <h3 class="provenanceHeading">Included combinations</h3>
+          <p class="provenanceNote">
+            One row per construction, dataset, model and player count; repeated
+            seeds and explanation targets are grouped.
+          </p>
+          <div id="protocolCombinations"></div>
         </details>
         <details class="methodology">
           <summary>How to read the scores <span>＋</span></summary>
