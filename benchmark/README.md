@@ -5,8 +5,10 @@
 [Discuss the plan](https://github.com/mmschlk/shapiq/issues/601) ·
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
-Compare all 22 public estimator classes across representatives of every shipped
-game family. Filter by target, game family, player count, or budget; compare median/mean nMSE
+Compare all 22 public estimator classes on a declared cohort of frozen games.
+The current release covers baseline and marginal local explanations; the
+[roadmap](ROADMAP.md) expands to every shipped family. Filter by target, family,
+model, dataset, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
 player (`B/d`)** and time. Publication history appears below. Hover or focus a
 method to highlight it across charts and rows; click its name to expand a
@@ -56,8 +58,10 @@ charts. Both are ordinary scripts with no frontend build step. The About page re
 suite and public game metadata rather than the full evaluation records. Both
 Python exports and the Pages workflow produce this file; it is not tracked in Git.
 
-## What the expanded suite covers
+## Archived all-family suite
 
+This earlier design is retained for reference. The current website cohort and
+stronger-model rollout are described below; these counts are not live coverage.
 [suites/all-families.json](suites/all-families.json) defines:
 
 | Dimension | Coverage |
@@ -86,14 +90,14 @@ players, and not every declared feature must affect a fitted model's output.
 At 11 players, the maximum budget is `128 × 11 = 1,408 < 2,048` coalitions.
 This prevents full enumeration within the budget grid; easy games can still have
 near-zero estimation error. Preparation rejects any constructed game below the
-minimum. New results are not yet on the website.
+minimum. This archived suite is not the current phase-two release.
 
-### Current rollout
+## Current rollout
 
 The old preparations and sweeps **360900, 360901, 361328 and 361353 were
 cancelled at the user's request**. Their completion watchers are disabled and
-those outputs will not be published. The website still contains the earlier
-preview, explicitly labeled with its actual models and player counts.
+those outputs will not be published. The current release replaces the earlier
+preview with the audited phase-two cohort below.
 
 The **[roadmap](ROADMAP.md)** lists all 63 datasets, model profiles and
 construction mappings. The first replacement cohort is **64 games**: four
@@ -116,11 +120,27 @@ implemented and qualified. Each phase requires an independent audit before
 its results replace the preview. Device choices and model parameters are part
 of the recorded recipe, and the website shows actual dataset/model provenance.
 
-Preparation **361441** completed and passed independent audit. Sweep **361442**
-uses frozen source `893a5da7`, including the approved LeverageSHAP, OddSHAP,
-ProxySPEX and SVARM fixes, with a completion watcher armed. Its 76,032 planned
-cells use 128 pinned CPU workers and a 600-second per-cell limit.
-The stronger-model measurements have not yet replaced the public preview.
+Preparation **361441** and sweep **361442** completed. The release uses frozen
+source [`893a5da7`](https://github.com/rtealwitter/shapiq/commit/893a5da7757f5896fff1bddfffa1a82427781f01),
+including the approved LeverageSHAP, OddSHAP, ProxySPEX and SVARM fixes.
+All **76,032 planned cells** are accounted for: **27,919 successful evaluations**,
+2,432 under-budget runs (SPEX/ShaplEIG), 177 ShaplEIG timeouts, and 45,504
+unsupported target combinations. Unsupported targets are excluded from coverage;
+no evaluations are pending. All other methods have complete supported coverage.
+The sweep took 2 h 45 min on 128 pinned single-thread workers on an exclusive
+AMD EPYC 9754 node, with a 600-second per-cell limit. Concurrent timings remain
+labeled diagnostic. All games have **12 players** and four construction seeds.
+
+Exact references and fitted-model quality passed independent preparation audit;
+the completed records and public exports passed separate release audits.
+All 32 fitted models outperform their held-out dummy baseline. The games are
+still mostly low order: first-order Fourier energy spans roughly 60–99%, and
+energy above order three is at most 2.07%. Greater model depth alone does not
+establish difficult high-order games. Later phases expand constructions and
+models without silently selecting games based on estimator results.
+
+[Release data and reproduction archive](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01)
+retain the frozen source, exact game tables and per-run provenance.
 
 Use GPUs for game preparation when measured faster: the first fixed-TabPFN
 pilot strongly favored the L40S. RF and the initial XGBoost cohort stay on CPUs;
@@ -234,10 +254,10 @@ uv run python -m shapiq_benchmark.matrix \
 
 Full enumeration requires a new immutable source checkout, its own staging/cache
 identity and completion watcher. Existing matrix20 chunks are not automatically
-compatible with this expansion. The active seven-dataset jobs below continue
-unchanged, preserving completed work and their existing watchers.
+compatible with this expansion. The seven-dataset campaign below is archived;
+it was cancelled in favor of the phased stronger-model rollout.
 
-### Already-running seven-dataset matrix
+### Archived seven-dataset matrix (cancelled)
 
 The [frozen v2 configuration](https://github.com/rtealwitter/shapiq/blob/0762a2e503ad0d5852308b06427feabedd2a534d/benchmark/suites/matrix.json) crosses 23 tabular recipes with seven
 datasets: California Housing, Diabetes, Bike Sharing, Iris, Wine, Breast Cancer
@@ -264,23 +284,10 @@ Unsupported estimator targets remain visible as coverage, separate from failures
 Selection is a plan: preparation must still qualify every constructed game.
 
 The generated suite records selected combinations and exclusion reasons in
-`matrix_coverage`. The frozen snapshot, public export and reproduction archive
-retain this inventory. Generated suites and results stay outside Git. The broader
-campaign follows the selected-pairing run; each has its own completion watcher,
-audit and publication. An older campaign must never overwrite a newer live dataset.
-Preparation uses 64 pinned single-thread workers on an exclusive Hopper node,
-with 384 GiB allocated and a 12-GiB address-space limit per worker. Jobs have a
-72-hour window; completed chunks and tables survive resubmission. Evaluation
-retains the same 120-second/12-GiB per-cell limits and a 24-hour job window.
-
-The earlier pending matrix jobs 360871/360872 were cancelled before execution
-when the enumeration cap increased. Replacement preparation **360900** is running;
-evaluation **360901** starts after successful preparation and the corrected
-selected-pairing sweep **361328**. Both matrix jobs use frozen source
-[`0762a2e5`](https://github.com/rtealwitter/shapiq/commit/0762a2e503ad0d5852308b06427feabedd2a534d),
-including both estimator fixes. Separate watchers are armed for both campaigns
-to wake this session for audit, resumption if necessary, and verified publication.
-New results are still pending.
+`matrix_coverage`. Its source and incomplete outputs are retained for diagnosis,
+but jobs **360900/360901** and their watchers were cancelled. These historical
+counts are not the current website cohort and must not be published over it.
+The [phased roadmap](ROADMAP.md) supersedes this execution plan.
 
 ### Evaluate once, reuse the table
 

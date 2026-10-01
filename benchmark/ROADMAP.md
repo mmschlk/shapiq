@@ -6,6 +6,13 @@ profiles and constructions remain planned. Superseded jobs were cancelled;
 published results keep their identities. This roadmap
 supersedes executing the entire new dataset matrix with the old shallow models.
 
+**Completed: phases 1–2.** The audited first release contains 64 games, all at
+12 players, and 27,919 successful evaluations with no pending cells. Corrected
+LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
+[Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
+**Next: phase 3**, adding ordinary tabular constructions on the first eight
+datasets; its adapters and qualification must precede new production jobs.
+
 The finished benchmark covers **all 63 datasets in the target catalog**, the model profiles
 below, every shipped game-construction family, four construction seeds, and all
 nine relative budgets. We expand every **compatible** pairing in the declared
