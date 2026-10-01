@@ -622,3 +622,21 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
 - Separately deleted 13,356 records each for LeverageSHAP and OddSHAP from the
   unpublished wrong-source campaign, in both JSON and CSV across all 128 shards.
   Its remaining records are quarantined and cannot be used as corrected results.
+
+## Selective retries and parallel allocations (October 1)
+
+- Timeout retry 361353 selects exactly 303 original timeout cells: 206 ShaplEIG,
+  71 SVARMIQ, 16 SVARM and 10 ProxySPEX. It preserves original execution source
+  `d4ac18e6`, game snapshot, CPU affinities and 12-GiB cell limits, increasing only
+  the timeout to 600 seconds. Independent checks verify cell selection, resumption,
+  untouched originals and source authentication. Outputs remain separate until
+  audit and replacement export; withdrawn OddSHAP records must stay excluded.
+- Verified `himem01`, `himem02` and `gpu15` each have 128 physical EPYC 9754 cores
+  with SMT disabled. Removed unnecessary cross-campaign dependencies: retries
+  run on `himem01`, corrected selected-cohort evaluation on `gpu15`, and matrix
+  preparation on `himem02`. Each retains an exclusive allocation. Initial worker
+  records confirm intended source hashes, CPU model and single-core affinities.
+- Separate estimator PRs #607 (ProxySPEX small-budget HPO fallback) and #608
+  (SVARM stratification performance) passed independent audits and are assigned
+  to Max and Santo. These algorithm/version changes are not mixed into retries
+  of the original implementations.

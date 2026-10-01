@@ -88,9 +88,16 @@ the complete snapshot has **1,484 game/target definitions and 324 artifacts**.
 Sweep **361009** completed but imported a different checkout through the shared
 editable Python environment. Its results are archived and will not be published.
 Corrected sweep **361328** uses an explicit import path and checks source and
-environment against the prepared snapshot before execution. It is queued after
-matrix preparation **360900** and before matrix evaluation **360901**; the
-completion watcher is armed. The cancelled sweep **360873** never evaluated cells.
+environment against the prepared snapshot before execution. It is running on
+`gpu15`, alongside matrix preparation **360900** on `himem02`. The cancelled
+sweep **360873** never evaluated cells.
+
+Job **361353** independently retries only the published campaign's 303 timeout
+cells on `himem01`, using the original estimator implementations and a 600-second
+limit. It preserves successful records and writes separate checkpoints. All three
+nodes were verified as AMD EPYC 9754 with 128 physical cores and SMT disabled;
+jobs retain exclusive allocations and single-threaded workers. Timing remains
+diagnostic, with actual host and affinity recorded. Completion watchers are armed.
 
 ### Broader dataset × game matrix
 

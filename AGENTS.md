@@ -117,6 +117,12 @@ uv run pre-commit run --all-files
   an exclusive node: also verify that the job owns the node's full CPU count.
   Slurm logs that must be read from the login host need a shared workspace path;
   `/tmp` on a compute node is node-local.
+- Hardware standardization does not require every campaign to use one host.
+  `himem01`, `himem02` and `gpu15` were verified as 128-core AMD EPYC 9754 nodes
+  with SMT disabled. Verify actual allocations and worker records when selecting
+  another node; pinning every independent job to `himem02` needlessly serialized
+  preparation, timeout retries and evaluation. Preserve each campaign's selected
+  host and CPU affinities on resume.
 - `RegressionMSR.valid_indices` is inherited from `ProxySHAP` and is broader than
   its constructor's actual SV/BV support. Benchmark capability catalogs must
   follow constructor checks, not inherited registries alone. `kADDSHAP` with
