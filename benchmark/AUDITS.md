@@ -747,3 +747,20 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   checks pass. Tables scroll inside the page on narrow screens. JavaScript syntax,
   formatting and lint checks pass; the existing eight unrelated Python type-check
   diagnostics remain unchanged. No experiment code or running jobs changed.
+
+## Standalone benchmark guide (October 1)
+
+- Added a separate About page with the game-construction flow, compatible input
+  inventories, an interactive coalition-count example, exact-reference limits,
+  normalized error, median/mean, Elo, coverage and reproducibility explanations.
+  The main page links to it and keeps only result-specific details below charts.
+- Reused the existing provenance table renderer and shared labels. Both Python
+  export and Pages now produce a small about.json from already-public metadata;
+  the guide does not download evaluation records. Local reports stay in-browser.
+- Independent audit checked scientific wording against runner/summary code,
+  actual old/new metadata, pinned links, mobile layout, keyboard controls,
+  no-JavaScript reading, missing metadata and local-upload/fetch precedence.
+  Existing ranking, sorting, variants and model filters still work.
+- All 36 report tests pass, including portable assets and metadata/privacy checks.
+  Formatting and lint checks pass; the same eight unrelated sklearn/Woodelf type
+  diagnostics remain. No estimator behavior or running campaign changed.

@@ -800,6 +800,28 @@ th[aria-sort="descending"] .sortArrow {
 .belowFold {
   margin-top: 30px;
 }
+.aboutLink {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  padding: 22px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(120deg, #eef3ff, #fff5f6);
+  text-decoration: none;
+}
+.aboutLink strong {
+  color: var(--blue);
+}
+.aboutLink span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.aboutLink:hover {
+  border-color: var(--blue);
+}
 .belowFold details {
   border-top: 1px solid #dde5f0;
   padding: 17px 0;
@@ -1212,13 +1234,6 @@ footer a {
 .protocolSummary a {
   margin-left: 6px;
 }
-#protocolOverview {
-  padding: 18px 22px;
-  margin-top: 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: linear-gradient(120deg, #eef3ff, #fff5f6);
-}
 /* Scope provenance tables so leaderboard column styling does not leak in. */
 .provenanceTableWrap {
   overflow-x: auto;
@@ -1267,22 +1282,7 @@ footer a {
   color: var(--blue);
   text-underline-offset: 3px;
 }
-.provenanceHeading {
-  margin: 24px 0 6px;
-  font-size: 13px;
-  color: var(--ink);
-}
-.provenanceNote {
-  line-height: 1.8;
-  font-size: 12px;
-}
-.protocolDetails[open] > summary > span {
-  transform: rotate(45deg);
-}
 @media (max-width: 600px) {
-  #protocolOverview {
-    padding: 14px;
-  }
   .provenanceTable {
     min-width: 620px;
   }

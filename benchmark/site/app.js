@@ -1,5 +1,4 @@
 "use strict";
-const $ = (id) => document.getElementById(id);
 const palette = [
   "#426BE0",
   "#BF2355",
@@ -31,10 +30,6 @@ const dashFor = (method) =>
 const isSynthetic = (game) => Boolean(game.metadata?.synthetic);
 const isUnderBudget = (row) =>
   row.status === "failed" && row.failure_reason === "insufficient_budget";
-const replicationLabel = () =>
-  data.suite.game_seeds?.length
-    ? `${data.suite.game_seeds.length} game instances per setting · ${data.suite.seeds.length} estimator run${data.suite.seeds.length === 1 ? "" : "s"} per instance and budget`
-    : `${data.suite.seeds.length} estimator seeds per game`;
 const familyNames = {
   local_explanation: "Model explanations",
   data_valuation: "Training data valuation",
@@ -52,15 +47,6 @@ const familyLabel = (family) =>
   Object.hasOwn(familyNames, family)
     ? familyNames[family]
     : family.replaceAll("_", " ");
-const targetLabel = (value) =>
-  ({
-    SV: "Shapley Values",
-    "k-SII": "Shapley Interaction Indices (k-SII)",
-    SII: "Shapley Interaction Indices (SII)",
-    STII: "Shapley–Taylor Interactions (STII)",
-    FSII: "Faithful Shapley Interactions (FSII)",
-    FBII: "Faithful Banzhaf Interactions (FBII)",
-  })[value.split(" · ")[0]] || value;
 function numericOrder(a, b, descending = false) {
   const missing = Number(!Number.isFinite(a)) - Number(!Number.isFinite(b));
   return (
@@ -95,7 +81,7 @@ function rankingOrder(a, b) {
 }
 
 const format = (n) => (Number.isFinite(n) ? n.toPrecision(4) : "—");
-const target = (game) => `${game.index} · order ${game.order}`;
+
 const methodNames = {
   PermutationSamplingSV: "Permutation · values",
   PermutationSamplingSII: "Permutation · SII",
@@ -325,7 +311,7 @@ function load(value) {
   );
   $("methodSearch").value = "";
   buildMethodPicker();
-  renderProtocol();
+  renderReportSummary();
   render();
 }
 function buildMethodPicker() {

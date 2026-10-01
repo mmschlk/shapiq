@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f4f7fc" />
+    <meta
+      name="description"
+      content="How the shapiq benchmark turns datasets, models and coalition rules into games with exact answers, and how to read its estimator rankings."
+    />
+    <title>How the benchmark works · shapiq</title>
+    <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="about.css" />
+    <script defer src="protocol.js"></script>
+    <script defer src="about.js"></script>
+  </head>
+  <body class="aboutPage">
+    <noscript
+      ><p class="noScriptNote">
+        This guide is readable without JavaScript. Enable it to load the
+        snapshot inventories and explore the player-count slider.
+      </p></noscript
+    >
+    <a class="skipLink" href="#content">Skip to content</a>
+    <header>
+      <a class="brand" href="index.html"
+        ><img class="brandMark" src="shapiq.svg" alt="" />shapiq<span
+          class="brandSuffix"
+          >/ benchmark</span
+        ></a
+      >
+      <a class="backToResults" href="index.html">Explore the results ↗</a>
+    </header>
+    <main id="content">
+      <section class="aboutHero">
+        <p class="eyebrow">Behind the leaderboard</p>
+        <h1>How the benchmark<br /><span>works.</span></h1>
+        <p class="heroIntro">
+          Shapley values assign credit to players working together. Computing
+          them can be expensive. We compare estimators against exact answers
+          across different kinds of games, at the same evaluation budgets.
+        </p>
+        <nav class="aboutNav" aria-label="On this page">
+          <a href="#construction">Build a game</a>
+          <a href="#ingredients">Choose ingredients</a>
+          <a href="#truth">Get exact answers</a>
+          <a href="#scores">Compare estimators</a>
+          <a href="#reproduce">Reproduce</a>
+        </nav>
+      </section>
+
+      <section class="storySection" id="construction">
+        <div class="sectionTitle">
+          <span class="sectionNumber" aria-hidden="true">01</span>
+          <h2>First, define what a coalition is worth.</h2>
+        </div>
+        <p class="sectionIntro">
+          A game takes a subset of players—a <strong>coalition</strong>—and
+          returns a payoff. A common recipe combines three ingredients.
+        </p>
+        <ol
+          class="gameFlow"
+          aria-label="A prediction explanation game, from ingredients to payoff"
+        >
+          <li>
+            <span class="flowLabel">Dataset</span
+            ><strong>Examples to learn from</strong>
+            <p>Features, outcomes and a held-out example to explain.</p>
+          </li>
+          <li>
+            <span class="flowLabel">Model</span
+            ><strong>A fitted predictor</strong>
+            <p>
+              For example, a forest predicting an outcome from those features.
+            </p>
+          </li>
+          <li>
+            <span class="flowLabel">Construction</span
+            ><strong>A coalition rule</strong>
+            <p>
+              Keep selected features; replace missing ones using a specified
+              background.
+            </p>
+          </li>
+          <li>
+            <span class="flowLabel">Fixed game</span
+            ><strong>Subset → payoff</strong>
+            <p>The resulting prediction is the coalition’s value, v(S).</p>
+          </li>
+        </ol>
+        <div class="exampleCard">
+          <span class="eyebrow">For example</span>
+          <p>
+            <strong
+              >Adult Census + random forest + marginal feature removal.</strong
+            >
+            Fit a predictor, choose a held-out person, and average its
+            predictions over background values for absent features. Players are
+            features; the payoff is a class probability.
+          </p>
+          <p>
+            This is one recipe. Data valuation instead treats training examples
+            as players and can use held-out model performance as the payoff.
+          </p>
+        </div>
+        <p class="quietNote">
+          Some games need no prediction model. Players can also be groups,
+          ensemble members, image regions or text tokens. Throughout the
+          benchmark, <strong>d means the number of players</strong>.
+        </p>
+      </section>
+
+      <section class="storySection" id="ingredients">
+        <div class="sectionTitle">
+          <span class="sectionNumber" aria-hidden="true">02</span>
+          <h2>Combine compatible ingredients.</h2>
+        </div>
+        <p class="sectionIntro">
+          We reuse shapiq’s game constructions and dataset loaders. The task,
+          available players, model output and exact solver must fit together, so
+          the benchmark uses explicit compatible pairings rather than every
+          possible combination.
+        </p>
+        <div class="snapshotNote">
+          <strong>The published snapshot</strong>
+          <p id="protocolSummary">
+            Loading the report’s measured games, datasets and models…
+          </p>
+          <p id="aboutStatus" role="status">
+            The inventories describe the published report. You can also open a
+            local report.
+          </p>
+          <label class="aboutUpload" for="aboutUpload"
+            >Open local report<input
+              id="aboutUpload"
+              type="file"
+              accept=".json,application/json"
+          /></label>
+        </div>
+        <p class="quietNote">
+          The inventories below describe the loaded results. A planned dataset
+          or model is not counted as measured. The newer protocol uses four
+          seeded game instances per configuration and one estimator evaluation
+          per instance and budget; snapshot settings below show what actually
+          ran.
+        </p>
+        <article class="ingredientSection" id="protocol">
+          <h3>Games: what does the coalition change?</h3>
+          <p>
+            Prediction explanations remove features. Feature selection retrains
+            on selected features. Data valuation changes the training examples.
+            Each construction defines different players and a different payoff.
+          </p>
+          <details class="inventoryDetails">
+            <summary>Game constructions and shapiq implementations</summary>
+            <div id="protocolGames">
+              <p class="loadingInventory">
+                The game inventory appears after the report loads.
+              </p>
+            </div>
+          </details>
+          <p class="quietNote">
+            Where recorded, a Boolean Fourier spectrum describes how payoff
+            variation is distributed across interaction orders. It is a
+            diagnostic of the frozen game, not a Shapley interaction index or an
+            automatic inclusion rule; frozen sampling noise can contribute.
+          </p>
+        </article>
+        <article class="ingredientSection">
+          <h3>Datasets: where do the examples come from?</h3>
+          <p>
+            Dataset identity includes its source, target and preprocessing.
+            Training, validation and explanation rows serve different purposes;
+            recorded row counts and original feature selections make these
+            choices inspectable.
+          </p>
+          <details class="inventoryDetails">
+            <summary>Dataset sources, tasks and row counts</summary>
+            <div id="protocolDatasets">
+              <p class="loadingInventory">
+                The dataset inventory appears after the report loads.
+              </p>
+            </div>
+          </details>
+        </article>
+        <article class="ingredientSection">
+          <h3>Models: what produces the predictions?</h3>
+          <p>
+            These fitted models define the game’s payoffs. They are distinct
+            from the <strong>Shapley estimators</strong> on the leaderboard,
+            which approximate the resulting attributions.
+          </p>
+          <details class="inventoryDetails">
+            <summary>Prediction models, parameters and implementations</summary>
+            <div id="protocolModels">
+              <p class="loadingInventory">
+                The model inventory appears after the report loads.
+              </p>
+            </div>
+          </details>
+        </article>
+        <details class="inventoryDetails pairingDetails">
+          <summary>Actual dataset × model × construction pairings</summary>
+          <p>
+            Rows group repeated game seeds and explanation targets. Each player
+            count and construction remains explicit.
+          </p>
+          <div id="protocolCombinations"></div>
+        </details>
+      </section>
+
+      <section class="storySection" id="truth">
+        <div class="sectionTitle">
+          <span class="sectionNumber" aria-hidden="true">03</span>
+          <h2>Exact answers are the expensive part.</h2>
+        </div>
+        <p class="sectionIntro">
+          A general d-player game has <strong>2<sup>d</sup> coalitions</strong>.
+          Evaluating them all gives a payoff table from which we can compute
+          exact Shapley values and supported interaction indices.
+        </p>
+        <div class="coalitionExplorer">
+          <label for="playerCount"
+            >Players:
+            <output id="playerCountLabel" for="playerCount">12</output></label
+          ><input
+            id="playerCount"
+            type="range"
+            min="1"
+            max="30"
+            step="1"
+            value="12"
+          />
+          <p>
+            <output id="coalitionCount" for="playerCount">4,096</output>
+            coalitions
+          </p>
+        </div>
+        <div
+          class="growthCards"
+          aria-label="The number of coalitions grows exponentially with players"
+        >
+          <div>
+            <span>12 players</span><strong>4,096</strong><span>coalitions</span>
+          </div>
+          <div>
+            <span>20 players</span><strong>1,048,576</strong
+            ><span>coalitions</span>
+          </div>
+          <div>
+            <span>30 players</span><strong>1,073,741,824</strong
+            ><span>coalitions</span>
+          </div>
+        </div>
+        <div class="truthRoutes">
+          <article>
+            <span class="routeLabel">General games</span>
+            <h3>Enumerate once. Reuse the table.</h3>
+            <p>
+              The newer protocol restricts enumerated games to
+              <strong>11–20 players</strong>. We cache coalition payoffs so
+              estimators can reuse the same game without repeatedly running the
+              underlying model.
+            </p>
+          </article>
+          <article>
+            <span class="routeLabel">Structured games</span>
+            <h3>Use a specialized exact solver.</h3>
+            <p>
+              Some tree, nearest-neighbor and product-kernel games have
+              structure that permits exact computation at larger player counts.
+              Each solver must support the specific game and explanation target,
+              and match enumeration on small qualification cases.
+            </p>
+          </article>
+        </div>
+        <p class="quietNote">
+          <strong>Exact for which game?</strong> If game construction uses
+          sampling, we freeze that realization. Ground truth is exact for its
+          saved payoff table, not necessarily for the ideal expectation over
+          infinitely many background samples. Earlier published snapshots may
+          contain games below 11 players.
+        </p>
+      </section>
+
+      <section class="storySection" id="scores">
+        <div class="sectionTitle">
+          <span class="sectionNumber" aria-hidden="true">04</span>
+          <h2>Compare error at the same budget.</h2>
+        </div>
+        <p class="sectionIntro">
+          Each estimator receives the same game and a query allowance relative
+          to its player count. Shapley values and each interaction index are
+          scored in separate panels.
+        </p>
+        <div class="budgetStrip">
+          <strong>Queries per player</strong>
+          <p>0.5 · 1 · 2 · 4 · 8 · 16 · 32 · 64 · 128</p>
+          <span
+            >The new protocol’s budget grid. A query is one coalition
+            evaluation, including repeats. Plots show the requested cap; actual
+            usage can be lower.</span
+          >
+        </div>
+        <article class="errorCard">
+          <h3>nMSE: how far is the estimate from the exact answer?</h3>
+          <div
+            class="scoreEquation"
+            aria-label="Normalized mean squared error equals the sum of squared attribution errors divided by the sum of squared exact attributions"
+          >
+            <span>nMSE =</span
+            ><span class="fraction"
+              ><span>sum of squared attribution errors</span
+              ><span>sum of squared exact attributions</span></span
+            >
+          </div>
+          <div class="scoreGuide">
+            <p><strong>0</strong><span>Exact estimate</span></p>
+            <p>
+              <strong>1</strong
+              ><span>Error of estimating every attribution as zero</span>
+            </p>
+            <p>
+              <strong>&gt; 1</strong><span>Worse than that zero estimate</span>
+            </p>
+          </div>
+          <p>
+            Lower is better. Normalization makes differently scaled games
+            comparable. We align the selected attribution coordinates and
+            exclude the empty-coalition baseline. Zero-energy truth is
+            unscorable; the newer protocol also excludes near-zero signals using
+            its recorded scale-relative threshold.
+          </p>
+        </article>
+        <div class="metricCards">
+          <article>
+            <h3>Median nMSE</h3>
+            <p>
+              The default: a typical run under the benchmark’s balancing
+              weights. It is less sensitive to occasional extreme errors. At
+              exactly half the weight, we average the neighboring values.
+            </p>
+          </article>
+          <article>
+            <h3>Mean nMSE</h3>
+            <p>
+              The weighted average error. Rare, very bad estimates can move it
+              substantially, making it useful for spotting instability that the
+              median can hide.
+            </p>
+          </article>
+          <article>
+            <h3>Elo</h3>
+            <p>
+              How often an estimator achieves lower error on matched runs. We
+              fit all paired outcomes together using a regularized Bradley–Terry
+              model, centered at 1,000. Ties count as half wins.
+            </p>
+          </article>
+        </div>
+        <p class="quietNote">
+          <strong>Balanced summaries.</strong> Families receive equal weight,
+          then settings within families, game instances, budgets and evaluation
+          seeds within their groups. Successful partial results are reweighted
+          over what is observed. Elo uses overlapping successful runs and fixed
+          published presets; it describes relative wins, not the size of the
+          error difference or universal quality.
+        </p>
+        <details class="inventoryDetails eloDetails">
+          <summary>Elo pairing and tie rules</summary>
+          <p>
+            We pair runs on the same game, explanation target, budget and
+            evaluation seed. Errors within 1% of the larger nMSE plus 10<sup
+              >−12</sup
+            >
+            count as a tie. The batch fit uses an L2 penalty on its skill
+            parameters; ratings are unavailable if the comparison pool is
+            disconnected. There is no sequential match order.
+          </p>
+        </details>
+        <div class="readingNotes">
+          <article>
+            <h3>Read coverage alongside the score.</h3>
+            <p>
+              Missing and failed runs never become zero error. Low-coverage
+              methods can look good on an easier subset, so they appear below
+              complete methods by default. Unsupported explanation types are
+              separate from failures.
+            </p>
+          </article>
+          <article>
+            <h3>Check what “time” includes.</h3>
+            <p>
+              Cached runs measure estimator work and lookups. Estimated uncached
+              time adds recorded, batch-amortized payoff costs; it is not a
+              fresh end-to-end timing. CPU and GPU preparation have distinct
+              hardware profiles.
+            </p>
+          </article>
+          <article>
+            <h3>History is a comparison today.</h3>
+            <p>
+              The historical plot places current benchmark scores at an
+              estimator’s first verified publication date. It does not
+              reconstruct past hardware, implementations or results; its curves
+              use complete coverage.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="storySection" id="reproduce">
+        <div class="sectionTitle">
+          <span class="sectionNumber" aria-hidden="true">05</span>
+          <h2>Make every choice inspectable.</h2>
+        </div>
+        <p class="sectionIntro">
+          A ranking depends on the games we choose. Real data, richer models and
+          exact answers help, but this collection cannot represent every
+          application. We keep synthetic diagnostics separate and publish the
+          ingredients, limits and provenance alongside the scores.
+        </p>
+        <details class="inventoryDetails">
+          <summary>Snapshot configuration, hardware and reproduction</summary>
+          <div id="protocolSettings">
+            <p class="loadingInventory">
+              Configuration details appear after the report loads.
+            </p>
+          </div>
+        </details>
+        <div class="reproduceLinks">
+          <a
+            href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md"
+            >Run the benchmark locally ↗</a
+          ><a
+            href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/DESIGN.md"
+            >Read the full methodology ↗</a
+          ><a
+            href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ROADMAP.md"
+            >See the rollout plan ↗</a
+          >
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>shapiq · The Shapley Value Estimator Benchmark</span
+      ><a href="index.html">Back to the results ↗</a>
+    </footer>
+  </body>
+</html>

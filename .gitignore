@@ -208,3 +208,4 @@ catboost_info/
 
 # Generated website results are published as checksummed release assets.
 /benchmark/site/data.json
+/benchmark/site/about.json

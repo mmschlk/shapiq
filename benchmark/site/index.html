@@ -283,78 +283,21 @@
         </article>
       </section>
       <section class="belowFold">
-        <details id="protocol" class="protocolDetails">
-          <summary>How games are constructed <span>＋</span></summary>
-          <div id="protocolOverview" class="methodologyContent"></div>
-        </details>
-        <details class="protocolDetails">
-          <summary>Games <span>＋</span></summary>
-          <p class="drawerIntro">
-            Coalition rules represented in this report. d is the number of
-            players.
-          </p>
-          <div id="protocolGames"></div>
-          <p class="provenanceNote">
-            Where available, Fourier energy describes the frozen payoff’s
-            interaction structure, not Shapley interaction indices. Frozen
-            sampling noise can contribute.
-          </p>
-        </details>
-        <details class="protocolDetails">
-          <summary>Datasets <span>＋</span></summary>
-          <p class="drawerIntro">
-            Actual input sources, targets and row counts. Counts can differ
-            across settings and seeds.
-          </p>
-          <div id="protocolDatasets"></div>
-        </details>
-        <details class="protocolDetails">
-          <summary>Models <span>＋</span></summary>
-          <p class="drawerIntro">
-            These models define game payoffs. The estimators in the ranking
-            approximate their Shapley values and interactions.
-          </p>
-          <div id="protocolModels"></div>
-        </details>
-        <details class="protocolDetails">
-          <summary>Run settings &amp; reproduction <span>＋</span></summary>
-          <div id="protocolSettings" class="methodologyContent"></div>
-          <h3 class="provenanceHeading">Included combinations</h3>
-          <p class="provenanceNote">
-            One row per construction, dataset, model and player count; repeated
-            seeds and explanation targets are grouped.
-          </p>
-          <div id="protocolCombinations"></div>
-        </details>
+        <a class="aboutLink" href="about.html">
+          <strong>About the benchmark ↗</strong>
+          <span
+            >How we build games, find exact answers, and compare
+            estimators.</span
+          >
+        </a>
         <details class="methodology">
-          <summary>How to read the scores <span>＋</span></summary>
+          <summary>Details for these results <span>＋</span></summary>
           <div class="methodologyContent">
             <p>
-              <strong>nMSE.</strong> Squared estimation error divided by the sum
-              of squared exact values. Zero is exact; lower is better. Games
-              with zero exact-value energy are excluded.
+              <a href="about.html#scores"
+                >How to read nMSE, median/mean and Elo ↗</a
+              >
               <span id="signalRule"></span>
-            </p>
-            <p>
-              <strong>Median and mean.</strong> The median describes typical
-              error; the mean is more sensitive to outliers. Scores balance each
-              family and setup, then instances, budgets, and runs. A median
-              exactly between two values averages them.
-            </p>
-            <p>
-              <strong>Coverage.</strong> Successful runs out of planned runs.
-              Missing or failed runs are never counted as zero error. Complete
-              coverage appears first; partial scores use the available results.
-              History uses complete coverage.
-            </p>
-            <p>
-              <strong>Time.</strong> Diagnostic runtime on matching hardware and
-              thread settings. For cached games, measured runtime includes
-              lookups rather than original model evaluations. Where recorded,
-              estimated uncached time adds the saved evaluation costs, shared
-              across each preparation batch. It is an estimate, not a fresh
-              end-to-end measurement. CPU and GPU preparation costs belong to
-              different hardware profiles, shown in the game details.
             </p>
             <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
             <p id="gameDetails"></p>
@@ -397,9 +340,7 @@
     <footer>
       <span>Built for better explanations.</span>
       <div>
-        <a
-          href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/DESIGN.md"
-          >Methodology ↗</a
+        <a href="about.html">About the benchmark ↗</a
         ><a
           href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ESTIMATOR_NOTES.md"
           >Estimator notes ↗</a

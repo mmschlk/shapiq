@@ -1,6 +1,7 @@
 # Shapiq estimator benchmark
 
 [Open the interactive benchmark](https://www.rtealwitter.com/shapiq/) ·
+[How the benchmark works](https://www.rtealwitter.com/shapiq/about.html) ·
 [Discuss the plan](https://github.com/mmschlk/shapiq/issues/601) ·
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
@@ -14,9 +15,10 @@ and line patterns.
 History labels sit in endpoint-error order on the right, spaced for readability.
 On narrow screens, an ordered list below the plot shows their nMSE.
 
-Below the charts, expandable tables explain game constructions, datasets, models
-and the combinations actually included in the loaded report. Run settings record
-budgets, seeds, exact references and hardware, with links to the frozen source.
+The separate [About page](site/about.html) explains the benchmark from game
+construction through exact ground truth and scoring. It includes a coalition-count
+explorer and the loaded report’s game/dataset/model tables, with frozen-source links.
+The main page keeps the rankings, charts and result-specific coverage details.
 
 Python freezes games, runs estimators, and exports results. The website is plain
 HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
@@ -41,14 +43,18 @@ comparison locally without uploading anything.
 | Export the website and reproduction archive | `report.py`, `bundle.py` |
 | Render the interface | `benchmark/site/app.js`, `style.css`, `index.html` |
 | Draw performance and history charts | `benchmark/site/charts.js` |
-| Show dataset, model and game provenance | `benchmark/site/protocol.js` |
+| Explain the benchmark | `benchmark/site/about.html`, `about.css`, `about.js` |
+| Share report labels and render provenance tables | `benchmark/site/protocol.js` |
 | Describe estimators and link sources | `benchmark/site/methods.js` |
 
 Python files above live in `src/shapiq_benchmark/`. Start with `prepare.py` for
 snapshot construction and `runner.py` for estimator execution. The parallel
 preparation script separates task planning, worker execution and final assembly.
 In the browser, `app.js` manages data, filters and tables; `charts.js` draws the
-charts. Both are ordinary scripts with no frontend build step.
+charts. Both are ordinary scripts with no frontend build step. The About page reuses
+`protocol.js` and loads the generated `about.json`, which contains only snapshot,
+suite and public game metadata rather than the full evaluation records. Both
+Python exports and the Pages workflow produce this file; it is not tracked in Git.
 
 ## What the expanded suite covers
 

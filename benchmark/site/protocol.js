@@ -1,4 +1,19 @@
 "use strict";
+const $ = (id) => document.getElementById(id);
+const replicationLabel = () =>
+  data.suite.game_seeds?.length
+    ? `${data.suite.game_seeds.length} game instances per setting · ${data.suite.seeds.length} estimator run${data.suite.seeds.length === 1 ? "" : "s"} per instance and budget`
+    : `${data.suite.seeds.length} estimator seeds per game`;
+const targetLabel = (value) =>
+  ({
+    SV: "Shapley Values",
+    "k-SII": "Shapley Interaction Indices (k-SII)",
+    SII: "Shapley Interaction Indices (SII)",
+    STII: "Shapley–Taylor Interactions (STII)",
+    FSII: "Faithful Shapley Interactions (FSII)",
+    FBII: "Faithful Banzhaf Interactions (FBII)",
+  })[value.split(" · ")[0]] || value;
+const target = (game) => `${game.index} · order ${game.order}`;
 
 // Describe the loaded snapshot, never planned games from a newer roadmap.
 const modelProfile = (game) =>
@@ -572,7 +587,7 @@ function renderRunSettings() {
     pairs,
   );
 }
-function renderProtocol() {
+function renderReportSummary(linkToAbout = true) {
   const protocol = data.suite.protocol;
   const datasets = distinct(data.games.map((g) => g.metadata?.dataset));
   const players = data.games.map((g) => g.n_players);
@@ -582,34 +597,10 @@ function renderProtocol() {
       `${protocol?.name || "Earlier benchmark preview"} · ${datasets.length} data sources · ${Math.min(...players)}–${Math.max(...players)} players. `,
     ),
   );
-  const jump = document.createElement("a");
-  jump.href = "#protocol";
-  jump.textContent = "How the benchmark is built";
-  jump.addEventListener("click", () => {
-    $("protocol").open = true;
-  });
-  summary.append(jump);
-  $("protocolOverview").replaceChildren(
-    protocolParagraph(
-      "Dataset + model + coalition rule",
-      "A dataset supplies examples, a model supplies predictions, and a game construction defines what a selected coalition is worth. Each seeded combination becomes one fixed game. Some constructions use raw data or synthetic payoffs without a prediction model.",
-    ),
-    protocolParagraph(
-      "What players mean",
-      "d counts features for prediction explanations, training examples or groups for data valuation, models for ensemble selection, and tokens or regions for text and images. It is not always the dataset’s number of columns.",
-    ),
-    protocolParagraph(
-      "Selected combinations",
-      "Only compatible combinations are included: the task, available players, model output and exact solver must match. The tables below describe this loaded report; Run settings lists its actual pairings.",
-    ),
-    protocolParagraph(
-      "This report",
-      protocol?.description ||
-        "Earlier frozen configurations. The stronger-model rollout is separate; its new datasets and models are not measured in this report yet.",
-    ),
-  );
-  renderGames();
-  renderDatasets();
-  renderModels();
-  renderRunSettings();
+  if (linkToAbout) {
+    const jump = document.createElement("a");
+    jump.href = "about.html";
+    jump.textContent = "About the benchmark ↗";
+    summary.append(jump);
+  }
 }

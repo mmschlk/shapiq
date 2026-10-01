@@ -319,6 +319,9 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
         "shapiq.svg",
         "methods.js",
         "protocol.js",
+        "about.html",
+        "about.css",
+        "about.js",
     ):
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
@@ -337,6 +340,24 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
     exported = {**data, "workers": workers, "records": records}
     (output / "data.json").write_text(
         json.dumps(exported, separators=(",", ":"), allow_nan=False) + "\n"
+    )
+    # The guide needs game provenance, not the much larger evaluation records.
+    (output / "about.json").write_text(
+        json.dumps(
+            {
+                key: exported[key]
+                for key in (
+                    "schema_version",
+                    "snapshot_id",
+                    "snapshot_provenance",
+                    "suite",
+                    "games",
+                )
+            },
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        + "\n"
     )
     return data
 
