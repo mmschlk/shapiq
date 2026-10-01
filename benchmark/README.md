@@ -85,7 +85,11 @@ LeverageSHAP and OddSHAP fixes. Job **360853** saved every payoff table, but two
 exact-reference calculations hit the worker's memory limit. Recovery **361008**
 qualified those saved tables in fresh processes, preserving all original bytes;
 the complete snapshot has **1,484 game/target definitions and 324 artifacts**.
-Replacement sweep **361009** is queued for the exclusive benchmark node, and its
+Sweep **361009** completed but imported a different checkout through the shared
+editable Python environment. Its results are archived and will not be published.
+Corrected sweep **361328** uses an explicit import path and checks source and
+environment against the prepared snapshot before execution. It is queued after
+matrix preparation **360900** and before matrix evaluation **360901**; the
 completion watcher is armed. The cancelled sweep **360873** never evaluated cells.
 
 ### Broader dataset × game matrix
@@ -131,9 +135,9 @@ with 384 GiB allocated and a 12-GiB address-space limit per worker. Jobs have a
 retains the same 120-second/12-GiB per-cell limits and a 24-hour job window.
 
 The earlier pending matrix jobs 360871/360872 were cancelled before execution
-when the enumeration cap increased. Replacement preparation **360900** follows
-the selected-pairing sweep; evaluation **360901** starts after successful
-preparation. Both use frozen source
+when the enumeration cap increased. Replacement preparation **360900** is running;
+evaluation **360901** starts after successful preparation and the corrected
+selected-pairing sweep **361328**. Both matrix jobs use frozen source
 [`0762a2e5`](https://github.com/rtealwitter/shapiq/commit/0762a2e503ad0d5852308b06427feabedd2a534d),
 including both estimator fixes. Separate watchers are armed for both campaigns
 to wake this session for audit, resumption if necessary, and verified publication.

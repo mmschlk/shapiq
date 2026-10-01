@@ -588,3 +588,24 @@ Independent reviewers: `investigate_optional` (campaign and exports) and
   estimator limits. Matrix preparation 360900 follows it; evaluation 360901 is
   unchanged. Both completion watchers remain armed. No new estimator results
   have been published from this recovery.
+
+## Execution-source correction (October 1)
+
+- The completion audit found sweep 361009 imported main checkout `22d51700`
+  through the shared editable environment, despite its frozen working directory.
+  This omitted the intended LeverageSHAP ridge and OddSHAP guard changes. All
+  293,832 cells were accounted for, and all 111,214 successful scores independently
+  recomputed correctly, but the cohort is unsuitable for the intended campaign.
+  It remains archived separately and unpublished.
+- The launcher now overrides `PYTHONPATH`, verifies imported package locations,
+  authenticates the snapshot and requires matching software/source provenance
+  before dispatch. Actual shell tests accept the frozen source even with a wrong
+  inherited import path and reject the main checkout before starting workers.
+  Isolated OddSHAP and LeverageSHAP smoke runs both succeed at budget six using
+  the intended source; LeverageSHAP's ridge is 0.001. These diagnostic runs are
+  excluded from benchmark results. An independent agent reviewed the fix.
+- Replacement sweep 361328 retains the original snapshot, source and resource
+  limits, with fresh output. It follows active matrix preparation 360900;
+  matrix evaluation 360901 follows both. The matrix jobs already explicitly
+  select their correct frozen source. Both completion watchers remain armed;
+  publication still requires an independently audited, complete corrected run.

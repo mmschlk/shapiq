@@ -180,6 +180,14 @@ uv run pre-commit run --all-files
   costly game; qualify them in a fresh process, authenticate the saved bytes,
   and preserve the original snapshots for the recovery audit.
 
+- A shared editable `.venv` can import the main checkout even when a Slurm job
+  starts in a frozen worktree. Min11 sweep 361009 therefore used the wrong
+  LeverageSHAP/OddSHAP implementations. Set `PYTHONPATH="$PWD/src"` after changing
+  directory, verify imported package paths, and compare actual run provenance
+  with the prepared snapshot before starting. Per-cell consistency checks alone
+  accept a consistently wrong source. Preserve and quarantine such results;
+  never relabel them as measurements of the intended implementation.
+
 - OddSHAP's default rejects budgets below `min(10, 2**n)` before any oracle
   calls. PR #560 deliberately screens singleton terms below `10*n`; this is
   different from the paper's low-budget tree-surrogate fallback. Do not diagnose
