@@ -184,11 +184,9 @@ class MonteCarlo(Approximator[TIndices]):
 
         # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
-            interaction_binary = np.zeros(self.n, dtype=int)
-            interaction_binary[list(interaction)] = 1
             interaction_size = len(interaction)
-            # find intersection sizes with current interaction
-            intersections_size = np.sum(coalitions_matrix * interaction_binary, axis=1)
+            # Only the interaction's columns can contribute to its intersection size.
+            intersections_size = np.sum(coalitions_matrix[:, interaction], axis=1)
             # pre-compute all coalition weights with interaction, coalition, and intersection size
             interaction_sign = sign_weights[interaction_size, coalitions_size, intersections_size]
             log_interaction_weight = log_abs_weights[
@@ -329,44 +327,27 @@ class MonteCarlo(Approximator[TIndices]):
             The log adjusted sampling weights for the SVARM-IQ routine.
 
         """
-        log_sampling_adjustment_weights = np.zeros(self._sampler.n_coalitions)
+        coalitions_size = self._sampler.coalitions_size
+        counter = self._sampler.coalitions_counter
+        sampled = self._sampler.is_coalition_sampled
+        # Enumerated coalitions retain their unadjusted multiplicity.
+        log_sampling_adjustment_weights = np.log(counter)
         interaction_size = len(interaction)
-        interaction_binary = np.zeros(self.n, dtype=int)
-        interaction_binary[list(interaction)] = 1
-        size_strata = np.unique(self._sampler.coalitions_size)
+        interaction_columns = self._sampler.coalitions_matrix[:, interaction]
         for intersection in powerset(interaction):
-            # stratify by intersection for interaction and coalition
-            intersection_size = len(intersection)
-            intersection_binary = np.zeros(self.n, dtype=int)
-            intersection_binary[list(intersection)] = 1
-            # Compute current intersection stratum
-            in_intersection_stratum = np.prod(
-                self._sampler.coalitions_matrix * interaction_binary == intersection_binary,
+            in_intersection = np.all(
+                interaction_columns == [player in intersection for player in interaction],
                 axis=1,
-            ).astype(bool)
-            for size_stratum in size_strata:
-                # compute current intersection-coalition-size stratum
-                in_stratum = in_intersection_stratum * (
-                    self._sampler.coalitions_size == size_stratum
-                )
-                in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
-                # log stratum probability ``log(binom(n - m, size - i))`` (without size probabilities  as they cancel
-                # with the coalition size probabilities, hence they can be omitted here)
-                log_stratum_probabilities = np.zeros(self._sampler.n_coalitions)
-                log_stratum_probabilities[in_stratum_and_sampled] = log_binom(
-                    self.n - interaction_size,
-                    size_stratum - intersection_size,
-                )
-                # Get sampled coalitions per stratum
-                stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
-                n_samples_helper = np.array([1, stratum_n_samples])
-                coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
-                # Set sampling adjustment weights for stratum
-                log_sampling_adjustment_weights[in_stratum] = (
-                    np.log(self._sampler.coalitions_counter[in_stratum])
-                    + log_stratum_probabilities[in_stratum]
-                    - np.log(coalitions_n_samples[in_stratum])
-                )
+            )
+            selected = in_intersection & sampled
+            sizes = coalitions_size[selected]
+            # Count every coalition-size stratum in one pass, including repeated samples.
+            stratum_counts = np.bincount(sizes, weights=counter[selected], minlength=self.n + 1)
+            log_sampling_adjustment_weights[selected] = (
+                np.log(counter[selected])
+                + log_binom(self.n - interaction_size, sizes - len(intersection))
+                - np.log(stratum_counts[sizes])
+            )
         return log_sampling_adjustment_weights
 
     def _get_standard_form_log_weights(self, index: str) -> tuple[np.ndarray, np.ndarray]:

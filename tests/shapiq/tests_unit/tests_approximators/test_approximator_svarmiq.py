@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+
+import numpy as np
 import pytest
 
 from shapiq.approximator.montecarlo import SVARMIQ
@@ -56,3 +59,36 @@ def test_approximate_sii(n, max_order, top_order, budget):
         # for order 1 (min_order) the interaction between  1 and 2 is the most important (0.6429)
         assert estimates[(1,)] == pytest.approx(0.6429, 0.05)
         assert estimates[(2,)] == pytest.approx(0.6429, 0.05)
+
+
+@pytest.mark.parametrize(("n", "budget"), [(7, 2), (7, 50), (7, 128), (130, 160)])
+def test_stratum_adjustments(n, budget):
+    """Repeated draws count within strata; enumerated coalitions need no adjustment."""
+    approximator = SVARMIQ(n, random_state=42)
+    sampler = approximator._sampler
+    sampler.sample(budget)
+    for interaction in [(), (0,), (0, 2)]:
+        observed = approximator._log_svarmiq_routine(interaction)
+        expected = []
+        for row, count, sampled in zip(
+            sampler.coalitions_matrix,
+            sampler.coalitions_counter,
+            sampler.is_coalition_sampled,
+            strict=True,
+        ):
+            adjustment = math.log(count)
+            if sampled:
+                size = int(row.sum())
+                same_stratum = (
+                    np.all(
+                        sampler.coalitions_matrix[:, interaction] == row[list(interaction)], axis=1
+                    )
+                    & (sampler.coalitions_size == size)
+                    & sampler.is_coalition_sampled
+                )
+                adjustment += math.log(
+                    math.comb(n - len(interaction), size - int(row[list(interaction)].sum()))
+                )
+                adjustment -= math.log(sampler.coalitions_counter[same_stratum].sum())
+            expected.append(adjustment)
+        np.testing.assert_allclose(observed, expected, rtol=0, atol=2e-13)
