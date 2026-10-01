@@ -106,6 +106,11 @@ implemented and qualified. Each phase requires an independent audit before
 its results replace the preview. Device choices and model parameters are part
 of the recorded recipe, and the website shows actual dataset/model provenance.
 
+Preparation **361441** is running from frozen source `893a5da7`, including the
+approved LeverageSHAP, OddSHAP, ProxySPEX and SVARM fixes. Its completion watcher
+is armed; preparation must pass audit before the estimator sweep is submitted.
+The stronger-model measurements have not yet replaced the public preview.
+
 Use GPUs for game preparation when measured faster: the first fixed-TabPFN
 pilot strongly favored the L40S. RF and the initial XGBoost cohort stay on CPUs;
 GP and other workloads need their own measurements. Estimator evaluation keeps
