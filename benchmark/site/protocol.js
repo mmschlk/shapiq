@@ -531,6 +531,21 @@ function renderRunSettings() {
         `At least ${protocol.minimum_players} players; enumeration up to ${protocol.maximum_enumerated_players}. ${protocol.minimum_signal_ratio ? `RMS ground-truth attribution / payoff standard deviation must be at least ${protocol.minimum_signal_ratio}. ` : ""}Structured games may use a certified lower bound on this ratio; the exact definition is recorded in their metadata. Only compatible dataset, model and construction combinations are scheduled.`,
       ),
     );
+  if (Object.keys(data.suite.method_parameters || {}).length)
+    settings.append(
+      protocolParagraph(
+        "Estimator settings",
+        Object.entries(data.suite.method_parameters)
+          .map(
+            ([name, values]) =>
+              `${name}: ${Object.entries(values)
+                .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+                .join(", ")}`,
+          )
+          .join("; ") +
+          ". Other constructor settings use their recorded source defaults.",
+      ),
+    );
   const exclusions = data.suite.preparation_exclusions || [];
   const preflight = data.suite.preparation_preflight;
   if (preflight) {

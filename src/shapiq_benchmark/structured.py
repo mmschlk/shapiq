@@ -55,12 +55,13 @@ def _tree_game(trees: list, background: np.ndarray, point: np.ndarray, kind: str
 
 def _construct(prepared: PreparedModel, spec: dict) -> tuple:
     """Use shipped exact computers on precisely the scalar output stored in the oracle."""
-    from shapiq.explainer.product_kernel import ProductKernelExplainer
-    from shapiq.explainer.product_kernel.conversion import convert_svm
+    from shapiq import InteractionValues
     from shapiq.explainer.product_kernel.game import ProductKernelGame
+    from shapiq.explainer.product_kernel.product_kernel import ProductKernelComputer
     from shapiq.tree import TreeExplainer
     from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
+    from shapiq_benchmark.models import converted_svm
 
     model = copy.deepcopy(prepared.model)
     point, background = prepared.x_test[0], prepared.x_train[:16]
@@ -75,12 +76,25 @@ def _construct(prepared: PreparedModel, spec: dict) -> tuple:
         if hasattr(model, "classes_") and len(model.classes_) != 2:
             message = "Product-kernel classification requires exactly two classes."
             raise ValueError(message)
-        converted = convert_svm(model)
+        converted = converted_svm(model)
         if converted.gamma is None:
             message = "RBF conversion requires an explicit kernel bandwidth."
             raise ValueError(message)
         oracle = ProductKernelGame(len(point), point, converted)
-        truth = ProductKernelExplainer(model).explain(point)
+        computer = ProductKernelComputer(converted)
+        vectors = computer.compute_kernel_vectors(converted.X_train, point)
+        scores: dict[tuple[int, ...], float] = {
+            (i,): float(computer.compute_shapley_value(vectors, i)) for i in range(len(point))
+        }
+        truth = InteractionValues(
+            values=scores,
+            index="SV",
+            min_order=0,
+            max_order=1,
+            n_players=len(point),
+            estimated=False,
+            baseline_value=float(converted.alpha.sum() + converted.intercept),
+        )
         arrays = {"point": point, "support_vectors": converted.X_train, "alpha": converted.alpha}
         details: dict = {
             "payoff_range_upper_bound": float(np.abs(converted.alpha).sum()),
@@ -177,10 +191,16 @@ def prepare_profiled(spec: dict, output: Path) -> dict:
         raise ValueError(message)
     seed = spec.get("instance_seed", 0)
     cache = output.parent / ".models"
-    small = prepare_model(dataset, 8, seed, profile, cache_dir=cache)
+    quality = {"quality_protocol": spec["quality_protocol"]} if "quality_protocol" in spec else {}
+    small = prepare_model(dataset, 8, seed, profile, cache_dir=cache, **quality)
     small_oracle, small_truth, _, _ = _construct(small, spec)
     error = validate_truth(small_oracle, small_truth, exhaustive=True)
-    prepared = prepare_model(dataset, n, seed, profile, cache_dir=cache)
+    prepared = prepare_model(dataset, n, seed, profile, cache_dir=cache, **quality)
+    if quality and not prepared.metadata["model_validation_gate"]["passed"]:
+        from shapiq_benchmark.quality import QualityExclusion
+
+        reason = "model_not_better_than_validation_dummy"
+        raise QualityExclusion(reason, prepared.metadata["model_validation_gate"])
     oracle, truth, arrays, details = _construct(prepared, spec)
     validate_truth(oracle, truth, exhaustive=False)
     details.update(signal_metadata(truth, details["payoff_range_upper_bound"]))

@@ -31,7 +31,8 @@ from shapiq_benchmark.datasets import (
     load_dataset as _dataset,
 )
 from shapiq_benchmark.execution import hardware
-from shapiq_benchmark.models import coalition_model, prepare_model
+from shapiq_benchmark.models import coalition_model, converted_svm, prepare_model
+from shapiq_benchmark.quality import QUALITY_PROTOCOL, QualityExclusion, validate_protocol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -285,6 +286,7 @@ def make_family(
     model_profile: str | None = None,
     model_cache: str | None = None,
     device: str = "cpu",
+    quality_protocol: str | None = None,
 ) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
@@ -292,11 +294,21 @@ def make_family(
     preparation caller, which must preserve the failure as coverage information.
     Nothing here downloads models or substitutes a different payoff on failure.
     """
+    validate_protocol(quality_protocol)
     if model_profile is not None:
         return _prediction_game(
-            name, dataset, n_players, instance_seed, model_profile, model_cache, device
+            name,
+            dataset,
+            n_players,
+            instance_seed,
+            model_profile,
+            model_cache,
+            device,
+            quality_protocol,
         )
     metadata = dict(FAMILY_CATALOG[name])
+    if quality_protocol is not None:
+        metadata["quality_protocol"] = quality_protocol
     configured = dataset is not None or n_players is not None
     module, attribute = metadata["class"].rsplit(".", 1)
     cls = getattr(importlib.import_module(module), attribute)
@@ -797,15 +809,38 @@ def _retraining_game(
         if n > len(prepared.x_train):
             message = "Not enough fitting rows for the declared row players."
             raise ValueError(message)
-        x = np.concatenate((prepared.x_train[:n], prepared.x_test))
-        y = np.concatenate((prepared.y_train[:n], prepared.y_test))
+        selected = np.arange(n)
+        if prepared.metadata.get("quality_protocol") == QUALITY_PROTOCOL:
+            if n == len(prepared.y_train):
+                selected = np.arange(n)
+            else:
+                selected, _ = train_test_split(
+                    np.arange(len(prepared.y_train)),
+                    train_size=n,
+                    random_state=seed,
+                    stratify=prepared.y_train if refit.classification else None,
+                )
+            if refit.classification and len(np.unique(prepared.y_train[selected])) != len(
+                np.unique(prepared.y_train)
+            ):
+                reason = "row_players_omit_class"
+                raise QualityExclusion(reason, {"n_players": n})
+            metadata["row_selection"] = (
+                "seeded stratified training rows"
+                if refit.classification
+                else "seeded shuffled training rows"
+            )
+        x = np.concatenate((prepared.x_train[selected], prepared.x_test))
+        y = np.concatenate((prepared.y_train[selected], prepared.y_test))
         # DataValuation permutes its inputs. Invert that exact seeded permutation
         # so its training/test pools remain the already-declared disjoint pools.
         inverse = np.argsort(np.random.default_rng(seed).permutation(len(x)))
         game = constructor(
             n_data_points=n, x_data=x[inverse], y_data=y[inverse], random_state=seed, **options
         )
-        metadata["train_indices"] = prepared.metadata["train_indices"][:n]
+        metadata["train_indices"] = np.asarray(prepared.metadata["train_indices"])[
+            selected
+        ].tolist()
         metadata["training_rows"] = n
     else:
         x, y = prepared.x_train, prepared.y_train
@@ -876,7 +911,12 @@ def _ensemble_game(
         for i in range(n):
             family = profiles[i % len(profiles)]
             base = prepare_model(
-                dataset, prepared.x_train.shape[1], seed, family, cache_dir=cache_dir
+                dataset,
+                prepared.x_train.shape[1],
+                seed,
+                family,
+                cache_dir=cache_dir,
+                quality_protocol=prepared.metadata.get("quality_protocol"),
             )
             if base.metadata["train_indices"] != prepared.metadata["train_indices"]:
                 message = "Ensemble member preparation changed the shared training rows."
@@ -915,6 +955,7 @@ def _prediction_game(
     profile: str,
     cache_dir: str | None,
     device: str = "cpu",
+    quality_protocol: str | None = None,
 ) -> tuple:
     """Construct a shipped game from shared, qualified model/data ingredients."""
     if dataset is None or type(n_players) is not int or not 1 <= n_players <= 20:
@@ -936,7 +977,14 @@ def _prediction_game(
         cache_dir=cache_dir,
         device=device,
         feature_rule=feature_rule,
+        quality_protocol=quality_protocol,
     )
+    if (
+        quality_protocol == QUALITY_PROTOCOL
+        and not prepared.metadata["model_validation_gate"]["passed"]
+    ):
+        reason = "model_not_better_than_validation_dummy"
+        raise QualityExclusion(reason, prepared.metadata["model_validation_gate"])
     metadata = {**FAMILY_CATALOG[name], **prepared.metadata}
     module, attribute = metadata["class"].rsplit(".", 1)
     constructor = getattr(importlib.import_module(module), attribute)
@@ -1011,7 +1059,9 @@ def _prediction_game(
     elif name == "product_kernel":
         svm = model.named_steps["model"]
         scaled_point = model.named_steps["scaler"].transform(point[None])[0]
-        game = constructor(n_players=n_players, explain_point=scaled_point, model=convert_svm(svm))
+        game = constructor(
+            n_players=n_players, explain_point=scaled_point, model=converted_svm(svm)
+        )
         extra["output_scale"] = "binary SVC decision score" if classification else "prediction"
     else:
         message = f"No profiled construction for {name}."

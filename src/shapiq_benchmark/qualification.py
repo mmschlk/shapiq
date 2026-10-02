@@ -17,9 +17,11 @@ import math
 import os
 import queue
 import random
+import resource
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -30,12 +32,14 @@ import numpy as np
 from shapiq_benchmark.datasets import load_raw_dataset
 from shapiq_benchmark.execution import THREAD_VARIABLES, hardware
 from shapiq_benchmark.families import make_family
+from shapiq_benchmark.games import prepare_structured
 from shapiq_benchmark.materialize import CHUNK_SIZE, _synchronize
 from shapiq_benchmark.media import EXTRA_CATALOG, make_extra, preparation_backend
+from shapiq_benchmark.quality import QUALITY_PROTOCOL, QualityExclusion, imputation_stability
 from shapiq_benchmark.runner import provenance
 
-PILOT_PROTOCOL = {
-    "version": 1,
+PILOT_PROTOCOL: dict = {
+    "version": 2,
     "uniform_coalitions": 32,
     "coalition_seed": 0,
     "safety_factor": 2,
@@ -57,8 +61,12 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
     np.random.seed(seed % 2**32)  # noqa: NPY002 -- optional backend global RNGs
     factory = make_extra if spec["family"] in EXTRA_CATALOG else make_family
     options = {
-        key: spec[key] for key in ("dataset", "n_players", "model_profile", "device") if key in spec
+        key: spec[key]
+        for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+        if key in spec
     }
+    if factory is make_extra:
+        options.pop("quality_protocol", None)
     if "model_profile" in spec:
         options["model_cache"] = model_cache
     _synchronize(spec)
@@ -66,6 +74,16 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
     game, metadata = factory(spec["family"], instance_seed=seed, **options)
     _synchronize(spec)
     setup_seconds = time.perf_counter() - started
+    stability = None
+    if spec.get("quality_protocol") == QUALITY_PROTOCOL and spec["family"] in (
+        "local_gaussian",
+        "local_copula",
+        "local_conditional",
+    ):
+        stability = imputation_stability(game, seed=seed)
+        if stability["status"] != "stable":
+            reason = "unstable_imputation"
+            raise QualityExclusion(reason, stability)
     n = game.n_players
     if n != spec["n_players"] or not 1 <= n <= 20:
         message = "Constructed player count disagrees with the bounded recipe."
@@ -105,6 +123,44 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
         "preparation_hardware": metadata.get("preparation_hardware", {"device": "cpu"}),
         "model_key": metadata.get("model_key"),
         "data_sha256": metadata.get("data_sha256"),
+        "model_validation_gate": metadata.get("model_validation_gate"),
+        "imputation_stability": stability,
+    }
+
+
+def _structured_pilot(spec: dict, seed: int, model_cache: str) -> dict:
+    """Measure the actual requested solver, including its correctness qualification."""
+    random.seed(seed)
+    np.random.seed(seed % 2**32)  # noqa: NPY002 -- optional backend global RNGs
+    cache = Path(model_cache)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    started = time.perf_counter()
+    with tempfile.TemporaryDirectory(prefix="structured-pilot-", dir=cache.parent) as directory:
+        game = prepare_structured(
+            [{**spec, "id": f"{spec['id']}-i{seed}", "instance_seed": seed}], Path(directory)
+        )[0]
+        # Truth coordinates can dwarf the numeric oracle at native dimensions.
+        # Include their real serialization, not only a small-model solver proxy.
+        _write(Path(directory) / "game.json", game)
+        seconds = time.perf_counter() - started
+        if game["n_players"] != spec.get("n_players", game["n_players"]):
+            message = "Structured pilot did not construct the requested player count."
+            raise ValueError(message)
+        artifact_bytes = (Path(directory) / game["artifact"]).stat().st_size
+        metadata_bytes = (Path(directory) / "game.json").stat().st_size
+    return {
+        "status": "measured",
+        "projected_seconds": seconds,
+        "actual_preparation_seconds": seconds,
+        "n_players": game["n_players"],
+        "index": game["index"],
+        "order": game["order"],
+        "peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        * (1 if sys.platform == "darwin" else 1024),
+        "artifact_bytes": artifact_bytes,
+        "metadata_bytes": metadata_bytes,
+        "hardware": hardware(),
+        "scope": "Actual requested-size construction, exact solver, validation and serialization",
     }
 
 
@@ -117,7 +173,7 @@ def _run_pilot(
     # Pretrained assets can change outside the source tree. Re-probe these rather
     # than authenticate an old pilot only by a model name or package version.
     reusable = (
-        identity["spec"]["family"] not in {*EXTRA_CATALOG, "_dataset_identity"}
+        identity["spec"].get("family") not in {*EXTRA_CATALOG, "_dataset_identity"}
         and identity["spec"].get("model_profile") != "tabpfn_prediction"
     )
     if reusable and result_path.exists():
@@ -136,6 +192,8 @@ def _run_pilot(
             "seed": identity["seed"],
             "model_cache": model_cache,
             "cpu": cpu,
+            "kind": identity.get("kind", "families"),
+            "memory_gb": identity.get("structured_memory_gb"),
         },
     )
     environment = {**os.environ, **dict.fromkeys(THREAD_VARIABLES, "1")}
@@ -211,11 +269,13 @@ def qualify_suite(
     *,
     pilot_timeout: float = 480,
     workers: int = 1,
+    structured_timeout: float = 480,
+    structured_memory_gb: float = 12,
 ) -> dict:
     """Keep all four instances together and retain every exclusion with its measured reason.
 
-    ``path`` is a checkpoint directory. ``games`` (structured references) pass
-    through unchanged for their existing solver qualification. Pretrained media
+    ``path`` is a checkpoint directory. Structured references execute their actual
+    requested solver in time- and memory-bounded processes. Pretrained media
     pilots deliberately rerun on resume because their external assets may change.
     """
     if (
@@ -225,6 +285,10 @@ def qualify_suite(
         or not math.isfinite(pilot_timeout)
         or type(workers) is not int
         or workers < 1
+        or not math.isfinite(structured_timeout)
+        or structured_timeout <= 0
+        or not math.isfinite(structured_memory_gb)
+        or structured_memory_gb <= 0
     ):
         message = "Cost limits and worker count must be positive and finite."
         raise ValueError(message)
@@ -244,7 +308,8 @@ def qualify_suite(
     for cpu in cpu_ids[:worker_count]:
         cpus.put(cpu)
     datasets, identities, input_errors = {}, [], {}
-    for spec in suite.get("families", []):
+    recipes = [(kind, spec) for kind in ("families", "games") for spec in suite.get(kind, [])]
+    for kind, spec in recipes:
         dataset = spec.get("dataset")
         if dataset and dataset not in datasets:
             try:
@@ -273,12 +338,15 @@ def qualify_suite(
         identities.extend(
             {
                 "spec": spec,
+                "kind": kind,
                 "seed": seed,
                 "source": source,
                 "inputs": datasets.get(dataset),
                 "backend": backend,
                 "protocol": PILOT_PROTOCOL,
                 "pilot_timeout": pilot_timeout,
+                "structured_timeout": structured_timeout,
+                "structured_memory_gb": structured_memory_gb if kind == "games" else None,
             }
             for seed in suite.get("game_seeds", [0])
         )
@@ -292,7 +360,12 @@ def qualify_suite(
             }
         cpu = cpus.get()
         try:
-            return _run_pilot(identity, path, str(model_cache), pilot_timeout, cpu)
+            timeout = (
+                min(structured_timeout, max_seconds)
+                if identity["kind"] == "games"
+                else pilot_timeout
+            )
+            return _run_pilot(identity, path, str(model_cache), timeout, cpu)
         finally:
             cpus.put(cpu)
 
@@ -303,18 +376,21 @@ def qualify_suite(
         raise ValueError(message)
     results = copy.deepcopy(suite)
     results["families"] = []
+    if "games" in results:
+        results["games"] = []
     exclusions = []
     summaries = []
-    for spec in suite.get("families", []):
+    for kind, spec in recipes:
         instances = [
             {"seed": identity["seed"], **result}
             for identity, result in zip(identities, pilots, strict=True)
-            if identity["spec"]["id"] == spec["id"]
+            if identity["spec"]["id"] == spec["id"] and identity["kind"] == kind
         ]
         failed = any(item["status"] != "measured" for item in instances)
         costly = any(item.get("projected_seconds", 0) > max_seconds for item in instances)
         summary = {
             "id": spec["id"],
+            "kind": kind,
             "instances": instances,
             "status": "excluded" if failed or costly else "qualified",
         }
@@ -323,13 +399,14 @@ def qualify_suite(
             exclusions.append(
                 {
                     "spec": spec,
+                    "kind": kind,
                     "reason": "preflight_failed" if failed else "projected_cost_limit",
                     "maximum_seconds_per_instance": max_seconds,
                     "instances": instances,
                 }
             )
         else:
-            results["families"].append(spec)
+            results[kind].append(spec)
     results["preparation_exclusions"] = [*suite.get("preparation_exclusions", []), *exclusions]
     results["preparation_preflight"] = {
         **PILOT_PROTOCOL,
@@ -340,7 +417,9 @@ def qualify_suite(
         "maximum_seconds_per_instance": max_seconds,
         "pilot_timeout_seconds": pilot_timeout,
         "families": summaries,
-        "structured_references": "Not enumeration-cost gated; existing exact-solver preparation checks apply.",
+        "structured_references": "Actual requested-size solver, validation and serialization in bounded processes for every seed.",
+        "structured_timeout_seconds": min(structured_timeout, max_seconds),
+        "structured_memory_gb": structured_memory_gb,
         "selection_rule": "Any failed or over-limit seed excludes the entire recipe; no attribution or estimator score filtering.",
     }
     _write(path / "qualified-suite.json", results)
@@ -357,20 +436,27 @@ def main() -> None:
     if request["cpu"] is not None:
         os.sched_setaffinity(0, {request["cpu"]})
     try:
-        if request["spec"]["family"] == "_dataset_identity":
+        if request.get("memory_gb") is not None:
+            limit = int(request["memory_gb"] * 1024**3)
+            resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+        if request["spec"].get("family") == "_dataset_identity":
             result = {
                 "status": "measured",
                 "dataset_identity": _dataset_identity(request["spec"]["dataset"]),
             }
+        elif request.get("kind") == "games":
+            result = _structured_pilot(request["spec"], request["seed"], request["model_cache"])
         else:
             result = _pilot(request["spec"], request["seed"], request["model_cache"])
     except Exception as error:  # noqa: BLE001 -- worker preserves a sanitized failure record
         traceback.print_exc()
         result = {
             "status": "failed",
-            "reason": "construction_or_payoff_validation_failed",
+            "reason": getattr(error, "reason", "construction_or_payoff_validation_failed"),
             "error_type": type(error).__name__,
         }
+        if hasattr(error, "details"):
+            result["details"] = error.details
     _write(args.output, result)
 
 

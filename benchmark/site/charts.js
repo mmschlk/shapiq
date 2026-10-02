@@ -76,10 +76,14 @@ function renderPerformanceCharts(chartPanel, chartPending) {
   const timeMetric = $("timeMetric").value;
   const estimatedTime = timeMetric === "estimated_uncached_seconds";
   $("timeChartNote").textContent = estimatedTime
-    ? "Cached games with recorded costs · Batch-amortized evaluation estimate"
-    : "Family-balanced median · Measured runtime on comparable timing profiles";
+    ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
+    : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
   chartPanel.rows.forEach((row) => {
-    if (estimatedTime && !gamesById.get(row.game_id)?.metadata?.evaluation_timing) return;
+    if (
+      estimatedTime &&
+      !gamesById.get(row.game_id)?.metadata?.evaluation_timing
+    )
+      return;
     const worker = row.worker;
     const verified =
       worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
@@ -89,7 +93,9 @@ function renderPerformanceCharts(chartPanel, chartPending) {
       worker?.machine,
       worker?.thread_pools,
       worker?.thread_environment,
-      ...(estimatedTime ? [gamesById.get(row.game_id)?.metadata?.evaluation_timing] : []),
+      ...(estimatedTime
+        ? [gamesById.get(row.game_id)?.metadata?.evaluation_timing]
+        : []),
       ...(verified ? [] : [row.run_id, row.game_id]),
     ]);
     if (!profiles.has(key))
@@ -138,7 +144,15 @@ function renderPerformanceCharts(chartPanel, chartPending) {
         });
     }),
   );
-  chart("timeChart", timeSeries, estimatedTime ? "Mean estimated uncached seconds" : "Mean seconds · diagnostic", false, "median");
+  chart(
+    "timeChart",
+    timeSeries,
+    estimatedTime
+      ? "Mean estimated work + oracle seconds"
+      : "Mean measured estimator seconds",
+    false,
+    "median",
+  );
   if (chartPending)
     ["budgetChart", "timeChart"].forEach(
       (id) => ($(id).textContent = "Results pending for this selection."),

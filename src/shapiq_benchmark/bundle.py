@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 
 from shapiq_benchmark.report import merge_results
+from shapiq_benchmark.results_io import read_results
 from shapiq_benchmark.runner import load_snapshot
 
 
@@ -42,7 +43,7 @@ def bundle(snapshot_dir: Path, results: Path | list[Path], output: Path) -> None
             raise ValueError(message)
         artifacts.append((relative, artifact))
     snapshot, _ = load_snapshot(snapshot_dir)
-    baselines = [json.loads(path.read_text()) for path in result_paths]
+    baselines = [read_results(path) for path in result_paths]
     expected = {
         "schema_version": snapshot["schema_version"],
         "snapshot_id": snapshot["snapshot_id"],

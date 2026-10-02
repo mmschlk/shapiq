@@ -16,8 +16,9 @@ import json
 import subprocess
 from pathlib import Path
 
+from shapiq_benchmark.planning import select_core
 from shapiq_benchmark.protocol import build_phase
-from shapiq_benchmark.runner import digest, identity, provenance
+from shapiq_benchmark.runner import digest, identity, method_catalog, provenance
 
 NODES = ("himem01", "himem02", "gpu15")
 
@@ -52,7 +53,7 @@ def immutable_write(path: Path, value: dict | list) -> None:
     write(path, value)
 
 
-def plan(root: Path, base: dict, *, batch_size: int = 16) -> dict:
+def plan(root: Path, base: dict, *, batch_size: int = 16, bounded_core: bool = False) -> dict:
     """Do not rerun the same declared recipe in each cumulative phase."""
     if batch_size < 1:
         message = "Batch size must be positive"
@@ -61,6 +62,13 @@ def plan(root: Path, base: dict, *, batch_size: int = 16) -> dict:
     seen, batches = {}, []
     for phase in range(3, 8):
         suite = build_phase(phase, base)
+        if bounded_core:
+            suite["duplicate_registry"] = str((root / "duplicate-games.json").resolve())
+            suite["method_parameters"] = {"OddSHAP": {"ridge": 0.001}}
+            for kind in ("families", "games"):
+                for spec in suite[kind]:
+                    spec["quality_protocol"] = "quality-v2"
+                    spec["id"] += "-quality-v2"
         immutable_write(root / f"phase-{phase}-inventory.json", suite)
         entries = []
         for kind in ("families", "games"):
@@ -72,6 +80,9 @@ def plan(root: Path, base: dict, *, batch_size: int = 16) -> dict:
                 elif seen[key] != spec:
                     message = f"Recipe ID changed meaning across phases: {spec['id']}"
                     raise ValueError(message)
+        if bounded_core:
+            entries, selection = select_core(entries, suite, method_catalog())
+            immutable_write(root / f"phase-{phase}-core.json", selection)
         for device in ("cpu", "cuda"):
             group = [(kind, spec) for kind, spec in entries if spec.get("device", "cpu") == device]
             for offset in range(0, len(group), batch_size):
@@ -221,11 +232,21 @@ def main() -> None:
     parser.add_argument("--base", type=Path, default=Path("benchmark/suites/all-families.json"))
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--submit", action="store_true")
+    parser.add_argument(
+        "--bounded-core",
+        action="store_true",
+        help="Qualify a resource-capped panel before matrix expansion",
+    )
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     with (args.output / "submission.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        campaign = plan(args.output, json.loads(args.base.read_text()), batch_size=args.batch_size)
+        campaign = plan(
+            args.output,
+            json.loads(args.base.read_text()),
+            batch_size=args.batch_size,
+            bounded_core=args.bounded_core,
+        )
         immutable_write(args.output / "campaign.json", campaign)
         if args.submit:
             submit(args.output, campaign)

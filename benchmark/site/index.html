@@ -94,6 +94,17 @@
           <div class="advancedPanel">
             <label>Dataset<select id="dataset"></select></label>
             <label>Prediction model<select id="model"></select></label>
+            <label
+              >Scored coefficients<select id="scoreOrder">
+                <option value="">All nonempty coefficients</option>
+                <option value="1">Singletons only</option>
+                <option value="2">Pairs only</option>
+              </select></label
+            >
+            <label class="checkboxField"
+              ><input id="includeControls" type="checkbox" /> Include control
+              games</label
+            >
             <div class="fieldPair">
               <label
                 >Min players<input
@@ -129,6 +140,13 @@
         <article class="leaderboard">
           <div class="tableHeading">
             <h2>The leaderboard</h2>
+            <label class="compactSelect"
+              ><span class="srOnly">Elo comparison panel</span>
+              <select id="eloPanel">
+                <option value="available">Elo · available pairs</option>
+                <option value="common">Elo · same cells for all</option>
+              </select>
+            </label>
             <label class="variantToggle"
               ><span class="srOnly">Estimator variants</span>
               <select id="showVariants">
@@ -249,9 +267,9 @@
               <label class="compactSelect">
                 <span class="srOnly">Time measurement</span>
                 <select id="timeMetric">
-                  <option value="seconds">Measured runtime</option>
+                  <option value="seconds">Measured estimator time</option>
                   <option value="estimated_uncached_seconds">
-                    Estimated uncached time
+                    Estimated work + oracle time
                   </option>
                 </select>
               </label>

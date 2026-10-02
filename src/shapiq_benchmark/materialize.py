@@ -30,6 +30,7 @@ from shapiq_benchmark.payoff_cache import (
     read_chunk as _read_chunk,
     write_chunk,
 )
+from shapiq_benchmark.quality import QUALITY_PROTOCOL, imputation_stability, payoff_diagnostics
 from shapiq_benchmark.spectrum import fourier_spectrum
 
 CATALOG = {**FAMILY_CATALOG, **EXTRA_CATALOG}
@@ -94,8 +95,8 @@ def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Pat
         instance_seed=instance_seed,
         **{
             key: spec[key]
-            for key in ("dataset", "n_players", "model_profile", "device")
-            if key in spec
+            for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+            if key in spec and (key != "quality_protocol" or factory is make_family)
         },
         **({"model_cache": str(output.parent / ".models")} if "model_profile" in spec else {}),
     )
@@ -135,13 +136,15 @@ def prepare_families(
     specs = [{"id": entry, "family": entry} if isinstance(entry, str) else entry for entry in names]
     if not specs or any(
         not isinstance(spec, dict)
-        or set(spec) - {"id", "family", "dataset", "n_players", "model_profile", "device"}
+        or set(spec)
+        - {"id", "family", "dataset", "n_players", "model_profile", "device", "quality_protocol"}
         or not isinstance(spec.get("family"), str)
         or spec.get("family") not in CATALOG
         or not isinstance(spec.get("id"), str)
         or not re.fullmatch(r"[a-zA-Z0-9_-]+", spec["id"])
         or ("dataset" in spec and not isinstance(spec["dataset"], str))
         or ("model_profile" in spec and not isinstance(spec["model_profile"], str))
+        or spec.get("quality_protocol") not in (None, QUALITY_PROTOCOL)
         or (
             "device" in spec
             and (
@@ -189,8 +192,8 @@ def prepare_families(
             factory = make_extra if name in EXTRA_CATALOG else make_family
             options = {
                 key: spec[key]
-                for key in ("dataset", "n_players", "model_profile", "device")
-                if key in spec
+                for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+                if key in spec and (key != "quality_protocol" or factory is make_family)
             }
             if "model_profile" in spec:
                 options["model_cache"] = str(output.parent / ".models")
@@ -293,6 +296,24 @@ def prepare_families(
             large_truth = exact_table_truth(values, n, targets) if n > 12 else {}
             payoff_std = float(np.std(values, dtype=np.longdouble))
             metadata["fourier_spectrum"] = fourier_spectrum(values, n)
+            if spec.get("quality_protocol") == QUALITY_PROTOCOL:
+                metadata["quality_protocol"] = QUALITY_PROTOCOL
+                metadata["game_quality"] = payoff_diagnostics(values, n)
+                if metadata.get("synthetic"):
+                    metadata["game_quality"]["control_reasons"].append("synthetic_control")
+                if metadata.get("stochastic_frozen"):
+                    stability = (
+                        imputation_stability(game, seed=instance_seed or 0)
+                        if name in {"local_gaussian", "local_copula", "local_conditional"}
+                        else {"status": "unqualified", "reason": "No matched stability pilot"}
+                    )
+                    metadata["imputation_stability"] = stability
+                    if stability["status"] != "stable":
+                        metadata["game_quality"]["control_reasons"].append(
+                            "unqualified_stochastic_payoffs"
+                        )
+                if metadata["game_quality"]["control_reasons"]:
+                    metadata["game_quality"]["role"] = "control"
             qualified = []
             for target in targets:
                 index, order = target["index"], target["order"]

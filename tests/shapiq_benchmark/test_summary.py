@@ -450,9 +450,106 @@ def test_withheld_elo_skips_bootstrap_fits_without_changing_outputs(
     monkeypatch.setattr(summary, "comparisons", counted)
     monkeypatch.setattr(summary, "bootstrap", previous_bootstrap)
     previous = summarize(data, bootstrap_draws=20)
-    assert len(fits) == 21
+    assert len(fits) == 22  # Primary Elo, common-cell sensitivity, then bootstrap fits.
     fits.clear()
     monkeypatch.setattr(summary, "bootstrap", bootstrap)
     current = summarize(data, bootstrap_draws=20)
     assert current == previous
-    assert fits == [("KernelSHAP", "SHAPIQ", "SVARM")]
+    assert fits == [("KernelSHAP", "SHAPIQ", "SVARM")] * 2
+
+
+def test_shared_dataset_bootstrap_does_not_gain_precision_from_duplicate_recipes() -> None:
+    """Identical seeded constructions are related evidence, not extra independent draws."""
+
+    def panel(copies):
+        return fixture_data(
+            [
+                {
+                    "family": "a",
+                    "stratum": str(recipe),
+                    "metadata": {
+                        "dataset": "shared",
+                        "data_sha256": "abc",
+                        "instance_seed": seed,
+                        "cluster_id": f"recipe-{recipe}-{seed}",
+                    },
+                }
+                for recipe in range(copies)
+                for seed in range(4)
+            ],
+            {"KernelSHAP": [1, 2, 3, 4] * copies},
+        )
+
+    original = overall(panel(1), draws=500)["rows"][0]["ci"]
+    duplicated = overall(panel(8), draws=500)["rows"][0]["ci"]
+    assert duplicated["mean"] == pytest.approx(original["mean"])
+    assert duplicated["median"] == pytest.approx(original["median"])
+    unbalanced = panel(2)
+    unbalanced["games"].pop()
+    unbalanced["records"] = [row for row in unbalanced["records"] if row["game_id"] != "7"]
+    result = overall(unbalanced)
+    assert not result["uncertainty"]["available"]
+    assert "different construction seeds" in result["uncertainty"]["reason"]
+
+
+def test_common_panel_elo_uses_one_intersection_for_all_observed_methods() -> None:
+    """A missing competitor outcome removes that cell for every common-panel comparison."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one"}] * 3,
+        {"KernelSHAP": [1, 100, 100], "SVARM": [2, 1, 2], "SHAPIQ": [3, 2, 1]},
+    )
+    for row in data["records"]:
+        if row["method"] == "KernelSHAP" and row["game_id"] != "0":
+            row.update(status="failed", nmse=None)
+    panel = overall(data, draws=0)["common_panel"]
+    assert panel["cells"] == 2
+    assert panel["coverage_weight"] == pytest.approx(1 / 3)
+    assert panel["ratings"]["KernelSHAP"] > panel["ratings"]["SVARM"] > panel["ratings"]["SHAPIQ"]
+    for row in data["records"]:
+        if row["method"] == "SVARM" and row["game_id"] == "0":
+            row.update(status="failed", nmse=None)
+    assert overall(data, draws=0)["common_panel"]["ratings"] == {}
+
+
+def test_order_summary_excludes_weak_truth_before_weighting() -> None:
+    """Order eligibility is a game property and all methods use the same exclusion."""
+    data = fixture_data(
+        [
+            {
+                "family": "a",
+                "stratum": "one",
+                "order": 2,
+                "index": "k-SII",
+                "metadata": {
+                    "order_scores": {"2": {"score_eligible": eligible}},
+                },
+            }
+            for eligible in (True, False)
+        ],
+        {"KernelSHAP": [0.001, 0], "SVARM": [0.002, 0]},
+    )
+    for row in data["records"]:
+        row["order_scores"] = {"2": {"nmse": 1 if row["method"] == "KernelSHAP" else 2}}
+    panel = summarize(data, score_order=2, bootstrap_draws=0)[0]
+    assert panel["score_order"] == 2
+    assert panel["excluded_score_games"] == ["1"]
+    assert panel["rows"][0]["mean"] == 1
+    assert panel["rows"][0]["planned"] == 2
+
+
+def test_controls_remain_available_without_changing_headline_scores() -> None:
+    """Control selection is independent of signal filtering and never deletes records."""
+    data = fixture_data(
+        [
+            {"family": "a", "stratum": "one", "metadata": {"game_quality": {"role": role}}}
+            for role in ("core", "control")
+        ],
+        {"KernelSHAP": [2, 100]},
+    )
+    core = overall(data, draws=0)
+    assert core["rows"][0]["mean"] == 2
+    assert core["excluded_score_games"] == []
+    included = summarize(data, include_controls=True, bootstrap_draws=0)[0]
+    assert included["rows"][0]["mean"] == 51
+    assert included["include_controls"] is True
+    assert len(data["records"]) == 4

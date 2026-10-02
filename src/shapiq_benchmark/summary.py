@@ -3,9 +3,9 @@
 Families, strata, games, budgets, then seeds receive equal conditional weight.
 Elo uses a batch Bradley-Terry fit: weighted ties count as half wins, logit skills
 have L2 penalty ``0.001 * sum(skill**2) / 2``, and ratings are centered at 1000.
-Intervals resample independent model clusters within strata, retaining all their
-points and pairing seed slots across methods and budgets. They are descriptive
-percentile intervals, and require at least two independent clusters in every stratum.
+Intervals synchronize construction-seed draws across recipes using the same dataset,
+retaining their points and pairing estimator seeds across methods and budgets.
+They are descriptive percentile intervals, not population confidence guarantees.
 """
 
 from __future__ import annotations
@@ -209,10 +209,28 @@ def bootstrap(
     include_elo: bool = True,
 ) -> tuple[dict, dict]:
     """Resample complete clusters and paired seed slots, never individual method outcomes."""
-    groups = {}
+    groups, blocks = {}, {}
     for game in games:
         key = (game["family"], game["stratum"])
-        cluster = str(game.get("metadata", {}).get("cluster_id", game["stratum"]))
+        metadata = game.get("metadata", {})
+        # A construction seed reuses data splits across models and recipes. Draw
+        # it once for the whole dataset, not independently in each recipe stratum.
+        shared = metadata.get("dataset") is not None and "instance_seed" in metadata
+        block = (
+            ("dataset", str(metadata["dataset"]), str(metadata.get("data_sha256", "")))
+            if shared
+            else ("legacy", *key)
+        )
+        cluster = str(
+            metadata["instance_seed"] if shared else metadata.get("cluster_id", game["stratum"])
+        )
+        if key in blocks and blocks[key] != block:
+            return {}, {
+                "available": False,
+                "reason": "Mixed dataset blocks within one stratum.",
+                "draws": 0,
+            }
+        blocks[key] = block
         groups.setdefault(key, {}).setdefault(cluster, []).append(game)
     if (
         not groups
@@ -222,22 +240,38 @@ def bootstrap(
     ):
         return {}, {
             "available": False,
-            "reason": "At least two independent model clusters per stratum and a complete method are required.",
+            "reason": "At least two construction clusters per stratum and a complete method are required.",
             "draws": 0,
         }
+    block_clusters = {}
+    for key, clusters in groups.items():
+        names = sorted(clusters)
+        block = blocks[key]
+        if block in block_clusters and block_clusters[block] != names:
+            return {}, {
+                "available": False,
+                "reason": "Shared dataset strata have different construction seeds; synchronized intervals are withheld.",
+                "draws": 0,
+            }
+        block_clusters[block] = names
     generator = np.random.default_rng(0)
     lookup = {cell: i for i, cell in enumerate(cells)}
     samples = {name: {"mean": [], "median": [], "elo": []} for name in methods}
     families = {key[0] for key in groups}
     for _ in range(draws):
         positions, weights = [], []
+        selections = {
+            block: [
+                (cluster, generator.choice(seeds, size=len(seeds), replace=True))
+                for cluster in generator.choice(names, size=len(names), replace=True)
+            ]
+            for block, names in sorted(block_clusters.items())
+        }
         for (family, _stratum), clusters in sorted(groups.items()):
-            names = sorted(clusters)
-            selected = generator.choice(names, size=len(names), replace=True)
-            n_games = sum(len(clusters[name]) for name in selected)
+            selected = selections[blocks[family, _stratum]]
+            n_games = sum(len(clusters[name]) for name, _seeds in selected)
             n_strata = sum(key[0] == family for key in groups)
-            for cluster in selected:
-                sampled_seeds = generator.choice(seeds, size=len(seeds), replace=True)
+            for cluster, sampled_seeds in selected:
                 for game in clusters[cluster]:
                     grid = budget_grid(budgets, game)
                     weight = 1 / (len(families) * n_strata * n_games * len(grid) * len(seeds))
@@ -261,13 +295,53 @@ def bootstrap(
     }
     return intervals, {
         "available": True,
-        "reason": "Paired model-cluster and seed-slot percentile bootstrap; 95% descriptive intervals.",
+        "reason": "Dataset construction-seed draws synchronized across recipes; paired estimator seeds; 95% descriptive intervals.",
         "draws": draws,
     }
 
 
-def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
+def summarize(
+    data: dict,
+    *,
+    bootstrap_draws: int = 200,
+    score_order: int | None = None,
+    include_controls: bool = False,
+) -> list[dict]:
     """Summarize observed cells; preserve complete panels for uncertainty and history."""
+    if not include_controls:
+        data = {
+            **data,
+            "games": [
+                game
+                for game in data["games"]
+                if game.get("metadata", {}).get("game_quality", {}).get("role") != "control"
+            ],
+        }
+    if score_order is not None:
+        # Preserve the raw record, but use the selected order consistently for all
+        # summaries, histories and Elo. Truth exclusions apply to every estimator.
+        data = {
+            **data,
+            "games": [
+                {
+                    **game,
+                    "metadata": {
+                        **game.get("metadata", {}),
+                        "score_eligible": game.get("metadata", {}).get("score_eligible", True)
+                        and game.get("metadata", {})
+                        .get("order_scores", {})
+                        .get(str(score_order), {})
+                        .get("score_eligible", False),
+                    },
+                }
+                for game in data["games"]
+                if game["order"] >= score_order
+            ],
+            "records": [
+                {**row, "nmse": row.get("order_scores", {}).get(str(score_order), {}).get("nmse")}
+                for row in data["records"]
+            ],
+        }
     methods = sorted(data["methods"])
     seeds = sorted(data["suite"]["seeds"])
     suite = data["suite"]
@@ -422,6 +496,28 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         values.append(sample)
                 array = np.array(values)
                 _, ratings = comparisons(array, weights, eligible)
+                shared = (
+                    np.all(np.isfinite(array), axis=0)
+                    if eligible
+                    else np.zeros(len(cells), dtype=bool)
+                )
+                mass = float(weights[shared].sum())
+                common_weights = weights[shared] / mass if mass else weights[shared]
+                _, common_ratings = (
+                    comparisons(array[:, shared], common_weights, eligible)
+                    if eligible
+                    else ([], None)
+                )
+                common_panel = {
+                    "cells": int(shared.sum()),
+                    "planned": len(cells),
+                    "coverage_weight": mass,
+                    "methods": eligible,
+                    "ratings": dict(zip(eligible, common_ratings, strict=True))
+                    if common_ratings is not None
+                    else {},
+                    "pairing": "Same successful cells for every method with observed results; weights renormalized on this intersection.",
+                }
                 complete_methods = [row["method"] for row in rows if row["complete"]]
                 complete_values = array[[eligible.index(name) for name in complete_methods]]
                 intervals, uncertainty = bootstrap(
@@ -447,6 +543,8 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         )
                         row["ci"] = intervals.get(row["method"])
                 key = {
+                    "score_order": score_order,
+                    "include_controls": include_controls,
                     "index": index,
                     "order": order,
                     "family": family,
@@ -466,6 +564,7 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         else {}
                     ),
                     "summary_protocol": "available-cells-v2",
+                    "uncertainty_protocol": "synchronized-dataset-seeds-v1",
                     "median_convention": "midpoint at exactly half the cumulative weight",
                     "snapshot_id": data.get("snapshot_id"),
                     "method_sources": data["methods"],
@@ -490,6 +589,7 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                         "elo_l2": L2,
                         "weighting": "equal family / stratum / game / budget / seed; renormalized over observed cells",
                         "elo_pairing": "finite overlapping cells; original panel weight; connected pool required",
+                        "common_panel": common_panel,
                     }
                 )
     return summaries

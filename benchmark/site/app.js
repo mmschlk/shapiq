@@ -142,6 +142,15 @@ function methodDetails(method, showHeading = false) {
   description.textContent =
     details?.description ||
     "Local estimator. See the implementation supplied with this report.";
+  const parameters = data?.methods?.[method]?.parameters;
+  if (parameters && Object.keys(parameters).length) {
+    description.textContent += ` Run settings: ${Object.entries(parameters)
+      .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+      .join(", ")}.`;
+    if (method === "OddSHAP" && parameters.ridge > 0)
+      description.textContent +=
+        " Ridge applies at budgets up to 3d, except full enumeration.";
+  }
   if ($("target").value === "SV · order 1") {
     const aliases = Object.keys(svRepresentatives).filter(
       (alias) =>
@@ -438,6 +447,8 @@ function selection(family = $("family").value, allBudgets = false) {
   const games = data.games.filter(
     (g) =>
       isSynthetic(g) === ($("panel").value === "diagnostic") &&
+      ($("includeControls").checked ||
+        g.metadata?.game_quality?.role !== "control") &&
       target(g) === $("target").value &&
       (!family || g.family === family) &&
       (!$("dataset").value ||
@@ -465,15 +476,28 @@ function selection(family = $("family").value, allBudgets = false) {
     );
   });
   const keys = new Set(cells.map(cellKey));
-  const rows = data.records.filter(
-    (r) => methods.includes(r.method) && keys.has(cellKey(r)),
-  );
+  const scoreOrder = $("scoreOrder").value;
+  const rows = data.records
+    .filter((r) => methods.includes(r.method) && keys.has(cellKey(r)))
+    .map((row) =>
+      scoreOrder
+        ? {
+            ...row,
+            nmse: row.order_scores?.[scoreOrder]?.nmse ?? null,
+            mse: row.order_scores?.[scoreOrder]?.mse ?? null,
+            score_order: Number(scoreOrder),
+          }
+        : row,
+    );
   const zero = new Set([
     ...data.records.filter((r) => r.zero_truth_energy).map((r) => r.game_id),
     ...data.games
       .filter(
         (g) =>
-          g.metadata?.zero_truth_energy || g.metadata?.score_eligible === false,
+          g.metadata?.zero_truth_energy ||
+          g.metadata?.score_eligible === false ||
+          (scoreOrder &&
+            g.metadata?.order_scores?.[scoreOrder]?.score_eligible !== true),
       )
       .map((g) => g.id),
   ]);
@@ -550,6 +574,27 @@ function summary(rows, s) {
 const same = (a, b) =>
   JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 function render() {
+  $("includeControls").disabled = !data.games.some(
+    (game) => game.metadata?.game_quality?.role === "control",
+  );
+  if ($("includeControls").disabled) $("includeControls").checked = false;
+  const commonOption = [...$("eloPanel").options].find(
+    (option) => option.value === "common",
+  );
+  commonOption.disabled = !(data.presets || []).some(
+    (preset) => preset.common_panel,
+  );
+  if (commonOption.disabled) $("eloPanel").value = "available";
+  const targetGames = data.games.filter(
+    (game) => target(game) === $("target").value,
+  );
+  for (const option of $("scoreOrder").options)
+    option.disabled =
+      Boolean(option.value) &&
+      !targetGames.some(
+        (game) => game.order > 1 && game.metadata?.order_scores?.[option.value],
+      );
+  if ($("scoreOrder").selectedOptions[0]?.disabled) $("scoreOrder").value = "";
   const s = selection();
   const visibleMethods = s.methods.filter(showMethod);
   buildMethodPicker();
@@ -557,6 +602,9 @@ function render() {
   $("chartTooltip").hidden = true;
   const preset = (data.presets || []).find(
     (p) =>
+      (p.score_order == null ? "" : String(p.score_order)) ===
+        $("scoreOrder").value &&
+      Boolean(p.include_controls) === $("includeControls").checked &&
       same(p.game_ids, s.panel_ids) &&
       same(p.methods, s.methods) &&
       (!p.panel || p.panel === $("panel").value) &&
@@ -630,6 +678,21 @@ function render() {
     `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
   $("panelSummary").textContent =
     `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} negligible-truth cases excluded` : ""}`;
+  if ($("scoreOrder").value) {
+    const shares = s.games
+      .map(
+        (game) =>
+          game.metadata.order_scores[$("scoreOrder").value].energy_share,
+      )
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    const middle = Math.floor(shares.length / 2);
+    const medianShare = shares.length
+      ? (shares[middle] + shares[Math.floor((shares.length - 1) / 2)]) / 2
+      : null;
+    $("panelSummary").textContent +=
+      ` · ${$("scoreOrder").selectedOptions[0].textContent}${medianShare === null ? "" : ` · median truth-energy share ${(100 * medianShare).toFixed(1)}%`}`;
+  }
   $("methodLabel").textContent = `${visibleMethods.length} shown`;
   renderLeaderboard(s, preset, visibleMethods);
   renderRunIssues(s);
@@ -639,6 +702,11 @@ function render() {
 }
 
 function renderLeaderboard(s, preset, visibleMethods) {
+  const common = $("eloPanel").value === "common";
+  const rating = (method) =>
+    common
+      ? preset?.common_panel?.ratings?.[method]
+      : preset?.rows.find((row) => row.method === method)?.elo;
   document.querySelectorAll("[data-sort]").forEach((button) => {
     const active = tableSort.key === button.dataset.sort;
     button
@@ -662,14 +730,13 @@ function renderLeaderboard(s, preset, visibleMethods) {
         s.rows.filter((r) => r.method === method),
         s,
       ),
-      elo: preset?.rows.find((r) => r.method === method)?.elo,
+      elo: rating(method),
     }))
     .sort(rankingOrder);
   $("ranking").replaceChildren();
   let rank = 0;
   summaries.forEach((item) => {
-    const stats = preset?.rows.find((r) => r.method === item.method),
-      tr = document.createElement("tr"),
+    const tr = document.createElement("tr"),
       detailRow = document.createElement("tr"),
       detailCell = document.createElement("td");
     detailRow.className = "methodDetailRow";
@@ -702,7 +769,7 @@ function renderLeaderboard(s, preset, visibleMethods) {
       capability(item.method),
       format(item.average),
       format(item.median),
-      format(stats?.elo),
+      format(item.elo),
       `${item.valid} / ${item.planned}`,
     ].forEach((value, i) => {
       const td = document.createElement("td");
@@ -747,7 +814,9 @@ function renderLeaderboard(s, preset, visibleMethods) {
   if (!summaries.length)
     appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
   $("statisticsNote").textContent = preset
-    ? "Paired comparisons of shared successful runs. Ratings depend on the selected panel and competitor set; hiding variants does not change them."
+    ? common
+      ? `Elo uses the same ${preset.common_panel?.cells ?? 0} successful cells for all ${preset.common_panel?.methods?.length ?? 0} methods with results (${((preset.common_panel?.coverage_weight ?? 0) * 100).toFixed(1)}% of panel weight). Error columns still use each method's available cells. No shared cells means no common-panel rating.`
+      : "Elo pairs available successful runs; missing outcomes can change rankings. Compare “same cells for all” to check this sensitivity. Hiding variants does not change the competitor set."
     : "Available for preset panels with the full competitor set. Custom filters still show error and coverage.";
 }
 
@@ -827,6 +896,11 @@ function download(kind) {
           cells: s.cells,
           model: $("model").value || null,
           dataset: $("dataset").value || null,
+          score_order: $("scoreOrder").value
+            ? Number($("scoreOrder").value)
+            : null,
+          include_controls: $("includeControls").checked,
+          elo_panel: $("eloPanel").value,
           seeds: data.suite.seeds,
           game_seeds: data.suite.game_seeds,
         },
@@ -848,6 +922,7 @@ function download(kind) {
       "seed",
       "status",
       "nmse",
+      "score_order",
       "mse",
       "queries",
       "seconds",
@@ -888,6 +963,9 @@ function download(kind) {
   "chartFamily",
   "timeMetric",
   "showVariants",
+  "scoreOrder",
+  "eloPanel",
+  "includeControls",
 ].forEach((id) =>
   $(id).addEventListener("change", () => {
     if (id === "target" && data?.record_shards) {

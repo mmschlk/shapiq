@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import weakref
 from typing import TYPE_CHECKING
 
 import pytest
 
-from shapiq_benchmark.report import merge_results, report
+from shapiq_benchmark.report import (
+    encode_records,
+    merge_results,
+    public_preparation,
+    report,
+    write_report,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,6 +66,67 @@ def write(tmp_path: Path, data: dict, name: str = "results.json") -> Path:
     path = tmp_path / name
     path.write_text(json.dumps(data))
     return path
+
+
+def test_saved_estimates_gain_order_metrics_without_rerunning(tmp_path: Path) -> None:
+    """Legacy private estimates suffice for pair scores and shared-panel presets."""
+    data = result_fixture()
+    game = data["games"][0]
+    game.update(
+        index="k-SII",
+        order=2,
+        truth={"coordinates": [[0], [0, 1]], "values": [100.0, 1.0], "energy": 10001.0},
+    )
+    game["metadata"]["payoff_std"] = 10.0
+    data["records"][0]["estimate"] = {"coordinates": [[0]], "values": [100.0]}
+    exported = report([write(tmp_path, data)], tmp_path / "site")
+    assert exported["records"][0]["nmse"] == 0.1  # Historical whole-vector score retained.
+    assert exported["records"][0]["order_scores"]["2"] == {"nmse": 1.0, "mse": pytest.approx(1 / 3)}
+    assert exported["games"][0]["metadata"]["order_scores"]["2"]["energy_share"] == pytest.approx(
+        1 / 10001
+    )
+    pairs = next(preset for preset in exported["presets"] if preset["score_order"] == 2)
+    assert pairs["rows"][0]["mean"] == 1
+    assert "estimate" not in exported["records"][0]
+
+
+def test_public_method_overrides_remain_reproducible(tmp_path: Path) -> None:
+    """An explicitly regularized run must not appear to use upstream defaults."""
+    data = result_fixture()
+    data["suite"]["method_parameters"] = {"baseline": {"ridge": 0.001}}
+    data["methods"]["baseline"]["parameters"] = {"ridge": 0.001}
+    public = merge_results([write(tmp_path, data)])
+    assert public["suite"]["method_parameters"] == data["suite"]["method_parameters"]
+    assert public["methods"]["baseline"]["parameters"] == {"ridge": 0.001}
+
+
+@pytest.mark.parametrize("canonical_present", [True, False])
+def test_duplicate_game_is_explicitly_omitted_from_report_panel(
+    tmp_path: Path, *, canonical_present: bool
+) -> None:
+    """A deferred duplicate never counts as failed or gains copied canonical scores."""
+    data = result_fixture()
+    alias = copy.deepcopy(data["games"][0])
+    alias["id"] = "alias"
+    data["games"].append(alias)
+    data["records"].append(
+        {
+            "game_id": "alias",
+            "method": "baseline",
+            "budget": 8,
+            "seed": 0,
+            "status": "duplicate",
+            "duplicate_of": "game" if canonical_present else "elsewhere",
+        }
+    )
+    merged = merge_results([write(tmp_path, data)])
+    assert any(row["status"] == "duplicate" for row in merged["records"])
+    exported = report([tmp_path / "results.json"], tmp_path / "site")
+    assert [game["id"] for game in exported["games"]] == ["game"]
+    assert exported["duplicate_games"] == [
+        {"game_id": "alias", "duplicate_of": "game" if canonical_present else "elsewhere"}
+    ]
+    assert exported["presets"][0]["rows"][0]["planned"] == 1
 
 
 def test_export_strips_private_artifacts(tmp_path: Path) -> None:
@@ -404,8 +472,6 @@ def test_public_model_protocol_and_spectrum_survive_export(tmp_path: Path) -> No
 
 def test_preparation_exclusions_keep_costs_without_private_pilot_details() -> None:
     """Cost-based exclusions remain public, distinct from estimator failures."""
-    from shapiq_benchmark.report import public_preparation
-
     instance = {
         "seed": 0,
         "status": "failed",
@@ -438,8 +504,6 @@ def test_preparation_exclusions_keep_costs_without_private_pilot_details() -> No
 
 def test_column_encoding_preserves_numbers_null_and_missing() -> None:
     """Compression uses string dictionaries only; absent numeric fields stay distinguishable."""
-    from shapiq_benchmark.report import encode_records
-
     encoded = encode_records(
         [
             {"method": "a", "nmse": 1.2345678901234567, "seconds": None, "official": False},
@@ -455,10 +519,6 @@ def test_column_encoding_preserves_numbers_null_and_missing() -> None:
 
 def test_lazy_report_partitions_exact_records_and_global_presets(tmp_path: Path) -> None:
     """Each target keeps complete-panel summaries while the index describes the whole cohort."""
-    import hashlib
-
-    from shapiq_benchmark.report import write_report
-
     data = merge_results([write(tmp_path, result_fixture())])
     second = {**data["games"][0], "id": "second", "index": "SII", "order": 2}
     data["games"].append(second)
@@ -494,8 +554,6 @@ def test_lazy_report_partitions_exact_records_and_global_presets(tmp_path: Path)
 
 def test_public_writer_rejects_unsanitized_records(tmp_path: Path) -> None:
     """Composite publication cannot bypass the original report's privacy boundary."""
-    from shapiq_benchmark.report import write_report
-
     with pytest.raises(ValueError, match="sanitized"):
         write_report(result_fixture(), tmp_path / "site", public=True)
     assert not (tmp_path / "site").exists()
@@ -503,8 +561,6 @@ def test_public_writer_rejects_unsanitized_records(tmp_path: Path) -> None:
 
 def test_report_reuse_removes_previous_target_assets(tmp_path: Path) -> None:
     """A new report must not leave an old candidate's records in the published directory."""
-    from shapiq_benchmark.report import write_report
-
     data = merge_results([write(tmp_path, result_fixture())])
     output = tmp_path / "site"
     write_report(data, output, public=True, compact=True)

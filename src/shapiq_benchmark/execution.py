@@ -168,9 +168,9 @@ def worker(source: Path, destination: Path) -> None:
     request = json.loads(source.read_text())
     result: dict = {"status": "failed", "queries": None, "requested_queries": None, "seconds": None}
     try:
-        if request["memory_gb"] is not None:
-            import resource
+        import resource
 
+        if request["memory_gb"] is not None:
             size = int(request["memory_gb"] * 1024**3)
             resource.setrlimit(resource.RLIMIT_AS, (size, size))
         from threadpoolctl import threadpool_info, threadpool_limits
@@ -182,11 +182,27 @@ def worker(source: Path, destination: Path) -> None:
             run_one,
         )
 
-        snapshot, root = load_snapshot(Path(request["snapshot"]))
-        if (
-            snapshot["snapshot_id"] != request["expected_snapshot_id"]
-            or provenance()["source_sha256"] != request["expected_source_hash"]
-        ):
+        if "authenticated_game" in request:
+            # The locked parent authenticated the complete snapshot once. The
+            # worker receives only its selected game and authenticates that file.
+            root = Path(request["artifact_root"]).resolve()
+            game = request["authenticated_game"]
+            artifact = (root / game["artifact"]).resolve()
+            if (
+                game["id"] != request["game_id"]
+                or not artifact.is_relative_to(root)
+                or digest(artifact) != request["artifact_sha256"]
+            ):
+                message = "Selected game artifact changed during the campaign."
+                raise ValueError(message)  # noqa: TRY301
+        else:
+            # Retain compatibility with previously written isolated requests.
+            snapshot, root = load_snapshot(Path(request["snapshot"]))
+            if snapshot["snapshot_id"] != request["expected_snapshot_id"]:
+                message = "Snapshot changed during the campaign."
+                raise ValueError(message)  # noqa: TRY301
+            game = next(game for game in snapshot["games"] if game["id"] == request["game_id"])
+        if provenance()["source_sha256"] != request["expected_source_hash"]:
             message = "Snapshot or benchmark source changed during the campaign."
             raise ValueError(message)  # noqa: TRY301
         if (
@@ -195,7 +211,6 @@ def worker(source: Path, destination: Path) -> None:
         ):
             message = "Candidate source changed during the campaign."
             raise ValueError(message)  # noqa: TRY301
-        game = next(game for game in snapshot["games"] if game["id"] == request["game_id"])
         with threadpool_limits(limits=1):
             verify_profile(request["timing_profile"])
             result = run_one(
@@ -205,6 +220,7 @@ def worker(source: Path, destination: Path) -> None:
                 request["budget"],
                 request["seed"],
                 request.get("candidate"),
+                parameters=request.get("method_parameters"),
             )
             pools = [
                 {key: pool.get(key) for key in ("internal_api", "num_threads", "version")}
@@ -220,6 +236,10 @@ def worker(source: Path, destination: Path) -> None:
                 "thread_pools": pools,
                 "thread_environment": {name: os.environ.get(name) for name in THREAD_VARIABLES},
                 "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+                "peak_rss_bytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                * (1 if sys.platform == "darwin" else 1024),
+                "process_cpu_seconds": resource.getrusage(resource.RUSAGE_SELF).ru_utime
+                + resource.getrusage(resource.RUSAGE_SELF).ru_stime,
             }
     except Exception as error:  # noqa: BLE001 -- return import/resource/setup failures as data
         result.update(

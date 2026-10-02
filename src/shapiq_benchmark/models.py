@@ -19,9 +19,12 @@ from typing import TYPE_CHECKING, cast
 if TYPE_CHECKING:
     from typing import Any
 
+    from shapiq.explainer.product_kernel.base import ProductKernelModel
+
 import joblib
 import numpy as np
 from sklearn.base import clone
+from sklearn.compose import TransformedTargetRegressor
 from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel
@@ -32,7 +35,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
 
+from shapiq.explainer.product_kernel.conversion import convert_svm
 from shapiq_benchmark.datasets import DATASETS, dataset_details, load_raw_dataset
+from shapiq_benchmark.quality import QUALITY_PROTOCOL, model_validation_check, validate_protocol
 from shapiq_benchmark.setup import _resolve_model_builder
 
 MODEL_PROFILES: dict = {
@@ -152,7 +157,13 @@ def _tabpfn_checkpoint(task: str) -> Path:
 
 
 def build_model(
-    profile: str, task: str, seed: int, *, parameters: dict | None = None, device: str = "cpu"
+    profile: str,
+    task: str,
+    seed: int,
+    *,
+    parameters: dict | None = None,
+    device: str = "cpu",
+    quality_protocol: str | None = None,
 ) -> object:
     """Construct one unfitted profile; scaled models keep original feature coordinates.
 
@@ -191,9 +202,24 @@ def build_model(
             model_path=_tabpfn_checkpoint(task),
         )
     estimator = builder(**params)
+    if quality_protocol == QUALITY_PROTOCOL and profile == "rbf_svm" and not classification:
+        estimator = TransformedTargetRegressor(regressor=estimator, transformer=StandardScaler())
     if profile in {"mlp", "rbf_svm", "linear", "gaussian_process"}:
         return Pipeline([("scaler", StandardScaler()), ("model", estimator)])
     return estimator
+
+
+def converted_svm(estimator: SVC | SVR | TransformedTargetRegressor) -> ProductKernelModel:
+    """Convert an SVR/SVC, restoring scaled regression coefficients to payoff units."""
+    if isinstance(estimator, TransformedTargetRegressor):
+        converted = convert_svm(cast("SVR", estimator.regressor_))
+        transformer = cast("StandardScaler", estimator.transformer_)
+        scale = float(np.asarray(transformer.scale_).item())
+        offset = float(np.asarray(transformer.mean_).item())
+        converted.alpha = converted.alpha * scale
+        converted.intercept = float(converted.intercept * scale + offset)
+        return converted
+    return convert_svm(estimator)
 
 
 def coalition_model(prepared: PreparedModel) -> object:
@@ -233,6 +259,7 @@ def _fit_predictor(
     y_validation: np.ndarray,
     *,
     device: str,
+    quality_protocol: str | None = None,
 ) -> tuple[Any, dict, dict]:
     """Select on the designated validation split, never on held-out test observations."""
     classification = task == "classification"
@@ -268,7 +295,14 @@ def _fit_predictor(
             constructor_parameters["kernel"] = kernel + WhiteKernel(noise_level=0.01)
         model = cast(
             "Any",
-            build_model(profile, task, seed, parameters=constructor_parameters, device=device),
+            build_model(
+                profile,
+                task,
+                seed,
+                parameters=constructor_parameters,
+                device=device,
+                quality_protocol=quality_protocol,
+            ),
         )
         if profile == "xgboost":
             model.fit(x_fit, y_fit, eval_set=[(x_validation, y_validation)], verbose=False)
@@ -322,6 +356,13 @@ def _fit_predictor(
             mean=scaler.mean_.tolist(),
             scale=scaler.scale_.tolist(),
         )
+        if isinstance(best.named_steps["model"], TransformedTargetRegressor):
+            target_scaler = best.named_steps["model"].transformer_
+            diagnostics["target_scaling"] = {
+                "rule": "fitting-row mean and standard deviation; predictions restored to original units",
+                "mean": float(target_scaler.mean_[0]),
+                "scale": float(target_scaler.scale_[0]),
+            }
     if len(candidates) > 1:
         diagnostics.update(
             validation_candidates=len(candidates), selected_validation_loss=best_loss
@@ -488,6 +529,7 @@ def _fit(
         selected[validation],
         y[validation],
         device=identity.get("device", "cpu"),
+        quality_protocol=identity.get("quality_protocol"),
     )
     dummy = DummyClassifier(strategy="prior") if classification else DummyRegressor(strategy="mean")
     dummy.fit(selected[fit], y[fit])
@@ -549,6 +591,8 @@ def _fit(
         metadata["prediction_batch_size"] = MODEL_PROFILES[profile]["prediction_batch_size"]
     if profile == "xgboost":
         metadata["best_iteration"] = int(model.best_iteration)
+    if identity.get("quality_protocol") == QUALITY_PROTOCOL:
+        metadata["model_validation_gate"] = model_validation_check(metadata)
     return PreparedModel(
         model,
         selected[fit],
@@ -570,6 +614,7 @@ def prepare_model(
     cache_dir: str | Path | None = None,
     device: str = "cpu",
     feature_rule: str = "all",
+    quality_protocol: str | None = None,
 ) -> PreparedModel:
     """Fit once, or authenticate and reuse a local model artifact.
 
@@ -577,6 +622,7 @@ def prepare_model(
     training/profile configuration. A lock prevents duplicate concurrent fits.
     Joblib artifacts are private trusted-local files, never user uploads.
     """
+    validate_protocol(quality_protocol)
     if profile not in MODEL_PROFILES:
         message = f"Unknown implemented model profile: {profile}"
         raise ValueError(message)
@@ -591,7 +637,7 @@ def prepare_model(
         message = "Model feature count must fit the dataset."
         raise ValueError(message)
     source = hashlib.sha256()
-    for name in ("models.py", "datasets.py", "dataset_catalog.py", "setup.py"):
+    for name in ("models.py", "datasets.py", "dataset_catalog.py", "setup.py", "quality.py"):
         source.update(Path(__file__).with_name(name).read_bytes())
     packages = ["numpy", "scikit-learn", "joblib"]
     if profile in {"xgboost", "lightgbm"}:
@@ -624,6 +670,9 @@ def prepare_model(
     }
     if feature_rule != "all":
         identity["feature_rule"] = feature_rule
+    if quality_protocol is not None:
+        identity["quality_protocol"] = quality_protocol
+        training["id"] = training["id"].replace("quality-v1", quality_protocol)
     if profile == "tabpfn_prediction":
         torch = importlib.import_module("torch")
 

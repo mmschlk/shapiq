@@ -9,9 +9,10 @@ import runpy
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from shapiq_benchmark.campaign import assemble_campaign
+from shapiq_benchmark.campaign import _canonical_aliases, assemble_campaign
 from shapiq_benchmark.runner import digest, identity
 from shapiq_benchmark.summary import summarize
 
@@ -96,7 +97,11 @@ def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = Fal
             continue
         artifact = directory / "prepared/game.npz"
         artifact.parent.mkdir(parents=True)
-        artifact.write_bytes(b"authenticated tiny artifact")
+        for seed in shared["game_seeds"]:
+            np.savez(
+                artifact.with_name(f"game-{seed}.npz"),
+                values=np.arange(2048, dtype=float) * (1 + number * 2 + seed),
+            )
         games = [
             {
                 "id": f"{recipe['id']}-i{seed}" + ("" if structured and number == 0 else "-sv-1"),
@@ -105,7 +110,7 @@ def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = Fal
                 "n_players": 11,
                 "index": "SV",
                 "order": 1,
-                "artifact": "game.npz",
+                "artifact": f"game-{seed}.npz",
                 "truth": {"energy": 1, "values": [1]},
                 "metadata": {"instance_seed": seed, "cluster_id": f"model-{seed}"},
             }
@@ -121,7 +126,7 @@ def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = Fal
             "provenance": source,
             "suite": suite,
             "games": games,
-            "artifacts": {"game.npz": digest(artifact)},
+            "artifacts": {g["artifact"]: digest(artifact.parent / g["artifact"]) for g in games},
             "coverage": [],
         }
         snapshot["snapshot_id"] = identity(snapshot)
@@ -221,7 +226,7 @@ def test_changed_or_incomplete_shards_rejected(tmp_path: Path, change: str) -> N
 def test_authenticated_inputs_cannot_change(tmp_path: Path, change: str) -> None:
     make_campaign(tmp_path)
     if change == "artifact":
-        (tmp_path / "batch-0/prepared/game.npz").write_bytes(b"changed")
+        (tmp_path / "batch-0/prepared/game-0.npz").write_bytes(b"changed")
     else:
         path = {
             "qualification": "batch-0/qualified-suite.json",
@@ -247,6 +252,58 @@ def test_duplicate_games_cannot_inflate_coverage(tmp_path: Path) -> None:
     make_campaign(tmp_path, duplicate=True)
     with pytest.raises(ValueError, match="Duplicate game IDs"):
         assemble_campaign(tmp_path, 3)
+
+
+def test_canonical_exact_game_prefers_evaluated_core_without_relabeling() -> None:
+    """Registration order cannot hide core evidence behind an equivalent control."""
+    games = [
+        {"id": name, "metadata": {"game_quality": {"role": role}}}
+        for name, role in [
+            ("first-control", "control"),
+            ("later-core", "core"),
+            ("core-copy", "core"),
+        ]
+    ]
+    records = [
+        {"game_id": "first-control", "status": "ok"},
+        {"game_id": "later-core", "status": "ok"},
+        {"game_id": "core-copy", "status": "duplicate", "duplicate_of": "later-core"},
+    ]
+    fingerprints = {game["id"]: "same-payoffs" for game in games}
+    before = copy.deepcopy(games)
+    assert _canonical_aliases(games, records, fingerprints) == {
+        "first-control": "later-core",
+        "core-copy": "later-core",
+    }
+    assert games == before
+    # An older registry may have skipped the only core recipe. Keep its actual
+    # evaluated control representative; never invent measurements or relabel it.
+    records[1].update(status="duplicate", duplicate_of="first-control")
+    records[2]["duplicate_of"] = "first-control"
+    assert set(_canonical_aliases(games, records, fingerprints).values()) == {"first-control"}
+
+
+@pytest.mark.parametrize("failure", ["outside", "different", "cycle", "mixed", "conflict"])
+def test_invalid_duplicate_provenance_fails_closed(failure: str) -> None:
+    """Aliases must refer to the same authenticated game with actual measurements."""
+    games = [{"id": "a"}, {"id": "b"}]
+    records = [
+        {"game_id": "a", "status": "ok"},
+        {"game_id": "b", "status": "duplicate", "duplicate_of": "a"},
+    ]
+    fingerprints = {"a": "same", "b": "same"}
+    if failure == "outside":
+        records[1]["duplicate_of"] = "outside"
+    elif failure == "different":
+        fingerprints["b"] = "different"
+    elif failure == "cycle":
+        records[0].update(status="duplicate", duplicate_of="b")
+    elif failure == "mixed":
+        records.append({"game_id": "b", "status": "ok"})
+    else:
+        records.append({"game_id": "b", "status": "duplicate", "duplicate_of": "other"})
+    with pytest.raises(ValueError):
+        _canonical_aliases(games, records, fingerprints)
 
 
 def test_structured_recipe_ids_are_preserved(tmp_path: Path) -> None:

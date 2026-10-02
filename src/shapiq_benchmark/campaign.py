@@ -13,7 +13,12 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
+from shapiq_benchmark.quality import model_validation_check, payoff_diagnostics
 from shapiq_benchmark.report import merge_results, public_preparation
+from shapiq_benchmark.results_io import read_results, result_inputs
 from shapiq_benchmark.runner import digest, identity, load_snapshot
 
 if TYPE_CHECKING:
@@ -23,6 +28,67 @@ if TYPE_CHECKING:
 def _require(condition: bool, message: str) -> None:  # noqa: FBT001 -- assertion helper
     if not condition:
         raise ValueError(message)
+
+
+def _historical_quality(game: dict, root: Path) -> dict:
+    """Apply score-independent diagnostics to old authenticated tables at export.
+
+    This annotates the report, never the frozen snapshot or original payoffs.
+    Missing stochastic qualification is explicit rather than assumed to pass.
+    """
+    metadata = game.get("metadata", {})
+    if game.get("oracle", "table") != "table" or "game_quality" in metadata:
+        return {}
+    with np.load(root / game["artifact"], allow_pickle=False) as archive:
+        quality = payoff_diagnostics(archive["values"], game["n_players"])
+    diagnostics = {"game_quality": quality}
+    if metadata.get("quality", {}).get("validation"):
+        gate = model_validation_check(metadata)
+        diagnostics["model_validation_gate"] = gate
+        if not gate["passed"]:
+            quality["control_reasons"].append("predictor_below_validation_dummy")
+    if metadata.get("stochastic_frozen") and not metadata.get("imputation_stability"):
+        quality["control_reasons"].append("stochastic_oracle_stability_unqualified")
+    if quality["control_reasons"]:
+        quality["role"] = "control"
+    return diagnostics
+
+
+def _canonical_aliases(games: list[dict], records: list[dict], fingerprints: dict) -> dict:
+    """Keep an evaluated core representative of each exact game, without relabeling it."""
+    marked = {}
+    for row in records:
+        if row["status"] == "duplicate":
+            alias, canonical = row["game_id"], row["duplicate_of"]
+            _require(
+                marked.setdefault(alias, canonical) == canonical, "Conflicting duplicate markers"
+            )
+    for alias, canonical in marked.items():
+        _require(canonical in fingerprints, "Duplicate refers to a game outside this publication")
+        _require(
+            alias in fingerprints and fingerprints[alias] == fingerprints[canonical],
+            "Duplicate marker disagrees with authenticated payoff tables",
+        )
+        _require(canonical not in marked, "Duplicate canonical was not evaluated")
+    measured = {row["game_id"] for row in records if row["status"] != "duplicate"}
+    _require(not measured.intersection(marked), "Game mixes duplicate and evaluated cells")
+    groups = {}
+    for game in games:
+        if game["id"] in fingerprints:
+            groups.setdefault(fingerprints[game["id"]], []).append(game)
+    aliases = {}
+    for group in groups.values():
+        candidates = [game for game in group if game["id"] in measured]
+        _require(bool(candidates), "Exact game has no evaluated representative")
+        canonical = min(
+            candidates,
+            key=lambda game: (
+                game.get("metadata", {}).get("game_quality", {}).get("role") != "core",
+                game["id"],
+            ),
+        )["id"]
+        aliases.update({game["id"]: canonical for game in group if game["id"] != canonical})
+    return aliases
 
 
 def _prepared_suite(suite: dict, games: list[dict]) -> dict:
@@ -52,21 +118,23 @@ def _game_ids(suite: dict) -> set[str]:
 
 
 def _qualification(original: dict, qualified: dict) -> None:
-    """Qualification may exclude families, never alter recipes or shared settings."""
-    additions = {"families", "preparation_preflight", "preparation_exclusions"}
+    """Qualification may exclude unchanged recipes, never alter shared settings."""
+    additions = {"families", "games", "preparation_preflight", "preparation_exclusions"}
     _require(
         {k: v for k, v in original.items() if k not in additions}
         == {k: v for k, v in qualified.items() if k not in additions},
-        "Qualification changed declared settings or structured games",
+        "Qualification changed declared settings",
     )
-    requested = {spec["id"]: spec for spec in original.get("families", [])}
-    kept = {spec["id"]: spec for spec in qualified.get("families", [])}
+    requested_rows = [*original.get("families", []), *original.get("games", [])]
+    kept_rows = [*qualified.get("families", []), *qualified.get("games", [])]
+    requested = {spec["id"]: spec for spec in requested_rows}
+    kept = {spec["id"]: spec for spec in kept_rows}
     excluded = {
         row["spec"]["id"]: row["spec"] for row in qualified.get("preparation_exclusions", [])
     }
     _require(
-        len(requested) == len(original.get("families", []))
-        and len(kept) == len(qualified.get("families", []))
+        len(requested) == len(requested_rows)
+        and len(kept) == len(kept_rows)
         and len(excluded) == len(qualified.get("preparation_exclusions", []))
         and not kept.keys() & excluded.keys()
         and {**kept, **excluded} == requested,
@@ -93,6 +161,11 @@ def _batch_results(
             "source_sha256": source["source_sha256"],
             "software_sha256": identity(source),
             "private": False,
+            **(
+                {"parameters": snapshot["suite"]["method_parameters"][name]}
+                if snapshot["suite"].get("method_parameters", {}).get(name)
+                else {}
+            ),
         }
         for name in snapshot["suite"]["methods"]
     }
@@ -180,7 +253,13 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
         _require(path.resolve().is_relative_to(root), "Campaign input escapes its directory")
         content = path.read_bytes()
         inputs[str(path.relative_to(root))] = hashlib.sha256(content).hexdigest()
-        return json.loads(content)
+        value = json.loads(content)
+        if value.get("storage_format") == "snapshot-journal-v1":
+            for companion in result_inputs(path)[1:]:
+                _require(companion.is_relative_to(root), "Result companion escapes campaign")
+                inputs[str(companion.relative_to(root))] = digest(companion)
+            value = read_results(path)
+        return value
 
     campaign, journal = read(root / "campaign.json"), read(root / "jobs.json")
     _require(
@@ -209,6 +288,7 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             "seeds",
             "game_seeds",
             "methods",
+            "method_parameters",
         )
         if k in inventory
     }
@@ -224,6 +304,7 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
         "records": [],
     }
     seen, components, preflight = set(), [], None
+    game_fingerprints = {}
     for batch in batches:
         directory = root / batch["id"]
         _require(
@@ -263,6 +344,7 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             "targets",
             "min_players",
             "min_signal_ratio",
+            "method_parameters",
         ):
             _require(original.get(key) == inventory.get(key), f"Batch has incompatible {key}")
         sanitized = public_preparation(qualified)
@@ -311,6 +393,16 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             _require(not seen.intersection(ids), "Duplicate game IDs across campaign batches")
             seen.update(ids)
             panel = _batch_results(directory, snapshot, source, read)
+            public_games = {game["id"]: game for game in panel["games"]}
+            # Historical runs predate the evaluation gate. Remove their exact
+            # aliases here too; never rewrite the authenticated raw records.
+            for game in snapshot["games"]:
+                public_games[game["id"]].setdefault("metadata", {}).update(
+                    _historical_quality(game, directory / "prepared")
+                )
+                fingerprint = payoff_fingerprint(game, directory / "prepared")
+                if fingerprint is not None:
+                    game_fingerprints[game["id"]] = fingerprint
             for key in ("games", "coverage", "records"):
                 data[key].extend(panel[key])
             for name, method in panel["methods"].items():
@@ -324,6 +416,7 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             component.update(status="complete", snapshot_id=snapshot["snapshot_id"])
         components.append(component)
     _require(bool(data["games"]), "No qualified games are available for publication")
+    remove_aliases(data, _canonical_aliases(data["games"], data["records"], game_fingerprints))
     suite["budgets"] = sorted({b for grid in suite["budgets_by_game"].values() for b in grid})
     if preflight is not None:
         suite["preparation_preflight"] = preflight

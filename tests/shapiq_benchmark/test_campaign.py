@@ -11,6 +11,7 @@ import pytest
 
 from shapiq_benchmark import execution
 from shapiq_benchmark.execution import PROFILE, THREAD_VARIABLES, verify_profile
+from shapiq_benchmark.results_io import read_results
 from shapiq_benchmark.runner import builtin_factory, digest, identity, method_catalog, run
 
 if TYPE_CHECKING:
@@ -121,7 +122,7 @@ def test_resume_header_and_cell_matrix_are_validated(tmp_path: Path) -> None:
     output = tmp_path / "results"
     run(path, output, max_runs=1)
     checkpoint = output / "results.json"
-    previous = json.loads(checkpoint.read_text())
+    previous = read_results(checkpoint)
     previous["suite"]["budgets"] = [999]
     checkpoint.write_text(json.dumps(previous))
     with pytest.raises(ValueError, match="identical snapshot"):

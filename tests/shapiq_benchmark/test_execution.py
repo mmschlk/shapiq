@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import json
+from typing import TYPE_CHECKING
+
 import pytest
 
-from shapiq_benchmark import execution
+from shapiq_benchmark import execution, runner
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -62,3 +68,46 @@ def test_profile_rejects_ambiguous_response(
     )
     with pytest.raises(ValueError, match="ambiguous job allocation"):
         execution.verify_profile(execution.PROFILE)
+
+
+@pytest.mark.parametrize("tamper", [False, True])
+def test_worker_authenticates_only_parent_selected_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, tamper: bool
+) -> None:
+    """A cell must not scan the panel, but must still reject changes to its own oracle."""
+    artifact = tmp_path / "game.npz"
+    artifact.write_bytes(b"authenticated oracle")
+    request = {
+        "memory_gb": None,
+        "artifact_root": str(tmp_path),
+        "authenticated_game": {"id": "selected", "artifact": "game.npz"},
+        "game_id": "selected",
+        "artifact_sha256": runner.digest(artifact),
+        "expected_source_hash": "source",
+        "method": "KernelSHAP",
+        "budget": 4,
+        "seed": 0,
+        "timing_profile": "diagnostic",
+    }
+    if tamper:
+        artifact.write_bytes(b"changed oracle")
+    checked = []
+    digest = runner.digest
+    monkeypatch.setattr(runner, "digest", lambda path: checked.append(path) or digest(path))
+    monkeypatch.setattr(runner, "provenance", lambda: {"source_sha256": "source"})
+
+    def forbidden(*args: object) -> None:
+        pytest.fail("worker reloaded the full snapshot")
+
+    monkeypatch.setattr(runner, "load_snapshot", forbidden)
+    monkeypatch.setattr(runner, "run_one", lambda *args, **kwargs: {"status": "ok", "nmse": 0})
+    source, destination = tmp_path / "request.json", tmp_path / "response.json"
+    source.write_text(json.dumps(request))
+    execution.worker(source, destination)
+    response = json.loads(destination.read_text())
+    assert checked == [artifact]
+    assert response["status"] == ("failed" if tamper else "ok")
+    if tamper:
+        assert "artifact changed" in response["error"]
+    else:
+        assert response["worker"]["peak_rss_bytes"] > 0

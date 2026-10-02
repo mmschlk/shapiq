@@ -31,6 +31,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from shapiq_benchmark.games import load_game
+from shapiq_benchmark.order_metrics import order_scores
+from shapiq_benchmark.results_io import Checkpoint, read_results
 
 METHOD_NAMES = (
     "PermutationSamplingSII",
@@ -73,19 +75,37 @@ def method_catalog() -> dict:
     }
 
 
-def builtin_factory(name: str, game: dict, seed: int) -> approximators.Approximator:
+def validate_method_parameters(name: str, parameters: dict) -> None:
+    """Allow explicit constructor options, never an override of the benchmark target or seed."""
+    accepted = {
+        key
+        for key, parameter in inspect.signature(METHODS[name]).parameters.items()
+        if parameter.kind
+        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+    } - {"n", "index", "max_order", "random_state"}
+    if not isinstance(parameters, dict) or not parameters.keys() <= accepted:
+        message = f"Invalid explicit constructor parameters for {name}."
+        raise ValueError(message)
+    json.dumps(parameters, allow_nan=False)
+
+
+def builtin_factory(
+    name: str, game: dict, seed: int, parameters: dict | None = None
+) -> approximators.Approximator:
     """Pass only explicitly accepted common constructor parameters."""
     cls = METHODS[name]
     if hasattr(cls, "_import_error"):
         raise ImportError(str(cls._import_error))
-    parameters = inspect.signature(cls).parameters
+    accepted = inspect.signature(cls).parameters
+    overrides = parameters if parameters is not None else {}
+    validate_method_parameters(name, overrides)
     arguments = {
         "n": game["n_players"],
         "index": game["index"],
         "max_order": game["order"],
         "random_state": seed,
     }
-    return cls(**{key: value for key, value in arguments.items() if key in parameters})
+    return cls(**{key: value for key, value in arguments.items() if key in accepted}, **overrides)
 
 
 def digest(path: Path) -> str:
@@ -198,6 +218,12 @@ def validate_suite(suite: dict) -> None:
     if any(name not in METHODS for name in suite["methods"]):
         message = "Suite contains an unknown method."
         raise ValueError(message)
+    parameters = suite.get("method_parameters", {})
+    if not isinstance(parameters, dict) or not parameters.keys() <= set(suite["methods"]):
+        message = "Method parameters must name declared suite methods."
+        raise ValueError(message)
+    for name, overrides in parameters.items():
+        validate_method_parameters(name, overrides)
 
 
 def load_snapshot(path: Path) -> tuple[dict, Path]:
@@ -345,6 +371,7 @@ def score(estimate: InteractionValues, game: dict) -> dict:
         "truth_energy": energy,
         "normalization": "nonempty_l2_energy",
         "zero_truth_energy": energy == 0,
+        "order_scores": order_scores(truth, prediction, game),
     }
 
 
@@ -374,7 +401,14 @@ def candidate_factory(spec: str) -> tuple[str, Any, dict]:
 
 
 def run_one(
-    game: dict, root: Path, method: str, budget: int, seed: int, candidate: str | None = None
+    game: dict,
+    root: Path,
+    method: str,
+    budget: int,
+    seed: int,
+    candidate: str | None = None,
+    *,
+    parameters: dict | None = None,
 ) -> dict:
     """Time the estimator excluding imports, oracle reconstruction, and scoring.
 
@@ -394,7 +428,7 @@ def run_one(
         estimator = (
             factory(n=game["n_players"], index=game["index"], order=game["order"], seed=seed)
             if factory
-            else builtin_factory(method, game, seed)
+            else builtin_factory(method, game, seed, parameters)
         )
         estimate = estimator.approximate(budget=budget, game=counted)
         record["seconds"] = time.perf_counter() - start
@@ -463,7 +497,14 @@ def run(
     with (output / ".campaign.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         snapshot_path = snapshot_path.resolve()
-        snapshot, _ = load_snapshot(snapshot_path)
+        snapshot, artifact_root = load_snapshot(snapshot_path)
+        duplicates = {}
+        if snapshot["suite"].get("duplicate_registry"):
+            from shapiq_benchmark.duplicates import claim_games
+
+            duplicates = claim_games(
+                snapshot, artifact_root, Path(snapshot["suite"]["duplicate_registry"])
+            )
         if method_names is not None and (
             candidate
             or not method_names
@@ -488,6 +529,11 @@ def run(
                 "source_sha256": software["source_sha256"],
                 "software_sha256": identity(software),
                 "private": False,
+                **(
+                    {"parameters": snapshot["suite"]["method_parameters"][name]}
+                    if snapshot["suite"].get("method_parameters", {}).get(name)
+                    else {}
+                ),
             }
             for name in (method_names or snapshot["suite"]["methods"])
         }
@@ -529,7 +575,7 @@ def run(
         )
         existing = output / "results.json"
         if existing.exists():
-            previous = json.loads(existing.read_text())
+            previous = read_results(existing, recover=True)
             if not resume or (
                 previous.get("resume_key") != result["resume_key"]
                 or identity(
@@ -563,11 +609,18 @@ def run(
         ]
         planned_keys = {(game["id"], name, budget, seed) for game, name, budget, seed in planned}
         if not completed <= planned_keys or any(
-            row["status"] not in ("ok", "failed", "unsupported") for row in result["records"]
+            row["status"] not in ("ok", "failed", "unsupported", "duplicate")
+            for row in result["records"]
         ):
             message = "Checkpoint contains cells outside the planned matrix."
             raise ValueError(message)
         start, added = time.monotonic(), 0
+        result["campaign"] = {
+            "planned": len(planned),
+            "completed": len(result["records"]),
+            "complete": len(result["records"]) == len(planned),
+        }
+        checkpoint = Checkpoint(output, snapshot_path, result)
         for game, name, budget, seed in planned:
             if (game["id"], name, budget, seed) in completed:
                 continue
@@ -586,7 +639,16 @@ def run(
                 "official_timing": False,
                 "timing_profile": timing_profile,
             }
-            if not candidate and game["index"] not in method_catalog()[name]["indices"]:
+            if game["id"] in duplicates:
+                record.update(
+                    status="duplicate",
+                    duplicate_of=duplicates[game["id"]],
+                    queries=0,
+                    requested_queries=0,
+                    seconds=None,
+                    wall_seconds=0,
+                )
+            elif not candidate and game["index"] not in method_catalog()[name]["indices"]:
                 record.update(
                     status="unsupported",
                     queries=0,
@@ -597,6 +659,9 @@ def run(
             else:
                 request = {
                     "snapshot": str(snapshot_path),
+                    "authenticated_game": game,
+                    "artifact_root": str(artifact_root),
+                    "artifact_sha256": snapshot["artifacts"][game["artifact"]],
                     "game_id": game["id"],
                     "method": name,
                     "budget": budget,
@@ -606,6 +671,7 @@ def run(
                     "expected_snapshot_id": snapshot["snapshot_id"],
                     "expected_source_hash": software["source_sha256"],
                     "candidate_sha256": methods[name]["source_sha256"] if candidate else None,
+                    "method_parameters": methods[name].get("parameters"),
                 }
                 record.update(isolated(request, timeout, memory_gb))
             result["records"].append(record)
@@ -615,9 +681,9 @@ def run(
                 "completed": len(result["records"]),
                 "complete": len(result["records"]) == len(planned),
             }
-            write_results(result, output)
-        if not existing.exists():
-            write_results(result, output)
+            checkpoint.append(record)
+        checkpoint.finish(result)
+        _write_csv(result, output)
         return result
 
 
@@ -626,6 +692,11 @@ def write_results(result: dict, output: Path) -> None:
     temporary = output / "results.json.tmp"
     temporary.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     temporary.replace(output / "results.json")
+    _write_csv(result, output)
+
+
+def _write_csv(result: dict, output: Path) -> None:
+    """Write the optional human-readable companion once per bounded run."""
     fields = sorted({key for row in result["records"] for key in row})
     with (output / "results.csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)

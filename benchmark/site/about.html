@@ -383,7 +383,9 @@
               AMD EPYC 9754 nodes. Concurrent timings are labeled diagnostic.
               Estimated uncached time adds recorded payoff costs to measured
               estimator work; it is not a fresh end-to-end timing. GPU-generated
-              payoff costs retain their own hardware identity.
+              payoff costs retain their own hardware identity. Batch-amortized
+              charges can underestimate small-batch latency; use them as
+              estimates, not measured end-to-end speed.
             </p>
           </article>
           <article>
@@ -408,7 +410,12 @@
             <strong>Normalization.</strong> We score the selected attribution
             coordinates, excluding the empty-coalition baseline. The signal
             filter requires RMS attribution to be at least 10<sup>−6</sup> times
-            the payoff standard deviation.
+            the payoff standard deviation. For interactions, choose all
+            coefficients, singletons or pairs under Tune filters. Per-order
+            scores also require this signal threshold; older analytic games
+            without payoff variation use full-target RMS instead. The displayed
+            energy share shows how much of the full target belongs to the
+            selected order.
           </p>
           <p>
             <strong>Elo.</strong> Runs are paired on game, explanation target,
@@ -417,6 +424,25 @@
             to all comparisons together and center ratings at 1,000. Ties count
             as half wins. Elo uses overlapping successful runs and fixed
             published presets; disconnected comparison pools have no rating.
+            “Same cells for all” recomputes Elo on the intersection of
+            successful cells across methods with results. Missing outcomes can
+            affect the available-pairs ranking; the intersection may cover only
+            part of the benchmark.
+          </p>
+          <p>
+            <strong>Uncertainty.</strong> Bootstrap draws reuse the same dataset
+            construction seed across related models and recipes, preserving
+            shared data splits. Intervals are descriptive, use complete methods,
+            and are withheld when related strata have different seed sets. Four
+            game instances with one estimator run each do not isolate estimator
+            seed variability.
+          </p>
+          <p>
+            <strong>Core and control games.</strong> Headline scores exclude
+            games marked as controls by model validation and game-quality
+            checks. “Include control games” keeps their measured results
+            available for diagnosis. This is separate from the negligible-truth
+            signal filter.
           </p>
         </details>
       </section>

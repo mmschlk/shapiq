@@ -58,6 +58,44 @@ UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign
 UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign --submit
 ```
 
+For the corrected expansion, pass **`--bounded-core`** to both commands. This
+versions recipes as `quality-v2` and selects at most sixteen new recipes per
+phase, round-robin across constructions, before expanding the full matrix.
+`phase-N-core.json` records every selected and deferred recipe and aggregate
+payoff, estimator-cell, reference-size, CPU-hour and storage bounds. These are
+conservative planning bounds, not promised runtimes. The complete inventory stays
+available; deferred recipes are not failed runs. Per-game qualification then
+checks all four seeds, validation against a dummy model, sampled-imputation
+stability, and actual requested-size structured-solver cost.
+
+The quality protocol stratifies classification row players and scales SVR training
+targets while retaining original payoff units. Frozen tables identify inactive
+players, constant nonempty utility and dominant empty-coalition jumps. These
+remain inspectable **control games**, excluded from the default representative
+panel. Monte Carlo stability is a separate diagnostic from the Fourier spectrum.
+No game is selected using estimator performance.
+
+The corrected core explicitly requests `OddSHAP(ridge=0.001)` through the suite's
+`method_parameters`; its library default remains unregularized. The penalty acts
+only at budgets at most `3d` before full enumeration. A paired low-budget pilot
+found small average improvements, not a fix for omitted singleton terms. The
+frozen checkout must contain PR609 as well as the earlier approved corrections.
+Constructor overrides are saved with method provenance, so differently configured
+results cannot be silently merged under one method name.
+
+Exact duplicate payoff tables are registered once across batches before estimator
+evaluation. Public reports remove duplicate games and record their canonical
+aliases; historical snapshots remain reproducible. Checkpoints now share one
+immutable snapshot and append individual cells to `records.jsonl`, avoiding a
+full metadata rewrite for every evaluation. Use `results_io.read_results()` to
+read either this format or older self-contained results.
+
+Interaction reports retain whole-vector nMSE and add singleton/pair-only scores
+with a near-zero signal guard. Confidence intervals resample shared dataset
+instances together across constructions. Common-panel Elo is a sensitivity check
+alongside the full available comparisons. Cached oracle charges remain estimates;
+measured runtime is labelled separately.
+
 Every wake-up is acknowledged with
 `python benchmark/watch_campaign.py /shared/campaign --acknowledge`.
 The acknowledgement also refreshes the implementation heartbeat. Update watched

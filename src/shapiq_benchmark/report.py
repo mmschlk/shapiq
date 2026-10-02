@@ -10,6 +10,9 @@ import re
 import shutil
 from pathlib import Path
 
+from shapiq_benchmark.duplicates import remove_aliases
+from shapiq_benchmark.order_metrics import order_scores
+from shapiq_benchmark.results_io import read_results
 from shapiq_benchmark.runner import identity
 from shapiq_benchmark.summary import summarize
 
@@ -22,6 +25,7 @@ ROW_FIELDS = (
     "seed",
     "status",
     "nmse",
+    "order_scores",
     "mse",
     "queries",
     "requested_queries",
@@ -38,9 +42,14 @@ ROW_FIELDS = (
     "error_type",
     "failure_reason",
     "minimum_budget",
+    "duplicate_of",
 )
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
 METADATA_FIELDS = (
+    "quality_protocol",
+    "model_validation_gate",
+    "game_quality",
+    "imputation_stability",
     "preparation_hardware",
     "model_profile",
     "model_parameters",
@@ -50,6 +59,7 @@ METADATA_FIELDS = (
     "oracle_precision",
     "oracle_validation",
     "signal_ratio_definition",
+    "payoff_std",
     "payoff_range_upper_bound",
     "ensemble_members",
     "tree_rounds",
@@ -184,10 +194,43 @@ def public_preparation(suite: dict) -> dict:
         "uniform_coalitions",
         "projected_constructions",
         "validation_coalitions",
+        "imputation_stability",
+        "model_validation_gate",
+        "peak_rss_bytes",
+        "actual_preparation_seconds",
+        "artifact_bytes",
+        "metadata_bytes",
     )
 
     def instances(rows: list[dict]) -> list[dict]:
-        return [{key: row[key] for key in fields if key in row} for row in rows]
+        public = []
+        for row in rows:
+            entry = {key: row[key] for key in fields if key in row}
+            if row.get("reason") in (
+                "unstable_imputation",
+                "model_not_better_than_validation_dummy",
+            ):
+                keys = {
+                    "policy",
+                    "metric",
+                    "model_loss",
+                    "dummy_loss",
+                    "passed",
+                    "protocol",
+                    "scope",
+                    "coalitions",
+                    "repeats_per_level",
+                    "levels",
+                    "sample_size_drift_ratio",
+                    "maximum_noise_ratio",
+                    "status",
+                    "limitation",
+                }
+                entry["details"] = {
+                    key: value for key, value in row.get("details", {}).items() if key in keys
+                }
+            public.append(entry)
+        return public
 
     preflight = suite["preparation_preflight"]
     return {
@@ -203,6 +246,8 @@ def public_preparation(suite: dict) -> dict:
                     "maximum_seconds_per_instance",
                     "pilot_timeout_seconds",
                     "structured_references",
+                    "structured_timeout_seconds",
+                    "structured_memory_gb",
                 )
                 if key in preflight
             },
@@ -215,10 +260,22 @@ def public_preparation(suite: dict) -> dict:
             {
                 "spec": {
                     key: row["spec"][key]
-                    for key in ("id", "family", "dataset", "model_profile", "n_players", "device")
+                    for key in (
+                        "id",
+                        "family",
+                        "dataset",
+                        "model_profile",
+                        "n_players",
+                        "device",
+                        "oracle",
+                        "index",
+                        "order",
+                        "quality_protocol",
+                    )
                     if key in row["spec"]
                 },
                 "reason": row["reason"],
+                **({"kind": row["kind"]} if "kind" in row else {}),
                 "maximum_seconds_per_instance": row["maximum_seconds_per_instance"],
                 "instances": instances(row["instances"]),
             }
@@ -236,11 +293,11 @@ def merge_results(paths: list[Path]) -> dict:
     if not paths:
         message = "At least one result file is required."
         raise ValueError(message)
-    first = json.loads(paths[0].read_text())
+    first = read_results(paths[0])
     panel = ("schema_version", "snapshot_id", "suite", "games", "snapshot_provenance")
     methods, runs, cells = {}, {}, {}
     for position, path in enumerate(paths):
-        result = first if position == 0 else json.loads(path.read_text())
+        result = first if position == 0 else read_results(path)
         if result.get("schema_version") != 1 or any(result[key] != first[key] for key in panel):
             message = "Results must have the same snapshot, games, suite, and snapshot provenance."
             raise ValueError(message)
@@ -261,7 +318,7 @@ def merge_results(paths: list[Path]) -> dict:
                 .get("budgets_by_game", {})
                 .get(row["game_id"], result["suite"]["budgets"])
                 or row["seed"] not in result["suite"]["seeds"]
-                or row["status"] not in ("ok", "failed", "unsupported")
+                or row["status"] not in ("ok", "failed", "unsupported", "duplicate")
             ):
                 message = "Result cell is outside its declared panel."
                 raise ValueError(message)
@@ -284,6 +341,12 @@ def merge_results(paths: list[Path]) -> dict:
             if row["status"] == "ok" and row.get("mse") is None:
                 message = "Successful records must include a finite MSE."
                 raise ValueError(message)
+            if row["status"] == "duplicate" and (
+                not isinstance(row.get("duplicate_of"), str)
+                or row["duplicate_of"] == row["game_id"]
+            ):
+                message = "Duplicate results must identify a different canonical game."
+                raise ValueError(message)
             key = tuple(row[field] for field in ("game_id", "method", "budget", "seed"))
             cell = {"record": row, "run_id": run_id}
             if key in cells:
@@ -296,7 +359,46 @@ def merge_results(paths: list[Path]) -> dict:
                     raise ValueError(message)
             else:
                 cells[key] = cell
+    raw_games = {game["id"]: game for game in first["games"]}
+    truths = {
+        game["id"]: dict(
+            zip(map(tuple, game["truth"]["coordinates"]), game["truth"]["values"], strict=True)
+        )
+        for game in first["games"]
+        if "coordinates" in game["truth"]
+    }
     for cell in cells.values():
+        row = cell["record"]
+        encoded = row.get("estimate", {})
+        if row["status"] == "ok" and row["game_id"] in truths and "coordinates" in encoded:
+            prediction = dict(
+                zip(map(tuple, encoded["coordinates"]), encoded["values"], strict=True)
+            )
+            cell["record"] = {
+                **row,
+                "order_scores": order_scores(
+                    truths[row["game_id"]], prediction, raw_games[row["game_id"]]
+                ),
+            }
+        if "order_scores" in cell["record"]:
+            # Truth energy and signal eligibility live once in game metadata.
+            # Whitelist nested fields too; legacy sanitized imports need no coefficients.
+            cleaned = {}
+            for degree, values in cell["record"]["order_scores"].items():
+                if degree not in {str(i) for i in range(1, raw_games[row["game_id"]]["order"] + 1)}:
+                    message = "Invalid score order."
+                    raise ValueError(message)
+                cleaned[degree] = {key: values[key] for key in ("nmse", "mse")}
+                if any(
+                    value is not None
+                    and (
+                        not isinstance(value, int | float) or not math.isfinite(value) or value < 0
+                    )
+                    for value in cleaned[degree].values()
+                ):
+                    message = "Invalid order-specific score."
+                    raise ValueError(message)
+            cell["record"]["order_scores"] = cleaned
         details = budget_failure(cell["record"])
         cell["record"] = {
             key: value
@@ -321,6 +423,11 @@ def merge_results(paths: list[Path]) -> dict:
                     if key in METADATA_FIELDS
                 },
                 "zero_truth_energy": game["truth"].get("energy") == 0,
+                **(
+                    {"order_scores": order_scores(truths[game["id"]], truths[game["id"]], game)}
+                    if game["id"] in truths
+                    else {}
+                ),
             },
         }
         for game in first["games"]
@@ -344,6 +451,7 @@ def merge_results(paths: list[Path]) -> dict:
                     "seeds",
                     "game_seeds",
                     "methods",
+                    "method_parameters",
                     "budgets_by_game",
                     "relative_budgets",
                 )
@@ -357,7 +465,7 @@ def merge_results(paths: list[Path]) -> dict:
             name: {
                 key: value
                 for key, value in metadata.items()
-                if key in ("source_sha256", "software_sha256", "private", "factory")
+                if key in ("source_sha256", "software_sha256", "private", "factory", "parameters")
             }
             for name, metadata in methods.items()
         },
@@ -466,7 +574,34 @@ def write_report(
     if data.get("record_shards"):
         message = "Load record shards before writing another report."
         raise ValueError(message)
-    data = {**data, "presets": summarize(data)}
+    aliases = {
+        row["game_id"]: row["duplicate_of"]
+        for row in data["records"]
+        if row["status"] == "duplicate"
+    }
+    if aliases:
+        remove_aliases(data, aliases)
+    degrees = sorted(
+        {
+            int(degree)
+            for game in data["games"]
+            if game["order"] > 1
+            for degree in game.get("metadata", {}).get("order_scores", {})
+        }
+    )
+    controls = any(
+        game.get("metadata", {}).get("game_quality", {}).get("role") == "control"
+        for game in data["games"]
+    )
+    data = {
+        **data,
+        "presets": [
+            preset
+            for included in ([False, True] if controls else [False])
+            for degree in [None, *degrees]
+            for preset in summarize(data, score_order=degree, include_controls=included)
+        ],
+    }
     compact = len(data["records"]) >= 100_000 if compact is None else compact
     output.mkdir(parents=True, exist_ok=True)
     for name in (

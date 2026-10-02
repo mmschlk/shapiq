@@ -283,3 +283,17 @@ uv run pre-commit run --all-files
   batch had 128 files of roughly 48 MB each. Read shards one at a time during
   audits and exports; eagerly parsing the whole batch multiplies memory use
   without adding information. Keep full duplicate/provenance validation.
+- `src/shapiq_benchmark/metrics.py` is an existing legacy metrics API. New
+  per-order benchmark scoring lives in `order_metrics.py`; do not replace the
+  legacy module when adding scoring helpers. Check that a proposed new path is
+  unused before applying an Add File patch, which can overwrite an existing file.
+
+- Compact benchmark checkpoints store a small `results.json` manifest plus a
+  `records.jsonl` journal and shared snapshot. Use
+  `shapiq_benchmark.results_io.read_results`, not direct JSON loading, when
+  consuming either legacy or compact results. Strict exports authenticate all
+  companions; interrupted-tail recovery is reserved for the locked runner.
+- Qualifying an eight-player structured oracle proves small-game consistency,
+  not native-dimensional solver feasibility. Time and memory gate the actual
+  requested player count, target, truth serialization and every construction seed
+  before launching larger structured games.
