@@ -48,6 +48,7 @@ completed scheduler job is never enough to declare a phase complete.
 From a **clean frozen checkout containing the approved estimator corrections**:
 
 ```bash
+export PYTHONPATH="$PWD/src"
 UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign
 # Review the generated inventories and batches, then queue them:
 UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign --submit
@@ -70,7 +71,10 @@ publishes nothing itself: it wakes the agent to inspect evidence and continue.
 | Describe frozen game complexity | `spectrum.py` |
 | Select compatible dataset/recipe/player combinations | `matrix.py`, `benchmark/suites/matrix.json` |
 | Prepare a matrix in parallel and resume checkpoints | `benchmark/prepare_matrix.py` |
+| Pilot preparation cost and record exclusions | `qualification.py` |
+| Queue phases, run batches and wake the continuation session | `benchmark/queue_phases.py`, `phase_batch.py`, `watch_campaign.py` |
 | Construct game recipes | `families.py`, `media.py`, `games.py` |
+| Freeze structured exact games above twenty players | `structured.py` |
 | Freeze and qualify game snapshots | `prepare.py`, `materialize.py` |
 | Compute exact values and interactions from a table | `exact.py` |
 | Authenticate payoff checkpoints and record evaluation costs | `payoff_cache.py` |

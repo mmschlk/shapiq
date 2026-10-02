@@ -255,3 +255,12 @@ uv run pre-commit run --all-files
   and sample weights while its exact solver computes in float64. Freeze both as
   float64 for the same oracle/reference; do not hide mismatches by relaxing exact
   qualification, especially for coefficients that should be exactly zero.
+
+- Slurm `sacct --array` can still omit individual pending tasks before their
+  accounting records exist. Completion watchers combine exact task IDs from
+  `squeue --array` with terminal accounting; absence from either is not success.
+- A healthy watcher process does not prove wake-up delivery. Exercise the actual
+  message route: a full-rollout test found corrupt local Codex state/queue
+  databases despite healthy Slurm jobs. Retain delivery errors and retry without
+  a success receipt; do not delete session databases or restart other sessions
+  as part of routine benchmark monitoring.

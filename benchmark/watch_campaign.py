@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -38,7 +39,7 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def job_states(config: dict) -> dict:
-    """Require accounting for every configured job; a missing row is not completion."""
+    """Combine terminal accounting with expanded live tasks; missing jobs stay unknown."""
     jobs = config.get("jobs", [])
     if not jobs:
         return {}
@@ -63,6 +64,29 @@ def job_states(config: dict) -> dict:
         fields = line.split("|")
         if len(fields) >= 2 and fields[0] in jobs:
             states[fields[0]] = fields[1].split()[0].rstrip("+")
+    # sacct --array still compresses pending tasks that have no individual
+    # accounting record. squeue expands those tasks before they start. Query
+    # our live queue, since filtering on completed root IDs can make squeue fail.
+    live = subprocess.check_output(  # noqa: S603 -- fixed executable and current numeric user ID
+        [
+            "/usr/bin/squeue",
+            "--array",
+            "--noheader",
+            "--user=" + str(os.getuid()),
+            "--format=%i|%T",
+        ],
+        text=True,
+        timeout=30,
+    )
+    for line in live.splitlines():
+        fields = [field.strip() for field in line.split("|")]
+        if len(fields) < 2 or fields[0] not in jobs or not fields[1]:
+            continue
+        status = fields[1].split()[0].rstrip("+")
+        if status not in TERMINAL:
+            # A live requeue or COMPLETING state overrides stale accounting.
+            # Only sacct establishes terminal completion, never queue absence.
+            states[fields[0]] = status
     if set(states) != set(jobs):
         message = "Accounting is incomplete; retry on the next watcher tick"
         raise RuntimeError(message)
@@ -81,6 +105,12 @@ def wake_reason(config: dict, state: dict, jobs: dict, now: float) -> str | None
         "idle_seconds", 1800
     ):
         return "No active campaign jobs remain; continue implementation, audits, or the next phase."
+    if (
+        idle >= config.get("idle_seconds", 1800)
+        and any(status in TERMINAL - {"COMPLETED"} for status in jobs.values())
+        and all(status in TERMINAL | {"PENDING"} for status in jobs.values())
+    ):
+        return "Failed campaign jobs may block pending dependencies; inspect and repair the remaining jobs."
     return None
 
 
@@ -129,8 +159,13 @@ def check(root: Path, *, acknowledge: bool = False) -> None:
             text=True,
             capture_output=True,
             timeout=60,
-            check=True,
+            check=False,
         )
+        if result.returncode:
+            # Keep the delivery unacknowledged so cron retries; preserve the
+            # actual CLI diagnosis instead of logging only its exit status.
+            message = "Continuation delivery failed: " + result.stderr.strip()
+            raise RuntimeError(message)
         state.update(
             pending_delivery=True,
             queued_at=now,

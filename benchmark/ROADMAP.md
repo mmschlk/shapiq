@@ -11,10 +11,24 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 12 players, and 27,919 successful evaluations with no pending cells. Corrected
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
-**In progress: phases 3–7 execution setup.** A persistent Hopper watcher wakes
-the session for completion/failure and idle implementation stages, with explicit
-instructions to audit, publish and advance. Later-phase jobs wait behind audit
-gates. See the [continuation procedure](README.md#continuing-through-the-phases).
+**Queued: phases 3–7.** All 733 preparation batches and their dependent evaluation
+tasks were submitted on October 1, 2026. Phase three has started across three
+standardized nodes; later phases are held for the preceding independent audit.
+The frozen run source is `3f6b9b50`, including all four approved estimator fixes.
+A 180-evaluation scheduler smoke test passed an independent audit before submission.
+See the [continuation procedure](README.md#continuing-through-the-phases).
+
+| Phase | Preparation batches | Evaluation tasks |
+| --- | ---: | ---: |
+| 3: more constructions | 20 | 20 |
+| 4: more models and player counts | 78 | 78 |
+| 5: specialized models and inputs | 11 | 11 |
+| 6: full dataset catalog | 546 | 546 |
+| 7: larger structured games | 78 | 78 |
+
+These counts describe submitted work, not qualified games or completed results.
+The private campaign journal records all job IDs and frozen inputs. Preparation
+pilots record explicit exclusions before allocating costly full payoff tables.
 
 The finished benchmark covers **all 63 datasets in the target catalog**, the model profiles
 below, every shipped game-construction family, four construction seeds, and all
