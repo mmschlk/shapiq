@@ -1,0 +1,298 @@
+"""Cross-snapshot exports preserve provenance, complete panels and global weights."""
+
+from __future__ import annotations
+
+import copy
+import fcntl
+import json
+import runpy
+import sys
+from pathlib import Path
+
+import pytest
+
+from shapiq_benchmark.campaign import assemble_campaign
+from shapiq_benchmark.runner import digest, identity
+from shapiq_benchmark.summary import summarize
+
+
+def write(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value))
+
+
+def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = False) -> dict:
+    """Two complete batches and one explicitly excluded recipe, without external data."""
+    source = {"source_dirty": False, "git_commit": "frozen", "source_sha256": "source"}
+    shared = {
+        "methods": ["KernelSHAP", "PermutationSamplingSV"],
+        "relative_budgets": [1, 2],
+        "game_seeds": [0, 1],
+        "seeds": [0],
+        "targets": [{"index": "SV", "order": 1}],
+        "min_players": 11,
+        "min_signal_ratio": 1e-6,
+        "protocol": {"version": 1},
+    }
+    inventory = {**shared, "name": "phase-three", "phase_plan": {"counts": {"selected": 3}}}
+    write(root / "phase-3-inventory.json", inventory)
+    batches = []
+    for number in range(3):
+        batch_id = f"batch-{number}"
+        directory = root / batch_id
+        recipe = {"id": "same" if duplicate else f"recipe-{number}"}
+        original = {
+            **shared,
+            "name": batch_id,
+            "families": [recipe],
+            "games": [],
+            "phase_plan": {"inventory_sha256": identity(inventory["phase_plan"])},
+        }
+        if structured and number == 0:
+            original.update(families=[], games=[recipe])
+        qualified = copy.deepcopy(original)
+        qualified.update(
+            preparation_preflight={"version": 1, "families": []}, preparation_exclusions=[]
+        )
+        if number == 2:
+            qualified.update(
+                families=[],
+                preparation_exclusions=[
+                    {
+                        "spec": recipe,
+                        "reason": "projected_cost",
+                        "maximum_seconds_per_instance": 28800,
+                        "instances": [
+                            {
+                                "seed": 0,
+                                "status": "excluded",
+                                "reason": "projected_cost",
+                                "error": "/private/raw",
+                            }
+                        ],
+                    }
+                ],
+            )
+        write(directory / "suite.json", original)
+        write(directory / "qualified-suite.json", qualified)
+        write(
+            directory / "qualification-decision.json",
+            {
+                "requested_suite_sha256": identity(original),
+                "qualified_suite_sha256": identity(qualified),
+                "source": source,
+            },
+        )
+        batches.append(
+            {
+                "id": batch_id,
+                "phase": 3,
+                "directory": str(directory.resolve()),
+                "suite_sha256": identity(original),
+            }
+        )
+        if number == 2:
+            write(directory / "excluded.json", {"suite_sha256": identity(qualified)})
+            continue
+        artifact = directory / "prepared/game.npz"
+        artifact.parent.mkdir(parents=True)
+        artifact.write_bytes(b"authenticated tiny artifact")
+        games = [
+            {
+                "id": f"{recipe['id']}-i{seed}" + ("" if structured and number == 0 else "-sv-1"),
+                "family": f"family-{number}",
+                "stratum": "shared",
+                "n_players": 11,
+                "index": "SV",
+                "order": 1,
+                "artifact": "game.npz",
+                "truth": {"energy": 1, "values": [1]},
+                "metadata": {"instance_seed": seed, "cluster_id": f"model-{seed}"},
+            }
+            for seed in shared["game_seeds"]
+        ]
+        suite = {
+            **qualified,
+            "budgets": [11, 22],
+            "budgets_by_game": {g["id"]: [11, 22] for g in games},
+        }
+        snapshot = {
+            "schema_version": 1,
+            "provenance": source,
+            "suite": suite,
+            "games": games,
+            "artifacts": {"game.npz": digest(artifact)},
+            "coverage": [],
+        }
+        snapshot["snapshot_id"] = identity(snapshot)
+        write(directory / "prepared/snapshot.json", snapshot)
+        write(
+            directory / "sweep/allocation.json",
+            {
+                "snapshot_id": snapshot["snapshot_id"],
+                "cpus": [0, 1],
+                "game_ids": [g["id"] for g in reversed(games)],
+            },
+        )
+        methods = {
+            name: {"source_sha256": "source", "software_sha256": identity(source), "private": False}
+            for name in shared["methods"]
+        }
+        for slot, game in enumerate(reversed(games)):
+            result = {
+                "schema_version": 1,
+                "snapshot_id": snapshot["snapshot_id"],
+                "snapshot_provenance": source,
+                "suite": suite,
+                "games": games,
+                "methods": methods,
+                "coverage": [],
+                "run_provenance": {**source, "execution": {"game_ids": [game["id"]]}},
+                "records": [],
+            }
+            result["resume_key"] = identity({k: v for k, v in result.items() if k != "records"})
+            for method in methods:
+                for budget in suite["budgets"]:
+                    result["records"].append(
+                        {
+                            "game_id": game["id"],
+                            "method": method,
+                            "budget": budget,
+                            "seed": 0,
+                            "status": "ok",
+                            "mse": float(number + 1),
+                            "nmse": (100.0 if game["metadata"]["instance_seed"] else 0.0)
+                            if number == 0
+                            else 1.0,
+                            "estimate": {"values": [99]},
+                        }
+                    )
+            result["campaign"] = {"planned": 4, "completed": 4, "complete": True}
+            path = directory / "sweep" / f"shard-{slot:03}"
+            write(path / "results.json", result)
+            (path / ".campaign.lock").touch()
+    campaign = {"source": source, "batches": batches}
+    write(root / "campaign.json", campaign)
+    write(root / "jobs.json", {"plan_sha256": identity(campaign)})
+    return campaign
+
+
+def test_disjoint_campaign_keeps_exclusions_and_global_statistics(tmp_path: Path) -> None:
+    make_campaign(tmp_path)
+    data = assemble_campaign(tmp_path, 3)
+    assert len(data["games"]) == 4 and len(data["records"]) == 16
+    assert data["snapshot_id"] == identity(data["composition"])
+    assert data["composition"]["components"][-1]["status"] == "excluded"
+    assert len(data["suite"]["preparation_exclusions"]) == 1
+    assert "/private" not in json.dumps(data) and '"estimate"' not in json.dumps(data)
+    assert not any(g["id"].startswith("recipe-2") for g in data["games"])
+    panel = next(
+        p
+        for p in summarize(data, bootstrap_draws=0)
+        if p["family"] is None and p["relative_budget"] is None
+    )
+    assert all(row["mean"] == 25.5 and row["median"] == 1.0 for row in panel["rows"])
+    assert all(row["missing"] == 0 and row["complete"] for row in panel["rows"])
+
+
+@pytest.mark.parametrize("change", ["missing", "duplicate", "method", "source", "allocation"])
+def test_changed_or_incomplete_shards_rejected(tmp_path: Path, change: str) -> None:
+    make_campaign(tmp_path)
+    path = tmp_path / "batch-0/sweep/shard-000/results.json"
+    result = json.loads(path.read_text())
+    if change == "missing":
+        result["records"].pop()
+    elif change == "duplicate":
+        result["records"].append(result["records"][0])
+    elif change == "method":
+        result["methods"]["KernelSHAP"]["source_sha256"] = "old-estimator"
+    elif change == "source":
+        result["run_provenance"]["source_sha256"] = "wrong-checkout"
+    else:
+        result["run_provenance"]["execution"]["game_ids"] = ["another-game"]
+    write(path, result)
+    with pytest.raises(ValueError):
+        assemble_campaign(tmp_path, 3)
+
+
+@pytest.mark.parametrize(
+    "change", ["artifact", "qualification", "journal", "inventory", "exclusion"]
+)
+def test_authenticated_inputs_cannot_change(tmp_path: Path, change: str) -> None:
+    make_campaign(tmp_path)
+    if change == "artifact":
+        (tmp_path / "batch-0/prepared/game.npz").write_bytes(b"changed")
+    else:
+        path = {
+            "qualification": "batch-0/qualified-suite.json",
+            "journal": "jobs.json",
+            "inventory": "phase-3-inventory.json",
+            "exclusion": "batch-2/excluded.json",
+        }[change]
+        value = json.loads((tmp_path / path).read_text())
+        if change == "qualification":
+            value["families"] = []
+        elif change == "journal":
+            value["plan_sha256"] = "changed"
+        elif change == "inventory":
+            value["protocol"] = {"version": 100}
+        else:
+            value["suite_sha256"] = "changed"
+        write(tmp_path / path, value)
+    with pytest.raises(ValueError):
+        assemble_campaign(tmp_path, 3)
+
+
+def test_duplicate_games_cannot_inflate_coverage(tmp_path: Path) -> None:
+    make_campaign(tmp_path, duplicate=True)
+    with pytest.raises(ValueError, match="Duplicate game IDs"):
+        assemble_campaign(tmp_path, 3)
+
+
+def test_structured_recipe_ids_are_preserved(tmp_path: Path) -> None:
+    make_campaign(tmp_path, structured=True)
+    data = assemble_campaign(tmp_path, 3)
+    assert "recipe-0-i0" in {g["id"] for g in data["games"]}
+
+
+def test_unsupported_cells_are_complete_but_not_successes(tmp_path: Path) -> None:
+    """Known unsupported targets still belong to the accounted-for matrix."""
+    make_campaign(tmp_path)
+    for path in tmp_path.glob("batch-*/sweep/shard-*/results.json"):
+        value = json.loads(path.read_text())
+        for row in value["records"]:
+            if row["method"] == "PermutationSamplingSV":
+                row.update(status="unsupported", nmse=None, mse=None)
+        write(path, value)
+    data = assemble_campaign(tmp_path, 3)
+    rows = [r for r in data["records"] if r["method"] == "PermutationSamplingSV"]
+    assert len(rows) == 8 and all(r["status"] == "unsupported" for r in rows)
+
+
+def test_running_shard_is_not_published(tmp_path: Path) -> None:
+    """A writer's held lock blocks authentication even if its checkpoint says complete."""
+    make_campaign(tmp_path)
+    with (tmp_path / "batch-0/sweep/shard-000/.campaign.lock").open() as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(BlockingIOError):
+            assemble_campaign(tmp_path, 3)
+
+
+def test_export_cli_writes_composite_provenance_and_global_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The actual CLI connects authenticated assembly to the website writer."""
+    campaign, output = tmp_path / "campaign", tmp_path / "site"
+    make_campaign(campaign)
+    monkeypatch.setattr(
+        sys, "argv", ["export_phase.py", str(campaign), str(output), "--through-phase", "3"]
+    )
+    script = Path(__file__).resolve().parents[2] / "benchmark/export_phase.py"
+    runpy.run_path(str(script), run_name="__main__")
+    data = json.loads((output / "data.json").read_text())
+    assert data["snapshot_id"] == identity(data["composition"])
+    assert len(data["records"]) == 16
+    assert (output / "records.js").is_file()
+    assert json.loads((output / "about.json").read_text())["snapshot_id"] == data["snapshot_id"]
+    panel = next(p for p in data["presets"] if p["family"] is None and p["relative_budget"] is None)
+    assert all(r["mean"] == 25.5 and r["median"] == 1.0 for r in panel["rows"])

@@ -433,3 +433,84 @@ def test_preparation_exclusions_keep_costs_without_private_pilot_details() -> No
     assert "/private" not in json.dumps(public) and "private-host" not in json.dumps(public)
     assert public["preparation_exclusions"][0]["instances"][0]["projected_seconds"] == 40000
     assert public_preparation({}) == {}
+
+
+def test_column_encoding_preserves_numbers_null_and_missing() -> None:
+    """Compression uses string dictionaries only; absent numeric fields stay distinguishable."""
+    from shapiq_benchmark.report import encode_records
+
+    encoded = encode_records(
+        [
+            {"method": "a", "nmse": 1.2345678901234567, "seconds": None, "official": False},
+            {"method": "a", "nmse": 1e-300, "official": True},
+            {"method": "b", "nmse": None, "seconds": 0.0},
+        ]
+    )
+    assert encoded["columns"]["method"] == {"dictionary": ["a", "b"], "values": [0, 0, 1]}
+    assert encoded["columns"]["nmse"]["values"] == [1.2345678901234567, 1e-300, None]
+    assert encoded["columns"]["seconds"] == {"values": [None, None, 0.0], "missing": [1]}
+    assert encoded["columns"]["official"] == {"values": [False, True, None], "missing": [2]}
+
+
+def test_lazy_report_partitions_exact_records_and_global_presets(tmp_path: Path) -> None:
+    """Each target keeps complete-panel summaries while the index describes the whole cohort."""
+    import hashlib
+
+    from shapiq_benchmark.report import write_report
+
+    data = merge_results([write(tmp_path, result_fixture())])
+    second = {**data["games"][0], "id": "second", "index": "SII", "order": 2}
+    data["games"].append(second)
+    data["records"].append(
+        {**data["records"][0], "game_id": "second", "status": "unsupported", "nmse": None}
+    )
+    data["composition"] = {"components": ["one", "two"]}
+    output = tmp_path / "lazy"
+    returned = write_report(data, output, public=True, compact=True)
+    manifest = json.loads((output / "data.json").read_text())
+    assert manifest["records"] == [] and manifest["presets"] == []
+    assert manifest["record_count"] == 2 and manifest["evaluated_count"] == 1
+    assert manifest["composition"] == data["composition"]
+    assert manifest["method_targets"]["baseline"] == {
+        "supported": ["SV · order 1"],
+        "unsupported": ["SII · order 2"],
+    }
+    assert len(manifest["record_shards"]) == 2
+    for descriptor in manifest["record_shards"]:
+        raw = (output / descriptor["file"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == descriptor["sha256"]
+        shard = json.loads(raw)
+        assert shard["count"] == 1
+        assert shard["snapshot_id"] == data["snapshot_id"]
+        assert all(
+            f"{preset['index']} · order {preset['order']}" == shard["target"]
+            for preset in shard["presets"]
+        )
+        assert all(preset in returned["presets"] for preset in shard["presets"])
+    assert (output / "records.js").exists()
+    assert "records.js" in (output / "index.html").read_text()
+
+
+def test_public_writer_rejects_unsanitized_records(tmp_path: Path) -> None:
+    """Composite publication cannot bypass the original report's privacy boundary."""
+    from shapiq_benchmark.report import write_report
+
+    with pytest.raises(ValueError, match="sanitized"):
+        write_report(result_fixture(), tmp_path / "site", public=True)
+    assert not (tmp_path / "site").exists()
+
+
+def test_report_reuse_removes_previous_target_assets(tmp_path: Path) -> None:
+    """A new report must not leave an old candidate's records in the published directory."""
+    from shapiq_benchmark.report import write_report
+
+    data = merge_results([write(tmp_path, result_fixture())])
+    output = tmp_path / "site"
+    write_report(data, output, public=True, compact=True)
+    assert (output / "records-sv-1.json").exists()
+    unrelated = output / "records-not-a-shard.json"
+    unrelated.write_text("{}")
+    write_report(data, output, public=True, compact=False)
+    assert not (output / "records-sv-1.json").exists()
+    assert unrelated.exists()
+    assert json.loads((output / "data.json").read_text())["records"]

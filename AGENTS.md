@@ -264,3 +264,13 @@ uv run pre-commit run --all-files
   databases despite healthy Slurm jobs. Retain delivery errors and retry without
   a success receipt; do not delete session databases or restart other sessions
   as part of routine benchmark monitoring.
+
+- Free space from `df` does not establish remaining home-directory quota. Full
+  rollout writes failed with `EDQUOT` despite filesystem free space. Put large
+  campaign caches on lab storage; stop writers and verify every copied file hash
+  before relocating. An open NFS lock can leave a temporary `.nfs` file until its
+  holder closes it, even after all other campaign files have moved.
+- Inspect exact Slurm task reasons after holding arrays or changing dependencies.
+  Four phase-three tasks became `JobHeldAdmin` during quota recovery; owner-level
+  release was denied. The reason alone does not identify who caused the hold.
+  An administrator must release it; do not bypass it by resubmitting those tasks.

@@ -206,6 +206,7 @@ def bootstrap(
     methods: list[str],
     *,
     draws: int,
+    include_elo: bool = True,
 ) -> tuple[dict, dict]:
     """Resample complete clusters and paired seed slots, never individual method outcomes."""
     groups = {}
@@ -245,7 +246,7 @@ def bootstrap(
                         weights.append(weight)
         weights = np.asarray(weights)
         selected_values = values[:, positions]
-        _, ratings = comparisons(selected_values, weights, methods)
+        ratings = comparisons(selected_values, weights, methods)[1] if include_elo else None
         for i, name in enumerate(methods):
             samples[name]["mean"].append(float(np.dot(selected_values[i], weights)))
             samples[name]["median"].append(weighted_median(selected_values[i], weights))
@@ -431,6 +432,7 @@ def summarize(data: dict, *, bootstrap_draws: int = 200) -> list[dict]:
                     complete_values,
                     complete_methods,
                     draws=bootstrap_draws,
+                    include_elo=complete_methods == eligible,
                 )
                 if complete_methods != eligible and intervals:
                     for interval in intervals.values():

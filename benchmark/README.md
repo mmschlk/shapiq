@@ -30,6 +30,10 @@ comparison locally without uploading anything.
 ## Continuing through the phases
 
 The active Hopper rollout keeps its state in `benchmark/results/full-rollout/`.
+On Hopper this is a symlink to lab storage at
+`/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`; large payoff
+caches must not exhaust the home-directory quota. Moving a campaign requires
+stopping its writers, verifying copied file hashes and preserving recorded paths.
 `WAKEUP.md` tells the resumed agent exactly what to do next; `watch.json` records
 only the current stage's jobs. The watcher runs every five minutes and queues a
 message to the authorized session when a job finishes or fails. During
@@ -62,6 +66,25 @@ Set its status to `complete` only after the final audited live release, or to
 `paused`/`cancelled` at the user's request. The watcher submits no experiments and
 publishes nothing itself: it wakes the agent to inspect evidence and continue.
 
+After every batch in a phase finishes, export the cumulative comparison:
+
+```bash
+UV_NO_SYNC=1 uv run python benchmark/export_phase.py /shared/campaign/campaign /shared/release/site --through-phase 3
+```
+
+The exporter checks frozen inputs, estimator revisions and complete cell panels,
+then computes statistics across the combined games. It refuses incomplete or
+actively written batches. Independent scientific review still precedes publication.
+Keep each batch's reproduction archive and the exported composition manifest so
+the combined report can be traced back to its original snapshots.
+
+Large reports split lossless evaluation records into one file per explanation
+target. The browser fetches only the selected target; filters and scores retain
+full precision. Upload `data.json` **and every `records-*.json` companion** to the
+same release before updating `site/data-source.json`. Pages verifies their hashes.
+For a local comparison, select the manifest and its companions together; legacy
+single-file reports still work.
+
 ## Code map
 
 | Responsibility | Files |
@@ -80,7 +103,9 @@ publishes nothing itself: it wakes the agent to inspect evidence and continue.
 | Authenticate payoff checkpoints and record evaluation costs | `payoff_cache.py` |
 | Run, count queries and checkpoint | `runner.py`, `execution.py` |
 | Calculate scores, Elo and history | `summary.py` |
+| Authenticate and combine completed phase batches | `campaign.py`, `benchmark/export_phase.py` |
 | Export the website and reproduction archive | `report.py`, `bundle.py` |
+| Load and verify compact report records | `benchmark/site/records.js` |
 | Render the interface | `benchmark/site/app.js`, `style.css`, `index.html` |
 | Draw performance and history charts | `benchmark/site/charts.js` |
 | Explain the benchmark | `benchmark/site/about.html`, `about.css`, `about.js` |

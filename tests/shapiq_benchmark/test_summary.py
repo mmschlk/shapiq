@@ -7,6 +7,7 @@ import copy
 import numpy as np
 import pytest
 
+from shapiq_benchmark import summary
 from shapiq_benchmark.summary import comparisons, summarize, weighted_median, weights_for
 
 
@@ -421,3 +422,37 @@ def test_model_dataset_presets_match_filtered_games_with_legacy_members() -> Non
     assert rf_score["elo"] is not None
     assert any(p["game_ids"] == ["1"] for p in panels)
     assert any(p["game_ids"] == ["3"] for p in panels)
+
+
+def test_withheld_elo_skips_bootstrap_fits_without_changing_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Partial pools preserve every published number while avoiding discarded Elo fits."""
+    data = fixture_data(
+        [{"family": "a", "stratum": "one", "metadata": {"cluster_id": str(i)}} for i in range(3)],
+        {"KernelSHAP": [1, 2, 4], "SVARM": [4, 2, 1]},
+    )
+    data["methods"]["SHAPIQ"] = {}
+    data["records"].append(
+        {"game_id": "0", "method": "SHAPIQ", "budget": 16, "seed": 0, "status": "ok", "nmse": 0.5}
+    )
+    bootstrap, comparisons = summary.bootstrap, summary.comparisons
+    fits = []
+
+    def counted(values, weights, methods):
+        fits.append(tuple(methods))
+        return comparisons(values, weights, methods)
+
+    def previous_bootstrap(*args, **kwargs):
+        kwargs["include_elo"] = True
+        return bootstrap(*args, **kwargs)
+
+    monkeypatch.setattr(summary, "comparisons", counted)
+    monkeypatch.setattr(summary, "bootstrap", previous_bootstrap)
+    previous = summarize(data, bootstrap_draws=20)
+    assert len(fits) == 21
+    fits.clear()
+    monkeypatch.setattr(summary, "bootstrap", bootstrap)
+    current = summarize(data, bootstrap_draws=20)
+    assert current == previous
+    assert fits == [("KernelSHAP", "SHAPIQ", "SVARM")]

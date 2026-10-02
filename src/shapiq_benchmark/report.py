@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -371,19 +372,107 @@ def merge_results(paths: list[Path]) -> dict:
     }
 
 
+def encode_records(records: list[dict]) -> dict:
+    """Store lossless columns; string dictionaries never round numeric measurements."""
+    columns = {}
+    for field in sorted({key for row in records for key in row}):
+        values = [row.get(field) for row in records]
+        column: dict = {"values": values}
+        present = [value for value in values if value is not None]
+        if present and all(isinstance(value, str) for value in present):
+            dictionary = list(dict.fromkeys(present))
+            codes = {value: i for i, value in enumerate(dictionary)}
+            column = {"dictionary": dictionary, "values": [codes.get(value) for value in values]}
+        missing = [i for i, row in enumerate(records) if field not in row]
+        if missing:
+            column["missing"] = missing
+        columns[field] = column
+    return {"codec": "columns-v1", "count": len(records), "columns": columns}
+
+
+def _write_json(path: Path, value: dict) -> str:
+    payload = (json.dumps(value, separators=(",", ":"), allow_nan=False) + "\n").encode()
+    path.write_bytes(payload)
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _shard_report(data: dict, output: Path) -> dict:
+    """Keep one explanation target's records and globally computed presets per asset."""
+    games = {game["id"]: game for game in data["games"]}
+    groups = {(game["index"], game["order"]): [] for game in data["games"]}
+    capabilities = {}
+    for row in data["records"]:
+        game = games[row["game_id"]]
+        key = (game["index"], game["order"])
+        groups.setdefault(key, []).append(row)
+        target = f"{key[0]} · order {key[1]}"
+        status = "unsupported" if row["status"] == "unsupported" else "supported"
+        capabilities.setdefault(row["method"], {}).setdefault(status, set()).add(target)
+    shards = []
+    for (index, order), records in groups.items():
+        if not re.fullmatch(r"[A-Za-z-]+", index) or type(order) is not int or order < 1:
+            message = "Invalid explanation target for record export."
+            raise ValueError(message)
+        filename = f"records-{index.lower()}-{order}.json"
+        target = f"{index} · order {order}"
+        payload = {
+            **encode_records(records),
+            "snapshot_id": data["snapshot_id"],
+            "target": target,
+            "presets": [p for p in data["presets"] if p["index"] == index and p["order"] == order],
+        }
+        checksum = _write_json(output / filename, payload)
+        shards.append(
+            {"target": target, "file": filename, "sha256": checksum, "count": len(records)}
+        )
+    return {
+        **data,
+        "records": [],
+        "presets": [],
+        "record_shards": shards,
+        "record_count": len(data["records"]),
+        "evaluated_count": sum(row["status"] != "unsupported" for row in data["records"]),
+        "method_targets": {
+            method: {status: sorted(targets) for status, targets in statuses.items()}
+            for method, statuses in capabilities.items()
+        },
+    }
+
+
 def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
-    """Write data and the dependency-free website assets."""
-    data = merge_results(paths)
+    """Validate a single snapshot and write its portable report."""
+    return write_report(merge_results(paths), output, public=public)
+
+
+def write_report(
+    data: dict, output: Path, *, public: bool = False, compact: bool | None = None
+) -> dict:
+    """Write a sanitized single-snapshot or authenticated composite report.
+
+    Large reports load one explanation target at a time. Small reports retain
+    their standalone JSON format, including private local candidate workflows.
+    """
     assets = SITE_DIR
     public = public or output.resolve() == assets.resolve()
     if public and any(method.get("private", True) for method in data["methods"].values()):
         message = "Public reports cannot include private candidate methods."
         raise ValueError(message)
-    data["presets"] = summarize(data)
+    if public and (
+        any({"truth", "artifact"} & game.keys() for game in data["games"])
+        or any({"estimate", "error"} & row.keys() for row in data["records"])
+    ):
+        message = "Public report writing requires sanitized games and records."
+        raise ValueError(message)
+    if data.get("record_shards"):
+        message = "Load record shards before writing another report."
+        raise ValueError(message)
+    data = {**data, "presets": summarize(data)}
+    compact = len(data["records"]) >= 100_000 if compact is None else compact
     output.mkdir(parents=True, exist_ok=True)
     for name in (
         "index.html",
         "app.js",
+        "records.js",
         "charts.js",
         "style.css",
         "shapiq.svg",
@@ -397,20 +486,40 @@ def report(paths: list[Path], output: Path, *, public: bool = False) -> dict:
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)
     # Store repeated hardware descriptions once; the browser restores row references.
-    workers, worker_ids = {}, {}
+    workers = dict(data.get("workers", {}))
+    worker_ids = {identity(worker): name for name, worker in workers.items()}
     records = []
     for row in data["records"]:
-        record = {key: value for key, value in row.items() if value is not None}
-        worker = record.pop("worker", None)
+        record = (
+            dict(row)
+            if compact
+            else {key: value for key, value in row.items() if value is not None}
+        )
+        worker = record.get("worker")
         if worker is not None:
-            worker_id = worker_ids.setdefault(identity(worker), f"w{len(worker_ids)}")
+            record.pop("worker")
+            key = identity(worker)
+            if key not in worker_ids:
+                number = len(workers)
+                while f"w{number}" in workers:
+                    number += 1
+                worker_ids[key] = f"w{number}"
+            worker_id = worker_ids[key]
             workers[worker_id] = worker
             record["worker_id"] = worker_id
         records.append(record)
     exported = {**data, "workers": workers, "records": records}
-    (output / "data.json").write_text(
-        json.dumps(exported, separators=(",", ":"), allow_nan=False) + "\n"
-    )
+    if compact:
+        exported = _shard_report(exported, output)
+    _write_json(output / "data.json", exported)
+    current_shards = {item["file"] for item in exported.get("record_shards", [])}
+    for path in output.glob("records-*.json"):
+        if (
+            re.fullmatch(r"records-[a-z-]+-\d+\.json", path.name)
+            and path.name not in current_shards
+        ):
+            path.unlink()  # Old target assets may contain a previous local candidate.
+
     # The guide needs game provenance, not the much larger evaluation records.
     (output / "about.json").write_text(
         json.dumps(

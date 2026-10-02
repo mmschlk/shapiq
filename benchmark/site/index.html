@@ -10,6 +10,7 @@
     <script defer src="methods.js"></script>
     <script defer src="charts.js"></script>
     <script defer src="protocol.js"></script>
+    <script defer src="records.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -25,6 +26,7 @@
         ><label class="localButton" for="upload">Open local ↗</label
         ><input
           id="upload"
+          multiple
           type="file"
           accept=".json,application/json"
           hidden
@@ -39,7 +41,10 @@
         <div class="heroStats">
           <div><strong id="methodCount">—</strong><span>estimators</span></div>
           <div><strong id="gameCount">—</strong><span>game settings</span></div>
-          <div><strong id="runCount">—</strong><span>evaluated runs</span></div>
+          <div>
+            <strong id="runCount">—</strong
+            ><span>evaluated runs · all targets</span>
+          </div>
           <p>
             <span class="miniStar">✳</span> Exact ground truth. Open results.
           </p>
