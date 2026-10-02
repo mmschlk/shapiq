@@ -164,6 +164,7 @@ class OddSHAP(Approximator):
         random_state: int | None = None,
         interaction_factor: int = 10,  # eta; paper default
         tree_params: dict[str, Any] | None = None,
+        ridge: float = 0.0,
         **kwargs: Any,
     ) -> None:
         """Initialize the OddSHAP approximator.
@@ -171,8 +172,18 @@ class OddSHAP(Approximator):
         ``tree_params`` entries override the surrogate defaults — including
         ``random_state``, ``n_jobs``, and ``verbose``; ``max_depth`` defaults to 10
         (the paper's configuration) unless overridden.
+
+        ``ridge`` is an optional finite, nonnegative penalty on the free Fourier
+        coefficients. It applies only at budgets at most ``3 * n`` that do not
+        enumerate every coalition. The default preserves unregularized OddSHAP.
+        Shrinkage preserves efficiency and the selected support, but introduces
+        bias; it cannot recover singleton terms omitted by support screening.
         """
         del kwargs
+        if not np.isfinite(ridge) or ridge < 0:
+            msg = "ridge must be finite and nonnegative."
+            raise ValueError(msg)
+        self.ridge = float(ridge)
 
         # OddSHAP's own coalition-size distribution; set before super().__init__,
         # which builds the sampler.
@@ -306,6 +317,7 @@ class OddSHAP(Approximator):
             y_tilde=y_tilde,
             empty_set_value=empty_set_value,
             full_set_value=full_set_value,
+            ridge=self.ridge if budget <= 3 * self.n and budget < 2**self.n else 0.0,
         )
         sv_values = self._transform_to_shapley(
             odd_fourier_coefficients,
@@ -678,6 +690,7 @@ class OddSHAP(Approximator):
         y_tilde: np.ndarray,
         empty_set_value: float,
         full_set_value: float,
+        ridge: float = 0.0,
     ) -> np.ndarray:
         """Solve the constrained OddSHAP regression in the Fourier basis.
 
@@ -706,7 +719,20 @@ class OddSHAP(Approximator):
         y_projected = y_tilde - b * row_mean
 
         # Solve for the free projected coordinates
-        z_solution = np.linalg.lstsq(X_projected, y_projected, rcond=None)[0]
+        if ridge and X_projected.shape[0]:
+            # SVD avoids squaring the condition number or allocating a dense
+            # penalty matrix. The efficiency null direction remains excluded.
+            U, singular, Vt = np.linalg.svd(X_projected, full_matrices=False)
+            cutoff = np.finfo(float).eps * max(X_projected.shape) * singular[0]
+            gains = np.divide(
+                singular,
+                singular**2 + ridge,
+                out=np.zeros_like(singular),
+                where=singular > cutoff,
+            )
+            z_solution = Vt.T @ (gains * (U.T @ y_projected))
+        else:
+            z_solution = np.linalg.lstsq(X_projected, y_projected, rcond=None)[0]
 
         # Reconstruct the constrained non-empty coefficient vector:
         # beta_const + (I - ones(K,K)/K) @ z_solution == b/K + z_solution - mean(z_solution).
