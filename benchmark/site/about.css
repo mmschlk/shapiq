@@ -6,7 +6,13 @@ html {
   max-width: 1180px;
 }
 .aboutPage p {
-  line-height: 1.75;
+  line-height: 1.7;
+}
+.aboutPage .sectionIntro,
+.aboutPage .quietNote,
+.aboutPage .readingNotes p,
+.aboutPage .inventoryDetails > p {
+  max-width: 72ch;
 }
 .aboutPage .skipLink {
   position: absolute;
@@ -146,14 +152,15 @@ html {
   padding: 18px 24px;
 }
 .exampleCard p {
-  font-size: 14px;
+  max-width: 78ch;
+  font-size: 15px;
   margin: 9px 0 0;
 }
 .exampleCard p + p {
   color: var(--muted);
 }
 .quietNote {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   margin: 22px 0 0;
 }
@@ -224,36 +231,6 @@ html {
   color: var(--muted);
   font-size: 13px;
 }
-.growthCards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin: 26px 0;
-}
-.growthCards > div {
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #ffffffa6;
-}
-.growthCards > div:nth-child(2) {
-  background: #edf2ff;
-}
-.growthCards > div:nth-child(3) {
-  background: #fbeef2;
-}
-.growthCards span {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-.growthCards strong {
-  display: block;
-  margin: 10px 0 6px;
-  font-size: clamp(22px, 2.9vw, 31px);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
 .truthRoutes {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -305,7 +282,7 @@ html {
   box-shadow: 0 12px 35px #263d6a08;
 }
 .errorCard > p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   margin: 22px 0 0;
 }
@@ -367,7 +344,7 @@ html {
 }
 .metricCards p,
 .readingNotes p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   margin: 0;
 }
@@ -397,15 +374,6 @@ html {
   }
   .gameFlow li:nth-child(3)::before {
     content: none;
-  }
-  .growthCards {
-    gap: 8px;
-  }
-  .growthCards > div {
-    padding: 17px 12px;
-  }
-  .growthCards strong {
-    font-size: 21px;
   }
   .metricCards {
     grid-template-columns: 1fr;
@@ -439,22 +407,6 @@ html {
   }
   .sectionTitle {
     gap: 10px;
-  }
-  .growthCards {
-    grid-template-columns: 1fr;
-  }
-  .growthCards > div {
-    display: grid;
-    grid-template-columns: 75px 1fr;
-    align-items: baseline;
-    gap: 0 12px;
-  }
-  .growthCards strong {
-    margin: 0;
-    font-size: 25px;
-  }
-  .growthCards > div > span:last-child {
-    grid-column: 2;
   }
   .truthRoutes {
     grid-template-columns: 1fr;
