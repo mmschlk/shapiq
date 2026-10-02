@@ -308,3 +308,6 @@ uv run pre-commit run --all-files
   preparation failures, not evidence that a recipe failed scientific qualification.
   Retry only affected recipes in a separately authenticated supplement; preserve
   the original preparation decision and snapshots.
+- The benchmark branch tracks `fork/benchmark` (rtealwitter/shapiq); `origin`
+  points to mmschlk/shapiq. Check the tracking remote before pushing benchmark
+  work so updates reach the existing PR rather than creating an upstream branch.
