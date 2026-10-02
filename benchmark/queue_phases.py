@@ -53,10 +53,20 @@ def immutable_write(path: Path, value: dict | list) -> None:
     write(path, value)
 
 
-def plan(root: Path, base: dict, *, batch_size: int = 16, bounded_core: bool = False) -> dict:
+def plan(
+    root: Path,
+    base: dict,
+    *,
+    batch_size: int = 16,
+    bounded_core: bool = False,
+    nodes: tuple[str, ...] = NODES,
+) -> dict:
     """Do not rerun the same declared recipe in each cumulative phase."""
     if batch_size < 1:
         message = "Batch size must be positive"
+        raise ValueError(message)
+    if not nodes or len(set(nodes)) != len(nodes) or not set(nodes) <= set(NODES):
+        message = "Select unique nodes from the verified CPU pool."
         raise ValueError(message)
     root.mkdir(parents=True, exist_ok=True)
     seen, batches = {}, []
@@ -110,7 +120,7 @@ def plan(root: Path, base: dict, *, batch_size: int = 16, bounded_core: bool = F
                         "id": name,
                         "phase": phase,
                         "device": device,
-                        "node": NODES[(offset // batch_size) % len(NODES)],
+                        "node": nodes[(offset // batch_size) % len(nodes)],
                         "directory": str(directory.resolve()),
                         "recipes": len(selected),
                         "suite_sha256": identity(batch),
@@ -232,6 +242,7 @@ def main() -> None:
     parser.add_argument("--base", type=Path, default=Path("benchmark/suites/all-families.json"))
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--submit", action="store_true")
+    parser.add_argument("--nodes", nargs="+", choices=NODES, default=list(NODES))
     parser.add_argument(
         "--bounded-core",
         action="store_true",
@@ -246,6 +257,7 @@ def main() -> None:
             json.loads(args.base.read_text()),
             batch_size=args.batch_size,
             bounded_core=args.bounded_core,
+            nodes=tuple(args.nodes),
         )
         immutable_write(args.output / "campaign.json", campaign)
         if args.submit:
