@@ -10,9 +10,11 @@ import numpy as np
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
+from shapiq import InteractionValues
 from shapiq.explainer.nn.games.knn import KNNExplainerGame
 from shapiq.tree.interventional.game import InterventionalGame
-from shapiq_benchmark.games import load_game, prepare_structured
+from shapiq_benchmark import models
+from shapiq_benchmark.games import load_game, prepare_structured, signal_metadata
 from shapiq_benchmark.prepare import prepare
 from shapiq_benchmark.runner import run
 
@@ -270,3 +272,164 @@ def test_product_kernel_arrays_reload_without_refitting(
     with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
         assert arrays["support_vectors"].shape[1] == n_players
         assert all(not arrays[name].dtype.hasobject for name in arrays.files)
+
+
+@pytest.mark.parametrize(
+    "profile,kind",
+    [
+        ("random_forest", "tree"),
+        ("random_forest", "pathdependent_tree"),
+        ("rbf_svm", "product_kernel"),
+    ],
+)
+def test_shared_profiles_freeze_native_width_without_refitting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str, kind: str
+) -> None:
+    """Native models exceed enumeration limits and reload only authenticated numeric arrays."""
+    spec = {
+        "id": "native",
+        "oracle": kind,
+        "model_profile": profile,
+        "dataset": "breast_cancer",
+        "index": "SV",
+        "order": 1,
+    }
+    game = prepare_structured([spec], tmp_path)[0]
+    assert game["n_players"] == 30
+    assert game["metadata"]["small_validation_max_error"] < 1e-8
+    assert game["metadata"]["training_profile"]["id"] == "quality-v1"
+    monkeypatch.setattr(
+        "shapiq_benchmark.models.prepare_model",
+        lambda *a, **kw: pytest.fail("Reload must not train."),
+    )
+    oracle = load_game(game, tmp_path)
+    endpoints = oracle(np.array([np.zeros(30), np.ones(30)], dtype=bool))
+    assert endpoints[0] == pytest.approx(game["truth"]["baseline"])
+    assert endpoints[1] - endpoints[0] == pytest.approx(sum(game["truth"]["values"]))
+    with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
+        assert all(not arrays[key].dtype.hasobject for key in arrays.files)
+
+
+@pytest.mark.parametrize("dataset", ["breast_cancer", "digits"])
+def test_large_radius_neighbors_preserve_nonzero_baseline(tmp_path: Path, dataset: str) -> None:
+    """TNN's empty-neighborhood prior belongs in both exact coefficient and metadata."""
+    game = prepare_structured(
+        [
+            {
+                "id": "radius",
+                "oracle": "tnn",
+                "dataset": dataset,
+                "n_players": 32,
+                "index": "SV",
+                "order": 1,
+                "row_selection": "stratified",
+            }
+        ],
+        tmp_path,
+    )[0]
+    oracle = load_game(game, tmp_path)
+    endpoints = oracle(np.array([np.zeros(32), np.ones(32)], dtype=bool))
+    assert game["truth"]["baseline"] == pytest.approx(1 / (2 if dataset == "breast_cancer" else 10))
+    assert endpoints[0] == pytest.approx(game["truth"]["baseline"])
+    assert endpoints[1] - endpoints[0] == pytest.approx(sum(game["truth"]["values"]))
+    assert game["metadata"]["small_validation_max_error"] < 1e-10
+
+
+def test_structured_signal_bound_is_scale_invariant_and_conservative() -> None:
+    """Constant or tiny true signal is excluded; zero coordinates still count in the RMS."""
+    truth = InteractionValues(
+        values=np.array([1.0]),
+        index="SV",
+        min_order=1,
+        max_order=1,
+        n_players=12,
+        interaction_lookup={(0,): 0},
+        baseline_value=0.0,
+    )
+    first = signal_metadata(truth, 2.0)
+    assert first["signal_ratio"] == pytest.approx(1 / np.sqrt(12))
+    assert first["signal_ratio"] <= 1 / np.sqrt(12) / 0.5  # actual std of Bernoulli payoff
+    truth[(0,)] = 1e-12
+    assert signal_metadata(truth, 2e-12)["signal_ratio"] == pytest.approx(first["signal_ratio"])
+    assert signal_metadata(truth, 2.0)["signal_ratio"] < 1e-6
+    truth[(0,)] = 0.0
+    assert signal_metadata(truth, 0.0)["signal_ratio"] == 0
+
+
+@pytest.mark.parametrize("profile", ["random_forest", "xgboost", "lightgbm"])
+@pytest.mark.parametrize("index", ["SV", "k-SII", "SII", "STII", "FSII", "FBII"])
+def test_native_profile_tree_all_targets_roundtrip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str, index: str
+) -> None:
+    """Every declared native-width tree target qualifies against small enumeration and reloads."""
+    if profile != "random_forest":
+        pytest.importorskip(profile)
+    rng = np.random.default_rng(76)
+    x = rng.normal(size=(120, 24))
+    y = np.digitize(x[:, 0] * x[:, 1] + x[:, 2], [-0.5, 0.5])
+    monkeypatch.setitem(
+        models.DATASETS,
+        "audit_native",
+        {"source": "audit", "task": "classification", "n_features": 24, "n_classes": 3},
+    )
+    monkeypatch.setattr(models, "load_raw_dataset", lambda _: (x, y, [f"x{i}" for i in range(24)]))
+    parameters = {**models.MODEL_PROFILES[profile]["parameters"], "n_estimators": 4}
+    if profile == "xgboost":
+        parameters["early_stopping_rounds"] = 2
+    monkeypatch.setitem(
+        models.MODEL_PROFILES, profile, {**models.MODEL_PROFILES[profile], "parameters": parameters}
+    )
+    game = prepare_structured(
+        [
+            {
+                "id": "audited",
+                "oracle": "tree",
+                "model_profile": profile,
+                "dataset": "audit_native",
+                "index": index,
+                "order": 1 if index == "SV" else 2,
+            }
+        ],
+        tmp_path,
+    )[0]
+    assert game["n_players"] == 24
+    assert game["index"] == index
+    assert game["metadata"]["small_validation_max_error"] < 1e-8
+    oracle = load_game(game, tmp_path)
+    coalitions = rng.integers(0, 2, size=(8, 24)).astype(bool)
+    np.testing.assert_array_equal(oracle(coalitions), oracle(coalitions[::-1])[::-1])
+    assert game["metadata"]["source_conversion_max_error"] < 1e-5
+    with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
+        assert all(not arrays[key].dtype.hasobject for key in arrays.files)
+
+
+@pytest.mark.parametrize("profile", ["random_forest", "xgboost", "lightgbm"])
+@pytest.mark.parametrize("index", ["SV", "k-SII", "SII"])
+def test_pathdependent_profiles_declared_targets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str, index: str
+) -> None:
+    """The supported path-dependent target set is independently enumerated at eight players."""
+    if profile != "random_forest":
+        pytest.importorskip(profile)
+    parameters = {**models.MODEL_PROFILES[profile]["parameters"], "n_estimators": 4}
+    monkeypatch.setitem(
+        models.MODEL_PROFILES, profile, {**models.MODEL_PROFILES[profile], "parameters": parameters}
+    )
+    game = prepare_structured(
+        [
+            {
+                "id": "audited",
+                "oracle": "pathdependent_tree",
+                "model_profile": profile,
+                "dataset": "breast_cancer",
+                "index": index,
+                "order": 1 if index == "SV" else 2,
+            }
+        ],
+        tmp_path,
+    )[0]
+    assert game["n_players"] == 30
+    assert game["index"] == index
+    assert game["metadata"]["small_validation_max_error"] < 1e-8
+    oracle = load_game(game, tmp_path)
+    assert oracle(np.zeros((1, 30), dtype=bool))[0] == pytest.approx(game["truth"]["baseline"])

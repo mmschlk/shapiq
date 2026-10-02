@@ -1,8 +1,9 @@
 # Roadmap to the full benchmark
 
 This is the implementation plan for the next benchmark generation. The dataset
-loaders and initial random-forest/XGBoost profiles are implemented. Later model
-profiles and constructions remain planned. Superseded jobs were cancelled;
+loaders, model profiles and compatible construction adapters are implemented.
+Production qualification and execution still proceed phase by phase; an adapter
+being implemented does not mean its full dataset grid has completed. Superseded jobs were cancelled;
 published results keep their identities. This roadmap
 supersedes executing the entire new dataset matrix with the old shallow models.
 
@@ -10,8 +11,10 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 12 players, and 27,919 successful evaluations with no pending cells. Corrected
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
-**Next: phase 3**, adding ordinary tabular constructions on the first eight
-datasets; its adapters and qualification must precede new production jobs.
+**In progress: phases 3–7 execution setup.** A persistent Hopper watcher wakes
+the session for completion/failure and idle implementation stages, with explicit
+instructions to audit, publish and advance. Later-phase jobs wait behind audit
+gates. See the [continuation procedure](README.md#continuing-through-the-phases).
 
 The finished benchmark covers **all 63 datasets in the target catalog**, the model profiles
 below, every shipped game-construction family, four construction seeds, and all

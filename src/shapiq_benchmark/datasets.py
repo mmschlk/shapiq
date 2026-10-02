@@ -151,7 +151,7 @@ def dataset_details(name: str) -> dict:
 
 def warm_dataset_caches(suite: dict) -> None:
     """Finish TabArena CSV writes before any parallel preparation children start."""
-    names = {spec.get("dataset") for spec in suite.get("families", [])}
+    names = {spec.get("dataset") for spec in [*suite.get("families", []), *suite.get("games", [])]}
     for name in sorted(names - {None}):
         if name in DATASETS and "openml_id" in DATASETS[name]:
             load_dataset(name)

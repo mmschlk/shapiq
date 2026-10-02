@@ -56,12 +56,13 @@ def test_phase_two_is_exactly_the_agreed_64_games(base_suite: dict) -> None:
 
 
 @pytest.mark.parametrize("phase", [3, 4, 5, 6, 7])
-def test_unimplemented_phases_cannot_be_scheduled_as_if_ready(phase: int, base_suite: dict) -> None:
-    """Future inventory is honest about pending model/output qualification."""
+def test_executable_phases_preserve_inventory_and_runtime_qualification(
+    phase: int, base_suite: dict
+) -> None:
+    """Selected adapters still require runtime qualification; unavailable solvers stay visible."""
     suite = build_phase(phase, base_suite)
-    assert not suite["families"] and not suite["games"]
-    assert suite["phase_plan"]["counts"]["planned"] > 0
-    assert suite["phase_plan"]["counts"]["selected"] == 0
+    assert suite["families"] or suite["games"]
+    assert suite["phase_plan"]["counts"]["selected"] > 0
     candidates = suite["phase_plan"]["candidates"]
     assert len({row["id"] for row in candidates}) == len(candidates)
     assert all(row["n_players"] >= 11 for row in candidates)
@@ -92,14 +93,14 @@ def test_filter_understands_player_units_and_unsupported_task_pairs() -> None:
         for row in phase_candidates(6)
     }
     assert rows["local_baseline", "iris", "random_forest", 11]["status"] == "excluded"
-    assert rows["data_valuation", "iris", "random_forest", 11]["status"] == "planned"
+    assert rows["data_valuation", "iris", "random_forest", 11]["status"] == "selected"
     assert rows["knn", "wine_quality", "knn", 11]["reason"] == "Requires class labels."
     assert rows["product_kernel", "digits", "rbf_svm", 11]["status"] == "excluded"
     assert rows["local_gaussian", "mushroom", "random_forest", 11]["status"] == "excluded"
-    assert rows["tabpfn", "wine_quality", "tabpfn", 11]["status"] == "planned"
+    assert rows["tabpfn", "wine_quality", "tabpfn", 11]["status"] == "selected"
     assert "mlp" not in CONSTRUCTIONS["interventional_tree"]["models"]
     assert CONSTRUCTIONS["product_kernel"]["models"] == ["rbf_svm"]
-    assert rows["image", None, "vit", 16]["status"] == "planned"
+    assert rows["image", None, "vit", 16]["status"] == "selected"
 
 
 def test_manifest_explains_models_sources_budgets_and_actual_run_distinction() -> None:
@@ -108,8 +109,8 @@ def test_manifest_explains_models_sources_budgets_and_actual_run_distinction() -
     models = {row["id"]: row for row in manifest["models"]}
     assert models["random_forest"]["parameters"]["n_estimators"] == 100
     assert models["xgboost"]["parameters"]["max_depth"] == 8
-    assert models["mlp"]["status"] == "planned"
-    assert models["gaussian_process"]["status"] == "planned"
+    assert models["mlp"]["status"] == "implemented"
+    assert models["gaussian_process"]["status"] == "implemented"
     assert manifest["training"]["fit_rows_max"] == 5000
     assert "ceil" in manifest["budget_rule"]
     assert manifest["minimum_players"] == 11
@@ -155,3 +156,24 @@ def test_cli_uses_explicit_base_and_never_overwrites_it(
     )
     with pytest.raises(SystemExit):
         main()
+
+
+def test_structured_targets_keep_exclusions_and_neighbor_semantics(base_suite: dict) -> None:
+    """An unavailable interaction target or continuous-weight exact solver cannot silently disappear."""
+    suite = build_phase(7, base_suite)
+    rows = suite["phase_plan"]["candidates"]
+    path = next(
+        row for row in rows if row["family"] == "pathdependent_tree" and row["status"] == "selected"
+    )
+    assert {row["index"] for row in path["target_exclusions"]} == {"STII", "FSII", "FBII"}
+    weighted = [
+        row for row in rows if row["family"] == "weighted_knn" and row["status"] == "planned"
+    ]
+    assert weighted and all("discretizes weights" in row["reason"] for row in weighted)
+    assert all(len(row["target_exclusions"]) == len(base_suite["targets"]) for row in weighted)
+    for game in suite["games"]:
+        if game["oracle"] in ("knn", "tnn"):
+            assert game["row_selection"] == "stratified"
+            assert "model_profile" not in game
+            assert game["index"] == "SV"
+    assert any(game["oracle"] == "tnn" for game in suite["games"])

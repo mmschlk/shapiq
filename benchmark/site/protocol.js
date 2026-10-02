@@ -528,9 +528,36 @@ function renderRunSettings() {
     settings.append(
       protocolParagraph(
         "Eligibility",
-        `At least ${protocol.minimum_players} players; enumeration up to ${protocol.maximum_enumerated_players}. ${protocol.minimum_signal_ratio ? `RMS ground-truth attribution / payoff standard deviation must be at least ${protocol.minimum_signal_ratio}. ` : ""}Only compatible dataset, model and construction combinations are scheduled.`,
+        `At least ${protocol.minimum_players} players; enumeration up to ${protocol.maximum_enumerated_players}. ${protocol.minimum_signal_ratio ? `RMS ground-truth attribution / payoff standard deviation must be at least ${protocol.minimum_signal_ratio}. ` : ""}Structured games may use a certified lower bound on this ratio; the exact definition is recorded in their metadata. Only compatible dataset, model and construction combinations are scheduled.`,
       ),
     );
+  const exclusions = data.suite.preparation_exclusions || [];
+  const preflight = data.suite.preparation_preflight;
+  if (preflight) {
+    settings.append(
+      protocolParagraph(
+        "Preparation checks",
+        `${exclusions.length} recipe configurations excluded before estimator evaluation. The projected construction and enumeration limit is ${preflight.maximum_seconds_per_instance / 3600} hours per game instance; exact-solver cost is additional. All four seeds must pass. Projections are estimates, not measured full-run times.`,
+      ),
+    );
+    if (exclusions.length) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Excluded preparation configurations";
+      details.append(summary);
+      for (const row of exclusions) {
+        details.append(
+          protocolParagraph(
+            row.spec.id,
+            row.reason === "projected_cost_limit"
+              ? "Projected preparation cost exceeds the declared limit."
+              : "A construction, payoff validation or pilot time limit failed; see the reproduction archive for per-seed outcomes.",
+          ),
+        );
+      }
+      settings.append(details);
+    }
+  }
   if (protocol?.hardware)
     settings.append(protocolParagraph("Hardware", protocol.hardware));
   const prep = distinct(
@@ -597,6 +624,13 @@ function renderReportSummary(linkToAbout = true) {
       `${protocol?.name || "Earlier benchmark preview"} · ${datasets.length} data sources · ${Math.min(...players)}–${Math.max(...players)} players. `,
     ),
   );
+  const excluded = data.suite.preparation_exclusions?.length || 0;
+  if (excluded)
+    summary.append(
+      document.createTextNode(
+        `${excluded} preparation configurations excluded; reasons in About. `,
+      ),
+    );
   if (linkToAbout) {
     const jump = document.createElement("a");
     jump.href = "about.html";

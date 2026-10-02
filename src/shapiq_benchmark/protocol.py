@@ -1,7 +1,7 @@
 """The benchmark's declared datasets, models, constructions and phased rollout.
 
-Only phase two is executable today. Later phases are compatibility inventories:
-``planned`` means an adapter or qualification is still required, never a result.
+Phase manifests select compatible implemented adapters. Every selected recipe
+still requires exact-reference qualification before any estimator is evaluated.
 No datasets are downloaded and no models are fitted while building a manifest.
 """
 
@@ -11,11 +11,22 @@ import argparse
 import copy
 import json
 from pathlib import Path
+from typing import cast
 
-from shapiq_benchmark.datasets import DATASETS, feature_limit
-from shapiq_benchmark.families import FAMILY_CATALOG, MAX_ENUMERATION_PLAYERS, dataset_compatibility
+from shapiq_benchmark.datasets import (
+    DATASETS as DATASET_CATALOG,
+    feature_limit,
+)
+from shapiq_benchmark.families import (
+    FAMILY_CATALOG,
+    MAX_ENUMERATION_PLAYERS,
+    dataset_compatibility,
+    profile_compatibility,
+)
 from shapiq_benchmark.media import EXTRA_CATALOG
 from shapiq_benchmark.models import MODEL_PROFILES, TRAINING_PROFILE
+
+DATASETS: dict = DATASET_CATALOG
 
 SOURCE_ROOT = "https://github.com/rtealwitter/shapiq/blob/benchmark/"
 BUDGET_MULTIPLIERS = (0.5, 1, 2, 4, 8, 16, 32, 64, 128)
@@ -53,7 +64,7 @@ MODEL_PHASES = {
     ),
 }
 # Each construction names its allowed models, not a blind model cross product.
-_CONSTRUCTIONS = {
+_CONSTRUCTIONS: dict = {
     "local_baseline": (2, LOCAL_MODELS),
     "local_marginal": (2, LOCAL_MODELS),
     "local_gaussian": (3, PREDICTION_MODELS),
@@ -78,11 +89,12 @@ _CONSTRUCTIONS = {
     "tabpfn": (5, ("tabpfn",)),
     "image": (5, ("resnet18", "vit")),
     "text": (5, ("distilbert",)),
+    "text_remove": (5, ("distilbert",)),
     "causal_global": (5, ("tabpfn",)),
     "causal_local": (5, ("tabpfn",)),
     **dict.fromkeys(("unanimity", "soum", "dummy", "random"), (5, ("none",))),
 }
-CONSTRUCTIONS = {
+CONSTRUCTIONS: dict = {
     name: {
         "id": name,
         "label": name.replace("_", " ").capitalize(),
@@ -100,6 +112,7 @@ CONSTRUCTIONS = {
 _SPECIAL = {
     "image",
     "text",
+    "text_remove",
     "causal_global",
     "causal_local",
     "unanimity",
@@ -170,7 +183,7 @@ def protocol_manifest(phase: int) -> dict:
                 "id": name,
                 "phase": introduced,
                 "label": name.replace("_", " ").title(),
-                **copy.deepcopy(MODEL_PROFILES.get(name, {})),
+                **json.loads(json.dumps(MODEL_PROFILES.get(name, {}))),
                 "status": "implemented" if name in MODEL_PROFILES else "planned",
                 "source_url": SOURCE_ROOT
                 + (
@@ -199,6 +212,66 @@ def _exclusion(family: str, dataset: str, count: int) -> str | None:
     ):
         return "Too few training-example players to represent every class."
     return None
+
+
+def adapter_reason(family: str, dataset: str | None, model: str, *, structured: bool) -> str | None:
+    """Keep missing exact solvers explicit; do not replace their game semantics."""
+    if structured:
+        if family in ("pathdependent_tree", "interventional_tree", "product_kernel", "knn", "tnn"):
+            return None
+        if family in ("weighted_knn", "binary_weighted_knn"):
+            return "The shipped exact solver discretizes weights; it does not solve this continuous-weight game."
+        return "The large-player exact solver adapter is not yet qualified for this construction."
+    if (
+        family in _SPECIAL
+        or family == "tabpfn"
+        or model in ("knn", "tnn", "weighted_knn", "binary_weighted_knn", "kmeans", "none")
+    ):
+        return None
+    return profile_compatibility(family, cast("str", dataset), model)
+
+
+def recipe_spec(row: dict, targets: list[dict]) -> list[dict]:
+    """Translate one declared pairing to existing enumerated or exact-solver APIs."""
+    family, model = row["family"], row["model_profile"]
+    common = {key: row[key] for key in ("id", "n_players")}
+    if row["dataset"] is not None:
+        common["dataset"] = row["dataset"]
+    if row["reference"] == "structured":
+        oracle = {"interventional_tree": "tree", "pathdependent_tree": "pathdependent_tree"}.get(
+            family, family
+        )
+        supported = (
+            targets
+            if family == "interventional_tree"
+            else [t for t in targets if t["index"] in ("SV", "k-SII", "SII")]
+            if family == "pathdependent_tree"
+            else [t for t in targets if (t["index"], t["order"]) == ("SV", 1)]
+        )
+        return [
+            {
+                **common,
+                "id": f"{row['id']}-{target['index'].lower()}-{target['order']}",
+                "oracle": oracle,
+                **target,
+                **(
+                    {"row_selection": "stratified"}
+                    if family in ("knn", "tnn")
+                    else {"model_profile": model}
+                ),
+            }
+            for target in supported
+        ]
+    spec = {**common, "family": "image_vit" if family == "image" and model == "vit" else family}
+    if (
+        family not in _SPECIAL
+        and family != "tabpfn"
+        and model not in ("knn", "tnn", "weighted_knn", "binary_weighted_knn", "kmeans", "none")
+    ):
+        spec["model_profile"] = model
+    if family == "tabpfn" or model == "tabpfn_prediction":
+        spec["device"] = "cuda"
+    return [spec]
 
 
 def phase_candidates(phase: int) -> list[dict]:
@@ -242,7 +315,8 @@ def phase_candidates(phase: int) -> list[dict]:
                     continue
                 for count in [16] if family == "image" and model == "vit" else counts:
                     reason = _exclusion(family, dataset, count) if dataset else None
-                    ready = phase == 2 and reason is None
+                    pending = adapter_reason(family, dataset, model, structured=phase == 7)
+                    ready = reason is None and pending is None
                     rows.append(
                         {
                             "id": f"{family}-{dataset or 'fixed-inputs'}-{model}-d{count}",
@@ -254,16 +328,14 @@ def phase_candidates(phase: int) -> list[dict]:
                             "status": "excluded" if reason else "selected" if ready else "planned",
                             "reason": reason
                             or (
-                                "Prepare and qualify the exact payoff table."
-                                if ready
-                                else "Requires adapter and model/output qualification before scheduling."
+                                "Prepare and qualify the exact payoff table." if ready else pending
                             ),
                             "reference": "structured" if phase == 7 else "enumeration",
                             "target_rule": (
-                                "SV only pending solver qualification"
+                                "SV only; validate the exact solver on a small enumerated instance"
                                 if phase == 7
                                 and family not in ("pathdependent_tree", "interventional_tree")
-                                else "Suite targets pending exact-reference qualification"
+                                else "Suite targets, each subject to exact-reference qualification"
                             ),
                         }
                     )
@@ -271,7 +343,7 @@ def phase_candidates(phase: int) -> list[dict]:
 
 
 def build_phase(phase: int, base: dict) -> dict:
-    """Reuse estimator/target definitions, with an executable phase two and explicit later plans."""
+    """Reuse estimator/target definitions and preserve exclusions in every executable manifest."""
     expected = {
         "relative_budgets": list(BUDGET_MULTIPLIERS),
         "game_seeds": list(GAME_SEEDS),
@@ -283,13 +355,40 @@ def build_phase(phase: int, base: dict) -> dict:
         raise ValueError(message)
     suite = {key: copy.deepcopy(base[key]) for key in (*expected, "methods", "targets")}
     candidates = phase_candidates(phase)
+    for row in candidates:
+        if row["reference"] == "structured":
+            supported = (
+                {(spec["index"], spec["order"]) for spec in recipe_spec(row, base["targets"])}
+                if row["status"] == "selected"
+                else set()
+            )
+            row["target_exclusions"] = [
+                {
+                    **target,
+                    "reason": (
+                        row["reason"]
+                        if row["status"] != "selected"
+                        else "The qualified path-dependent solver supports SV, SII and k-SII only."
+                        if row["family"] == "pathdependent_tree"
+                        else "The qualified structured solver supports SV only."
+                    ),
+                }
+                for target in base["targets"]
+                if (target["index"], target["order"]) not in supported
+            ]
     suite.update(
         name=f"stronger-models-phase-{phase}-v1",
-        games=[],
-        families=[
-            {key: row[key] for key in ("id", "family", "dataset", "model_profile", "n_players")}
+        games=[
+            spec
             for row in candidates
-            if row["status"] == "selected"
+            if row["status"] == "selected" and row["reference"] == "structured"
+            for spec in recipe_spec(row, base["targets"])
+        ],
+        families=[
+            spec
+            for row in candidates
+            if row["status"] == "selected" and row["reference"] == "enumeration"
+            for spec in recipe_spec(row, base["targets"])
         ],
         min_signal_ratio=1e-6,
         protocol=protocol_manifest(phase),

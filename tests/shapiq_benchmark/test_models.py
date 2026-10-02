@@ -179,3 +179,136 @@ def test_feature_semantics_are_part_of_cache_identity(
     third = models.prepare_model("fixture", 11, 0, "random_forest", cache_dir=tmp_path)
     assert third.metadata["model_key"] != second.metadata["model_key"]
     assert third.metadata["dataset_source"] == "replacement.loader"
+
+
+@pytest.mark.parametrize("profile", ["linear", "rbf_svm", "mlp", "lightgbm", "gaussian_process"])
+@pytest.mark.parametrize("task", ["classification", "regression"])
+def test_extended_profiles_fit_and_freeze(
+    data: tuple, monkeypatch: pytest.MonkeyPatch, profile: str, task: str
+) -> None:
+    """Every new ordinary predictor has finite outputs and training-only transforms."""
+    if profile == "lightgbm":
+        pytest.importorskip("lightgbm")
+    x, _, names = data
+    y = np.arange(len(x)) % 3 * 3 + 2 if task == "classification" else x[:, 0] * 2 - 1
+    monkeypatch.setitem(models.DATASETS, "fixture", {"task": task, "source": "fixture"})
+    monkeypatch.setattr(models, "load_raw_dataset", lambda _: (x, y, names))
+    if profile in {"mlp", "lightgbm"}:
+        parameters = {**models.MODEL_PROFILES[profile]["parameters"]}
+        parameters.update({"max_iter": 3} if profile == "mlp" else {"n_estimators": 4})
+        monkeypatch.setitem(
+            models.MODEL_PROFILES,
+            profile,
+            {**models.MODEL_PROFILES[profile], "parameters": parameters},
+        )
+    prepared = models.prepare_model("fixture", 11, 0, profile)
+    predicted = prepared.predict(prepared.x_test)
+    assert predicted.shape == (24,)
+    assert np.isfinite(predicted).all()
+    if task == "classification":
+        assert prepared.metadata["output_class"] == 5
+        assert np.all((predicted >= 0) & (predicted <= 1))
+    if profile != "lightgbm":
+        np.testing.assert_allclose(
+            prepared.model.named_steps["scaler"].mean_, prepared.x_train.mean(axis=0)
+        )
+    unfitted = models.coalition_model(prepared)
+    if profile == "lightgbm":
+        assert unfitted.n_estimators == prepared.model.best_iteration_
+    elif profile == "mlp":
+        assert (
+            unfitted.named_steps["model"].max_iter
+            == prepared.metadata["structure"]["selected_epochs"]
+        )
+        assert not unfitted.named_steps["model"].early_stopping
+    json.dumps(prepared.metadata, allow_nan=False)
+
+
+def test_continuous_selection_uses_training_rows(
+    data: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Categorical, binary and fit-constant columns cannot enter Gaussian games."""
+    x, y, names = data
+    fit, _ = train_test_split(np.arange(len(x)), test_size=0.2, random_state=0, stratify=y)
+    fit, _ = train_test_split(fit, test_size=0.2, random_state=0, stratify=y[fit])
+    x[fit, 0] = 1
+    x[:, 1] = np.arange(len(x)) % 2
+    monkeypatch.setitem(models.DATASETS["fixture"], "categorical_features", [names[2]])
+    prepared = models.prepare_model("fixture", 9, 0, "linear", feature_rule="continuous")
+    assert prepared.metadata["feature_indices"] == list(range(3, 12))
+    assert prepared.metadata["feature_rule"] == "continuous"
+    with pytest.raises(ValueError, match="Too few continuous"):
+        models.prepare_model("fixture", 10, 0, "linear", feature_rule="continuous")
+
+
+def test_native_width_and_expensive_cap(data: tuple, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Structured references may use >20 features; costly predictors freeze smaller contexts."""
+    x, y, names = data
+    x = np.column_stack([x, x + 0.1])
+    monkeypatch.setattr(
+        models, "load_raw_dataset", lambda _: (x, y, names + [f"extra-{n}" for n in names])
+    )
+    assert models.prepare_model("fixture", 24, 0, "linear").metadata["n_players"] == 24
+    monkeypatch.setitem(
+        models.MODEL_PROFILES,
+        "gaussian_process",
+        {**models.MODEL_PROFILES["gaussian_process"], "fit_rows_max": 30},
+    )
+    gp = models.prepare_model("fixture", 12, 0, "gaussian_process")
+    assert gp.metadata["training_rows"] == 30
+    assert gp.metadata["training_profile"]["id"] == "quality-v1-gaussian_process"
+
+
+def test_xgboost_coalition_disables_validation(
+    data: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Refits keep the chosen iteration count without using a coalition-specific holdout."""
+    pytest.importorskip("xgboost")
+    monkeypatch.setitem(
+        models.MODEL_PROFILES,
+        "xgboost",
+        {"parameters": {"n_estimators": 4, "early_stopping_rounds": 2, "n_jobs": 1}},
+    )
+    prepared = models.prepare_model("fixture", 11, 0, "xgboost")
+    model = models.coalition_model(prepared)
+    assert model.early_stopping_rounds is None
+    assert model.n_estimators == prepared.model.best_iteration + 1
+    model.fit(prepared.x_train[:, :2], prepared.y_train)
+    assert np.isfinite(model.predict_proba(prepared.x_test[:, :2])).all()
+
+
+def test_device_requires_explicit_supported_profile(data: tuple) -> None:
+    """A CUDA request can never silently become an ordinary CPU model."""
+    with pytest.raises(ValueError, match="CUDA"):
+        models.prepare_model("fixture", 11, 0, "linear", device="cuda")
+
+
+def test_tabpfn_checkpoint_and_precision_are_authenticated(
+    data: tuple, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Checkpoint replacement creates a new identity; the optional backend gets fixed settings."""
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("tabpfn")
+    checkpoint = tmp_path / "checkpoint.ckpt"
+    checkpoint.write_bytes(b"first-weights")
+    monkeypatch.setattr(models, "_tabpfn_checkpoint", lambda _: checkpoint)
+    received = []
+
+    def builder(**kwargs: object) -> object:
+        received.append(kwargs)
+        return models.DummyClassifier(strategy="prior", random_state=0)
+
+    monkeypatch.setattr(models, "_resolve_model_builder", lambda *_: builder)
+    first = models.prepare_model("fixture", 11, 0, "tabpfn_prediction")
+    checkpoint.write_bytes(b"replacement-weights")
+    second = models.prepare_model("fixture", 11, 0, "tabpfn_prediction")
+    assert first.metadata["model_key"] != second.metadata["model_key"]
+    assert first.metadata["checkpoint_sha256"] == hashlib.sha256(b"first-weights").hexdigest()
+    assert first.metadata["checkpoint_name"] == "checkpoint.ckpt"
+    assert first.metadata["device"] == "cpu"
+    assert first.metadata["precision"] == "float32"
+    assert all(item["inference_precision"] == torch.float32 for item in received)
+    assert all(item["n_preprocessing_jobs"] == 1 for item in received)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    with pytest.raises(ValueError, match="fallback is forbidden"):
+        models.prepare_model("fixture", 11, 0, "tabpfn_prediction", device="cuda")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import math
 import re
 from typing import TYPE_CHECKING, cast
 
@@ -95,6 +96,25 @@ def knn_game(
     return model, KNNExplainerGame(model, point, class_index=int(matches[0]))
 
 
+def tnn_game(
+    x: np.ndarray, y: np.ndarray, point: np.ndarray, parameters: dict | None, point_label: int
+) -> tuple:
+    """Construct the shipped radius-neighbor utility with an explicit training-only radius."""
+    from sklearn.neighbors import RadiusNeighborsClassifier
+
+    from shapiq.explainer.nn.games.tnn import TNNExplainerGame
+
+    if parameters is None:
+        message = "Radius-neighbor reconstruction requires explicit parameters."
+        raise ValueError(message)
+    model = RadiusNeighborsClassifier(**parameters).fit(x, y)
+    matches = np.flatnonzero(model.classes_ == point_label)
+    if len(matches) != 1:
+        message = "Selected radius-neighbor rows omit the held-out true class."
+        raise ValueError(message)
+    return model, TNNExplainerGame(model, point, class_index=int(matches[0]))
+
+
 def validate_truth(oracle: Callable, truth: InteractionValues, *, exhaustive: bool) -> float:
     """Check endpoints, efficiency, determinism, and optionally every exact coefficient."""
     n = truth.n_players
@@ -146,6 +166,22 @@ def truth_dict(truth: InteractionValues) -> dict:
     }
 
 
+def signal_metadata(truth: InteractionValues, payoff_range: float) -> dict:
+    """Certify a conservative signal ratio using SD <= (maximum payoff - minimum payoff)/2."""
+    if not np.isfinite(payoff_range) or payoff_range < 0:
+        message = "A payoff range bound must be finite and nonnegative."
+        raise ValueError(message)
+    dimension = sum(math.comb(truth.n_players, degree) for degree in range(1, truth.max_order + 1))
+    energy = sum(value**2 for key, value in truth.dict_values.items() if key)
+    return {
+        "payoff_range_upper_bound": float(payoff_range),
+        "signal_ratio": float(math.sqrt(energy / dimension) / (payoff_range / 2))
+        if payoff_range
+        else 0.0,
+        "signal_ratio_definition": "certified lower bound: RMS exact coefficients / (payoff range upper bound / 2)",
+    }
+
+
 def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
     """Freeze seeded tree, nearest-neighbor, and product-kernel games with exact truth."""
     ids = [spec.get("id") for spec in specs]
@@ -161,13 +197,26 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
     output.mkdir(parents=True, exist_ok=True)
     games = []
     for spec in specs:
+        if "model_profile" in spec:
+            from shapiq_benchmark.structured import prepare_profiled
+
+            games.append(prepare_profiled(spec, output))
+            continue
         dataset_name = spec.get("dataset", "breast_cancer")
         loaders = {"breast_cancer": load_breast_cancer, "digits": load_digits}
-        if dataset_name not in loaders:
-            message = "Structured dataset must be breast_cancer or digits."
-            raise ValueError(message)
-        dataset = loaders[dataset_name]()
-        x, y = dataset.data, dataset.target
+        if dataset_name in loaders:
+            dataset = loaders[dataset_name]()
+            x, y = dataset.data, dataset.target
+        else:
+            from shapiq_benchmark.datasets import DATASETS, load_dataset
+
+            if (
+                spec["oracle"] not in ("knn", "tnn")
+                or DATASETS[dataset_name]["task"] != "classification"
+            ):
+                message = "New structured datasets require a model profile, or classification KNN."
+                raise ValueError(message)
+            x, y, _, _, _ = load_dataset(dataset_name, spec.get("instance_seed", 0))
         if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
             message = "Structured inputs must be numeric and finite."
             raise ValueError(message)
@@ -251,7 +300,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             }
             n = x.shape[1]
             family = "local_explanation"
-        elif kind == "knn" and (index, order) == ("SV", 1):
+        elif kind in ("knn", "tnn") and (index, order) == ("SV", 1):
             count = spec.get("n_players", 128)
             if type(count) is not int or not 8 <= count <= len(train):
                 message = "KNN n_players must be between 8 and the training split size."
@@ -269,17 +318,34 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                     train, train_size=count, stratify=y[train], random_state=seed
                 )
             point_label = int(y[test[0]])
-            model, oracle = knn_game(scaled[selected], y[selected], point, point_label=point_label)
-            truth = KNNExplainer(model, class_index=oracle.class_index).explain(point)
+            constructor, computer, parameters = knn_game, KNNExplainer, None
+            if kind == "tnn":
+                from scipy.spatial.distance import pdist
+
+                from shapiq.explainer.nn import ThresholdNNExplainer
+
+                distances = pdist(scaled[train[:512]])
+                positive = distances[distances > 0]
+                if not len(positive):
+                    message = "Radius selection requires distinct training inputs."
+                    raise ValueError(message)
+                parameters = {"radius": float(np.median(positive)), "n_jobs": 1}
+                constructor, computer = tnn_game, ThresholdNNExplainer
+            model, oracle = constructor(
+                scaled[selected], y[selected], point, parameters, point_label
+            )
+            truth = computer(model, class_index=oracle.class_index).explain(point)
+            if kind == "tnn":
+                truth.baseline_value = truth[()]
             small = selected[:8].copy()
             if point_label not in y[small]:
                 small[-1] = selected[np.flatnonzero(y[selected] == point_label)[0]]
-            small_model, small_oracle = knn_game(
-                scaled[small], y[small], point, point_label=point_label
+            small_model, small_oracle = constructor(
+                scaled[small], y[small], point, parameters, point_label
             )
-            small_truth = KNNExplainer(small_model, class_index=small_oracle.class_index).explain(
-                point
-            )
+            small_truth = computer(small_model, class_index=small_oracle.class_index).explain(point)
+            if kind == "tnn":
+                small_truth.baseline_value = small_truth[()]
             error = validate_truth(small_oracle, small_truth, exhaustive=True)
             arrays = {
                 "x_train": scaled[selected],
@@ -288,7 +354,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "scaler_mean": scaler.mean_,
                 "scaler_scale": scaler.scale_,
                 "selected_rows": selected,
-                "sortperm": oracle.sortperm,
+                **({"sortperm": oracle.sortperm} if kind == "knn" else {}),
             }
             metadata = {
                 "model": "KNeighborsClassifier",
@@ -297,11 +363,19 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "row_selection": row_selection,
                 "class_index": oracle.class_index,
                 "point_label": point_label,
-                "test_accuracy": model.score(scaled[test], y[test]),
+                "test_accuracy": model.score(scaled[test], y[test]) if kind != "tnn" else None,
                 "semantics": "number of correct-label examples among coalition's three nearest / 3",
-                "truth_method": "KNNExplainer",
+                "truth_method": computer.__name__,
                 "player_unit": "training example",
             }
+            if kind == "tnn":
+                metadata.update(
+                    model="RadiusNeighborsClassifier",
+                    semantics="correct-label fraction inside the fixed radius; empty neighborhood uses class prior",
+                    radius_rule="median nonzero pairwise distance on first 512 standardized training rows",
+                    radius_fit_indices=train[:512].tolist(),
+                )
+                metadata.pop("n_neighbors")
             n, family = count, "data_valuation"
         elif kind == "product_kernel" and (index, order) == ("SV", 1):
             scaler = StandardScaler().fit(x[train])
@@ -339,7 +413,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 "classes": model.classes_.tolist(),
                 "gamma": float(converted.gamma),
                 "intercept": float(converted.intercept),
-                "test_accuracy": model.score(scaled[test], y[test]),
+                "test_accuracy": model.score(scaled[test], y[test]) if kind != "tnn" else None,
                 "preprocessing": "StandardScaler fitted on training split only",
                 "semantics": "RBF decision margin with omitted feature kernel factors set to one",
                 "truth_method": "ProductKernelExplainer",
@@ -352,6 +426,10 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             message = f"Unsupported structured game specification: {spec}."
             raise ValueError(message)
         validate_truth(oracle, truth, exhaustive=False)
+        payoff_range = (
+            1.0 if kind in ("tree", "knn", "tnn") else float(np.abs(converted.alpha).sum())
+        )
+        metadata.update(signal_metadata(truth, payoff_range))
         artifact = output / f"{spec['id']}.npz"
         np.savez_compressed(
             artifact, allow_pickle=False, **arrays, train_indices=train, test_indices=test
@@ -399,6 +477,10 @@ def load_game(game: dict, root: Path) -> Callable:
                 game["n_players"],
                 artifact["evaluation_seconds"].copy() if "evaluation_seconds" in artifact else None,
             )
+        if game["metadata"].get("structured_format") == "numeric-model-v1":
+            from shapiq_benchmark.structured import load_profiled
+
+            return load_profiled(game, artifact)
         if importlib.metadata.version("scikit-learn") != game["metadata"]["sklearn_version"]:
             message = "Live oracle reconstruction requires the snapshot's scikit-learn version."
             raise ValueError(message)
@@ -415,14 +497,16 @@ def load_game(game: dict, root: Path) -> Callable:
             if model_hash(model) != game["metadata"]["model_sha256"]:
                 message = "Reconstructed tree model differs from the frozen model."
                 raise ValueError(message)
-        elif game["oracle"] == "knn":
-            _, oracle = knn_game(
+        elif game["oracle"] in ("knn", "tnn"):
+            constructor = knn_game if game["oracle"] == "knn" else tnn_game
+            _, oracle = constructor(
                 x, y, point, game["metadata"]["model_parameters"], game["metadata"]["point_label"]
             )
             if oracle.class_index != game["metadata"]["class_index"]:
                 message = "Reconstructed KNN class differs from the snapshot."
                 raise ValueError(message)
-            np.testing.assert_array_equal(oracle.sortperm, artifact["sortperm"])
+            if game["oracle"] == "knn":
+                np.testing.assert_array_equal(oracle.sortperm, artifact["sortperm"])
         elif game["oracle"] == "product_kernel":
             converted = ProductKernelModel(
                 X_train=artifact["support_vectors"].copy(),

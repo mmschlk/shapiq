@@ -238,3 +238,20 @@ uv run pre-commit run --all-files
 - CUDA preparation must not inherit the CPU worker's 12-GiB address-space cap:
   CUDA reserves much larger virtual ranges. Use Slurm memory limits, one worker
   per GPU, synchronized timing and explicit backend/precision in cache identities.
+
+- Profiled XGBoost predictors honor early stopping, but tree converters can retain
+  every stored boosting round. Trim a copied booster to the selected rounds before
+  constructing a tree game; boosted classification tree games use explicit margins.
+- ThresholdNNExplainer can put the correct empty coefficient in its result while
+  leaving baseline_value at zero. Structured benchmark TNN copies that unchanged
+  empty coefficient into baseline metadata and qualifies it against enumeration.
+
+- Fixed TabPFN float32 predictions vary slightly with batch shape (measured
+  probability differences about 5e-7 on L40S). Benchmark preparation records an
+  explicit float32 qualification tolerance and batch/repeat/reverse/singleton
+  discrepancies; exact scores refer to the saved canonical table. This tolerance
+  is a qualification policy, not a certified global floating-point error bound.
+- The path-dependent Python tree game can retain float32 XGBoost leaf values
+  and sample weights while its exact solver computes in float64. Freeze both as
+  float64 for the same oracle/reference; do not hide mismatches by relaxing exact
+  qualification, especially for coefficients that should be exactly zero.

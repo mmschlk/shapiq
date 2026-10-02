@@ -12,6 +12,15 @@ from shapiq_benchmark.families import _dataset, feature_subset
 from shapiq_benchmark.media import make_extra
 
 
+@pytest.fixture(autouse=True)
+def checkpoint_file(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """Media unit tests use explicit checkpoint bytes without loading optional neural weights."""
+    path = tmp_path / "tabpfn-fixture.ckpt"
+    path.write_bytes(b"frozen checkpoint fixture")
+    monkeypatch.setattr("shapiq_benchmark.models._tabpfn_checkpoint", lambda task: path)
+    return path
+
+
 @pytest.mark.parametrize(
     ("dataset", "n_players"),
     [
@@ -232,3 +241,101 @@ def test_cuda_payoff_identity_and_timing_include_device(monkeypatch: pytest.Monk
     assert first["spec"]["device"] == "cuda"
     batch = materialize._timing_batch(0, 2, 1.0, {"preparation_hardware": backend})
     assert batch["preparation_hardware"] == backend
+
+
+def test_tabpfn_regression_preserves_continuous_prediction(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression contextualization must never turn continuous targets into class indices."""
+    captured = {}
+
+    def imputer(model: object, x: np.ndarray, y: np.ndarray, **kwargs: object) -> SimpleNamespace:
+        captured["prediction"] = kwargs["predict_function"](model, x[:2])
+        captured["target"] = y
+        return SimpleNamespace(n_players=x.shape[1], fit=lambda point: None)
+
+    monkeypatch.setitem(
+        sys.modules,
+        "tabpfn",
+        SimpleNamespace(
+            TabPFNRegressor=lambda **kwargs: SimpleNamespace(
+                predict=lambda rows: np.full(len(rows), 2.75)
+            )
+        ),
+    )
+    monkeypatch.setattr("shapiq.imputer.tabpfn_imputer.TabPFNImputer", imputer)
+    _, metadata = make_extra("tabpfn", dataset="diabetes", n_players=10)
+    np.testing.assert_array_equal(captured["prediction"], [2.75, 2.75])
+    assert len(np.unique(captured["target"])) > 2
+    assert metadata["model"] == "TabPFNRegressor"
+    assert "class_index" not in metadata["parameters"]
+
+
+def test_text_remove_uses_shipped_removal_strategy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mask and remove recipes retain identical predetermined sentences and distinct rules."""
+    strategies = []
+
+    def factory(text: str, *, mask_strategy: str, **kwargs: object) -> SimpleNamespace:
+        strategies.append(mask_strategy)
+        return SimpleNamespace(
+            n_players=11,
+            _classifier=SimpleNamespace(
+                model=SimpleNamespace(config=SimpleNamespace(_commit_hash="fixed"))
+            ),
+        )
+
+    monkeypatch.setattr(
+        "shapiq_games.benchmark.local_xai.benchmark_language.SentimentAnalysis", factory
+    )
+    first = make_extra("text", n_players=11)[1]
+    second = make_extra("text_remove", n_players=11)[1]
+    assert strategies == ["mask", "remove"]
+    assert first["text"] == second["text"]
+    assert first["recipe"] != second["recipe"]
+
+
+def test_vit_uses_sixteen_real_patches_and_hashes_weights(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ViT uses the shipped patch game, with four fixed inputs and no SLIC null-player rule."""
+    import torch
+
+    inputs = []
+    module = SimpleNamespace(state_dict=lambda: {"weight": torch.tensor([1.0])})
+
+    def factory(*, model_name: str, x_explain_path: str) -> SimpleNamespace:
+        assert model_name == "vit_16_patches"
+        inputs.append(x_explain_path)
+        return SimpleNamespace(
+            n_players=16,
+            model_function=SimpleNamespace(
+                _embedding_layer=module, _encoder=module, _classifier=module
+            ),
+        )
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr("shapiq_games.benchmark.local_xai.benchmark_image.ImageClassifier", factory)
+    metadata = [make_extra("image_vit", n_players=16, instance_seed=seed)[1] for seed in range(4)]
+    assert len(set(inputs)) == 4
+    assert len({item["model_sha256"] for item in metadata}) == 1
+    assert all(item["n_players"] == 16 for item in metadata)
+
+
+def test_contextualization_authenticates_explicit_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, checkpoint_file
+) -> None:
+    """New games must use the same checkpoint whose bytes their metadata identifies."""
+    import hashlib
+
+    options = []
+    monkeypatch.setitem(
+        sys.modules,
+        "tabpfn",
+        SimpleNamespace(TabPFNClassifier=lambda **kwargs: options.append(kwargs)),
+    )
+    monkeypatch.setattr(
+        "shapiq.imputer.tabpfn_imputer.TabPFNImputer",
+        lambda model, rows, *args, **kwargs: SimpleNamespace(
+            n_players=rows.shape[1], fit=lambda point: None
+        ),
+    )
+    _, metadata = make_extra("tabpfn", dataset="breast_cancer", n_players=11)
+    assert options[0]["model_path"] == checkpoint_file
+    assert metadata["checkpoint_name"] == checkpoint_file.name
+    assert metadata["checkpoint_sha256"] == hashlib.sha256(checkpoint_file.read_bytes()).hexdigest()

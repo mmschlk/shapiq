@@ -399,3 +399,37 @@ def test_public_model_protocol_and_spectrum_survive_export(tmp_path: Path) -> No
     assert all("truth" not in game and "artifact" not in game for game in about["games"])
     assert "/private" not in json.dumps(about)
     assert "/private" not in json.dumps(exported)
+
+
+def test_preparation_exclusions_keep_costs_without_private_pilot_details() -> None:
+    """Cost-based exclusions remain public, distinct from estimator failures."""
+    from shapiq_benchmark.report import public_preparation
+
+    instance = {
+        "seed": 0,
+        "status": "failed",
+        "reason": "construction_or_payoff_validation_failed",
+        "error_type": "ValueError",
+        "projected_seconds": 40000,
+        "error": "/private/raw traceback",
+        "hardware": {"hostname": "private-host"},
+    }
+    suite = {
+        "preparation_preflight": {
+            "maximum_seconds_per_instance": 28800,
+            "source": {"private": "/private/source"},
+            "families": [{"id": "large", "status": "excluded", "instances": [instance]}],
+        },
+        "preparation_exclusions": [
+            {
+                "spec": {"id": "large", "family": "data_valuation", "private": "/private/config"},
+                "reason": "projected_cost_limit",
+                "maximum_seconds_per_instance": 28800,
+                "instances": [instance],
+            }
+        ],
+    }
+    public = public_preparation(suite)
+    assert "/private" not in json.dumps(public) and "private-host" not in json.dumps(public)
+    assert public["preparation_exclusions"][0]["instances"][0]["projected_seconds"] == 40000
+    assert public_preparation({}) == {}

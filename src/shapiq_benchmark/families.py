@@ -7,11 +7,14 @@ table; exact truth then describes that realization, not a population expectation
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from scipy.spatial.distance import pdist
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import accuracy_score, mean_squared_error
@@ -28,7 +31,13 @@ from shapiq_benchmark.datasets import (
     load_dataset as _dataset,
 )
 from shapiq_benchmark.execution import hardware
-from shapiq_benchmark.models import prepare_model
+from shapiq_benchmark.models import coalition_model, prepare_model
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
+
+    from shapiq_benchmark.models import PreparedModel
 
 MAX_ENUMERATION_PLAYERS = 20
 
@@ -216,7 +225,7 @@ _APPLICATIONS = {
     **dict.fromkeys(["ensemble", "forest_ensemble"], "ensemble_selection"),
     **dict.fromkeys(["unanimity", "soum", "dummy", "random"], "synthetic"),
 }
-FAMILY_CATALOG = {
+FAMILY_CATALOG: dict = {
     name: {
         "class": cls,
         "source": "src/" + cls.rsplit(".", 1)[0].replace(".", "/") + ".py",
@@ -275,6 +284,7 @@ def make_family(
     n_players: int | None = None,
     model_profile: str | None = None,
     model_cache: str | None = None,
+    device: str = "cpu",
 ) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
@@ -283,7 +293,9 @@ def make_family(
     Nothing here downloads models or substitutes a different payoff on failure.
     """
     if model_profile is not None:
-        return _prediction_game(name, dataset, n_players, instance_seed, model_profile, model_cache)
+        return _prediction_game(
+            name, dataset, n_players, instance_seed, model_profile, model_cache, device
+        )
     metadata = dict(FAMILY_CATALOG[name])
     configured = dataset is not None or n_players is not None
     module, attribute = metadata["class"].rsplit(".", 1)
@@ -697,6 +709,204 @@ def make_family(
     return game, metadata
 
 
+_LOCAL = {"local_baseline", "local_marginal"}
+_RETRAINING = {"feature_selection", "data_valuation", "dataset_valuation"}
+_PREDICTION = _LOCAL | {"local_gaussian", "local_copula", "local_conditional", "global_fidelity"}
+_TREE = {"pathdependent_tree", "interventional_tree"}
+PROFILE_CONSTRUCTIONS = {
+    "random_forest": _PREDICTION | _RETRAINING | _TREE | {"uncertainty", "forest_ensemble"},
+    "xgboost": _PREDICTION | _RETRAINING | _TREE,
+    "lightgbm": _PREDICTION | _RETRAINING | _TREE,
+    "mlp": _PREDICTION | _RETRAINING,
+    "linear": _LOCAL | _RETRAINING,
+    "rbf_svm": _LOCAL | {"product_kernel"},
+    "gaussian_process": _LOCAL,
+    "tabpfn_prediction": _LOCAL,
+    "heterogeneous_ensemble": {"ensemble"},
+    "heterogeneous_ensemble_extended": {"ensemble"},
+}
+
+
+def profile_compatibility(name: str, dataset: str, profile: str) -> str | None:
+    """The explicit model-to-construction mapping, before expensive preparation."""
+    if reason := dataset_compatibility(name, dataset):
+        return reason
+    if name not in PROFILE_CONSTRUCTIONS.get(profile, set()):
+        return f"The {profile} model profile does not support {name}."
+    return None
+
+
+class _CoalitionRefit:
+    """Fresh frozen-hyperparameter fits with explicit subset-class semantics.
+
+    The shipped games retain their empty-coalition utility. A nonempty one-class
+    training coalition predicts that class; other classification coalitions use
+    contiguous internal labels and map predictions back to the original labels.
+    """
+
+    def __init__(self, prepared: PreparedModel) -> None:
+        self.template = coalition_model(prepared)
+        self.classification = prepared.metadata["task"] == "classification"
+        self.profile = prepared.metadata["model_profile"]
+
+    def fit(self, x: np.ndarray, y: np.ndarray) -> None:
+        self.model = clone(self.template)
+        self.labels, encoded = np.unique(y, return_inverse=True)
+        self.constant = (self.classification and len(self.labels) == 1) or (
+            not self.classification and self.profile == "lightgbm" and len(y) == 1
+        )
+        if self.constant:
+            return
+        if self.classification and self.profile == "xgboost":
+            binary = len(self.labels) == 2
+            self.model.set_params(
+                objective="binary:logistic" if binary else "multi:softprob",
+                eval_metric="logloss" if binary else "mlogloss",
+                num_class=None if binary else len(self.labels),
+            )
+        self.model.fit(x, encoded if self.classification else y)
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        if self.constant:
+            return np.full(len(x), self.labels[0])
+        values = self.model.predict(x)
+        return self.labels[np.asarray(values, dtype=int)] if self.classification else values
+
+
+def _frozen_parameters(prepared: PreparedModel, model: object) -> dict:
+    """Record declared settings plus frozen validation choices, without estimator objects."""
+    actual = cast("Any", model).get_params()
+    return {
+        key: actual.get(f"model__{key}", actual.get(key, value))
+        for key, value in prepared.metadata["model_parameters"].items()
+    }
+
+
+def _retraining_game(
+    constructor: Callable[..., Any], name: str, prepared: PreparedModel, n: int, seed: int
+) -> tuple:
+    """Preserve shipped utilities and keep training-player rows out of the holdout."""
+    refit = _CoalitionRefit(prepared)
+    metadata = {}
+    options = {
+        "fit_function": refit.fit,
+        "predict_function": refit.predict,
+        "loss_function": accuracy_score if refit.classification else _negative_mse,
+    }
+    if name == "data_valuation":
+        if n > len(prepared.x_train):
+            message = "Not enough fitting rows for the declared row players."
+            raise ValueError(message)
+        x = np.concatenate((prepared.x_train[:n], prepared.x_test))
+        y = np.concatenate((prepared.y_train[:n], prepared.y_test))
+        # DataValuation permutes its inputs. Invert that exact seeded permutation
+        # so its training/test pools remain the already-declared disjoint pools.
+        inverse = np.argsort(np.random.default_rng(seed).permutation(len(x)))
+        game = constructor(
+            n_data_points=n, x_data=x[inverse], y_data=y[inverse], random_state=seed, **options
+        )
+        metadata["train_indices"] = prepared.metadata["train_indices"][:n]
+        metadata["training_rows"] = n
+    else:
+        x, y = prepared.x_train, prepared.y_train
+        if name == "dataset_valuation":
+            if n > len(x):
+                message = "Not enough fitting rows for nonempty group players."
+                raise ValueError(message)
+            groups = np.array_split(np.arange(len(x)), n)
+            metadata["group_indices"] = [
+                np.asarray(prepared.metadata["train_indices"])[group].tolist() for group in groups
+            ]
+            x, y = [x[group] for group in groups], [y[group] for group in groups]
+            options["random_state"] = seed
+        game = constructor(
+            x_train=x, y_train=y, x_test=prepared.x_test, y_test=prepared.y_test, **options
+        )
+    metadata.update(
+        semantics="held-out accuracy after retraining; empty zero"
+        if refit.classification
+        else "held-out negative MSE after retraining; empty zero",
+        output_scale="accuracy" if refit.classification else "negative MSE",
+        refit_protocol={
+            "hyperparameters": "frozen before enumeration; no coalition-specific tuning",
+            "early_stopping": "disabled; fitted iteration count frozen",
+            "single_class": "constant prediction of the training class",
+            "singleton_regression": "LightGBM predicts its sole training target; other profiles fit normally",
+            "quality_scope": "validation/test scores describe the full-data parameter-selection model",
+            "preprocessing": "missing-value repair frozen on the parameter-selection fitting pool; scaler refitted per coalition",
+            "subset_classes": "contiguous internal labels mapped back on prediction",
+            "parameters": _frozen_parameters(prepared, refit.template),
+        },
+    )
+    return game, metadata
+
+
+def _ensemble_game(
+    constructor: Callable[..., Any],
+    name: str,
+    prepared: PreparedModel,
+    n: int,
+    seed: int,
+    dataset: str,
+    profile: str,
+    cache_dir: str | None,
+) -> tuple:
+    """Ensemble players use explicit members with the same fitted/test split."""
+    classification = prepared.metadata["task"] == "classification"
+    options = {
+        "x_train": prepared.x_train,
+        "y_train": prepared.y_train,
+        "x_test": prepared.x_test,
+        "y_test": prepared.y_test,
+        "loss_function": accuracy_score if classification else _negative_mse,
+        "dataset_type": "classification" if classification else "regression",
+        "verbose": False,
+        "random_state": seed,
+    }
+    if name == "forest_ensemble":
+        forest = clone(prepared.model).set_params(n_estimators=n)
+        forest.fit(prepared.x_train, prepared.y_train)
+        game = constructor(random_forest=forest, **options)
+        members = [{"profile": "random_forest_tree", "tree": i} for i in range(n)]
+    else:
+        profiles = ["random_forest", "xgboost", "rbf_svm", "linear"]
+        if profile == "heterogeneous_ensemble_extended":
+            profiles += ["lightgbm", "mlp"]
+        fitted, members = [], []
+        for i in range(n):
+            family = profiles[i % len(profiles)]
+            base = prepare_model(
+                dataset, prepared.x_train.shape[1], seed, family, cache_dir=cache_dir
+            )
+            if base.metadata["train_indices"] != prepared.metadata["train_indices"]:
+                message = "Ensemble member preparation changed the shared training rows."
+                raise ValueError(message)
+            member = cast("Any", coalition_model(base))
+            key = "model__random_state" if hasattr(member, "named_steps") else "random_state"
+            if key in member.get_params():
+                member.set_params(**{key: seed + i})
+            member.fit(prepared.x_train, prepared.y_train)
+            fitted.append(member)
+            members.append(
+                {
+                    "profile": family,
+                    "random_state": seed + i,
+                    "model_key": base.metadata["model_key"],
+                    "parameters": _frozen_parameters(base, member),
+                }
+            )
+        game = constructor(ensemble_members=fitted, **options)
+    return game, {
+        "ensemble_members": members,
+        "quality_scope": "validation/test scores describe the shared preparation model, not ensemble votes",
+        "semantics": "held-out majority-vote accuracy; empty zero"
+        if classification
+        else "held-out negative MSE of mean member prediction; empty zero",
+        "output_scale": "accuracy" if classification else "negative MSE",
+        "model_parameters": {"n_members": n, "member_definitions": members},
+    }
+
+
 def _prediction_game(
     name: str,
     dataset: str | None,
@@ -704,33 +914,132 @@ def _prediction_game(
     seed: int,
     profile: str,
     cache_dir: str | None,
+    device: str = "cpu",
 ) -> tuple:
-    """Use one qualified fitted model across the baseline and marginal games."""
-    if name not in ("local_baseline", "local_marginal") or dataset is None or n_players is None:
-        message = "Explicit model profiles currently require a bounded baseline/marginal recipe."
+    """Construct a shipped game from shared, qualified model/data ingredients."""
+    if dataset is None or type(n_players) is not int or not 1 <= n_players <= 20:
+        message = "Explicit model profiles require a dataset and bounded n_players (1-20)."
         raise ValueError(message)
-    prepared = prepare_model(dataset, n_players, seed, profile, cache_dir=cache_dir)
+    if reason := profile_compatibility(name, dataset, profile):
+        raise ValueError(reason)
+    feature_count = (
+        n_players
+        if FAMILY_CATALOG[name]["player_unit"] == "feature"
+        else min(12, int(DATASETS[dataset]["n_features"]))
+    )
+    feature_rule = "continuous" if name in ("local_gaussian", "local_copula") else "all"
+    prepared = prepare_model(
+        dataset,
+        feature_count,
+        seed,
+        "random_forest" if profile.startswith("heterogeneous_ensemble") else profile,
+        cache_dir=cache_dir,
+        device=device,
+        feature_rule=feature_rule,
+    )
     metadata = {**FAMILY_CATALOG[name], **prepared.metadata}
     module, attribute = metadata["class"].rsplit(".", 1)
     constructor = getattr(importlib.import_module(module), attribute)
-    options = {"sample_size": 16} if name == "local_marginal" else {}
-    game = constructor(
-        model=prepared.predict,
-        data=prepared.x_train[:16],
-        x=prepared.x_test[0],
-        random_state=seed,
-        **options,
-    )
+    model, point, background = prepared.model, prepared.x_test[0], prepared.x_train[:16]
+    classification = metadata["task"] == "classification"
+    options, extra = {}, {}
+    if name.startswith("local_"):
+        if name == "local_marginal":
+            options["sample_size"] = 16
+        elif name in ("local_gaussian", "local_copula"):
+            background = prepared.x_train
+            options["sample_size"] = 16
+        elif name == "local_conditional":
+            background = prepared.x_train[:64]
+            options.update(sample_size=8, conditional_budget=16)
+        game = constructor(
+            model=prepared.predict, data=background, x=point, random_state=seed, **options
+        )
+    elif name == "global_fidelity":
+        background = prepared.x_train[:128]
+        options = {"n_samples_eval": 16, "n_samples_empty": len(background)}
+        game = constructor(
+            data=background,
+            model=prepared.predict,
+            loss_function=mean_squared_error,
+            random_state=seed,
+            **options,
+        )
+        extra["output_scale"] = "prediction fidelity (MSE relative to empty-coalition MSE)"
+    elif name in _RETRAINING:
+        game, extra = _retraining_game(constructor, name, prepared, n_players, seed)
+    elif name in ("ensemble", "forest_ensemble"):
+        game, extra = _ensemble_game(
+            constructor, name, prepared, n_players, seed, dataset, profile, cache_dir
+        )
+    elif name == "uncertainty":
+        background = prepared.x_train[:20]
+        options["uncertainty_to_explain"] = "total"
+        game = constructor(data=background, model=model, x=point, random_state=seed, **options)
+        extra["output_scale"] = "total predictive entropy (bits)"
+    elif name in _TREE:
+        # Both shipped XGBoost tree paths consume every stored tree. Trim the
+        # stopped tail so this is the same best-round predictor as local games.
+        if profile == "xgboost":
+            model = copy.deepcopy(model)
+            rounds = model.best_iteration + 1
+            model._Booster = model.get_booster()[:rounds]  # noqa: SLF001
+            extra["tree_rounds"] = rounds
+        point = point.astype(np.float32).astype(float)
+        background = background.astype(np.float32).astype(float)
+        if name == "pathdependent_tree":
+            game = constructor(
+                x=point,
+                tree_model=model,
+                verbose=False,
+                **({"class_label": 1} if classification else {}),
+            )
+        else:
+            game = constructor(
+                model=model,
+                reference_data=background,
+                target_instance=point,
+                **({"class_index": 1} if classification else {}),
+            )
+        extra["output_scale"] = (
+            "class margin"
+            if classification and profile != "random_forest"
+            else "class probability"
+            if classification
+            else "prediction"
+        )
+    elif name == "product_kernel":
+        svm = model.named_steps["model"]
+        scaled_point = model.named_steps["scaler"].transform(point[None])[0]
+        game = constructor(n_players=n_players, explain_point=scaled_point, model=convert_svm(svm))
+        extra["output_scale"] = "binary SVC decision score" if classification else "prediction"
+    else:
+        message = f"No profiled construction for {name}."
+        raise ValueError(message)
     metadata.update(
         recipe=name,
-        model=type(prepared.model).__name__,
+        model=type(model).__name__,
         model_profile=profile,
-        preparation_hardware={"device": "cpu", "cpu_model": hardware()["cpu_model"]},
+        preparation_hardware={"device": device, "cpu_model": hardware()["cpu_model"]},
         parameters={"random_state": seed, **options},
-        background_size=len(prepared.x_train[:16]),
+        background_size=len(background),
+        background_indices=metadata["train_indices"][: len(background)],
         point_row=metadata["test_indices"][0],
-        output_scale="class probability" if metadata["task"] == "classification" else "prediction",
+        n_players=game.n_players,
+        output_scale="class probability" if classification else "prediction",
         normalize=game.normalize,
         normalization_value=float(game.normalization_value),
     )
+    metadata.update(extra)
+    if name in _RETRAINING | {
+        "ensemble",
+        "forest_ensemble",
+        "product_kernel",
+        "pathdependent_tree",
+    }:
+        metadata.update(background_indices=[], background_size=0)
+    if name in _RETRAINING | {"ensemble", "forest_ensemble", "global_fidelity"}:
+        metadata.pop("point_row", None)
+    if "output_scale" in extra:
+        metadata["output"] = extra["output_scale"]
     return game, metadata

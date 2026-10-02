@@ -27,6 +27,40 @@ HTML/CSS/JavaScript with SVG charts: no frontend framework, database, or build
 step. You can evaluate a private estimator with the same runner and view the
 comparison locally without uploading anything.
 
+## Continuing through the phases
+
+The active Hopper rollout keeps its state in `benchmark/results/full-rollout/`.
+`WAKEUP.md` tells the resumed agent exactly what to do next; `watch.json` records
+only the current stage's jobs. The watcher runs every five minutes and queues a
+message to the authorized session when a job finishes or fails. During
+implementation, or after the jobs stop, a thirty-minute idle heartbeat also wakes
+the session. The next action is always explicit: **qualify → run → independently
+audit → publish → verify live → start the next phase**.
+
+`benchmark/queue_phases.py` creates disjoint batches from the cumulative phase
+manifests, retaining all nine budgets and four game seeds. Its job journal makes
+resubmission reviewable. Each evaluation array task depends on its corresponding
+preparation task. CPU batches spread over the verified EPYC 9754 node pool;
+explicit CUDA batches use one L40S per preparation worker. Later phases are queued
+on hold, and the resumed agent releases them after the preceding audit. A
+completed scheduler job is never enough to declare a phase complete.
+
+From a **clean frozen checkout containing the approved estimator corrections**:
+
+```bash
+UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign
+# Review the generated inventories and batches, then queue them:
+UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign --submit
+```
+
+Every wake-up is acknowledged with
+`python benchmark/watch_campaign.py /shared/campaign --acknowledge`.
+The acknowledgement also refreshes the implementation heartbeat. Update watched
+job IDs when advancing; do not retire the watcher after one successful phase.
+Set its status to `complete` only after the final audited live release, or to
+`paused`/`cancelled` at the user's request. The watcher submits no experiments and
+publishes nothing itself: it wakes the agent to inspect evidence and continue.
+
 ## Code map
 
 | Responsibility | Files |
@@ -114,10 +148,10 @@ Generate the executable manifest with:
 UV_NO_SYNC=1 uv run python -m shapiq_benchmark.protocol --phase 2 --output /tmp/phase2.json
 ```
 
-Only phase two currently produces executable configurations. Later phases
-produce clearly marked compatibility inventories until their adapters are
-implemented and qualified. Each phase requires an independent audit before
-its results replace the preview. Device choices and model parameters are part
+Phases 2–7 produce compatible executable configurations. Missing exact solvers
+and incompatible pairings remain explicit in the inventory. Selection is a plan:
+each actual game must still qualify before evaluation, and each phase needs an
+independent audit before publication. Device choices and model parameters are part
 of the recorded recipe, and the website shows actual dataset/model provenance.
 
 Preparation **361441** and sweep **361442** completed. The release uses frozen

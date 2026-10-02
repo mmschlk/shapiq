@@ -227,3 +227,37 @@ def test_eleven_player_snapshot_retains_exact_truth_and_relative_grid(tmp_path: 
     (tmp_path / "snapshot" / "snapshot.json").write_text(json.dumps(snapshot))
     with pytest.raises(ValueError, match="min_players"):
         load_snapshot(tmp_path / "snapshot")
+
+
+@pytest.mark.parametrize("difference,qualified", [(1e-7, True), (1e-2, False)])
+def test_tabpfn_float32_realization_is_bounded_and_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, difference: float, *, qualified: bool
+) -> None:
+    """Float32 tolerance is explicit; a genuinely batch-sensitive payoff still fails."""
+    from shapiq_benchmark import materialize
+
+    class Game:
+        n_players = 3
+
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+            result = coalitions @ np.arange(1.0, 4.0)
+            return result + (difference if len(coalitions) == 1 else 0)
+
+    monkeypatch.setattr(
+        materialize,
+        "make_family",
+        lambda *a, **k: (Game(), {"model_profile": "tabpfn_prediction"}),
+    )
+    games, coverage = prepare_families(
+        [{"id": "float32", "family": "local_baseline", "model_profile": "tabpfn_prediction"}],
+        [{"index": "SV", "order": 1}],
+        tmp_path,
+    )
+    assert bool(games) == qualified
+    if qualified:
+        validation = games[0]["metadata"]["oracle_validation"]
+        assert validation["observed_differences"]["singletons"] > 0
+        assert validation["observed_differences"]["singletons"] < validation["absolute_tolerance"]
+        np.testing.assert_allclose(games[0]["truth"]["values"], [1, 2, 3])
+    else:
+        assert coverage[0]["status"] == "unavailable"

@@ -43,6 +43,15 @@ METADATA_FIELDS = (
     "preparation_hardware",
     "model_profile",
     "model_parameters",
+    "refit_protocol",
+    "quality_scope",
+    "prediction_batch_size",
+    "oracle_precision",
+    "oracle_validation",
+    "signal_ratio_definition",
+    "payoff_range_upper_bound",
+    "ensemble_members",
+    "tree_rounds",
     "training_profile",
     "training_rows",
     "validation_rows",
@@ -159,6 +168,64 @@ def budget_failure(row: dict) -> dict:
     }
 
 
+def public_preparation(suite: dict) -> dict:
+    """Keep preparation exclusions visible without private pilot diagnostics."""
+    if "preparation_preflight" not in suite:
+        return {}
+    fields = (
+        "seed",
+        "status",
+        "reason",
+        "error_type",
+        "setup_seconds",
+        "oracle_seconds",
+        "projected_seconds",
+        "uniform_coalitions",
+        "projected_constructions",
+        "validation_coalitions",
+    )
+
+    def instances(rows: list[dict]) -> list[dict]:
+        return [{key: row[key] for key in fields if key in row} for row in rows]
+
+    preflight = suite["preparation_preflight"]
+    return {
+        "preparation_preflight": {
+            **{
+                key: preflight[key]
+                for key in (
+                    "version",
+                    "safety_factor",
+                    "scope",
+                    "uncertainty",
+                    "selection_rule",
+                    "maximum_seconds_per_instance",
+                    "pilot_timeout_seconds",
+                    "structured_references",
+                )
+                if key in preflight
+            },
+            "families": [
+                {"id": row["id"], "status": row["status"], "instances": instances(row["instances"])}
+                for row in preflight.get("families", [])
+            ],
+        },
+        "preparation_exclusions": [
+            {
+                "spec": {
+                    key: row["spec"][key]
+                    for key in ("id", "family", "dataset", "model_profile", "n_players", "device")
+                    if key in row["spec"]
+                },
+                "reason": row["reason"],
+                "maximum_seconds_per_instance": row["maximum_seconds_per_instance"],
+                "instances": instances(row["instances"]),
+            }
+            for row in suite.get("preparation_exclusions", [])
+        ],
+    }
+
+
 def merge_results(paths: list[Path]) -> dict:
     """Join identical panels, rejecting conflicting methods and repeated run cells.
 
@@ -262,23 +329,26 @@ def merge_results(paths: list[Path]) -> dict:
         "snapshot_id": first["snapshot_id"],
         "snapshot_provenance": first["snapshot_provenance"],
         "suite": {
-            key: first["suite"][key]
-            for key in (
-                "name",
-                "protocol",
-                "phase_plan",
-                "min_players",
-                "min_signal_ratio",
-                "matrix_definition",
-                "matrix_coverage",
-                "budgets",
-                "seeds",
-                "game_seeds",
-                "methods",
-                "budgets_by_game",
-                "relative_budgets",
-            )
-            if key in first["suite"]
+            **{
+                key: first["suite"][key]
+                for key in (
+                    "name",
+                    "protocol",
+                    "phase_plan",
+                    "min_players",
+                    "min_signal_ratio",
+                    "matrix_definition",
+                    "matrix_coverage",
+                    "budgets",
+                    "seeds",
+                    "game_seeds",
+                    "methods",
+                    "budgets_by_game",
+                    "relative_budgets",
+                )
+                if key in first["suite"]
+            },
+            **public_preparation(first["suite"]),
         },
         "games": games,
         "coverage": first.get("coverage", []),

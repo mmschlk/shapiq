@@ -11,6 +11,7 @@ import fcntl
 import hashlib
 import importlib.metadata
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -20,9 +21,16 @@ if TYPE_CHECKING:
 
 import joblib
 import numpy as np
+from sklearn.base import clone
 from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import balanced_accuracy_score, log_loss, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC, SVR
 
 from shapiq_benchmark.datasets import DATASETS, dataset_details, load_raw_dataset
 from shapiq_benchmark.setup import _resolve_model_builder
@@ -42,6 +50,43 @@ MODEL_PROFILES: dict = {
             "tree_method": "hist",
             "n_jobs": 1,
         },
+    },
+    "lightgbm": {
+        "label": "LightGBM",
+        "parameters": {
+            "n_estimators": 200,
+            "num_leaves": 63,
+            "min_child_samples": 10,
+            "learning_rate": 0.05,
+            "n_jobs": 1,
+            "verbosity": -1,
+        },
+        "early_stopping_rounds": 20,
+    },
+    "mlp": {
+        "label": "Multilayer perceptron",
+        "parameters": {"hidden_layer_sizes": (128, 64), "max_iter": 200},
+        "early_stopping_rounds": 20,
+    },
+    "rbf_svm": {
+        "label": "RBF support vector machine",
+        "parameters": {"kernel": "rbf"},
+        "validation_grid": {"C": [0.1, 1.0, 10.0], "gamma": ["scale", 0.1]},
+    },
+    "linear": {"label": "Linear control", "parameters": {}},
+    "gaussian_process": {
+        "label": "Gaussian process",
+        "parameters": {"optimizer": None},
+        "fit_rows_max": 256,
+        "validation_kernels": ["rbf", "matern"],
+    },
+    "tabpfn_prediction": {
+        "label": "Fixed TabPFN predictor",
+        "checkpoint_version": "v2.5",
+        "prediction_batch_size": 512,
+        "prediction_padding": "repeat last row to fixed batch size",
+        "parameters": {"n_estimators": 1},
+        "fit_rows_max": 256,
     },
 }
 TRAINING_PROFILE: dict = {
@@ -71,9 +116,219 @@ class PreparedModel:
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Use a fixed scalar output, including for multiclass classification."""
-        if self.metadata["task"] == "classification":
-            return self.model.predict_proba(x)[:, 1]
-        return self.model.predict(x)
+        classification = self.metadata["task"] == "classification"
+        size = MODEL_PROFILES[self.metadata["model_profile"]].get("prediction_batch_size", len(x))
+        if not len(x):
+            return np.empty(0)
+        predictions = []
+        for start in range(0, len(x), size):
+            part = x[start : start + size]
+            inputs = part
+            if self.metadata["model_profile"] == "tabpfn_prediction" and len(part) < size:
+                # Fix the numerical batch shape, including endpoint/singleton calls.
+                inputs = np.concatenate((part, np.repeat(part[-1:], size - len(part), axis=0)))
+            values = (
+                self.model.predict_proba(inputs)[:, 1]
+                if classification
+                else self.model.predict(inputs)
+            )
+            predictions.append(values[: len(part)])
+        return np.concatenate(predictions)
+
+
+def _tabpfn_checkpoint(task: str) -> Path:
+    """Resolve a prewarmed, versioned checkpoint before authenticating a model cache."""
+    loading = importlib.import_module("tabpfn.model_loading")
+    paths, _, _, _ = loading.resolve_model_path(
+        None,
+        "classifier" if task == "classification" else "regressor",
+        version=MODEL_PROFILES["tabpfn_prediction"]["checkpoint_version"],
+    )
+    path = paths[0]
+    if not path.is_file():
+        message = "Warm the declared TabPFN checkpoint cache before launching model workers."
+        raise FileNotFoundError(message)
+    return path
+
+
+def build_model(
+    profile: str, task: str, seed: int, *, parameters: dict | None = None, device: str = "cpu"
+) -> object:
+    """Construct one unfitted profile; scaled models keep original feature coordinates.
+
+    The pipeline fits its scaler on whatever training rows a coalition supplies.
+    Validation-only choices are supplied through ``parameters`` when refitting.
+    """
+    classification = task == "classification"
+    params = {**MODEL_PROFILES[profile]["parameters"], **(parameters or {})}
+    if profile == "linear":
+        builder = LogisticRegression if classification else Ridge
+        params = {"max_iter": 1000, **params} if classification else {"alpha": 1.0, **params}
+    elif profile == "rbf_svm":
+        builder = SVC if classification else SVR
+        if classification:
+            params["probability"] = True
+    elif profile == "gaussian_process":
+        builder = GaussianProcessClassifier if classification else GaussianProcessRegressor
+        if not classification:
+            params["normalize_y"] = True
+    else:
+        builder = _resolve_model_builder(
+            "tabpfn" if profile == "tabpfn_prediction" else profile, task
+        )
+    if not (profile == "rbf_svm" and not classification):
+        params["random_state"] = seed
+    if profile == "tabpfn_prediction":
+        torch = importlib.import_module("torch")
+
+        if device == "cuda" and not torch.cuda.is_available():
+            message = "CUDA requested but unavailable; CPU fallback is forbidden."
+            raise ValueError(message)
+        params.update(
+            device=device,
+            inference_precision=torch.float32,
+            n_preprocessing_jobs=1,
+            model_path=_tabpfn_checkpoint(task),
+        )
+    estimator = builder(**params)
+    if profile in {"mlp", "rbf_svm", "linear", "gaussian_process"}:
+        return Pipeline([("scaler", StandardScaler()), ("model", estimator)])
+    return estimator
+
+
+def coalition_model(prepared: PreparedModel) -> object:
+    """Clone fixed validation decisions, with no validation or tuning inside a coalition.
+
+    Classifier callers must handle singleton classes and re-encode subset labels;
+    XGBoost's objective must also match the number of labels in that coalition.
+    """
+    model = clone(prepared.model)
+    profile = prepared.metadata["model_profile"]
+    if profile == "xgboost":
+        model.set_params(n_estimators=prepared.model.best_iteration + 1, early_stopping_rounds=None)
+    elif profile == "lightgbm":
+        model.set_params(n_estimators=prepared.model.best_iteration_ or prepared.model.n_estimators)
+    elif profile == "mlp":
+        model.set_params(
+            model__max_iter=prepared.metadata["structure"]["selected_epochs"],
+            model__early_stopping=False,
+        )
+    return model
+
+
+def _validation_loss(model: object, x: np.ndarray, y: np.ndarray, *, classification: bool) -> float:
+    model = cast("Any", model)
+    if classification:
+        return float(log_loss(y, model.predict_proba(x), labels=model.classes_))
+    return float(mean_squared_error(y, model.predict(x)))
+
+
+def _fit_predictor(
+    profile: str,
+    task: str,
+    seed: int,
+    x_fit: np.ndarray,
+    y_fit: np.ndarray,
+    x_validation: np.ndarray,
+    y_validation: np.ndarray,
+    *,
+    device: str,
+) -> tuple[Any, dict, dict]:
+    """Select on the designated validation split, never on held-out test observations."""
+    classification = task == "classification"
+    parameters = {**MODEL_PROFILES[profile]["parameters"], "random_state": seed}
+    diagnostics: dict = {}
+    if profile == "xgboost":
+        multiclass = classification and len(np.unique(y_fit)) > 2
+        parameters.update(
+            objective="multi:softprob"
+            if multiclass
+            else "binary:logistic"
+            if classification
+            else "reg:squarederror",
+            eval_metric="mlogloss" if multiclass else "logloss" if classification else "rmse",
+        )
+    if profile == "rbf_svm" and not classification:
+        parameters.pop("random_state")
+    candidates = [parameters]
+    if profile == "rbf_svm":
+        grid = MODEL_PROFILES[profile]["validation_grid"]
+        candidates = [
+            {**parameters, "C": c, "gamma": gamma} for c in grid["C"] for gamma in grid["gamma"]
+        ]
+    elif profile == "gaussian_process":
+        candidates = [
+            {**parameters, "kernel": name} for name in MODEL_PROFILES[profile]["validation_kernels"]
+        ]
+    best, best_loss, best_parameters = None, float("inf"), parameters
+    for candidate in candidates:
+        constructor_parameters = dict(candidate)
+        if profile == "gaussian_process":
+            kernel = RBF() if candidate["kernel"] == "rbf" else Matern(nu=1.5)
+            constructor_parameters["kernel"] = kernel + WhiteKernel(noise_level=0.01)
+        model = cast(
+            "Any",
+            build_model(profile, task, seed, parameters=constructor_parameters, device=device),
+        )
+        if profile == "xgboost":
+            model.fit(x_fit, y_fit, eval_set=[(x_validation, y_validation)], verbose=False)
+        elif profile == "lightgbm":
+            lightgbm = importlib.import_module("lightgbm")
+
+            model.fit(
+                x_fit,
+                y_fit,
+                eval_set=[(x_validation, y_validation)],
+                callbacks=[
+                    lightgbm.early_stopping(
+                        MODEL_PROFILES[profile]["early_stopping_rounds"], verbose=False
+                    )
+                ],
+            )
+        elif profile == "mlp":
+            scaler, estimator = model.named_steps["scaler"], model.named_steps["model"]
+            scaled = scaler.fit_transform(x_fit)
+            epoch_best, epoch_loss, stale = None, float("inf"), 0
+            for epoch in range(parameters["max_iter"]):
+                estimator.partial_fit(
+                    scaled, y_fit, **({"classes": np.unique(y_fit)} if classification else {})
+                )
+                loss = _validation_loss(
+                    model, x_validation, y_validation, classification=classification
+                )
+                if loss < epoch_loss:
+                    epoch_best, epoch_loss, stale = deepcopy(estimator), loss, 0
+                    diagnostics["selected_epochs"] = epoch + 1
+                else:
+                    stale += 1
+                if stale >= MODEL_PROFILES[profile]["early_stopping_rounds"]:
+                    break
+            if epoch_best is None:
+                message = "MLP validation produced no finite score."
+                raise ValueError(message)
+            model.steps[-1] = ("model", epoch_best)
+        else:
+            model.fit(x_fit, y_fit)
+        loss = _validation_loss(model, x_validation, y_validation, classification=classification)
+        if loss < best_loss:
+            best, best_loss, best_parameters = model, loss, candidate
+    if best is None:
+        message = "No model candidate produced a finite validation score."
+        raise ValueError(message)
+    if isinstance(best, Pipeline):
+        scaler = best.named_steps["scaler"]
+        diagnostics.update(
+            scaling="fitting-row StandardScaler",
+            mean=scaler.mean_.tolist(),
+            scale=scaler.scale_.tolist(),
+        )
+    if len(candidates) > 1:
+        diagnostics.update(
+            validation_candidates=len(candidates), selected_validation_loss=best_loss
+        )
+    if profile == "lightgbm":
+        diagnostics["selected_iterations"] = int(best.best_iteration_)
+    return best, best_parameters, diagnostics
 
 
 def _split(
@@ -177,31 +432,43 @@ def _fit(
     identity: dict,
 ) -> PreparedModel:
     classification = DATASETS[dataset]["task"] == "classification"
+    training = identity["training_profile"]
     classes, encoded = np.unique(original_y, return_inverse=True)
     y = encoded if classification else original_y
     features = np.sort(np.random.default_rng(seed).choice(x.shape[1], n_players, replace=False))
     fit, test, test_rule = _split(
-        np.arange(len(x)), y, TRAINING_PROFILE["test_fraction"], seed, classification=classification
+        np.arange(len(x)), y, training["test_fraction"], seed, classification=classification
     )
     fit, validation, validation_rule = _split(
         fit,
         y,
-        TRAINING_PROFILE["validation_fraction_of_remainder"],
+        training["validation_fraction_of_remainder"],
         seed,
         classification=classification,
     )
-    fit, fit_cap = _bounded(
-        fit, y, TRAINING_PROFILE["fit_rows_max"], seed, classification=classification
-    )
+    fit, fit_cap = _bounded(fit, y, training["fit_rows_max"], seed, classification=classification)
     validation, validation_cap = _bounded(
-        validation, y, TRAINING_PROFILE["validation_rows_max"], seed, classification=classification
+        validation, y, training["validation_rows_max"], seed, classification=classification
     )
     test, test_cap = _bounded(
-        test, y, TRAINING_PROFILE["test_rows_max"], seed, classification=classification
+        test, y, training["test_rows_max"], seed, classification=classification
     )
     if classification and len(np.unique(y[fit])) != len(classes):
         message = "Fitting partition omits a class; this seeded instance is unsupported."
         raise ValueError(message)
+    if identity.get("feature_rule") == "continuous":
+        categorical = cast("Any", DATASETS[dataset].get("categorical_features", []))
+        eligible = [
+            i
+            for i, name in enumerate(names)
+            if categorical != "all"
+            and name not in categorical
+            and len(np.unique(x[fit, i][np.isfinite(x[fit, i])])) > 2
+        ]
+        if len(eligible) < n_players:
+            message = "Too few continuous fitting-row features for this game."
+            raise ValueError(message)
+        features = np.sort(np.random.default_rng(seed).choice(eligible, n_players, replace=False))
     selected = np.asarray(x[:, features], dtype=float).copy()
     if np.isinf(selected).any():
         message = "Infinite inputs cannot be repaired by the missing-value protocol."
@@ -212,28 +479,16 @@ def _fit(
         raise ValueError(message)
     rows, columns = np.where(np.isnan(selected))
     selected[rows, columns] = medians[columns]
-    parameters: dict = {**MODEL_PROFILES[profile]["parameters"], "random_state": seed}
-    if profile == "xgboost":
-        parameters["objective"] = (
-            ("binary:logistic" if len(classes) == 2 else "multi:softprob")
-            if classification
-            else "reg:squarederror"
-        )
-        parameters["eval_metric"] = (
-            "logloss"
-            if classification and len(classes) == 2
-            else "mlogloss"
-            if classification
-            else "rmse"
-        )
-    model = cast("Any", _resolve_model_builder(profile, str(DATASETS[dataset]["task"])))
-    model = model(**parameters)
-    fit_options = (
-        {"eval_set": [(selected[validation], y[validation])], "verbose": False}
-        if profile == "xgboost"
-        else {}
+    model, parameters, diagnostics = _fit_predictor(
+        profile,
+        str(DATASETS[dataset]["task"]),
+        seed,
+        selected[fit],
+        y[fit],
+        selected[validation],
+        y[validation],
+        device=identity.get("device", "cpu"),
     )
-    model.fit(selected[fit], y[fit], **fit_options)
     dummy = DummyClassifier(strategy="prior") if classification else DummyRegressor(strategy="mean")
     dummy.fit(selected[fit], y[fit])
     metrics = {}
@@ -279,8 +534,19 @@ def _fit(
         "classes": classes.tolist() if classification else None,
         "output_class": classes[1].item() if classification else None,
         "quality": metrics,
-        "structure": _tree_diagnostics(model, profile),
+        "structure": (
+            _tree_diagnostics(model, profile)
+            if profile in {"random_forest", "xgboost"}
+            else diagnostics
+        ),
     }
+    if profile == "tabpfn_prediction":
+        from shapiq_benchmark.media import preparation_backend
+
+        if identity.get("device") == "cuda":
+            metadata["preparation_hardware"] = preparation_backend("cuda")
+        metadata["oracle_precision"] = "float32"
+        metadata["prediction_batch_size"] = MODEL_PROFILES[profile]["prediction_batch_size"]
     if profile == "xgboost":
         metadata["best_iteration"] = int(model.best_iteration)
     return PreparedModel(
@@ -296,7 +562,14 @@ def _fit(
 
 
 def prepare_model(
-    dataset: str, n_players: int, seed: int, profile: str, *, cache_dir: str | Path | None = None
+    dataset: str,
+    n_players: int,
+    seed: int,
+    profile: str,
+    *,
+    cache_dir: str | Path | None = None,
+    device: str = "cpu",
+    feature_rule: str = "all",
 ) -> PreparedModel:
     """Fit once, or authenticate and reuse a local model artifact.
 
@@ -307,14 +580,28 @@ def prepare_model(
     if profile not in MODEL_PROFILES:
         message = f"Unknown implemented model profile: {profile}"
         raise ValueError(message)
+    if device not in {"cpu", "cuda"} or (device != "cpu" and profile != "tabpfn_prediction"):
+        message = "CUDA is qualified only for explicit TabPFN prediction profiles."
+        raise ValueError(message)
+    if feature_rule not in {"all", "continuous"}:
+        message = "Unknown model feature selection rule."
+        raise ValueError(message)
     x, y, names = load_raw_dataset(dataset)
-    if type(n_players) is not int or not 1 <= n_players <= min(20, x.shape[1]):
-        message = "Model feature count must fit the dataset and enumeration limit of twenty."
+    if type(n_players) is not int or not 1 <= n_players <= x.shape[1]:
+        message = "Model feature count must fit the dataset."
         raise ValueError(message)
     source = hashlib.sha256()
     for name in ("models.py", "datasets.py", "dataset_catalog.py", "setup.py"):
         source.update(Path(__file__).with_name(name).read_bytes())
-    packages = ["numpy", "scikit-learn", "joblib"] + (["xgboost"] if profile == "xgboost" else [])
+    packages = ["numpy", "scikit-learn", "joblib"]
+    if profile in {"xgboost", "lightgbm"}:
+        packages.append(profile)
+    elif profile == "tabpfn_prediction":
+        packages.extend(["tabpfn", "torch"])
+    training = {**TRAINING_PROFILE}
+    if "fit_rows_max" in MODEL_PROFILES[profile]:
+        training["id"] = f"quality-v1-{profile}"
+        training["fit_rows_max"] = MODEL_PROFILES[profile]["fit_rows_max"]
     identity = {
         "dataset": dataset,
         "dataset_source": DATASETS[dataset]["source"],
@@ -323,7 +610,7 @@ def prepare_model(
         "instance_seed": seed,
         "model_profile": profile,
         "profile": MODEL_PROFILES[profile],
-        "training_profile": TRAINING_PROFILE,
+        "training_profile": training,
         "dataset_feature_names": [str(name) for name in names],
         "data_arrays": {
             name: {"shape": list(array.shape), "dtype": str(array.dtype)}
@@ -335,6 +622,25 @@ def prepare_model(
         "model_source_sha256": source.hexdigest(),
         "model_packages": {name: importlib.metadata.version(name) for name in packages},
     }
+    if feature_rule != "all":
+        identity["feature_rule"] = feature_rule
+    if profile == "tabpfn_prediction":
+        torch = importlib.import_module("torch")
+
+        if device == "cuda" and not torch.cuda.is_available():
+            message = "CUDA requested but unavailable; CPU fallback is forbidden."
+            raise ValueError(message)
+        checkpoint = _tabpfn_checkpoint(str(DATASETS[dataset]["task"]))
+        with checkpoint.open("rb") as stream:
+            checkpoint_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+        identity.update(
+            checkpoint_name=checkpoint.name,
+            checkpoint_sha256=checkpoint_hash,
+            device=device,
+            precision="float32",
+            cuda_version=torch.version.cuda,
+            device_name=torch.cuda.get_device_name() if device == "cuda" else "cpu",
+        )
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     identity["model_key"] = key
     if cache_dir is None:

@@ -144,7 +144,10 @@ def prepare_families(
         or ("model_profile" in spec and not isinstance(spec["model_profile"], str))
         or (
             "device" in spec
-            and (spec["family"] != "tabpfn" or spec["device"] not in ("cpu", "cuda"))
+            and (
+                (spec["family"] != "tabpfn" and spec.get("model_profile") != "tabpfn_prediction")
+                or spec["device"] not in ("cpu", "cuda")
+            )
         )
         or (
             "n_players" in spec
@@ -235,16 +238,34 @@ def prepare_families(
             if not metadata.get("stochastic_frozen", False):
                 positions = np.random.default_rng(0).choice(len(values), 8)
                 probe = ((positions[:, None] >> np.arange(n)) & 1).astype(bool)
-                np.testing.assert_allclose(values[positions], game(probe), rtol=1e-8, atol=1e-10)
-                np.testing.assert_allclose(
-                    game(probe), game(probe[::-1])[::-1], rtol=1e-8, atol=1e-10
-                )
-                np.testing.assert_allclose(
-                    game(probe),
-                    np.concatenate([game(row[None]) for row in probe]),
-                    rtol=1e-8,
-                    atol=1e-10,
-                )
+                repeated = {
+                    "batch": np.asarray(game(probe)),
+                    "repeat": np.asarray(game(probe)),
+                    "reversed": np.asarray(game(probe[::-1]))[::-1],
+                    "singletons": np.concatenate([game(row[None]) for row in probe]),
+                }
+                tolerance = {"rtol": 1e-8, "atol": 1e-10}
+                if metadata.get("model_profile") == "tabpfn_prediction":
+                    # Float32 inference depends slightly on batch shape. Qualify a
+                    # bounded numerical realization; exact truth uses saved payoffs.
+                    bound = 64 * np.finfo(np.float32).eps * max(1.0, float(np.max(np.abs(values))))
+                    tolerance = {"rtol": 0.0, "atol": bound}
+                    metadata["oracle_validation"] = {
+                        "protocol": "float32 frozen batch realization",
+                        "absolute_tolerance": bound,
+                        "observed_differences": {
+                            name: float(np.max(np.abs(values[positions] - v)))
+                            for name, v in repeated.items()
+                        },
+                        "reference": "Exact coefficients of the saved canonical payoff table",
+                    }
+                for observed in repeated.values():
+                    if observed.shape != (len(positions),) or not np.isfinite(observed).all():
+                        message = "The oracle returned invalid qualification probes."
+                        raise ValueError(message)  # noqa: TRY301 -- local diagnostic retained
+                    np.testing.assert_allclose(values[positions], observed, **tolerance)
+                    if metadata.get("model_profile") != "tabpfn_prediction":
+                        np.testing.assert_allclose(repeated["batch"], observed, **tolerance)
             artifact = output / f"{instance_id}.npz"
             np.savez_compressed(
                 artifact,
