@@ -116,6 +116,12 @@ actively written batches. Independent scientific review still precedes publicati
 Keep each batch's reproduction archive and the exported composition manifest so
 the combined report can be traced back to its original snapshots.
 
+For a separate retry of a transient dataset-download failure, add
+`--supplement /shared/recovery/campaign`. The exporter authenticates both runs,
+requires unchanged recipes and settings, and resolves duplicates across them.
+It preserves the original failure records and rejects retries of scientific
+exclusions or unrelated games.
+
 Large reports split lossless evaluation records into one file per explanation
 target. The browser fetches only the selected target; filters and scores retain
 full precision. Upload `data.json` **and every `records-*.json` companion** to the

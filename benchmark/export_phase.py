@@ -15,8 +15,9 @@ def main() -> None:
     parser.add_argument("campaign", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--through-phase", type=int, required=True)
+    parser.add_argument("--supplement", type=Path, action="append", default=[])
     args = parser.parse_args()
-    data = assemble_campaign(args.campaign, args.through_phase)
+    data = assemble_campaign(args.campaign, args.through_phase, supplements=tuple(args.supplement))
     write_report(data, args.output, public=True)
 
 

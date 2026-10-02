@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq_benchmark.campaign_recovery import merge_recovery
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
 from shapiq_benchmark.quality import model_validation_check, payoff_diagnostics
 from shapiq_benchmark.report import merge_results, public_preparation
@@ -238,7 +239,9 @@ def _batch_results(
         return merge_results(paths)
 
 
-def assemble_campaign(root: Path, through_phase: int) -> dict:
+def _collect_campaign(
+    root: Path, through_phase: int, *, earlier_phase: bool = False
+) -> tuple[dict, dict]:
     """Return sanitized report data with an authenticated composition manifest.
 
     Every batch through the selected phase must be complete or explicitly excluded.
@@ -271,6 +274,8 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
         "Campaign source is not a clean frozen revision",
     )
     batches = [b for b in campaign["batches"] if b["phase"] <= through_phase]
+    if earlier_phase and batches:
+        through_phase = max(batch["phase"] for batch in batches)
     _require(
         bool(batches) and through_phase in {b["phase"] for b in campaign["batches"]},
         "Unknown or empty campaign phase",
@@ -304,6 +309,7 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
         "records": [],
     }
     seen, components, preflight = set(), [], None
+    requested, exclusions = {}, {}
     game_fingerprints = {}
     for batch in batches:
         directory = root / batch["id"]
@@ -336,6 +342,16 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             "Qualification decision changed",
         )
         _qualification(original, qualified)
+        for kind in ("families", "games"):
+            for spec in original.get(kind, []):
+                key = (kind, spec["id"])
+                _require(
+                    key not in requested, "Duplicate game IDs: requested recipe across batches"
+                )
+                requested[key] = {"spec": spec, "suite": original}
+        exclusions.update(
+            {row["spec"]["id"]: row for row in qualified.get("preparation_exclusions", [])}
+        )
         for key in (
             "relative_budgets",
             "seeds",
@@ -415,8 +431,6 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
             suite["budgets_by_game"].update(snapshot["suite"]["budgets_by_game"])
             component.update(status="complete", snapshot_id=snapshot["snapshot_id"])
         components.append(component)
-    _require(bool(data["games"]), "No qualified games are available for publication")
-    remove_aliases(data, _canonical_aliases(data["games"], data["records"], game_fingerprints))
     suite["budgets"] = sorted({b for grid in suite["budgets_by_game"].values() for b in grid})
     if preflight is not None:
         suite["preparation_preflight"] = preflight
@@ -432,4 +446,37 @@ def assemble_campaign(root: Path, through_phase: int) -> dict:
         "inputs": inputs,
     }
     data.update(composition=composition, snapshot_id=identity(composition))
+    return data, {
+        "root": root,
+        "campaign": campaign,
+        "requested": requested,
+        "exclusions": exclusions,
+        "fingerprints": game_fingerprints,
+        "inputs": inputs,
+    }
+
+
+def assemble_campaign(
+    root: Path, through_phase: int, *, supplements: tuple[Path, ...] = ()
+) -> dict:
+    """Authenticate complete campaigns, resolving shared aliases only after joining retries."""
+    data, context = _collect_campaign(root, through_phase)
+    contexts = [context]
+    for supplement in supplements:
+        extra, extra_context = _collect_campaign(supplement, through_phase, earlier_phase=True)
+        merge_recovery(data, context, extra, extra_context)
+        contexts.append(extra_context)
+    _require(bool(data["games"]), "No qualified games are available for publication")
+    remove_aliases(
+        data, _canonical_aliases(data["games"], data["records"], context["fingerprints"])
+    )
+    # Recheck every component after the potentially lengthy combined export.
+    for component in contexts:
+        _require(
+            all(
+                digest(component["root"] / path) == sha for path, sha in component["inputs"].items()
+            ),
+            "Campaign inputs changed during composition",
+        )
+    data["snapshot_id"] = identity(data["composition"])
     return data

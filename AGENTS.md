@@ -311,3 +311,8 @@ uv run pre-commit run --all-files
 - The benchmark branch tracks `fork/benchmark` (rtealwitter/shapiq); `origin`
   points to mmschlk/shapiq. Check the tracking remote before pushing benchmark
   work so updates reach the existing PR rather than creating an upstream branch.
+- Shipped `ExactComputer` FSII uses finite endpoint weight `big_M=1e8`.
+  Exhaustive payoffs therefore still yield a small numerical reference floor
+  (observed about `2e-16` normalized squared coefficient error) and efficiency
+  residual. Independent derivative formulas and endpoint-weight diagnostics can
+  distinguish that floor from estimator error; never rewrite frozen snapshots.
