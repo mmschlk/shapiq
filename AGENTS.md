@@ -274,3 +274,8 @@ uv run pre-commit run --all-files
   Four phase-three tasks became `JobHeldAdmin` during quota recovery; owner-level
   release was denied. The reason alone does not identify who caused the hold.
   An administrator must release it; do not bypass it by resubmitting those tasks.
+- `scontrol show job $SLURM_JOB_ID -o` can return multiple array-task records when
+  the running task owns the array's numeric root ID. Flattening their fields into
+  one dictionary can substitute a pending sibling's allocation (observed for
+  `361642_6`). Select `${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}` for arrays and
+  require exactly one returned record before checking exclusive-node hardware.

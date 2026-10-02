@@ -63,6 +63,10 @@ def verify_profile(profile: str) -> None:
         message = "Timing profile requires all declared thread environment limits to equal one."
         raise ValueError(message)
     job = os.environ.get("SLURM_JOB_ID")
+    # A task can share the array-root job ID, whose query returns multiple siblings.
+    array, task = os.environ.get("SLURM_ARRAY_JOB_ID"), os.environ.get("SLURM_ARRAY_TASK_ID")
+    if array and task:
+        job = f"{array}_{task}"
     if not job:
         message = "Timing profile requires an exclusive Slurm allocation."
         raise ValueError(message)
@@ -71,6 +75,9 @@ def verify_profile(profile: str) -> None:
         text=True,
         timeout=10,
     )
+    if len(description.strip().splitlines()) != 1:
+        message = "Slurm returned an ambiguous job allocation."
+        raise ValueError(message)
     fields = dict(part.split("=", 1) for part in description.split() if "=" in part)
     if fields.get("OverSubscribe") != "NO" and fields.get("Shared") != "0":
         message = "Slurm did not confirm an exclusive allocation."
