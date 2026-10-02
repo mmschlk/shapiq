@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import weakref
 from typing import TYPE_CHECKING
 
 import pytest
@@ -514,3 +515,27 @@ def test_report_reuse_removes_previous_target_assets(tmp_path: Path) -> None:
     assert not (output / "records-sv-1.json").exists()
     assert unrelated.exists()
     assert json.loads((output / "data.json").read_text())["records"]
+
+
+def test_merge_does_not_retain_every_repeated_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Shard envelopes may contain huge repeated truth tables; release them between inputs."""
+    paths = [write(tmp_path, result_fixture(), f"shard-{i}.json") for i in range(8)]
+    expected = merge_results(paths[:1])
+    original_loads = json.loads
+    live = []
+
+    class TrackedInput(dict):
+        pass
+
+    def tracked_loads(*args, **kwargs):
+        result = TrackedInput(original_loads(*args, **kwargs))
+        live.append(weakref.ref(result))
+        # The first panel, previous input and newly parsed input may coexist.
+        assert sum(reference() is not None for reference in live) <= 3
+        return result
+
+    monkeypatch.setattr(json, "loads", tracked_loads)
+    assert merge_results(paths) == expected
+    assert len(live) == len(paths)

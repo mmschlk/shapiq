@@ -279,3 +279,7 @@ uv run pre-commit run --all-files
   one dictionary can substitute a pending sibling's allocation (observed for
   `361642_6`). Select `${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}` for arrays and
   require exactly one returned record before checking exclusive-node hardware.
+- Raw benchmark shards repeat the full snapshot metadata: the first expanded
+  batch had 128 files of roughly 48 MB each. Read shards one at a time during
+  audits and exports; eagerly parsing the whole batch multiplies memory use
+  without adding information. Keep full duplicate/provenance validation.

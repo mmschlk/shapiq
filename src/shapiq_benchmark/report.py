@@ -236,11 +236,11 @@ def merge_results(paths: list[Path]) -> dict:
     if not paths:
         message = "At least one result file is required."
         raise ValueError(message)
-    inputs = [json.loads(path.read_text()) for path in paths]
-    first = inputs[0]
+    first = json.loads(paths[0].read_text())
     panel = ("schema_version", "snapshot_id", "suite", "games", "snapshot_provenance")
     methods, runs, cells = {}, {}, {}
-    for result in inputs:
+    for position, path in enumerate(paths):
+        result = first if position == 0 else json.loads(path.read_text())
         if result.get("schema_version") != 1 or any(result[key] != first[key] for key in panel):
             message = "Results must have the same snapshot, games, suite, and snapshot provenance."
             raise ValueError(message)
