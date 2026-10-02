@@ -297,3 +297,14 @@ uv run pre-commit run --all-files
   not native-dimensional solver feasibility. Time and memory gate the actual
   requested player count, target, truth serialization and every construction seed
   before launching larger structured games.
+- Moving the benchmark environment to lab BeeGFS can make 128 simultaneous
+  Python imports stall in filesystem metadata calls before any result checkpoint
+  exists (observed on himem02, job 362344_0). Empty logs alone do not prove a
+  runner deadlock: inspect process state and blocked paths. Any node-local import
+  staging must preserve package bytes and full provenance; never install or
+  replace dependencies underneath running workers.
+- The shipped Wine Quality loader reads its two remote CSV URLs on every call;
+  it has no persistent local dataset cache. HTTP gateway failures are operational
+  preparation failures, not evidence that a recipe failed scientific qualification.
+  Retry only affected recipes in a separately authenticated supplement; preserve
+  the original preparation decision and snapshots.
