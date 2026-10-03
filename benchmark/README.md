@@ -29,14 +29,21 @@ comparison locally without uploading anything.
 
 ## Continuing through the phases
 
-The active Hopper rollout keeps its state in `benchmark/results/full-rollout/`.
-On Hopper this is a symlink to lab storage at
-`/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`; large payoff
-caches must not exhaust the home-directory quota. Moving a campaign requires
-stopping its writers, verifying copied file hashes and preserving recorded paths.
-`WAKEUP.md` tells the resumed agent exactly what to do next; `watch.json` records
-only the current stage's jobs. The watcher runs every five minutes and queues a
-message to the authorized session when a job finishes or fails. During
+The corrected bounded rollout keeps its plan and progress in lab storage at
+`/hopper/groups/witterlab/rwitter/shapiq-benchmark-quality-rollout`:
+`campaign/campaign.json` is the immutable scientific plan and `state.json` records
+current progress. Job recovery overrides are explicit; for phases 4–7 use
+`operational/future-runtime-jobs.json`, not the superseded IDs in
+`campaign/jobs.json`. The [roadmap status](ROADMAP.md) distinguishes this rollout
+from the original phase-three campaign, which continues separately.
+
+The existing coordinator remains at `benchmark/results/full-rollout/`, a symlink
+to `/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`.
+Its `WAKEUP.md` gives the next action and `watch.json` records current-stage jobs.
+Large payoff caches belong in lab storage. Moving a campaign requires stopping
+its writers, verifying copied hashes and preserving recorded paths.
+The watcher runs every five minutes and queues a message to the authorized
+session when a job finishes or fails. During
 implementation, or after the jobs stop, a thirty-minute idle heartbeat also wakes
 the session. The next action is always explicit: **qualify → run → independently
 audit → publish → verify live → start the next phase**.
@@ -44,9 +51,10 @@ audit → publish → verify live → start the next phase**.
 `benchmark/queue_phases.py` creates disjoint batches from the cumulative phase
 manifests, retaining all nine budgets and four game seeds. Its job journal makes
 resubmission reviewable. Each evaluation array task depends on its corresponding
-preparation task. CPU batches spread over the verified EPYC 9754 node pool;
-explicit CUDA batches use one L40S per preparation worker. Later phases are queued
-on hold, and the resumed agent releases them after the preceding audit. A
+preparation task. CPU batches use verified EPYC 9754 nodes; the corrected bounded
+core is assigned to himem02. Explicit CUDA batches use one L40S per preparation
+worker. Later phases are queued on hold, and the resumed agent releases them
+after the preceding audit. A
 completed scheduler job is never enough to declare a phase complete.
 
 From a **clean frozen checkout containing the approved estimator corrections**:

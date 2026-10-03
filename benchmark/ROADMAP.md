@@ -11,27 +11,50 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 12 players, and 27,919 successful evaluations with no pending cells. Corrected
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
-**Queued: phases 3–7.** All 733 preparation batches and their dependent evaluation
-tasks were submitted on October 1, 2026. Phase three has started across three
-standardized nodes; later phases are held for the preceding independent audit.
-The frozen run source is `3f6b9b50`, including all four approved estimator fixes.
-A 180-evaluation scheduler smoke test passed an independent audit before submission.
-See the [continuation procedure](README.md#continuing-through-the-phases).
 
-| Phase | Preparation batches | Evaluation tasks |
-| --- | ---: | ---: |
-| 3: more constructions | 20 | 20 |
-| 4: more models and player counts | 78 | 78 |
-| 5: specialized models and inputs | 11 | 11 |
-| 6: full dataset catalog | 546 | 546 |
-| 7: larger structured games | 78 | 78 |
+**Current: corrected bounded rollout, phases 3–7.** Frozen source `5001ba42`
+implements the quality checks and selects up to sixteen new recipes per phase.
+The immutable plan contains **six preparation batches and six dependent evaluation
+tasks**, plus a separate Wine Quality recovery batch. The corrected phase-three
+core has passed its full evaluation audit: **57,024 cells, 20,968 successful**.
+Wine recovery preparation also passed; its evaluation is still running.
+**No phase-three results have been published.** Later phases are queued on hold
+until the preceding phase is audited, published and verified live.
 
-These counts describe submitted work, not qualified games or completed results.
-The private campaign journal records all job IDs and frozen inputs. Preparation
-pilots record explicit exclusions before allocating costly full payoff tables.
+| Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
+| --- | ---: | ---: | ---: |
+| 3: more constructions | 16 | 1 | 1 |
+| 4: more models and player counts | 16 | 1 | 1 |
+| 5: specialized models and inputs | 16 | 2 (CPU/CUDA) | 2 |
+| 6: broader dataset coverage | 16 | 1 | 1 |
+| 7: larger structured games | 16 | 1 | 1 |
 
-The finished benchmark covers **all 63 datasets in the target catalog**, the model profiles
-below, every shipped game-construction family, four construction seeds, and all
+These are planned batches, not completed games. Phase three qualified twelve
+recipes initially and recovered two Wine recipes after download failures:
+**56 instances and 336 target definitions** across four seeds, including controls.
+Two recipes remain excluded by the imputation-noise gate. The Wine supplement
+adds one preparation/evaluation pair; it retries existing recipes rather than
+expanding the sixteen-recipe selection.
+
+On Hopper, `QUALITY` is
+`/hopper/groups/witterlab/rwitter/shapiq-benchmark-quality-rollout`.
+`QUALITY/campaign/campaign.json` records the scientific plan;
+`QUALITY/state.json` records progress. Original job IDs in
+`QUALITY/campaign/jobs.json` have explicit recovery overrides: use
+`QUALITY/operational/future-runtime-jobs.json` for phases 4–7 and the evaluator
+recovery journals listed in `state.json` for phase three. The verified operational
+wrapper stages identical packages on local disk to avoid shared-filesystem import
+stalls. See the [continuation procedure](README.md#continuing-through-the-phases).
+
+**Original campaign, tracked separately:** its phase three continues on frozen
+source `3f6b9b50`; 20/20 preparation batches and 14/20 evaluation batches have
+passed independent audit, with 380,807 successful evaluations. Its original
+phases 4–7 were cancelled. The former 733-batch full-matrix submission is **not**
+the active expansion plan; deferred recipes remain a future goal.
+
+The full benchmark is intended to cover **all 63 datasets in the target catalog**,
+the model profiles below, every shipped game-construction family, four construction
+seeds, and all
 nine relative budgets. We expand every **compatible** pairing in the declared
 model-to-construction mapping. A dataset being loadable is not sufficient to
 claim its benchmark is complete.
