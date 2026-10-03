@@ -53,8 +53,8 @@ wrapper stages identical packages on local disk to avoid shared-filesystem impor
 stalls. See the [continuation procedure](README.md#continuing-through-the-phases).
 
 **Original campaign, tracked separately:** its phase three continues on frozen
-source `3f6b9b50`; 20/20 preparation batches and 16/20 evaluation batches have
-passed independent audit, with 436,734 successful evaluations. Its original
+source `3f6b9b50`; 20/20 preparation batches and 17/20 evaluation batches have
+passed independent audit, with 464,702 successful evaluations. Its original
 phases 4–7 were cancelled. The former 733-batch full-matrix submission is **not**
 the active expansion plan; deferred recipes remain a future goal.
 
