@@ -323,3 +323,8 @@ uv run pre-commit run --all-files
   terminal scheduler state, complete manifests, and stable authenticated hashes.
   Shared duplicate registries likewise need same-host writers or a separately
   qualified distributed locking mechanism before multi-host evaluation.
+- Historical exports can contain constructor options absent from the exporting
+  checkout (for example OddSHAP `ridge` from a frozen experimental branch).
+  Authenticate the recorded source and parameter schema without requiring the
+  current constructor to accept them. Execution must retain strict local
+  constructor validation; never strip recorded options to make an export pass.

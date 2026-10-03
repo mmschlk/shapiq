@@ -22,7 +22,13 @@ def write(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value))
 
 
-def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = False) -> dict:
+def make_campaign(
+    root: Path,
+    *,
+    duplicate: bool = False,
+    structured: bool = False,
+    method_parameters: dict | None = None,
+) -> dict:
     """Two complete batches and one explicitly excluded recipe, without external data."""
     source = {"source_dirty": False, "git_commit": "frozen", "source_sha256": "source"}
     shared = {
@@ -35,6 +41,8 @@ def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = Fal
         "min_signal_ratio": 1e-6,
         "protocol": {"version": 1},
     }
+    if method_parameters is not None:
+        shared["method_parameters"] = method_parameters
     inventory = {**shared, "name": "phase-three", "phase_plan": {"counts": {"selected": 3}}}
     write(root / "phase-3-inventory.json", inventory)
     batches = []
@@ -143,6 +151,9 @@ def make_campaign(root: Path, *, duplicate: bool = False, structured: bool = Fal
             name: {"source_sha256": "source", "software_sha256": identity(source), "private": False}
             for name in shared["methods"]
         }
+        for name, parameters in (method_parameters or {}).items():
+            if parameters:
+                methods[name]["parameters"] = parameters
         for slot, game in enumerate(reversed(games)):
             result = {
                 "schema_version": 1,

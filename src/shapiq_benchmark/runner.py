@@ -75,18 +75,30 @@ def method_catalog() -> dict:
     }
 
 
-def validate_method_parameters(name: str, parameters: dict) -> None:
-    """Allow explicit constructor options, never an override of the benchmark target or seed."""
+def validate_method_parameters(
+    name: str, parameters: dict, *, check_constructor: bool = True
+) -> None:
+    """Validate settings; only execution needs the current constructor's signature."""
+    reserved = {"n", "index", "max_order", "random_state"}
+    if (
+        not isinstance(parameters, dict)
+        or any(not isinstance(key, str) for key in parameters)
+        or parameters.keys() & reserved
+    ):
+        message = f"Invalid explicit constructor parameters for {name}."
+        raise ValueError(message)
+    json.dumps(parameters, allow_nan=False)
+    if not check_constructor:
+        return
     accepted = {
         key
         for key, parameter in inspect.signature(METHODS[name]).parameters.items()
         if parameter.kind
         in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
-    } - {"n", "index", "max_order", "random_state"}
-    if not isinstance(parameters, dict) or not parameters.keys() <= accepted:
+    } - reserved
+    if not parameters.keys() <= accepted:
         message = f"Invalid explicit constructor parameters for {name}."
         raise ValueError(message)
-    json.dumps(parameters, allow_nan=False)
 
 
 def builtin_factory(
@@ -172,7 +184,7 @@ def provenance() -> dict:
     }
 
 
-def validate_suite(suite: dict) -> None:
+def validate_suite(suite: dict, *, check_constructors: bool = True) -> None:
     """Reject ambiguous or empty run matrices before doing any work."""
     minimum = suite.get("min_players", 1)
     if type(minimum) is not int or minimum < 1:
@@ -223,18 +235,23 @@ def validate_suite(suite: dict) -> None:
         message = "Method parameters must name declared suite methods."
         raise ValueError(message)
     for name, overrides in parameters.items():
-        validate_method_parameters(name, overrides)
+        validate_method_parameters(name, overrides, check_constructor=check_constructors)
 
 
-def load_snapshot(path: Path) -> tuple[dict, Path]:
-    """Verify snapshot identity and every artifact before executing estimators."""
+def load_snapshot(path: Path, *, historical: bool = False) -> tuple[dict, Path]:
+    """Authenticate artifacts; historical export need not match today's constructors.
+
+    Execution remains constructor-strict by default. Historical mode preserves
+    structural and reserved-parameter checks; callers authenticate the recorded
+    source and method settings before publishing those measurements.
+    """
     path = path / "snapshot.json" if path.is_dir() else path
     snapshot = json.loads(path.read_text())
     unsigned = {key: value for key, value in snapshot.items() if key != "snapshot_id"}
     if snapshot.get("schema_version") != 1 or identity(unsigned) != snapshot.get("snapshot_id"):
         message = "Snapshot schema or identity mismatch."
         raise ValueError(message)
-    validate_suite(snapshot["suite"])
+    validate_suite(snapshot["suite"], check_constructors=not historical)
     root = path.parent.resolve()
     for relative, expected in snapshot["artifacts"].items():
         artifact = (root / relative).resolve()

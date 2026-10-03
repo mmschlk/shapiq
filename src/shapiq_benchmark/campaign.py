@@ -391,7 +391,7 @@ def _collect_campaign(
             _require(
                 not (directory / "excluded.json").exists(), "Nonempty batch has an exclusion marker"
             )
-            snapshot, _ = load_snapshot(directory / "prepared")
+            snapshot, _ = load_snapshot(directory / "prepared", historical=True)
             _require(
                 read(directory / "prepared/snapshot.json") == snapshot,
                 "Snapshot changed during authentication",
