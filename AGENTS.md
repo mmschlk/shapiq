@@ -316,3 +316,10 @@ uv run pre-commit run --all-files
   (observed about `2e-16` normalized squared coefficient error) and efficiency
   residual. Independent derivative formulas and endpoint-weight diagnostics can
   distinguish that floor from estimator error; never rewrite frozen snapshots.
+- Hopper lab BeeGFS advisory locks are host-local: an isolated probe confirmed
+  that an exclusive `flock` on himem02 blocks another himem02 process, but the
+  login host can simultaneously acquire the same lock/inode. Do not infer that
+  remote writers stopped from a successful login-host lock. Publication requires
+  terminal scheduler state, complete manifests, and stable authenticated hashes.
+  Shared duplicate registries likewise need same-host writers or a separately
+  qualified distributed locking mechanism before multi-host evaluation.
