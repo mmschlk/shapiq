@@ -583,7 +583,12 @@ The archive includes exact truth, checksums, software provenance, and local
 candidate commands, so there is no need to refit the games. Use `--games` and
 `--methods` to select a smaller experiment when needed.
 
-## Run the expanded suite on Hopper
+## Legacy expanded-suite commands
+
+These older templates reserve a whole node. The active phased rollout uses
+16-CPU preparation and 32-CPU evaluation instead; follow the
+[continuation procedure](#continuing-through-the-phases) and its existing job
+journal. Do not submit these commands to restart an active campaign.
 
 ```bash
 uv sync --locked --extra benchmark --extra sparse --extra shapleig --extra proxy

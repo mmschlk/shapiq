@@ -12,7 +12,7 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phase three is live; phase four has been released to run.**
+**Current: phase three is live; phase four is evaluating.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the quality checks and selects up to sixteen new recipes per phase.
 The immutable plan contains **six preparation batches and six dependent evaluation
@@ -23,7 +23,12 @@ Together the two panels contain 66,528 verified cells and 24,464 successful
 evaluations. The combined release passed independent data, reproduction and
 desktop/mobile audits; all 19 deployed files match the audited release.
 [Phase-three release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase3-quality-2026-10-03).
-Phase four preparation is released, with its evaluator already dependent on it.
+Phase four prepared 48 instances and 288 target definitions from twelve recipes,
+with 11, 12, 14, 15 and 16 players. Its independent preparation audit passed,
+including all 288 ground-truth vectors. There are 32 core instances and sixteen
+controls excluded from default rankings. Its 57,024-cell evaluation has started
+on 32 pinned CPU workers. Two recipes
+exceeded the eight-hour preparation limit and two failed the imputation-noise gate.
 Phases five through seven remain held until the preceding phase is audited,
 published and verified live.
 
@@ -53,8 +58,10 @@ wrapper stages identical packages on local disk to avoid shared-filesystem impor
 stalls. See the [continuation procedure](README.md#continuing-through-the-phases).
 
 **Original campaign, tracked separately:** its phase three continues on frozen
-source `3f6b9b50`; 20/20 preparation batches and 18/20 evaluation batches have
-passed independent audit, with 492,668 successful evaluations. Its original
+source `3f6b9b50`; 20/20 preparation batches and 19/20 evaluation batches have
+passed independent audit, with 520,636 successful evaluations. The cancelled
+GPU-node batch retained its completed cells; its 56-cell CPU supplement passed
+the final union audit. The last legacy batch is running on a CPU-only node. Its original
 phases 4–7 were cancelled. The former 733-batch full-matrix submission is **not**
 the active expansion plan; deferred recipes remain a future goal.
 

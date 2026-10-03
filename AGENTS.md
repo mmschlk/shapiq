@@ -357,3 +357,10 @@ uv run pre-commit run --all-files
   Utilization is whole-device occupancy, not proof of speedup. Place the GPU
   guard inside `srun`: qualification can launch new process sessions, so Slurm
   job cleanup must also stop descendants outside the guard's process group.
+
+- `ExactComputer` uses a finite `1e8` endpoint weight for FSII. Independent
+  analytic references can therefore differ slightly below thirteen players,
+  where the benchmark still uses this solver. Phase-four auditing found a
+  maximum whole-vector discrepancy of 4.81e-17 nMSE. Record this numerical floor
+  and check per-order signal eligibility; do not relabel it as estimator error
+  or silently rewrite frozen truth while evaluations are running.
