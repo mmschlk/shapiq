@@ -514,9 +514,10 @@ def run(
     with (output / ".campaign.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         snapshot_path = snapshot_path.resolve()
-        snapshot, artifact_root = load_snapshot(snapshot_path)
+        # Private factories do not execute the snapshot's historical baselines.
+        snapshot, artifact_root = load_snapshot(snapshot_path, historical=bool(candidate))
         duplicates = {}
-        if snapshot["suite"].get("duplicate_registry"):
+        if not candidate and snapshot["suite"].get("duplicate_registry"):
             from shapiq_benchmark.duplicates import claim_games
 
             duplicates = claim_games(

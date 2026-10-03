@@ -116,11 +116,14 @@ values only through the supplied counted callable. Install candidate-specific
 dependencies separately. The runner's default campaign limit is ten minutes;
 use `--resume` with the same arguments to continue an unfinished campaign.
 
-Candidate results remain local; these commands do not upload or publish them.
+Candidate results remain local and do not access a production duplicate registry;
+these commands do not upload or publish them. Recorded baseline constructor
+options are preserved but are not executed by the private candidate.
 Partial coverage is not a full-panel ranking. Accuracy can be compared on these
 identical games, but baseline timings from another machine are not local runtime
-rankings. Rerun built-in baselines locally by omitting `--candidate` and choosing
-a separate output directory.
+rankings. Built-in baseline reruns require compatible recorded constructor options
+and access to any registry declared by the suite; otherwise prepare a local suite
+and rerun both methods there. Do not edit an archived snapshot to bypass its checks.
 """.encode()
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in files.items()

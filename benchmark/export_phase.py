@@ -18,7 +18,7 @@ def main() -> None:
     parser.add_argument("--supplement", type=Path, action="append", default=[])
     args = parser.parse_args()
     data = assemble_campaign(args.campaign, args.through_phase, supplements=tuple(args.supplement))
-    write_report(data, args.output, public=True)
+    write_report(data, args.output, public=True, compact=True)
 
 
 if __name__ == "__main__":

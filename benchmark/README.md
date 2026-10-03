@@ -551,7 +551,11 @@ charges every requested row, including duplicates. Over-budget or invalid
 outputs fail the cell. Candidate files are trusted Python code.
 
 Only the candidate runs in the first command; saved baseline accuracy results
-can be reused on the identical snapshot. Rerun both methods on the same hardware
+can be reused on the identical snapshot. Private candidates do not access the
+production duplicate registry or execute historical baseline constructor options.
+Built-in reruns require compatible constructors and access to the suite's registry;
+otherwise prepare a local suite and rerun both methods there. Rerun both methods
+on the same hardware
 for runtime comparisons. The report rejects mismatched snapshots, conflicting
 method versions, and duplicate measurements. Nothing uploads automatically.
 You can also open the site's `index.html` and choose an exported `data.json`

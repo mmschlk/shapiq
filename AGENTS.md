@@ -129,7 +129,22 @@ uv run pre-commit run --all-files
   `max_order=1` returns SV; its default order-two configuration is a different
   target/configuration and must not be silently relabeled as SV.
 
+## Shared environment checks
+
+- On this checkout, plain `uv run pre-commit run --all-files` can rebuild and
+  reinstall the editable shapiq package when Git-derived version metadata changes.
+  This changes package provenance for running jobs even if their source checkout
+  is frozen. Use `UV_NO_SYNC=1 uv run pre-commit run --all-files` while any campaign
+  uses the environment, and run checks sequentially with source-sensitive tests.
+
 ## Benchmark export gotchas
+
+- Downloaded snapshots can retain an absolute production `duplicate_registry`
+  path and baseline constructor options absent from the local checkout. Private
+  candidates authenticate the historical snapshot but execute only their own
+  factory and must not access that campaign registry. Built-in reruns still require
+  compatible constructors and the configured registry; never rewrite an archived
+  snapshot merely to bypass these checks.
 
 - Zero-energy truth must be identified from the frozen game, even if every run is
   pending. Both Python summaries and browser filters exclude it for all methods;

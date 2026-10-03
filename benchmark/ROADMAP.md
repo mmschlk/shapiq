@@ -17,7 +17,9 @@ implements the quality checks and selects up to sixteen new recipes per phase.
 The immutable plan contains **six preparation batches and six dependent evaluation
 tasks**, plus a separate Wine Quality recovery batch. The corrected phase-three
 core has passed its full evaluation audit: **57,024 cells, 20,968 successful**.
-Wine recovery preparation also passed; its evaluation is still running.
+Wine recovery also passed its full audit: 9,504 cells, 3,496 successful.
+Together the two panels contain 66,528 verified cells and 24,464 successful
+evaluations. The combined website export and reproduction checks are in progress.
 **No phase-three results have been published.** Later phases are queued on hold
 until the preceding phase is audited, published and verified live.
 

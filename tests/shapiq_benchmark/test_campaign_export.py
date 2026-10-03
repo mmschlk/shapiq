@@ -359,8 +359,33 @@ def test_export_cli_writes_composite_provenance_and_global_summary(
     runpy.run_path(str(script), run_name="__main__")
     data = json.loads((output / "data.json").read_text())
     assert data["snapshot_id"] == identity(data["composition"])
-    assert len(data["records"]) == 16
+    assert data["records"] == [] and data["presets"] == []
+    assert data["record_count"] == 16
+    records, presets = [], []
+    for shard in data["record_shards"]:
+        path = output / shard["file"]
+        assert digest(path) == shard["sha256"]
+        payload = json.loads(path.read_text())
+        assert payload["snapshot_id"] == data["snapshot_id"]
+        assert payload["target"] == shard["target"] and payload["count"] == shard["count"]
+        decoded = [{} for _ in range(payload["count"])]
+        for field, column in payload["columns"].items():
+            for index, value in enumerate(column["values"]):
+                if index not in column.get("missing", []):
+                    decoded[index][field] = (
+                        column["dictionary"][value]
+                        if "dictionary" in column and value is not None
+                        else value
+                    )
+        records.extend(decoded)
+        presets.extend(payload["presets"])
+    expected = assemble_campaign(campaign, 3)["records"]
+
+    def key(row: dict) -> tuple:
+        return row["game_id"], row["method"], row["budget"], row["seed"]
+
+    assert sorted(records, key=key) == sorted(expected, key=key)
     assert (output / "records.js").is_file()
     assert json.loads((output / "about.json").read_text())["snapshot_id"] == data["snapshot_id"]
-    panel = next(p for p in data["presets"] if p["family"] is None and p["relative_budget"] is None)
+    panel = next(p for p in presets if p["family"] is None and p["relative_budget"] is None)
     assert all(r["mean"] == 25.5 and r["median"] == 1.0 for r in panel["rows"])
