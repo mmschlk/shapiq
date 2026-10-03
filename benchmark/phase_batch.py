@@ -13,16 +13,40 @@ from pathlib import Path
 
 from queue_phases import immutable_write, scripts
 
-from shapiq_benchmark.execution import PROFILE, hardware, verify_profile
+from shapiq_benchmark.execution import PROFILE, THREAD_VARIABLES, hardware, verify_profile
 from shapiq_benchmark.runner import identity, load_snapshot, provenance
 
 
-def verify_allocation(batch: dict, step: str, root: Path) -> None:
-    """Require the actual standardized exclusive node, and stable CPU IDs on resume."""
+def verify_allocation(batch: dict, step: str, root: Path, workers: int | None = None) -> None:
+    """Require legacy isolation by default, or an explicit shared CPU worker allocation."""
+    if workers is not None and ((step == "prepare" and batch["device"] == "cuda") or workers < 1):
+        message = "--workers must be positive and cannot override CUDA preparation"
+        raise ValueError(message)
     if batch["device"] == "cuda" and step == "prepare":
         return  # CUDA device/precision and single-worker checks belong to preparation.
+    policy_path = root / f"{step}-resource-policy.json"
+    if workers is None and policy_path.exists():
+        message = "Resuming shared CPU work requires the recorded explicit --workers count"
+        raise ValueError(message)
     observed = hardware()
     cpus = observed["affinity"]
+    if workers is not None:
+        if (
+            workers > len(cpus)
+            or "EPYC 9754" not in observed["cpu_model"]
+            or observed["hostname"].split(".")[0] not in {"himem01", "himem02"}
+        ):
+            message = "Shared CPU work requires enough AMD EPYC 9754 cores on himem01 or himem02"
+            raise ValueError(message)
+        if any(os.environ.get(name) != "1" for name in THREAD_VARIABLES):
+            message = "Shared CPU work requires all declared thread limits to equal one"
+            raise ValueError(message)
+        immutable_write(
+            policy_path,
+            {"workers": workers, "timing_profile": "diagnostic", "allocation": "shared-cpu"},
+        )
+        immutable_write(root / f"{step}-allocation.json", observed)
+        return
     if len(cpus) != 128 or observed["hostname"].split(".")[0] != batch["node"]:
         message = "Batch requires its declared full 128-core standardized node"
         raise ValueError(message)
@@ -71,7 +95,7 @@ def verify_snapshot(snapshot: dict, suite: dict, source: dict) -> None:
         raise ValueError(message)
 
 
-def run_batch(manifest: Path, step: str, index: int) -> None:
+def run_batch(manifest: Path, step: str, index: int, workers: int | None = None) -> None:
     """Reject changed suites, manifests, launch code and editable imports before execution."""
     campaign = json.loads((manifest.parent / "campaign.json").read_text())
     journal = json.loads((manifest.parent / "jobs.json").read_text())
@@ -98,7 +122,12 @@ def run_batch(manifest: Path, step: str, index: int) -> None:
         raise ValueError(message)
     if batch["device"] == "cpu" or step == "evaluate":
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
-    verify_allocation(batch, step, root)
+    verify_allocation(batch, step, root, workers)
+    workers = (
+        workers
+        if workers is not None
+        else ((1 if batch["device"] == "cuda" else 16) if step == "prepare" else 128)
+    )
     qualified_path = root / "qualified-suite.json"
     decision_path = root / "qualification-decision.json"
     suite = json.loads(qualified_path.read_text()) if qualified_path.exists() else None
@@ -118,7 +147,7 @@ def run_batch(manifest: Path, step: str, index: int) -> None:
                 original,
                 root / "qualification",
                 model_cache=root / "stage" / ".models",
-                workers=1 if batch["device"] == "cuda" else 16,
+                workers=workers,
             )
             immutable_write(qualified_path, suite)
             immutable_write(
@@ -149,7 +178,7 @@ def run_batch(manifest: Path, step: str, index: int) -> None:
             str(root / "stage"),
             str(root / "prepared"),
             "--workers",
-            "1" if batch["device"] == "cuda" else "16",
+            str(workers),
             "--seconds",
             "250000",
         ]
@@ -175,7 +204,7 @@ def run_batch(manifest: Path, step: str, index: int) -> None:
             str(root / "prepared"),
             str(root / "sweep"),
             "--workers",
-            "128",
+            str(workers),
             "--timeout",
             "600",
             "--seconds",
@@ -192,8 +221,13 @@ def main() -> None:
     parser.add_argument("manifest", type=Path)
     parser.add_argument("step", choices=("prepare", "evaluate"))
     parser.add_argument("--index", type=int, required=True)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        help="Workers on shared himem01/02 CPU allocation; timings are diagnostic (not CUDA prep)",
+    )
     args = parser.parse_args()
-    run_batch(args.manifest, args.step, args.index)
+    run_batch(args.manifest, args.step, args.index, args.workers)
 
 
 if __name__ == "__main__":

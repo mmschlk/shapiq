@@ -182,6 +182,88 @@ def test_allocation_restores_affinity_and_rejects_wrong_node(
         batch.verify_allocation({**spec, "node": "himem02"}, "prepare", tmp_path)
 
 
+def test_shared_preparation_records_allocation_and_rejects_changed_resume(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Shared preparation uses observed cores without asserting exclusive timing hardware."""
+    observed = {"hostname": "himem02", "affinity": [4, 5], "cpu_model": "AMD EPYC 9754"}
+    monkeypatch.setattr(batch, "hardware", lambda: observed)
+    monkeypatch.setattr(
+        batch, "verify_profile", lambda _: pytest.fail("unexpected exclusive-node requirement")
+    )
+    for name in batch.THREAD_VARIABLES:
+        monkeypatch.setenv(name, "1")
+    spec = {"device": "cpu", "node": "himem01"}
+    batch.verify_allocation(spec, "prepare", tmp_path, 2)
+    assert json.loads((tmp_path / "prepare-allocation.json").read_text()) == observed
+    assert json.loads((tmp_path / "prepare-resource-policy.json").read_text()) == {
+        "workers": 2,
+        "timing_profile": "diagnostic",
+        "allocation": "shared-cpu",
+    }
+    batch.verify_allocation(spec, "prepare", tmp_path, 2)
+    with pytest.raises(ValueError, match="recorded explicit --workers"):
+        batch.verify_allocation(spec, "prepare", tmp_path)
+    with pytest.raises(ValueError, match="Persisted campaign input changed"):
+        batch.verify_allocation(spec, "prepare", tmp_path, 1)
+    with pytest.raises(ValueError, match="enough AMD EPYC"):
+        batch.verify_allocation(spec, "prepare", tmp_path, 3)
+    observed["cpu_model"] = "another CPU"
+    with pytest.raises(ValueError, match="AMD EPYC 9754"):
+        batch.verify_allocation(spec, "prepare", tmp_path, 2)
+    observed["cpu_model"] = "AMD EPYC 9754"
+    observed["hostname"] = "gpu15"
+    with pytest.raises(ValueError, match="himem01 or himem02"):
+        batch.verify_allocation(spec, "prepare", tmp_path, 2)
+    observed["hostname"] = "himem02"
+    batch.verify_allocation({**spec, "device": "cuda"}, "evaluate", tmp_path, 2)
+    assert json.loads((tmp_path / "evaluate-allocation.json").read_text()) == observed
+    monkeypatch.setenv("OMP_NUM_THREADS", "2")
+    with pytest.raises(ValueError, match="thread limits"):
+        batch.verify_allocation(spec, "prepare", tmp_path, 2)
+
+
+@pytest.mark.parametrize(
+    ("device", "step", "workers"),
+    [("cuda", "prepare", 1), ("cpu", "prepare", 0)],
+)
+def test_shared_worker_option_cannot_override_cuda_or_accept_zero(
+    tmp_path: Path, device: str, step: str, workers: int
+) -> None:
+    """The explicit override never changes CUDA worker policy or accepts an empty pool."""
+    with pytest.raises(ValueError, match="cannot override CUDA preparation"):
+        batch.verify_allocation({"device": device}, step, tmp_path, workers)
+
+
+def test_preparation_worker_count_reaches_qualification_and_payoff_workers(
+    campaign: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both costly preparation stages honor the same explicit allocation size."""
+    spec = campaign["batches"][0]
+    manifest = tmp_path / f"phase-{spec['phase']}-{spec['device']}-{spec['node']}.json"
+    queue.write(manifest, [spec])
+    queue.write(tmp_path / "jobs.json", {"plan_sha256": queue.identity(campaign)})
+    monkeypatch.setattr(batch, "provenance", lambda: campaign["source"])
+    monkeypatch.setattr(batch, "scripts", lambda: campaign["scripts"])
+    monkeypatch.setattr(batch, "verify_allocation", lambda *a: None)
+    qualification_workers = []
+
+    def qualify(suite: dict, *args: object, **kwargs: object) -> dict:
+        qualification_workers.append(kwargs["workers"])
+        return suite
+
+    monkeypatch.setattr(
+        batch.importlib,
+        "import_module",
+        lambda _: type("Qualification", (), {"qualify_suite": staticmethod(qualify)}),
+    )
+    commands = []
+    monkeypatch.setattr(batch.subprocess, "run", lambda command, **kwargs: commands.append(command))
+    batch.run_batch(manifest, "prepare", 0, workers=2)
+    assert qualification_workers == [2]
+    assert commands[0][commands[0].index("--workers") + 1] == "2"
+
+
 def test_excluded_batch_freezes_decision_and_never_evaluates(
     campaign: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -267,7 +349,7 @@ def test_real_snapshot_budget_derivation_resumes_and_evaluates(
 
     def evaluate(command: list[str], **kwargs: object) -> None:
         calls.append(command)
-        (root / "sweep/shard-000").mkdir(parents=True)
+        (root / "sweep/shard-000").mkdir(parents=True, exist_ok=True)
         queue.write(
             root / "sweep/allocation.json",
             {"cpus": [0], "game_ids": [g["id"] for g in snapshot["games"]]},
@@ -279,6 +361,9 @@ def test_real_snapshot_budget_derivation_resumes_and_evaluates(
     assert not calls  # Existing real snapshot is reused after checking derived budgets.
     batch.run_batch(manifest, "evaluate", 0)
     assert len(calls) == 1 and calls[0][1] == "benchmark/sweep.py"
+    assert calls[0][calls[0].index("--workers") + 1] == "128"
+    batch.run_batch(manifest, "evaluate", 0, workers=2)
+    assert calls[1][calls[1].index("--workers") + 1] == "2"
     changed = {**snapshot, "suite": {**snapshot["suite"], "budgets": [2, 3, 6, 99]}}
     with pytest.raises(ValueError, match="relative budget grid"):
         batch.verify_snapshot(changed, suite, snapshot["provenance"])

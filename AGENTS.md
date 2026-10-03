@@ -343,3 +343,17 @@ uv run pre-commit run --all-files
   Authenticate the recorded source and parameter schema without requiring the
   current constructor to accept them. Execution must retain strict local
   constructor validation; never strip recorded options to make an export pass.
+
+- CPU preparation launches 16 workers; reserving all 128 node cores needlessly
+  blocks it. Estimator sweeps currently use diagnostic timing, so a full-node
+  launch guard does not make their timings isolated. Use explicit shared CPU
+  worker counts and authenticate operational overrides separately from frozen
+  scientific inputs. A GPU-node hostname does not imply GPU allocation: inspect
+  Slurm GPU GRES. Preserve completed shards when changing hardware; their resume
+  identities include hostname and affinity and must not be rewritten.
+
+- Slurm CUDA-visible numeric ordinals can differ from host `nvidia-smi` indices.
+  Resolve visible devices through the CUDA driver to UUIDs before monitoring.
+  Utilization is whole-device occupancy, not proof of speedup. Place the GPU
+  guard inside `srun`: qualification can launch new process sessions, so Slurm
+  job cleanup must also stop descendants outside the guard's process group.

@@ -33,7 +33,8 @@ The corrected bounded rollout keeps its plan and progress in lab storage at
 `/hopper/groups/witterlab/rwitter/shapiq-benchmark-quality-rollout`:
 `campaign/campaign.json` is the immutable scientific plan and `state.json` records
 current progress. Job recovery overrides are explicit; for phases 4–7 use
-`operational/future-runtime-jobs.json`, not the superseded IDs in
+`operational/future-runtime-jobs.json` and its resource-replacement journal
+`operational/shared-cpu-v1/jobs.json`, not the superseded IDs in
 `campaign/jobs.json`. The [roadmap status](ROADMAP.md) distinguishes this rollout
 from the original phase-three campaign, which continues separately.
 
@@ -51,11 +52,26 @@ audit → publish → verify live → start the next phase**.
 `benchmark/queue_phases.py` creates disjoint batches from the cumulative phase
 manifests, retaining all nine budgets and four game seeds. Its job journal makes
 resubmission reviewable. Each evaluation array task depends on its corresponding
-preparation task. CPU batches use verified EPYC 9754 nodes; the corrected bounded
-core is assigned to himem02. Explicit CUDA batches use one L40S per preparation
-worker. Later phases are queued on hold, and the resumed agent releases them
+preparation task. CPU batches use pinned, single-threaded workers on EPYC 9754
+CPU-only nodes. The corrected rollout requests 16 CPUs for preparation and 32
+for evaluation, without reserving the whole node. Timings remain diagnostic;
+shared-node contention can affect wall time. The explicit `phase_batch.py
+--workers N` override records this policy separately from frozen scientific inputs.
+Explicit CUDA batches use one L40S per preparation worker. Later phases are queued on hold, and the resumed agent releases them
 after the preceding audit. A
 completed scheduler job is never enough to declare a phase complete.
+
+GPU preparation is wrapped by `benchmark/gpu_utilization.py`: after two minutes
+of startup, each allocated GPU must sustain an average utilization of at least
+80% over a five-minute rolling window. The guard stops the job on sustained
+underuse or missing telemetry and saves a receipt for the continuation audit.
+Short runs are marked insufficient observation. This measures device occupancy,
+not speedup; a CPU fallback needs a separately qualified backend and cache identity.
+Run the guard inside the Slurm step so job cleanup also stops descendant workers.
+
+The original `queue_phases.py` submission defaults below retain their legacy
+whole-node policy. For this rollout, use the audited shared-CPU operational
+wrappers and journal above; do not resubmit it with those legacy defaults.
 
 From a **clean frozen checkout containing the approved estimator corrections**:
 
