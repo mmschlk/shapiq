@@ -87,6 +87,8 @@ shapleig = [
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
 benchmark = [
+    "openml",    # shipped TabArena dataset downloads
+    "pyarrow",   # OpenML parquet cache
     # optional model backends for shapiq_benchmark, imported lazily
     "optuna",
     "tabpfn",
