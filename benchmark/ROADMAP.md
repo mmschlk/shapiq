@@ -12,16 +12,20 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: corrected bounded rollout, phases 3–7.** Frozen source `5001ba42`
+**Current: phase three is live; phase four has been released to run.**
+The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the quality checks and selects up to sixteen new recipes per phase.
 The immutable plan contains **six preparation batches and six dependent evaluation
 tasks**, plus a separate Wine Quality recovery batch. The corrected phase-three
 core has passed its full evaluation audit: **57,024 cells, 20,968 successful**.
 Wine recovery also passed its full audit: 9,504 cells, 3,496 successful.
 Together the two panels contain 66,528 verified cells and 24,464 successful
-evaluations. The combined website export and reproduction checks are in progress.
-**No phase-three results have been published.** Later phases are queued on hold
-until the preceding phase is audited, published and verified live.
+evaluations. The combined release passed independent data, reproduction and
+desktop/mobile audits; all 19 deployed files match the audited release.
+[Phase-three release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase3-quality-2026-10-03).
+Phase four preparation is released, with its evaluator already dependent on it.
+Phases five through seven remain held until the preceding phase is audited,
+published and verified live.
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
 | --- | ---: | ---: | ---: |
@@ -49,8 +53,8 @@ wrapper stages identical packages on local disk to avoid shared-filesystem impor
 stalls. See the [continuation procedure](README.md#continuing-through-the-phases).
 
 **Original campaign, tracked separately:** its phase three continues on frozen
-source `3f6b9b50`; 20/20 preparation batches and 14/20 evaluation batches have
-passed independent audit, with 380,807 successful evaluations. Its original
+source `3f6b9b50`; 20/20 preparation batches and 15/20 evaluation batches have
+passed independent audit, with 408,769 successful evaluations. Its original
 phases 4–7 were cancelled. The former 733-batch full-matrix submission is **not**
 the active expansion plan; deferred recipes remain a future goal.
 
