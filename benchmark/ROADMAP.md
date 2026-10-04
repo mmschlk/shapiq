@@ -63,13 +63,13 @@ recovery journals listed in `state.json` for phase three. The verified operation
 wrapper stages identical packages on local disk to avoid shared-filesystem import
 stalls. See the [continuation procedure](README.md#continuing-through-the-phases).
 
-**Original campaign, tracked separately:** its phase three continues on frozen
-source `3f6b9b50`; 20/20 preparation batches and 19/20 evaluation batches have
-passed independent audit, with 520,636 successful evaluations. The cancelled
-GPU-node batch retained its completed cells; its 56-cell CPU supplement passed
-the final union audit. The last legacy batch is running on a CPU-only node. Its original
-phases 4–7 were cancelled. The former 733-batch full-matrix submission is **not**
-the active expansion plan; deferred recipes remain a future goal.
+**Original campaign, tracked separately:** all twenty phase-three preparation and
+evaluation batches passed independent audit on frozen source `3f6b9b50`:
+1,492,128 recorded cells and 548,583 successful evaluations. The cancelled GPU-node
+batch's completed cells and its 56-cell CPU supplement passed the final union audit.
+These older-source measurements remain separate from the corrected release.
+Its original phases 4–7 were cancelled. The former 733-batch full-matrix submission
+is not the active expansion plan; deferred recipes remain a future goal.
 
 The full benchmark is intended to cover **all 63 datasets in the target catalog**,
 the model profiles below, every shipped game-construction family, four construction
