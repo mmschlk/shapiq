@@ -19,7 +19,11 @@ from shapiq_benchmark.campaign_backend import load_backend, merge_backend
 from shapiq_benchmark.campaign_recovery import merge_recovery
 from shapiq_benchmark.campaign_replacements import replace_methods
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
-from shapiq_benchmark.quality import model_validation_check, payoff_diagnostics
+from shapiq_benchmark.quality import (
+    clustering_diagnostics,
+    model_validation_check,
+    payoff_diagnostics,
+)
 from shapiq_benchmark.report import merge_results, public_preparation
 from shapiq_benchmark.results_io import read_results, result_inputs
 from shapiq_benchmark.runner import digest, identity, load_snapshot
@@ -34,17 +38,31 @@ def _require(condition: bool, message: str) -> None:  # noqa: FBT001 -- assertio
 
 
 def _historical_quality(game: dict, root: Path) -> dict:
-    """Apply score-independent diagnostics to old authenticated tables at export.
+    """Supplement authenticated tables with score-independent publication checks.
 
     This annotates the report, never the frozen snapshot or original payoffs.
     Missing stochastic qualification is explicit rather than assumed to pass.
+    The clustering resolution check also applies to already-qualified tables.
     """
     metadata = game.get("metadata", {})
-    if game.get("oracle", "table") != "table" or "game_quality" in metadata:
+    if game.get("oracle", "table") != "table":
+        return {}
+    cluster = metadata.get("class") == (
+        "shapiq_games.benchmark.unsupervised_cluster.base.ClusterExplanation"
+    )
+    existing = metadata.get("game_quality")
+    if existing and not cluster:
         return {}
     with np.load(root / game["artifact"], allow_pickle=False) as archive:
-        quality = payoff_diagnostics(archive["values"], game["n_players"])
+        quality = (
+            copy.deepcopy(existing)
+            if existing
+            else payoff_diagnostics(archive["values"], game["n_players"])
+        )
+        clustering_diagnostics(archive["values"], metadata, quality)
     diagnostics = {"game_quality": quality}
+    if existing:
+        return diagnostics
     if metadata.get("quality", {}).get("validation"):
         gate = model_validation_check(metadata)
         diagnostics["model_validation_gate"] = gate

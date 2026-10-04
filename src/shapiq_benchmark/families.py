@@ -131,6 +131,12 @@ _RECIPES = {
         "feature",
         False,
     ),
+    "cluster_continuous_v1": (
+        _LEGACY + "unsupervised_cluster.base.ClusterExplanation",
+        "Calinski-Harabasz score; noncategorical features with more values than clusters",
+        "feature",
+        False,
+    ),
     "unsupervised": (
         _LEGACY + "unsupervised_data.base.UnsupervisedData",
         "total correlation after native 20-bin discretization",
@@ -205,6 +211,7 @@ _RECIPES = {
     ),
 }
 _APPLICATIONS = {
+    "cluster_continuous_v1": "cluster",
     **dict.fromkeys(
         [
             "local_baseline",
@@ -315,6 +322,10 @@ def make_family(
     metadata.update(
         recipe=name, instance_seed=instance_seed, random_state=instance_seed, parameters={}
     )
+    # A distinct recipe ID preserves legacy payoffs and separates all cache identities.
+    continuous_cluster = name == "cluster_continuous_v1"
+    if continuous_cluster:
+        name = "cluster"
     if n_players is not None and (
         type(n_players) is not int or not 1 <= n_players <= MAX_ENUMERATION_PLAYERS
     ):
@@ -377,7 +388,41 @@ def make_family(
         metadata["parameters"]["feature_rule"] = (
             "seeded subset of noncategorical training columns with more than two unique values"
         )
-    if name == "cluster" and (dataset == "digits" or "categorical_features" in DATASETS[dataset]):
+    cluster_count = 3
+    if continuous_cluster:
+        categorical = DATASETS[dataset].get("categorical_features", [])
+        eligible = np.array(
+            [
+                i
+                for i in range(x.shape[1])
+                if categorical != "all"
+                and feature_names[i] not in categorical
+                and len(np.unique(x[train[:128], i])) > cluster_count
+            ],
+            dtype=int,
+        )
+        if len(eligible) < (n_players or 1):
+            reason = "insufficient_eligible_clustering_features"
+            raise QualityExclusion(
+                reason,
+                {
+                    "requested_players": n_players,
+                    "available_features": len(eligible),
+                    "training_rows": train[:128].tolist(),
+                    "n_clusters": cluster_count,
+                    "eligible_feature_indices": eligible.tolist(),
+                },
+            )
+        features = eligible[feature_subset(x[:, eligible], n_players, instance_seed)]
+        metadata["parameters"].update(
+            feature_protocol="cluster_continuous_v1",
+            feature_rule=(
+                "seeded subset of noncategorical columns with more unique values than "
+                "clusters on the clustering training rows"
+            ),
+            eligible_feature_indices=eligible.tolist(),
+        )
+    elif name == "cluster" and (dataset == "digits" or "categorical_features" in DATASETS[dataset]):
         eligible = np.flatnonzero(np.ptp(x[train[:128]], axis=0) > 0)
         rule = "seeded subset of columns nonconstant on the clustering training rows"
         if "categorical_features" in DATASETS[dataset]:
@@ -577,7 +622,7 @@ def make_family(
             kwargs.update(
                 cluster_method="kmeans",
                 random_state=instance_seed,
-                cluster_params={"n_clusters": 3, "n_init": 1, "max_iter": 50},
+                cluster_params={"n_clusters": cluster_count, "n_init": 1, "max_iter": 50},
             )
         game = cls(**kwargs)
         metadata.update(

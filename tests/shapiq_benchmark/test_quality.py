@@ -17,6 +17,7 @@ from shapiq_benchmark.materialize import prepare_families
 from shapiq_benchmark.quality import (
     QUALITY_PROTOCOL,
     QualityExclusion,
+    clustering_diagnostics,
     imputation_stability,
     model_validation_check,
     payoff_diagnostics,
@@ -26,6 +27,48 @@ from shapiq_games.benchmark.data_valuation.base import DataValuation
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def test_clustering_resolution_uses_actual_cluster_count_bound() -> None:
+    """A binary coalition may have two clusters despite requesting three."""
+    metadata = {
+        "class": "shapiq_games.benchmark.unsupervised_cluster.base.ClusterExplanation",
+        "background_indices": list(range(128)),
+        "parameters": {"cluster_params": {"n_clusters": 3}},
+    }
+    threshold = 126 / np.finfo(float).eps
+    values = np.array([0, threshold, 30, 40])
+    original = values.copy()
+    quality = {"role": "core", "control_reasons": []}
+    clustering_diagnostics(values, metadata, quality)
+    assert quality["role"] == "control"
+    assert quality["role_before_clustering_check"] == "core"
+    assert quality["clustering_numerics"]["coalitions_at_float64_resolution"] == 1
+    clustering_diagnostics(values, metadata, quality)
+    assert quality["control_reasons"] == ["clustering_variance_at_float64_resolution"]
+    np.testing.assert_array_equal(values, original)
+
+    # k=3's smaller threshold must not falsely flag an actual k=2 coalition.
+    quality = {"role": "core", "control_reasons": []}
+    clustering_diagnostics(np.array([0, threshold * 0.75]), metadata, quality)
+    assert quality["role"] == "core"
+    assert quality["clustering_numerics"]["coalitions_at_float64_resolution"] == 0
+
+
+def test_clustering_resolution_is_specific_to_ch_and_requires_row_metadata() -> None:
+    """Large payoffs in other games are legitimate; missing evidence is not a pass."""
+    quality = {"role": "core", "control_reasons": []}
+    clustering_diagnostics(np.array([1e35]), {}, quality)
+    assert quality == {"role": "core", "control_reasons": []}
+    metadata = {
+        "class": "shapiq_games.benchmark.unsupervised_cluster.base.ClusterExplanation",
+        "parameters": {"score_method": "silhouette_score"},
+    }
+    clustering_diagnostics(np.array([1e35]), metadata, quality)
+    assert quality == {"role": "core", "control_reasons": []}
+    metadata["parameters"] = {}
+    with pytest.raises(ValueError, match="recorded clustering rows"):
+        clustering_diagnostics(np.array([1e35]), metadata, quality)
 
 
 def test_empty_jump_and_inactive_players_are_different_controls() -> None:

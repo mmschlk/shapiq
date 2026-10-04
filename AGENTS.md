@@ -60,6 +60,14 @@ uv run pre-commit run --all-files
   singleton coalition whose column is constant on the actual clustering rows.
   Select nonconstant columns using those training rows and record their original
   IDs; random multi-feature probes alone do not expose this failure.
+- Legacy clustering filters only applied to Digits or datasets declaring
+  `categorical_features`; Bike Sharing lacked that catalog field. Its binary
+  singleton coalitions produced Calinski-Harabasz scores near 1e35 and misleading
+  high-order Fourier mass. Use the explicit `cluster_continuous_v1` recipe for
+  universal training-row cardinality filtering. Publication checks label CH
+  values above `(N - 2) / float64_eps` as numerical controls, preserving frozen
+  payoffs and recording the additional quality policy. Requested cluster count
+  is not actual cluster count for binary coalitions; do not assume they match.
 - TabPFN also rejects nonempty coalitions containing only constant columns.
   Its 64 training rows can have additional constant Digits pixels beyond those
   constant in the full dataset. Configurable TabPFN recipes select nonconstant

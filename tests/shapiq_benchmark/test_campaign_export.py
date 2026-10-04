@@ -12,9 +12,34 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from shapiq_benchmark.campaign import _canonical_aliases, assemble_campaign
+from shapiq_benchmark.campaign import _canonical_aliases, _historical_quality, assemble_campaign
 from shapiq_benchmark.runner import digest, identity
 from shapiq_benchmark.summary import summarize
+
+
+def test_clustering_publication_check_preserves_frozen_quality(tmp_path: Path) -> None:
+    """Versioned export diagnostics supplement existing quality without rewriting it."""
+    values = np.array([0, 1e35, 30, 40])
+    artifact = tmp_path / "game.npz"
+    np.savez(artifact, values=values)
+    original_bytes = artifact.read_bytes()
+    game = {
+        "artifact": "game.npz",
+        "n_players": 2,
+        "metadata": {
+            "class": "shapiq_games.benchmark.unsupervised_cluster.base.ClusterExplanation",
+            "background_indices": list(range(128)),
+            "game_quality": {"protocol": "quality-v2", "role": "core", "control_reasons": []},
+        },
+    }
+    original = copy.deepcopy(game)
+    quality = _historical_quality(game, tmp_path)["game_quality"]
+    assert quality["role"] == "control"
+    assert quality["role_before_clustering_check"] == "core"
+    assert quality["protocol"] == "quality-v2"
+    assert quality["clustering_numerics"]["protocol"] == "calinski-harabasz-resolution-v1"
+    assert game == original
+    assert artifact.read_bytes() == original_bytes
 
 
 def write(path: Path, value: dict) -> None:

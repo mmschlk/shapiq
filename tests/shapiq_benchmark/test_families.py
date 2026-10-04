@@ -8,7 +8,92 @@ import numpy as np
 import pytest
 from threadpoolctl import threadpool_limits
 
-from shapiq_benchmark.families import FAMILY_CATALOG, make_family
+from shapiq_benchmark import families
+from shapiq_benchmark.families import DATASETS, FAMILY_CATALOG, dataset_compatibility, make_family
+from shapiq_benchmark.materialize import _chunk_identity
+from shapiq_benchmark.quality import QualityExclusion
+
+
+@pytest.fixture
+def cluster_columns(monkeypatch: pytest.MonkeyPatch) -> np.ndarray:
+    """Include unmarked discrete columns and one constant only on clustering rows."""
+    rng = np.random.default_rng(42)
+    x = rng.normal(size=(300, 9))
+    x[:, 0] = 1
+    x[:, 1] = np.arange(len(x)) % 2
+    x[:, 2] = np.arange(len(x)) % 3
+    x[:128, 3] = 0
+    y = rng.normal(size=len(x))
+    monkeypatch.setitem(
+        families.DATASETS, "cluster_fixture", {"task": "regression", "source": "fixture"}
+    )
+    monkeypatch.setattr(
+        families,
+        "_dataset",
+        lambda *_: (
+            x.copy(),
+            y.copy(),
+            np.arange(256),
+            np.arange(256, 300),
+            [f"x{i}" for i in range(x.shape[1])],
+        ),
+    )
+    return x
+
+
+@pytest.mark.parametrize("categorical", [False, True])
+def test_versioned_cluster_filters_actual_rows_and_records_identity(
+    cluster_columns: np.ndarray, monkeypatch: pytest.MonkeyPatch, *, categorical: bool
+) -> None:
+    """Missing catalog annotations must not admit binary or ternary singleton games."""
+    if categorical:
+        monkeypatch.setitem(DATASETS["cluster_fixture"], "categorical_features", ["x4"])
+    eligible = list(range(5 if categorical else 4, 9))
+    with threadpool_limits(limits=1):
+        game, metadata = make_family(
+            "cluster_continuous_v1", dataset="cluster_fixture", n_players=len(eligible)
+        )
+        values = game(np.eye(len(eligible), dtype=bool))
+    assert game.n_players == len(eligible)
+    assert metadata["feature_indices"] == eligible
+    assert metadata["parameters"]["eligible_feature_indices"] == eligible
+    assert metadata["parameters"]["feature_protocol"] == "cluster_continuous_v1"
+    assert metadata["recipe"] == "cluster_continuous_v1"
+    assert metadata["application_family"] == "cluster"
+    assert metadata["background_indices"] == list(range(128))
+    assert all(len(np.unique(cluster_columns[:128, i])) > 3 for i in eligible)
+    assert np.isfinite(values).all() and np.max(np.abs(values)) < 1e8
+    assert dataset_compatibility("cluster_continuous_v1", "cluster_fixture") is None
+    spec = {"id": "same-id", "family": "cluster", "n_players": 13}
+    source = {"source_sha256": "same-source"}
+    assert _chunk_identity(spec, 0, 0, source) != _chunk_identity(
+        {**spec, "family": "cluster_continuous_v1"}, 0, 0, source
+    )
+
+
+def test_cluster_legacy_selection_is_preserved(cluster_columns: np.ndarray) -> None:
+    """Opting into the new family is required; historical unmarked columns remain."""
+    game, metadata = make_family("cluster", dataset="cluster_fixture", n_players=9)
+    assert game.n_players == cluster_columns.shape[1]
+    assert metadata["feature_indices"] == list(range(9))
+    assert metadata["recipe"] == "cluster"
+    assert "feature_protocol" not in metadata["parameters"]
+    assert "feature_rule" not in metadata["parameters"]
+
+
+def test_versioned_cluster_does_not_reduce_requested_players(cluster_columns: np.ndarray) -> None:
+    """A dataset with too few eligible columns is excluded, never silently made smaller."""
+    with pytest.raises(
+        QualityExclusion, match="insufficient_eligible_clustering_features"
+    ) as error:
+        make_family("cluster_continuous_v1", dataset="cluster_fixture", n_players=6)
+    assert error.value.details == {
+        "requested_players": 6,
+        "available_features": 5,
+        "training_rows": list(range(128)),
+        "n_clusters": 3,
+        "eligible_feature_indices": list(range(4, 9)),
+    }
 
 
 @pytest.mark.parametrize("players", [11, 20])

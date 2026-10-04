@@ -30,7 +30,12 @@ from shapiq_benchmark.payoff_cache import (
     read_chunk as _read_chunk,
     write_chunk,
 )
-from shapiq_benchmark.quality import QUALITY_PROTOCOL, imputation_stability, payoff_diagnostics
+from shapiq_benchmark.quality import (
+    QUALITY_PROTOCOL,
+    clustering_diagnostics,
+    imputation_stability,
+    payoff_diagnostics,
+)
 from shapiq_benchmark.spectrum import fourier_spectrum
 
 CATALOG = {**FAMILY_CATALOG, **EXTRA_CATALOG}
@@ -299,6 +304,7 @@ def prepare_families(
             if spec.get("quality_protocol") == QUALITY_PROTOCOL:
                 metadata["quality_protocol"] = QUALITY_PROTOCOL
                 metadata["game_quality"] = payoff_diagnostics(values, n)
+                clustering_diagnostics(values, metadata, metadata["game_quality"])
                 if metadata.get("synthetic"):
                     metadata["game_quality"]["control_reasons"].append("synthetic_control")
                 if metadata.get("stochastic_frozen"):

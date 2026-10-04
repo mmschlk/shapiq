@@ -109,6 +109,44 @@ def payoff_diagnostics(values: np.ndarray, n_players: int) -> dict:
     }
 
 
+def clustering_diagnostics(values: np.ndarray, metadata: dict, quality: dict) -> None:
+    """Mark numerically unresolved Calinski-Harabasz tables as controls in-place.
+
+    CH = (between / within) * (N - k) / (k - 1). Since actual nonempty
+    cluster counts can differ from the requested count, use k >= 2 to bound
+    within / between by (N - 2) / CH. This check uses no estimator results.
+    Payoffs and truth stay unchanged, including sklearn's special CH=1 at
+    exactly zero within-cluster variance.
+    """
+    if metadata.get("class") != (
+        "shapiq_games.benchmark.unsupervised_cluster.base.ClusterExplanation"
+    ) or metadata.get("parameters", {}).get("score_method", "calinski_harabasz_score") != (
+        "calinski_harabasz_score"
+    ):
+        return
+    rows = len(metadata.get("background_indices", []))
+    if rows < 3:
+        message = "Clustering quality requires the recorded clustering rows."
+        raise ValueError(message)
+    threshold = (rows - 2) / np.finfo(np.float64).eps
+    maximum = float(np.max(values))
+    count = int(np.count_nonzero(values >= threshold))
+    quality["clustering_numerics"] = {
+        "protocol": "calinski-harabasz-resolution-v1",
+        "rows": rows,
+        "threshold": threshold,
+        "maximum_payoff": maximum,
+        "coalitions_at_float64_resolution": count,
+        "definition": "CH >= (N - 2) / eps implies within/between variance <= float64 eps",
+    }
+    if count:
+        reason = "clustering_variance_at_float64_resolution"
+        if reason not in quality["control_reasons"]:
+            quality["role_before_clustering_check"] = quality["role"]
+            quality["control_reasons"].append(reason)
+        quality["role"] = "control"
+
+
 def imputation_stability(game: Imputer, *, seed: int = 0) -> dict:
     """Probe Monte Carlo noise without refitting or changing the actual game.
 

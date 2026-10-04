@@ -442,7 +442,10 @@
             games marked as controls by model validation and game-quality
             checks. “Include control games” keeps their measured results
             available for diagnosis. This is separate from the negligible-truth
-            signal filter.
+            signal filter. Clustering games whose scores are dominated by
+            near-zero within-cluster variance are also controls: their apparent
+            interaction complexity can come from numerical spikes. We preserve
+            their measured results and record the additional quality check.
           </p>
         </details>
       </section>

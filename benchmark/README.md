@@ -397,9 +397,12 @@ Compatibility and preprocessing are explicit:
 - Use the loader's encoding and target unchanged. Shapiq may already preprocess
   using the full dataset. Remaining missing inputs (notably Mushroom and NHANES)
   use medians computed only from the recorded training rows.
-- Gaussian/Gaussian-copula imputation and clustering select noncategorical columns;
-  Gaussian columns need more than two observed values and clustering columns
-  more than three. Combinations with too few eligible columns are excluded or
+- Gaussian/Gaussian-copula imputation selects noncategorical columns with more
+  than two observed values. New clustering recipes use `cluster_continuous_v1`:
+  exclude declared categorical columns and require more than three distinct
+  values on the actual clustering rows, even when categorical metadata is absent.
+  Legacy `cluster` recipes retain their original selection and cache identity.
+  Combinations with too few eligible columns are excluded or
   fail qualification, rather than padding features or clipping scores.
 - Classification-only games exclude regression targets. Binary product-kernel
   games require two classes. Neighbor games need enough players for the classes.
@@ -407,6 +410,18 @@ Compatibility and preprocessing are explicit:
   This does not claim to fit a censoring-aware survival model.
 - Constants, missing data, rare classes and near-zero truth are still checked at
   construction/qualification. Selection does not guarantee a valid measured game.
+
+Clustering tables also receive a score-independent numerical check. A
+Calinski-Harabasz payoff at least `(N - 2) / float64_eps` implies within-cluster
+variance at most machine precision relative to between-cluster variance, for
+any actual cluster count. Such games remain available as controls, with original
+payoffs and estimator results unchanged. Cumulative campaign exports apply this
+versioned check to older tables too and record the previous quality role.
+Raw reports and reproduction snapshots retain their recorded preparation roles;
+the website's exported `game_quality.clustering_numerics` documents the additional
+publication check. Reproducing the headline cohort requires the campaign exporter,
+not just merging raw reports. Large Fourier mass caused
+by these numerical spikes is not evidence of useful interaction diversity.
 
 TabArena downloads use the shipped OpenML loaders and their CSV cache. Install
 `openml` and a parquet engine such as `pyarrow` in the **preparation environment**

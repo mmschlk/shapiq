@@ -12,53 +12,47 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phases three and four are live; phase five is released.**
+**Current: phases three through five are live; phase six is evaluating.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
-implements the quality checks and selects up to sixteen new recipes per phase.
-The immutable plan contains six preparation batches and six dependent evaluation
-tasks, plus a separate Wine Quality recovery batch.
+implements the original quality checks and selects up to sixteen new recipes
+per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
+all frozen games. The immutable plan has six preparation batches and six
+associated evaluation tasks, plus separate Wine and CPU-backend recovery batches.
 
-The cumulative audited release contains **104 instances, 624 target definitions
-and 45,417 successful evaluations** across 123,552 recorded cells. Default rankings
-use 75 core instances; 29 controls are optional. Each recipe has four construction
-seeds, with 11–16 players. Independent data, reproduction and desktop/mobile audits
-passed, and all nineteen live files match the release.
-[Corrected phase-four release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase4-svd-elo-2026-10-04).
+The cumulative audited release contains **148 instances, 888 target definitions
+and 64,643 successful evaluations** across 175,824 recorded cells. Default rankings
+use 90 real core instances; 34 real controls and 24 synthetic controls are separate
+options. Each recipe has four construction seeds. All five reproduction archives,
+16,830 presets and nineteen live files passed independent checks.
+[Phase-five release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase5-svd-2026-10-04).
 
-Phase four contributed 48 instances from twelve recipes and 20,953 successful
-evaluations. Two recipes exceeded the eight-hour preparation limit and two failed
-the imputation-noise gate. Phase three and its Wine supplement remain included.
+Phase four contributed 48 instances from twelve recipes. Phase five added 40
+CPU instances and four Mushroom TabPFN instances from CPU recovery. Three other
+recovery recipes exceeded the unchanged eight-hour preparation-cost limit.
+The original GPU preparation stopped under the 80% utilization guard; its
+cancelled evaluation and the CPU replacement remain separately authenticated.
 
-Phase five's CPU preparation and baseline evaluation passed independent audit.
-Ten recipes produced **40 instances and 240 target definitions**, with 11–12
-players and four construction seeds. These include causal, Gaussian-process,
-image and text games, plus synthetic controls. ViT exceeded the eight-hour
-projected preparation limit; the Adult Gaussian-process recipe failed the
-validation-baseline gate on two seeds. Fourier spectra are saved for every game.
-Independent preparation audit passed, including all exact answers and Fourier
-spectra. Fifteen instances enter the core cohort; 25 are labeled controls.
-The baseline contains 17,478 successful evaluations across 47,520 planned cells.
-Its six regression methods are being replaced by the corrected solver before
-publication; the other failures are known SPEX and ShaplEIG limits.
+Phase six prepared **40 instances and 240 target definitions** from ten retained
+recipes, with 11–17 players and four seeds each. All exact answers, Fourier
+spectra and 577 preparation inputs passed independent numerical/integrity checks.
+Six other recipes failed the existing cost, model-validation or imputation gates.
+Evaluation is running on 32 shared CPU cores; the six-method correction and final
+audits are queued. Phase seven stays held until phase six is published and live
+verified.
 
-CUDA preparation stopped under the sustained-utilization guard: its measured
-GPU utilization averaged 2.44%, below the required 80%. The same four TabPFN
-recipes are now being qualified on CPU, with new backend/cache identities and
-unchanged seeds, budgets and cost limits. Preparation and dependent evaluation
-are queued on sixteen shared CPU cores using the corrected estimator source.
-The stopped GPU attempt and its replacement remain separately authenticated.
-The missing ViT checkpoint was cached and verified offline before the CPU pilot;
-its exclusion is a measured cost decision. Phases six and seven remain held until
-the preceding phase is audited, published and verified live.
+The phase-six scientific review found four Bike Sharing clustering instances
+whose enormous scores come from near-zero within-cluster variance. They must
+remain controls, giving **19 core and 21 control instances** for publication,
+rather than the original frozen labels of 23 and 17. A versioned, payoff-only
+numerical check supplements publication metadata without altering any saved
+measurements. Future clustering recipes use `cluster_continuous_v1`; see the
+[construction safeguards](README.md). Fourier spectra describe the frozen games;
+numerical spikes do not establish meaningful interaction diversity.
 
-A corrected-source rerun for the six regression classes covered by
-[PR #610](https://github.com/mmschlk/shapiq/pull/610) has completed all **10,296
-supported evaluations** in the current release. Independent measurement and
-publication audits passed for every record, all 15,470 presets and all three
-reproduction archives. It reuses every frozen game and replaces all nine budgets,
-including the Wine supplement. Four dependent jobs cover the later phases.
-Elo fitting now certifies accuracy within 0.001 points for the same objective;
-the previous numerical error was less than 0.032 points. See
+Corrected-source reruns replace all nine budgets for the six regression classes
+covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Phase-five results
+are already published; phases six and seven have dependent correction jobs.
+Elo fitting certifies accuracy within 0.001 points for the same objective. See
 [replacement exports](README.md#replacing-a-corrected-estimator).
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
