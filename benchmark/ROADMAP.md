@@ -12,19 +12,20 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phases three through five are live; phase six is evaluating.**
+**Current: phases three through six are published; phase seven is queued.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the original quality checks and selects up to sixteen new recipes
 per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
 all frozen games. The immutable plan has six preparation batches and six
 associated evaluation tasks, plus separate Wine and CPU-backend recovery batches.
 
-The cumulative audited release contains **148 instances, 888 target definitions
-and 64,643 successful evaluations** across 175,824 recorded cells. Default rankings
-use 90 real core instances; 34 real controls and 24 synthetic controls are separate
-options. Each recipe has four construction seeds. All five reproduction archives,
-16,830 presets and nineteen live files passed independent checks.
-[Phase-five release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase5-svd-2026-10-04).
+The cumulative audited release contains **188 instances, 1,128 target definitions
+and 82,119 successful evaluations** across 223,344 recorded cells. Default rankings
+use 109 real core instances; 55 real controls and 24 synthetic controls are separate
+options. Each recipe has four construction seeds. All six reproduction archives
+and 20,570 ranking presets passed independent checks. Deployment verifies nineteen
+live files and desktop/mobile behavior before the next phase starts.
+[Phase-six release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase6-svd-2026-10-04).
 
 Phase four contributed 48 instances from twelve recipes. Phase five added 40
 CPU instances and four Mushroom TabPFN instances from CPU recovery. Three other
@@ -36,9 +37,9 @@ Phase six prepared **40 instances and 240 target definitions** from ten retained
 recipes, with 11–17 players and four seeds each. All exact answers, Fourier
 spectra and 577 preparation inputs passed independent numerical/integrity checks.
 Six other recipes failed the existing cost, model-validation or imputation gates.
-Evaluation is running on 32 shared CPU cores; the six-method correction and final
-audits are queued. Phase seven stays held until phase six is published and live
-verified.
+All 47,520 evaluation cells and the six-method correction passed independent
+audits. Phase seven's existing preparation, evaluation and correction jobs
+continue after phase six is published and verified live.
 
 The phase-six scientific review found four Bike Sharing clustering instances
 whose enormous scores come from near-zero within-cluster variance. They must
@@ -50,8 +51,8 @@ measurements. Future clustering recipes use `cluster_continuous_v1`; see the
 numerical spikes do not establish meaningful interaction diversity.
 
 Corrected-source reruns replace all nine budgets for the six regression classes
-covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Phase-five results
-are already published; phases six and seven have dependent correction jobs.
+covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Results through phase
+six are published; phase seven has a dependent correction job.
 Elo fitting certifies accuracy within 0.001 points for the same objective. See
 [replacement exports](README.md#replacing-a-corrected-estimator).
 

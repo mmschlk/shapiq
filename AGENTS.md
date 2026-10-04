@@ -147,6 +147,12 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- Historical release audits can reference mutable checkout UI files as well as
+  immutable exported copies. Later UI edits require a separate revalidation
+  receipt mapping only those references to archived bytes that match both the
+  original audit and its Git revision. Preserve the original audit and verify
+  every other input unchanged; never skip hash checks or rewrite old evidence.
+
 - Downloaded snapshots can retain an absolute production `duplicate_registry`
   path and baseline constructor options absent from the local checkout. Private
   candidates authenticate the historical snapshot but execute only their own

@@ -6,7 +6,7 @@
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
 Compare all 22 public estimator classes on a declared cohort of frozen games.
-The current release covers 104 game instances across several explanation and
+The current release covers 188 game instances across several explanation and
 valuation families; the [roadmap](ROADMAP.md) expands coverage further. Filter by target, family,
 model, dataset, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
@@ -163,11 +163,12 @@ Regenerate reproduction archives with the same corrected baseline measurements.
 
 The active repair for [PR #610](https://github.com/mmschlk/shapiq/pull/610) replaces
 KernelSHAP, KernelSHAPIQ, InconsistentKernelSHAPIQ, RegressionFSII, RegressionFBII
-and kADDSHAP at all nine budgets. The current release requires 10,296 actual
-reevaluations; games and exact answers are reused. LeverageSHAP already uses SVD.
+and kADDSHAP at all nine budgets. The phase-six release includes the complete
+corrected panels through phase six; games and exact answers are reused.
+LeverageSHAP already uses SVD.
 On Hopper, `operational/regression-svd-rerun/` contains the frozen execution plan,
-seven submitted jobs, audits and `replacements-through-phase4.json`. Future phase
-reruns are dependent jobs. Publication waits for independent audits of results,
+seven submitted jobs, audits and `replacements-through-phase6.json`. The phase-seven
+rerun is a dependent job. Publication waits for independent audits of results,
 website data and reproduction files; original raw measurements stay archived.
 
 ### Recovering a stopped GPU preparation on CPU
