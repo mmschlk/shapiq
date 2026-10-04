@@ -12,24 +12,30 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phase three is live; phase four is evaluating.**
+**Current: phases three and four are live; phase five is released.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the quality checks and selects up to sixteen new recipes per phase.
-The immutable plan contains **six preparation batches and six dependent evaluation
-tasks**, plus a separate Wine Quality recovery batch. The corrected phase-three
-core has passed its full evaluation audit: **57,024 cells, 20,968 successful**.
-Wine recovery also passed its full audit: 9,504 cells, 3,496 successful.
-Together the two panels contain 66,528 verified cells and 24,464 successful
-evaluations. The combined release passed independent data, reproduction and
-desktop/mobile audits; all 19 deployed files match the audited release.
-[Phase-three release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase3-quality-2026-10-03).
-Phase four prepared 48 instances and 288 target definitions from twelve recipes,
-with 11, 12, 14, 15 and 16 players. Its independent preparation audit passed,
-including all 288 ground-truth vectors. There are 32 core instances and sixteen
-controls excluded from default rankings. Its 57,024-cell evaluation has started
-on 32 pinned CPU workers. Two recipes
-exceeded the eight-hour preparation limit and two failed the imputation-noise gate.
-Phases five through seven remain held until the preceding phase is audited,
+The immutable plan contains six preparation batches and six dependent evaluation
+tasks, plus a separate Wine Quality recovery batch.
+
+The cumulative audited release contains **104 instances, 624 target definitions
+and 45,417 successful evaluations** across 123,552 recorded cells. Default rankings
+use 75 core instances; 29 controls are optional. Each recipe has four construction
+seeds, with 11–16 players. Independent data, reproduction and desktop/mobile audits
+passed, and all nineteen live files match the release.
+[Phase-four release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase4-quality-2026-10-04).
+
+Phase four contributed 48 instances from twelve recipes and 20,953 successful
+evaluations. Two recipes exceeded the eight-hour preparation limit and two failed
+the imputation-noise gate. Phase three and its Wine supplement remain included.
+
+Phase five's existing CPU and CUDA preparation jobs are released. CPU preparation
+covers causal games, Gaussian-process explanations, image/text models and synthetic
+controls; CUDA preparation covers four TabPFN recipes. Their sixteen recipes can
+produce up to 64 instances, subject to qualification. CUDA preparation waits for
+CPU evaluation to finish, preventing concurrent writes to the duplicate registry.
+The missing ViT checkpoint was cached on the lab drive and verified offline before
+release. Phases six and seven remain held until the preceding phase is audited,
 published and verified live.
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |

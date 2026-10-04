@@ -364,3 +364,9 @@ uv run pre-commit run --all-files
   maximum whole-vector discrepancy of 4.81e-17 nMSE. Record this numerical floor
   and check per-order signal eligibility; do not relabel it as estimator error
   or silently rewrite frozen truth while evaluations are running.
+
+- Offline special-model jobs require warming the exact shipped checkpoint IDs.
+  ViT uses `google/vit-base-patch32-384`, not another ViT resolution. Prewarm
+  its processor, config and weights in the inherited lab `HF_HOME`, record the
+  revision and hashes, and verify both loaders offline before releasing jobs.
+  A missing download is an operational issue, not an unsupported game.
