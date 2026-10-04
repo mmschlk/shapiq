@@ -377,3 +377,13 @@ uv run pre-commit run --all-files
   KernelSHAP nMSE 6.63e21 with design rank 14; the existing direct weighted SVD
   returned 224.93 on identical samples. Audit coefficient magnitudes/rank as well
   as score arithmetic. Do not clip scores or silently rewrite frozen results.
+
+- Slurm can reject `afterok` for a completed job that has expired from controller
+  memory while `sacct` still reports completion. Remove only the expired dependency
+  after verifying successful accounting and its final artifact audit; retain the
+  audit gate in the dependent job.
+
+- Bradley–Terry L-BFGS can stop on objective tolerance before Elo ratings are
+  accurate, especially with weak overlap. A small maximum gradient alone is not
+  a rating-error guarantee. Use the L2 strong-convexity bound on the gradient norm
+  and refine as needed; the phase-four audit found errors up to 0.031 Elo points.

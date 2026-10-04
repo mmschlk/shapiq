@@ -44,12 +44,15 @@ The missing ViT checkpoint was cached and verified offline before the CPU pilot;
 its exclusion is a measured cost decision. Phases six and seven remain held until
 the preceding phase is audited, published and verified live.
 
-A separate corrected-source rerun is queued for the six regression classes
-covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). It reuses every
-frozen game and replaces all nine budgets, including the Wine supplement.
-The three current jobs cover 10,296 supported evaluations; four dependent jobs
-cover the later phases. The website changes only after independent result and
-publication audits. See [replacement exports](README.md#replacing-a-corrected-estimator).
+A corrected-source rerun for the six regression classes covered by
+[PR #610](https://github.com/mmschlk/shapiq/pull/610) has completed all **10,296
+supported evaluations** in the current release. Independent measurement audits
+passed. It reuses every frozen game and replaces all nine budgets, including
+the Wine supplement. Four dependent jobs cover the later phases.
+The publication audit also exposed a small Elo optimizer error (at most 0.031
+points); summaries are being rebuilt with a stricter convergence guarantee.
+The corrected website release awaits its final artifact audit. See
+[replacement exports](README.md#replacing-a-corrected-estimator).
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
 | --- | ---: | ---: | ---: |

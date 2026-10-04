@@ -159,7 +159,29 @@ def comparisons(
     if not fit.success or not np.all(np.isfinite(fit.x)):
         message = "Bradley-Terry fit did not converge."
         raise ValueError(message)
-    return matches, (1000 + (fit.x - fit.x.mean()) * 400 / np.log(10)).tolist()
+    # Objective-based L-BFGS stopping can leave noticeable rating error in
+    # low-curvature panels. L2 strong convexity bounds skill error by ||g||/L2;
+    # polish only when that bound exceeds 0.001 Elo points.
+    skills = fit.x.copy()
+    scale = 400 / np.log(10)
+    for _ in range(12):
+        if not np.all(np.isfinite(skills)):
+            break
+        _, gradient = objective(skills)
+        if not np.all(np.isfinite(gradient)):
+            break
+        if np.linalg.norm(gradient) / L2 * scale <= 0.001:
+            return matches, (1000 + (skills - skills.mean()) * scale).tolist()
+        probability = expit(skills[a_indices] - skills[b_indices])
+        curvature = masses * probability * (1 - probability)
+        hessian = L2 * np.eye(len(methods))
+        np.add.at(hessian, (a_indices, a_indices), curvature)
+        np.add.at(hessian, (b_indices, b_indices), curvature)
+        np.add.at(hessian, (a_indices, b_indices), -curvature)
+        np.add.at(hessian, (b_indices, a_indices), -curvature)
+        skills -= np.linalg.solve(hessian, gradient)
+    message = "Bradley-Terry rating precision could not be certified."
+    raise ValueError(message)
 
 
 def release_history(rows: list[dict]) -> dict:

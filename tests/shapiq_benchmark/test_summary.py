@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -123,6 +124,65 @@ def test_strict_five_method_order_converges() -> None:
     np.testing.assert_allclose(
         np.array(reordered)[np.argsort(permutation)], ratings, atol=2e-5, rtol=0
     )
+
+
+def test_elo_polishes_objective_convergence_on_real_panel() -> None:
+    """This two-game panel previously retained 0.031 Elo points of fit error."""
+    values = np.array(
+        [
+            [0.0017535933842043692, 0.0066594935753105265],
+            [0.0017535933842043397, 0.006659493575310585],
+            [0.0017535933842043397, 0.006659493575310585],
+            [0.001212793319043347, 0.0004754069132641388],
+            [0.001550818568808117, 0.0013086577761968659],
+            [0.009952564793615748, 0.07429509055060625],
+            [0.0036619880576296547, 0.005353288947858057],
+            [0.0013161013759023712, 0.0050703057674289995],
+            [0.013136240654862684, 0.016085243896324583],
+            [0.0017535933797273929, 0.006659493559382321],
+            [0.0009613134781833105, 0.009335393444406061],
+            [0.3484813528648108, 0.431102356281539],
+            [0.1392123015778069, 0.20980733912869423],
+            [0.1392123015778069, 0.20980733912869423],
+            [0.00026011423372359363, 0.00035729003585227337],
+            [0.004391911179297818, 0.041617311584511436],
+            [0.3484813528648108, 0.431102356281539],
+            [0.0017535933797274055, 0.006659493559382188],
+        ]
+    )
+    methods = list(map(str, range(len(values))))
+    matches, ratings = comparisons(values, np.array([0.5, 0.5]), methods)
+    # Independent stationarity calculation from reported pair masses/scores.
+    skills = (np.asarray(ratings) - 1000) * np.log(10) / 400
+    gradient = 0.001 * skills
+    for match in matches:
+        a, b = int(match["a"]), int(match["b"])
+        residual = match["observed_weight"] / (1 + np.exp(skills[b] - skills[a]))
+        residual -= match["score_a"]
+        gradient[a] += residual
+        gradient[b] -= residual
+    assert np.linalg.norm(gradient) / 0.001 * 400 / np.log(10) <= 0.001
+
+
+def test_elo_polishes_small_gradient_when_curvature_is_small(monkeypatch) -> None:
+    """A small raw gradient can still hide a tenth of an Elo point of error."""
+    skills = np.array([0.1, -0.1]) * np.log(10) / 400
+    monkeypatch.setattr(
+        summary, "minimize", lambda *a, **k: SimpleNamespace(success=True, x=skills)
+    )
+    _, ratings = comparisons(np.ones((2, 1)), np.array([1e-8]), ["a", "b"])
+    assert ratings == pytest.approx([1000, 1000], abs=1e-8)
+
+
+@pytest.mark.parametrize("step", [0.0, np.nan])
+def test_elo_polish_rejects_stalled_or_nonfinite_solve(monkeypatch, step) -> None:
+    """A broken precision solve must fail instead of publishing uncertified ratings."""
+    monkeypatch.setattr(
+        summary, "minimize", lambda *a, **k: SimpleNamespace(success=True, x=np.array([1.0, -1.0]))
+    )
+    monkeypatch.setattr(np.linalg, "solve", lambda matrix, vector: np.full_like(vector, step))
+    with pytest.raises(ValueError, match="precision could not be certified"):
+        comparisons(np.ones((2, 1)), np.array([1e-8]), ["a", "b"])
 
 
 def test_unknown_dates_do_not_set_frontier() -> None:
