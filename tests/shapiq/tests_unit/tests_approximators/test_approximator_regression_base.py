@@ -7,7 +7,13 @@ from typing import get_args
 import numpy as np
 import pytest
 
-from shapiq.approximator.regression import Regression
+from shapiq.approximator.regression import (
+    KernelSHAP,
+    Regression,
+    RegressionFBII,
+    RegressionFSII,
+    kADDSHAP,
+)
 from shapiq.approximator.regression.base import ValidRegressionIndices, solve_regression
 
 
@@ -20,69 +26,81 @@ def test_basic_functions():
         _ = Regression(n=7, max_order=2, index="wrong_index")
 
 
-def test_solve_regression_full_rank_fast_path():
-    """use_svd=False on a well-conditioned full-rank system should use np.linalg.solve and return the correct solution."""
+@pytest.mark.parametrize("use_svd", [False, True])
+def test_solve_regression_full_rank(use_svd):
+    """Well-conditioned weighted least squares agrees with the normal equations."""
     rng = np.random.default_rng(0)
-    n_rows, n_cols = 20, 4
-    X = rng.standard_normal((n_rows, n_cols))
-    true_coef = np.array([1.0, -2.0, 3.0, -1.5])
-    y = X @ true_coef
-    weights = np.ones(n_rows)
+    X = rng.standard_normal((20, 4))
+    y = rng.standard_normal(20)
+    weights = np.linspace(0.5, 2.0, 20)
+    expected = np.linalg.solve(X.T @ (weights[:, None] * X), X.T @ (weights * y))
 
-    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=False)
-    np.testing.assert_allclose(result, true_coef, atol=1e-8)
+    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=use_svd)
+    np.testing.assert_allclose(result, expected, rtol=1e-12, atol=1e-12)
 
 
-def test_solve_regression_rank_deficient_falls_back_to_lstsq():
-    """use_svd=False with a rank-deficient Gram matrix must fall back to lstsq without crashing.
-
-    When two columns of X are identical the Gram matrix is singular (rank < n_cols),
-    so np.linalg.solve would raise LinAlgError. The guard must detect this and fall
-    back to lstsq, returning a finite result.
-    """
+def test_solve_regression_dependent_columns():
+    """Duplicate columns share their coefficient equally in the minimum-norm solution."""
     rng = np.random.default_rng(1)
-    n_rows, n_cols = 20, 4
-    X = rng.standard_normal((n_rows, n_cols))
-    X[:, 2] = X[:, 1]  # make column 2 identical to column 1 → rank-deficient Gram matrix
-    y = rng.standard_normal(n_rows)
-    weights = np.ones(n_rows)
+    X = rng.standard_normal((20, 4))
+    X[:, 2] = X[:, 1]
+    y = X @ np.array([1.0, 2.0, 4.0, -1.5])
+    weights = np.geomspace(1.0, 1e8, 20)
 
-    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=False)
-    assert result.shape == (n_cols,)
-    assert np.all(np.isfinite(result)), f"Expected finite result, got {result}"
+    result = solve_regression(X=X, y=y, kernel_weights=weights)
+    np.testing.assert_allclose(result, [1.0, 3.0, 3.0, -1.5], rtol=1e-10, atol=1e-10)
 
 
-def test_solve_regression_gram_nan_guard():
-    """use_svd=False must return all-NaN (not crash) when the Gram matrix contains Inf/NaN.
-
-    Extreme kernel weights cause Inf in WX and therefore in X^T @ WX. The guard must
-    catch this before passing it to np.linalg.solve, which would silently return NaNs
-    or raise depending on the platform.
-    """
-    rng = np.random.default_rng(2)
-    n_rows, n_cols = 10, 3
-    X = rng.standard_normal((n_rows, n_cols))
-    y = rng.standard_normal(n_rows)
-    weights = np.ones(n_rows)
-    weights[0] = np.inf  # causes Inf in WX → Inf in Gram matrix
-
-    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=False)
-    assert result.shape == (n_cols,)
-    assert np.all(np.isnan(result)), f"Expected all-NaN, got {result}"
+def test_solve_regression_large_finite_weights():
+    """Finite weights must not overflow an unnecessary Gram-matrix construction."""
+    X = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    expected = np.array([2.0, -3.0])
+    result = solve_regression(X=X, y=X @ expected, kernel_weights=np.full(3, 1e308))
+    np.testing.assert_allclose(result, expected, rtol=1e-12, atol=1e-12)
 
 
-def test_solve_regression_underdetermined_no_svd():
-    """use_svd=False with fewer rows than columns (underdetermined) falls back to lstsq.
+def test_solve_regression_underdetermined_minimum_norm():
+    """A finite solution and a small residual do not establish minimum norm."""
+    rng = np.random.default_rng(7)
+    X = rng.integers(0, 2, size=(12, 24)).astype(float)
+    y = rng.standard_normal(12)
+    # X has full row rank; the small, well-conditioned dual system is an
+    # independent reference for its unique minimum-norm interpolating solution.
+    expected = X.T @ np.linalg.solve(X @ X.T, y)
+    result = solve_regression(X=X, y=y, kernel_weights=np.ones(12))
+    np.testing.assert_allclose(result, expected, rtol=1e-10, atol=1e-10)
 
-    The rank check (X.shape[0] < X.shape[1]) triggers lstsq, which returns the
-    minimum-norm solution. The result must be finite.
-    """
-    rng = np.random.default_rng(3)
-    n_rows, n_cols = 3, 6  # underdetermined: more unknowns than equations
-    X = rng.standard_normal((n_rows, n_cols))
-    y = rng.standard_normal(n_rows)
-    weights = np.ones(n_rows)
 
-    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=False)
-    assert result.shape == (n_cols,)
-    assert np.all(np.isfinite(result)), f"Expected finite result, got {result}"
+@pytest.mark.parametrize(
+    ("estimator_class", "kwargs", "budget_factor"),
+    [
+        (KernelSHAP, {}, 1),
+        (RegressionFSII, {"max_order": 1}, 1),
+        (kADDSHAP, {"max_order": 1}, 1),
+        (RegressionFBII, {"max_order": 2}, 2),
+    ],
+)
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_low_budget_additive_game_minimum_norm(estimator_class, kwargs, budget_factor, seed):
+    """A feasible exact coefficient vector bounds the minimum-norm solution."""
+    n = 11
+    coefficients = np.arange(1, n + 1, dtype=float)
+    estimator = estimator_class(n=n, random_state=seed, **kwargs)
+    estimate = estimator.approximate(budget=budget_factor * n, game=lambda z: z @ coefficients)
+
+    # All higher-order and empty coefficients are zero in this additive game.
+    # Low budgets need not recover each value, but exploding norms are incorrect.
+    assert np.linalg.norm(estimate.values) <= np.linalg.norm(coefficients) * (1 + 1e-8)
+
+
+@pytest.mark.parametrize("estimator_class", [KernelSHAP, RegressionFSII, RegressionFBII, kADDSHAP])
+def test_full_budget_additive_game(estimator_class):
+    """With all coalitions available, every method recovers the additive values."""
+    n = 7
+    coefficients = np.arange(1, n + 1, dtype=float)
+    kwargs = {} if estimator_class is KernelSHAP else {"max_order": 2}
+    estimate = estimator_class(n=n, random_state=0, **kwargs).approximate(
+        budget=2**n, game=lambda z: z @ coefficients
+    )
+    expected = [coefficients[key[0]] if len(key) == 1 else 0.0 for key in estimate.dict_values]
+    np.testing.assert_allclose(estimate.values, expected, rtol=1e-8, atol=1e-8)
