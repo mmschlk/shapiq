@@ -147,6 +147,11 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- `metadata.cluster_id` is a weighting/bootstrap group, not a unique game
+  instance: phase six has 188 instances but 178 such groups. Count authenticated
+  construction/artifact identities across all targets; an SV-only count misses
+  phase seven's sixteen interaction-only instances.
+
 - Historical release audits can reference mutable checkout UI files as well as
   immutable exported copies. Later UI edits require a separate revalidation
   receipt mapping only those references to archived bytes that match both the
