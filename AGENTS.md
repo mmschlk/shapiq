@@ -394,3 +394,8 @@ uv run pre-commit run --all-files
   CPU recovery needs new backend/cache identities and an authenticated replacement
   for the failed batch. Do not reuse CUDA payoffs or invent a scientific exclusion
   merely to make the original campaign export complete.
+
+- The website's real/synthetic panel and its control toggle are independent filters.
+  Enabling controls in the real panel does not include synthetic diagnostics.
+  Phase five has 90 real core, 34 real control and 24 synthetic control instances;
+  browser audits must check both panels instead of expecting all 148 in one view.
