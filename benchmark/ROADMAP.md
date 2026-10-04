@@ -23,13 +23,13 @@ and 45,417 successful evaluations** across 123,552 recorded cells. Default ranki
 use 75 core instances; 29 controls are optional. Each recipe has four construction
 seeds, with 11–16 players. Independent data, reproduction and desktop/mobile audits
 passed, and all nineteen live files match the release.
-[Phase-four release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase4-quality-2026-10-04).
+[Corrected phase-four release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase4-svd-elo-2026-10-04).
 
 Phase four contributed 48 instances from twelve recipes and 20,953 successful
 evaluations. Two recipes exceeded the eight-hour preparation limit and two failed
 the imputation-noise gate. Phase three and its Wine supplement remain included.
 
-Phase five's CPU preparation is complete and estimator evaluation is running.
+Phase five's CPU preparation and baseline evaluation passed independent audit.
 Ten recipes produced **40 instances and 240 target definitions**, with 11–12
 players and four construction seeds. These include causal, Gaussian-process,
 image and text games, plus synthetic controls. ViT exceeded the eight-hour
@@ -37,21 +37,24 @@ projected preparation limit; the Adult Gaussian-process recipe failed the
 validation-baseline gate on two seeds. Fourier spectra are saved for every game.
 Independent preparation audit passed, including all exact answers and Fourier
 spectra. Fifteen instances enter the core cohort; 25 are labeled controls.
+The baseline contains 17,478 successful evaluations across 47,520 planned cells.
+Its six regression methods are being replaced by the corrected solver before
+publication; the other failures are known SPEX and ShaplEIG limits.
 
-CUDA preparation covers four additional TabPFN recipes and waits for CPU
-evaluation to finish, preventing concurrent writes to the duplicate registry.
+CUDA preparation has started on four additional TabPFN recipes after CPU
+evaluation finished, preventing concurrent writes to the duplicate registry.
 The missing ViT checkpoint was cached and verified offline before the CPU pilot;
 its exclusion is a measured cost decision. Phases six and seven remain held until
 the preceding phase is audited, published and verified live.
 
 A corrected-source rerun for the six regression classes covered by
 [PR #610](https://github.com/mmschlk/shapiq/pull/610) has completed all **10,296
-supported evaluations** in the current release. Independent measurement audits
-passed. It reuses every frozen game and replaces all nine budgets, including
-the Wine supplement. Four dependent jobs cover the later phases.
-The publication audit also exposed a small Elo optimizer error (at most 0.031
-points); summaries are being rebuilt with a stricter convergence guarantee.
-The corrected website release awaits its final artifact audit. See
+supported evaluations** in the current release. Independent measurement and
+publication audits passed for every record, all 15,470 presets and all three
+reproduction archives. It reuses every frozen game and replaces all nine budgets,
+including the Wine supplement. Four dependent jobs cover the later phases.
+Elo fitting now certifies accuracy within 0.001 points for the same objective;
+the previous numerical error was less than 0.032 points. See
 [replacement exports](README.md#replacing-a-corrected-estimator).
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
