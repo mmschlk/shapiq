@@ -12,7 +12,7 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phases three through six are live; phase seven is preparing.**
+**Current: phases three through six are live; phase seven is running.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the original quality checks and selects up to sixteen new recipes
 per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
@@ -38,11 +38,13 @@ recipes, with 11–17 players and four seeds each. All exact answers, Fourier
 spectra and 577 preparation inputs passed independent numerical/integrity checks.
 Six other recipes failed the existing cost, model-validation or imputation gates.
 All 47,520 evaluation cells and the six-method correction passed independent
-audits. After phase six passed live verification, phase seven's existing
-preparation job was released; evaluation and correction follow automatically.
-Its larger structured games use native exact solvers and measured oracle timings.
-Their saved model artifacts do not provide full coalition tables or Fourier
-spectra; the audits record this distinction explicitly.
+audits. Phase seven prepared **60 instances from fifteen recipes**, with four
+seeds each and 21–256 players. Independent preparation checks passed; evaluation
+is running, with correction and audits following automatically. The requested
+512-player Iris recipe was excluded because it has too few training rows.
+These larger structured games use native exact solvers and measured oracle
+timings. Their saved model artifacts do not provide full coalition tables or
+Fourier spectra; the audits record this distinction explicitly.
 
 The phase-six scientific review found four Bike Sharing clustering instances
 whose enormous scores come from near-zero within-cluster variance. They must
