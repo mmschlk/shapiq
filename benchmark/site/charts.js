@@ -535,6 +535,9 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       element("title", {}, label, dot);
       bindHighlight(dot, method, label);
     });
+    // Timing profiles keep separate curves but share one estimator legend entry.
+    const legendKey = dates ? s : method;
+    if (legendItems.has(legendKey)) return;
     const label = document.createElement("button"),
       swatch = document.createElement("span");
     label.type = "button";
@@ -570,9 +573,9 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     bindHighlight(
       label,
       method,
-      `${s.name}${s.profile ? ` · ${s.profile}` : ""}${dates ? ` · ${metric === "median" ? "Median" : "Mean"} nMSE ${format(s.points.at(-1).y)}` : ""}`,
+      `${s.name}${dates ? ` · ${metric === "median" ? "Median" : "Mean"} nMSE ${format(s.points.at(-1).y)}` : ""}`,
     );
-    legendItems.set(s, item);
+    legendItems.set(legendKey, item);
     if (!dates) legend.append(item);
   });
   box.append(svg);
