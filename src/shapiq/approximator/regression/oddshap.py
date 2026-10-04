@@ -15,6 +15,7 @@ from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.regression.base import _low_budget_equal_allocation
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion import convert_tree_model
 
@@ -165,6 +166,7 @@ class OddSHAP(Approximator):
         interaction_factor: int = 10,  # eta; paper default
         tree_params: dict[str, Any] | None = None,
         ridge: float = 0.0,
+        low_budget_equal_allocation: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the OddSHAP approximator.
@@ -178,12 +180,22 @@ class OddSHAP(Approximator):
         enumerate every coalition. The default preserves unregularized OddSHAP.
         Shrinkage preserves efficiency and the selected support, but introduces
         bias; it cannot recover singleton terms omitted by support screening.
+
+        ``low_budget_equal_allocation=True`` instead spends two endpoint queries
+        and divides their difference equally among players at budgets from two
+        through ``3 * n`` below full enumeration. This is the uninformative equal
+        baseline, not learned shrinkage. It overrides ridge and support screening
+        only in that regime; the default and larger-budget behavior are unchanged.
         """
         del kwargs
         if not np.isfinite(ridge) or ridge < 0:
             msg = "ridge must be finite and nonnegative."
             raise ValueError(msg)
         self.ridge = float(ridge)
+        if not isinstance(low_budget_equal_allocation, bool):
+            msg = "low_budget_equal_allocation must be a bool."
+            raise TypeError(msg)
+        self.low_budget_equal_allocation = low_budget_equal_allocation
 
         # OddSHAP's own coalition-size distribution; set before super().__init__,
         # which builds the sampler.
@@ -239,6 +251,10 @@ class OddSHAP(Approximator):
         """
         del kwargs
 
+        if self.low_budget_equal_allocation:
+            fallback = _low_budget_equal_allocation(self.n, budget, game)
+            if fallback is not None:
+                return fallback
         self._sampler.sample(budget)
         coalitions = self._sampler.coalitions_matrix
         game_values = np.asarray(game(coalitions), dtype=float)

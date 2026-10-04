@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from numbers import Integral
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
@@ -22,6 +23,37 @@ if TYPE_CHECKING:
 ValidRegressionIndices = Literal["SV", "SII", "k-SII", "FSII", "kADD-SHAP", "BV", "FBII"]
 
 TIndices = TypeVar("TIndices", bound=ValidRegressionIndices)
+
+
+def _low_budget_equal_allocation(
+    n: int, budget: int, game: Game | Callable[[np.ndarray], np.ndarray]
+) -> InteractionValues | None:
+    """Use the uninformative equal split at low budgets, never learned shrinkage."""
+    if isinstance(budget, bool) or not isinstance(budget, Integral) or budget < 2:
+        message = "budget must be an integer of at least two."
+        raise ValueError(message)
+    if budget > 3 * n or budget >= 2**n:
+        return None
+    endpoints = np.asarray(game(np.array([[False] * n, [True] * n])), dtype=float)
+    if endpoints.shape != (2,) or not np.isfinite(endpoints).all():
+        message = "Equal allocation requires two finite scalar endpoint values."
+        raise ValueError(message)
+    empty, full = map(float, endpoints)
+    difference = full - empty
+    # Preserve subnormal differences; divide first only when subtraction overflows.
+    share = difference / n if np.isfinite(difference) else full / n - empty / n
+    return InteractionValues(
+        values=np.r_[endpoints[0], np.full(n, share)],
+        index="SV",
+        max_order=1,
+        min_order=0,
+        n_players=n,
+        interaction_lookup={(): 0, **{(i,): i + 1 for i in range(n)}},
+        baseline_value=float(endpoints[0]),
+        estimated=True,
+        estimation_budget=2,
+        target_index="SV",
+    )
 
 
 class Regression(Approximator[TIndices]):

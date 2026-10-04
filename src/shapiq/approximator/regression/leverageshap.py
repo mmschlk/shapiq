@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from shapiq.approximator.regression.base import solve_regression
+from shapiq.approximator.regression.base import _low_budget_equal_allocation, solve_regression
 from shapiq.interaction_values import InteractionValues
 
 from .base import Regression
@@ -86,6 +86,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         random_state: int | None = None,
         deterministic_counts: bool = True,
         ridge: float = 1e-3,
+        low_budget_equal_allocation: bool = False,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the LeverageSHAP approximator.
@@ -120,12 +121,23 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 safeguard does not test the Gram matrix's condition number: efficiency
                 already makes that matrix singular, so the test depends on roundoff.
 
+            low_budget_equal_allocation: If enabled, spend only two endpoint queries
+                and return their difference divided equally among players when
+                ``2 <= budget <= 3 * n`` and ``budget < 2**n``. This is the
+                uninformative equal-allocation baseline, not a learned estimator
+                or a guarantee about soft shrinkage. It overrides ridge in this
+                regime; larger budgets and full enumeration retain the usual method.
+
             **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         if not np.isfinite(ridge) or ridge < 0:
             msg = "ridge must be finite and nonnegative."
             raise ValueError(msg)
         self.ridge = float(ridge)
+        if not isinstance(low_budget_equal_allocation, bool):
+            msg = "low_budget_equal_allocation must be a bool."
+            raise TypeError(msg)
+        self.low_budget_equal_allocation = low_budget_equal_allocation
         self.deterministic_counts = deterministic_counts
         self.pairing_trick = pairing_trick
         super().__init__(
@@ -162,6 +174,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             ValueError: If ``budget`` is less than ``2`` (the empty and grand coalitions
                 must both be evaluated), or if the game returns non-finite (NaN/Inf) values.
         """
+        if self.low_budget_equal_allocation:
+            fallback = _low_budget_equal_allocation(self.n, budget, game)
+            if fallback is not None:
+                return fallback
         Z, weights = self._sample(budget)
         game_values: FloatVector = game(Z)
         n_evaluations = int(Z.shape[0])
