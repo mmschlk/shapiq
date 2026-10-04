@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import warnings
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
@@ -616,39 +615,23 @@ def solve_regression(
     y: np.ndarray,
     kernel_weights: FloatVector,
     *,
-    use_svd: bool = False,
+    use_svd: bool = False,  # noqa: ARG001 -- retained for compatibility
 ) -> np.ndarray:
-    """Solves the Shapley regression problem using weighted least squares (WLS).
+    """Solve weighted least squares directly, using SVD for every design.
 
-    By default, this attempts a fast solution using the normal equations. If the
-    Gram matrix is singular or ill-conditioned, it falls back to a robust
-    Singular Value Decomposition (SVD) solver.
+    Normal equations square the condition number and can return enormous finite
+    coefficients on rank-deficient designs without raising an error. Solving the
+    weighted design directly also gives the minimum-norm solution when the
+    coefficients are not uniquely determined.
 
     Args:
         X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
         y: The response vector for each coalition of shape ``[n_coalitions]``.
         kernel_weights: The weights for the regression problem of shape ``[n_coalitions]``.
-        use_svd: If ``True``, skips the fast normal equation solver and directly uses
-            the robust SVD-based least squares solver (``np.linalg.lstsq``). Useful
-            for cases with extreme weight initializations or known rank-deficiencies.
+        use_svd: Retained for compatibility. Both values now use the stable SVD solver.
 
     Returns:
         The approximated interaction values of shape ``[n_interactions]``.
     """
-    # Explicit override: go straight to the robust, SVD-backed solver
-    if use_svd:
-        W_sqrt = np.sqrt(kernel_weights)
-        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
-
-    # Standard fast path (try the fast way, catch the error if it fails)
-    try:
-        WX = kernel_weights[:, np.newaxis] * X
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            # Solves (X^T * W * X) * phi = X^T * W * y
-            return np.linalg.solve(X.T @ WX, WX.T @ y)
-
-    except (np.linalg.LinAlgError, ValueError):
-        # Fallback: Gram matrix is singular. Use robust SVD approach.
-        W_sqrt = np.sqrt(kernel_weights)
-        return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
+    W_sqrt = np.sqrt(kernel_weights)
+    return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
