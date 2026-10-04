@@ -6,8 +6,8 @@
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
 Compare all 22 public estimator classes on a declared cohort of frozen games.
-The current release covers baseline and marginal local explanations; the
-[roadmap](ROADMAP.md) expands to every shipped family. Filter by target, family,
+The current release covers 104 game instances across several explanation and
+valuation families; the [roadmap](ROADMAP.md) expands coverage further. Filter by target, family,
 model, dataset, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
 player (`B/d`)** and time. Publication history appears below. Hover or focus a
@@ -36,7 +36,8 @@ current progress. Job recovery overrides are explicit; for phases 4–7 use
 `operational/future-runtime-jobs.json` and its resource-replacement journal
 `operational/shared-cpu-v1/jobs.json`, not the superseded IDs in
 `campaign/jobs.json`. The [roadmap status](ROADMAP.md) distinguishes this rollout
-from the original phase-three campaign, which continues separately.
+from the original phase-three campaign, whose twenty batches are complete and
+remain separate from the corrected-source results.
 
 The existing coordinator remains at `benchmark/results/full-rollout/`, a symlink
 to `/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`.
@@ -145,6 +146,29 @@ For a separate retry of a transient dataset-download failure, add
 requires unchanged recipes and settings, and resolves duplicates across them.
 It preserves the original failure records and rejects retries of scientific
 exclusions or unrelated games.
+
+### Replacing a corrected estimator
+
+Keep the frozen games and original results. Run only the affected built-in methods
+from a clean, separately recorded revision, using `runner --methods` and new
+output directories. Preparation and estimator execution retain their own provenance.
+
+Add `--replacements /shared/replacements.json` to the cumulative export command.
+The manifest declares the corrected source, method names, original snapshot IDs
+and replacement result paths. The exporter requires every cell for those methods
+across every included batch, including supplements. It replaces their complete
+panels, preserves other methods, and rejects changed games, settings, unsupported
+or duplicate decisions. A later phase also needs its complete replacement panel.
+Regenerate reproduction archives with the same corrected baseline measurements.
+
+The active repair for [PR #610](https://github.com/mmschlk/shapiq/pull/610) replaces
+KernelSHAP, KernelSHAPIQ, InconsistentKernelSHAPIQ, RegressionFSII, RegressionFBII
+and kADDSHAP at all nine budgets. The current release requires 10,296 actual
+reevaluations; games and exact answers are reused. LeverageSHAP already uses SVD.
+On Hopper, `operational/regression-svd-rerun/` contains the frozen execution plan,
+seven submitted jobs, audits and `replacements-through-phase4.json`. Future phase
+reruns are dependent jobs. Publication waits for independent audits of results,
+website data and reproduction files; original raw measurements stay archived.
 
 Large reports split lossless evaluation records into one file per explanation
 target. The browser fetches only the selected target; filters and scores retain

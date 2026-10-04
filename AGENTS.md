@@ -370,3 +370,10 @@ uv run pre-commit run --all-files
   its processor, config and weights in the inherited lab `HF_HOME`, record the
   revision and hashes, and verify both loaders offline before releasing jobs.
   A missing download is an operational issue, not an unsupported game.
+
+- Regression normal equations can return enormous finite coefficients without
+  raising on a rank-deficient design. The exception-only fallback in
+  `solve_regression` does not detect this: a 16-player game at budget 16 returned
+  KernelSHAP nMSE 6.63e21 with design rank 14; the existing direct weighted SVD
+  returned 224.93 on identical samples. Audit coefficient magnitudes/rank as well
+  as score arithmetic. Do not clip scores or silently rewrite frozen results.
