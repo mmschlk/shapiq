@@ -271,7 +271,8 @@
           <p>
             We compute this from saved payoff tables, with no extra model
             queries. The <a href="#protocol">game inventory</a> reports the
-            range of order-4+ energy for each construction.
+            range of order-4+ energy for each construction. Larger structured
+            games without full payoff tables do not have these diagnostics.
           </p>
         </div>
         <p class="quietNote">
@@ -412,10 +413,10 @@
             filter requires RMS attribution to be at least 10<sup>−6</sup> times
             the payoff standard deviation. For interactions, choose all
             coefficients, singletons or pairs under Tune filters. Per-order
-            scores also require this signal threshold; older analytic games
-            without payoff variation use full-target RMS instead. The displayed
-            energy share shows how much of the full target belongs to the
-            selected order.
+            scores also require this signal threshold; analytic games without
+            an enumerated payoff table use full-target RMS instead. The
+            displayed energy share shows how much of the full target belongs
+            to the selected order.
           </p>
           <p>
             <strong>Elo.</strong> Runs are paired on game, explanation target,
@@ -446,6 +447,15 @@
             near-zero within-cluster variance are also controls: their apparent
             interaction complexity can come from numerical spikes. We preserve
             their measured results and record the additional quality check.
+          </p>
+          <p>
+            <strong>Larger structured games.</strong> These enter the default
+            comparison after native exact-solver and signal checks. Profiled
+            tree and kernel predictors also pass model-validation checks;
+            nearest-neighbor utility games do not use that predictor-quality
+            gate. Without full payoff tables, these games have no Fourier or
+            table-based complexity checks. Their inclusion does not imply the
+            same diagnostics are available for every game.
           </p>
         </details>
       </section>
