@@ -29,14 +29,20 @@ Phase four contributed 48 instances from twelve recipes and 20,953 successful
 evaluations. Two recipes exceeded the eight-hour preparation limit and two failed
 the imputation-noise gate. Phase three and its Wine supplement remain included.
 
-Phase five's existing CPU and CUDA preparation jobs are released. CPU preparation
-covers causal games, Gaussian-process explanations, image/text models and synthetic
-controls; CUDA preparation covers four TabPFN recipes. Their sixteen recipes can
-produce up to 64 instances, subject to qualification. CUDA preparation waits for
-CPU evaluation to finish, preventing concurrent writes to the duplicate registry.
-The missing ViT checkpoint was cached on the lab drive and verified offline before
-release. Phases six and seven remain held until the preceding phase is audited,
-published and verified live.
+Phase five's CPU preparation is complete and estimator evaluation is running.
+Ten recipes produced **40 instances and 240 target definitions**, with 11–12
+players and four construction seeds. These include causal, Gaussian-process,
+image and text games, plus synthetic controls. ViT exceeded the eight-hour
+projected preparation limit; the Adult Gaussian-process recipe failed the
+validation-baseline gate on two seeds. Fourier spectra are saved for every game.
+Independent preparation audit passed, including all exact answers and Fourier
+spectra. Fifteen instances enter the core cohort; 25 are labeled controls.
+
+CUDA preparation covers four additional TabPFN recipes and waits for CPU
+evaluation to finish, preventing concurrent writes to the duplicate registry.
+The missing ViT checkpoint was cached and verified offline before the CPU pilot;
+its exclusion is a measured cost decision. Phases six and seven remain held until
+the preceding phase is audited, published and verified live.
 
 A separate corrected-source rerun is queued for the six regression classes
 covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). It reuses every
