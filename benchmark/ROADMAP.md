@@ -41,8 +41,12 @@ The baseline contains 17,478 successful evaluations across 47,520 planned cells.
 Its six regression methods are being replaced by the corrected solver before
 publication; the other failures are known SPEX and ShaplEIG limits.
 
-CUDA preparation has started on four additional TabPFN recipes after CPU
-evaluation finished, preventing concurrent writes to the duplicate registry.
+CUDA preparation stopped under the sustained-utilization guard: its measured
+GPU utilization averaged 2.44%, below the required 80%. The same four TabPFN
+recipes are now being qualified on CPU, with new backend/cache identities and
+unchanged seeds, budgets and cost limits. Preparation and dependent evaluation
+are queued on sixteen shared CPU cores using the corrected estimator source.
+The stopped GPU attempt and its replacement remain separately authenticated.
 The missing ViT checkpoint was cached and verified offline before the CPU pilot;
 its exclusion is a measured cost decision. Phases six and seven remain held until
 the preceding phase is audited, published and verified live.

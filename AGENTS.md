@@ -386,4 +386,11 @@ uv run pre-commit run --all-files
 - Bradley–Terry L-BFGS can stop on objective tolerance before Elo ratings are
   accurate, especially with weak overlap. A small maximum gradient alone is not
   a rating-error guarantee. Use the L2 strong-convexity bound on the gradient norm
-  and refine as needed; the phase-four audit found errors up to 0.031 Elo points.
+  and refine as needed; the phase-four audit found errors of about 0.031 Elo points.
+
+- A CUDA-backed model does not imply sustained GPU utilization during preparation.
+  Phase-five TabPFN pilots spent most time constructing models and processing small
+  coalition batches; the unchanged utilization guard stopped them at 2.44% average.
+  CPU recovery needs new backend/cache identities and an authenticated replacement
+  for the failed batch. Do not reuse CUDA payoffs or invent a scientific exclusion
+  merely to make the original campaign export complete.

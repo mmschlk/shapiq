@@ -15,7 +15,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq_benchmark.campaign_backend import load_backend, merge_backend
 from shapiq_benchmark.campaign_recovery import merge_recovery
+from shapiq_benchmark.campaign_replacements import replace_methods
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
 from shapiq_benchmark.quality import model_validation_check, payoff_diagnostics
 from shapiq_benchmark.report import merge_results, public_preparation
@@ -240,7 +242,7 @@ def _batch_results(
 
 
 def _collect_campaign(
-    root: Path, through_phase: int, *, earlier_phase: bool = False
+    root: Path, through_phase: int, *, earlier_phase: bool = False, backend: dict | None = None
 ) -> tuple[dict, dict]:
     """Return sanitized report data with an authenticated composition manifest.
 
@@ -318,10 +320,7 @@ def _collect_campaign(
             and directory.resolve() == Path(batch["directory"]).resolve(),
             "Batch directory differs from submitted plan",
         )
-        original, qualified = (
-            read(directory / "suite.json"),
-            read(directory / "qualified-suite.json"),
-        )
+        original = read(directory / "suite.json")
         _require(
             identity(original) == batch["suite_sha256"], "Batch suite differs from submitted plan"
         )
@@ -331,6 +330,37 @@ def _collect_campaign(
                 and original["protocol"] == inventory["protocol"],
                 "Phase inventory differs from submitted suites",
             )
+        for kind in ("families", "games"):
+            for spec in original.get(kind, []):
+                key = (kind, spec["id"])
+                _require(
+                    key not in requested, "Duplicate game IDs: requested recipe across batches"
+                )
+                requested[key] = {"spec": spec, "suite": original}
+        if backend is not None and batch["id"] == backend["entry"]["batch_id"]:
+            _require(original == backend["suite"], "Superseded suite changed")
+            for key in (
+                "relative_budgets",
+                "seeds",
+                "game_seeds",
+                "methods",
+                "targets",
+                "min_players",
+                "min_signal_ratio",
+                "method_parameters",
+            ):
+                _require(original.get(key) == inventory.get(key), f"Batch has incompatible {key}")
+            components.append(
+                {
+                    "batch": batch["id"],
+                    "phase": batch["phase"],
+                    "status": "superseded",
+                    "requested_suite_sha256": identity(original),
+                    "reason": backend["entry"]["reason"],
+                }
+            )
+            continue
+        qualified = read(directory / "qualified-suite.json")
         decision = read(directory / "qualification-decision.json")
         _require(
             decision
@@ -342,13 +372,6 @@ def _collect_campaign(
             "Qualification decision changed",
         )
         _qualification(original, qualified)
-        for kind in ("families", "games"):
-            for spec in original.get(kind, []):
-                key = (kind, spec["id"])
-                _require(
-                    key not in requested, "Duplicate game IDs: requested recipe across batches"
-                )
-                requested[key] = {"spec": spec, "suite": original}
         exclusions.update(
             {row["spec"]["id"]: row for row in qualified.get("preparation_exclusions", [])}
         )
@@ -457,19 +480,42 @@ def _collect_campaign(
 
 
 def assemble_campaign(
-    root: Path, through_phase: int, *, supplements: tuple[Path, ...] = ()
+    root: Path,
+    through_phase: int,
+    *,
+    supplements: tuple[Path, ...] = (),
+    replacements: Path | None = None,
+    backend_supersession: Path | None = None,
 ) -> dict:
     """Authenticate complete campaigns, resolving shared aliases only after joining retries."""
-    data, context = _collect_campaign(root, through_phase)
+    backend = (
+        load_backend(backend_supersession, root, through_phase) if backend_supersession else None
+    )
+    data, context = _collect_campaign(root, through_phase, backend=backend)
     contexts = [context]
     for supplement in supplements:
         extra, extra_context = _collect_campaign(supplement, through_phase, earlier_phase=True)
         merge_recovery(data, context, extra, extra_context)
         contexts.append(extra_context)
+    if replacements is not None:
+        # Authorize recorded alias markers while retaining all rows until the
+        # final union is deduplicated. Recovery already uses corrected methods.
+        aliases = _canonical_aliases(data["games"], data["records"], context["fingerprints"])
+        data["duplicate_games"] = [
+            {"game_id": game, "duplicate_of": canonical} for game, canonical in aliases.items()
+        ]
+        data = replace_methods(data, replacements)
+    if backend is not None:
+        extra, extra_context = _collect_campaign(backend["root"], through_phase, earlier_phase=True)
+        merge_backend(data, context, extra, extra_context, backend)
+        contexts.append(extra_context)
     _require(bool(data["games"]), "No qualified games are available for publication")
     remove_aliases(
         data, _canonical_aliases(data["games"], data["records"], context["fingerprints"])
     )
+    if replacements is not None:
+        used_runs = {row["run_id"] for row in data["records"]}
+        data["runs"] = {key: run for key, run in data["runs"].items() if key in used_runs}
     # Recheck every component after the potentially lengthy combined export.
     for component in contexts:
         _require(

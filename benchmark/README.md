@@ -170,6 +170,23 @@ seven submitted jobs, audits and `replacements-through-phase4.json`. Future phas
 reruns are dependent jobs. Publication waits for independent audits of results,
 website data and reproduction files; original raw measurements stay archived.
 
+### Recovering a stopped GPU preparation on CPU
+
+Use `--backend-supersession /shared/backend-supersession.json` when the utilization
+guard stopped a GPU preparation and a separate CPU campaign replaces it. The
+manifest pins the original campaign and suite, guard report, terminal failure and
+dependent-job cancellation receipts, and the new campaign and source. Its recipe
+mapping may change only IDs and `device: cuda` to `device: cpu`; budgets, seeds,
+models, datasets and qualification gates stay fixed. Saved scheduler receipts
+make the export portable; Slurm is not needed to read them.
+
+The original batch remains recorded as superseded, never as a fabricated empty
+qualification. Every CPU recipe must finish qualification and every retained
+evaluation must be complete. With `--replacements`, corrected panels cover the
+original components; the new CPU campaign already runs the corrected source.
+Records keep their actual run provenance. Methods executed under multiple package
+revisions have explicit `source_versions` metadata, without relabeling older runs.
+
 Large reports split lossless evaluation records into one file per explanation
 target. The browser fetches only the selected target; filters and scores retain
 full precision. Upload `data.json` **and every `records-*.json` companion** to the

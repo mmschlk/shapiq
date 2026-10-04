@@ -6,7 +6,6 @@ import argparse
 from pathlib import Path
 
 from shapiq_benchmark.campaign import assemble_campaign
-from shapiq_benchmark.campaign_replacements import replace_methods
 from shapiq_benchmark.report import write_report
 
 
@@ -20,10 +19,19 @@ def main() -> None:
     parser.add_argument(
         "--replacements", type=Path, help="Manifest of complete corrected method runs"
     )
+    parser.add_argument(
+        "--backend-supersession",
+        type=Path,
+        help="Authenticated failed-GPU receipt and separately qualified CPU recovery campaign",
+    )
     args = parser.parse_args()
-    data = assemble_campaign(args.campaign, args.through_phase, supplements=tuple(args.supplement))
-    if args.replacements:
-        data = replace_methods(data, args.replacements)
+    data = assemble_campaign(
+        args.campaign,
+        args.through_phase,
+        supplements=tuple(args.supplement),
+        replacements=args.replacements,
+        backend_supersession=args.backend_supersession,
+    )
     write_report(data, args.output, public=True, compact=True)
 
 
