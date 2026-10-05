@@ -329,6 +329,11 @@ uv run pre-commit run --all-files
   scanning every stored row for each family/method. `RecordStore.select_indexed`
   selects through the existing unique cell index for these filters and sorts
   only matching rows. Retain its query-plan regression when changing selectors.
+- Browser verification pages must declare UTF-8 in HTML or HTTP headers. Classic
+  scripts inherit the document encoding while worker scripts use UTF-8; a test
+  page without a charset decoded the target separator `·` as `Â·`, selecting no
+  games in the main thread while the worker selected the correct panel. The
+  production page already declares UTF-8; fix the fixture, not the scores.
 - A healthy watcher process does not prove wake-up delivery. Exercise the actual
   message route: a full-rollout test found corrupt local Codex state/queue
   databases despite healthy Slurm jobs. Retain delivery errors and retry without
