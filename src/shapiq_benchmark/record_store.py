@@ -27,8 +27,8 @@ class RecordStore:
     """Store exact JSON rows in insertion order with indexed, unique cell identities.
 
     Keep the owner context open while consuming any fork or selection. Stream
-    bounded selections; the existing ``summarize``/``write_report`` functions are
-    not store-aware and still require ordinary in-memory records.
+    bounded selections or ``iter_summaries``; ``summarize`` collects all presets
+    into a list, while ``write_report`` still requires in-memory record lists.
     """
 
     def __init__(self, path: Path) -> None:
@@ -47,10 +47,17 @@ class RecordStore:
             self._connection.execute(
                 "CREATE TABLE records (sequence INTEGER PRIMARY KEY, partition INTEGER NOT NULL, "
                 "game_id TEXT NOT NULL, method TEXT NOT NULL, budget INTEGER NOT NULL, "
-                "seed INTEGER NOT NULL, value TEXT NOT NULL, "
+                "seed INTEGER NOT NULL, value TEXT NOT NULL, scores TEXT NOT NULL, zero_truth INTEGER NOT NULL, "
                 "UNIQUE(partition, game_id, method, budget, seed))"
             )
             self._connection.execute("CREATE INDEX record_order ON records(partition, sequence)")
+            self._connection.execute(
+                "CREATE INDEX zero_games ON records(partition,zero_truth,game_id)"
+            )
+            self._connection.execute(
+                "CREATE TEMP TABLE panel_cells (selection INTEGER, position INTEGER, "
+                "game_id TEXT, budget INTEGER, seed INTEGER, PRIMARY KEY(selection,position))"
+            )
             self._connection.execute(
                 "CREATE TEMP TABLE selections (selection INTEGER, game_id TEXT, "
                 "PRIMARY KEY(selection, game_id))"
@@ -106,8 +113,8 @@ class RecordStore:
         try:
             with self._transaction():
                 self._connection.executemany(
-                    "INSERT INTO records(partition,game_id,method,budget,seed,value) "
-                    "VALUES (?,?,?,?,?,?)",
+                    "INSERT INTO records(partition,game_id,method,budget,seed,value,scores,zero_truth) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
                     (
                         (
                             self._partition,
@@ -116,6 +123,22 @@ class RecordStore:
                             row["budget"],
                             row["seed"],
                             json.dumps(row, allow_nan=False, separators=(",", ":")),
+                            json.dumps(
+                                {
+                                    key: row[key]
+                                    for key in (
+                                        "game_id",
+                                        "status",
+                                        "nmse",
+                                        "order_scores",
+                                        "zero_truth_energy",
+                                    )
+                                    if key in row
+                                },
+                                allow_nan=False,
+                                separators=(",", ":"),
+                            ),
+                            bool(row.get("zero_truth_energy")),
                         )
                         for row in rows
                     ),
@@ -180,6 +203,52 @@ class RecordStore:
             finally:
                 cursor.close()
 
+    def zero_games(self) -> set[str]:
+        """Preserve global row-derived truth exclusions, including filtered-out rows."""
+        return {
+            row[0]
+            for row in self._connection.execute(
+                "SELECT DISTINCT game_id FROM records WHERE partition=? AND zero_truth=1",
+                (self._partition,),
+            )
+        }
+
+    def measurements(
+        self, cells: Iterable[tuple[str, int, int]], methods: Iterable[str]
+    ) -> Generator[tuple[str, list[dict | None]], None, None]:
+        """Yield exact compact measurements in requested cell order, one method at a time.
+
+        A single indexed selection is reused across methods. Missing cells remain
+        explicit ``None``; scores stay JSON text rather than SQLite floating point.
+        """
+        selection = next(self._owner._numbers)
+        try:
+            with self._transaction():
+                self._connection.executemany(
+                    "INSERT INTO panel_cells VALUES (?,?,?,?,?)",
+                    (
+                        (selection, position, game, budget, seed)
+                        for position, (game, budget, seed) in enumerate(cells)
+                    ),
+                )
+            for method in methods:
+                cursor = self._connection.execute(
+                    "SELECT r.scores FROM panel_cells c LEFT JOIN records r "
+                    "ON r.partition=? AND r.game_id=c.game_id AND r.method=? "
+                    "AND r.budget=c.budget AND r.seed=c.seed "
+                    "WHERE c.selection=? ORDER BY c.position",
+                    (self._partition, method, selection),
+                )
+                try:
+                    measured = [
+                        json.loads(value) if value is not None else None for (value,) in cursor
+                    ]
+                finally:
+                    cursor.close()
+                yield method, measured
+        finally:
+            self._connection.execute("DELETE FROM panel_cells WHERE selection=?", (selection,))
+
     def discard_games(self, game_ids: Iterable[str]) -> None:
         """Remove global aliases only after their complete union was authenticated."""
         with self._transaction():
@@ -210,8 +279,8 @@ class RecordStore:
         result = self.fork()
         with self._transaction():
             self._connection.execute(
-                "INSERT INTO records(partition,game_id,method,budget,seed,value) "
-                "SELECT ?,game_id,method,budget,seed,value FROM records "
+                "INSERT INTO records(partition,game_id,method,budget,seed,value,scores,zero_truth) "
+                "SELECT ?,game_id,method,budget,seed,value,scores,zero_truth FROM records "
                 f"WHERE partition=? AND method NOT IN ({placeholders}) ORDER BY sequence",
                 [result._partition, self._partition, *names],
             )

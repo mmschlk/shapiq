@@ -564,7 +564,8 @@ def assemble_campaign(
 
     An optional empty ``record_store`` spills cumulative rows to disk. Its owner
     must stay open while consuming the returned records through bounded selectors;
-    existing summary/report writers still require in-memory record lists.
+    ``iter_summaries`` supports stored records; the report writer still requires
+    in-memory record lists.
     """
     backend = (
         load_backend(backend_supersession, root, through_phase) if backend_supersession else None

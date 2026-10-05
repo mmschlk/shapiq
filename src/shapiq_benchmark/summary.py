@@ -14,12 +14,17 @@ import hashlib
 import itertools
 import json
 import math
+from contextlib import closing
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from scipy.optimize import minimize
 from scipy.special import expit
 
 from shapiq_benchmark.record_store import RecordStore
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 # Earliest public descriptions verified in benchmark/DESIGN.md. Unverified aliases
 # and implementations intentionally stay unknown rather than receiving guessed dates.
@@ -331,10 +336,37 @@ def summarize(
     score_order: int | None = None,
     include_controls: bool = False,
 ) -> list[dict]:
-    """Summarize observed cells; preserve complete panels for uncertainty and history."""
-    if isinstance(data["records"], RecordStore):
-        message = "Select a bounded panel before summarizing disk-backed records."
-        raise TypeError(message)
+    """Return the legacy list of exact presets; use iter_summaries for bounded output."""
+    return list(
+        iter_summaries(
+            data,
+            bootstrap_draws=bootstrap_draws,
+            score_order=score_order,
+            include_controls=include_controls,
+        )
+    )
+
+
+def _sample(row: dict | None, score_order: int | None) -> float:
+    """Select the same scalar score without copying every raw row for an order."""
+    if row is None or row["status"] != "ok":
+        return np.nan
+    score = (
+        row.get("nmse")
+        if score_order is None
+        else row.get("order_scores", {}).get(str(score_order), {}).get("nmse")
+    )
+    return score if score is not None else np.nan
+
+
+def iter_summaries(
+    data: dict,
+    *,
+    bootstrap_draws: int = 200,
+    score_order: int | None = None,
+    include_controls: bool = False,
+) -> Iterator[dict]:
+    """Yield exact presets using one panel of compact method measurements at a time."""
     if not include_controls:
         data = {
             **data,
@@ -364,49 +396,51 @@ def summarize(
                 for game in data["games"]
                 if game["order"] >= score_order
             ],
-            "records": [
-                {**row, "nmse": row.get("order_scores", {}).get(str(score_order), {}).get("nmse")}
-                for row in data["records"]
-            ],
         }
+    selected_games = cast("list[dict]", data["games"])
     methods = sorted(data["methods"])
     seeds = sorted(data["suite"]["seeds"])
     suite = data["suite"]
     budgets = sorted(suite["budgets"])
-    game_grids = {
+    game_grids: dict[str, list[int]] = {
         game["id"]: sorted(suite["budgets_by_game"][game["id"]])
         if "budgets_by_game" in suite
         else budgets
-        for game in data["games"]
+        for game in selected_games
     }
-    records = {
-        (row["game_id"], row["method"], row["budget"], row["seed"]): row for row in data["records"]
-    }
-    if len(records) != len(data["records"]):
-        message = "Summary input contains duplicate result cells."
-        raise ValueError(message)
+    if isinstance(data["records"], RecordStore):
+        records = data["records"]  # UNIQUE cell keys were enforced on every append.
+        row_zero_games = records.zero_games()
+    else:
+        records = {
+            (row["game_id"], row["method"], row["budget"], row["seed"]): row
+            for row in data["records"]
+        }
+        if len(records) != len(data["records"]):
+            message = "Summary input contains duplicate result cells."
+            raise ValueError(message)
+        row_zero_games = {row["game_id"] for row in data["records"] if row.get("zero_truth_energy")}
     zero_games = {
-        game["id"] for game in data["games"] if game.get("metadata", {}).get("zero_truth_energy")
+        game["id"] for game in selected_games if game.get("metadata", {}).get("zero_truth_energy")
     }
-    zero_games.update(row["game_id"] for row in data["records"] if row.get("zero_truth_energy"))
+    zero_games.update(row_zero_games)
     excluded_games = {
         game["id"]
-        for game in data["games"]
+        for game in selected_games
         if game.get("metadata", {}).get("score_eligible") is False
     }
     unscored_games = zero_games | excluded_games
     targets = sorted(
         {
             (game["index"], game["order"], bool(game.get("metadata", {}).get("synthetic")))
-            for game in data["games"]
+            for game in selected_games
         }
     )
-    summaries = []
     for index, order, synthetic in targets:
         target_games = sorted(
             [
                 game
-                for game in data["games"]
+                for game in selected_games
                 if (
                     game["index"],
                     game["order"],
@@ -452,7 +486,9 @@ def summarize(
             subsets = scoped
         seen = set()
         for family, panel_games in subsets:
-            grids = [(None, {game["id"]: game_grids[game["id"]] for game in panel_games})]
+            grids: list[tuple[float | None, dict[str, list[int]]]] = [
+                (None, {game["id"]: game_grids[game["id"]] for game in panel_games})
+            ]
             if "budgets_by_game" in suite:
                 grids.extend(
                     (
@@ -476,51 +512,57 @@ def summarize(
                 games = [game for game in panel_games if game["id"] not in unscored_games]
                 cells, weights = weights_for(games, grid, seeds)
                 rows, eligible, values = [], [], []
-                for method in methods:
-                    measured = [
-                        records.get((game, method, budget, seed)) for game, budget, seed in cells
-                    ]
-                    sample = np.array(
-                        [
-                            row["nmse"]
-                            if row and row["status"] == "ok" and row.get("nmse") is not None
-                            else np.nan
-                            for row in measured
-                        ]
+                measurements = (
+                    records.measurements(cells, methods)
+                    if isinstance(records, RecordStore)
+                    else (
+                        (
+                            method,
+                            [
+                                records.get((game, method, budget, seed))
+                                for game, budget, seed in cells
+                            ],
+                        )
+                        for method in methods
                     )
-                    observed = np.isfinite(sample)
-                    valid = int(observed.sum())
-                    mass = float(weights[observed].sum())
-                    complete = len(cells) > 0 and valid == len(cells)
-                    rows.append(
-                        {
-                            "method": method,
-                            "eligible": valid > 0,
-                            "complete": complete,
-                            "coverage_weight": mass,
-                            "planned": len(cells),
-                            "valid": valid,
-                            "failed": sum(
-                                row is not None and row["status"] == "failed" for row in measured
-                            ),
-                            "unsupported": sum(
-                                row is not None and row["status"] == "unsupported"
-                                for row in measured
-                            ),
-                            "missing": sum(row is None for row in measured),
-                            "mean": float(np.dot(sample[observed], weights[observed]) / mass)
-                            if valid
-                            else None,
-                            "median": weighted_median(sample[observed], weights[observed])
-                            if valid
-                            else None,
-                            "elo": None,
-                            "ci": None,
-                        }
-                    )
-                    if valid:
-                        eligible.append(method)
-                        values.append(sample)
+                )
+                with closing(measurements):
+                    for method, measured in measurements:
+                        sample = np.array([_sample(row, score_order) for row in measured])
+                        observed = np.isfinite(sample)
+                        valid = int(observed.sum())
+                        mass = float(weights[observed].sum())
+                        complete = len(cells) > 0 and valid == len(cells)
+                        rows.append(
+                            {
+                                "method": method,
+                                "eligible": valid > 0,
+                                "complete": complete,
+                                "coverage_weight": mass,
+                                "planned": len(cells),
+                                "valid": valid,
+                                "failed": sum(
+                                    row is not None and row["status"] == "failed"
+                                    for row in measured
+                                ),
+                                "unsupported": sum(
+                                    row is not None and row["status"] == "unsupported"
+                                    for row in measured
+                                ),
+                                "missing": sum(row is None for row in measured),
+                                "mean": float(np.dot(sample[observed], weights[observed]) / mass)
+                                if valid
+                                else None,
+                                "median": weighted_median(sample[observed], weights[observed])
+                                if valid
+                                else None,
+                                "elo": None,
+                                "ci": None,
+                            }
+                        )
+                        if valid:
+                            eligible.append(method)
+                            values.append(sample)
                 array = np.array(values)
                 _, ratings = comparisons(array, weights, eligible)
                 shared = (
@@ -596,7 +638,7 @@ def summarize(
                     "snapshot_id": data.get("snapshot_id"),
                     "method_sources": data["methods"],
                 }
-                summaries.append(
+                yield (
                     {
                         **key,
                         "summary_protocol": "available-cells-v2",
@@ -619,4 +661,3 @@ def summarize(
                         "common_panel": common_panel,
                     }
                 )
-    return summaries

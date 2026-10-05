@@ -12,7 +12,6 @@ from shapiq_benchmark.campaign import assemble_campaign
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import write_report
 from shapiq_benchmark.runner import identity
-from shapiq_benchmark.summary import summarize
 from tests.shapiq_benchmark.test_campaign_backend import recovery
 from tests.shapiq_benchmark.test_campaign_export import make_campaign
 from tests.shapiq_benchmark.test_campaign_recovery import recovery_pair
@@ -174,9 +173,8 @@ def test_constructor_failure_removes_only_its_new_file(
     assert path.read_text() == "old"
 
 
-@pytest.mark.parametrize("operation", ["summary", "report"])
 def test_legacy_writers_reject_store_before_iteration(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A spill buffer must never silently become a full in-memory publication."""
 
@@ -190,8 +188,5 @@ def test_legacy_writers_reject_store_before_iteration(
         RecordStore(tmp_path / "rows.sqlite") as store,
         pytest.raises(TypeError, match="bounded"),
     ):
-        if operation == "summary":
-            summarize({"records": store})
-        else:
-            write_report({"records": store}, output)
+        write_report({"records": store}, output)
     assert not output.exists()
