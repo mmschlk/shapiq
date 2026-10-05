@@ -156,6 +156,11 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- Reproduction ZIPs sanitize and reconstruct result manifests. Hashing those
+  manifests with `merge_results` does not recover the original published run IDs.
+  Historical matrix reuse must preserve authenticated public row/run mappings;
+  keep the ZIPs as reproduction evidence rather than silently replacing run IDs.
+
 - SQLite cannot drop a temporary selection table while another result iterator
   is active. The disposable record store uses one indexed selection table with
   per-query IDs and savepoints; retain the interleaved-iterator regression test.
