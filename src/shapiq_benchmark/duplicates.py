@@ -9,6 +9,8 @@ from pathlib import Path
 
 import numpy as np
 
+from shapiq_benchmark.record_store import RecordStore
+
 
 def payoff_fingerprint(game: dict, root: Path) -> str | None:
     """Hash the player-labelled game, excluding timing and attribution conventions."""
@@ -65,7 +67,10 @@ def remove_aliases(data: dict, aliases: dict[str, str]) -> None:
         {"game_id": key, "duplicate_of": value} for key, value in sorted(aliases.items())
     ]
     data["games"] = [game for game in data["games"] if game["id"] not in aliases]
-    data["records"] = [row for row in data["records"] if row["game_id"] not in aliases]
+    if isinstance(data["records"], RecordStore):
+        data["records"].discard_games(aliases)
+    else:
+        data["records"] = [row for row in data["records"] if row["game_id"] not in aliases]
     for key in aliases:
         data["suite"].get("budgets_by_game", {}).pop(key, None)
     for entry in data.get("coverage", []):

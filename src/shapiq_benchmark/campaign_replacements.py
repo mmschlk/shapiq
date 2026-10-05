@@ -13,6 +13,7 @@ import itertools
 import json
 from typing import TYPE_CHECKING
 
+from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import merge_results
 from shapiq_benchmark.results_io import read_results, result_inputs
 from shapiq_benchmark.runner import digest, identity, load_snapshot
@@ -93,7 +94,8 @@ def replace_methods(data: dict, manifest_path: Path) -> dict:
     )
     public_ids = {game["id"] for game in data["games"]}
     aliases = {row["game_id"] for row in data.get("duplicate_games", [])}
-    replacements, runs, metadata = [], {}, {}
+    replacements = data["records"].fork() if isinstance(data["records"], RecordStore) else []
+    runs, metadata = {}, {}
     for number, entry in enumerate(entries):
         prefix = f"snapshot-{number}"
         snapshot_path = (manifest_path.parent / entry["snapshot"]).resolve()
@@ -228,14 +230,17 @@ def replace_methods(data: dict, manifest_path: Path) -> dict:
         panel = merge_results(paths)  # Existing score checks and public sanitization.
         replacements.extend(row for row in panel["records"] if row["game_id"] in public_ids)
         runs.update(panel["runs"])
-    expected_cells = {_key(row) for row in data["records"] if row["method"] in methods}
-    _require(
-        len(replacements) == len(expected_cells)
-        and {_key(row) for row in replacements} == expected_cells,
-        "Replacement does not cover the complete public panel",
-    )
+    if isinstance(data["records"], RecordStore):
+        records = data["records"].replaced(methods, replacements)
+    else:
+        expected_cells = {_key(row) for row in data["records"] if row["method"] in methods}
+        _require(
+            len(replacements) == len(expected_cells)
+            and {_key(row) for row in replacements} == expected_cells,
+            "Replacement does not cover the complete public panel",
+        )
+        records = [row for row in data["records"] if row["method"] not in methods] + replacements
     _require(all(digest(path) == sha for path, sha in checked.items()), "Replacement input changed")
-    records = [row for row in data["records"] if row["method"] not in methods] + replacements
     used_runs = {row["run_id"] for row in records}
     composition = {
         **data["composition"],

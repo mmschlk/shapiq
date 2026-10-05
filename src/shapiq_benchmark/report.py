@@ -12,6 +12,7 @@ from pathlib import Path
 
 from shapiq_benchmark.duplicates import remove_aliases
 from shapiq_benchmark.order_metrics import order_scores
+from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.results_io import read_results
 from shapiq_benchmark.runner import identity
 from shapiq_benchmark.summary import summarize
@@ -601,6 +602,9 @@ def write_report(
     Large reports load one explanation target at a time. Small reports retain
     their standalone JSON format, including private local candidate workflows.
     """
+    if isinstance(data["records"], RecordStore):
+        message = "Select a bounded panel before writing disk-backed records."
+        raise TypeError(message)
     assets = SITE_DIR
     public = public or output.resolve() == assets.resolve()
     if public and any(method.get("private", True) for method in data["methods"].values()):

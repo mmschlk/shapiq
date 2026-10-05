@@ -19,6 +19,8 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.special import expit
 
+from shapiq_benchmark.record_store import RecordStore
+
 # Earliest public descriptions verified in benchmark/DESIGN.md. Unverified aliases
 # and implementations intentionally stay unknown rather than receiving guessed dates.
 RELEASES = {
@@ -330,6 +332,9 @@ def summarize(
     include_controls: bool = False,
 ) -> list[dict]:
     """Summarize observed cells; preserve complete panels for uncertainty and history."""
+    if isinstance(data["records"], RecordStore):
+        message = "Select a bounded panel before summarizing disk-backed records."
+        raise TypeError(message)
     if not include_controls:
         data = {
             **data,

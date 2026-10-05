@@ -32,6 +32,8 @@ from shapiq_benchmark.runner import digest, identity, load_snapshot
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq_benchmark.record_store import RecordStore
+
 
 def _require(condition: bool, message: str) -> None:  # noqa: FBT001 -- assertion helper
     if not condition:
@@ -315,6 +317,7 @@ def _collect_campaign(
     earlier_phase: bool = False,
     backend: dict | None = None,
     cache_dir: Path | None = None,
+    record_store: RecordStore | None = None,
 ) -> tuple[dict, dict]:
     """Return sanitized report data with an authenticated composition manifest.
 
@@ -323,6 +326,7 @@ def _collect_campaign(
     exporting checkout need not be identical. Compute summary statistics on the
     united panel, never by averaging summaries of its constituent batches.
     """
+    _require(record_store is None or len(record_store) == 0, "Assembly record store must be empty")
     root = root.resolve()
     inputs = {}
     policy = normalization_policy() if cache_dir is not None else {}
@@ -381,7 +385,7 @@ def _collect_campaign(
         "coverage": [],
         "methods": {},
         "runs": {},
-        "records": [],
+        "records": record_store if record_store is not None else [],
     }
     seen, components, preflight = set(), [], None
     requested, exclusions = {}, {}
@@ -554,16 +558,28 @@ def assemble_campaign(
     replacements: Path | None = None,
     backend_supersession: Path | None = None,
     cache_dir: Path | None = None,
+    record_store: RecordStore | None = None,
 ) -> dict:
-    """Authenticate complete campaigns, resolving shared aliases only after joining retries."""
+    """Authenticate complete campaigns, resolving aliases only after joining retries.
+
+    An optional empty ``record_store`` spills cumulative rows to disk. Its owner
+    must stay open while consuming the returned records through bounded selectors;
+    existing summary/report writers still require in-memory record lists.
+    """
     backend = (
         load_backend(backend_supersession, root, through_phase) if backend_supersession else None
     )
-    data, context = _collect_campaign(root, through_phase, backend=backend, cache_dir=cache_dir)
+    data, context = _collect_campaign(
+        root, through_phase, backend=backend, cache_dir=cache_dir, record_store=record_store
+    )
     contexts = [context]
     for supplement in supplements:
         extra, extra_context = _collect_campaign(
-            supplement, through_phase, earlier_phase=True, cache_dir=cache_dir
+            supplement,
+            through_phase,
+            earlier_phase=True,
+            cache_dir=cache_dir,
+            record_store=record_store.fork() if record_store is not None else None,
         )
         merge_recovery(data, context, extra, extra_context)
         contexts.append(extra_context)
@@ -577,7 +593,11 @@ def assemble_campaign(
         data = replace_methods(data, replacements)
     if backend is not None:
         extra, extra_context = _collect_campaign(
-            backend["root"], through_phase, earlier_phase=True, cache_dir=cache_dir
+            backend["root"],
+            through_phase,
+            earlier_phase=True,
+            cache_dir=cache_dir,
+            record_store=record_store.fork() if record_store is not None else None,
         )
         merge_backend(data, context, extra, extra_context, backend)
         contexts.append(extra_context)
