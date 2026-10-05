@@ -50,6 +50,9 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 
 ### Run Pre-commit (takes only 3s)
 
+During active benchmark campaigns, set `UV_NO_SYNC=1` before this command; see
+"Shared environment checks" below.
+
 ```bash
 uv run pre-commit run --all-files
 ```
@@ -313,6 +316,11 @@ uv run pre-commit run --all-files
   explicit float32 qualification tolerance and batch/repeat/reverse/singleton
   discrepancies; exact scores refer to the saved canonical table. This tolerance
   is a qualification policy, not a certified global floating-point error bound.
+- NumPy 2 scalar promotion keeps `64 * np.finfo(np.float32).eps * scale`
+  as `numpy.float32`, which standard JSON cannot encode. Cast the already
+  computed `oracle_validation.absolute_tolerance` to Python `float` when recording
+  metadata; preserve the original tolerance computation and qualification probes.
+  Exercise snapshot serialization, not only payoff preparation, in regression tests.
 - The path-dependent Python tree game can retain float32 XGBoost leaf values
   and sample weights while its exact solver computes in float64. Freeze both as
   float64 for the same oracle/reference; do not hide mismatches by relaxing exact

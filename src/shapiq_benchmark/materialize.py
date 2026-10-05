@@ -260,7 +260,7 @@ def prepare_families(
                     tolerance = {"rtol": 0.0, "atol": bound}
                     metadata["oracle_validation"] = {
                         "protocol": "float32 frozen batch realization",
-                        "absolute_tolerance": bound,
+                        "absolute_tolerance": float(bound),
                         "observed_differences": {
                             name: float(np.max(np.abs(values[positions] - v)))
                             for name, v in repeated.items()

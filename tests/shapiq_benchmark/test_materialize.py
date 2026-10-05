@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from shapiq_benchmark.materialize import prepare_families
-from shapiq_benchmark.prepare import prepare
+from shapiq_benchmark.prepare import prepare, write_snapshot
 from shapiq_benchmark.runner import identity, load_snapshot
 
 if TYPE_CHECKING:
@@ -182,8 +182,6 @@ def test_invalid_minimum_players_fails_before_preparation(tmp_path: Path, minimu
 
 def test_minimum_players_rejects_explicit_and_actual_small_games(tmp_path: Path) -> None:
     """Neither a bad config nor a smaller-than-requested factory output may become a snapshot."""
-    from shapiq_benchmark.prepare import write_snapshot
-
     suite = {
         "families": [{"id": "small", "family": "dummy", "n_players": 8}],
         "targets": [{"index": "SV", "order": 1}],
@@ -241,7 +239,9 @@ def test_tabpfn_float32_realization_is_bounded_and_recorded(
 
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             result = coalitions @ np.arange(1.0, 4.0)
-            return result + (difference if len(coalitions) == 1 else 0)
+            return np.asarray(
+                result + (difference if len(coalitions) == 1 else 0), dtype=np.float32
+            )
 
     monkeypatch.setattr(
         materialize,
@@ -259,5 +259,20 @@ def test_tabpfn_float32_realization_is_bounded_and_recorded(
         assert validation["observed_differences"]["singletons"] > 0
         assert validation["observed_differences"]["singletons"] < validation["absolute_tolerance"]
         np.testing.assert_allclose(games[0]["truth"]["values"], [1, 2, 3])
+        suite = {
+            "methods": ["KernelSHAP"],
+            "targets": [{"index": "SV", "order": 1}],
+            "budgets": [8],
+            "seeds": [0],
+        }
+        snapshot = write_snapshot(suite, games, tmp_path, coverage=coverage)
+        assert load_snapshot(tmp_path)[0] == snapshot
+        with np.load(tmp_path / games[0]["artifact"]) as artifact:
+            values = artifact["values"]
+        original_bound = 64 * np.finfo(np.float32).eps * max(1.0, float(np.max(np.abs(values))))
+        saved = snapshot["games"][0]["metadata"]["oracle_validation"]
+        assert type(saved["absolute_tolerance"]) is float
+        assert saved["absolute_tolerance"].hex() == float(original_bound).hex()
+        assert saved["observed_differences"] == validation["observed_differences"]
     else:
         assert coverage[0]["status"] == "unavailable"
