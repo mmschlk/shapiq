@@ -6,7 +6,7 @@
 [Review the implementation](https://github.com/mmschlk/shapiq/pull/602)
 
 Compare all 22 public estimator classes on a declared cohort of frozen games.
-The current release covers 188 game instances across several explanation and
+The current release covers 248 game instances across several explanation and
 valuation families; the [roadmap](ROADMAP.md) expands coverage further. Filter by target, family,
 model, dataset, player count, or budget; compare median/mean nMSE
 and Elo in the table, then explore family-level median nMSE against **queries per
@@ -161,15 +161,16 @@ panels, preserves other methods, and rejects changed games, settings, unsupporte
 or duplicate decisions. A later phase also needs its complete replacement panel.
 Regenerate reproduction archives with the same corrected baseline measurements.
 
-The active repair for [PR #610](https://github.com/mmschlk/shapiq/pull/610) replaces
+The completed repair for [PR #610](https://github.com/mmschlk/shapiq/pull/610) replaces
 KernelSHAP, KernelSHAPIQ, InconsistentKernelSHAPIQ, RegressionFSII, RegressionFBII
-and kADDSHAP at all nine budgets. The phase-six release includes the complete
-corrected panels through phase six; games and exact answers are reused.
+and kADDSHAP at all nine budgets. The phase-seven release includes the complete
+corrected panels through phase seven; games and exact answers are reused.
 LeverageSHAP already uses SVD.
 On Hopper, `operational/regression-svd-rerun/` contains the frozen execution plan,
-seven submitted jobs, audits and `replacements-through-phase6.json`. The phase-seven
-rerun is a dependent job. Publication waits for independent audits of results,
-website data and reproduction files; original raw measurements stay archived.
+job records, completed audits and `replacements-through-phase7.json`. Results,
+website data and reproduction files passed independent audits; original raw
+measurements stay archived. The separately authorized full matrix expansion is
+tracked independently and does not change these frozen measurements.
 
 ### Recovering a stopped GPU preparation on CPU
 

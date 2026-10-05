@@ -12,20 +12,28 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: phases three through six are live; phase seven is running.**
+**Current: the selected phases three through seven are live; the full matrix is next.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the original quality checks and selects up to sixteen new recipes
 per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
 all frozen games. The immutable plan has six preparation batches and six
 associated evaluation tasks, plus separate Wine and CPU-backend recovery batches.
 
-The cumulative audited release contains **188 instances, 1,128 target definitions
-and 82,119 successful evaluations** across 223,344 recorded cells. Default rankings
-use 109 real core instances; 55 real controls and 24 synthetic controls are separate
-options. Each recipe has four construction seeds. All six reproduction archives
-and 20,570 ranking presets passed independent checks. Deployment verifies nineteen
-live files and desktop/mobile behavior before the next phase starts.
-[Phase-six release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase6-svd-2026-10-04).
+The cumulative audited release contains **248 instances, 1,188 target definitions
+and 90,070 successful evaluations** across 235,224 recorded cells. The earlier
+109 real core instances, 55 real controls and 24 synthetic controls retain their
+classification. The 60 new native instances have no table-quality role; existing
+default comparisons include them, with the qualification limits below. Each
+recipe has four construction seeds. All seven reproduction archives and 21,360
+ranking presets passed independent checks.
+[Phase-seven release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04).
+
+The full dataset × model × construction expansion is separately authorized and
+being staged in a new campaign. It retains all 63 datasets, compatible models and
+constructions, all nine relative budgets and four construction seeds. Ascending
+player-count waves reuse authenticated completed recipes and run under a combined
+128-CPU ceiling. GPU execution requires a separate measured qualification. This
+selected-cohort release does not claim completion of that larger matrix.
 
 Phase four contributed 48 instances from twelve recipes. Phase five added 40
 CPU instances and four Mushroom TabPFN instances from CPU recovery. Three other
@@ -39,8 +47,8 @@ spectra and 577 preparation inputs passed independent numerical/integrity checks
 Six other recipes failed the existing cost, model-validation or imputation gates.
 All 47,520 evaluation cells and the six-method correction passed independent
 audits. Phase seven prepared **60 instances from fifteen recipes**, with four
-seeds each and 21–256 players. Independent preparation checks passed; evaluation
-is running, with correction and audits following automatically. The requested
+seeds each and 21–256 players. Preparation, all 11,880 evaluation cells, corrected
+regression results and final publication artifacts passed independent audits. The requested
 512-player Iris recipe was excluded because it has too few training rows.
 These larger structured games use native exact solvers and measured oracle
 timings. Their saved model artifacts do not provide full coalition tables or
