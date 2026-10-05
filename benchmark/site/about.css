@@ -221,6 +221,13 @@ html {
   margin: 16px 20px;
   font-size: 13px;
 }
+.inventoryDetails > article,
+.inventoryDetails > details {
+  margin: 20px;
+}
+.inventoryDetails > .ingredientSection {
+  padding-top: 0;
+}
 .inventoryDetails .provenanceTableWrap {
   margin-top: 0;
 }
