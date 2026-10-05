@@ -150,6 +150,12 @@ uv run pre-commit run --all-files
   another node; pinning every independent job to `himem02` needlessly serialized
   preparation, timeout retries and evaluation. Preserve each campaign's selected
   host and CPU affinities on resume.
+- Matrix preparation uses batch-local model caches and does not write the shared
+  duplicate registry. Requiring the previous wave's recovery or audit to finish
+  before preparing the next wave needlessly serializes independent work. Keep
+  evaluation dependent on its own qualified inputs and preserve evaluation order
+  for duplicate ownership. Budget concurrent preparation, evaluation, recovery
+  and audits together; lowering an array throttle does not stop existing tasks.
 - `RegressionMSR.valid_indices` is inherited from `ProxySHAP` and is broader than
   its constructor's actual SV/BV support. Benchmark capability catalogs must
   follow constructor checks, not inherited registries alone. `kADDSHAP` with
