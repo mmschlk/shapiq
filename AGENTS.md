@@ -325,6 +325,10 @@ uv run pre-commit run --all-files
   finished sibling while successfully updating pending and running tasks. Read
   back each active entry's `ArrayTaskThrottle` before retrying or assuming that
   the mutation failed (observed for array 364505).
+- SQLite can favor the record-order index for game-filtered benchmark exports,
+  scanning every stored row for each family/method. `RecordStore.select_indexed`
+  selects through the existing unique cell index for these filters and sorts
+  only matching rows. Retain its query-plan regression when changing selectors.
 - A healthy watcher process does not prove wake-up delivery. Exercise the actual
   message route: a full-rollout test found corrupt local Codex state/queue
   databases despite healthy Slurm jobs. Retain delivery errors and retry without
