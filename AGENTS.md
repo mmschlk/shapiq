@@ -304,9 +304,9 @@ uv run pre-commit run --all-files
 - Model-cache identities need ordered feature names, array shapes/dtypes and loader
   source as well as numeric bytes. Renaming a feature without changing values
   must not reuse stale reproduction metadata.
-- New website scripts must be added to both report.py's export assets and the
-  explicit GitHub Pages workflow copy list; local previews alone do not catch a
-  missing deployed script.
+- New website assets belong in `benchmark/site/assets.json`, the shared explicit
+  list used by local report exports and GitHub Pages. Local previews alone do
+  not catch a missing deployed script; keep the manifest complete.
 - CUDA preparation must not inherit the CPU worker's 12-GiB address-space cap:
   CUDA reserves much larger virtual ranges. Use Slurm memory limits, one worker
   per GPU, synchronized timing and explicit backend/precision in cache identities.
@@ -504,3 +504,9 @@ uv run pre-commit run --all-files
   for memory on one host can therefore delay tasks targeting another host. Inspect
   per-task node requirements and scheduler state before assuming a CPU shortage.
   Prefer separate arrays for distinct host requirements in new campaign plans.
+
+- On Hopper, `srun` can remove an explicitly empty `CUDA_VISIBLE_DEVICES` from
+  a CPU-only job's child environment. Probe365477 verified this while CPU affinity,
+  hardware, thread limits and source provenance all passed. Launch strict CPU
+  recovery/audit workers with `srun ... /usr/bin/env CUDA_VISIBLE_DEVICES= python ...`
+  so the child retains the required setting; keep the no-GPU runtime checks.

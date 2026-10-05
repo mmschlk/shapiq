@@ -7,7 +7,6 @@ import fcntl
 import hashlib
 import itertools
 import json
-import math
 import re
 from contextlib import ExitStack
 from pathlib import Path
@@ -19,6 +18,7 @@ from shapiq_benchmark.campaign_backend import load_backend, merge_backend
 from shapiq_benchmark.campaign_recovery import merge_recovery
 from shapiq_benchmark.campaign_replacements import replace_methods
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
+from shapiq_benchmark.planning import relative_budget_grid
 from shapiq_benchmark.publication_cache import normalization_policy, normalized_batch
 from shapiq_benchmark.quality import (
     clustering_diagnostics,
@@ -117,13 +117,7 @@ def _canonical_aliases(games: list[dict], records: list[dict], fingerprints: dic
 
 def _prepared_suite(suite: dict, games: list[dict]) -> dict:
     """Recompute only fields added by freezing."""
-    expected = dict(suite)
-    expected["budgets_by_game"] = {
-        game["id"]: sorted({math.ceil(r * game["n_players"]) for r in suite["relative_budgets"]})
-        for game in games
-    }
-    expected["budgets"] = sorted({b for grid in expected["budgets_by_game"].values() for b in grid})
-    return expected
+    return {**suite, **relative_budget_grid(suite["relative_budgets"], games)}
 
 
 def _game_ids(suite: dict) -> set[str]:

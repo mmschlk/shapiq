@@ -15,6 +15,18 @@ CORE_LIMITS = {
 }
 
 
+def relative_budget_grid(ratios: list[float], games: list[dict]) -> dict:
+    """Derive per-game query caps and their union from player-relative budgets."""
+    grids = {
+        game["id"]: sorted({math.ceil(ratio * game["n_players"]) for ratio in ratios})
+        for game in games
+    }
+    return {
+        "budgets_by_game": grids,
+        "budgets": sorted({budget for grid in grids.values() for budget in grid}),
+    }
+
+
 def workload(kind: str, spec: dict, suite: dict, catalog: dict) -> dict:
     """Conservative resource bounds, including per-cell timeout and preparation cap.
 

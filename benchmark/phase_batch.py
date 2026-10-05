@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
-import math
 import os
 import subprocess
 import sys
@@ -14,6 +13,7 @@ from pathlib import Path
 from queue_phases import immutable_write, scripts
 
 from shapiq_benchmark.execution import PROFILE, THREAD_VARIABLES, hardware, verify_profile
+from shapiq_benchmark.planning import relative_budget_grid
 from shapiq_benchmark.runner import identity, load_snapshot, provenance
 
 
@@ -79,15 +79,7 @@ def verify_snapshot(snapshot: dict, suite: dict, source: dict) -> None:
     """Match the recipe and recompute only the two budget fields derived at freezing."""
     expected = dict(suite)
     if suite.get("relative_budgets"):
-        expected["budgets_by_game"] = {
-            game["id"]: sorted(
-                {math.ceil(ratio * game["n_players"]) for ratio in suite["relative_budgets"]}
-            )
-            for game in snapshot["games"]
-        }
-        expected["budgets"] = sorted(
-            {budget for grid in expected["budgets_by_game"].values() for budget in grid}
-        )
+        expected.update(relative_budget_grid(suite["relative_budgets"], snapshot["games"]))
     if snapshot["provenance"] != source or snapshot["suite"] != expected:
         message = (
             "Prepared snapshot differs from the qualified source, suite or relative budget grid"

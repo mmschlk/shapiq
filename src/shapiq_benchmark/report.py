@@ -649,26 +649,7 @@ def write_report(
     }
     compact = len(data["records"]) >= 100_000 if compact is None else compact
     output.mkdir(parents=True, exist_ok=True)
-    for name in (
-        "index.html",
-        "app.js",
-        "records.js",
-        "partitions.js",
-        "partition-details.js",
-        "query.js",
-        "query-worker.js",
-        "partition-client.js",
-        "partition-download.js",
-        "partition-about.js",
-        "charts.js",
-        "style.css",
-        "shapiq.svg",
-        "methods.js",
-        "protocol.js",
-        "about.html",
-        "about.css",
-        "about.js",
-    ):
+    for name in json.loads((assets / "assets.json").read_text()):
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)

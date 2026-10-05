@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +15,7 @@ from sklearn.tree import DecisionTreeRegressor
 from shapiq.datasets import load_california_housing
 from shapiq.game_theory import ExactComputer
 from shapiq_benchmark.games import prepare_structured
+from shapiq_benchmark.planning import relative_budget_grid
 from shapiq_benchmark.runner import digest, identity, provenance, table_game, validate_suite
 
 
@@ -172,18 +172,7 @@ def write_snapshot(
                 if not metadata["score_eligible"]:
                     metadata["score_exclusion_reason"] = "near_zero_truth_relative_to_payoff"
     if suite.get("relative_budgets"):
-        suite = {
-            **suite,
-            "budgets_by_game": {
-                game["id"]: sorted(
-                    {math.ceil(ratio * game["n_players"]) for ratio in suite["relative_budgets"]}
-                )
-                for game in games
-            },
-        }
-        suite["budgets"] = sorted(
-            {budget for grid in suite["budgets_by_game"].values() for budget in grid}
-        )
+        suite = {**suite, **relative_budget_grid(suite["relative_budgets"], games)}
     if not games:
         message = "No family qualified; inspect the local preparation diagnostics."
         raise ValueError(message)

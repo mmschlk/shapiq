@@ -33,7 +33,14 @@ jobs:
       - name: Download and validate public snapshot
         run: |
           python benchmark/fetch_report.py benchmark/site/data-source.json "$RUNNER_TEMP/benchmark-site"
-          cp benchmark/site/{index.html,app.js,records.js,partitions.js,partition-details.js,query.js,query-worker.js,partition-client.js,partition-download.js,partition-about.js,charts.js,protocol.js,style.css,shapiq.svg,methods.js,about.html,about.css,about.js} "$RUNNER_TEMP/benchmark-site/"
+          python - <<'PYASSETS'
+          import json, os, shutil
+          from pathlib import Path
+          source = Path("benchmark/site")
+          output = Path(os.environ["RUNNER_TEMP"]) / "benchmark-site"
+          for name in json.loads((source / "assets.json").read_text()):
+              shutil.copyfile(source / name, output / name)
+          PYASSETS
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

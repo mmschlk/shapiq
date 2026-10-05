@@ -68,14 +68,14 @@ remain controls, giving **19 core and 21 control instances** for publication,
 rather than the original frozen labels of 23 and 17. A versioned, payoff-only
 numerical check supplements publication metadata without altering any saved
 measurements. Future clustering recipes use `cluster_continuous_v1`; see the
-[construction safeguards](README.md). Fourier spectra describe the frozen games;
+[construction safeguards](OPERATIONS.md#earlier-dataset-expansion-and-construction-safeguards). Fourier spectra describe the frozen games;
 numerical spikes do not establish meaningful interaction diversity.
 
 Corrected-source reruns replace all nine budgets for the six regression classes
 covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Corrected results
 through phase seven are published.
 Elo fitting certifies accuracy within 0.001 points for the same objective. See
-[replacement exports](README.md#replacing-a-corrected-estimator).
+[replacement exports](OPERATIONS.md#replacing-a-corrected-estimator).
 
 | Phase | Selected recipes before qualification | Preparation batches | Evaluation tasks |
 | --- | ---: | ---: | ---: |
