@@ -346,6 +346,10 @@ uv run pre-commit run --all-files
   `squeue -j ROOT` fail with `Invalid job id specified`. Query the user's live
   queue and filter exact IDs when checking for remaining allocations; establish
   terminal completion separately through full task accounting.
+- Live accounting counts can transiently disagree with the planned task count
+  during transitions (343 reported rows for a 342-task preparation wave).
+  Verify exact task IDs and uniqueness, and retry inconsistent reads before
+  updating progress or claiming completion.
 - Register array tasks, not redundant array-root IDs, in the watcher's `jobs`
   list. Expanded accounting may never emit a separate root record. Registering
   both blocked all checks for retry arrays 365191/365192 despite complete task
