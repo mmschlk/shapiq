@@ -19,6 +19,7 @@ from shapiq_benchmark.campaign_backend import load_backend, merge_backend
 from shapiq_benchmark.campaign_recovery import merge_recovery
 from shapiq_benchmark.campaign_replacements import replace_methods
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
+from shapiq_benchmark.publication_cache import normalization_policy, normalized_batch
 from shapiq_benchmark.quality import (
     clustering_diagnostics,
     model_validation_check,
@@ -164,7 +165,12 @@ def _qualification(original: dict, qualified: dict) -> None:
 
 
 def _batch_results(
-    directory: Path, snapshot: dict, source: dict, read: Callable[[Path], dict]
+    directory: Path,
+    snapshot: dict,
+    source: dict,
+    read: Callable[[Path], dict],
+    *,
+    normalize: Callable[[list[Path]], dict] = merge_results,
 ) -> dict:
     """Verify stopped shards, their exact allocation, complete cells and source identity."""
     allocation = read(directory / "sweep/allocation.json")
@@ -256,11 +262,59 @@ def _batch_results(
                 == {"planned": len(planned), "completed": len(planned), "complete": True},
                 "Result campaign is incomplete",
             )
-        return merge_results(paths)
+        return normalize(paths)
+
+
+def _public_batch(
+    directory: Path,
+    snapshot: dict,
+    source: dict,
+    read: Callable[[Path], dict],
+    root: Path,
+    inputs: dict[str, str],
+    cache_dir: Path | None,
+    policy: dict,
+) -> dict:
+    """Normalize only after the unchanged complete-shard validator succeeds."""
+
+    def normalize(paths: list[Path]) -> dict:
+        def build() -> dict:
+            panel = merge_results(paths)
+            public_games = {game["id"]: game for game in panel["games"]}
+            fingerprints = {}
+            for game in snapshot["games"]:
+                public_games[game["id"]].setdefault("metadata", {}).update(
+                    _historical_quality(game, directory / "prepared")
+                )
+                fingerprint = payoff_fingerprint(game, directory / "prepared")
+                if fingerprint is not None:
+                    fingerprints[game["id"]] = fingerprint
+            return {"panel": panel, "fingerprints": fingerprints}
+
+        if cache_dir is None:
+            return build()
+        # Use the hashes captured by validation, not newly accepted
+        # hashes. This private closure does not alter public provenance.
+        authenticated = {
+            str(root / name): sha
+            for name, sha in inputs.items()
+            if (root / name).is_relative_to(directory)
+        }
+        authenticated.update(
+            {str(directory / "prepared" / name): sha for name, sha in snapshot["artifacts"].items()}
+        )
+        return normalized_batch(cache_dir, authenticated, policy, build)
+
+    return _batch_results(directory, snapshot, source, read, normalize=normalize)
 
 
 def _collect_campaign(
-    root: Path, through_phase: int, *, earlier_phase: bool = False, backend: dict | None = None
+    root: Path,
+    through_phase: int,
+    *,
+    earlier_phase: bool = False,
+    backend: dict | None = None,
+    cache_dir: Path | None = None,
 ) -> tuple[dict, dict]:
     """Return sanitized report data with an authenticated composition manifest.
 
@@ -271,6 +325,7 @@ def _collect_campaign(
     """
     root = root.resolve()
     inputs = {}
+    policy = normalization_policy() if cache_dir is not None else {}
 
     def read(path: Path) -> dict:
         _require(path.resolve().is_relative_to(root), "Campaign input escapes its directory")
@@ -449,17 +504,11 @@ def _collect_campaign(
             )
             _require(not seen.intersection(ids), "Duplicate game IDs across campaign batches")
             seen.update(ids)
-            panel = _batch_results(directory, snapshot, source, read)
-            public_games = {game["id"]: game for game in panel["games"]}
-            # Historical runs predate the evaluation gate. Remove their exact
-            # aliases here too; never rewrite the authenticated raw records.
-            for game in snapshot["games"]:
-                public_games[game["id"]].setdefault("metadata", {}).update(
-                    _historical_quality(game, directory / "prepared")
-                )
-                fingerprint = payoff_fingerprint(game, directory / "prepared")
-                if fingerprint is not None:
-                    game_fingerprints[game["id"]] = fingerprint
+            normalized = _public_batch(
+                directory, snapshot, source, read, root, inputs, cache_dir, policy
+            )
+            panel = normalized["panel"]
+            game_fingerprints.update(normalized["fingerprints"])
             for key in ("games", "coverage", "records"):
                 data[key].extend(panel[key])
             for name, method in panel["methods"].items():
@@ -504,15 +553,18 @@ def assemble_campaign(
     supplements: tuple[Path, ...] = (),
     replacements: Path | None = None,
     backend_supersession: Path | None = None,
+    cache_dir: Path | None = None,
 ) -> dict:
     """Authenticate complete campaigns, resolving shared aliases only after joining retries."""
     backend = (
         load_backend(backend_supersession, root, through_phase) if backend_supersession else None
     )
-    data, context = _collect_campaign(root, through_phase, backend=backend)
+    data, context = _collect_campaign(root, through_phase, backend=backend, cache_dir=cache_dir)
     contexts = [context]
     for supplement in supplements:
-        extra, extra_context = _collect_campaign(supplement, through_phase, earlier_phase=True)
+        extra, extra_context = _collect_campaign(
+            supplement, through_phase, earlier_phase=True, cache_dir=cache_dir
+        )
         merge_recovery(data, context, extra, extra_context)
         contexts.append(extra_context)
     if replacements is not None:
@@ -524,7 +576,9 @@ def assemble_campaign(
         ]
         data = replace_methods(data, replacements)
     if backend is not None:
-        extra, extra_context = _collect_campaign(backend["root"], through_phase, earlier_phase=True)
+        extra, extra_context = _collect_campaign(
+            backend["root"], through_phase, earlier_phase=True, cache_dir=cache_dir
+        )
         merge_backend(data, context, extra, extra_context, backend)
         contexts.append(extra_context)
     _require(bool(data["games"]), "No qualified games are available for publication")

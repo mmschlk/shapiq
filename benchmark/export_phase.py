@@ -17,6 +17,9 @@ def main() -> None:
     parser.add_argument("--through-phase", type=int, required=True)
     parser.add_argument("--supplement", type=Path, action="append", default=[])
     parser.add_argument(
+        "--cache-dir", type=Path, help="Reuse verified batch normalization in a private lab cache"
+    )
+    parser.add_argument(
         "--replacements", type=Path, help="Manifest of complete corrected method runs"
     )
     parser.add_argument(
@@ -31,6 +34,7 @@ def main() -> None:
         supplements=tuple(args.supplement),
         replacements=args.replacements,
         backend_supersession=args.backend_supersession,
+        cache_dir=args.cache_dir,
     )
     write_report(data, args.output, public=True, compact=True)
 

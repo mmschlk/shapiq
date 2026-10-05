@@ -29,6 +29,17 @@ comparison locally without uploading anything.
 
 ## Continuing through the phases
 
+The bounded seven-phase rollout is published. The larger matrix is now running
+from `/hopper/groups/witterlab/rwitter/shapiq-benchmark-matrix-expansion`.
+Its 38 waves are already queued: prepare → evaluate → audit → next wave.
+The ceiling is **128 shared CPU cores**, with no production GPUs reserved.
+Read the coordinator's `WAKEUP.md` and the matrix `state.json` before acting;
+audit-job recovery journals override the corresponding original job IDs.
+New matrix results require independent review before publication. The exporter
+and browser still need further scaling work for this larger dataset.
+
+The following records the earlier bounded rollout and its reproduction commands.
+
 The corrected bounded rollout keeps its plan and progress in lab storage at
 `/hopper/groups/witterlab/rwitter/shapiq-benchmark-quality-rollout`:
 `campaign/campaign.json` is the immutable scientific plan and `state.json` records
@@ -140,6 +151,14 @@ then computes statistics across the combined games. It refuses incomplete or
 actively written batches. Independent scientific review still precedes publication.
 Keep each batch's reproduction archive and the exported composition manifest so
 the combined report can be traced back to its original snapshots.
+
+For repeated exports, add `--cache-dir /shared/publication-cache`. This private
+cache reuses each batch's normalized scores and game diagnostics. Every export
+still validates the original shards and their provenance; a hit avoids the
+second parse and normalization pass. Changed inputs or normalization code get a
+new cache entry, and damaged entries are rejected. Keep this cache out of the
+website and reproduction archive. It grants no publication approval and does
+not remove the exporter's whole-panel memory requirement.
 
 For a separate retry of a transient dataset-download failure, add
 `--supplement /shared/recovery/campaign`. The exporter authenticates both runs,

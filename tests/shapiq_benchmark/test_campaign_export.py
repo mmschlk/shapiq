@@ -15,6 +15,7 @@ import pytest
 from shapiq_benchmark.campaign import _canonical_aliases, _historical_quality, assemble_campaign
 from shapiq_benchmark.runner import digest, identity
 from shapiq_benchmark.summary import summarize
+from tests.shapiq_benchmark.test_report import decode_columns
 
 
 def test_clustering_publication_check_preserves_frozen_quality(tmp_path: Path) -> None:
@@ -362,23 +363,31 @@ def test_unsupported_cells_are_complete_but_not_successes(tmp_path: Path) -> Non
     assert len(rows) == 8 and all(r["status"] == "unsupported" for r in rows)
 
 
-def test_running_shard_is_not_published(tmp_path: Path) -> None:
+@pytest.mark.parametrize("warm_cache", [False, True])
+def test_running_shard_is_not_published(tmp_path: Path, *, warm_cache: bool) -> None:
     """A writer's held lock blocks authentication even if its checkpoint says complete."""
     make_campaign(tmp_path)
+    cache = tmp_path / "normalization" if warm_cache else None
+    if warm_cache:
+        assemble_campaign(tmp_path, 3, cache_dir=cache)
     with (tmp_path / "batch-0/sweep/shard-000/.campaign.lock").open() as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with pytest.raises(BlockingIOError):
-            assemble_campaign(tmp_path, 3)
+            assemble_campaign(tmp_path, 3, cache_dir=cache)
 
 
+@pytest.mark.parametrize("cached", [False, True])
 def test_export_cli_writes_composite_provenance_and_global_summary(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, cached: bool
 ) -> None:
     """The actual CLI connects authenticated assembly to the website writer."""
     campaign, output = tmp_path / "campaign", tmp_path / "site"
     make_campaign(campaign)
     monkeypatch.setattr(
-        sys, "argv", ["export_phase.py", str(campaign), str(output), "--through-phase", "3"]
+        sys,
+        "argv",
+        ["export_phase.py", str(campaign), str(output), "--through-phase", "3"]
+        + (["--cache-dir", str(tmp_path / "cache")] if cached else []),
     )
     script = Path(__file__).resolve().parents[2] / "benchmark/export_phase.py"
     runpy.run_path(str(script), run_name="__main__")
@@ -403,7 +412,7 @@ def test_export_cli_writes_composite_provenance_and_global_summary(
                         else value
                     )
         records.extend(decoded)
-        presets.extend(payload["presets"])
+        presets.extend(decode_columns(payload["presets"]))
     expected = assemble_campaign(campaign, 3)["records"]
 
     def key(row: dict) -> tuple:

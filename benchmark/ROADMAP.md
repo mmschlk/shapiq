@@ -12,7 +12,7 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: the selected phases three through seven are live; the full matrix is next.**
+**Current: the selected phases three through seven are live; the full matrix is running.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the original quality checks and selects up to sixteen new recipes
 per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
@@ -28,12 +28,17 @@ recipe has four construction seeds. All seven reproduction archives and 21,360
 ranking presets passed independent checks.
 [Phase-seven release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04).
 
-The full dataset × model × construction expansion is separately authorized and
-being staged in a new campaign. It retains all 63 datasets, compatible models and
-constructions, all nine relative budgets and four construction seeds. Ascending
-player-count waves reuse authenticated completed recipes and run under a combined
-128-CPU ceiling. GPU execution requires a separate measured qualification. This
-selected-cohort release does not claim completion of that larger matrix.
+The full dataset × model × construction expansion is queued in a separate
+campaign with **38 waves and 1,468 preparation batches**. The first wave is
+preparing 11-player games. Nine enumeration waves cover compatible sizes up to
+20 players; 29 structured-solver waves cover larger sizes up to 1,776, subject
+to qualification. The plan retains all 63 datasets, compatible models and
+constructions, all nine relative budgets and four construction seeds. Completed
+recipes are reused only after authentication. Preparation and evaluation tasks
+use 16 CPU cores each, with at most eight running (128 cores); no production GPUs are reserved.
+Each wave's numerical audit gates the next wave. Independent review and website
+publication follow separately. Matrix publication still needs bounded-memory
+export and browser loading work; the live selected cohort remains unchanged.
 
 Phase four contributed 48 instances from twelve recipes. Phase five added 40
 CPU instances and four Mushroom TabPFN instances from CPU recovery. Three other
@@ -64,8 +69,8 @@ measurements. Future clustering recipes use `cluster_continuous_v1`; see the
 numerical spikes do not establish meaningful interaction diversity.
 
 Corrected-source reruns replace all nine budgets for the six regression classes
-covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Results through phase
-six are published; phase seven has a dependent correction job.
+covered by [PR #610](https://github.com/mmschlk/shapiq/pull/610). Corrected results
+through phase seven are published.
 Elo fitting certifies accuracy within 0.001 points for the same objective. See
 [replacement exports](README.md#replacing-a-corrected-estimator).
 
@@ -100,7 +105,8 @@ evaluation batches passed independent audit on frozen source `3f6b9b50`:
 batch's completed cells and its 56-cell CPU supplement passed the final union audit.
 These older-source measurements remain separate from the corrected release.
 Its original phases 4–7 were cancelled. The former 733-batch full-matrix submission
-is not the active expansion plan; deferred recipes remain a future goal.
+is not the active expansion plan; use the new matrix campaign and its recovery
+journals, as described in the [continuation procedure](README.md#continuing-through-the-phases).
 
 The full benchmark is intended to cover **all 63 datasets in the target catalog**,
 the model profiles below, every shipped game-construction family, four construction
