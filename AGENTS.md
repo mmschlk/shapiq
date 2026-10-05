@@ -156,6 +156,12 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- Splitting report files does not avoid GitHub Pages' 1-GB published-site limit.
+  Release assets work as direct downloads but are not automatically browser-fetch
+  storage: public HEAD and ranged GET checks on 2026-10-05 returned no CORS
+  permission for this site's origin. Verify payload size and delivery before
+  moving lazy-loaded data from same-origin Pages URLs to release URLs.
+
 - Reproduction ZIPs sanitize and reconstruct result manifests. Hashing those
   manifests with `merge_results` does not recover the original published run IDs.
   Historical matrix reuse must preserve authenticated public row/run mappings;
