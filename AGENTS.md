@@ -336,6 +336,11 @@ uv run pre-commit run --all-files
 - Slurm `sacct --array` can still omit individual pending tasks before their
   accounting records exist. Completion watchers combine exact task IDs from
   `squeue --array` with terminal accounting; absence from either is not success.
+- Register array tasks, not redundant array-root IDs, in the watcher's `jobs`
+  list. Expanded accounting may never emit a separate root record. Registering
+  both blocked all checks for retry arrays 365191/365192 despite complete task
+  coverage. Keep root IDs and membership in campaign metadata; verify that
+  `job_states` resolves every registered ID after changing the tracking list.
 - Updating an active array's throttle can return a nonzero status for an already
   finished sibling while successfully updating pending and running tasks. Read
   back each active entry's `ArrayTaskThrottle` before retrying or assuming that
