@@ -482,3 +482,9 @@ uv run pre-commit run --all-files
   Enabling controls in the real panel does not include synthetic diagnostics.
   Phase five has 90 real core, 34 real control and 24 synthetic control instances;
   browser audits must check both panels instead of expecting all 148 in one view.
+
+- A stratified training pool does not guarantee that its first 64 rows contain
+  both classes. The frozen TabPFN APS Failure seed-one recipe has only class zero
+  in that prefix, so selecting probability column one raises an IndexError.
+  Audit this exclusion using the exact dataset, split, fitting rows and traceback;
+  do not accept unrelated IndexErrors or change the rows under the same game ID.
