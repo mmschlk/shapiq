@@ -13,7 +13,7 @@ import itertools
 import json
 import os
 import sqlite3
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -47,8 +47,10 @@ class RecordStore:
             self._connection.execute(
                 "CREATE TABLE records (sequence INTEGER PRIMARY KEY, partition INTEGER NOT NULL, "
                 "game_id TEXT NOT NULL, method TEXT NOT NULL, budget INTEGER NOT NULL, "
-                "seed INTEGER NOT NULL, value TEXT NOT NULL, scores TEXT NOT NULL, zero_truth INTEGER NOT NULL, "
-                "UNIQUE(partition, game_id, method, budget, seed))"
+                "seed INTEGER NOT NULL, value TEXT NOT NULL, scores TEXT NOT NULL, zero_truth INTEGER NOT NULL)"
+            )
+            self._connection.execute(
+                "CREATE UNIQUE INDEX record_cells ON records(partition,game_id,method,budget,seed)"
             )
             self._connection.execute("CREATE INDEX record_order ON records(partition, sequence)")
             self._connection.execute(
@@ -181,6 +183,14 @@ class RecordStore:
         self, *, game_ids: Iterable[str] | None = None, methods: Iterable[str] | None = None
     ) -> Generator[dict, None, None]:
         """Stream an indexed subset in its original order, without mutating rows."""
+        with closing(self.select_indexed(game_ids=game_ids, methods=methods)) as rows:
+            for _sequence, row in rows:
+                yield row
+
+    def select_indexed(
+        self, *, game_ids: Iterable[str] | None = None, methods: Iterable[str] | None = None
+    ) -> Generator[tuple[int, dict], None, None]:
+        """Stream stable encounter-order keys with indexed rows; keys need not be dense."""
         with self._game_filter(game_ids) as (game_filter, filter_parameters):
             parameters: list = [self._partition, *filter_parameters]
             method_filter = ""
@@ -190,16 +200,21 @@ class RecordStore:
                     return
                 method_filter = f" AND method IN ({','.join('?' for _ in names)})"
                 parameters.extend(names)
+            # Otherwise SQLite favors the sequence index and scans the entire
+            # partition for every filtered group. Sort only matching cells.
+            index = " INDEXED BY record_cells" if game_ids is not None else ""
             cursor = self._connection.execute(
-                "SELECT value FROM records WHERE partition=?"
+                "SELECT sequence,value FROM records"
+                + index
+                + " WHERE partition=?"
                 + game_filter
                 + method_filter
                 + " ORDER BY sequence",
                 parameters,
             )
             try:
-                for (value,) in cursor:
-                    yield json.loads(value)
+                for sequence, value in cursor:
+                    yield sequence, json.loads(value)
             finally:
                 cursor.close()
 

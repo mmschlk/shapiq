@@ -653,6 +653,7 @@ def write_report(
         "index.html",
         "app.js",
         "records.js",
+        "partitions.js",
         "charts.js",
         "style.css",
         "shapiq.svg",
