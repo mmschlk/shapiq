@@ -99,6 +99,10 @@ globalThis.BenchmarkPartitions = (() => {
     require(payload && typeof payload === "object", "payload");
     for (const key of ["snapshot_id", "kind", "count", "target", "method", "family"])
       require(payload[key] === descriptor[key], `mismatched ${key}`);
+    for (const key of ["objects", "selectors"]) {
+      require(JSON.stringify(payload[key]) === JSON.stringify(descriptor[key]), `mismatched ${key}`);
+      if (Object.hasOwn(payload, key)) require(Array.isArray(payload[key]), `invalid ${key}`);
+    }
     options.signal?.throwIfAborted();
     return columns(payload);
   }

@@ -10,8 +10,9 @@ import copy
 import hashlib
 import itertools
 import json
+import math
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from shapiq_benchmark.published import HASH, _require
 from shapiq_benchmark.record_store import RecordStore
@@ -46,6 +47,27 @@ def _json(value: dict) -> bytes:
     return (json.dumps(value, separators=(",", ":"), allow_nan=False) + "\n").encode()
 
 
+def summary_selector(preset: dict) -> str:
+    """Hash an exact selection using browser-reproducible, order-insensitive tuples.
+
+    Strings sort by Unicode code point. Only integer budgets/orders enter the
+    numeric positions; this digest is separate from the unchanged preset ID.
+    """
+    grid = preset.get("game_budgets", {})
+    value = [
+        preset.get("score_order"),
+        bool(preset.get("include_controls")),
+        preset.get("panel", "real"),
+        sorted(preset["methods"]),
+        [
+            [game, sorted(grid.get(game, preset.get("budgets", [])))]
+            for game in sorted(preset["game_ids"])
+        ],
+    ]
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
 def _chunks(rows: Iterable[dict], limit: int, max_bytes: int) -> Iterator[list[dict]]:
     """Bound both row count and uncompressed input size before column encoding."""
     chunk, size = [], 0
@@ -68,17 +90,67 @@ class _Blocks:
         self.output, self.snapshot, self.rows, self.max_bytes = output, snapshot, rows, max_bytes
         self.assets: dict[str, list[dict]] = {kind: [] for kind in KINDS}
 
+    def header(self, kind: str, rows: list[dict], group: dict) -> dict:
+        header = {"snapshot_id": self.snapshot, "kind": kind, **group}
+        if kind == "details":
+            header["objects"] = [
+                list(key) for key in dict.fromkeys((r["type"], r["id"]) for r in rows)
+            ]
+        elif kind == "summaries":
+            header["selectors"] = sorted({r["selector_sha256"] for r in rows})
+        return header
+
+    def fits(self, kind: str, row: dict, group: dict) -> bool:
+        """Stop sizing large containers early, before materializing their JSON."""
+        size = 0
+        for part in json.JSONEncoder(separators=(",", ":"), allow_nan=False).iterencode(row):
+            size += len(part.encode())
+            if size > self.max_bytes:
+                return False
+        return (
+            len(_json({**self.header(kind, [row], group), **encode_records([row], nested=True)}))
+            <= self.max_bytes
+        )
+
+    def value_rows(
+        self, kind: str, header: dict, value: object, group: dict, path: list | None = None
+    ) -> Iterator[dict]:
+        """Keep small values intact; split oversized maps/lists into ordered paths."""
+        row = {
+            **header,
+            **({"fragment": {"path": path}} if path is not None else {}),
+            "value": value,
+        }
+        if self.fits(kind, row, group):
+            yield row
+            return
+        _require(
+            isinstance(value, dict | list),
+            "A scalar publication value exceeds the block byte limit",
+        )
+        value = cast("dict | list", value)
+        path = [] if path is None else path
+        row = {
+            **header,
+            "fragment": {
+                "path": path,
+                "kind": "object" if isinstance(value, dict) else "array",
+                "length": len(value),
+            },
+        }
+        _require(self.fits(kind, row, group), "A publication path exceeds the block byte limit")
+        yield row
+        items = value.items() if isinstance(value, dict) else enumerate(value)
+        for key, child in items:
+            yield from self.value_rows(kind, header, child, group, [*path, key])
+
     def write(self, kind: str, rows: Iterable[dict], **group: str) -> None:
         for chunk in _chunks(rows, self.rows, self.max_bytes):
             self.emit(kind, chunk, group)
 
     def emit(self, kind: str, rows: list[dict], group: dict) -> None:
-        payload = {
-            "snapshot_id": self.snapshot,
-            "kind": kind,
-            **group,
-            **encode_records(rows, nested=True),
-        }
+        header = self.header(kind, rows, group)
+        payload = {**header, **encode_records(rows, nested=True)}
         content = _json(payload)
         if len(content) > self.max_bytes:
             _require(len(rows) > 1, "Encoded publication row exceeds the block byte limit")
@@ -94,14 +166,12 @@ class _Blocks:
                 "sha256": hashlib.sha256(content).hexdigest(),
                 "bytes": len(content),
                 "count": len(rows),
-                "kind": kind,
-                "snapshot_id": self.snapshot,
-                **group,
+                **header,
             }
         )
 
 
-def _filter_game(game: dict, position: int, budgets: list[int]) -> dict:
+def _filter_game(game: dict, position: int, budgets: list[int], zero_games: set[str]) -> dict:
     metadata = game.get("metadata", {})
     selected = {key: metadata[key] for key in FILTER_METADATA if key in metadata}
     if "game_quality" in metadata:
@@ -111,6 +181,74 @@ def _filter_game(game: dict, position: int, budgets: list[int]) -> dict:
         "metadata": selected,
         "sequence": position,
         "budgets": budgets,
+        "row_zero_truth_energy": game["id"] in zero_games,
+    }
+
+
+def _catalog(data: dict, estimated_targets: set[str]) -> dict:
+    """Small global/target option inventories; detailed game rows stay partitioned."""
+    suite = data["suite"]
+
+    def describe(games: list[dict]) -> dict:
+        metadata = [game.get("metadata", {}) for game in games]
+        grids = [suite.get("budgets_by_game", {}).get(g["id"], suite["budgets"]) for g in games]
+        targets = {f"{g['index']} · order {g['order']}" for g in games}
+        return {
+            "families": sorted({g["family"] for g in games}),
+            "datasets": sorted({m.get("dataset") or "Unrecorded dataset" for m in metadata}),
+            "models": sorted(
+                {m.get("model_profile") or m.get("model") or "No model recorded" for m in metadata}
+            ),
+            "min_players": min((g["n_players"] for g in games), default=None),
+            "max_players": max((g["n_players"] for g in games), default=None),
+            "real_case_count": len(
+                {
+                    g.get("metadata", {}).get("case_id") or g["id"]
+                    for g in games
+                    if not g.get("metadata", {}).get("synthetic")
+                }
+            ),
+            "has_controls": any(
+                m.get("game_quality", {}).get("role") == "control" for m in metadata
+            ),
+            "score_orders": sorted(
+                {
+                    int(k)
+                    for g in games
+                    if g["order"] > 1
+                    for k in g.get("metadata", {}).get("order_scores", {})
+                }
+            ),
+            "relative_budgets": [
+                ratio
+                for ratio in sorted(suite.get("relative_budgets", []))
+                if any(
+                    math.ceil(ratio * g["n_players"]) in grid
+                    for g, grid in zip(games, grids, strict=True)
+                )
+            ],
+            "has_estimated_costs": bool(targets & estimated_targets),
+            "panels": sorted({"diagnostic" if m.get("synthetic") else "real" for m in metadata}),
+            "planned_cells": sum(len(grid) for grid in grids)
+            * len(data["methods"])
+            * len(suite["seeds"]),
+        }
+
+    targets = sorted({(g["index"], g["order"]) for g in data["games"]})
+    return {
+        **describe(data["games"]),
+        "preparation_exclusion_count": len(suite.get("preparation_exclusions", [])),
+        "targets": [
+            {
+                "target": f"{index} · order {order}",
+                "index": index,
+                "order": order,
+                **describe(
+                    [g for g in data["games"] if (g["index"], g["order"]) == (index, order)]
+                ),
+            }
+            for index, order in targets
+        ],
     }
 
 
@@ -191,6 +329,7 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
         groups.setdefault(key, []).append(game["id"])
     count = evaluated = 0
     capabilities: dict = {}
+    estimated_targets: set[str] = set()
     for (target, family), ids in groups.items():
         for method in data["methods"]:
             group = {"target": target, "family": family, "method": method}
@@ -209,6 +348,9 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
                     )
                     count += 1
                     evaluated += row["status"] != "unsupported"
+                    cost = row.get("estimated_uncached_seconds")
+                    if type(cost) in (int, float) and math.isfinite(cost):
+                        estimated_targets.add(target)
                     status = "unsupported" if row["status"] == "unsupported" else "supported"
                     capabilities.setdefault(method, {}).setdefault(status, set()).add(target)
                     yield {**row, "sequence": sequence}
@@ -233,26 +375,31 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
                 flush_profiles()
     _require(count == len(store), "Records include a game or method outside the public catalog")
     suite = data["suite"]
-    blocks.write(
-        "games",
-        (
-            _filter_game(
-                game, i, suite.get("budgets_by_game", {}).get(game["id"], suite["budgets"])
-            )
-            for i, game in enumerate(data["games"])
-        ),
-    )
-    blocks.write(
-        "details", ({"type": "game", "id": game["id"], "value": game} for game in data["games"])
-    )
-    blocks.write(
-        "details",
-        (
-            {"type": "report", "id": key, "value": value}
-            for key, value in data.items()
-            if key not in {"records", "games", "runs", "methods", "presets"}
-        ),
-    )
+    zero_games = store.zero_games()
+    for target in dict.fromkeys(f"{g['index']} · order {g['order']}" for g in data["games"]):
+        blocks.write(
+            "games",
+            (
+                _filter_game(
+                    game,
+                    i,
+                    suite.get("budgets_by_game", {}).get(game["id"], suite["budgets"]),
+                    zero_games,
+                )
+                for i, game in enumerate(data["games"])
+                if f"{game['index']} · order {game['order']}" == target
+            ),
+            target=target,
+        )
+
+    def details() -> Iterator[dict]:
+        for game in data["games"]:
+            yield from blocks.value_rows("details", {"type": "game", "id": game["id"]}, game, {})
+        for key, value in data.items():
+            if key not in {"records", "games", "runs", "methods", "presets"}:
+                yield from blocks.value_rows("details", {"type": "report", "id": key}, value, {})
+
+    blocks.write("details", details())
 
     def runs() -> Iterator[dict]:
         for key, run in data["runs"].items():
@@ -288,7 +435,13 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
                 scope = {"target": f"{index} · order {order}"}
                 if family is not None:
                     scope["family"] = family
-                blocks.write("summaries", group, **scope)
+
+                def summary_rows(presets: Iterable[dict], scope: dict) -> Iterator[dict]:
+                    for preset in presets:
+                        header = {"id": preset["id"], "selector_sha256": summary_selector(preset)}
+                        yield from blocks.value_rows("summaries", header, preset, scope)
+
+                blocks.write("summaries", summary_rows(group, scope), **scope)
     manifest = {
         "schema_version": 1,
         "layout": "partitioned-v1",
@@ -313,6 +466,7 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
         "record_count": count,
         "evaluated_count": evaluated,
         "game_count": len(games),
+        "catalog": _catalog(data, estimated_targets),
         "assets": blocks.assets,
         "method_targets": {
             m: {s: sorted(t) for s, t in entries.items()} for m, entries in capabilities.items()

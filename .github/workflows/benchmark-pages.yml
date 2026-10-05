@@ -64,7 +64,7 @@ jobs:
           )
           PY
           mkdir -p "$RUNNER_TEMP/benchmark-site"
-          cp benchmark/site/{index.html,app.js,records.js,partitions.js,charts.js,protocol.js,style.css,shapiq.svg,methods.js,data.json,about.html,about.css,about.js,about.json} "$RUNNER_TEMP/benchmark-site/"
+          cp benchmark/site/{index.html,app.js,records.js,partitions.js,partition-details.js,query.js,query-worker.js,charts.js,protocol.js,style.css,shapiq.svg,methods.js,data.json,about.html,about.css,about.js,about.json} "$RUNNER_TEMP/benchmark-site/"
           for shard in benchmark/site/records-*.json; do
             [ ! -f "$shard" ] || cp "$shard" "$RUNNER_TEMP/benchmark-site/"
           done
