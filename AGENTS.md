@@ -97,6 +97,13 @@ uv run pre-commit run --all-files
   chunks. Recorded per-coalition oracle costs are batch-amortized wall-time
   estimates, not individual timings or measured uncached estimator runtime.
 
+- Gaussian model profiles can fail with "Too few continuous fitting-row features"
+  even when the dataset's total column count is sufficient. Their rule excludes
+  catalog categorical names and requires more than TWO distinct finite values
+  on the exact seeded, bounded fitting rows (different from clustering's >3 rule).
+  Audit these exclusions by replaying the split and feature counts from pinned
+  cached data; never accept arbitrary constructor ValueErrors as known limits.
+
 - Gaussian and Gaussian-copula imputers reject categorical columns, including
   Bike Sharing's binary calendar features. Higher-dimensional recipes for these
   games use continuous Wine features and a classifier's class-one probability;
