@@ -17,6 +17,28 @@
 
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
+## Benchmark estimator fixes — draft
+
+**Not ready to merge or integrate.** This branch collects six fixes found while
+building the estimator benchmark. The broader benchmark campaign and maintainer
+review are still in progress.
+
+| Change | What it does | Original PR |
+| --- | --- | --- |
+| LeverageSHAP: low-budget ridge | Adds `ridge=0.001` by default when the requested budget is at most `3 * n` and sampling is not exhaustive. Set `ridge=0` to disable it. | [#603](https://github.com/mmschlk/shapiq/pull/603) |
+| OddSHAP: smaller budgets | Removes the extra `interaction_factor` budget guard. Budgets from two queries use the existing sampling, support screening and constrained regression. | [#605](https://github.com/mmschlk/shapiq/pull/605) |
+| ProxySPEX: small-sample tuning | With fewer than ten sampled coalitions, fits the automatic search's base model directly. Later calls with enough samples still tune; custom search wrappers are unchanged. | [#607](https://github.com/mmschlk/shapiq/pull/607) |
+| SVARM / SVARM-IQ: faster stratification | Avoids repeated scans of the full player matrix and coalition-size strata, preserving sampling, weights and estimates. | [#608](https://github.com/mmschlk/shapiq/pull/608) |
+| OddSHAP: optional low-budget ridge | Adds `ridge`, defaulting to `0.0`. A positive value regularizes the constrained fit at budgets at most `3 * n`, below full enumeration. | [#609](https://github.com/mmschlk/shapiq/pull/609) |
+| Shared regression: stable least squares | Always solves the weighted design directly with `numpy.linalg.lstsq`, avoiding unstable normal equations. The `use_svd` argument remains accepted for compatibility. | [#610](https://github.com/mmschlk/shapiq/pull/610) |
+
+Here, `n` is the number of players. Ridge introduces bias and does not guarantee
+lower error on every game. The experimental policy that switches to equal allocation
+for budgets up to `3 * n` is **not included or enabled** in these fixes. LeverageSHAP's
+existing equal allocation when only the two endpoints are sampled is unchanged.
+The benchmark website remains
+in the separate [#602](https://github.com/mmschlk/shapiq/pull/602).
+
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above**.
 Installation can be done via `uv` :
