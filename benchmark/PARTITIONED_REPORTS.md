@@ -122,7 +122,7 @@ scores without inventing an Elo panel.
 Each query has an ID; a replacement query or cancel message aborts the previous
 one and suppresses stale replies. `partition-details.js` reconstructs only the
 requested metadata object or preset. By default it rejects assemblies exceeding
-one million fragments or 32 million serialized UTF-16 code units. These are
+one million fragments or 33,554,432 serialized UTF-16 code units. These are
 logical limits, not a measured browser heap bound; exceeding one returns an
 error rather than a partial answer.
 
