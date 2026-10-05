@@ -121,8 +121,8 @@ existing campaign from a historical command template.
 The reviewed 38-wave plan separates preparation, evaluation and audit lanes:
 **48 preparation CPUs + 64 evaluation CPUs + one sequential audit CPU = 113**,
 within the approved **128-core ceiling**, with no production GPUs reserved.
-The first wave is still in preparation recovery; the replacement runtime is
-under review. Original preparation and recovery retain their reviewed limits.
+The campaign state records the current stage and any recovery work. Original
+first-wave preparation and recovery retain their reviewed limits.
 Evaluation waits for its own preparation checks and stays ordered for duplicate
 ownership. Later preparation can overlap evaluation; audits gate publication,
 not subsequent computation. The scheduling overlay in
