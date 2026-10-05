@@ -194,7 +194,11 @@ target. The browser fetches only the selected target; filters and scores retain
 full precision. Upload `data.json` **and every `records-*.json` companion** to the
 same release before updating `site/data-source.json`. Pages verifies their hashes.
 For a local comparison, select the manifest and its companions together; legacy
-single-file reports still work.
+single-file reports still work. Static worker profiles are shared; per-run memory
+and CPU counters stay in scalar columns and are restored in JSON downloads.
+Preset objects use the lossless `columns-v2` dictionary encoding; records retain
+`columns-v1`. The browser accepts older preset arrays too. Reproduction archives
+keep their original full records.
 
 ## Code map
 

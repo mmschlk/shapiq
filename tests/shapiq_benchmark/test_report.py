@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from shapiq_benchmark.report import (
+    compact_workers,
     encode_records,
     merge_results,
     public_preparation,
@@ -517,6 +518,74 @@ def test_column_encoding_preserves_numbers_null_and_missing() -> None:
     assert encoded["columns"]["official"] == {"values": [False, True, None], "missing": [2]}
 
 
+def decode_columns(payload: dict) -> list[dict]:
+    """Independently reconstruct values, including explicit null and absent fields."""
+    rows = [{} for _ in range(payload["count"])]
+    for field, column in payload["columns"].items():
+        for i, value in enumerate(column["values"]):
+            if i in column.get("missing", []):
+                continue
+            rows[i][field] = (
+                column["dictionary"][value]
+                if "dictionary" in column and value is not None
+                else value
+            )
+    return rows
+
+
+def test_nested_preset_dictionary_preserves_every_value() -> None:
+    """Repeated selection/history objects share bytes without changing computed numbers."""
+    shared = {
+        "methods": ["a", "b"],
+        "values": [1.2345678901234567, 1e-300, None],
+        "nested": {"flag": False},
+    }
+    rows = [{"history": shared, "game_ids": ["game" * 50], "score_order": None} for _ in range(20)]
+    rows += [{"history": None}, {"other": []}]
+    before = copy.deepcopy(rows)
+    encoded = encode_records(rows, nested=True)
+    assert encoded["codec"] == "columns-v2"
+    assert "dictionary" in encoded["columns"]["history"]
+    assert decode_columns(encoded) == before == rows
+    assert len(json.dumps(encoded)) < len(json.dumps(rows))
+
+
+def test_worker_diagnostics_do_not_multiply_hardware_profiles() -> None:
+    """Per-cell RSS/CPU values and null/missing distinctions survive shared placement."""
+    worker = {"cpu_model": "CPU", "affinity": [3], "hostname": "host", "slurm_job_id": "12"}
+    original = {
+        "records": [
+            {
+                "worker": {
+                    **worker,
+                    "peak_rss_bytes": 2**33,
+                    "process_cpu_seconds": 1.2345678901234567,
+                }
+            },
+            {"worker": {**worker, "peak_rss_bytes": None, "process_cpu_seconds": 0.0}},
+            {"worker": worker},
+            {"worker": {**worker, "affinity": [4]}},
+            {"status": "unsupported"},
+        ]
+    }
+    before = copy.deepcopy(original)
+    compact = compact_workers(original)
+    assert len(compact["workers"]) == 2
+    restored = []
+    for encoded_row in compact["records"]:
+        row = dict(encoded_row)
+        if "worker_id" in row:
+            row["worker"] = dict(compact["workers"][row.pop("worker_id")])
+            for field in ("peak_rss_bytes", "process_cpu_seconds"):
+                key = f"worker_{field}"
+                if key in row:
+                    row["worker"][field] = row.pop(key)
+        restored.append(row)
+    assert restored == original["records"]
+    assert original == before
+    assert compact_workers(compact) == compact
+
+
 def test_lazy_report_partitions_exact_records_and_global_presets(tmp_path: Path) -> None:
     """Each target keeps complete-panel summaries while the index describes the whole cohort."""
     data = merge_results([write(tmp_path, result_fixture())])
@@ -543,11 +612,11 @@ def test_lazy_report_partitions_exact_records_and_global_presets(tmp_path: Path)
         shard = json.loads(raw)
         assert shard["count"] == 1
         assert shard["snapshot_id"] == data["snapshot_id"]
+        presets = decode_columns(shard["presets"])
         assert all(
-            f"{preset['index']} · order {preset['order']}" == shard["target"]
-            for preset in shard["presets"]
+            f"{preset['index']} · order {preset['order']}" == shard["target"] for preset in presets
         )
-        assert all(preset in returned["presets"] for preset in shard["presets"])
+        assert all(preset in returned["presets"] for preset in presets)
     assert (output / "records.js").exists()
     assert "records.js" in (output / "index.html").read_text()
 

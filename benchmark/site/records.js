@@ -3,7 +3,7 @@
 window.BenchmarkRecords = {
   decode(payload) {
     if (
-      payload.codec !== "columns-v1" ||
+      !["columns-v1", "columns-v2"].includes(payload.codec) ||
       !Number.isSafeInteger(payload.count) ||
       payload.count < 0
     )
@@ -21,7 +21,9 @@ window.BenchmarkRecords = {
         throw Error("Invalid missing-value position.");
       if (
         column.dictionary &&
-        !column.dictionary.every((value) => typeof value === "string")
+        (!Array.isArray(column.dictionary) ||
+          (payload.codec === "columns-v1" &&
+            !column.dictionary.every((value) => typeof value === "string")))
       )
         throw Error("Invalid string dictionary.");
       column.values.forEach((value, i) => {
@@ -76,6 +78,9 @@ window.BenchmarkRecords = {
       throw Error(
         "Benchmark shard belongs to a different report or explanation.",
       );
-    return { records: this.decode(payload), presets: payload.presets };
+    return {
+      records: this.decode(payload),
+      presets: Array.isArray(payload.presets) ? payload.presets : this.decode(payload.presets),
+    };
   },
 };

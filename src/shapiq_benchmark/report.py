@@ -480,8 +480,8 @@ def merge_results(paths: list[Path]) -> dict:
     }
 
 
-def encode_records(records: list[dict]) -> dict:
-    """Store lossless columns; string dictionaries never round numeric measurements."""
+def encode_records(records: list[dict], *, nested: bool = False) -> dict:
+    """Store lossless columns, optionally sharing repeated preset objects as well."""
     columns = {}
     for field in sorted({key for row in records for key in row}):
         values = [row.get(field) for row in records]
@@ -491,11 +491,49 @@ def encode_records(records: list[dict]) -> dict:
             dictionary = list(dict.fromkeys(present))
             codes = {value: i for i, value in enumerate(dictionary)}
             column = {"dictionary": dictionary, "values": [codes.get(value) for value in values]}
+        elif nested and present and all(isinstance(value, dict | list) for value in present):
+            keys = [json.dumps(value, separators=(",", ":"), allow_nan=False) for value in values]
+            unique = list(dict.fromkeys(keys))
+            codes = {key: i for i, key in enumerate(unique)}
+            candidate = {
+                "dictionary": [json.loads(key) for key in unique],
+                "values": [codes[key] for key in keys],
+            }
+            if len(json.dumps(candidate, separators=(",", ":"))) < len(
+                json.dumps(column, separators=(",", ":"))
+            ):
+                column = candidate
         missing = [i for i, row in enumerate(records) if field not in row]
         if missing:
             column["missing"] = missing
         columns[field] = column
-    return {"codec": "columns-v1", "count": len(records), "columns": columns}
+    return {
+        "codec": "columns-v2" if nested else "columns-v1",
+        "count": len(records),
+        "columns": columns,
+    }
+
+
+def compact_workers(data: dict, *, omit_null: bool = False) -> dict:
+    """Share worker placement while keeping changing diagnostics in scalar columns."""
+    workers, worker_ids, records = {}, {}, []
+    for row in data["records"]:
+        record = {key: value for key, value in row.items() if not omit_null or value is not None}
+        worker = record.get("worker")
+        if worker is None and record.get("worker_id"):
+            worker = data["workers"][record["worker_id"]]
+        if worker is not None:
+            record.pop("worker", None)
+            worker = dict(worker)
+            for field in ("peak_rss_bytes", "process_cpu_seconds"):
+                if field in worker:
+                    record[f"worker_{field}"] = worker.pop(field)
+            key = identity(worker)
+            worker_id = worker_ids.setdefault(key, f"w{len(worker_ids)}")
+            workers[worker_id] = worker
+            record["worker_id"] = worker_id
+        records.append(record)
+    return {**data, "workers": workers, "records": records}
 
 
 def _write_json(path: Path, value: dict) -> str:
@@ -527,7 +565,10 @@ def _shard_report(data: dict, output: Path) -> dict:
             **encode_records(records),
             "snapshot_id": data["snapshot_id"],
             "target": target,
-            "presets": [p for p in data["presets"] if p["index"] == index and p["order"] == order],
+            "presets": encode_records(
+                [p for p in data["presets"] if p["index"] == index and p["order"] == order],
+                nested=True,
+            ),
         }
         checksum = _write_json(output / filename, payload)
         shards.append(
@@ -620,30 +661,7 @@ def write_report(
         source, destination = assets / name, output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)
-    # Store repeated hardware descriptions once; the browser restores row references.
-    workers = dict(data.get("workers", {}))
-    worker_ids = {identity(worker): name for name, worker in workers.items()}
-    records = []
-    for row in data["records"]:
-        record = (
-            dict(row)
-            if compact
-            else {key: value for key, value in row.items() if value is not None}
-        )
-        worker = record.get("worker")
-        if worker is not None:
-            record.pop("worker")
-            key = identity(worker)
-            if key not in worker_ids:
-                number = len(workers)
-                while f"w{number}" in workers:
-                    number += 1
-                worker_ids[key] = f"w{number}"
-            worker_id = worker_ids[key]
-            workers[worker_id] = worker
-            record["worker_id"] = worker_id
-        records.append(record)
-    exported = {**data, "workers": workers, "records": records}
+    exported = compact_workers(data, omit_null=not compact)
     if compact:
         exported = _shard_report(exported, output)
     _write_json(output / "data.json", exported)

@@ -211,7 +211,15 @@ function restoreRecords(value, rows) {
     if (record.worker || !record.worker_id) return record;
     if (!Object.hasOwn(value.workers || {}, record.worker_id))
       throw Error("The report is missing referenced worker metadata.");
-    return { ...record, worker: value.workers[record.worker_id] };
+    const restored = { ...record, worker: { ...value.workers[record.worker_id] } };
+    for (const field of ["peak_rss_bytes", "process_cpu_seconds"]) {
+      const key = `worker_${field}`;
+      if (Object.hasOwn(restored, key)) {
+        restored.worker[field] = restored[key];
+        delete restored[key];
+      }
+    }
+    return restored;
   });
 }
 async function load(value, files = null) {
