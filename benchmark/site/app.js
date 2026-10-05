@@ -524,17 +524,26 @@ function selection(family = $("family").value, allBudgets = false) {
 }
 const cellKey = (r) => JSON.stringify([r.game_id, r.budget, r.seed]);
 function weightedCells(s) {
-  const families = [...new Set(s.games.map((g) => g.family))];
+  const families = new Map(),
+    cellsByGame = new Map();
+  for (const game of s.games) {
+    if (!families.has(game.family)) families.set(game.family, new Map());
+    const strata = families.get(game.family);
+    strata.set(game.stratum, (strata.get(game.stratum) || 0) + 1);
+  }
+  for (const cell of s.cells) {
+    if (!cellsByGame.has(cell.game_id)) cellsByGame.set(cell.game_id, []);
+    cellsByGame.get(cell.game_id).push(cell);
+  }
   const weights = new Map();
   s.games.forEach((g) => {
-    const family = s.games.filter((x) => x.family === g.family),
-      strata = [...new Set(family.map((x) => x.stratum))];
-    const count = family.filter((x) => x.stratum === g.stratum).length,
-      cells = s.cells.filter((c) => c.game_id === g.id);
+    const strata = families.get(g.family),
+      count = strata.get(g.stratum),
+      cells = cellsByGame.get(g.id) || [];
     cells.forEach((c) =>
       weights.set(
         cellKey(c),
-        1 / families.length / strata.length / count / cells.length,
+        1 / families.size / strata.size / count / cells.length,
       ),
     );
   });
