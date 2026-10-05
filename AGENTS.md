@@ -156,6 +156,10 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- SQLite cannot drop a temporary selection table while another result iterator
+  is active. The disposable record store uses one indexed selection table with
+  per-query IDs and savepoints; retain the interleaved-iterator regression test.
+
 - `metadata.cluster_id` is a weighting/bootstrap group, not a unique game
   instance: phase six has 188 instances but 178 such groups. Count authenticated
   construction/artifact identities across all targets; an SV-only count misses
