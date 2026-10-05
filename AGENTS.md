@@ -336,6 +336,10 @@ uv run pre-commit run --all-files
 - Slurm `sacct --array` can still omit individual pending tasks before their
   accounting records exist. Completion watchers combine exact task IDs from
   `squeue --array` with terminal accounting; absence from either is not success.
+  A finished root can also disappear from Slurm's live job cache, making
+  `squeue -j ROOT` fail with `Invalid job id specified`. Query the user's live
+  queue and filter exact IDs when checking for remaining allocations; establish
+  terminal completion separately through full task accounting.
 - Register array tasks, not redundant array-root IDs, in the watcher's `jobs`
   list. Expanded accounting may never emit a separate root record. Registering
   both blocked all checks for retry arrays 365191/365192 despite complete task
