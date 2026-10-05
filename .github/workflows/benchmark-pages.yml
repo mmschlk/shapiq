@@ -7,6 +7,7 @@ on:
     paths:
       - 'benchmark/site/**'
       - '.github/workflows/benchmark-pages.yml'
+      - 'benchmark/fetch_report.py'
 
 # Opt in per repository; forks and unrelated Pages sites stay untouched.
 permissions:
@@ -31,43 +32,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Download and validate public snapshot
         run: |
-          python - <<'PY'
-          import hashlib
-          import json
-          from pathlib import Path
-          from urllib.request import urlopen
-          from urllib.parse import urljoin
-          import re
-          source = json.loads(Path('benchmark/site/data-source.json').read_text())
-          with urlopen(source['url'], timeout=120) as response:
-              payload = response.read()
-          assert hashlib.sha256(payload).hexdigest() == source['sha256'], 'Dataset checksum mismatch'
-          data = json.loads(payload)
-          assert data['schema_version'] == 1 and (data['records'] or data.get('record_shards'))
-          assert not any(method.get('private', True) for method in data['methods'].values())
-          assert all('truth' not in game and 'artifact' not in game for game in data['games'])
-          assert all('estimate' not in record for record in data['records'])
-          for shard in data.get('record_shards', []):
-              assert re.fullmatch(r'records-[a-z-]+-\d+\.json', shard['file'])
-              with urlopen(urljoin(source['url'], shard['file']), timeout=120) as response:
-                  content = response.read()
-              assert hashlib.sha256(content).hexdigest() == shard['sha256']
-              part = json.loads(content)
-              assert part['codec'] == 'columns-v1' and part['snapshot_id'] == data['snapshot_id']
-              assert part['target'] == shard['target'] and part['count'] == shard['count']
-              assert not {'estimate', 'error', 'truth'} & part['columns'].keys()
-              Path('benchmark/site', shard['file']).write_bytes(content)
-          Path('benchmark/site/data.json').write_bytes(payload)
-          keys = ('schema_version', 'snapshot_id', 'snapshot_provenance', 'suite', 'games')
-          Path('benchmark/site/about.json').write_text(
-              json.dumps({key: data[key] for key in keys}, separators=(',', ':'), allow_nan=False) + '\n'
-          )
-          PY
-          mkdir -p "$RUNNER_TEMP/benchmark-site"
-          cp benchmark/site/{index.html,app.js,records.js,partitions.js,partition-details.js,query.js,query-worker.js,charts.js,protocol.js,style.css,shapiq.svg,methods.js,data.json,about.html,about.css,about.js,about.json} "$RUNNER_TEMP/benchmark-site/"
-          for shard in benchmark/site/records-*.json; do
-            [ ! -f "$shard" ] || cp "$shard" "$RUNNER_TEMP/benchmark-site/"
-          done
+          python benchmark/fetch_report.py benchmark/site/data-source.json "$RUNNER_TEMP/benchmark-site"
+          cp benchmark/site/{index.html,app.js,records.js,partitions.js,partition-details.js,query.js,query-worker.js,partition-client.js,partition-download.js,partition-about.js,charts.js,protocol.js,style.css,shapiq.svg,methods.js,about.html,about.css,about.js} "$RUNNER_TEMP/benchmark-site/"
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

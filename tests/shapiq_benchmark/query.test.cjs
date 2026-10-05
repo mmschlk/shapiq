@@ -587,3 +587,19 @@ test("pathological timing output fails clearly instead of truncating", async () 
     /timing output exceeds memory limit/,
   );
 });
+test("download selection helper shares exact filters and global eligibility", () => {
+  const data = fixture(),
+    q = request({ score_order: "1" });
+  q.selection.relative_budget = 1;
+  q.selection.cap = 0.1;
+  const p = api.selectionPanel(
+    data.games,
+    q.selection,
+    data.suite,
+    q.score_order,
+  );
+  assert.deepEqual(plain(p.games.map((g) => g.id)), ["g0", "g1", "g2"]);
+  assert.equal(p.excluded, 2);
+  assert.equal(p.planned, 6);
+  assert(p.games.every((g) => p.game_budgets[g.id][0] === -1));
+});

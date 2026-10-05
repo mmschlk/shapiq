@@ -707,5 +707,25 @@ globalThis.BenchmarkQuery = (() => {
         : null,
     };
   }
-  return Object.freeze({ query, canonicalOracleTiming, selectorHash });
+  function selectionPanel(games, selection, suite, scoreOrder) {
+    const zero = new Set(
+      games
+        .filter(
+          (g) =>
+            g.row_zero_truth_energy ||
+            g.metadata?.zero_truth_energy ||
+            g.metadata?.score_eligible === false ||
+            (scoreOrder &&
+              g.metadata?.order_scores?.[scoreOrder]?.score_eligible !== true),
+        )
+        .map((g) => g.id),
+    );
+    return panel(games, selection, suite, zero);
+  }
+  return Object.freeze({
+    query,
+    canonicalOracleTiming,
+    selectorHash,
+    selectionPanel,
+  });
 })();

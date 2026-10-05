@@ -631,15 +631,22 @@ function renderRunSettings() {
 }
 function renderReportSummary(linkToAbout = true) {
   const protocol = data.suite.protocol;
-  const datasets = distinct(data.games.map((g) => g.metadata?.dataset));
-  const players = data.games.map((g) => g.n_players);
+  const datasets =
+    data.catalog?.datasets ||
+    distinct(data.games.map((g) => g.metadata?.dataset));
+  const players = data.catalog
+    ? [data.catalog.min_players, data.catalog.max_players]
+    : data.games.map((g) => g.n_players);
   const summary = $("protocolSummary");
   summary.replaceChildren(
     document.createTextNode(
       `${protocol?.name || "Earlier benchmark preview"} · ${datasets.length} data sources · ${Math.min(...players)}–${Math.max(...players)} players. `,
     ),
   );
-  const excluded = data.suite.preparation_exclusions?.length || 0;
+  const excluded =
+    data.catalog?.preparation_exclusion_count ??
+    data.suite.preparation_exclusions?.length ??
+    0;
   if (excluded)
     summary.append(
       document.createTextNode(

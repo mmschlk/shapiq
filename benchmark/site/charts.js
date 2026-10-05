@@ -24,7 +24,42 @@ function canonicalOracleTiming(timing) {
   };
 }
 
-function renderPerformanceCharts(chartPanel, chartPending) {
+function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
+  if (computed) {
+    const decorate = (series) =>
+      chartNames
+        .flatMap((method) => series.filter((s) => s.method === method))
+        .map((s) => ({
+          ...s,
+          name: methodLabel(s.method),
+          color: colorFor(s.method),
+        }));
+    const estimated = $("timeMetric").value === "estimated_uncached_seconds";
+    $("timeChartNote").textContent = estimated
+      ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
+      : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
+    chart(
+      "budgetChart",
+      decorate(computed.budget_series),
+      "Query budget per player · B / d",
+      false,
+      "median",
+    );
+    chart(
+      "timeChart",
+      decorate(computed.time_series),
+      estimated
+        ? "Mean estimated work + oracle seconds"
+        : "Mean measured estimator seconds",
+      false,
+      "median",
+    );
+    if (chartPending)
+      ["budgetChart", "timeChart"].forEach(
+        (id) => ($(id).textContent = "Results pending for this selection."),
+      );
+    return;
+  }
   const gamesById = new Map(chartPanel.games.map((g) => [g.id, g]));
   const chartRatios =
     data.suite.relative_budgets ||
@@ -186,7 +221,7 @@ function renderPerformanceCharts(chartPanel, chartPending) {
     );
 }
 
-function renderHistory(s, preset) {
+function renderHistory(s, preset, computed = null) {
   const metric = $("historyMetric").value,
     history = preset?.history,
     end = new Date().getUTCFullYear() + new Date().getUTCMonth() / 12;
@@ -200,10 +235,12 @@ function renderHistory(s, preset) {
   const historyMethods = (history?.methods || [])
     .map((method) => ({
       ...method,
-      ...summary(
-        s.rows.filter((row) => row.method === method.method),
-        s,
-      ),
+      ...(computed
+        ? computed.find((row) => row.method === method.method)
+        : summary(
+            s.rows.filter((row) => row.method === method.method),
+            s,
+          )),
     }))
     .filter((method) => method.complete);
   const historySeries = historyMethods

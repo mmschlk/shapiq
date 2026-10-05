@@ -586,3 +586,38 @@ def test_target_catalog_and_global_row_zero_flag(tmp_path: Path) -> None:
         for game in _rows(payload):
             assert descriptor["target"] == f"{game['index']} · order {game['order']}"
             assert game["row_zero_truth_energy"] == (game["id"] == "SV")
+
+
+def test_catalog_marks_only_observed_nominal_relative_budgets(tmp_path: Path) -> None:
+    """An odd d uses ceil(B/d), and unsupported records must not mark a budget measured."""
+    data = fixture_data()
+    data["suite"]["relative_budgets"] = [0.5, 1, 2]
+    for row in data["records"]:
+        row["budget"] = 6 if row["budget"] == data["suite"]["budgets"][0] else 11
+        row["status"] = "unsupported" if row["budget"] == 11 else row["status"]
+    data["suite"]["budgets"] = [6, 11, 22]
+    data["suite"].pop("budgets_by_game", None)
+    with RecordStore(tmp_path / "rows.sqlite") as store:
+        store.extend(data["records"])
+        manifest = write_partitioned_report({**data, "records": store}, tmp_path / "report")
+    assert manifest["catalog"]["relative_budgets"] == [0.5, 1, 2]
+    assert manifest["catalog"]["observed_relative_budgets"] == [0.5]
+    assert all(t["observed_relative_budgets"] == [0.5] for t in manifest["catalog"]["targets"])
+
+
+def test_catalog_common_panel_and_legacy_budget_inventory(tmp_path: Path) -> None:
+    data = fixture_data()
+    expected = {
+        f"{p['index']} · order {p['order']}"
+        for included in (False, True)
+        for order in (None, 1, 2)
+        for p in iter_summaries(data, score_order=order, include_controls=included)
+        if p.get("common_panel") is not None
+    }
+    with RecordStore(tmp_path / "rows.sqlite") as store:
+        store.extend(data["records"])
+        manifest = write_partitioned_report({**data, "records": store}, tmp_path / "report")
+    for target in manifest["catalog"]["targets"]:
+        assert target["has_common_panel"] == (target["target"] in expected)
+        assert target["relative_budgets"] == sorted({b / 11 for b in data["suite"]["budgets"]})
+    assert manifest["catalog"]["has_common_panel"] == bool(expected)

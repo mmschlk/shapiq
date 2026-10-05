@@ -185,7 +185,12 @@ def _filter_game(game: dict, position: int, budgets: list[int], zero_games: set[
     }
 
 
-def _catalog(data: dict, estimated_targets: set[str]) -> dict:
+def _catalog(
+    data: dict,
+    estimated_targets: set[str],
+    observed_budgets: dict[str, set[float]],
+    common_targets: set[str],
+) -> dict:
     """Small global/target option inventories; detailed game rows stay partitioned."""
     suite = data["suite"]
 
@@ -221,12 +226,24 @@ def _catalog(data: dict, estimated_targets: set[str]) -> dict:
             ),
             "relative_budgets": [
                 ratio
-                for ratio in sorted(suite.get("relative_budgets", []))
-                if any(
+                for ratio in sorted(
+                    suite.get("relative_budgets")
+                    or {
+                        b / g["n_players"]
+                        for g, grid in zip(games, grids, strict=True)
+                        for b in grid
+                    }
+                )
+                if not suite.get("relative_budgets")
+                or any(
                     math.ceil(ratio * g["n_players"]) in grid
                     for g, grid in zip(games, grids, strict=True)
                 )
             ],
+            "observed_relative_budgets": sorted(
+                {ratio for target in targets for ratio in observed_budgets.get(target, set())}
+            ),
+            "has_common_panel": bool(targets & common_targets),
             "has_estimated_costs": bool(targets & estimated_targets),
             "panels": sorted({"diagnostic" if m.get("synthetic") else "real" for m in metadata}),
             "planned_cells": sum(len(grid) for grid in grids)
@@ -330,6 +347,13 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
     count = evaluated = 0
     capabilities: dict = {}
     estimated_targets: set[str] = set()
+    observed_budgets: dict[str, set[float]] = {}
+    ratios_by_game: dict[str, dict[int, list[float]]] = {}
+    for game in games.values():
+        ratios: dict[int, list[float]] = {}
+        for ratio in data["suite"].get("relative_budgets", []):
+            ratios.setdefault(math.ceil(ratio * game["n_players"]), []).append(ratio)
+        ratios_by_game[game["id"]] = ratios
     for (target, family), ids in groups.items():
         for method in data["methods"]:
             group = {"target": target, "family": family, "method": method}
@@ -348,6 +372,11 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
                     )
                     count += 1
                     evaluated += row["status"] != "unsupported"
+                    if row["status"] != "unsupported":
+                        ratios = ratios_by_game[row["game_id"]].get(row["budget"], [])
+                        if not data["suite"].get("relative_budgets"):
+                            ratios = [row["budget"] / games[row["game_id"]]["n_players"]]
+                        observed_budgets.setdefault(target, set()).update(ratios)
                     cost = row.get("estimated_uncached_seconds")
                     if type(cost) in (int, float) and math.isfinite(cost):
                         estimated_targets.add(target)
@@ -426,6 +455,7 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
         game.get("metadata", {}).get("game_quality", {}).get("role") == "control"
         for game in data["games"]
     )
+    common_targets: set[str] = set()
     for included in [False, True] if controls else [False]:
         for degree in [None, *degrees]:
             presets = iter_summaries(data, score_order=degree, include_controls=included)
@@ -438,6 +468,8 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
 
                 def summary_rows(presets: Iterable[dict], scope: dict) -> Iterator[dict]:
                     for preset in presets:
+                        if preset.get("common_panel") is not None:
+                            common_targets.add(scope["target"])
                         header = {"id": preset["id"], "selector_sha256": summary_selector(preset)}
                         yield from blocks.value_rows("summaries", header, preset, scope)
 
@@ -466,7 +498,7 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
         "record_count": count,
         "evaluated_count": evaluated,
         "game_count": len(games),
-        "catalog": _catalog(data, estimated_targets),
+        "catalog": _catalog(data, estimated_targets, observed_budgets, common_targets),
         "assets": blocks.assets,
         "method_targets": {
             m: {s: sorted(t) for s, t in entries.items()} for m, entries in capabilities.items()

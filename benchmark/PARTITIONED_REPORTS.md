@@ -1,8 +1,9 @@
 # Large benchmark reports
 
 The optional `partitioned-v1` format stores results in small, authenticated
-column blocks. It is a data-export foundation; the live website still uses its
-existing format until browser integration and a real release audit pass.
+column blocks. The browser supports this format alongside legacy reports. The
+live dataset remains in its existing format until real-release parity and
+resource checks pass.
 
 ```python
 with RecordStore(work / "records.sqlite") as records:
@@ -39,8 +40,8 @@ Original run IDs are retained.
 
 The manifest also contains a small global `catalog` and a `catalog.targets`
 entry for each explanation target. These list filter options, player bounds,
-distinct real case counts, controls, score orders, available relative budgets,
-and estimated-cost availability. Planned cells count all declared methods,
+distinct real case counts, controls, score orders, planned and observed relative
+budgets, common-panel availability and estimated-cost availability. Planned cells count all declared methods,
 budgets and estimator seeds, including unsupported cells. Preparation exclusion
 counts refer to exclusion entries. Real case counts use `metadata.case_id` or
 the game ID, excluding synthetic games; they are not sums across targets.
@@ -126,9 +127,28 @@ one million fragments or 33,554,432 serialized UTF-16 code units. These are
 logical limits, not a measured browser heap bound; exceeding one returns an
 error rather than a partial answer.
 
-The worker and lookup APIs are tested but are not connected to the live page.
-The remaining integration must preserve controls, charts, details and downloads,
-then qualify memory and responsiveness with actual large reports.
+The page uses `partition-client.js` to run queries and pass their summaries to
+the existing table and chart renderers. Switching reports closes the old worker;
+sorting and display-only changes reuse the latest result. Legacy local reports
+keep their existing loading path.
+
+`partition-download.js` reads selected raw blocks into a temporary IndexedDB
+store, then emits rows in their original order. Writes wait for the destination.
+Browsers with a file-save API can stream directly to disk; others use an explicit
+64 MiB Blob limit and report an error if the selection is larger. The temporary
+store also has explicit one-million-row and 1 GiB limits, including with a
+streaming destination. Larger complete downloads still require the reproduction
+archives; these limits must be profiled before publishing the full matrix.
+Cancellation and errors clean up the temporary store. JSON retains original game metadata,
+run IDs and provenance; CSV retains the existing columns. Internal `sequence`
+and `worker_id` encoding fields are omitted after restoring the full worker
+object. Older compact-report downloads can retain that redundant worker ID;
+its omission changes no recorded worker field or scientific value.
+
+The About page streams game details once and keeps only the fields used by its
+tables. Counts replace unused row-index arrays. The displayed metadata has an
+explicit size cap; full original metadata remains available in downloads.
+Large-report memory and responsiveness still need qualification.
 
 ## Gates before enabling the format
 
@@ -144,12 +164,14 @@ cap. An individual scalar or an excessively long path can still exceed it and
 is rejected explicitly. Reconstructing one requested object can require more
 memory than a block. Full-campaign payload size, manifest size and summary
 lookup costs must be measured; splitting alone does not establish GitHub Pages suitability.
-The reader is copied with website assets but is not enabled by the existing
-page. The Pages manifest validator and browser entry points must be updated
-together before a partitioned manifest can be deployed.
+`benchmark/fetch_report.py` stages the pinned manifest and only its listed
+assets in a fresh directory. It verifies checksums, descriptor bindings, column
+encoding and public-field guards, and rejects payloads above its Pages packaging
+limit. These checks do not replace the independent scientific release audit.
+No matrix data is deployed simply by adding browser support.
 
 Reader checks run with:
 
 ```bash
-node --test tests/shapiq_benchmark/{partitions,partition-details,query}.test.cjs
+node --test tests/shapiq_benchmark/{partitions,partition-details,partition-client,partition-about,partition-download,query}.test.cjs
 ```

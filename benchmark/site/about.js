@@ -1,8 +1,28 @@
 "use strict";
 
 // Share the catalog renderers with the results page, without loading its charts.
-let data;
-function loadAbout(value) {
+let data, aboutController;
+let aboutVersion = 0;
+async function loadAbout(value, files = null) {
+  aboutController?.abort();
+  aboutController = new AbortController();
+  const controller = aboutController,
+    version = ++aboutVersion;
+  if (value.layout === "partitioned-v1") {
+    data = value;
+    renderReportSummary(false);
+    $("aboutStatus").textContent =
+      "Loading the recorded game, dataset and model details…";
+    value = await BenchmarkAbout.load(value, {
+      signal: controller.signal,
+      read: (descriptor) =>
+        BenchmarkPartitions.read(value, descriptor, {
+          files,
+          signal: controller.signal,
+        }),
+    });
+    if (version !== aboutVersion) return;
+  }
   if (
     value.schema_version !== 1 ||
     !value.games?.length ||
@@ -31,15 +51,26 @@ players.addEventListener("input", showCoalitions);
 showCoalitions();
 
 // An explicit local selection takes precedence over a slower bundled download.
-let localSelected = false;
+let localSelected = false,
+  uploadVersion = 0;
 $("aboutUpload").addEventListener("change", async (event) => {
-  const file = event.target.files[0];
+  const files = new Map(
+    [...event.target.files].map((file) => [file.name, file]),
+  );
+  const file =
+    files.get("data.json") || files.get("about.json") || event.target.files[0];
   if (!file) return;
   localSelected = true;
+  aboutController?.abort();
+  const version = ++aboutVersion,
+    upload = ++uploadVersion;
   try {
-    loadAbout(JSON.parse(await file.text()));
+    const value = JSON.parse(await file.text());
+    if (version !== aboutVersion) return;
+    await loadAbout(value, files);
   } catch (error) {
-    $("aboutStatus").textContent = error.message;
+    if (upload === uploadVersion && error.name !== "AbortError")
+      $("aboutStatus").textContent = error.message;
   }
 });
 fetch("about.json")
@@ -48,7 +79,7 @@ fetch("about.json")
     return response.json();
   })
   .then((value) => {
-    if (!localSelected) loadAbout(value);
+    if (!localSelected) return loadAbout(value);
   })
   .catch(() => {
     if (!localSelected)
