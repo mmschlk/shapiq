@@ -106,7 +106,7 @@ def test_tiny_n_budget_two_symmetric_game(seed):
     def symmetric_game(Z):
         return Z.astype(float).sum(axis=1)
 
-    approximator = LeverageSHAP(n, random_state=seed)
+    approximator = LeverageSHAP(n, random_state=seed, low_budget_equal_allocation=False)
     result = approximator.approximate(budget=2, game=symmetric_game)
 
     assert result.estimated is True
@@ -131,7 +131,7 @@ def test_exact_recovery_additive_game():
 
 def test_budget_too_small_raises():
     """Budget < 2 should raise a ValueError."""
-    approximator = LeverageSHAP(n=5)
+    approximator = LeverageSHAP(n=5, low_budget_equal_allocation=False)
     with pytest.raises(ValueError, match="Budget must be at least 2"):
         approximator.approximate(budget=1, game=lambda Z: np.zeros(len(Z)))
 
@@ -539,7 +539,9 @@ def test_empirical_convergence_rate():
     def mean_error(budget: int) -> float:
         errs = []
         for s in DIVERSE_SEEDS:
-            res = LeverageSHAP(n, random_state=s).approximate(budget, game_factory())
+            res = LeverageSHAP(n, random_state=s, low_budget_equal_allocation=False).approximate(
+                budget, game_factory()
+            )
             errs.append(np.linalg.norm(exact_sv - res.values[1:]))
         return float(np.mean(errs))
 
@@ -1044,8 +1046,12 @@ def test_low_budget_ridge_stabilizes_unanimity_game():
 
     truth = np.zeros(32)
     truth[:3] = 1 / 3
-    unregularized = LeverageSHAP(32, random_state=0, ridge=0).approximate(64, game)
-    stabilized = LeverageSHAP(32, random_state=0).approximate(64, game)
+    unregularized = LeverageSHAP(
+        32, random_state=0, ridge=0, low_budget_equal_allocation=False
+    ).approximate(64, game)
+    stabilized = LeverageSHAP(32, random_state=0, low_budget_equal_allocation=False).approximate(
+        64, game
+    )
     energy = np.sum(truth**2)
     assert np.sum((unregularized.values[1:] - truth) ** 2) / energy > 600
     assert np.sum((stabilized.values[1:] - truth) ** 2) / energy < 1
@@ -1070,11 +1076,11 @@ def test_ridge_matches_analytic_constrained_solution(monkeypatch, scale, offset)
     def game(z):
         return scale * z[:, 0] + offset
 
-    result = LeverageSHAP(3, ridge=2 / 3).approximate(4, game)
+    result = LeverageSHAP(3, ridge=2 / 3, low_budget_equal_allocation=False).approximate(4, game)
     np.testing.assert_allclose(result.values[1:], scale * np.array([2 / 3, 1 / 6, 1 / 6]))
     assert result.values[0] == result.baseline_value == offset
     assert result.values[1:].sum() == pytest.approx(scale)
-    original = LeverageSHAP(3, ridge=0).approximate(4, game)
+    original = LeverageSHAP(3, ridge=0, low_budget_equal_allocation=False).approximate(4, game)
     np.testing.assert_allclose(original.values[1:], [scale, 0, 0], atol=1e-14)
 
 
@@ -1084,9 +1090,11 @@ def test_ridge_budget_boundary_uses_requested_budget():
     def game(z):
         return np.all(z[:, :3], axis=1).astype(float)
 
-    unregularized = LeverageSHAP(8, random_state=0, ridge=0).approximate(24, game)
-    below = LeverageSHAP(8, random_state=0).approximate(24, game)
-    above = LeverageSHAP(8, random_state=0).approximate(25, game)
+    unregularized = LeverageSHAP(
+        8, random_state=0, ridge=0, low_budget_equal_allocation=False
+    ).approximate(24, game)
+    below = LeverageSHAP(8, random_state=0, low_budget_equal_allocation=False).approximate(24, game)
+    above = LeverageSHAP(8, random_state=0, low_budget_equal_allocation=False).approximate(25, game)
     assert not np.allclose(below.values, unregularized.values)
     np.testing.assert_array_equal(above.values, unregularized.values)
     assert below.estimation_budget == above.estimation_budget == 24
@@ -1099,8 +1107,12 @@ def test_ridge_bypassed_outside_partial_low_budget(n, budget):
     def game(z):
         return z @ np.arange(1, n + 1)
 
-    original = LeverageSHAP(n, random_state=0, ridge=0).approximate(budget, game)
-    result = LeverageSHAP(n, random_state=0, ridge=1).approximate(budget, game)
+    original = LeverageSHAP(
+        n, random_state=0, ridge=0, low_budget_equal_allocation=False
+    ).approximate(budget, game)
+    result = LeverageSHAP(
+        n, random_state=0, ridge=1, low_budget_equal_allocation=False
+    ).approximate(budget, game)
     np.testing.assert_array_equal(result.values, original.values)
 
 
@@ -1108,9 +1120,9 @@ def test_ridge_bypasses_realized_binomial_census(monkeypatch):
     """A random-count draw may cover every coalition below the requested cap."""
     coalitions, weights = LeverageSHAP(3)._sample(8)
     monkeypatch.setattr(LeverageSHAP, "_sample", lambda self, budget: (coalitions, weights))
-    result = LeverageSHAP(3, ridge=1, deterministic_counts=False).approximate(
-        6, lambda z: z[:, 0].astype(float)
-    )
+    result = LeverageSHAP(
+        3, ridge=1, deterministic_counts=False, low_budget_equal_allocation=False
+    ).approximate(6, lambda z: z[:, 0].astype(float))
     np.testing.assert_allclose(result.values[1:], [1, 0, 0], atol=1e-14)
     assert result.estimation_budget == 8
 
@@ -1122,7 +1134,11 @@ def test_tiny_ridge_preserves_efficiency_and_unregularized_limit(ridge):
     def game(z):
         return np.all(z, axis=1).astype(float)
 
-    original = LeverageSHAP(3, random_state=0, ridge=0).approximate(6, game)
-    result = LeverageSHAP(3, random_state=0, ridge=ridge).approximate(6, game)
+    original = LeverageSHAP(
+        3, random_state=0, ridge=0, low_budget_equal_allocation=False
+    ).approximate(6, game)
+    result = LeverageSHAP(
+        3, random_state=0, ridge=ridge, low_budget_equal_allocation=False
+    ).approximate(6, game)
     np.testing.assert_allclose(result.values, original.values, atol=1e-14)
     assert result.values[1:].sum() == pytest.approx(1, abs=1e-14)

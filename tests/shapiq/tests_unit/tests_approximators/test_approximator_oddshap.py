@@ -277,7 +277,7 @@ def test_budget_below_two_raises_before_evaluation(budget):
     """Both endpoint evaluations are required, independent of the support factor."""
     game = MagicMock(side_effect=AssertionError("Game must not be evaluated"))
     with pytest.raises(ValueError, match="minimum sampling budget of 2"):
-        OddSHAP(n=8, random_state=0).approximate(budget, game)
+        OddSHAP(n=8, random_state=0, low_budget_equal_allocation=False).approximate(budget, game)
     game.assert_not_called()
 
 
@@ -306,9 +306,12 @@ def test_small_budgets_preserve_query_cap_and_efficiency(n, budget, interaction_
         assert queries <= budget
         return 3.0 + coalitions @ weights + 2.0 * coalitions[:, 0] * coalitions[:, 1]
 
-    result = OddSHAP(n=n, interaction_factor=interaction_factor, random_state=0).approximate(
-        budget, game
-    )
+    result = OddSHAP(
+        n=n,
+        interaction_factor=interaction_factor,
+        random_state=0,
+        low_budget_equal_allocation=False,
+    ).approximate(budget, game)
     assert 2 <= queries <= budget
     assert np.isfinite(result.values).all()
     assert result.baseline_value == pytest.approx(3.0)
@@ -322,7 +325,7 @@ def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
     should be called with the paper's candidate count `ceil(budget / interaction_factor)`.
     """
     n = 8
-    approx = OddSHAP(n=n, random_state=0)
+    approx = OddSHAP(n=n, random_state=0, low_budget_equal_allocation=False)
     budget = approx.interaction_factor
     captured = {}
 

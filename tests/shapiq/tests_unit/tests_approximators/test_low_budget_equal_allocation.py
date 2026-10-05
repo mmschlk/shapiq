@@ -1,6 +1,8 @@
-"""The opt-in endpoint baseline preserves defaults and spends exactly two queries."""
+"""Default low-budget equal allocation spends two queries; opt-out retains regression."""
 
 from __future__ import annotations
+
+from copy import deepcopy
 
 import numpy as np
 import pytest
@@ -18,9 +20,11 @@ def test_low_budget_equal_allocation_and_query_accounting(method):
         calls.append(z.copy())
         return 7 + z @ np.arange(1, n + 1) + 13 * np.prod(z[:, :3], axis=1)
 
-    for budget in (6, 12, 24, np.int64(36)):
+    for budget in (2, 6, 12, 24, np.int64(36)):
         calls.clear()
-        estimate = method(n, low_budget_equal_allocation=True).approximate(budget, game)
+        estimator = method(n)
+        assert estimator.low_budget_equal_allocation is True
+        estimate = estimator.approximate(budget, game)
         assert len(calls) == 1
         np.testing.assert_array_equal(calls[0], [np.zeros(n, bool), np.ones(n, bool)])
         np.testing.assert_array_equal(estimate.values[1:], np.full(n, 91 / n))
@@ -31,35 +35,85 @@ def test_low_budget_equal_allocation_and_query_accounting(method):
 
 
 @pytest.mark.parametrize("method", [LeverageSHAP, OddSHAP])
-def test_defaults_and_outside_fallback_match_existing_estimator(method):
-    for n, budget in ((1, 2), (3, 8), (4, 13), (5, 5)):
-        if method is OddSHAP and n == 1:
-            for enabled in (False, True):
-                with pytest.raises(ValueError, match="undefined for n <= 1"):
-                    method(n, low_budget_equal_allocation=enabled)
-            continue
+@pytest.mark.parametrize(("n", "budget"), [(1, 2), (2, 4), (3, 8), (4, 13), (5, 32)])
+def test_full_enumeration_and_above_three_n_keep_regression(method, n, budget):
+    if method is OddSHAP and n == 1:
+        for options in ({}, {"low_budget_equal_allocation": False}):
+            with pytest.raises(ValueError, match="undefined for n <= 1"):
+                method(n, **options)
+        return
 
-        def game(z, n=n):
-            return 3 + z @ np.arange(1, n + 1) + np.prod(z[:, : min(n, 3)], axis=1)
+    def game(z):
+        return 3 + z @ np.arange(1, n + 1) + np.prod(z[:, : min(n, 3)], axis=1)
 
-        baseline = method(n, random_state=4).approximate(budget, game)
-        disabled = method(n, random_state=4, low_budget_equal_allocation=False).approximate(
-            budget, game
-        )
-        np.testing.assert_array_equal(disabled.values, baseline.values)
-        assert disabled.estimation_budget == baseline.estimation_budget
-        if budget > 3 * n or budget >= 2**n:
-            enabled = method(n, random_state=4, low_budget_equal_allocation=True).approximate(
-                budget, game
-            )
-            np.testing.assert_array_equal(enabled.values, baseline.values)
-            assert enabled.estimation_budget == baseline.estimation_budget
-            assert enabled.estimated == baseline.estimated
+    baseline = method(n, random_state=4, low_budget_equal_allocation=False).approximate(
+        budget, game
+    )
+    default = method(n, random_state=4).approximate(budget, game)
+    np.testing.assert_array_equal(default.values, baseline.values)
+    assert default.baseline_value == baseline.baseline_value
+    assert default.estimation_budget == baseline.estimation_budget
+    assert default.estimated == baseline.estimated
+
+
+@pytest.mark.parametrize("method", [LeverageSHAP, OddSHAP])
+def test_three_n_boundary_skips_sampling_surrogate_and_rng(method, monkeypatch):
+    n = 4
+    estimator = method(n, random_state=17)
+    rng_before = deepcopy(estimator._rng.bit_generator.state)
+    sampler_before = deepcopy(estimator._sampler._rng.bit_generator.state)
+    calls = []
+
+    def game(z):
+        calls.append(z.copy())
+        return 3 + z @ np.arange(1, n + 1) + 2 * z[:, 0] * z[:, 1]
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Low-budget fallback must not sample, fit a surrogate or solve regression")
+
+    with monkeypatch.context() as patch:
+        if method is LeverageSHAP:
+            patch.setattr(estimator, "_sample", forbidden)
+        else:
+            patch.setattr(estimator._sampler, "sample", forbidden)
+            patch.setattr(estimator, "_fit_surrogate_model", forbidden)
+        result = estimator.approximate(3 * n, game)
+    np.testing.assert_array_equal(result.values, [3, 3, 3, 3, 3])
+    assert result.estimation_budget == 2
+    assert sum(len(z) for z in calls) == 2
+    assert estimator._rng.bit_generator.state == rng_before
+    assert estimator._sampler._rng.bit_generator.state == sampler_before
+    # The subsequent 3n+1 call sees exactly the original sampling state.
+    calls.clear()
+    above = estimator.approximate(3 * n + 1, game)
+    assert sum(len(z) for z in calls) > 2
+    reference = method(n, random_state=17, low_budget_equal_allocation=False).approximate(
+        3 * n + 1, game
+    )
+    np.testing.assert_array_equal(above.values, reference.values)
+    assert above.estimation_budget == reference.estimation_budget
+
+
+@pytest.mark.parametrize("method", [LeverageSHAP, OddSHAP])
+def test_opt_out_uses_nonuniform_regression_with_original_query_budget(method):
+    n, budget = 8, 16
+    calls = []
+
+    def game(z):
+        calls.append(z.copy())
+        return 7 + 3 * z[:, 0] + 2 * z[:, 0] * z[:, 1]
+
+    result = method(n, random_state=0, low_budget_equal_allocation=False).approximate(budget, game)
+    assert 2 < sum(len(z) for z in calls) <= budget
+    assert result.estimation_budget == budget
+    assert result.baseline_value == 7
+    assert sum(result[(i,)] for i in range(n)) == pytest.approx(5)
+    assert not np.allclose(result.values[1:], np.full(n, 5 / n))
 
 
 @pytest.mark.parametrize("method", [LeverageSHAP, OddSHAP])
 def test_fallback_rejects_invalid_input_without_sampling(method):
-    estimator = method(5, low_budget_equal_allocation=True)
+    estimator = method(5)
     calls = []
 
     def game(z):

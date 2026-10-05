@@ -110,9 +110,13 @@ def _ensemble_to_fourier(tree_models: list[TreeModel]) -> dict[tuple[int, ...], 
 class OddSHAP(Approximator):
     """OddSHAP approximator for first-order Shapley values (Fumagalli et al., 2026).
 
+    By default, budgets from two through ``3 * n`` below full enumeration use two
+    endpoint queries and divide the payoff difference equally among players.
+    Set ``low_budget_equal_allocation=False`` to use the regression path instead.
+
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
-        ``n * interaction_factor``, this implementation expands the selection of
+        ``n * interaction_factor``, this implementation's regression path expands the selection of
         active terms also to individuals, allowing budgets of at least two
         evaluations for the empty and grand coalitions. It therefore does not reproduce
         the low-budget, high-dimension regime of the paper's Figure 2.
@@ -166,7 +170,7 @@ class OddSHAP(Approximator):
         interaction_factor: int = 10,  # eta; paper default
         tree_params: dict[str, Any] | None = None,
         ridge: float = 0.0,
-        low_budget_equal_allocation: bool = False,
+        low_budget_equal_allocation: bool = True,
         **kwargs: Any,
     ) -> None:
         """Initialize the OddSHAP approximator.
@@ -177,15 +181,17 @@ class OddSHAP(Approximator):
 
         ``ridge`` is an optional finite, nonnegative penalty on the free Fourier
         coefficients. It applies only at budgets at most ``3 * n`` that do not
-        enumerate every coalition. The default preserves unregularized OddSHAP.
+        enumerate every coalition, with ``low_budget_equal_allocation=False``.
+        The penalty defaults to zero, preserving the unregularized regression.
         Shrinkage preserves efficiency and the selected support, but introduces
         bias; it cannot recover singleton terms omitted by support screening.
 
-        ``low_budget_equal_allocation=True`` instead spends two endpoint queries
+        ``low_budget_equal_allocation=True`` (the default) spends two endpoint queries
         and divides their difference equally among players at budgets from two
         through ``3 * n`` below full enumeration. This is the uninformative equal
         baseline, not learned shrinkage. It overrides ridge and support screening
-        only in that regime; the default and larger-budget behavior are unchanged.
+        only in that regime; larger budgets and full enumeration use the usual method.
+        Set ``False`` to sample, screen terms and fit the regression at low budgets instead.
         """
         del kwargs
         if not np.isfinite(ridge) or ridge < 0:

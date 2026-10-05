@@ -30,7 +30,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     values as the solution of a weighted least-squares problem over sampled
     coalitions, like KernelSHAP, but samples coalitions proportional to their
     statistical *leverage scores*, which have the closed form ``l_z = 1/C(n, ||z||)``
-    (Lemma 3.2). Implementation of Algorithm 1:
+    (Lemma 3.2). By default, budgets from two through ``3 * n`` below full
+    enumeration instead use two endpoint queries and divide the payoff difference
+    equally among players. Set ``low_budget_equal_allocation=False`` to fit the
+    regression at these budgets. The regression path implements Algorithm 1:
 
     1. For the deterministic default, normalize the budget to an even number without
        exceeding it. Solve for the oversampling parameter ``c`` so that
@@ -53,12 +56,12 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         paper's released implementation and reported experiments. To preserve
         shapiq's hard budget ceiling, an odd budget is rounded down rather than up as
         in that implementation; largest-remainder ties can also select a different
-        size. The evaluation count is exactly
+        size. Outside the two-query equal-allocation path, the evaluation count is exactly
         ``2 + 2 * ((min(budget, 2**n) - 2) // 2)``. The paper's accuracy theorem is
         proved for the unregularized Binomial ``deterministic_counts=False`` variant
         (Musco and Witter, 2025, end of Sec. 4). The default low-budget ``ridge``
         safeguard restores a later practical implementation choice; set ``ridge=0.0``
-        to use the unregularized regression at every budget.
+        and ``low_budget_equal_allocation=False`` for unregularized regression at every budget.
 
     Example:
         >>> from shapiq.approximator import LeverageSHAP
@@ -86,7 +89,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         random_state: int | None = None,
         deterministic_counts: bool = True,
         ridge: float = 1e-3,
-        low_budget_equal_allocation: bool = False,
+        low_budget_equal_allocation: bool = True,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the LeverageSHAP approximator.
@@ -112,7 +115,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             ridge: Nonnegative, finite low-budget ridge penalty. Defaults to ``1e-3``,
                 restoring the safeguard from the authors' implementation (commit
                 ``f3c0427``, removed in ``04cc121``). Applied only when the requested
-                budget is at most ``3 * n`` and the sample omits some coalitions. This
+                budget is at most ``3 * n``, the sample omits some coalitions, and
+                ``low_budget_equal_allocation=False``. This
                 is the penalty added to the weighted Gram matrix, not its square root.
                 It stabilizes near-singular sampled regressions by shrinking toward
                 equal attribution, introducing bias even on additive games; lower
@@ -121,12 +125,13 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 safeguard does not test the Gram matrix's condition number: efficiency
                 already makes that matrix singular, so the test depends on roundoff.
 
-            low_budget_equal_allocation: If enabled, spend only two endpoint queries
+            low_budget_equal_allocation: Enabled by default. Spend only two endpoint queries
                 and return their difference divided equally among players when
                 ``2 <= budget <= 3 * n`` and ``budget < 2**n``. This is the
                 uninformative equal-allocation baseline, not a learned estimator
                 or a guarantee about soft shrinkage. It overrides ridge in this
                 regime; larger budgets and full enumeration retain the usual method.
+                Set ``False`` to sample and fit the regression at low budgets instead.
 
             **kwargs: Additional keyword arguments (not used, only for compatibility).
         """

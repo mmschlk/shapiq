@@ -41,7 +41,7 @@ def test_budget_gate_and_default(budget, monkeypatch):
     def game(z):
         return 2 + z @ np.arange(1, n + 1) + 5 * np.prod(z[:, :3], axis=1)
 
-    regularized = OddSHAP(n, ridge=0.001, random_state=0)
+    regularized = OddSHAP(n, ridge=0.001, random_state=0, low_budget_equal_allocation=False)
     calls = []
     original = regularized._solve_constrained_regression
 
@@ -53,8 +53,12 @@ def test_budget_gate_and_default(budget, monkeypatch):
     estimate = regularized.approximate(budget, game)
     assert calls == [0.001 if budget <= 3 * n and budget < 2**n else 0.0]
     assert sum(estimate[(i,)] for i in range(n)) == pytest.approx(15.0)
-    baseline = OddSHAP(n, random_state=0).approximate(budget, game)
-    explicit = OddSHAP(n, ridge=0.0, random_state=0).approximate(budget, game)
+    baseline = OddSHAP(n, random_state=0, low_budget_equal_allocation=False).approximate(
+        budget, game
+    )
+    explicit = OddSHAP(n, ridge=0.0, random_state=0, low_budget_equal_allocation=False).approximate(
+        budget, game
+    )
     np.testing.assert_array_equal(baseline.values, explicit.values)
     if budget > 3 * n or budget == 2**n:
         np.testing.assert_array_equal(estimate.values, baseline.values)
