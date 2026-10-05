@@ -321,6 +321,10 @@ uv run pre-commit run --all-files
 - Slurm `sacct --array` can still omit individual pending tasks before their
   accounting records exist. Completion watchers combine exact task IDs from
   `squeue --array` with terminal accounting; absence from either is not success.
+- Updating an active array's throttle can return a nonzero status for an already
+  finished sibling while successfully updating pending and running tasks. Read
+  back each active entry's `ArrayTaskThrottle` before retrying or assuming that
+  the mutation failed (observed for array 364505).
 - A healthy watcher process does not prove wake-up delivery. Exercise the actual
   message route: a full-rollout test found corrupt local Codex state/queue
   databases despite healthy Slurm jobs. Retain delivery errors and retry without
