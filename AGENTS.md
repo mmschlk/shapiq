@@ -488,3 +488,9 @@ uv run pre-commit run --all-files
   in that prefix, so selecting probability column one raises an IndexError.
   Audit this exclusion using the exact dataset, split, fitting rows and traceback;
   do not accept unrelated IndexErrors or change the rows under the same game ID.
+
+- Even a stratified small sample can omit a rare class: all four frozen Taiwanese
+  Bankruptcy Weighted KNN instances select only class zero in their 11 training
+  rows. The constructor requires at least two classes. Authenticate the exact
+  selected rows and constructor error before accepting this exclusion; a larger
+  or differently sampled training set defines a new game.
