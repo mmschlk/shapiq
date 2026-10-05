@@ -498,3 +498,9 @@ uv run pre-commit run --all-files
   rows. The constructor requires at least two classes. Authenticate the exact
   selected rows and constructor error before accepting this exclusion; a larger
   or differently sampled training set defines a new game.
+
+- Mixing node requirements within one Slurm array can leave suitable CPUs idle.
+  Slurm skips remaining array elements after an unrunnable element; a task waiting
+  for memory on one host can therefore delay tasks targeting another host. Inspect
+  per-task node requirements and scheduler state before assuming a CPU shortage.
+  Prefer separate arrays for distinct host requirements in new campaign plans.
