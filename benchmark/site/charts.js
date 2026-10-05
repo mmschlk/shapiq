@@ -1,6 +1,29 @@
 "use strict";
 // Chart series and rendering; app.js owns page state and shared scoring helpers.
 
+function canonicalOracleTiming(timing) {
+  if (timing?.protocol !== "batch-amortized-wall-seconds-v1") return timing;
+  return {
+    ...timing,
+    profiles: timing.profiles.map((profile) => {
+      const hardware = profile.preparation_hardware;
+      if (
+        profile.cpu_model &&
+        hardware?.device === "cpu" &&
+        hardware.cpu_model === profile.cpu_model &&
+        Object.keys(hardware).every((key) =>
+          ["device", "cpu_model"].includes(key),
+        )
+      ) {
+        // Older CPU records omit this redundant object; their timing is equivalent.
+        const { preparation_hardware, ...cpu } = profile;
+        return cpu;
+      }
+      return profile;
+    }),
+  };
+}
+
 function renderPerformanceCharts(chartPanel, chartPending) {
   const gamesById = new Map(chartPanel.games.map((g) => [g.id, g]));
   const chartRatios =
@@ -94,7 +117,11 @@ function renderPerformanceCharts(chartPanel, chartPending) {
       worker?.thread_pools,
       worker?.thread_environment,
       ...(estimatedTime
-        ? [gamesById.get(row.game_id)?.metadata?.evaluation_timing]
+        ? [
+            canonicalOracleTiming(
+              gamesById.get(row.game_id)?.metadata?.evaluation_timing,
+            ),
+          ]
         : []),
       ...(verified ? [] : [row.run_id, row.game_id]),
     ]);

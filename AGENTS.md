@@ -263,7 +263,9 @@ uv run pre-commit run --all-files
   scores; new recipes select noncategorical columns with more than three values.
   TabArena cache writes are nonatomic and initial OpenML arrays can round differently
   from CSV reloads. Warm caches before parallel workers and freeze the reloaded CSV
-  representation, not the first-download return value.
+  representation, not the first-download return value. A clean Git worktree omits
+  ignored loader CSV caches; seed authenticated cache bytes into a new frozen
+  worktree before launching when its fixed environment lacks download extras.
 
 - Model-cache identities need ordered feature names, array shapes/dtypes and loader
   source as well as numeric bytes. Renaming a feature without changing values
