@@ -341,6 +341,9 @@ uv run pre-commit run --all-files
   both blocked all checks for retry arrays 365191/365192 despite complete task
   coverage. Keep root IDs and membership in campaign metadata; verify that
   `job_states` resolves every registered ID after changing the tracking list.
+- Benchmark record sequence IDs can retain SQLite IDs from an earlier import
+  (the Phase7 profile starts at 235225). Compare their exact values and uniqueness
+  with the frozen input; do not assume they start at zero or renumber them.
 - Updating an active array's throttle can return a nonzero status for an already
   finished sibling while successfully updating pending and running tasks. Read
   back each active entry's `ArrayTaskThrottle` before retrying or assuming that

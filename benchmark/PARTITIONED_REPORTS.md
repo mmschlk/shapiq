@@ -151,16 +151,23 @@ its omission changes no recorded worker field or scientific value.
 The About page streams game details once and keeps only the fields used by its
 tables. Counts replace unused row-index arrays. The displayed metadata has an
 explicit size cap; full original metadata remains available in downloads.
-Large-report memory and responsiveness still need qualification.
+The historical 235,224-record report passed 155 browser comparisons across all
+six targets on October 5, 2026. Independent checks preserved every metric row,
+1,188 game definitions and 21,360 presets. Coalescing metric blocks reduced the
+initial SV view from 416 requests and 3.93 seconds to 152 requests and 2.63 seconds
+in the local test; the full test's transferred bytes increased from 1.39 to
+1.65 GB because family filters read broader blocks. This qualifies the historical
+report's behavior, not the full matrix's memory, network or hosting requirements.
 
 ## Gates before enabling the format
 
 The block byte cap bounds encoded assets, not parsed JSON memory. A browser
 consumer must limit concurrent requests and retained blocks, handle canceled
-queries, and measure memory on realistic selections. Complete table, plot,
-filter, timing-profile and download parity with the current site still needs
-qualification. In particular, arbitrary filters must keep exact weighted
-medians; loading every block and concatenating all rows defeats this design.
+queries, and measure memory on realistic selections. Table, plot, filter,
+timing-profile and download parity passed on the historical report; larger release
+candidates must repeat that qualification. In particular, arbitrary filters must
+keep exact weighted medians; loading every block and concatenating all rows defeats
+this design.
 
 Large maps/lists in details and presets are split without increasing the block
 cap. An individual scalar or an excessively long path can still exceed it and
