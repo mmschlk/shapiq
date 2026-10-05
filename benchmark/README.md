@@ -38,6 +38,19 @@ audit-job recovery journals override the corresponding original job IDs.
 New matrix results require independent review before publication. The exporter
 and browser still need further scaling work for this larger dataset.
 
+After a wave's final audit and independent review, export with a publication plan
+that pins those receipts and the published history:
+
+```bash
+UV_NO_SYNC=1 uv run python benchmark/export_matrix.py /shared/publication-plan.json /shared/release/data --plan-sha256 PLAN_SHA256 --database /shared/release/export.sqlite --cache-dir /shared/publication-cache
+```
+
+This command authenticates the plan, uses temporary disk storage, and writes a new
+partitioned data directory. It does not deploy the website. The database is removed
+when the command exits; the output still needs independent review, browser and
+hosting checks, and reproduction archives before publication. Use lab storage for
+these paths. `export_phase.py` below retains the older exporter for small campaigns.
+
 The following records the earlier bounded rollout and its reproduction commands.
 
 The corrected bounded rollout keeps its plan and progress in lab storage at
