@@ -197,6 +197,8 @@ uv run pre-commit run --all-files
   as Python. With 198 equal-weight cells split between zero and one, ordinary
   cumulative rounding otherwise misses the required midpoint of 0.5.
   Partial summaries renormalize successful weight; no successes means no score.
+  Sum successful weight with compensation: 1,377 cells accumulated enough error
+  in a naive JavaScript sum to move an exact midpoint outside that tolerance.
 
 - The frozen `local_baseline_forest` explanation has eight declared players but
   only player zero affects the payoff; near-zero error at 2d is legitimate.

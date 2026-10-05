@@ -532,13 +532,22 @@ function weightedCells(s) {
   });
   return weights;
 }
+function compensatedSum(values) {
+  let sum = 0,
+    correction = 0;
+  for (const value of values) {
+    const adjusted = value - correction,
+      next = sum + adjusted;
+    correction = next - sum - adjusted;
+    sum = next;
+  }
+  return sum;
+}
 function summary(rows, s) {
   const good = rows.filter((r) => r.status === "ok" && Number.isFinite(r.nmse)),
     weights = weightedCells(s),
-    successfulWeight = good.reduce(
-      (sum, r) => sum + weights.get(cellKey(r)),
-      0,
-    );
+    // Match Python's accurately summed mass at weighted-median boundaries.
+    successfulWeight = compensatedSum(good.map((r) => weights.get(cellKey(r))));
   let cumulative = 0,
     median = null;
   const ordered = [...good]
