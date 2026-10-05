@@ -31,10 +31,17 @@ comparison locally without uploading anything.
 
 The bounded seven-phase rollout is published. The larger matrix is now running
 from `/hopper/groups/witterlab/rwitter/shapiq-benchmark-matrix-expansion`.
-Its 38 waves are already queued: prepare → evaluate → audit → next wave.
-The ceiling is **128 shared CPU cores**, with no production GPUs reserved.
+Its 38 waves are already queued in separate preparation, evaluation and audit
+lanes. After the first wave's preparation recovery, the next wave can prepare
+while the previous wave is evaluated or audited. Preparation uses up to 48 CPU
+cores, evaluation 64, and sequential audits one: **113 cores within the approved
+128-core ceiling**, with no production GPUs reserved. Evaluation waves remain
+ordered and each waits for its own preparation checks. Audits gate publication,
+not the next wave's computation.
 Read the coordinator's `WAKEUP.md` and the matrix `state.json` before acting;
 audit-job recovery journals override the corresponding original job IDs.
+The scheduling overlay is recorded in `operational/audit-independent-pipeline/`;
+it preserves the original job IDs, scientific plan and source snapshots.
 New matrix results require independent review before publication. The exporter
 and browser still need further scaling work for this larger dataset.
 

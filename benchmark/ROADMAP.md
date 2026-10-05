@@ -35,10 +35,13 @@ preparing 11-player games. Nine enumeration waves cover compatible sizes up to
 to qualification. The plan retains all 63 datasets, compatible models and
 constructions, all nine relative budgets and four construction seeds. Completed
 recipes are reused only after authentication. Preparation and evaluation tasks
-use 16 CPU cores each, with at most eight running (128 cores); no production GPUs are reserved.
-Each wave's numerical audit gates the next wave. Independent review and website
-publication follow separately. Matrix publication still needs bounded-memory
-export and browser loading work; the live selected cohort remains unchanged.
+use 16 CPU cores each; no production GPUs are reserved. Preparation and evaluation
+run in separate, ordered lanes: up to 48 and 64 cores respectively, plus one core
+for sequential audits (113 total, below the 128-core ceiling). Each evaluation
+waits for its own preparation checks, while later preparation can proceed without
+waiting for earlier evaluations or audits. Independent review still gates website
+publication. The actual larger export needs browser and hosting qualification;
+the live selected cohort remains unchanged.
 
 Phase four contributed 48 instances from twelve recipes. Phase five added 40
 CPU instances and four Mushroom TabPFN instances from CPU recovery. Three other
