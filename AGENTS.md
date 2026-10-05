@@ -56,6 +56,15 @@ uv run pre-commit run --all-files
 
 ## Benchmark integration notes
 
+- Table preparation pilots do not serialize `n_players`; audit their actual
+  coalition counts and cost-projection fields. Native pilots do record it.
+  Use real serialized pilot fixtures when testing campaign audits.
+- Proportional stratification can omit rare classes from tiny training-player
+  samples. Binary weighted KNN then lacks an opposing class, while data valuation
+  can reject incomplete class coverage. Authenticate and replay the original
+  selection before classifying these as structural exclusions; do not silently
+  choose different rows or accept arbitrary constructor exceptions.
+
 - Digits includes constant border pixels. Clustering scores are undefined for a
   singleton coalition whose column is constant on the actual clustering rows.
   Select nonconstant columns using those training rows and record their original
