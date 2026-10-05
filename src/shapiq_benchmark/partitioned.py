@@ -354,36 +354,39 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
         for ratio in data["suite"].get("relative_budgets", []):
             ratios.setdefault(math.ceil(ratio * game["n_players"]), []).append(ratio)
         ratios_by_game[game["id"]] = ratios
-    for (target, family), ids in groups.items():
-        for method in data["methods"]:
+
+    def rows(ids: list[str], method: str, target: str) -> Iterator[dict]:
+        nonlocal count, evaluated
+        for sequence, row in store.select_indexed(game_ids=ids, methods=[method]):
+            _require(
+                not set(row) - {*ROW_FIELDS, "run_id"},
+                "Unsanitized publication record or reserved sequence",
+            )
+            _require(
+                row.get("run_id") in data["runs"]
+                and row["status"] in {"ok", "failed", "unsupported"},
+                "Unknown run or unresolved publication record",
+            )
+            count += 1
+            evaluated += row["status"] != "unsupported"
+            if row["status"] != "unsupported":
+                ratios = ratios_by_game[row["game_id"]].get(row["budget"], [])
+                if not data["suite"].get("relative_budgets"):
+                    ratios = [row["budget"] / games[row["game_id"]]["n_players"]]
+                observed_budgets.setdefault(target, set()).update(ratios)
+            cost = row.get("estimated_uncached_seconds")
+            if type(cost) in (int, float) and math.isfinite(cost):
+                estimated_targets.add(target)
+            status = "unsupported" if row["status"] == "unsupported" else "supported"
+            capabilities.setdefault(method, {}).setdefault(status, set()).add(target)
+            yield {**row, "sequence": sequence}
+
+    def metric_rows(target: str, method: str) -> Iterator[dict]:
+        # Keep raw family partitions, but fill metric blocks across their boundaries.
+        for (group_target, family), ids in groups.items():
+            if group_target != target:
+                continue
             group = {"target": target, "family": family, "method": method}
-
-            def rows(ids: list[str], method: str, target: str) -> Iterator[dict]:
-                nonlocal count, evaluated
-                for sequence, row in store.select_indexed(game_ids=ids, methods=[method]):
-                    _require(
-                        not set(row) - {*ROW_FIELDS, "run_id"},
-                        "Unsanitized publication record or reserved sequence",
-                    )
-                    _require(
-                        row.get("run_id") in data["runs"]
-                        and row["status"] in {"ok", "failed", "unsupported"},
-                        "Unknown run or unresolved publication record",
-                    )
-                    count += 1
-                    evaluated += row["status"] != "unsupported"
-                    if row["status"] != "unsupported":
-                        ratios = ratios_by_game[row["game_id"]].get(row["budget"], [])
-                        if not data["suite"].get("relative_budgets"):
-                            ratios = [row["budget"] / games[row["game_id"]]["n_players"]]
-                        observed_budgets.setdefault(target, set()).update(ratios)
-                    cost = row.get("estimated_uncached_seconds")
-                    if type(cost) in (int, float) and math.isfinite(cost):
-                        estimated_targets.add(target)
-                    status = "unsupported" if row["status"] == "unsupported" else "supported"
-                    capabilities.setdefault(method, {}).setdefault(status, set()).add(target)
-                    yield {**row, "sequence": sequence}
-
             for chunk in _chunks(rows(ids, method, target), block_rows, max_bytes):
                 compact = compact_workers({"records": chunk})
                 worker_ids = {
@@ -393,15 +396,15 @@ def _write(data: dict, output: Path, games: dict, block_rows: int, max_bytes: in
                     if "worker_id" in row:
                         row["worker_id"] = worker_ids[row["worker_id"]]
                 blocks.write("raw", compact["records"], **group)
-                blocks.write(
-                    "metrics",
-                    (
-                        {k: v for k, v in row.items() if k in METRIC_FIELDS}
-                        for row in compact["records"]
-                    ),
-                    **group,
+                yield from (
+                    {k: v for k, v in row.items() if k in METRIC_FIELDS}
+                    for row in compact["records"]
                 )
                 flush_profiles()
+
+    for target in dict.fromkeys(target for target, _ in groups):
+        for method in data["methods"]:
+            blocks.write("metrics", metric_rows(target, method), target=target, method=method)
     _require(count == len(store), "Records include a game or method outside the public catalog")
     suite = data["suite"]
     zero_games = store.zero_games()

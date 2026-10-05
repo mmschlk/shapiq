@@ -621,3 +621,110 @@ def test_catalog_common_panel_and_legacy_budget_inventory(tmp_path: Path) -> Non
         assert target["has_common_panel"] == (target["target"] in expected)
         assert target["relative_budgets"] == sorted({b / 11 for b in data["suite"]["budgets"]})
     assert manifest["catalog"]["has_common_panel"] == bool(expected)
+
+
+@pytest.mark.parametrize("block_rows", [3, 32768])
+def test_metrics_span_families_without_changing_rows_or_filters(
+    tmp_path: Path, block_rows: int
+) -> None:
+    """Coalescing reduces requests while preserving exact family-filtered reductions."""
+    data = fixture_data()
+    additional = copy.deepcopy(data["games"][0])
+    additional.update(id="other-SV", family="other", stratum="second")
+    data["games"].append(additional)
+    data["records"].extend(
+        {
+            **copy.deepcopy(row),
+            "game_id": additional["id"],
+            "status": "ok",
+            "mse": 2.0,
+            "nmse": 3.0,
+        }
+        for row in list(data["records"])
+        if row["game_id"] == "SV"
+    )
+    expected_presets = [
+        preset
+        for include in [False, True]
+        for degree in [None, 1, 2]
+        for preset in iter_summaries(data, include_controls=include, score_order=degree)
+    ]
+    root = tmp_path / "report"
+    with RecordStore(tmp_path / "rows.sqlite") as store:
+        store.extend(data["records"])
+        manifest = write_partitioned_report(
+            {**data, "records": store}, root, block_rows=block_rows, max_bytes=8192
+        )
+    raw = decoded(root, manifest, "raw")
+    metrics = decoded(root, manifest, "metrics")
+    assert decoded(root, manifest, "summaries") == expected_presets
+    assert all("family" in d for d in manifest["assets"]["raw"])
+    assert all("family" not in d for d in manifest["assets"]["metrics"])
+    assert all(
+        d["count"] <= block_rows and d["bytes"] <= 8192 for d in manifest["assets"]["metrics"]
+    )
+    assert identity({"rows": sorted(metrics, key=lambda r: r["sequence"])}) == identity(
+        {
+            "rows": [
+                {k: v for k, v in row.items() if k in METRIC_FIELDS}
+                for row in sorted(raw, key=lambda r: r["sequence"])
+            ]
+        }
+    )
+    profiles = {row["id"]: row["value"] for row in decoded(root, manifest, "profiles")}
+    restored = []
+    for row in sorted(raw, key=lambda r: r["sequence"]):
+        restored_row = _restore_worker(copy.deepcopy(row), profiles)
+        restored_row.pop("sequence")
+        restored.append(restored_row)
+    assert identity({"rows": restored}) == identity({"rows": data["records"]})
+    if block_rows == 32768:
+        assert len(manifest["assets"]["metrics"]) == 4
+        assert len(manifest["assets"]["raw"]) == 6
+
+    # Reconstruct the former family-specific metric layout independently from raw rows.
+    reference = tmp_path / "reference"
+    reference.mkdir()
+    blocks = partitioned._Blocks(reference, manifest["snapshot_id"], block_rows, 8192)
+    games = {game["id"]: game for game in data["games"]}
+    groups: dict = {}
+    for row in raw:
+        game = games[row["game_id"]]
+        key = (f"{game['index']} · order {game['order']}", game["family"], row["method"])
+        groups.setdefault(key, []).append({k: v for k, v in row.items() if k in METRIC_FIELDS})
+    for (target, family, method), rows in groups.items():
+        blocks.write("metrics", rows, target=target, family=family, method=method)
+    reference_manifest = copy.deepcopy(manifest)
+    reference_manifest["assets"]["metrics"] = blocks.assets["metrics"]
+    (reference / "data.json").write_text(json.dumps(reference_manifest))
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is required for mixed-family browser-filter parity")
+    script = r"""
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');global.crypto=require('crypto').webcrypto;
+const site=process.argv[1],root=process.argv[2],reference=process.argv[3];
+for(const name of ['partitions.js','partition-details.js','query.js'])require(path.join(site,name));
+const manifests=[root,reference].map(p=>JSON.parse(fs.readFileSync(path.join(p,'data.json'))));
+async function query(index,selection,methods,score_order,timing_metric){
+ const manifest=manifests[index];
+ const read=d=>{const directory=index&&d.kind==='metrics'?reference:root;
+  return BenchmarkPartitions.read(manifest,d,{files:new Map([[d.file,new Blob([fs.readFileSync(path.join(directory,d.file))])]])});};
+ return BenchmarkQuery.query(manifest,{selection,chart_selection:selection,methods,score_order,timing_metric},
+ {read,lookupPreset:({sha256})=>BenchmarkDetails.preset(manifest,sha256,{read})});
+}
+(async()=>{for(const family of [null,'local','other'])for(const score of [null,1])
+ for(const timing of ['seconds','estimated_uncached_seconds'])for(const selected of [null,'KernelSHAP']){
+ const selection={target:'SV · order 1',family,panel:'real',include_controls:false,relative_budget:1};
+ const methods=selected?[selected]:Object.keys(manifests[0].methods);
+ assert.deepStrictEqual(await query(0,selection,methods,score,timing),await query(1,selection,methods,score,timing));
+ }})().catch(e=>{console.error(e);process.exit(1)});
+"""
+    site = Path(__file__).resolve().parents[2] / "benchmark/site"
+    result = subprocess.run(
+        [node, "-e", script, str(site), str(root), str(reference)],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr

@@ -22,6 +22,9 @@ directory. Every block descriptor records its filename, SHA256, byte size, row
 count, kind and snapshot. Target, family and method partitions repeat those
 identifiers inside the block. All blocks use the same lossless `columns-v2`
 encoding, including missing fields, explicit nulls and full numeric precision.
+Raw downloads retain family partitions; metric blocks group by target and
+estimator across families to reduce requests. Family filters still select
+individual games within those bounded metric blocks.
 
 | Block kind | Purpose |
 | --- | --- |
