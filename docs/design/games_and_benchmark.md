@@ -230,9 +230,9 @@ Core stays as it is except for exactly these changes:
 
 | Change | Kind | PR |
 |--------|------|----|
-| Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | 1 |
-| Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | 2 |
-| Make the weighted-KNN weight discretization module-level functions | small refactor, no behavior change | 2 |
+| Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | project PR |
+| Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | project PR |
+| Make the weighted-KNN weight discretization module-level functions | small refactor, no behavior change | project PR |
 | Fix `MarginalImputer`'s null-player violation | bug fix | separate |
 | Cast integer 0/1 coalitions to bool in `Game` | bug fix | separate |
 
@@ -245,10 +245,14 @@ Contract tests that depend on the two bug fixes are marked `xfail` with a refere
 
 ## PR plan
 
+Everything except the two core bug fixes lands as **one complete PR**, so the whole design can
+be reviewed and ironed out in one sweep. It contains, in build order:
+
 1. **Data layer.** The fetch-and-cache helper and dataset registry in `shapiq_games` (with explicit task types), and removal of the bundled data files (games CSVs and JPEGs, core CSVs).
 2. **Games.** Family classes, model registry, the move of the core games (with the weighted-KNN helper), deletions, `tests/shapiq_games` with contract tests.
 3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
-4. **Core fixes.** Two separate PRs, one per bug fix above.
+
+The two core bug fixes are separate PRs, done independently.
 
 ## Resolved questions
 
