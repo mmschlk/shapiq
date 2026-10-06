@@ -21,7 +21,8 @@ rewrite) computes the right numbers.
 | 5 | No data files ship in any wheel: no CSVs, images, weights or precomputed game values. This includes the three CSVs in core `shapiq/datasets/data`. |
 | 6 | Breaking changes in both packages are fine. PR #602 (Teal) integrates on top of this afterwards. |
 | 7 | Every game that nothing in core uses moves into `shapiq_games` (see "Games moving out of core"). |
-| 8 | The three core bugs found during the audit (below) are fixed in three separate PRs after this work. |
+| 8 | Important core bugs found during the audit (below) are fixed in separate PRs after this work. |
+| 9 | **Core stays (almost) untouched.** The only core changes are the ones listed in "Core changes"; everything else is built in `shapiq_games` and `shapiq_benchmark`. |
 
 ## Dependency direction
 
@@ -123,9 +124,8 @@ Each family gets contract tests on a small offline configuration:
 - **Data removed from the tree** (the files remain reachable through git history and the pinned URLs):
   - `shapiq_games/datasets/data` (81 MB)
   - `shapiq/datasets/data` (8.5 MB)
-  - root `data/`
   - the ImageNet example JPEGs
-- **Core loaders.** Core keeps its three public loaders (`load_california_housing` & co.), backed by the same fetch-and-cache helper.
+- **Core loaders stay unchanged.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing, so deleting the CSVs needs no core code change. The repo-root `data/` folder therefore stays; it is not part of any wheel. The fetch-and-cache helper lives in `shapiq_games` only.
 - **Undeclared dependencies.** `openml`, `ucimlrepo` and `openpyxl` get declared as optional dependencies; today they aren't declared at all.
 
 ### Models
@@ -144,7 +144,7 @@ No method in `src/shapiq` uses them. Only `__init__` re-exports and tests refere
 | `shapiq.explainer.nn.games.{KNN,WeightedKNN,TNN}ExplainerGame` | `shapiq_games.nn` |
 | `shapiq.explainer.product_kernel.game.ProductKernelGame` | `shapiq_games.kernel` |
 
-- `WeightedKNNExplainerGame` currently instantiates a `WeightedKNNExplainer` to call its private weight-discretization helpers. Those become a shared pure function in core that both the explainer and the game call.
+- `WeightedKNNExplainerGame` currently instantiates a `WeightedKNNExplainer` to call its private weight-discretization helpers. Those become module-level functions in `shapiq/explainer/nn/_util.py` that both the explainer and the game call (a small, behavior-preserving core change).
 - Imputers (`MarginalImputer`, `TabPFNImputer`, …) are also `Game`s but are used by core explainers, so they stay in core. `LocalExplanation` wraps them.
 
 ### Deleted
@@ -170,6 +170,13 @@ class Computer(Protocol):
 ```
 
 - **Location.** Computers live here as thin adapters around core algorithms. They never re-implement the algorithms, and each one binds to the game types it understands.
+- **Index support comes from core, not a parallel list.** `supports(index, order)` reads the declarations core already has for the wrapped algorithm:
+  - `ExactComputer.valid_indices`
+  - `ValidMoebiusConverterIndices`
+  - `TreeSHAPIQIndices`, `InterventionalTreeSHAPIQIndices`, `QuadratureTreeSHAPIndices`
+  - `ValidNNExplainerIndices` and `ValidProductKernelExplainerIndices` (with their order-1 checks)
+
+  Constraints core does not declare (for example a maximum order) are added inside the computer, not in core. A drift test calls each core algorithm for every index and order: everything `supports` accepts must run, and everything it rejects must be rejected by core too.
 - **Never a silent fallback.** If `supports(index, order)` is false, `exact_values` raises an error instead of computing something else. Today `PathdependentComputer` returns order-1 SV when asked for order-2 k-SII.
 - **One output convention.** A computer returns the values of the game *as `game(...)` evaluates it*: same output space, same class, and the entry for `()` equals the game's v(∅) (0 when normalized).
 
@@ -194,7 +201,7 @@ gt = benchmark.exact_values(index="k-SII", order=2)   # cached locally by game f
 results = run(benchmark, approximators, budgets, seeds, index="k-SII", order=2)
 ```
 
-- `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file.
+- `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
 - Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<index>_<order>.json` using `InteractionValues.to_json_file`. Games built from objects (no fingerprint) are not cached.
 - `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. String configuration lives in the games' `from_config`.
 
@@ -217,20 +224,31 @@ a uniform shift or rescaling must behave as documented.
 - **Top-k:** Precision@k uses top-k by |ground truth|. Today `KendallTau@k` uses the k *smallest* values, and `Spearman@k` ignores k.
 - **Faithfulness:** R² of the reconstructed game on seeded coalition samples, for every index rather than FBII only.
 
-## Core bugs found (separate PRs, after this work)
+## Core changes
 
-1. `MarginalImputer` breaks the null-player axiom: v(∅) is computed over the full background but every other coalition over a 100-row subsample.
-2. `Game` passes integer 0/1 coalitions to `value_function` without converting them to bool, so games that index with the mask silently compute the wrong thing.
-3. The order-0 convention differs: `MoebiusConverter` puts 0 at `()`, while `ExactComputer` puts the baseline value.
+Core stays as it is except for exactly these changes:
 
-Contract tests that depend on these fixes are marked `xfail` with a reference to the PR that will fix them.
+| Change | Kind | PR |
+|--------|------|----|
+| Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | 1 |
+| Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | 2 |
+| Make the weighted-KNN weight discretization module-level functions | small refactor, no behavior change | 2 |
+| Fix `MarginalImputer`'s null-player violation | bug fix | separate |
+| Cast integer 0/1 coalitions to bool in `Game` | bug fix | separate |
+
+Not core changes, handled elsewhere:
+- **Order-0 convention.** `MoebiusConverter` puts 0 at `()` while `ExactComputer` puts the baseline value. The computers translate every result to the game's own convention, so core is left alone.
+- **Unstable `game_id`.** It is based on Python's `hash()`. Games get their own `fingerprint` instead.
+- **Inconsistent index declarations** (a `valid_indices` attribute here, a `Literal` alias there). Computers read whatever exists; harmonizing them in core is out of scope.
+
+Contract tests that depend on the two bug fixes are marked `xfail` with a reference to the PR that will fix them.
 
 ## PR plan
 
-1. **Data layer.** The fetch-and-cache helper, the dataset registry with explicit task types, and removal of every bundled data file (games, core and root `data/`).
-2. **Games.** Family classes, model registry, the move of the core games, deletions, `tests/shapiq_games` with contract tests.
-3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust tests.
-4. **Core fixes.** Three separate PRs, one per bug above.
+1. **Data layer.** The fetch-and-cache helper and dataset registry in `shapiq_games` (with explicit task types), and removal of the bundled data files (games CSVs and JPEGs, core CSVs).
+2. **Games.** Family classes, model registry, the move of the core games (with the weighted-KNN helper), deletions, `tests/shapiq_games` with contract tests.
+3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
+4. **Core fixes.** Two separate PRs, one per bug fix above.
 
 ## Open questions
 
