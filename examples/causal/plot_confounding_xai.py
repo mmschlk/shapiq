@@ -2,7 +2,7 @@
 Confounding SHAP: Attributing Bias to Covariates
 =================================================
 
-This example shows how to use the :class:`~shapiq_games.benchmark.causal_xai.GlobalConfoundingXAI`
+This example shows how to use the :class:`~shapiq_games.GlobalConfoundingXAI`
 game to attribute confounding bias in a treatment effect estimate to individual
 covariates via Shapley values.
 
@@ -28,7 +28,7 @@ import numpy as np
 from tabpfn import TabPFNRegressor
 
 import shapiq
-from shapiq_games.benchmark.causal_xai import GlobalConfoundingXAI
+from shapiq_games import GlobalConfoundingXAI
 from shapiq_games.datasets import load_curthvds_synthetic
 
 _TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
@@ -39,7 +39,7 @@ _TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
 # The Curth-VDS dataset is a synthetic observational study with four covariates.
 # Treatment assignment is confounded by the Confounder variable.
 
-curthvds_data = load_curthvds_synthetic(n=200, d=4, seed=42)
+curthvds_data = load_curthvds_synthetic(n=200, d=4, random_state=42)
 print(curthvds_data.head())
 print(f"\nDataset shape: {curthvds_data.shape}")
 print(f"Treatment rate: {curthvds_data['Treatment'].mean():.2f}")
@@ -55,7 +55,7 @@ Y = curthvds_data["Outcome"].to_numpy()
 # We use a single TabPFN S-learner trained on the full dataset with treatment
 # A appended as a feature.  Predicting twice — once with A set to 1 and once
 # with A set to 0 — gives the individual treatment effect estimate tau_hat.
-# This matches the estimator used inside :class:`~shapiq_games.benchmark.causal_xai.CurthVDS`.
+# This matches the estimator used by :meth:`~shapiq_games.GlobalConfoundingXAI.from_config`.
 
 model = TabPFNRegressor(
     device="cpu",
@@ -79,7 +79,8 @@ print(f"Observed outcome difference: {Y[A == 1].mean() - Y[A == 0].mean():.3f}")
 # features in S are observed.  For ``mode='signed'`` a positive value means the
 # naive estimator (using only S) over-estimates the true effect.
 
-game = GlobalConfoundingXAI(X, A, Y, tau_hat, mode="signed", device="cpu")
+# The game fits its S-learners with a seeded TabPFN regressor on the CPU by default.
+game = GlobalConfoundingXAI(X, A, Y, tau_hat, mode="signed")
 print(f"\nEmpty coalition value v({{}}): {game.empty_value:.4f}")
 print(f"Grand coalition value v(N): {game.grand_coalition_value:.4f}")
 

@@ -48,7 +48,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
   file finder): the 1.7.0 wheel carried ~89 MB of `shapiq_games` CSVs and JPEGs.
   Never add data files (CSVs, images, weights, precomputed game values) under
   `src/`; datasets are fetched and cached locally. See
-  `docs/design/games_and_benchmark.md` for the ongoing restructuring.
+  `docs/design/games_and_benchmark.md` for the design.
+- `shapiq_games` datasets are downloaded on first use into `~/.cache/shapiq` (override with
+  `$SHAPIQ_DATA_DIR`). New games must follow the contract in `shapiq_games/_base.py`, and
+  every family is checked by `tests/shapiq_games/test_contract.py`. Tests that download
+  pretrained models or OpenML/UCI data only run with `SHAPIQ_RUN_HEAVY_TESTS=1`.
 - `Game._check_coalitions` does NOT cast integer 0/1 coalitions to bool, so
   `x[:, coalition]` or `~coalition` inside a `value_function` silently computes
   the wrong thing for int input. Cast with `coalitions.astype(bool)` until fixed.

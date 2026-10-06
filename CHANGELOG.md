@@ -1,5 +1,32 @@
 # Changelog
 
+## Development
+
+### Harmonized `shapiq_games` and `shapiq_benchmark`
+`shapiq_games` is now a curated, tested collection of cooperative games, and `shapiq_benchmark` a small harness in which a benchmark is a game plus a computer of its exact values. The design is described in `docs/design/games_and_benchmark.md`.
+
+- **One class per game family**, configured either from objects or with `from_config(dataset=..., model=..., random_state=...)`: synthetic games (`DummyGame`, `UnanimityGame`, `SOUM`, `RandomTableGame`), model-specific games with exact explainers (`PathDependentTreeGame`, `InterventionalTreeGame`, `KNNGame`, `WeightedKNNGame`, `ThresholdNNGame`, `ProductKernelGame`), and machine learning games (`LocalExplanation`, `GlobalExplanation`, `FeatureSelection`, `DataValuation`, `DatasetValuation`, `EnsembleSelection`, `RandomForestEnsembleSelection`, `UncertaintyExplanation`, `ClusterExplanation`, `UnsupervisedData`, `GlobalConfoundingXAI`, `LocalConfoundingXAI`, `ImageClassifier`, `SentimentAnalysis`). The 153 classes of the previous collection collapse to these families.
+- **A game contract**, enforced by tests for every family: values are deterministic given the arguments (no call-order, batching, or repetition effects), the explained point is an explicit index (default `0`, never a random point), the explained class follows the explainers' convention (`None` means class `1`), and configured games carry a stable `fingerprint`.
+- **Datasets without bundled files**: `shapiq_games.datasets` registers all 83 datasets (22 real-world, 10 synthetic, 51 TabArena) with explicit task types (TabArena's from its official metadata), downloads files from pinned sources with SHA-256 checks, caches them in `~/.cache/shapiq` (or `$SHAPIQ_DATA_DIR`), and provides seeded synthetic generators and deterministic stratified splits. `shapiq_games.models` builds seeded models, including the tuned presets.
+- **Ground truth with a chain of trust**: `shapiq_benchmark` computers wrap the exact algorithms of shapiq (`BruteForceComputer`, `MoebiusComputer`, `PathDependentTreeComputer`, `InterventionalTreeComputer`, `KNNComputer`, `ProductKernelComputer`), read the supported indices from the core declarations, and raise instead of computing something else. Tests check closed-form values against brute force and brute force against every structured computer; `Benchmark` caches exact values locally, `run` scores approximators over budgets and seeds with explicit `ok`/`unsupported`/`failed` statuses, and the metrics were rewritten.
+
+### Breaking Changes
+
+- moves the ground-truth games out of core shapiq into `shapiq_games`: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame` (with `x` instead of `target_instance`), the nearest-neighbor games of `shapiq.explainer.nn.games` are now `shapiq_games.nn.KNNGame`, `WeightedKNNGame`, and `ThresholdNNGame`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame` (taking the model and `x`).
+- removes `shapiq_games.benchmark` (all dataset-specific game classes), `shapiq_games.tabular`, `GameBenchmarkSetup`, and `RandomGame` (replaced by `RandomTableGame`, a seeded value table; `RandomGame` was not a set function). The benchmark classes `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, and `ImageBench` are replaced by `Benchmark(game)`.
+- `SOUM` is seeded by default (`random_state=42`) and no longer has an `exact_values` override; use `shapiq_benchmark.MoebiusComputer` for its exact values.
+- the `benchmark` extra now installs the new `games` extra (`openml`, `openpyxl`, `scikit-image`, `xgboost`, `lightgbm`, `catboost`, `tabpfn`, `torch`, `torchvision`, `transformers`) plus `optuna`.
+
+### Bugfix
+
+- fixes the benchmark ground truth of path-dependent tree games, which ignored the requested index and order and always returned order-1 Shapley values, and of interventional tree games, which crashed for orders of four and above.
+- fixes the benchmark's Kendall's tau, which correlated `argsort` positions instead of values (a true tau of 0.97 scored 0.55); `KendallTau@k` used the k smallest values and `Spearman@k` ignored `k`.
+- fixes games that silently ran on wrong models or data: the California housing neural network ran with random weights, the last ResNet superpixel was always empty, accuracy compared argmax column indices with class labels, the games' fork of the interventional game diverged from core on multiclass LightGBM, and unseeded random explained points and synthetic datasets made games irreproducible.
+
+### Maintenance
+
+- removes all bundled data files from the packages (~89 MB of CSVs and images in `shapiq_games`, and the three CSVs of `shapiq.datasets`, whose loaders fall back to their existing download), so the wheel ships code only.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.

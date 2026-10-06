@@ -6,7 +6,7 @@ This example shows how to explain a sentiment classifier using ``shapiq``.
 Each token in the input text becomes a player in a cooperative game, and
 Shapley values quantify each token's contribution to the predicted sentiment.
 
-We use the :class:`~shapiq_games.benchmark.SentimentAnalysisLocalXAI` game
+We use the :class:`~shapiq_games.SentimentAnalysis` game
 from the ``shapiq_games`` package, which wraps a pretrained DistilBERT model
 fine-tuned on IMDb reviews.
 """
@@ -20,7 +20,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
 import shapiq
-from shapiq_games.benchmark import SentimentAnalysisLocalXAI
+from shapiq_games import SentimentAnalysis
 
 # %%
 # Set Up the Sentiment Game
@@ -30,7 +30,7 @@ from shapiq_games.benchmark import SentimentAnalysisLocalXAI
 # tokens are replaced with ``[MASK]``). The score is normalized so that the
 # empty coalition maps to 0.
 
-game = SentimentAnalysisLocalXAI(
+game = SentimentAnalysis(
     input_text="I really loved this amazing film",
     mask_strategy="mask",
     normalize=True,
@@ -77,7 +77,7 @@ sii.plot_network(feature_names=token_names)
 # ----------------------------
 # Let's also explain a negative review.
 
-game_neg = SentimentAnalysisLocalXAI(
+game_neg = SentimentAnalysis(
     input_text="This movie was terrible and boring",
     mask_strategy="mask",
     normalize=True,

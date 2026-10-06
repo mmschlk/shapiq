@@ -7,7 +7,7 @@ Transformer (ViT) using ``shapiq``. The image is divided into patches
 and each patch becomes a player in a cooperative game. Shapley values
 then quantify how much each patch contributes to the predicted class.
 
-We use the :class:`~shapiq_games.benchmark.ImageClassifierLocalXAI` game
+We use the :class:`~shapiq_games.ImageClassifier` game
 from the ``shapiq_games`` package, which wraps a pretrained ViT model and
 handles patch masking internally.
 """
@@ -27,7 +27,7 @@ import numpy as np
 from PIL import Image
 
 import shapiq
-from shapiq_games.benchmark import ImageClassifierLocalXAI
+from shapiq_games import ImageClassifier
 
 # %%
 # Set Up the Image Game
@@ -44,9 +44,9 @@ image = Image.fromarray(rng.integers(0, 255, (384, 384, 3), dtype=np.uint8))
 image_path = str(Path(tempfile.gettempdir()) / "shapiq_vit_example.png")
 image.save(image_path)
 
-game = ImageClassifierLocalXAI(
-    model_name="vit_9_patches",
-    x_explain_path=image_path,
+game = ImageClassifier(
+    image_path,
+    model="vit_9_patches",
     normalize=True,
 )
 print(f"Number of patches (players): {game.n_players}")

@@ -1,6 +1,6 @@
 # Design: harmonizing `shapiq_games` and `shapiq_benchmark`
 
-Status: draft for discussion · 2026-10-06
+Status: implemented on `feature/games-benchmark-harmonization` · 2026-10-06
 
 ## Goal
 
@@ -42,23 +42,26 @@ about either package (core *tests* may import games, as they already do for `Dum
 
 ```
 shapiq_games/
-  synthetic/          DummyGame, UnanimityGame, SOUM, RandomTableGame (replaces RandomGame)
-  tree/               PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
-  nn/                 KNNGame, WeightedKNNGame, ThresholdNNGame (moved from core)
-  kernel/             ProductKernelGame (moved from core)
-  local_xai/          LocalExplanation (imputer based: marginal / conditional / baseline / TabPFN)
-  global_xai/         GlobalExplanation (SAGE-like)
-  feature_selection/  FeatureSelection
-  valuation/          DataValuation, DatasetValuation (one shared implementation, see below)
-  ensemble_selection/ EnsembleSelection, RandomForestEnsembleSelection
-  uncertainty/        UncertaintyExplanation
-  clustering/         ClusterExplanation
-  unsupervised/       UnsupervisedData
-  causal/             LocalConfoundingXAI, GlobalConfoundingXAI
-  vision/             ImageClassifier (ViT, ResNet)          [torch, transformers]
-  language/           SentimentAnalysis                      [torch, transformers]
-  datasets/           dataset registry, loaders, local cache
-  models/             model registry + hyperparameter presets
+  _base.py              the game contract (bool coalitions, explicit x, class index, fingerprint)
+  _setup.py             from_config plumbing (load, split, fit)
+  _training.py          clone-per-coalition training, metrics, constant predictors
+  synthetic/            DummyGame, UnanimityGame, SOUM, RandomTableGame (replaces RandomGame)
+  tree/                 PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
+  nn/                   KNNGame, WeightedKNNGame, ThresholdNNGame (moved from core)
+  kernel/               ProductKernelGame (moved from core)
+  local_xai.py          LocalExplanation (marginal / conditional / baseline imputers, TabPFN)
+  global_xai.py         GlobalExplanation (SAGE-like)
+  feature_selection.py  FeatureSelection
+  valuation.py          DataValuation, DatasetValuation (one shared implementation)
+  ensemble_selection.py EnsembleSelection, RandomForestEnsembleSelection
+  uncertainty.py        UncertaintyExplanation
+  clustering.py         ClusterExplanation
+  unsupervised.py       UnsupervisedData
+  causal.py             GlobalConfoundingXAI, LocalConfoundingXAI
+  vision/               ImageClassifier (ViT, ResNet, custom classifiers)   [torch, transformers]
+  language.py           SentimentAnalysis                                  [transformers]
+  datasets/             dataset registry, loaders, local cache, example images
+  models.py             model registry + tuned presets
 ```
 
 There is **one class per game family**, configured by arguments. The 153 classes today
@@ -72,10 +75,10 @@ Each family has two entry points:
 
 ```python
 # 1. explicit objects: the primary, fully general constructor
-game = FeatureSelection(x_train, y_train, x_test, y_test, model=estimator, seed=0)
+game = FeatureSelection(estimator, x_train, y_train, x_test, y_test, task="regression")
 
 # 2. string configuration: resolves dataset and model through the registries
-game = FeatureSelection.from_config(dataset="california_housing", model="random_forest", seed=0)
+game = FeatureSelection.from_config(dataset="california_housing", model="random_forest", random_state=0)
 ```
 
 Games built with `from_config` carry a JSON-serializable `config` and a stable `fingerprint`
@@ -85,9 +88,9 @@ changes between processes, so it cannot be used as a cache key.
 ### Game contract (enforced by `tests/shapiq_games`)
 
 1. Subclasses `shapiq.Game` and implements `value_function`.
-2. **Deterministic.** v(S) is a pure function of the constructor arguments, including `seed`. It must not depend on call order, batch composition, repetition or process. Randomness is drawn once at construction from `np.random.default_rng(seed)`. Per-coalition randomness, if a game really needs it, is seeded from `(seed, coalition)`. No global or stateful RNG is used during evaluation.
+2. **Deterministic.** v(S) is a pure function of the constructor arguments, including `random_state` (the name core shapiq uses). It must not depend on call order, batch composition, repetition or process. Randomness is drawn once at construction from `np.random.default_rng(random_state)`. No global or stateful RNG is used during evaluation (the conditional imputer of core, which has one, is reseeded before every evaluation).
 3. **Explicit explained point.** Local games take `x` as an index into the explanation data or as an array. The default is index `0`, never a random point. One name, `x`, everywhere (today it is `x`, `x_explain`, `target_instance`, `explain_point` and `x_explain_path`).
-4. **Explicit class.** Classification games resolve `class_index` at construction and store it as an int. The default is the class predicted for `x`. Today this is class 1, class 0 or argmax depending on the game.
+4. **Explicit class.** Classification games resolve `class_index` at construction and store it as an int. Following the shapiq explainers, `None` means class `1` (previously class 1, class 0 or argmax depending on the game). Image games default to the class predicted on the image.
 5. **Meaningful empty coalition.** v(∅) comes from the game's semantics, for example a model with no features predicting the training mean or majority class. It is never a hard-coded 0, so `normalize=True` always does what it says.
 6. **Declared output space.** Each game documents what its values are (probability, margin or log-odds, loss, score) and in which direction a higher value is better.
 7. **Typed public attributes** that a computer needs, for example:
@@ -102,7 +105,7 @@ changes between processes, so it cannot be used as a cache key.
 Each family gets contract tests on a small offline configuration:
 - the same coalition repeated gives the same value
 - a permuted batch gives a permuted output
-- two instances with the same seed are equal
+- two instances with the same arguments are equal
 - `n_players` and the normalization are right
 - axioms where they hold (efficiency of the computed values; null and dummy players for games that have them)
 
@@ -130,8 +133,8 @@ Each family gets contract tests on a small offline configuration:
 
 ### Models
 
-- `build_model(name, task, seed, **params)` covers decision tree, random forest, gradient boosting (xgboost / lightgbm), MLP, TabPFN, and the pretrained vision and language models. `seed` is always passed through.
-- Hyperparameter presets (today the Optuna JSONs in `shapiq_benchmark`) become Python dicts next to the registry and include the seed. The Optuna script stays a benchmark tool.
+- `build_model(name, task, random_state=..., preset=..., **params)` covers decision trees, random forests, XGBoost, LightGBM, CatBoost, MLPs, linear models, SVMs, Gaussian processes, nearest neighbors, and TabPFN. `random_state` is always passed through, and models run single-threaded where the library allows it.
+- Hyperparameter presets (previously the Optuna JSONs in `shapiq_benchmark`) are Python dicts next to the registry (`preset="tuned"`). The Optuna script stays a benchmark tool and now works for any registered dataset.
 - The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is dropped in favor of the seeded generic `mlp` model.
 
 ### Games moving out of core
@@ -144,7 +147,7 @@ No method in `src/shapiq` uses them. Only `__init__` re-exports and tests refere
 | `shapiq.explainer.nn.games.{KNN,WeightedKNN,TNN}ExplainerGame` | `shapiq_games.nn` |
 | `shapiq.explainer.product_kernel.game.ProductKernelGame` | `shapiq_games.kernel` |
 
-- `WeightedKNNExplainerGame` currently instantiates a `WeightedKNNExplainer` to call its private weight-discretization helpers. Those become module-level functions in `shapiq/explainer/nn/_util.py` that both the explainer and the game call (a small, behavior-preserving core change).
+- `WeightedKNNExplainerGame` instantiated a `WeightedKNNExplainer` to call its private weight-discretization helpers. Their round trip is just rounding to multiples of `2**-n_bits`, so the moved game implements that rounding itself: no core change, and the ground-truth game no longer depends on the explainer it checks.
 - Imputers (`MarginalImputer`, `TabPFNImputer`, …) are also `Game`s but are used by core explainers, so they stay in core. `LocalExplanation` wraps them.
 
 ### Deleted
@@ -178,7 +181,7 @@ class Computer(Protocol):
 
   Constraints core does not declare (for example a maximum order) are added inside the computer, not in core. A drift test calls each core algorithm for every index and order: everything `supports` accepts must run, and everything it rejects must be rejected by core too.
 - **Never a silent fallback.** If `supports(index, order)` is false, `exact_values` raises an error instead of computing something else. Today `PathdependentComputer` returns order-1 SV when asked for order-2 k-SII.
-- **One output convention.** A computer returns the values of the game *as `game(...)` evaluates it*: same output space, same class, and the entry for `()` equals the game's v(∅) (0 when normalized).
+- **One output convention.** A computer returns the values of the game *as `game(...)` evaluates it* (same output space, same class): the interactions of order 1 to `order`, with the game's v(∅) as `baseline_value` (0 when normalized). The order-0 term is excluded: core algorithms disagree on it, and no metric uses it.
 
 | Computer | Games | Core algorithm |
 |----------|-------|----------------|
@@ -198,7 +201,7 @@ type if there is one, otherwise `BruteForceComputer` (and raises an error above 
 benchmark = Benchmark(game)                       # computer = default_computer(game)
 benchmark = Benchmark(game, computer=BruteForceComputer(game))
 gt = benchmark.exact_values(index="k-SII", order=2)   # cached locally by game fingerprint
-results = run(benchmark, approximators, budgets, seeds, index="k-SII", order=2)
+results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[0, 1])
 ```
 
 - `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
@@ -232,7 +235,6 @@ Core stays as it is except for exactly these changes:
 |--------|------|----|
 | Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | project PR |
 | Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | project PR |
-| Make the weighted-KNN weight discretization module-level functions | small refactor, no behavior change | project PR |
 | Fix `MarginalImputer`'s null-player violation | bug fix | separate |
 | Cast integer 0/1 coalitions to bool in `Game` | bug fix | separate |
 
@@ -249,7 +251,7 @@ Everything except the two core bug fixes lands as **one complete PR**, so the wh
 be reviewed and ironed out in one sweep. It contains, in build order:
 
 1. **Data layer.** The fetch-and-cache helper and dataset registry in `shapiq_games` (with explicit task types), and removal of the bundled data files (games CSVs and JPEGs, core CSVs).
-2. **Games.** Family classes, model registry, the move of the core games (with the weighted-KNN helper), deletions, `tests/shapiq_games` with contract tests.
+2. **Games.** Family classes, model registry, the move of the core games, deletions, `tests/shapiq_games` with contract tests.
 3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
 
 The two core bug fixes are separate PRs, done independently.
@@ -267,3 +269,17 @@ The two core bug fixes are separate PRs, done independently.
 2. **California torch network.** Dropped; the seeded generic `mlp` replaces it.
 3. **Brute-force player cap.** Default 20 (needed for the TabPFN use cases), overridable per
    call. Tests stay at about 10 players or fewer so they remain fast.
+
+## Not verified in the build environment
+
+The build environment could not reach OpenML, the UCI repository, Hugging Face, or
+download.pytorch.org. The following were therefore implemented but not run end to end; the
+opt-in tests in `tests/shapiq_games/test_heavy_games.py` (`SHAPIQ_RUN_HEAVY_TESTS=1`) cover them:
+
+- downloading the 51 TabArena datasets (their OpenML ids were checked against TabArena's metadata),
+- downloading `wine_quality`, `real_estate`, and `forest_fires` from UCI (not yet pinned by
+  checksum),
+- the vision transformer, ResNet-18, and DistilBERT sentiment games, and the TabPFN games. The
+  Hugging Face models are not yet pinned to a revision.
+
+All other datasets were checked to reproduce the previous loaders exactly.

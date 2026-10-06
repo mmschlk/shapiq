@@ -86,12 +86,23 @@ shapleig = [
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
-benchmark = [
-    # optional model backends for shapiq_benchmark, imported lazily
-    "optuna",
-    "tabpfn",
-    "lightgbm",
+games = [
+    # optional dependencies of shapiq_games, imported lazily by the games that need them
+    "openml",        # TabArena datasets
+    "openpyxl",      # the real_estate dataset (xlsx)
+    "scikit-image",  # superpixels of the image games
     "xgboost",
+    "lightgbm",
+    "catboost",
+    "tabpfn",        # TabPFN models, recontextualization and causal games
+    "torch",         # image games
+    "torchvision",   # ResNet image games
+    "transformers",  # vision transformer and sentiment games
+]
+benchmark = [
+    # shapiq_benchmark runs on the games; optuna tunes the model presets
+    "shapiq[games]",
+    "optuna",
 ]
 
 [tool.coverage.report]

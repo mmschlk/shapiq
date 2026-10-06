@@ -168,12 +168,12 @@ class NNGameBase(ConfigMixin, Game):
         model = build_model(cls._model_name, "classification", **model_params)
         model.fit(split.x_train[indices], split.y_train[indices])
         game = cls(model, resolve_x(x, split.x_test), class_index, **game_params)
+        config = {**setup.config, "model": cls._model_name, "model_params": model_params}
         return game._set_config(
-            **setup.config,
+            **config,
             n_train=n_train,
             x=x,
             class_index=class_index,
-            nn_model_params=model_params,
             **game_params,
         )
 
