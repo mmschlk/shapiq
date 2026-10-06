@@ -1,7 +1,7 @@
-"""This module contains synthetic games for benchmarking purposes."""
+"""Synthetic games with analytic or fully known values."""
 
 from .dummy import DummyGame
-from .random_game import RandomGame
+from .random_table import RandomTableGame
 from .soum import SOUM, UnanimityGame
 
-__all__ = ["DummyGame", "SOUM", "UnanimityGame", "RandomGame"]
+__all__ = ["SOUM", "DummyGame", "RandomTableGame", "UnanimityGame"]

@@ -13,10 +13,10 @@ from shapiq_games.synthetic.soum import SOUM
 
 def test_core_on_soum():
     """Tests the core on a SOUM game."""
-    for _ in range(20):
+    for seed in range(20):
         n = np.random.randint(low=2, high=10)
         n_basis_games = np.random.randint(low=1, high=100)
-        soum = SOUM(n, n_basis_games=n_basis_games)
+        soum = SOUM(n, n_basis_games=n_basis_games, random_state=seed)
 
         coalition_lookup = {}
         coalition_matrix = np.zeros((2**n, n), dtype=bool)
@@ -47,10 +47,10 @@ def test_core_on_soum():
 
 def test_core_on_normalized_soum():
     """Tests the core on a normalized SOUM game."""
-    for _ in range(20):
+    for seed in range(20):
         n = np.random.randint(low=2, high=10)
         n_basis_games = np.random.randint(low=1, high=100)
-        soum = SOUM(n, n_basis_games=n_basis_games, normalize=True)
+        soum = SOUM(n, n_basis_games=n_basis_games, random_state=seed, normalize=True)
 
         coalition_lookup = {}
         coalition_matrix = np.zeros((2**n, n), dtype=bool)

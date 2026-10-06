@@ -5,16 +5,14 @@ from typing import TYPE_CHECKING, Any
 from shapiq.explainer.base import Explainer
 
 if TYPE_CHECKING:
-    from shapiq.explainer.nn.games.base import NNExplainerGameBase
+    from shapiq_games.nn._base import NNGameBase
 
 import numpy as np
 import pytest
 from sklearn.neighbors import KNeighborsClassifier
 
 from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
-from shapiq.explainer.nn.games.knn import KNNExplainerGame
-from shapiq.explainer.nn.games.tnn import TNNExplainerGame
-from shapiq.explainer.nn.games.wknn import WeightedKNNExplainerGame
+from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 
 
 @pytest.mark.parametrize(
@@ -39,14 +37,14 @@ def test_select_explainer(
 @pytest.mark.parametrize(
     "model_fixture, game_cls, explainer_cls, extra_kwargs",
     [
-        ("sklearn_knn_model", KNNExplainerGame, KNNExplainer, {}),
-        ("sklearn_wknn_model", WeightedKNNExplainerGame, WeightedKNNExplainer, {"n_bits": 3}),
-        ("sklearn_tnn_model", TNNExplainerGame, ThresholdNNExplainer, {}),
+        ("sklearn_knn_model", KNNGame, KNNExplainer, {}),
+        ("sklearn_wknn_model", WeightedKNNGame, WeightedKNNExplainer, {"n_bits": 3}),
+        ("sklearn_tnn_model", ThresholdNNGame, ThresholdNNExplainer, {}),
     ],
 )
 def test_sv_values_agree_with_ground_truth_game(
     model_fixture: str,
-    game_cls: type[NNExplainerGameBase],
+    game_cls: type[NNGameBase],
     explainer_cls: type[Explainer],
     extra_kwargs: dict[str, Any],
     request: pytest.FixtureRequest,
@@ -77,14 +75,14 @@ def test_sv_values_agree_with_ground_truth_game(
 @pytest.mark.parametrize(
     "weights, explainer_cls, game_cls",
     [
-        ("uniform", KNNExplainer, KNNExplainerGame),
-        ("distance", WeightedKNNExplainer, WeightedKNNExplainerGame),
+        ("uniform", KNNExplainer, KNNGame),
+        ("distance", WeightedKNNExplainer, WeightedKNNGame),
     ],
 )
 def test_knn_small_training_set_rejected(
     weights: str,
     explainer_cls: type[Explainer],
-    game_cls: type[NNExplainerGameBase],
+    game_cls: type[NNGameBase],
     background_clf_dataset_small,
 ):
     """Models fitted on fewer training samples than ``n_neighbors`` are rejected at construction.

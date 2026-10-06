@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
+from shapiq.tree import InterventionalTreeSHAPIQ
+from shapiq_games.tree import InterventionalTreeGame
 
 SEED = 1337
 np.random.seed(SEED)
@@ -37,7 +38,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    interventional_game = InterventionalTreeGame(model, X_train, point_to_explain.flatten())
     exact_computer = ExactComputer(interventional_game)
     exact_values = exact_computer(index, order)
     game_interactions = exact_values.interactions
@@ -91,7 +92,7 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
+    interventional_game = InterventionalTreeGame(
         model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
     )
     exact_computer = ExactComputer(interventional_game)
@@ -141,7 +142,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    interventional_game = InterventionalTreeGame(model, X_train, point_to_explain.flatten())
     exact_computer = ExactComputer(interventional_game)
     exact_values = exact_computer(index, order)
     game_interactions = exact_values.interactions
@@ -195,7 +196,7 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
+    interventional_game = InterventionalTreeGame(
         model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
     )
     exact_computer = ExactComputer(interventional_game)
@@ -245,7 +246,7 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    interventional_game = InterventionalTreeGame(model, X_train, point_to_explain.flatten())
     exact_computer = ExactComputer(interventional_game)
     exact_values = exact_computer(index, order)
     game_interactions = exact_values.interactions
@@ -300,7 +301,7 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
+    interventional_game = InterventionalTreeGame(
         model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
     )
     exact_computer = ExactComputer(interventional_game)
@@ -350,7 +351,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    interventional_game = InterventionalTreeGame(model, X_train, point_to_explain.flatten())
     exact_computer = ExactComputer(interventional_game)
     exact_values = exact_computer(index, order)
     game_interactions = exact_values.interactions
@@ -404,7 +405,7 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
+    interventional_game = InterventionalTreeGame(
         model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
     )
     exact_computer = ExactComputer(interventional_game)
@@ -441,7 +442,7 @@ def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, ind
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
 
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
+    interventional_game = InterventionalTreeGame(model, X_train, point_to_explain.flatten())
     exact_computer = ExactComputer(interventional_game)
     exact_values = exact_computer(index, order)
     game_interactions = exact_values.interactions
@@ -483,7 +484,7 @@ def test_interventional_float64_point_matches_model(index, order):
     explainer = InterventionalTreeSHAPIQ(model, X_train, index=index, max_order=order)
     own_interactions = explainer.explain_function(point_to_explain).interactions
 
-    game = InterventionalGame(model, X_train, point_to_explain)
+    game = InterventionalTreeGame(model, X_train, point_to_explain)
     exact_values = ExactComputer(game)(index, order)
     game_interactions = exact_values.interactions
 

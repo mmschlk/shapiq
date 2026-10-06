@@ -9,10 +9,8 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_svm
-from shapiq.explainer.product_kernel.game import (
-    ProductKernelGame,
-)
 from shapiq.game_theory.exact import ExactComputer
+from shapiq_games.kernel import ProductKernelGame
 
 
 def test_invalid_application(bin_svc_model, background_clf_dataset_binary):
@@ -79,8 +77,7 @@ def test_svc_against_exact_computer(bin_svc_model, background_clf_dataset_binary
     # Initialize the exact computer
     svc_kernel_game = ProductKernelGame(
         model=convert_svm(bin_svc_model),
-        n_players=bin_svc_model.n_features_in_,
-        explain_point=x_explain[0],
+        x=x_explain[0],
         normalize=False,
     )
     exact_computer = ExactComputer(game=svc_kernel_game, n_players=bin_svc_model.n_features_in_)
@@ -102,8 +99,7 @@ def test_svr_against_exact_computer(svr_model, background_reg_data):
     # Initialize the exact computer
     svr_kernel_game = ProductKernelGame(
         model=convert_svm(svr_model),
-        n_players=svr_model.n_features_in_,
-        explain_point=x_explain[0],
+        x=x_explain[0],
         normalize=False,
     )
     exact_computer = ExactComputer(game=svr_kernel_game, n_players=svr_model.n_features_in_)
@@ -125,8 +121,7 @@ def test_gp_reg_against_exact_computer(gp_reg_model, background_reg_data):
     # Initialize the exact computer
     gp_reg_kernel_game = ProductKernelGame(
         model=convert_gp_reg(gp_reg_model),
-        n_players=gp_reg_model.n_features_in_,
-        explain_point=x_explain[0],
+        x=x_explain[0],
         normalize=False,
     )
     exact_computer = ExactComputer(game=gp_reg_kernel_game, n_players=gp_reg_model.n_features_in_)

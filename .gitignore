@@ -177,8 +177,9 @@ cython_debug/
 
 illustration_sources/
 
-# cached TabArena datasets — regenerated on demand by the loaders from OpenML
-src/shapiq_games/datasets/data/tabarena_*.csv
+# data is never committed under src/: shapiq.datasets downloads its CSVs into this folder on
+# first use, and shapiq_games caches data in ~/.cache/shapiq (or $SHAPIQ_DATA_DIR)
+src/shapiq/datasets/data/
 
 shapiq/games/benchmark/precomputed/
 benchmark/results/*
