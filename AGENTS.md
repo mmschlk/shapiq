@@ -56,6 +56,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - `Game._check_coalitions` does NOT cast integer 0/1 coalitions to bool, so
   `x[:, coalition]` or `~coalition` inside a `value_function` silently computes
   the wrong thing for int input. Cast with `coalitions.astype(bool)` until fixed.
+- With the full core suite under `pytest -n 8`, the ProxySPEX tests
+  (`test_approximator_proxyspex.py`, `test_explainer_proxy_integration.py`) time out or raise
+  `LightGBMError: Replace training data failed`; run serially, they pass in seconds. Re-run
+  them alone before blaming a change. The SPEX tests also need the optional `sparse` extra
+  (`sparse-transform`, `galois`); without it they fail with `ModuleNotFoundError`.
 
 ### Build Docs (only use this command verbatim from the project root)
 
