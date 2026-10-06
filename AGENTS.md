@@ -42,6 +42,17 @@ Boosting converters live in separate modules such as `xgboost.py`,
   "in set -> left"; the XGBoost parser therefore swaps children at categorical
   nodes.
 
+## Games and benchmark gotchas (observed 2026-10-06)
+
+- Every git-tracked file under `src/` ships in the `shapiq` wheel (setuptools_scm
+  file finder): the 1.7.0 wheel carried ~89 MB of `shapiq_games` CSVs and JPEGs.
+  Never add data files (CSVs, images, weights, precomputed game values) under
+  `src/`; datasets are fetched and cached locally. See
+  `docs/design/games_and_benchmark.md` for the ongoing restructuring.
+- `Game._check_coalitions` does NOT cast integer 0/1 coalitions to bool, so
+  `x[:, coalition]` or `~coalition` inside a `value_function` silently computes
+  the wrong thing for int input. Cast with `coalitions.astype(bool)` until fixed.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
