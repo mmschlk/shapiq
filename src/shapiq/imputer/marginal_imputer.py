@@ -78,7 +78,9 @@ class MarginalImputer(Imputer):
                 the imputer must be fitted before it can be used.
 
             sample_size: The number of samples to draw from the background data. Increasing this
-                value will linearly increase the runtime of the explainer.
+                value will linearly increase the runtime of the explainer. The samples are drawn
+                once when the background data or the random state is set and are shared by all
+                coalitions, including the empty coalition.
 
             categorical_features: A list of indices of the categorical features. If ``None``, all
                 features are treated as continuous.
@@ -106,6 +108,7 @@ class MarginalImputer(Imputer):
         # setup attributes
         self.joint_marginal_distribution = joint_marginal_distribution
         self._replacement_data: np.ndarray = np.zeros((1, self.n_features))
+        self._sampled_replacement_data: np.ndarray = np.zeros((1, self.n_features))
         self.init_background(self.data)
 
         if normalize:  # update normalization value
@@ -124,7 +127,7 @@ class MarginalImputer(Imputer):
 
         """
         n_coalitions = coalitions.shape[0]
-        replacement_data = self._sample_replacement_data(self.sample_size)
+        replacement_data = self._sampled_replacement_data
         sample_size = replacement_data.shape[0]
         outputs = np.zeros((sample_size, n_coalitions))
         imputed_data = np.tile(self.x, (n_coalitions, 1))
@@ -134,7 +137,8 @@ class MarginalImputer(Imputer):
             predictions = self.predict(imputed_data)
             outputs[i] = predictions
         outputs = np.mean(outputs, axis=0)  # average over the samples
-        # insert the better approximate empty prediction for the empty coalitions
+        # the empty prediction is computed on the same replacement samples, inserting it keeps the
+        # value of the empty coalition exactly equal to ``empty_prediction``
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs
 
@@ -168,8 +172,22 @@ class MarginalImputer(Imputer):
         if self._sample_size > self._replacement_data.shape[0]:
             warnings.warn(UserWarning(_too_large_sample_size_warning), stacklevel=2)
             self._sample_size = self._replacement_data.shape[0]
+        # draw the replacement samples once, so that all coalitions use the same samples
+        self._sampled_replacement_data = self._sample_replacement_data(self._sample_size)
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
+
+    def set_random_state(self, random_state: int | None = None) -> None:
+        """Sets the random state and redraws the replacement samples with it.
+
+        Args:
+            random_state: The random state to set. Defaults to ``None``, which will set a not
+                deterministic random state.
+
+        """
+        super().set_random_state(random_state)
+        self._sampled_replacement_data = self._sample_replacement_data(self._sample_size)
+        self.calc_empty_prediction()  # reset the empty prediction to the new samples
 
     def _sample_replacement_data(self, sample_size: int | None = None) -> np.ndarray:
         """Samples replacement values from the background data.
@@ -203,8 +221,7 @@ class MarginalImputer(Imputer):
             The empty prediction of the model provided only missing features.
 
         """
-        background_data = self._sample_replacement_data()
-        empty_predictions = self.predict(background_data)
+        empty_predictions = self.predict(self._sampled_replacement_data)
         empty_prediction = float(np.mean(empty_predictions))
         self.empty_prediction = empty_prediction
         if self.normalize:  # reset the normalization value
