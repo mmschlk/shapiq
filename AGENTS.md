@@ -566,3 +566,7 @@ uv run pre-commit run --all-files
   exclusions without requiring or inventing a time limit. Qualify exports against
   real prepared snapshots as well as cost-based fixtures; never rewrite frozen
   snapshots or their run identities to fit an older report schema.
+
+- `benchmark/ROADMAP.md` preserves the superseded full-matrix plan. The active
+  replacement is `benchmark/FOCUSED.md`; use its campaign journal for job state.
+  Historical phase descriptions are not authorization to revive cancelled jobs.

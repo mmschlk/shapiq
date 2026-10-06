@@ -1,5 +1,10 @@
 # Roadmap to the full benchmark
 
+**Historical plan.** The full-matrix campaign below was cancelled and replaced by
+the [focused benchmark](FOCUSED.md). Follow that plan and the active campaign's
+`WAKEUP.md` for execution and progress; do not resume the old jobs. The existing
+website remains live until the focused replacement passes its final audit.
+
 This is the implementation plan for the next benchmark generation. The dataset
 loaders, model profiles and compatible construction adapters are implemented.
 Production qualification and execution still proceed phase by phase; an adapter
@@ -12,7 +17,7 @@ supersedes executing the entire new dataset matrix with the old shallow models.
 LeverageSHAP, OddSHAP, ProxySPEX and SVARM have full supported coverage.
 [Release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase2-2026-10-01).
 
-**Current: the selected phases three through seven are live; the full matrix is running.**
+**Previous release: the selected phases three through seven are live.**
 The corrected bounded rollout covers phases 3–7. Frozen source `5001ba42`
 implements the original quality checks and selects up to sixteen new recipes
 per phase. Corrected regression results use `e608ec8e` (PR #610), preserving
@@ -28,7 +33,7 @@ recipe has four construction seeds. All seven reproduction archives and 21,360
 ranking presets passed independent checks.
 [Phase-seven release and reproduction files](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04).
 
-The full dataset × model × construction expansion is queued in a separate
+The now-cancelled full dataset × model × construction expansion was queued in a separate
 campaign with **38 waves and 1,468 preparation batches**. The first wave is
 preparing 11-player games. Nine enumeration waves cover compatible sizes up to
 20 players; 29 structured-solver waves cover larger sizes up to 1,776, subject
