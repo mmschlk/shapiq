@@ -587,3 +587,10 @@ uv run pre-commit run --all-files
 - Campaign watcher messages must follow the active plan named in `WAKEUP.md`.
   A hard-coded instruction to continue `ROADMAP` phases survived the focused
   campaign replacement; successful delivery alone does not validate message scope.
+
+- A held Slurm job requested with `--nodes=1` can report `NumNodes=1-1`
+  before allocation, then `NumNodes=1` while running. Accept either exact
+  one-node spelling when validating held jobs; retain all CPU, memory, time,
+  host and no-GPU checks. If submission already succeeded, reconcile the same
+  held job and preserve its intent, reservation and reviewed input hashes;
+  do not resubmit or edit an admitted candidate to fix the validator.
