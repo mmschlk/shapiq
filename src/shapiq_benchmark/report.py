@@ -278,7 +278,11 @@ def public_preparation(suite: dict) -> dict:
                 },
                 "reason": row["reason"],
                 **({"kind": row["kind"]} if "kind" in row else {}),
-                "maximum_seconds_per_instance": row["maximum_seconds_per_instance"],
+                **(
+                    {"maximum_seconds_per_instance": row["maximum_seconds_per_instance"]}
+                    if "maximum_seconds_per_instance" in row
+                    else {}
+                ),
                 "instances": instances(row["instances"]),
             }
             for row in suite.get("preparation_exclusions", [])

@@ -503,6 +503,35 @@ def test_preparation_exclusions_keep_costs_without_private_pilot_details() -> No
     assert public_preparation({}) == {}
 
 
+def test_quality_exclusion_without_a_cost_limit() -> None:
+    """Focused model-quality exclusions have no per-instance time threshold."""
+    suite = {
+        "preparation_preflight": {"version": 1},
+        "preparation_exclusions": [
+            {
+                "spec": {"id": "local-24", "family": "local_baseline", "dataset": "nhanesi"},
+                "kind": "families",
+                "reason": "model_not_better_than_validation_dummy",
+                "instances": [
+                    {
+                        "seed": 1,
+                        "status": "failed",
+                        "reason": "model_not_better_than_validation_dummy",
+                        "details": {"metric": "mse", "passed": False, "path": "/private/model"},
+                    }
+                ],
+            }
+        ],
+    }
+    original = copy.deepcopy(suite)
+    public = public_preparation(suite)
+    exclusion = public["preparation_exclusions"][0]
+    assert "maximum_seconds_per_instance" not in exclusion
+    assert exclusion["reason"] == "model_not_better_than_validation_dummy"
+    assert exclusion["instances"][0]["details"] == {"metric": "mse", "passed": False}
+    assert suite == original
+
+
 def test_column_encoding_preserves_numbers_null_and_missing() -> None:
     """Compression uses string dictionaries only; absent numeric fields stay distinguishable."""
     encoded = encode_records(

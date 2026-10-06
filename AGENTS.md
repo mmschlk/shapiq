@@ -560,3 +560,9 @@ uv run pre-commit run --all-files
   placement when diagnosing I/O, and record any changed placement separately.
   `focused_campaign.slurm_allocation()` returns selected stable fields, excluding
   `TimeLimit`; query the exact task separately when verifying its wall-time limit.
+
+- Focused model-quality preparation exclusions omit `maximum_seconds_per_instance`;
+  they were not rejected by a cost threshold. Report sanitization must retain those
+  exclusions without requiring or inventing a time limit. Qualify exports against
+  real prepared snapshots as well as cost-based fixtures; never rewrite frozen
+  snapshots or their run identities to fit an older report schema.
