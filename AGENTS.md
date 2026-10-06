@@ -530,3 +530,8 @@ uv run pre-commit run --all-files
   `partitioned.FILTER_METADATA`. Scoring identity such as `focused_design` must
   survive both. Test actual exported filter partitions against browser scoring;
   full-detail rows or direct helper tests alone do not cover live rankings.
+
+- Slurm's GPU-node step setup can remove an exported empty `CUDA_VISIBLE_DEVICES`
+  even from a CPU-only job (observed on gpu15). Set it inside `srun` with
+  `env CUDA_VISIBLE_DEVICES=`; verify zero allocated GPU TRES separately. The
+  focused preflight correctly rejects an unset variable before constructing games.

@@ -13,4 +13,4 @@ export TABPFN_MODEL_CACHE_DIR="${TABPFN_MODEL_CACHE_DIR:?Set the prewarmed TabPF
 export TORCH_HOME="$XDG_CACHE_HOME/torch" NUMBA_CACHE_DIR="$XDG_CACHE_HOME/numba"
 export TMPDIR="$XDG_CACHE_HOME/tmp" JOBLIB_TEMP_FOLDER="$XDG_CACHE_HOME/tmp"
 mkdir -p "$TMPDIR"
-srun --cpu-bind=cores "${SHAPIQ_PYTHON:?Set the pinned interpreter}" -u "$@"
+srun --cpu-bind=cores env CUDA_VISIBLE_DEVICES= "${SHAPIQ_PYTHON:?Set the pinned interpreter}" -u "$@"
