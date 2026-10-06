@@ -87,6 +87,7 @@ def run(
         ``order``, ``budget``, ``seed``, ``status`` (``"ok"``, ``"unsupported"``, or
         ``"failed"``), ``error``, ``runtime_s``, the metrics, and descriptions of the benchmark.
     """
+    budgets, seeds = list(budgets), list(seeds)  # they are iterated once per approximator
     if not isinstance(approximators, dict):
         approximators = {approximator.__name__: approximator for approximator in approximators}
     ground_truth = benchmark.exact_values(index, order)

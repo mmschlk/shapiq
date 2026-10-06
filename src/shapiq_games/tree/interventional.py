@@ -7,9 +7,10 @@ from typing import Any, Self
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.utils.modules import safe_isinstance
 from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_class_index, resolve_x
 from shapiq_games._setup import configure
+
+from ._output import check_class_index, model_output
 
 __all__ = ["InterventionalTreeGame"]
 
@@ -24,10 +25,12 @@ class InterventionalTreeGame(ConfigMixin, Game):
         v(S) = \frac{1}{|Z|} \sum_{z \in Z} f(x_S, z_{\bar S})
 
     For tree models, this is the game that interventional TreeSHAP-IQ explains, so its exact values
-    are available through :class:`~shapiq.tree.interventional.InterventionalTreeSHAPIQ`. The output
-    space matches that explainer: margins (log-odds) for XGBoost and LightGBM classifiers, class
-    probabilities for other classifiers, and predictions for regressors. The game is not normalized
-    by default.
+    are available through :class:`~shapiq.tree.interventional.InterventionalTreeSHAPIQ`. The game
+    evaluates the model's own predictions in the output space of that explainer: raw margins
+    (log-odds) for gradient boosting classifiers (scikit-learn, XGBoost, LightGBM, CatBoost), class
+    probabilities for other classifiers, and predictions for regressors. Class ``0`` of binary
+    gradient boosting classifiers is rejected, because the tree algorithms only explain the
+    positive margin. The game is not normalized by default.
 
     Attributes:
         model: The model.
@@ -60,32 +63,16 @@ class InterventionalTreeGame(ConfigMixin, Game):
         self.reference_data = np.asarray(reference_data)
         self.x = np.asarray(x).reshape(-1)
         self.class_index = resolve_class_index(model, class_index)
+        check_class_index(model, self.class_index)
         n_players = self.x.shape[0]
         empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(n_players, normalize=normalize, normalization_value=empty_value)
-
-    def _model_output(self, data: np.ndarray) -> np.ndarray:
-        """Return the model output for the explained class (or the regression output)."""
-        if self.class_index is None:
-            return np.asarray(self.model.predict(data), dtype=float)
-        if safe_isinstance(self.model, "xgboost.sklearn.XGBClassifier"):
-            import xgboost as xgb
-
-            margins = self.model.get_booster().predict(xgb.DMatrix(data), output_margin=True)
-        elif safe_isinstance(self.model, "lightgbm.LGBMClassifier"):
-            margins = self.model.predict(data, raw_score=True)
-        else:
-            return np.asarray(self.model.predict_proba(data), dtype=float)[:, self.class_index]
-        margins = np.asarray(margins, dtype=float)
-        if margins.ndim == 1:  # binary classification: one margin for the positive class
-            return margins if self.class_index == 1 else -margins
-        return margins[:, self.class_index]
 
     def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             data = np.where(coalition, self.x, self.reference_data)
-            values[i] = float(np.mean(self._model_output(data)))
+            values[i] = float(np.mean(model_output(self.model, data, self.class_index)))
         return values
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

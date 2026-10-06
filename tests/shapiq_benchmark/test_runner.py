@@ -9,6 +9,7 @@ import pytest
 
 import shapiq
 from shapiq_benchmark import Benchmark, BruteForceComputer, run, save_results
+from shapiq_benchmark.benchmark import environment_key
 from shapiq_benchmark.runner import build_approximator
 from shapiq_games import SOUM, DummyGame, KNNGame
 
@@ -35,7 +36,8 @@ def test_ground_truth_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     first = benchmark.exact_values("SV", 1)
     files = list((tmp_path / "ground_truth").rglob("*.json"))
     assert [file.name for file in files] == ["knn_SV_1.json"]
-    assert files[0].parent.name == game.fingerprint
+    assert files[0].parent.parent.name == game.fingerprint
+    assert files[0].parent.name == environment_key()
 
     calls = []
     original = benchmark.computer.exact_values
@@ -85,6 +87,19 @@ class _FailingApproximator(shapiq.KernelSHAPIQ):
     def approximate(self, budget, game, *args, **kwargs):
         msg = "boom"
         raise RuntimeError(msg)
+
+
+def test_run_accepts_one_shot_iterables() -> None:
+    benchmark = Benchmark(SOUM(6, 8, random_state=0))
+    results = run(
+        benchmark,
+        [shapiq.KernelSHAPIQ, shapiq.SVARMIQ],
+        budgets=(budget for budget in [32, 64]),
+        index="k-SII",
+        order=2,
+        seeds=iter([0, 1]),
+    )
+    assert len(results) == 2 * 2 * 2
 
 
 def test_run_records_every_outcome(tmp_path: Path) -> None:

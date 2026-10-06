@@ -136,6 +136,7 @@ def test_supported_indices_come_from_core_declarations() -> None:
     assert KNNComputer.supported_indices() == get_args(ValidNNExplainerIndices)
     assert ProductKernelComputer.supported_indices() == get_args(ProductKernelSHAPIQIndices)
     assert "CUSTOM" not in InterventionalTreeComputer.supported_indices()
+    assert "CV" not in InterventionalTreeComputer.supported_indices()  # relabelled CHII in core
 
 
 def test_values_are_order_one_only() -> None:
@@ -146,6 +147,8 @@ def test_values_are_order_one_only() -> None:
     assert not computer.supports("k-SII", 0)
     assert not computer.supports("k-SII", 5)
     assert not computer.supports("not-an-index", 1)
+    assert computer.supports("ELC", 1)
+    assert not computer.supports("ELC", 2)  # the least core is a value, not an interaction
     with pytest.raises(UnsupportedComputationError, match="does not support"):
         computer.exact_values("SV", 2)
 

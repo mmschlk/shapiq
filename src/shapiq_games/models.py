@@ -133,7 +133,10 @@ def _sklearn_model(name: str, task: Task, random_state: int | None, params: dict
         from sklearn.svm import SVC, SVR
 
         if classification:
-            return SVC(**{"kernel": "rbf", "random_state": random_state, **params})
+            # probabilities are needed by the games that explain class probabilities
+            return SVC(
+                **{"kernel": "rbf", "probability": True, "random_state": random_state, **params}
+            )
         return SVR(**{"kernel": "rbf", **params})
     if name == "gaussian_process":
         if classification:

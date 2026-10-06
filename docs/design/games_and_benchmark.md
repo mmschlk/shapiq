@@ -205,7 +205,7 @@ results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[
 ```
 
 - `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
-- Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<index>_<order>.json` using `InteractionValues.to_json_file`. Games built from objects (no fingerprint) are not cached.
+- Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<environment>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, where `<environment>` hashes the installed versions of shapiq and the model libraries, so an upgrade never reuses ground truth computed with other versions. Games built from objects (no fingerprint) are not cached.
 - `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. String configuration lives in the games' `from_config`.
 
 ### Chain of trust (enforced by `tests/shapiq_benchmark`)

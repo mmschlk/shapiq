@@ -14,7 +14,12 @@ from itertools import combinations
 
 import numpy as np
 import pytest
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    HistGradientBoostingClassifier,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
@@ -115,6 +120,7 @@ def test_moebius_computer(seed: int, normalize: bool) -> None:  # noqa: FBT001
 
 def test_moebius_computer_dummy_and_unanimity_games() -> None:
     _assert_agrees_with_brute_force(MoebiusComputer(DummyGame(5, interaction=(0, 2, 3))))
+    _assert_agrees_with_brute_force(MoebiusComputer(DummyGame(5)))  # without an interaction
     _assert_agrees_with_brute_force(MoebiusComputer(UnanimityGame(np.array([1, 1, 0, 0, 1]))))
 
 
@@ -148,6 +154,31 @@ def _tree_models(tabular: dict[str, np.ndarray]) -> list[tuple[str, object]]:
             ),
         ),
     ]
+    models += [
+        (
+            "gb_clf",
+            GradientBoostingClassifier(n_estimators=4, max_depth=2, random_state=0).fit(
+                x, tabular["y_clf"]
+            ),
+        ),
+        (
+            "hgb_multi",
+            HistGradientBoostingClassifier(max_iter=4, max_depth=3, random_state=0).fit(
+                x, tabular["y_multi"]
+            ),
+        ),
+    ]
+    if _installed("catboost"):
+        import catboost
+
+        models.append(
+            (
+                "cat_clf",
+                catboost.CatBoostClassifier(
+                    iterations=4, depth=3, verbose=0, random_seed=0, thread_count=1
+                ).fit(x, tabular["y_clf"]),
+            )
+        )
     if _installed("xgboost"):
         import xgboost as xgb
 
@@ -186,6 +217,40 @@ def test_interventional_tree_computer(tabular: dict[str, np.ndarray]) -> None:
         game = InterventionalTreeGame(model, tabular["x"][:15], tabular["x"][20])
         atol = 1e-6 if "xgb" in name else 1e-10
         _assert_agrees_with_brute_force(InterventionalTreeComputer(game), atol=atol)
+
+
+@pytest.mark.parametrize("class_index", [0, 1, 2])
+def test_tree_computers_for_every_class_of_multiclass_boosters(
+    tabular: dict[str, np.ndarray], class_index: int
+) -> None:
+    x, y = tabular["x"], tabular["y_multi"]
+    models = [GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(x, y)]
+    if _installed("xgboost"):
+        import xgboost as xgb
+
+        models.append(
+            xgb.XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1).fit(x, y)
+        )
+    for model in models:
+        path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
+        _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=1e-6)
+        interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
+        _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=1e-6)
+
+
+def test_tree_games_reject_class_zero_of_binary_boosters(tabular: dict[str, np.ndarray]) -> None:
+    """The tree algorithms explain the positive margin only; class 0 must not silently map to it."""
+    model = GradientBoostingClassifier(n_estimators=3, random_state=0).fit(
+        tabular["x"], tabular["y_clf"]
+    )
+    with pytest.raises(ValueError, match="class_index=0 is not supported"):
+        PathDependentTreeGame(model, tabular["x"][0], class_index=0)
+    with pytest.raises(ValueError, match="class_index=0 is not supported"):
+        InterventionalTreeGame(model, tabular["x"][:5], tabular["x"][0], class_index=0)
+    forest = RandomForestClassifier(n_estimators=2, random_state=0).fit(
+        tabular["x"], tabular["y_clf"]
+    )
+    assert PathDependentTreeGame(forest, tabular["x"][0], class_index=0).class_index == 0
 
 
 @pytest.mark.parametrize("class_index", [0, 1, 2])

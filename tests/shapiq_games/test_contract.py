@@ -225,6 +225,17 @@ def test_configured_games_have_stable_fingerprints(
     assert fingerprint == other.fingerprint
 
 
+def test_configurations_accept_numpy_scalars() -> None:
+    game = sg.KNNGame.from_config(dataset="xor", n_train=8, x=np.int64(1), random_state=np.int64(0))
+    assert game.config is not None
+    assert game.config["x"] == 1
+    assert type(game.config["random_state"]) is int
+    assert (
+        game.fingerprint
+        == sg.KNNGame.from_config(dataset="xor", n_train=8, x=1, random_state=0).fingerprint
+    )
+
+
 def test_fingerprint_changes_with_configuration() -> None:
     first = sg.KNNGame.from_config(dataset="xor", n_train=8, random_state=0)
     second = sg.KNNGame.from_config(dataset="xor", n_train=8, random_state=1)

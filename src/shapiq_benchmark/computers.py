@@ -45,8 +45,8 @@ __all__ = [
 DEFAULT_MAX_PLAYERS = 20
 """The default player cap of brute-force computation (``2**20`` game evaluations)."""
 
-_VALUE_INDICES = frozenset({"SV", "BV"})
-"""Values, not interactions: only defined for order 1."""
+_VALUE_INDICES = frozenset({"SV", "BV", "ELC"})
+"""Values (one number per player), not interactions: only defined for order 1."""
 
 
 class UnsupportedComputationError(ValueError):
@@ -202,7 +202,8 @@ def moebius_representation(game: Game) -> InteractionValues | None:
         coefficients = {game.interaction: 1.0}
     elif isinstance(game, DummyGame):
         coefficients = {(i,): 1.0 / n for i in range(n)}
-        coefficients[game.interaction] = coefficients.get(game.interaction, 0.0) + 1.0
+        if game.interaction:
+            coefficients[game.interaction] = coefficients.get(game.interaction, 0.0) + 1.0
     else:
         return None
     lookup = {interaction: i for i, interaction in enumerate(coefficients)}
@@ -299,10 +300,15 @@ class InterventionalTreeComputer(Computer):
 
     @classmethod
     def supported_indices(cls) -> tuple[str, ...]:
-        """The indices of ``InterventionalTreeSHAPIQ`` (without the custom index)."""
+        """The indices of ``InterventionalTreeSHAPIQ``.
+
+        Excluded: ``"CUSTOM"`` (needs a user-defined weight function) and ``"CV"``, which core
+        returns as relabelled ``CHII`` values and which brute force cannot check.
+        """
         from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
 
-        return tuple(i for i in get_args(InterventionalTreeSHAPIQIndices) if i != "CUSTOM")
+        excluded = {"CUSTOM", "CV"}
+        return tuple(i for i in get_args(InterventionalTreeSHAPIQIndices) if i not in excluded)
 
     def _compute(self, index: str, order: int) -> InteractionValues:
         from shapiq.tree.interventional import InterventionalTreeSHAPIQ

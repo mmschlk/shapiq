@@ -12,6 +12,8 @@ from shapiq.tree.validation import validate_tree_model
 from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_class_index, resolve_x
 from shapiq_games._setup import configure
 
+from ._output import check_class_index
+
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
 
@@ -70,7 +72,8 @@ class PathDependentTreeGame(ConfigMixin, Game):
     for every index are available through :class:`~shapiq.tree.TreeExplainer`. Any tree model
     supported by :class:`~shapiq.tree.TreeExplainer` works (scikit-learn, XGBoost, LightGBM,
     CatBoost). The output space is the one of the tree explainer (probabilities for scikit-learn
-    classifiers, margins for boosted classifiers).
+    trees and forests, margins for gradient boosting classifiers, whose class 0 is rejected for
+    binary models because the tree algorithms only explain the positive margin).
 
     Attributes:
         model: The tree model.
@@ -110,6 +113,7 @@ class PathDependentTreeGame(ConfigMixin, Game):
         self.model = model
         self.x = np.asarray(x, dtype=float).reshape(-1)
         self.class_index = resolve_class_index(model, class_index)
+        check_class_index(model, self.class_index)
         self.trees: list[TreeModel] = validate_tree_model(model, class_label=self.class_index)
         n_players = self.x.shape[0]
         empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])

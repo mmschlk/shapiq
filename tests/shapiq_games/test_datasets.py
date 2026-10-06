@@ -171,6 +171,52 @@ def test_fetch_replaces_corrupted_cache(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert len(calls) == 1
 
 
+def test_cached_files_are_readable_by_others(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+    content = b"x"
+    _patch_download(monkeypatch, content)
+    remote = cache.RemoteFile(
+        "https://example.org/f.csv", "f.csv", hashlib.sha256(content).hexdigest()
+    )
+    mode = cache.fetch(remote).stat().st_mode
+    assert mode & 0o044 == 0o044
+
+
+def test_tabarena_imputes_categories_before_encoding(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A missing category is imputed with the most frequent category, not a non-existent code."""
+    import sys
+    import types
+
+    import pandas as pd
+
+    x = pd.DataFrame({
+        "color": pd.Categorical(["red", "red", "blue", None, "red"]),
+        "size": [1.0, None, 3.0, 4.0, 5.0],
+    })  # fmt: skip
+    y = pd.Series(["yes", "no", "yes", "no", "yes"])
+
+    class _Dataset:
+        def get_data(self, target: str, dataset_format: str) -> tuple:
+            return x, y, None, None
+
+    openml = types.ModuleType("openml")
+    openml.datasets = types.SimpleNamespace(get_dataset=lambda *_, **__: _Dataset())
+    monkeypatch.setitem(sys.modules, "openml", openml)
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+
+    dataset = load_dataset("tabarena_blood_transfusion")
+    color = dataset.x[:, 0]
+    assert set(np.unique(color)) == {0.0, 1.0}  # blue = 0, red = 1, no 0.5 from a median
+    assert color[3] == 1.0  # the mode, red
+    assert dataset.x[1, 1] == pytest.approx(3.5)  # numeric median
+    assert dataset.task == "classification"
+    assert (tmp_path / "tabarena" / "blood_transfusion.csv").exists()
+
+
 def test_pinned_urls_point_to_a_commit() -> None:
     remote = cache.RemoteFile.pinned("datasets/data/zoo.csv", "0" * 64)
     assert cache.PINNED_COMMIT in remote.url

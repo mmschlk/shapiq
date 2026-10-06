@@ -87,8 +87,8 @@ _TARGET_COLUMN = "__target__"
 def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
     """Load a TabArena dataset from the local cache or OpenML.
 
-    Categorical features are ordinal-encoded and missing values imputed (median for numeric,
-    mode for other columns). The target is kept as is; :func:`load_dataset` encodes
+    Missing values are imputed (median for numeric, mode for other columns), then categorical
+    features are ordinal-encoded. The target is kept as is; :func:`load_dataset` encodes
     classification labels.
     """
     openml_id, _task, target = TABARENA_DATASETS[name]
@@ -97,7 +97,7 @@ def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
         openml = require("openml", purpose="the TabArena datasets")
         dataset = openml.datasets.get_dataset(openml_id, download_data=True)
         x, y, _, _ = dataset.get_data(target=target, dataset_format="dataframe")
-        frame = _impute(_encode_categorical(x))
+        frame = _encode_categorical(_impute(x))  # impute categories before encoding them
         frame[_TARGET_COLUMN] = y.astype(str) if not pd.api.types.is_numeric_dtype(y) else y
         buffer = StringIO()
         frame.to_csv(buffer, index=False)

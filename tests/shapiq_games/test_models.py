@@ -45,6 +45,12 @@ def test_every_model_fits_and_is_reproducible(name: str, task: str, splits: dict
     np.testing.assert_allclose(first.predict(split.x_test), second.predict(split.x_test))
 
 
+def test_svm_classifiers_predict_probabilities(splits: dict) -> None:
+    model = fit_model("svm", splits["classification"])
+    probabilities = model.predict_proba(splits["classification"].x_test)
+    np.testing.assert_allclose(probabilities.sum(axis=1), 1.0)
+
+
 def test_unknown_model_and_task_raise() -> None:
     with pytest.raises(ValueError, match="Unknown model"):
         build_model("not_a_model", "regression")

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import tempfile
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,15 +19,45 @@ if TYPE_CHECKING:
 
     from .computers import Computer
 
-__all__ = ["Benchmark"]
+__all__ = ["Benchmark", "environment_key"]
+
+_VERSIONED_PACKAGES = (
+    "shapiq",
+    "numpy",
+    "scikit-learn",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "tabpfn",
+    "torch",
+    "transformers",
+)
+
+
+def environment_key() -> str:
+    """Return a short hash of the installed versions of shapiq and the model libraries.
+
+    Exact values are computed by shapiq from models fitted by these libraries, so cached ground
+    truth is only reused within the same versions.
+    """
+    versions = {}
+    for package in _VERSIONED_PACKAGES:
+        try:
+            versions[package] = version(package)
+        except PackageNotFoundError:
+            versions[package] = None
+    digest = hashlib.sha256(json.dumps(versions, sort_keys=True).encode("utf-8"))
+    return digest.hexdigest()[:12]
 
 
 class Benchmark:
     """A game together with the computer of its ground truth.
 
     Exact values of games configured with ``from_config`` (games with a ``fingerprint``) are cached
-    locally in ``<data dir>/ground_truth/<fingerprint>/`` (see
-    :func:`shapiq_games.datasets.get_data_dir`), keyed by the computer, index, and order.
+    locally in ``<data dir>/ground_truth/<fingerprint>/<environment>/`` (see
+    :func:`shapiq_games.datasets.get_data_dir` and :func:`environment_key`), keyed by the
+    computer, index, and order. Upgrading shapiq or a model library therefore never reuses
+    ground truth computed with other versions.
 
     Examples:
         >>> from shapiq_games import PathDependentTreeGame
@@ -70,6 +103,7 @@ class Benchmark:
             get_data_dir()
             / "ground_truth"
             / self.fingerprint
+            / environment_key()
             / f"{self.computer.name}_{index}_{order}.json"
         )
 

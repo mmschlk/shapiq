@@ -155,6 +155,14 @@ def make_predict_function(
     return _predict_proba
 
 
+def _to_builtin(value: object) -> object:
+    """Convert numpy scalars and arrays to Python objects for JSON."""
+    if isinstance(value, np.generic | np.ndarray):
+        return value.tolist()
+    msg = f"Object of type {type(value).__name__} is not JSON serializable"
+    raise TypeError(msg)
+
+
 class ConfigMixin:
     """Adds a string configuration and a stable fingerprint to games built with ``from_config``.
 
@@ -172,12 +180,11 @@ class ConfigMixin:
 
     def _set_config(self, **config: Any) -> Self:
         """Attach a JSON-serializable configuration to the game and return the game."""
-        try:
-            json.dumps(config, sort_keys=True)
+        try:  # numpy scalars and arrays become their Python equivalents
+            self.config = json.loads(json.dumps(config, sort_keys=True, default=_to_builtin))
         except TypeError as error:
             msg = f"The game configuration must be JSON-serializable, got {config!r}."
             raise TypeError(msg) from error
-        self.config = dict(config)
         return self
 
     @property

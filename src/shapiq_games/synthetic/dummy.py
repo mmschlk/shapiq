@@ -16,9 +16,9 @@ class DummyGame(Game):
     .. math::
         v(S) = \frac{|S|}{n} + \mathbb{1}[I \subseteq S],
 
-    where :math:`I` is the (optional) interaction. The Shapley value of a player :math:`i` is
-    :math:`1/n + 1/|I|` if :math:`i \in I` and :math:`1/n` otherwise. The game is not normalized:
-    :math:`v(\emptyset) = 0` unless the interaction is empty, in which case it is ``1``.
+    where :math:`I` is the (optional) interaction; without an interaction the second term is
+    omitted. The Shapley value of a player :math:`i` is :math:`1/n + 1/|I|` if :math:`i \in I` and
+    :math:`1/n` otherwise, and :math:`v(\emptyset) = 0`.
 
     Attributes:
         n: The number of players.

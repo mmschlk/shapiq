@@ -93,6 +93,7 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
+        Path(tmp_name).chmod(0o644)  # mkstemp creates owner-only files
         Path(tmp_name).replace(path)
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
