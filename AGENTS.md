@@ -542,3 +542,8 @@ uv run pre-commit run --all-files
   even from a CPU-only job (observed on gpu15). Set it inside `srun` with
   `env CUDA_VISIBLE_DEVICES=`; verify zero allocated GPU TRES separately. The
   focused preflight correctly rejects an unset variable before constructing games.
+
+- Preserve the invocation path of a virtualenv interpreter when serializing job
+  commands. Resolving `venv/bin/python` symlinks can select the bare interpreter
+  and lose its site-packages. Use `absolute()`, and authenticate its environment
+  separately; test delegation as well as the parent interpreter.

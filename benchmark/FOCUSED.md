@@ -1,14 +1,20 @@
 # Focused benchmark
 
 The previous 38-wave expansion is canceled. Its completed artifacts and the
-published cohort remain preserved. This replacement is being implemented and
-qualified; its manifest is not a claim that all 384 instances have qualified.
+published cohort remain preserved. The replacement has passed its preparation
+pilots; full game preparation is running. The website still shows the previous
+audited cohort until the replacement passes its final audit.
 
-| Application | Recipes × construction seeds | Players |
-|---|---:|---|
-| Individual predictions | 32 × 4 = 128 | 12–512 features |
-| Data valuation | 32 × 4 = 128 | 12 training-data groups; 32–512 neighbor examples |
-| Feature selection | 32 × 4 = 128 | 12 features |
+| Application | Intended instances | Admitted after pilots | Players |
+|---|---:|---:|---|
+| Individual predictions | 32 recipes × 4 seeds = 128 | 124 | 12–512 features |
+| Data valuation | 32 × 4 = 128 | 120 | 12 training-data groups; 32–512 neighbor examples |
+| Feature selection | 32 × 4 = 128 | 116 | 12 features |
+
+Six recipes failed the model-quality check against a dummy predictor on at least
+one construction seed: `local-24`, `data-11`, `data-15`, `features-21`,
+`features-24`, and `features-29`. They remain explicit exclusions. The 360 admitted
+instances still need complete exact preparation and estimator evaluation.
 
 [One readable CSV](suites/focused.csv) lists every dataset, model, construction and
 player count. There are no synthetic games. Models are primarily random forests,
@@ -48,3 +54,21 @@ checks and export. The helper reports commitments; submission must enforce them.
 Independent audits precede publication and live verification. Recurring watcher
 wake-ups keep work moving; neither timers nor successful Slurm exits establish
 scientific completion. Coverage shortfalls remain explicit.
+
+## Code map
+
+The focused campaign reuses the existing benchmark pipeline:
+
+| Step | Source |
+|---|---|
+| Choose dataset, model, construction and player count | [suites/focused.csv](suites/focused.csv) |
+| Translate that table into a suite | [focused.py](../src/shapiq_benchmark/focused.py) |
+| Qualify costs and account for CPU allocations | [focused_campaign.py](focused_campaign.py) |
+| Prepare exact games once | [prepare_matrix.py](prepare_matrix.py) |
+| Evaluate estimators with counted queries | [runner.py](../src/shapiq_benchmark/runner.py) |
+| Export results for the static website | [report.py](../src/shapiq_benchmark/report.py) |
+| Deliver completion and recurring reminders | [watch_campaign.py](watch_campaign.py) |
+
+Campaign-specific manifests, caches, job receipts and audit reports live on lab
+storage, outside Git. Estimator changes stay in the separate draft PR #611;
+production runs use a frozen checkout containing those changes.
