@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bugfix
+
+- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.
