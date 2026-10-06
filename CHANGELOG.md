@@ -4,7 +4,7 @@
 
 ### Bugfix
 
-- fixes `MarginalImputer` violating the null-player axiom: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates and features the model never uses received nonzero attributions. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples. This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call.
+- fixes `MarginalImputer` violating the null-player axiom: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates and features the model never uses received nonzero attributions. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples. This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
 
 ## v1.7.0 (2026-08-27)
 
