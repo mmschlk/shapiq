@@ -17,6 +17,10 @@
 <p>We compare Shapley estimators on games built from real datasets. Each method gets
 an allowance of coalition queries, and its answer is compared with an exact
 reference for the same frozen game.</p>
+<p><strong>This guide describes the accepted focused replacement plan.</strong> The dashboard
+currently displays an earlier audited cohort, whose games, estimator settings and
+weighting remain those recorded in its report. The focused replacement has not
+yet been published.</p>
 <nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#scope">Scope</a></li><li><a href="#games-and-datasets">Games and datasets</a></li><li><a href="#exact-references">Exact references</a></li><li><a href="#estimators-and-query-budgets">Estimators and query budgets</a></li><li><a href="#scores">Scores</a></li><li><a href="#timing-and-reproducibility">Timing and reproducibility</a></li></ul></nav>
 <h2 id="scope">Scope</h2>
 <p>The accepted design has <strong>448 intended game instances across 12 datasets</strong>:
@@ -138,11 +142,12 @@ only. An estimator is compared only on targets it supports. Exact references
 refer to the stated frozen game, subject to its documented numerical tolerance;
 a high-budget approximation is not used as exact truth.</p>
 <h2 id="estimators-and-query-budgets">Estimators and query budgets</h2>
-<p>The protocol includes <strong>22 estimators</strong>, four game-construction seeds and one
-estimator seed. The results page describes each method and exposes its supported
+<p>The focused protocol includes <strong>22 estimators</strong>, four game-construction seeds
+and one estimator seed. The results page describes each method and exposes its supported
 targets. Frozen estimator settings, seeds and earlier measurements are retained.
-LeverageSHAP and OddSHAP explicitly use the campaign's two-query equal-allocation
-fallback at eligible low budgets; this can consume less than the allowance.</p>
+In the focused campaign, LeverageSHAP and OddSHAP explicitly use the two-query
+equal-allocation fallback at eligible low budgets; this can consume less than the
+allowance.</p>
 <p>For a game with <code>d</code> players, the nine query allowances are:</p>
 <p><strong>0.5d, 1d, 2d, 4d, 8d, 16d, 32d, 64d and 128d.</strong></p>
 <p>A coalition evaluation counts as a query, including repeated evaluations. For
@@ -158,12 +163,13 @@ that baseline.</p>
 <p>Zero or negligible truth signal is excluded from accuracy summaries for every
 method. Interaction-order filters apply the same signal rule to the selected
 order. The exact signal reference and threshold are recorded in the report.</p>
-<p>Summaries balance applications equally, then subtypes, recipes, instances,
-budgets and estimator seeds. Data-valuation SV gives equal weight to group
-retraining and neighbor-example games. Scores for partial coverage renormalize
-successful observations; failures remain in the coverage denominator. Check
-coverage alongside accuracy, because methods with missing runs can be measured
-on different subsets.</p>
+<p>The focused replacement will balance applications equally, then subtypes,
+recipes, instances, budgets and estimator seeds. Its data-valuation SV gives
+equal weight to group retraining and neighbor-example games. Scores for partial coverage renormalize
+successful observations; failures remain in the coverage denominator. The earlier
+published cohort balances game families and configurations under its recorded
+protocol. Check coverage alongside accuracy, because methods with missing runs
+can be measured on different subsets.</p>
 <p>Elo compares errors on shared game/target/budget/seed cells and summarizes paired
 wins and ties. It is a relative ranking, not an error magnitude. “Same cells for
 all” restricts comparisons to common successful cells. Bootstrap intervals
@@ -184,7 +190,7 @@ settings and reproduction files. The design and executable recipes live in the
 repository:</p>
 <ul>
 <li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/FOCUSED.md">Accepted focused plan</a></li>
-<li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/focused.csv">Original frozen recipe table</a></li>
+<li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/focused.csv">Reviewed recipe table</a></li>
 <li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md">Run or reproduce the benchmark</a></li>
 <li><a href="about.md">Markdown source of this guide</a></li>
 </ul>

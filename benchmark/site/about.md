@@ -4,6 +4,11 @@ We compare Shapley estimators on games built from real datasets. Each method get
 an allowance of coalition queries, and its answer is compared with an exact
 reference for the same frozen game.
 
+**This guide describes the accepted focused replacement plan.** The dashboard
+currently displays an earlier audited cohort, whose games, estimator settings and
+weighting remain those recorded in its report. The focused replacement has not
+yet been published.
+
 [TOC]
 
 ## Scope
@@ -85,11 +90,12 @@ a high-budget approximation is not used as exact truth.
 
 ## Estimators and query budgets
 
-The protocol includes **22 estimators**, four game-construction seeds and one
-estimator seed. The results page describes each method and exposes its supported
+The focused protocol includes **22 estimators**, four game-construction seeds
+and one estimator seed. The results page describes each method and exposes its supported
 targets. Frozen estimator settings, seeds and earlier measurements are retained.
-LeverageSHAP and OddSHAP explicitly use the campaign's two-query equal-allocation
-fallback at eligible low budgets; this can consume less than the allowance.
+In the focused campaign, LeverageSHAP and OddSHAP explicitly use the two-query
+equal-allocation fallback at eligible low budgets; this can consume less than the
+allowance.
 
 For a game with `d` players, the nine query allowances are:
 
@@ -112,12 +118,13 @@ Zero or negligible truth signal is excluded from accuracy summaries for every
 method. Interaction-order filters apply the same signal rule to the selected
 order. The exact signal reference and threshold are recorded in the report.
 
-Summaries balance applications equally, then subtypes, recipes, instances,
-budgets and estimator seeds. Data-valuation SV gives equal weight to group
-retraining and neighbor-example games. Scores for partial coverage renormalize
-successful observations; failures remain in the coverage denominator. Check
-coverage alongside accuracy, because methods with missing runs can be measured
-on different subsets.
+The focused replacement will balance applications equally, then subtypes,
+recipes, instances, budgets and estimator seeds. Its data-valuation SV gives
+equal weight to group retraining and neighbor-example games. Scores for partial coverage renormalize
+successful observations; failures remain in the coverage denominator. The earlier
+published cohort balances game families and configurations under its recorded
+protocol. Check coverage alongside accuracy, because methods with missing runs
+can be measured on different subsets.
 
 Elo compares errors on shared game/target/budget/seed cells and summarizes paired
 wins and ties. It is a relative ranking, not an error magnitude. “Same cells for
@@ -143,6 +150,6 @@ settings and reproduction files. The design and executable recipes live in the
 repository:
 
 - [Accepted focused plan](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/FOCUSED.md)
-- [Original frozen recipe table](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/focused.csv)
+- [Reviewed recipe table](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/focused.csv)
 - [Run or reproduce the benchmark](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md)
 - [Markdown source of this guide](about.md)
