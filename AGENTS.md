@@ -53,3 +53,27 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 ```bash
 uv run pre-commit run --all-files
 ```
+
+## LeverageSHAP stability
+
+- Paired sampling at budget `2 * n` leaves `n - 1` independent interior
+  directions for `n - 1` free coefficients. Minimum-norm least squares can solve
+  the system accurately while amplifying nonadditive residuals enormously.
+- The reference repository added a low-budget `0.001 I` ridge safeguard in
+  `f3c0427`, then removed it in August 2026 audit commit `04cc121`. Shapiq PR #583
+  aligned sampling without restoring it. The old warning said `1e-6`, but the
+  executed Gram penalty was `1e-3`; fixed-count weights use the same scale here.
+- The projected Gram matrix always has the efficiency nullspace. Its full
+  condition number is therefore not a reliable test for statistical instability
+  in the remaining directions. Keep low-budget regularization explicit and
+  preserve the unregularized/full-enumeration paths in regression tests.
+
+## KernelSHAP-IQ regression checks
+
+- Consistent KernelSHAP-IQ solves a separate weighted design at each interaction
+  order, so rank-deficient higher-order designs need the shared stable solver too.
+  InconsistentKernelSHAPIQ's Bernoulli design includes an all-zero empty-term
+  column: its previous normal-equation path already fell back to SVD. Do not
+  promise a numerical improvement for every regression subclass from the solver
+  change, or impose efficiency on the sum of all SII orders; only k-SII aggregates
+  those orders into an efficient explanation.

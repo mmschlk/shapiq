@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- LeverageSHAP and OddSHAP now default to two-query equal allocation for
+  `2 <= budget <= 3 * n` below full enumeration. Each player receives
+  `(v(full) - v(empty)) / n`; actual query usage is two. Set
+  `low_budget_equal_allocation=False` to use their regression paths instead.
+- Restore LeverageSHAP’s historical low-budget ridge safeguard (`ridge=1e-3`) when equal allocation is disabled, for requested budgets at most three times the player count. This reduces extreme regression outliers but introduces bias; set `ridge=0` for unregularized behavior. Exhaustive evaluation and higher budgets remain unregularized.
+- Allow OddSHAP budgets from two evaluations upward, using its existing singleton
+  screening and constrained regression when equal allocation is disabled. `interaction_factor` still controls the
+  active support size; the sampler retains its two-endpoint minimum.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.

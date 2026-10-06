@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from shapiq.approximator.regression.base import solve_regression
+from shapiq.approximator.regression.base import _low_budget_equal_allocation, solve_regression
 from shapiq.interaction_values import InteractionValues
 
 from .base import Regression
@@ -30,7 +30,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     values as the solution of a weighted least-squares problem over sampled
     coalitions, like KernelSHAP, but samples coalitions proportional to their
     statistical *leverage scores*, which have the closed form ``l_z = 1/C(n, ||z||)``
-    (Lemma 3.2). Implementation of Algorithm 1:
+    (Lemma 3.2). By default, budgets from two through ``3 * n`` below full
+    enumeration instead use two endpoint queries and divide the payoff difference
+    equally among players. Set ``low_budget_equal_allocation=False`` to fit the
+    regression at these budgets. The regression path implements Algorithm 1:
 
     1. For the deterministic default, normalize the budget to an even number without
        exceeding it. Solve for the oversampling parameter ``c`` so that
@@ -45,18 +48,20 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     3. Reweight each row by the inverse of its inclusion probability. For the
        deterministic default this probability is the realized per-size count divided
        by ``C(n, s)``; for the Binomial variant it is ``min(1, 2c * l_z)``.
-    4. Project out the efficiency constraint (Lemma 3.1), solve by weighted least
-       squares, and add the efficiency offset back.
+    4. Project out the efficiency constraint (Lemma 3.1), solve the weighted
+       regression (with the low-budget ridge safeguard), and add the efficiency offset back.
 
     Note:
         The deterministic default follows the fixed-per-size design used by the
         paper's released implementation and reported experiments. To preserve
         shapiq's hard budget ceiling, an odd budget is rounded down rather than up as
         in that implementation; largest-remainder ties can also select a different
-        size. The evaluation count is exactly
+        size. Outside the two-query equal-allocation path, the evaluation count is exactly
         ``2 + 2 * ((min(budget, 2**n) - 2) // 2)``. The paper's accuracy theorem is
-        proved for the Binomial ``deterministic_counts=False`` variant only
-        (Musco and Witter, 2025, end of Sec. 4).
+        proved for the unregularized Binomial ``deterministic_counts=False`` variant
+        (Musco and Witter, 2025, end of Sec. 4). The default low-budget ``ridge``
+        safeguard restores a later practical implementation choice; set ``ridge=0.0``
+        and ``low_budget_equal_allocation=False`` for unregularized regression at every budget.
 
     Example:
         >>> from shapiq.approximator import LeverageSHAP
@@ -83,6 +88,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         deterministic_counts: bool = True,
+        ridge: float = 1e-3,
+        low_budget_equal_allocation: bool = True,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the LeverageSHAP approximator.
@@ -105,8 +112,37 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 rounded, exact total); if ``False``, draw it at random. See the class
                 docstring's Note.
 
+            ridge: Nonnegative, finite low-budget ridge penalty. Defaults to ``1e-3``,
+                restoring the safeguard from the authors' implementation (commit
+                ``f3c0427``, removed in ``04cc121``). Applied only when the requested
+                budget is at most ``3 * n``, the sample omits some coalitions, and
+                ``low_budget_equal_allocation=False``. This
+                is the penalty added to the weighted Gram matrix, not its square root.
+                It stabilizes near-singular sampled regressions by shrinking toward
+                equal attribution, introducing bias even on additive games; lower
+                estimation error is not guaranteed. Set ``0.0`` for the original
+                unregularized Algorithm 1. Unlike the historical implementation, the
+                safeguard does not test the Gram matrix's condition number: efficiency
+                already makes that matrix singular, so the test depends on roundoff.
+
+            low_budget_equal_allocation: Enabled by default. Spend only two endpoint queries
+                and return their difference divided equally among players when
+                ``2 <= budget <= 3 * n`` and ``budget < 2**n``. This is the
+                uninformative equal-allocation baseline, not a learned estimator
+                or a guarantee about soft shrinkage. It overrides ridge in this
+                regime; larger budgets and full enumeration retain the usual method.
+                Set ``False`` to sample and fit the regression at low budgets instead.
+
             **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
+        if not np.isfinite(ridge) or ridge < 0:
+            msg = "ridge must be finite and nonnegative."
+            raise ValueError(msg)
+        self.ridge = float(ridge)
+        if not isinstance(low_budget_equal_allocation, bool):
+            msg = "low_budget_equal_allocation must be a bool."
+            raise TypeError(msg)
+        self.low_budget_equal_allocation = low_budget_equal_allocation
         self.deterministic_counts = deterministic_counts
         self.pairing_trick = pairing_trick
         super().__init__(
@@ -143,6 +179,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             ValueError: If ``budget`` is less than ``2`` (the empty and grand coalitions
                 must both be evaluated), or if the game returns non-finite (NaN/Inf) values.
         """
+        if self.low_budget_equal_allocation:
+            fallback = _low_budget_equal_allocation(self.n, budget, game)
+            if fallback is not None:
+                return fallback
         Z, weights = self._sample(budget)
         game_values: FloatVector = game(Z)
         n_evaluations = int(Z.shape[0])
@@ -167,12 +207,28 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         else:
             A = Z_int - (s_int / n)[:, np.newaxis]
             b = (v_int - v0) - efficiency_shift * s_int
-            phi_perp = solve_regression(
-                X=A,
-                y=b,
-                kernel_weights=w_is,
-                use_svd=True,
-            )
+            if self.ridge > 0 and budget <= 3 * n and n_evaluations < 2**n:
+                # Economy SVD avoids normal equations and an n-by-n penalty matrix.
+                sqrt_weights = np.sqrt(w_is)
+                weighted_A = sqrt_weights[:, np.newaxis] * A
+                U, singular_values, Vt = np.linalg.svd(weighted_A, full_matrices=False)
+                # Match lstsq's numerical rank, including the efficiency null direction.
+                cutoff = np.finfo(float).eps * max(weighted_A.shape) * singular_values[0]
+                gains = np.divide(
+                    singular_values,
+                    singular_values**2 + self.ridge,
+                    out=np.zeros_like(singular_values),
+                    where=singular_values > cutoff,
+                )
+                phi_perp = Vt.T @ (gains * (U.T @ (sqrt_weights * b)))
+                phi_perp -= phi_perp.mean()  # Preserve efficiency despite roundoff.
+            else:
+                phi_perp = solve_regression(
+                    X=A,
+                    y=b,
+                    kernel_weights=w_is,
+                    use_svd=True,
+                )
             sv = np.concatenate([[v0], phi_perp + efficiency_shift])
         return InteractionValues(
             values=sv,
