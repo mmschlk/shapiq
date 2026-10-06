@@ -262,6 +262,13 @@ uv run pre-commit run --all-files
   tree inputs through float32 before passing the same values to both paths;
   retain exhaustive small-game qualification across construction seeds.
 
+- Legacy `TreeSHAPIQXAI` traverses `goes_left` without `TreeModel.cast_input`,
+  while the quadrature exact solver honors XGBoost's float32 input precision.
+  A float64 point just below a float32 split can therefore take opposite branches.
+  Freeze XGBoost benchmark points through float32 for both paths, like sklearn
+  forests; preserve strict endpoint and exhaustive coefficient checks. Core384
+  XGBoost pilots exposed this with efficiency gaps up to 30.6, not roundoff.
+
 - Specialized select padding (for example `.compactSelect select`) can override
   generic chevron clearance through CSS specificity. Verify computed right
   padding on every styled select; otherwise the arrow can overlap its text.

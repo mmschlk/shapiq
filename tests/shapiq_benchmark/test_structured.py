@@ -17,9 +17,62 @@ from shapiq_benchmark import models
 from shapiq_benchmark.games import load_game, prepare_structured, signal_metadata
 from shapiq_benchmark.prepare import prepare
 from shapiq_benchmark.runner import run
+from shapiq_benchmark.structured import _construct
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.mark.parametrize("index", ["SV", "SII", "k-SII"])
+def test_xgboost_threshold_rounding_matches_pathdependent_truth(index: str) -> None:
+    """Float64 values below a float32 split must follow XGBoost's rounded branch."""
+    from shapiq.tree.validation import validate_tree_model
+    from shapiq_benchmark.games import validate_truth
+    from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
+
+    xgboost = pytest.importorskip("xgboost")
+    x = np.zeros((4, 8))
+    x[:, 0] = [0, 0.1, 0.2, 0.3]
+    y = np.array([2.0, 8.0, 8.0, 8.0])
+    model = xgboost.XGBRegressor(
+        n_estimators=1,
+        max_depth=1,
+        learning_rate=1,
+        reg_lambda=0,
+        tree_method="hist",
+        base_score=0,
+        n_jobs=1,
+    ).fit(x, y)
+    model.get_booster().set_attr(best_iteration="0")
+    tree = validate_tree_model(model)[0]
+    point = np.zeros(8)
+    point[0] = np.nextafter(float(tree.thresholds[0]), -np.inf)
+    raw_game = TreeSHAPIQXAI(point, [tree], normalize=False, verbose=False)
+    full = np.ones((1, 8), dtype=bool)
+    assert raw_game(full)[0] == 2.0
+    assert model.predict(point[None])[0] == 8.0
+    prepared = models.PreparedModel(
+        model,
+        x,
+        y,
+        x,
+        y,
+        point[None],
+        y[:1],
+        {"model_profile": "xgboost", "task": "regression"},
+    )
+    oracle, truth, arrays, _ = _construct(
+        prepared,
+        {
+            "oracle": "pathdependent_tree",
+            "model_profile": "xgboost",
+            "index": index,
+            "order": 1 if index == "SV" else 2,
+        },
+    )
+    assert oracle(full)[0] == model.predict(point[None])[0]
+    np.testing.assert_array_equal(arrays["point"], point.astype(np.float32).astype(np.float64))
+    assert validate_truth(oracle, truth, exhaustive=True) < 1e-10
 
 
 @pytest.fixture

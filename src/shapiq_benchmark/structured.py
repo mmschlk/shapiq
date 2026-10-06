@@ -110,8 +110,9 @@ def _construct(prepared: PreparedModel, spec: dict) -> tuple:
     ):
         message = "Structured tree profiles require a qualified tree family."
         raise ValueError(message)
-    if spec["model_profile"] == "random_forest":
-        # sklearn rounds prediction inputs; converted trees must route identical values.
+    if spec["model_profile"] in {"random_forest", "xgboost"}:
+        # Source predictors round inputs; the legacy coalition traversal must see
+        # the same values as exact solvers that honor TreeModel.input_precision.
         point = point.astype(np.float32).astype(np.float64)
         background = background.astype(np.float32).astype(np.float64)
     if spec["model_profile"] == "xgboost":
