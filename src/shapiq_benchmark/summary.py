@@ -1,6 +1,7 @@
 """Observed-cell weighted accuracy, paired comparisons, and complete-panel history.
 
 Families, strata, games, budgets, then seeds receive equal conditional weight.
+Focused games instead balance applications, subtypes, recipes and instances.
 Elo uses a batch Bradley-Terry fit: weighted ties count as half wins, logit skills
 have L2 penalty ``0.001 * sum(skill**2) / 2``, and ratings are centered at 1000.
 Intervals synchronize construction-seed draws across recipes using the same dataset,
@@ -70,24 +71,43 @@ def budget_grid(budgets: list[int] | dict[str, list[int]], game: dict) -> list[i
     return budgets[game["id"]] if isinstance(budgets, dict) else budgets
 
 
+def weight_groups(games: list[dict]) -> tuple[dict, dict]:
+    """Group planned games by legacy strata or explicitly declared focused recipes."""
+    groups, children = {}, {}
+    focused = ["focused_design" in game.get("metadata", {}) for game in games]
+    if any(focused) and not all(focused):
+        message = "Cannot mix focused and legacy weighting in one panel."
+        raise ValueError(message)
+    for game in games:
+        design = game.get("metadata", {}).get("focused_design")
+        path = (
+            tuple(design[key] for key in ("application", "subtype", "recipe"))
+            if design is not None
+            else (game["family"], game["stratum"])
+        )
+        groups.setdefault(path, []).append(game)
+        for depth, name in enumerate(path):
+            children.setdefault(path[:depth], set()).add(name)
+    denominators = {
+        path: math.prod(len(children[path[:depth]]) for depth in range(len(path)))
+        for path in groups
+    }
+    return groups, denominators
+
+
 def weights_for(
     games: list[dict], budgets: list[int] | dict[str, list[int]], seeds: list[int]
 ) -> tuple[list[tuple], np.ndarray]:
     """Enumerate the common panel and its fixed hierarchical weights."""
-    families = sorted({game["family"] for game in games})
+    groups, denominators = weight_groups(games)
     cells, weights = [], []
-    for family in families:
-        strata = sorted({game["stratum"] for game in games if game["family"] == family})
-        for stratum in strata:
-            group = [
-                game for game in games if (game["family"], game["stratum"]) == (family, stratum)
-            ]
-            for game in group:
-                grid = budget_grid(budgets, game)
-                weight = 1 / (len(families) * len(strata) * len(group) * len(grid) * len(seeds))
-                for budget, seed in itertools.product(grid, seeds):
-                    cells.append((game["id"], budget, seed))
-                    weights.append(weight)
+    for path, group in sorted(groups.items()):
+        for game in group:
+            grid = budget_grid(budgets, game)
+            weight = 1 / (denominators[path] * len(group) * len(grid) * len(seeds))
+            for budget, seed in itertools.product(grid, seeds):
+                cells.append((game["id"], budget, seed))
+                weights.append(weight)
     return cells, np.array(weights)
 
 
@@ -238,9 +258,11 @@ def bootstrap(
     include_elo: bool = True,
 ) -> tuple[dict, dict]:
     """Resample complete clusters and paired seed slots, never individual method outcomes."""
+    planned_groups, denominators = weight_groups(games)
+    game_groups = {game["id"]: key for key, group in planned_groups.items() for game in group}
     groups, blocks = {}, {}
     for game in games:
-        key = (game["family"], game["stratum"])
+        key = game_groups[game["id"]]
         metadata = game.get("metadata", {})
         # A construction seed reuses data splits across models and recipes. Draw
         # it once for the whole dataset, not independently in each recipe stratum.
@@ -286,7 +308,6 @@ def bootstrap(
     generator = np.random.default_rng(0)
     lookup = {cell: i for i, cell in enumerate(cells)}
     samples = {name: {"mean": [], "median": [], "elo": []} for name in methods}
-    families = {key[0] for key in groups}
     for _ in range(draws):
         positions, weights = [], []
         selections = {
@@ -296,14 +317,13 @@ def bootstrap(
             ]
             for block, names in sorted(block_clusters.items())
         }
-        for (family, _stratum), clusters in sorted(groups.items()):
-            selected = selections[blocks[family, _stratum]]
+        for key, clusters in sorted(groups.items()):
+            selected = selections[blocks[key]]
             n_games = sum(len(clusters[name]) for name, _seeds in selected)
-            n_strata = sum(key[0] == family for key in groups)
             for cluster, sampled_seeds in selected:
                 for game in clusters[cluster]:
                     grid = budget_grid(budgets, game)
-                    weight = 1 / (len(families) * n_strata * n_games * len(grid) * len(seeds))
+                    weight = 1 / (denominators[key] * n_games * len(grid) * len(seeds))
                     for budget, seed in itertools.product(grid, sampled_seeds):
                         positions.append(lookup[(game["id"], budget, int(seed))])
                         weights.append(weight)
@@ -656,7 +676,11 @@ def iter_summaries(
                         "history": release_history(rows),
                         "uncertainty": uncertainty,
                         "elo_l2": L2,
-                        "weighting": "equal family / stratum / game / budget / seed; renormalized over observed cells",
+                        "weighting": (
+                            "equal application / subtype / recipe / instance / budget / seed; renormalized over observed cells"
+                            if any("focused_design" in game.get("metadata", {}) for game in games)
+                            else "equal family / stratum / game / budget / seed; renormalized over observed cells"
+                        ),
                         "elo_pairing": "finite overlapping cells; original panel weight; connected pool required",
                         "common_panel": common_panel,
                     }

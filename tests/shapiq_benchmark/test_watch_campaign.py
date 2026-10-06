@@ -15,6 +15,16 @@ watch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(watch)
 
 
+def test_optional_heartbeat_continues_work_while_jobs_run() -> None:
+    config = {"status": "active", "created_at": 0, "heartbeat_seconds": 900}
+    jobs = {"123": "RUNNING"}
+    state = {"last_progress_at": 10}
+    assert watch.wake_reason(config, state, jobs, 909) is None
+    assert "Scheduled progress check" in watch.wake_reason(config, state, jobs, 910)
+    assert watch.wake_reason(config, {**state, "pending_delivery": True}, jobs, 910) is None
+    assert watch.wake_reason({**config, "status": "cancelled"}, state, jobs, 910) is None
+
+
 def test_idle_implementation_and_terminal_jobs() -> None:
     config = {"status": "active", "created_at": 0, "idle_seconds": 100}
     assert watch.wake_reason(config, {}, {}, 99) is None

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from shapiq_benchmark import execution
+from shapiq_benchmark import execution, runner
 from shapiq_benchmark.execution import PROFILE, THREAD_VARIABLES, verify_profile
 from shapiq_benchmark.results_io import read_results
 from shapiq_benchmark.runner import builtin_factory, digest, identity, method_catalog, run
@@ -18,11 +18,94 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+TIMEOUT_POLICY = {
+    "ordinary_seconds": 30,
+    "extended_seconds": 120,
+    "min_players": 128,
+    "min_relative_budget": 32,
+}
+
+
+@pytest.mark.parametrize(
+    ("players", "budget", "expected"),
+    [(127, 127 * 128, 30), (128, 4095, 30), (128, 4096, 120), (512, 65536, 120)],
+)
+def test_requested_budget_timeout_boundaries(players: int, budget: int, expected: int) -> None:
+    assert runner.cell_timeout({"n_players": players}, budget, 60, TIMEOUT_POLICY) == expected
+    assert runner.cell_timeout({"n_players": players}, budget, 60, None) == 60
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        None,
+        {},
+        {**TIMEOUT_POLICY, "extended_seconds": 29},
+        {**TIMEOUT_POLICY, "ordinary_seconds": float("nan")},
+        {**TIMEOUT_POLICY, "min_relative_budget": 0},
+        {**TIMEOUT_POLICY, "min_players": 128.0},
+        {**TIMEOUT_POLICY, "min_players": True},
+        {**TIMEOUT_POLICY, "extra": 1},
+    ],
+)
+def test_invalid_timeout_policy_is_rejected(policy: object) -> None:
+    with pytest.raises(ValueError, match="cell_timeout_policy"):
+        runner.cell_timeout_policy({"cell_timeout_policy": policy})
+
+
+def test_policy_controls_worker_limits_and_resume_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = snapshot(tmp_path)
+    data = json.loads(path.read_text())
+    data["suite"].update(cell_timeout_policy=TIMEOUT_POLICY, budgets=[4095, 4096], seeds=[0])
+    data["games"][0]["n_players"] = 128
+    data["snapshot_id"] = identity({k: v for k, v in data.items() if k != "snapshot_id"})
+    path.write_text(json.dumps(data))
+    limits = []
+
+    def worker(request: dict, timeout: float, memory: float | None) -> dict:
+        limits.append(timeout)
+        return {"status": "failed", "error": "fixture", "wall_seconds": 0}
+
+    monkeypatch.setattr(execution, "isolated", worker)
+    with pytest.raises(ValueError, match="longest cell timeout"):
+        run(path, tmp_path / "short", timeout=30, max_seconds=120)
+    first = run(path, tmp_path / "policy", max_runs=1)
+    assert first["run_provenance"]["execution"]["cell_timeout_policy"] == TIMEOUT_POLICY
+    resumed = run(path, tmp_path / "policy", resume=True)
+    assert limits == [30, 120] and resumed["campaign"]["complete"]
+    data["suite"]["cell_timeout_policy"] = {**TIMEOUT_POLICY, "extended_seconds": 121}
+    data["snapshot_id"] = identity({k: v for k, v in data.items() if k != "snapshot_id"})
+    changed = tmp_path / "changed-snapshot.json"
+    changed.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="identical snapshot"):
+        run(changed, tmp_path / "policy", resume=True)
+
+
+def test_remaining_deadline_uses_selected_policy_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = snapshot(tmp_path)
+    data = json.loads(path.read_text())
+    data["suite"].update(cell_timeout_policy=TIMEOUT_POLICY, budgets=[4095, 4096], seeds=[0])
+    data["games"][0]["n_players"] = 128
+    data["snapshot_id"] = identity({k: v for k, v in data.items() if k != "snapshot_id"})
+    path.write_text(json.dumps(data))
+    monkeypatch.setattr(execution, "isolated", lambda *_: {"status": "failed", "error": "fixture"})
+    times = iter([0, 200, 200])
+    monkeypatch.setattr(runner.time, "monotonic", lambda: next(times))
+    result = run(path, tmp_path / "deadline", max_seconds=250)
+    # 50 seconds remain: the ordinary cell runs; the extended cell remains pending.
+    assert [r["budget"] for r in result["records"]] == [4095]
+    assert not result["campaign"]["complete"]
+
+
 def snapshot(tmp_path: Path) -> Path:
     """A tiny deterministic complete table keeps process tests independent of datasets."""
     values = np.array([0, 1, 2, 3, 3, 4, 5, 6], dtype=float)
     np.savez(tmp_path / "game.npz", values=values)
-    data = {
+    data: dict = {
         "schema_version": 1,
         "provenance": {},
         "suite": {"methods": ["KernelSHAP"], "budgets": [8], "seeds": [0, 1]},
@@ -48,6 +131,7 @@ def test_campaign_resume_matches_full_run(tmp_path: Path) -> None:
     """Resumption skips recorded cells without changing their estimates or provenance."""
     path = snapshot(tmp_path)
     partial = run(path, tmp_path / "partial", max_runs=1)
+    assert "cell_timeout_policy" not in partial["run_provenance"]["execution"]
     assert partial["campaign"] == {"planned": 2, "completed": 1, "complete": False}
     resumed = run(path, tmp_path / "partial", resume=True)
     full = run(path, tmp_path / "full")

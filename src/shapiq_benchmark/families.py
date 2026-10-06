@@ -776,7 +776,7 @@ PROFILE_CONSTRUCTIONS = {
     "lightgbm": _PREDICTION | _RETRAINING | _TREE,
     "mlp": _PREDICTION | _RETRAINING,
     "linear": _LOCAL | _RETRAINING,
-    "rbf_svm": _LOCAL | {"product_kernel"},
+    "rbf_svm": _LOCAL | {"product_kernel", "feature_selection"},
     "gaussian_process": _LOCAL,
     "tabpfn_prediction": _LOCAL,
     "heterogeneous_ensemble": {"ensemble"},

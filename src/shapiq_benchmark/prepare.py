@@ -159,6 +159,19 @@ def write_snapshot(
     suite: dict, games: list[dict], output: Path, *, coverage: list | None = None
 ) -> dict:
     """Write one content-addressed manifest for either preparation route."""
+    if "focused_design" in suite:
+        recipes = suite["focused_design"]["recipes"]
+        for game in games:
+            matches = [recipe for recipe in recipes if game["id"].startswith(recipe["id"] + "-")]
+            if len(matches) != 1:
+                message = f"Ambiguous or missing focused recipe for {game['id']}."
+                raise ValueError(message)
+            recipe = matches[0]
+            game.setdefault("metadata", {})["focused_design"] = {
+                "application": recipe["application"],
+                "subtype": recipe["subtype"],
+                "recipe": recipe["id"],
+            }
     minimum = suite.get("min_players", 1)
     if any(game["n_players"] < minimum for game in games):
         message = f"Constructed games violate min_players={minimum}; snapshot not written."

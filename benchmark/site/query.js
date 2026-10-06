@@ -86,6 +86,40 @@ globalThis.BenchmarkQuery = (() => {
     );
   }
 
+  function gameWeights(games) {
+    const focused = games.map((g) => g.metadata?.focused_design !== undefined);
+    require(
+      !focused.some(Boolean) || focused.every(Boolean),
+      "mixed weighting protocols",
+    );
+    const paths = games.map((g) => {
+      const d = g.metadata?.focused_design;
+      return d ? [d.application, d.subtype, d.recipe] : [g.family, g.stratum];
+    });
+    const children = new Map(),
+      counts = new Map();
+    for (const path of paths) {
+      path.forEach((name, depth) => {
+        const prefix = JSON.stringify(path.slice(0, depth));
+        if (!children.has(prefix)) children.set(prefix, new Set());
+        children.get(prefix).add(name);
+      });
+      const key = JSON.stringify(path);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return new Map(
+      games.map((g, i) => {
+        const path = paths[i];
+        const mass = path.reduce(
+          (weight, _, depth) =>
+            weight / children.get(JSON.stringify(path.slice(0, depth))).size,
+          1,
+        );
+        return [g.id, mass / counts.get(JSON.stringify(path))];
+      }),
+    );
+  }
+
   function makePanel(
     games,
     budgets,
@@ -93,22 +127,13 @@ globalThis.BenchmarkQuery = (() => {
     ids = games.map((g) => g.id),
     excluded = 0,
   ) {
-    const families = new Map(),
+    const masses = gameWeights(games),
       weights = new Map(),
       grids = new Map();
-    for (const g of games) {
-      if (!families.has(g.family)) families.set(g.family, new Map());
-      const strata = families.get(g.family);
-      strata.set(g.stratum, (strata.get(g.stratum) || 0) + 1);
-    }
     let planned = 0;
     for (const g of games) {
-      const strata = families.get(g.family),
-        size = budgets[g.id].length * seeds.length;
-      weights.set(
-        g.id,
-        1 / families.size / strata.size / strata.get(g.stratum) / size,
-      );
+      const size = budgets[g.id].length * seeds.length;
+      weights.set(g.id, masses.get(g.id) / size);
       grids.set(g.id, new Set(budgets[g.id]));
       planned += size;
     }
@@ -727,5 +752,6 @@ globalThis.BenchmarkQuery = (() => {
     canonicalOracleTiming,
     selectorHash,
     selectionPanel,
+    gameWeights,
   });
 })();

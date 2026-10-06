@@ -184,8 +184,43 @@ def provenance() -> dict:
     }
 
 
+def cell_timeout_policy(suite: dict) -> dict | None:
+    """Validate the optional frozen resource policy without changing legacy suites."""
+    if "cell_timeout_policy" not in suite:
+        return None
+    policy = suite["cell_timeout_policy"]
+    keys = {"ordinary_seconds", "extended_seconds", "min_players", "min_relative_budget"}
+    if (
+        not isinstance(policy, dict)
+        or set(policy) != keys
+        or any(
+            type(value) not in (int, float) or not math.isfinite(value) or value <= 0
+            for value in policy.values()
+        )
+        or type(policy["min_players"]) is not int
+        or policy["extended_seconds"] < policy["ordinary_seconds"]
+    ):
+        message = (
+            "Invalid cell_timeout_policy: require positive finite limits and integer min_players."
+        )
+        raise ValueError(message)
+    return policy
+
+
+def cell_timeout(game: dict, budget: int, timeout: float, policy: dict | None) -> float:
+    """Use the requested query cap, not observed queries, to select a frozen time limit."""
+    if policy is None:
+        return timeout
+    extended = (
+        game["n_players"] >= policy["min_players"]
+        and budget >= policy["min_relative_budget"] * game["n_players"]
+    )
+    return policy["extended_seconds" if extended else "ordinary_seconds"]
+
+
 def validate_suite(suite: dict, *, check_constructors: bool = True) -> None:
     """Reject ambiguous or empty run matrices before doing any work."""
+    cell_timeout_policy(suite)
     minimum = suite.get("min_players", 1)
     if type(minimum) is not int or minimum < 1:
         message = "min_players must be a positive integer."
@@ -516,6 +551,10 @@ def run(
         snapshot_path = snapshot_path.resolve()
         # Private factories do not execute the snapshot's historical baselines.
         snapshot, artifact_root = load_snapshot(snapshot_path, historical=bool(candidate))
+        timeout_policy = cell_timeout_policy(snapshot["suite"])
+        if timeout_policy is not None and max_seconds <= timeout_policy["extended_seconds"]:
+            message = "max_seconds must exceed the longest cell timeout in the suite policy."
+            raise ValueError(message)
         duplicates = {}
         if not candidate and snapshot["suite"].get("duplicate_registry"):
             from shapiq_benchmark.duplicates import claim_games
@@ -577,6 +616,8 @@ def run(
             "hardware": hardware(),
             "game_ids": [game["id"] for game in selected_games],
         }
+        if timeout_policy is not None:
+            execution["cell_timeout_policy"] = timeout_policy
         result: dict = {
             "schema_version": 1,
             "snapshot_id": snapshot["snapshot_id"],
@@ -643,7 +684,8 @@ def run(
             if (game["id"], name, budget, seed) in completed:
                 continue
             remaining = max_seconds - (time.monotonic() - start)
-            if remaining < timeout or (max_runs is not None and added >= max_runs):
+            selected_timeout = cell_timeout(game, budget, timeout, timeout_policy)
+            if remaining < selected_timeout or (max_runs is not None and added >= max_runs):
                 break
             record = {
                 "game_id": game["id"],
@@ -691,7 +733,7 @@ def run(
                     "candidate_sha256": methods[name]["source_sha256"] if candidate else None,
                     "method_parameters": methods[name].get("parameters"),
                 }
-                record.update(isolated(request, timeout, memory_gb))
+                record.update(isolated(request, selected_timeout, memory_gb))
             result["records"].append(record)
             added += 1
             result["campaign"] = {

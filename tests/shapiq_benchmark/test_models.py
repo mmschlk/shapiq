@@ -63,6 +63,39 @@ def test_reproducible_disjoint_splits_and_cached_model(data: tuple, tmp_path: Pa
         models.prepare_model("fixture", 11, 2, "random_forest", cache_dir=tmp_path)
 
 
+def test_nested_features_preserve_splits_and_cache_identity(data: tuple, tmp_path: Path) -> None:
+    """Changing dimension takes a prefix of one feature order and keeps the held-out point."""
+    seed = 2
+    order = np.random.default_rng(seed).permutation(data[0].shape[1])
+    results = [
+        models.prepare_model(
+            "fixture", n, seed, "random_forest", feature_rule="nested", cache_dir=tmp_path
+        )
+        for n in (3, 6, 12)
+    ]
+    for n, prepared in zip((3, 6, 12), results, strict=True):
+        metadata = prepared.metadata
+        assert metadata["feature_indices"] == sorted(order[:n])
+        assert metadata["feature_rule"] == "nested"
+        for key in ("train_indices", "validation_indices", "test_indices"):
+            assert metadata[key] == results[0].metadata[key]
+        np.testing.assert_array_equal(
+            prepared.x_test[0], data[0][metadata["test_indices"][0], metadata["feature_indices"]]
+        )
+    reloaded = models.prepare_model(
+        "fixture", 6, seed, "random_forest", feature_rule="nested", cache_dir=tmp_path
+    )
+    assert reloaded.metadata["model_key"] == results[1].metadata["model_key"]
+    np.testing.assert_array_equal(
+        reloaded.predict(reloaded.x_test), results[1].predict(reloaded.x_test)
+    )
+    legacy = models.prepare_model("fixture", 6, seed, "random_forest", cache_dir=tmp_path)
+    assert legacy.metadata["model_key"] != reloaded.metadata["model_key"]
+    assert legacy.metadata["feature_indices"] == sorted(
+        np.random.default_rng(seed).choice(data[0].shape[1], 6, replace=False)
+    )
+
+
 def test_medians_ignore_validation_and_test(data: tuple) -> None:
     """Even extreme held-out values cannot alter fitting-row missing-value repair."""
     x, y, _ = data

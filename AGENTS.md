@@ -104,6 +104,11 @@ uv run pre-commit run --all-files
   Audit these exclusions by replaying the split and feature counts from pinned
   cached data; never accept arbitrary constructor ValueErrors as known limits.
 
+- The continuous-feature rule above belongs to Gaussian/copula imputation games,
+  not automatically to a Gaussian-process predictor. `local_baseline` with the
+  `gaussian_process` model profile uses the ordinary feature rule. Check the
+  construction's `feature_rule` before excluding binary or categorical inputs.
+
 - Gaussian and Gaussian-copula imputers reject categorical columns, including
   Bike Sharing's binary calendar features. Higher-dimensional recipes for these
   games use continuous Wine features and a classifier's class-one probability;
@@ -520,3 +525,8 @@ uv run pre-commit run --all-files
   hardware, thread limits and source provenance all passed. Launch strict CPU
   recovery/audit workers with `srun ... /usr/bin/env CUDA_VISIBLE_DEVICES= python ...`
   so the child retains the required setting; keep the no-GPU runtime checks.
+
+- Public game metadata has two whitelists: `report.METADATA_FIELDS` and
+  `partitioned.FILTER_METADATA`. Scoring identity such as `focused_design` must
+  survive both. Test actual exported filter partitions against browser scoring;
+  full-detail rows or direct helper tests alone do not cover live rankings.

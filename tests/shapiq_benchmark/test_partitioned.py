@@ -728,3 +728,85 @@ async function query(index,selection,methods,score_order,timing_metric){
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("neighbors", [True, False])
+def test_focused_partition_export_browser_weights(tmp_path: Path, *, neighbors: bool) -> None:
+    """Actual filter partitions must preserve focused weights, including failed outcomes."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is required for the browser export fixture")
+    data = panel()
+    base_game, base_record = data["games"][0], data["records"][0]
+    recipes = [
+        ("local", "", "l1", 1),
+        ("local", "", "l2", 1),
+        ("features", "", "f1", 7),
+        ("data", "groups", "d1", 4),
+        *([("data", "neighbors", "d2", 10)] if neighbors else []),
+    ]
+    data["games"], data["records"] = [], []
+    for application, subtype, recipe, score in recipes:
+        data["games"].append(
+            {
+                **base_game,
+                "id": recipe,
+                "metadata": {
+                    "focused_design": {
+                        "application": application,
+                        "subtype": subtype,
+                        "recipe": recipe,
+                    }
+                },
+            }
+        )
+        for budget in data["suite"]["budgets"]:
+            failed = recipe == "l1" and budget == 22
+            data["records"].append(
+                {
+                    **base_record,
+                    "game_id": recipe,
+                    "budget": budget,
+                    "status": "failed" if failed else "ok",
+                    "nmse": None if failed else score,
+                    "mse": None if failed else score,
+                    "order_scores": {},
+                }
+            )
+    expected = next(
+        p for p in iter_summaries(data) if p["family"] is None and len(p["budgets"]) == 2
+    )
+    with RecordStore(tmp_path / "records.sqlite") as store:
+        store.extend(data["records"])
+        root = tmp_path / "report"
+        manifest = write_partitioned_report(
+            {**data, "records": store}, root, block_rows=2, max_bytes=8192
+        )
+    exported = decoded(root, manifest, "games")
+    assert {g["id"]: g["metadata"]["focused_design"] for g in exported} == {
+        g["id"]: g["metadata"]["focused_design"] for g in data["games"]
+    }
+    script = r"""
+const fs=require('fs'),path=require('path');globalThis.crypto=require('crypto').webcrypto;
+for(const name of ['partitions.js','query.js'])require(path.join(process.argv[1],name));
+(async()=>{
+ const root=process.argv[2], manifest=JSON.parse(fs.readFileSync(path.join(root,'data.json'),'utf8'));
+ const files=new Map();for(const entries of Object.values(manifest.assets))for(const d of entries)
+   files.set(d.file,new Blob([fs.readFileSync(path.join(root,d.file))]));
+ const selection={target:'SV · order 1',panel:'real',include_controls:false};
+ const result=await BenchmarkQuery.query(manifest,
+   {selection,chart_selection:selection,methods:['KernelSHAP'],score_order:null,timing_metric:'seconds'},
+   {read:d=>BenchmarkPartitions.read(manifest,d,{files})});
+ console.log(JSON.stringify(result.table[0]));
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+    site = Path(__file__).resolve().parents[2] / "benchmark/site"
+    result = subprocess.run(
+        [node, "-e", script, str(site), str(root)], capture_output=True, text=True, check=True
+    )
+    actual, row = json.loads(result.stdout), expected["rows"][0]
+    assert actual["average"] == pytest.approx(row["mean"])
+    assert actual["median"] == pytest.approx(row["median"])
+    assert actual["planned"] == row["planned"]
+    assert actual["valid"] == row["valid"]
+    assert row["coverage_weight"] == pytest.approx(11 / 12)

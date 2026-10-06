@@ -71,7 +71,7 @@ _CONSTRUCTIONS: dict = {
     "local_copula": (3, PREDICTION_MODELS),
     "local_conditional": (3, PREDICTION_MODELS),
     "global_fidelity": (3, PREDICTION_MODELS),
-    "feature_selection": (3, REFIT_MODELS),
+    "feature_selection": (3, (*REFIT_MODELS, "rbf_svm")),
     "data_valuation": (3, REFIT_MODELS),
     "dataset_valuation": (3, REFIT_MODELS),
     "ensemble": (3, ("heterogeneous_ensemble",)),

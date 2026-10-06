@@ -21,8 +21,10 @@ completed coverage of every dataset/model/construction combination.
 - [Phase-seven data and reproduction archives](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04)
 - [Current website data pointer](site/data-source.json): the compact serialization
   of the same audited results; all seven reproduction archives remain unchanged.
-- [Roadmap and qualification limits](ROADMAP.md): the full 63-dataset expansion
-  is running separately in 38 waves. Its results are not yet the live cohort.
+- [Focused replacement](FOCUSED.md): 384 intended instances across three
+  applications, within 2,048 allocated CPU-hours. The previous 38-wave expansion
+  was canceled; its completed artifacts are retained, not silently republished.
+- [Roadmap and qualification limits](ROADMAP.md): historical rollout design.
 - [Operational and historical reference](OPERATIONS.md): recovery, exact
   preparation, archived campaigns and detailed commands.
 
@@ -108,25 +110,17 @@ pooled. Plot-family filters are independent of table filters.
 [Estimator findings](ESTIMATOR_NOTES.md) ·
 [About the game constructions and exact answers](site/about.html)
 
-## Continuing through the phases
+## Continuing the focused replacement
 
-The active full matrix lives at
-`/hopper/groups/witterlab/rwitter/shapiq-benchmark-matrix-expansion`.
-Read its `state.json` and the coordinator's
-`benchmark/results/full-rollout/WAKEUP.md` before acting. The latter directory is
-a symlink to `/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`.
-Reviewed recovery journals override superseded job IDs; do not resubmit an
-existing campaign from a historical command template.
+The [focused manifest and workflow](FOCUSED.md) replace the canceled 38-wave
+matrix expansion. Qualification and the new campaign's actual state determine
+what can run or publish; the manifest alone does not certify completion.
+Read the active coordinator's `WAKEUP.md` and state before acting. Never revive
+the old expansion from commands in archived recovery journals.
 
-The reviewed 38-wave plan separates preparation, evaluation and audit lanes:
-**48 preparation CPUs + 64 evaluation CPUs + one sequential audit CPU = 113**,
-within the approved **128-core ceiling**, with no production GPUs reserved.
-The campaign state records the current stage and any recovery work. Original
-first-wave preparation and recovery retain their reviewed limits.
-Evaluation waits for its own preparation checks and stays ordered for duplicate
-ownership. Later preparation can overlap evaluation; audits gate publication,
-not subsequent computation. The scheduling overlay in
-`operational/audit-independent-pipeline/` retains original job IDs and science.
+Ready preparation and evaluation can run in parallel under one **128-core
+ceiling**; pilots, audits, retries and export share the same **2,048 CPU-hour
+total**. Publication waits for independent audits. No production GPUs are used.
 
 The existing watcher runs every five minutes, with an implementation heartbeat
 while work continues. It wakes the authorized session; it neither submits jobs

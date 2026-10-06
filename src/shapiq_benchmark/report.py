@@ -47,6 +47,7 @@ ROW_FIELDS = (
 )
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
 METADATA_FIELDS = (
+    "focused_design",
     "quality_protocol",
     "model_validation_gate",
     "game_quality",

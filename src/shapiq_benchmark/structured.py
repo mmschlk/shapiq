@@ -192,10 +192,15 @@ def prepare_profiled(spec: dict, output: Path) -> dict:
     seed = spec.get("instance_seed", 0)
     cache = output.parent / ".models"
     quality = {"quality_protocol": spec["quality_protocol"]} if "quality_protocol" in spec else {}
-    small = prepare_model(dataset, 8, seed, profile, cache_dir=cache, **quality)
+    feature_rule = spec.get("feature_rule", "all")
+    small = prepare_model(
+        dataset, 8, seed, profile, cache_dir=cache, feature_rule=feature_rule, **quality
+    )
     small_oracle, small_truth, _, _ = _construct(small, spec)
     error = validate_truth(small_oracle, small_truth, exhaustive=True)
-    prepared = prepare_model(dataset, n, seed, profile, cache_dir=cache, **quality)
+    prepared = prepare_model(
+        dataset, n, seed, profile, cache_dir=cache, feature_rule=feature_rule, **quality
+    )
     if quality and not prepared.metadata["model_validation_gate"]["passed"]:
         from shapiq_benchmark.quality import QualityExclusion
 

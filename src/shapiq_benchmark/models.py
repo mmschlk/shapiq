@@ -476,7 +476,12 @@ def _fit(
     training = identity["training_profile"]
     classes, encoded = np.unique(original_y, return_inverse=True)
     y = encoded if classification else original_y
-    features = np.sort(np.random.default_rng(seed).choice(x.shape[1], n_players, replace=False))
+    rng = np.random.default_rng(seed)
+    features = np.sort(
+        rng.permutation(x.shape[1])[:n_players]
+        if identity.get("feature_rule") == "nested"
+        else rng.choice(x.shape[1], n_players, replace=False)
+    )
     fit, test, test_rule = _split(
         np.arange(len(x)), y, training["test_fraction"], seed, classification=classification
     )
@@ -629,7 +634,7 @@ def prepare_model(
     if device not in {"cpu", "cuda"} or (device != "cpu" and profile != "tabpfn_prediction"):
         message = "CUDA is qualified only for explicit TabPFN prediction profiles."
         raise ValueError(message)
-    if feature_rule not in {"all", "continuous"}:
+    if feature_rule not in {"all", "continuous", "nested"}:
         message = "Unknown model feature selection rule."
         raise ValueError(message)
     x, y, names = load_raw_dataset(dataset)

@@ -111,6 +111,9 @@ def wake_reason(config: dict, state: dict, jobs: dict, now: float) -> str | None
         and all(status in TERMINAL | {"PENDING"} for status in jobs.values())
     ):
         return "Failed campaign jobs may block pending dependencies; inspect and repair the remaining jobs."
+    heartbeat = config.get("heartbeat_seconds")
+    if heartbeat is not None and heartbeat > 0 and idle >= heartbeat:
+        return "Scheduled progress check; inspect the checklist and active jobs, then continue authorized work."
     return None
 
 
