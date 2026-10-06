@@ -1,18 +1,49 @@
-"""Benchmark helpers for shapiq."""
+"""Benchmarking for shapiq: a benchmark is a game plus a computer of its exact values.
 
-import importlib.util
-import warnings
+- :mod:`shapiq_benchmark.computers`: ground-truth computers wrapping the exact algorithms of
+  shapiq (brute force, Möbius, path-dependent and interventional trees, nearest neighbors,
+  product kernels) and :func:`default_computer` choosing one for a game.
+- :class:`Benchmark`: a game and its computer, with a local cache of exact values.
+- :mod:`shapiq_benchmark.metrics`: error, ranking, and faithfulness metrics.
+- :func:`run`: runs approximators over budgets and seeds and scores them.
 
-_missing = [
-    module
-    for module in ["optuna", "tabpfn", "lightgbm", "xgboost"]
-    if importlib.util.find_spec(module) is None
+Examples:
+    >>> import shapiq
+    >>> from shapiq_games import SOUM
+    >>> from shapiq_benchmark import Benchmark, run
+    >>> benchmark = Benchmark(SOUM(n=12, n_basis_games=30, random_state=0))
+    >>> results = run(benchmark, [shapiq.KernelSHAPIQ, shapiq.SVARMIQ], budgets=[200, 1000],
+    ...               index="k-SII", order=2, seeds=[0, 1])
+"""
+
+from .benchmark import Benchmark
+from .computers import (
+    BruteForceComputer,
+    Computer,
+    InterventionalTreeComputer,
+    KNNComputer,
+    MoebiusComputer,
+    PathDependentTreeComputer,
+    ProductKernelComputer,
+    UnsupportedComputationError,
+    default_computer,
+)
+from .metrics import compare, faithfulness
+from .runner import run, save_results
+
+__all__ = [
+    "Benchmark",
+    "BruteForceComputer",
+    "Computer",
+    "InterventionalTreeComputer",
+    "KNNComputer",
+    "MoebiusComputer",
+    "PathDependentTreeComputer",
+    "ProductKernelComputer",
+    "UnsupportedComputationError",
+    "compare",
+    "default_computer",
+    "faithfulness",
+    "run",
+    "save_results",
 ]
-
-if _missing:
-    msg = (
-        "The 'shapiq_benchmark' package uses optional model backends that are not part of the"
-        f" core shapiq install and are currently missing: {', '.join(_missing)}. Install them"
-        " via,\n\n    pip install 'shapiq[benchmark]'\n"
-    )
-    warnings.warn(msg, ImportWarning, stacklevel=2)

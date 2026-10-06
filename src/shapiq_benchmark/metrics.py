@@ -1,346 +1,161 @@
-"""Metrics for evaluating performances of different approximation methods."""
+"""Metrics comparing estimated interaction values with the ground truth.
+
+All metrics compare the interactions of order ``1`` to the ground truth's ``max_order`` (or of a
+single order). The order-0 term is excluded: it is the value of the empty coalition, not an
+attribution. Higher is better for the ranking metrics and for faithfulness; lower is better for
+the error metrics.
+"""
 
 from __future__ import annotations
 
-import copy
-import json
-from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import kendalltau, spearmanr
-from sklearn.metrics import r2_score
 
-from shapiq import powerset
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.utils.sets import count_interactions
+from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from shapiq import Game, InteractionValues
 
-    import pandas as pd
-
-    from shapiq.game import Game
-    from shapiq.interaction_values import InteractionValues
-
-__all__ = ["get_all_metrics"]
+__all__ = ["compare", "error_metrics", "faithfulness", "ranking_metrics"]
 
 
-def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
-    """Manually sets the empty value (e.g. baseline value) to zero in the values array.
-
-    Args:
-        interaction: The interaction values to remove the empty value from.
-
-    Returns:
-        The interaction values without the empty value.
-
-    """
-    if () in interaction.interactions:
-        new_interaction = copy.deepcopy(interaction)
-        new_interaction.interactions.pop(())
-        return new_interaction
-    return interaction
-
-
-DIFF_METRICS = Literal["MSE", "MAE", "SSE", "SAE"]
-RANKING_METRICS = Literal["KendallTau", "KendallTau@k", "Precision@k"]
-METRICS = DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
-
-
-class Metric(NamedTuple):
-    """A named tuple to represent a metric.
-
-    Attributes:
-        metric_id: The name of the metric.
-        value: The value of the metric.
-        order: The order of the metric, if applicable. `None` if not applicable.
-        computed_k: The k value used for the metric, if applicable. `None` if not applicable.
-    """
-
-    metric_id: METRICS
-    value: float
-    order: int | None = None
-    computed_k: int | None = None
-
-
-def compute_diff_metrics(
-    ground_truth: InteractionValues, estimated: InteractionValues
-) -> list[Metric]:
-    """Compute metrics via the difference between the ground truth and estimated interaction values.
-
-    Computes the following metrics:
-        - Mean Squared Error (MSE)
-        - Mean Absolute Error (MAE)
-        - Sum of Squared Errors (SSE)
-        - Sum of Absolute Errors (SAE)
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-
-    Returns:
-        The metrics between the ground truth and estimated interaction values.
-
-    """
-    difference = ground_truth - estimated
-    diff_values = _remove_empty_value(difference).values  # noqa: PD011
-    n_values = count_interactions(
-        ground_truth.n_players,
-        ground_truth.max_order,
-        ground_truth.min_order,
-    )
-    return [
-        Metric(metric_id="MSE", value=np.sum(diff_values**2) / n_values),
-        Metric(metric_id="MAE", value=np.sum(np.abs(diff_values)) / n_values),
-        Metric(metric_id="SSE", value=np.sum(diff_values**2)),
-        Metric(metric_id="SAE", value=np.sum(np.abs(diff_values))),
-    ]
-
-
-def compute_kendall_tau(
+def _aligned(
     ground_truth: InteractionValues,
-    estimated: InteractionValues,
-    k: int | None = None,
-) -> Metric:
-    """Compute the Kendall Tau between two interaction values.
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-        k: The top-k ground truth values to consider. Defaults to `None`, which considers all
-            interactions.
-
-    Returns:
-        The Kendall Tau between the ground truth and estimated interaction values.
-
-    """
-    # get the interactions as a sorted array
-    gt_values, estimated_values = [], []
-    ground_truth = _remove_empty_value(ground_truth)
-    estimated = _remove_empty_value(estimated)
-
-    for interaction in set(ground_truth.interactions.keys()).union(estimated.interactions.keys()):
-        gt_values.append(ground_truth[interaction])
-        estimated_values.append(estimated[interaction])
-    # array conversion
-    gt_values, estimated_values = np.array(gt_values), np.array(estimated_values)
-    # Clip value smaller 1e-10 to avoid issues with kendalltau
-    gt_values = np.where(np.abs(gt_values) < 1e-10, 0.0, gt_values)
-    estimated_values = np.where(np.abs(estimated_values) < 1e-10, 0.0, estimated_values)
-
-    # sort the values
-    gt_indices, estimated_indices = np.argsort(gt_values), np.argsort(estimated_values)
-    if k is not None:
-        gt_indices, estimated_indices = gt_indices[:k], estimated_indices[:k]
-    # compute the Kendall Tau
-    tau, _ = kendalltau(gt_indices, estimated_indices)
-    return Metric(metric_id="KendallTau", value=tau, computed_k=k)
-
-
-def compute_spearmans_correlation(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int | None = None
-) -> Metric:
-    """Compute the Spearman's correlation between two interaction values.
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-        k: The top-k ground truth values to consider. Defaults to `None`, which considers all
-            interactions.
-
-    Returns:
-        The Spearman's correlation metric between the ground truth and estimated interaction values.
-    """
-    # get the interactions as a sorted array
-    gt_values, estimated_values = [], []
-    for interaction in powerset(
-        range(ground_truth.n_players),
-        min_size=1,
-        max_size=ground_truth.max_order,
-    ):
-        gt_values.append(ground_truth[interaction])
-        estimated_values.append(estimated[interaction])
-
-    spearman_corr, _pval = spearmanr(gt_values, estimated_values)
-    return Metric(metric_id="SpearmanCorrelation", value=spearman_corr, computed_k=k)
-
-
-def compute_precision_at_k(
-    ground_truth: InteractionValues,
-    estimated: InteractionValues,
-    k: int = 10,
-) -> Metric:
-    """Compute the precision at k between two interaction values.
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-        k: The top-k ground truth values to consider. Defaults to 10.
-
-    Returns:
-        The precision at k between the ground truth and estimated interaction values.
-
-    """
-    ground_truth_values = _remove_empty_value(ground_truth)
-    estimated_values = _remove_empty_value(estimated)
-    top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
-    top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
-    top_k_dict = cast("dict[tuple[int, ...], float]", top_k)
-    top_k_estimated_dict = cast("dict[tuple[int, ...], float]", top_k_estimated)
-    precision_at_k = len(set(top_k_dict.keys()).intersection(set(top_k_estimated_dict.keys()))) / k
-    return Metric(
-        metric_id="Precision@k",
-        value=precision_at_k,
-        computed_k=k,
+    estimate: InteractionValues,
+    order: int | None,
+) -> tuple[list[tuple[int, ...]], np.ndarray, np.ndarray]:
+    """Return the compared interactions and their ground-truth and estimated values."""
+    if order is None:
+        min_size, max_size = 1, ground_truth.max_order
+    else:
+        min_size = max_size = order
+    interactions = list(
+        powerset(range(ground_truth.n_players), min_size=min_size, max_size=max_size)
     )
+    truth = np.array([ground_truth[interaction] for interaction in interactions], dtype=float)
+    estimated = np.array([estimate[interaction] for interaction in interactions], dtype=float)
+    return interactions, truth, estimated
 
 
-def compute_faithullness(estimated_game: Game, estimated: InteractionValues) -> Metric:
-    """Compute the Faithullness between two interaction values.
-
-    Sample coaltions and sum the banzhaf interactions in both ground truth and estimated, which are contained in the sampleed coalitions.
-    Then compute the R^2 between the two sums.
-
-    Args:
-        estimated_game: The estimated game.
-        estimated: The estimated interaction values.
+def error_metrics(truth: np.ndarray, estimated: np.ndarray) -> dict[str, float]:
+    """Return the squared and absolute errors between two aligned value vectors.
 
     Returns:
-        The Faithullness between the ground truth and estimated interaction values.
+        ``mse``, ``mae``, ``sse``, ``sae``, and ``nmse`` (the squared error relative to the squared
+        norm of the ground truth; ``nan`` if the ground truth is zero).
     """
-    n_players = estimated_game.n_players
-    n_samples = min(1000, 2**n_players)
-    sampler = CoalitionSampler(
-        n_players=n_players, sampling_weights=np.ones(n_players + 1), random_state=42
-    )
-    sampler.sample(sampling_budget=n_samples)
-    sampled_coalitions = sampler.coalitions_matrix
-    game_values = estimated_game(sampled_coalitions)
-    est_sums = []
-    for coalition in sampled_coalitions:
-        coalition_set = set(np.where(coalition)[0])
-        est_sum = 0.0
-        for interaction in estimated.interactions:
-            if len(set(interaction)) >= 1 and set(interaction).issubset(coalition_set):
-                est_sum += estimated[interaction]
-        est_sums.append(est_sum)
-    # compute R^2
-    predicted_values = np.array(est_sums) + estimated.baseline_value
-    r2_score_value = r2_score(game_values, predicted_values)
-    if r2_score_value < 0:
-        r2_score_value = 0.0
-    return Metric(metric_id="Faithfulness", value=r2_score_value)
-
-
-def get_all_metrics(
-    ground_truth: InteractionValues,
-    estimated: InteractionValues,
-    estimated_game: Game,
-    save_path: str | None = None,
-) -> list[Metric]:
-    """Get all metrics for the interaction values.
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-        estimated_game: The estimated game, used for computing the faithfulness metric.
-        save_path: The path to save the metrics as a JSON file. If `None`,
-
-    Returns:
-        The metrics as a dictionary.
-
-    """
-    metrics = [
-        compute_spearmans_correlation(ground_truth, estimated, k=10),
-        compute_spearmans_correlation(ground_truth, estimated),
-        compute_precision_at_k(ground_truth, estimated, k=5),
-        compute_precision_at_k(ground_truth, estimated, k=10),
-        compute_kendall_tau(ground_truth, estimated),
-        compute_kendall_tau(ground_truth, estimated, k=10),
-    ]
-    if ground_truth.index == "FBII":
-        metrics.append(compute_faithullness(estimated_game, estimated))
-    metrics_diff = compute_diff_metrics(ground_truth, estimated)
-    metrics.extend(metrics_diff)
-
-    if save_path is not None:
-        metrics_dict: dict[str, float] = {
-            metric.metric_id: metric.value for metric in metrics if metric.computed_k is None
-        }
-        metrics_dict.update(
-            {
-                f"{metric.metric_id}@{metric.computed_k}": metric.value
-                for metric in metrics
-                if metric.computed_k is not None
-            }
-        )
-
-        payload = {
-            "metrics": metrics_dict,
-            "game": {
-                "name": estimated_game.__class__.__name__,
-                "n_players": estimated_game.n_players,
-                "normalize": getattr(estimated_game, "normalize", None),
-                "normalization_value": getattr(estimated_game, "normalization_value", None),
-            },
-            "ground_truth": _serialize_interaction_values(ground_truth),
-            "estimated": _serialize_interaction_values(estimated),
-        }
-
-        save_json_results(payload, save_path)
-    return metrics
-
-
-def save_results(results: pd.DataFrame, save_path: str) -> None:
-    """Save the results of the benchmark as a JSON file.
-
-    Args:
-        results: The results of the benchmark.
-        save_path: The path to save the results as a JSON file.
-
-    """
-    # check if the directory exists
-    save_dir = Path(save_path).parent
-    save_dir.mkdir(parents=True, exist_ok=True)
-    results.to_json(save_path, orient="records")
-
-
-def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, object]:
-    """Serialize the interaction values to a dictionary.
-
-    Args:
-        interaction: The interaction values to serialize.
-
-    Returns:
-        A dictionary representation of the interaction values.
-    """
-
-    def _key_to_str(key: tuple[int, ...]) -> str:
-        if not key:
-            return "()"
-        return ",".join(str(item) for item in key)
-
-    values = {_key_to_str(key): float(value) for key, value in interaction.interactions.items()}
+    difference = estimated - truth
+    sse = float(np.sum(difference**2))
+    norm = float(np.sum(truth**2))
     return {
-        "index": interaction.index,
-        "n_players": interaction.n_players,
-        "min_order": interaction.min_order,
-        "max_order": interaction.max_order,
-        "baseline_value": float(interaction.baseline_value),
-        "values": values,
+        "mse": sse / truth.size,
+        "mae": float(np.mean(np.abs(difference))),
+        "sse": sse,
+        "sae": float(np.sum(np.abs(difference))),
+        "nmse": sse / norm if norm > 0 else float("nan"),
     }
 
 
-def save_json_results(payload: Mapping[str, object], save_path: str) -> None:
-    """Save the results payload as a JSON file.
+def _top_k(values: np.ndarray, k: int) -> np.ndarray:
+    """Indices of the ``k`` largest absolute values (ties broken by position)."""
+    return np.argsort(-np.abs(values), kind="stable")[:k]
+
+
+def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> dict[str, float]:
+    """Return rank agreement metrics between two aligned value vectors.
 
     Args:
-        payload: The data to write.
-        save_path: The path to save the results as a JSON file.
+        truth: The ground-truth values.
+        estimated: The estimated values.
+        k: The number of top interactions (by absolute ground-truth value) for the ``@k`` metrics.
 
+    Returns:
+        ``kendall_tau`` and ``spearman`` of all values; ``precision_at_k``, the share of the ``k``
+        interactions with the largest absolute ground truth among the ``k`` largest absolute
+        estimates; and ``kendall_tau_at_k``, Kendall's tau restricted to the top-``k`` ground-truth
+        interactions. Correlations of constant vectors are ``nan``.
     """
-    save_dir = Path(save_path).parent
-    save_dir.mkdir(parents=True, exist_ok=True)
-    with Path(save_path).open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2)
+    k = min(k, truth.size)
+    top_truth = _top_k(truth, k)
+    top_estimate = _top_k(estimated, k)
+    return {
+        "kendall_tau": _correlation(kendalltau, truth, estimated),
+        "spearman": _correlation(spearmanr, truth, estimated),
+        "precision_at_k": len(set(top_truth) & set(top_estimate)) / k if k else float("nan"),
+        "kendall_tau_at_k": _correlation(kendalltau, truth[top_truth], estimated[top_truth]),
+    }
+
+
+def _correlation(statistic, a: np.ndarray, b: np.ndarray) -> float:  # noqa: ANN001
+    if a.size < 2 or np.all(a == a[0]) or np.all(b == b[0]):
+        return float("nan")
+    return float(statistic(a, b)[0])
+
+
+def compare(
+    ground_truth: InteractionValues,
+    estimate: InteractionValues,
+    *,
+    k: int = 10,
+    order: int | None = None,
+) -> dict[str, float]:
+    """Compare an estimate with the ground truth.
+
+    Args:
+        ground_truth: The exact interaction values.
+        estimate: The estimated interaction values.
+        k: The number of top interactions for the ``@k`` metrics. Defaults to ``10``.
+        order: Compare only the interactions of this order. Defaults to ``None``, which compares
+            all orders from ``1`` to the ground truth's ``max_order``.
+
+    Returns:
+        The error metrics and the ranking metrics (see :func:`error_metrics` and
+        :func:`ranking_metrics`).
+    """
+    _, truth, estimated = _aligned(ground_truth, estimate, order)
+    return {**error_metrics(truth, estimated), **ranking_metrics(truth, estimated, k=k)}
+
+
+def faithfulness(
+    game: Game,
+    estimate: InteractionValues,
+    *,
+    n_samples: int = 1000,
+    random_state: int = 0,
+) -> float:
+    r"""Return how well the estimate reconstructs the game (the R² of the reconstruction).
+
+    Each sampled coalition :math:`S` is reconstructed as
+    :math:`\hat v(S) = b + \sum_{T \subseteq S, |T| \geq 1} \hat\phi(T)`, where :math:`b` is the
+    estimate's baseline value. Coalitions are sampled uniformly at random (every player present
+    with probability one half), or all coalitions are used if there are at most ``n_samples``. The
+    R² is not clipped and can be negative.
+
+    Args:
+        game: The game.
+        estimate: The estimated interaction values.
+        n_samples: The number of sampled coalitions. Defaults to ``1000``.
+        random_state: The seed of the coalition sample. Defaults to ``0``.
+
+    Returns:
+        The coefficient of determination between the game values and the reconstruction.
+    """
+    n = game.n_players
+    if 2**n <= n_samples:
+        coalitions = np.array([[i in s for i in range(n)] for s in powerset(range(n))], dtype=bool)
+    else:
+        coalitions = np.random.default_rng(random_state).random((n_samples, n)) < 0.5
+    values = game(coalitions)
+    interactions = [
+        (interaction, estimate[interaction])
+        for interaction in estimate.interaction_lookup
+        if len(interaction) >= 1
+    ]
+    reconstruction = np.full(coalitions.shape[0], float(estimate.baseline_value))
+    for interaction, value in interactions:
+        reconstruction += value * coalitions[:, list(interaction)].all(axis=1)
+    residual = float(np.sum((values - reconstruction) ** 2))
+    total = float(np.sum((values - values.mean()) ** 2))
+    return 1.0 - residual / total if total > 0 else float("nan")

@@ -1,4 +1,4 @@
-"""Lazy imports for shapiq_benchmark's optional model backends."""
+"""Lazy imports for the optional dependencies of shapiq_benchmark (e.g. optuna)."""
 
 from __future__ import annotations
 

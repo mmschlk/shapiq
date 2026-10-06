@@ -1,0 +1,101 @@
+"""Property tests of the benchmark metrics."""
+
+from __future__ import annotations
+
+import copy
+
+import numpy as np
+import pytest
+
+from shapiq import InteractionValues
+from shapiq.utils import powerset
+from shapiq_benchmark.computers import BruteForceComputer
+from shapiq_benchmark.metrics import compare, error_metrics, faithfulness, ranking_metrics
+from shapiq_games import SOUM
+
+
+def _values(
+    values: np.ndarray, n: int = 5, order: int = 2, baseline: float = 0.0
+) -> InteractionValues:
+    interactions = list(powerset(range(n), min_size=1, max_size=order))
+    return InteractionValues(
+        values=np.asarray(values, dtype=float),
+        index="k-SII",
+        max_order=order,
+        min_order=1,
+        n_players=n,
+        interaction_lookup={interaction: i for i, interaction in enumerate(interactions)},
+        baseline_value=baseline,
+    )
+
+
+@pytest.fixture
+def truth() -> InteractionValues:
+    return _values(np.random.default_rng(0).normal(size=15))
+
+
+def test_identical_estimate_is_perfect(truth: InteractionValues) -> None:
+    metrics = compare(truth, copy.deepcopy(truth), k=5)
+    for name in ("mse", "mae", "sse", "sae", "nmse"):
+        assert metrics[name] == 0.0
+    for name in ("kendall_tau", "spearman", "precision_at_k", "kendall_tau_at_k"):
+        assert metrics[name] == pytest.approx(1.0)
+
+
+def test_rankings_are_invariant_to_positive_scaling(truth: InteractionValues) -> None:
+    scaled = _values(3.0 * truth.values)
+    metrics = compare(truth, scaled, k=5)
+    assert metrics["kendall_tau"] == pytest.approx(1.0)
+    assert metrics["precision_at_k"] == pytest.approx(1.0)
+    assert metrics["mse"] == pytest.approx(4.0 * np.mean(truth.values**2))
+    assert metrics["nmse"] == pytest.approx(4.0)
+
+
+def test_reversed_ranking(truth: InteractionValues) -> None:
+    metrics = compare(truth, _values(-truth.values), k=5)
+    assert metrics["kendall_tau"] == pytest.approx(-1.0)
+    assert metrics["spearman"] == pytest.approx(-1.0)
+    # top-k is by magnitude, so negating everything keeps the same top interactions
+    assert metrics["precision_at_k"] == pytest.approx(1.0)
+
+
+def test_kendall_tau_is_the_textbook_statistic() -> None:
+    from scipy.stats import kendalltau
+
+    rng = np.random.default_rng(1)
+    truth = rng.normal(size=15)
+    estimate = truth + rng.normal(scale=0.5, size=15)
+    assert ranking_metrics(truth, estimate)["kendall_tau"] == pytest.approx(
+        kendalltau(truth, estimate)[0]
+    )
+
+
+def test_precision_at_k_uses_the_largest_magnitudes() -> None:
+    truth = np.array([5.0, -4.0, 0.1, 0.2, 0.3])
+    estimate = np.array([5.0, 0.0, 0.1, -4.0, 0.3])
+    metrics = ranking_metrics(truth, estimate, k=2)
+    assert metrics["precision_at_k"] == pytest.approx(0.5)  # {0, 1} vs {0, 3}
+
+
+def test_error_metrics_and_degenerate_ground_truth() -> None:
+    metrics = error_metrics(np.zeros(4), np.array([1.0, -1.0, 0.0, 0.0]))
+    assert metrics["mse"] == 0.5
+    assert metrics["mae"] == 0.5
+    assert np.isnan(metrics["nmse"])
+    assert np.isnan(ranking_metrics(np.zeros(4), np.arange(4.0))["kendall_tau"])
+
+
+def test_order_zero_and_other_orders_are_ignored(truth: InteractionValues) -> None:
+    estimate = copy.deepcopy(truth)
+    estimate.baseline_value = 100.0
+    assert compare(truth, estimate)["mse"] == 0.0
+    single_order = compare(truth, _values(np.r_[truth.values[:5], np.zeros(10)]), order=1)
+    assert single_order["mse"] == 0.0
+
+
+def test_faithfulness_is_one_for_exact_moebius_values() -> None:
+    game = SOUM(6, 12, max_interaction_size=2, min_interaction_size=1, random_state=0)
+    moebius = BruteForceComputer(game).exact_values("Moebius", 2)
+    assert faithfulness(game, moebius) == pytest.approx(1.0)
+    shapley = BruteForceComputer(game).exact_values("SV", 1)
+    assert faithfulness(game, shapley) < 1.0
