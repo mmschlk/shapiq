@@ -594,3 +594,10 @@ uv run pre-commit run --all-files
   host and no-GPU checks. If submission already succeeded, reconcile the same
   held job and preserve its intent, reservation and reviewed input hashes;
   do not resubmit or edit an admitted candidate to fix the validator.
+
+- The focused CPU ledger retains each original reservation after settlement.
+  `settled` overrides its reserved cost with actual CPUTimeRAW; overlap between
+  these collections is required, not duplicate accounting. Do not remove
+  historical reservations or reject that overlap. Only an active worker must
+  have a reservation without a settlement. Reuse `budget_status` and test
+  admission helpers against the actual ledger schema.
