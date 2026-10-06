@@ -25,6 +25,7 @@ from shapiq.explainer.product_kernel.game import ProductKernelGame
 from shapiq.game_theory import ExactComputer
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.game import InterventionalGame
+from shapiq_benchmark.exact import exact_table_truth
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -140,14 +141,26 @@ def validate_truth(oracle: Callable, truth: InteractionValues, *, exhaustive: bo
         if n > 8:
             message = "Exhaustive validation is restricted to at most eight players."
             raise ValueError(message)
-        expected = ExactComputer(oracle, n_players=n)(
-            cast("IndexType", truth.index), order=truth.max_order
-        )
-        coordinates = (truth.dict_values.keys() | expected.dict_values.keys()) - {()}
-        errors = [abs(truth[key] - expected[key]) for key in coordinates]
+        if truth.index == "FSII" and truth.max_order == 2:
+            # ExactComputer's finite endpoint penalty leaves a numerical floor,
+            # particularly on null coefficients. Check the same exhaustive game
+            # using the already-qualified derivative formula, not looser tolerances.
+            masks = ((np.arange(2**n)[:, None] >> np.arange(n)) & 1).astype(bool)
+            reference = exact_table_truth(
+                np.asarray(oracle(masks)), n, [{"index": "FSII", "order": 2}]
+            )["FSII", 2]
+            expected = dict(
+                zip(map(tuple, reference["coordinates"]), reference["values"], strict=True)
+            )
+        else:
+            expected = ExactComputer(oracle, n_players=n)(
+                cast("IndexType", truth.index), order=truth.max_order
+            ).dict_values
+        coordinates = (truth.dict_values.keys() | expected.keys()) - {()}
+        errors = [abs(truth[key] - expected.get(key, 0.0)) for key in coordinates]
         np.testing.assert_allclose(
             [truth[key] for key in coordinates],
-            [expected[key] for key in coordinates],
+            [expected.get(key, 0.0) for key in coordinates],
             rtol=1e-8,
             atol=1e-10,
         )

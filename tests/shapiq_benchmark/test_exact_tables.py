@@ -165,3 +165,44 @@ def test_signal_rms_uses_full_coordinate_space_for_sparse_truth(
     )
     games, _ = prepare_families(["dummy"], [{"index": "k-SII", "order": 2}], tmp_path)
     assert games[0]["metadata"]["signal_ratio"] == pytest.approx(np.sqrt(1 / 10) / 0.5)
+
+
+def test_structured_fsii_validation_avoids_finite_endpoint_reference_floor() -> None:
+    """Analytic cubic utility has null players; finite-penalty regression invents tiny terms."""
+    from shapiq import InteractionValues
+    from shapiq_benchmark.games import validate_truth
+
+    def oracle(coalitions: np.ndarray) -> np.ndarray:
+        return 7.0 + 100 * np.all(coalitions[:, :3], axis=1)
+
+    truth = InteractionValues(
+        values={
+            (0,): -100 / 6,
+            (1,): -100 / 6,
+            (2,): -100 / 6,
+            (0, 1): 50.0,
+            (0, 2): 50.0,
+            (1, 2): 50.0,
+        },
+        index="FSII",
+        min_order=1,
+        max_order=2,
+        n_players=8,
+        estimated=False,
+        baseline_value=7.0,
+    )
+    legacy = ExactComputer(oracle, n_players=8)("FSII", order=2)
+    coordinates = (truth.dict_values.keys() | legacy.dict_values.keys()) - {()}
+    with pytest.raises(AssertionError):
+        np.testing.assert_allclose(
+            [truth[key] for key in coordinates],
+            [legacy[key] for key in coordinates],
+            rtol=1e-8,
+            atol=1e-10,
+        )
+    assert validate_truth(oracle, truth, exhaustive=True) < 1e-12
+    # Keep efficiency intact: the coefficient cross-check must still detect genuine errors.
+    truth[(0,)] += 0.01
+    truth[(1,)] -= 0.01
+    with pytest.raises(AssertionError):
+        validate_truth(oracle, truth, exhaustive=True)
