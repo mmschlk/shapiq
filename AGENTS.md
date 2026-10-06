@@ -67,3 +67,13 @@ uv run pre-commit run --all-files
   condition number is therefore not a reliable test for statistical instability
   in the remaining directions. Keep low-budget regularization explicit and
   preserve the unregularized/full-enumeration paths in regression tests.
+
+## KernelSHAP-IQ regression checks
+
+- Consistent KernelSHAP-IQ solves a separate weighted design at each interaction
+  order, so rank-deficient higher-order designs need the shared stable solver too.
+  InconsistentKernelSHAPIQ's Bernoulli design includes an all-zero empty-term
+  column: its previous normal-equation path already fell back to SVD. Do not
+  promise a numerical improvement for every regression subclass from the solver
+  change, or impose efficiency on the sum of all SII orders; only k-SII aggregates
+  those orders into an efficient explanation.
