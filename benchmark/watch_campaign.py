@@ -1,7 +1,7 @@
-"""Wake an authorized Codex thread on job completion or an idle implementation stage.
+"""Wake an authorized Codex thread on job completion or idle campaign work.
 
 This watcher never submits Slurm jobs or publishes results. The resumed agent
-reads the durable handoff, audits the current phase, and starts the next one.
+reads the durable handoff, verifies outputs, and continues the accepted plan.
 Run with a campaign directory containing watch.json and WAKEUP.md. Acknowledge
 each delivered wake-up with --acknowledge; refresh this heartbeat while working.
 """
@@ -99,12 +99,12 @@ def wake_reason(config: dict, state: dict, jobs: dict, now: float) -> str | None
         return None
     terminal = {job: status for job, status in jobs.items() if status in TERMINAL}
     if any(state.get("notified_jobs", {}).get(job) != status for job, status in terminal.items()):
-        return "A campaign job finished or failed; verify its actual outputs and advance the phase."
+        return "A campaign job finished or failed; verify its actual outputs and continue the accepted plan."
     idle = now - state.get("last_progress_at", config["created_at"])
     if (not jobs or all(status in TERMINAL for status in jobs.values())) and idle >= config.get(
         "idle_seconds", 1800
     ):
-        return "No active campaign jobs remain; continue implementation, audits, or the next phase."
+        return "No active campaign jobs remain; continue the remaining implementation, runs, or audits."
     if (
         idle >= config.get("idle_seconds", 1800)
         and any(status in TERMINAL - {"COMPLETED"} for status in jobs.values())
@@ -141,7 +141,7 @@ def check(root: Path, *, acknowledge: bool = False) -> None:
         if reason is None:
             return
         prompt = (
-            "User-authorized benchmark phase continuation. "
+            "User-authorized benchmark continuation. "
             + reason
             + " Read "
             + str(root / "WAKEUP.md")
@@ -150,11 +150,11 @@ def check(root: Path, *, acknowledge: bool = False) -> None:
             + str(root)
             + " --acknowledge. "
             "Follow the active scientific plan named in the campaign handoff: implement and qualify, queue/resume "
-            "the jobs, independently audit each completed phase, publish verified results, "
-            "then start the next phase without waiting for another user request. "
+            "the jobs, independently audit completed outputs, and publish the verified cohort. "
+            "Continue remaining authorized work without waiting for another user request. "
             "Do not duplicate submissions or publication, revive cancelled campaigns, or "
             "treat scheduler completion as proof that all planned cells finished. "
-            "Stop the watcher when all phases are verified complete or the user pauses/cancels."
+            "Stop the watcher when the accepted benchmark is verified complete or the user pauses/cancels."
         )
         result = subprocess.run(  # noqa: S603 -- trusted local campaign configuration
             [config["codex"], "queue", "--thread", config["thread_id"], "--message", prompt],
@@ -179,7 +179,7 @@ def check(root: Path, *, acknowledge: bool = False) -> None:
             },
         )
         write_json(state_path, state)
-        print("Queued benchmark phase continuation", flush=True)  # noqa: T201 -- watcher log
+        print("Queued benchmark continuation", flush=True)  # noqa: T201 -- watcher log
 
 
 if __name__ == "__main__":
