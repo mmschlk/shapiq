@@ -100,7 +100,15 @@ def prepare_family_chunk(spec: dict, instance_seed: int, start: int, output: Pat
         instance_seed=instance_seed,
         **{
             key: spec[key]
-            for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+            for key in (
+                "dataset",
+                "n_players",
+                "model_profile",
+                "device",
+                "quality_protocol",
+                "input_features",
+                "feature_rule",
+            )
             if key in spec and (key != "quality_protocol" or factory is make_family)
         },
         **({"model_cache": str(output.parent / ".models")} if "model_profile" in spec else {}),
@@ -142,7 +150,17 @@ def prepare_families(
     if not specs or any(
         not isinstance(spec, dict)
         or set(spec)
-        - {"id", "family", "dataset", "n_players", "model_profile", "device", "quality_protocol"}
+        - {
+            "id",
+            "family",
+            "dataset",
+            "n_players",
+            "model_profile",
+            "device",
+            "quality_protocol",
+            "input_features",
+            "feature_rule",
+        }
         or not isinstance(spec.get("family"), str)
         or spec.get("family") not in CATALOG
         or not isinstance(spec.get("id"), str)
@@ -150,6 +168,23 @@ def prepare_families(
         or ("dataset" in spec and not isinstance(spec["dataset"], str))
         or ("model_profile" in spec and not isinstance(spec["model_profile"], str))
         or spec.get("quality_protocol") not in (None, QUALITY_PROTOCOL)
+        or (
+            "input_features" in spec
+            and (
+                spec["family"] not in {"data_valuation", "dataset_valuation"}
+                or "model_profile" not in spec
+                or type(spec["input_features"]) is not int
+                or spec["input_features"] < 1
+            )
+        )
+        or (
+            "feature_rule" in spec
+            and (
+                spec["family"] not in {"feature_selection", "data_valuation", "dataset_valuation"}
+                or "model_profile" not in spec
+                or spec["feature_rule"] not in {"all", "nested"}
+            )
+        )
         or (
             "device" in spec
             and (
@@ -197,7 +232,15 @@ def prepare_families(
             factory = make_extra if name in EXTRA_CATALOG else make_family
             options = {
                 key: spec[key]
-                for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+                for key in (
+                    "dataset",
+                    "n_players",
+                    "model_profile",
+                    "device",
+                    "quality_protocol",
+                    "input_features",
+                    "feature_rule",
+                )
                 if key in spec and (key != "quality_protocol" or factory is make_family)
             }
             if "model_profile" in spec:

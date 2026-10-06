@@ -1,39 +1,46 @@
-# Shapiq estimator benchmark
+# Shapley estimator benchmark
 
-[Interactive results](https://www.rtealwitter.com/shapiq/) ·
-[How it works](https://www.rtealwitter.com/shapiq/about.html) ·
-[Implementation PR](https://github.com/mmschlk/shapiq/pull/602) ·
-[Discussion](https://github.com/mmschlk/shapiq/issues/601)
+[Results](https://www.rtealwitter.com/shapiq/) ·
+[About](site/about.md) · [Scientific plan](FOCUSED.md) ·
+[Recipe manifest](suites/focused.csv)
 
-Compare 22 public estimator classes against exact answers on frozen games.
-Select a target, family, dataset, model, player count or query budget, then inspect
-accuracy, coverage and timing. Python prepares games and runs estimators; the
-website is plain HTML/CSS/JavaScript with SVG charts and no frontend build step.
-You can test a private estimator locally without uploading anything.
+One fixed benchmark compares 22 estimator configurations on three applications:
+individual predictions, data valuation and feature selection. The manifest has
+112 recipes across twelve datasets and four construction seeds: 448 intended
+instances, or at most 424 after the existing model-quality exclusions. Every
+accuracy comparison uses an exact reference for its frozen game.
 
-## Current status
+The website continues to serve its previously audited results until this cohort
+passes the final audit. Intended counts do not establish measured coverage.
 
-The selected seven-phase rollout is published: **248 game instances, 1,188 target
-definitions and 235,224 recorded cells**, including 90,070 successful evaluations.
-Unsupported targets and failures remain visible. This is a declared cohort, not
-completed coverage of every dataset/model/construction combination.
+## Implementation
 
-- [Phase-seven data and reproduction archives](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04)
-- [Current website data pointer](site/data-source.json): the compact serialization
-  of the same audited results; all seven reproduction archives remain unchanged.
-- [Focused replacement](FOCUSED.md): 384 intended instances across three
-  applications, within 2,048 allocated CPU-hours. The previous 38-wave expansion
-  was canceled; its completed artifacts are retained, not silently republished.
-- [Roadmap and qualification limits](ROADMAP.md): historical rollout design.
-- [Operational and historical reference](OPERATIONS.md): recovery, exact
-  preparation, archived campaigns and detailed commands.
+Keep benchmark orchestration in `shapiq_benchmark` and `benchmark/`; estimator
+changes belong in their own PRs. The pipeline reuses the same game adapters,
+qualification workers, snapshot format, counted-query runner and report exporter.
+The main CSV is the single recipe source. See [FOCUSED.md](FOCUSED.md) for sizes,
+models, exact references, weighting and resource limits.
 
-The published settings retain their recorded estimator revisions and parameters.
-Later estimator fixes or defaults do not silently change existing measurements.
+Generate a new suite from a checkout containing the approved estimator options:
 
-## Try a small local comparison
+```bash
+UV_NO_SYNC=1 uv run python -m shapiq_benchmark.focused benchmark/suites/focused.csv /shared/suite.json
+```
 
-From the repository root, in your own development environment:
+This writes a manifest only. The active campaign reconciles it against already
+prepared recipe identities, reuses authenticated identical games and evaluates
+only remaining cells. Its `WAKEUP.md`, `state.json` and `budget.json` on lab
+storage are authoritative for jobs, accounting and next actions.
+
+Never install into the environment used by active jobs. Use the pinned interpreter,
+`UV_NO_SYNC=1` and explicit frozen `PYTHONPATH`. Preserve admitted source, dataset
+caches, prepared truth, journal ownership and review hashes. Budget all allocations
+under 2,048 CPU-hours and 128 concurrent CPUs; currently qualified recovery has a
+64-worker ceiling. No production GPUs are used.
+
+## Small local example
+
+In your own development environment:
 
 ```bash
 uv sync --locked --extra benchmark
@@ -41,19 +48,13 @@ uv run python -m shapiq_benchmark.prepare --suite benchmark/suites/pilot.json --
 uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/baselines
 ```
 
-The pilot uses one California Housing point, a fitted tree, three estimators,
-three budgets and three seeds: 27 runs. Exact truth uses all 256 coalitions of an
-eight-player game. This checks integration, not general estimator quality. To
-try larger structured games, use [suites/structured.json](suites/structured.json)
-and a separate output directory.
+The example has 27 runs on an eight-player tree game. It checks integration,
+not general estimator quality. [Structured examples](suites/structured.json)
+exercise exact native references.
 
-**On a shared campaign environment, do not run `uv sync` or install packages.**
-Use its pinned interpreter and `UV_NO_SYNC=1`; preserve frozen source, package
-bytes and cached inputs. Set `PYTHONPATH` to the intended checkout's `src`.
+## Private estimators
 
-## Evaluate a private estimator
-
-Copy [example_estimator.py](example_estimator.py) and replace its factory:
+Copy [example_estimator.py](example_estimator.py), implement its factory, then:
 
 ```bash
 uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/candidate --candidate benchmark/example_estimator.py:factory
@@ -61,157 +62,46 @@ uv run python -m shapiq_benchmark.report --results benchmark/results/baselines/r
 uv run python -m http.server 8000 --bind 127.0.0.1 --directory benchmark/results/local-report
 ```
 
-Open `http://localhost:8000`. The factory receives `n`, `index`, `order` and `seed`.
-It returns an object whose `approximate(budget, game)` method returns
-`InteractionValues`. The game accepts Boolean coalition matrices and charges
-**every requested row**, including duplicates. Invalid or over-budget results
-fail the cell. Candidate files are trusted Python code.
+The factory receives `n`, `index`, `order` and `seed`. Its estimator returns
+`InteractionValues` from `approximate(budget, game)`. Every requested coalition
+row counts, including duplicates. Candidate code stays local and never accesses
+the production duplicate registry. Reuse baseline accuracy only for identical
+snapshots; shared-node timings are diagnostic.
 
-Reuse saved baseline accuracy only on the identical snapshot; rerun comparisons
-on the same hardware for timing. Private candidates do not access the production
-duplicate registry or execute historical baseline constructor options. Built-in
-reruns still need compatible constructors and the configured registry. Otherwise,
-prepare a local suite and run both methods there. Reports reject snapshot,
-method-version and duplicate-cell conflicts. Nothing uploads automatically.
+## About document and publication
 
-For the public cohort, use the [phase-seven reproduction archives](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-phase7-svd-2026-10-04).
-Each archive includes frozen games, truth, checksums, provenance and candidate
-commands. Use `--games` and `--methods` for a smaller comparison; no model refit
-is needed. To inspect exported reports, use **Open local** and select `data.json`
-along with all its companion files.
+Edit [site/about.md](site/about.md), then render its static HTML:
 
-## Read the rankings
+```bash
+UV_NO_SYNC=1 uv run python benchmark/render_about.py
+UV_NO_SYNC=1 uv run python benchmark/render_about.py --check
+```
 
-- **Median nMSE** is the default: squared attribution error divided by exact
-  attribution energy, excluding the empty baseline. Zero is exact; one matches
-  predicting all zeros. The weighted mean exposes extreme errors the median can
-  hide. Zero or negligible signal is excluded consistently across methods.
-- **Weights** balance family → configuration → instance → budget → estimator
-  seed. Failed or missing runs are never zero error; partial scores renormalize
-  successful weights. Check coverage before comparing methods.
-- **Elo** compares paired successful cells and is centered at 1,000. Higher means
-  more frequent wins, not necessarily smaller average error. Custom selections
-  without a matching published preset retain nMSE but withhold Elo and history.
-- **Budget** is an allowance, expressed as queries per player (`B/d`); actual
-  queries may be fewer. The nine ratios are 0.5, 1, 2, 4, 8, 16, 32, 64 and 128.
-  The budget cap chooses the largest measured budget within each game's limit.
-- **Time** distinguishes measured estimator time from estimated uncached cost.
-  Cached payoff charges are batch-amortized estimates, not fresh end-to-end
-  measurements. Shared-node timings are diagnostic; hardware profiles matter.
-- **History** places today's complete-panel results at publication dates. It
-  does not reconstruct historical benchmark results.
+The committed page includes a table of contents and needs no browser Markdown
+library. [site/assets.json](site/assets.json) lists every deployed asset and is
+shared by local exports and GitHub Pages.
 
-Targets have separate rankings. The default SV view groups SVARMIQ under SVARM
-and KernelSHAPIQ under KernelSHAP because each pair has the same order-one
-configuration. **All variants** restores their separate records; scores are not
-pooled. Plot-family filters are independent of table filters.
+The campaign's `production/RECOVERY-EXPORT.md` describes current ownership and
+numerical audits. Final publication requires independent coverage, score,
+weighting, privacy, asset and browser checks. Keep the existing site until the
+replacement passes. Never combine the focused cohort with historical campaigns.
 
-[Full scoring, weighting, uncertainty and display rules](OPERATIONS.md#read-the-rankings) ·
-[Estimator findings](ESTIMATOR_NOTES.md) ·
-[About the game constructions and exact answers](site/about.html)
-
-## Continuing the focused replacement
-
-The [focused manifest and workflow](FOCUSED.md) replace the canceled 38-wave
-matrix expansion. Qualification and the new campaign's actual state determine
-what can run or publish; the manifest alone does not certify completion.
-Read the active coordinator's `WAKEUP.md` and state before acting. Never revive
-the old expansion from commands in archived recovery journals.
-
-Ready preparation and evaluation can run in parallel under one **128-core
-ceiling**; pilots, audits, retries and export share the same **2,048 CPU-hour
-total**. Publication waits for independent audits. No production GPUs are used.
-
-The existing watcher runs every five minutes, with an implementation heartbeat
-while work continues. It wakes the authorized session; it neither submits jobs
-nor publishes results. Acknowledge a wake with:
+The watcher checks hourly and issues routine progress reminders every two hours.
+Acknowledge deliveries with the pinned interpreter:
 
 ```bash
 python benchmark/watch_campaign.py /shared/coordinator --acknowledge
 ```
 
-Keep its exact job IDs and next action current. Mark it complete only after the
-final audited live release, or pause/cancel at the user's request. Large caches
-belong in lab storage. Moving a campaign requires stopped writers, verified
-copies and preserved authenticated paths. Keep ignored dataset caches in frozen
-worktrees and never change a running campaign's environment.
+Stop it only after verified live completion or an explicit user request.
 
-[Detailed bounded-rollout operations](OPERATIONS.md#bounded-rollout-operations) ·
-[Corrected-method replacements](OPERATIONS.md#replacing-a-corrected-estimator) ·
-[CPU backend recovery](OPERATIONS.md#recovering-a-stopped-gpu-preparation-on-cpu)
+## Reusable references
 
-## Export and publish
+- [Partitioned reports](PARTITIONED_REPORTS.md): disk-backed export and browser data.
+- [Publication validation](MATRIX_PUBLICATION.md): authenticated export contracts.
+- [Audit checklist](AUDITS.md): score, provenance and coverage checks.
+- [Operational reference](OPERATIONS.md): recovery and historical reproduction.
+- [Estimator notes](ESTIMATOR_NOTES.md): recorded numerical findings.
 
-After a wave's final audit and independent review, use a publication plan that
-pins those receipts, source equivalence and the authenticated published history:
-
-```bash
-UV_NO_SYNC=1 uv run python benchmark/export_matrix.py /shared/publication-plan.json /shared/release/data --plan-sha256 PLAN_SHA256 --database /shared/release/export.sqlite --cache-dir /shared/publication-cache
-```
-
-The command combines authenticated records in temporary disk storage and writes
-a new partitioned data directory. The database is removed on exit. It does not
-publish anything. Use lab storage; output, database and cache locations must be
-separate. The larger matrix export still needs independent output review,
-browser/hosting qualification and reproduction archives before publication.
-See [partitioned report APIs and limits](PARTITIONED_REPORTS.md).
-
-For smaller cumulative campaigns, the legacy exporter remains available:
-
-```bash
-UV_NO_SYNC=1 uv run python benchmark/export_phase.py /shared/campaign/campaign /shared/release/site --through-phase 3
-```
-
-Optional `--cache-dir` avoids repeated normalization, while still validating raw
-inputs every run. It is acceleration, not publication approval, and does not
-remove this older exporter's whole-panel memory requirement. `--supplement`,
-`--replacements` and `--backend-supersession` preserve explicit recovery lineage;
-see [the operational reference](OPERATIONS.md#bounded-rollout-operations).
-
-Website data omits exact truth, raw coefficient vectors and private paths.
-Reproduction ZIPs retain the numerical artifacts, hashes and source provenance;
-both public export paths reject private candidates. Keep raw prepared roles and
-apply publication-quality overlays through the cumulative exporter.
-
-The live compact layout uses `data.json` plus `records-*.json` target shards.
-Upload every declared companion before changing [site/data-source.json](site/data-source.json).
-Pages verifies the pinned manifest and companions. The browser restores shared
-worker profiles and per-record diagnostics losslessly; original archives remain
-unchanged. Local legacy single-file reports still work.
-
-Pages and local report exports share the explicit [site-asset manifest](site/assets.json).
-The Pages workflow runs when `BENCHMARK_PAGES=true`
-and the repository uses GitHub Actions for Pages. It does not run experiments
-or upload local results. For standalone report/ZIP commands, see
-[legacy exports](OPERATIONS.md#legacy-report-and-archive-export).
-
-## Code map
-
-Python library modules below live in [`src/shapiq_benchmark/`](../src/shapiq_benchmark/).
-Entries starting with `benchmark/` share that directory prefix within their row.
-
-| Responsibility | Entry points |
-| --- | --- |
-| Declare datasets, recipes, models and budgets | `protocol.py`, `dataset_catalog.py`, `matrix.py`, `models.py`, `planning.py` (shared budget grid) |
-| Qualify and freeze games | `qualification.py`, `prepare.py`, `materialize.py`, `families.py`, `media.py`, `games.py`, `structured.py` |
-| Exact table answers and game diagnostics | `exact.py`, `spectrum.py`, `payoff_cache.py` |
-| Count queries, score and checkpoint cells | `runner.py`, `execution.py`, `results_io.py` |
-| Coordinate bounded campaigns and monitoring | `benchmark/queue_phases.py`, `phase_batch.py`, `watch_campaign.py` (all under `benchmark/`) |
-| Authenticate cumulative composition | `campaign.py`, `matrix_publication.py`, `published.py`, `publication_cache.py` |
-| Store rows and compute exact global summaries | `record_store.py`, `summary.py` |
-| Export reports and reproduction archives | `report.py`, `partitioned.py`, `bundle.py`, `benchmark/export_matrix.py`, `benchmark/export_phase.py` |
-| Load reports and reduce selected panels | `benchmark/site/records.js`, `partitions.js`, `query.js`, `query-worker.js`, `partition-client.js` (all under `benchmark/site/`) |
-| Render tables, charts and method descriptions | `benchmark/site/app.js`, `charts.js`, `methods.js`, `style.css` |
-| About, catalogs and downloads | `benchmark/site/about.html`, `about.js`, `protocol.js`, `partition-about.js`, `partition-download.js` |
-
-Start with `runner.py` for estimator execution, `summary.py` for scores and the
-appropriate exporter for output. The About page shares catalog rendering through
-`protocol.js`; its generated `about.json` contains metadata rather than all rows.
-The browser has no build step.
-
-## Further reference
-
-- [Scientific design](DESIGN.md) and [independent audits](AUDITS.md)
-- [Current rollout and remaining work](ROADMAP.md)
-- [Operational procedures and historical campaigns](OPERATIONS.md)
-- [Estimator-specific findings](ESTIMATOR_NOTES.md)
+Historical published artifacts and frozen execution sources remain authenticated
+reproduction evidence. They are not additional active benchmark plans.

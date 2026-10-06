@@ -149,7 +149,7 @@ def check(root: Path, *, acknowledge: bool = False) -> None:
             + "benchmark/watch_campaign.py "
             + str(root)
             + " --acknowledge. "
-            "Continue through the remaining ROADMAP phases: implement and qualify, queue/resume "
+            "Follow the active scientific plan named in the campaign handoff: implement and qualify, queue/resume "
             "the jobs, independently audit each completed phase, publish verified results, "
             "then start the next phase without waiting for another user request. "
             "Do not duplicate submissions or publication, revive cancelled campaigns, or "

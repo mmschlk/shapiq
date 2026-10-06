@@ -294,6 +294,8 @@ def make_family(
     model_cache: str | None = None,
     device: str = "cpu",
     quality_protocol: str | None = None,
+    input_features: int | None = None,
+    feature_rule: str | None = None,
 ) -> tuple:
     """Construct a shipped game and JSON-compatible recipe/provenance metadata.
 
@@ -302,6 +304,9 @@ def make_family(
     Nothing here downloads models or substitutes a different payoff on failure.
     """
     validate_protocol(quality_protocol)
+    if (input_features is not None or feature_rule is not None) and model_profile is None:
+        message = "Explicit input features and feature rules require a model profile."
+        raise ValueError(message)
     if model_profile is not None:
         return _prediction_game(
             name,
@@ -312,6 +317,8 @@ def make_family(
             model_cache,
             device,
             quality_protocol,
+            input_features,
+            feature_rule,
         )
     metadata = dict(FAMILY_CATALOG[name])
     if quality_protocol is not None:
@@ -1001,6 +1008,8 @@ def _prediction_game(
     cache_dir: str | None,
     device: str = "cpu",
     quality_protocol: str | None = None,
+    input_features: int | None = None,
+    feature_rule: str | None = None,
 ) -> tuple:
     """Construct a shipped game from shared, qualified model/data ingredients."""
     if dataset is None or type(n_players) is not int or not 1 <= n_players <= 20:
@@ -1008,12 +1017,28 @@ def _prediction_game(
         raise ValueError(message)
     if reason := profile_compatibility(name, dataset, profile):
         raise ValueError(reason)
+    if input_features is not None and (
+        name not in {"data_valuation", "dataset_valuation"}
+        or type(input_features) is not int
+        or not 1 <= input_features <= int(DATASETS[dataset]["n_features"])
+    ):
+        message = "input_features must fit the dataset and applies only to data valuation."
+        raise ValueError(message)
+    if feature_rule is not None and (
+        name not in _RETRAINING or feature_rule not in {"all", "nested"}
+    ):
+        message = "Explicit feature rules apply only to retraining games: all or nested."
+        raise ValueError(message)
     feature_count = (
         n_players
         if FAMILY_CATALOG[name]["player_unit"] == "feature"
+        else input_features
+        if input_features is not None
         else min(12, int(DATASETS[dataset]["n_features"]))
     )
-    feature_rule = "continuous" if name in ("local_gaussian", "local_copula") else "all"
+    selected_rule = feature_rule or (
+        "continuous" if name in ("local_gaussian", "local_copula") else "all"
+    )
     prepared = prepare_model(
         dataset,
         feature_count,
@@ -1021,7 +1046,7 @@ def _prediction_game(
         "random_forest" if profile.startswith("heterogeneous_ensemble") else profile,
         cache_dir=cache_dir,
         device=device,
-        feature_rule=feature_rule,
+        feature_rule=selected_rule,
         quality_protocol=quality_protocol,
     )
     if (
@@ -1031,6 +1056,8 @@ def _prediction_game(
         reason = "model_not_better_than_validation_dummy"
         raise QualityExclusion(reason, prepared.metadata["model_validation_gate"])
     metadata = {**FAMILY_CATALOG[name], **prepared.metadata}
+    if input_features is not None:
+        metadata["input_features"] = input_features
     module, attribute = metadata["class"].rsplit(".", 1)
     constructor = getattr(importlib.import_module(module), attribute)
     model, point, background = prepared.model, prepared.x_test[0], prepared.x_train[:16]

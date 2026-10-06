@@ -140,7 +140,7 @@ def protocol_manifest(phase: int) -> dict:
         "phase": phase,
         "name": f"Stronger-model benchmark: phase {phase}",
         "description": "Four seeded game instances; one estimator evaluation per target and budget.",
-        "source_url": SOURCE_ROOT + "benchmark/ROADMAP.md",
+        "source_url": SOURCE_ROOT + "src/shapiq_benchmark/protocol.py",
         "budget_multipliers": list(BUDGET_MULTIPLIERS),
         "budget_rule": "ceil(multiplier * d) oracle queries; d is the game's number of players",
         "budget_note": "The requested cap can exceed actual query use or the number of distinct coalitions.",
@@ -189,7 +189,7 @@ def protocol_manifest(phase: int) -> dict:
                 + (
                     "src/shapiq_benchmark/models.py"
                     if name in MODEL_PROFILES
-                    else "benchmark/ROADMAP.md"
+                    else "src/shapiq_benchmark/protocol.py"
                 ),
             }
             for name, introduced in MODEL_PHASES.items()

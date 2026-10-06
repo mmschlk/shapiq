@@ -567,9 +567,10 @@ uv run pre-commit run --all-files
   real prepared snapshots as well as cost-based fixtures; never rewrite frozen
   snapshots or their run identities to fit an older report schema.
 
-- `benchmark/ROADMAP.md` preserves the superseded full-matrix plan. The active
-  replacement is `benchmark/FOCUSED.md`; use its campaign journal for job state.
-  Historical phase descriptions are not authorization to revive cancelled jobs.
+- The superseded `benchmark/ROADMAP.md` and multi-phase launchers were removed
+  from the active checkout. Their frozen copies and Git history retain historical
+  reproduction. Use `benchmark/FOCUSED.md` and its campaign journal for job state;
+  historical descriptions do not authorize reviving cancelled jobs.
 
 - Node-local dependency staging must set `PYTHONPATH` before starting the Python
   interpreter. Updating it or `sys.path` inside the worker leaves `.pth` bootstrap
@@ -582,3 +583,7 @@ uv run pre-commit run --all-files
   numeric `JobId`, which can differ from the canonical `ArrayJobId_ArrayTaskId`
   stored in the attempt header. Validate both identities against the allocation,
   using real serialized fixtures rather than adding nonexistent header fields.
+
+- Campaign watcher messages must follow the active plan named in `WAKEUP.md`.
+  A hard-coded instruction to continue `ROADMAP` phases survived the focused
+  campaign replacement; successful delivery alone does not validate message scope.

@@ -62,7 +62,15 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
     factory = make_extra if spec["family"] in EXTRA_CATALOG else make_family
     options = {
         key: spec[key]
-        for key in ("dataset", "n_players", "model_profile", "device", "quality_protocol")
+        for key in (
+            "dataset",
+            "n_players",
+            "model_profile",
+            "device",
+            "quality_protocol",
+            "input_features",
+            "feature_rule",
+        )
         if key in spec
     }
     if factory is make_extra:

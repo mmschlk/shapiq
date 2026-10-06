@@ -48,6 +48,8 @@ ROW_FIELDS = (
 GAME_FIELDS = ("id", "family", "stratum", "n_players", "index", "order")
 METADATA_FIELDS = (
     "focused_design",
+    "input_features",
+    "feature_rule",
     "quality_protocol",
     "model_validation_gate",
     "game_quality",
@@ -268,6 +270,8 @@ def public_preparation(suite: dict) -> dict:
                         "dataset",
                         "model_profile",
                         "n_players",
+                        "input_features",
+                        "feature_rule",
                         "device",
                         "oracle",
                         "index",

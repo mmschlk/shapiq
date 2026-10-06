@@ -460,7 +460,7 @@ def test_public_model_protocol_and_spectrum_survive_export(tmp_path: Path) -> No
     ):
         assert actual[key] == metadata[key]
     assert (tmp_path / "site/protocol.js").exists()
-    for asset in ("about.html", "about.css", "about.js"):
+    for asset in ("about.html", "about.css", "about.md"):
         assert (tmp_path / "site" / asset).exists()
     about = json.loads((tmp_path / "site/about.json").read_text())
     assert set(about) == {"schema_version", "snapshot_id", "snapshot_provenance", "suite", "games"}

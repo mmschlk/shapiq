@@ -66,6 +66,8 @@ def test_delivery_once_and_acknowledgement(tmp_path: Path, monkeypatch: pytest.M
     assert len(calls) == 1
     assert "--thread" in calls[0]
     assert "start the next phase" in calls[0][-1]
+    assert "active scientific plan named in the campaign handoff" in calls[0][-1]
+    assert "ROADMAP" not in calls[0][-1]
     watch.check(tmp_path, acknowledge=True)
     watch.check(tmp_path)
     assert len(calls) == 1

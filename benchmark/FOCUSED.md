@@ -1,78 +1,120 @@
-# Focused benchmark
+# Focused Shapley estimator benchmark
 
-The previous 38-wave expansion is canceled. Its completed artifacts and the
-published cohort remain preserved. The replacement has passed its preparation
-pilots; full game preparation is running. The website still shows the previous
-audited cohort until the replacement passes its final audit.
+One fixed benchmark, one final release. The target is a reproducible run within
+one day on 128 CPUs, subject to measured preparation and execution costs. The
+campaign retains its 2,048 allocated CPU-hour cap, including checks, recovery
+and export. No production GPUs are used.
 
-| Application | Intended instances | Admitted after pilots | Players |
-|---|---:|---:|---|
-| Individual predictions | 32 recipes × 4 seeds = 128 | 124 | 12–512 features |
-| Data valuation | 32 × 4 = 128 | 120 | 12 training-data groups; 32–512 neighbor examples |
-| Feature selection | 32 × 4 = 128 | 116 | 12 features |
+## Scope
 
-Six recipes failed the model-quality check against a dummy predictor on at least
-one construction seed: `local-24`, `data-11`, `data-15`, `features-21`,
-`features-24`, and `features-29`. They remain explicit exclusions. The 360 admitted
-instances still need complete exact preparation and estimator evaluation.
+The canonical [recipe CSV](suites/focused.csv) defines 112 recipes and four
+construction seeds: 448 intended instances across twelve datasets. Six original
+recipes failed model-quality checks on at least one seed, leaving at most 424
+qualified instances. The new recipes still require those same checks.
 
-[One readable CSV](suites/focused.csv) lists every dataset, model, construction and
-player count. There are no synthetic games. Models are primarily random forests,
-XGBoost and LightGBM, with selected SVM, MLP, GP and TabPFN comparisons.
+| Application | Recipes | Intended instances | Maximum qualified instances | Players |
+|---|---:|---:|---:|---|
+| Individual predictions | 32 | 128 | 124 | 12–512 features |
+| Data valuation | 40 | 160 | 152 | 12/14 groups; 32–512 neighbor examples |
+| Feature selection | 40 | 160 | 148 | 12/14 features |
 
-Generate a suite from a checkout containing the approved estimator fixes (PR
-#611), without changing the shared environment:
+The 360 original qualified instances and their exact references are already
+prepared. Reuse their authenticated artifacts and preserved successful results;
+never regenerate them merely because the full manifest now has more rows. The
+original recipe definitions and estimator settings remain unchanged.
+
+Original datasets: Adult Census, Wine Quality, Mushroom, Ionosphere,
+Communities and Crime, NHANES, Bioresponse and QSAR-TID11. Models are primarily
+random forests, XGBoost and LightGBM, with selected SVM, MLP, GP and TabPFN
+prediction/feature-selection comparisons.
+
+The remaining matched recipes are:
+
+| Dataset | Model | Valuation group players | Valuation input features | Feature-selection players |
+|---|---|---|---|---|
+| Breast Cancer | Random forest | 12, 14 | 24 | 12, 14 |
+| Digits | Linear classifier | 12, 14 | 64 | 12, 14 |
+| Miami Housing | LightGBM | 12, 14 | 15 | 12, 14 |
+| Superconductivity | Linear regression | 12, 14 | 64 | 12, 14 |
+
+Each pair shares its seeded row splits and model-selection protocol. Feature
+subsets are nested. Valuation changes only the number of groups while retaining
+the declared input columns; input width is not the game's player count.
+
+## Ground truth
+
+| Game | Reference |
+|---|---|
+| Small fixed-model explanations | Every coalition evaluated and saved |
+| Feature selection | Retraining payoff for every feature subset |
+| Grouped data valuation | Retraining payoff for every group subset |
+| Large fixed tree explanations | Specialized exact solver for the declared explanation game |
+| KNN/threshold-NN valuation | Specialized exact SV solver |
+
+At 12/14 players, complete enumeration requires 4,096/16,384 payoff evaluations.
+A tree predictor does not make a retraining game eligible for TreeSHAP. Exact
+references describe the frozen game, including its recorded randomness, up to
+documented numerical error. Approximate high-budget estimates are not truth.
+
+Enumerated games request SV and order-two SII, k-SII, STII, FSII and FBII.
+Native path-dependent trees request SV, SII and k-SII; interventional trees
+request all six; neighbors request SV only. Validate native references against
+small exhaustive games and qualify the actual requested sizes and all seeds.
+
+## Estimators and scoring
+
+Use the same 22 estimator configurations, four construction seeds, one estimator
+seed and nine relative budgets: 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 times the
+player count. LeverageSHAP/OddSHAP retain the recorded approved two-query fallback.
+Worker limits are 30 seconds, or 120 seconds when both d >= 128 and budget >= 32d;
+startup counts. Failures and unsupported combinations remain explicit.
+
+Python and browser summaries weight applications equally, then subtypes, recipes
+and instances. Data-valuation SV balances retraining groups and neighbor examples.
+Zero/near-zero reference signal is excluded consistently, before estimator
+results are inspected. Preserve original games, truth, seeds and result ownership.
+
+## Running the benchmark
+
+Generate the suite from a frozen checkout with the approved estimator fixes:
 
 ```bash
 UV_NO_SYNC=1 uv run python -m shapiq_benchmark.focused benchmark/suites/focused.csv /path/on/lab/storage/suite.json
 ```
 
-This writes a new suite, checks adapter and constructor compatibility, and never
-submits jobs. The suite fixes nine budgets (0.5d through 128d), four construction
-seeds and one estimator seed. LeverageSHAP/OddSHAP explicitly use the approved
-two-query low-budget fallback. Worker limits are 30 seconds, extended to 120
-seconds when both d ≥ 128 and the requested budget ≥ 32d; startup counts.
+The command only validates and writes a new manifest. Preparation, evaluation and
+export use the existing modules below. Reconcile the manifest with authenticated
+prepared recipe identities and run only missing work. Select resource exclusions
+from model-quality and measured cost rules, never estimator accuracy.
 
-Enumerated games request all six targets. Native path-dependent trees request
-SV, SII and k-SII; interventional trees request all six; neighbors request SV only.
-Actual size, exact reference, signal and model quality still require qualification.
-Matched Bioresponse/XGBoost and QSAR-TID11/RF sequences at 32/128/512 features use
-nested seeded feature subsets, fixed splits and held-out points, and refitted
-models. Other recipes retain their original feature-selection rules.
+Current operational state lives in the campaign's WAKEUP.md, state.json and
+budget.json on lab storage. The original selective recovery continues with
+production/selective-recovery/submit_slice_v3.py, selecting never-attempted cells.
+Each admission reserves its worst-case allocation before release and settles
+actual Slurm CPUTimeRAW after terminal, nonlive accounting. Recovery is currently
+qualified for 64 workers; 128-worker execution needs separate concurrency evidence.
 
-Python and browser summaries balance applications equally, then subtypes,
-recipes and instances. Data-valuation SV gives equal weight to group retraining
-and neighbor examples. Unsupported interaction references are excluded before
-estimator evaluation; estimator failures remain in coverage denominators.
+The working remaining-cost envelopes are 320 CPU-hours for original recovery and
+final work and 400 CPU-hours for the 64 newly specified instances, including
+qualification, preparation, evaluation and checks. They are admission bounds,
+not measured runtime promises. Every submission must still fit the live ledger.
 
-Next: qualify the frozen suite with `benchmark/focused_campaign.py preflight`,
-measure useful completion under the proposed limits, then prepare once and run
-ready batches in parallel. Native tree queries reuse the existing compiled prediction
-kernel or vectorize the shipped recursion. Unsupported tree forms retain the original
-traversal. Frozen payoffs and exact references stay unchanged; all 68 native tree
-instances passed sampled bitwise equivalence checks before adopting this backend. Reserve and reconcile every Slurm task using the
-same script's `budget` command. The total is **2,048 allocated CPU-hours**, with
-**128 CPU cores maximum and no GPUs**; this includes pilots, idle allocation,
-checks and export. The helper reports commitments; submission must enforce them.
-Independent audits precede publication and live verification. Recurring watcher
-wake-ups keep work moving; neither timers nor successful Slurm exits establish
-scientific completion. Coverage shortfalls remain explicit.
+Publish the single focused cohort only after independent ownership, numerical,
+coverage and browser audits. Keep the existing website until the replacement
+passes. Watcher checks are hourly, with routine progress reminders every two hours.
 
 ## Code map
 
-The focused campaign reuses the existing benchmark pipeline:
-
-| Step | Source |
+| Responsibility | Reusable implementation |
 |---|---|
-| Choose dataset, model, construction and player count | [suites/focused.csv](suites/focused.csv) |
-| Translate that table into a suite | [focused.py](../src/shapiq_benchmark/focused.py) |
-| Qualify costs and account for CPU allocations | [focused_campaign.py](focused_campaign.py) |
-| Prepare exact games once | [prepare_matrix.py](prepare_matrix.py) |
-| Traverse frozen native trees efficiently | [native_tree_backend.py](../src/shapiq_benchmark/native_tree_backend.py) |
-| Evaluate estimators with counted queries | [runner.py](../src/shapiq_benchmark/runner.py) |
-| Export results for the static website | [report.py](../src/shapiq_benchmark/report.py) |
-| Deliver completion and recurring reminders | [watch_campaign.py](watch_campaign.py) |
+| Dataset/model/player choices | [suites/focused.csv](suites/focused.csv) |
+| Manifest validation | [focused.py](../src/shapiq_benchmark/focused.py) |
+| Cost qualification and CPU ledger | [focused_campaign.py](focused_campaign.py) |
+| Exact game preparation | [prepare_matrix.py](prepare_matrix.py) |
+| Games and retraining adapters | [families.py](../src/shapiq_benchmark/families.py) |
+| Evaluation with counted queries | [runner.py](../src/shapiq_benchmark/runner.py) |
+| Static report export | [report.py](../src/shapiq_benchmark/report.py) |
+| Public explanation | [site/about.md](site/about.md) |
 
-Campaign-specific manifests, caches, job receipts and audit reports live on lab
-storage, outside Git. Estimator changes stay in the separate draft PR #611;
-production runs use a frozen checkout containing those changes.
+Benchmark code stays separate from the deployed shapiq package. Estimator fixes
+are reviewed independently in PR #611; the Monte Carlo speedup is PR #612.

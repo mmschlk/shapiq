@@ -1,4 +1,4 @@
-"""Translate the reviewed 384-instance manifest into existing preparation adapters.
+"""Translate a reviewed focused manifest into existing preparation adapters.
 
 This command writes a suite only. It never fits models, submits jobs or publishes.
 """
@@ -10,7 +10,7 @@ import copy
 import csv
 import hashlib
 import json
-from collections import Counter
+import re
 from pathlib import Path
 
 from shapiq_benchmark.datasets import DATASETS, feature_limit
@@ -34,23 +34,62 @@ METHOD_PARAMETERS = {
 }
 
 
+_REQUIRED_COLUMNS = {
+    "id",
+    "application",
+    "subtype",
+    "dataset",
+    "model",
+    "construction",
+    "n_players",
+    "reference",
+}
+_OPTIONAL_COLUMNS = {"input_features", "feature_rule"}
+_APPLICATION_CONSTRUCTIONS = {
+    "local": {
+        "local_baseline",
+        "local_marginal",
+        "local_gaussian",
+        "local_copula",
+        "local_conditional",
+        "pathdependent_tree",
+        "interventional_tree",
+    },
+    "data": {"dataset_valuation", "data_valuation", "knn", "tnn"},
+    "features": {"feature_selection"},
+}
+
+
 def build_suite(manifest: Path) -> dict:
-    """Validate the fixed design and require the approved estimator constructor options."""
+    """Validate recipe semantics and require the approved estimator constructor options."""
     with manifest.open(newline="") as stream:
-        recipes = list(csv.DictReader(stream))
-    if (
-        Counter(row["application"] for row in recipes)
-        != {
-            "local": 32,
-            "data": 32,
-            "features": 32,
-        }
-        or len({row["id"] for row in recipes}) != 96
+        reader = csv.DictReader(stream)
+        columns = reader.fieldnames or []
+        if (
+            not _REQUIRED_COLUMNS.issubset(columns)
+            or set(columns) - _REQUIRED_COLUMNS - _OPTIONAL_COLUMNS
+            or len(columns) != len(set(columns))
+        ):
+            msg = "Focused manifest has missing, duplicate or unknown columns."
+            raise ValueError(msg)
+        recipes = list(reader)
+    if not recipes or any(
+        None in row or any(value is None for value in row.values()) for row in recipes
     ):
-        msg = "Focused design requires 96 unique recipes, 32 per application."
+        msg = "Focused manifest must contain complete recipe rows."
+        raise ValueError(msg)
+    # Blank optional columns retain the original recipe dictionaries and defaults.
+    recipes = [
+        {key: value for key, value in row.items() if key not in _OPTIONAL_COLUMNS or value}
+        for row in recipes
+    ]
+    if len({row["id"] for row in recipes}) != len(recipes) or any(
+        not re.fullmatch(r"[a-zA-Z0-9_-]+", row["id"]) for row in recipes
+    ):
+        msg = "Focused recipes require unique, path-safe IDs."
         raise ValueError(msg)
     suite: dict = {
-        "name": "focused-384-v1",
+        "name": f"focused-{len(recipes) * len(GAME_SEEDS)}-v1",
         "families": [],
         "games": [],
         "methods": list(METHOD_NAMES),
@@ -80,13 +119,23 @@ def build_suite(manifest: Path) -> dict:
         family, dataset, model = (recipe[key] for key in ("construction", "dataset", "model"))
         n = int(recipe["n_players"])
         structured = recipe["reference"] in {"tree_solver", "neighbor_solver"}
-        identity = (family, dataset, model, n)
-        if identity in identities:
-            msg = f"Repeated game recipe: {recipe['id']}"
-            raise ValueError(msg)
-        identities.add(identity)
         if family not in CONSTRUCTIONS or dataset not in DATASETS:
             msg = f"Unknown construction or dataset: {recipe['id']}"
+            raise ValueError(msg)
+        if family not in _APPLICATION_CONSTRUCTIONS.get(recipe["application"], set()):
+            msg = f"Construction does not belong to the application: {recipe['id']}"
+            raise ValueError(msg)
+        expected_subtype = (
+            "neighbor_examples"
+            if family in {"knn", "tnn"}
+            else "retraining_groups"
+            if family == "dataset_valuation"
+            else "retraining_rows"
+            if family == "data_valuation"
+            else ""
+        )
+        if recipe["subtype"] != expected_subtype:
+            msg = f"Unexpected application subtype: {recipe['id']}"
             raise ValueError(msg)
         if model not in CONSTRUCTIONS[family]["models"] or not 12 <= n <= 512:
             msg = f"Unsupported model or player count: {recipe['id']}"
@@ -94,6 +143,35 @@ def build_suite(manifest: Path) -> dict:
         if recipe["reference"] not in {"enumeration", "tree_solver", "neighbor_solver"}:
             msg = f"Unknown exact-reference adapter: {recipe['id']}"
             raise ValueError(msg)
+        if (
+            recipe["reference"] == "tree_solver"
+            and family not in {"pathdependent_tree", "interventional_tree"}
+        ) or (recipe["reference"] == "neighbor_solver" and family not in {"knn", "tnn"}):
+            msg = f"Exact-reference adapter does not match construction: {recipe['id']}"
+            raise ValueError(msg)
+        options = {}
+        if "input_features" in recipe:
+            count = int(recipe["input_features"])
+            if family not in {"data_valuation", "dataset_valuation"} or not (
+                1 <= count <= DATASETS[dataset]["n_features"]
+            ):
+                msg = f"Invalid valuation input-feature count: {recipe['id']}"
+                raise ValueError(msg)
+            options["input_features"] = count
+        if "feature_rule" in recipe:
+            if family not in {"data_valuation", "dataset_valuation", "feature_selection"} or (
+                recipe["feature_rule"] not in {"all", "nested"}
+            ):
+                msg = f"Invalid retraining feature rule: {recipe['id']}"
+                raise ValueError(msg)
+            options["feature_rule"] = recipe["feature_rule"]
+        # Explicit legacy defaults must not create a second identity for the same game.
+        input_count = options.get("input_features", min(12, DATASETS[dataset]["n_features"]))
+        identity = (family, dataset, model, n, input_count, options.get("feature_rule", "all"))
+        if identity in identities:
+            msg = f"Repeated game recipe: {recipe['id']}"
+            raise ValueError(msg)
+        identities.add(identity)
         if not structured and n > 20:
             msg = "Enumeration is limited to twenty players."
             raise ValueError(msg)
@@ -115,6 +193,7 @@ def build_suite(manifest: Path) -> dict:
             "reference": "structured" if structured else "enumeration",
         }
         for spec in recipe_spec(row, TARGETS):
+            spec.update(options)
             spec["quality_protocol"] = QUALITY_PROTOCOL
             if "device" in spec:
                 spec["device"] = "cpu"

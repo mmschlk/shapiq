@@ -1,8 +1,7 @@
 # Benchmark operations and historical reference
 
 For the current cohort, local commands and active compute limits, start with
-[README.md](README.md). [ROADMAP.md](ROADMAP.md) distinguishes completed releases
-from the larger matrix still in progress. This file preserves detailed protocols,
+[README.md](README.md) and [FOCUSED.md](FOCUSED.md). This file preserves detailed protocols,
 recovery procedures and older command templates; **it is not an instruction to
 restart archived campaigns**. Frozen plans and reviewed recovery journals govern
 existing jobs. Read their current `WAKEUP.md` and state before acting.
@@ -20,73 +19,11 @@ existing jobs. Read their current `WAKEUP.md` and state before acting.
 
 ## Bounded rollout operations
 
-These instructions describe the completed selected phases 1–7. Their scheduling
-policy and recorded job IDs are historical; the active 38-wave expansion uses the
-separate lanes described in the [README](README.md#continuing-through-the-phases).
-
-The corrected bounded rollout keeps its plan and progress in lab storage at
-`/hopper/groups/witterlab/rwitter/shapiq-benchmark-quality-rollout`:
-`campaign/campaign.json` is the immutable scientific plan and `state.json` records
-current progress. Job recovery overrides are explicit; for phases 4–7 use
-`operational/future-runtime-jobs.json` and its resource-replacement journal
-`operational/shared-cpu-v1/jobs.json`, not the superseded IDs in
-`campaign/jobs.json`. The [roadmap status](ROADMAP.md) distinguishes this rollout
-from the original phase-three campaign, whose twenty batches are complete and
-remain separate from the corrected-source results.
-
-The existing coordinator remains at `benchmark/results/full-rollout/`, a symlink
-to `/hopper/groups/witterlab/rwitter/shapiq-benchmark-full-rollout`.
-Its `WAKEUP.md` gives the next action and `watch.json` records current-stage jobs.
-Large payoff caches belong in lab storage. Moving a campaign requires stopping
-its writers, verifying copied hashes and preserving recorded paths.
-The watcher runs every five minutes and queues a message to the authorized
-session when a job finishes or fails. During
-implementation, or after the jobs stop, a thirty-minute idle heartbeat also wakes
-the session. The next action is always explicit: **qualify → run → independently
-audit → publish → verify live → start the next phase**.
-
-`benchmark/queue_phases.py` creates disjoint batches from the cumulative phase
-manifests, retaining all nine budgets and four game seeds. Its job journal makes
-resubmission reviewable. Each evaluation array task depends on its corresponding
-preparation task. CPU batches use pinned, single-threaded workers on EPYC 9754
-CPU-only nodes. The corrected rollout requests 16 CPUs for preparation and 32
-for evaluation, without reserving the whole node. Timings remain diagnostic;
-shared-node contention can affect wall time. The explicit `phase_batch.py
---workers N` override records this policy separately from frozen scientific inputs.
-Explicit CUDA batches use one L40S per preparation worker. Later phases are queued on hold, and the resumed agent releases them
-after the preceding audit. A
-completed scheduler job is never enough to declare a phase complete.
-
-GPU preparation is wrapped by `benchmark/gpu_utilization.py`: after two minutes
-of startup, each allocated GPU must sustain an average utilization of at least
-80% over a five-minute rolling window. The guard stops the job on sustained
-underuse or missing telemetry and saves a receipt for the continuation audit.
-Short runs are marked insufficient observation. This measures device occupancy,
-not speedup; a CPU fallback needs a separately qualified backend and cache identity.
-Run the guard inside the Slurm step so job cleanup also stops descendant workers.
-
-The original `queue_phases.py` submission defaults below retain their legacy
-whole-node policy. For this rollout, use the audited shared-CPU operational
-wrappers and journal above; do not resubmit it with those legacy defaults.
-
-From a **clean frozen checkout containing the approved estimator corrections**:
-
-```bash
-export PYTHONPATH="$PWD/src"
-UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign
-# Review the generated inventories and batches, then queue them:
-UV_NO_SYNC=1 uv run python benchmark/queue_phases.py /shared/campaign --submit
-```
-
-For the corrected expansion, pass **`--bounded-core`** to both commands. This
-versions recipes as `quality-v2` and selects at most sixteen new recipes per
-phase, round-robin across constructions, before expanding the full matrix.
-`phase-N-core.json` records every selected and deferred recipe and aggregate
-payoff, estimator-cell, reference-size, CPU-hour and storage bounds. These are
-conservative planning bounds, not promised runtimes. The complete inventory stays
-available; deferred recipes are not failed runs. Per-game qualification then
-checks all four seeds, validation against a dummy model, sampled-imputation
-stability, and actual requested-size structured-solver cost.
+The earlier phased and 38-wave launchers have been removed from the active
+checkout. Their exact code remains in Git history and authenticated historical
+worktrees for reproduction. Do not restart those campaigns. The active plan is
+[FOCUSED.md](FOCUSED.md); its campaign journal owns current jobs and reservations.
+The following notes explain recorded historical behavior, not current defaults.
 
 The quality protocol stratifies classification row players and scales SVR training
 targets while retaining original payoff units. Frozen tables identify inactive
@@ -244,7 +181,7 @@ cancelled at the user's request**. Their completion watchers are disabled and
 those outputs will not be published. The phase-two release replaced the earlier
 preview with the audited cohort below.
 
-The **[roadmap](ROADMAP.md)** lists all 63 datasets, model profiles and
+The [protocol catalog](../src/shapiq_benchmark/protocol.py) lists datasets, model profiles and
 construction mappings. The first replacement cohort is **64 games**: four
 datasets × two models × two local constructions × four seeds, with 12 real
 features, six explanation targets and nine relative budgets. Random forests
@@ -346,7 +283,7 @@ Feature games select original columns, row games select training examples, and
 ensemble games select models. We do not train on a million rows for every coalition.
 
 In this earlier configuration, models were fixed by recipe. The active full matrix
-uses the broader compatible model axis in [ROADMAP.md](ROADMAP.md):
+uses the broader compatible model axis in the [protocol catalog](../src/shapiq_benchmark/protocol.py):
 
 | Recipe | Model |
 | --- | --- |
@@ -448,7 +385,7 @@ The generated suite records selected combinations and exclusion reasons in
 `matrix_coverage`. Its source and incomplete outputs are retained for diagnosis,
 but jobs **360900/360901** and their watchers were cancelled. These historical
 counts are not the current website cohort and must not be published over it.
-The [phased roadmap](ROADMAP.md) supersedes this execution plan.
+The [focused benchmark](FOCUSED.md) supersedes this historical execution plan.
 
 ### Evaluate once, reuse the table
 

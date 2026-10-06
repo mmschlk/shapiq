@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 KINDS = ("raw", "metrics", "games", "details", "runs", "profiles", "summaries")
 FILTER_METADATA = (
     "focused_design",
+    "input_features",
+    "feature_rule",
     "dataset",
     "model_profile",
     "model",
