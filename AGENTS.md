@@ -547,3 +547,9 @@ uv run pre-commit run --all-files
   commands. Resolving `venv/bin/python` symlinks can select the bare interpreter
   and lose its site-packages. Use `absolute()`, and authenticate its environment
   separately; test delegation as well as the parent interpreter.
+
+- Batching tree predictions can change NumPy's ensemble reduction order even
+  with the same `np.sum(..., axis=0)`: a singleton background makes that axis
+  contiguous, while flattened coalition batches make it strided. A cancellation
+  fixture exposed different payoff bits. Preserve singleton-background calls
+  and test batch/reverse/singleton equality before adopting an oracle speedup.

@@ -47,7 +47,10 @@ estimator evaluation; estimator failures remain in coverage denominators.
 
 Next: qualify the frozen suite with `benchmark/focused_campaign.py preflight`,
 measure useful completion under the proposed limits, then prepare once and run
-ready batches in parallel. Reserve and reconcile every Slurm task using the
+ready batches in parallel. Native tree queries reuse the existing compiled prediction
+kernel or vectorize the shipped recursion. Unsupported tree forms retain the original
+traversal. Frozen payoffs and exact references stay unchanged; all 68 native tree
+instances passed sampled bitwise equivalence checks before adopting this backend. Reserve and reconcile every Slurm task using the
 same script's `budget` command. The total is **2,048 allocated CPU-hours**, with
 **128 CPU cores maximum and no GPUs**; this includes pilots, idle allocation,
 checks and export. The helper reports commitments; submission must enforce them.
@@ -65,6 +68,7 @@ The focused campaign reuses the existing benchmark pipeline:
 | Translate that table into a suite | [focused.py](../src/shapiq_benchmark/focused.py) |
 | Qualify costs and account for CPU allocations | [focused_campaign.py](focused_campaign.py) |
 | Prepare exact games once | [prepare_matrix.py](prepare_matrix.py) |
+| Traverse frozen native trees efficiently | [native_tree_backend.py](../src/shapiq_benchmark/native_tree_backend.py) |
 | Evaluate estimators with counted queries | [runner.py](../src/shapiq_benchmark/runner.py) |
 | Export results for the static website | [report.py](../src/shapiq_benchmark/report.py) |
 | Deliver completion and recurring reminders | [watch_campaign.py](watch_campaign.py) |

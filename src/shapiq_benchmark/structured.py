@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
-from shapiq.tree.base import TreeModel, predict_ensemble
+from shapiq.tree.base import TreeModel
+from shapiq_benchmark.native_tree_backend import BatchedPathDependentGame, NumericTreePredictor
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -32,16 +33,8 @@ TREE_ARRAYS = (
 TREE_SCALARS = ("decision_type", "input_precision", "empty_prediction")
 
 
-class FrozenTreePredictor:
+class FrozenTreePredictor(NumericTreePredictor):
     """Predict the already converted scalar output without refitting a model."""
-
-    def __init__(self, trees: list[TreeModel]) -> None:
-        """Keep the authenticated, converted prediction trees."""
-        self.trees = trees
-
-    def predict(self, rows: np.ndarray) -> np.ndarray:
-        """Evaluate the fixed scalar model output."""
-        return predict_ensemble(self.trees, rows)
 
 
 def _tree_game(trees: list, background: np.ndarray, point: np.ndarray, kind: str) -> Game:
@@ -49,7 +42,7 @@ def _tree_game(trees: list, background: np.ndarray, point: np.ndarray, kind: str
     from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
 
     if kind == "pathdependent_tree":
-        return TreeSHAPIQXAI(point, trees, normalize=False, verbose=False)
+        return BatchedPathDependentGame(TreeSHAPIQXAI(point, trees, normalize=False, verbose=False))
     return InterventionalGame(FrozenTreePredictor(trees), background, point)
 
 
