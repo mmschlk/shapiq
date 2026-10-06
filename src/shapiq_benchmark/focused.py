@@ -44,7 +44,7 @@ _REQUIRED_COLUMNS = {
     "n_players",
     "reference",
 }
-_OPTIONAL_COLUMNS = {"input_features", "feature_rule"}
+_OPTIONAL_COLUMNS = {"input_features", "feature_rule", "training_rows", "row_selection"}
 _APPLICATION_CONSTRUCTIONS = {
     "local": {
         "local_baseline",
@@ -60,8 +60,18 @@ _APPLICATION_CONSTRUCTIONS = {
 }
 
 
-def build_suite(manifest: Path) -> dict:
+def build_suite(
+    manifest: Path,
+    *,
+    min_players: int = 12,
+    max_players: int = 512,
+    extended_features: bool = False,
+    estimator_seeds: tuple[int, ...] = (0,),
+) -> dict:
     """Validate recipe semantics and require the approved estimator constructor options."""
+    if not 1 <= min_players <= max_players:
+        msg = "Invalid player bounds."
+        raise ValueError(msg)
     with manifest.open(newline="") as stream:
         reader = csv.DictReader(stream)
         columns = reader.fieldnames or []
@@ -97,8 +107,8 @@ def build_suite(manifest: Path) -> dict:
         "targets": copy.deepcopy(TARGETS),
         "relative_budgets": list(BUDGET_MULTIPLIERS),
         "game_seeds": list(GAME_SEEDS),
-        "seeds": [0],
-        "min_players": 12,
+        "seeds": list(estimator_seeds),
+        "min_players": min_players,
         "min_signal_ratio": 1e-6,
         "cell_timeout_policy": {
             "ordinary_seconds": 30,
@@ -137,7 +147,7 @@ def build_suite(manifest: Path) -> dict:
         if recipe["subtype"] != expected_subtype:
             msg = f"Unexpected application subtype: {recipe['id']}"
             raise ValueError(msg)
-        if model not in CONSTRUCTIONS[family]["models"] or not 12 <= n <= 512:
+        if model not in CONSTRUCTIONS[family]["models"] or not min_players <= n <= max_players:
             msg = f"Unsupported model or player count: {recipe['id']}"
             raise ValueError(msg)
         if recipe["reference"] not in {"enumeration", "tree_solver", "neighbor_solver"}:
@@ -152,22 +162,49 @@ def build_suite(manifest: Path) -> dict:
         options = {}
         if "input_features" in recipe:
             count = int(recipe["input_features"])
-            if family not in {"data_valuation", "dataset_valuation"} or not (
-                1 <= count <= DATASETS[dataset]["n_features"]
-            ):
+            if family not in (
+                {"data_valuation", "dataset_valuation"}
+                | ({"knn", "tnn"} if extended_features else set())
+            ) or not (1 <= count <= DATASETS[dataset]["n_features"]):
                 msg = f"Invalid valuation input-feature count: {recipe['id']}"
                 raise ValueError(msg)
             options["input_features"] = count
         if "feature_rule" in recipe:
-            if family not in {"data_valuation", "dataset_valuation", "feature_selection"} or (
-                recipe["feature_rule"] not in {"all", "nested"}
-            ):
+            if family not in (
+                {"data_valuation", "dataset_valuation", "feature_selection"}
+                | (
+                    {"local_baseline", "pathdependent_tree", "interventional_tree", "knn", "tnn"}
+                    if extended_features
+                    else set()
+                )
+            ) or (recipe["feature_rule"] not in {"all", "nested"}):
                 msg = f"Invalid retraining feature rule: {recipe['id']}"
                 raise ValueError(msg)
             options["feature_rule"] = recipe["feature_rule"]
+        if "training_rows" in recipe or "row_selection" in recipe:
+            if not extended_features or family not in {"knn", "tnn"}:
+                msg = f"Neighbor options require a neighbor recipe: {recipe['id']}"
+                raise ValueError(msg)
+            if "training_rows" not in recipe or "row_selection" not in recipe:
+                msg = "Explicit neighbor pools require both size and selection rule."
+                raise ValueError(msg)
+            pool = int(recipe["training_rows"])
+            if pool < n or recipe["row_selection"] != "nested_stratified":
+                msg = f"Invalid neighbor fitting pool: {recipe['id']}"
+                raise ValueError(msg)
+            options.update(training_rows=pool, row_selection=recipe["row_selection"])
         # Explicit legacy defaults must not create a second identity for the same game.
         input_count = options.get("input_features", min(12, DATASETS[dataset]["n_features"]))
-        identity = (family, dataset, model, n, input_count, options.get("feature_rule", "all"))
+        identity = (
+            family,
+            dataset,
+            model,
+            n,
+            input_count,
+            options.get("feature_rule", "all"),
+            options.get("training_rows"),
+            options.get("row_selection"),
+        )
         if identity in identities:
             msg = f"Repeated game recipe: {recipe['id']}"
             raise ValueError(msg)

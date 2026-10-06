@@ -614,3 +614,16 @@ uv run pre-commit run --all-files
   preparation plan and snapshots; preserve original rows and run IDs. Interrupted
   journal audits also need authenticated absent-file facts, not only hashes of
   files that exist, and must recheck those absences before final composition.
+
+- Native neighbor preparation in `games.py` historically discarded the bounded
+  training indices returned by `load_dataset` and split the full returned array
+  again. Its player limit therefore cannot be inferred from the loader's default
+  512-row cap. New explicit `training_rows` recipes use the loader's fitting
+  pool directly, including training-only imputation; retain that path and its
+  recorded nested row/feature selections when reproducing those games.
+
+- `UV_NO_SYNC=1` prevents shared-environment installation but can still create new
+  `.pyc` files when development commands import modules. An old complete dependency
+  inventory may then reject that shared directory. Build later byte-identical
+  node-local archives from the already authenticated node-local copy; verify every
+  copied byte against its original receipt. Never silently relax the inventory.

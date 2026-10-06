@@ -112,6 +112,27 @@ def test_medians_ignore_validation_and_test(data: tuple) -> None:
     assert np.isnan(x[fit[0], 0])
 
 
+def test_local_baseline_accepts_small_nested_dimensions(data: tuple) -> None:
+    """Generic local explanations use the same nested model feature subsets."""
+    from shapiq_benchmark.families import make_family
+
+    results = [
+        make_family(
+            "local_baseline",
+            dataset="fixture",
+            n_players=n,
+            model_profile="random_forest",
+            feature_rule="nested",
+            instance_seed=2,
+        )
+        for n in (4, 8)
+    ]
+    assert set(results[0][1]["feature_indices"]) < set(results[1][1]["feature_indices"])
+    for game, metadata in results:
+        assert metadata["feature_rule"] == "nested"
+        assert np.isfinite(game(np.eye(game.n_players, dtype=bool))).all()
+
+
 def test_regression_preserves_signed_targets(data: tuple, monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression targets are not converted into class IDs."""
     x, _, names = data

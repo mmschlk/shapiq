@@ -180,7 +180,13 @@ def prepare_families(
         or (
             "feature_rule" in spec
             and (
-                spec["family"] not in {"feature_selection", "data_valuation", "dataset_valuation"}
+                spec["family"]
+                not in {
+                    "feature_selection",
+                    "data_valuation",
+                    "dataset_valuation",
+                    "local_baseline",
+                }
                 or "model_profile" not in spec
                 or spec["feature_rule"] not in {"all", "nested"}
             )

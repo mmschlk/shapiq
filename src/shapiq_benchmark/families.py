@@ -1025,9 +1025,11 @@ def _prediction_game(
         message = "input_features must fit the dataset and applies only to data valuation."
         raise ValueError(message)
     if feature_rule is not None and (
-        name not in _RETRAINING or feature_rule not in {"all", "nested"}
+        name not in _RETRAINING | {"local_baseline"} or feature_rule not in {"all", "nested"}
     ):
-        message = "Explicit feature rules apply only to retraining games: all or nested."
+        message = (
+            "Explicit feature rules apply to retraining or local baseline games: all or nested."
+        )
         raise ValueError(message)
     feature_count = (
         n_players

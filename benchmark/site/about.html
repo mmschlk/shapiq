@@ -14,186 +14,196 @@
   <header><a href="index.html">← Benchmark results</a><a href="about.md">Markdown source</a></header>
   <main id="content">
 <h1 id="about-the-benchmark">About the benchmark</h1>
-<p>We compare Shapley estimators on games built from real datasets. Each method gets
-an allowance of coalition queries, and its answer is compared with an exact
-reference for the same frozen game.</p>
-<p><strong>This guide describes the accepted focused replacement plan.</strong> The dashboard
-currently displays an earlier audited cohort, whose games, estimator settings and
-weighting remain those recorded in its report. The focused replacement has not
-yet been published.</p>
-<nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#scope">Scope</a></li><li><a href="#games-and-datasets">Games and datasets</a></li><li><a href="#exact-references">Exact references</a></li><li><a href="#estimators-and-query-budgets">Estimators and query budgets</a></li><li><a href="#scores">Scores</a></li><li><a href="#timing-and-reproducibility">Timing and reproducibility</a></li></ul></nav>
+<p>We compare Shapley estimators on games built from real datasets. Each estimator
+receives a coalition-query allowance and is compared with an exact reference for
+the same frozen game.</p>
+<p><strong>This page describes the approved 24-dataset benchmark now being implemented.</strong>
+The dashboard still displays the earlier published cohort. It will be replaced
+when the new results and coverage have been checked; intended counts below are
+not a claim of completed measurements.</p>
+<nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#scope">Scope</a></li><li><a href="#datasets">Datasets</a></li><li><a href="#applications-player-counts-and-ground-truth">Applications, player counts and ground truth</a></li><li><a href="#models-and-controlled-comparisons">Models and controlled comparisons</a></li><li><a href="#estimators-budgets-and-scores">Estimators, budgets and scores</a></li><li><a href="#timing-and-reproducibility">Timing and reproducibility</a></li></ul></nav>
 <h2 id="scope">Scope</h2>
-<p>The accepted design has <strong>448 intended game instances across 12 datasets</strong>:
-112 recipes, each with four construction seeds. Twenty-four instances are already
-excluded by recorded model-quality checks, leaving <strong>up to 424 qualified
-instances</strong>. Further qualification can reduce that number. These are design
-counts, not a claim that every estimator run has finished.</p>
+<p>One benchmark covers individual predictions, data valuation and feature selection,
+with four game-construction seeds and three estimator seeds. The resource ceiling
+is 1,024 CPUs and 24,576 allocated CPU-hours, including preparation and prior work.
+Preparation and evaluation run together. A game receives at most two CPU-hours to
+prepare its exact reference; resource exclusions and failures remain visible.</p>
+<h2 id="datasets">Datasets</h2>
+<p>Dimensions below are the shipped loader outputs. Columns may contain missing
+values or be unsuitable for a particular construction; training-only rules and
+actual selected column IDs are recorded. NHANES regression is a survival-label
+surrogate, not a survival analysis benchmark.</p>
+<table>
+<thead>
+<tr>
+<th>Classification</th>
+<th style="text-align:right">Features</th>
+<th>Regression</th>
+<th style="text-align:right">Features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adult Census</td>
+<td style="text-align:right">14</td>
+<td>Wine Quality</td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td>Mushroom</td>
+<td style="text-align:right">22</td>
+<td>Communities and Crime</td>
+<td style="text-align:right">101</td>
+</tr>
+<tr>
+<td>Ionosphere</td>
+<td style="text-align:right">33</td>
+<td>NHANES I</td>
+<td style="text-align:right">79</td>
+</tr>
+<tr>
+<td>Bioresponse</td>
+<td style="text-align:right">1,776</td>
+<td>QSAR-TID11</td>
+<td style="text-align:right">1,024</td>
+</tr>
+<tr>
+<td>Breast Cancer</td>
+<td style="text-align:right">30</td>
+<td>Miami Housing</td>
+<td style="text-align:right">15</td>
+</tr>
+<tr>
+<td>Digits</td>
+<td style="text-align:right">64</td>
+<td>Superconductivity</td>
+<td style="text-align:right">81</td>
+</tr>
+<tr>
+<td>Wine (sklearn)</td>
+<td style="text-align:right">13</td>
+<td>California Housing</td>
+<td style="text-align:right">8</td>
+</tr>
+<tr>
+<td>Amazon Employee Access</td>
+<td style="text-align:right">9</td>
+<td>Diabetes (sklearn)</td>
+<td style="text-align:right">10</td>
+</tr>
+<tr>
+<td>APS Failure</td>
+<td style="text-align:right">170</td>
+<td>Bike Sharing</td>
+<td style="text-align:right">12</td>
+</tr>
+<tr>
+<td>Anneal</td>
+<td style="text-align:right">38</td>
+<td>Airfoil Self Noise</td>
+<td style="text-align:right">5</td>
+</tr>
+<tr>
+<td>Splice</td>
+<td style="text-align:right">60</td>
+<td>Concrete Strength</td>
+<td style="text-align:right">8</td>
+</tr>
+<tr>
+<td>Credit Card Default</td>
+<td style="text-align:right">23</td>
+<td>Protein</td>
+<td style="text-align:right">9</td>
+</tr>
+</tbody>
+</table>
+<h2 id="applications-player-counts-and-ground-truth">Applications, player counts and ground truth</h2>
 <table>
 <thead>
 <tr>
 <th>Application</th>
-<th style="text-align:right">Intended instances</th>
-<th style="text-align:right">Maximum after existing exclusions</th>
 <th>Players</th>
+<th>Requested counts</th>
+<th>Exact reference</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Individual predictions</td>
-<td style="text-align:right">128</td>
-<td style="text-align:right">124</td>
-<td>12–512 input features</td>
+<td>Generic individual prediction</td>
+<td>Input features</td>
+<td>4, 8, 12, 14, 16</td>
+<td>Evaluate every coalition of the frozen predictor/baseline game</td>
 </tr>
 <tr>
-<td>Data valuation</td>
-<td style="text-align:right">160</td>
-<td style="text-align:right">152</td>
-<td>12 or 14 training-data groups; 32–512 individual examples for neighbor games</td>
+<td>Tree individual prediction</td>
+<td>Input features</td>
+<td>8, 16, 32, 64, 128, 256, 512</td>
+<td>Matching path-dependent or interventional tree solver</td>
+</tr>
+<tr>
+<td>Retraining data valuation</td>
+<td>Groups of training rows</td>
+<td>4, 8, 12, 14, 16</td>
+<td>Refit and score every coalition of groups</td>
+</tr>
+<tr>
+<td>Nearest-neighbor data valuation</td>
+<td>Individual training examples</td>
+<td>32, 64, 128, 256, 512, 1,024</td>
+<td>Native exact KNN/TNN Shapley-value formulas; classification only</td>
 </tr>
 <tr>
 <td>Feature selection</td>
-<td style="text-align:right">160</td>
-<td style="text-align:right">148</td>
-<td>12 or 14 input features</td>
+<td>Input features</td>
+<td>4, 8, 12, 14, 16</td>
+<td>Refit and score every coalition of features</td>
 </tr>
 </tbody>
 </table>
-<p>This is one unified benchmark and one final publication. The currently published
-report remains available until the replacement passes its numerical and
-publication audits. Its displayed coverage and downloadable metadata identify
-what has actually been measured; the intended design above is not a substitute
-for that evidence.</p>
-<h2 id="games-and-datasets">Games and datasets</h2>
-<p>A game assigns a payoff to each subset of its players. What a player represents
-and how its payoff is computed depend on the application:</p>
-<ul>
-<li><strong>Individual predictions:</strong> players are input features. A coalition retains
-selected features while a fixed predictor's missing inputs are handled by the
-recorded baseline, marginal or tree construction.</li>
-<li><strong>Data valuation:</strong> players are groups of training rows, and the model is
-refitted using the selected groups. Neighbor games instead treat individual
-training examples as players and use their specified KNN or threshold-neighbor
-utility.</li>
-<li><strong>Feature selection:</strong> players are input features. The model is refitted on
-the selected columns and scored on held-out examples.</li>
-</ul>
-<p>The original eight datasets are Adult Census, Wine Quality, Mushroom, Ionosphere,
-Communities and Crime, NHANES I, Bioresponse and QSAR-TID11. Their 96 recipes and
-frozen results are preserved. Models include random forests, XGBoost and
-LightGBM, with selected SVM, MLP, Gaussian-process and TabPFN comparisons.</p>
-<p>Four additional datasets broaden data valuation and feature selection. Each row
-below contributes both applications at 12 and 14 players, with four construction
-seeds: 16 new recipes and 64 intended instances in total.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Model</th>
-<th style="text-align:right">Input columns for data valuation</th>
-<th>Feature-selection players</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Breast Cancer</td>
-<td>Random forest</td>
-<td style="text-align:right">24</td>
-<td>12 and 14</td>
-</tr>
-<tr>
-<td>Digits</td>
-<td>Linear model</td>
-<td style="text-align:right">64</td>
-<td>12 and 14</td>
-</tr>
-<tr>
-<td>Miami Housing</td>
-<td>LightGBM</td>
-<td style="text-align:right">15</td>
-<td>12 and 14</td>
-</tr>
-<tr>
-<td>Superconductivity</td>
-<td>Linear model</td>
-<td style="text-align:right">64</td>
-<td>12 and 14</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Input columns and players are different axes in data valuation.</strong> A 14-player
-Digits game has 14 groups of training examples and 64 input columns. Its
-coalitions select groups, not columns. Matched feature-selection recipes use
-nested columns: the 12 selected columns are contained in the 14-column selection,
-with the same seeded split. Dataset repair and model fitting use their recorded
-training rows.</p>
-<h2 id="exact-references">Exact references</h2>
-<p>Generic 12- and 14-player games enumerate every coalition: respectively 4,096
-and 16,384 payoffs. Each retraining payoff can require another model fit. The
-saved table fixes the game realization, and exact coefficients are computed from
-that table with recorded numerical checks.</p>
-<p>Larger fixed-tree games use specialized exact tree solvers. A tree used inside a
-retraining game does not make that game eligible for TreeSHAP: the predictor
-changes between coalitions. Neighbor games use their specialized exact Shapley
-value solvers.</p>
-<p>The six target panels are <strong>SV, SII, k-SII, STII, FSII and FBII</strong>, with interaction
-order two. Enumerated and interventional-tree games support all six targets;
-native path-dependent trees support SV, SII and k-SII; neighbor games support SV
-only. An estimator is compared only on targets it supports. Exact references
-refer to the stated frozen game, subject to its documented numerical tolerance;
-a high-budget approximation is not used as exact truth.</p>
-<h2 id="estimators-and-query-budgets">Estimators and query budgets</h2>
-<p>The focused protocol includes <strong>22 estimators</strong>, four game-construction seeds
-and one estimator seed. The results page describes each method and exposes its supported
-targets. Frozen estimator settings, seeds and earlier measurements are retained.
-In the focused campaign, LeverageSHAP and OddSHAP explicitly use the two-query
-equal-allocation fallback at eligible low budgets; this can consume less than the
-allowance.</p>
-<p>For a game with <code>d</code> players, the nine query allowances are:</p>
-<p><strong>0.5d, 1d, 2d, 4d, 8d, 16d, 32d, 64d and 128d.</strong></p>
-<p>A coalition evaluation counts as a query, including repeated evaluations. For
-example, 8d allows 96 queries in a 12-player game. Charts show the requested
-allowance; recorded usage can be smaller. Timeouts and failed attempts are
-explicit outcomes, never invented estimates or zero-error results.</p>
-<h2 id="scores">Scores</h2>
-<p><strong>Normalized mean squared error (nMSE)</strong> is the sum of squared coefficient errors
-divided by the sum of squared exact coefficients. The empty-coalition baseline is
-excluded. Lower is better: zero is exact agreement, one has the error of
-predicting all scored coefficients as zero, and values above one are worse than
-that baseline.</p>
-<p>Zero or negligible truth signal is excluded from accuracy summaries for every
-method. Interaction-order filters apply the same signal rule to the selected
-order. The exact signal reference and threshold are recorded in the report.</p>
-<p>The focused replacement will balance applications equally, then subtypes,
-recipes, instances, budgets and estimator seeds. Its data-valuation SV gives
-equal weight to group retraining and neighbor-example games. Scores for partial coverage renormalize
-successful observations; failures remain in the coverage denominator. The earlier
-published cohort balances game families and configurations under its recorded
-protocol. Check coverage alongside accuracy, because methods with missing runs
-can be measured on different subsets.</p>
-<p>Elo compares errors on shared game/target/budget/seed cells and summarizes paired
-wins and ties. It is a relative ranking, not an error magnitude. “Same cells for
-all” restricts comparisons to common successful cells. Bootstrap intervals
-preserve related construction seeds and are descriptive; four constructions and
-one estimator seed do not isolate estimator randomness.</p>
+<p>Include the natural full input width below sixteen, and only feasible dimensions
+and row counts. Never pad features or manufacture players. Feature subsets and
+neighbor-row prefixes are nested within a construction seed. Group count and
+model input width are separate axes in data valuation.</p>
+<p>Exhaustive tables contain 16, 256, 4,096, 16,384 or 65,536 coalition values at
+4, 8, 12, 14 or 16 players respectively. Existing direct derivative formulas avoid
+dense exponential-by-exponential matrices above twelve players. Exact means exact
+for the saved game, subject to documented floating-point error. Native solvers
+must match the game's utility, masking convention and supported target. We do
+not claim generic exact truth at hundreds of players.</p>
+<h2 id="models-and-controlled-comparisons">Models and controlled comparisons</h2>
+<p>Linear/logistic models and random forests provide a matched core across all 24
+datasets and the three applications. Random forest, XGBoost and LightGBM supply
+native tree games. At twelve players, XGBoost, LightGBM, SVM and MLP comparisons
+use a fixed balanced subset: Adult, Breast Cancer, Digits, Bioresponse, Wine
+Quality, Miami Housing, Superconductivity and QSAR-TID11.</p>
+<p>The same subset has a separate input-width sweep at twelve valuation groups:
+8, 16, 32, 64, 128 and the full width where feasible, using the core models.
+No dataset or model is selected because its estimator scores look favorable.
+Train/validation/test splits and model profiles are fixed and recorded.</p>
+<p>The generated design contains 1,270 recipes and 5,080 intended instances before
+resource and model-quality exclusions: 782 exhaustive recipes, 360 native tree
+recipes and 128 native neighbor recipes. Four construction seeds are crossed
+with three estimator seeds; design counts are not measured coverage.</p>
+<h2 id="estimators-budgets-and-scores">Estimators, budgets and scores</h2>
+<p>Retain the 22-estimator catalog and its explicit constructor settings. Evaluate
+nine relative query budgets: <strong>0.5, 1, 2, 4, 8, 16, 32, 64 and 128 times the player
+count</strong>. Requested budgets and actual queries are separate; small games can
+saturate their entire coalition space. Unsupported method/target combinations
+remain explicitly unsupported.</p>
+<p>Use the existing target-aware coefficient-error metrics and weighting rules.
+The three applications receive equal weight; dense dimension or model grids do
+not automatically give a dataset more influence. Zero-energy targets have no
+normalized score. Failures have no invented timing or error value. Report success
+coverage alongside scores, with construction seeds grouped for uncertainty.</p>
 <h2 id="timing-and-reproducibility">Timing and reproducibility</h2>
-<p>The campaign uses CPU workers only. Preparation, evaluation, diagnostics and
-export share a 2,048 allocated CPU-hour cap. Concurrent estimator timings are
-diagnostic, and estimated uncached time combines estimator work with recorded
-payoff costs; it is not a fresh end-to-end timing.</p>
-<p>Every published cell must have an explicit outcome and authenticated ownership,
-source, hardware and score metadata. Successful earlier results are retained;
-recovery attempts cannot silently replace them. Independent audits check the
-final cohort, numerical scores, browser filters and deployed report before the
-replacement is accepted.</p>
-<p>Use the results page's downloads for the published games, exact answers,
-settings and reproduction files. The design and executable recipes live in the
-repository:</p>
-<ul>
-<li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/FOCUSED.md">Accepted focused plan</a></li>
-<li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/focused.csv">Reviewed recipe table</a></li>
-<li><a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md">Run or reproduce the benchmark</a></li>
-<li><a href="about.md">Markdown source of this guide</a></li>
-</ul>
+<p>Games, model settings, selected rows and columns, payoff tables, reference values
+and random seeds are frozen. Dataset caching prevents repeated downloads, and
+workers use one CPU each. Cached-game estimator timings are diagnostic; recorded
+batch-amortized oracle costs are not direct measurements of an uncached run.</p>
+<p>The final report will include actual coverage, unsupported combinations,
+resource exclusions and reproduction artifacts. Historical results stay available
+until the replacement is ready. No approximate high-dimensional reference is
+presented as exact ground truth.</p>
   </main>
 </body>
 </html>

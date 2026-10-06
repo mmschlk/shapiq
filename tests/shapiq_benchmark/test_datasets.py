@@ -142,3 +142,42 @@ def test_first_download_and_cache_reload_produce_identical_game_inputs(
         np.testing.assert_array_equal(first, repeated)
     finally:
         load_dataset.cache_clear()
+
+
+def test_optional_raw_cache_never_falls_back_to_network(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A warmed NPZ preserves bytes/names and missing entries fail before loader calls."""
+    from shapiq_benchmark import datasets
+
+    calls = []
+    x = np.arange(40, dtype=float).reshape(20, 2)
+    x[0, 0] = np.nan
+    y = np.arange(20, dtype=np.int64)
+    names = ["first", "second"]
+    monkeypatch.setitem(
+        DATASETS, "fixture", {"source": "fixture.loader", "task": "regression", "n_features": 2}
+    )
+
+    def loader(name: str) -> tuple:
+        calls.append(name)
+        return x, y, names
+
+    monkeypatch.setattr(datasets, "_load_shipped_dataset", loader)
+    path = datasets.cache_raw_dataset("fixture", tmp_path)
+    monkeypatch.setenv("SHAPIQ_BENCHMARK_DATA_CACHE", str(tmp_path))
+    actual, targets, columns = datasets.load_raw_dataset("fixture")
+    np.testing.assert_array_equal(actual, x)
+    np.testing.assert_array_equal(targets, y)
+    assert actual.dtype == x.dtype and targets.dtype == y.dtype and columns == names
+    assert calls == ["fixture"]
+    monkeypatch.setitem(DATASETS, "fixture", {**DATASETS["fixture"], "source": "another.loader"})
+    with pytest.raises(ValueError, match="identity differs"):
+        datasets.load_raw_dataset("fixture")
+    path.unlink()
+    with pytest.raises(FileNotFoundError):
+        datasets.load_raw_dataset("fixture")
+    assert calls == ["fixture"]
+    monkeypatch.delenv("SHAPIQ_BENCHMARK_DATA_CACHE")
+    datasets.load_raw_dataset("fixture")
+    assert calls == ["fixture", "fixture"]

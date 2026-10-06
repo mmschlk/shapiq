@@ -217,7 +217,44 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             continue
         dataset_name = spec.get("dataset", "breast_cancer")
         loaders = {"breast_cancer": load_breast_cancer, "digits": load_digits}
-        if dataset_name in loaders:
+        explicit_neighbors = (
+            any(key in spec for key in ("training_rows", "input_features", "feature_rule"))
+            or spec.get("row_selection") == "nested_stratified"
+        )
+        neighbor_metadata = {}
+        if explicit_neighbors:
+            from shapiq_benchmark.datasets import DATASETS, load_dataset
+
+            if (
+                spec["oracle"] not in ("knn", "tnn")
+                or DATASETS[dataset_name]["task"] != "classification"
+            ):
+                message = "Explicit neighbor inputs require a classification KNN/TNN game."
+                raise ValueError(message)
+            training_rows = spec.get("training_rows", 512)
+            x, y, train, test, feature_names = load_dataset(
+                dataset_name, spec.get("instance_seed", 0), train_limit=training_rows
+            )
+            width = spec.get("input_features", x.shape[1])
+            if type(width) is not int or not 1 <= width <= x.shape[1]:
+                message = "Neighbor input_features must fit the dataset."
+                raise ValueError(message)
+            if spec.get("feature_rule", "nested") != "nested":
+                message = "Explicit neighbor feature_rule must be nested."
+                raise ValueError(message)
+            features = np.sort(
+                np.random.default_rng(spec.get("instance_seed", 0)).permutation(x.shape[1])[:width]
+            )
+            x = x[:, features]
+            neighbor_metadata = {
+                "training_rows": training_rows,
+                "fitting_rows": len(train),
+                "input_features": width,
+                "feature_rule": "nested",
+                "feature_indices": features.tolist(),
+                "feature_names": [feature_names[i] for i in features],
+            }
+        elif dataset_name in loaders:
             dataset = loaders[dataset_name]()
             x, y = dataset.data, dataset.target
         else:
@@ -243,9 +280,10 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             if kind == "product_kernel" and dataset_name == "digits"
             else np.arange(len(x))
         )
-        train, test = train_test_split(
-            population, test_size=0.2, random_state=seed, stratify=y[population]
-        )
+        if not explicit_neighbors:
+            train, test = train_test_split(
+                population, test_size=0.2, random_state=seed, stratify=y[population]
+            )
         background_indices = np.random.default_rng(seed).choice(train, 16, replace=False)
         index, order = spec["index"], spec["order"]
         if kind == "tree" and (index, order) in (
@@ -323,9 +361,16 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             point = scaled[test[0]]
             selected = train[:count]
             row_selection = spec.get("row_selection", "first")
-            if row_selection not in ("first", "stratified"):
-                message = "KNN row_selection must be first or stratified."
+            if row_selection not in ("first", "stratified", "nested_stratified"):
+                message = "KNN row_selection must be first, stratified or nested_stratified."
                 raise ValueError(message)
+            if row_selection == "nested_stratified":
+                from shapiq_benchmark.datasets import nested_stratified_rows
+
+                if count < len(np.unique(y[train])):
+                    message = "Neighbor players must cover every fitting-pool class."
+                    raise ValueError(message)
+                selected = nested_stratified_rows(train, y, seed)[:count]
             if row_selection == "stratified" and count < len(train):
                 selected, _ = train_test_split(
                     train, train_size=count, stratify=y[train], random_state=seed
@@ -370,6 +415,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 **({"sortperm": oracle.sortperm} if kind == "knn" else {}),
             }
             metadata = {
+                **neighbor_metadata,
                 "model": "KNeighborsClassifier",
                 "model_parameters": model.get_params(),
                 "n_neighbors": 3,

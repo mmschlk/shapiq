@@ -180,8 +180,8 @@ def prepare_profiled(spec: dict, output: Path) -> dict:
 
     dataset, profile = spec["dataset"], spec["model_profile"]
     n = spec.get("n_players", DATASETS[dataset]["n_features"])
-    if n < 11:
-        message = "New structured profiles require at least eleven players."
+    if n < 8:
+        message = "Structured profiles require at least eight players."
         raise ValueError(message)
     seed = spec.get("instance_seed", 0)
     cache = output.parent / ".models"
