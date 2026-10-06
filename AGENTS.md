@@ -553,3 +553,10 @@ uv run pre-commit run --all-files
   contiguous, while flattened coalition batches make it strided. A cancellation
   fixture exposed different payoff bits. Preserve singleton-background calls
   and test batch/reverse/singleton equality before adopting an oracle speedup.
+
+- `focused.sbatch` deliberately sets `TMPDIR` to lab storage. A plain
+  `tempfile.TemporaryDirectory()` therefore is not node-local; diagnostic-only
+  traces need an explicit local directory. Preserve production request/response
+  placement when diagnosing I/O, and record any changed placement separately.
+  `focused_campaign.slurm_allocation()` returns selected stable fields, excluding
+  `TimeLimit`; query the exact task separately when verifying its wall-time limit.
