@@ -576,3 +576,9 @@ uv run pre-commit run --all-files
   modules such as `_virtualenv` loaded from the shared environment. Qualify the
   actual allocation entrypoint with a fresh interpreter before broad admission;
   successful estimator subprocess pilots alone do not test parent startup.
+
+- Recovery `started.json` hardware describes the host and affinity; it has no
+  `slurm_job_id`. Each result's `worker.slurm_job_id` matches the allocation's
+  numeric `JobId`, which can differ from the canonical `ArrayJobId_ArrayTaskId`
+  stored in the attempt header. Validate both identities against the allocation,
+  using real serialized fixtures rather than adding nonexistent header fields.
