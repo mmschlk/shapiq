@@ -570,3 +570,9 @@ uv run pre-commit run --all-files
 - `benchmark/ROADMAP.md` preserves the superseded full-matrix plan. The active
   replacement is `benchmark/FOCUSED.md`; use its campaign journal for job state.
   Historical phase descriptions are not authorization to revive cancelled jobs.
+
+- Node-local dependency staging must set `PYTHONPATH` before starting the Python
+  interpreter. Updating it or `sys.path` inside the worker leaves `.pth` bootstrap
+  modules such as `_virtualenv` loaded from the shared environment. Qualify the
+  actual allocation entrypoint with a fresh interpreter before broad admission;
+  successful estimator subprocess pilots alone do not test parent startup.
