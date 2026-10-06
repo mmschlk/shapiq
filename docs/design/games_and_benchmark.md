@@ -49,7 +49,7 @@ shapiq_games/
   local_xai/          LocalExplanation (imputer based: marginal / conditional / baseline / TabPFN)
   global_xai/         GlobalExplanation (SAGE-like)
   feature_selection/  FeatureSelection
-  valuation/          DataValuation (single points or groups of points; absorbs DatasetValuation)
+  valuation/          DataValuation, DatasetValuation (one shared implementation, see below)
   ensemble_selection/ EnsembleSelection, RandomForestEnsembleSelection
   uncertainty/        UncertaintyExplanation
   clustering/         ClusterExplanation
@@ -132,7 +132,7 @@ Each family gets contract tests on a small offline configuration:
 
 - `build_model(name, task, seed, **params)` covers decision tree, random forest, gradient boosting (xgboost / lightgbm), MLP, TabPFN, and the pretrained vision and language models. `seed` is always passed through.
 - Hyperparameter presets (today the Optuna JSONs in `shapiq_benchmark`) become Python dicts next to the registry and include the seed. The Optuna script stays a benchmark tool.
-- The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is replaced by the seeded generic `mlp` model.
+- The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is dropped in favor of the seeded generic `mlp` model.
 
 ### Games moving out of core
 
@@ -182,7 +182,7 @@ class Computer(Protocol):
 
 | Computer | Games | Core algorithm |
 |----------|-------|----------------|
-| `BruteForceComputer` | any game, with a player cap (default 16) | `ExactComputer` |
+| `BruteForceComputer` | any game, with a player cap (default 20, overridable) | `ExactComputer` |
 | `MoebiusComputer` | Dummy, Unanimity, SOUM | `MoebiusConverter` |
 | `PathDependentTreeComputer` | `PathDependentTreeGame` | `TreeSHAPIQ` / `TreeExplainer` |
 | `InterventionalTreeComputer` | `InterventionalTreeGame` | `InterventionalTreeSHAPIQ` |
@@ -250,8 +250,16 @@ Contract tests that depend on the two bug fixes are marked `xfail` with a refere
 3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
 4. **Core fixes.** Two separate PRs, one per bug fix above.
 
-## Open questions
+## Resolved questions
 
-1. Should `DataValuation` absorb `DatasetValuation` (the same game; only the grouping of points into players differs)? Proposed: yes.
-2. Should the California torch network be dropped in favor of the seeded `mlp`? Proposed: yes.
-3. What should the brute-force player cap default be? Proposed: 16, overridable per call.
+1. **Data vs. dataset valuation.** Both stay public under their literature names, backed by one
+   private base class: players are disjoint groups of training rows, and v(S) is the test score
+   of a model trained on the union of the groups in S. `DataValuation` uses one point per group
+   (Data-Shapley-style defaults). `DatasetValuation` uses groups from a split strategy
+   (uniform, increasing, random) or user-given groups such as data sources or owners.
+   Mathematically, data valuation is the singleton-group special case of dataset valuation.
+   The empty-coalition value stays an explicit, documented parameter, since a model trained on
+   no data has no natural score.
+2. **California torch network.** Dropped; the seeded generic `mlp` replaces it.
+3. **Brute-force player cap.** Default 20 (needed for the TabPFN use cases), overridable per
+   call. Tests stay at about 10 players or fewer so they remain fast.
