@@ -177,6 +177,11 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- Snapshot IDs use `runner.identity` with default JSON spacing, while recovery
+  attempt software hashes use compact `recovery.row_hash` JSON. These hashes
+  differ for the same object; reuse the matching encoding when auditing each
+  field rather than treating all canonical JSON hashes as interchangeable.
+
 - Splitting report files does not avoid GitHub Pages' 1-GB published-site limit.
   Release assets work as direct downloads but are not automatically browser-fetch
   storage: public HEAD and ranged GET checks on 2026-10-05 returned no CORS
@@ -601,3 +606,11 @@ uv run pre-commit run --all-files
   historical reservations or reject that overlap. Only an active worker must
   have a reservation without a settlement. Reuse `budget_status` and test
   admission helpers against the actual ledger schema.
+
+- Legacy focused collectors authenticate each snapshot's `cell_timeout_policy`
+  but omit that field from the public suite projection. A strict cross-component
+  composer therefore cannot infer a missing policy from public metadata alone.
+  Carry it through an explicit adapter authenticated against the original suite,
+  preparation plan and snapshots; preserve original rows and run IDs. Interrupted
+  journal audits also need authenticated absent-file facts, not only hashes of
+  files that exist, and must recheck those absences before final composition.
