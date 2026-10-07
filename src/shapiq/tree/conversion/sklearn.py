@@ -28,7 +28,7 @@ from sklearn.tree import (
 
 from shapiq.tree.base import TreeModel
 
-from .common import register
+from .common import check_class_label, register
 
 if TYPE_CHECKING:
     from sklearn.tree._tree import Tree  # ty: ignore[unresolved-import]
@@ -67,6 +67,7 @@ def convert_sklearn_tree(
         if len(tree_values.shape) == 3:
             tree_values = tree_values[:, 0, :]
         tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
+        check_class_label(class_label, tree_values.shape[1])
         tree_values = tree_values[:, class_label]
         original_output_type = "probability"
     tree_values = tree_values.flatten() * scaling + offset
@@ -92,12 +93,10 @@ def _binary_class_sign(class_label: int | None) -> float:
     Raises:
         ValueError: If ``class_label`` is not ``None``, ``0``, or ``1``.
     """
-    if class_label == 0:
-        return -1.0
-    if class_label is None or class_label == 1:
+    if class_label is None:
         return 1.0
-    msg = f"class_label={class_label} is invalid for a binary classifier; use 0 or 1."
-    raise ValueError(msg)
+    check_class_label(class_label, 2)
+    return -1.0 if class_label == 0 else 1.0
 
 
 def _mark_negated_class_one(trees: list[TreeModel], class_sign: float) -> None:
@@ -300,6 +299,7 @@ def convert_gradient_boosting_tree(
     if n_classes > 1:
         if class_label is None:
             class_label = 1
+        check_class_label(class_label, n_classes)
         tree_column = class_label
     else:
         tree_column = 0
@@ -379,8 +379,10 @@ def convert_hist_gradient_boosting_tree(
     predictors = tree_model._predictors  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     tree_column = 0
     class_sign = 1.0
-    if tree_model.n_trees_per_iteration_ > 1:  # ty: ignore[unresolved-attribute]
+    n_trees_per_iteration = tree_model.n_trees_per_iteration_  # ty: ignore[unresolved-attribute]
+    if n_trees_per_iteration > 1:
         tree_column = 1 if class_label is None else class_label
+        check_class_label(tree_column, n_trees_per_iteration)
     elif isinstance(tree_model, HistGradientBoostingClassifier):
         class_sign = _binary_class_sign(class_label)
     baseline = tree_model._baseline_prediction  # noqa: SLF001  # ty: ignore[unresolved-attribute]

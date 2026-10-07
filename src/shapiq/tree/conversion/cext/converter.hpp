@@ -54,18 +54,25 @@ struct ParsedForest
 	bool negated_class_one = false;
 };
 
+// Throws unless 0 <= class_label < num_classes. The Python bindings raise
+// std::invalid_argument as ValueError; the message matches check_class_label in common.py.
+inline void check_class_label(int class_label, int64_t num_classes)
+{
+	if (class_label < 0 || class_label >= num_classes)
+		throw std::invalid_argument(
+			"class_label=" + std::to_string(class_label) + " is out of range for a model with " +
+			std::to_string(num_classes) + " classes; use 0 to " + std::to_string(num_classes - 1) + ".");
+}
+
 // Binary classifiers have a single raw output, the class-1 log-odds; the class-0 log-odds
 // are its negation. Returns the sign that selects class_label from that output: -1 for
-// class 0, +1 for class 1 or unspecified (-1). Any other label is invalid; the Python
-// bindings raise std::invalid_argument as ValueError.
+// class 0, +1 for class 1 or unspecified (-1). Any other label is invalid.
 inline double binary_class_sign(int class_label)
 {
-	if (class_label == 0)
-		return -1.0;
-	if (class_label == 1 || class_label == -1)
+	if (class_label == -1)
 		return 1.0;
-	throw std::invalid_argument(
-		"class_label=" + std::to_string(class_label) + " is invalid for a binary classifier; use 0 or 1.");
+	check_class_label(class_label, 2);
+	return class_label == 0 ? -1.0 : 1.0;
 }
 
 ParsedForest parse_xgboost_ubjson_to_forest(

@@ -3,7 +3,9 @@
 ## Development
 
 ### Bugfix
-- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. A `class_index` other than `0`, `1` or `None` now raises a `ValueError` for these models. `class_index=None` still explains class 1, and multiclass models are unchanged.
+- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
+- `TreeExplainer` now raises a `ValueError` for a `class_index` the model does not have, instead of explaining something else: multiclass XGBoost and LightGBM models silently converted to zero trees, scikit-learn models read negative indices as counting from the last class, and binary boosters ignored the index.
+- `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
 
 ## v1.7.0 (2026-08-27)
 

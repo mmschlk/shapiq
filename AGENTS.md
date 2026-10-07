@@ -43,8 +43,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
   `_binary_class_sign`) and flag the trees with `TreeModel.negated_class_one`. A model
   counts as binary if it has one output AND is a classifier: the serialized objective/loss
   says so, or Python passes `is_classifier` (custom objectives are not serialized as
-  binary). Woodelf ignores `class_index` for single-output models, so
-  `TreeExplainer._run_woodelf` negates its result when the trees carry that flag.
+  binary). Woodelf ignores `class_index` for single-output models (deliberately, to match
+  shap), so `TreeExplainer._run_woodelf` requests class 1 and negates the result when the
+  trees carry that flag.
+- `class_label` handling must agree across all converters AND Woodelf (which loads the
+  original model itself): `None` = class 1, out-of-range / negative = `ValueError`
+  (`check_class_label` in `conversion/common.py` and `cext/converter.hpp`). `-1` is the C
+  parsers' "unspecified" sentinel, so negative labels are rejected in `convert_tree_model`.
+  `test_woodelf_matches_shapiq_for_every_class_index` guards the agreement.
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical

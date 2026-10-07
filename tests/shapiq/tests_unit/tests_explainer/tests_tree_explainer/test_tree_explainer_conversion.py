@@ -605,7 +605,7 @@ def test_catboost_json_binary_loss_class_zero_negates_class_one():
     assert tree_model.predict_one(np.asarray([0.0])) == -102.0
     assert tree_model.predict_one(np.asarray([2.0])) == -104.0
 
-    with pytest.raises(ValueError, match="invalid for a binary classifier"):
+    with pytest.raises(ValueError, match="out of range for a model with 2 classes"):
         parse_catboost_json_model(model_json, class_label=2)
 
 

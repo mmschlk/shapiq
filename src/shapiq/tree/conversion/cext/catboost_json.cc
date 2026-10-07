@@ -528,8 +528,7 @@ ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_si
             effective_class_label = 0;
         else if (effective_class_label < 0)
             effective_class_label = 1;
-        if (effective_class_label < 0 || effective_class_label >= class_count)
-            throw std::runtime_error("CatBoost class_label is outside the available class range.");
+        check_class_label(effective_class_label, class_count);
         if (static_cast<size_t>(effective_class_label) >= model.bias_values.size())
             throw std::runtime_error("CatBoost scale_and_bias does not contain the selected class bias.");
         double bias_per_tree = model.bias_values[static_cast<size_t>(effective_class_label)] / static_cast<double>(tree_count == 0 ? 1 : tree_count);

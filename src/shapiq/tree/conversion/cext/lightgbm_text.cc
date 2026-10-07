@@ -171,7 +171,15 @@ public:
     ParsedForest extractTreeStructure(int class_label, bool is_classifier)
     {
         int num_class = readNumTreePerIteration();
-        bool filtering = (class_label >= 0) && (num_class > 1);
+        // keep only the trees of the requested class; class_label < 0 means "unspecified" and
+        // selects class 1, like the other parsers
+        bool filtering = num_class > 1;
+        if (filtering)
+        {
+            if (class_label < 0)
+                class_label = 1;
+            check_class_label(class_label, num_class);
+        }
         // a binary classifier has a single raw output, the class-1 log-odds
         bool binary_classifier = num_class == 1 && (is_classifier || readBinaryObjective());
         double class_sign = binary_classifier ? binary_class_sign(class_label) : 1.0;

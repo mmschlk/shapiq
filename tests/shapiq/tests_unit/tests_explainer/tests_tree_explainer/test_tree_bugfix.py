@@ -1002,7 +1002,7 @@ def test_binary_booster_invalid_class_index_raises(name):
 
     x, y = make_classification(n_samples=200, n_features=5, random_state=0)
     model, _ = _fit_binary_booster(name, x, y)
-    with pytest.raises(ValueError, match="invalid for a binary classifier"):
+    with pytest.raises(ValueError, match="out of range for a model with 2 classes"):
         TreeExplainer(model=model, index="SV", max_order=1, class_index=2)
 
 
@@ -1126,3 +1126,126 @@ def test_class_index_zero_does_not_negate_regressors_or_multiclass_models(name):
             np.array_equal(class_zero.values, -class_one.values)
             for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True)
         )
+
+
+_CLASSIFIERS = (
+    "sklearn_gb",
+    "sklearn_histgb",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "decision_tree",
+    "random_forest",
+    "extra_trees",
+)
+
+
+def _fit_classifier(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a small classifier of the given family (binary or multiclass, following ``y``)."""
+    from sklearn.ensemble import (
+        ExtraTreesClassifier,
+        GradientBoostingClassifier,
+        HistGradientBoostingClassifier,
+        RandomForestClassifier,
+    )
+    from sklearn.tree import DecisionTreeClassifier
+
+    if name == "sklearn_gb":
+        return GradientBoostingClassifier(n_estimators=3, max_depth=3, random_state=0).fit(x, y)
+    if name == "sklearn_histgb":
+        model = HistGradientBoostingClassifier(max_iter=3, max_depth=3, random_state=0)
+        return model.fit(x, y)
+    if name == "xgboost":
+        return pytest.importorskip("xgboost").XGBClassifier(n_estimators=3, max_depth=3).fit(x, y)
+    if name == "lightgbm":
+        lightgbm = pytest.importorskip("lightgbm")
+        return lightgbm.LGBMClassifier(n_estimators=3, max_depth=3, verbose=-1).fit(x, y)
+    if name == "catboost":
+        catboost = pytest.importorskip("catboost")
+        return catboost.CatBoostClassifier(iterations=3, depth=3, verbose=False).fit(x, y)
+    if name == "decision_tree":
+        return DecisionTreeClassifier(max_depth=3, random_state=0).fit(x, y)
+    if name == "random_forest":
+        model = RandomForestClassifier(n_estimators=3, max_depth=3, random_state=0)
+        return model.fit(x, y)
+    return ExtraTreesClassifier(n_estimators=3, max_depth=3, random_state=0).fit(x, y)
+
+
+@pytest.mark.parametrize("n_classes", [2, 3])
+@pytest.mark.parametrize("name", _CLASSIFIERS)
+def test_out_of_range_or_negative_class_index_raises(name, n_classes):
+    """Test that a class_index the model does not have raises instead of explaining another.
+
+    XGBoost and LightGBM silently converted to zero trees, scikit-learn read negative labels
+    as counting from the last class, and the parsers read -1 as "unspecified".
+    """
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=n_classes, random_state=0
+    )
+    model = _fit_classifier(name, x, y)
+    for class_index in (n_classes, n_classes + 2):
+        with pytest.raises(ValueError, match="out of range"):
+            TreeExplainer(model=model, index="SV", max_order=1, class_index=class_index)
+    with pytest.raises(ValueError, match="must be non-negative"):
+        TreeExplainer(model=model, index="SV", max_order=1, class_index=-1)
+
+
+def test_lightgbm_multiclass_default_class_index_is_class_one():
+    """Test that class_index=None explains class 1 of a multiclass LightGBM model.
+
+    The LightGBM parser kept the trees of all classes for an unspecified class, so the
+    explanation summed the raw margins of every class.
+    """
+    lightgbm = pytest.importorskip("lightgbm")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=3, random_state=0
+    )
+    model = lightgbm.LGBMClassifier(n_estimators=3, verbose=-1).fit(x, y)
+    explanation = TreeExplainer(model=model, index="SV", max_order=1).explain(x[0])
+    total = explanation.baseline_value + explanation.get_n_order_values(1).sum()
+    assert total == pytest.approx(model.predict(x[:1], raw_score=True)[0, 1], abs=1e-6)
+
+
+@pytest.mark.parametrize("n_classes", [2, 3])
+@pytest.mark.parametrize("name", [n for n in _CLASSIFIERS if n != "catboost"])
+def test_woodelf_matches_shapiq_for_every_class_index(name, n_classes):
+    """Test that the Woodelf backend explains the same class as the shapiq backend.
+
+    Woodelf selects the class while loading the original model, independently of the shapiq
+    converters (and ignores class_index for single-output boosters), so every valid
+    class_index, including the default None, must agree between both backends.
+    """
+    pytest.importorskip("woodelf")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=n_classes, random_state=0
+    )
+    model = _fit_classifier(name, x, y)
+    for class_index in (None, *range(n_classes)):
+        for mode in ("pathdependent", "interventional"):
+            reference = x[:50] if mode == "interventional" else None
+            values = {
+                backend: TreeExplainer(
+                    model=model,
+                    index="SV",
+                    max_order=1,
+                    class_index=class_index,
+                    mode=mode,
+                    reference_dataset=reference,
+                    backend=backend,
+                )
+                .explain(x[0])
+                .get_n_order_values(1)
+                for backend in ("shapiq", "woodelf")
+            }
+            np.testing.assert_allclose(
+                values["woodelf"],
+                values["shapiq"],
+                atol=1e-6,
+                err_msg=f"class_index={class_index}, mode={mode}",
+            )

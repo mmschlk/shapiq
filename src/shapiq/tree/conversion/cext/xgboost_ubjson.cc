@@ -1011,8 +1011,12 @@ public:
         // in _xgboost_margin_base_score (xgboost.py) for the base score.
         if (!filtering)
             class_label = 0;
-        else if (class_label < 0)
-            class_label = 1;
+        else
+        {
+            if (class_label < 0)
+                class_label = 1;
+            check_class_label(class_label, num_class);
+        }
 
         // Each included tree carries base_score / num_rounds so that the sum
         // across all rounds equals base_score for the selected class.
