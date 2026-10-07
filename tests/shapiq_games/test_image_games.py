@@ -144,3 +144,31 @@ def test_resnet_players_live_on_the_crop_the_model_sees(monkeypatch: pytest.Monk
     values = game(np.eye(4, dtype=bool))
     assert values.shape == (4,)
     assert np.all(np.isfinite(values))
+
+
+@pytest.mark.skipif(not is_installed("torch"), reason="torch is not installed")
+def test_vision_transformer_accepts_any_coalition_layout() -> None:
+    """The ViT batches coalitions into torch; reversed (negative-stride) views must work too."""
+    import torch
+
+    from shapiq_games.vision._vit import ViTPatchModel, _player_masks
+
+    class TinyViT(torch.nn.Module):
+        """Returns, as the class-0 logit, the share of unmasked patches."""
+
+        def vit(self, pixels: torch.Tensor, bool_masked_pos: torch.Tensor) -> object:
+            visible = (~bool_masked_pos).float().mean(dim=1, keepdim=True)
+            hidden = visible.repeat(1, 145).unsqueeze(-1).repeat(1, 1, 2)
+            return type("Output", (), {"last_hidden_state": hidden})
+
+        def classifier(self, cls_token: torch.Tensor) -> torch.Tensor:
+            return torch.cat([cls_token[:, :1], torch.zeros_like(cls_token[:, :1])], dim=1)
+
+    vit = object.__new__(ViTPatchModel)
+    vit._torch, vit._device, vit.batch_size, vit.class_index = torch, torch.device("cpu"), 3, 0
+    vit._model, vit._pixels = TinyViT(), torch.zeros(1, 3, 8, 8)
+    vit._player_masks = torch.as_tensor(_player_masks(9))
+    coalitions = np.random.default_rng(0).random((7, 9)) < 0.5
+    forward = vit(coalitions)
+    np.testing.assert_allclose(vit(coalitions[::-1])[::-1], forward)
+    assert forward.shape == (7,)

@@ -45,14 +45,13 @@ class RemoteFile:
     Attributes:
         url: The download URL.
         filename: The file name in the cache directory.
-        sha256: The expected SHA-256 hex digest. ``None`` means the file could not be pinned yet
-            and is cached without verification.
+        sha256: The expected SHA-256 hex digest; a download that does not match is rejected.
         subdir: The sub-directory of the cache directory the file is stored in.
     """
 
     url: str
     filename: str
-    sha256: str | None
+    sha256: str
     subdir: str = "datasets"
 
 
@@ -99,7 +98,7 @@ def fetch(remote: RemoteFile) -> Path:
     """
     path = get_data_dir() / remote.subdir / remote.filename
     if path.exists():
-        if remote.sha256 is None or _sha256_file(path) == remote.sha256:
+        if _sha256_file(path) == remote.sha256:
             return path
         path.unlink()  # corrupted or outdated cache entry, download again
 
@@ -124,7 +123,7 @@ def fetch(remote: RemoteFile) -> Path:
         tmp_path.unlink(missing_ok=True)
         raise
 
-    if remote.sha256 is not None and (actual := digest.hexdigest()) != remote.sha256:
+    if (actual := digest.hexdigest()) != remote.sha256:
         tmp_path.unlink(missing_ok=True)
         msg = (
             f"Checksum mismatch for {remote.url}: expected {remote.sha256}, got {actual}. "

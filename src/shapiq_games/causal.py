@@ -34,7 +34,6 @@ def tabpfn_regressor(device: str = "cpu", n_estimators: int = 1, random_state: i
     return tabpfn.TabPFNRegressor(
         device=device,
         n_estimators=n_estimators,
-        n_jobs=1,
         random_state=random_state,
         inference_config={"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)},
     )

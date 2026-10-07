@@ -96,8 +96,11 @@ class ViTPatchModel:
         torch = self._torch
         outputs = []
         for start in range(0, coalitions.shape[0], self.batch_size):
+            # a copy: torch rejects negative strides (a reversed view of the coalitions), and
+            # np.ascontiguousarray keeps them for a single row, which NumPy deems contiguous
             batch = torch.as_tensor(
-                coalitions[start : start + self.batch_size], device=self._device
+                np.array(coalitions[start : start + self.batch_size], dtype=bool),
+                device=self._device,
             )
             # a model patch is masked unless a present player covers it
             covered = (batch.float() @ self._player_masks.float()) > 0

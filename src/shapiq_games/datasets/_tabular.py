@@ -3,16 +3,20 @@
 Every dataset comes from its original source, and the preprocessing is unchanged from the
 loaders that used to ship with the data:
 
-- OpenML (``openml``): adult, amazon, bike sharing, bioresponse, leukemia, micro-mass;
-- the UCI repository (``ucimlrepo``): annealing, arrhythmia, hepatitis, ionosphere, mushroom,
-  nursery, soybean, thyroid, zoo;
+- OpenML (``openml``): adult, amazon, arrhythmia, bike sharing, bioresponse, leukemia,
+  micro-mass;
+- the UCI repository through ``ucimlrepo``: annealing, hepatitis, ionosphere, mushroom, nursery,
+  zoo;
+- raw files of the UCI repository (checksum-pinned): soybean, thyroid, wine quality, real estate,
+  forest fires;
 - scikit-learn's ``fetch_california_housing``;
-- the data folder of shap (checksum-pinned): NHANES I, communities and crime;
-- UCI files read directly (not yet pinned by checksum): wine quality, real estate, forest fires.
+- the data folder of shap (checksum-pinned): NHANES I, communities and crime.
 
-The raw table of an upstream dataset is downloaded once and cached as a CSV in
+The raw table of an upstream dataset is downloaded once and cached as a lossless CSV in
 ``<data dir>/tabular/``. A table whose shape differs from the one the loaders were written for
-is rejected, so a changed upstream fails loudly instead of silently changing a benchmark.
+is rejected, so a changed upstream fails loudly instead of silently changing a benchmark, and
+tables without a header (or with upstream names that changed) get fixed column names. The
+tables reproduce the files that used to ship with the package exactly.
 """
 
 from __future__ import annotations
@@ -38,32 +42,89 @@ if TYPE_CHECKING:
     from ._registry import Task
 
 
+def _generic_columns(n_features: int) -> tuple[str, ...]:
+    """The names of a raw table without a header: ``f1, ..., fn`` and ``target``."""
+    return (*(f"f{i}" for i in range(1, n_features + 1)), "target")
+
+
 @dataclass(frozen=True)
 class _Upstream:
-    """The original source of a raw table and the shape (rows, columns with target) it has."""
+    """The original source of a raw table, its shape, and the column names the loaders use.
 
-    source: Literal["openml", "uci", "sklearn"]
-    dataset_id: int | None
+    Attributes:
+        source: ``"openml"`` (by dataset id), ``"uci"`` (``ucimlrepo``, by dataset id),
+            ``"uci_files"`` (raw files of the UCI repository, concatenated), or ``"sklearn"``.
+        shape: The shape of the table, target column included.
+        dataset_id: The OpenML or UCI dataset id.
+        files: The raw UCI files (keys of ``_UCI_FILES``).
+        target_first: Whether the raw files store the target in the first column.
+        separator: The column separator of the raw files.
+        columns: The column names, set by position. They fix the schema of a table whose
+            upstream has no header or names its columns differently from the loaders.
+    """
+
+    source: Literal["openml", "uci", "uci_files", "sklearn"]
     shape: tuple[int, int]
+    dataset_id: int | None = None
+    files: tuple[str, ...] = ()
+    target_first: bool = False
+    separator: str = ","
+    columns: tuple[str, ...] | None = None
 
+
+_ANNEALING_COLUMNS = (
+    "family", "product-type", "steel", "carbon", "hardness", "temper_rolling", "condition",
+    "formability", "strength", "non-ageing", "surface-finish", "surface-quality", "enamelability",
+    "bc", "bf", "bt", "bw-me", "bl", "m", "chrom", "phos", "cbond", "marvi", "exptl", "ferro",
+    "corr", "blue-bright-varn-clean", "lustre", "jurofm", "s", "p", "shape", "thick", "width",
+    "len", "oil", "bore", "packing", "target",
+)  # fmt: skip
+_HEPATITIS_COLUMNS = (
+    "age", "sex", "steroid", "antivirals", "fatigue", "malaise", "anorexia", "liver-big",
+    "liver-firm", "spleen-palpable", "spiders", "ascites", "varices", "bilirubin",
+    "alk-phosphate", "sgot", "albumin", "protime", "histology", "target",
+)  # fmt: skip
+_SOYBEAN_COLUMNS = (
+    "date", "plant-stand", "precip", "temp", "hail", "crop-hist", "area-damaged", "severity",
+    "seed-tmt", "germination", "plant-growth", "leaves", "leafspots-halo", "leafspots-marg",
+    "leafspot-size", "leaf-shread", "leaf-malf", "leaf-mild", "stem", "lodging", "stem-cankers",
+    "canker-lesion", "fruiting-bodies", "external-decay", "mycelium", "int-discolor", "sclerotia",
+    "fruit-pods", "fruit-spots", "seed", "mold-growth", "seed-discolor", "seed-size", "shriveling",
+    "roots", "target",
+)  # fmt: skip
 
 _UPSTREAM: dict[str, _Upstream] = {
-    "adult_census": _Upstream("openml", 1590, (48842, 15)),
-    "amazon": _Upstream("openml", 1457, (1500, 10001)),
-    "bike_sharing": _Upstream("openml", 42713, (17379, 13)),
-    "bioresponse": _Upstream("openml", 4134, (3751, 1777)),
-    "leukemia": _Upstream("openml", 45090, (72, 7130)),
-    "microresponse": _Upstream("openml", 1515, (571, 1301)),
-    "annealing": _Upstream("uci", 3, (898, 39)),
-    "arrhythmia": _Upstream("uci", 5, (452, 280)),
-    "hepatitis": _Upstream("uci", 46, (155, 20)),
-    "ionosphere": _Upstream("uci", 52, (351, 35)),
-    "mushroom": _Upstream("uci", 73, (8124, 23)),
-    "nursery": _Upstream("uci", 76, (12960, 9)),
-    "soybean": _Upstream("uci", 90, (683, 36)),
-    "thyroid": _Upstream("uci", 102, (7200, 22)),
-    "zoo": _Upstream("uci", 111, (101, 17)),
-    "california_housing": _Upstream("sklearn", None, (20640, 9)),
+    "adult_census": _Upstream("openml", (48842, 15), dataset_id=1590),
+    "amazon": _Upstream("openml", (1500, 10001), dataset_id=1457),
+    "bike_sharing": _Upstream("openml", (17379, 13), dataset_id=42713),
+    "bioresponse": _Upstream("openml", (3751, 1777), dataset_id=4134),
+    "leukemia": _Upstream("openml", (72, 7130), dataset_id=45090),
+    "microresponse": _Upstream("openml", (571, 1301), dataset_id=1515),
+    # ucimlrepo cannot export arrhythmia; OpenML 5 holds the same table
+    "arrhythmia": _Upstream("openml", (452, 280), dataset_id=5, columns=_generic_columns(279)),
+    "annealing": _Upstream("uci", (898, 39), dataset_id=3, columns=_ANNEALING_COLUMNS),
+    "hepatitis": _Upstream("uci", (155, 20), dataset_id=46, columns=_HEPATITIS_COLUMNS),
+    "ionosphere": _Upstream("uci", (351, 35), dataset_id=52, columns=_generic_columns(34)),
+    "mushroom": _Upstream("uci", (8124, 23), dataset_id=73),
+    "nursery": _Upstream("uci", (12960, 9), dataset_id=76),
+    "zoo": _Upstream("uci", (101, 17), dataset_id=111),
+    # the full soybean (large) data is its training and test file; ucimlrepo has only the first
+    "soybean": _Upstream(
+        "uci_files",
+        (683, 36),
+        files=("soybean-large.data", "soybean-large.test"),
+        target_first=True,
+        columns=_SOYBEAN_COLUMNS,
+    ),
+    # thyroid is the ANN thyroid data (UCI 102), which ucimlrepo cannot export
+    "thyroid": _Upstream(
+        "uci_files",
+        (7200, 22),
+        files=("ann-train.data", "ann-test.data"),
+        separator=r"\s+",
+        columns=_generic_columns(21),
+    ),
+    "california_housing": _Upstream("sklearn", (20640, 9)),
 }
 
 _SHAP_DATA_URL = "https://raw.githubusercontent.com/shap/shap/master/data/"
@@ -80,18 +141,41 @@ _SHAP_FILES: dict[str, RemoteFile] = {
 
 _UCI_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/"
 _UCI_FILES: dict[str, RemoteFile] = {
-    "winequality-red.csv": RemoteFile(
-        _UCI_URL + "wine-quality/winequality-red.csv", "winequality-red.csv", None
-    ),
-    "winequality-white.csv": RemoteFile(
-        _UCI_URL + "wine-quality/winequality-white.csv", "winequality-white.csv", None
-    ),
-    "real_estate.xlsx": RemoteFile(
-        _UCI_URL + "00477/Real%20estate%20valuation%20data%20set.xlsx", "real_estate.xlsx", None
-    ),
-    "forestfires.csv": RemoteFile(
-        _UCI_URL + "forest-fires/forestfires.csv", "forestfires.csv", None
-    ),
+    filename: RemoteFile(_UCI_URL + path, filename, sha256, subdir="uci")
+    for filename, (path, sha256) in {
+        "winequality-red.csv": (
+            "wine-quality/winequality-red.csv",
+            "4a402cf041b025d4566d954c3b9ba8635a3a8a01e039005d97d6a710278cf05e",
+        ),
+        "winequality-white.csv": (
+            "wine-quality/winequality-white.csv",
+            "76c3f809815c17c07212622f776311faeb31e87610d52c26d87d6e361b169836",
+        ),
+        "real_estate.xlsx": (
+            "00477/Real%20estate%20valuation%20data%20set.xlsx",
+            "597d72fcc6c0539e6035a033ddb387db48fff3fb1f3c98fee31fe081c64a9059",
+        ),
+        "forestfires.csv": (
+            "forest-fires/forestfires.csv",
+            "0d6586a1fa52f55bef48578aef14eb97273f1e9330e1a53423df497a77065253",
+        ),
+        "soybean-large.data": (
+            "soybean/soybean-large.data",
+            "04b99f2728ded9f544022d2b4f6cce0ebe11ef5c9d44f10e21acd7093876507e",
+        ),
+        "soybean-large.test": (
+            "soybean/soybean-large.test",
+            "ff1c5f5c41ddc9a8e3746648a2fe5cafb6b0eef86bd49575decbb665e1b6a104",
+        ),
+        "ann-train.data": (
+            "thyroid-disease/ann-train.data",
+            "3da53a156bda36cb0c97e9f4b6b111c9226c54c4aa00230de5604b787c47e3a6",
+        ),
+        "ann-test.data": (
+            "thyroid-disease/ann-test.data",
+            "c649ea19416e78c7996cfaaa2a9e281cb597d4b075aaa68c494fc3e4ee3aa30b",
+        ),
+    }.items()
 }
 
 
@@ -107,6 +191,14 @@ def _download_table(name: str) -> pd.DataFrame:
         data = ucimlrepo.fetch_ucirepo(id=upstream.dataset_id).data
         table = data.features.copy()
         table["target"] = data.targets.squeeze()
+    elif upstream.source == "uci_files":
+        parts = [
+            pd.read_csv(fetch(_UCI_FILES[file]), header=None, sep=upstream.separator, na_values="?")
+            for file in upstream.files
+        ]
+        table = pd.concat(parts, ignore_index=True)
+        if upstream.target_first:
+            table = pd.concat([table.iloc[:, 1:], table.iloc[:, 0]], axis=1)
     else:
         from sklearn.datasets import fetch_california_housing
 
@@ -118,6 +210,8 @@ def _download_table(name: str) -> pd.DataFrame:
             f"{table.shape}, but the loader expects {upstream.shape}. The upstream data changed."
         )
         raise ValueError(msg)
+    if upstream.columns is not None:
+        table.columns = list(upstream.columns)
     return table
 
 
@@ -405,7 +499,7 @@ _TABULAR: list[tuple[str, Task, object, str]] = [
     ("adult_census", "classification", load_adult_census, "OpenML 1590"),
     ("amazon", "classification", load_amazon, "OpenML 1457"),
     ("annealing", "classification", load_annealing, "UCI 3 (ucimlrepo)"),
-    ("arrhythmia", "classification", load_arrhythmia, "UCI 5 (ucimlrepo)"),
+    ("arrhythmia", "classification", load_arrhythmia, "OpenML 5"),
     ("bike_sharing", "regression", load_bike_sharing, "OpenML 42713"),
     ("bioresponse", "classification", load_bioresponse, "OpenML 4134"),
     ("breast_cancer", "classification", load_breast_cancer, "scikit-learn (bundled)"),
@@ -416,7 +510,7 @@ _TABULAR: list[tuple[str, Task, object, str]] = [
         load_communities_and_crime,
         "UCI 211 via shap's data (checksum-pinned)",
     ),
-    ("forest_fires", "regression", load_forest_fires, "UCI 162 (direct, not yet pinned)"),
+    ("forest_fires", "regression", load_forest_fires, "UCI 162 (raw file)"),
     ("hepatitis", "classification", load_hepatitis, "UCI 46 (ucimlrepo)"),
     ("ionosphere", "classification", load_ionosphere, "UCI 52 (ucimlrepo)"),
     ("leukemia", "classification", load_leukemia, "OpenML 45090"),
@@ -424,10 +518,10 @@ _TABULAR: list[tuple[str, Task, object, str]] = [
     ("mushroom", "classification", load_mushroom, "UCI 73 (ucimlrepo)"),
     ("nhanesi", "regression", load_nhanesi, "NHANES I via shap's data (checksum-pinned)"),
     ("nursery", "classification", load_nursery, "UCI 76 (ucimlrepo)"),
-    ("real_estate", "regression", load_real_estate, "UCI 477 (direct, not yet pinned)"),
-    ("soybean", "classification", load_soybean, "UCI 90 (ucimlrepo)"),
-    ("thyroid", "classification", load_thyroid, "UCI 102 (ucimlrepo)"),
-    ("wine_quality", "regression", load_wine_quality, "UCI 186 (direct, not yet pinned)"),
+    ("real_estate", "regression", load_real_estate, "UCI 477 (raw file)"),
+    ("soybean", "classification", load_soybean, "UCI 90 (raw files)"),
+    ("thyroid", "classification", load_thyroid, "UCI 102 (raw files)"),
+    ("wine_quality", "regression", load_wine_quality, "UCI 186 (raw files)"),
     ("zoo", "classification", load_zoo, "UCI 111 (ucimlrepo)"),
 ]
 

@@ -236,7 +236,7 @@ def test_tabular_data_comes_from_original_sources() -> None:
     remotes = [*_tabular._SHAP_FILES.values(), *_tabular._UCI_FILES.values()]
     assert all("mmschlk/shapiq" not in remote.url for remote in remotes)
     for name, upstream in _tabular._UPSTREAM.items():
-        assert upstream.source in ("openml", "uci", "sklearn"), name
+        assert upstream.source in ("openml", "uci", "uci_files", "sklearn"), name
         assert get_dataset_spec(name).source.split()[0] in ("OpenML", "UCI", "scikit-learn")
 
 
