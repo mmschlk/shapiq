@@ -4,7 +4,17 @@
 
 ### Bugfix
 
-- fixes `MarginalImputer` violating the null-player axiom: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates and features the model never uses received nonzero attributions. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples. This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `MarginalImputer` mixing two estimators: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates. Features the model never uses received nonzero attributions (null-player axiom), and interaction indices such as Moebius, STII, or k-SII contained spurious interactions of all orders, even for additive models. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `MarginalImputer.init_background` keeping the row limit of an earlier, smaller background data set, which silently used fewer rows of a larger new background than `sample_size` allows. [#615](https://github.com/mmschlk/shapiq/pull/615)
+
+### Improved API Behavior
+
+- `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
+
+### Maintenance
+
+- vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). On California Housing random forests with a budget of 256 coalitions this is about 4-9x faster, and about 70x faster with `verbose=True`, where coalitions are evaluated one at a time; using all 20,640 rows of the dataset (`sample_size=None`) drops from about 5 minutes to 46 seconds per explanation. Values are averaged per coalition, so evaluating a coalition alone or in a batch gives bit-identical results. [#615](https://github.com/mmschlk/shapiq/pull/615)
 
 ## v1.7.0 (2026-08-27)
 
