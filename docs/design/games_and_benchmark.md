@@ -16,7 +16,7 @@ rewrite) computes the right numbers.
 |---|----------|
 | 1 | Both packages stay where they are and keep shipping inside the `shapiq` distribution (code only). |
 | 2 | Every game family is kept, including the model-specific ones (trees, KNN, product kernel, …). |
-| 3 | All datasets stay usable (31 classic + 51 TabArena). |
+| 3 | All datasets stay usable (32 classic, of which 10 synthetic, + 51 TabArena = 83). |
 | 4 | No hosting and no website: everything runs and caches locally, rudimentary on purpose. |
 | 5 | No data files ship in any wheel: no CSVs, images, weights or precomputed game values. This includes the three CSVs in core `shapiq/datasets/data`. |
 | 6 | Breaking changes in both packages are fine. PR #602 (Teal) integrates on top of this afterwards. |
@@ -87,9 +87,9 @@ concerns. They live in the setups of `shapiq_benchmark` (below), not in the game
 
 1. Subclasses `shapiq.Game` and implements `value_function`.
 2. **Deterministic.** v(S) is a pure function of the constructor arguments, including `random_state` (the name core shapiq uses). It must not depend on call order, batch composition, repetition or process. Randomness is drawn once at construction from `np.random.default_rng(random_state)`. No global or stateful RNG is used during evaluation (the conditional imputer of core, which has one, is reseeded before every evaluation).
-3. **Explicit explained point.** Local games take `x` as an index into the explanation data or as an array. The default is index `0`, never a random point. One name, `x`, everywhere (today it is `x`, `x_explain`, `target_instance`, `explain_point` and `x_explain_path`).
+3. **Explicit explained point.** Local games take `x` as an index into the explanation data or as an array. The default is index `0`, never a random point. One name, `x`, everywhere (today it is `x`, `x_explain`, `target_instance`, `explain_point` and `x_explain_path`). The exception is the causal games, which follow the causal-inference convention: `x` is the covariate matrix and the explained unit is `unit`. The image setup picks its image by `index` in the dataset.
 4. **Explicit class.** Classification games resolve `class_index` at construction and store it as an int. Following the shapiq explainers, `None` means class `1` (previously class 1, class 0 or argmax depending on the game). Image games default to the class predicted on the image.
-5. **Meaningful empty coalition.** v(∅) comes from the game's semantics, for example a model with no features predicting the training mean or majority class. It is never a hard-coded 0, so `normalize=True` always does what it says.
+5. **Meaningful empty coalition.** v(∅) comes from the game's semantics, for example a model with no features predicting the training mean or majority class, and is computed through the value function, so a normalized game is exactly 0 on ∅. Where nothing has a natural score (a model trained on no data, an empty ensemble, no features to cluster), the game takes an explicit `empty_value` (default 0): the valuation, ensemble selection and cluster games. `normalize=True` then centers by that value.
 6. **Declared output space.** Each game documents what its values are (probability, margin or log-odds, loss, score) and in which direction a higher value is better.
 7. **Typed public attributes** that a computer needs, for example:
    - tree games: `model`, `x`, `class_index`
@@ -102,10 +102,11 @@ concerns. They live in the setups of `shapiq_benchmark` (below), not in the game
 
 Each family gets contract tests on small in-memory objects (no downloads, no setups):
 - the same coalition repeated gives the same value
-- a permuted batch gives a permuted output
+- a permuted batch and one-by-one evaluation give the same values (on fresh instances, so a game's cache cannot hide a difference)
 - two instances with the same arguments are equal
-- `n_players` and the normalization are right
-- axioms where they hold (efficiency of the computed values; null and dummy players for games that have them)
+- integer and boolean coalitions give the same values
+- centered games are 0 on ∅
+- a feature the model ignores is a null player (Shapley value 0) for the interventional value functions (marginal and baseline imputation, global explanation, both tree games); observational ones (the conditional imputer) need not satisfy it
 
 ### Games moving out of core
 
@@ -151,8 +152,13 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   `random_state`, `test_size` and `dataset_params`; `ModelSetup` adds `model`, `preset` and
   `model_params`; the image, text and causal setups have their own fields.
 - **Typed.** Fields have defaults and `Literal` choices, and a setup is validated when it is
-  created: its fields must be JSON-serializable, and cross-field rules (`imputer="tabpfn"`
-  needs `model="tabpfn"`) raise immediately.
+  created: field types and `Literal` choices, dataset and model names, tuned presets, the task
+  of the dataset (the nearest-neighbor and uncertainty setups need classification), and
+  cross-field rules (`imputer="tabpfn"` needs `model="tabpfn"`) raise immediately.
+- **Frozen JSON form.** The fields are stored as they read back from JSON: read-only dicts
+  with string keys, tuples for lists, and ints in float fields as floats. A setup thus cannot
+  change under its cache key, is hashable, and `setup_from_dict(setup.to_dict()) == setup`.
+  A subclass needs a registered name of its own; otherwise it would share its parent's cache.
 - **Key.** `setup.key` hashes the setup's name, its `version` and its fields (SHA-256), stable
   across processes and machines. Runtime fields (device, batch size) are excluded. A setup bumps
   `version` when `build()` changes the game it builds for the same fields. Package and model
@@ -187,13 +193,14 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   loaders then give bit-identical datasets for 16 of the 18 bundled tables; bike sharing and
   California housing differ by at most 5e-15 (relative), because the old CSVs had dropped the
   last digit of some floats and the new values are the exact upstream ones.
-- **Local cache.** Files go to `$SHAPIQ_DATA_DIR`, defaulting to `$XDG_CACHE_HOME/shapiq` (or `~/.cache/shapiq`), and are written atomically (temp file + rename) so parallel test workers are safe. Nothing is ever written into the installed package.
+- **Local cache.** Files go to `$SHAPIQ_DATA_DIR`, defaulting to `$XDG_CACHE_HOME/shapiq` (or `~/.cache/shapiq`), and are written atomically (temp file + rename) so parallel test workers are safe. A complete extraction or a verified file is never deleted while another process may read it, a cached table of the wrong shape is downloaded again, and the TabArena cache name changes with the OpenML id, the target and the preprocessing version. Nothing is ever written into the installed package.
+- **Clean features.** `load_dataset` returns features without missing values, so every registry model can be fitted: empty columns are dropped, a missing category is a category of its own, and the remaining gaps (NHANES I) get the column median. Like the TabArena imputation, this uses all rows before the split. Labels are encoded in their natural order, and `class_names` holds the original labels.
 - **Deterministic splits.** Seeded train/test splits, stratified for classification.
 - **Data removed from the tree** (the files remain in git history, but no loader reads them from there):
   - `shapiq_games/datasets/data` (81 MB)
   - `shapiq/datasets/data` (8.5 MB)
   - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
-- **Core loaders stay unchanged.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing, so deleting the CSVs needs no core code change. The repo-root `data/` folder therefore stays; it is not part of any wheel. The fetch-and-cache helper lives in `shapiq_benchmark` only.
+- **Core loaders keep their source.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing. Without the bundled CSVs that fallback always runs, so it now caches the downloaded file verbatim in `~/.cache/shapiq/core_datasets` (or `$SHAPIQ_DATA_DIR`) with an atomic write, instead of in the installed package. The repo-root `data/` folder stays; it is not part of any wheel.
 - **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
 - **Declared dependencies.** `openml`, `ucimlrepo` and `openpyxl` are part of the `benchmark` extra; before, they were not declared at all.
 
@@ -206,10 +213,16 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
 ### Computers
 
 ```python
-class Computer(Protocol):
-    game: Game
+class Computer(ABC):
+    name: ClassVar[str]                      # part of the cache file names
+    game: Game                               # bound at construction
+    @classmethod
+    def supports_game(cls, game) -> bool: ...
+    @classmethod
+    def supported_indices(cls) -> tuple[str, ...]: ...   # read from core's declarations
     def supports(self, index: str, order: int) -> bool: ...
     def exact_values(self, index: str, order: int) -> InteractionValues: ...
+    def _compute(self, index: str, order: int) -> InteractionValues: ...   # the core call
 ```
 
 - **Location.** Computers live here as thin adapters around core algorithms. They never re-implement the algorithms, and each one binds to the game types it understands.
@@ -234,6 +247,9 @@ class Computer(Protocol):
 
 `default_computer(game)` picks from a small registry: the structured computer for the game's
 type if there is one, otherwise `BruteForceComputer` (and raises an error above the player cap).
+A `Benchmark` with a defaulted computer falls back to brute force (within the player cap) for
+an index or order its computer does not support; `benchmark.computer_for(index, order)` names
+the one used. An explicitly passed computer never falls back.
 
 ### Benchmark
 
@@ -245,7 +261,7 @@ gt = benchmark.exact_values(index="k-SII", order=2)   # cached under the setup's
 results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[0, 1])
 ```
 
-- `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
+- `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently. Approximators that estimate the top order only (SHAP-IQ and SVARM-IQ for FSII and FBII) are scored on that order, marked in the `scored_orders` column, and get no faithfulness.
 - Exact values of `Benchmark.from_setup` are cached under `$SHAPIQ_DATA_DIR/ground_truth/<setup name>/<setup key>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, next to a `setup.json` that records what the key stands for. `Benchmark(game)` is not cached. The cache does not track package or model versions: the setup identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute.
 - `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. Building games from names lives in the setups.
 
@@ -265,7 +281,8 @@ a uniform shift or rescaling must behave as documented.
 
 - **Errors:** MSE, MAE, SSE and SAE over all interactions of order 1..k. The order-0 entry is excluded explicitly.
 - **Ranking:** Kendall τ and Spearman ρ are computed on the values themselves. Today Kendall τ correlates `argsort` positions: a true τ of 0.97 scores 0.55.
-- **Top-k:** Precision@k uses top-k by |ground truth|. Today `KendallTau@k` uses the k *smallest* values, and `Spearman@k` ignores k.
+- **Top-k:** Precision@k uses top-k by |ground truth|, counting every value tied with the k-th largest. Today `KendallTau@k` uses the k *smallest* values, and `Spearman@k` ignores k.
+- **Ties:** values within 1e-6 × max |ground truth| rank as equal, so float noise among the many zeros of a sparse game does not decide a ranking.
 - **Faithfulness:** R² of the reconstructed game on seeded coalition samples, for every index rather than FBII only.
 
 ## Core changes
@@ -274,7 +291,8 @@ Core stays as it is except for exactly these changes:
 
 | Change | Kind | PR |
 |--------|------|----|
-| Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | project PR |
+| Delete the three CSVs in `shapiq/datasets/data` | files (the existing GitHub fallback takes over) | project PR |
+| Cache that fallback's downloads in the user's cache, not the installed package | bug fix (one function) | project PR |
 | Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | project PR |
 | Fix `MarginalImputer`'s null-player violation | bug fix | merged (#615) |
 | Cast integer 0/1 coalitions to bool in `Game` | bug fix | merged (#614) |
@@ -338,8 +356,8 @@ strides); `tests/shapiq_games/test_image_games.py` now covers it without downloa
 
 ## Core issues found while building (fixed separately)
 
-The chain-of-trust tests surfaced two core bugs. Both are left to separate core PRs; core is
-unchanged here.
+The chain-of-trust tests and the self-review surfaced these core bugs. Each is left to a
+separate core PR; the games guard against them in the meantime.
 
 - **`class_index=0` on binary gradient boosting classifiers** (fixed on main, #618).
   `TreeExplainer` (path-dependent and interventional) explained the positive-class margin
@@ -354,3 +372,8 @@ unchanged here.
   outside the training data). When a feature is absent below that node, its mass is lost, so
   a tree with a constant output gets nonzero Shapley values. In the reproducing CatBoost model,
   `PathDependentTreeComputer` differs from brute force on `PathDependentTreeGame` by 6.5e-4.
+- **Gaussian processes with `normalize_y=True`.** The product-kernel conversion
+  (`convert_gp_reg`) ignores the target scaling (`_y_train_mean`, `_y_train_std`), so
+  `ProductKernelExplainer` explains a rescaled model: for a test GP the grand coalition is 0.141
+  where `predict` gives 8.990. `ProductKernelGame` rejects such models until this is fixed. An
+  RBF kernel with one length scale per feature also fails, with a numpy broadcasting error.

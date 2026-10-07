@@ -216,6 +216,11 @@ def game_pair(request: pytest.FixtureRequest) -> tuple[str, Game, Game, bool]:
     return request.param, factory(), factory(), centered
 
 
+def _fresh(name: str) -> Game:
+    """A new instance: values a game caches (e.g. the confounding games) cannot hide a change."""
+    return GAMES[name][0]()
+
+
 def test_values_are_finite_and_shaped(game_pair: tuple[str, Game, Game, bool]) -> None:
     _, game, _, _ = game_pair
     coalitions = _coalitions(game.n_players)
@@ -231,11 +236,12 @@ def test_repeated_evaluation_is_identical(game_pair: tuple[str, Game, Game, bool
 
 
 def test_batch_composition_does_not_matter(game_pair: tuple[str, Game, Game, bool]) -> None:
-    _, game, _, _ = game_pair
+    name, game, _, _ = game_pair
     coalitions = _coalitions(game.n_players)
     batched = game(coalitions)
-    reversed_batch = game(coalitions[::-1])[::-1]
-    one_by_one = np.array([game(coalition.reshape(1, -1))[0] for coalition in coalitions])
+    reversed_batch = _fresh(name)(coalitions[::-1])[::-1]
+    single = _fresh(name)
+    one_by_one = np.array([single(coalition.reshape(1, -1))[0] for coalition in coalitions])
     np.testing.assert_allclose(batched, reversed_batch, rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(batched, one_by_one, rtol=1e-12, atol=1e-12)
 
@@ -249,9 +255,9 @@ def test_same_arguments_give_same_game(game_pair: tuple[str, Game, Game, bool]) 
 def test_integer_coalitions_equal_boolean_coalitions(
     game_pair: tuple[str, Game, Game, bool],
 ) -> None:
-    _, game, _, _ = game_pair
+    name, game, _, _ = game_pair
     coalitions = _coalitions(game.n_players)
-    np.testing.assert_allclose(game(coalitions), game(coalitions.astype(int)))
+    np.testing.assert_allclose(game(coalitions), _fresh(name)(coalitions.astype(int)))
 
 
 def test_centered_games_vanish_on_the_empty_coalition(
@@ -261,3 +267,38 @@ def test_centered_games_vanish_on_the_empty_coalition(
     if not centered:
         pytest.skip("this game is not centered")
     assert game(game.empty_coalition)[0] == pytest.approx(0.0, abs=1e-12)
+
+
+def _ignores_feature_3(x: np.ndarray) -> np.ndarray:
+    return x[:, 0] + 2 * x[:, 1] * x[:, 2]
+
+
+def _tree_without_feature_3() -> DecisionTreeRegressor:
+    """A tree that cannot split on feature 3: it is constant in the training data."""
+    x = _X_TRAIN.copy()
+    x[:, 3] = 0.0
+    return DecisionTreeRegressor(max_depth=4, random_state=0).fit(x, _ignores_feature_3(x))
+
+
+# games of a model that ignores feature 3, whose exact Shapley value must therefore be zero (not
+# the conditional imputer: conditioning on an ignored feature changes the sampled background, so
+# observational values need not vanish)
+NULL_PLAYER_GAMES: dict[str, Callable[[], Game]] = {
+    "local_xai_marginal": lambda: sg.LocalExplanation(_ignores_feature_3, _X_TRAIN, x=_X_TEST[0]),
+    "local_xai_baseline": lambda: sg.LocalExplanation(
+        _ignores_feature_3, _X_TRAIN, x=_X_TEST[0], imputer="baseline"
+    ),
+    "global_xai": lambda: sg.GlobalExplanation(_tree_without_feature_3(), _X_TEST),
+    "path_dependent_tree": lambda: sg.PathDependentTreeGame(_tree_without_feature_3(), _X_TEST[0]),
+    "interventional_tree": lambda: sg.InterventionalTreeGame(
+        _tree_without_feature_3(), _X_TRAIN[:20], _X_TEST[0]
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(NULL_PLAYER_GAMES))
+def test_a_feature_the_model_ignores_is_a_null_player(name: str) -> None:
+    game = NULL_PLAYER_GAMES[name]()
+    shapley = game.exact_values(index="SV", order=1)
+    assert shapley[(3,)] == pytest.approx(0.0, abs=1e-10)
+    assert abs(shapley[(0,)]) > 1e-6  # the other features matter

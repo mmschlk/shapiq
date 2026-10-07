@@ -3947,6 +3947,7 @@ games = [
     { name = "torch" },
     { name = "torchvision" },
     { name = "transformers" },
+    { name = "xgboost" },
 ]
 proxy = [
     { name = "catboost" },
@@ -4071,6 +4072,7 @@ requires-dist = [
     { name = "ucimlrepo", marker = "extra == 'benchmark'" },
     { name = "woodelf-explainer", marker = "extra == 'tree'", specifier = ">=0.4.7" },
     { name = "xgboost", marker = "extra == 'benchmark'" },
+    { name = "xgboost", marker = "extra == 'games'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
 provides-extras = ["tree", "sparse", "proxy", "shapleig", "games", "benchmark"]

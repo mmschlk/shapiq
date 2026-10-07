@@ -93,6 +93,7 @@ games = [
     "torch",         # image games
     "torchvision",   # ResNet image games
     "transformers",  # vision transformer and sentiment games
+    "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [
     # shapiq_benchmark builds the games from datasets and models by name

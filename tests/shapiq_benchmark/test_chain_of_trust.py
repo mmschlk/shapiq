@@ -9,8 +9,10 @@ Only after this are the structured computers used as ground truth for large game
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 from itertools import combinations
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -46,6 +48,11 @@ from shapiq_games import (
     UnanimityGame,
     WeightedKNNGame,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from _pytest.mark import ParameterSet
 
 ORDERS = (1, 2, 3)
 
@@ -136,153 +143,183 @@ def tabular() -> dict[str, np.ndarray]:
     }
 
 
-def _tree_models(tabular: dict[str, np.ndarray]) -> list[tuple[str, object]]:
-    x = tabular["x"]
-    models: list[tuple[str, object]] = [
-        ("dt_reg", DecisionTreeRegressor(max_depth=4, random_state=0).fit(x, tabular["y_reg"])),
-        ("dt_clf", DecisionTreeClassifier(max_depth=4, random_state=0).fit(x, tabular["y_clf"])),
-        (
-            "rf_reg",
-            RandomForestRegressor(n_estimators=3, max_depth=3, random_state=0).fit(
-                x, tabular["y_reg"]
-            ),
+def _requires(package: str | None) -> tuple[pytest.MarkDecorator, ...]:
+    if package is None:
+        return ()
+    return (pytest.mark.skipif(not _installed(package), reason=f"{package} is not installed"),)
+
+
+def _cases(models: dict[str, tuple[str | None, Callable[[dict], object]]]) -> list[ParameterSet]:
+    """One test case per model; models of uninstalled packages are reported as skipped."""
+    return [pytest.param(name, marks=_requires(package)) for name, (package, _) in models.items()]
+
+
+# name -> (the package it needs, a function fitting it on the tabular data)
+_TREE_MODELS: dict[str, tuple[str | None, Callable[[dict], object]]] = {
+    "dt_reg": (
+        None,
+        lambda t: DecisionTreeRegressor(max_depth=4, random_state=0).fit(t["x"], t["y_reg"]),
+    ),
+    "dt_clf": (
+        None,
+        lambda t: DecisionTreeClassifier(max_depth=4, random_state=0).fit(t["x"], t["y_clf"]),
+    ),
+    "rf_reg": (
+        None,
+        lambda t: RandomForestRegressor(n_estimators=3, max_depth=3, random_state=0).fit(
+            t["x"], t["y_reg"]
         ),
-        (
-            "rf_multi",
-            RandomForestClassifier(n_estimators=3, max_depth=3, random_state=0).fit(
-                x, tabular["y_multi"]
-            ),
+    ),
+    "rf_multi": (
+        None,
+        lambda t: RandomForestClassifier(n_estimators=3, max_depth=3, random_state=0).fit(
+            t["x"], t["y_multi"]
         ),
-    ]
-    models += [
-        (
-            "gb_clf",
-            GradientBoostingClassifier(n_estimators=4, max_depth=2, random_state=0).fit(
-                x, tabular["y_clf"]
-            ),
+    ),
+    "gb_clf": (
+        None,
+        lambda t: GradientBoostingClassifier(n_estimators=4, max_depth=2, random_state=0).fit(
+            t["x"], t["y_clf"]
         ),
-        (
-            "hgb_multi",
-            HistGradientBoostingClassifier(max_iter=4, max_depth=3, random_state=0).fit(
-                x, tabular["y_multi"]
-            ),
+    ),
+    "hgb_multi": (
+        None,
+        lambda t: HistGradientBoostingClassifier(max_iter=4, max_depth=3, random_state=0).fit(
+            t["x"], t["y_multi"]
         ),
-    ]
-    if _installed("catboost"):
-        import catboost
-
-        models.append(
-            (
-                "cat_clf",
-                catboost.CatBoostClassifier(
-                    iterations=4, depth=3, verbose=0, random_seed=0, thread_count=1
-                ).fit(x, tabular["y_clf"]),
-            )
-        )
-    if _installed("xgboost"):
-        import xgboost as xgb
-
-        models.append(
-            (
-                "xgb_clf",
-                xgb.XGBClassifier(n_estimators=4, max_depth=3, random_state=0, n_jobs=1).fit(
-                    x, tabular["y_clf"]
-                ),
-            )
-        )
-    if _installed("lightgbm"):
-        import lightgbm as lgb
-
-        models.append(
-            (
-                "lgbm_reg",
-                lgb.LGBMRegressor(
-                    n_estimators=4, max_depth=3, random_state=0, n_jobs=1, verbose=-1
-                ).fit(x, tabular["y_reg"]),
-            )
-        )
-    return models
+    ),
+    "cat_clf": (
+        "catboost",
+        lambda t: (
+            importlib.import_module("catboost")
+            .CatBoostClassifier(iterations=4, depth=3, verbose=0, random_seed=0, thread_count=1)
+            .fit(t["x"], t["y_clf"])
+        ),
+    ),
+    "xgb_clf": (
+        "xgboost",
+        lambda t: (
+            importlib.import_module("xgboost")
+            .XGBClassifier(n_estimators=4, max_depth=3, random_state=0, n_jobs=1)
+            .fit(t["x"], t["y_clf"])
+        ),
+    ),
+    "lgbm_reg": (
+        "lightgbm",
+        lambda t: (
+            importlib.import_module("lightgbm")
+            .LGBMRegressor(n_estimators=4, max_depth=3, random_state=0, n_jobs=1, verbose=-1)
+            .fit(t["x"], t["y_reg"])
+        ),
+    ),
+}
 
 
-def test_path_dependent_tree_computer(tabular: dict[str, np.ndarray]) -> None:
-    for name, model in _tree_models(tabular):
-        for normalize in (False, True):
-            game = PathDependentTreeGame(model, tabular["x"][7], normalize=normalize)
-            atol = 1e-6 if "xgb" in name else 1e-10  # XGBoost thresholds are float32
-            _assert_agrees_with_brute_force(PathDependentTreeComputer(game), atol=atol)
+@pytest.mark.parametrize("name", _cases(_TREE_MODELS))
+def test_path_dependent_tree_computer(tabular: dict[str, np.ndarray], name: str) -> None:
+    model = _TREE_MODELS[name][1](tabular)
+    for normalize in (False, True):
+        game = PathDependentTreeGame(model, tabular["x"][7], normalize=normalize)
+        atol = 1e-6 if "xgb" in name else 1e-10  # XGBoost thresholds are float32
+        _assert_agrees_with_brute_force(PathDependentTreeComputer(game), atol=atol)
 
 
-def test_interventional_tree_computer(tabular: dict[str, np.ndarray]) -> None:
-    for name, model in _tree_models(tabular):
-        game = InterventionalTreeGame(model, tabular["x"][:15], tabular["x"][20])
-        atol = 1e-6 if "xgb" in name else 1e-10
-        _assert_agrees_with_brute_force(InterventionalTreeComputer(game), atol=atol)
+@pytest.mark.parametrize("name", _cases(_TREE_MODELS))
+def test_interventional_tree_computer(tabular: dict[str, np.ndarray], name: str) -> None:
+    model = _TREE_MODELS[name][1](tabular)
+    game = InterventionalTreeGame(model, tabular["x"][:15], tabular["x"][20])
+    atol = 1e-6 if "xgb" in name else 1e-10
+    _assert_agrees_with_brute_force(InterventionalTreeComputer(game), atol=atol)
+
+
+_MULTICLASS_BOOSTERS: dict[str, tuple[str | None, Callable[[dict], object]]] = {
+    "gb": (
+        None,
+        lambda t: GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(
+            t["x"], t["y_multi"]
+        ),
+    ),
+    "xgb": (
+        "xgboost",
+        lambda t: (
+            importlib.import_module("xgboost")
+            .XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1)
+            .fit(t["x"], t["y_multi"])
+        ),
+    ),
+}
 
 
 @pytest.mark.parametrize("class_index", [0, 1, 2])
+@pytest.mark.parametrize("name", _cases(_MULTICLASS_BOOSTERS))
 def test_tree_computers_for_every_class_of_multiclass_boosters(
-    tabular: dict[str, np.ndarray], class_index: int
+    tabular: dict[str, np.ndarray], name: str, class_index: int
 ) -> None:
-    x, y = tabular["x"], tabular["y_multi"]
-    models = [GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(x, y)]
-    if _installed("xgboost"):
-        import xgboost as xgb
-
-        models.append(
-            xgb.XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1).fit(x, y)
-        )
-    for model in models:
-        path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
-        _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=1e-6)
-        interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
-        _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=1e-6)
+    x = tabular["x"]
+    model = _MULTICLASS_BOOSTERS[name][1](tabular)
+    path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
+    _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=1e-6)
+    interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
+    _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=1e-6)
 
 
-def _binary_boosters(tabular: dict[str, np.ndarray]) -> list[tuple[str, object]]:
-    x, y = tabular["x"], tabular["y_clf"]
-    models: list[tuple[str, object]] = [
-        ("gb", GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(x, y)),
-        (
-            "hgb",
-            HistGradientBoostingClassifier(max_iter=3, max_depth=2, random_state=0).fit(x, y),
+_BINARY_BOOSTERS: dict[str, tuple[str | None, Callable[[dict], object]]] = {
+    "gb": (
+        None,
+        lambda t: GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(
+            t["x"], t["y_clf"]
         ),
-    ]
-    if _installed("xgboost"):
-        import xgboost as xgb
+    ),
+    "hgb": (
+        None,
+        lambda t: HistGradientBoostingClassifier(max_iter=3, max_depth=2, random_state=0).fit(
+            t["x"], t["y_clf"]
+        ),
+    ),
+    "xgb": (
+        "xgboost",
+        lambda t: (
+            importlib.import_module("xgboost")
+            .XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1)
+            .fit(t["x"], t["y_clf"])
+        ),
+    ),
+    "lgbm": (
+        "lightgbm",
+        lambda t: (
+            importlib.import_module("lightgbm")
+            .LGBMClassifier(n_estimators=3, max_depth=2, random_state=0, verbose=-1)
+            .fit(t["x"], t["y_clf"])
+        ),
+    ),
+    "cat": (
+        "catboost",
+        lambda t: (
+            importlib.import_module("catboost")
+            .CatBoostClassifier(iterations=3, depth=2, verbose=0, random_seed=0, thread_count=1)
+            .fit(t["x"], t["y_clf"])
+        ),
+    ),
+}
 
-        model = xgb.XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1)
-        models.append(("xgb", model.fit(x, y)))
-    if _installed("lightgbm"):
-        import lightgbm as lgb
 
-        model = lgb.LGBMClassifier(n_estimators=3, max_depth=2, random_state=0, verbose=-1)
-        models.append(("lgbm", model.fit(x, y)))
-    if _installed("catboost"):
-        import catboost
-
-        model = catboost.CatBoostClassifier(
-            iterations=3, depth=2, verbose=0, random_seed=0, thread_count=1
-        )
-        models.append(("cat", model.fit(x, y)))
-    return models
-
-
+@pytest.mark.parametrize("name", _cases(_BINARY_BOOSTERS))
 def test_tree_computers_for_both_classes_of_binary_boosters(
-    tabular: dict[str, np.ndarray],
+    tabular: dict[str, np.ndarray], name: str
 ) -> None:
     """A binary booster has one margin, the log-odds of class 1; class 0 explains its negative."""
     x = tabular["x"]
-    for name, model in _binary_boosters(tabular):
-        atol = 1e-6 if name == "xgb" else 1e-10  # XGBoost thresholds are float32
-        for class_index in (0, 1):
-            path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
-            _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=atol)
-            interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
-            _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=atol)
-        coalitions = np.eye(x.shape[1], dtype=bool)
-        class_zero = InterventionalTreeGame(model, x[:10], x[3], class_index=0)(coalitions)
-        class_one = InterventionalTreeGame(model, x[:10], x[3], class_index=1)(coalitions)
-        np.testing.assert_allclose(class_zero, -class_one, err_msg=name)
+    model = _BINARY_BOOSTERS[name][1](tabular)
+    atol = 1e-6 if name == "xgb" else 1e-10  # XGBoost thresholds are float32
+    for class_index in (0, 1):
+        path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
+        _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=atol)
+        interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
+        _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=atol)
+    coalitions = np.eye(x.shape[1], dtype=bool)
+    class_zero = InterventionalTreeGame(model, x[:10], x[3], class_index=0)(coalitions)
+    class_one = InterventionalTreeGame(model, x[:10], x[3], class_index=1)(coalitions)
+    np.testing.assert_allclose(class_zero, -class_one, err_msg=name)
 
 
 @pytest.mark.parametrize("class_index", [0, 1, 2])

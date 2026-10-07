@@ -94,6 +94,25 @@ Boosting converters live in separate modules such as `xgboost.py`,
   them alone before blaming a change. The SPEX tests also need the optional `sparse` extra
   (`sparse-transform`, `galois`); without it they fail with `ModuleNotFoundError`.
 
+## Games and benchmark gotchas (observed 2026-10-07, self-review)
+
+- A torch forward pass on CPU picks kernels by batch size, so ResNet-18 and the ViT gave the
+  same coalition values up to 1e-6 apart in a batch of 16 and alone. The image games pad every
+  pass to `batch_size` (`vision/_batching.py`) and return the stored v(∅) for empty rows; keep
+  both, or the batch-composition contract breaks for the real models (the contract tests only
+  use a numpy classifier).
+- `DataFrame.to_numpy(dtype=float)` can return a read-only view under pandas 3 (copy-on-write)
+  when no conversion is needed; pass `copy=True` before writing into the array.
+- Observational value functions are not null-player games: with the conditional imputer, a
+  feature the model ignores still gets a nonzero Shapley value (conditioning on it changes the
+  sampled background). The null-player contract test covers the interventional games only.
+- Setup fields are stored read-only in JSON form (`_FrozenDict`, tuples): derive variants with
+  `dataclasses.replace`, and give a setup subclass its own `name=`, or creating it raises.
+- LightGBM ignores `subsample` unless `subsample_freq` > 0 (the tuned presets carried a
+  `subsample` that did nothing).
+- shapiq's Monte Carlo approximators (SHAP-IQ, SVARM-IQ) estimate FSII and FBII of the top order
+  only (`estimate.min_order == order`); the runner scores those on that order.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
