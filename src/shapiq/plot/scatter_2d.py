@@ -40,11 +40,17 @@ def _resolve_pair(
             [abs(iv) for iv in interaction_values_list], aggregation="mean"
         )
         candidates = [(k, v) for k, v in agg.interactions.items() if len(k) == 2]
-        if not candidates:
-            error_message = "No pairwise interactions available to plot."
+        if candidates:
+            candidates.sort(key=lambda kv: kv[1], reverse=True)
+            first, second = candidates[0][0]
+            return first, second
+        # first-order explanations: use the two features with the largest mean absolute value
+        singletons = [(k[0], v) for k, v in agg.interactions.items() if len(k) == 1]
+        if len(singletons) < 2:
+            error_message = "No pairwise interactions or first-order values available to plot."
             raise ValueError(error_message)
-        candidates.sort(key=lambda kv: kv[1], reverse=True)
-        first, second = candidates[0][0]
+        singletons.sort(key=lambda kv: kv[1], reverse=True)
+        first, second = sorted((singletons[0][0], singletons[1][0]))
         return first, second
 
     if not isinstance(interaction, tuple):
@@ -65,6 +71,7 @@ def scatter_2d_plot(
     data: pd.DataFrame | np.ndarray,
     interaction: tuple[int, int] | tuple[str, str] | None = None,
     *,
+    include_main_effects: bool = False,
     feature_names: list[str] | None = None,
     abbreviate: bool = True,
     alpha: float = 0.8,
@@ -77,7 +84,12 @@ def scatter_2d_plot(
     Each point is one sample of ``data``: its x-coordinate is the value of the first feature
     of ``interaction``, its y-coordinate is the value of the second feature and its color is
     the sample's interaction value for the pair. The colormap is centered at zero, so positive
-    interactions are red and negative interactions are blue.
+    values are red and negative values are blue.
+
+    For first-order explanations (for example Shapley values), which have no pairwise
+    interactions, the color is the sum of the two features' values. For second-order
+    explanations, ``include_main_effects=True`` adds both features' first-order values to the
+    pairwise interaction, so the color shows the joint contribution of the pair.
 
     Args:
         interaction_values_list: A non-empty list of :class:`~shapiq.InteractionValues` objects,
@@ -87,7 +99,12 @@ def scatter_2d_plot(
         interaction: The pair of features to plot, as a tuple of feature indices like ``(0, 2)``
             or of feature names like ``("MedInc", "Latitude")``. The lower feature index goes on
             the x-axis. If ``None``, the pairwise interaction with the highest mean absolute value
-            is selected. Defaults to ``None``.
+            is selected (for first-order explanations, the two features with the highest mean
+            absolute value). Defaults to ``None``.
+        include_main_effects: For second-order explanations, whether to add the first-order
+            values of both features to the pairwise interaction. Has no effect for first-order
+            explanations, which are always shown as the sum of the two first-order values.
+            Defaults to ``False``.
         feature_names: Names of the features. Defaults to ``["F0", "F1", ...]``.
         abbreviate: Whether to abbreviate feature names for axis labels. Defaults to ``True``.
         alpha: Transparency of the points, in ``(0, 1]``. Defaults to ``0.8``.
@@ -140,14 +157,30 @@ def scatter_2d_plot(
     name_to_idx = {n: i for i, n in enumerate(feature_names_full)}
 
     x_idx, y_idx = _resolve_pair(interaction, interaction_values_list, name_to_idx, n_players)
-    if not any((x_idx, y_idx) in iv.interaction_lookup for iv in interaction_values_list):
+    first_order = all(iv.max_order < 2 for iv in interaction_values_list)
+    if first_order:
+        for feature in (x_idx, y_idx):
+            if not any((feature,) in iv.interaction_lookup for iv in interaction_values_list):
+                error_message = f"Feature {feature} not found in InteractionValues lookup."
+                raise ValueError(error_message)
+    elif not any((x_idx, y_idx) in iv.interaction_lookup for iv in interaction_values_list):
         error_message = f"Interaction {(x_idx, y_idx)} not found in InteractionValues lookup."
         raise ValueError(error_message)
 
     x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
     x_vals = x_numpy[:, x_idx]
     y_vals = x_numpy[:, y_idx]
-    c_vals = np.array([iv[(x_idx, y_idx)] for iv in interaction_values_list], dtype=float)
+    if first_order:
+        c_vals = np.array(
+            [iv[(x_idx,)] + iv[(y_idx,)] for iv in interaction_values_list], dtype=float
+        )
+    elif include_main_effects:
+        c_vals = np.array(
+            [iv[(x_idx,)] + iv[(y_idx,)] + iv[(x_idx, y_idx)] for iv in interaction_values_list],
+            dtype=float,
+        )
+    else:
+        c_vals = np.array([iv[(x_idx, y_idx)] for iv in interaction_values_list], dtype=float)
 
     if ax is None:
         _fig, ax = plt.subplots(figsize=(7, 5))
@@ -170,9 +203,17 @@ def scatter_2d_plot(
     )
 
     index_name = interaction_values_list[0].index
-    feature_label = f"{feature_names_display[x_idx]}, {feature_names_display[y_idx]}"
+    x_name, y_name = feature_names_display[x_idx], feature_names_display[y_idx]
+    main_effects_label = f"{index_name}({x_name}) + {index_name}({y_name})"
+    pair_label = f"{index_name}({x_name}, {y_name})"
+    if first_order:
+        color_label = main_effects_label
+    elif include_main_effects:
+        color_label = f"{main_effects_label} + {pair_label}"
+    else:
+        color_label = pair_label
     cb = fig.colorbar(sc, ax=ax, aspect=80)
-    cb.set_label(f"{index_name}({feature_label})", size=11, labelpad=0)
+    cb.set_label(color_label, size=11, labelpad=0)
     cb.ax.tick_params(labelsize=10, length=0)
     cb.outline.set_visible(False)
 

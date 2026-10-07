@@ -141,18 +141,73 @@ def test_scatter_2d_plot_errors(mock_interaction_data):
     with pytest.raises(ValueError, match="Length of feature_names"):
         scatter_2d_plot(interaction_values_list, feature_data, feature_names=["a"], show=False)
 
-    first_order_only = [
+    baseline_only = [
         InteractionValues(
-            values=np.ones(N_PLAYERS),
-            interaction_lookup={(i,): i for i in range(N_PLAYERS)},
+            values=np.ones(1),
+            interaction_lookup={(): 0},
             index="SV",
-            min_order=1,
-            max_order=1,
+            min_order=0,
+            max_order=0,
             n_players=N_PLAYERS,
             baseline_value=0.0,
         )
         for _ in range(N_SAMPLES)
     ]
-    with pytest.raises(ValueError, match="No pairwise interactions"):
-        scatter_2d_plot(first_order_only, feature_data, show=False)
+    with pytest.raises(ValueError, match="No pairwise interactions or first-order values"):
+        scatter_2d_plot(baseline_only, feature_data, show=False)
+    plt.close("all")
+
+
+def test_scatter_2d_plot_include_main_effects(mock_interaction_data):
+    """Tests that both main effects can be added to the pairwise interaction."""
+    interaction_values_list, feature_data, _ = mock_interaction_data
+
+    ax = scatter_2d_plot(
+        interaction_values_list,
+        feature_data,
+        interaction=(0, 2),
+        include_main_effects=True,
+        abbreviate=False,
+        show=False,
+    )
+
+    points = ax.collections[0]
+    expected = [iv[(0,)] + iv[(2,)] + iv[(0, 2)] for iv in interaction_values_list]
+    np.testing.assert_allclose(points.get_array(), expected)
+    colorbar_ax = ax.figure.axes[-1]
+    assert colorbar_ax.get_ylabel() == "k-SII(F0) + k-SII(F2) + k-SII(F0, F2)"
+    plt.close("all")
+
+
+def test_scatter_2d_plot_first_order():
+    """Tests that first-order explanations are colored by the sum of the two values."""
+    rng = np.random.default_rng(0)
+    lookup = {(): 0, (0,): 1, (1,): 2, (2,): 3}
+    interaction_values_list = []
+    for _ in range(N_SAMPLES):
+        values = rng.random(len(lookup)) * 0.2 - 0.1
+        values[lookup[(2,)]] = rng.choice([-1.0, 1.0]) * (1 + rng.random())
+        values[lookup[(0,)]] = rng.choice([-1.0, 1.0]) * (0.5 + rng.random())
+        interaction_values_list.append(
+            InteractionValues(
+                values=values,
+                interaction_lookup=lookup,
+                index="SV",
+                min_order=1,
+                max_order=1,
+                n_players=3,
+                baseline_value=0.0,
+            )
+        )
+    feature_data = rng.random((N_SAMPLES, 3))
+
+    # the two features with the highest mean absolute value are used by default
+    ax = scatter_2d_plot(interaction_values_list, feature_data, abbreviate=False, show=False)
+
+    points = ax.collections[0]
+    np.testing.assert_allclose(points.get_offsets(), feature_data[:, [0, 2]])
+    expected = [iv[(0,)] + iv[(2,)] for iv in interaction_values_list]
+    np.testing.assert_allclose(points.get_array(), expected)
+    colorbar_ax = ax.figure.axes[-1]
+    assert colorbar_ax.get_ylabel() == "SV(F0) + SV(F2)"
     plt.close("all")
