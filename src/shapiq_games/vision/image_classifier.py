@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Self
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from shapiq.game import Game
+from shapiq.interaction_values import InteractionValues
 from shapiq_games._base import ConfigMixin, as_bool_coalitions
 from shapiq_games.datasets import load_example_image
 
@@ -18,12 +19,38 @@ from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["ImageClassifier"]
+__all__ = ["ImageClassifier", "grid_regions"]
 
 type BuiltinModel = Literal[
     "vit_9_patches", "vit_16_patches", "vit_36_patches", "vit_144_patches", "resnet_18"
 ]
+type Fill = Literal["mean", "gray", "black", "blur"]
 _VIT_MODELS = {f"vit_{n}_patches": n for n in VIT_PATCH_GRIDS}
+_DISPLAY_GRAY = 128
+
+
+def grid_regions(height: int, width: int, rows: int, cols: int) -> np.ndarray:
+    """Split an image into a ``rows x cols`` grid of regions.
+
+    Args:
+        height: The image height in pixels.
+        width: The image width in pixels.
+        rows: The number of grid rows.
+        cols: The number of grid columns.
+
+    Returns:
+        The region of every pixel, of shape ``(height, width)``, numbered row by row from ``0``.
+
+    Examples:
+        >>> grid_regions(4, 6, rows=2, cols=3)
+        array([[0, 0, 1, 1, 2, 2],
+               [0, 0, 1, 1, 2, 2],
+               [3, 3, 4, 4, 5, 5],
+               [3, 3, 4, 4, 5, 5]])
+    """
+    row = np.minimum(np.arange(height) * rows // height, rows - 1)
+    col = np.minimum(np.arange(width) * cols // width, cols - 1)
+    return row[:, None] * cols + col[None, :]
 
 
 def _as_rgb_array(image: np.ndarray | str | Path) -> np.ndarray:
@@ -39,23 +66,68 @@ def _as_rgb_array(image: np.ndarray | str | Path) -> np.ndarray:
     return np.ascontiguousarray(array[..., :3]).astype(np.uint8)
 
 
+def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
+    regions = np.asarray(regions)
+    if regions.shape != image.shape[:2]:
+        msg = f"regions must have the image's shape {image.shape[:2]}, got {regions.shape}."
+        raise ValueError(msg)
+    labels = np.unique(regions)
+    if not np.issubdtype(regions.dtype, np.integer) or not np.array_equal(
+        labels, np.arange(labels.shape[0])
+    ):
+        msg = "regions must label every pixel with a player 0, ..., n - 1, using every label."
+        raise ValueError(msg)
+    return regions.astype(int)
+
+
+def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
+    """Return the image that shows through where regions are removed."""
+    if isinstance(fill, np.ndarray):
+        baseline = _as_rgb_array(fill)
+        if baseline.shape != image.shape:
+            msg = f"A fill image must have the image's shape {image.shape}, got {baseline.shape}."
+            raise ValueError(msg)
+        return baseline
+    if fill == "mean":
+        color = image.reshape(-1, 3).mean(axis=0).round()
+        return np.broadcast_to(color.astype(np.uint8), image.shape).copy()
+    if fill == "gray":
+        return np.full_like(image, _DISPLAY_GRAY)
+    if fill == "black":
+        return np.zeros_like(image)
+    if fill == "blur":
+        radius = max(image.shape[:2]) / 32
+        return np.asarray(Image.fromarray(image).filter(ImageFilter.GaussianBlur(radius)))
+    msg = f"fill must be 'mean', 'gray', 'black', 'blur', or an image, got {fill!r}."
+    raise ValueError(msg)
+
+
 class ImageClassifier(ConfigMixin, Game):
     """The image classification game: the probability of a class when only some regions are visible.
 
-    The players are regions of the image:
+    The players are regions of the image, given by :attr:`regions` for every model:
 
     - for the vision transformers (``"vit_9_patches"``, ``"vit_16_patches"``, ``"vit_36_patches"``,
-      ``"vit_144_patches"``), square groups of the model's patches, which are removed with a zero
-      mask token;
-    - for ``"resnet_18"`` or a custom classifier, SLIC superpixels, which are removed by filling
-      them with the image's mean color.
+      ``"vit_144_patches"``), square groups of the model's patches, which are removed inside the
+      model with a zero mask token;
+    - for ``"resnet_18"`` or a custom classifier, SLIC superpixels or your own ``regions``, which
+      are removed by replacing their pixels (``fill``: the image's mean color by default, or gray,
+      black, a blurred copy, or any image of the same shape).
 
-    The explained class defaults to the class predicted on the full image.
+    ResNet-18 sees a ``224 x 224`` center crop, so the game explains that crop: :attr:`image` is
+    what the model sees and every region is visible to it. The explained class defaults to the
+    class predicted on the full image.
+
+    To look at the game, :meth:`masked_image` shows what the model sees for a coalition,
+    :meth:`attribution_map` spreads first-order values over the pixels for a heatmap, and
+    :meth:`player_images` returns one image per player, e.g. for
+    :func:`shapiq.plot.si_graph_plot`.
 
     Attributes:
-        image: The explained RGB image.
+        image: The explained RGB image (for ResNet-18, its ``224 x 224`` crop).
+        regions: The player of every pixel, of shape ``(height, width)``, numbered from ``0``.
         class_index: The explained class.
-        superpixels: The superpixel labels (``None`` for the vision transformers).
+        class_name: The name of the explained class, if the model provides class names.
         model_commit: The Hugging Face commit of a vision transformer, ``None`` for other models.
 
     Examples:
@@ -66,6 +138,9 @@ class ImageClassifier(ConfigMixin, Game):
         >>> game = ImageClassifier(image, model=classifier, n_superpixels=8)
         >>> game.n_players
         8
+        >>> grid = ImageClassifier(image, classifier, regions=grid_regions(64, 64, 2, 2), fill="blur")
+        >>> grid.n_players, grid.masked_image([1, 0, 0, 1]).shape
+        (4, (64, 64, 3))
         >>> game = ImageClassifier(image, model="vit_16_patches")  # doctest: +SKIP
     """
 
@@ -75,6 +150,8 @@ class ImageClassifier(ConfigMixin, Game):
         model: BuiltinModel | Callable[[np.ndarray], np.ndarray] = "vit_9_patches",
         *,
         n_superpixels: int = 14,
+        regions: np.ndarray | None = None,
+        fill: Fill | np.ndarray | None = None,
         class_index: int | None = None,
         batch_size: int = 16,
         device: str = "cpu",
@@ -89,8 +166,14 @@ class ImageClassifier(ConfigMixin, Game):
             model: A builtin model name or a classifier mapping a batch of images of shape
                 ``(batch, height, width, 3)`` to class probabilities of shape
                 ``(batch, n_classes)``. Defaults to ``"vit_9_patches"``.
-            n_superpixels: The number of superpixels for ``"resnet_18"`` and custom classifiers.
-                Defaults to ``14``.
+            n_superpixels: The number of SLIC superpixels for ``"resnet_18"`` and custom
+                classifiers when no ``regions`` are given. Defaults to ``14``.
+            regions: Your own players for ``"resnet_18"`` and custom classifiers: the player of
+                every pixel, of shape ``(height, width)``, numbered ``0, ..., n - 1`` (see
+                :func:`grid_regions`). For ResNet-18 they refer to its ``224 x 224`` crop.
+            fill: How removed regions are replaced for ``"resnet_18"`` and custom classifiers:
+                ``"mean"`` (the image's mean color, default), ``"gray"``, ``"black"``, ``"blur"``,
+                or an image of the same shape.
             class_index: The explained class, or ``None`` for the class predicted on the image.
             batch_size: The number of masked images per forward pass. Defaults to ``16``.
             device: The torch device of the builtin models. Defaults to ``"cpu"``.
@@ -102,16 +185,23 @@ class ImageClassifier(ConfigMixin, Game):
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
-            ValueError: If the model is unknown, or a revision is given for a model that is not a
-                vision transformer.
+            ValueError: If the model is unknown, a revision is given for a model that is not a
+                vision transformer, or ``regions`` or ``fill`` are given for a vision
+                transformer or are invalid.
         """
         self.image = _as_rgb_array(image)
         self.batch_size = batch_size
-        self.superpixels: np.ndarray | None = None
         self.model_commit: str | None = None
+        self.class_name: str | None = None
         self._vit: ViTPatchModel | None = None
 
         if isinstance(model, str) and model in _VIT_MODELS:
+            if regions is not None or fill is not None:
+                msg = (
+                    "regions and fill apply to superpixel models; a vision transformer removes "
+                    "its own patches."
+                )
+                raise ValueError(msg)
             self._vit = ViTPatchModel(
                 self.image,
                 _VIT_MODELS[model],
@@ -120,8 +210,10 @@ class ImageClassifier(ConfigMixin, Game):
                 batch_size=batch_size,
                 revision=revision,
             )
-            n_players = self._vit.n_players
+            grid = VIT_PATCH_GRIDS[_VIT_MODELS[model]]
+            self.regions = grid_regions(*self.image.shape[:2], grid, grid)
             self.class_index = self._vit.class_index
+            self.class_name = self._vit.class_name
             self.model_commit = self._vit.model_commit
         else:
             if revision is not None:
@@ -130,7 +222,9 @@ class ImageClassifier(ConfigMixin, Game):
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
 
-                classifier: Callable[[np.ndarray], np.ndarray] = ResNetClassifier(device=device)
+                resnet = ResNetClassifier(device=device)
+                self.image = resnet.prepare(self.image)
+                classifier: Callable[[np.ndarray], np.ndarray] = resnet
             elif callable(model):
                 classifier = model
             else:
@@ -138,12 +232,18 @@ class ImageClassifier(ConfigMixin, Game):
                 msg = f"Unknown model {model!r}. Choose one of {valid} or pass a classifier."
                 raise ValueError(msg)
             self._classifier = classifier
-            self.superpixels = get_superpixels(self.image, n_superpixels)
-            n_players = int(self.superpixels.max())
-            self._fill = self.image.reshape(-1, 3).mean(axis=0)
+            if regions is None:
+                self.regions = get_superpixels(self.image, n_superpixels) - 1
+            else:
+                self.regions = _check_regions(regions, self.image)
+            self._baseline = _baseline(self.image, "mean" if fill is None else fill)
             probabilities = np.asarray(self._classifier(self.image[None]))[0]
             self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
+            categories = getattr(classifier, "categories", None)
+            if categories is not None:
+                self.class_name = str(categories[self.class_index])
 
+        n_players = int(self.regions.max()) + 1
         empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(
             n_players,
@@ -153,11 +253,11 @@ class ImageClassifier(ConfigMixin, Game):
         )
 
     def _masked_images(self, coalitions: np.ndarray) -> np.ndarray:
-        images = np.repeat(self.image[None].astype(float), coalitions.shape[0], axis=0)
+        images = np.repeat(self.image[None], coalitions.shape[0], axis=0)
         for i, coalition in enumerate(coalitions):
-            absent = ~coalition[self.superpixels - 1]  # type: ignore[index]
-            images[i][absent] = self._fill
-        return images.round().astype(np.uint8)
+            absent = ~coalition[self.regions]
+            images[i][absent] = self._baseline[absent]
+        return images
 
     def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
         if self._vit is not None:
@@ -172,6 +272,67 @@ class ImageClassifier(ConfigMixin, Game):
         """Return the probability of the explained class for each coalition of regions."""
         return self._evaluate(as_bool_coalitions(coalitions))
 
+    def masked_image(self, coalition: np.ndarray | list[int]) -> np.ndarray:
+        """Return the image with the players outside ``coalition`` removed.
+
+        For superpixel models this is exactly the image the classifier sees. A vision transformer
+        removes patches inside the model, so its removed regions are shown in gray.
+
+        Args:
+            coalition: The players, as a boolean or 0/1 vector of length ``n_players``.
+
+        Returns:
+            The image as a ``uint8`` array of shape ``(height, width, 3)``.
+        """
+        coalition = as_bool_coalitions(np.asarray(coalition).reshape(1, -1))
+        if self._vit is None:
+            return self._masked_images(coalition)[0]
+        image = self.image.copy()
+        image[~coalition[0][self.regions]] = _DISPLAY_GRAY
+        return image
+
+    def attribution_map(self, values: InteractionValues | np.ndarray) -> np.ndarray:
+        """Spread one value per player over the player's pixels, e.g. for a heatmap.
+
+        Args:
+            values: Interaction values (their first-order values are used) or one value per
+                player.
+
+        Returns:
+            The value of every pixel, of shape ``(height, width)``.
+        """
+        if isinstance(values, InteractionValues):
+            values = values.get_n_order_values(1)
+        values = np.asarray(values, dtype=float).reshape(-1)
+        if values.shape[0] != self.n_players:
+            msg = f"Expected {self.n_players} values, one per player, got {values.shape[0]}."
+            raise ValueError(msg)
+        return values[self.regions]
+
+    def player_images(self, *, fade: float = 0.75) -> list[Image.Image]:
+        """Return one image per player: its bounding box, with other pixels faded to white.
+
+        The images can be passed to :func:`shapiq.plot.si_graph_plot` as
+        ``feature_image_patches``.
+
+        Args:
+            fade: How strongly pixels outside the player's region are faded, from ``0`` (not at
+                all) to ``1`` (white). Defaults to ``0.75``.
+
+        Returns:
+            The images, in player order.
+        """
+        images = []
+        for player in range(self.n_players):
+            mask = self.regions == player
+            rows, cols = np.flatnonzero(mask.any(axis=1)), np.flatnonzero(mask.any(axis=0))
+            box = (slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1))
+            crop = self.image[box].astype(float)
+            outside = ~mask[box]
+            crop[outside] = crop[outside] * (1.0 - fade) + 255.0 * fade
+            images.append(Image.fromarray(crop.round().astype(np.uint8)))
+        return images
+
     @classmethod
     def from_config(
         cls,
@@ -179,6 +340,7 @@ class ImageClassifier(ConfigMixin, Game):
         image: int | str = 0,
         model: BuiltinModel = "vit_9_patches",
         n_superpixels: int = 14,
+        fill: Fill | None = None,
         class_index: int | None = None,
         revision: str | None = None,
         device: str = "cpu",
@@ -195,6 +357,7 @@ class ImageClassifier(ConfigMixin, Game):
                 :func:`shapiq_games.datasets.list_example_images`). Defaults to ``0``.
             model: The builtin model. Defaults to ``"vit_9_patches"``.
             n_superpixels: The number of superpixels for ``"resnet_18"``.
+            fill: How ``"resnet_18"`` replaces removed superpixels (``None`` for the mean color).
             class_index: The explained class, or ``None`` for the predicted class.
             revision: The Hugging Face revision of a vision transformer (``None`` for the default
                 branch).
@@ -210,6 +373,7 @@ class ImageClassifier(ConfigMixin, Game):
             load_example_image(image),
             model,
             n_superpixels=n_superpixels,
+            fill=fill,
             class_index=class_index,
             batch_size=batch_size,
             device=device,
@@ -220,6 +384,7 @@ class ImageClassifier(ConfigMixin, Game):
             image=image,
             model=model,
             n_superpixels=n_superpixels,
+            fill=fill,
             class_index=class_index,
             revision=revision,
             model_commit=game.model_commit,

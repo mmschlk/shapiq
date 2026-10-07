@@ -219,8 +219,7 @@ def test_image_classifier_superpixels_cover_every_player() -> None:
     game = ImageClassifier(
         image, model=mean_brightness_classifier, n_superpixels=9, normalize=False
     )
-    assert game.superpixels is not None
-    assert set(np.unique(game.superpixels)) == set(range(1, game.n_players + 1))
+    assert set(np.unique(game.regions)) == set(range(game.n_players))
     expected = mean_brightness_classifier(image[None])[0, game.class_index]
     assert game(game.grand_coalition)[0] == pytest.approx(expected)
     grayscale = ImageClassifier(image[..., 0], model=mean_brightness_classifier, n_superpixels=4)
@@ -241,6 +240,7 @@ def test_image_classifier_forwards_and_records_the_vit_revision(
             calls.append(kwargs)
             self.n_players = n_players
             self.class_index = 3
+            self.class_name = "class 3"
             self.model_commit = f"commit-of-{kwargs['revision']}"
 
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
