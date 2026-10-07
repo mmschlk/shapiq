@@ -1004,3 +1004,125 @@ def test_binary_booster_invalid_class_index_raises(name):
     model, _ = _fit_binary_booster(name, x, y)
     with pytest.raises(ValueError, match="invalid for a binary classifier"):
         TreeExplainer(model=model, index="SV", max_order=1, class_index=2)
+
+
+def _fit_single_output_booster(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a native booster (or a custom-objective classifier) and return it with its raw margin."""
+    if name == "xgboost_booster":
+        xgboost = pytest.importorskip("xgboost")
+        params = {"objective": "binary:logistic", "max_depth": 3}
+        booster = xgboost.train(params, xgboost.DMatrix(x, label=y), num_boost_round=5)
+        return booster, lambda data: booster.predict(xgboost.DMatrix(data), output_margin=True)
+    if name == "lightgbm_booster":
+        lightgbm = pytest.importorskip("lightgbm")
+        params = {"objective": "binary", "max_depth": 3, "verbose": -1}
+        booster = lightgbm.train(params, lightgbm.Dataset(x, label=y), num_boost_round=5)
+        return booster, lambda data: booster.predict(data, raw_score=True)
+    if name == "lightgbm_custom_objective":
+        # a custom objective writes no objective line: the classifier type identifies it
+        lightgbm = pytest.importorskip("lightgbm")
+
+        def logloss(labels, raw):
+            p = 1 / (1 + np.exp(-raw))
+            return p - labels, p * (1 - p)
+
+        model = lightgbm.LGBMClassifier(n_estimators=5, objective=logloss, verbose=-1)
+        model.fit(x, y)
+        return model, lambda data: model.predict(data, raw_score=True)
+    catboost = pytest.importorskip("catboost")
+    params = {"iterations": 5, "depth": 3, "loss_function": "Logloss", "verbose": False}
+    model = catboost.CatBoost(params).fit(x, y)
+    return model, lambda data: model.predict(data, prediction_type="RawFormulaVal")
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["xgboost_booster", "lightgbm_booster", "lightgbm_custom_objective", "catboost_logloss"],
+)
+def test_single_output_classifier_class_zero_is_negated_class_one(name):
+    """Test class_index=0 for binary models identified by their objective or classifier type."""
+    from sklearn.datasets import make_classification
+
+    from shapiq.tree.validation import validate_tree_model
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_single_output_booster(name, x, y)
+    class_zero_trees = validate_tree_model(model, class_label=0)
+    class_one_trees = validate_tree_model(model, class_label=1)
+    assert all(tree.negated_class_one for tree in class_zero_trees)
+    assert not any(tree.negated_class_one for tree in class_one_trees)
+    for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True):
+        np.testing.assert_array_equal(class_zero.values, -class_one.values)
+
+    explanation = TreeExplainer(model=model, index="SV", max_order=1, class_index=0).explain(x[0])
+    total = explanation.baseline_value + explanation.get_n_order_values(1).sum()
+    assert total == pytest.approx(-raw_margin(x[:1])[0], abs=1e-5)
+
+
+def _fit_model_without_class_zero_negation(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a regressor or a two-class model with a multiclass objective."""
+    from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+
+    if name == "sklearn_gb_regressor":
+        return GradientBoostingRegressor(n_estimators=5, random_state=0).fit(x, y)
+    if name == "sklearn_histgb_regressor":
+        return HistGradientBoostingRegressor(max_iter=5, random_state=0).fit(x, y)
+    if name == "xgboost_regressor":
+        return pytest.importorskip("xgboost").XGBRegressor(n_estimators=5).fit(x, y)
+    if name == "lightgbm_regressor":
+        return pytest.importorskip("lightgbm").LGBMRegressor(n_estimators=5, verbose=-1).fit(x, y)
+    if name == "catboost_regressor":
+        catboost = pytest.importorskip("catboost")
+        return catboost.CatBoostRegressor(iterations=5, verbose=False).fit(x, y)
+    if name == "xgboost_multiclass_two_classes":
+        xgboost = pytest.importorskip("xgboost")
+        model = xgboost.XGBClassifier(n_estimators=5, objective="multi:softprob", num_class=2)
+        return model.fit(x, y)
+    if name == "lightgbm_multiclass_two_classes":
+        lightgbm = pytest.importorskip("lightgbm")
+        model = lightgbm.LGBMClassifier(
+            n_estimators=5, objective="multiclass", num_class=2, verbose=-1
+        )
+        return model.fit(x, y)
+    catboost = pytest.importorskip("catboost")
+    return catboost.CatBoostClassifier(iterations=5, loss_function="MultiClass", verbose=False).fit(
+        x, y
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "sklearn_gb_regressor",
+        "sklearn_histgb_regressor",
+        "xgboost_regressor",
+        "lightgbm_regressor",
+        "catboost_regressor",
+        "xgboost_multiclass_two_classes",
+        "lightgbm_multiclass_two_classes",
+        "catboost_multiclass_two_classes",
+    ],
+)
+def test_class_index_zero_does_not_negate_regressors_or_multiclass_models(name):
+    """Test that class_label=0 negates only single-output classifiers.
+
+    Regressors ignore class_label; multiclass models (also when trained on two classes) select
+    the class-0 trees, which are not the negated class-1 trees.
+    """
+    from sklearn.datasets import make_classification
+
+    from shapiq.tree.validation import validate_tree_model
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model = _fit_model_without_class_zero_negation(name, x, y)
+    class_zero_trees = validate_tree_model(model, class_label=0)
+    class_one_trees = validate_tree_model(model, class_label=1)
+    assert not any(tree.negated_class_one for tree in class_zero_trees)
+    if name.endswith("_regressor"):
+        for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True):
+            np.testing.assert_array_equal(class_zero.values, class_one.values)
+    else:
+        assert not all(
+            np.array_equal(class_zero.values, -class_one.values)
+            for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True)
+        )

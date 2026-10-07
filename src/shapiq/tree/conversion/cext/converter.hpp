@@ -50,20 +50,39 @@ struct ParsedForest
 	std::vector<ParsedTreeArrays> trees;
 	int64_t num_class = 1;
 	double base_score = 0.0;
+	// the trees model the class-0 log-odds of a binary classifier (see binary_class_sign)
+	bool negated_class_one = false;
 };
+
+// Binary classifiers have a single raw output, the class-1 log-odds; the class-0 log-odds
+// are its negation. Returns the sign that selects class_label from that output: -1 for
+// class 0, +1 for class 1 or unspecified (-1). Any other label is invalid; the Python
+// bindings raise std::invalid_argument as ValueError.
+inline double binary_class_sign(int class_label)
+{
+	if (class_label == 0)
+		return -1.0;
+	if (class_label == 1 || class_label == -1)
+		return 1.0;
+	throw std::invalid_argument(
+		"class_label=" + std::to_string(class_label) + " is invalid for a binary classifier; use 0 or 1.");
+}
 
 ParsedForest parse_xgboost_ubjson_to_forest(
 	const uint8_t *data,
 	size_t size,
 	int class_label,
-	double margin_base_score);
+	double margin_base_score,
+	bool is_classifier);
 
 ParsedForest parse_lightgbm_text_to_forest(
 	const char *data,
 	size_t size,
-	int class_label);
+	int class_label,
+	bool is_classifier);
 
 ParsedForest parse_catboost_json_to_forest(
 	const char *data,
 	size_t size,
-	int class_label);
+	int class_label,
+	bool is_classifier);

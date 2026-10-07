@@ -37,6 +37,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
   predictors live in that transformed space. Converters must map feature
   indices and category codes back (see `_convert_hist_tree_predictor` in
   `src/shapiq/tree/conversion/sklearn.py`).
+- Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
+  the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
+  the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:
+  `_binary_class_sign`) and flag the trees with `TreeModel.negated_class_one`. A model
+  counts as binary if it has one output AND is a classifier: the serialized objective/loss
+  says so, or Python passes `is_classifier` (custom objectives are not serialized as
+  binary). Woodelf ignores `class_index` for single-output models, so
+  `TreeExplainer._run_woodelf` negates its result when the trees carry that flag.
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical

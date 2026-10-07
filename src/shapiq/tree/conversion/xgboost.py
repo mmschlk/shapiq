@@ -11,7 +11,7 @@ from xgboost import Booster, XGBClassifier, XGBRegressor
 from .cext import (
     parse_xgboost_ubjson_treemodels,  # ty: ignore[unresolved-import]
 )
-from .common import register, select_binary_class_margin
+from .common import register
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
@@ -69,22 +69,19 @@ def convert_xgboost_model(
     """
     booster = model if isinstance(model, Booster) else model.get_booster()
     cfg = json.loads(booster.save_config())
-    parser_class_label = -1 if class_label is None else class_label  # -1: parser default
-    margin_base_score = _xgboost_margin_base_score(cfg, parser_class_label)
+    if class_label is None:
+        class_label = -1  # sentinel: the parser defaults to class 1
+    margin_base_score = _xgboost_margin_base_score(cfg, class_label)
     trees = parse_xgboost_ubjson_treemodels(
         booster.save_raw(),
-        parser_class_label,
+        class_label,
         margin_base_score,
+        isinstance(model, XGBClassifier),
     )
     for tree in trees:
         # XGBoost casts prediction inputs to float32 before comparing against its float32
         # thresholds; the explainers must route the same way (see TreeModel.cast_input)
         tree.input_precision = "float32"
-    learner = cfg["learner"]
-    num_class = int(learner["learner_model_param"].get("num_class", "0") or 0)
-    objective = learner["learner_train_param"]["objective"]
-    if num_class <= 1 and (isinstance(model, XGBClassifier) or objective.startswith("binary:")):
-        return select_binary_class_margin(trees, class_label)
     return trees
 
 

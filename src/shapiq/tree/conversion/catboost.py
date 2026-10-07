@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from catboost import CatBoost, CatBoostClassifier, CatBoostRegressor
 
 from .cext import parse_catboost_json_treemodels  # ty: ignore[unresolved-import]
-from .common import register, select_binary_class_margin
+from .common import register
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
@@ -41,19 +41,6 @@ def _mark_float32_input(trees: list[TreeModel]) -> list[TreeModel]:
     return trees
 
 
-# Losses of binary classifiers whose single raw output is the class-1 log-odds.
-_BINARY_LOSSES = frozenset({"Logloss", "CrossEntropy"})
-
-
-def _select_class(
-    trees: list[TreeModel], loss_function: str | None, class_label: int | None
-) -> list[TreeModel]:
-    """Negate the trees of a binary classifier for ``class_label=0`` (see ``select_binary_class_margin``)."""
-    if loss_function in _BINARY_LOSSES:
-        return select_binary_class_margin(trees, class_label)
-    return trees
-
-
 def parse_catboost_json_model(
     model_json: dict[str, Any],
     class_label: int | None = None,
@@ -71,11 +58,10 @@ def parse_catboost_json_model(
         A list of ``TreeModel`` instances, one per CatBoost tree.
     """
     byte_array = json.dumps(model_json, separators=(",", ":")).encode("utf-8")
-    trees = _mark_float32_input(
+    # without a model object, binary classifiers are identified by their loss
+    return _mark_float32_input(
         parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
     )
-    loss = model_json.get("model_info", {}).get("params", {}).get("loss_function", {})
-    return _select_class(trees, loss.get("type"), class_label)
 
 
 def convert_catboost_model(
@@ -90,10 +76,13 @@ def convert_catboost_model(
     class-``1`` log-odds, so ``class_label=0`` negates the trees.
     """
     byte_array = _catboost_model_to_json_bytes(model)
-    trees = _mark_float32_input(
-        parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+    return _mark_float32_input(
+        parse_catboost_json_treemodels(
+            byte_array,
+            -1 if class_label is None else class_label,
+            isinstance(model, CatBoostClassifier),
+        )
     )
-    return _select_class(trees, model.get_all_params().get("loss_function"), class_label)
 
 
 register(CatBoost, convert_catboost_model)

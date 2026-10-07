@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from lightgbm import LGBMClassifier, LGBMRegressor
@@ -11,16 +10,12 @@ from lightgbm.basic import Booster as LightGBMBooster
 from .cext import (
     parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
 )
-from .common import register, select_binary_class_margin
+from .common import register
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
 
     type LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
-
-
-_SINGLE_OUTPUT = re.compile(rb"^num_tree_per_iteration=1$", re.MULTILINE)
-_BINARY_OBJECTIVE = re.compile(rb"^objective=binary\b", re.MULTILINE)
 
 
 def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
@@ -68,14 +63,11 @@ def convert_lightgbm_model(model: LightGBMModel, class_label: int | None = None)
         A list of ``TreeModel`` instances, one per boosting round for the selected class.
     """
     byte_array = _lightgbm_model_to_bytes(model)
-    trees = parse_lightgbm_string_treemodels(byte_array, -1 if class_label is None else class_label)
-    header_end = byte_array.find(b"\nTree=")  # the header precedes the first tree
-    header_end = len(byte_array) if header_end < 0 else header_end
-    single_output = _SINGLE_OUTPUT.search(byte_array, 0, header_end)
-    binary_objective = _BINARY_OBJECTIVE.search(byte_array, 0, header_end)
-    if single_output and (binary_objective or isinstance(model, LGBMClassifier)):
-        return select_binary_class_margin(trees, class_label)
-    return trees
+    return parse_lightgbm_string_treemodels(
+        byte_array,
+        -1 if class_label is None else class_label,
+        isinstance(model, LGBMClassifier),
+    )
 
 
 register(LGBMRegressor, convert_lightgbm_model)
