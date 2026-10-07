@@ -627,3 +627,9 @@ uv run pre-commit run --all-files
   inventory may then reject that shared directory. Build later byte-identical
   node-local archives from the already authenticated node-local copy; verify every
   copied byte against its original receipt. Never silently relax the inventory.
+
+- Focused/comprehensive summary weights currently follow application, subtype,
+  then recipe (`summary.weight_groups`); they do not contain a dataset-level
+  balancing step. More recipes can give a dataset greater weight within an
+  application. Describe the implemented hierarchy accurately in public docs;
+  do not claim equal dataset weights or change frozen weighting through a copy edit.

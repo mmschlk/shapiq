@@ -48,7 +48,7 @@ def render_about(source: str) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="description" content="The focused Shapley estimator benchmark: games, exact references, query budgets and scores." />
+  <meta name="description" content="The Shapley estimator benchmark: how we construct games, obtain exact references, and measure error." />
   <title>About the benchmark · shapiq</title>
   <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="about.css" />
