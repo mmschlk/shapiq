@@ -99,8 +99,9 @@ saturate their entire coalition space. Unsupported method/target combinations
 remain explicitly unsupported.
 
 Use the existing target-aware coefficient-error metrics and weighting rules.
-The three applications receive equal weight; dense dimension or model grids do
-not automatically give a dataset more influence. Zero-energy targets have no
+The three applications receive equal weight, followed by subtype and recipe
+weighting. Datasets with more recipes can have more weight within an application;
+the current hierarchy does not balance datasets separately. Zero-energy targets have no
 normalized score. Failures have no invented timing or error value. Report success
 coverage alongside scores, with construction seeds grouped for uncertainty.
 

@@ -646,3 +646,9 @@ uv run pre-commit run --all-files
   and `cpython-3.13.13` installation spelling. Filtering only the latter left
   shared `lib-dynload` searches active under full concurrency. Verify the actual
   remaining `sys.path` entries or blocked syscall paths, not just a serial probe.
+- A node-local import hook runs after executable loading and CPython startup.
+  At 960 workers, a trivial pinned-Python launch spent 11.7 seconds in `execve`
+  on shared storage before the hook could run. Successful local imports alone
+  do not establish that a 30-second cell limit leaves adequate estimator time;
+  distinguish startup overhead from recorded estimator CPU time when explaining
+  operational timeouts, and preserve the original attempt outcomes.
