@@ -153,12 +153,12 @@ def test_interventional_sparse_matches_dense_categorical(
 
     X, _ = background_cat_dataset
     dense = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
-    budget = interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE
-    interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = 0
+    budget = interventional_module._STRUCTURAL_MAX_ROWS
+    interventional_module._STRUCTURAL_MAX_ROWS = 0
     try:
         sparse = InterventionalTreeSHAPIQ(model=hist_gb_cat_reg_model, data=X[:20], max_order=2)
     finally:
-        interventional_module._DENSE_FLATTEN_MAX_RESULT_SIZE = budget
+        interventional_module._STRUCTURAL_MAX_ROWS = budget
     assert not dense._use_sparse_path
     assert sparse._use_sparse_path
     for i in range(5):
