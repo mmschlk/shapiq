@@ -69,8 +69,8 @@ class PathDependentTreeGame(Game):
     for every index are available through :class:`~shapiq.tree.TreeExplainer`. Any tree model
     supported by :class:`~shapiq.tree.TreeExplainer` works (scikit-learn, XGBoost, LightGBM,
     CatBoost). The output space is the one of the tree explainer (probabilities for scikit-learn
-    trees and forests, margins for gradient boosting classifiers, whose class 0 is rejected for
-    binary models because the tree algorithms only explain the positive margin).
+    trees and forests, margins for gradient boosting classifiers; class 0 of a binary booster is
+    the negated margin of class 1).
 
     Attributes:
         model: The tree model.

@@ -37,8 +37,9 @@ __all__ = [
 def as_bool_coalitions(coalitions: ArrayLike) -> np.ndarray:
     """Return the coalitions as a two-dimensional boolean matrix.
 
-    ``shapiq.Game`` validates that coalition arrays only contain zeros and ones but passes integer
-    arrays on unchanged. Games that use coalitions as masks therefore convert them first.
+    ``shapiq.Game.__call__`` already hands boolean coalitions to the value function, but a value
+    function can also be called directly, with a vector or with zeros and ones. Games that use
+    coalitions as masks therefore convert them first.
 
     Args:
         coalitions: A coalition vector or matrix with entries in ``{0, 1}``.

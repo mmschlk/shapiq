@@ -62,7 +62,12 @@ def _as_rgb_array(image: np.ndarray | str | Path) -> np.ndarray:
     if array.ndim != 3 or array.shape[-1] not in (3, 4):
         msg = f"Expected an RGB image of shape (height, width, 3), got shape {array.shape}."
         raise ValueError(msg)
-    return np.ascontiguousarray(array[..., :3]).astype(np.uint8)
+    array = array[..., :3]
+    if np.issubdtype(array.dtype, np.floating):
+        if array.size and float(np.nanmax(array)) <= 1.0:  # matplotlib and scikit-image floats
+            array = array * 255.0
+        array = np.rint(array)
+    return np.ascontiguousarray(np.clip(array, 0, 255).astype(np.uint8))
 
 
 def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
@@ -161,6 +166,8 @@ class ImageClassifier(Game):
 
         Args:
             image: An RGB image array of shape ``(height, width, 3)`` or the path of an image.
+                Float images with values in ``[0, 1]`` (e.g. from ``matplotlib.pyplot.imread``)
+                are scaled to ``0, ..., 255``.
             model: A builtin model name or a classifier mapping a batch of images of shape
                 ``(batch, height, width, 3)`` to class probabilities of shape
                 ``(batch, n_classes)``. Defaults to ``"vit_9_patches"``.
@@ -173,7 +180,9 @@ class ImageClassifier(Game):
                 ``"mean"`` (the image's mean color, default), ``"gray"``, ``"black"``, ``"blur"``,
                 or an image of the same shape.
             class_index: The explained class, or ``None`` for the class predicted on the image.
-            batch_size: The number of masked images per forward pass. Defaults to ``16``.
+            batch_size: The number of masked images per forward pass. The builtin models pad
+                smaller batches to this size, so that a value does not depend on the batch.
+                Defaults to ``16``.
             device: The torch device of the builtin models. Defaults to ``"cpu"``.
             revision: The Hugging Face revision (branch, tag, or commit) of the vision
                 transformer. ``None`` loads the default branch. ResNet-18 uses pinned torchvision
@@ -218,7 +227,7 @@ class ImageClassifier(Game):
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
 
-                resnet = ResNetClassifier(device=device)
+                resnet = ResNetClassifier(device=device, batch_size=batch_size)
                 self.image = resnet.prepare(self.image)
                 classifier: Callable[[np.ndarray], np.ndarray] = resnet
             elif callable(model):
@@ -240,11 +249,11 @@ class ImageClassifier(Game):
                 self.class_name = str(categories[self.class_index])
 
         n_players = int(self.regions.max()) + 1
-        empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
+        self._empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(
             n_players,
             normalize=normalize,
-            normalization_value=empty_value,
+            normalization_value=self._empty_value,
             verbose=verbose,
         )
 
@@ -266,7 +275,12 @@ class ImageClassifier(Game):
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the probability of the explained class for each coalition of regions."""
-        return self._evaluate(as_bool_coalitions(coalitions))
+        coalitions = as_bool_coalitions(coalitions)
+        values = np.full(coalitions.shape[0], self._empty_value)
+        present = coalitions.any(axis=1)  # the empty coalition is exactly the stored value
+        if present.any():
+            values[present] = self._evaluate(coalitions[present])
+        return values
 
     def masked_image(self, coalition: np.ndarray | list[int]) -> np.ndarray:
         """Return the image with the players outside ``coalition`` removed.

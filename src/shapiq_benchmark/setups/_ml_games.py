@@ -210,6 +210,7 @@ class FeatureSelectionSetup(ModelSetup, name="feature_selection"):
             split.y_test,
             task=split.task,
             metric=self.metric,
+            random_state=self.random_state,
             normalize=self.normalize,
         )
 
@@ -267,6 +268,7 @@ class DataValuationSetup(ModelSetup, name="data_valuation"):
             task=split.task,
             metric=self.metric,
             empty_value=self.empty_value,
+            random_state=self.random_state,
             normalize=self.normalize,
         )
 

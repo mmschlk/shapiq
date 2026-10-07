@@ -52,6 +52,7 @@ class FeatureSelection(Game):
         *,
         task: str | None = None,
         metric: MetricName | Metric | None = None,
+        random_state: int = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -68,11 +69,14 @@ class FeatureSelection(Game):
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable
                 ``metric(y_true, y_pred)``, or ``None`` for accuracy (classification) or R²
                 (regression). Higher is better.
+            random_state: The seed of the model's clones if the model leaves its ``random_state``
+                unset, so that every coalition has one value. Defaults to ``42``.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
         self.model = model
+        self.random_state = random_state
         self.task = resolve_task(task, model)
         self._metric = resolve_metric(metric, self.task)
         self._x_train, self._y_train = np.asarray(x_train), np.asarray(y_train)
@@ -103,5 +107,6 @@ class FeatureSelection(Game):
                 self._y_test,
                 task=self.task,
                 metric=self._metric,
+                random_state=self.random_state,
             )
         return values

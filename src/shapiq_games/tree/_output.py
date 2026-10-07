@@ -33,9 +33,7 @@ def is_margin_classifier(model: Any) -> bool:  # noqa: ANN401
 def _raw_margins(model: Any, data: np.ndarray) -> np.ndarray:  # noqa: ANN401
     """Return the raw margins of a margin classifier, shape ``(n,)`` or ``(n, n_classes)``."""
     if safe_isinstance(model, "xgboost.XGBClassifier"):
-        import xgboost as xgb
-
-        return model.get_booster().predict(xgb.DMatrix(data), output_margin=True)
+        return model.predict(data, output_margin=True)
     if safe_isinstance(model, "lightgbm.LGBMClassifier"):
         return model.predict(data, raw_score=True)
     if safe_isinstance(model, "catboost.CatBoostClassifier"):

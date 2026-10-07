@@ -21,8 +21,9 @@ class SentimentAnalysis(Game):
 
     The players are the tokens of the input text (without the special tokens). Absent tokens are
     replaced by the mask token (``mask_strategy="mask"``) or deleted (``"remove"``). The value of a
-    coalition is the classifier's score, positive for the ``positive_label`` and negative
-    otherwise, so it lies in ``[-1, 1]``.
+    coalition is the signed score ``2 P(positive) - 1`` of the classifier, i.e.
+    ``P(positive) - P(negative)`` for a binary classifier. It lies in ``[-1, 1]`` and is ``0`` where
+    the classifier is undecided.
 
     Attributes:
         input_text: The decoded input text.
@@ -51,11 +52,12 @@ class SentimentAnalysis(Game):
         Args:
             input_text: The text to explain.
             classifier: A Hugging Face text-classification pipeline (anything with a ``tokenizer``
-                attribute that maps a list of texts to ``[{"label": ..., "score": ...}]``). If
-                ``None``, the pipeline of :data:`SENTIMENT_MODEL_ID` is loaded.
+                attribute that maps a list of texts and ``top_k=None`` to the scores of all labels,
+                ``[[{"label": ..., "score": ...}, ...], ...]``). If ``None``, the pipeline of
+                :data:`SENTIMENT_MODEL_ID` is loaded.
             mask_strategy: ``"mask"`` or ``"remove"``. Defaults to ``"mask"``.
-            positive_label: The label whose score counts as positive. Defaults to ``"POSITIVE"``,
-                the label of the default model.
+            positive_label: The label whose probability is explained. Defaults to
+                ``"POSITIVE"``, the label of the default model.
             device: The device of the default pipeline.
             revision: The Hugging Face revision (branch, tag, or commit) of the default model.
                 ``None`` loads the default branch.
@@ -64,8 +66,8 @@ class SentimentAnalysis(Game):
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
-            ValueError: If ``mask_strategy`` is unknown, or is ``"mask"`` for a tokenizer without
-                a mask token.
+            ValueError: If ``mask_strategy`` is unknown, is ``"mask"`` for a tokenizer without a
+                mask token, or the classifier has no ``positive_label``.
         """
         if mask_strategy not in ("mask", "remove"):
             msg = f"mask_strategy must be 'mask' or 'remove', got {mask_strategy!r}."
@@ -100,14 +102,19 @@ class SentimentAnalysis(Game):
         )
 
     def _scores(self, texts: list[str]) -> np.ndarray:
-        outputs = self._classifier(texts, truncation=True)
-        return np.array(
-            [
-                out["score"] if out["label"] == self.positive_label else -out["score"]
-                for out in outputs
-            ],
-            dtype=float,
-        )
+        """Return the signed score ``2 P(positive) - 1`` of every text."""
+        outputs = self._classifier(texts, truncation=True, top_k=None)
+        scores = np.zeros(len(texts))
+        for i, labels in enumerate(outputs):
+            probabilities = {out["label"]: out["score"] for out in labels}
+            if self.positive_label not in probabilities:
+                msg = (
+                    f"The classifier has no label {self.positive_label!r}; its labels are "
+                    f"{sorted(probabilities)}. Pass positive_label."
+                )
+                raise ValueError(msg)
+            scores[i] = 2.0 * float(probabilities[self.positive_label]) - 1.0
+        return scores
 
     def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
         texts = []

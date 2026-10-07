@@ -27,9 +27,9 @@ class InterventionalTreeGame(Game):
     are available through :class:`~shapiq.tree.interventional.InterventionalTreeSHAPIQ`. The game
     evaluates the model's own predictions in the output space of that explainer: raw margins
     (log-odds) for gradient boosting classifiers (scikit-learn, XGBoost, LightGBM, CatBoost), class
-    probabilities for other classifiers, and predictions for regressors. Class ``0`` of binary
-    gradient boosting classifiers is rejected, because the tree algorithms only explain the
-    positive margin. The game is not normalized by default.
+    probabilities for other classifiers, and predictions for regressors. Class ``0`` of a binary
+    gradient boosting classifier is the negated margin of class ``1``. The game is not normalized
+    by default.
 
     Attributes:
         model: The model.

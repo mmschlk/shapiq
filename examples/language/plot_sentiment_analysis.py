@@ -26,9 +26,9 @@ from shapiq_games import SentimentAnalysis
 # Set Up the Sentiment Game
 # --------------------------
 # Each word in the input becomes a player. The game value for a coalition
-# is the model's sentiment score when only those tokens are visible (absent
-# tokens are replaced with ``[MASK]``). The score is normalized so that the
-# empty coalition maps to 0.
+# is the model's signed sentiment score ``2 P(positive) - 1`` when only those
+# tokens are visible (absent tokens are replaced with ``[MASK]``). The score is
+# normalized so that the empty coalition maps to 0.
 
 game = SentimentAnalysis(
     input_text="I really loved this amazing film",

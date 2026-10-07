@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.imputer import BaselineImputer, GenerativeConditionalImputer, MarginalImputer
+from shapiq.imputer import (
+    BaselineImputer,
+    GenerativeConditionalImputer,
+    MarginalImputer,
+    TabPFNImputer,
+)
 from shapiq.imputer.base import Imputer
 from shapiq_games._base import (
     as_bool_coalitions,
@@ -23,6 +28,11 @@ __all__ = ["LocalExplanation"]
 
 type ImputerName = Literal["marginal", "conditional", "baseline"]
 
+# imputers whose value of a coalition does not depend on the other coalitions of the batch once
+# their generator is reseeded per evaluation; others (e.g. the Gaussian imputers, which draw
+# samples coalition after coalition) are evaluated one coalition at a time
+_BATCH_SAFE_IMPUTERS = (MarginalImputer, BaselineImputer, GenerativeConditionalImputer, TabPFNImputer)
+
 
 class LocalExplanation(Game):
     """The local explanation game: the prediction for ``x`` when only a coalition of features is known.
@@ -37,8 +47,10 @@ class LocalExplanation(Game):
       (remove-and-recontextualize; :class:`shapiq_benchmark.setups.LocalExplanationSetup` builds
       one with ``imputer="tabpfn"``).
 
-    The values are deterministic: the imputers are seeded and the conditional imputer is reseeded
-    before every evaluation, so the value of a coalition does not depend on call order or batching.
+    The values are deterministic: the imputers are seeded and reseeded before every evaluation, so
+    the value of a coalition does not depend on call order or batching. An imputer that draws its
+    samples coalition after coalition (e.g. :class:`~shapiq.imputer.GaussianImputer`) is therefore
+    evaluated one coalition at a time.
 
     Attributes:
         x: The explained point.
@@ -77,20 +89,26 @@ class LocalExplanation(Game):
             data: The background data of shape ``(n_samples, n_features)``.
             x: The explained point, or its index in ``data``. Defaults to ``0``.
             imputer: ``"marginal"``, ``"conditional"``, ``"baseline"``, or an already fitted
-                :class:`~shapiq.imputer.base.Imputer` (then ``model``, ``data``, ``x``,
-                ``class_index``, and ``sample_size`` are only used for the attributes).
+                :class:`~shapiq.imputer.base.Imputer`. An imputer brings its own model,
+                background data, point, and seed: ``x`` and ``random_state`` are then taken from
+                it, and ``model`` and ``class_index`` only set :attr:`class_index`.
             class_index: The explained class for classifiers. Defaults to ``None``, which means
                 class ``1`` for classifiers (the convention of the shapiq explainers).
             sample_size: The number of background rows the marginal imputer averages over.
                 Defaults to ``100``.
-            random_state: The seed of the imputer. Defaults to ``42``.
+            random_state: The seed of the imputer (unless an imputer is given). Defaults to
+                ``42``.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
         data = np.asarray(data)
-        self.x = resolve_x(x, data)
-        self.random_state = random_state
+        if isinstance(imputer, Imputer):  # the imputer brings its own point and seed
+            self.x = np.asarray(imputer.x).reshape(-1)
+            self.random_state = imputer.random_state
+        else:
+            self.x = resolve_x(x, data)
+            self.random_state = random_state
         self.class_index: int | None = None
         if callable(model) and not hasattr(model, "predict"):
             predict: Callable[[np.ndarray], np.ndarray] = model
@@ -124,19 +142,27 @@ class LocalExplanation(Game):
             )
             raise ValueError(msg)
 
-        self.empty_prediction_value = float(self.imputer.empty_prediction)
+        n_players = self.imputer.n_features
+        # through the value function, as not every imputer sets its ``empty_prediction``
+        self.empty_prediction_value = float(
+            self.value_function(np.zeros((1, n_players), dtype=bool))[0]
+        )
         super().__init__(
-            data.shape[1],
+            n_players,
             normalize=normalize,
             normalization_value=self.empty_prediction_value,
             verbose=verbose,
         )
 
+    def _impute(self, coalitions: np.ndarray) -> np.ndarray:
+        # reseeding makes every evaluation draw the same samples (the conditional imputer samples
+        # its background from a stateful generator)
+        self.imputer._rng = np.random.default_rng(self.random_state)  # noqa: SLF001
+        return np.asarray(self.imputer.value_function(coalitions), dtype=float).reshape(-1)
+
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the imputed prediction for the coalitions."""
         coalitions = as_bool_coalitions(coalitions)
-        if hasattr(self.imputer, "_rng"):
-            # the conditional imputer draws its background sample from a stateful generator;
-            # reseeding makes every evaluation use the same sample
-            self.imputer._rng = np.random.default_rng(self.random_state)  # noqa: SLF001
-        return np.asarray(self.imputer.value_function(coalitions), dtype=float).reshape(-1)
+        if isinstance(self.imputer, _BATCH_SAFE_IMPUTERS):
+            return self._impute(coalitions)
+        return np.array([self._impute(coalition[None])[0] for coalition in coalitions])

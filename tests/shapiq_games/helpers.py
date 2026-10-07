@@ -36,21 +36,29 @@ class FakeTokenizer:
 
 
 class FakeSentimentPipeline:
-    """A sentiment 'model' scoring texts by counting the words 'good' and 'bad'."""
+    """A sentiment 'model': P(positive) is 0.5 plus 0.1 per 'good' and minus 0.1 per 'bad'."""
 
     def __init__(self, labels: tuple[str, str] = ("POSITIVE", "NEGATIVE")) -> None:
         self.tokenizer = FakeTokenizer()
         self.labels = labels
         self.calls = 0
 
-    def __call__(self, texts: list[str], **_: object) -> list[dict[str, float | str]]:
+    def __call__(
+        self, texts: list[str], *, top_k: int | None = 1, **_: object
+    ) -> list[list[dict[str, float | str]]] | list[dict[str, float | str]]:
         self.calls += len(texts)
         outputs = []
         for text in texts:
             words = text.split()
-            margin = words.count("good") - words.count("bad")
-            score = 0.5 + 0.1 * abs(margin)
-            outputs.append({"label": self.labels[0 if margin >= 0 else 1], "score": score})
+            positive = min(max(0.5 + 0.1 * (words.count("good") - words.count("bad")), 0.0), 1.0)
+            scores = sorted(
+                [
+                    {"label": self.labels[0], "score": positive},
+                    {"label": self.labels[1], "score": 1.0 - positive},
+                ],
+                key=lambda out: -float(out["score"]),
+            )
+            outputs.append(scores if top_k is None else scores[0])
         return outputs
 
 

@@ -7,6 +7,8 @@ from PIL import Image
 
 from shapiq_games._optional import require
 
+from ._batching import pad_batch
+
 __all__ = ["ResNetClassifier"]
 
 
@@ -23,16 +25,19 @@ class ResNetClassifier:
         categories: The ImageNet class names.
     """
 
-    def __init__(self, *, device: str = "cpu") -> None:
+    def __init__(self, *, device: str = "cpu", batch_size: int = 16) -> None:
         """Load the model.
 
         Args:
             device: The torch device. Defaults to ``"cpu"``.
+            batch_size: The number of images per forward pass; smaller batches are padded to it,
+                so that an image's probabilities do not depend on the batch. Defaults to ``16``.
         """
         torch = require("torch", purpose="the ResNet image games")
         models = require("torchvision.models", purpose="the ResNet image games")
         self._torch = torch
         self._device = torch.device(device)
+        self.batch_size = batch_size
         weights = models.ResNet18_Weights.IMAGENET1K_V1
         self.categories: list[str] = list(weights.meta["categories"])
         self._model = models.resnet18(weights=weights).eval().to(self._device)
@@ -54,9 +59,18 @@ class ResNetClassifier:
 
     def __call__(self, images: np.ndarray) -> np.ndarray:
         """Return the class probabilities of a batch of prepared RGB images."""
+        images = np.asarray(images)
+        return np.concatenate(
+            [
+                self._probabilities(images[start : start + self.batch_size])
+                for start in range(0, images.shape[0], self.batch_size)
+            ]
+        )
+
+    def _probabilities(self, images: np.ndarray) -> np.ndarray:
         torch = self._torch
         # a copy: torch warns on read-only arrays (the prepared image) and rejects negative strides
-        tensor = torch.as_tensor(np.array(images), device=self._device)
+        tensor = torch.as_tensor(np.array(pad_batch(images, self.batch_size)), device=self._device)
         tensor = tensor.permute(0, 3, 1, 2).float() / 255.0
         if tuple(tensor.shape[-2:]) != (self._crop_size, self._crop_size):
             tensor = torch.nn.functional.interpolate(
@@ -64,4 +78,4 @@ class ResNetClassifier:
             )
         with torch.no_grad():
             logits = self._model((tensor - self._mean) / self._std)
-        return torch.softmax(logits, dim=-1).cpu().numpy()
+        return torch.softmax(logits, dim=-1).cpu().numpy()[: images.shape[0]]

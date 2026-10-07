@@ -9,6 +9,7 @@ from sklearn.metrics.pairwise import rbf_kernel
 
 from shapiq.explainer.product_kernel.validation import validate_pk_model
 from shapiq.game import Game
+from shapiq.utils.modules import safe_isinstance
 from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
@@ -56,12 +57,22 @@ class ProductKernelGame(Game):
         """Initialize the product kernel game.
 
         Args:
-            model: A fitted RBF ``SVR``, binary ``SVC``, or ``GaussianProcessRegressor``, or a
+            model: A fitted RBF ``SVR``, binary ``SVC``, or ``GaussianProcessRegressor`` (without
+                ``normalize_y``), or a
                 :class:`~shapiq.explainer.product_kernel.ProductKernelModel`.
             x: The explained point of shape ``(n_features,)``.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``False``.
+
+        Raises:
+            ValueError: If the model is a Gaussian process with ``normalize_y=True``.
         """
+        if getattr(model, "normalize_y", False) and safe_isinstance(
+            model, "sklearn.gaussian_process.GaussianProcessRegressor"
+        ):
+            # shapiq's conversion drops the target scaling, so the game would not match predict
+            msg = "Gaussian processes with normalize_y=True are not supported."
+            raise ValueError(msg)
         self.model: ProductKernelModel = validate_pk_model(model)
         if self.model.kernel_type != "rbf":
             msg = f"Kernel type '{self.model.kernel_type}' is not supported, only 'rbf'."

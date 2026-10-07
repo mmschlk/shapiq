@@ -7,6 +7,7 @@ import pytest
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq_games import (
@@ -28,6 +29,7 @@ from shapiq_games import (
 from shapiq_games.unsupervised import total_correlation
 from tests.shapiq_games.helpers import (
     FakeSentimentPipeline,
+    is_installed,
     mean_brightness_classifier,
     skip_if_no_skimage,
 )
@@ -75,6 +77,35 @@ def test_local_explanation_classifier_and_callable(data) -> None:
         LocalExplanation(model, data["x_train"], imputer="nearest")  # type: ignore[arg-type]
     with pytest.raises(IndexError, match="out of range"):
         LocalExplanation(model, data["x_train"], x=10_000)
+
+
+def test_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
+    """An imputer brings its own point and seed, and the game stays centered and batch-free."""
+    from shapiq.imputer import GaussianImputer, GenerativeConditionalImputer
+
+    model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(
+        data["x_train"], data["yr_train"]
+    )
+    # the Gaussian imputer sets no empty prediction and draws samples coalition after coalition
+    imputer = GaussianImputer(
+        model=model.predict, data=data["x_train"], x=data["x_test"][3], sample_size=20,
+        random_state=0,
+    )  # fmt: skip
+    game = LocalExplanation(model, data["x_train"], imputer=imputer)
+    np.testing.assert_array_equal(game.x, data["x_test"][3])
+    assert game.random_state == 0
+    assert game(game.empty_coalition)[0] == 0.0
+    coalition = np.array([[True, False, False, False]])
+    alone = game(coalition)[0]
+    assert game(np.vstack([[False, True, True, False], coalition[0]]))[1] == alone
+
+    conditional = GenerativeConditionalImputer(
+        model=model.predict, data=data["x_train"], x=data["x_test"][3], random_state=7,
+        normalize=False,
+    )  # fmt: skip
+    expected = conditional.value_function(coalition)[0]  # drawn with a fresh generator seeded 7
+    game = LocalExplanation(model, data["x_train"], imputer=conditional, normalize=False)
+    assert game(coalition)[0] == pytest.approx(expected)
 
 
 def test_global_explanation_explains_loss_reduction(data) -> None:
@@ -125,6 +156,52 @@ def test_valuation_accuracy_uses_labels_not_column_indices(data) -> None:
     assert game(game.empty_coalition)[0] == 0.0
 
 
+def test_retraining_games_are_deterministic_with_unseeded_models(data) -> None:
+    """A model that leaves its random_state unset is seeded by the game's random_state."""
+    forest = RandomForestClassifier(n_estimators=5)
+    game = FeatureSelection(
+        forest, data["x_train"], data["yc_train"], data["x_test"], data["yc_test"]
+    )
+    assert len({float(game(game.grand_coalition)[0]) for _ in range(3)}) == 1
+    valuation = DataValuation(
+        DecisionTreeClassifier(), data["x_train"][:20], data["yc_train"][:20], data["x_test"],
+        data["yc_test"],
+    )  # fmt: skip
+    assert len({float(valuation(valuation.grand_coalition)[0]) for _ in range(3)}) == 1
+    assert forest.random_state is None  # the caller's model is left alone
+
+
+def test_valuation_survives_coalitions_a_model_cannot_fit() -> None:
+    """Coalitions with too few rows or a subset of the classes still have a value."""
+    x, y = make_classification(
+        n_samples=120, n_features=4, n_informative=3, n_redundant=0, n_classes=3, random_state=0
+    )
+    knn = DataValuation(KNeighborsClassifier(n_neighbors=3), x[:6], y[:6], x[60:], y[60:])
+    assert np.isfinite(knn(np.array([[True, True, False, False, False, False]]))).all()
+    if is_installed("xgboost"):  # XGBoost wants the labels 0, ..., k - 1 of the coalition
+        import xgboost as xgb
+
+        rows = np.concatenate([np.flatnonzero(y == 0)[:3], np.flatnonzero(y == 2)[:3]])
+        model = xgb.XGBClassifier(n_estimators=3, n_jobs=1)
+        game = DataValuation(model, x[rows], y[rows], x[60:], y[60:], normalize=False)
+        assert 0.0 < game(game.grand_coalition)[0] <= 1.0
+
+
+def test_dataset_valuation_accepts_boolean_masks_and_rejects_overlaps(data) -> None:
+    model = DecisionTreeRegressor(random_state=0)
+    source = np.arange(300) % 3 == 0
+    game = DatasetValuation(
+        model, data["x_train"], data["yr_train"], data["x_test"], data["yr_test"],
+        groups=[source, ~source],
+    )  # fmt: skip
+    np.testing.assert_array_equal(game.groups[0], np.flatnonzero(source))
+    with pytest.raises(ValueError, match="disjoint"):
+        DatasetValuation(
+            model, data["x_train"], data["yr_train"], data["x_test"], data["yr_test"],
+            groups=[np.arange(10), np.arange(5, 20)],
+        )  # fmt: skip
+
+
 def test_dataset_valuation_groups(data) -> None:
     model = DecisionTreeRegressor(random_state=0)
     game = DatasetValuation(
@@ -165,6 +242,31 @@ def test_ensemble_selection_single_members_and_votes(data) -> None:
         RandomForestEnsembleSelection.from_forest(
             LinearRegression(), data["x_test"], data["yr_test"], task="regression"
         )
+
+
+def test_ensemble_selection_with_any_labels(data) -> None:
+    labels = np.array(["no", "yes"])
+    members = [
+        DecisionTreeClassifier(max_depth=depth, random_state=0).fit(
+            data["x_train"], labels[data["yc_train"]]
+        )
+        for depth in (1, 3)
+    ]
+    game = EnsembleSelection(members, data["x_test"], labels[data["yc_test"]], normalize=False)
+    assert game(game.grand_coalition)[0] > 0.8
+
+    # the trees of a forest predict indices into the forest's classes, here 1 and 2
+    forest = RandomForestClassifier(n_estimators=5, random_state=0).fit(
+        data["x_train"], data["yc_train"] + 1
+    )
+    forest_game = RandomForestEnsembleSelection.from_forest(
+        forest, data["x_test"], data["yc_test"] + 1, normalize=False
+    )
+    assert forest_game(forest_game.grand_coalition)[0] == pytest.approx(
+        forest.score(data["x_test"], data["yc_test"] + 1), abs=0.05
+    )
+    with pytest.raises(ValueError, match="does not know"):
+        RandomForestEnsembleSelection.from_forest(forest, data["x_test"], data["yc_test"] + 5)
 
 
 def test_uncertainty_decomposition(data) -> None:
@@ -257,13 +359,15 @@ def test_sentiment_analysis_with_a_fake_pipeline() -> None:
     pipeline = FakeSentimentPipeline()
     game = SentimentAnalysis("good good bad plot", classifier=pipeline, normalize=False)
     assert game.n_players == 4
-    assert game.original_model_output == pytest.approx(0.6)
+    assert game.original_model_output == pytest.approx(0.2)  # 2 * 0.6 - 1
     # masking the two 'good' tokens leaves one 'bad': a negative score
-    assert game(np.array([[0, 0, 1, 1]], dtype=bool))[0] == pytest.approx(-0.6)
+    assert game(np.array([[0, 0, 1, 1]], dtype=bool))[0] == pytest.approx(-0.2)
+    # the score is continuous: an undecided classifier scores 0, not +-0.5
+    assert game(np.array([[1, 0, 1, 1]], dtype=bool))[0] == pytest.approx(0.0)
     removed = SentimentAnalysis(
         "good bad", classifier=pipeline, mask_strategy="remove", normalize=False
     )
-    assert removed(np.array([[1, 0]], dtype=bool))[0] == pytest.approx(0.6)
+    assert removed(np.array([[1, 0]], dtype=bool))[0] == pytest.approx(0.2)
     with pytest.raises(ValueError, match="mask_strategy"):
         SentimentAnalysis("good", classifier=pipeline, mask_strategy="drop")  # type: ignore[arg-type]
 
@@ -273,7 +377,9 @@ def test_sentiment_analysis_with_other_labels_and_tokenizers() -> None:
     game = SentimentAnalysis(
         "good good bad", classifier=labelled, positive_label="LABEL_1", normalize=False
     )
-    assert game.original_model_output == pytest.approx(0.6)
+    assert game.original_model_output == pytest.approx(0.2)
+    with pytest.raises(ValueError, match="no label 'POSITIVE'"):
+        SentimentAnalysis("good", classifier=labelled)
     # special tokens are left out of the players, whatever the tokenizer adds
     assert game.n_players == 3
 

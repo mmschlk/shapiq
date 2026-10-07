@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeRegressor
@@ -69,6 +70,19 @@ def test_interventional_game_uses_margins_for_boosted_classifiers(classification
     assert game(game.grand_coalition)[0] == pytest.approx(margin, rel=1e-6)
 
 
+@pytest.mark.skipif(not is_installed("xgboost"), reason="xgboost is not installed")
+def test_interventional_game_accepts_boosters_trained_on_dataframes(classification_data) -> None:
+    import pandas as pd
+    import xgboost as xgb
+
+    x, y = classification_data
+    frame = pd.DataFrame(x, columns=["a", "b", "c", "d"])
+    model = xgb.XGBClassifier(n_estimators=3, max_depth=2, n_jobs=1).fit(frame, y)
+    game = InterventionalTreeGame(model, x[:10], x[0])
+    margin = model.predict(frame.iloc[:1], output_margin=True)[0]
+    assert game(game.grand_coalition)[0] == pytest.approx(margin, rel=1e-6)
+
+
 def _line_knn(k: int) -> tuple[KNeighborsClassifier, np.ndarray]:
     """Training points at 1, 2, 3, 4 with labels 1, 0, 1, 1; explained point at 0."""
     x_train = np.array([[1.0], [2.0], [3.0], [4.0]])
@@ -125,6 +139,11 @@ def test_product_kernel_game_matches_the_decision_function(classification_data) 
     assert game(game.grand_coalition)[0] == pytest.approx(svr.predict(x[1:2])[0])
 
 
-def test_product_kernel_game_rejects_other_models() -> None:
+def test_product_kernel_game_rejects_other_models(regression_data) -> None:
     with pytest.raises(TypeError, match="Unsupported model"):
         ProductKernelGame(DecisionTreeRegressor(), np.zeros(3))
+    # shapiq's conversion drops the target scaling of normalize_y
+    x, y = regression_data
+    scaled = GaussianProcessRegressor(normalize_y=True).fit(x[:50], y[:50])
+    with pytest.raises(ValueError, match="normalize_y"):
+        ProductKernelGame(scaled, x[0])

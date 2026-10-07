@@ -86,8 +86,15 @@ class EnsembleSelection(Game):
         self._metric = resolve_metric(metric, self.task)
         self._y_test = np.asarray(y_test)
         self.predictions = np.stack(
-            [np.asarray(member.predict(x_test), dtype=float).reshape(-1) for member in self.members]
+            [np.asarray(member.predict(x_test)).reshape(-1) for member in self.members]
         )
+        if self.task == "classification":  # vote on codes, so that any label type works
+            self._classes, codes = np.unique(
+                np.concatenate([self.predictions.reshape(-1), self._y_test]), return_inverse=True
+            )
+            self._codes = codes[: self.predictions.size].reshape(self.predictions.shape)
+        else:
+            self.predictions = self.predictions.astype(float)
         self.empty_value = float(empty_value)
         super().__init__(
             len(self.members),
@@ -108,7 +115,8 @@ class EnsembleSelection(Game):
             if self.task == "regression":
                 prediction = self.predictions[coalition].mean(axis=0)
             else:
-                prediction = mode(self.predictions[coalition], axis=0, keepdims=False).mode
+                votes = mode(self._codes[coalition], axis=0, keepdims=False).mode
+                prediction = self._classes[votes]
             values[i] = self._metric(self._y_test, prediction)
         return values
 
@@ -147,7 +155,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         Args:
             forest: A fitted ``RandomForestClassifier`` or ``RandomForestRegressor``.
             x_test: The test features.
-            y_test: The test labels, encoded as the forest's class indices for classification.
+            y_test: The test labels.
             task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
                 from the model.
             metric: The metric, or ``None`` for the default of the task.
@@ -161,6 +169,13 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         if not trees:
             msg = "Expected a fitted scikit-learn random forest with `estimators_`."
             raise TypeError(msg)
+        classes = getattr(forest, "classes_", None)
+        if classes is not None:  # the trees predict class indices into the forest's classes_
+            y_test = np.asarray(y_test)
+            if not np.isin(y_test, classes).all():
+                msg = f"y_test has labels that the forest does not know: {sorted(set(y_test) - set(classes))}."
+                raise ValueError(msg)
+            y_test = np.searchsorted(classes, y_test)
         return cls(
             trees,
             x_test,

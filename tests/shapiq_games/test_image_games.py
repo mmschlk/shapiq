@@ -102,6 +102,31 @@ def test_attribution_map_and_player_images() -> None:
     assert patches[0].size == (20, 20)  # (width, height) of the top-left grid cell
 
 
+def test_float_images_in_the_unit_interval_are_scaled() -> None:
+    game = ImageClassifier(_IMAGE / 255.0, mean_brightness_classifier, regions=_GRID)
+    np.testing.assert_array_equal(game.image, _IMAGE)
+
+
+def test_empty_coalitions_take_the_stored_empty_value() -> None:
+    """v(empty) is exactly the normalization value, without evaluating the model again."""
+    classifier = RecordingClassifier()
+    game = ImageClassifier(_IMAGE, classifier, regions=_GRID)
+    classifier.seen.clear()
+    coalitions = np.zeros((3, 6), dtype=bool)
+    coalitions[1, 2] = True
+    values = game(coalitions)
+    assert values[0] == values[2] == 0.0
+    assert len(classifier.seen) == 1  # only the non-empty coalition
+
+
+def test_torch_batches_are_padded_to_one_size() -> None:
+    from shapiq_games.vision._batching import pad_batch
+
+    rows = np.arange(6).reshape(3, 2)
+    np.testing.assert_array_equal(pad_batch(rows, 5), [[0, 1], [2, 3], [4, 5], [4, 5], [4, 5]])
+    assert pad_batch(rows, 3) is rows
+
+
 def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeViT:
         def __init__(self, image: np.ndarray, n_players: int, **_: object) -> None:
@@ -144,6 +169,10 @@ def test_resnet_players_live_on_the_crop_the_model_sees(monkeypatch: pytest.Monk
     values = game(np.eye(4, dtype=bool))
     assert values.shape == (4,)
     assert np.all(np.isfinite(values))
+    # padded forward passes: a value does not depend on the batch it is evaluated in
+    coalitions = np.random.default_rng(0).random((5, 4)) < 0.5
+    batched = game(coalitions)
+    np.testing.assert_array_equal(batched, [game(row[None])[0] for row in coalitions])
 
 
 @pytest.mark.skipif(not is_installed("torch"), reason="torch is not installed")

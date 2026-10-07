@@ -51,15 +51,21 @@ class _GroupValuation(Game):
         task: str | None = None,
         metric: MetricName | Metric | None,
         empty_value: float,
+        random_state: int | None,
         normalize: bool,
         verbose: bool,
     ) -> None:
         self.model = model
+        self.random_state = random_state
         self.task = resolve_task(task, model)
         self._metric = resolve_metric(metric, self.task)
         self._x_train, self._y_train = np.asarray(x_train), np.asarray(y_train)
         self._x_test, self._y_test = np.asarray(x_test), np.asarray(y_test)
-        self.groups = [np.asarray(group, dtype=int) for group in groups]
+        self.groups = [_group_rows(group) for group in groups]
+        rows = np.concatenate(self.groups) if self.groups else np.zeros(0, dtype=int)
+        if np.unique(rows).shape[0] != rows.shape[0]:
+            msg = "The groups must be disjoint: a training row belongs to at most one player."
+            raise ValueError(msg)
         self.empty_value = float(empty_value)
         super().__init__(
             len(self.groups),
@@ -86,8 +92,17 @@ class _GroupValuation(Game):
                 self._y_test,
                 task=self.task,
                 metric=self._metric,
+                random_state=self.random_state,
             )
         return values
+
+
+def _group_rows(group: np.ndarray | Sequence[int]) -> np.ndarray:
+    """Return the row indices of a group given as indices or as a boolean mask."""
+    group = np.asarray(group)
+    if group.dtype == bool:
+        return np.flatnonzero(group)
+    return group.astype(int).reshape(-1)
 
 
 class DataValuation(_GroupValuation):
@@ -118,6 +133,7 @@ class DataValuation(_GroupValuation):
         task: str | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
+        random_state: int = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -134,6 +150,8 @@ class DataValuation(_GroupValuation):
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable, or ``None``
                 for accuracy (classification) or R² (regression).
             empty_value: The value of the empty coalition. Defaults to ``0``.
+            random_state: The seed of the model's clones if the model leaves its ``random_state``
+                unset, so that every coalition has one value. Defaults to ``42``.
             normalize: Whether to center the game by ``empty_value``. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
@@ -148,6 +166,7 @@ class DataValuation(_GroupValuation):
             task=task,
             metric=metric,
             empty_value=empty_value,
+            random_state=random_state,
             normalize=normalize,
             verbose=verbose,
         )
@@ -200,15 +219,17 @@ class DatasetValuation(_GroupValuation):
             y_test: The test labels.
             task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
                 from the model.
-            groups: The training-row indices of every player. If ``None``, the shuffled training
-                rows are split into ``n_players`` groups according to ``player_sizes``.
+            groups: The training rows of every player, as indices or boolean masks; the groups
+                must be disjoint. If ``None``, the shuffled training rows are split into
+                ``n_players`` groups according to ``player_sizes``.
             n_players: The number of groups when ``groups`` is ``None``. Defaults to ``10``.
             player_sizes: ``"uniform"`` (equal sizes), ``"increasing"`` (sizes proportional to
                 ``1, ..., n``), ``"random"``, or relative sizes. Defaults to ``"uniform"``.
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable, or ``None``
                 for accuracy (classification) or R² (regression).
             empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the split into groups. Defaults to ``42``.
+            random_state: The seed of the split into groups, and of the model's clones if the
+                model leaves its ``random_state`` unset. Defaults to ``42``.
             normalize: Whether to center the game by ``empty_value``. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
@@ -226,6 +247,7 @@ class DatasetValuation(_GroupValuation):
             task=task,
             metric=metric,
             empty_value=empty_value,
+            random_state=random_state,
             normalize=normalize,
             verbose=verbose,
         )

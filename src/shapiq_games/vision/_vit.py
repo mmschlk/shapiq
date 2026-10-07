@@ -6,6 +6,8 @@ import numpy as np
 
 from shapiq_games._optional import require
 
+from ._batching import pad_batch
+
 __all__ = ["VIT_MODEL_ID", "VIT_PATCH_GRIDS", "ViTPatchModel"]
 
 VIT_MODEL_ID = "google/vit-base-patch32-384"
@@ -95,10 +97,8 @@ class ViTPatchModel:
         for start in range(0, coalitions.shape[0], self.batch_size):
             # a copy: torch rejects negative strides (a reversed view of the coalitions), and
             # np.ascontiguousarray keeps them for a single row, which NumPy deems contiguous
-            batch = torch.as_tensor(
-                np.array(coalitions[start : start + self.batch_size], dtype=bool),
-                device=self._device,
-            )
+            rows = np.array(coalitions[start : start + self.batch_size], dtype=bool)
+            batch = torch.as_tensor(pad_batch(rows, self.batch_size), device=self._device)
             # a model patch is masked unless a present player covers it
             covered = (batch.float() @ self._player_masks.float()) > 0
             with torch.no_grad():
@@ -106,7 +106,7 @@ class ViTPatchModel:
                     self._pixels.expand(batch.shape[0], -1, -1, -1), bool_masked_pos=~covered
                 ).last_hidden_state
                 logits = self._model.classifier(hidden[:, 0, :])
-            outputs.append(torch.softmax(logits, dim=-1).cpu().numpy())
+            outputs.append(torch.softmax(logits, dim=-1).cpu().numpy()[: rows.shape[0]])
         return np.concatenate(outputs, axis=0)
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
