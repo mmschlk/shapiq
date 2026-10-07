@@ -258,14 +258,14 @@ Core stays as it is except for exactly these changes:
 | Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | project PR |
 | Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | project PR |
 | Fix `MarginalImputer`'s null-player violation | bug fix | separate |
-| Cast integer 0/1 coalitions to bool in `Game` | bug fix | separate |
+| Cast integer 0/1 coalitions to bool in `Game` | bug fix | merged (#614) |
 
 Not core changes, handled elsewhere:
 - **Order-0 convention.** `MoebiusConverter` puts 0 at `()` while `ExactComputer` puts the baseline value. The computers translate every result to the game's own convention, so core is left alone.
 - **Unstable `game_id`.** It is based on Python's `hash()`. Games get their own `fingerprint` instead.
 - **Inconsistent index declarations** (a `valid_indices` attribute here, a `Literal` alias there). Computers read whatever exists; harmonizing them in core is out of scope.
 
-Contract tests that depend on the two bug fixes are marked `xfail` with a reference to the PR that will fix them.
+No test in this PR depends on either fix, so none is marked `xfail`.
 
 ## PR plan
 

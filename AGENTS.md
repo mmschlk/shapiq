@@ -53,9 +53,6 @@ Boosting converters live in separate modules such as `xgboost.py`,
   `$SHAPIQ_DATA_DIR`). New games must follow the contract in `shapiq_games/_base.py`, and
   every family is checked by `tests/shapiq_games/test_contract.py`. Tests that download
   pretrained models or OpenML/UCI data only run with `SHAPIQ_RUN_HEAVY_TESTS=1`.
-- `Game._check_coalitions` does NOT cast integer 0/1 coalitions to bool, so
-  `x[:, coalition]` or `~coalition` inside a `value_function` silently computes
-  the wrong thing for int input. Cast with `coalitions.astype(bool)` until fixed.
 - A pandas CSV round trip is not lossless by default: `DataFrame.to_csv` can drop the last
   significant digit of a float, and `pd.read_csv`'s default fast parser is not correctly
   rounded for 17-digit strings. Data caches that must reproduce values exactly write with
