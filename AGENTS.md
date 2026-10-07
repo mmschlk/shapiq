@@ -37,6 +37,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
   predictors live in that transformed space. Converters must map feature
   indices and category codes back (see `_convert_hist_tree_predictor` in
   `src/shapiq/tree/conversion/sklearn.py`).
+- Don't allocate inside OpenMP loops per work item. The interventional sparse kernel did
+  `stack.reserve(1000)` (~200 KB) per (tree, reference) pair; on macOS that hits the
+  large-allocation path and threads contend: 14 threads ran 2-4x SLOWER than 4. Give each
+  thread one scratch buffer in the parallel region and reuse it (now passed into
+  `traverse_explain_vs_reference`). If more threads make a kernel slower, suspect this first.
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical
