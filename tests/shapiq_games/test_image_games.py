@@ -130,6 +130,7 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
     not (is_installed("torch") and is_installed("torchvision")),
     reason="torch and torchvision are not installed",
 )
+@pytest.mark.filterwarnings("error::UserWarning")  # e.g. torch on the read-only prepared image
 def test_resnet_players_live_on_the_crop_the_model_sees(monkeypatch: pytest.MonkeyPatch) -> None:
     """ResNet-18 sees a 224 x 224 center crop; the game's image and regions are that crop."""
     import torchvision.models

@@ -55,7 +55,8 @@ class ResNetClassifier:
     def __call__(self, images: np.ndarray) -> np.ndarray:
         """Return the class probabilities of a batch of prepared RGB images."""
         torch = self._torch
-        tensor = torch.as_tensor(np.asarray(images), device=self._device)
+        # a copy: torch warns on read-only arrays (the prepared image) and rejects negative strides
+        tensor = torch.as_tensor(np.array(images), device=self._device)
         tensor = tensor.permute(0, 3, 1, 2).float() / 255.0
         if tuple(tensor.shape[-2:]) != (self._crop_size, self._crop_size):
             tensor = torch.nn.functional.interpolate(
