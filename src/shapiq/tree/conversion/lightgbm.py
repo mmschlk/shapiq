@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     type LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
 
 
+_SINGLE_OUTPUT = re.compile(rb"^num_tree_per_iteration=1$", re.MULTILINE)
+_BINARY_OBJECTIVE = re.compile(rb"^objective=binary\b", re.MULTILINE)
+
+
 def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
     """Serialize a LightGBM model to a UTF-8-encoded byte string of its text representation.
 
@@ -65,8 +69,10 @@ def convert_lightgbm_model(model: LightGBMModel, class_label: int | None = None)
     """
     byte_array = _lightgbm_model_to_bytes(model)
     trees = parse_lightgbm_string_treemodels(byte_array, -1 if class_label is None else class_label)
-    single_output = re.search(rb"^num_tree_per_iteration=1$", byte_array, re.MULTILINE)
-    binary_objective = re.search(rb"^objective=binary\b", byte_array, re.MULTILINE)
+    header_end = byte_array.find(b"\nTree=")  # the header precedes the first tree
+    header_end = len(byte_array) if header_end < 0 else header_end
+    single_output = _SINGLE_OUTPUT.search(byte_array, 0, header_end)
+    binary_objective = _BINARY_OBJECTIVE.search(byte_array, 0, header_end)
     if single_output and (binary_objective or isinstance(model, LGBMClassifier)):
         return select_binary_class_margin(trees, class_label)
     return trees
