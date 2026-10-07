@@ -38,7 +38,8 @@ game = SentimentAnalysis(
 token_names = game.input_text.split()
 print(f"Tokens (players): {token_names}")
 print(f"Number of players: {game.n_players}")
-print(f"Grand coalition (full-text sentiment): {game.grand_coalition_value:.3f}")
+print(f"Sentiment of the full text: {game.original_model_output:.3f}")
+print(f"Grand coalition value (vs. the fully masked text): {game.grand_coalition_value:.3f}")
 
 # %%
 # Compute Shapley Values
@@ -84,7 +85,7 @@ game_neg = SentimentAnalysis(
 )
 token_names_neg = game_neg.input_text.split()
 print(f"Tokens: {token_names_neg}")
-print(f"Sentiment: {game_neg.grand_coalition_value:.3f}")
+print(f"Sentiment of the full text: {game_neg.original_model_output:.3f}")
 
 sv_neg = shapiq.KernelSHAP(n=game_neg.n_players, random_state=42).approximate(
     budget=50,
