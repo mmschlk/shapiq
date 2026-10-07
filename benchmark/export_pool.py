@@ -258,8 +258,63 @@ def aliases_for(games: list[dict], fingerprints: dict) -> dict:
     return aliases
 
 
+def closeout(config: dict, audit: dict, inputs: Inputs) -> dict | None:
+    """Allow incomplete execution only for an explicitly sealed terminal pool closure."""
+    require(audit["accounting_complete"], "Unresolved intent tails or case accounting remain")
+    if "closeout" not in config:
+        require(audit["outcome_complete"], "Unclaimed or never-attempted cells remain")
+        return None
+    closed = inputs.pinned(config["closeout"])
+    require(
+        closed["reason"] == "admitted_allocations_ended",
+        "Only terminal-allocation closure is supported; no budget exhaustion is inferred",
+    )
+    require(
+        closed["pool_directory"] == config["pool_directory"]
+        and closed["suite_sha256"] == config["suite"]["sha256"]
+        and closed["source_sha256"] == config["source"]["sha256"]
+        and closed["admissions"] == config["jobs"]
+        and closed["slurm_accounting"] == audit["slurm_accounting"],
+        "Closeout differs from the authenticated terminal allocation inventory",
+    )
+    return {"reason": closed["reason"], "sha256": config["closeout"]["sha256"]}
+
+
+def coverage_summary(data: dict, audit: dict, closed: dict | None) -> dict:
+    """Publish design coverage separately from score coverage over qualified games."""
+    cases = data["coverage"]
+    prepared = sum(case["status"] == "prepared" for case in cases)
+    return {
+        "closed": closed is not None,
+        "closure_reason": closed["reason"] if closed else None,
+        "accounting_complete": audit["accounting_complete"],
+        "outcome_complete": audit["outcome_complete"],
+        "score_complete": audit["score_complete"],
+        "intended_instances": len(cases),
+        "prepared_instances": prepared,
+        "unprepared_instances": len(cases) - prepared,
+        "estimator_seeds": data["suite"]["seeds"],
+        "methods": list(data["methods"]),
+        "method_capabilities": data["coverage_methods"],
+        **{
+            key: sum(case[key] for case in cases)
+            for key in (
+                "planned_cells",
+                "planned_supported_cells",
+                "planned_unsupported_cells",
+                "responses",
+                "unanswered_intents",
+                "never_attempted_supported",
+                "not_reached_supported",
+            )
+        },
+        "score_scope": "Qualified games only; unprepared cases have no invented truth or score.",
+        "details": {"type": "report", "id": "coverage"},
+    }
+
+
 def export(config_path: Path, output: Path, database: Path, audit_path: Path) -> dict:
-    """Create a new local report and one audit after complete outcome coverage."""
+    """Create a local report after complete execution or an authenticated closeout."""
     from shapiq_benchmark.duplicates import remove_aliases
     from shapiq_benchmark.partitioned import write_partitioned_report
     from shapiq_benchmark.record_store import RecordStore
@@ -290,7 +345,7 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
         inputs.pin(assets / name)
     with RecordStore(database) as records:
         data, audit = collect(config, records)
-        require(audit["outcome_complete"], "Unclaimed or never-attempted cells remain")
+        closed = closeout(config, audit, inputs)
         require(data["games"], "No qualified measured games to export")
         for path, sha in audit["input_hashes"].items():
             inputs.pin(path, sha)
@@ -312,6 +367,7 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
         )
         aliases = aliases_for(data["games"], fingerprints)
         remove_aliases(data, aliases)
+        coverage = coverage_summary(data, audit, closed)
         collection_id = data["snapshot_id"]
         data["composition"] = {
             "kind": "terminal-comprehensive-pool",
@@ -319,10 +375,18 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
             "reference_check_sha256": identity({"checks": checks}),
             "aliases": data["duplicate_games"],
             "intended_instances": audit["intended_instances"],
+            "closeout": closed,
+            "coverage_sha256": identity(coverage),
         }
         data["snapshot_id"] = identity(data["composition"])
         inputs.stable()
-        write_partitioned_report(data, output)
+        manifest = write_partitioned_report(data, output)
+        # The frozen writer already preserves coverage in authenticated detail
+        # blocks. Add only its small discoverable summary to the manifest.
+        manifest["campaign_coverage"] = coverage
+        (output / "data.json").write_text(
+            json.dumps(manifest, separators=(",", ":"), allow_nan=False) + "\n"
+        )
         for name in names:
             shutil.copyfile(assets / name, output / name)
         shutil.copyfile(output / "data.json", output / "about.json")
@@ -342,6 +406,8 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
             scope="Terminal comprehensive outcome collection, reference checks and public packaging; browser verification and publication remain separate.",
             report_id=data["snapshot_id"],
             collection_id=collection_id,
+            closeout=closed,
+            campaign_coverage=coverage,
             reference_checks=checks,
             duplicate_games=data["duplicate_games"],
             native_duplicate_uniqueness="not established by table fingerprints",

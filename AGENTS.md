@@ -662,3 +662,11 @@ uv run pre-commit run --all-files
   small standalone monitoring scripts, but importing repository helpers can fail
   on newer Python syntax or runtime types (for example `isinstance(x, int | float)`).
   Use the pinned benchmark interpreter for repository code and ledger helpers.
+
+- A bounded campaign can finish its admitted allocations with unattempted cells.
+  Keep execution completeness separate from explicit final coverage accounting;
+  terminal Slurm state does not prove that the global CPU budget was exhausted.
+  Partitioned reports retain coverage in lazy detail blocks, but that alone does
+  not make unprepared games visible in the dashboard. Preserve missing results
+  as missing, expose the intended design, and require an authenticated closeout
+  before publishing an incomplete cohort.

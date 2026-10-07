@@ -205,6 +205,7 @@ function legacy(data, req) {
   const output = {};
   const c = vm.createContext({
     data,
+    BenchmarkQuery: api,
     $,
     document: { createElement: node },
     isSynthetic: (g) => Boolean(g.metadata?.synthetic),

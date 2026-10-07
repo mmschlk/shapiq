@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -402,3 +403,21 @@ def test_authenticated_preparation_failure_counts_as_outcome(campaign, tmp_path)
     data, audit = run_collection(campaign, tmp_path)
     assert audit["complete"] and not audit["score_complete"]
     assert not data["records"] and data["coverage"][0]["status"] == "not_measured"
+
+
+def test_unclaimed_case_has_complete_accounting_but_no_fabricated_game(campaign, tmp_path):
+    shutil.rmtree(campaign[1])
+    data, audit = run_collection(campaign, tmp_path)
+    assert audit["accounting_complete"] and not audit["outcome_complete"]
+    assert not data["games"] and not data["records"]
+    case = data["coverage"][0]
+    assert case["preparation_status"] == "unclaimed"
+    assert case["planned_supported_cells"] == case["not_reached_supported"] == 1
+    assert case["planned_unsupported_cells"] == 1
+
+
+@pytest.mark.parametrize("missing", ["claim.json", "suite.json"])
+def test_unstarted_cases_cannot_hide_existing_results(campaign, tmp_path, missing):
+    (campaign[1] / missing).unlink()
+    with pytest.raises(ValueError, match="orphan"):
+        run_collection(campaign, tmp_path)

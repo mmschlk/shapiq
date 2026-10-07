@@ -653,6 +653,38 @@ function renderReportSummary(linkToAbout = true) {
         `${excluded} preparation configurations excluded; reasons in About. `,
       ),
     );
+  const coverage = data.campaign_coverage;
+  if (coverage) {
+    const manifest = data;
+    const files = typeof localReportFiles === "undefined" ? null : localReportFiles;
+    summary.append(document.createTextNode(
+      `${coverage.closed ? "Campaign closed · " : ""}${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
+      `${coverage.never_attempted_supported.toLocaleString()} supported cells on qualified games were not attempted; ${coverage.not_reached_supported.toLocaleString()} planned supported cells were not reached because no qualified reference was prepared. Scores cover qualified games only. `,
+    ));
+    const download = document.createElement("a");
+    download.href = "#";
+    download.textContent = "Download planned-case coverage · ";
+    download.addEventListener("click", async (event) => {
+      event.preventDefault();
+      try {
+        const cases = await BenchmarkDetails.object(manifest, coverage.details, {
+          read: (descriptor) => BenchmarkPartitions.read(manifest, descriptor, {
+            files,
+          }),
+        });
+        if (data !== manifest) return;
+        const url = URL.createObjectURL(new Blob([JSON.stringify({summary: coverage, cases}, null, 2)], {type: "application/json"}));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "benchmark-coverage.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        download.textContent = `Coverage download failed: ${error.message}`;
+      }
+    });
+    summary.append(download);
+  }
   if (linkToAbout) {
     const jump = document.createElement("a");
     jump.href = "about.html";

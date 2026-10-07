@@ -205,6 +205,14 @@ def exportable_campaign(campaign):
         signal_ratio=1.0,
         score_eligible=True,
     )
+    snapshot["coverage"] = [
+        {
+            "family": "recipe",
+            "status": "measured",
+            "reason": "distinctive qualification evidence",
+            "game_ids": [game["id"]],
+        }
+    ]
     snapshot["artifacts"]["payoffs.npz"] = collector.digest(artifact)
     snapshot["snapshot_id"] = runner.identity(
         {k: v for k, v in snapshot.items() if k != "snapshot_id"}
@@ -213,7 +221,9 @@ def exportable_campaign(campaign):
     prepared = json.loads((directory / "prepared.json").read_text())
     prepared.update(snapshot_id=snapshot["snapshot_id"], snapshot_sha256=pin["sha256"])
     save(directory / "prepared.json", prepared)
-    raw.update(snapshot_id=snapshot["snapshot_id"], games=snapshot["games"])
+    raw.update(
+        snapshot_id=snapshot["snapshot_id"], games=snapshot["games"], coverage=snapshot["coverage"]
+    )
     intent["expected_snapshot_id"] = snapshot["snapshot_id"]
     lines(directory / "intents.jsonl", [intent])
     Checkpoint(directory / "results", directory / "prepared", raw)
@@ -275,3 +285,103 @@ def test_output_path_aliases_are_rejected_before_inputs(tmp_path):
             tmp_path / "unused/../public",
             tmp_path / "audit.json",
         )
+
+
+def seal_closeout(config, tmp_path):
+    closed = {
+        "reason": "admitted_allocations_ended",
+        "pool_directory": config["pool_directory"],
+        "suite_sha256": config["suite"]["sha256"],
+        "source_sha256": config["source"]["sha256"],
+        "admissions": config["jobs"],
+        "slurm_accounting": collector.terminal_accounting(config["jobs"]),
+    }
+    config["closeout"] = save(tmp_path / "closeout.json", closed)
+    return closed
+
+
+@pytest.mark.parametrize("missing", ["evaluation", "preparation"])
+def test_authenticated_closeout_publishes_exact_missing_design(
+    campaign, tmp_path, monkeypatch, missing
+):
+    from tests.shapiq_benchmark.test_partitioned import decoded
+
+    config, directory, _ = exportable_campaign(campaign)
+    monkeypatch.setattr(exporter, "terminal_accounting", collector.terminal_accounting)
+    if missing == "evaluation":
+        for name in (
+            "intents.jsonl",
+            "responses.jsonl",
+            "results/results.json",
+            "results/records.jsonl",
+            "outcome.json",
+        ):
+            (directory / name).unlink()
+    else:
+        suite = json.loads(Path(config["suite"]["path"]).read_text())
+        suite["game_seeds"] = [0, 1]
+        config["suite"] = save(Path(config["suite"]["path"]), suite)
+        tasks = json.loads(Path(config["inventory"]["path"]).read_text())
+        tasks.append({**tasks[0], "case": 1, "seed": 1})
+        config["inventory"] = save(Path(config["inventory"]["path"]), tasks)
+        for path in (
+            directory / "claim.json",
+            Path(config["pool_directory"]) / "allocations/1/started.json",
+        ):
+            value = json.loads(path.read_text())
+            value["suite_sha256"] = config["suite"]["sha256"]
+            save(path, value)
+    seal_closeout(config, tmp_path)
+    path = tmp_path / "config.json"
+    save(path, config)
+    output = tmp_path / "public"
+    audit = exporter.export(path, output, tmp_path / "export.sqlite", tmp_path / "audit.json")
+    assert audit["accounting_complete"] and not audit["outcome_complete"]
+    manifest = json.loads((output / "data.json").read_text())
+    summary = manifest["campaign_coverage"]
+    assert summary["closed"] and summary["closure_reason"] == "admitted_allocations_ended"
+    assert (
+        summary["planned_supported_cells"]
+        == summary["responses"]
+        + summary["unanswered_intents"]
+        + summary["never_attempted_supported"]
+        + summary["not_reached_supported"]
+    )
+    details = {
+        r["id"]: r["value"] for r in decoded(output, manifest, "details") if r["type"] == "report"
+    }
+    assert details["preparation_coverage"][0]["reason"] == "distinctive qualification evidence"
+    assert len(details["coverage"]) == summary["intended_instances"]
+    if missing == "evaluation":
+        assert summary["never_attempted_supported"] == 1 and manifest["record_count"] == 1
+        assert manifest["catalog"]["planned_cells"] - manifest["record_count"] == 1
+    else:
+        assert summary["unprepared_instances"] == summary["not_reached_supported"] == 1
+        assert manifest["game_count"] == 1 and manifest["record_count"] == 2
+        assert details["coverage"][1]["preparation_status"] == "unclaimed"
+
+
+@pytest.mark.parametrize(
+    "fault", ["reason", "admissions", "slurm_accounting", "hash", "intent_tail"]
+)
+def test_closeout_cannot_override_integrity_or_claim_budget_exhaustion(campaign, tmp_path, fault):
+    config, directory, _ = exportable_campaign(campaign)
+    closed = seal_closeout(config, tmp_path)
+    if fault == "reason":
+        closed["reason"] = "budget_exhausted"
+    elif fault in {"admissions", "slurm_accounting"}:
+        closed[fault] = {}
+    elif fault == "hash":
+        config["closeout"]["sha256"] = "0" * 64
+    else:
+        with (directory / "intents.jsonl").open("ab") as stream:
+            stream.write(b'{"partial":')
+    if fault in {"reason", "admissions", "slurm_accounting"}:
+        config["closeout"] = save(tmp_path / "closeout.json", closed)
+    path = tmp_path / "config.json"
+    save(path, config)
+    with pytest.raises(ValueError):
+        exporter.export(
+            path, tmp_path / "public", tmp_path / "export.sqlite", tmp_path / "audit.json"
+        )
+    assert not (tmp_path / "public").exists()

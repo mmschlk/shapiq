@@ -112,3 +112,9 @@ coherent cohort, its actual coverage, exclusions, frozen configurations and
 reproduction artifacts. The About page is maintained as Markdown with a table
 of contents. Preserve historical evidence on lab storage; remove obsolete active
 paths only when they are no longer needed by a live job or reproduction record.
+
+If admitted allocations end before all work is attempted, an authenticated
+closeout records that fact separately from execution completeness. The public
+coverage inventory includes unprepared instances and unattempted cells; neither
+receives an invented reference or score. Ending allocations does not by itself
+establish that the global CPU-hour cap was exhausted.

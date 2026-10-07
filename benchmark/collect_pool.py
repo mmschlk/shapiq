@@ -202,6 +202,59 @@ def fragment(suite: dict, task: dict) -> dict:
     return result
 
 
+def planned_targets(task: dict, suite: dict, catalog: dict) -> list[dict]:
+    """Describe design cells without inventing a qualified game or an attempt."""
+    panel = (
+        [
+            {
+                "id": f"{task['recipe']}-i{task['seed']}-{t['index'].lower()}-{t['order']}",
+                "n_players": task["spec"]["n_players"],
+                **t,
+            }
+            for t in suite["targets"]
+        ]
+        if task["kind"] == "family"
+        else [{**spec, "id": spec["id"] + f"-i{task['seed']}"} for spec in task["specs"]]
+    )
+    return [
+        {
+            "planned_game_id": game["id"],
+            "index": game["index"],
+            "order": game["order"],
+            "n_players": game["n_players"],
+            "budgets": sorted(
+                {math.ceil(r * game["n_players"]) for r in suite["relative_budgets"]}
+            ),
+            "supported_method_count": sum(
+                game["index"] in catalog[m]["indices"] for m in suite["methods"]
+            ),
+        }
+        for game in panel
+    ]
+
+
+def unstarted_case(directory: Path, allowed: set[str], inputs: Inputs) -> None:
+    """Reject hidden work behind an absent claim or suite, and authenticate absences."""
+    require(not directory.is_symlink(), "Unstarted case directory is a symlink")
+    if not directory.exists():
+        inputs.absent.add(str(directory.absolute()))
+        return
+    require(
+        {p.name for p in directory.iterdir()} <= allowed,
+        "Unstarted case contains orphan preparation/evaluation evidence",
+    )
+    for name in (
+        "suite.json",
+        "prepared",
+        "prepared.json",
+        "results",
+        "intents.jsonl",
+        "responses.jsonl",
+    ):
+        if name not in allowed:
+            inputs.absent.add(str((directory / name).absolute()))
+
+
 def journal(path: Path, inputs: Inputs) -> tuple[list[dict], bool]:
     """Retain complete lines, recording a trailing interruption without discarding evidence."""
     path = Path(path)
@@ -465,6 +518,8 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
     }
     data["suite"].update(budgets=[], budgets_by_game={})
     catalog, cases, game_ids = method_catalog(), [], set()
+    data["coverage_methods"] = {method: catalog[method]["indices"] for method in suite["methods"]}
+    unstarted = []
     counts = Counter()
     for task in inventory:
         directory = root / "tasks" / f"case-{task['case']:06d}"
@@ -473,11 +528,28 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
             "recipe": task["recipe"],
             "seed": task["seed"],
             "complete": False,
+            "accounting_complete": False,
+            "prepared": False,
         }
+        check["planned_targets"] = planned_targets(task, suite, catalog)
+        check["planned_supported_cells"] = sum(
+            len(t["budgets"]) * t["supported_method_count"] * len(suite["seeds"])
+            for t in check["planned_targets"]
+        )
+        check["planned_cells"] = sum(
+            len(t["budgets"]) * len(suite["methods"]) * len(suite["seeds"])
+            for t in check["planned_targets"]
+        )
+        check["planned_unsupported_cells"] = (
+            check["planned_cells"] - check["planned_supported_cells"]
+        )
         cases.append(check)
         claim = inputs.read(directory / "claim.json", optional=True)
         if claim is None:
+            unstarted_case(directory, set(), inputs)
+            unstarted.append((directory, set()))
             check["status"] = "unclaimed" if not directory.exists() else "interrupted_claim"
+            check["accounting_complete"] = True
             continue
         require(
             claim["task"] == task and claim["job"] in starts, "Task claim differs from inventory"
@@ -492,7 +564,10 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
         check["job"] = claim["job"]
         declared = inputs.read(directory / "suite.json", optional=True)
         if declared is None:
+            unstarted_case(directory, {"claim.json"}, inputs)
+            unstarted.append((directory, {"claim.json"}))
             check["status"] = "interrupted_claim"
+            check["accounting_complete"] = True
             continue
         require(declared == fragment(suite, task), "Task scientific fragment differs")
         outcome = inputs.read(directory / "outcome.json", optional=True)
@@ -506,6 +581,9 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
                 "responses.jsonl",
                 "results/results.json",
                 "results/records.jsonl",
+                "evaluation.json",
+                "evaluation-execution.json",
+                "evaluate.log",
             ):
                 path = directory / name
                 require(
@@ -514,8 +592,13 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
                 )
                 inputs.absent.add(str(path))
             require(
-                not outcome or outcome["status"] != "complete",
-                "False completion without preparation",
+                not outcome
+                or (
+                    outcome["status"] in {"preparation_failed", "preparation_timeout"}
+                    and prep_execution == outcome.get("preparation")
+                    and prep_execution["returncode"] != 0
+                ),
+                "Inconsistent outcome without preparation",
             )
             check["status"] = (outcome or {}).get("status", "preparation_interrupted")
             check["complete"] = bool(
@@ -525,6 +608,7 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
                 and prep_execution["returncode"] != 0
             )
             check["score_complete"] = False
+            check["accounting_complete"] = True
             data["coverage"].append(
                 {
                     "family": task["recipe"],
@@ -537,6 +621,7 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
         snapshot_path = inputs.pin(
             directory / "prepared/snapshot.json", prepared["snapshot_sha256"]
         )
+        check["prepared"] = True
         snapshot, artifact_root = load_snapshot(snapshot_path)
         require(
             snapshot["snapshot_id"] == prepared["snapshot_id"]
@@ -598,6 +683,11 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
             for budget, seed in itertools.product(grids[gid], suite["seeds"])
         }
         supported = {key for key in planned if games[key[0]]["index"] in catalog[key[1]]["indices"]}
+        require(
+            check["planned_cells"] == len(planned)
+            and check["planned_supported_cells"] == len(supported),
+            "Design cell counts differ from the qualified target grid",
+        )
         intents, intent_tail = journal(directory / "intents.jsonl", inputs)
         responses, response_tail = journal(directory / "responses.jsonl", inputs)
         attempted, returned = {}, {}
@@ -825,6 +915,7 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
             missing_rows=len(planned - seen),
             uncheckpointed_responses=len(set(returned) - seen),
             derived_rows=len(extra),
+            accounting_complete=not intent_tail,
         )
         public = publics[0]
         data["games"].extend(public["games"])
@@ -840,6 +931,8 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
                     data[field][key] = value
             store.extend(public["records"])
     inputs.pin(Path(__file__))
+    for directory, allowed in unstarted:
+        unstarted_case(directory, allowed, inputs)
     require(
         {p.name for p in (root / "tasks").iterdir()} == actual_directories, "Task inventory changed"
     )
@@ -860,10 +953,47 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
             "runs": sorted(data["runs"]),
         }
     )
+    # One public design entry per case, including those with no qualified truth.
+    # Planned coordinates are metadata, never fabricated result rows or games.
+    data["preparation_coverage"] = data["coverage"]
+    data["coverage"] = [
+        {
+            "case": c["case"],
+            "recipe": c["recipe"],
+            "instance_seed": c["seed"],
+            "status": "prepared" if c["prepared"] else "not_measured",
+            "preparation_status": "qualified" if c["prepared"] else c["status"],
+            "evaluation_status": c["status"] if c["prepared"] else "not_reached",
+            "complete": c["complete"],
+            "accounting_complete": c["accounting_complete"],
+            "planned_targets": c["planned_targets"],
+            **{
+                key: c[key]
+                for key in ("planned_cells", "planned_supported_cells", "planned_unsupported_cells")
+            },
+            "responses": c.get("responses", 0),
+            "unanswered_intents": c.get("unanswered_intents", 0),
+            "never_attempted_supported": c.get("never_attempted_supported", 0),
+            "not_reached_supported": 0 if c["prepared"] else c["planned_supported_cells"],
+        }
+        for c in cases
+    ]
+    require(
+        all(
+            c["planned_supported_cells"]
+            == c["responses"]
+            + c["unanswered_intents"]
+            + c["never_attempted_supported"]
+            + c["not_reached_supported"]
+            for c in data["coverage"]
+        ),
+        "Planned supported-cell accounting differs",
+    )
     audit = {
         "status": "PASS" if all(c["complete"] for c in cases) else "INCOMPLETE",
         "complete": all(c["complete"] for c in cases),
         "outcome_complete": all(c["complete"] for c in cases),
+        "accounting_complete": all(c["accounting_complete"] for c in cases),
         "score_complete": all(c.get("score_complete", False) for c in cases),
         "publication_ready": False,
         "scope": "Pool ownership, snapshot integrity and saved estimator score verification; final reference/duplicate and publication checks remain separate.",

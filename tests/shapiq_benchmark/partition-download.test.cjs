@@ -43,7 +43,9 @@ with RecordStore(root/'rows.sqlite') as store:
     cwd: root,
     env: {
       ...process.env,
-      PYTHONPATH: path.join(root, "src"),
+      PYTHONPATH: [path.join(root, "src"), process.env.PYTHONPATH]
+        .filter(Boolean)
+        .join(path.delimiter),
       PYTHONDONTWRITEBYTECODE: "1",
     },
     encoding: "utf8",

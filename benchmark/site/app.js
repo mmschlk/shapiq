@@ -25,6 +25,7 @@ let sourceVersion = 0,
   targetVersion = 0,
   localReportFiles = null,
   localSelected = false;
+const unmeasuredLabel = () => data.campaign_coverage?.closed ? "not evaluated" : "pending";
 const methodIndex = (method) =>
   Math.max(
     0,
@@ -367,7 +368,7 @@ async function load(value, files = null) {
   ratios.forEach((r) =>
     relative.append(
       new Option(
-        `${Number(r.toPrecision(4))} × players${(partitioned ? targetCatalog().observed_relative_budgets?.includes(r) : data.records.some((row) => row.status !== "unsupported" && row.budget === Math.ceil(r * gamesById.get(row.game_id)?.n_players))) ? "" : " · pending"}`,
+        `${Number(r.toPrecision(4))} × players${(partitioned ? targetCatalog().observed_relative_budgets?.includes(r) : data.records.some((row) => row.status !== "unsupported" && row.budget === Math.ceil(r * gamesById.get(row.game_id)?.n_players))) ? "" : ` · ${unmeasuredLabel()}`}`,
         `r:${r}`,
       ),
     ),
@@ -425,7 +426,7 @@ function updateRecordControls(reset = false) {
             row.status !== "unsupported" &&
             row.budget === Math.ceil(ratio * games.get(row.game_id)?.n_players),
         );
-    option.textContent = `${Number(ratio.toPrecision(4))} × players${measured ? "" : " · pending"}`;
+    option.textContent = `${Number(ratio.toPrecision(4))} × players${measured ? "" : ` · ${unmeasuredLabel()}`}`;
   }
 }
 
@@ -732,12 +733,18 @@ async function renderPartitioned() {
     $("chartTooltip").hidden = true;
     $("notice").textContent = [
       pendingRuns
-        ? `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+        ? data.campaign_coverage?.closed
+          ? `Campaign closed · ${pendingRuns.toLocaleString()} cells on qualified games were not evaluated. Missing results do not count as zero error.`
+          : `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
         : "",
       result.table_pending
-        ? "Table results pending for this budget. Charts show all measured budgets."
+        ? data.campaign_coverage?.closed
+          ? "No table results were measured for this budget. Charts show all measured budgets."
+          : "Table results pending for this budget. Charts show all measured budgets."
         : result.chart_pending
-          ? "Chart results pending for this selection."
+          ? data.campaign_coverage?.closed
+            ? "No chart results were measured for this selection."
+            : "Chart results pending for this selection."
           : "",
     ]
       .filter(Boolean)
@@ -892,13 +899,19 @@ function render() {
     !s.rows.some((row) => row.status !== "unsupported") &&
     s.rows.length < s.cells.length * s.methods.length;
   const selectionNotice = tablePending
-    ? "Table results pending for this budget. Charts show all measured budgets."
+    ? data.campaign_coverage?.closed
+      ? "No table results were measured for this budget. Charts show all measured budgets."
+      : "Table results pending for this budget. Charts show all measured budgets."
     : chartPending
-      ? "Chart results pending for this selection."
+      ? data.campaign_coverage?.closed
+        ? "No chart results were measured for this selection."
+        : "Chart results pending for this selection."
       : "";
   $("notice").textContent = [
     pendingRuns
-      ? `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+      ? data.campaign_coverage?.closed
+        ? `Campaign closed · ${pendingRuns.toLocaleString()} cells on qualified games were not evaluated. Missing results do not count as zero error.`
+        : `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
       : "",
     selectionNotice,
   ]
