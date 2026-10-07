@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
 
 InterventionalTreeSHAPIQIndices = Literal[
-    "SV", "SII", "k-SII", "BII", "BV", "CHII", "CV", "FBII", "FSII", "STII", "CUSTOM"
+    "SV", "SII", "k-SII", "BII", "BV", "CHII", "CV", "FBII", "FSII", "STII", "Moebius", "CUSTOM"
 ]
 
 

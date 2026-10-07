@@ -98,16 +98,23 @@ namespace inter_weights
         return w;
     }
 
+    inline double moebius_transform_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // The Moebius coefficient of S is the discrete derivative at the empty coalition, so
+        // a leaf contributes to S only when S reaches it exactly: a.k.a when s_cap_e == e.
+        return (s_cap_e == e) ? signed_unit(s_cap_r) : 0.0;
+    }
+
     inline double stii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Compute the lambda. Unlike the general path (which applies the top-order
         // discrete-derivative weight at every order), STII defines interactions of
-        // size s < max_order as the discrete derivative at the empty coalition:
-        // the leaf contributes iff E is contained in S, with sign (-1)^|S cap R|.
+        // size s < max_order as the discrete derivative at the empty coalition -- that is,
+        // exactly the Moebius transform.
         double w = 0.0;
         if (s < max_order)
         {
-            w = (s_cap_e == e) ? std::pow(-1.0, s_cap_r) : 0.0;
+            w = moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         }
         else if (s == max_order)
         {
@@ -148,7 +155,7 @@ namespace inter_weights
         }
         throw std::invalid_argument("Unsupported index type in discrete_derivative_weight: " + std::to_string(static_cast<int>(index)));
     }
-    inline double moebius_weight(int64_t coalition_size, int64_t interaction_size, IndexType index)
+    inline double index_from_moebius_weight(int64_t coalition_size, int64_t interaction_size, IndexType index)
     {
         return discrete_derivative_weight(coalition_size - interaction_size, interaction_size, coalition_size, index);
     }
@@ -157,7 +164,7 @@ namespace inter_weights
         double w = 0.0;
         for (int k = 0; k <= r - s_cap_r; k++)
         {
-            w += std::pow(-1, k) * binom(r - s_cap_r, k) * moebius_weight(k + s_cap_r + e, s, index);
+            w += std::pow(-1, k) * binom(r - s_cap_r, k) * index_from_moebius_weight(k + s_cap_r + e, s, index);
         }
         return signed_unit(s_cap_r) * w;
     }
@@ -181,6 +188,8 @@ namespace inter_weights
             return fsii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         case IndexType::STII:
             return stii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
+        case IndexType::MOEBIUS:
+            return moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         default:
             return general_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order, index);
         }

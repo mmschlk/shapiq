@@ -25,6 +25,7 @@ enum class IndexType
     FBII,
     FSII,
     STII,
+    MOEBIUS,
     CUSTOM
 };
 
