@@ -112,6 +112,11 @@ static bool parse_index_type(const std::string &index, IndexType &index_type)
         index_type = IndexType::MOEBIUS;
         return true;
     }
+    if (index == "Fourier")
+    {
+        index_type = IndexType::FOURIER;
+        return true;
+    }
     if (index == "CUSTOM")
     {
         index_type = IndexType::CUSTOM;
@@ -987,6 +992,7 @@ static void compute_order3_leafparallel(
         case IndexType::FSII: FUNC<IndexType::FSII>(__VA_ARGS__); break; \
         case IndexType::STII: FUNC<IndexType::STII>(__VA_ARGS__); break; \
         case IndexType::MOEBIUS: FUNC<IndexType::MOEBIUS>(__VA_ARGS__); break; \
+        case IndexType::FOURIER: FUNC<IndexType::FOURIER>(__VA_ARGS__); break; \
         case IndexType::CUSTOM: FUNC<IndexType::CUSTOM>(__VA_ARGS__); break; \
         } \
     } while(0)

@@ -105,6 +105,13 @@ namespace inter_weights
         return (s_cap_e == e) ? signed_unit(s_cap_r) : 0.0;
     }
 
+    inline double fourier_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // For any game the Fourier (Walsh) coefficient with basis (-1)^|S cap T| is
+        // (-1/2)^|S| times the Banzhaf interaction of S, so we rescale the BII weight.
+        return signed_unit(s) * std::ldexp(banzhaf_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order), -s);
+    }
+
     inline double stii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Compute the lambda. Unlike the general path (which applies the top-order
@@ -190,6 +197,8 @@ namespace inter_weights
             return stii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         case IndexType::MOEBIUS:
             return moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
+        case IndexType::FOURIER:
+            return fourier_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         default:
             return general_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order, index);
         }

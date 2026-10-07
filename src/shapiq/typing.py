@@ -76,6 +76,7 @@ IndexType = Literal[
     "BV",
     "JointSV",
     "Moebius",
+    "Fourier",
     "ELC",
 ]
 """A type representing the indices used throughout the package."""

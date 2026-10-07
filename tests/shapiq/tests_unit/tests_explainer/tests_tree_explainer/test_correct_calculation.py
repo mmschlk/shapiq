@@ -374,3 +374,54 @@ def test_interventional_float64_point_matches_model(index, order):
             game_interactions.get(interaction, 0),
             atol=1e-4,
         )
+
+
+@pytest.mark.parametrize("order", [2, 3, 4])
+def test_fourier_is_scaled_bii(dt_reg_model, reg_data, order):
+    """The Fourier coefficients equal ``(-1/2)^|S|`` times the exact BII, on dense and sparse paths."""
+    X_train, X_test, _y_train, _y_test = reg_data
+    point_to_explain = X_test[0].flatten()
+
+    explainer = InterventionalTreeSHAPIQ(
+        dt_reg_model, X_train, index="Fourier", max_order=order, debug=False
+    )
+    own_interactions = explainer.explain_function(point_to_explain).interactions
+
+    game = InterventionalGame(dt_reg_model, X_train, point_to_explain)
+    bii = ExactComputer(game)("BII", order).interactions
+    for interaction, value in bii.items():
+        if len(interaction) == 0:
+            continue
+        assert own_interactions.get(interaction, 0.0) == pytest.approx(
+            (-0.5) ** len(interaction) * value, abs=1e-6
+        )
+
+
+@pytest.mark.parametrize("bool_tree", [True, False])
+def test_fourier_matches_coalition_tree_readout(bool_tree):
+    """On a tree fit to coalitions, the kernel's Fourier coefficients match the Python readout."""
+    from sklearn.ensemble import RandomForestRegressor
+
+    from shapiq.approximator.regression.oddshap import _ensemble_to_fourier
+    from shapiq.tree.validation import validate_tree_model
+
+    rng = np.random.default_rng(0)
+    n_players = 8
+    coalitions = rng.integers(0, 2, size=(400, n_players)).astype(float)
+    values = coalitions @ rng.normal(size=n_players) + coalitions[:, 0] * coalitions[:, 1]
+    model = RandomForestRegressor(n_estimators=5, max_depth=5, random_state=0)
+    model.fit(coalitions, values)
+
+    explainer = InterventionalTreeSHAPIQ(
+        model,
+        data=np.zeros((1, n_players)),
+        index="Fourier",
+        max_order=n_players,
+        bool_tree=bool_tree,
+    )
+    own_interactions = explainer.explain_function(np.ones(n_players)).interactions
+    reference = _ensemble_to_fourier(validate_tree_model(model))
+    for interaction in (set(reference) | set(own_interactions)) - {()}:
+        assert own_interactions.get(interaction, 0.0) == pytest.approx(
+            reference.get(interaction, 0.0), abs=1e-12
+        )
