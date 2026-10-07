@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pickle
 import warnings
 from itertools import combinations
 from math import factorial
@@ -13,6 +14,7 @@ from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.tree import QuadratureTreeSHAP, TreeExplainer, TreeSHAPIQ
 from shapiq.tree.linear import LinearTreeSHAP
+from shapiq.tree.quadrature.computer import _INDEX_HASH_MULTIPLIER, _build_subset_index
 from shapiq.utils.sets import powerset
 from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.quadrature_numpy_reference import (
     numpy_explain,
@@ -341,6 +343,148 @@ def test_sparse_interaction_support():
     missing = [pair for pair in iter_combinations(used, 2) if pair not in result.interaction_lookup]
     assert missing  # precondition: the tree has non-co-occurring feature pairs
     assert result[missing[0]] == 0.0  # absent interactions read as exact zeros
+
+
+def _perfect_tree_with_distinct_features(depth: int, seed: int = 0):
+    """A perfect binary tree of the given depth splitting each node on its own feature.
+
+    Every decision node uses a distinct feature, so the tree holds ``2**depth - 1`` features
+    in total while any single root-to-leaf path holds only ``depth`` of them. That gap is
+    what lets a modest depth reach a feature space wide enough to overflow the kernel's
+    integer key encoding.
+    """
+    n_decision_nodes = 2**depth - 1
+    n_nodes = 2 ** (depth + 1) - 1
+    node = np.arange(n_nodes)
+    is_leaf = node >= n_decision_nodes
+    node_depth = np.floor(np.log2(node + 1)).astype(int)
+    rng = np.random.default_rng(seed)
+    tree = {
+        "children_left": np.where(is_leaf, -1, 2 * node + 1),
+        "children_right": np.where(is_leaf, -1, 2 * node + 2),
+        "children_missing": np.where(is_leaf, -1, 2 * node + 1),
+        "features": np.where(is_leaf, -2, node),
+        "thresholds": np.where(is_leaf, -2.0, 0.0),
+        "node_sample_weight": 2.0 ** (depth - node_depth),
+        "values": np.where(is_leaf, rng.normal(size=n_nodes), 0.0),
+    }
+    return tree, rng.normal(size=n_decision_nodes)
+
+
+def test_subset_lookup_falls_back_when_the_key_encoding_overflows():
+    """The tuple-comparison lookup is used when the integer key encoding does not fit.
+
+    The kernel maps each subset table row to one ``int64`` in base ``F`` (the number of
+    features the ensemble splits on) so a table lookup compares a single integer. The
+    encoding only exists while ``F ** max_order`` fits in an ``int64``; past that the kernel
+    searches the tables by comparing feature tuples instead. Both paths must agree.
+
+    The requested order equals the number of features per decision path, so the fallback
+    stays reachable even if the explainer were to cap the order at what the paths support.
+    """
+    depth = 8
+    tree, x = _perfect_tree_with_distinct_features(depth)
+
+    encoded = QuadratureTreeSHAP(tree, max_order=3, index="SII")
+    fallback = QuadratureTreeSHAP(tree, max_order=depth, index="SII")
+
+    from_encoding = encoded.explain(x)
+    from_tuples = fallback.explain(x)
+
+    shared = [key for key in from_encoding.interaction_lookup if len(key) <= 3]
+    assert len(shared) > 100  # precondition: the comparison covers real interactions
+    assert any(len(key) == 3 for key in shared)  # ... including orders that need the lookup
+    for interaction in shared:
+        assert from_tuples[interaction] == pytest.approx(from_encoding[interaction], abs=1e-12)
+
+
+def test_explainer_pickles_after_explaining():
+    """A used explainer pickles, and the copy agrees with the original.
+
+    The first explanation caches the kernel arguments, subset hash index included.
+    ``TreeExplainer.explain_X`` pickles explainers to ship them to ``joblib`` workers, so that
+    cache must stay picklable (plain numpy arrays, no C++ objects).
+    """
+    tree, x = _perfect_tree_with_distinct_features(depth=4)
+    explainer = QuadratureTreeSHAP(tree, max_order=3, index="SII")
+    before = explainer.explain(x)
+
+    restored = pickle.loads(pickle.dumps(explainer))
+    after = restored.explain(x)
+
+    np.testing.assert_array_equal(after.values, before.values)
+    np.testing.assert_array_equal(explainer.explain(x).values, before.values)  # original intact
+
+
+def test_subset_index_finds_every_row_where_the_kernel_probes():
+    """Probing the flat hash index the way the kernel does finds every table row's id.
+
+    The index is built in Python and probed in C++ (``merged_position``); both sides must
+    agree on the key, the hash, and the linear probe sequence.
+    """
+    tree, _ = _perfect_tree_with_distinct_features(depth=5)
+    explainer = QuadratureTreeSHAP(tree, max_order=3, index="SII")
+    keys, starts, counts, _ = explainer._subset_table_args()
+    n_features = explainer._n_features_in_tree
+    index = _build_subset_index(n_features, 3, keys, starts, counts)
+    assert index is not None
+    slot_keys, slot_rows, block_starts, block_shifts = index
+
+    for order in (2, 3):
+        count = int(counts[order])
+        bits = 64 - int(block_shifts[order])
+        size = 1 << bits
+        assert 0 < 2 * count <= size  # non-trivial and at most half full
+        block = slice(int(block_starts[order]), int(block_starts[order]) + size)
+        block_keys, block_rows = slot_keys[block], slot_rows[block]
+        table = keys[starts[order] : starts[order] + count * order].reshape(count, order)
+        for row_id, row in enumerate(table):
+            key = 0
+            for feature in row:
+                key = key * n_features + int(feature)
+            slot = ((key * int(_INDEX_HASH_MULTIPLIER)) % 2**64) >> (64 - bits)
+            while block_keys[slot] != key:
+                assert block_keys[slot] != -1, "the probe reached an empty slot before the key"
+                slot = (slot + 1) % size
+            assert block_rows[slot] == row_id
+
+
+def _kernel_call_parts(depth: int = 4):
+    """Cached kernel arguments of a used order-2 explainer, plus one row and an output buffer."""
+    tree, x = _perfect_tree_with_distinct_features(depth=depth)
+    explainer = QuadratureTreeSHAP(tree, max_order=2, index="SII")
+    explainer.explain(x)
+    x_relevant = np.ascontiguousarray(x[explainer._relevant_features].reshape(1, -1))
+    return list(explainer._kernel_args), x_relevant, np.zeros((1, explainer._output_size))
+
+
+def test_kernel_raises_when_a_subset_is_missing_from_the_index():
+    """A subset the traversal reaches but the index lacks raises instead of being misplaced.
+
+    The Python tables and the kernel traversal must agree (see ``_collect_cooccurring_subsets``);
+    if they drift apart, the kernel's probe ends on an empty slot and the call fails loudly.
+    """
+    from shapiq.tree.quadrature.cext import quadrature_tree_shap
+
+    args, x_relevant, out = _kernel_call_parts()
+    slot_keys = args[-4].copy()
+    slot_keys[np.flatnonzero(slot_keys >= 0)[0]] = -1  # drop one subset from the index
+
+    with pytest.raises(RuntimeError, match="missing from the subset tables"):
+        quadrature_tree_shap(*args[:20], x_relevant, out, *args[20:-4], slot_keys, *args[-3:])
+
+
+def test_kernel_rejects_an_index_whose_blocks_exceed_its_arrays():
+    """Index arrays too short for their declared blocks are rejected before any probe runs."""
+    from shapiq.tree.quadrature.cext import quadrature_tree_shap
+
+    args, x_relevant, out = _kernel_call_parts()
+    slot_keys, slot_rows = args[-4][:-1], args[-3][:-1]
+
+    with pytest.raises(ValueError, match="outside the index arrays"):
+        quadrature_tree_shap(
+            *args[:20], x_relevant, out, *args[20:-4], slot_keys, slot_rows, *args[-2:]
+        )
 
 
 # ------------------------------- edge cases and API -------------------------------
