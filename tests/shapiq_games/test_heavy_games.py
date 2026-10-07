@@ -101,3 +101,47 @@ def test_imagenette_download() -> None:
     assert len(images) == 3925
     assert sorted(set(images.labels.tolist())) == [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
     assert min(images[0].shape[:2]) == 160
+
+
+_PREVIOUS_FILES = (
+    "https://raw.githubusercontent.com/mmschlk/shapiq/5ff37e6ce6ccefe4ca8ef938d16e61da3d779242/"
+    "src/shapiq_games/datasets/data/"
+)
+
+
+@pytest.mark.skipif(
+    not (is_installed("openml") and is_installed("ucimlrepo")),
+    reason="openml and ucimlrepo are not installed",
+)
+@pytest.mark.parametrize(
+    "name",
+    [
+        "adult_census",
+        "amazon",
+        "annealing",
+        "arrhythmia",
+        "bike_sharing",
+        "bioresponse",
+        "california_housing",
+        "hepatitis",
+        "ionosphere",
+        "leukemia",
+        "microresponse",
+        "mushroom",
+        "nursery",
+        "soybean",
+        "thyroid",
+        "zoo",
+    ],
+)
+def test_upstream_table_matches_the_previously_bundled_file(name: str) -> None:
+    """The original source still serves the table the loaders were written for."""
+    import pandas as pd
+
+    from shapiq_games.datasets import _tabular
+
+    previous_name = {"bike_sharing": "bike"}.get(name, name)
+    previous = pd.read_csv(f"{_PREVIOUS_FILES}{previous_name}.csv", low_memory=False)
+    table = _tabular._read_table(name)
+    assert list(table.columns) == list(previous.columns)
+    pd.testing.assert_frame_equal(table, previous, check_dtype=False, check_exact=False, rtol=1e-12)

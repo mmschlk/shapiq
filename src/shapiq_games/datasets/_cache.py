@@ -1,7 +1,7 @@
 """Local cache for downloaded data files.
 
-No data file ships with :mod:`shapiq_games`. Files are downloaded on first use from pinned
-sources, verified against a SHA-256 checksum, and cached in a local directory:
+No data file ships with :mod:`shapiq_games`. Files are downloaded on first use from their original
+sources, verified against a SHA-256 checksum where one is pinned, and cached in a local directory:
 
 - ``$SHAPIQ_DATA_DIR`` if set,
 - otherwise ``$XDG_CACHE_HOME/shapiq`` if ``XDG_CACHE_HOME`` is set,
@@ -23,13 +23,6 @@ import requests
 
 __all__ = ["RemoteFile", "atomic_write_bytes", "fetch", "get_data_dir"]
 
-# Commit of mmschlk/shapiq whose tree still contains the data files that used to be bundled with
-# shapiq_games. Pinning a commit keeps the bytes immutable: the files live on in git history.
-PINNED_COMMIT = "5ff37e6ce6ccefe4ca8ef938d16e61da3d779242"
-PINNED_DATA_URL = (
-    f"https://raw.githubusercontent.com/mmschlk/shapiq/{PINNED_COMMIT}/src/shapiq_games/"
-)
-
 _TIMEOUT_SECONDS = 120
 
 
@@ -50,7 +43,7 @@ class RemoteFile:
     """A file that is downloaded on demand and cached locally.
 
     Attributes:
-        url: The pinned download URL.
+        url: The download URL.
         filename: The file name in the cache directory.
         sha256: The expected SHA-256 hex digest. ``None`` means the file could not be pinned yet
             and is cached without verification.
@@ -61,25 +54,6 @@ class RemoteFile:
     filename: str
     sha256: str | None
     subdir: str = "datasets"
-
-    @classmethod
-    def pinned(cls, path: str, sha256: str, *, subdir: str = "datasets") -> RemoteFile:
-        """Create a file served from the pinned commit of this repository.
-
-        Args:
-            path: The path relative to ``src/shapiq_games/`` at :data:`PINNED_COMMIT`.
-            sha256: The expected SHA-256 hex digest.
-            subdir: The cache sub-directory.
-
-        Returns:
-            The remote file.
-        """
-        return cls(
-            url=PINNED_DATA_URL + path,
-            filename=Path(path).name,
-            sha256=sha256,
-            subdir=subdir,
-        )
 
 
 _CHUNK_BYTES = 1 << 20

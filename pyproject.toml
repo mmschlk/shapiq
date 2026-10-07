@@ -88,8 +88,9 @@ shapleig = [
 ]
 games = [
     # optional dependencies of shapiq_games, imported lazily by the games that need them
-    "openml",        # TabArena datasets
+    "openml",        # OpenML datasets, TabArena included
     "openpyxl",      # the real_estate dataset (xlsx)
+    "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
     "scikit-image",  # superpixels of the image games
     "xgboost",
     "lightgbm",

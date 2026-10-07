@@ -229,17 +229,56 @@ def test_tabarena_imputes_categories_before_encoding(
     assert (tmp_path / "tabarena" / "blood_transfusion.csv").exists()
 
 
-def test_pinned_urls_point_to_a_commit() -> None:
-    remote = cache.RemoteFile.pinned("datasets/data/zoo.csv", "0" * 64)
-    assert cache.PINNED_COMMIT in remote.url
-    assert remote.url.endswith("/src/shapiq_games/datasets/data/zoo.csv")
+def test_tabular_data_comes_from_original_sources() -> None:
+    """No dataset is served from this repository; upstream tables declare their shape."""
+    from shapiq_games.datasets import _tabular
+
+    remotes = [*_tabular._SHAP_FILES.values(), *_tabular._UCI_FILES.values()]
+    assert all("mmschlk/shapiq" not in remote.url for remote in remotes)
+    for name, upstream in _tabular._UPSTREAM.items():
+        assert upstream.source in ("openml", "uci", "sklearn"), name
+        assert get_dataset_spec(name).source.split()[0] in ("OpenML", "UCI", "scikit-learn")
 
 
-def test_small_pinned_dataset_downloads() -> None:
-    """End-to-end check of one small pinned file (requires network access to GitHub)."""
-    dataset = load_dataset("zoo")
-    assert dataset.x.shape == (101, 16)
-    assert dataset.n_classes == 7
+def test_upstream_tables_are_cached_and_shape_checked(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import pandas as pd
+
+    from shapiq_games.datasets import _tabular
+
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+    zoo = pd.DataFrame(np.arange(101 * 16).reshape(101, 16), columns=[f"f{i}" for i in range(16)])
+    zoo["target"] = np.arange(101) % 7 + 1
+    downloads: list[int] = []
+
+    class FakeUCI:
+        @staticmethod
+        def fetch_ucirepo(id: int) -> object:  # noqa: A002
+            downloads.append(id)
+            data = type(
+                "Data", (), {"features": zoo.drop(columns="target"), "targets": zoo[["target"]]}
+            )
+            return type("Repo", (), {"data": data})
+
+    monkeypatch.setattr(_tabular, "require", lambda package, **_: FakeUCI())
+    x, y = _tabular.load_zoo()
+    assert x.shape == (101, 16)
+    assert sorted(set(y)) == list(range(7))
+    _tabular.load_zoo()
+    assert downloads == [111]  # downloaded once, then read from the cache
+    assert (tmp_path / "tabular" / "zoo.csv").exists()
+
+    downloads.clear()
+    zoo = zoo.iloc[:50]  # an upstream table that changed
+    with pytest.raises(ValueError, match="upstream data changed"):
+        _tabular._download_table("zoo")
+
+
+def test_shap_dataset_downloads() -> None:
+    """End-to-end check of a checksum-pinned file from shap's data (requires access to GitHub)."""
+    dataset = load_dataset("communities_and_crime")
+    assert dataset.x.shape == (1994, 101)
 
 
 def _fake_imagenette(tmp_path: Path, extra: dict[str, bytes] | None = None) -> Path:

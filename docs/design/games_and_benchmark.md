@@ -123,15 +123,25 @@ Each family gets contract tests on a small offline configuration:
   - `task` ("classification" or "regression"), declared explicitly rather than guessed from the labels
   - preprocessing
   - feature names
-- **Sources, in order of preference:**
-  1. The original upstream: OpenML ID and version, or an sklearn fetcher.
-  2. A raw GitHub URL pinned to a commit of this repo where the file already sits in history. This needs no new hosting.
-  3. Seeded generators for synthetic data.
+- **Sources.** Every real-world dataset comes from its original source; nothing is served from
+  this repository:
+  - OpenML by dataset id (ids are immutable): adult (1590), amazon (1457), bike sharing (42713),
+    bioresponse (4134), leukemia (45090), micro-mass (1515), and the 51 TabArena datasets;
+  - the UCI repository via `ucimlrepo`: annealing, arrhythmia, hepatitis, ionosphere, mushroom,
+    nursery, soybean, thyroid, zoo; wine quality, real estate and forest fires as direct files;
+  - scikit-learn: breast cancer (bundled) and California housing (`fetch_california_housing`);
+  - shap's data folder: NHANES I and communities and crime;
+  - fast.ai: Imagenette (below);
+  - seeded generators for synthetic data.
 
-  Every downloaded file is checked against a SHA-256 hash.
+  Single files are checked against a pinned SHA-256 hash. Upstream tables (OpenML, UCI,
+  scikit-learn) are cached as a lossless CSV and checked against the shape the loaders were
+  written for, so a changed upstream fails loudly. Fed the previously bundled tables, the loaders
+  reproduce the old data exactly; `test_heavy_games.py` compares the live upstream tables with
+  those files.
 - **Local cache.** Files go to `$SHAPIQ_DATA_DIR`, defaulting to `$XDG_CACHE_HOME/shapiq` (or `~/.cache/shapiq`), and are written atomically (temp file + rename) so parallel test workers are safe. Nothing is ever written into the installed package.
 - **Deterministic splits.** Seeded train/test splits, stratified for classification.
-- **Data removed from the tree** (the files remain reachable through git history and the pinned URLs):
+- **Data removed from the tree** (the files remain in git history, but no loader reads them from there):
   - `shapiq_games/datasets/data` (81 MB)
   - `shapiq/datasets/data` (8.5 MB)
   - the 31 ImageNet example JPEGs, replaced by Imagenette (below)

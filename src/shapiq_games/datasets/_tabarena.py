@@ -100,9 +100,9 @@ def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
         frame = _encode_categorical(_impute(x))  # impute categories before encoding them
         frame[_TARGET_COLUMN] = y.astype(str) if not pd.api.types.is_numeric_dtype(y) else y
         buffer = StringIO()
-        frame.to_csv(buffer, index=False)
+        frame.to_csv(buffer, index=False, float_format="%.17g")  # lossless round trip
         atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
-    data = pd.read_csv(path)
+    data = pd.read_csv(path, float_precision="round_trip")
     y = data.pop(_TARGET_COLUMN).rename("target")
     return data, y
 

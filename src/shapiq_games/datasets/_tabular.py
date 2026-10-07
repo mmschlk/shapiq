@@ -1,14 +1,25 @@
 """Loaders of the classic real-world tabular datasets.
 
-The preprocessing is unchanged from the loaders that used to ship with the data. Files that were
-previously bundled are downloaded from a pinned commit of the shapiq repository and verified by
-their SHA-256 checksum. Three datasets come directly from the UCI repository and are not yet
-pinned by checksum (``wine_quality``, ``real_estate``, ``forest_fires``).
+Every dataset comes from its original source, and the preprocessing is unchanged from the
+loaders that used to ship with the data:
+
+- OpenML (``openml``): adult, amazon, bike sharing, bioresponse, leukemia, micro-mass;
+- the UCI repository (``ucimlrepo``): annealing, arrhythmia, hepatitis, ionosphere, mushroom,
+  nursery, soybean, thyroid, zoo;
+- scikit-learn's ``fetch_california_housing``;
+- the data folder of shap (checksum-pinned): NHANES I, communities and crime;
+- UCI files read directly (not yet pinned by checksum): wine quality, real estate, forest fires.
+
+The raw table of an upstream dataset is downloaded once and cached as a CSV in
+``<data dir>/tabular/``. A table whose shape differs from the one the loaders were written for
+is rejected, so a changed upstream fails loudly instead of silently changing a benchmark.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from dataclasses import dataclass
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -20,32 +31,51 @@ from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, RobustScaler, St
 
 from shapiq_games._optional import require
 
-from ._cache import RemoteFile, fetch
+from ._cache import RemoteFile, atomic_write_bytes, fetch, get_data_dir
 from ._registry import DatasetSpec, register_dataset
 
 if TYPE_CHECKING:
     from ._registry import Task
 
-_PINNED_FILES: dict[str, str] = {
-    "CommViolPredUnnormalizedData.txt": "b090072d0e8d140a936d2411704ed29b2681e4805b805a9c8c6bdb072c5416c3",
-    "NHANESI_X.csv": "0fa1e524900008da254c365b501c96768e55b94858fdc4045886d887654a1ba8",
-    "NHANESI_y.csv": "70c8d6ab022e7b080752b339ee8edc991f2fd203c294b5ca55b36bcb902aab93",
-    "adult_census.csv": "547551a449e2453ec1b9a3044b0b74e59cf79a4c99291cd478914aa5f9efbcd0",
-    "amazon.csv": "b0efede20e5942ecc8221bce5c9740d32a0f2620138c52444ef8998b17f21a11",
-    "annealing.csv": "f8378ebf0ba5aca8e48615c86950d44232b4df5361d2e349cc066475509a56a1",
-    "arrhythmia.csv": "345b3ee5e8b28ab76718cd4ad3027bf615f2510d79a3dddb78013053d5d2f3e5",
-    "bike.csv": "28878d17e5eb141b6bcaad2f5f8fa5daf90a7ced8e60cabcce0d0e0ef0cf1d96",
-    "bioresponse.csv": "63adfae758c2dffabc2a814a7dcb2c7b01000ed20826068a8663976a34b31abd",
-    "california_housing.csv": "6c0573ec35c926d6fab1225b6ff5d3ee1c664ebf960168f3fd13d70b6acdc485",
-    "hepatitis.csv": "95162c8fdec436cdf218bcabda8a45b9e5025c38df7097597552d190f03526c9",
-    "ionosphere.csv": "66cbf3aace34dbbf88f694058644cc45a5dcd62a37531d8da4a7bd85fe524ea6",
-    "leukemia.csv": "dde8de2c329bba681145ac212e6461498990a199b7f9aec41428ef3b4d62a2d2",
-    "microresponse.csv": "b1dd855a05b0da4a82bbb19a2050756aac76ffdd7dbc422243b4047b572457d4",
-    "mushroom.csv": "f837295c46e7dce628dcd52a769aac92b2fc9091b977051bbdd37e74bb7dcac2",
-    "nursery.csv": "dbca688ed77126723c333a7eb247213020cd82d49fecc86178f0a89c24140ba7",
-    "soybean.csv": "4673e9d0857cad357eef75f9900d5a7ec0f155265de5bdf09dcb0ee04e6e29b5",
-    "thyroid.csv": "ced808e8a89f9e3cc75be6f38661bacb4c1d41d96ef4bb98f498ccb024158316",
-    "zoo.csv": "197c9494b53e371886e75389cd896a2a8b890df77ead780b4b4b0e251d31cd7a",
+
+@dataclass(frozen=True)
+class _Upstream:
+    """The original source of a raw table and the shape (rows, columns with target) it has."""
+
+    source: Literal["openml", "uci", "sklearn"]
+    dataset_id: int | None
+    shape: tuple[int, int]
+
+
+_UPSTREAM: dict[str, _Upstream] = {
+    "adult_census": _Upstream("openml", 1590, (48842, 15)),
+    "amazon": _Upstream("openml", 1457, (1500, 10001)),
+    "bike_sharing": _Upstream("openml", 42713, (17379, 13)),
+    "bioresponse": _Upstream("openml", 4134, (3751, 1777)),
+    "leukemia": _Upstream("openml", 45090, (72, 7130)),
+    "microresponse": _Upstream("openml", 1515, (571, 1301)),
+    "annealing": _Upstream("uci", 3, (898, 39)),
+    "arrhythmia": _Upstream("uci", 5, (452, 280)),
+    "hepatitis": _Upstream("uci", 46, (155, 20)),
+    "ionosphere": _Upstream("uci", 52, (351, 35)),
+    "mushroom": _Upstream("uci", 73, (8124, 23)),
+    "nursery": _Upstream("uci", 76, (12960, 9)),
+    "soybean": _Upstream("uci", 90, (683, 36)),
+    "thyroid": _Upstream("uci", 102, (7200, 22)),
+    "zoo": _Upstream("uci", 111, (101, 17)),
+    "california_housing": _Upstream("sklearn", None, (20640, 9)),
+}
+
+_SHAP_DATA_URL = "https://raw.githubusercontent.com/shap/shap/master/data/"
+_SHAP_FILES: dict[str, RemoteFile] = {
+    name: RemoteFile(_SHAP_DATA_URL + name, name, sha256, subdir="shap")
+    for name, sha256 in {
+        "CommViolPredUnnormalizedData.txt": (
+            "b090072d0e8d140a936d2411704ed29b2681e4805b805a9c8c6bdb072c5416c3"
+        ),
+        "NHANESI_X.csv": "0fa1e524900008da254c365b501c96768e55b94858fdc4045886d887654a1ba8",
+        "NHANESI_y.csv": "70c8d6ab022e7b080752b339ee8edc991f2fd203c294b5ca55b36bcb902aab93",
+    }.items()
 }
 
 _UCI_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/"
@@ -65,9 +95,44 @@ _UCI_FILES: dict[str, RemoteFile] = {
 }
 
 
-def _read_pinned_csv(filename: str, **kwargs: Any) -> pd.DataFrame:
-    remote = RemoteFile.pinned(f"datasets/data/{filename}", _PINNED_FILES[filename])
-    return pd.read_csv(fetch(remote), **kwargs)
+def _download_table(name: str) -> pd.DataFrame:
+    """Download the raw table of ``name`` (features and target) from its original source."""
+    upstream = _UPSTREAM[name]
+    if upstream.source == "openml":
+        openml = require("openml", purpose=f"the {name} dataset")
+        dataset = openml.datasets.get_dataset(upstream.dataset_id, download_data=True)
+        table, *_ = dataset.get_data(dataset_format="dataframe")
+    elif upstream.source == "uci":
+        ucimlrepo = require("ucimlrepo", purpose=f"the {name} dataset")
+        data = ucimlrepo.fetch_ucirepo(id=upstream.dataset_id).data
+        table = data.features.copy()
+        table["target"] = data.targets.squeeze()
+    else:
+        from sklearn.datasets import fetch_california_housing
+
+        home = get_data_dir() / "scikit_learn"
+        table = fetch_california_housing(data_home=str(home), as_frame=True).frame
+    if table.shape != upstream.shape:
+        msg = (
+            f"The {name} table from {upstream.source} {upstream.dataset_id or ''} has shape "
+            f"{table.shape}, but the loader expects {upstream.shape}. The upstream data changed."
+        )
+        raise ValueError(msg)
+    return table
+
+
+def _read_table(name: str) -> pd.DataFrame:
+    """Return the raw table of ``name``, downloading and caching it as a CSV on first use."""
+    path = get_data_dir() / "tabular" / f"{name}.csv"
+    if not path.exists():
+        buffer = StringIO()
+        _download_table(name).to_csv(buffer, index=False, float_format="%.17g")  # lossless
+        atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
+    return pd.read_csv(path, low_memory=False, float_precision="round_trip")
+
+
+def _read_shap_file(filename: str, **kwargs: Any) -> pd.DataFrame:
+    return pd.read_csv(fetch(_SHAP_FILES[filename]), **kwargs)
 
 
 def _impute(x: pd.DataFrame) -> pd.DataFrame:
@@ -98,14 +163,14 @@ def _encode_target(y: pd.Series) -> pd.Series:
 
 def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
     """California housing (sklearn ``fetch_california_housing``), regression."""
-    dataset = _read_pinned_csv("california_housing.csv")
+    dataset = _read_table("california_housing")
     y = dataset.pop("MedHouseVal")
     return dataset, y
 
 
 def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     """Bike sharing (OpenML 42713), regression."""
-    dataset = _read_pinned_csv("bike.csv")
+    dataset = _read_table("bike_sharing")
     num_features = [
         "hour",
         "temp",
@@ -136,8 +201,8 @@ def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
 
 
 def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
-    """Adult census income (UCI), binary classification of income above 50K."""
-    dataset = _read_pinned_csv("adult_census.csv")
+    """Adult census income (OpenML 1590), binary classification of income above 50K."""
+    dataset = _read_table("adult_census")
     num_features = ["age", "capital-gain", "capital-loss", "hours-per-week", "fnlwgt"]
     cat_features = [
         "workclass",
@@ -229,14 +294,14 @@ def load_forest_fires() -> tuple[pd.DataFrame, pd.Series]:
 
 def load_nhanesi() -> tuple[pd.DataFrame, pd.Series]:
     """NHANES I survival data (as in ``shap.datasets.nhanesi``), regression."""
-    x = _read_pinned_csv("NHANESI_X.csv", index_col=0)
-    y = _read_pinned_csv("NHANESI_y.csv", index_col=0).squeeze()
+    x = _read_shap_file("NHANESI_X.csv", index_col=0)
+    y = _read_shap_file("NHANESI_y.csv", index_col=0).squeeze()
     return x, pd.Series(np.asarray(y, dtype=float), name="target")
 
 
 def load_communities_and_crime() -> tuple[pd.DataFrame, pd.Series]:
     """Communities and crime, unnormalized (as in ``shap.datasets``), regression."""
-    raw = _read_pinned_csv("CommViolPredUnnormalizedData.txt", na_values="?")
+    raw = _read_shap_file("CommViolPredUnnormalizedData.txt", na_values="?")
     valid_rows = np.where(np.invert(np.isnan(raw.iloc[:, -2])))[0]
     y = pd.Series(np.array(raw.iloc[valid_rows, -2], dtype=float), name="target")
     x = raw.iloc[valid_rows, 5:-18]
@@ -244,8 +309,8 @@ def load_communities_and_crime() -> tuple[pd.DataFrame, pd.Series]:
     return x.iloc[:, valid_columns], y
 
 
-def _load_with_class_column(filename: str, target: str) -> tuple[pd.DataFrame, pd.Series]:
-    data = _read_pinned_csv(filename)
+def _load_with_class_column(name: str, target: str) -> tuple[pd.DataFrame, pd.Series]:
+    data = _read_table(name)
     y = data.pop(target)
     # encode the raw labels (not their string form) so numeric labels keep their numeric order
     return data, pd.Series(LabelEncoder().fit_transform(y), name="target")
@@ -253,34 +318,34 @@ def _load_with_class_column(filename: str, target: str) -> tuple[pd.DataFrame, p
 
 def load_amazon() -> tuple[pd.DataFrame, pd.Series]:
     """Amazon commerce reviews (OpenML 1457), classification."""
-    return _load_with_class_column("amazon.csv", "Class")
+    return _load_with_class_column("amazon", "Class")
 
 
 def load_microresponse() -> tuple[pd.DataFrame, pd.Series]:
     """Micro-mass response (OpenML 1515), classification."""
-    return _load_with_class_column("microresponse.csv", "Class")
+    return _load_with_class_column("microresponse", "Class")
 
 
 def load_bioresponse() -> tuple[pd.DataFrame, pd.Series]:
     """Bioresponse (OpenML 4134), binary classification."""
-    data = _read_pinned_csv("bioresponse.csv")
+    data = _read_table("bioresponse")
     y = data.pop("target").rename("target")
     return data, y
 
 
 def load_leukemia() -> tuple[pd.DataFrame, pd.Series]:
     """Leukemia gene expression (OpenML 45090), binary classification."""
-    return _load_with_class_column("leukemia.csv", "CLASS")
+    return _load_with_class_column("leukemia", "CLASS")
 
 
 def _load_uci_classification(
-    filename: str,
+    name: str,
     *,
     impute: bool = False,
     encode: bool = False,
     drop_constant: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    data = _read_pinned_csv(filename)
+    data = _read_table(name)
     y = data.pop("target")
     if impute:
         data = _impute(data)
@@ -293,77 +358,77 @@ def _load_uci_classification(
 
 def load_annealing() -> tuple[pd.DataFrame, pd.Series]:
     """Annealing (UCI 3), multiclass classification."""
-    return _load_uci_classification("annealing.csv", impute=True, encode=True)
+    return _load_uci_classification("annealing", impute=True, encode=True)
 
 
 def load_arrhythmia() -> tuple[pd.DataFrame, pd.Series]:
     """Arrhythmia (UCI 5), multiclass classification."""
-    return _load_uci_classification("arrhythmia.csv", impute=True, encode=True)
+    return _load_uci_classification("arrhythmia", impute=True, encode=True)
 
 
 def load_hepatitis() -> tuple[pd.DataFrame, pd.Series]:
     """Hepatitis (UCI 46), binary classification."""
-    return _load_uci_classification("hepatitis.csv", impute=True, encode=True)
+    return _load_uci_classification("hepatitis", impute=True, encode=True)
 
 
 def load_ionosphere() -> tuple[pd.DataFrame, pd.Series]:
     """Ionosphere (UCI 52), binary classification."""
-    return _load_uci_classification("ionosphere.csv", drop_constant=True)
+    return _load_uci_classification("ionosphere", drop_constant=True)
 
 
 def load_mushroom() -> tuple[pd.DataFrame, pd.Series]:
     """Mushroom (UCI 73), binary classification."""
-    return _load_uci_classification("mushroom.csv", encode=True)
+    return _load_uci_classification("mushroom", encode=True)
 
 
 def load_nursery() -> tuple[pd.DataFrame, pd.Series]:
     """Nursery (UCI 76), multiclass classification."""
-    return _load_uci_classification("nursery.csv", encode=True)
+    return _load_uci_classification("nursery", encode=True)
 
 
 def load_soybean() -> tuple[pd.DataFrame, pd.Series]:
     """Soybean, large (UCI 90), multiclass classification."""
-    return _load_uci_classification("soybean.csv", impute=True, encode=True)
+    return _load_uci_classification("soybean", impute=True, encode=True)
 
 
 def load_thyroid() -> tuple[pd.DataFrame, pd.Series]:
     """Thyroid disease (UCI 102), multiclass classification."""
-    return _load_uci_classification("thyroid.csv")
+    return _load_uci_classification("thyroid")
 
 
 def load_zoo() -> tuple[pd.DataFrame, pd.Series]:
     """Zoo (UCI 111), multiclass classification."""
-    return _load_uci_classification("zoo.csv")
+    return _load_uci_classification("zoo")
 
 
 _TABULAR: list[tuple[str, Task, object, str]] = [
-    ("adult_census", "classification", load_adult_census, "UCI adult (pinned file)"),
-    ("amazon", "classification", load_amazon, "OpenML 1457 (pinned file)"),
-    ("annealing", "classification", load_annealing, "UCI 3 (pinned file)"),
-    ("arrhythmia", "classification", load_arrhythmia, "UCI 5 (pinned file)"),
-    ("bike_sharing", "regression", load_bike_sharing, "OpenML 42713 (pinned file)"),
-    ("bioresponse", "classification", load_bioresponse, "OpenML 4134 (pinned file)"),
+    ("adult_census", "classification", load_adult_census, "OpenML 1590"),
+    ("amazon", "classification", load_amazon, "OpenML 1457"),
+    ("annealing", "classification", load_annealing, "UCI 3 (ucimlrepo)"),
+    ("arrhythmia", "classification", load_arrhythmia, "UCI 5 (ucimlrepo)"),
+    ("bike_sharing", "regression", load_bike_sharing, "OpenML 42713"),
+    ("bioresponse", "classification", load_bioresponse, "OpenML 4134"),
     ("breast_cancer", "classification", load_breast_cancer, "scikit-learn (bundled)"),
-    ("california_housing", "regression", load_california_housing, "scikit-learn (pinned file)"),
+    ("california_housing", "regression", load_california_housing, "scikit-learn fetcher"),
     (
         "communities_and_crime",
         "regression",
         load_communities_and_crime,
-        "UCI 211 via shap (pinned file)",
+        "UCI 211 via shap's data (checksum-pinned)",
     ),
     ("forest_fires", "regression", load_forest_fires, "UCI 162 (direct, not yet pinned)"),
-    ("hepatitis", "classification", load_hepatitis, "UCI 46 (pinned file)"),
-    ("ionosphere", "classification", load_ionosphere, "UCI 52 (pinned file)"),
-    ("leukemia", "classification", load_leukemia, "OpenML 45090 (pinned file)"),
-    ("microresponse", "classification", load_microresponse, "OpenML 1515 (pinned file)"),
-    ("mushroom", "classification", load_mushroom, "UCI 73 (pinned file)"),
-    ("nhanesi", "regression", load_nhanesi, "NHANES I via shap (pinned file)"),
-    ("nursery", "classification", load_nursery, "UCI 76 (pinned file)"),
+    ("hepatitis", "classification", load_hepatitis, "UCI 46 (ucimlrepo)"),
+    ("ionosphere", "classification", load_ionosphere, "UCI 52 (ucimlrepo)"),
+    ("leukemia", "classification", load_leukemia, "OpenML 45090"),
+    ("microresponse", "classification", load_microresponse, "OpenML 1515"),
+    ("mushroom", "classification", load_mushroom, "UCI 73 (ucimlrepo)"),
+    ("nhanesi", "regression", load_nhanesi, "NHANES I via shap's data (checksum-pinned)"),
+    ("nursery", "classification", load_nursery, "UCI 76 (ucimlrepo)"),
     ("real_estate", "regression", load_real_estate, "UCI 477 (direct, not yet pinned)"),
-    ("soybean", "classification", load_soybean, "UCI 90 (pinned file)"),
-    ("thyroid", "classification", load_thyroid, "UCI 102 (pinned file)"),
+    ("soybean", "classification", load_soybean, "UCI 90 (ucimlrepo)"),
+    ("thyroid", "classification", load_thyroid, "UCI 102 (ucimlrepo)"),
     ("wine_quality", "regression", load_wine_quality, "UCI 186 (direct, not yet pinned)"),
-    ("zoo", "classification", load_zoo, "UCI 111 (pinned file)"),
+    ("zoo", "classification", load_zoo, "UCI 111 (ucimlrepo)"),
 ]
 
 for _name, _task, _loader, _source in _TABULAR:

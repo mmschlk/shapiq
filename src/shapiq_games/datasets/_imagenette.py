@@ -147,5 +147,5 @@ def load_imagenette(*, split: Split = "val", size: Size = "320px") -> ImageDatas
         name=f"imagenette_{split}_{size}",
         paths=tuple(paths),
         labels=np.asarray(labels, dtype=int),
-        class_names={index: name for index, name in IMAGENETTE_CLASSES.values()},
+        class_names=dict(IMAGENETTE_CLASSES.values()),
     )

@@ -56,6 +56,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - `Game._check_coalitions` does NOT cast integer 0/1 coalitions to bool, so
   `x[:, coalition]` or `~coalition` inside a `value_function` silently computes
   the wrong thing for int input. Cast with `coalitions.astype(bool)` until fixed.
+- A pandas CSV round trip is not lossless by default: `DataFrame.to_csv` can drop the last
+  significant digit of a float, and `pd.read_csv`'s default fast parser is not correctly
+  rounded for 17-digit strings. Data caches that must reproduce values exactly write with
+  `float_format="%.17g"` and read with `float_precision="round_trip"` (see
+  `shapiq_games/datasets/_tabular.py`).
 - With the full core suite under `pytest -n 8`, the ProxySPEX tests
   (`test_approximator_proxyspex.py`, `test_explainer_proxy_integration.py`) time out or raise
   `LightGBMError: Replace training data failed`; run serially, they pass in seconds. Re-run
