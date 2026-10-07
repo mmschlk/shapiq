@@ -145,13 +145,48 @@ public:
         return 1;
     }
 
-    ParsedForest extractTreeStructure(int class_label = -1)
+    // Whether the header's objective line names a binary objective ("objective=binary ...").
+    // Models trained with a custom objective have no objective line, so the scan stops at the
+    // first tree instead of running through the whole model.
+    bool readBinaryObjective()
+    {
+        static const char objective_key[] = "\nobjective=binary";
+        static const char tree_key[] = "\nTree=";
+        const size_t objective_len = sizeof(objective_key) - 1;
+        const size_t tree_len = sizeof(tree_key) - 1;
+        for (size_t p = 0; p < size; p++)
+        {
+            if (data[p] != '\n')
+                continue;
+            if (p + objective_len <= size && std::memcmp(data + p, objective_key, objective_len) == 0)
+                return true;
+            if (p + tree_len <= size && std::memcmp(data + p, tree_key, tree_len) == 0)
+                return false;
+        }
+        return false;
+    }
+
+    // is_classifier: the caller knows the model is a classifier even if the header names no
+    // binary objective (custom objectives are not written to the model string).
+    ParsedForest extractTreeStructure(int class_label, bool is_classifier)
     {
         int num_class = readNumTreePerIteration();
-        bool filtering = (class_label >= 0) && (num_class > 1);
+        // keep only the trees of the requested class; class_label < 0 means "unspecified" and
+        // selects class 1, like the other parsers
+        bool filtering = num_class > 1;
+        if (filtering)
+        {
+            if (class_label < 0)
+                class_label = 1;
+            check_class_label(class_label, num_class);
+        }
+        // a binary classifier has a single raw output, the class-1 log-odds
+        bool binary_classifier = num_class == 1 && (is_classifier || readBinaryObjective());
+        double class_sign = binary_classifier ? binary_class_sign(class_label) : 1.0;
 
         ParsedForest forest;
         forest.num_class = static_cast<int64_t>(num_class);
+        forest.negated_class_one = class_sign < 0.0;
         int tree_id = 0, num_cat = 0, num_leaves = 0, num_nodes = 0, num_internal = 0;
 
         while (true)
@@ -307,7 +342,7 @@ public:
             for (int i = num_internal; i < num_nodes; i++)
             {
                 tree.node_ids[i] = i;
-                tree.values[i] = values[i - num_internal];
+                tree.values[i] = class_sign * values[i - num_internal];
                 tree.node_sample_weights[i] = leaf_count[i - num_internal];
             }
 
@@ -321,8 +356,9 @@ public:
 ParsedForest parse_lightgbm_text_to_forest(
 	const char *data,
 	size_t size,
-	int class_label)
+	int class_label,
+	bool is_classifier)
 {
 	StringStream stream(data, size);
-	return stream.extractTreeStructure(class_label);
+	return stream.extractTreeStructure(class_label, is_classifier);
 }

@@ -42,6 +42,20 @@ Boosting converters live in separate modules such as `xgboost.py`,
   large-allocation path and threads contend: 14 threads ran 2-4x SLOWER than 4. Give each
   thread one scratch buffer in the parallel region and reuse it (now passed into
   `traverse_explain_vs_reference`). If more threads make a kernel slower, suspect this first.
+- Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
+  the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
+  the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:
+  `_binary_class_sign`) and flag the trees with `TreeModel.negated_class_one`. A model
+  counts as binary if it has one output AND is a classifier: the serialized objective/loss
+  says so, or Python passes `is_classifier` (custom objectives are not serialized as
+  binary). Woodelf ignores `class_index` for single-output models (deliberately, to match
+  shap), so `TreeExplainer._run_woodelf` requests class 1 and negates the result when the
+  trees carry that flag.
+- `class_label` handling must agree across all converters AND Woodelf (which loads the
+  original model itself): `None` = class 1, out-of-range / negative = `ValueError`
+  (`check_class_label` in `conversion/common.py` and `cext/converter.hpp`). `-1` is the C
+  parsers' "unspecified" sentinel, so negative labels are rejected in `convert_tree_model`.
+  `test_woodelf_matches_shapiq_for_every_class_index` guards the agreement.
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical
