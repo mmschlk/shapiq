@@ -448,7 +448,12 @@ class TreeExplainer(Explainer):
             msg = f"index='{self._index}' is not supported by Woodelf."
             raise ValueError(msg)
 
-        class_index = self._class_label if self._class_label is not None else 1
+        # class_index=0 of a binary booster: the converters negate the class-1 log-odds, but
+        # Woodelf ignores class_index for single-output models. Request the class-1 log-odds
+        # explicitly and negate them below, which stays correct if Woodelf starts negating
+        # class 0 itself; the values are linear in the model output.
+        negated_class_one = any(tree.negated_class_one for tree in self._trees)
+        class_index = 1 if negated_class_one or self._class_label is None else self._class_label
         loaded_model = load_decision_tree_ensemble_model(
             self.model, range(X.shape[1]), class_index=class_index
         )
@@ -470,6 +475,8 @@ class TreeExplainer(Explainer):
             metric=metric,
             model_was_loaded=True,
         )
+        if negated_class_one:
+            woodelf_result = {key: -value for key, value in woodelf_result.items()}
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         if self._index == "k-SII":

@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## Development
 
 ### Bugfix
 
+- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
+- `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
+- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
 - fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
 Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 - fixes `MarginalImputer` mixing two level of qualities in estimating the marginalized model output. While, the empty prediction was computed over the whole dataset, each individual coalition was subsampled by default. Each `v(S) - v(∅)` contained the gap between the two estimates. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
