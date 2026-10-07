@@ -9,6 +9,7 @@ from .beeswarm import beeswarm_plot
 from .force import force_plot
 from .network import network_plot
 from .scatter import scatter_plot
+from .scatter_2d import scatter_2d_plot
 from .sentence import sentence_plot
 from .si_graph import si_graph_plot
 from .stacked_bar import stacked_bar_plot
@@ -27,6 +28,7 @@ __all__ = [
     "upset_plot",
     "beeswarm_plot",
     "scatter_plot",
+    "scatter_2d_plot",
     # utils
     "abbreviate_feature_names",
 ]
