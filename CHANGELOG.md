@@ -1,9 +1,11 @@
 # Changelog
 
-## v1.7.1 (TBD)
+## Unreleased
 
 ### Bugfix
 
+- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
+### Bugfix
 - fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
 Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 - fixes `MarginalImputer` mixing two estimators: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates. Features the model never uses received nonzero attributions (null-player axiom), and interaction indices such as Moebius, STII, or k-SII contained spurious interactions of all orders, even for additive models. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
@@ -17,6 +19,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 ### Maintenance
 
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). On California Housing random forests with a budget of 256 coalitions this is about 4-9x faster, and about 70x faster with `verbose=True`, where coalitions are evaluated one at a time; using all 20,640 rows of the dataset (`sample_size=None`) drops from about 5 minutes to 46 seconds per explanation. Values are averaged per coalition, so evaluating a coalition alone or in a batch gives bit-identical results. [#615](https://github.com/mmschlk/shapiq/pull/615)
+
 
 ## v1.7.0 (2026-08-27)
 
