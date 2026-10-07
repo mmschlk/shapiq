@@ -283,3 +283,20 @@ opt-in tests in `tests/shapiq_games/test_heavy_games.py` (`SHAPIQ_RUN_HEAVY_TEST
   Hugging Face models are not yet pinned to a revision.
 
 All other datasets were checked to reproduce the previous loaders exactly.
+
+## Core issues found while building (fixed separately)
+
+The chain-of-trust tests surfaced two core bugs. Both are left to separate core PRs; core is
+unchanged here.
+
+- **`class_index=0` on binary gradient boosting classifiers.** `TreeExplainer` (path-dependent
+  and interventional) explains the positive-class margin whatever class is requested, so
+  class 0 silently returns the class-1 values. Affects scikit-learn GradientBoosting and
+  HistGradientBoosting, XGBoost, LightGBM and CatBoost. Until it is fixed, the tree games reject
+  `class_index=0` for these models (`shapiq_games/tree/_output.py::check_class_index`).
+- **Zero-cover nodes on the explained point's path.** The path-dependent quadrature TreeSHAP
+  treats every zero-cover subtree as unreachable and drops it. The explained point's own path
+  can still enter one (common in CatBoost's oblivious trees, through NaN routing or a value
+  outside the training data). When a feature is absent below that node, its mass is lost, so
+  a tree with a constant output gets nonzero Shapley values. In the reproducing CatBoost model,
+  `PathDependentTreeComputer` differs from brute force on `PathDependentTreeGame` by 6.5e-4.
