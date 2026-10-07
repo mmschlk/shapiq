@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## v1.7.1 (TBD)
 
 ### Bugfix
 
+- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
+Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 - fixes `MarginalImputer` mixing two estimators: the value of the empty coalition was computed over the full background data while all other coalitions averaged over a subsample of `sample_size` rows, so every `v(S) - v(∅)` contained the gap between the two estimates. Features the model never uses received nonzero attributions (null-player axiom), and interaction indices such as Moebius, STII, or k-SII contained spurious interactions of all orders, even for additive models. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `MarginalImputer.init_background` keeping the row limit of an earlier, smaller background data set, which silently used fewer rows of a larger new background than `sample_size` allows. [#615](https://github.com/mmschlk/shapiq/pull/615)
 
