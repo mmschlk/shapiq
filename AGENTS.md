@@ -58,6 +58,13 @@ Boosting converters live in separate modules such as `xgboost.py`,
   rounded for 17-digit strings. Data caches that must reproduce values exactly write with
   `float_format="%.17g"` and read with `float_precision="round_trip"` (see
   `shapiq_games/datasets/_tabular.py`).
+- `ucimlrepo` does not serve every UCI dataset as the website does (observed 2026-10-07): it
+  refuses to export arrhythmia (5) and thyroid (102), has only the small soybean table, and
+  some column names differ from the UCI files (`famiily`). Before pointing a loader at it, run
+  `SHAPIQ_RUN_HEAVY_TESTS=1 uv run pytest tests/shapiq_games/test_heavy_games.py -k upstream`.
+- Hand numpy arrays to torch as a copy (`np.array(x)`), not `np.ascontiguousarray(x)`: torch
+  rejects negative strides, and a one-row reversed view counts as contiguous, so
+  `ascontiguousarray` returns it unchanged (the ViT game crashed on `coalitions[::-1]`).
 - With the full core suite under `pytest -n 8`, the ProxySPEX tests
   (`test_approximator_proxyspex.py`, `test_explainer_proxy_integration.py`) time out or raise
   `LightGBMError: Replace training data failed`; run serially, they pass in seconds. Re-run
