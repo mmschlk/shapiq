@@ -12,6 +12,121 @@ namespace algorithms
 
     using SparseInteractionMap = std::unordered_map<BitSet, double, BitSetHash, BitSetEqual>;
 
+    // Multiplier of the multiply-shift subset hash; must equal INDEX_HASH_MULTIPLIER in
+    // shapiq/tree/subset_index.py (2^64 / golden ratio).
+    constexpr uint64_t kIndexHashMultiplier = 0x9E3779B97F4A7C15ULL;
+
+    // A feature subset as one int64: its sorted features read as the digits (feature + 1) of a
+    // number in base num_features + 1. The +1 keeps a leading feature 0 from vanishing, so
+    // subsets of different sizes never share a key. Usable while
+    // (num_features + 1)^max_order fits in an int64 (see flat_subset_keys_fit).
+    inline bool flat_subset_keys_fit(int num_features, int max_order)
+    {
+        const int64_t base = static_cast<int64_t>(num_features) + 1;
+        int64_t cap = 1;
+        for (int i = 0; i < max_order; ++i)
+        {
+            if (cap > INT64_MAX / base)
+                return false;
+            cap *= base;
+        }
+        return max_order < 64;  // the enumeration keeps at most 63 chosen features
+    }
+
+    // Open-addressing map from a subset key to its accumulated contribution, filled per
+    // explanation with exactly the subsets the E/R sets of its leaves produce. Replaces the
+    // std::unordered_map<BitSet, double> of the sparse path: no allocation per entry, an
+    // integer key, a multiply-shift hash (the multiplier of the quadrature subset index), and
+    // linear probing in contiguous arrays. Grows by doubling to stay at most half full.
+    class FlatSubsetMap
+    {
+    public:
+        explicit FlatSubsetMap(size_t initial_capacity = 1024) { reset(initial_capacity); }
+
+        void add(int64_t key, double value)
+        {
+            uint64_t slot = home(key);
+            while (true)
+            {
+                const int64_t stored = keys_[slot];
+                if (stored == key)
+                {
+                    values_[slot] += value;
+                    return;
+                }
+                if (stored == kEmpty)
+                {
+                    if (2 * (size_ + 1) > keys_.size())
+                    {
+                        grow();
+                        add(key, value);
+                        return;
+                    }
+                    keys_[slot] = key;
+                    values_[slot] = value;
+                    ++size_;
+                    return;
+                }
+                slot = (slot + 1) & mask_;
+            }
+        }
+
+        void merge_from(const FlatSubsetMap &other)
+        {
+            other.for_each([&](int64_t key, double value) { add(key, value); });
+        }
+
+        template <typename Func>
+        void for_each(Func &&f) const
+        {
+            for (size_t slot = 0; slot < keys_.size(); ++slot)
+            {
+                if (keys_[slot] != kEmpty)
+                    f(keys_[slot], values_[slot]);
+            }
+        }
+
+        size_t size() const { return size_; }
+
+    private:
+        static constexpr int64_t kEmpty = -1;
+
+        void reset(size_t capacity)
+        {
+            int bits = 1;
+            while ((size_t(1) << bits) < capacity)
+                ++bits;
+            keys_.assign(size_t(1) << bits, kEmpty);
+            values_.assign(size_t(1) << bits, 0.0);
+            mask_ = (uint64_t(1) << bits) - 1;
+            shift_ = 64 - bits;
+            size_ = 0;
+        }
+
+        uint64_t home(int64_t key) const
+        {
+            return (static_cast<uint64_t>(key) * kIndexHashMultiplier) >> shift_;
+        }
+
+        void grow()
+        {
+            std::vector<int64_t> old_keys = std::move(keys_);
+            std::vector<double> old_values = std::move(values_);
+            reset(old_keys.size() * 2);
+            for (size_t slot = 0; slot < old_keys.size(); ++slot)
+            {
+                if (old_keys[slot] != kEmpty)
+                    add(old_keys[slot], old_values[slot]);
+            }
+        }
+
+        std::vector<int64_t> keys_;
+        std::vector<double> values_;
+        uint64_t mask_ = 0;
+        int shift_ = 63;
+        size_t size_ = 0;
+    };
+
     inline int get_interaction_index(int i, int j, int num_features, int max_order)
     {
         // Helper function to compute compact index for order-2 interactions
@@ -105,6 +220,70 @@ namespace algorithms
         }
     }
 
+    // State of one flat enumeration: s_e features chosen from E and s_r from R (each list and
+    // each choice ascending), merged into one sorted subset and keyed at the leaf.
+    struct FlatEnumeration
+    {
+        const uint64_t *e_features;
+        int e_count;
+        const uint64_t *r_features;
+        int r_count;
+        int64_t key_base;  // num_features + 1
+        FlatSubsetMap *interactions;
+        int s_e = 0;
+        int s_r = 0;
+        double contribution = 0.0;
+        uint64_t chosen_e[64];
+        uint64_t chosen_r[64];
+    };
+
+    inline void emit_flat_subset(FlatEnumeration &en)
+    {
+        // E and R are disjoint, so merging the two ascending choices gives the sorted subset
+        int64_t key = 0;
+        int i = 0, j = 0;
+        while (i < en.s_e || j < en.s_r)
+        {
+            uint64_t feature;
+            if (j == en.s_r || (i < en.s_e && en.chosen_e[i] < en.chosen_r[j]))
+                feature = en.chosen_e[i++];
+            else
+                feature = en.chosen_r[j++];
+            key = key * en.key_base + static_cast<int64_t>(feature) + 1;
+        }
+        en.interactions->add(key, en.contribution);
+    }
+
+    // Same subsets in the same order as enumerate_r_subsets / enumerate_e_subsets, so each
+    // subset receives its contributions in the same sequence as in the BitSet-keyed map.
+    void enumerate_r_flat(FlatEnumeration &en, int start, int depth)
+    {
+        if (depth == en.s_r)
+        {
+            emit_flat_subset(en);
+            return;
+        }
+        for (int i = start; i <= en.r_count - (en.s_r - depth); ++i)
+        {
+            en.chosen_r[depth] = en.r_features[i];
+            enumerate_r_flat(en, i + 1, depth + 1);
+        }
+    }
+
+    void enumerate_e_flat(FlatEnumeration &en, int start, int depth)
+    {
+        if (depth == en.s_e)
+        {
+            enumerate_r_flat(en, 0, 0);
+            return;
+        }
+        for (int i = start; i <= en.e_count - (en.s_e - depth); ++i)
+        {
+            en.chosen_e[depth] = en.e_features[i];
+            enumerate_e_flat(en, i + 1, depth + 1);
+        }
+    }
+
     void sparse_order_update(const StackFrame &frame,
                              double value,
                              SparseInteractionMap &interactions,
@@ -160,17 +339,19 @@ namespace algorithms
         }
     }
 
-    void compute_interactions_sparse(Tree tree,
-                                      SparseInteractionMap &interactions,
-                                      inter_weights::WeightCache &weight_cache,
-                                      double *reference_data,
-                                      double *explain_data,
-                                      int num_features,
-                                      IndexType index,
-                                      int max_order,
-                                      int verbose)
+    // Walks one tree for the explain point against one reference sample and hands every leaf
+    // reached to `leaf_update`: its frame (E and R) plus scratch buffers sized for E and R.
+    // `stack` is the caller's per-thread scratch, reused across calls: allocating a fresh one
+    // per (tree, reference) pair made threads contend in the allocator.
+    template <typename LeafUpdate>
+    void traverse_explain_vs_reference(Tree &tree,
+                                       double *reference_data,
+                                       double *explain_data,
+                                       int num_features,
+                                       std::vector<StackFrame> &stack,
+                                       LeafUpdate &&leaf_update)
     {
-        std::vector<StackFrame> stack;
+        stack.clear();
         BitSet empty_A(num_features);
         BitSet empty_B(num_features);
 
@@ -183,7 +364,6 @@ namespace algorithms
         uint64_t e_count;
         uint64_t r_count;
 
-        stack.reserve(1000);
         stack.push_back(StackFrame(0, empty_A, empty_B, 0, 0));
         while (!stack.empty())
         {
@@ -246,9 +426,77 @@ namespace algorithms
                     r_buffer = vector_buffer_R.data();
                 }
                 double leaf_value = tree.leaf_predictions[node_id];
-                sparse_order_update(current_frame, leaf_value, interactions, weight_cache, num_features, index, max_order, e_buffer, r_buffer, e_count, r_count);
+                leaf_update(current_frame, leaf_value, e_buffer, r_buffer, e_count, r_count);
             }
         }
+    }
+
+    void compute_interactions_sparse(Tree tree,
+                                      SparseInteractionMap &interactions,
+                                      inter_weights::WeightCache &weight_cache,
+                                      double *reference_data,
+                                      double *explain_data,
+                                      int num_features,
+                                      IndexType index,
+                                      int max_order,
+                                      int verbose,
+                                      std::vector<StackFrame> &stack)
+    {
+        traverse_explain_vs_reference(
+            tree, reference_data, explain_data, num_features, stack,
+            [&](const StackFrame &frame, double leaf_value, uint64_t *e_buffer, uint64_t *r_buffer,
+                uint64_t e_count, uint64_t r_count)
+            {
+                sparse_order_update(frame, leaf_value, interactions, weight_cache, num_features, index,
+                                    max_order, e_buffer, r_buffer, e_count, r_count);
+            });
+    }
+
+    // The sparse path on a FlatSubsetMap (see flat_subset_keys_fit for when keys fit).
+    void compute_interactions_flat(Tree tree,
+                                   FlatSubsetMap &interactions,
+                                   inter_weights::WeightCache &weight_cache,
+                                   double *reference_data,
+                                   double *explain_data,
+                                   int num_features,
+                                   IndexType index,
+                                   int max_order,
+                                   std::vector<StackFrame> &stack)
+    {
+        FlatEnumeration en;
+        en.key_base = static_cast<int64_t>(num_features) + 1;
+        en.interactions = &interactions;
+        traverse_explain_vs_reference(
+            tree, reference_data, explain_data, num_features, stack,
+            [&](const StackFrame &frame, double leaf_value, uint64_t *e_buffer, uint64_t *r_buffer,
+                uint64_t e_count, uint64_t r_count)
+            {
+                if (e_count > 0)
+                    frame.E.fill_buffer(e_buffer);
+                if (r_count > 0)
+                    frame.R.fill_buffer(r_buffer);
+                en.e_features = e_buffer;
+                en.e_count = static_cast<int>(e_count);
+                en.r_features = r_buffer;
+                en.r_count = static_cast<int>(r_count);
+                // same sizes, splits and weights as sparse_order_update
+                for (int s = 1; s <= max_order; ++s)
+                {
+                    int min_from_e = std::max(0, s - static_cast<int>(r_count));
+                    int max_from_e = std::min(s, static_cast<int>(e_count));
+                    for (int s_cap_e = min_from_e; s_cap_e <= max_from_e; ++s_cap_e)
+                    {
+                        int s_cap_r = s - s_cap_e;
+                        const double weight = weight_cache.get_weight(num_features, frame.e, frame.r, s_cap_e, s_cap_r, s, index, max_order);
+                        if (weight == 0.0)
+                            continue;
+                        en.contribution = static_cast<double>(leaf_value) * weight;
+                        en.s_e = s_cap_e;
+                        en.s_r = s_cap_r;
+                        enumerate_e_flat(en, 0, 0);
+                    }
+                }
+            });
     }
 
 
