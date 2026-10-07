@@ -1,5 +1,10 @@
 # Changelog
 
+## Development
+
+### Bugfix
+- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. A `class_index` other than `0`, `1` or `None` now raises a `ValueError` for these models. `class_index=None` still explains class 1, and multiclass models are unchanged.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.

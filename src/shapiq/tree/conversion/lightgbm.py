@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from lightgbm import LGBMClassifier, LGBMRegressor
@@ -10,7 +11,7 @@ from lightgbm.basic import Booster as LightGBMBooster
 from .cext import (
     parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
 )
-from .common import register
+from .common import register, select_binary_class_margin
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
@@ -49,20 +50,26 @@ def convert_lightgbm_model(model: LightGBMModel, class_label: int | None = None)
     """Convert a LightGBM model to the unified internal tree format used by shapiq.
 
     For multiclass models, only the trees for ``class_label`` are returned (round-robin
-    index ``i % num_tree_per_iteration == class_label``). For binary/regression models
-    all trees are returned unchanged.
+    index ``i % num_tree_per_iteration == class_label``). For binary classifiers, which model
+    the class-``1`` log-odds, ``class_label=0`` negates the trees to model the class-``0``
+    log-odds. Regression models are returned unchanged.
 
     Args:
         model: The LightGBM model to convert (``LGBMRegressor``, ``LGBMClassifier``, or
             native ``Booster``).
-        class_label: For multiclass classifiers, the class index to extract trees for.
-            Pass ``None`` to return all trees (regression / binary).
+        class_label: For classifiers, the class index to explain. ``None`` selects class
+            ``1``. Ignored for regression models.
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting round for the selected class.
     """
     byte_array = _lightgbm_model_to_bytes(model)
-    return parse_lightgbm_string_treemodels(byte_array, -1 if class_label is None else class_label)
+    trees = parse_lightgbm_string_treemodels(byte_array, -1 if class_label is None else class_label)
+    single_output = re.search(rb"^num_tree_per_iteration=1$", byte_array, re.MULTILINE)
+    binary_objective = re.search(rb"^objective=binary\b", byte_array, re.MULTILINE)
+    if single_output and (binary_objective or isinstance(model, LGBMClassifier)):
+        return select_binary_class_margin(trees, class_label)
+    return trees
 
 
 register(LGBMRegressor, convert_lightgbm_model)

@@ -892,3 +892,115 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
         RuntimeError, match=r"End of stream|Unexpected end of UBJSON|Unsupported marker"
     ):
         parse_xgboost_ubjson(truncated, -1, 0.0)
+
+
+_BINARY_BOOSTERS = ("sklearn_gb", "sklearn_histgb", "xgboost", "lightgbm", "catboost")
+
+
+def _fit_binary_booster(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a small binary gradient boosting classifier and return it with its raw margin."""
+    from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+
+    if name == "sklearn_gb":
+        model = GradientBoostingClassifier(n_estimators=5, max_depth=3, random_state=0)
+        return model.fit(x, y), model.decision_function
+    if name == "sklearn_histgb":
+        model = HistGradientBoostingClassifier(max_iter=5, max_depth=3, random_state=0)
+        return model.fit(x, y), model.decision_function
+    if name == "xgboost":
+        xgboost = pytest.importorskip("xgboost")
+        model = xgboost.XGBClassifier(n_estimators=5, max_depth=3, random_state=0)
+        return model.fit(x, y), lambda data: model.predict(data, output_margin=True)
+    if name == "lightgbm":
+        lightgbm = pytest.importorskip("lightgbm")
+        model = lightgbm.LGBMClassifier(n_estimators=5, max_depth=3, random_state=0, verbose=-1)
+        return model.fit(x, y), lambda data: model.predict(data, raw_score=True)
+    catboost = pytest.importorskip("catboost")
+    model = catboost.CatBoostClassifier(iterations=5, depth=3, random_seed=0, verbose=False)
+    return model.fit(x, y), lambda data: model.predict(data, prediction_type="RawFormulaVal")
+
+
+@pytest.mark.parametrize("mode", ["pathdependent", "interventional"])
+@pytest.mark.parametrize("name", _BINARY_BOOSTERS)
+def test_binary_booster_class_zero_is_negated_class_one(name, mode):
+    """Test that class_index=0 of a binary booster explains the class-0 log-odds.
+
+    Binary boosters model one raw output, the class-1 log-odds; class_index=0 silently
+    returned the class-1 explanation instead of its negation.
+    """
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_binary_booster(name, x, y)
+    reference = x[:50] if mode == "interventional" else None
+    explanations = {
+        class_index: TreeExplainer(
+            model=model,
+            index="SV",
+            max_order=1,
+            class_index=class_index,
+            mode=mode,
+            reference_dataset=reference,
+            backend="shapiq",
+        ).explain(x[0])
+        for class_index in (None, 0, 1)
+    }
+
+    class_zero, class_one = explanations[0], explanations[1]
+    values_zero = class_zero.get_n_order_values(1)
+    values_one = class_one.get_n_order_values(1)
+    assert not np.allclose(values_zero, values_one)
+    np.testing.assert_allclose(values_zero, -values_one)
+    assert class_zero.baseline_value == pytest.approx(-class_one.baseline_value)
+    # class_index=None stays class 1
+    np.testing.assert_allclose(explanations[None].get_n_order_values(1), values_one)
+    assert explanations[None].baseline_value == pytest.approx(class_one.baseline_value)
+
+    # efficiency: in pathdependent mode the values sum to the negated raw margin of the point;
+    # in interventional mode the baseline is the mean negated margin over the reference data
+    expected = -raw_margin(x[:1])[0]
+    assert class_zero.baseline_value + values_zero.sum() == pytest.approx(expected, abs=1e-5)
+    if mode == "interventional":
+        assert class_zero.baseline_value == pytest.approx(-raw_margin(reference).mean(), abs=1e-5)
+
+
+@pytest.mark.parametrize("mode", ["pathdependent", "interventional"])
+@pytest.mark.parametrize("name", ["sklearn_gb", "sklearn_histgb", "xgboost", "lightgbm"])
+def test_binary_booster_class_zero_woodelf_matches_shapiq(name, mode):
+    """Test that the Woodelf backend also negates the class-1 output for class_index=0."""
+    pytest.importorskip("woodelf")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_binary_booster(name, x, y)
+    reference = x[:50] if mode == "interventional" else None
+    explanations = {
+        backend: TreeExplainer(
+            model=model,
+            index="SV",
+            max_order=1,
+            class_index=0,
+            mode=mode,
+            reference_dataset=reference,
+            backend=backend,
+        ).explain(x[0])
+        for backend in ("shapiq", "woodelf")
+    }
+
+    woodelf_values = explanations["woodelf"].get_n_order_values(1)
+    np.testing.assert_allclose(
+        woodelf_values, explanations["shapiq"].get_n_order_values(1), atol=1e-6
+    )
+    baseline = explanations["woodelf"].baseline_value
+    assert baseline + woodelf_values.sum() == pytest.approx(-raw_margin(x[:1])[0], abs=1e-5)
+
+
+@pytest.mark.parametrize("name", _BINARY_BOOSTERS)
+def test_binary_booster_invalid_class_index_raises(name):
+    """Test that a class_index other than 0 or 1 fails for a binary booster."""
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, _ = _fit_binary_booster(name, x, y)
+    with pytest.raises(ValueError, match="invalid for a binary classifier"):
+        TreeExplainer(model=model, index="SV", max_order=1, class_index=2)

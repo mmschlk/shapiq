@@ -28,7 +28,7 @@ from sklearn.tree import (
 
 from shapiq.tree.base import TreeModel
 
-from .common import register
+from .common import register, select_binary_class_margin
 
 if TYPE_CHECKING:
     from sklearn.tree._tree import Tree  # ty: ignore[unresolved-import]
@@ -264,7 +264,8 @@ def convert_gradient_boosting_tree(
         tree_model: The fitted ``GradientBoostingClassifier`` or ``GradientBoostingRegressor``
             to convert.
         class_label: The class index whose trees are extracted for multiclass models.
-            Defaults to ``None``, which selects class ``1``.
+            Defaults to ``None``, which selects class ``1``. For binary classifiers, which
+            model the class-``1`` log-odds, ``0`` negates the trees.
 
     Raises:
         ValueError: If the model was fitted with a custom ``init`` estimator, whose contribution
@@ -279,7 +280,7 @@ def convert_gradient_boosting_tree(
     else:
         tree_column = 0
     offset = _gradient_boosting_init_offset(tree_model, tree_column) / n_estimators
-    return [
+    trees = [
         convert_sklearn_tree(
             tree_model.estimators_[i, tree_column],
             class_label=class_label,
@@ -288,6 +289,9 @@ def convert_gradient_boosting_tree(
         )
         for i in range(n_estimators)
     ]
+    if isinstance(tree_model, GradientBoostingClassifier) and n_classes == 1:
+        return select_binary_class_margin(trees, class_label)
+    return trees
 
 
 def _gradient_boosting_init_offset(
@@ -340,14 +344,16 @@ def convert_hist_gradient_boosting_tree(
         tree_model: The fitted ``HistGradientBoostingClassifier`` or
             ``HistGradientBoostingRegressor`` to convert.
         class_label: The class index whose trees are extracted for multiclass models.
-            Defaults to ``None``, which selects class ``1``.
+            Defaults to ``None``, which selects class ``1``. For binary classifiers, which
+            model the class-``1`` log-odds, ``0`` negates the trees.
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting iteration for the selected class.
     """
     predictors = tree_model._predictors  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     tree_column = 0
-    if tree_model.n_trees_per_iteration_ > 1:  # ty: ignore[unresolved-attribute]
+    single_output = tree_model.n_trees_per_iteration_ == 1  # ty: ignore[unresolved-attribute]
+    if not single_output:
         tree_column = 1 if class_label is None else class_label
     baseline = tree_model._baseline_prediction  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     offset = float(np.asarray(baseline).ravel()[tree_column]) / len(predictors)
@@ -372,7 +378,7 @@ def convert_hist_gradient_boosting_tree(
             )
             trans_to_orig = np.concatenate([np.flatnonzero(is_cat), np.flatnonzero(~is_cat)])
             raw_categories = list(preprocessor.named_transformers_["encoder"].categories_)
-    return [
+    trees = [
         _convert_hist_tree_predictor(
             iteration[tree_column],
             offset,
@@ -383,6 +389,9 @@ def convert_hist_gradient_boosting_tree(
         )
         for iteration in predictors
     ]
+    if isinstance(tree_model, HistGradientBoostingClassifier) and single_output:
+        return select_binary_class_margin(trees, class_label)
+    return trees
 
 
 def _bitset_to_categories(bitset: np.ndarray) -> np.ndarray:

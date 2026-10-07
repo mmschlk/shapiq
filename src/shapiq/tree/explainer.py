@@ -470,11 +470,30 @@ class TreeExplainer(Explainer):
             metric=metric,
             model_was_loaded=True,
         )
+        if self._negates_class_one_output():
+            # Woodelf ignores class_index for single-output (binary) boosters and always
+            # explains the class-1 log-odds; the values are linear in the model output
+            woodelf_result = {key: -value for key, value in woodelf_result.items()}
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         if self._index == "k-SII":
             return self._aggregate_batched_sii_to_ksii(woodelf_result)
         return woodelf_result
+
+    def _negates_class_one_output(self) -> bool:
+        """Whether the explained trees are the negated class-1 trees of a binary classifier.
+
+        Binary gradient boosting classifiers have a single raw output, the class-1 log-odds;
+        the converters explain ``class_index=0`` as its negation (see
+        :func:`~shapiq.tree.conversion.common.select_binary_class_margin`).
+        """
+        if self._class_label != 0:
+            return False
+        class_one_trees = validate_tree_model(self.model, class_label=1)
+        return len(class_one_trees) == len(self._trees) and all(
+            np.array_equal(tree.values, -class_one.values)  # noqa: PD011
+            for tree, class_one in zip(self._trees, class_one_trees, strict=True)
+        )
 
     def _aggregate_batched_sii_to_ksii(
         self, sii_result: dict[tuple, np.ndarray]
