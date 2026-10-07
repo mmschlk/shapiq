@@ -190,9 +190,9 @@ alongside scores, because failures and missing runs are not zero-error results.
 
 ## Compute and reproducibility
 
-The compute budget is equivalent to **1,024 CPU cores running for 24 hours** on
-Hopper. The active pool uses AMD EPYC 9754 processors, with one thread per worker
-and no GPUs.
+We run on Hopper's AMD EPYC 9754 processors for about a day, using up to
+**1,000 CPU cores** so other jobs can run alongside the benchmark. Each worker
+uses one thread, and no GPUs are used.
 
 We save the games, model settings, selected rows and columns, random seeds and
 reference values so each comparison can be reproduced. Games that exceed the

@@ -7,10 +7,13 @@ evaluation running together in a shared queue.
 
 ## Resources and execution
 
-- At most **1,024 concurrent CPUs**, no production GPUs.
+- At most **1,000 concurrent CPUs**, no production GPUs. This ceiling was
+  reduced on October 7 to leave room for Hopper Monitor and other user jobs.
 - **24,576 allocated CPU-hours total, including all prior campaign work**.
-- Up to sixteen allocations of 64 single-thread workers and 512 GiB RAM.
-  Initially request twenty hours per allocation; release workers when work ends.
+- The initial launch used sixteen allocations of 64 single-thread workers and
+  512 GiB RAM for twenty hours each. One allocation was cancelled at the user's
+  request on October 7; the remaining fifteen use 960 CPUs. Future allocations
+  must fit the 1,000-CPU ceiling; release workers when work ends.
 - Each game has at most two CPU-hours to prepare its exact reference. A timeout
   is an explicit resource exclusion, never an approximate reference.
 - Existing jobs, frozen games, results, seeds and estimator settings stay intact.
