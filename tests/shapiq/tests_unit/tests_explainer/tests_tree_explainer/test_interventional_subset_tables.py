@@ -9,7 +9,9 @@ import pytest
 from sklearn.ensemble import RandomForestRegressor
 
 from shapiq.tree.interventional import InterventionalTreeSHAPIQ
-from shapiq.tree.interventional.cext import preprocess_subset_tables  # ty: ignore[unresolved-import]
+from shapiq.tree.interventional.cext import (
+    preprocess_subset_tables,  # ty: ignore[unresolved-import]
+)
 from shapiq.tree.subset_index import INDEX_HASH_MULTIPLIER, build_subset_index
 
 
@@ -59,7 +61,9 @@ def test_subset_tables_overflow_returns_none():
     """Keys that would not fit in an int64 leave the tables unbuilt (the kernel falls back)."""
     features, left, right = np.array([0, -2, -2]), np.array([1, -1, -1]), np.array([2, -1, -1])
     offsets = np.array([0, 3])
-    assert preprocess_subset_tables(features, left, right, offsets, 1000, 7) is None  # 1000**7 > 2**63
+    assert (
+        preprocess_subset_tables(features, left, right, offsets, 1000, 7) is None
+    )  # 1000**7 > 2**63
 
 
 def test_cpp_index_matches_the_python_builder(forest_explainer):
@@ -77,9 +81,19 @@ def test_cpp_index_matches_the_python_builder(forest_explainer):
     np.testing.assert_array_equal(got_starts, exp_starts)
     np.testing.assert_array_equal(got_shifts, exp_shifts)
     for order in range(2, ex.max_order + 1):
-        block = slice(int(got_starts[order]), int(got_starts[order]) + (1 << (64 - int(got_shifts[order]))))
-        got = {(int(k), int(r)) for k, r in zip(got_keys[block], got_rows[block], strict=True) if k >= 0}
-        exp = {(int(k), int(r)) for k, r in zip(exp_keys[block], exp_rows[block], strict=True) if k >= 0}
+        block = slice(
+            int(got_starts[order]), int(got_starts[order]) + (1 << (64 - int(got_shifts[order])))
+        )
+        got = {
+            (int(k), int(r))
+            for k, r in zip(got_keys[block], got_rows[block], strict=True)
+            if k >= 0
+        }
+        exp = {
+            (int(k), int(r))
+            for k, r in zip(exp_keys[block], exp_rows[block], strict=True)
+            if k >= 0
+        }
         assert got == exp
 
 
