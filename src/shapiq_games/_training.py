@@ -86,9 +86,12 @@ def _seeded_clone(model: Any, random_state: int | None) -> Any:  # noqa: ANN401
 
 def _too_few_rows(model: Any, n_rows: int) -> bool:  # noqa: ANN401
     """Whether ``model`` cannot be fitted on ``n_rows`` rows (e.g. k-NN with ``k > n_rows``)."""
-    params = model.get_params() if hasattr(model, "get_params") else {}
-    n_neighbors = params.get("n_neighbors")
-    return isinstance(n_neighbors, int) and n_neighbors > n_rows
+    params = model.get_params(deep=True) if hasattr(model, "get_params") else {}
+    return any(
+        isinstance(value, int) and value > n_rows
+        for name, value in params.items()
+        if name == "n_neighbors" or name.endswith("__n_neighbors")  # also inside a pipeline
+    )
 
 
 def fit_and_score(

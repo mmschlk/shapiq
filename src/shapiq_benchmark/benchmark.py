@@ -102,10 +102,11 @@ class Benchmark:
             The benchmark.
         """
         game = setup.build()
+        bound = None
         if computer is not None:
             takes_cap = "max_players" in inspect.signature(computer).parameters
             bound = computer(game, max_players=max_players) if takes_cap else computer(game)  # type: ignore[call-arg]
-        benchmark = cls(game, bound if computer is not None else None, max_players=max_players)
+        benchmark = cls(game, bound, max_players=max_players)
         benchmark.setup = setup
         benchmark.cache = cache
         return benchmark

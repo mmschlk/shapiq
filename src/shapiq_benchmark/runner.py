@@ -129,11 +129,11 @@ def run(
                     start = time.perf_counter()
                     estimate = approximator.approximate(budget=budget, game=game)
                     runtime = time.perf_counter() - start
+                    # e.g. SHAP-IQ for FSII estimates the top order only: score that order
                     top_order_only = order > 1 and estimate.min_order == order
+                    scored_orders = str(order) if top_order_only or order == 1 else f"1-{order}"
                     metrics: dict[str, Any] = {
-                        "scored_orders": str(order)
-                        if top_order_only or order == 1
-                        else f"1-{order}",
+                        "scored_orders": scored_orders,
                         **compare(
                             ground_truth, estimate, k=k, order=order if top_order_only else None
                         ),
