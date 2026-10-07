@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improvement
+- `InterventionalTreeSHAPIQ` (the shapiq backend of `TreeExplainer(mode="interventional")`) now runs on a single C++ kernel for every interaction order. At construction, one pass over the trees collects the feature subsets that co-occur on some root-to-leaf path, the only interactions that can be non-zero, and the kernel accumulates into exactly that layout instead of all `C(n_features, order)` combinations or a per-explanation hash map. Explanations that previously took the sparse path (orders above 3, or wide feature spaces) are several times faster, and multi-threaded results are deterministic. The `bool_tree` argument is removed: a boolean tree is explained like any other, with the empty coalition as the single reference row.
+
 ### Bugfix
 
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
