@@ -1,5 +1,11 @@
 # Changelog
 
+## Development
+
+### Bugfix
+
+- fixes path-dependent `TreeExplainer`/`QuadratureTreeSHAP` dropping the mass of a zero-cover subtree whenever the explained point's routing enters it (e.g. through NaN default routing or a value outside the training range, which is common in CatBoost's oblivious trees). Below such a node the cover ratio was `0/0` and the subtree was treated as unreachable, which gave wrong Shapley values and interactions and nonzero attributions on constant trees (violating the null-player axiom); efficiency was unaffected. A zero-cover node now splits its (zero) mass equally among its children, so its split weights still sum to one.
+
 ## v1.7.0 (2026-08-27)
 
 ### New and Improved Tree support.

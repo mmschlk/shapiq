@@ -614,7 +614,12 @@ static PyObject *create_edge_tree_arrays(PyObject *self, PyObject *args)
 				throw std::runtime_error("EdgeTree feature id is outside the dense feature range.");
 
 			last_feature_node[node_id] = 1;
-			double weight = node_sample_weight[node_id] / node_sample_weight[parent_id];
+			// A zero-cover parent has no data to split by (the ratio would be 0/0); it splits
+			// its mass equally, so the weights at every split still sum to one. This matters
+			// when the explained point's routing enters the zero-cover node (NaN default
+			// routing, out-of-range values) and a feature split below it is absent.
+			double parent_weight = node_sample_weight[parent_id];
+			double weight = parent_weight > 0.0 ? node_sample_weight[node_id] / parent_weight : 0.5;
 			split_weights[node_id] = weight;
 			prod_weight *= weight;
 			double p_e = 1.0 / weight;

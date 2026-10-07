@@ -315,6 +315,223 @@ def test_zero_cover_internal_subtree(implementation):
         LinearTreeSHAP(dead_tree)
 
 
+# ------------------------ zero-cover nodes on the explained path ------------------------
+
+
+def _path_dependent_value(trees, x: np.ndarray, coalition: set[int]) -> float:
+    """Brute-force path-dependent game ``v(S)`` of an ensemble (sum over its trees).
+
+    Follows ``x`` at splits on features in ``S`` and otherwise averages the children by cover
+    (weights summing to one). A zero-cover node splits equally, the convention of the edge
+    tree (:func:`~shapiq.tree.conversion.edges.create_edge_tree`).
+    """
+
+    def visit(tree, x_tree: np.ndarray, node: int) -> float:
+        if tree.leaf_mask[node]:
+            return float(tree.values[node])
+        feature = int(tree.feature_map_internal_original[int(tree.features[node])])
+        left, right = int(tree.children_left[node]), int(tree.children_right[node])
+        if feature in coalition:
+            child = left if tree.goes_left(node, x_tree[feature]) else right
+            return visit(tree, x_tree, child)
+        w_left = float(tree.node_sample_weight[left])
+        w_right = float(tree.node_sample_weight[right])
+        share = w_left / (w_left + w_right) if w_left + w_right > 0 else 0.5
+        return share * visit(tree, x_tree, left) + (1 - share) * visit(tree, x_tree, right)
+
+    return sum(
+        visit(tree, tree.cast_input(np.asarray(x, dtype=np.float64)), int(tree.root_node_id))
+        for tree in trees
+    )
+
+
+def _brute_force(trees, x: np.ndarray, index: str, order: int):
+    """Exact interaction values of the brute-force path-dependent game."""
+    from shapiq.game_theory.exact import ExactComputer
+
+    n_players = x.shape[0]
+    table = {
+        subset: _path_dependent_value(trees, x, set(subset))
+        for subset in powerset(range(n_players))
+    }
+
+    def game(coalitions: np.ndarray) -> np.ndarray:
+        return np.array([table[tuple(np.flatnonzero(c))] for c in coalitions])
+
+    return ExactComputer(game, n_players=n_players)(index, order)
+
+
+def _assert_matches_brute_force(trees, x: np.ndarray, implementation: str = "cpp") -> None:
+    """QuadratureTreeSHAP equals the brute-force game for SV and order-2 k-SII."""
+    for index, order in (("SV", 1), ("k-SII", 2)):
+        reference = _brute_force(trees, x, index, order)
+        result = _explain(
+            QuadratureTreeSHAP(trees, index=index, max_order=order), x, implementation
+        )
+        for interaction in _all_interactions(x.shape[0], 1, order):
+            assert result[interaction] == pytest.approx(reference[interaction], abs=1e-10), (
+                index,
+                interaction,
+            )
+
+
+def _zero_cover_entered_by_x(tree, x: np.ndarray) -> bool:
+    """Whether ``x``'s routing at some split selects a zero-cover internal child.
+
+    Coalitions containing that split's feature then carry positive mass into the zero-cover
+    node (cover-weighting further up only scales it), so the split ratios below it matter.
+    """
+    x_tree = tree.cast_input(np.asarray(x, dtype=np.float64))
+    for node in np.flatnonzero(~tree.leaf_mask):
+        feature = int(tree.feature_map_internal_original[int(tree.features[node])])
+        go_left = tree.goes_left(int(node), x_tree[feature])
+        child = int(tree.children_left[node] if go_left else tree.children_right[node])
+        if not tree.leaf_mask[child] and tree.node_sample_weight[child] == 0:
+            return True
+    return False
+
+
+def _zero_cover_on_path_tree(leaf_values=(1.0, 4.0, 10.0)) -> dict:
+    """Root splits feature 0; its right child has zero cover and splits feature 1.
+
+    ``x = [1, 5]`` (or ``x_0 = NaN``, routed right) reaches the zero-cover node, below
+    which feature 1 decides between two leaves with different values.
+    """
+    left, dead_left, dead_right = leaf_values
+    return {
+        "children_left": np.asarray([1, -1, 3, -1, -1]),
+        "children_right": np.asarray([2, -1, 4, -1, -1]),
+        "children_missing": np.asarray([2, -1, 3, -1, -1]),
+        "features": np.asarray([0, -2, 1, -2, -2]),
+        "thresholds": np.asarray([0.0, -2, 0.0, -2, -2]),
+        "node_sample_weight": np.asarray([100.0, 100.0, 0.0, 0.0, 0.0]),
+        "values": np.asarray([0.0, left, 0.0, dead_left, dead_right]),
+    }
+
+
+@pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
+@pytest.mark.parametrize("x", [[1.0, 5.0], [np.nan, 5.0]], ids=["out-of-range", "nan-routing"])
+def test_zero_cover_node_on_explained_path(x, implementation):
+    """A zero-cover node entered by ``x``'s routing splits absent features equally.
+
+    Regression test: the edge tree's cover ratio below a zero-cover node was ``0/0``, and
+    the subtree's mass was dropped as if it were unreachable. With the equal-split
+    convention ``v({0}) = (4 + 10) / 2 = 7``, ``v({}) = v({1}) = 1`` and ``v({0, 1}) = 10``,
+    so ``SV = (7.5, 1.5)``; dropping the subtree gave ``(4, 5)``.
+    """
+    from shapiq.tree.validation import validate_tree_model
+
+    x = np.asarray(x)
+    trees = validate_tree_model(_zero_cover_on_path_tree())
+    assert _zero_cover_entered_by_x(trees[0], x)
+    result = _explain(QuadratureTreeSHAP(trees, index="SV"), x, implementation)
+    assert result.baseline_value == pytest.approx(1.0)
+    assert result[(0,)] == pytest.approx(7.5, abs=1e-12)
+    assert result[(1,)] == pytest.approx(1.5, abs=1e-12)
+    _assert_matches_brute_force(trees, x, implementation)
+
+
+@pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
+@pytest.mark.parametrize("index", ["SV", "k-SII", "BII"])
+@pytest.mark.parametrize("x", [[1.0, 5.0], [np.nan, -5.0], [-1.0, 5.0]])
+def test_zero_cover_constant_tree_is_null_player(x, index, implementation):
+    """A constant tree attributes nothing, even when ``x``'s routing enters a zero-cover node."""
+    explainer = QuadratureTreeSHAP(
+        _zero_cover_on_path_tree(leaf_values=(3.0, 3.0, 3.0)), index=index, max_order=2
+    )
+    result = _explain(explainer, np.asarray(x), implementation)
+    assert result.baseline_value == pytest.approx(3.0)
+    for interaction in _all_interactions(2, 1, 2):
+        assert result[interaction] == pytest.approx(0.0, abs=1e-12)
+
+
+def _catboost_zero_cover_model():
+    """The CatBoost regressor of the bug report: NaNs in feature 1, oblivious depth-3 trees."""
+    catboost = pytest.importorskip("catboost")
+    rng = np.random.default_rng(0)
+    n = 400
+    X = np.column_stack(
+        [rng.integers(0, 6, n), rng.normal(size=n), rng.normal(size=n), rng.integers(0, 4, n)]
+    ).astype(float)
+    X[rng.random(n) < 0.15, 1] = np.nan
+    y = (X[:, 0] % 3) + np.nan_to_num(X[:, 1]) * X[:, 2] + (X[:, 3] == 2)
+    model = catboost.CatBoostRegressor(
+        iterations=5, depth=3, random_seed=0, verbose=0, allow_writing_files=False
+    )
+    return model.fit(X, y)
+
+
+_ZERO_COVER_INSTANCES = [[2.0, np.nan, 0.5, 2.0], [2.0, -1.0, 3.0, 2.0]]
+
+
+@pytest.mark.parametrize("x", _ZERO_COVER_INSTANCES)
+def test_catboost_zero_cover_on_path_matches_brute_force(x):
+    """Every tree of the bug report's CatBoost model, and the ensemble, match brute force."""
+    from shapiq.tree.validation import validate_tree_model
+
+    x = np.asarray(x)
+    trees = validate_tree_model(_catboost_zero_cover_model())
+    # precondition: x's routing enters a zero-cover node (otherwise this tests nothing new)
+    assert any(_zero_cover_entered_by_x(tree, x) for tree in trees)
+    for tree in trees:
+        _assert_matches_brute_force([tree], x)
+    _assert_matches_brute_force(trees, x)
+    # the default TreeExplainer path agrees
+    explainer = TreeExplainer(trees, index="SV", max_order=1)
+    reference = _brute_force(trees, x, "SV", 1)
+    assert np.allclose(
+        explainer.explain(x).get_n_order_values(1),
+        reference.get_n_order_values(1),
+        atol=1e-10,
+    )
+
+
+@pytest.mark.parametrize("x", _ZERO_COVER_INSTANCES)
+def test_catboost_zero_cover_constant_tree_is_null_player(x):
+    """Constant-valued copies of the CatBoost trees get all-zero Shapley values."""
+    from shapiq.tree.validation import validate_tree_model
+
+    x = np.asarray(x)
+    for tree in validate_tree_model(_catboost_zero_cover_model()):
+        tree.values[:] = 1.0
+        values = TreeExplainer([tree], index="SV", max_order=1).explain(x)
+        assert np.allclose(values.get_n_order_values(1), 0.0, atol=1e-12)
+
+
+def _nan_dataset() -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(1)
+    n = 300
+    X = rng.normal(size=(n, 4))
+    y = X[:, 0] + X[:, 1] * X[:, 2] + (X[:, 3] > 0)
+    X[rng.random(n) < 0.2, 0] = np.nan
+    X[rng.random(n) < 0.2, 1] = np.nan
+    return X, y
+
+
+@pytest.mark.parametrize("library", ["xgboost", "lightgbm", "catboost"])
+def test_nan_models_match_brute_force(library):
+    """No regression on NaN-routing XGBoost/LightGBM regressors and a CatBoost classifier."""
+    from shapiq.tree.validation import validate_tree_model
+
+    X, y = _nan_dataset()
+    if library == "xgboost":
+        xgboost = pytest.importorskip("xgboost")
+        model = xgboost.XGBRegressor(n_estimators=5, max_depth=3, random_state=0).fit(X, y)
+    elif library == "lightgbm":
+        lightgbm = pytest.importorskip("lightgbm")
+        model = lightgbm.LGBMRegressor(
+            n_estimators=5, num_leaves=8, random_state=0, verbose=-1
+        ).fit(X, y)
+    else:
+        catboost = pytest.importorskip("catboost")
+        model = catboost.CatBoostClassifier(
+            iterations=5, depth=3, random_seed=0, verbose=0, allow_writing_files=False
+        ).fit(X, y > np.median(y))
+    trees = validate_tree_model(model)
+    for x in (X[0], np.array([np.nan, np.nan, 0.3, -0.2]), np.array([9.0, -9.0, 9.0, -9.0])):
+        _assert_matches_brute_force(trees, x)
+
+
 def test_sparse_interaction_support():
     """Higher-order output enumerates only path-co-occurring subsets (wide models stay small).
 
