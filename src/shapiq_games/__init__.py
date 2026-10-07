@@ -1,10 +1,26 @@
-"""A curated collection of cooperative games for shapiq.
+"""A collection of cooperative games for shapiq.
 
-Every game is a :class:`shapiq.Game` that follows the same contract (see
-:mod:`shapiq_games._base`): its values are deterministic given its arguments, the explained point
-and class are explicit, and games configured from strings with ``from_config`` carry a stable
-``fingerprint``. Datasets are downloaded on first use and cached locally
-(:mod:`shapiq_games.datasets`); no data ships with the package.
+Every game is a :class:`shapiq.Game` defined by its value function. Build one from your own
+objects and evaluate coalitions:
+
+>>> import numpy as np
+>>> from sklearn.datasets import make_regression
+>>> from sklearn.ensemble import RandomForestRegressor
+>>> import shapiq_games as sg
+>>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+>>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
+>>> game = sg.LocalExplanation(model, data=X[:50], x=X[0])
+>>> values = game(np.array([[1, 0, 1, 0, 0], [1, 1, 1, 1, 1]], dtype=bool))
+
+All games follow the same contract (see :mod:`shapiq_games._base`): their values are
+deterministic given their arguments, and the explained point and class are explicit.
+
+For benchmarks, every game can also be built from names, e.g.
+``sg.LocalExplanation.from_config(dataset="breast_cancer", model="xgboost", random_state=0)``.
+Such games record their configuration and carry a ``fingerprint``, under which
+:mod:`shapiq_benchmark` caches their exact values. The named datasets
+(:mod:`shapiq_games.datasets`) are downloaded on first use and cached locally; no data ships
+with the package.
 
 Game families:
 

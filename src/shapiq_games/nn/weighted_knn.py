@@ -44,6 +44,15 @@ class WeightedKNNGame(KNNGameBase):
     Attributes:
         n_bits: The number of bits of the weight discretization, or ``None`` for exact weights.
         binary_games: The binary games, keyed by the other class.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.neighbors import KNeighborsClassifier
+        >>> model = KNeighborsClassifier(n_neighbors=3, weights="distance").fit(X[:10], y[:10])
+        >>> game = WeightedKNNGame(model, x=X[10], n_bits=3)  # weights rounded to 3 bits
+        >>> game.n_players
+        10
     """
 
     _model_name = "weighted_knn"

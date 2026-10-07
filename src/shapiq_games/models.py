@@ -7,7 +7,7 @@ allows it, so that a configured game is reproducible. Optional backends (``xgboo
 Examples:
     >>> from shapiq_games.datasets import load_dataset
     >>> from shapiq_games.models import fit_model
-    >>> split = load_dataset("california_housing").split(random_state=42)
+    >>> split = load_dataset("breast_cancer").split(random_state=42)
     >>> model = fit_model("random_forest", split, random_state=42)
 """
 

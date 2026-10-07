@@ -47,6 +47,15 @@ class LocalExplanation(ConfigMixin, Game):
         class_index: The explained class for classifiers, ``None`` for regressors or callables.
         imputer: The imputer turning the model into a game.
         empty_prediction_value: The prediction with all features absent.
+
+    Examples:
+        >>> from sklearn.datasets import make_regression
+        >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.ensemble import RandomForestRegressor
+        >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
+        >>> game = LocalExplanation(model, data=X[:50], x=X[0], imputer="marginal")
+        >>> game.n_players
+        5
     """
 
     def __init__(

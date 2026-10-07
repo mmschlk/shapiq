@@ -12,7 +12,14 @@ from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_er
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["Metric", "MetricName", "empty_model_score", "fit_and_score", "resolve_metric"]
+__all__ = [
+    "Metric",
+    "MetricName",
+    "empty_model_score",
+    "fit_and_score",
+    "resolve_metric",
+    "resolve_task",
+]
 
 type Metric = Callable[[np.ndarray, np.ndarray], float]
 type MetricName = Literal["accuracy", "r2", "neg_mse", "neg_mae"]
@@ -23,6 +30,22 @@ _METRICS: dict[str, Metric] = {
     "neg_mse": lambda y_true, y_pred: -float(mean_squared_error(y_true, y_pred)),
     "neg_mae": lambda y_true, y_pred: -float(mean_absolute_error(y_true, y_pred)),
 }
+
+
+def resolve_task(task: str | None, model: object) -> str:
+    """Return ``task``, or infer it from the model when ``None``.
+
+    Raises:
+        ValueError: If ``task`` is neither ``"classification"`` nor ``"regression"``.
+    """
+    if task is None:
+        from ._base import is_classifier
+
+        return "classification" if is_classifier(model) else "regression"
+    if task not in ("classification", "regression"):
+        msg = f"task must be 'classification' or 'regression', got {task!r}."
+        raise ValueError(msg)
+    return task
 
 
 def resolve_metric(metric: MetricName | Metric | None, task: str) -> Metric:

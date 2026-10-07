@@ -45,6 +45,13 @@ class UnsupervisedData(ConfigMixin, Game):
 
     Attributes:
         data_discrete: The discretized data.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> game = UnsupervisedData(X)
+        >>> game.n_players
+        5
     """
 
     def __init__(

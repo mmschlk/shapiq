@@ -15,6 +15,7 @@ from shapiq_games._training import (
     empty_model_score,
     fit_and_score,
     resolve_metric,
+    resolve_task,
 )
 from shapiq_games.models import build_model
 
@@ -32,6 +33,15 @@ class FeatureSelection(ConfigMixin, Game):
     Attributes:
         task: ``"classification"`` or ``"regression"``.
         model: The unfitted model that is cloned and trained per coalition.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.tree import DecisionTreeClassifier
+        >>> model = DecisionTreeClassifier(random_state=0)  # unfitted: refit for every coalition
+        >>> game = FeatureSelection(model, X[:150], y[:150], X[150:], y[150:])
+        >>> game.n_players, game.task
+        (5, 'classification')
     """
 
     def __init__(
@@ -42,7 +52,7 @@ class FeatureSelection(ConfigMixin, Game):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str,
+        task: str | None = None,
         metric: MetricName | Metric | None = None,
         normalize: bool = True,
         verbose: bool = False,
@@ -55,7 +65,8 @@ class FeatureSelection(ConfigMixin, Game):
             y_train: The training labels.
             x_test: The test features.
             y_test: The test labels.
-            task: ``"classification"`` or ``"regression"``.
+            task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
+                from the model.
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable
                 ``metric(y_true, y_pred)``, or ``None`` for accuracy (classification) or R²
                 (regression). Higher is better.
@@ -64,12 +75,12 @@ class FeatureSelection(ConfigMixin, Game):
             verbose: Whether to show a progress bar when evaluating the game.
         """
         self.model = model
-        self.task = task
-        self._metric = resolve_metric(metric, task)
+        self.task = resolve_task(task, model)
+        self._metric = resolve_metric(metric, self.task)
         self._x_train, self._y_train = np.asarray(x_train), np.asarray(y_train)
         self._x_test, self._y_test = np.asarray(x_test), np.asarray(y_test)
         self.empty_value = empty_model_score(
-            self._y_train, self._x_test, self._y_test, task=task, metric=self._metric
+            self._y_train, self._x_test, self._y_test, task=self.task, metric=self._metric
         )
         super().__init__(
             self._x_train.shape[1],

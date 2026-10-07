@@ -37,6 +37,17 @@ class InterventionalTreeGame(ConfigMixin, Game):
         reference_data: The reference (background) rows.
         x: The explained point.
         class_index: The explained class for classifiers, ``None`` for regressors.
+
+    Examples:
+        >>> from sklearn.datasets import make_regression
+        >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.ensemble import RandomForestRegressor
+        >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
+        >>> game = InterventionalTreeGame(model, reference_data=X[:50], x=X[0])
+        >>> game.n_players
+        5
+        >>> bool(np.isclose(game(game.grand_coalition)[0], model.predict(X[:1])[0]))
+        True
     """
 
     def __init__(

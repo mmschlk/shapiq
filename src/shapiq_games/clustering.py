@@ -32,6 +32,13 @@ class ClusterExplanation(ConfigMixin, Game):
         method: The clustering method.
         n_clusters: The number of clusters.
         score: The clustering score.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> game = ClusterExplanation(X, method="kmeans", n_clusters=3)
+        >>> game.n_players
+        5
     """
 
     def __init__(

@@ -29,6 +29,10 @@ class SentimentAnalysis(ConfigMixin, Game):
         tokens: The token ids of the players.
         original_model_output: The signed score of the full text.
         model_commit: The Hugging Face commit of the loaded model, or ``None`` if unknown.
+
+    Examples:
+        >>> game = SentimentAnalysis("A great cast, but a thin plot.")  # doctest: +SKIP
+        >>> game.original_model_output  # the signed score of the full text  # doctest: +SKIP
     """
 
     def __init__(

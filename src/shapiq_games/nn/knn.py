@@ -18,6 +18,15 @@ class KNNGame(KNNGameBase):
     :math:`k` nearest neighbors of :math:`x` within :math:`S` that belong to the explained class
     (Jia et al., 2019). Its exact Shapley values are computed by
     :class:`~shapiq.explainer.nn.KNNExplainer`.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.neighbors import KNeighborsClassifier
+        >>> model = KNeighborsClassifier(n_neighbors=3).fit(X[:10], y[:10])
+        >>> game = KNNGame(model, x=X[10])  # the players are the 10 training points
+        >>> game.n_players
+        10
     """
 
     _model_name = "knn"

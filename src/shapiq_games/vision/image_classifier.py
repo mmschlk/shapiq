@@ -57,6 +57,16 @@ class ImageClassifier(ConfigMixin, Game):
         class_index: The explained class.
         superpixels: The superpixel labels (``None`` for the vision transformers).
         model_commit: The Hugging Face commit of a vision transformer, ``None`` for other models.
+
+    Examples:
+        >>> image = np.random.default_rng(0).integers(0, 255, (64, 64, 3), dtype=np.uint8)
+        >>> def classifier(images):  # (batch, height, width, 3) -> (batch, n_classes)
+        ...     brightness = images.mean(axis=(1, 2, 3)) / 255
+        ...     return np.stack([brightness, 1 - brightness], axis=1)
+        >>> game = ImageClassifier(image, model=classifier, n_superpixels=8)
+        >>> game.n_players
+        8
+        >>> game = ImageClassifier(image, model="vit_16_patches")  # doctest: +SKIP
     """
 
     def __init__(

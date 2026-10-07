@@ -24,6 +24,15 @@ class ThresholdNNGame(NNGameBase):
     class among the coalition's training points within the radius of ``x``, and ``1 / n_classes``
     if there are none (equation 3 of Wang et al., 2023). Its exact Shapley values are computed by
     :class:`~shapiq.explainer.nn.ThresholdNNExplainer`.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.neighbors import RadiusNeighborsClassifier
+        >>> model = RadiusNeighborsClassifier(radius=3.0).fit(X[:10], y[:10])
+        >>> game = ThresholdNNGame(model, x=X[10])
+        >>> game.n_players
+        10
     """
 
     _model_name = "threshold_nn"

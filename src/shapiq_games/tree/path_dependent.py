@@ -82,11 +82,13 @@ class PathDependentTreeGame(ConfigMixin, Game):
         trees: The trees in the unified :class:`~shapiq.tree.TreeModel` format.
 
     Examples:
-        >>> game = PathDependentTreeGame.from_config(
-        ...     dataset="california_housing", model="decision_tree", x=0, random_state=42
-        ... )
-        >>> game.n_players
-        8
+        >>> from sklearn.datasets import make_regression
+        >>> from sklearn.tree import DecisionTreeRegressor
+        >>> X, y = make_regression(n_samples=200, n_features=4, random_state=0)
+        >>> model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(X, y)
+        >>> game = PathDependentTreeGame(model, x=X[0], normalize=False)
+        >>> bool(np.isclose(game(game.grand_coalition)[0], model.predict(X[:1])[0]))
+        True
     """
 
     def __init__(

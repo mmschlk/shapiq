@@ -43,6 +43,15 @@ class UncertaintyExplanation(LocalExplanation):
 
     Attributes:
         uncertainty: The explained kind of uncertainty.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.ensemble import RandomForestClassifier
+        >>> model = RandomForestClassifier(n_estimators=10, random_state=0).fit(X, y)
+        >>> game = UncertaintyExplanation(model, data=X[:50], x=X[0], uncertainty="epistemic")
+        >>> game.n_players
+        5
     """
 
     def __init__(

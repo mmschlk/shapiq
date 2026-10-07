@@ -45,6 +45,15 @@ class GlobalExplanation(ConfigMixin, Game):
         class_index: The explained class for classifiers, ``None`` for regressors or callables.
         x_eval: The evaluation rows.
         x_replacement: The replacement rows.
+
+    Examples:
+        >>> from sklearn.datasets import make_regression
+        >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.ensemble import RandomForestRegressor
+        >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
+        >>> game = GlobalExplanation(model, data=X[:100], loss="mse")
+        >>> game.n_players
+        5
     """
 
     def __init__(

@@ -95,20 +95,23 @@ class _ConfoundingGame(ConfigMixin, Game):
         x: np.ndarray,
         treatment: np.ndarray,
         outcome: np.ndarray,
-        tau_hat: np.ndarray,
+        tau_hat: np.ndarray | None,
         *,
         mode: Mode,
         regressor: RegressorFactory | None,
     ) -> None:
-        self.X = np.asarray(x, dtype=float)
-        self.A = np.asarray(treatment, dtype=float).reshape(-1)
-        self.Y = np.asarray(outcome, dtype=float).reshape(-1)
-        self.tau_hat = np.asarray(tau_hat, dtype=float).reshape(-1)
         if mode not in ("signed", "abs", "sq"):
             msg = f"mode must be 'signed', 'abs', or 'sq', got {mode!r}."
             raise ValueError(msg)
+        self.X = np.asarray(x, dtype=float)
+        self.A = np.asarray(treatment, dtype=float).reshape(-1)
+        self.Y = np.asarray(outcome, dtype=float).reshape(-1)
         self.mode: Mode = mode
         self.regressor: RegressorFactory = regressor if regressor is not None else tabpfn_regressor
+        if tau_hat is None:  # the reference: an S-learner on all covariates
+            treated, control = _fit_s_learner(self.X, self.A, self.Y, self.regressor)
+            tau_hat = treated(self.X) - control(self.X)
+        self.tau_hat = np.asarray(tau_hat, dtype=float).reshape(-1)
         naive_effect = float(np.mean(self.Y[self.A == 1]) - np.mean(self.Y[self.A == 0]))
         self.empty_value = _aggregate(np.array([naive_effect - float(np.mean(self.tau_hat))]), mode)
         self._cache: dict[tuple[int, ...], float] = {(): self.empty_value}
@@ -136,6 +139,16 @@ class GlobalConfoundingXAI(_ConfoundingGame):
     with ``"abs"`` or ``"sq"`` it is the mean absolute or squared conditional bias against the
     projection of :math:`\hat\tau` onto :math:`X_S`. The empty coalition is the naive difference
     in means. Every new coalition fits two to four regressors, so values are cached.
+
+    Examples:
+        >>> from sklearn.linear_model import LinearRegression
+        >>> rng = np.random.default_rng(0)
+        >>> X = rng.normal(size=(200, 4))
+        >>> treatment = (rng.random(200) < 0.5).astype(float)
+        >>> outcome = X[:, 0] + treatment * (1.0 + X[:, 1])
+        >>> game = GlobalConfoundingXAI(X, treatment, outcome, regressor=LinearRegression)
+        >>> game.n_players
+        4
     """
 
     def __init__(
@@ -143,7 +156,7 @@ class GlobalConfoundingXAI(_ConfoundingGame):
         x: np.ndarray,
         treatment: np.ndarray,
         outcome: np.ndarray,
-        tau_hat: np.ndarray,
+        tau_hat: np.ndarray | None = None,
         *,
         mode: Mode = "signed",
         regressor: RegressorFactory | None = None,
@@ -155,6 +168,7 @@ class GlobalConfoundingXAI(_ConfoundingGame):
             treatment: The binary treatment of shape ``(n_samples,)``.
             outcome: The outcome of shape ``(n_samples,)``.
             tau_hat: The reference conditional treatment effects of shape ``(n_samples,)``.
+                If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to TabPFN as in
                 the paper (requires ``tabpfn``).
@@ -198,8 +212,7 @@ class GlobalConfoundingXAI(_ConfoundingGame):
         """
         custom_regressor = regressor is not None
         x, treatment, outcome, regressor = _curthvds_setup(n, d, setting, random_state, regressor)
-        treated, control = _fit_s_learner(x, treatment, outcome, regressor)
-        game = cls(x, treatment, outcome, treated(x) - control(x), mode=mode, regressor=regressor)
+        game = cls(x, treatment, outcome, mode=mode, regressor=regressor)
         if custom_regressor:  # a custom regressor cannot be fingerprinted
             return game
         return game._set_config(
@@ -213,14 +226,25 @@ class GlobalConfoundingXAI(_ConfoundingGame):
 
 
 class LocalConfoundingXAI(_ConfoundingGame):
-    """The local confounding game: the bias of the conditional effect at one unit adjusting for S."""
+    """The local confounding game: the bias of the conditional effect at one unit adjusting for S.
+
+    Examples:
+        >>> from sklearn.linear_model import LinearRegression
+        >>> rng = np.random.default_rng(0)
+        >>> X = rng.normal(size=(200, 4))
+        >>> treatment = (rng.random(200) < 0.5).astype(float)
+        >>> outcome = X[:, 0] + treatment * (1.0 + X[:, 1])
+        >>> game = LocalConfoundingXAI(X, treatment, outcome, unit=3, regressor=LinearRegression)
+        >>> game.n_players
+        4
+    """
 
     def __init__(
         self,
         x: np.ndarray,
         treatment: np.ndarray,
         outcome: np.ndarray,
-        tau_hat: np.ndarray,
+        tau_hat: np.ndarray | None = None,
         unit: int | np.ndarray = 0,
         *,
         mode: Mode = "signed",
@@ -233,6 +257,7 @@ class LocalConfoundingXAI(_ConfoundingGame):
             treatment: The binary treatment of shape ``(n_samples,)``.
             outcome: The outcome of shape ``(n_samples,)``.
             tau_hat: The reference conditional treatment effects of shape ``(n_samples,)``.
+                If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             unit: The explained unit as an index into ``x`` or its covariates. Defaults to ``0``.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to TabPFN.
@@ -280,10 +305,7 @@ class LocalConfoundingXAI(_ConfoundingGame):
         """
         custom_regressor = regressor is not None
         x, treatment, outcome, regressor = _curthvds_setup(n, d, setting, random_state, regressor)
-        treated, control = _fit_s_learner(x, treatment, outcome, regressor)
-        game = cls(
-            x, treatment, outcome, treated(x) - control(x), unit, mode=mode, regressor=regressor
-        )
+        game = cls(x, treatment, outcome, unit=unit, mode=mode, regressor=regressor)
         if custom_regressor:  # a custom regressor cannot be fingerprinted
             return game
         return game._set_config(

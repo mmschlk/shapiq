@@ -71,13 +71,20 @@ games, and benchmarking is `shapiq_benchmark`'s job.
 
 ### Construction
 
-Each family has two entry points:
+`shapiq_games` is first a collection of game definitions. The constructor of every game takes
+plain objects (a model, data, a point, an image, a text) and nothing benchmark-specific; the
+task of a model-based game is read off the model, and the causal games fit their own reference
+effect. Every class docstring shows this construction, and
+`tests/shapiq_games/test_docstring_examples.py` runs all docstring examples.
+
+`from_config` is the second, optional entry point for benchmarks. It resolves dataset and model
+names through the registries and records the configuration:
 
 ```python
-# 1. explicit objects: the primary, fully general constructor
-game = FeatureSelection(estimator, x_train, y_train, x_test, y_test, task="regression")
+# 1. a game definition, built from your own objects: the primary constructor
+game = FeatureSelection(DecisionTreeRegressor(), x_train, y_train, x_test, y_test)
 
-# 2. string configuration: resolves dataset and model through the registries
+# 2. for benchmarks: the same game from names, with a configuration and a fingerprint
 game = FeatureSelection.from_config(dataset="california_housing", model="random_forest", random_state=0)
 ```
 

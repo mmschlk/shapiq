@@ -10,7 +10,7 @@ from scipy.stats import mode
 from shapiq.game import Game
 from shapiq_games._base import ConfigMixin, as_bool_coalitions
 from shapiq_games._setup import configure
-from shapiq_games._training import Metric, MetricName, resolve_metric
+from shapiq_games._training import Metric, MetricName, resolve_metric, resolve_task
 from shapiq_games.models import build_model
 
 if TYPE_CHECKING:
@@ -43,6 +43,18 @@ class EnsembleSelection(ConfigMixin, Game):
         member_names: A name per member.
         task: ``"classification"`` or ``"regression"``.
         predictions: The test predictions of every member, of shape ``(n_members, n_test)``.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.tree import DecisionTreeClassifier
+        >>> members = [
+        ...     DecisionTreeClassifier(max_depth=depth, random_state=0).fit(X[:150], y[:150])
+        ...     for depth in (1, 2, 3, 4)
+        ... ]
+        >>> game = EnsembleSelection(members, X[150:], y[150:])
+        >>> game.n_players
+        4
     """
 
     def __init__(
@@ -51,7 +63,7 @@ class EnsembleSelection(ConfigMixin, Game):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str,
+        task: str | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         member_names: Sequence[str] | None = None,
@@ -64,7 +76,8 @@ class EnsembleSelection(ConfigMixin, Game):
             members: The fitted ensemble members (scikit-learn compatible).
             x_test: The test features.
             y_test: The test labels.
-            task: ``"classification"`` or ``"regression"``.
+            task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
+                from the model.
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable, or ``None``
                 for accuracy (classification) or R² (regression).
             empty_value: The value of the empty coalition. Defaults to ``0``.
@@ -73,13 +86,16 @@ class EnsembleSelection(ConfigMixin, Game):
             verbose: Whether to show a progress bar when evaluating the game.
         """
         self.members = list(members)
-        self.task = task
+        if not self.members:
+            msg = "An ensemble needs at least one member."
+            raise ValueError(msg)
+        self.task = resolve_task(task, self.members[0])
         self.member_names = (
             [str(name) for name in member_names]
             if member_names is not None
             else [f"{i}_{type(member).__name__}" for i, member in enumerate(self.members)]
         )
-        self._metric = resolve_metric(metric, task)
+        self._metric = resolve_metric(metric, self.task)
         self._y_test = np.asarray(y_test)
         self.predictions = np.stack(
             [np.asarray(member.predict(x_test), dtype=float).reshape(-1) for member in self.members]
@@ -181,6 +197,15 @@ class RandomForestEnsembleSelection(EnsembleSelection):
     The players are the trees of the forest. Because a random forest classifier averages class
     probabilities while this game takes majority votes, the full ensemble can differ slightly from
     the forest's own prediction for classification.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.ensemble import RandomForestClassifier
+        >>> forest = RandomForestClassifier(n_estimators=6, random_state=0).fit(X[:150], y[:150])
+        >>> game = RandomForestEnsembleSelection.from_forest(forest, X[150:], y[150:])
+        >>> game.n_players  # one player per tree
+        6
     """
 
     @classmethod
@@ -190,7 +215,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str,
+        task: str | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         normalize: bool = True,
@@ -201,7 +226,8 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             forest: A fitted ``RandomForestClassifier`` or ``RandomForestRegressor``.
             x_test: The test features.
             y_test: The test labels, encoded as the forest's class indices for classification.
-            task: ``"classification"`` or ``"regression"``.
+            task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
+                from the model.
             metric: The metric, or ``None`` for the default of the task.
             empty_value: The value of the empty coalition. Defaults to ``0``.
             normalize: Whether to center the game by ``empty_value``.

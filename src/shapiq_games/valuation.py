@@ -16,7 +16,13 @@ import numpy as np
 from shapiq.game import Game
 from shapiq_games._base import ConfigMixin, as_bool_coalitions
 from shapiq_games._setup import configure
-from shapiq_games._training import Metric, MetricName, fit_and_score, resolve_metric
+from shapiq_games._training import (
+    Metric,
+    MetricName,
+    fit_and_score,
+    resolve_metric,
+    resolve_task,
+)
 from shapiq_games.models import build_model
 
 if TYPE_CHECKING:
@@ -44,15 +50,15 @@ class _GroupValuation(ConfigMixin, Game):
         y_test: np.ndarray,
         groups: Sequence[np.ndarray],
         *,
-        task: str,
+        task: str | None = None,
         metric: MetricName | Metric | None,
         empty_value: float,
         normalize: bool,
         verbose: bool,
     ) -> None:
         self.model = model
-        self.task = task
-        self._metric = resolve_metric(metric, task)
+        self.task = resolve_task(task, model)
+        self._metric = resolve_metric(metric, self.task)
         self._x_train, self._y_train = np.asarray(x_train), np.asarray(y_train)
         self._x_test, self._y_test = np.asarray(x_test), np.asarray(y_test)
         self.groups = [np.asarray(group, dtype=int) for group in groups]
@@ -92,6 +98,15 @@ class DataValuation(_GroupValuation):
     The value of a coalition of training points is the test metric of a fresh copy of the model
     trained on them. A model trained on no data has no natural score, so the value of the empty
     coalition is the explicit parameter ``empty_value`` (default ``0``).
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.tree import DecisionTreeClassifier
+        >>> model = DecisionTreeClassifier(random_state=0)  # unfitted: refit for every coalition
+        >>> game = DataValuation(model, X[:8], y[:8], X[100:], y[100:])
+        >>> game.n_players  # one player per training point
+        8
     """
 
     def __init__(
@@ -102,7 +117,7 @@ class DataValuation(_GroupValuation):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str,
+        task: str | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         normalize: bool = True,
@@ -116,7 +131,8 @@ class DataValuation(_GroupValuation):
             y_train: The training labels.
             x_test: The test features.
             y_test: The test labels.
-            task: ``"classification"`` or ``"regression"``.
+            task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
+                from the model.
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable, or ``None``
                 for accuracy (classification) or R² (regression).
             empty_value: The value of the empty coalition. Defaults to ``0``.
@@ -210,6 +226,17 @@ class DatasetValuation(_GroupValuation):
     The value of a coalition of datasets is the test metric of a fresh copy of the model trained
     on their union. The groups are either given explicitly or obtained by splitting the training
     data. The value of the empty coalition is the explicit parameter ``empty_value``.
+
+    Examples:
+        >>> from sklearn.datasets import make_classification
+        >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.tree import DecisionTreeClassifier
+        >>> sources = [np.arange(0, 20), np.arange(20, 60), np.arange(60, 100)]
+        >>> game = DatasetValuation(
+        ...     DecisionTreeClassifier(random_state=0), X[:100], y[:100], X[100:], y[100:], groups=sources
+        ... )
+        >>> game.n_players  # one player per data source
+        3
     """
 
     def __init__(
@@ -220,7 +247,7 @@ class DatasetValuation(_GroupValuation):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str,
+        task: str | None = None,
         groups: Sequence[np.ndarray] | None = None,
         n_players: int = 10,
         player_sizes: Literal["uniform", "increasing", "random"] | Sequence[float] = "uniform",
@@ -238,7 +265,8 @@ class DatasetValuation(_GroupValuation):
             y_train: The training labels of all groups.
             x_test: The test features.
             y_test: The test labels.
-            task: ``"classification"`` or ``"regression"``.
+            task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
+                from the model.
             groups: The training-row indices of every player. If ``None``, the shuffled training
                 rows are split into ``n_players`` groups according to ``player_sizes``.
             n_players: The number of groups when ``groups`` is ``None``. Defaults to ``10``.

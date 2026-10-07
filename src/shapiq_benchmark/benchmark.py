@@ -61,7 +61,7 @@ class Benchmark:
 
     Examples:
         >>> from shapiq_games import PathDependentTreeGame
-        >>> game = PathDependentTreeGame.from_config(dataset="california_housing")
+        >>> game = PathDependentTreeGame.from_config(dataset="xor", model="random_forest")
         >>> benchmark = Benchmark(game)  # uses the path-dependent tree computer
         >>> ground_truth = benchmark.exact_values(index="k-SII", order=2)
     """

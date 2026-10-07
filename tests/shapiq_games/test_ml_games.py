@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -17,6 +18,7 @@ from shapiq_games import (
     GlobalConfoundingXAI,
     GlobalExplanation,
     ImageClassifier,
+    LocalConfoundingXAI,
     LocalExplanation,
     RandomForestEnsembleSelection,
     SentimentAnalysis,
@@ -288,3 +290,42 @@ def test_sentiment_analysis_with_other_labels_and_tokenizers() -> None:
         SentimentAnalysis("good", classifier=no_mask)
     removed = SentimentAnalysis("good bad", classifier=no_mask, mask_strategy="remove")
     assert removed.n_players == 2
+
+
+def test_task_is_inferred_from_the_model() -> None:
+    """The games read the task off the model, so it need not be passed."""
+    x, y = make_classification(n_samples=80, n_features=4, random_state=0)
+    tree = DecisionTreeClassifier(random_state=0)
+    inferred = DataValuation(tree, x[:6], y[:6], x[40:], y[40:])
+    explicit = DataValuation(tree, x[:6], y[:6], x[40:], y[40:], task="classification")
+    assert inferred.task == "classification"
+    coalitions = np.random.default_rng(0).random((8, 6)) < 0.5
+    np.testing.assert_allclose(inferred(coalitions), explicit(coalitions))
+
+    regressor = DecisionTreeRegressor(random_state=0)
+    target = x[:, 0] * 2.0
+    assert (
+        FeatureSelection(regressor, x[:40], target[:40], x[40:], target[40:]).task == "regression"
+    )
+    members = [DecisionTreeClassifier(max_depth=d, random_state=0).fit(x, y) for d in (1, 2, 3)]
+    assert EnsembleSelection(members, x[40:], y[40:]).task == "classification"
+    with pytest.raises(ValueError, match="task must be"):
+        FeatureSelection(tree, x[:40], y[:40], x[40:], y[40:], task="ranking")
+
+
+def test_confounding_games_fit_their_own_reference_effect() -> None:
+    """Without tau_hat, the reference effects come from an S-learner on all covariates."""
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(200, 4))
+    treatment = (rng.random(200) < 0.5).astype(float)
+    outcome = x[:, 0] + treatment * (1.0 + x[:, 1]) + rng.normal(scale=0.1, size=200)
+    game = GlobalConfoundingXAI(x, treatment, outcome, regressor=LinearRegression)
+
+    s_learner = LinearRegression().fit(np.column_stack([x, treatment]), outcome)
+    effect = s_learner.predict(np.column_stack([x, np.ones(200)])) - s_learner.predict(
+        np.column_stack([x, np.zeros(200)])
+    )
+    np.testing.assert_allclose(game.tau_hat, effect)
+    local = LocalConfoundingXAI(x, treatment, outcome, unit=3, regressor=LinearRegression)
+    assert local.n_players == 4
+    np.testing.assert_allclose(local.unit, x[3])

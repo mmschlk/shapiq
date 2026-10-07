@@ -36,6 +36,15 @@ class ProductKernelGame(ConfigMixin, Game):
         model: The model in the :class:`~shapiq.explainer.product_kernel.ProductKernelModel`
             format.
         x: The explained point.
+
+    Examples:
+        >>> from sklearn.datasets import make_regression
+        >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+        >>> from sklearn.svm import SVR
+        >>> model = SVR(kernel="rbf").fit(X, y)
+        >>> game = ProductKernelGame(model, x=X[0])
+        >>> bool(np.isclose(game(game.grand_coalition)[0], model.predict(X[:1])[0]))
+        True
     """
 
     def __init__(

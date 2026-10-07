@@ -6,9 +6,9 @@ from a seed.
 
 Examples:
     >>> from shapiq_games.datasets import list_datasets, load_dataset
-    >>> dataset = load_dataset("california_housing")
+    >>> dataset = load_dataset("breast_cancer")
     >>> dataset.task, dataset.n_features
-    ('regression', 8)
+    ('classification', 30)
     >>> split = dataset.split(test_size=0.2, random_state=42)
     >>> xor = load_dataset("xor", n_samples=500, random_state=0)
 """
