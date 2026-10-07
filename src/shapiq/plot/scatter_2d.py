@@ -215,7 +215,7 @@ def scatter_2d_plot(
     cb = fig.colorbar(sc, ax=ax, aspect=80)
     cb.set_label(color_label, size=11, labelpad=0)
     cb.ax.tick_params(labelsize=10, length=0)
-    cb.outline.set_visible(False)
+    cb.outline.set_visible(False)  # type: ignore[union-attr]
 
     ax.set_xlabel(feature_names_display[x_idx], fontsize=12)
     ax.set_ylabel(feature_names_display[y_idx], fontsize=12)
