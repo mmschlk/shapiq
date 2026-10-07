@@ -633,3 +633,16 @@ uv run pre-commit run --all-files
   balancing step. More recipes can give a dataset greater weight within an
   application. Describe the implemented hierarchy accurately in public docs;
   do not claim equal dataset weights or change frozen weighting through a copy edit.
+
+- At 960 pooled workers, node-local `PYTHONPATH` dependencies alone did not avoid
+  startup timeouts: `/proc` syscall evidence showed shared CPython standard-library,
+  `lib-dynload`, and automatic virtualenv-site lookups blocked in BeeGFS. Stage the
+  exact standard-library and frozen-source bytes too, and verify the resulting
+  runtime provenance; preserve the pinned interpreter spelling and shared environment.
+- Sending STOP to a Slurm pooled job can stop its batch parent while descendants
+  launched in fresh sessions keep running. Verify every owned PID in the exact
+  allocation cgroup before declaring containment; parent state is insufficient.
+- Standard-library path filters must account for both the `cpython-3.13` alias
+  and `cpython-3.13.13` installation spelling. Filtering only the latter left
+  shared `lib-dynload` searches active under full concurrency. Verify the actual
+  remaining `sys.path` entries or blocked syscall paths, not just a serial probe.
