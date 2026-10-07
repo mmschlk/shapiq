@@ -249,9 +249,9 @@ def test_image_classifier_forwards_and_records_the_vit_revision(
     import shapiq_games.vision.image_classifier as module
 
     monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
-    monkeypatch.setattr(module, "load_example_image", lambda _: np.zeros((8, 8, 3), np.uint8))
-    game = ImageClassifier.from_config(image=0, model="vit_16_patches", revision="v1")
-    other = ImageClassifier.from_config(image=0, model="vit_16_patches", revision="v2")
+    monkeypatch.setattr(module, "load_imagenette", lambda **_: [np.zeros((8, 8, 3), np.uint8)])
+    game = ImageClassifier.from_config(index=0, model="vit_16_patches", revision="v1")
+    other = ImageClassifier.from_config(index=0, model="vit_16_patches", revision="v2")
     assert calls[0]["revision"] == "v1"
     assert game.model_commit == "commit-of-v1"
     assert game.config is not None

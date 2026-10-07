@@ -62,7 +62,10 @@ def test_masked_image_is_what_the_classifier_sees() -> None:
     [
         ("black", lambda image: np.zeros_like(image)),
         ("gray", lambda image: np.full_like(image, 128)),
-        ("mean", lambda image: np.broadcast_to(image.reshape(-1, 3).mean(axis=0).round(), image.shape)),
+        (
+            "mean",
+            lambda image: np.broadcast_to(image.reshape(-1, 3).mean(axis=0).round(), image.shape),
+        ),
         ("image", lambda image: 255 - image),
     ],
 )

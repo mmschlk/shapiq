@@ -82,8 +82,15 @@ class RemoteFile:
         )
 
 
-def _sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+_CHUNK_BYTES = 1 << 20
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(_CHUNK_BYTES), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -103,6 +110,10 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
 def fetch(remote: RemoteFile) -> Path:
     """Return the local path of ``remote``, downloading and verifying it on first use.
 
+    The download is streamed to a temporary file in the cache directory while it is hashed, and
+    only moved into place once the checksum matches, so large files never sit in memory and a
+    failed download leaves nothing behind.
+
     Args:
         remote: The file to fetch.
 
@@ -114,23 +125,38 @@ def fetch(remote: RemoteFile) -> Path:
     """
     path = get_data_dir() / remote.subdir / remote.filename
     if path.exists():
-        if remote.sha256 is None or _sha256(path.read_bytes()) == remote.sha256:
+        if remote.sha256 is None or _sha256_file(path) == remote.sha256:
             return path
         path.unlink()  # corrupted or outdated cache entry, download again
 
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    digest = hashlib.sha256()
     try:
-        response = requests.get(remote.url, timeout=_TIMEOUT_SECONDS)
-        response.raise_for_status()
+        with (
+            os.fdopen(fd, "wb") as handle,
+            requests.get(remote.url, stream=True, timeout=_TIMEOUT_SECONDS) as response,
+        ):
+            response.raise_for_status()
+            for chunk in response.iter_content(chunk_size=_CHUNK_BYTES):
+                handle.write(chunk)
+                digest.update(chunk)
     except requests.RequestException as error:
+        tmp_path.unlink(missing_ok=True)
         msg = f"Could not download {remote.url}: {error}"
         raise OSError(msg) from error
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
-    data = response.content
-    if remote.sha256 is not None and (digest := _sha256(data)) != remote.sha256:
+    if remote.sha256 is not None and (actual := digest.hexdigest()) != remote.sha256:
+        tmp_path.unlink(missing_ok=True)
         msg = (
-            f"Checksum mismatch for {remote.url}: expected {remote.sha256}, got {digest}. "
+            f"Checksum mismatch for {remote.url}: expected {remote.sha256}, got {actual}. "
             "The file was not cached."
         )
         raise OSError(msg)
-    atomic_write_bytes(path, data)
+    tmp_path.chmod(0o644)  # mkstemp creates owner-only files
+    tmp_path.replace(path)
     return path

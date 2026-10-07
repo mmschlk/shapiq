@@ -1,9 +1,9 @@
-"""Tests for the dataset registry, the local data cache, and the example images."""
+"""Tests for the dataset registry, the local data cache, and the Imagenette images."""
 
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import pytest
@@ -107,17 +107,29 @@ def test_curthvds_synthetic_study() -> None:
 
 
 class _Response:
+    """A streamed response, delivered in small chunks."""
+
     def __init__(self, content: bytes) -> None:
         self.content = content
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
     def raise_for_status(self) -> None:
         return None
+
+    def iter_content(self, chunk_size: int) -> list[bytes]:
+        return [self.content[i : i + 3] for i in range(0, len(self.content), 3)]
 
 
 def _patch_download(monkeypatch: pytest.MonkeyPatch, content: bytes) -> list[str]:
     calls: list[str] = []
 
-    def fake_get(url: str, timeout: int) -> _Response:
+    def fake_get(url: str, *, stream: bool, timeout: int) -> _Response:
+        assert stream
         calls.append(url)
         return _Response(content)
 
@@ -228,3 +240,90 @@ def test_small_pinned_dataset_downloads() -> None:
     dataset = load_dataset("zoo")
     assert dataset.x.shape == (101, 16)
     assert dataset.n_classes == 7
+
+
+def _fake_imagenette(tmp_path: Path, extra: dict[str, bytes] | None = None) -> Path:
+    """Write a tiny archive with Imagenette's layout (and its stray non-image files)."""
+    import io
+    import tarfile
+
+    from PIL import Image
+
+    def jpeg(color: tuple[int, int, int]) -> bytes:
+        buffer = io.BytesIO()
+        Image.new("RGB", (8, 6), color).save(buffer, format="JPEG")
+        return buffer.getvalue()
+
+    members = {
+        "imagenette2-160/.DS_Store": b"junk",
+        "imagenette2-160/noisy_imagenette.csv": b"path,label\n",
+        "imagenette2-160/val/n01440764/a.JPEG": jpeg((200, 0, 0)),
+        "imagenette2-160/val/n03888257/b.JPEG": jpeg((0, 0, 200)),
+        "imagenette2-160/train/n01440764/c.JPEG": jpeg((0, 200, 0)),
+        **(extra or {}),
+    }
+    archive = tmp_path / "fake.tgz"
+    with tarfile.open(archive, "w:gz") as tar:
+        for name, data in members.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return archive
+
+
+def _patch_imagenette_fetch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, archive: Path
+) -> list[Path]:
+    import shutil
+
+    from shapiq_games.datasets import _imagenette
+
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path / "data"))
+    fetched: list[Path] = []
+
+    def fake_fetch(remote: cache.RemoteFile) -> Path:
+        target = cache.get_data_dir() / remote.subdir / remote.filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(archive, target)
+        fetched.append(target)
+        return target
+
+    monkeypatch.setattr(_imagenette, "fetch", fake_fetch)
+    return fetched
+
+
+def test_imagenette_is_extracted_once_with_imagenet_labels(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from shapiq_games.datasets import load_imagenette
+
+    fetched = _patch_imagenette_fetch(monkeypatch, tmp_path, _fake_imagenette(tmp_path))
+    images = load_imagenette(split="val", size="160px")
+    assert len(images) == 2
+    assert images.labels.tolist() == [0, 701]  # tench and parachute, as ImageNet classes
+    assert images.label_name(1) == "parachute"
+    assert images[0].shape == (6, 8, 3)
+    assert images[0].dtype == np.uint8
+    assert images[0][..., 0].mean() > images[0][..., 2].mean()  # the red image
+    assert len(load_imagenette(split="train", size="160px")) == 1
+    assert len(fetched) == 1  # extracted once; later calls read the cache
+    assert not fetched[0].exists()  # the archive is deleted after extraction
+    with pytest.raises(ValueError, match="split"):
+        load_imagenette(split="test")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="size"):
+        load_imagenette(size="64px")  # type: ignore[arg-type]
+
+
+def test_imagenette_extraction_refuses_paths_outside_the_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import tarfile
+
+    from shapiq_games.datasets import load_imagenette
+
+    escape = {"imagenette2-160/val/n01440764/../../../../evil.JPEG": b"x"}
+    _patch_imagenette_fetch(monkeypatch, tmp_path, _fake_imagenette(tmp_path, escape))
+    with pytest.raises(tarfile.FilterError):
+        load_imagenette(split="val", size="160px")
+    assert not list((tmp_path / "data").rglob("evil.JPEG"))
+    assert not (tmp_path / "data" / "imagenette" / "imagenette2-160").exists()

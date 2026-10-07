@@ -30,7 +30,7 @@ def _assert_deterministic(game) -> None:
 def test_vision_transformer_game() -> None:
     from shapiq_games import ImageClassifier
 
-    game = ImageClassifier.from_config(image=0, model="vit_9_patches")
+    game = ImageClassifier.from_config(index=0, size="160px", model="vit_9_patches")
     assert game.n_players == 9
     assert game.config is not None
     assert game.config["model_commit"]  # the loaded Hugging Face commit is recorded
@@ -42,7 +42,10 @@ def test_vision_transformer_game() -> None:
 def test_resnet_game() -> None:
     from shapiq_games import ImageClassifier
 
-    game = ImageClassifier.from_config(image=1, model="resnet_18", n_superpixels=8)
+    game = ImageClassifier.from_config(
+        index=1, size="160px", model="resnet_18", n_superpixels=8, class_index="label"
+    )
+    assert game.class_index == 0  # the first Imagenette class, tench, is ImageNet class 0
     assert game.n_players == 8
     _assert_deterministic(game)
 
@@ -89,3 +92,12 @@ def test_uci_dataset_download(name: str) -> None:
     dataset = load_dataset(name)
     assert dataset.task == "regression"
     assert dataset.n_samples > 0
+
+
+def test_imagenette_download() -> None:
+    from shapiq_games.datasets import load_imagenette
+
+    images = load_imagenette(split="val", size="160px")
+    assert len(images) == 3925
+    assert sorted(set(images.labels.tolist())) == [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+    assert min(images[0].shape[:2]) == 160

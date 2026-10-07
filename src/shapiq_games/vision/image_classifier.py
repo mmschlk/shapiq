@@ -11,7 +11,7 @@ from PIL import Image, ImageFilter
 from shapiq.game import Game
 from shapiq.interaction_values import InteractionValues
 from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games.datasets import load_example_image
+from shapiq_games.datasets import load_imagenette
 
 from ._superpixels import get_superpixels
 from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
@@ -337,28 +337,32 @@ class ImageClassifier(ConfigMixin, Game):
     def from_config(
         cls,
         *,
-        image: int | str = 0,
+        index: int = 0,
+        split: Literal["train", "val"] = "val",
+        size: Literal["160px", "320px"] = "320px",
         model: BuiltinModel = "vit_9_patches",
         n_superpixels: int = 14,
         fill: Fill | None = None,
-        class_index: int | None = None,
+        class_index: int | Literal["label"] | None = None,
         revision: str | None = None,
         device: str = "cpu",
         batch_size: int = 16,
         normalize: bool = True,
     ) -> Self:
-        """Build the game for one of the ImageNet example images.
+        """Build the game for an Imagenette image (see :func:`shapiq_games.datasets.load_imagenette`).
 
         The configuration records the Hugging Face commit of a vision transformer, so a new
         version of the model gets a new fingerprint and never reuses cached ground truth.
 
         Args:
-            image: The index or file name of the example image (see
-                :func:`shapiq_games.datasets.list_example_images`). Defaults to ``0``.
+            index: The position of the image in the split. Defaults to ``0``.
+            split: The Imagenette split, ``"val"`` (default) or ``"train"``.
+            size: The image size, ``"320px"`` (default) or ``"160px"``.
             model: The builtin model. Defaults to ``"vit_9_patches"``.
             n_superpixels: The number of superpixels for ``"resnet_18"``.
             fill: How ``"resnet_18"`` replaces removed superpixels (``None`` for the mean color).
-            class_index: The explained class, or ``None`` for the predicted class.
+            class_index: The explained ImageNet class: ``None`` for the predicted class,
+                ``"label"`` for the image's true class, or a class index.
             revision: The Hugging Face revision of a vision transformer (``None`` for the default
                 branch).
             device: The torch device (not part of the configuration). Defaults to ``"cpu"``.
@@ -369,19 +373,24 @@ class ImageClassifier(ConfigMixin, Game):
         Returns:
             The configured game.
         """
+        images = load_imagenette(split=split, size=size)
+        explained = int(images.labels[index]) if class_index == "label" else class_index
         game = cls(
-            load_example_image(image),
+            images[index],
             model,
             n_superpixels=n_superpixels,
             fill=fill,
-            class_index=class_index,
+            class_index=explained,
             batch_size=batch_size,
             device=device,
             revision=revision,
             normalize=normalize,
         )
         return game._set_config(
-            image=image,
+            dataset="imagenette",
+            split=split,
+            size=size,
+            index=index,
             model=model,
             n_superpixels=n_superpixels,
             fill=fill,

@@ -60,7 +60,7 @@ shapiq_games/
   causal.py             GlobalConfoundingXAI, LocalConfoundingXAI
   vision/               ImageClassifier (ViT, ResNet, custom classifiers)   [torch, transformers]
   language.py           SentimentAnalysis                                  [transformers]
-  datasets/             dataset registry, loaders, local cache, example images
+  datasets/             dataset registry, loaders, local cache, Imagenette images
   models.py             model registry + tuned presets
 ```
 
@@ -134,8 +134,9 @@ Each family gets contract tests on a small offline configuration:
 - **Data removed from the tree** (the files remain reachable through git history and the pinned URLs):
   - `shapiq_games/datasets/data` (81 MB)
   - `shapiq/datasets/data` (8.5 MB)
-  - the ImageNet example JPEGs
+  - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
 - **Core loaders stay unchanged.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing, so deleting the CSVs needs no core code change. The repo-root `data/` folder therefore stays; it is not part of any wheel. The fetch-and-cache helper lives in `shapiq_games` only.
+- **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
 - **Undeclared dependencies.** `openml`, `ucimlrepo` and `openpyxl` get declared as optional dependencies; today they aren't declared at all.
 
 ### Models

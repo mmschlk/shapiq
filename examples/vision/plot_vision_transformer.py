@@ -3,10 +3,10 @@ Explaining a Vision Transformer
 =================================
 
 In an image classification game, the players are regions of an image, and the value of a
-coalition is the probability of the predicted class when only those regions are visible. This
-example explains a Vision Transformer (ViT) on an ImageNet photo with the
-:class:`~shapiq_games.ImageClassifier` game: it shows what the players are and what the model
-sees, computes exact Shapley values and interactions, and draws them on the image.
+coalition is the probability of a class when only those regions are visible. This example
+explains a Vision Transformer (ViT) on a photo from Imagenette, a ten-class subset of ImageNet,
+with the :class:`~shapiq_games.ImageClassifier` game: it shows what the players are and what the
+model sees, computes exact Shapley values and interactions, and draws them on the image.
 """
 
 from __future__ import annotations
@@ -22,18 +22,19 @@ import numpy as np
 
 import shapiq
 from shapiq_games import ImageClassifier
-from shapiq_games.datasets import load_example_image
+from shapiq_games.datasets import load_imagenette
 
 # %%
 # The Game
 # --------
-# We explain a Siberian husky from the ImageNet validation set (one of the example images that
-# :func:`~shapiq_games.datasets.load_example_image` downloads and caches). With
-# ``"vit_9_patches"``, the players are a 3x3 grid of the ViT's patches, and the explained class is
-# the class the model predicts on the full image.
+# :func:`~shapiq_games.datasets.load_imagenette` downloads the Imagenette validation images
+# once and caches them. Every image keeps its ImageNet class, so the pretrained ViT classifies it
+# directly. We explain an English springer for its true class. With ``"vit_9_patches"``, the
+# players are a 3x3 grid of the ViT's patches.
 
-image = load_example_image(6)
-game = ImageClassifier(image, model="vit_9_patches")
+images = load_imagenette(split="val")
+image, label = images[388], int(images.labels[388])
+game = ImageClassifier(image, model="vit_9_patches", class_index=label)
 print(f"{game.n_players} players, explained class: {game.class_name}")
 
 # %%

@@ -2,7 +2,8 @@
 
 No data ships with the package. Real-world data is downloaded on first use from pinned sources,
 verified by checksum, and cached locally (see :func:`get_data_dir`). Synthetic data is generated
-from a seed.
+from a seed. The image games use Imagenette, a ten-class subset of ImageNet
+(:func:`load_imagenette`).
 
 Examples:
     >>> from shapiq_games.datasets import list_datasets, load_dataset
@@ -15,7 +16,7 @@ Examples:
 
 from . import _synthetic, _tabarena, _tabular  # noqa: F401  (registers the datasets)
 from ._cache import get_data_dir
-from ._images import list_example_images, load_example_image
+from ._imagenette import IMAGENETTE_CLASSES, ImageDataset, load_imagenette
 from ._registry import (
     Dataset,
     DatasetSpec,
@@ -31,12 +32,13 @@ __all__ = [
     "Dataset",
     "DatasetSpec",
     "DatasetSplit",
+    "IMAGENETTE_CLASSES",
+    "ImageDataset",
     "TABARENA_DATASETS",
     "get_data_dir",
     "get_dataset_spec",
     "list_datasets",
-    "list_example_images",
     "load_curthvds_synthetic",
     "load_dataset",
-    "load_example_image",
+    "load_imagenette",
 ]
