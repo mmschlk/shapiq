@@ -238,19 +238,51 @@ def test_tree_computers_for_every_class_of_multiclass_boosters(
         _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=1e-6)
 
 
-def test_tree_games_reject_class_zero_of_binary_boosters(tabular: dict[str, np.ndarray]) -> None:
-    """The tree algorithms explain the positive margin only; class 0 must not silently map to it."""
-    model = GradientBoostingClassifier(n_estimators=3, random_state=0).fit(
-        tabular["x"], tabular["y_clf"]
-    )
-    with pytest.raises(ValueError, match="class_index=0 is not supported"):
-        PathDependentTreeGame(model, tabular["x"][0], class_index=0)
-    with pytest.raises(ValueError, match="class_index=0 is not supported"):
-        InterventionalTreeGame(model, tabular["x"][:5], tabular["x"][0], class_index=0)
-    forest = RandomForestClassifier(n_estimators=2, random_state=0).fit(
-        tabular["x"], tabular["y_clf"]
-    )
-    assert PathDependentTreeGame(forest, tabular["x"][0], class_index=0).class_index == 0
+def _binary_boosters(tabular: dict[str, np.ndarray]) -> list[tuple[str, object]]:
+    x, y = tabular["x"], tabular["y_clf"]
+    models: list[tuple[str, object]] = [
+        ("gb", GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=0).fit(x, y)),
+        (
+            "hgb",
+            HistGradientBoostingClassifier(max_iter=3, max_depth=2, random_state=0).fit(x, y),
+        ),
+    ]
+    if _installed("xgboost"):
+        import xgboost as xgb
+
+        model = xgb.XGBClassifier(n_estimators=3, max_depth=2, random_state=0, n_jobs=1)
+        models.append(("xgb", model.fit(x, y)))
+    if _installed("lightgbm"):
+        import lightgbm as lgb
+
+        model = lgb.LGBMClassifier(n_estimators=3, max_depth=2, random_state=0, verbose=-1)
+        models.append(("lgbm", model.fit(x, y)))
+    if _installed("catboost"):
+        import catboost
+
+        model = catboost.CatBoostClassifier(
+            iterations=3, depth=2, verbose=0, random_seed=0, thread_count=1
+        )
+        models.append(("cat", model.fit(x, y)))
+    return models
+
+
+def test_tree_computers_for_both_classes_of_binary_boosters(
+    tabular: dict[str, np.ndarray],
+) -> None:
+    """A binary booster has one margin, the log-odds of class 1; class 0 explains its negative."""
+    x = tabular["x"]
+    for name, model in _binary_boosters(tabular):
+        atol = 1e-6 if name == "xgb" else 1e-10  # XGBoost thresholds are float32
+        for class_index in (0, 1):
+            path_dependent = PathDependentTreeGame(model, x[3], class_index=class_index)
+            _assert_agrees_with_brute_force(PathDependentTreeComputer(path_dependent), atol=atol)
+            interventional = InterventionalTreeGame(model, x[:10], x[3], class_index=class_index)
+            _assert_agrees_with_brute_force(InterventionalTreeComputer(interventional), atol=atol)
+        coalitions = np.eye(x.shape[1], dtype=bool)
+        class_zero = InterventionalTreeGame(model, x[:10], x[3], class_index=0)(coalitions)
+        class_one = InterventionalTreeGame(model, x[:10], x[3], class_index=1)(coalitions)
+        np.testing.assert_allclose(class_zero, -class_one, err_msg=name)
 
 
 @pytest.mark.parametrize("class_index", [0, 1, 2])

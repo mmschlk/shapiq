@@ -10,7 +10,7 @@ from shapiq.game import Game
 from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_class_index, resolve_x
 from shapiq_games._setup import configure
 
-from ._output import check_class_index, model_output
+from ._output import model_output
 
 __all__ = ["InterventionalTreeGame"]
 
@@ -74,7 +74,6 @@ class InterventionalTreeGame(ConfigMixin, Game):
         self.reference_data = np.asarray(reference_data)
         self.x = np.asarray(x).reshape(-1)
         self.class_index = resolve_class_index(model, class_index)
-        check_class_index(model, self.class_index)
         n_players = self.x.shape[0]
         empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(n_players, normalize=normalize, normalization_value=empty_value)

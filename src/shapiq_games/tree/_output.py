@@ -14,7 +14,7 @@ import numpy as np
 
 from shapiq.utils.modules import safe_isinstance
 
-__all__ = ["check_class_index", "is_margin_classifier", "model_output"]
+__all__ = ["is_margin_classifier", "model_output"]
 
 _MARGIN_CLASSIFIERS = (
     "sklearn.ensemble.GradientBoostingClassifier",
@@ -28,27 +28,6 @@ _MARGIN_CLASSIFIERS = (
 def is_margin_classifier(model: Any) -> bool:  # noqa: ANN401
     """Return whether shapiq explains the raw margins (log-odds) of this classifier."""
     return safe_isinstance(model, _MARGIN_CLASSIFIERS)
-
-
-def check_class_index(model: Any, class_index: int | None) -> None:  # noqa: ANN401
-    """Reject class 0 of binary margin classifiers.
-
-    For binary gradient boosting models, shapiq's tree conversion has a single margin, the one of
-    the positive class, and explains it whatever class is requested. Class 0 is rejected instead of
-    silently explaining class 1 (its margin is the negative of the class-1 margin).
-
-    Raises:
-        ValueError: If ``class_index`` is ``0`` for a binary margin classifier.
-    """
-    classes = getattr(model, "classes_", None)
-    binary = classes is not None and len(classes) == 2
-    if class_index == 0 and binary and is_margin_classifier(model):
-        msg = (
-            f"class_index=0 is not supported for binary {type(model).__name__} models: shapiq's "
-            "tree algorithms explain the margin of the positive class. Use class_index=1 (the "
-            "class-0 margin is its negative)."
-        )
-        raise ValueError(msg)
 
 
 def _raw_margins(model: Any, data: np.ndarray) -> np.ndarray:  # noqa: ANN401
@@ -82,6 +61,6 @@ def model_output(model: Any, data: np.ndarray, class_index: int | None) -> np.nd
     if not is_margin_classifier(model):
         return np.asarray(model.predict_proba(data), dtype=float)[:, class_index]
     margins = np.asarray(_raw_margins(model, data), dtype=float)
-    if margins.ndim == 1:  # binary: the margin of the positive class
-        return margins
+    if margins.ndim == 1:  # binary: one margin, the log-odds of class 1; class 0 has its negative
+        return margins if class_index == 1 else -margins
     return margins[:, class_index]

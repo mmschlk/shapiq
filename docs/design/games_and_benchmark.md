@@ -257,7 +257,7 @@ Core stays as it is except for exactly these changes:
 |--------|------|----|
 | Delete the three CSVs in `shapiq/datasets/data` | files only, no code (the existing GitHub fallback takes over) | project PR |
 | Move the model-specific games out (delete the modules, drop them from `__init__` exports, point core tests at `shapiq_games`) | moves | project PR |
-| Fix `MarginalImputer`'s null-player violation | bug fix | separate |
+| Fix `MarginalImputer`'s null-player violation | bug fix | merged (#615) |
 | Cast integer 0/1 coalitions to bool in `Game` | bug fix | merged (#614) |
 
 Not core changes, handled elsewhere:
@@ -317,11 +317,13 @@ strides); `tests/shapiq_games/test_image_games.py` now covers it without downloa
 The chain-of-trust tests surfaced two core bugs. Both are left to separate core PRs; core is
 unchanged here.
 
-- **`class_index=0` on binary gradient boosting classifiers.** `TreeExplainer` (path-dependent
-  and interventional) explains the positive-class margin whatever class is requested, so
-  class 0 silently returns the class-1 values. Affects scikit-learn GradientBoosting and
-  HistGradientBoosting, XGBoost, LightGBM and CatBoost. Until it is fixed, the tree games reject
-  `class_index=0` for these models (`shapiq_games/tree/_output.py::check_class_index`).
+- **`class_index=0` on binary gradient boosting classifiers** (fixed on main, #618).
+  `TreeExplainer` (path-dependent and interventional) explained the positive-class margin
+  whatever class was requested, so class 0 silently returned the class-1 values, for
+  scikit-learn GradientBoosting and HistGradientBoosting, XGBoost, LightGBM and CatBoost. The
+  tree games rejected class 0 for these models until the fix; they now explain it as the
+  negated class-1 margin, and `test_chain_of_trust.py` checks both classes of every binary
+  booster against brute force.
 - **Zero-cover nodes on the explained point's path.** The path-dependent quadrature TreeSHAP
   treats every zero-cover subtree as unreachable and drops it. The explained point's own path
   can still enter one (common in CatBoost's oblivious trees, through NaN routing or a value
