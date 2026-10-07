@@ -3,11 +3,17 @@
 The task type and target column of every dataset are taken from TabArena's official metadata
 (``tabarena_dataset_metadata.csv`` in the TabArena dataset curation repository) instead of being
 inferred from the labels. Loading requires the ``openml`` package and network access on first
-use; the preprocessed data is then cached locally.
+use; the preprocessed data is then cached locally, under a name that changes with the OpenML id,
+the target, and :data:`_PREPROCESSING_VERSION`.
+
+Missing values are imputed with the median or mode of all rows, before any train-test split. The
+test rows thus shape the imputed training values a little; this does not matter for exact game
+values, but it does for model accuracy on datasets with many missing values.
 """
 
 from __future__ import annotations
 
+import hashlib
 from io import StringIO
 from typing import TYPE_CHECKING
 
@@ -83,6 +89,9 @@ TABARENA_DATASETS: dict[str, tuple[int, Task, str]] = {
 
 _TARGET_COLUMN = "__target__"
 
+_PREPROCESSING_VERSION = 1
+"""Bump when :func:`_load_tabarena` changes the data, so that old caches are not used."""
+
 
 def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
     """Load a TabArena dataset from the local cache or OpenML.
@@ -92,7 +101,8 @@ def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
     classification labels.
     """
     openml_id, _task, target = TABARENA_DATASETS[name]
-    path = get_data_dir() / "tabarena" / f"{name}.csv"
+    recipe = f"{openml_id}/{target}/{_PREPROCESSING_VERSION}".encode()
+    path = get_data_dir() / "tabarena" / f"{name}-{hashlib.sha256(recipe).hexdigest()[:8]}.csv"
     if not path.exists():
         openml = require("openml", purpose="the TabArena datasets")
         dataset = openml.datasets.get_dataset(openml_id, download_data=True)

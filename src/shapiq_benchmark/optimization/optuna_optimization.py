@@ -44,6 +44,7 @@ def get_hyperparameters(trial: optuna.Trial, model_name: str) -> dict[str, Any]:
             "max_depth": trial.suggest_int("max_depth", -1, 12),
             "min_child_samples": trial.suggest_int("min_child_samples", 5, 50),
             "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+            "subsample_freq": 1,  # LightGBM ignores subsample without it
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
             "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 1.0, log=True),
             "reg_lambda": trial.suggest_float("reg_lambda", 1e-6, 10.0, log=True),

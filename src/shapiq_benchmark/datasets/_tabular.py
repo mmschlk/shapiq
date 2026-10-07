@@ -31,7 +31,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.datasets import load_breast_cancer as _sklearn_breast_cancer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, RobustScaler, StandardScaler
+from sklearn.preprocessing import OrdinalEncoder, RobustScaler, StandardScaler
 
 from shapiq_benchmark._optional import require
 
@@ -127,7 +127,10 @@ _UPSTREAM: dict[str, _Upstream] = {
     "california_housing": _Upstream("sklearn", (20640, 9)),
 }
 
-_SHAP_DATA_URL = "https://raw.githubusercontent.com/shap/shap/master/data/"
+# a commit, not a branch: an upstream edit cannot break the checksums
+_SHAP_DATA_URL = (
+    "https://raw.githubusercontent.com/shap/shap/fc3e290e97ce12f76d1175d24c6e3023b4ca7d69/data/"
+)
 _SHAP_FILES: dict[str, RemoteFile] = {
     name: RemoteFile(_SHAP_DATA_URL + name, name, sha256, subdir="shap")
     for name, sha256 in {
@@ -216,12 +219,19 @@ def _download_table(name: str) -> pd.DataFrame:
 
 
 def _read_table(name: str) -> pd.DataFrame:
-    """Return the raw table of ``name``, downloading and caching it as a CSV on first use."""
+    """Return the raw table of ``name``, downloading and caching it as a CSV on first use.
+
+    A cached table of the wrong shape (e.g. truncated) is downloaded again.
+    """
     path = get_data_dir() / "tabular" / f"{name}.csv"
-    if not path.exists():
-        buffer = StringIO()
-        _download_table(name).to_csv(buffer, index=False, float_format="%.17g")  # lossless
-        atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
+    if path.exists():
+        table = pd.read_csv(path, low_memory=False, float_precision="round_trip")
+        if table.shape == _UPSTREAM[name].shape:
+            return table
+    table = _download_table(name)
+    buffer = StringIO()
+    table.to_csv(buffer, index=False, float_format="%.17g")  # lossless
+    atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
     return pd.read_csv(path, low_memory=False, float_precision="round_trip")
 
 
@@ -241,18 +251,17 @@ def _impute(x: pd.DataFrame) -> pd.DataFrame:
 
 
 def _encode_categorical(x: pd.DataFrame) -> pd.DataFrame:
-    """Ordinal-encode all object and category columns (unknown categories become ``-1``)."""
-    categorical = x.select_dtypes(include=["object", "category"]).columns
+    """Ordinal-encode all text and category columns (missing and unknown categories become ``-1``)."""
+    categorical = x.select_dtypes(include=["object", "category", "string"]).columns
     if len(categorical) == 0:
         return x
-    encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
+    encoder = OrdinalEncoder(
+        handle_unknown="use_encoded_value", unknown_value=-1, encoded_missing_value=-1
+    )
     x = x.copy()
-    x[categorical] = encoder.fit_transform(x[categorical])
+    values = x[categorical].astype(object)
+    x[categorical] = encoder.fit_transform(values.where(values.notna(), np.nan))  # pd.NA -> NaN
     return x
-
-
-def _encode_target(y: pd.Series) -> pd.Series:
-    return pd.Series(LabelEncoder().fit_transform(y.astype(str)), name="target")
 
 
 def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
@@ -327,7 +336,7 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     columns += [feature for feature in dataset.columns if feature not in columns]
     transformed = cast("np.ndarray", transformer.fit_transform(dataset))
     dataset = pd.DataFrame(transformed, columns=np.asarray(columns)).dropna()
-    y = dataset.pop("class").apply(lambda label: 1 if label == ">50K" else 0)
+    y = dataset.pop("class").astype(str).rename("target")  # "<=50K" and ">50K"
     return dataset.astype(float), y
 
 
@@ -405,9 +414,7 @@ def load_communities_and_crime() -> tuple[pd.DataFrame, pd.Series]:
 
 def _load_with_class_column(name: str, target: str) -> tuple[pd.DataFrame, pd.Series]:
     data = _read_table(name)
-    y = data.pop(target)
-    # encode the raw labels (not their string form) so numeric labels keep their numeric order
-    return data, pd.Series(LabelEncoder().fit_transform(y), name="target")
+    return data, data.pop(target).rename("target")  # load_dataset encodes the labels
 
 
 def load_amazon() -> tuple[pd.DataFrame, pd.Series]:
@@ -447,7 +454,7 @@ def _load_uci_classification(
         data = _encode_categorical(data)
     if drop_constant:
         data = data.loc[:, ~(data.iloc[0] == data).all()]
-    return data, _encode_target(y)
+    return data, y.rename("target")  # load_dataset encodes the labels
 
 
 def load_annealing() -> tuple[pd.DataFrame, pd.Series]:

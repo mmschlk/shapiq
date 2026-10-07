@@ -97,10 +97,13 @@ def fetch(remote: RemoteFile) -> Path:
         OSError: If the download fails or the checksum does not match.
     """
     path = get_data_dir() / remote.subdir / remote.filename
-    if path.exists():
+    try:
         if _sha256_file(path) == remote.sha256:
             return path
-        path.unlink()  # corrupted or outdated cache entry, download again
+    except FileNotFoundError:  # not cached (or deleted by another process meanwhile)
+        pass
+    # a corrupted or outdated entry is replaced atomically below, never deleted first: another
+    # process may already have replaced it with the verified file and be reading it
 
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")

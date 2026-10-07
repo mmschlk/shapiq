@@ -41,6 +41,8 @@ MODEL_NAMES: tuple[str, ...] = (
 )
 """All model names understood by :func:`build_model`."""
 
+# The LightGBM presets were tuned with a subsample that LightGBM ignores without
+# subsample_freq; it is left out, which builds the same models.
 TUNED_PRESETS: dict[tuple[str, str], dict[str, Any]] = {
     ("lightgbm", "adult_census"): {
         "n_estimators": 944,
@@ -48,7 +50,6 @@ TUNED_PRESETS: dict[tuple[str, str], dict[str, Any]] = {
         "learning_rate": 0.030338722763452043,
         "max_depth": 4,
         "min_child_samples": 9,
-        "subsample": 0.9396824635118503,
         "colsample_bytree": 0.7155127263223596,
         "reg_alpha": 0.00013816182430361382,
         "reg_lambda": 0.0004958490081190707,
@@ -59,7 +60,6 @@ TUNED_PRESETS: dict[tuple[str, str], dict[str, Any]] = {
         "learning_rate": 0.02568211645857779,
         "max_depth": 12,
         "min_child_samples": 7,
-        "subsample": 0.8486821062041688,
         "colsample_bytree": 0.7907540024230353,
         "reg_alpha": 6.829010029601757e-06,
         "reg_lambda": 5.2528698290206714e-05,

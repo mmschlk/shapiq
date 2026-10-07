@@ -95,6 +95,36 @@ def test_split_keeps_at_least_thirty_test_samples() -> None:
     assert dataset.split(test_size=0.05).x_test.shape[0] == 30
     with pytest.raises(ValueError, match="too few"):
         load_dataset("xor", n_samples=30).split()
+    # one training sample cannot hold both classes: the split is not stratified then
+    assert load_dataset("xor", n_samples=31).split().x_train.shape[0] == 1
+
+
+def test_features_have_no_missing_values_and_labels_keep_their_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pandas as pd
+
+    from shapiq_benchmark.datasets import _registry
+    from shapiq_benchmark.datasets._tabular import _encode_categorical
+
+    def loader() -> tuple[pd.DataFrame, pd.Series]:
+        x = pd.DataFrame({
+            "empty": [np.nan] * 4,
+            "number": [1.0, np.nan, 3.0, 5.0],
+            "color": _encode_categorical(
+                pd.DataFrame({"c": pd.array(["red", None, "blue", "red"], dtype="string")})
+            )["c"],
+        })  # fmt: skip
+        return x, pd.Series([10, 2, 10, 2])
+
+    spec = _registry.DatasetSpec(name="fake", task="classification", loader=loader, source="test")
+    monkeypatch.setitem(_registry._REGISTRY, "fake", spec)
+    dataset = load_dataset("fake")
+    assert dataset.feature_names == ("number", "color")  # the empty column is dropped
+    np.testing.assert_array_equal(dataset.x[:, 0], [1.0, 3.0, 3.0, 5.0])  # the median
+    np.testing.assert_array_equal(dataset.x[:, 1], [1.0, -1.0, 0.0, 1.0])  # missing: -1
+    assert dataset.class_names == ("2", "10")  # numbers in numeric order
+    np.testing.assert_array_equal(dataset.y, [1, 0, 1, 0])
 
 
 def test_curthvds_synthetic_study() -> None:
@@ -226,7 +256,9 @@ def test_tabarena_imputes_categories_before_encoding(
     assert color[3] == 1.0  # the mode, red
     assert dataset.x[1, 1] == pytest.approx(3.5)  # numeric median
     assert dataset.task == "classification"
-    assert (tmp_path / "tabarena" / "blood_transfusion.csv").exists()
+    assert dataset.class_names == ("no", "yes")  # the original labels
+    # the cache name changes with the OpenML id, the target, and the preprocessing version
+    assert len(list((tmp_path / "tabarena").glob("blood_transfusion-*.csv"))) == 1
 
 
 def test_tabular_data_comes_from_original_sources() -> None:
@@ -264,10 +296,13 @@ def test_upstream_tables_are_cached_and_shape_checked(
     monkeypatch.setattr(_tabular, "require", lambda package, **_: FakeUCI())
     x, y = _tabular.load_zoo()
     assert x.shape == (101, 16)
-    assert sorted(set(y)) == list(range(7))
+    assert sorted(set(y)) == list(range(1, 8))  # the raw labels; load_dataset encodes them
     _tabular.load_zoo()
     assert downloads == [111]  # downloaded once, then read from the cache
-    assert (tmp_path / "tabular" / "zoo.csv").exists()
+    cached = tmp_path / "tabular" / "zoo.csv"
+    cached.write_text("\n".join(cached.read_text().splitlines()[:41]))  # a truncated cache
+    assert _tabular.load_zoo()[0].shape == (101, 16)
+    assert downloads == [111, 111]  # downloaded again
 
     downloads.clear()
     zoo = zoo.iloc[:50]  # an upstream table that changed
@@ -351,6 +386,24 @@ def test_imagenette_is_extracted_once_with_imagenet_labels(
         load_imagenette(split="test")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="size"):
         load_imagenette(size="64px")  # type: ignore[arg-type]
+
+
+def test_imagenette_extraction_never_replaces_a_complete_one(tmp_path: Path) -> None:
+    """Another process may read a complete extraction; a second one is discarded instead."""
+    from shapiq_benchmark.datasets import _imagenette
+
+    archive = _fake_imagenette(tmp_path)
+    target = tmp_path / "data" / "imagenette2-160"
+    target.mkdir(parents=True)
+    (target / "partial.JPEG").write_bytes(b"x")  # an incomplete leftover is replaced
+    _imagenette._extract(archive, target)
+    assert (target / _imagenette._COMPLETE).exists()
+    assert not (target / "partial.JPEG").exists()
+
+    (target / "in_use.JPEG").write_bytes(b"x")  # a file another process is reading
+    _imagenette._extract(archive, target)
+    assert (target / "in_use.JPEG").exists()
+    assert sorted(path.name for path in target.parent.iterdir()) == ["imagenette2-160"]
 
 
 def test_imagenette_extraction_refuses_paths_outside_the_cache(

@@ -89,7 +89,12 @@ class ImageDataset:
 
 
 def _extract(archive: Path, target: Path) -> None:
-    """Extract the JPEG images of ``archive`` into ``target``, all at once or not at all."""
+    """Extract the JPEG images of ``archive`` into ``target``, all at once or not at all.
+
+    The images are extracted into a staging directory that is renamed to ``target`` when complete.
+    A complete ``target`` is never replaced, as another process may be reading it: if one appears
+    meanwhile (another process extracted the same archive), the staging directory is discarded.
+    """
     staging = Path(tempfile.mkdtemp(dir=target.parent, prefix=f".{target.name}."))
     try:
         with tarfile.open(archive) as tar:
@@ -100,11 +105,19 @@ def _extract(archive: Path, target: Path) -> None:
             ]
             tar.extractall(staging, members=images, filter="data")
         (staging / _COMPLETE).touch()
-        shutil.rmtree(target, ignore_errors=True)
-        staging.replace(target)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
+        for _ in range(2):
+            try:
+                staging.rename(target)  # atomic; fails if target exists and is not empty
+            except OSError:
+                if (target / _COMPLETE).exists():
+                    break
+                shutil.rmtree(target, ignore_errors=True)  # an incomplete leftover
+            else:
+                return
+        else:
+            staging.rename(target)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)  # gone once renamed
 
 
 def load_imagenette(*, split: Split = "val", size: Size = "320px") -> ImageDataset:
@@ -134,7 +147,12 @@ def load_imagenette(*, split: Split = "val", size: Size = "320px") -> ImageDatas
     root = get_data_dir() / remote.subdir / remote.filename.removesuffix(".tgz")
     if not (root / _COMPLETE).exists():
         archive = fetch(remote)
-        _extract(archive, root)
+        try:
+            if not (root / _COMPLETE).exists():  # another process may have extracted it meanwhile
+                _extract(archive, root)
+        except FileNotFoundError:  # the archive was deleted by a process that extracted it
+            if not (root / _COMPLETE).exists():
+                raise
         archive.unlink(missing_ok=True)  # the images are kept; the archive is not needed
 
     paths: list[Path] = []

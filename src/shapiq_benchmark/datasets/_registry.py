@@ -56,7 +56,8 @@ class Dataset:
     Attributes:
         name: The registry name of the dataset.
         task: ``"classification"`` or ``"regression"``.
-        x: The features as a float matrix of shape ``(n_samples, n_features)``.
+        x: The features as a float matrix of shape ``(n_samples, n_features)``, without missing
+            values (see :func:`load_dataset`).
         y: The target of shape ``(n_samples,)``. For classification, the labels are encoded as
             integers ``0, ..., n_classes - 1`` in the order of :attr:`class_names`.
         feature_names: The names of the features.
@@ -91,7 +92,7 @@ class Dataset:
         """Split the dataset into a training and a test set, deterministically.
 
         Classification datasets are split stratified by class when every class has at least two
-        samples. The test set holds at least 30 samples.
+        samples and both sets can hold every class. The test set holds at least 30 samples.
 
         Args:
             test_size: The fraction of samples used for testing. Defaults to ``0.2``.
@@ -113,7 +114,8 @@ class Dataset:
         stratify = None
         if self.task == "classification":
             _, counts = np.unique(self.y, return_counts=True)
-            if counts.min() >= 2 and n_test >= len(counts):
+            n_train = self.n_samples - n_test
+            if counts.min() >= 2 and min(n_test, n_train) >= len(counts):  # noqa: PLR2004
                 stratify = self.y
         x_train, x_test, y_train, y_test = train_test_split(
             self.x,
@@ -217,6 +219,12 @@ def load_dataset(name: str, **params: Any) -> Dataset:
     Data files are downloaded on first use and cached locally (see
     :func:`~shapiq_benchmark.datasets.get_data_dir`). Synthetic datasets are generated from a seed.
 
+    The features have no missing values, so that every model of the registry can be fitted:
+    columns without any value are dropped, a missing category is a category of its own (``-1``),
+    and the remaining missing values (e.g. of ``nhanesi``) are replaced by the column median of
+    all rows. Classification labels are encoded in their natural order (numbers by value, text
+    alphabetically), and :attr:`Dataset.class_names` holds the original labels.
+
     Args:
         name: The registry name of the dataset (see :func:`list_datasets`).
         **params: Parameters of synthetic generators, e.g. ``n_samples`` or ``random_state``.
@@ -233,16 +241,22 @@ def load_dataset(name: str, **params: Any) -> Dataset:
         msg = f"Dataset '{name}' does not take parameters, got {sorted(params)}."
         raise ValueError(msg)
     x_frame, y_series = spec.loader(**params)
+    x_frame = x_frame.loc[:, x_frame.notna().any()]  # columns without any value
 
     try:
-        x = x_frame.to_numpy(dtype=float)
+        x = x_frame.to_numpy(dtype=float, copy=True)  # writable (pandas returns read-only views)
     except (TypeError, ValueError) as error:
         msg = f"Dataset '{name}' has non-numeric features after preprocessing."
         raise ValueError(msg) from error
+    missing = np.isnan(x)
+    if missing.any():
+        x[missing] = np.take(np.nanmedian(x, axis=0), np.nonzero(missing)[1])
 
     y_raw = np.asarray(y_series)
     class_names: tuple[str, ...] = ()
     if spec.task == "classification":
+        if y_raw.dtype == object:  # mixed label types cannot be sorted
+            y_raw = y_raw.astype(str)
         classes, y = np.unique(y_raw, return_inverse=True)
         class_names = tuple(str(label) for label in classes)
     else:

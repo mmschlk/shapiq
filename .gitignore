@@ -177,8 +177,8 @@ cython_debug/
 
 illustration_sources/
 
-# data is never committed under src/: shapiq.datasets downloads its CSVs into this folder on
-# first use, and shapiq_games caches data in ~/.cache/shapiq (or $SHAPIQ_DATA_DIR)
+# data is never committed under src/: shapiq.datasets and shapiq_benchmark cache their downloads
+# in ~/.cache/shapiq (or $SHAPIQ_DATA_DIR); this folder only held the CSVs of older versions
 src/shapiq/datasets/data/
 
 shapiq/games/benchmark/precomputed/

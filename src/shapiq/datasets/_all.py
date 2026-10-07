@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+import urllib.request
 from pathlib import Path
 from typing import cast
 
@@ -10,13 +13,17 @@ import pandas as pd
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
-# csv files are located next to this file in a folder called "data"
-SHAPIQ_DATASETS_FOLDER = Path(__file__).parent / "data"
 
+def _datasets_folder() -> Path:
+    """Return the folder of the downloaded csv files, in the user's cache, not the package.
 
-def _create_folder() -> None:
-    """Create the datasets folder if it does not exist."""
-    Path(SHAPIQ_DATASETS_FOLDER).mkdir(parents=True, exist_ok=True)
+    It is ``$SHAPIQ_DATA_DIR/core_datasets`` if the variable is set, else
+    ``$XDG_CACHE_HOME/shapiq/core_datasets`` (``~/.cache/shapiq/core_datasets`` by default).
+    """
+    root = os.environ.get("SHAPIQ_DATA_DIR")
+    if root is None:
+        root = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "shapiq"
+    return Path(root) / "core_datasets"
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
@@ -31,14 +38,24 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
         The dataset as a pandas DataFrame.
 
     """
-    _create_folder()
-    path = Path(SHAPIQ_DATASETS_FOLDER) / csv_file_name
+    folder = _datasets_folder()
+    path = folder / csv_file_name
     try:
         return pd.read_csv(path)
     except FileNotFoundError:
-        data = pd.read_csv(GITHUB_DATA_URL + csv_file_name)
-        data.to_csv(path, index=False)
-        return data
+        with urllib.request.urlopen(GITHUB_DATA_URL + csv_file_name) as response:  # noqa: S310
+            content = response.read()
+        folder.mkdir(parents=True, exist_ok=True)
+        # the file as downloaded, written to a temporary file and renamed, so that no process
+        # reads a partial file and every call parses the same text
+        fd, tmp_name = tempfile.mkstemp(dir=folder, suffix=".csv.tmp")
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(content)
+            Path(tmp_name).replace(path)
+        finally:
+            Path(tmp_name).unlink(missing_ok=True)
+        return pd.read_csv(path)
 
 
 def load_california_housing(
