@@ -304,6 +304,11 @@ the real data and models. All 25 passed on 2026-10-07:
   default branch unless a `revision` is given; the commit that was loaded is recorded in the
   game's configuration and therefore in its fingerprint.
 
+Beyond the tests, all 51 TabArena datasets were downloaded and loaded: every one has finite
+features, the declared task, and (for the 38 classification datasets) the number of classes
+OpenML lists. `real_estate` (which needs `openpyxl`) loads its 414 rows, and the Sphinx docs
+build without a warning, running all 40 gallery examples with the real models.
+
 The vision transformer test caught a crash on reversed coalition arrays (torch rejects negative
 strides); `tests/shapiq_games/test_image_games.py` now covers it without downloads.
 
