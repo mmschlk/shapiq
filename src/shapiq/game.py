@@ -363,7 +363,8 @@ class Game:
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 msg = "The values in the array of coalitions are not binary."
                 raise TypeError(msg)
-            return coalitions  # type: ignore[return-value]
+            # value functions use coalitions as boolean masks, so int/float 0/1 arrays must be cast
+            return coalitions.astype(bool)  # type: ignore[return-value]
 
         # try for list of tuples
         if isinstance(coalitions, tuple):
