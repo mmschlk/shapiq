@@ -16,7 +16,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 ### Maintenance
 
-- vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). On California Housing random forests with a budget of 256 coalitions this is about 4-9x faster, and about 70x faster with `verbose=True`, where coalitions are evaluated one at a time; using all 20,640 rows of the dataset (`sample_size=None`) drops from about 5 minutes to 46 seconds per explanation. Values are averaged per coalition, so evaluating a coalition alone or in a batch gives bit-identical results. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 
 ## v1.7.0 (2026-08-27)
