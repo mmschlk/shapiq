@@ -26,9 +26,9 @@ class FakeTokenizer:
     def __init__(self) -> None:
         self.vocabulary: dict[str, int] = {"[MASK]": 0, "[CLS]": 1, "[SEP]": 2}
 
-    def __call__(self, text: str) -> dict[str, list[int]]:
+    def __call__(self, text: str, *, add_special_tokens: bool = True) -> dict[str, list[int]]:
         ids = [self.vocabulary.setdefault(word, len(self.vocabulary)) for word in text.split()]
-        return {"input_ids": [1, *ids, 2]}
+        return {"input_ids": [1, *ids, 2] if add_special_tokens else ids}
 
     def decode(self, ids: np.ndarray) -> str:
         words = {index: word for word, index in self.vocabulary.items()}
@@ -38,8 +38,9 @@ class FakeTokenizer:
 class FakeSentimentPipeline:
     """A sentiment 'model' scoring texts by counting the words 'good' and 'bad'."""
 
-    def __init__(self) -> None:
+    def __init__(self, labels: tuple[str, str] = ("POSITIVE", "NEGATIVE")) -> None:
         self.tokenizer = FakeTokenizer()
+        self.labels = labels
         self.calls = 0
 
     def __call__(self, texts: list[str], **_: object) -> list[dict[str, float | str]]:
@@ -49,7 +50,7 @@ class FakeSentimentPipeline:
             words = text.split()
             margin = words.count("good") - words.count("bad")
             score = 0.5 + 0.1 * abs(margin)
-            outputs.append({"label": "POSITIVE" if margin >= 0 else "NEGATIVE", "score": score})
+            outputs.append({"label": self.labels[0 if margin >= 0 else 1], "score": score})
         return outputs
 
 

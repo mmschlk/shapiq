@@ -223,6 +223,38 @@ def test_image_classifier_superpixels_cover_every_player() -> None:
     assert game(game.grand_coalition)[0] == pytest.approx(expected)
     grayscale = ImageClassifier(image[..., 0], model=mean_brightness_classifier, n_superpixels=4)
     assert grayscale.image.shape == (60, 60, 3)
+    assert game.model_commit is None
+    with pytest.raises(ValueError, match="vision transformer"):
+        ImageClassifier(image, model=mean_brightness_classifier, revision="main")
+
+
+def test_image_classifier_forwards_and_records_the_vit_revision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The revision reaches the Hugging Face loader and the loaded commit enters the config."""
+    calls: list[dict] = []
+
+    class FakeViT:
+        def __init__(self, image: np.ndarray, n_players: int, **kwargs: object) -> None:
+            calls.append(kwargs)
+            self.n_players = n_players
+            self.class_index = 3
+            self.model_commit = f"commit-of-{kwargs['revision']}"
+
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+            return coalitions.mean(axis=1)
+
+    import shapiq_games.vision.image_classifier as module
+
+    monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
+    monkeypatch.setattr(module, "load_example_image", lambda _: np.zeros((8, 8, 3), np.uint8))
+    game = ImageClassifier.from_config(image=0, model="vit_16_patches", revision="v1")
+    other = ImageClassifier.from_config(image=0, model="vit_16_patches", revision="v2")
+    assert calls[0]["revision"] == "v1"
+    assert game.model_commit == "commit-of-v1"
+    assert game.config is not None
+    assert game.config["model_commit"] == "commit-of-v1"
+    assert game.fingerprint != other.fingerprint
 
 
 def test_sentiment_analysis_with_a_fake_pipeline() -> None:
@@ -238,3 +270,21 @@ def test_sentiment_analysis_with_a_fake_pipeline() -> None:
     assert removed(np.array([[1, 0]], dtype=bool))[0] == pytest.approx(0.6)
     with pytest.raises(ValueError, match="mask_strategy"):
         SentimentAnalysis("good", classifier=pipeline, mask_strategy="drop")  # type: ignore[arg-type]
+    assert game.model_commit is None  # a pipeline without a Hugging Face model
+
+
+def test_sentiment_analysis_with_other_labels_and_tokenizers() -> None:
+    labelled = FakeSentimentPipeline(labels=("LABEL_1", "LABEL_0"))
+    game = SentimentAnalysis(
+        "good good bad", classifier=labelled, positive_label="LABEL_1", normalize=False
+    )
+    assert game.original_model_output == pytest.approx(0.6)
+    # special tokens are left out of the players, whatever the tokenizer adds
+    assert game.n_players == 3
+
+    no_mask = FakeSentimentPipeline()
+    no_mask.tokenizer.mask_token_id = None  # type: ignore[assignment]
+    with pytest.raises(ValueError, match="no mask token"):
+        SentimentAnalysis("good", classifier=no_mask)
+    removed = SentimentAnalysis("good bad", classifier=no_mask, mask_strategy="remove")
+    assert removed.n_players == 2

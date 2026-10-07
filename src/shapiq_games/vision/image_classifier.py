@@ -56,6 +56,7 @@ class ImageClassifier(ConfigMixin, Game):
         image: The explained RGB image.
         class_index: The explained class.
         superpixels: The superpixel labels (``None`` for the vision transformers).
+        model_commit: The Hugging Face commit of a vision transformer, ``None`` for other models.
     """
 
     def __init__(
@@ -67,6 +68,7 @@ class ImageClassifier(ConfigMixin, Game):
         class_index: int | None = None,
         batch_size: int = 16,
         device: str = "cpu",
+        revision: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -82,13 +84,21 @@ class ImageClassifier(ConfigMixin, Game):
             class_index: The explained class, or ``None`` for the class predicted on the image.
             batch_size: The number of masked images per forward pass. Defaults to ``16``.
             device: The torch device of the builtin models. Defaults to ``"cpu"``.
+            revision: The Hugging Face revision (branch, tag, or commit) of the vision
+                transformer. ``None`` loads the default branch; :attr:`model_commit` records what
+                was loaded. ResNet-18 uses pinned torchvision weights and takes no revision.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
+
+        Raises:
+            ValueError: If the model is unknown, or a revision is given for a model that is not a
+                vision transformer.
         """
         self.image = _as_rgb_array(image)
         self.batch_size = batch_size
         self.superpixels: np.ndarray | None = None
+        self.model_commit: str | None = None
         self._vit: ViTPatchModel | None = None
 
         if isinstance(model, str) and model in _VIT_MODELS:
@@ -98,10 +108,15 @@ class ImageClassifier(ConfigMixin, Game):
                 class_index=class_index,
                 device=device,
                 batch_size=batch_size,
+                revision=revision,
             )
             n_players = self._vit.n_players
             self.class_index = self._vit.class_index
+            self.model_commit = self._vit.model_commit
         else:
+            if revision is not None:
+                msg = "revision applies to the vision transformer models only."
+                raise ValueError(msg)
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
 
@@ -155,9 +170,15 @@ class ImageClassifier(ConfigMixin, Game):
         model: BuiltinModel = "vit_9_patches",
         n_superpixels: int = 14,
         class_index: int | None = None,
+        revision: str | None = None,
+        device: str = "cpu",
+        batch_size: int = 16,
         normalize: bool = True,
     ) -> Self:
         """Build the game for one of the ImageNet example images.
+
+        The configuration records the Hugging Face commit of a vision transformer, so a new
+        version of the model gets a new fingerprint and never reuses cached ground truth.
 
         Args:
             image: The index or file name of the example image (see
@@ -165,6 +186,11 @@ class ImageClassifier(ConfigMixin, Game):
             model: The builtin model. Defaults to ``"vit_9_patches"``.
             n_superpixels: The number of superpixels for ``"resnet_18"``.
             class_index: The explained class, or ``None`` for the predicted class.
+            revision: The Hugging Face revision of a vision transformer (``None`` for the default
+                branch).
+            device: The torch device (not part of the configuration). Defaults to ``"cpu"``.
+            batch_size: The number of masked images per forward pass (not part of the
+                configuration). Defaults to ``16``.
             normalize: Whether to center the game.
 
         Returns:
@@ -175,6 +201,9 @@ class ImageClassifier(ConfigMixin, Game):
             model,
             n_superpixels=n_superpixels,
             class_index=class_index,
+            batch_size=batch_size,
+            device=device,
+            revision=revision,
             normalize=normalize,
         )
         return game._set_config(
@@ -182,5 +211,7 @@ class ImageClassifier(ConfigMixin, Game):
             model=model,
             n_superpixels=n_superpixels,
             class_index=class_index,
+            revision=revision,
+            model_commit=game.model_commit,
             normalize=normalize,
         )

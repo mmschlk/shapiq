@@ -280,7 +280,8 @@ opt-in tests in `tests/shapiq_games/test_heavy_games.py` (`SHAPIQ_RUN_HEAVY_TEST
 - downloading `wine_quality`, `real_estate`, and `forest_fires` from UCI (not yet pinned by
   checksum),
 - the vision transformer, ResNet-18, and DistilBERT sentiment games, and the TabPFN games. The
-  Hugging Face models are not yet pinned to a revision.
+  Hugging Face models load their default branch unless a `revision` is given; the commit that was
+  loaded is recorded in the game's configuration and therefore in its fingerprint.
 
 All other datasets were checked to reproduce the previous loaders exactly.
 

@@ -38,6 +38,7 @@ class ViTPatchModel:
     Attributes:
         n_players: The number of players (super-patches).
         class_index: The explained class.
+        model_commit: The Hugging Face commit of the loaded model, or ``None`` if unknown.
     """
 
     def __init__(
@@ -58,7 +59,8 @@ class ViTPatchModel:
             class_index: The explained class, or ``None`` for the class predicted on the image.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
-            revision: The Hugging Face revision of the model (``None`` for the default branch).
+            revision: The Hugging Face revision (branch, tag, or commit) of the model. ``None``
+                loads the default branch; :attr:`model_commit` records what was loaded.
         """
         if n_players not in VIT_PATCH_GRIDS:
             msg = f"n_players must be one of {sorted(VIT_PATCH_GRIDS)}, got {n_players}."
@@ -75,6 +77,8 @@ class ViTPatchModel:
             VIT_MODEL_ID, revision=revision
         )
         model.eval().to(self._device)
+        commit = getattr(model.config, "_commit_hash", None)
+        self.model_commit: str | None = str(commit) if commit else None
         hidden_size = model.config.hidden_size
         # a zero mask token: masked patches lose their content but keep their position embedding
         model.vit.embeddings.mask_token = torch.nn.Parameter(
