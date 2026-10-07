@@ -177,6 +177,12 @@ uv run pre-commit run --all-files
 
 ## Benchmark export gotchas
 
+- `ExactComputer` k-SII aggregation omits exact-zero coordinates, while the
+  direct table formula serializes them explicitly. Compare their sparse vectors
+  with missing coordinates interpreted as zero; do not require identical key
+  sets or rewrite frozen references. Nonzero missing coefficients still need to
+  pass the numerical comparison.
+
 - Snapshot IDs use `runner.identity` with default JSON spacing, while recovery
   attempt software hashes use compact `recovery.row_hash` JSON. These hashes
   differ for the same object; reuse the matching encoding when auditing each
@@ -652,3 +658,7 @@ uv run pre-commit run --all-files
   do not establish that a 30-second cell limit leaves adequate estimator time;
   distinguish startup overhead from recorded estimator CPU time when explaining
   operational timeouts, and preserve the original attempt outcomes.
+- Hopper's `/usr/bin/python3` is older than the benchmark runtime. It can run
+  small standalone monitoring scripts, but importing repository helpers can fail
+  on newer Python syntax or runtime types (for example `isinstance(x, int | float)`).
+  Use the pinned benchmark interpreter for repository code and ledger helpers.
