@@ -18,7 +18,9 @@ def test_about_asset_is_current_and_self_contained() -> None:
     identifiers = re.findall(r'\bid="([^"]+)"', rendered)
     assert len(identifiers) == len(set(identifiers))
     assert set(re.findall(r'href="#([^"]+)"', rendered)) <= set(identifiers)
-    assert "scores" in identifiers  # Existing dashboard help link.
+    dashboard_targets = re.findall(r'href="about\.html#([^"]+)"', (SITE / "index.html").read_text())
+    assert dashboard_targets
+    assert set(dashboard_targets) <= set(identifiers)
     assets = json.loads((SITE / "assets.json").read_text())
     assert {"about.html", "about.css", "about.md"} <= set(assets)
     assert "about.js" not in assets

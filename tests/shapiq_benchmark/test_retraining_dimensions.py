@@ -69,11 +69,12 @@ def test_input_width_preserves_row_players_and_splits(small_data: np.ndarray, fa
     json.dumps([small, large], allow_nan=False)
 
 
-def test_feature_selection_dimensions_are_nested(small_data: np.ndarray) -> None:
-    """Feature-selection players are inputs; nested subsets retain the same row split."""
+@pytest.mark.parametrize("family", ["feature_selection", "local_baseline"])
+def test_feature_player_dimensions_are_nested(small_data: np.ndarray, family: str) -> None:
+    """Feature players are inputs; nested subsets retain the same row split."""
     constructed = [
         make_family(
-            "feature_selection",
+            family,
             dataset="breast_cancer",
             n_players=count,
             model_profile="linear",
@@ -119,7 +120,7 @@ def test_omitted_options_keep_legacy_features_and_model_identity(
     "family,extra",
     [
         ("feature_selection", {"input_features": 12}),
-        ("local_baseline", {"feature_rule": "nested"}),
+        ("local_baseline", {"feature_rule": "continuous"}),
         ("data_valuation", {"input_features": 0}),
         ("data_valuation", {"input_features": True}),
         ("dataset_valuation", {"input_features": 31}),
@@ -270,7 +271,7 @@ def test_public_exclusions_keep_explicit_dimensions() -> None:
         {"family": "feature_selection", "model_profile": "linear", "input_features": 12},
         {"family": "data_valuation", "input_features": 12},
         {"family": "data_valuation", "model_profile": "linear", "input_features": True},
-        {"family": "local_baseline", "model_profile": "linear", "feature_rule": "nested"},
+        {"family": "local_baseline", "model_profile": "linear", "feature_rule": "continuous"},
     ],
 )
 def test_invalid_materialization_dimensions_make_no_artifacts(tmp_path: Path, spec: dict) -> None:
