@@ -23,23 +23,28 @@
 
 ### Bugfix
 
+- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
+- `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
+- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
+- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
+Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
+- fixes `MarginalImputer` mixing two level of qualities in estimating the marginalized model output. While, the empty prediction was computed over the whole dataset, each individual coalition was subsampled by default. Each `v(S) - v(∅)` contained the gap between the two estimates. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `MarginalImputer.init_background` keeping the row limit of an earlier, smaller background data set, which would silently use fewer rows of a larger new background than `sample_size` allows. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes the benchmark ground truth of path-dependent tree games, which ignored the requested index and order and always returned order-1 Shapley values, and of interventional tree games, which crashed for orders of four and above.
 - fixes the benchmark's Kendall's tau, which correlated `argsort` positions instead of values (a true tau of 0.97 scored 0.55); `KendallTau@k` used the k smallest values and `Spearman@k` ignored `k`.
 - fixes the ResNet image game, whose superpixels were drawn on the full image while the model only sees a 224x224 center crop, so regions near the border were partly or fully invisible to it; the game now explains that crop.
 - fixes games that silently ran on wrong models or data: the California housing neural network ran with random weights, the last ResNet superpixel was always empty, accuracy compared argmax column indices with class labels, the games' fork of the interventional game diverged from core on multiclass LightGBM, and unseeded random explained points and synthetic datasets made games irreproducible.
 
+### Improved API Behavior
+
+- `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
+
 ### Maintenance
 
+- vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 - removes all bundled data files from the packages (~89 MB of CSVs and images in `shapiq_games`, and the three CSVs of `shapiq.datasets`, whose loaders fall back to their existing download), so the wheel ships code only.
-
-## Unreleased
-
-### Bugfix
-
-- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
-### Bugfix
-- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
-Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 
 
 ## v1.7.0 (2026-08-27)

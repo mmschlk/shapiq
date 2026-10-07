@@ -100,16 +100,10 @@ def _compare(
     assert gt.max_order == iv.max_order
     assert gt.min_order == iv.min_order
 
-    for key in gt.dict_values:
-        assert key in iv.dict_values, f"Key {key} not found in computed interaction values."
-        assert gt.dict_values[key] == pytest.approx(iv.dict_values[key], abs=tolerance), (
+    # Aggregation omits exact zeros; compare their implicit values as well as stored values.
+    for key in gt.dict_values.keys() | iv.dict_values.keys():
+        assert gt[key] == pytest.approx(iv[key], abs=tolerance), (
             f"Interaction value for key {key} does not match ground truth."
-        )
-
-    for key in iv.dict_values:
-        assert key in gt.dict_values, f"Key {key} not found in ground truth interaction values."
-        assert iv.dict_values[key] == pytest.approx(gt.dict_values[key], abs=tolerance), (
-            f"Computed interaction value for key {key} does not match ground truth."
         )
 
     # check baseline value
@@ -117,6 +111,42 @@ def _compare(
         assert gt.baseline_value == pytest.approx(iv.baseline_value, abs=tolerance), (
             f"Baseline value for index {index} and order {order} does not match ground truth."
         )
+
+
+@pytest.mark.parametrize("extra_value", [0.0, 1e-16, -0.00026785016536479134])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_compare_sparse_zero(extra_value: float, *, reverse: bool) -> None:
+    """Sparse zeros and small platform differences obey the existing numeric tolerance."""
+    sparse = InteractionValues(
+        values={(0,): 1.0}, index="k-SII", n_players=2, min_order=1, max_order=2
+    )
+    explicit = InteractionValues(
+        values={(0,): 1.0, (0, 1): extra_value},
+        index="k-SII",
+        n_players=2,
+        min_order=1,
+        max_order=2,
+    )
+    gt, iv = (explicit, sparse) if reverse else (sparse, explicit)
+    _compare(gt, iv, index="k-SII", order=2)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_compare_missing_nonzero(*, reverse: bool) -> None:
+    """An omitted coefficient above the existing tolerance remains an error."""
+    sparse = InteractionValues(
+        values={(0,): 1.0}, index="k-SII", n_players=2, min_order=1, max_order=2
+    )
+    explicit = InteractionValues(
+        values={(0,): 1.0, (0, 1): 0.1},
+        index="k-SII",
+        n_players=2,
+        min_order=1,
+        max_order=2,
+    )
+    gt, iv = (explicit, sparse) if reverse else (sparse, explicit)
+    with pytest.raises(AssertionError, match="does not match ground truth"):
+        _compare(gt, iv, index="k-SII", order=2)
 
 
 @pytest.mark.integration

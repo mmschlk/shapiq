@@ -265,7 +265,8 @@ static PyObject *forest_to_treemodel_list(const ParsedForest &forest, const char
 			Py_DECREF(result);
 			return NULL;
 		}
-		if (PyDict_SetItemString(kwargs, "decision_type", decision_type) < 0)
+		if (PyDict_SetItemString(kwargs, "decision_type", decision_type) < 0 ||
+			(forest.negated_class_one && PyDict_SetItemString(kwargs, "negated_class_one", Py_True) < 0))
 		{
 			Py_DECREF(decision_type);
 			Py_DECREF(kwargs);
@@ -709,6 +710,14 @@ static PyObject *create_edge_tree_arrays(PyObject *self, PyObject *args)
 }
 
 
+// Raises a C++ parser exception as a Python exception: invalid arguments (e.g. an invalid
+// class_label) as ValueError, everything else as RuntimeError.
+static void set_parser_error(const std::exception &exc)
+{
+	PyObject *type = dynamic_cast<const std::invalid_argument *>(&exc) ? PyExc_ValueError : PyExc_RuntimeError;
+	PyErr_SetString(type, exc.what());
+}
+
 static PyObject *parse_xgboost_ubjson(PyObject *self, PyObject *args)
 {
 	(void)self;
@@ -727,7 +736,8 @@ static PyObject *parse_xgboost_ubjson(PyObject *self, PyObject *args)
 			static_cast<const uint8_t *>(ubjson_buffer.buf),
 			static_cast<size_t>(ubjson_buffer.len),
 			class_label,
-			margin_base_score);
+			margin_base_score,
+			false);
 
 		PyObject *node_ids = forest_field_to_pylist<int64_t>(forest, &ParsedTreeArrays::node_ids, NPY_INT64);
 		PyObject *feature_ids = forest_field_to_pylist<int64_t>(forest, &ParsedTreeArrays::feature_ids, NPY_INT64);
@@ -778,7 +788,7 @@ static PyObject *parse_xgboost_ubjson(PyObject *self, PyObject *args)
 	catch (const std::exception &exc)
 	{
 		PyBuffer_Release(&ubjson_buffer);
-		PyErr_SetString(PyExc_RuntimeError, exc.what());
+		set_parser_error(exc);
 		return NULL;
 	}
 }
@@ -789,9 +799,10 @@ static PyObject *parse_xgboost_ubjson_treemodels(PyObject *self, PyObject *args)
 	Py_buffer ubjson_buffer;
 	int class_label = -1;
 	double margin_base_score = 0.0;
+	int is_classifier = 0;
 	ubjson_buffer.buf = NULL;
 
-	if (!PyArg_ParseTuple(args, "y*id", &ubjson_buffer, &class_label, &margin_base_score))
+	if (!PyArg_ParseTuple(args, "y*id|p", &ubjson_buffer, &class_label, &margin_base_score, &is_classifier))
 	{
 		return NULL;
 	}
@@ -802,7 +813,8 @@ static PyObject *parse_xgboost_ubjson_treemodels(PyObject *self, PyObject *args)
 			static_cast<const uint8_t *>(ubjson_buffer.buf),
 			static_cast<size_t>(ubjson_buffer.len),
 			class_label,
-			margin_base_score);
+			margin_base_score,
+			is_classifier != 0);
 		PyObject *result = forest_to_treemodel_list(forest, "<", true);
 		if (!result)
 		{
@@ -815,7 +827,7 @@ static PyObject *parse_xgboost_ubjson_treemodels(PyObject *self, PyObject *args)
 	catch (const std::exception &exc)
 	{
 		PyBuffer_Release(&ubjson_buffer);
-		PyErr_SetString(PyExc_RuntimeError, exc.what());
+		set_parser_error(exc);
 		return NULL;
 	}
 }
@@ -825,9 +837,10 @@ static PyObject *parse_lightgbm_string_treemodels(PyObject *self, PyObject *args
 	(void)self;
 	Py_buffer model_string_buffer;
 	int class_label = -1;
+	int is_classifier = 0;
 	model_string_buffer.buf = NULL;
 
-	if (!PyArg_ParseTuple(args, "y*i", &model_string_buffer, &class_label))
+	if (!PyArg_ParseTuple(args, "y*i|p", &model_string_buffer, &class_label, &is_classifier))
 	{
 		return NULL;
 	}
@@ -837,7 +850,8 @@ static PyObject *parse_lightgbm_string_treemodels(PyObject *self, PyObject *args
 		ParsedForest forest = parse_lightgbm_text_to_forest(
 			static_cast<const char *>(model_string_buffer.buf),
 			static_cast<size_t>(model_string_buffer.len),
-			class_label);
+			class_label,
+			is_classifier != 0);
 		PyObject *result = forest_to_treemodel_list(forest, "<=", false);
 		if (!result)
 		{
@@ -850,7 +864,7 @@ static PyObject *parse_lightgbm_string_treemodels(PyObject *self, PyObject *args
 	catch (const std::exception &exc)
 	{
 		PyBuffer_Release(&model_string_buffer);
-		PyErr_SetString(PyExc_RuntimeError, exc.what());
+		set_parser_error(exc);
 		return NULL;
 	}
 }
@@ -860,16 +874,17 @@ static PyObject *parse_catboost_json_treemodels(PyObject *self, PyObject *args)
 	(void)self;
 	Py_buffer json_buffer;
 	int class_label = -1;
+	int is_classifier = 0;
 	json_buffer.buf = NULL;
 
-	if (!PyArg_ParseTuple(args, "y*i", &json_buffer, &class_label))
+	if (!PyArg_ParseTuple(args, "y*i|p", &json_buffer, &class_label, &is_classifier))
 	{
 		return NULL;
 	}
 
 	try
 	{
-		ParsedForest forest = parse_catboost_json_to_forest(static_cast<const char *>(json_buffer.buf), static_cast<size_t>(json_buffer.len), class_label);
+		ParsedForest forest = parse_catboost_json_to_forest(static_cast<const char *>(json_buffer.buf), static_cast<size_t>(json_buffer.len), class_label, is_classifier != 0);
 		PyObject *result = forest_to_treemodel_list(forest, "<=", false);
 		PyBuffer_Release(&json_buffer);
 		return result;
@@ -877,7 +892,7 @@ static PyObject *parse_catboost_json_treemodels(PyObject *self, PyObject *args)
 	catch (const std::exception &exc)
 	{
 		PyBuffer_Release(&json_buffer);
-		PyErr_SetString(PyExc_RuntimeError, exc.what());
+		set_parser_error(exc);
 		return NULL;
 	}
 }
