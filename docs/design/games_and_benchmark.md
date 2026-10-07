@@ -107,7 +107,7 @@ changes between processes, so it cannot be used as a cache key.
    - KNN games: `model`, `x`, `class_index`
    - product kernel: `model`, `x`
 8. **Import hygiene.** No import-time warnings. Optional dependencies (torch, transformers, tabpfn, openml, xgboost, lightgbm, catboost) are imported lazily, with an error that names the missing package.
-9. **Pinned external models.** Pretrained models are pinned to an exact revision (Hugging Face `revision=`, a torchvision weights enum).
+9. **Named external models.** A pretrained model is identified by its name in the configuration (a Hugging Face model id, optionally with a `revision=`; a torchvision weights enum). A new model version is a new name; package versions are not tracked.
 
 Each family gets contract tests on a small offline configuration:
 - the same coalition repeated gives the same value
@@ -227,7 +227,7 @@ results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[
 ```
 
 - `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
-- Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<environment>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, where `<environment>` hashes the installed versions of shapiq and the model libraries, so an upgrade never reuses ground truth computed with other versions. Games built from objects (no fingerprint) are not cached.
+- Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`. Games built from objects (no fingerprint) are not cached. The cache does not track package or model versions: the configuration identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute.
 - `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. String configuration lives in the games' `from_config`.
 
 ### Chain of trust (enforced by `tests/shapiq_benchmark`)
@@ -301,8 +301,7 @@ the real data and models. All 25 passed on 2026-10-07:
 - a TabArena download, the UCI raw files (all pinned by SHA-256), and Imagenette,
 - the vision transformer, ResNet-18, and DistilBERT sentiment games with their pretrained weights,
   and the TabPFN recontextualization and confounding games. The Hugging Face models load their
-  default branch unless a `revision` is given; the commit that was loaded is recorded in the
-  game's configuration and therefore in its fingerprint.
+  default branch unless a `revision` is given.
 
 Beyond the tests, all 51 TabArena datasets were downloaded and loaded: every one has finite
 features, the declared task, and (for the 38 classification datasets) the number of classes

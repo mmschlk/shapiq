@@ -32,8 +32,6 @@ def test_vision_transformer_game() -> None:
 
     game = ImageClassifier.from_config(index=0, size="160px", model="vit_9_patches")
     assert game.n_players == 9
-    assert game.config is not None
-    assert game.config["model_commit"]  # the loaded Hugging Face commit is recorded
     assert 0.0 <= game(game.grand_coalition)[0] + game.normalization_value <= 1.0
     _assert_deterministic(game)
 
@@ -56,8 +54,6 @@ def test_sentiment_game() -> None:
 
     game = SentimentAnalysis.from_config(input_text="This movie was surprisingly good.")
     assert -1.0 <= game.original_model_output <= 1.0
-    assert game.config is not None
-    assert game.config["model_commit"]  # the loaded Hugging Face commit is recorded
     _assert_deterministic(game)
 
 

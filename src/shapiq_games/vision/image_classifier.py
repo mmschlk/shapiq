@@ -128,7 +128,6 @@ class ImageClassifier(ConfigMixin, Game):
         regions: The player of every pixel, of shape ``(height, width)``, numbered from ``0``.
         class_index: The explained class.
         class_name: The name of the explained class, if the model provides class names.
-        model_commit: The Hugging Face commit of a vision transformer, ``None`` for other models.
 
     Examples:
         >>> image = np.random.default_rng(0).integers(0, 255, (64, 64, 3), dtype=np.uint8)
@@ -178,8 +177,8 @@ class ImageClassifier(ConfigMixin, Game):
             batch_size: The number of masked images per forward pass. Defaults to ``16``.
             device: The torch device of the builtin models. Defaults to ``"cpu"``.
             revision: The Hugging Face revision (branch, tag, or commit) of the vision
-                transformer. ``None`` loads the default branch; :attr:`model_commit` records what
-                was loaded. ResNet-18 uses pinned torchvision weights and takes no revision.
+                transformer. ``None`` loads the default branch. ResNet-18 uses pinned torchvision
+                weights and takes no revision.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
@@ -191,7 +190,6 @@ class ImageClassifier(ConfigMixin, Game):
         """
         self.image = _as_rgb_array(image)
         self.batch_size = batch_size
-        self.model_commit: str | None = None
         self.class_name: str | None = None
         self._vit: ViTPatchModel | None = None
 
@@ -214,7 +212,6 @@ class ImageClassifier(ConfigMixin, Game):
             self.regions = grid_regions(*self.image.shape[:2], grid, grid)
             self.class_index = self._vit.class_index
             self.class_name = self._vit.class_name
-            self.model_commit = self._vit.model_commit
         else:
             if revision is not None:
                 msg = "revision applies to the vision transformer models only."
@@ -351,9 +348,6 @@ class ImageClassifier(ConfigMixin, Game):
     ) -> Self:
         """Build the game for an Imagenette image (see :func:`shapiq_games.datasets.load_imagenette`).
 
-        The configuration records the Hugging Face commit of a vision transformer, so a new
-        version of the model gets a new fingerprint and never reuses cached ground truth.
-
         Args:
             index: The position of the image in the split. Defaults to ``0``.
             split: The Imagenette split, ``"val"`` (default) or ``"train"``.
@@ -396,6 +390,5 @@ class ImageClassifier(ConfigMixin, Game):
             fill=fill,
             class_index=class_index,
             revision=revision,
-            model_commit=game.model_commit,
             normalize=normalize,
         )

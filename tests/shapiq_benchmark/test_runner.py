@@ -9,7 +9,6 @@ import pytest
 
 import shapiq
 from shapiq_benchmark import Benchmark, BruteForceComputer, run, save_results
-from shapiq_benchmark.benchmark import environment_key
 from shapiq_benchmark.runner import build_approximator
 from shapiq_games import SOUM, DummyGame, KNNGame
 
@@ -36,8 +35,7 @@ def test_ground_truth_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     first = benchmark.exact_values("SV", 1)
     files = list((tmp_path / "ground_truth").rglob("*.json"))
     assert [file.name for file in files] == ["knn_SV_1.json"]
-    assert files[0].parent.parent.name == game.fingerprint
-    assert files[0].parent.name == environment_key()
+    assert files[0].parent.name == game.fingerprint
 
     calls = []
     original = benchmark.computer.exact_values

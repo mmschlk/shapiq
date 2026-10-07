@@ -108,7 +108,6 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
             self.n_players = n_players
             self.class_index = 7
             self.class_name = "tabby cat"
-            self.model_commit = "abc"
 
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             return coalitions.mean(axis=1)

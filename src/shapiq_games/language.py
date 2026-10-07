@@ -28,7 +28,6 @@ class SentimentAnalysis(ConfigMixin, Game):
         input_text: The decoded input text.
         tokens: The token ids of the players.
         original_model_output: The signed score of the full text.
-        model_commit: The Hugging Face commit of the loaded model, or ``None`` if unknown.
 
     Examples:
         >>> game = SentimentAnalysis("A great cast, but a thin plot.")  # doctest: +SKIP
@@ -59,7 +58,7 @@ class SentimentAnalysis(ConfigMixin, Game):
                 the label of the default model.
             device: The device of the default pipeline.
             revision: The Hugging Face revision (branch, tag, or commit) of the default model.
-                ``None`` loads the default branch; :attr:`model_commit` records what was loaded.
+                ``None`` loads the default branch.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
@@ -86,7 +85,6 @@ class SentimentAnalysis(ConfigMixin, Game):
         self.positive_label = positive_label
         self._classifier = classifier
         self._tokenizer = classifier.tokenizer
-        self.model_commit = _commit_hash(classifier)
         self.tokens = np.asarray(
             self._tokenizer(input_text, add_special_tokens=False)["input_ids"], dtype=int
         )
@@ -138,9 +136,6 @@ class SentimentAnalysis(ConfigMixin, Game):
     ) -> Self:
         """Build the game with the default sentiment model.
 
-        The configuration records the Hugging Face commit of the loaded model, so a new version
-        of the model gets a new fingerprint and never reuses cached ground truth.
-
         Args:
             input_text: The text to explain.
             mask_strategy: ``"mask"`` or ``"remove"``.
@@ -162,14 +157,6 @@ class SentimentAnalysis(ConfigMixin, Game):
             input_text=input_text,
             model=SENTIMENT_MODEL_ID,
             revision=revision,
-            model_commit=game.model_commit,
             mask_strategy=mask_strategy,
             normalize=normalize,
         )
-
-
-def _commit_hash(classifier: Any) -> str | None:  # noqa: ANN401
-    """Return the Hugging Face commit of a pipeline's model, or ``None`` if it is unknown."""
-    config = getattr(getattr(classifier, "model", None), "config", None)
-    commit = getattr(config, "_commit_hash", None)
-    return str(commit) if commit else None
