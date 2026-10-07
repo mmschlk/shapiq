@@ -327,18 +327,18 @@ class KNNComputer(Computer):
     """Nearest-neighbor games via the KNN, weighted KNN, and threshold NN explainers.
 
     A :class:`~shapiq_games.nn.WeightedKNNGame` is supported when it uses the explainer's weight
-    discretization (``n_bits`` is set).
+    discretization (``n_bits`` is set) and ``k > 1``.
     """
 
     name = "knn"
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """KNN, weighted KNN (with ``n_bits``), and threshold NN games."""
+        """KNN, weighted KNN (with ``n_bits`` and ``k > 1``), and threshold NN games."""
         from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 
-        if isinstance(game, WeightedKNNGame):
-            return game.n_bits is not None
+        if isinstance(game, WeightedKNNGame):  # the weighted KNN explainer needs k > 1
+            return game.n_bits is not None and game.k > 1
         return isinstance(game, KNNGame | ThresholdNNGame)
 
     @classmethod

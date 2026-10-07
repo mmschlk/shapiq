@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -30,6 +30,9 @@ __all__ = [
     "WeightedKNNSetup",
 ]
 
+type TreeModel = Literal["decision_tree", "random_forest", "xgboost", "lightgbm", "catboost"]
+"""The tree models of the registry."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class PathDependentTreeSetup(ModelSetup, name="path_dependent_tree"):
@@ -50,7 +53,7 @@ class PathDependentTreeSetup(ModelSetup, name="path_dependent_tree"):
         4
     """
 
-    model: str = "decision_tree"
+    model: TreeModel = "decision_tree"
     x: int = 0
     class_index: int | None = None
     normalize: bool = True
@@ -87,7 +90,7 @@ class InterventionalTreeSetup(ModelSetup, name="interventional_tree"):
         (20, 4)
     """
 
-    model: str = "decision_tree"
+    model: TreeModel = "decision_tree"
     x: int = 0
     n_reference: int = 100
     class_index: int | None = None
@@ -111,6 +114,7 @@ class _NearestNeighborSetup(TabularSetup):
     """Shared fields: ``n_train`` training points as players, a point from the test split."""
 
     model_name: ClassVar[str]
+    tasks = ("classification",)
 
     n_train: int = 10
     x: int = 0
@@ -120,9 +124,6 @@ class _NearestNeighborSetup(TabularSetup):
     def _fit(self) -> tuple[Any, np.ndarray]:
         """Fit the nearest-neighbor model on the players; return it and the explained point."""
         split = self.load_split()
-        if split.task != "classification":
-            msg = f"{type(self).__name__} needs a classification dataset, got '{self.dataset}'."
-            raise ValueError(msg)
         indices = np.arange(split.x_train.shape[0])
         if self.n_train < indices.shape[0]:
             try:  # seeded and stratified, where every class has enough points
@@ -237,7 +238,7 @@ class ProductKernelSetup(ModelSetup, name="product_kernel"):
         30
     """
 
-    model: str = "svm"
+    model: Literal["svm", "gaussian_process"] = "svm"
     x: int = 0
     n_train: int = 500
     normalize: bool = False

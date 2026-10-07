@@ -5,13 +5,21 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 import pytest
 
 import shapiq
 from shapiq_benchmark import Benchmark, BruteForceComputer, run, save_results
+from shapiq_benchmark.computers import PathDependentTreeComputer, UnsupportedComputationError
 from shapiq_benchmark.runner import build_approximator
-from shapiq_benchmark.setups import KNNSetup, setup_from_dict
+from shapiq_benchmark.setups import (
+    DataValuationSetup,
+    KNNSetup,
+    PathDependentTreeSetup,
+    WeightedKNNSetup,
+    setup_from_dict,
+)
 from shapiq_games import SOUM, DummyGame
 
 if TYPE_CHECKING:
@@ -69,6 +77,54 @@ def test_games_without_setup_are_not_cached(
     benchmark.exact_values("SV", 1)
     assert benchmark.key is None
     assert not (tmp_path / "ground_truth").exists()
+
+
+def test_benchmark_falls_back_to_brute_force(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A defaulted computer is completed by brute force; an explicit one is not."""
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+    benchmark = Benchmark.from_setup(PathDependentTreeSetup(dataset="xor"))
+    assert benchmark.computer.name == "path_dependent_tree"
+    assert benchmark.computer_for("FSII", 2).name == "brute_force"
+    assert benchmark.exact_values("FSII", 2).index == "FSII"
+    assert (tmp_path / "ground_truth" / "path_dependent_tree").rglob("brute_force_FSII_2.json")
+    explicit = Benchmark(benchmark.game, PathDependentTreeComputer(benchmark.game))
+    assert not explicit.supports("FSII", 2)
+    with pytest.raises(UnsupportedComputationError):
+        explicit.exact_values("FSII", 2)
+    # the weighted KNN explainer needs k > 1, so brute force computes k = 1
+    knn = Benchmark.from_setup(
+        WeightedKNNSetup(dataset="xor", n_train=8, n_bits=3, model_params={"n_neighbors": 1})
+    )
+    assert knn.computer.name == "brute_force"
+
+
+def test_from_setup_passes_the_player_cap_to_the_computer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+    setup = DataValuationSetup(dataset="xor", n_players=21)
+    with pytest.raises(UnsupportedComputationError, match="capped at 20"):
+        Benchmark.from_setup(setup, BruteForceComputer)
+    assert Benchmark.from_setup(setup, BruteForceComputer, max_players=21).game.n_players == 21
+
+
+def test_top_order_estimates_are_scored_on_their_order() -> None:
+    """SHAP-IQ estimates FSII of the top order only; it is scored on that order alone."""
+    benchmark = Benchmark(SOUM(8, 15, max_interaction_size=2, random_state=0))
+    results = run(
+        benchmark,
+        [shapiq.SHAPIQ, shapiq.RegressionFSII],
+        budgets=[2**8],
+        index="FSII",
+        order=2,
+        with_faithfulness=True,
+    ).set_index("approximator")
+    assert results.loc["SHAPIQ", "scored_orders"] == "2"
+    assert results.loc["SHAPIQ", "mse"] < 1e-20
+    assert np.isnan(results.loc["SHAPIQ", "faithfulness"])
+    assert results.loc["RegressionFSII", "scored_orders"] == "1-2"
 
 
 def test_build_approximator_respects_signatures() -> None:

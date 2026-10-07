@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from shapiq_benchmark.models import build_model
+from shapiq_benchmark.models import MODEL_NAMES, build_model
 from shapiq_games import (
     ClusterExplanation,
     DatasetValuation,
@@ -23,13 +23,13 @@ from shapiq_games import (
     UnsupervisedData,
 )
 from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
+from shapiq_games._training import MetricName  # noqa: TC001  (resolved by the field checks)
+from shapiq_games.uncertainty import Uncertainty  # noqa: TC001
 
 from ._base import ModelSetup, TabularSetup
 
 if TYPE_CHECKING:
     from shapiq.imputer.base import Imputer
-    from shapiq_games._training import MetricName
-    from shapiq_games.uncertainty import Uncertainty
 
 __all__ = [
     "DEFAULT_MEMBER_POOL",
@@ -109,6 +109,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
             point,
             imputer=imputer,  # type: ignore[arg-type]
             class_index=self.class_index,
+            sample_size=self.n_background,
             random_state=self.random_state,
             normalize=self.normalize,
         )
@@ -346,10 +347,12 @@ class EnsembleSelectionSetup(TabularSetup, name="ensemble_selection"):
     normalize: bool = True
 
     def __post_init__(self) -> None:
-        """Store the members as a tuple, so that a setup read from JSON equals the original."""
-        if self.members is not None:
-            object.__setattr__(self, "members", tuple(self.members))
+        """Check the member names."""
         super().__post_init__()
+        unknown = sorted(set(self.members or ()) - set(MODEL_NAMES))
+        if unknown:
+            msg = f"Unknown member models {unknown}. Available: {', '.join(MODEL_NAMES)}."
+            raise ValueError(msg)
 
     def build(self) -> EnsembleSelection:
         """Train the members and build the game on the test split."""
@@ -434,6 +437,8 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
         30
     """
 
+    tasks = ("classification",)
+
     x: int = 0
     uncertainty: Uncertainty = "total"
     imputer: Literal["marginal", "conditional", "baseline"] = "marginal"
@@ -444,9 +449,6 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
     def build(self) -> UncertaintyExplanation:
         """Train the forest and build the game."""
         split = self.load_split()
-        if split.task != "classification":
-            msg = f"UncertaintyExplanation needs a classification dataset, got '{self.dataset}'."
-            raise ValueError(msg)
         forest = build_model(
             "random_forest", split.task, random_state=self.random_state, **self.model_params
         ).fit(split.x_train, split.y_train)
@@ -457,6 +459,7 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
             resolve_x(self.x, split.x_test),
             uncertainty=self.uncertainty,
             imputer=self.imputer,
+            sample_size=self.n_background,
             random_state=self.random_state,
             normalize=self.normalize,
         )

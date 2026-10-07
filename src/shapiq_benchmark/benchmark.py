@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import tempfile
 from pathlib import Path
@@ -10,7 +11,12 @@ from typing import TYPE_CHECKING
 from shapiq import InteractionValues
 from shapiq_benchmark.datasets import get_data_dir
 
-from .computers import DEFAULT_MAX_PLAYERS, default_computer
+from .computers import (
+    DEFAULT_MAX_PLAYERS,
+    BruteForceComputer,
+    UnsupportedComputationError,
+    default_computer,
+)
 
 if TYPE_CHECKING:
     from shapiq import Game
@@ -30,6 +36,10 @@ class Benchmark:
     :func:`shapiq_benchmark.datasets.get_data_dir`), keyed by the computer, index, and order. The
     setup identifies the game; a new model belongs under a new name. Delete the directory, or
     pass ``cache=False``, to recompute.
+
+    Without an explicit computer, the benchmark uses :func:`default_computer` and falls back to
+    brute force (up to ``max_players`` players) for the indices and orders that computer does not
+    support; :meth:`computer_for` names the computer used.
 
     Examples:
         >>> from shapiq_benchmark.setups import PathDependentTreeSetup
@@ -57,6 +67,9 @@ class Benchmark:
             ValueError: If the computer is bound to another game.
         """
         self.game = game
+        self.max_players = max_players
+        self._fallback = computer is None  # brute force where the default computer cannot
+        self._brute_force: Computer | None = None
         self.computer = (
             computer if computer is not None else default_computer(game, max_players=max_players)
         )
@@ -82,17 +95,17 @@ class Benchmark:
             computer: The class of the ground-truth computer. Defaults to
                 :func:`default_computer` of the game.
             cache: Whether to cache the exact values under the setup's key. Defaults to ``True``.
-            max_players: The player cap of brute force when no computer is given.
+            max_players: The player cap of brute force, also passed to a computer class that
+                takes it.
 
         Returns:
             The benchmark.
         """
         game = setup.build()
-        benchmark = cls(
-            game,
-            computer(game) if computer is not None else None,
-            max_players=max_players,
-        )
+        if computer is not None:
+            takes_cap = "max_players" in inspect.signature(computer).parameters
+            bound = computer(game, max_players=max_players) if takes_cap else computer(game)  # type: ignore[call-arg]
+        benchmark = cls(game, bound if computer is not None else None, max_players=max_players)
         benchmark.setup = setup
         benchmark.cache = cache
         return benchmark
@@ -107,9 +120,20 @@ class Benchmark:
             return None
         return get_data_dir() / "ground_truth" / self.setup.name / self.setup.key
 
+    def computer_for(self, index: str, order: int) -> Computer:
+        """Return the computer of ``index`` up to ``order``: brute force where it must fill in."""
+        if not self._fallback or self.computer.supports(index, order):
+            return self.computer
+        if self._brute_force is None:
+            try:
+                self._brute_force = BruteForceComputer(self.game, max_players=self.max_players)
+            except UnsupportedComputationError:  # too many players
+                return self.computer
+        return self._brute_force if self._brute_force.supports(index, order) else self.computer
+
     def supports(self, index: str, order: int) -> bool:
-        """Return whether the computer supports ``index`` up to ``order``."""
-        return self.computer.supports(index, order)
+        """Return whether the benchmark can compute ``index`` up to ``order``."""
+        return self.computer_for(index, order).supports(index, order)
 
     def exact_values(self, index: str, order: int) -> InteractionValues:
         """Return the exact interaction values of order 1 to ``order`` (cached if possible).
@@ -121,13 +145,12 @@ class Benchmark:
         Returns:
             The exact values (see :meth:`Computer.exact_values`).
         """
+        computer = self.computer_for(index, order)
         directory = self._cache_dir()
-        path = (
-            None if directory is None else directory / f"{self.computer.name}_{index}_{order}.json"
-        )
+        path = None if directory is None else directory / f"{computer.name}_{index}_{order}.json"
         if path is not None and path.exists():
             return InteractionValues.from_json_file(path)
-        values = self.computer.exact_values(index, order)
+        values = computer.exact_values(index, order)
         if directory is not None and path is not None and self.setup is not None:
             directory.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(dir=directory) as tmp:

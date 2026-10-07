@@ -18,7 +18,10 @@ from shapiq.utils import powerset
 if TYPE_CHECKING:
     from shapiq import Game, InteractionValues
 
-__all__ = ["compare", "error_metrics", "faithfulness", "ranking_metrics"]
+__all__ = ["RANK_TOLERANCE", "compare", "error_metrics", "faithfulness", "ranking_metrics"]
+
+RANK_TOLERANCE = 1e-6
+"""Values closer than this times the largest absolute ground-truth value rank as equal."""
 
 
 def _aligned(
@@ -29,8 +32,11 @@ def _aligned(
     """Return the compared interactions and their ground-truth and estimated values."""
     if order is None:
         min_size, max_size = 1, ground_truth.max_order
-    else:
+    elif 1 <= order <= ground_truth.max_order:
         min_size = max_size = order
+    else:
+        msg = f"order must be between 1 and the ground truth's max_order {ground_truth.max_order}."
+        raise ValueError(msg)
     interactions = list(
         powerset(range(ground_truth.n_players), min_size=min_size, max_size=max_size)
     )
@@ -66,6 +72,10 @@ def _top_k(values: np.ndarray, k: int) -> np.ndarray:
 def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> dict[str, float]:
     """Return rank agreement metrics between two aligned value vectors.
 
+    Values that differ by less than :data:`RANK_TOLERANCE` times the largest absolute ground-truth
+    value rank as equal, so float noise does not order values that are equal (e.g. the many zeros
+    of a sparse game).
+
     Args:
         truth: The ground-truth values.
         estimated: The estimated values.
@@ -73,17 +83,25 @@ def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> di
 
     Returns:
         ``kendall_tau`` and ``spearman`` of all values; ``precision_at_k``, the share of the ``k``
-        interactions with the largest absolute ground truth among the ``k`` largest absolute
-        estimates; and ``kendall_tau_at_k``, Kendall's tau restricted to the top-``k`` ground-truth
-        interactions. Correlations of constant vectors are ``nan``.
+        largest absolute estimates that are among the largest absolute ground-truth values (all
+        values tied with the ``k``-th largest included); and ``kendall_tau_at_k``, Kendall's tau
+        restricted to those top ground-truth interactions. Correlations of constant vectors are
+        ``nan``.
     """
     k = min(k, truth.size)
-    top_truth = _top_k(truth, k)
+    if k == 0:
+        nan = float("nan")
+        return {"kendall_tau": nan, "spearman": nan, "precision_at_k": nan, "kendall_tau_at_k": nan}
+    scale = RANK_TOLERANCE * float(np.max(np.abs(truth)))
+    if scale > 0:
+        truth, estimated = np.round(truth / scale) * scale, np.round(estimated / scale) * scale
+    threshold = np.sort(np.abs(truth))[::-1][k - 1]  # the k-th largest absolute ground truth
+    top_truth = np.flatnonzero(np.abs(truth) >= threshold)
     top_estimate = _top_k(estimated, k)
     return {
         "kendall_tau": _correlation(kendalltau, truth, estimated),
         "spearman": _correlation(spearmanr, truth, estimated),
-        "precision_at_k": len(set(top_truth) & set(top_estimate)) / k if k else float("nan"),
+        "precision_at_k": float(np.mean(np.abs(truth[top_estimate]) >= threshold)),
         "kendall_tau_at_k": _correlation(kendalltau, truth[top_truth], estimated[top_truth]),
     }
 
@@ -113,6 +131,9 @@ def compare(
     Returns:
         The error metrics and the ranking metrics (see :func:`error_metrics` and
         :func:`ranking_metrics`).
+
+    Raises:
+        ValueError: If ``order`` is not between ``1`` and the ground truth's ``max_order``.
     """
     _, truth, estimated = _aligned(ground_truth, estimate, order)
     return {**error_metrics(truth, estimated), **ranking_metrics(truth, estimated, k=k)}

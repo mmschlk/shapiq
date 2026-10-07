@@ -85,7 +85,11 @@ def run(
     Returns:
         One row per approximator, budget, and seed with the columns ``approximator``, ``index``,
         ``order``, ``budget``, ``seed``, ``status`` (``"ok"``, ``"unsupported"``, or
-        ``"failed"``), ``error``, ``runtime_s``, the metrics, and descriptions of the benchmark.
+        ``"failed"``), ``error``, ``runtime_s``, ``scored_orders``, the metrics, and descriptions
+        of the benchmark. Estimates of all orders are scored on orders ``1`` to ``order``
+        (``scored_orders`` ``"1-2"`` for order 2). Approximators that estimate the top order only
+        (e.g. SHAP-IQ for FSII) are scored on that order (``scored_orders`` ``"2"``) and get no
+        faithfulness, so compare rows with equal ``scored_orders``.
     """
     budgets, seeds = list(budgets), list(seeds)  # they are iterated once per approximator
     if not isinstance(approximators, dict):
@@ -97,7 +101,7 @@ def run(
         "setup": benchmark.setup.name if benchmark.setup is not None else None,
         "key": benchmark.key,
         "n_players": game.n_players,
-        "computer": benchmark.computer.name,
+        "computer": benchmark.computer_for(index, order).name,
         "index": index,
         "order": order,
     }
@@ -125,9 +129,21 @@ def run(
                     start = time.perf_counter()
                     estimate = approximator.approximate(budget=budget, game=game)
                     runtime = time.perf_counter() - start
-                    metrics = compare(ground_truth, estimate, k=k)
-                    if with_faithfulness:
-                        metrics["faithfulness"] = faithfulness(game, estimate, random_state=seed)
+                    top_order_only = order > 1 and estimate.min_order == order
+                    metrics: dict[str, Any] = {
+                        "scored_orders": str(order)
+                        if top_order_only or order == 1
+                        else f"1-{order}",
+                        **compare(
+                            ground_truth, estimate, k=k, order=order if top_order_only else None
+                        ),
+                    }
+                    if with_faithfulness:  # a top-order-only estimate cannot rebuild the game
+                        metrics["faithfulness"] = (
+                            float("nan")
+                            if top_order_only
+                            else faithfulness(game, estimate, random_state=seed)
+                        )
                     rows.append({**row, "status": "ok", "runtime_s": runtime, **metrics})
                 except Exception as error:  # noqa: BLE001 - failures are results, not crashes
                     rows.append(

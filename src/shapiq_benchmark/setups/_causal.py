@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from shapiq_benchmark.datasets import load_curthvds_synthetic
-from shapiq_benchmark.models import build_model
+from shapiq_benchmark.models import MODEL_NAMES, build_model
 from shapiq_games import GlobalConfoundingXAI, LocalConfoundingXAI
-from shapiq_games.causal import tabpfn_regressor
+from shapiq_games.causal import Mode, tabpfn_regressor  # Mode is resolved by the field checks
 
 from ._base import Setup
 
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq_games.causal import Mode
 
 __all__ = ["GlobalConfoundingSetup", "LocalConfoundingSetup"]
 
@@ -32,6 +31,13 @@ class _ConfoundingSetup(Setup):
     mode: Mode = "signed"
     regressor: str = "tabpfn"
     random_state: int = 42
+
+    def __post_init__(self) -> None:
+        """Check the regressor name."""
+        super().__post_init__()
+        if self.regressor not in MODEL_NAMES:
+            msg = f"Unknown regressor {self.regressor!r}. Available: {', '.join(MODEL_NAMES)}."
+            raise ValueError(msg)
 
     def _data(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, Callable[[], Any]]:
         """Return covariates, treatment, outcome, and a factory of seeded regressors."""

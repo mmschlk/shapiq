@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import hashlib
 import json
+import types
+import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NoReturn
 
 import numpy as np
 
-from shapiq_benchmark.datasets import Dataset, DatasetSplit, load_dataset
-from shapiq_benchmark.models import build_model, fit_model
+from shapiq_benchmark.datasets import Dataset, DatasetSplit, get_dataset_spec, load_dataset
+from shapiq_benchmark.models import MODEL_NAMES, TUNED_PRESETS, build_model, fit_model
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -48,6 +51,96 @@ def _jsonable(value: object) -> Any:  # noqa: ANN401
     return json.loads(json.dumps(value, sort_keys=True, default=_to_builtin))
 
 
+class _FrozenDict(dict):
+    """A read-only dict, so that a setup cannot change after its key was taken."""
+
+    def __hash__(self) -> int:  # type: ignore[override]
+        return hash(json.dumps(self, sort_keys=True))
+
+    def __reduce__(self) -> tuple[type, tuple[dict]]:
+        return type(self), (dict(self),)
+
+    def _read_only(self, *_: object, **__: object) -> NoReturn:
+        msg = "The fields of a setup are read-only; create a new setup instead."
+        raise TypeError(msg)
+
+    __setitem__ = __delitem__ = __ior__ = _read_only  # type: ignore[assignment]
+    clear = pop = popitem = setdefault = update = _read_only  # type: ignore[assignment]
+
+
+def _check_keys(value: object, name: str) -> None:
+    """Reject dict keys that JSON would turn into strings (``{0: 1}`` would read back as ``{"0": 1}``)."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                msg = f"The dict keys of {name} must be strings, got {key!r}."
+                raise TypeError(msg)
+            _check_keys(item, name)
+    elif isinstance(value, list | tuple):
+        for item in value:
+            _check_keys(item, name)
+
+
+def _frozen(value: object) -> Any:  # noqa: ANN401
+    """Return a JSON value with read-only dicts and tuples instead of lists."""
+    if isinstance(value, dict):
+        return _FrozenDict({key: _frozen(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_frozen(item) for item in value)
+    return value
+
+
+def _literal_options(hint: object) -> tuple[object, ...]:
+    """Return the values of the ``Literal`` types in an annotation."""
+    if isinstance(hint, typing.TypeAliasType):
+        return _literal_options(hint.__value__)
+    if typing.get_origin(hint) is Literal:
+        return typing.get_args(hint)
+    if typing.get_origin(hint) in (typing.Union, types.UnionType):
+        return tuple(o for arg in typing.get_args(hint) for o in _literal_options(arg))
+    return ()
+
+
+def _matches(value: object, hint: object) -> bool:
+    """Return whether a field value fits its annotation, for the annotations setups use."""
+    if isinstance(hint, typing.TypeAliasType):
+        return _matches(value, hint.__value__)
+    origin, args = typing.get_origin(hint), typing.get_args(hint)
+    if hint is type(None):
+        return value is None
+    if origin is Literal:
+        return any(value == arg and type(value) is type(arg) for arg in args)
+    if origin in (typing.Union, types.UnionType):
+        return any(_matches(value, arg) for arg in args)
+    if hint is float:
+        return isinstance(value, int | float) and not isinstance(value, bool)
+    if hint is int:
+        return isinstance(value, int) and not isinstance(value, bool)
+    if hint in (str, bool) or origin is dict:
+        return isinstance(value, origin or hint)  # type: ignore[arg-type]
+    if origin is tuple:
+        if not isinstance(value, tuple):
+            return False
+        if len(args) == 2 and args[1] is Ellipsis:
+            return all(_matches(item, args[0]) for item in value)
+        return len(value) == len(args) and all(map(_matches, value, args))
+    return True  # Any
+
+
+def _takes_int(hint: object) -> bool:
+    """Return whether an annotation accepts ints (else an int in a float field is stored as float)."""
+    if isinstance(hint, typing.TypeAliasType):
+        return _takes_int(hint.__value__)
+    if typing.get_origin(hint) in (typing.Union, types.UnionType):
+        return any(_takes_int(arg) for arg in typing.get_args(hint))
+    return hint is int or hint is Any
+
+
+@functools.cache
+def _field_hints(cls: type) -> dict[str, Any]:
+    return typing.get_type_hints(cls)
+
+
 @dataclass(frozen=True, kw_only=True)
 class Setup(ABC):
     """A named, typed recipe that builds a game of :mod:`shapiq_games` for a benchmark.
@@ -57,8 +150,14 @@ class Setup(ABC):
     cache of :meth:`shapiq_benchmark.Benchmark.from_setup`. Every concrete setup registers itself
     under its ``name`` (see :data:`SETUPS` and :func:`setup_from_dict`).
 
+    The fields are checked when the setup is created: against their annotations (including the
+    choices of ``Literal`` fields), and for the dataset and model names. They are stored in their
+    JSON form, read-only: dicts with string keys and tuples instead of lists, so a setup read back
+    from :meth:`to_dict` equals the original.
+
     Subclasses declare their fields as a frozen, keyword-only dataclass and pass ``name=`` to the
-    class statement. They bump :attr:`version` when :meth:`build` changes the game it builds for
+    class statement; a subclass without a name of its own cannot be created, as it would share its
+    parent's cache. They bump :attr:`version` when :meth:`build` changes the game it builds for
     the same fields.
     """
 
@@ -80,12 +179,40 @@ class Setup(ABC):
         SETUPS[name] = cls
 
     def __post_init__(self) -> None:
-        """Reject fields that cannot be stored (fails here rather than at the first cache write)."""
-        try:
-            self.to_dict()
-        except TypeError as error:
-            msg = f"The fields of {type(self).__name__} must be JSON-serializable: {error}"
-            raise TypeError(msg) from error
+        """Store the fields in their read-only JSON form and check them against their annotations.
+
+        Raises:
+            TypeError: If the setup is not registered, or a field cannot be stored or has the
+                wrong type.
+            ValueError: If a field is not one of the choices of its ``Literal`` annotation.
+        """
+        cls = type(self)
+        if SETUPS.get(getattr(cls, "name", "")) is not cls:
+            msg = (
+                f"{cls.__name__} is not a registered setup: give its class statement a name of "
+                f"its own, e.g. `class {cls.__name__}(..., name='my_setup')`."
+            )
+            raise TypeError(msg)
+        hints = _field_hints(cls)
+        for f in dataclasses.fields(self):
+            value = getattr(self, f.name)
+            _check_keys(value, f"{cls.__name__}.{f.name}")
+            try:
+                value = _frozen(_jsonable(value))
+            except TypeError as error:
+                msg = f"The fields of {cls.__name__} must be JSON-serializable: {error}"
+                raise TypeError(msg) from error
+            hint = hints[f.name]
+            if type(value) is int and not _takes_int(hint):  # 0 and 0.0 are one game
+                value = float(value)
+            object.__setattr__(self, f.name, value)
+            if not _matches(value, hint):
+                options = _literal_options(hint)
+                if options and isinstance(value, str):
+                    msg = f"{cls.__name__}.{f.name} must be one of {options}, got {value!r}."
+                    raise ValueError(msg)
+                msg = f"{cls.__name__}.{f.name} must be of type {hint}, got {value!r}."
+                raise TypeError(msg)
 
     @abstractmethod
     def build(self) -> Game:
@@ -100,8 +227,8 @@ class Setup(ABC):
     def key(self) -> str:
         """A stable identifier of the game this setup builds, used as its cache key.
 
-        It hashes the setup's name, :attr:`version`, and fields (runtime fields excluded), so it is
-        the same across processes and machines.
+        It is a digest of the setup's name, :attr:`version`, and fields (runtime fields excluded),
+        so it is the same across processes and machines.
         """
         params = {
             f.name: getattr(self, f.name)
@@ -151,10 +278,24 @@ class TabularSetup(Setup):
         dataset_params: Parameters of synthetic datasets (e.g. ``{"n_samples": 300}``).
     """
 
+    tasks: ClassVar[tuple[str, ...]] = ("classification", "regression")
+    """The tasks of the datasets the setup accepts."""
+
     dataset: str
     random_state: int = 42
     test_size: float = 0.2
     dataset_params: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Check that the dataset is registered and of a task the setup accepts."""
+        super().__post_init__()
+        task = get_dataset_spec(self.dataset).task
+        if task not in self.tasks:
+            msg = (
+                f"{type(self).__name__} needs a {' or '.join(self.tasks)} dataset, got "
+                f"'{self.dataset}' ({task})."
+            )
+            raise ValueError(msg)
 
     def load(self) -> Dataset:
         """Load the dataset."""
@@ -187,8 +328,19 @@ class ModelSetup(TabularSetup):
     """
 
     model: str = "random_forest"
-    preset: str | None = None
+    preset: Literal["tuned"] | None = None
     model_params: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Check the model name and that a tuned preset exists."""
+        super().__post_init__()
+        if self.model not in MODEL_NAMES:
+            msg = f"Unknown model {self.model!r}. Available: {', '.join(MODEL_NAMES)}."
+            raise ValueError(msg)
+        if self.preset == "tuned" and (self.model, self.dataset) not in TUNED_PRESETS:
+            available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
+            msg = f"No tuned preset for '{self.model}' on '{self.dataset}'. Available: {available}."
+            raise ValueError(msg)
 
     def estimator(self, task: str) -> Any:  # noqa: ANN401
         """Return the unfitted, seeded model for a task."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pickle
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -151,29 +152,84 @@ def test_the_key_identifies_the_game() -> None:
     assert type(numpy_setup.to_dict()["random_state"]) is int
     # a different setup with equal field values is a different game
     assert first.key != WeightedKNNSetup(dataset="xor", n_train=8, random_state=0).key
+    # an int in a float field is the same game as the float
+    assert (
+        DataValuationSetup(dataset="xor", empty_value=0).key
+        == DataValuationSetup(dataset="xor").key
+    )
 
+
+def test_a_new_recipe_version_is_a_new_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    first = KNNSetup(dataset="xor", n_train=8).key
+    monkeypatch.setattr(KNNSetup, "version", 2)
+    assert KNNSetup(dataset="xor", n_train=8).key != first
+
+
+def test_setups_are_frozen_hashable_and_round_trip() -> None:
+    """Fields are stored read-only in their JSON form, so the key cannot change under the cache."""
+    params = {"hidden_layer_sizes": (8, 8)}
+    setup = LocalExplanationSetup(dataset="xor", model="mlp", model_params=params)
+    params["hidden_layer_sizes"] = (2,)  # the caller's dict is not the setup's
+    assert setup.model_params == {"hidden_layer_sizes": (8, 8)}
+    with pytest.raises(TypeError, match="read-only"):
+        setup.model_params["alpha"] = 1.0  # type: ignore[index]
+    again = setup_from_dict(setup.to_dict())
+    assert again == setup
+    assert hash(again) == hash(setup)
+    assert {setup: 1}[again] == 1
+    assert pickle.loads(pickle.dumps(setup)) == setup  # noqa: S301
+    assert EnsembleSelectionSetup(dataset="xor", members=["linear"]).members == ("linear",)
+
+
+def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
     @dataclass(frozen=True, kw_only=True)
-    class ChangedRecipe(KNNSetup):
-        version = 2
+    class ExplainAnotherPoint(PathDependentTreeSetup):
+        def build(self) -> Game:
+            return PathDependentTreeSetup(dataset=self.dataset, x=1).build()
 
-    assert ChangedRecipe(dataset="xor", n_train=8, random_state=0).key != first.key
+    with pytest.raises(TypeError, match="not a registered setup"):
+        ExplainAnotherPoint(dataset="xor")
 
 
-def test_setups_reject_what_they_cannot_store_or_build() -> None:
-    with pytest.raises(TypeError, match="JSON-serializable"):
-        KNNSetup(dataset="xor", dataset_params={"noise": object()})
-    with pytest.raises(ValueError, match="model='tabpfn'"):
-        LocalExplanationSetup(dataset="xor", imputer="tabpfn")
-    with pytest.raises(ValueError, match="Unknown setup 'nope'"):
-        setup_from_dict({"setup": "nope"})
+@pytest.mark.parametrize(
+    ("make", "error", "match"),
+    [
+        (lambda: KNNSetup(dataset="xor", dataset_params={"noise": object()}), TypeError, "JSON"),
+        (lambda: KNNSetup(dataset="xor", model_params={"weights": {0: 1}}), TypeError, "strings"),
+        (lambda: KNNSetup(dataset="xor", x=1.5), TypeError, "KNNSetup.x"),
+        (lambda: KNNSetup(dataset="nope"), ValueError, "Unknown dataset 'nope'"),
+        (lambda: KNNSetup(dataset="independentlinear60"), ValueError, "classification"),
+        (lambda: UncertaintyExplanationSetup(dataset="independentlinear60"), ValueError, "class"),
+        (lambda: LocalExplanationSetup(dataset="xor", model="nope"), ValueError, "Unknown model"),
+        (lambda: LocalExplanationSetup(dataset="xor", imputer="foo"), ValueError, "one of"),
+        (lambda: LocalExplanationSetup(dataset="xor", preset="tuned"), ValueError, "No tuned"),
+        (lambda: LocalExplanationSetup(dataset="xor", imputer="tabpfn"), ValueError, "'tabpfn'"),
+        (lambda: PathDependentTreeSetup(dataset="xor", model="svm"), ValueError, "one of"),
+        (lambda: ProductKernelSetup(dataset="xor", model="linear"), ValueError, "one of"),
+        (lambda: EnsembleSelectionSetup(dataset="xor", members=("nope",)), ValueError, "member"),
+        (lambda: GlobalConfoundingSetup(regressor="nope"), ValueError, "Unknown regressor"),
+        (lambda: ImageClassifierSetup(class_index="labels"), ValueError, "one of"),
+        (lambda: setup_from_dict({"setup": "nope"}), ValueError, "Unknown setup 'nope'"),
+    ],
+)
+def test_setups_are_checked_when_created(make, error: type[Exception], match: str) -> None:  # noqa: ANN001
+    with pytest.raises(error, match=match):
+        make()
+
+
+def test_setup_names_are_unique() -> None:
     with pytest.raises(ValueError, match="already registered"):
 
         @dataclass(frozen=True, kw_only=True)
         class Duplicate(KNNSetup, name="knn"):
             pass
 
-    with pytest.raises(ValueError, match="classification dataset"):
-        KNNSetup(dataset="independentlinear60").build()
+
+def test_background_size_is_the_imputer_sample_size() -> None:
+    game = LocalExplanationSetup(dataset="breast_cancer", model="decision_tree", n_background=150)
+    assert game.build().imputer.sample_size == 150
+    uncertainty = UncertaintyExplanationSetup(dataset="breast_cancer", n_background=150).build()
+    assert uncertainty.imputer.sample_size == 150
 
 
 def test_image_classifier_setup(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from shapiq_benchmark.datasets import load_imagenette
 from shapiq_games import ImageClassifier
+from shapiq_games.vision.image_classifier import BuiltinModel, Fill  # noqa: TC001  (field checks)
 
 from ._base import Setup, runtime_field
-
-if TYPE_CHECKING:
-    from shapiq_games.vision.image_classifier import BuiltinModel, Fill
 
 __all__ = ["ImageClassifierSetup"]
 
