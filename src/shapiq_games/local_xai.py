@@ -31,7 +31,12 @@ type ImputerName = Literal["marginal", "conditional", "baseline"]
 # imputers whose value of a coalition does not depend on the other coalitions of the batch once
 # their generator is reseeded per evaluation; others (e.g. the Gaussian imputers, which draw
 # samples coalition after coalition) are evaluated one coalition at a time
-_BATCH_SAFE_IMPUTERS = (MarginalImputer, BaselineImputer, GenerativeConditionalImputer, TabPFNImputer)
+_BATCH_SAFE_IMPUTERS = (
+    MarginalImputer,
+    BaselineImputer,
+    GenerativeConditionalImputer,
+    TabPFNImputer,
+)
 
 
 class LocalExplanation(Game):

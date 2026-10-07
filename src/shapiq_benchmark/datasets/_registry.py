@@ -115,7 +115,7 @@ class Dataset:
         if self.task == "classification":
             _, counts = np.unique(self.y, return_counts=True)
             n_train = self.n_samples - n_test
-            if counts.min() >= 2 and min(n_test, n_train) >= len(counts):  # noqa: PLR2004
+            if counts.min() >= 2 and min(n_test, n_train) >= len(counts):
                 stratify = self.y
         x_train, x_test, y_train, y_test = train_test_split(
             self.x,

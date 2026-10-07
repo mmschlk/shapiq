@@ -177,7 +177,7 @@ def test_setups_are_frozen_hashable_and_round_trip() -> None:
     assert again == setup
     assert hash(again) == hash(setup)
     assert {setup: 1}[again] == 1
-    assert pickle.loads(pickle.dumps(setup)) == setup  # noqa: S301
+    assert pickle.loads(pickle.dumps(setup)) == setup
     assert EnsembleSelectionSetup(dataset="xor", members=["linear"]).members == ("linear",)
 
 
@@ -212,7 +212,7 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         (lambda: setup_from_dict({"setup": "nope"}), ValueError, "Unknown setup 'nope'"),
     ],
 )
-def test_setups_are_checked_when_created(make, error: type[Exception], match: str) -> None:  # noqa: ANN001
+def test_setups_are_checked_when_created(make, error: type[Exception], match: str) -> None:
     with pytest.raises(error, match=match):
         make()
 
