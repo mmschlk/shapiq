@@ -10,7 +10,7 @@ The Confounding XAI game defines a coalition value v(S) that measures how much
 confounding bias remains when a treatment effect estimator only observes feature
 subset S.  Shapley values then decompose that bias across all features.
 
-We use the :func:`~shapiq_games.datasets.load_curthvds_synthetic` dataset, a
+We use the :func:`~shapiq_benchmark.datasets.load_curthvds_synthetic` dataset, a
 synthetic observational study with known ground-truth causal roles:
 
 - **Instrument**: affects treatment assignment but not the outcome directly.
@@ -28,8 +28,8 @@ import numpy as np
 from tabpfn import TabPFNRegressor
 
 import shapiq
+from shapiq_benchmark.datasets import load_curthvds_synthetic
 from shapiq_games import GlobalConfoundingXAI
-from shapiq_games.datasets import load_curthvds_synthetic
 
 _TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
 
@@ -55,12 +55,11 @@ Y = curthvds_data["Outcome"].to_numpy()
 # We use a single TabPFN S-learner trained on the full dataset with treatment
 # A appended as a feature.  Predicting twice — once with A set to 1 and once
 # with A set to 0 — gives the individual treatment effect estimate tau_hat.
-# This matches the estimator used by :meth:`~shapiq_games.GlobalConfoundingXAI.from_config`.
+# This matches the default regressor of :class:`~shapiq_games.GlobalConfoundingXAI`.
 
 model = TabPFNRegressor(
     device="cpu",
     n_estimators=1,
-    n_jobs=1,
     inference_config=_TABPFN_INFERENCE_CONFIG,
 )
 XA = np.concatenate([X, A.reshape(-1, 1)], axis=1)

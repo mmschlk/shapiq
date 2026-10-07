@@ -21,13 +21,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import shapiq
+from shapiq_benchmark.datasets import load_imagenette
 from shapiq_games import ImageClassifier
-from shapiq_games.datasets import load_imagenette
 
 # %%
 # The Game
 # --------
-# :func:`~shapiq_games.datasets.load_imagenette` downloads the Imagenette validation images
+# :func:`~shapiq_benchmark.datasets.load_imagenette` downloads the Imagenette validation images
 # once and caches them. Every image keeps its ImageNet class, so the pretrained ViT classifies it
 # directly. We explain an English springer for its true class. With ``"vit_9_patches"``, the
 # players are a 3x3 grid of the ViT's patches.

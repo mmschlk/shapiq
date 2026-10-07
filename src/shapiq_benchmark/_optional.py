@@ -1,4 +1,4 @@
-"""Lazy imports for the optional dependencies of shapiq_benchmark (e.g. optuna)."""
+"""Lazy imports for the optional dependencies of :mod:`shapiq_benchmark`."""
 
 from __future__ import annotations
 
@@ -8,16 +8,25 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from types import ModuleType
 
-_INSTALL_HINT = "Install the benchmark extras with: pip install 'shapiq[benchmark]'"
+_INSTALL_HINT = "Install the benchmark dependencies with: pip install 'shapiq[benchmark]'"
 
 
-def require(package: str) -> ModuleType:
-    """Import ``package``, raising a helpful error pointing at the extra if it is missing."""
+def require(package: str, *, purpose: str | None = None) -> ModuleType:
+    """Import ``package`` or raise an ``ImportError`` that names the missing dependency.
+
+    Args:
+        package: The importable name of the package (e.g. ``"openml"``).
+        purpose: An optional short description of what needs the package, used in the message.
+
+    Returns:
+        The imported module.
+
+    Raises:
+        ImportError: If the package is not installed.
+    """
     try:
         return importlib.import_module(package)
-    except ImportError as err:
-        msg = (
-            f"'{package}' is required for this shapiq_benchmark feature but is not "
-            f"installed. {_INSTALL_HINT}"
-        )
-        raise ImportError(msg) from err
+    except ImportError as error:
+        needed_for = f" for {purpose}" if purpose else ""
+        msg = f"'{package}' is required{needed_for} but is not installed. {_INSTALL_HINT}"
+        raise ImportError(msg) from error

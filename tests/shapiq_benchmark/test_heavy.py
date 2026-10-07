@@ -1,4 +1,4 @@
-"""Opt-in tests of games that download pretrained models or data from third-party hosts.
+"""Opt-in tests of setups and datasets that download pretrained models or data from third-party hosts.
 
 These tests need network access to Hugging Face, download.pytorch.org, OpenML, or the UCI
 repository, and some need optional packages. They are skipped unless the environment variable
@@ -12,7 +12,13 @@ import os
 import numpy as np
 import pytest
 
-from shapiq_games.datasets import load_dataset
+from shapiq_benchmark.datasets import load_dataset
+from shapiq_benchmark.setups import (
+    GlobalConfoundingSetup,
+    ImageClassifierSetup,
+    LocalExplanationSetup,
+    SentimentAnalysisSetup,
+)
 from tests.shapiq_games.helpers import is_installed
 
 pytestmark = pytest.mark.skipif(
@@ -28,9 +34,7 @@ def _assert_deterministic(game) -> None:
 
 @pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
 def test_vision_transformer_game() -> None:
-    from shapiq_games import ImageClassifier
-
-    game = ImageClassifier.from_config(index=0, size="160px", model="vit_9_patches")
+    game = ImageClassifierSetup(index=0, size="160px", model="vit_9_patches").build()
     assert game.n_players == 9
     assert 0.0 <= game(game.grand_coalition)[0] + game.normalization_value <= 1.0
     _assert_deterministic(game)
@@ -38,11 +42,10 @@ def test_vision_transformer_game() -> None:
 
 @pytest.mark.skipif(not is_installed("torchvision"), reason="torchvision is not installed")
 def test_resnet_game() -> None:
-    from shapiq_games import ImageClassifier
-
-    game = ImageClassifier.from_config(
+    setup = ImageClassifierSetup(
         index=1, size="160px", model="resnet_18", n_superpixels=8, class_index="label"
     )
+    game = setup.build()
     assert game.class_index == 0  # the first Imagenette class, tench, is ImageNet class 0
     assert game.n_players == 8
     _assert_deterministic(game)
@@ -50,29 +53,21 @@ def test_resnet_game() -> None:
 
 @pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
 def test_sentiment_game() -> None:
-    from shapiq_games import SentimentAnalysis
-
-    game = SentimentAnalysis.from_config(input_text="This movie was surprisingly good.")
+    game = SentimentAnalysisSetup(input_text="This movie was surprisingly good.").build()
     assert -1.0 <= game.original_model_output <= 1.0
     _assert_deterministic(game)
 
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
 def test_tabpfn_recontextualization_game() -> None:
-    from shapiq_games import LocalExplanation
-
-    game = LocalExplanation.from_config(
-        dataset="xor", model="tabpfn", imputer="tabpfn", n_background=50
-    )
+    setup = LocalExplanationSetup(dataset="xor", model="tabpfn", imputer="tabpfn", n_background=50)
+    game = setup.build()
     _assert_deterministic(game)
 
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
 def test_confounding_game_with_tabpfn() -> None:
-    from shapiq_games import GlobalConfoundingXAI
-
-    game = GlobalConfoundingXAI.from_config(n=100)
-    assert game.fingerprint is not None
+    game = GlobalConfoundingSetup(n=100).build()  # the default regressor is TabPFN
     _assert_deterministic(game)
 
 
@@ -91,7 +86,7 @@ def test_uci_dataset_download(name: str) -> None:
 
 
 def test_imagenette_download() -> None:
-    from shapiq_games.datasets import load_imagenette
+    from shapiq_benchmark.datasets import load_imagenette
 
     images = load_imagenette(split="val", size="160px")
     assert len(images) == 3925
@@ -134,7 +129,7 @@ def test_upstream_table_matches_the_previously_bundled_file(name: str) -> None:
     """The original source still serves the table the loaders were written for."""
     import pandas as pd
 
-    from shapiq_games.datasets import _tabular
+    from shapiq_benchmark.datasets import _tabular
 
     previous_name = {"bike_sharing": "bike"}.get(name, name)
     previous = pd.read_csv(f"{_PREVIOUS_FILES}{previous_name}.csv", low_memory=False)

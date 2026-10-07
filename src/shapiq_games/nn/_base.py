@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 from shapiq.explainer.nn._util import assert_enough_training_samples
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, resolve_class_index, resolve_x
-from shapiq_games._setup import configure
+from shapiq_games._base import resolve_class_index
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -35,7 +34,7 @@ def keep_first_n(mask: npt.NDArray[np.bool_], n: int) -> npt.NDArray[np.bool_]:
     return mask
 
 
-class NNGameBase(ConfigMixin, Game):
+class NNGameBase(Game):
     """Base of the games whose players are the training points of a nearest-neighbor classifier.
 
     Attributes:
@@ -46,9 +45,6 @@ class NNGameBase(ConfigMixin, Game):
         y_train_indices: The class index of every training point.
         n_classes: The number of classes.
     """
-
-    #: The name of the nearest-neighbor model in :mod:`shapiq_games.models` used by ``from_config``.
-    _model_name: str = "knn"
 
     def __init__(
         self,
@@ -109,73 +105,6 @@ class NNGameBase(ConfigMixin, Game):
         self.y_train_classes = np.asarray(model.classes_)
         self.n_classes = self.y_train_classes.shape[0]
         super().__init__(n_players=self.X_train.shape[0], normalize=False)
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        n_train: int = 10,
-        x: int = 0,
-        class_index: int | None = None,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        **game_params: Any,
-    ) -> Self:
-        """Build the game for a registered classification dataset.
-
-        The players are ``n_train`` training points drawn (seeded, stratified where possible)
-        from the training split; the model is fitted on them and the explained point is taken
-        from the test split.
-
-        Args:
-            dataset: The name of a classification dataset.
-            n_train: The number of training points, i.e. players. Defaults to ``10``.
-            x: The index of the explained point in the test split. Defaults to ``0``.
-            class_index: The explained class (``None`` means class ``1``).
-            random_state: The seed of the split and the training-point sample.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Parameters of the nearest-neighbor model (e.g. ``n_neighbors``).
-            **game_params: Further parameters of the game (e.g. ``n_bits``).
-
-        Returns:
-            The configured game.
-        """
-        from sklearn.model_selection import train_test_split
-
-        from shapiq_games.models import build_model
-
-        setup = configure(
-            dataset=dataset, model=None, random_state=random_state, test_size=test_size
-        )
-        split = setup.split
-        if split.task != "classification":
-            msg = f"{cls.__name__} needs a classification dataset, got '{dataset}'."
-            raise ValueError(msg)
-        model_params = dict(model_params or {})
-        indices = np.arange(split.x_train.shape[0])
-        if n_train < indices.shape[0]:
-            try:
-                indices, _ = train_test_split(
-                    indices, train_size=n_train, random_state=random_state, stratify=split.y_train
-                )
-            except ValueError:  # too few points per class to stratify
-                indices, _ = train_test_split(
-                    indices, train_size=n_train, random_state=random_state
-                )
-        indices = np.sort(indices)
-        model = build_model(cls._model_name, "classification", **model_params)
-        model.fit(split.x_train[indices], split.y_train[indices])
-        game = cls(model, resolve_x(x, split.x_test), class_index, **game_params)
-        config = {**setup.config, "model": cls._model_name, "model_params": model_params}
-        return game._set_config(
-            **config,
-            n_train=n_train,
-            x=x,
-            class_index=class_index,
-            **game_params,
-        )
 
 
 class KNNGameBase(NNGameBase):

@@ -1,6 +1,6 @@
 """Local cache for downloaded data files.
 
-No data file ships with :mod:`shapiq_games`. Files are downloaded on first use from their original
+No data file ships with the package. Files are downloaded on first use from their original
 sources, verified against a SHA-256 checksum where one is pinned, and cached in a local directory:
 
 - ``$SHAPIQ_DATA_DIR`` if set,

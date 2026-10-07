@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -10,7 +11,8 @@ import pytest
 import shapiq
 from shapiq_benchmark import Benchmark, BruteForceComputer, run, save_results
 from shapiq_benchmark.runner import build_approximator
-from shapiq_games import SOUM, DummyGame, KNNGame
+from shapiq_benchmark.setups import KNNSetup, setup_from_dict
+from shapiq_games import SOUM, DummyGame
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,32 +32,42 @@ def test_benchmark_rejects_a_computer_of_another_game() -> None:
 
 def test_ground_truth_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
-    game = KNNGame.from_config(dataset="xor", n_train=8)
-    benchmark = Benchmark(game)
+    setup = KNNSetup(dataset="xor", n_train=8)
+    benchmark = Benchmark.from_setup(setup)
+    assert benchmark.key == setup.key
     first = benchmark.exact_values("SV", 1)
-    files = list((tmp_path / "ground_truth").rglob("*.json"))
-    assert [file.name for file in files] == ["knn_SV_1.json"]
-    assert files[0].parent.name == game.fingerprint
+    directory = tmp_path / "ground_truth" / "knn" / setup.key
+    assert sorted(file.name for file in directory.iterdir()) == ["knn_SV_1.json", "setup.json"]
+    assert setup_from_dict(json.loads((directory / "setup.json").read_text())) == setup
 
     calls = []
-    original = benchmark.computer.exact_values
+    rebuilt = Benchmark.from_setup(setup)
+    original = rebuilt.computer.exact_values
     monkeypatch.setattr(
-        benchmark.computer, "exact_values", lambda *a: calls.append(a) or original(*a)
+        rebuilt.computer, "exact_values", lambda *a: calls.append(a) or original(*a)
     )
-    second = benchmark.exact_values("SV", 1)
+    second = rebuilt.exact_values("SV", 1)
     assert calls == []  # served from the cache
     assert second.values.tolist() == pytest.approx(first.values.tolist())  # noqa: PD011
 
-    uncached = Benchmark(game, cache=False)
-    uncached.exact_values("SV", 1)
-    assert len(list((tmp_path / "ground_truth").rglob("*.json"))) == 1
+    other = KNNSetup(dataset="xor", n_train=8, random_state=1)
+    Benchmark.from_setup(other, cache=False).exact_values("SV", 1)
+    assert not (tmp_path / "ground_truth" / "knn" / other.key).exists()
+    brute_force = Benchmark.from_setup(setup, BruteForceComputer)
+    assert brute_force.computer.name == "brute_force"
+    assert "setup=knn" in repr(brute_force)
+
+    results = run(rebuilt, [shapiq.KernelSHAP], budgets=[16], index="SV", order=1)
+    assert results[["setup", "key"]].drop_duplicates().to_numpy().tolist() == [["knn", setup.key]]
 
 
-def test_games_without_fingerprint_are_not_cached(
+def test_games_without_setup_are_not_cached(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
-    Benchmark(DummyGame(4)).exact_values("SV", 1)
+    benchmark = Benchmark(DummyGame(4))
+    benchmark.exact_values("SV", 1)
+    assert benchmark.key is None
     assert not (tmp_path / "ground_truth").exists()
 
 

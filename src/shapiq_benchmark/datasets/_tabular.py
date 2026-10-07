@@ -33,7 +33,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, RobustScaler, StandardScaler
 
-from shapiq_games._optional import require
+from shapiq_benchmark._optional import require
 
 from ._cache import RemoteFile, atomic_write_bytes, fetch, get_data_dir
 from ._registry import DatasetSpec, register_dataset

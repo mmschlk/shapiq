@@ -3942,17 +3942,11 @@ benchmark = [
     { name = "xgboost" },
 ]
 games = [
-    { name = "catboost" },
-    { name = "lightgbm" },
-    { name = "openml" },
-    { name = "openpyxl" },
     { name = "scikit-image" },
     { name = "tabpfn" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "transformers" },
-    { name = "ucimlrepo" },
-    { name = "xgboost" },
 ]
 proxy = [
     { name = "catboost" },
@@ -4044,20 +4038,20 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "botorch", marker = "extra == 'shapleig'", specifier = ">=0.14.0" },
-    { name = "catboost", marker = "extra == 'games'" },
+    { name = "catboost", marker = "extra == 'benchmark'" },
     { name = "catboost", marker = "extra == 'proxy'" },
     { name = "colour" },
     { name = "galois", marker = "extra == 'sparse'" },
     { name = "gpytorch", marker = "extra == 'shapleig'", specifier = ">=1.14" },
     { name = "joblib" },
-    { name = "lightgbm", marker = "extra == 'games'" },
+    { name = "lightgbm", marker = "extra == 'benchmark'" },
     { name = "lightgbm", marker = "extra == 'proxy'" },
     { name = "linear-operator", marker = "extra == 'shapleig'", specifier = ">=0.6" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
-    { name = "openml", marker = "extra == 'games'" },
-    { name = "openpyxl", marker = "extra == 'games'" },
+    { name = "openml", marker = "extra == 'benchmark'" },
+    { name = "openpyxl", marker = "extra == 'benchmark'" },
     { name = "optuna", marker = "extra == 'benchmark'" },
     { name = "pandas" },
     { name = "pillow" },
@@ -4074,9 +4068,9 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'games'" },
     { name = "tqdm" },
     { name = "transformers", marker = "extra == 'games'" },
-    { name = "ucimlrepo", marker = "extra == 'games'" },
+    { name = "ucimlrepo", marker = "extra == 'benchmark'" },
     { name = "woodelf-explainer", marker = "extra == 'tree'", specifier = ">=0.4.7" },
-    { name = "xgboost", marker = "extra == 'games'" },
+    { name = "xgboost", marker = "extra == 'benchmark'" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
 provides-extras = ["tree", "sparse", "proxy", "shapleig", "games", "benchmark"]

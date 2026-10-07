@@ -8,28 +8,16 @@ import numpy as np
 from scipy.stats import mode
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 from shapiq_games._training import Metric, MetricName, resolve_metric, resolve_task
-from shapiq_games.models import build_model
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-__all__ = ["DEFAULT_MEMBER_POOL", "EnsembleSelection", "RandomForestEnsembleSelection"]
-
-DEFAULT_MEMBER_POOL: tuple[str, ...] = (
-    "linear",
-    "decision_tree",
-    "random_forest",
-    "svm",
-    "knn",
-    "xgboost",
-)
-"""The model names ensemble members are drawn from by default."""
+__all__ = ["EnsembleSelection", "RandomForestEnsembleSelection"]
 
 
-class EnsembleSelection(ConfigMixin, Game):
+class EnsembleSelection(Game):
     """The ensemble selection game: the test metric of a sub-ensemble of fitted members.
 
     The players are the fitted ensemble members. A coalition predicts by averaging its members'
@@ -124,72 +112,6 @@ class EnsembleSelection(ConfigMixin, Game):
             values[i] = self._metric(self._y_test, prediction)
         return values
 
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        members: Sequence[str] | None = None,
-        n_members: int = 10,
-        metric: MetricName | None = None,
-        empty_value: float = 0.0,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game by fitting ensemble members on a registered dataset.
-
-        Args:
-            dataset: The dataset name.
-            members: The model name of every member. If ``None``, ``n_members`` names are drawn
-                (seeded) from :data:`DEFAULT_MEMBER_POOL`.
-            n_members: The number of members when ``members`` is ``None``. Defaults to ``10``.
-            metric: The metric name, or ``None`` for the default of the task.
-            empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the split and the members (member ``i`` gets
-                ``random_state + i``).
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=None,
-            random_state=random_state,
-            test_size=test_size,
-            dataset_params=dataset_params,
-        )
-        split = setup.split
-        if members is None:
-            rng = np.random.default_rng(random_state)
-            members = [str(name) for name in rng.choice(DEFAULT_MEMBER_POOL, size=n_members)]
-        fitted = []
-        for i, name in enumerate(members):
-            params = {"n_neighbors": 3} if name == "knn" else {}
-            model = build_model(name, split.task, random_state=random_state + i, **params)
-            fitted.append(model.fit(split.x_train, split.y_train))
-        game = cls(
-            fitted,
-            split.x_test,
-            split.y_test,
-            task=split.task,
-            metric=metric,
-            empty_value=empty_value,
-            member_names=[f"{i}_{name}" for i, name in enumerate(members)],
-            normalize=normalize,
-        )
-        return game._set_config(
-            **setup.config,
-            members=list(members),
-            metric=metric,
-            empty_value=empty_value,
-            normalize=normalize,
-        )
-
 
 class RandomForestEnsembleSelection(EnsembleSelection):
     """Ensemble selection over the trees of a fitted random forest.
@@ -248,56 +170,4 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             empty_value=empty_value,
             member_names=[f"tree_{i}" for i in range(len(trees))],
             normalize=normalize,
-        )
-
-    @classmethod
-    def from_config(  # type: ignore[override]
-        cls,
-        *,
-        dataset: str,
-        n_members: int = 10,
-        metric: MetricName | None = None,
-        empty_value: float = 0.0,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game from a random forest with ``n_members`` trees on a registered dataset.
-
-        Args:
-            dataset: The dataset name.
-            n_members: The number of trees, i.e. players. Defaults to ``10``.
-            metric: The metric name, or ``None`` for the default of the task.
-            empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the split and the forest.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Further hyperparameters of the forest.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        model_params = {**(model_params or {}), "n_estimators": n_members}
-        setup = configure(
-            dataset=dataset,
-            model="random_forest",
-            random_state=random_state,
-            test_size=test_size,
-            model_params=model_params,
-            dataset_params=dataset_params,
-        )
-        game = cls.from_forest(
-            setup.model,
-            setup.split.x_test,
-            setup.split.y_test,
-            task=setup.split.task,
-            metric=metric,
-            empty_value=empty_value,
-            normalize=normalize,
-        )
-        return game._set_config(  # noqa: SLF001 - the game was just built by this class
-            **setup.config, metric=metric, empty_value=empty_value, normalize=normalize
         )

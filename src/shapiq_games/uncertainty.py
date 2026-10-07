@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 import numpy as np
 from scipy.stats import entropy
 
-from shapiq_games._base import resolve_x
-from shapiq_games._setup import configure
 from shapiq_games.local_xai import LocalExplanation
 
 __all__ = ["UncertaintyExplanation"]
@@ -99,69 +97,4 @@ class UncertaintyExplanation(LocalExplanation):
             random_state=random_state,
             normalize=normalize,
             verbose=verbose,
-        )
-
-    @classmethod
-    def from_config(  # type: ignore[override]
-        cls,
-        *,
-        dataset: str,
-        x: int = 0,
-        uncertainty: Uncertainty = "total",
-        imputer: Literal["marginal", "conditional", "baseline"] = "marginal",
-        n_background: int = 100,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game for a random forest trained on a registered classification dataset.
-
-        Args:
-            dataset: The name of a classification dataset.
-            x: The index of the explained point in the test split. Defaults to ``0``.
-            uncertainty: ``"total"``, ``"aleatoric"``, or ``"epistemic"``.
-            imputer: ``"marginal"``, ``"conditional"``, or ``"baseline"``.
-            n_background: The number of background rows (from the training split).
-            random_state: The seed of the split, the forest, the background, and the imputer.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Hyperparameters of the forest.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model="random_forest",
-            random_state=random_state,
-            test_size=test_size,
-            model_params=model_params,
-            dataset_params=dataset_params,
-        )
-        split = setup.split
-        if split.task != "classification":
-            msg = f"UncertaintyExplanation needs a classification dataset, got '{dataset}'."
-            raise ValueError(msg)
-        rng = np.random.default_rng(random_state)
-        n_rows = min(n_background, split.x_train.shape[0])
-        rows = np.sort(rng.choice(split.x_train.shape[0], size=n_rows, replace=False))
-        game = cls(
-            setup.model,
-            split.x_train[rows],
-            resolve_x(x, split.x_test),
-            uncertainty=uncertainty,
-            imputer=imputer,
-            random_state=random_state,
-            normalize=normalize,
-        )
-        return game._set_config(
-            **setup.config,
-            x=x,
-            uncertainty=uncertainty,
-            imputer=imputer,
-            n_background=n_background,
-            normalize=normalize,
         )

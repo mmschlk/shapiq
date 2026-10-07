@@ -63,19 +63,28 @@ Boosting converters live in separate modules such as `xgboost.py`,
   Never add data files (CSVs, images, weights, precomputed game values) under
   `src/`; datasets are fetched and cached locally. See
   `docs/design/games_and_benchmark.md` for the design.
-- `shapiq_games` datasets are downloaded on first use into `~/.cache/shapiq` (override with
-  `$SHAPIQ_DATA_DIR`). New games must follow the contract in `shapiq_games/_base.py`, and
-  every family is checked by `tests/shapiq_games/test_contract.py`. Tests that download
-  pretrained models or OpenML/UCI data only run with `SHAPIQ_RUN_HEAVY_TESTS=1`.
+- `shapiq_games` holds game definitions only, built from objects (a model, data, a point). Datasets,
+  the model registry, and building games from names live in `shapiq_benchmark` (`datasets/`,
+  `models.py`, `setups/`); do not add dataset loading or a `from_config` to a game. A new game
+  follows the contract in `shapiq_games/_base.py` (checked by `tests/shapiq_games/test_contract.py`)
+  and, unless it is synthetic, gets a typed setup (`tests/shapiq_benchmark/test_setups.py`
+  fails while one is missing).
+- `shapiq_benchmark` datasets are downloaded on first use into `~/.cache/shapiq` (override with
+  `$SHAPIQ_DATA_DIR`). Tests that download pretrained models or OpenML/UCI data only run with
+  `SHAPIQ_RUN_HEAVY_TESTS=1`.
+- Run `tests/shapiq_games` and `tests/shapiq_benchmark` serially (observed 2026-10-07): under
+  `pytest -n 8` on 4 cores, the multi-threaded model libraries (XGBoost inside the conditional
+  imputer, k-means) oversubscribe the cores, and the contract tests took 410 s instead of 4 s.
+  Both suites together take about a minute serially.
 - A pandas CSV round trip is not lossless by default: `DataFrame.to_csv` can drop the last
   significant digit of a float, and `pd.read_csv`'s default fast parser is not correctly
   rounded for 17-digit strings. Data caches that must reproduce values exactly write with
   `float_format="%.17g"` and read with `float_precision="round_trip"` (see
-  `shapiq_games/datasets/_tabular.py`).
+  `shapiq_benchmark/datasets/_tabular.py`).
 - `ucimlrepo` does not serve every UCI dataset as the website does (observed 2026-10-07): it
   refuses to export arrhythmia (5) and thyroid (102), has only the small soybean table, and
   some column names differ from the UCI files (`famiily`). Before pointing a loader at it, run
-  `SHAPIQ_RUN_HEAVY_TESTS=1 uv run pytest tests/shapiq_games/test_heavy_games.py -k upstream`.
+  `SHAPIQ_RUN_HEAVY_TESTS=1 uv run pytest tests/shapiq_benchmark/test_heavy.py -k upstream`.
 - Hand numpy arrays to torch as a copy (`np.array(x)`), not `np.ascontiguousarray(x)`: torch
   rejects negative strides, and a one-row reversed view counts as contiguous, so
   `ascontiguousarray` returns it unchanged (the ViT game crashed on `coalitions[::-1]`).

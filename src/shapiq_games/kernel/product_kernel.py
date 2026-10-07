@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
 
 from shapiq.explainer.product_kernel.validation import validate_pk_model
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_x
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
     from shapiq.explainer.product_kernel.base import ProductKernelModel
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 __all__ = ["ProductKernelGame"]
 
 
-class ProductKernelGame(ConfigMixin, Game):
+class ProductKernelGame(Game):
     r"""The product kernel game of a model whose decision function is a weighted sum of kernels.
 
     For a model :math:`f(x) = \sum_i \alpha_i K(x^i, x) + b` with a product kernel :math:`K`, the
@@ -87,51 +86,3 @@ class ProductKernelGame(ConfigMixin, Game):
             )
             values[i] = float((alpha @ kernel).squeeze()) + float(self.model.intercept)
         return values
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "svm",
-        x: int = 0,
-        n_train: int = 500,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        normalize: bool = False,
-    ) -> Self:
-        """Build the game for a registered dataset.
-
-        The kernel model is fitted on ``n_train`` seeded training points (kernel models scale
-        poorly with the number of training points); the explained point is taken from the test
-        split.
-
-        Args:
-            dataset: The dataset name (regression, or binary classification for ``"svm"``).
-            model: ``"svm"`` or ``"gaussian_process"`` (regression only). Defaults to ``"svm"``.
-            x: The index of the explained point in the test split. Defaults to ``0``.
-            n_train: The number of training points of the kernel model. Defaults to ``500``.
-            random_state: The seed of the split, the training sample, and the model.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Hyperparameters of the model.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        from shapiq_games.models import build_model
-
-        setup = configure(
-            dataset=dataset, model=None, random_state=random_state, test_size=test_size
-        )
-        split = setup.split
-        model_params = dict(model_params or {})
-        rng = np.random.default_rng(random_state)
-        n = min(n_train, split.x_train.shape[0])
-        rows = np.sort(rng.choice(split.x_train.shape[0], size=n, replace=False))
-        fitted = build_model(model, split.task, random_state=random_state, **model_params)
-        fitted.fit(split.x_train[rows], split.y_train[rows])
-        game = cls(fitted, resolve_x(x, split.x_test), normalize=normalize)
-        config = {**setup.config, "model": model, "model_params": model_params}
-        return game._set_config(**config, x=x, n_train=n_train, normalize=normalize)

@@ -35,8 +35,6 @@ class ThresholdNNGame(NNGameBase):
         10
     """
 
-    _model_name = "threshold_nn"
-
     def __init__(
         self,
         model: RadiusNeighborsClassifier,

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Self
-
 import numpy as np
 from scipy.stats import entropy
 from sklearn.preprocessing import KBinsDiscretizer
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 
 __all__ = ["UnsupervisedData", "total_correlation"]
 
@@ -36,7 +33,7 @@ def total_correlation(data: np.ndarray) -> float:
     return marginal - joint
 
 
-class UnsupervisedData(ConfigMixin, Game):
+class UnsupervisedData(Game):
     """The unsupervised data game: the total correlation of a coalition of features.
 
     The players are the features, discretized into equal-width bins. The value of a coalition is
@@ -85,42 +82,4 @@ class UnsupervisedData(ConfigMixin, Game):
         coalitions = as_bool_coalitions(coalitions)
         return np.array(
             [total_correlation(self.data_discrete[:, coalition]) for coalition in coalitions]
-        )
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        n_samples: int | None = None,
-        n_bins: int = 20,
-        random_state: int = 42,
-        dataset_params: dict[str, Any] | None = None,
-    ) -> Self:
-        """Build the game on a registered dataset.
-
-        Args:
-            dataset: The dataset name.
-            n_samples: Use a seeded sample of this many rows (``None`` for all).
-            n_bins: The number of equal-width bins per feature. Defaults to ``20``.
-            random_state: The seed of the row sample.
-            dataset_params: Parameters of synthetic datasets.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset, model=None, random_state=random_state, dataset_params=dataset_params
-        )
-        data = setup.split.dataset.x
-        if n_samples is not None and n_samples < data.shape[0]:
-            rng = np.random.default_rng(random_state)
-            data = data[np.sort(rng.choice(data.shape[0], size=n_samples, replace=False))]
-        game = cls(data, n_bins=n_bins)
-        return game._set_config(
-            dataset=dataset,
-            dataset_params=setup.config["dataset_params"],
-            random_state=random_state,
-            n_samples=n_samples,
-            n_bins=n_bins,
         )

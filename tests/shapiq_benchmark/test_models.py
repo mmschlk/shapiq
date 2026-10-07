@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq_games.datasets import load_dataset
-from shapiq_games.models import MODEL_NAMES, TUNED_PRESETS, build_model, fit_model
+from shapiq_benchmark.datasets import load_dataset
+from shapiq_benchmark.models import MODEL_NAMES, TUNED_PRESETS, build_model, fit_model
 from tests.shapiq_games.helpers import is_installed
 
 OPTIONAL = {

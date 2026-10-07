@@ -205,8 +205,11 @@ def test_clustering_and_unsupervised_games(data) -> None:
 
 
 def test_confounding_game_with_a_linear_regressor() -> None:
-    game = GlobalConfoundingXAI.from_config(n=300, regressor=LinearRegression)
-    assert game.fingerprint is None  # custom regressors are not fingerprinted
+    rng = np.random.default_rng(0)
+    covariates = rng.normal(size=(300, 4))
+    treatment = (rng.random(300) < 1 / (1 + np.exp(-covariates[:, 0]))).astype(float)
+    outcome = covariates[:, 0] + covariates[:, 1] + treatment * (1.0 + covariates[:, 2])
+    game = GlobalConfoundingXAI(covariates, treatment, outcome, regressor=LinearRegression)
     # adjusting for every covariate reproduces the reference effect
     assert game(game.grand_coalition)[0] == pytest.approx(0.0, abs=1e-10)
     naive = game.Y[game.A == 1].mean() - game.Y[game.A == 0].mean()
@@ -229,7 +232,7 @@ def test_image_classifier_superpixels_cover_every_player() -> None:
 
 
 def test_image_classifier_forwards_the_vit_revision(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The revision reaches the Hugging Face loader and the configuration."""
+    """The revision reaches the Hugging Face loader."""
     calls: list[dict] = []
 
     class FakeViT:
@@ -245,13 +248,9 @@ def test_image_classifier_forwards_the_vit_revision(monkeypatch: pytest.MonkeyPa
     import shapiq_games.vision.image_classifier as module
 
     monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
-    monkeypatch.setattr(module, "load_imagenette", lambda **_: [np.zeros((8, 8, 3), np.uint8)])
-    game = ImageClassifier.from_config(index=0, model="vit_16_patches", revision="v1")
-    other = ImageClassifier.from_config(index=0, model="vit_16_patches", revision="v2")
+    game = ImageClassifier(np.zeros((8, 8, 3), np.uint8), "vit_16_patches", revision="v1")
     assert calls[0]["revision"] == "v1"
-    assert game.config is not None
-    assert game.config["revision"] == "v1"
-    assert game.fingerprint != other.fingerprint
+    assert game.class_name == "class 3"
 
 
 def test_sentiment_analysis_with_a_fake_pipeline() -> None:

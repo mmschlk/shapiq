@@ -15,12 +15,10 @@ objects and evaluate coalitions:
 All games follow the same contract (see :mod:`shapiq_games._base`): their values are
 deterministic given their arguments, and the explained point and class are explicit.
 
-For benchmarks, every game can also be built from names, e.g.
-``sg.LocalExplanation.from_config(dataset="breast_cancer", model="xgboost", random_state=0)``.
-Such games record their configuration and carry a ``fingerprint``, under which
-:mod:`shapiq_benchmark` caches their exact values. The named datasets
-(:mod:`shapiq_games.datasets`) are downloaded on first use and cached locally; no data ships
-with the package.
+The games are definitions: they know how to model a problem as a cooperative game, not where
+data and models come from. Benchmarks build them from names (datasets, models, seeds) with the
+setups of :mod:`shapiq_benchmark.setups`, e.g.
+``LocalExplanationSetup(dataset="breast_cancer", model="xgboost").build()``.
 
 Game families:
 

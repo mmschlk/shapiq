@@ -9,13 +9,12 @@ special case of dataset valuation.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 from shapiq_games._training import (
     Metric,
     MetricName,
@@ -23,7 +22,6 @@ from shapiq_games._training import (
     resolve_metric,
     resolve_task,
 )
-from shapiq_games.models import build_model
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -31,7 +29,7 @@ if TYPE_CHECKING:
 __all__ = ["DataValuation", "DatasetValuation"]
 
 
-class _GroupValuation(ConfigMixin, Game):
+class _GroupValuation(Game):
     """Shared implementation: players are groups of training rows, a model is trained per coalition.
 
     Attributes:
@@ -154,71 +152,6 @@ class DataValuation(_GroupValuation):
             verbose=verbose,
         )
 
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "decision_tree",
-        n_players: int = 10,
-        metric: MetricName | None = None,
-        empty_value: float = 0.0,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game with ``n_players`` seeded training points of a registered dataset.
-
-        The points are drawn stratified by class where possible; the test split is the test set.
-
-        Args:
-            dataset: The dataset name.
-            model: The model name. Defaults to ``"decision_tree"``.
-            n_players: The number of training points, i.e. players. Defaults to ``10``.
-            metric: The metric name, or ``None`` for the default of the task.
-            empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the split, the sample of points, and the model.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Hyperparameters of the model.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=None,
-            random_state=random_state,
-            test_size=test_size,
-            dataset_params=dataset_params,
-        )
-        split = setup.split
-        rows = _sample_rows(split.y_train, n_players, split.task, random_state)
-        model_params = dict(model_params or {})
-        estimator = build_model(model, split.task, random_state=random_state, **model_params)
-        game = cls(
-            estimator,
-            split.x_train[rows],
-            split.y_train[rows],
-            split.x_test,
-            split.y_test,
-            task=split.task,
-            metric=metric,
-            empty_value=empty_value,
-            normalize=normalize,
-        )
-        config = {**setup.config, "model": model, "model_params": model_params}
-        return game._set_config(
-            **config,
-            n_players=n_players,
-            metric=metric,
-            empty_value=empty_value,
-            normalize=normalize,
-        )
-
 
 class DatasetValuation(_GroupValuation):
     """The dataset valuation game: every player is a group of training rows (e.g. a data source).
@@ -296,98 +229,6 @@ class DatasetValuation(_GroupValuation):
             normalize=normalize,
             verbose=verbose,
         )
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "decision_tree",
-        n_players: int = 10,
-        player_sizes: Literal["uniform", "increasing", "random"] = "uniform",
-        n_train: int | None = None,
-        metric: MetricName | None = None,
-        empty_value: float = 0.0,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game by splitting the training data of a registered dataset into groups.
-
-        Args:
-            dataset: The dataset name.
-            model: The model name. Defaults to ``"decision_tree"``.
-            n_players: The number of groups. Defaults to ``10``.
-            player_sizes: ``"uniform"``, ``"increasing"``, or ``"random"``.
-            n_train: Use a seeded subset of this many training rows (``None`` for all).
-            metric: The metric name, or ``None`` for the default of the task.
-            empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the split, the groups, and the model.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            model_params: Hyperparameters of the model.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=None,
-            random_state=random_state,
-            test_size=test_size,
-            dataset_params=dataset_params,
-        )
-        split = setup.split
-        x_train, y_train = split.x_train, split.y_train
-        if n_train is not None and n_train < x_train.shape[0]:
-            rows = _sample_rows(y_train, n_train, split.task, random_state)
-            x_train, y_train = x_train[rows], y_train[rows]
-        model_params = dict(model_params or {})
-        estimator = build_model(model, split.task, random_state=random_state, **model_params)
-        game = cls(
-            estimator,
-            x_train,
-            y_train,
-            split.x_test,
-            split.y_test,
-            task=split.task,
-            n_players=n_players,
-            player_sizes=player_sizes,
-            metric=metric,
-            empty_value=empty_value,
-            random_state=random_state,
-            normalize=normalize,
-        )
-        config = {**setup.config, "model": model, "model_params": model_params}
-        return game._set_config(
-            **config,
-            n_players=n_players,
-            player_sizes=player_sizes,
-            n_train=n_train,
-            metric=metric,
-            empty_value=empty_value,
-            normalize=normalize,
-        )
-
-
-def _sample_rows(y: np.ndarray, n: int, task: str, random_state: int) -> np.ndarray:
-    """Draw ``n`` row indices, stratified by class for classification where possible."""
-    from sklearn.model_selection import train_test_split
-
-    indices = np.arange(y.shape[0])
-    if n >= indices.shape[0]:
-        return indices
-    stratify = y if task == "classification" else None
-    try:
-        rows, _ = train_test_split(
-            indices, train_size=n, random_state=random_state, stratify=stratify
-        )
-    except ValueError:  # too few points per class to stratify
-        rows, _ = train_test_split(indices, train_size=n, random_state=random_state)
-    return np.sort(rows)
 
 
 def _split_into_groups(

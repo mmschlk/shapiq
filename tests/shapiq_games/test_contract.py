@@ -2,7 +2,8 @@
 
 Every game must be a proper, deterministic set function: the value of a coalition may not depend
 on call order, batch composition, repetition, the instance (given the same arguments), or whether
-the coalition is passed as a boolean or an integer 0/1 matrix.
+the coalition is passed as a boolean or an integer 0/1 matrix. The games are built from objects;
+the setups that build them from names are tested in ``tests/shapiq_benchmark/test_setups.py``.
 """
 
 from __future__ import annotations
@@ -11,8 +12,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 import shapiq_games as sg
 from tests.shapiq_games.helpers import (
@@ -27,11 +31,36 @@ if TYPE_CHECKING:
     from shapiq import Game
 
 
-def _object_local_explanation() -> Game:
-    rng = np.random.default_rng(0)
-    x = rng.normal(size=(200, 4))
-    model = DecisionTreeRegressor(max_depth=3, random_state=0).fit(x, x[:, 0] * x[:, 1])
-    return sg.LocalExplanation(model, x, x=3, random_state=0)
+_RNG = np.random.default_rng(0)
+_X = _RNG.normal(size=(240, 4))
+_Y_REG = _X[:, 0] * _X[:, 1] + _X[:, 2]
+_Y_CLF = (_X[:, 0] + _X[:, 1] > 0).astype(int)
+_X_TRAIN, _X_TEST = _X[:200], _X[200:]
+_Y_REG_TRAIN, _Y_REG_TEST = _Y_REG[:200], _Y_REG[200:]
+_Y_CLF_TRAIN, _Y_CLF_TEST = _Y_CLF[:200], _Y_CLF[200:]
+
+
+def _tree_regressor() -> DecisionTreeRegressor:
+    return DecisionTreeRegressor(max_depth=3, random_state=0).fit(_X_TRAIN, _Y_REG_TRAIN)
+
+
+def _forest_classifier(n_estimators: int = 5) -> RandomForestClassifier:
+    return RandomForestClassifier(n_estimators=n_estimators, max_depth=3, random_state=0).fit(
+        _X_TRAIN, _Y_CLF_TRAIN
+    )
+
+
+def _knn(**params: object) -> KNeighborsClassifier:
+    return KNeighborsClassifier(n_neighbors=3, **params).fit(_X_TRAIN[:8], _Y_CLF_TRAIN[:8])
+
+
+def _treatment_data() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    treatment = (_RNG.random(200) < 1 / (1 + np.exp(-_X_TRAIN[:, 0]))).astype(float)
+    outcome = _X_TRAIN[:, 0] + treatment * (1.0 + _X_TRAIN[:, 1])
+    return _X_TRAIN, treatment, outcome
+
+
+_TREATMENT = _treatment_data()
 
 
 def _image_game() -> Game:
@@ -39,103 +68,124 @@ def _image_game() -> Game:
     return sg.ImageClassifier(image, model=mean_brightness_classifier, n_superpixels=6)
 
 
-# name -> (factory, centered: whether v(empty) == 0)
+# name -> (factory, centered: whether v(empty) == 0); every game is built from objects
 GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
     "dummy": (lambda: sg.DummyGame(5, interaction=(1, 2)), False),
     "unanimity": (lambda: sg.UnanimityGame(np.array([1, 0, 1, 0])), True),
     "soum": (lambda: sg.SOUM(6, 10, random_state=3, normalize=True), True),
     "random_table": (lambda: sg.RandomTableGame(5, random_state=1, normalize=True), True),
     "local_xai_marginal": (
-        lambda: sg.LocalExplanation.from_config(dataset="xor", model="decision_tree"),
+        lambda: sg.LocalExplanation(_tree_regressor(), _X_TRAIN[:50], x=_X_TEST[0]),
         True,
     ),
     "local_xai_baseline": (
-        lambda: sg.LocalExplanation.from_config(
-            dataset="condind", model="random_forest", imputer="baseline"
+        lambda: sg.LocalExplanation(
+            _forest_classifier(), _X_TRAIN[:50], x=_X_TEST[1], imputer="baseline"
         ),
         True,
     ),
     "local_xai_conditional": (
-        lambda: sg.LocalExplanation.from_config(
-            dataset="sphere", model="decision_tree", imputer="conditional", n_background=200
+        lambda: sg.LocalExplanation(
+            _tree_regressor(), _X_TRAIN, x=_X_TEST[2], imputer="conditional", random_state=0
         ),
         True,
     ),
-    "local_xai_objects": (_object_local_explanation, True),
-    "global_xai": (
-        lambda: sg.GlobalExplanation.from_config(dataset="xor", model="decision_tree"),
-        True,
-    ),
+    "local_xai_index": (lambda: sg.LocalExplanation(_tree_regressor(), _X, x=3), True),
+    "global_xai": (lambda: sg.GlobalExplanation(_tree_regressor(), _X_TEST), True),
     "feature_selection": (
-        lambda: sg.FeatureSelection.from_config(dataset="breast_cancer", n_train=100),
+        lambda: sg.FeatureSelection(
+            DecisionTreeClassifier(max_depth=3, random_state=0),
+            _X_TRAIN[:100],
+            _Y_CLF_TRAIN[:100],
+            _X_TEST,
+            _Y_CLF_TEST,
+        ),
         True,
     ),
     "data_valuation": (
-        lambda: sg.DataValuation.from_config(dataset="xor", n_players=8, empty_value=0.5),
+        lambda: sg.DataValuation(
+            DecisionTreeClassifier(random_state=0),
+            _X_TRAIN[:8],
+            _Y_CLF_TRAIN[:8],
+            _X_TEST,
+            _Y_CLF_TEST,
+            empty_value=0.5,
+        ),
         True,
     ),
     "dataset_valuation": (
-        lambda: sg.DatasetValuation.from_config(
-            dataset="independentlinear60",
-            dataset_params={"n_samples": 300},
+        lambda: sg.DatasetValuation(
+            LinearRegression(),
+            _X_TRAIN,
+            _Y_REG_TRAIN,
+            _X_TEST,
+            _Y_REG_TEST,
             n_players=5,
             player_sizes="increasing",
+            random_state=0,
         ),
         False,
     ),
     "ensemble_selection": (
-        lambda: sg.EnsembleSelection.from_config(
-            dataset="breast_cancer", members=["linear", "decision_tree", "knn", "random_forest"]
+        lambda: sg.EnsembleSelection(
+            [
+                LogisticRegression().fit(_X_TRAIN, _Y_CLF_TRAIN),
+                DecisionTreeClassifier(max_depth=2, random_state=0).fit(_X_TRAIN, _Y_CLF_TRAIN),
+                _knn(),
+                _forest_classifier(3),
+            ],
+            _X_TEST,
+            _Y_CLF_TEST,
         ),
         False,
     ),
     "random_forest_ensemble_selection": (
-        lambda: sg.RandomForestEnsembleSelection.from_config(dataset="xor", n_members=5),
+        lambda: sg.RandomForestEnsembleSelection.from_forest(
+            _forest_classifier(), _X_TEST, _Y_CLF_TEST
+        ),
         False,
     ),
     "uncertainty": (
-        lambda: sg.UncertaintyExplanation.from_config(dataset="breast_cancer"),
+        lambda: sg.UncertaintyExplanation(_forest_classifier(), _X_TRAIN[:50], _X_TEST[0]),
         True,
     ),
-    "clustering": (
-        lambda: sg.ClusterExplanation.from_config(dataset="group", n_samples=200),
-        False,
-    ),
-    "unsupervised": (lambda: sg.UnsupervisedData.from_config(dataset="xor"), True),
+    "clustering": (lambda: sg.ClusterExplanation(_X, n_clusters=3, random_state=0), False),
+    "unsupervised": (lambda: sg.UnsupervisedData(_X_TRAIN, n_bins=5), True),
     "global_confounding": (
-        lambda: sg.GlobalConfoundingXAI.from_config(n=200, regressor=LinearRegression),
+        lambda: sg.GlobalConfoundingXAI(*_TREATMENT, regressor=LinearRegression),
         False,
     ),
     "local_confounding": (
-        lambda: sg.LocalConfoundingXAI.from_config(
-            n=200, unit=2, mode="sq", regressor=LinearRegression
-        ),
+        lambda: sg.LocalConfoundingXAI(*_TREATMENT, unit=2, mode="sq", regressor=LinearRegression),
         False,
     ),
     "path_dependent_tree": (
-        lambda: sg.PathDependentTreeGame.from_config(dataset="xor", model="random_forest"),
+        lambda: sg.PathDependentTreeGame(_forest_classifier(), _X_TEST[0]),
         True,
     ),
     "interventional_tree": (
-        lambda: sg.InterventionalTreeGame.from_config(
-            dataset="breast_cancer", model="decision_tree", normalize=True
+        lambda: sg.InterventionalTreeGame(
+            _tree_regressor(), _X_TRAIN[:30], _X_TEST[0], normalize=True
         ),
         True,
     ),
-    "knn": (lambda: sg.KNNGame.from_config(dataset="xor", n_train=8), True),
+    "knn": (lambda: sg.KNNGame(_knn(), _X_TEST[0]), True),
     "weighted_knn": (
-        lambda: sg.WeightedKNNGame.from_config(dataset="breast_cancer", n_train=8, n_bits=3),
+        lambda: sg.WeightedKNNGame(_knn(weights="distance"), _X_TEST[0], n_bits=3),
         True,
     ),
     "threshold_nn": (
-        lambda: sg.ThresholdNNGame.from_config(
-            dataset="xor", n_train=8, model_params={"radius": 1.0}
+        lambda: sg.ThresholdNNGame(
+            RadiusNeighborsClassifier(radius=1.5).fit(_X_TRAIN[:8], _Y_CLF_TRAIN[:8]),
+            _X_TEST[0],
         ),
         False,
     ),
     "product_kernel": (
-        lambda: sg.ProductKernelGame.from_config(
-            dataset="breast_cancer", model="svm", n_train=100, normalize=True
+        lambda: sg.ProductKernelGame(
+            SVC(kernel="rbf", gamma=0.3).fit(_X_TRAIN[:100], _Y_CLF_TRAIN[:100]),
+            _X_TEST[0],
+            normalize=True,
         ),
         True,
     ),
@@ -211,36 +261,3 @@ def test_centered_games_vanish_on_the_empty_coalition(
     if not centered:
         pytest.skip("this game is not centered")
     assert game(game.empty_coalition)[0] == pytest.approx(0.0, abs=1e-12)
-
-
-def test_configured_games_have_stable_fingerprints(
-    game_pair: tuple[str, Game, Game, bool],
-) -> None:
-    _, game, other, _ = game_pair
-    fingerprint = getattr(game, "fingerprint", None)
-    if fingerprint is None:
-        pytest.skip("this game was not built from a configuration")
-    assert isinstance(fingerprint, str)
-    assert len(fingerprint) == 16
-    assert fingerprint == other.fingerprint
-
-
-def test_configurations_accept_numpy_scalars() -> None:
-    game = sg.KNNGame.from_config(dataset="xor", n_train=8, x=np.int64(1), random_state=np.int64(0))
-    assert game.config is not None
-    assert game.config["x"] == 1
-    assert type(game.config["random_state"]) is int
-    assert (
-        game.fingerprint
-        == sg.KNNGame.from_config(dataset="xor", n_train=8, x=1, random_state=0).fingerprint
-    )
-
-
-def test_fingerprint_changes_with_configuration() -> None:
-    first = sg.KNNGame.from_config(dataset="xor", n_train=8, random_state=0)
-    second = sg.KNNGame.from_config(dataset="xor", n_train=8, random_state=1)
-    third = sg.KNNGame.from_config(dataset="xor", n_train=8, random_state=0)
-    assert first.fingerprint != second.fingerprint
-    assert first.fingerprint == third.fingerprint
-    assert first.config is not None
-    assert first.config["random_state"] == 0

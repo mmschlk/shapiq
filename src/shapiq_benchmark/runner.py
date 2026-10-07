@@ -94,7 +94,8 @@ def run(
     game = benchmark.game
     context = {
         "game": type(game).__name__,
-        "fingerprint": benchmark.fingerprint,
+        "setup": benchmark.setup.name if benchmark.setup is not None else None,
+        "key": benchmark.key,
         "n_players": game.n_players,
         "computer": benchmark.computer.name,
         "index": index,

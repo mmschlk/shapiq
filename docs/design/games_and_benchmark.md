@@ -28,13 +28,15 @@ rewrite) computes the right numbers.
 
 ```
 shapiq_benchmark  ──►  shapiq_games  ──►  shapiq (core)
-  computers,             games, datasets,      algorithms: ExactComputer, MoebiusConverter,
-  Benchmark, metrics,    model zoo             TreeSHAPIQ / TreeExplainer, InterventionalTreeSHAPIQ,
-  runner, local cache                          KNNExplainer, ProductKernelComputer, imputers
+  setups, datasets,      game definitions      algorithms: ExactComputer, MoebiusConverter,
+  model registry,        (the game zoo)        TreeSHAPIQ / TreeExplainer, InterventionalTreeSHAPIQ,
+  computers, Benchmark,                        KNNExplainer, ProductKernelComputer, imputers
+  metrics, runner, cache
 ```
 
-Nothing ever points the other way. Games know nothing about computers, and core knows nothing
-about either package (core *tests* may import games, as they already do for `DummyGame`).
+Nothing ever points the other way. Games know nothing about datasets, model names, computers or
+caches, and core knows nothing about either package (core *tests* may import games, as they
+already do for `DummyGame`).
 
 ## `shapiq_games`
 
@@ -42,8 +44,7 @@ about either package (core *tests* may import games, as they already do for `Dum
 
 ```
 shapiq_games/
-  _base.py              the game contract (bool coalitions, explicit x, class index, fingerprint)
-  _setup.py             from_config plumbing (load, split, fit)
+  _base.py              the game contract (bool coalitions, explicit x, class index)
   _training.py          clone-per-coalition training, metrics, constant predictors
   synthetic/            DummyGame, UnanimityGame, SOUM, RandomTableGame (replaces RandomGame)
   tree/                 PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
@@ -60,8 +61,6 @@ shapiq_games/
   causal.py             GlobalConfoundingXAI, LocalConfoundingXAI
   vision/               ImageClassifier (ViT, ResNet, custom classifiers)   [torch, transformers]
   language.py           SentimentAnalysis                                  [transformers]
-  datasets/             dataset registry, loaders, local cache, Imagenette images
-  models.py             model registry + tuned presets
 ```
 
 There is **one class per game family**, configured by arguments. The 153 classes today
@@ -71,26 +70,18 @@ games, and benchmarking is `shapiq_benchmark`'s job.
 
 ### Construction
 
-`shapiq_games` is first a collection of game definitions. The constructor of every game takes
-plain objects (a model, data, a point, an image, a text) and nothing benchmark-specific; the
-task of a model-based game is read off the model, and the causal games fit their own reference
-effect. Every class docstring shows this construction, and
-`tests/shapiq_games/test_docstring_examples.py` runs all docstring examples.
-
-`from_config` is the second, optional entry point for benchmarks. It resolves dataset and model
-names through the registries and records the configuration:
+`shapiq_games` is a collection of game definitions: it shows how a problem becomes a cooperative
+game. The constructor of every game takes plain objects (a model, data, a point, an image, a
+text) and nothing benchmark-specific; the task of a model-based game is read off the model, and
+the causal games fit their own reference effect. Every class docstring shows this construction,
+and `tests/shapiq_games/test_docstring_examples.py` runs all docstring examples.
 
 ```python
-# 1. a game definition, built from your own objects: the primary constructor
 game = FeatureSelection(DecisionTreeRegressor(), x_train, y_train, x_test, y_test)
-
-# 2. for benchmarks: the same game from names, with a configuration and a fingerprint
-game = FeatureSelection.from_config(dataset="california_housing", model="random_forest", random_state=0)
 ```
 
-Games built with `from_config` carry a JSON-serializable `config` and a stable `fingerprint`
-(a SHA-256 hash of class name + config). Today's `game_id` relies on Python's `hash()`, which
-changes between processes, so it cannot be used as a cache key.
+Loading datasets, fitting models by name, and identifying games for a cache are benchmark
+concerns. They live in the setups of `shapiq_benchmark` (below), not in the games.
 
 ### Game contract (enforced by `tests/shapiq_games`)
 
@@ -107,57 +98,14 @@ changes between processes, so it cannot be used as a cache key.
    - KNN games: `model`, `x`, `class_index`
    - product kernel: `model`, `x`
 8. **Import hygiene.** No import-time warnings. Optional dependencies (torch, transformers, tabpfn, openml, xgboost, lightgbm, catboost) are imported lazily, with an error that names the missing package.
-9. **Named external models.** A pretrained model is identified by its name in the configuration (a Hugging Face model id, optionally with a `revision=`; a torchvision weights enum). A new model version is a new name; package versions are not tracked.
+9. **Named external models.** A pretrained model is identified by its name (a Hugging Face model id, optionally with a `revision=`; a torchvision weights enum). A new model version is a new name; package versions are not tracked.
 
-Each family gets contract tests on a small offline configuration:
+Each family gets contract tests on small in-memory objects (no downloads, no setups):
 - the same coalition repeated gives the same value
 - a permuted batch gives a permuted output
 - two instances with the same arguments are equal
 - `n_players` and the normalization are right
 - axioms where they hold (efficiency of the computed values; null and dummy players for games that have them)
-
-### Datasets
-
-- **One registry**, name → `DatasetSpec` with these fields:
-  - source
-  - `task` ("classification" or "regression"), declared explicitly rather than guessed from the labels
-  - preprocessing
-  - feature names
-- **Sources.** Every real-world dataset comes from its original source; nothing is served from
-  this repository:
-  - OpenML by dataset id (ids are immutable): adult (1590), amazon (1457), arrhythmia (5),
-    bike sharing (42713), bioresponse (4134), leukemia (45090), micro-mass (1515), and the 51
-    TabArena datasets;
-  - the UCI repository via `ucimlrepo`: annealing, hepatitis, ionosphere, mushroom, nursery, zoo;
-  - the UCI repository's raw files: soybean, thyroid, wine quality, real estate, forest fires
-    (`ucimlrepo` does not serve arrhythmia and thyroid, and has only the small soybean table);
-  - scikit-learn: breast cancer (bundled) and California housing (`fetch_california_housing`);
-  - shap's data folder: NHANES I and communities and crime;
-  - fast.ai: Imagenette (below);
-  - seeded generators for synthetic data.
-
-  Single files are checked against a pinned SHA-256 hash. Upstream tables (OpenML, UCI,
-  scikit-learn) are cached as a lossless CSV and checked against the shape the loaders were
-  written for, so a changed upstream fails loudly. `test_heavy_games.py` compares every live
-  upstream table with the previously bundled file; all 16 match (checked on 2026-10-07). The
-  loaders then give bit-identical datasets for 16 of the 18 bundled tables; bike sharing and
-  California housing differ by at most 5e-15 (relative), because the old CSVs had dropped the
-  last digit of some floats and the new values are the exact upstream ones.
-- **Local cache.** Files go to `$SHAPIQ_DATA_DIR`, defaulting to `$XDG_CACHE_HOME/shapiq` (or `~/.cache/shapiq`), and are written atomically (temp file + rename) so parallel test workers are safe. Nothing is ever written into the installed package.
-- **Deterministic splits.** Seeded train/test splits, stratified for classification.
-- **Data removed from the tree** (the files remain in git history, but no loader reads them from there):
-  - `shapiq_games/datasets/data` (81 MB)
-  - `shapiq/datasets/data` (8.5 MB)
-  - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
-- **Core loaders stay unchanged.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing, so deleting the CSVs needs no core code change. The repo-root `data/` folder therefore stays; it is not part of any wheel. The fetch-and-cache helper lives in `shapiq_games` only.
-- **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
-- **Undeclared dependencies.** `openml`, `ucimlrepo` and `openpyxl` get declared as optional dependencies; today they aren't declared at all.
-
-### Models
-
-- `build_model(name, task, random_state=..., preset=..., **params)` covers decision trees, random forests, XGBoost, LightGBM, CatBoost, MLPs, linear models, SVMs, Gaussian processes, nearest neighbors, and TabPFN. `random_state` is always passed through, and models run single-threaded where the library allows it.
-- Hyperparameter presets (previously the Optuna JSONs in `shapiq_benchmark`) are Python dicts next to the registry (`preset="tuned"`). The Optuna script stays a benchmark tool and now works for any registered dataset.
-- The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is dropped in favor of the seeded generic `mlp` model.
 
 ### Games moving out of core
 
@@ -184,6 +132,76 @@ No method in `src/shapiq` uses them. Only `__init__` re-exports and tests refere
 - `GameBenchmarkSetup` and `get_x_explain`, replaced by the registries and the game contract
 
 ## `shapiq_benchmark`
+
+### Setups
+
+The games are built from objects. A **setup** builds one from names instead, for benchmarks: a
+frozen, keyword-only dataclass with exactly the fields its kind of game needs, and a `build()`
+that returns the plain game.
+
+```python
+setup = LocalExplanationSetup(dataset="adult_census", model="xgboost", x=3)
+game = setup.build()                        # a plain shapiq_games.LocalExplanation
+benchmark = Benchmark.from_setup(setup)     # exact values cached under setup.key
+setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run specifications
+```
+
+- **One setup per game**, except the synthetic games, which take only plain values anyway
+  (20 setups). Their fields differ with the kind of game: `TabularSetup` holds `dataset`,
+  `random_state`, `test_size` and `dataset_params`; `ModelSetup` adds `model`, `preset` and
+  `model_params`; the image, text and causal setups have their own fields.
+- **Typed.** Fields have defaults and `Literal` choices, and a setup is validated when it is
+  created: its fields must be JSON-serializable, and cross-field rules (`imputer="tabpfn"`
+  needs `model="tabpfn"`) raise immediately.
+- **Key.** `setup.key` hashes the setup's name, its `version` and its fields (SHA-256), stable
+  across processes and machines. Runtime fields (device, batch size) are excluded. A setup bumps
+  `version` when `build()` changes the game it builds for the same fields. Package and model
+  versions are not tracked: a genuinely new model gets a new name.
+- **Registry.** Every setup registers under its name (`SETUPS`); `setup_from_dict` rebuilds a
+  setup from its dictionary form.
+
+### Datasets
+
+- **One registry**, name → `DatasetSpec` with these fields:
+  - source
+  - `task` ("classification" or "regression"), declared explicitly rather than guessed from the labels
+  - preprocessing
+  - feature names
+- **Sources.** Every real-world dataset comes from its original source; nothing is served from
+  this repository:
+  - OpenML by dataset id (ids are immutable): adult (1590), amazon (1457), arrhythmia (5),
+    bike sharing (42713), bioresponse (4134), leukemia (45090), micro-mass (1515), and the 51
+    TabArena datasets;
+  - the UCI repository via `ucimlrepo`: annealing, hepatitis, ionosphere, mushroom, nursery, zoo;
+  - the UCI repository's raw files: soybean, thyroid, wine quality, real estate, forest fires
+    (`ucimlrepo` does not serve arrhythmia and thyroid, and has only the small soybean table);
+  - scikit-learn: breast cancer (bundled) and California housing (`fetch_california_housing`);
+  - shap's data folder: NHANES I and communities and crime;
+  - fast.ai: Imagenette (below);
+  - seeded generators for synthetic data.
+
+  Single files are checked against a pinned SHA-256 hash. Upstream tables (OpenML, UCI,
+  scikit-learn) are cached as a lossless CSV and checked against the shape the loaders were
+  written for, so a changed upstream fails loudly. `tests/shapiq_benchmark/test_heavy.py` compares every live
+  upstream table with the previously bundled file; all 16 match (checked on 2026-10-07). The
+  loaders then give bit-identical datasets for 16 of the 18 bundled tables; bike sharing and
+  California housing differ by at most 5e-15 (relative), because the old CSVs had dropped the
+  last digit of some floats and the new values are the exact upstream ones.
+- **Local cache.** Files go to `$SHAPIQ_DATA_DIR`, defaulting to `$XDG_CACHE_HOME/shapiq` (or `~/.cache/shapiq`), and are written atomically (temp file + rename) so parallel test workers are safe. Nothing is ever written into the installed package.
+- **Deterministic splits.** Seeded train/test splits, stratified for classification.
+- **Data removed from the tree** (the files remain in git history, but no loader reads them from there):
+  - `shapiq_games/datasets/data` (81 MB)
+  - `shapiq/datasets/data` (8.5 MB)
+  - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
+- **Core loaders stay unchanged.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing, so deleting the CSVs needs no core code change. The repo-root `data/` folder therefore stays; it is not part of any wheel. The fetch-and-cache helper lives in `shapiq_benchmark` only.
+- **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
+- **Declared dependencies.** `openml`, `ucimlrepo` and `openpyxl` are part of the `benchmark` extra; before, they were not declared at all.
+
+### Models
+
+- `build_model(name, task, random_state=..., preset=..., **params)` covers decision trees, random forests, XGBoost, LightGBM, CatBoost, MLPs, linear models, SVMs, Gaussian processes, nearest neighbors, and TabPFN. `random_state` is always passed through, and models run single-threaded where the library allows it.
+- Hyperparameter presets (previously the Optuna JSONs in `shapiq_benchmark`) are Python dicts next to the registry (`preset="tuned"`). The Optuna script stays a benchmark tool and now works for any registered dataset.
+- The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is dropped in favor of the seeded generic `mlp` model.
 
 ### Computers
 
@@ -220,15 +238,16 @@ type if there is one, otherwise `BruteForceComputer` (and raises an error above 
 ### Benchmark
 
 ```python
-benchmark = Benchmark(game)                       # computer = default_computer(game)
+benchmark = Benchmark(game)                       # any game; computer = default_computer(game)
 benchmark = Benchmark(game, computer=BruteForceComputer(game))
-gt = benchmark.exact_values(index="k-SII", order=2)   # cached locally by game fingerprint
+benchmark = Benchmark.from_setup(setup)           # the game of a setup, with a local cache
+gt = benchmark.exact_values(index="k-SII", order=2)   # cached under the setup's key
 results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[0, 1])
 ```
 
 - `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently.
-- Exact values are cached under `$SHAPIQ_DATA_DIR/ground_truth/<fingerprint>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`. Games built from objects (no fingerprint) are not cached. The cache does not track package or model versions: the configuration identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute.
-- `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. String configuration lives in the games' `from_config`.
+- Exact values of `Benchmark.from_setup` are cached under `$SHAPIQ_DATA_DIR/ground_truth/<setup name>/<setup key>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, next to a `setup.json` that records what the key stands for. `Benchmark(game)` is not cached. The cache does not track package or model versions: the setup identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute.
+- `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. Building games from names lives in the setups.
 
 ### Chain of trust (enforced by `tests/shapiq_benchmark`)
 
@@ -262,7 +281,7 @@ Core stays as it is except for exactly these changes:
 
 Not core changes, handled elsewhere:
 - **Order-0 convention.** `MoebiusConverter` puts 0 at `()` while `ExactComputer` puts the baseline value. The computers translate every result to the game's own convention, so core is left alone.
-- **Unstable `game_id`.** It is based on Python's `hash()`. Games get their own `fingerprint` instead.
+- **Unstable `game_id`.** It is based on Python's `hash()`. Setups get a stable `key` instead.
 - **Inconsistent index declarations** (a `valid_indices` attribute here, a `Literal` alias there). Computers read whatever exists; harmonizing them in core is out of scope.
 
 No test in this PR depends on either fix, so none is marked `xfail`.
@@ -272,9 +291,9 @@ No test in this PR depends on either fix, so none is marked `xfail`.
 Everything except the two core bug fixes lands as **one complete PR**, so the whole design can
 be reviewed and ironed out in one sweep. It contains, in build order:
 
-1. **Data layer.** The fetch-and-cache helper and dataset registry in `shapiq_games` (with explicit task types), and removal of the bundled data files (games CSVs and JPEGs, core CSVs).
-2. **Games.** Family classes, model registry, the move of the core games, deletions, `tests/shapiq_games` with contract tests.
-3. **Benchmark.** Computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
+1. **Data layer.** The fetch-and-cache helper and dataset registry in `shapiq_benchmark` (with explicit task types), and removal of the bundled data files (games CSVs and JPEGs, core CSVs).
+2. **Games.** Family classes, the move of the core games, deletions, `tests/shapiq_games` with contract tests.
+3. **Benchmark.** Setups and the model registry, computers, `Benchmark`, metrics, runner, local cache, chain-of-trust and drift tests.
 
 The two core bug fixes are separate PRs, done independently.
 
@@ -291,10 +310,16 @@ The two core bug fixes are separate PRs, done independently.
 2. **California torch network.** Dropped; the seeded generic `mlp` replaces it.
 3. **Brute-force player cap.** Default 20 (needed for the TabPFN use cases), overridable per
    call. Tests stay at about 10 players or fewer so they remain fast.
+4. **Games versus benchmark configuration.** A first version gave every game a `from_config`
+   classmethod with a `config` and a `fingerprint`. That mixed benchmark plumbing (datasets,
+   model names, cache keys) into the game zoo. The typed setups of `shapiq_benchmark` replace
+   it: the games keep only their natural constructors, and every game except the synthetic
+   ones stays benchmarkable through its setup. The datasets and the model registry moved to
+   `shapiq_benchmark` with them.
 
 ## Verified with network access
 
-The opt-in tests in `tests/shapiq_games/test_heavy_games.py` (`SHAPIQ_RUN_HEAVY_TESTS=1`) download
+The opt-in tests in `tests/shapiq_benchmark/test_heavy.py` (`SHAPIQ_RUN_HEAVY_TESTS=1`) download
 the real data and models. All 25 passed on 2026-10-07:
 
 - the 16 upstream tables against the previously bundled files (see Sources),

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Self
 import numpy as np
 import pytest
 
-from shapiq_games.datasets import (
+from shapiq_benchmark.datasets import (
     TABARENA_DATASETS,
     _cache as cache,
     get_data_dir,
@@ -231,7 +231,7 @@ def test_tabarena_imputes_categories_before_encoding(
 
 def test_tabular_data_comes_from_original_sources() -> None:
     """No dataset is served from this repository; upstream tables declare their shape."""
-    from shapiq_games.datasets import _tabular
+    from shapiq_benchmark.datasets import _tabular
 
     remotes = [*_tabular._SHAP_FILES.values(), *_tabular._UCI_FILES.values()]
     assert all("mmschlk/shapiq" not in remote.url for remote in remotes)
@@ -245,7 +245,7 @@ def test_upstream_tables_are_cached_and_shape_checked(
 ) -> None:
     import pandas as pd
 
-    from shapiq_games.datasets import _tabular
+    from shapiq_benchmark.datasets import _tabular
 
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
     zoo = pd.DataFrame(np.arange(101 * 16).reshape(101, 16), columns=[f"f{i}" for i in range(16)])
@@ -315,7 +315,7 @@ def _patch_imagenette_fetch(
 ) -> list[Path]:
     import shutil
 
-    from shapiq_games.datasets import _imagenette
+    from shapiq_benchmark.datasets import _imagenette
 
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path / "data"))
     fetched: list[Path] = []
@@ -334,7 +334,7 @@ def _patch_imagenette_fetch(
 def test_imagenette_is_extracted_once_with_imagenet_labels(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from shapiq_games.datasets import load_imagenette
+    from shapiq_benchmark.datasets import load_imagenette
 
     fetched = _patch_imagenette_fetch(monkeypatch, tmp_path, _fake_imagenette(tmp_path))
     images = load_imagenette(split="val", size="160px")
@@ -358,7 +358,7 @@ def test_imagenette_extraction_refuses_paths_outside_the_cache(
 ) -> None:
     import tarfile
 
-    from shapiq_games.datasets import load_imagenette
+    from shapiq_benchmark.datasets import load_imagenette
 
     escape = {"imagenette2-160/val/n01440764/../../../../evil.JPEG": b"x"}
     _patch_imagenette_fetch(monkeypatch, tmp_path, _fake_imagenette(tmp_path, escape))

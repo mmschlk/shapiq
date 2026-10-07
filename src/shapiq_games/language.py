@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
+from shapiq_games._base import as_bool_coalitions
 from shapiq_games._optional import require
 
 __all__ = ["SENTIMENT_MODEL_ID", "SentimentAnalysis"]
@@ -16,7 +16,7 @@ SENTIMENT_MODEL_ID = "lvwerra/distilbert-imdb"
 """The default Hugging Face model: DistilBERT fine-tuned on IMDb movie reviews."""
 
 
-class SentimentAnalysis(ConfigMixin, Game):
+class SentimentAnalysis(Game):
     """The sentiment analysis game: the signed sentiment score of a text with tokens removed.
 
     The players are the tokens of the input text (without the special tokens). Absent tokens are
@@ -123,40 +123,3 @@ class SentimentAnalysis(ConfigMixin, Game):
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the signed sentiment score of the text restricted to each coalition."""
         return self._evaluate(as_bool_coalitions(coalitions))
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        input_text: str,
-        mask_strategy: Literal["mask", "remove"] = "mask",
-        revision: str | None = None,
-        device: int | str | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game with the default sentiment model.
-
-        Args:
-            input_text: The text to explain.
-            mask_strategy: ``"mask"`` or ``"remove"``.
-            revision: The Hugging Face revision of the model (``None`` for the default branch).
-            device: The device of the pipeline (not part of the configuration).
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        game = cls(
-            input_text,
-            mask_strategy=mask_strategy,
-            device=device,
-            revision=revision,
-            normalize=normalize,
-        )
-        return game._set_config(
-            input_text=input_text,
-            model=SENTIMENT_MODEL_ID,
-            revision=revision,
-            mask_strategy=mask_strategy,
-            normalize=normalize,
-        )

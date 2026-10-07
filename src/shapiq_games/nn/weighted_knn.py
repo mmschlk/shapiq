@@ -55,8 +55,6 @@ class WeightedKNNGame(KNNGameBase):
         10
     """
 
-    _model_name = "weighted_knn"
-
     def __init__(
         self,
         model: KNeighborsClassifier,
@@ -99,8 +97,6 @@ class BinaryWeightedKNNGame(KNNGameBase):
     class, and zero otherwise (equation 15 of Wang et al., 2024, with zero for the empty
     coalition).
     """
-
-    _model_name = "weighted_knn"
 
     def __init__(
         self,

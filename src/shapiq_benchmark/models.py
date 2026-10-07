@@ -1,12 +1,12 @@
-"""Seeded model registry used to configure the games of :mod:`shapiq_games` from strings.
+"""Seeded model registry of the benchmark setups (:mod:`shapiq_benchmark.setups`).
 
 Every model is built with an explicit ``random_state`` and single-threaded where the library
-allows it, so that a configured game is reproducible. Optional backends (``xgboost``,
+allows it, so that a game built by a setup is reproducible. Optional backends (``xgboost``,
 ``lightgbm``, ``catboost``, ``tabpfn``) are imported lazily.
 
 Examples:
-    >>> from shapiq_games.datasets import load_dataset
-    >>> from shapiq_games.models import fit_model
+    >>> from shapiq_benchmark.datasets import load_dataset
+    >>> from shapiq_benchmark.models import fit_model
     >>> split = load_dataset("breast_cancer").split(random_state=42)
     >>> model = fit_model("random_forest", split, random_state=42)
 """

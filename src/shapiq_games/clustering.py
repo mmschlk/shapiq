@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Self
+from typing import Literal
 
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import calinski_harabasz_score, silhouette_score
-from sklearn.preprocessing import StandardScaler
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 
 __all__ = ["ClusterExplanation"]
 
 _SCORES = {"calinski_harabasz": calinski_harabasz_score, "silhouette": silhouette_score}
 
 
-class ClusterExplanation(ConfigMixin, Game):
+class ClusterExplanation(Game):
     """The cluster explanation game: the quality of a clustering using only some features.
 
     The players are the features. The value of a coalition is the clustering score
@@ -104,68 +102,3 @@ class ClusterExplanation(ConfigMixin, Game):
             if np.unique(labels).shape[0] > 1:
                 values[i] = float(_SCORES[self.score](data, labels))
         return values
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        n_samples: int = 1000,
-        method: Literal["kmeans", "agglomerative"] = "kmeans",
-        n_clusters: int = 3,
-        score: Literal["calinski_harabasz", "silhouette"] = "calinski_harabasz",
-        empty_value: float = 0.0,
-        random_state: int = 42,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game on a seeded sample of a registered dataset, standardized per feature.
-
-        Args:
-            dataset: The dataset name.
-            n_samples: The number of rows to cluster (scores like the silhouette are quadratic in
-                the number of rows). Defaults to ``1000``.
-            method: ``"kmeans"`` or ``"agglomerative"``.
-            n_clusters: The number of clusters. Defaults to ``3``.
-            score: ``"calinski_harabasz"`` or ``"silhouette"``.
-            empty_value: The value of the empty coalition. Defaults to ``0``.
-            random_state: The seed of the row sample and k-means.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=None,
-            random_state=random_state,
-            dataset_params=dataset_params,
-        )
-        data = setup.split.dataset.x
-        rng = np.random.default_rng(random_state)
-        rows = np.sort(rng.choice(data.shape[0], size=min(n_samples, data.shape[0]), replace=False))
-        data = StandardScaler().fit_transform(data[rows])
-        game = cls(
-            data,
-            method=method,
-            n_clusters=n_clusters,
-            score=score,
-            empty_value=empty_value,
-            random_state=random_state,
-            normalize=normalize,
-        )
-        config = {
-            "dataset": dataset,
-            "dataset_params": setup.config["dataset_params"],
-            "random_state": random_state,
-        }
-        return game._set_config(
-            **config,
-            n_samples=n_samples,
-            method=method,
-            n_clusters=n_clusters,
-            score=score,
-            empty_value=empty_value,
-            normalize=normalize,
-        )

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from shapiq_games._optional import require
+from shapiq_benchmark._optional import require
 
 from ._cache import atomic_write_bytes, get_data_dir
 from ._registry import DatasetSpec, register_dataset

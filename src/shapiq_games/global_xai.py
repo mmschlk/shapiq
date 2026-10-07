@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import (
-    ConfigMixin,
     as_bool_coalitions,
     make_predict_function,
     resolve_class_index,
 )
-from shapiq_games._setup import configure
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,7 +24,7 @@ _LOSSES: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
 }
 
 
-class GlobalExplanation(ConfigMixin, Game):
+class GlobalExplanation(Game):
     r"""The global explanation game (SAGE-like): the loss a coalition of features explains.
 
     For evaluation rows :math:`X` and replacement rows :math:`R` (each feature independently
@@ -127,63 +125,3 @@ class GlobalExplanation(ConfigMixin, Game):
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the negative loss between full and masked predictions."""
         return self._evaluate(as_bool_coalitions(coalitions))
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "random_forest",
-        class_index: int | None = None,
-        loss: Literal["mse", "mae"] = "mse",
-        n_samples: int = 100,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        preset: str | None = None,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game for a registered dataset; rows are drawn from the test split.
-
-        Args:
-            dataset: The dataset name.
-            model: The model name. Defaults to ``"random_forest"``.
-            class_index: The explained class for classifiers (``None`` means class ``1``).
-            loss: ``"mse"`` or ``"mae"``. Defaults to ``"mse"``.
-            n_samples: The number of evaluation rows. Defaults to ``100``.
-            random_state: The seed of the split, the model, and the rows.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            preset: The hyperparameter preset of the model (``"tuned"`` or ``None``).
-            model_params: Hyperparameters of the model.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=model,
-            random_state=random_state,
-            test_size=test_size,
-            preset=preset,
-            model_params=model_params,
-            dataset_params=dataset_params,
-        )
-        game = cls(
-            setup.model,
-            setup.split.x_test,
-            class_index=class_index,
-            loss=loss,
-            n_samples=n_samples,
-            random_state=random_state,
-            normalize=normalize,
-        )
-        return game._set_config(
-            **setup.config,
-            class_index=class_index,
-            loss=loss,
-            n_samples=n_samples,
-            normalize=normalize,
-        )

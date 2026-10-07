@@ -9,15 +9,14 @@ Every game in this package follows the same contract:
    array. The default is index ``0``, never a random point.
 3. Classification games resolve ``class_index`` once at construction. Following the convention of
    the shapiq explainers, ``None`` means class ``1`` for classifiers.
-4. Games built from a string configuration (``from_config``) carry that configuration and a
-   stable :attr:`ConfigMixin.fingerprint` that can be used as a cache key.
+
+Building games from names (datasets, models, seeds) for benchmarks is the job of
+:mod:`shapiq_benchmark.setups`, not of the games.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
-from typing import TYPE_CHECKING, Any, ClassVar, Self
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,7 +26,6 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
 __all__ = [
-    "ConfigMixin",
     "as_bool_coalitions",
     "is_classifier",
     "make_predict_function",
@@ -153,49 +151,3 @@ def make_predict_function(
         return np.asarray(predict_proba(x), dtype=float)[:, class_index]
 
     return _predict_proba
-
-
-def _to_builtin(value: object) -> object:
-    """Convert numpy scalars and arrays to Python objects for JSON."""
-    if isinstance(value, np.generic | np.ndarray):
-        return value.tolist()
-    msg = f"Object of type {type(value).__name__} is not JSON serializable"
-    raise TypeError(msg)
-
-
-class ConfigMixin:
-    """Adds a string configuration and a stable fingerprint to games built with ``from_config``.
-
-    The fingerprint is a SHA-256 hash of the game class, its ``config_version``, and the
-    configuration. It is stable across processes and machines (unlike ``Game.game_id``, which
-    relies on Python's ``hash``) and is therefore suitable as a cache key. Families bump
-    ``config_version`` whenever their value function changes so that stale caches are not reused.
-    """
-
-    config_version: ClassVar[int] = 1
-    """The version of the value function of the game family, part of the fingerprint."""
-
-    config: dict[str, Any] | None = None
-    """The JSON-serializable configuration the game was built from, or ``None``."""
-
-    def _set_config(self, **config: Any) -> Self:
-        """Attach a JSON-serializable configuration to the game and return the game."""
-        try:  # numpy scalars and arrays become their Python equivalents
-            self.config = json.loads(json.dumps(config, sort_keys=True, default=_to_builtin))
-        except TypeError as error:
-            msg = f"The game configuration must be JSON-serializable, got {config!r}."
-            raise TypeError(msg) from error
-        return self
-
-    @property
-    def fingerprint(self) -> str | None:
-        """A stable identifier of the configured game, or ``None`` if built from objects."""
-        if self.config is None:
-            return None
-        payload = {
-            "game": f"{type(self).__module__}.{type(self).__qualname__}",
-            "version": self.config_version,
-            "config": self.config,
-        }
-        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8"))
-        return digest.hexdigest()[:16]

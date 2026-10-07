@@ -1,11 +1,11 @@
-"""Tune model hyperparameters with Optuna to produce the presets of :mod:`shapiq_games.models`.
+"""Tune model hyperparameters with Optuna to produce the presets of :mod:`shapiq_benchmark.models`.
 
 Example:
     python -m shapiq_benchmark.optimization.optuna_optimization \
         --model xgboost --dataset adult_census --trials 50 --output tuned.json
 
 The best parameters are written to the output file. To make them available as
-``preset="tuned"``, add them to ``TUNED_PRESETS`` in ``shapiq_games/models.py``.
+``preset="tuned"``, add them to ``TUNED_PRESETS`` in ``shapiq_benchmark/models.py``.
 """
 
 from __future__ import annotations
@@ -21,13 +21,13 @@ from sklearn.metrics import accuracy_score, r2_score
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from shapiq_benchmark._optional import require
-from shapiq_games.datasets import list_datasets, load_dataset
-from shapiq_games.models import build_model
+from shapiq_benchmark.datasets import list_datasets, load_dataset
+from shapiq_benchmark.models import build_model
 
 if TYPE_CHECKING:
     import optuna
 
-    from shapiq_games.datasets import DatasetSplit
+    from shapiq_benchmark.datasets import DatasetSplit
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ def main() -> None:
     output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     logger.info("Best score %.4f; parameters written to %s", study.best_value, output)
     logger.info(
-        "Add to TUNED_PRESETS in shapiq_games/models.py: (%r, %r): %r",
+        "Add to TUNED_PRESETS in shapiq_benchmark/models.py: (%r, %r): %r",
         args.model,
         args.dataset,
         study.best_params,

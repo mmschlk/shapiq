@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any
 
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions
 from shapiq_games._training import (
     Metric,
     MetricName,
@@ -17,12 +16,11 @@ from shapiq_games._training import (
     resolve_metric,
     resolve_task,
 )
-from shapiq_games.models import build_model
 
 __all__ = ["FeatureSelection"]
 
 
-class FeatureSelection(ConfigMixin, Game):
+class FeatureSelection(Game):
     """The feature selection game: the test metric of a model retrained on a feature subset.
 
     The players are the features. The value of a coalition is the test metric of a fresh copy of
@@ -107,70 +105,3 @@ class FeatureSelection(ConfigMixin, Game):
                 metric=self._metric,
             )
         return values
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "decision_tree",
-        metric: MetricName | None = None,
-        n_train: int | None = None,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        preset: str | None = None,
-        model_params: dict[str, Any] | None = None,
-        dataset_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game for a registered dataset and a model from the model registry.
-
-        Args:
-            dataset: The dataset name.
-            model: The model name. Defaults to ``"decision_tree"``.
-            metric: The metric name, or ``None`` for the default of the task.
-            n_train: Use a seeded subset of this many training rows (``None`` for all).
-            random_state: The seed of the split, the model, and the training subset.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            preset: The hyperparameter preset of the model (``"tuned"`` or ``None``).
-            model_params: Hyperparameters of the model.
-            dataset_params: Parameters of synthetic datasets.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=None,
-            random_state=random_state,
-            test_size=test_size,
-            dataset_params=dataset_params,
-        )
-        split = setup.split
-        x_train, y_train = split.x_train, split.y_train
-        if n_train is not None and n_train < x_train.shape[0]:
-            rng = np.random.default_rng(random_state)
-            rows = np.sort(rng.choice(x_train.shape[0], size=n_train, replace=False))
-            x_train, y_train = x_train[rows], y_train[rows]
-        model_params = dict(model_params or {})
-        estimator = build_model(
-            model,
-            split.task,
-            random_state=random_state,
-            preset=preset,
-            dataset=dataset,
-            **model_params,
-        )
-        game = cls(
-            estimator,
-            x_train,
-            y_train,
-            split.x_test,
-            split.y_test,
-            task=split.task,
-            metric=metric,
-            normalize=normalize,
-        )
-        config = {**setup.config, "model": model, "model_params": model_params, "preset": preset}
-        return game._set_config(**config, metric=metric, n_train=n_train, normalize=normalize)

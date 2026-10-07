@@ -29,8 +29,6 @@ class KNNGame(KNNGameBase):
         10
     """
 
-    _model_name = "knn"
-
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the share of the explained class among the coalition's k nearest neighbors."""
         coalitions = as_bool_coalitions(coalitions)

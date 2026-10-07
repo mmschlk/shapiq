@@ -1,4 +1,4 @@
-"""Datasets for the games in :mod:`shapiq_games`.
+"""Datasets of the benchmark setups (:mod:`shapiq_benchmark.setups`).
 
 No data ships with the package. Real-world data is downloaded on first use from pinned sources,
 verified by checksum, and cached locally (see :func:`get_data_dir`). Synthetic data is generated
@@ -6,7 +6,7 @@ from a seed. The image games use Imagenette, a ten-class subset of ImageNet
 (:func:`load_imagenette`).
 
 Examples:
-    >>> from shapiq_games.datasets import list_datasets, load_dataset
+    >>> from shapiq_benchmark.datasets import list_datasets, load_dataset
     >>> dataset = load_dataset("breast_cancer")
     >>> dataset.task, dataset.n_features
     ('classification', 30)

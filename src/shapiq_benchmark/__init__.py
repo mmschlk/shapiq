@@ -3,7 +3,13 @@
 - :mod:`shapiq_benchmark.computers`: ground-truth computers wrapping the exact algorithms of
   shapiq (brute force, Möbius, path-dependent and interventional trees, nearest neighbors,
   product kernels) and :func:`default_computer` choosing one for a game.
-- :class:`Benchmark`: a game and its computer, with a local cache of exact values.
+- :class:`Benchmark`: a game and its computer. ``Benchmark(game)`` works for any game;
+  :meth:`Benchmark.from_setup` builds the game of a setup and caches its exact values locally.
+- :mod:`shapiq_benchmark.setups`: typed recipes that build the games of :mod:`shapiq_games` from
+  names (dataset, model, seeds), one per game except the synthetic ones.
+- :mod:`shapiq_benchmark.datasets` and :mod:`shapiq_benchmark.models`: the datasets (downloaded on
+  first use and cached locally; no data ships with the package) and the seeded model registry
+  the setups use.
 - :mod:`shapiq_benchmark.metrics`: error, ranking, and faithfulness metrics.
 - :func:`run`: runs approximators over budgets and seeds and scores them.
 

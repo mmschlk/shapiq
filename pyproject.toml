@@ -88,22 +88,22 @@ shapleig = [
 ]
 games = [
     # optional dependencies of shapiq_games, imported lazily by the games that need them
-    "openml",        # OpenML datasets, TabArena included
-    "openpyxl",      # the real_estate dataset (xlsx)
-    "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
     "scikit-image",  # superpixels of the image games
-    "xgboost",
-    "lightgbm",
-    "catboost",
-    "tabpfn",        # TabPFN models, recontextualization and causal games
+    "tabpfn",        # the default regressor of the causal games
     "torch",         # image games
     "torchvision",   # ResNet image games
     "transformers",  # vision transformer and sentiment games
 ]
 benchmark = [
-    # shapiq_benchmark runs on the games; optuna tunes the model presets
+    # shapiq_benchmark builds the games from datasets and models by name
     "shapiq[games]",
-    "optuna",
+    "openml",        # OpenML datasets, TabArena included
+    "openpyxl",      # the real_estate dataset (xlsx)
+    "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
+    "xgboost",       # models of the registry
+    "lightgbm",
+    "catboost",
+    "optuna",        # tunes the model presets
 ]
 
 [tool.coverage.report]

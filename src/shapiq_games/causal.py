@@ -9,13 +9,12 @@ the confounding bias left by omitting the other covariates.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games.datasets import load_curthvds_synthetic
+from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -86,7 +85,7 @@ def _aggregate(bias: np.ndarray, mode: Mode) -> float:
     raise ValueError(msg)
 
 
-class _ConfoundingGame(ConfigMixin, Game):
+class _ConfoundingGame(Game):
     """Shared state of the confounding games: data, reference effect, regressor, and a cache."""
 
     def __init__(
@@ -183,46 +182,6 @@ class GlobalConfoundingXAI(_ConfoundingGame):
         projection = _fit_projection(x_s, self.tau_hat, self.regressor)
         return _aggregate(effect - projection(x_s), self.mode)
 
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        n: int = 500,
-        d: int = 4,
-        setting: Literal["i", "ii"] = "ii",
-        mode: Mode = "signed",
-        random_state: int = 42,
-        regressor: RegressorFactory | None = None,
-    ) -> Self:
-        r"""Build the game on the synthetic study of Curth and van der Schaar (2021).
-
-        The reference effects :math:`\hat\tau` come from an S-learner on all covariates.
-
-        Args:
-            n: The number of samples. Defaults to ``500``.
-            d: The number of covariates (players), at least ``4``. Defaults to ``4``.
-            setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect). Defaults to ``"ii"``.
-            mode: ``"signed"``, ``"abs"``, or ``"sq"``.
-            random_state: The seed of the data and the default regressor.
-            regressor: A function returning a fresh regressor; defaults to a seeded TabPFN.
-
-        Returns:
-            The configured game.
-        """
-        custom_regressor = regressor is not None
-        x, treatment, outcome, regressor = _curthvds_setup(n, d, setting, random_state, regressor)
-        game = cls(x, treatment, outcome, mode=mode, regressor=regressor)
-        if custom_regressor:  # a custom regressor cannot be fingerprinted
-            return game
-        return game._set_config(
-            dataset="curthvds_synthetic",
-            n=n,
-            d=d,
-            setting=setting,
-            mode=mode,
-            random_state=random_state,
-        )
-
 
 class LocalConfoundingXAI(_ConfoundingGame):
     """The local confounding game: the bias of the conditional effect at one unit adjusting for S.
@@ -275,66 +234,3 @@ class LocalConfoundingXAI(_ConfoundingGame):
         projection = _fit_projection(x_s, self.tau_hat, self.regressor)
         bias = treated(unit_s)[0] - control(unit_s)[0] - projection(unit_s)[0]
         return _aggregate(np.array([bias]), self.mode)
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        unit: int = 0,
-        n: int = 500,
-        d: int = 4,
-        setting: Literal["i", "ii"] = "ii",
-        mode: Mode = "signed",
-        random_state: int = 42,
-        regressor: RegressorFactory | None = None,
-    ) -> Self:
-        """Build the game for one unit of the synthetic study of Curth and van der Schaar (2021).
-
-        Args:
-            unit: The index of the explained unit. Defaults to ``0``.
-            n: The number of samples. Defaults to ``500``.
-            d: The number of covariates (players), at least ``4``. Defaults to ``4``.
-            setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect). Defaults to ``"ii"``.
-            mode: ``"signed"``, ``"abs"``, or ``"sq"``.
-            random_state: The seed of the data and the default regressor.
-            regressor: A function returning a fresh regressor; defaults to a seeded TabPFN.
-
-        Returns:
-            The configured game.
-        """
-        custom_regressor = regressor is not None
-        x, treatment, outcome, regressor = _curthvds_setup(n, d, setting, random_state, regressor)
-        game = cls(x, treatment, outcome, unit=unit, mode=mode, regressor=regressor)
-        if custom_regressor:  # a custom regressor cannot be fingerprinted
-            return game
-        return game._set_config(
-            dataset="curthvds_synthetic",
-            unit=unit,
-            n=n,
-            d=d,
-            setting=setting,
-            mode=mode,
-            random_state=random_state,
-        )
-
-
-def _curthvds_setup(
-    n: int,
-    d: int,
-    setting: str,
-    random_state: int,
-    regressor: RegressorFactory | None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, RegressorFactory]:
-    frame = load_curthvds_synthetic(n=n, d=d, random_state=random_state, setting=setting)
-    covariates = [column for column in frame.columns if column not in {"Treatment", "Outcome"}]
-    if regressor is None:
-
-        def regressor() -> Any:  # noqa: ANN401
-            return tabpfn_regressor(random_state=random_state)
-
-    return (
-        frame[covariates].to_numpy(dtype=float),
-        frame["Treatment"].to_numpy(dtype=float),
-        frame["Outcome"].to_numpy(dtype=float),
-        regressor,
-    )

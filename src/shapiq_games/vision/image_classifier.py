@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from PIL import Image, ImageFilter
 
 from shapiq.game import Game
 from shapiq.interaction_values import InteractionValues
-from shapiq_games._base import ConfigMixin, as_bool_coalitions
-from shapiq_games.datasets import load_imagenette
+from shapiq_games._base import as_bool_coalitions
 
 from ._superpixels import get_superpixels
 from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
@@ -102,7 +101,7 @@ def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
     raise ValueError(msg)
 
 
-class ImageClassifier(ConfigMixin, Game):
+class ImageClassifier(Game):
     """The image classification game: the probability of a class when only some regions are visible.
 
     The players are regions of the image, given by :attr:`regions` for every model:
@@ -329,66 +328,3 @@ class ImageClassifier(ConfigMixin, Game):
             crop[outside] = crop[outside] * (1.0 - fade) + 255.0 * fade
             images.append(Image.fromarray(crop.round().astype(np.uint8)))
         return images
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        index: int = 0,
-        split: Literal["train", "val"] = "val",
-        size: Literal["160px", "320px"] = "320px",
-        model: BuiltinModel = "vit_9_patches",
-        n_superpixels: int = 14,
-        fill: Fill | None = None,
-        class_index: int | Literal["label"] | None = None,
-        revision: str | None = None,
-        device: str = "cpu",
-        batch_size: int = 16,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game for an Imagenette image (see :func:`shapiq_games.datasets.load_imagenette`).
-
-        Args:
-            index: The position of the image in the split. Defaults to ``0``.
-            split: The Imagenette split, ``"val"`` (default) or ``"train"``.
-            size: The image size, ``"320px"`` (default) or ``"160px"``.
-            model: The builtin model. Defaults to ``"vit_9_patches"``.
-            n_superpixels: The number of superpixels for ``"resnet_18"``.
-            fill: How ``"resnet_18"`` replaces removed superpixels (``None`` for the mean color).
-            class_index: The explained ImageNet class: ``None`` for the predicted class,
-                ``"label"`` for the image's true class, or a class index.
-            revision: The Hugging Face revision of a vision transformer (``None`` for the default
-                branch).
-            device: The torch device (not part of the configuration). Defaults to ``"cpu"``.
-            batch_size: The number of masked images per forward pass (not part of the
-                configuration). Defaults to ``16``.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        images = load_imagenette(split=split, size=size)
-        explained = int(images.labels[index]) if class_index == "label" else class_index
-        game = cls(
-            images[index],
-            model,
-            n_superpixels=n_superpixels,
-            fill=fill,
-            class_index=explained,
-            batch_size=batch_size,
-            device=device,
-            revision=revision,
-            normalize=normalize,
-        )
-        return game._set_config(
-            dataset="imagenette",
-            split=split,
-            size=size,
-            index=index,
-            model=model,
-            n_superpixels=n_superpixels,
-            fill=fill,
-            class_index=class_index,
-            revision=revision,
-            normalize=normalize,
-        )

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq.tree.validation import validate_tree_model
-from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_class_index, resolve_x
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions, resolve_class_index
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
@@ -56,7 +55,7 @@ def _tree_expectation(tree: TreeModel, x: np.ndarray, coalitions: np.ndarray) ->
     return output
 
 
-class PathDependentTreeGame(ConfigMixin, Game):
+class PathDependentTreeGame(Game):
     r"""The path-dependent game of a tree model.
 
     The value of a coalition :math:`S` is the expected output of the tree model where features in
@@ -135,50 +134,3 @@ class PathDependentTreeGame(ConfigMixin, Game):
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the path-dependent expectation of the tree model for the coalitions."""
         return self._evaluate(as_bool_coalitions(coalitions))
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "decision_tree",
-        x: int = 0,
-        class_index: int | None = None,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        preset: str | None = None,
-        model_params: dict[str, Any] | None = None,
-        normalize: bool = True,
-    ) -> Self:
-        """Build the game for a registered dataset and a model from the model registry.
-
-        Args:
-            dataset: The dataset name.
-            model: A tree model name: ``"decision_tree"``, ``"random_forest"``, ``"xgboost"``,
-                ``"lightgbm"``, or ``"catboost"``. Defaults to ``"decision_tree"``.
-            x: The index of the explained point in the test split. Defaults to ``0``.
-            class_index: The explained class for classifiers (``None`` means class ``1``).
-            random_state: The seed of the split and the model. Defaults to ``42``.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            preset: The hyperparameter preset of the model (``"tuned"`` or ``None``).
-            model_params: Hyperparameters of the model.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=model,
-            random_state=random_state,
-            test_size=test_size,
-            preset=preset,
-            model_params=model_params,
-        )
-        game = cls(
-            setup.model,
-            resolve_x(x, setup.split.x_test),
-            class_index=class_index,
-            normalize=normalize,
-        )
-        return game._set_config(**setup.config, x=x, class_index=class_index, normalize=normalize)

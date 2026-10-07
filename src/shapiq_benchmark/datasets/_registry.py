@@ -215,7 +215,7 @@ def load_dataset(name: str, **params: Any) -> Dataset:
     """Load a registered dataset.
 
     Data files are downloaded on first use and cached locally (see
-    :func:`~shapiq_games.datasets.get_data_dir`). Synthetic datasets are generated from a seed.
+    :func:`~shapiq_benchmark.datasets.get_data_dir`). Synthetic datasets are generated from a seed.
 
     Args:
         name: The registry name of the dataset (see :func:`list_datasets`).

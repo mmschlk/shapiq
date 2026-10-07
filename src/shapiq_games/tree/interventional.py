@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any
 
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import ConfigMixin, as_bool_coalitions, resolve_class_index, resolve_x
-from shapiq_games._setup import configure
+from shapiq_games._base import as_bool_coalitions, resolve_class_index
 
 from ._output import model_output
 
 __all__ = ["InterventionalTreeGame"]
 
 
-class InterventionalTreeGame(ConfigMixin, Game):
+class InterventionalTreeGame(Game):
     r"""The interventional (marginal) game of a model over a reference dataset.
 
     The value of a coalition :math:`S` is the mean model output over the reference rows
@@ -88,65 +87,3 @@ class InterventionalTreeGame(ConfigMixin, Game):
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the mean model output over the reference data for the coalitions."""
         return self._evaluate(as_bool_coalitions(coalitions))
-
-    @classmethod
-    def from_config(
-        cls,
-        *,
-        dataset: str,
-        model: str = "decision_tree",
-        x: int = 0,
-        n_reference: int = 100,
-        class_index: int | None = None,
-        random_state: int = 42,
-        test_size: float = 0.2,
-        preset: str | None = None,
-        model_params: dict[str, Any] | None = None,
-        normalize: bool = False,
-    ) -> Self:
-        """Build the game for a registered dataset and a model from the model registry.
-
-        The reference data is a seeded random subset of the training split; the explained point
-        is taken from the test split.
-
-        Args:
-            dataset: The dataset name.
-            model: A tree model name: ``"decision_tree"``, ``"random_forest"``, ``"xgboost"``,
-                ``"lightgbm"``, or ``"catboost"``. Defaults to ``"decision_tree"``.
-            x: The index of the explained point in the test split. Defaults to ``0``.
-            n_reference: The number of reference rows. Defaults to ``100``.
-            class_index: The explained class for classifiers (``None`` means class ``1``).
-            random_state: The seed of the split, the model, and the reference rows.
-            test_size: The fraction of the data used as test set. Defaults to ``0.2``.
-            preset: The hyperparameter preset of the model (``"tuned"`` or ``None``).
-            model_params: Hyperparameters of the model.
-            normalize: Whether to center the game.
-
-        Returns:
-            The configured game.
-        """
-        setup = configure(
-            dataset=dataset,
-            model=model,
-            random_state=random_state,
-            test_size=test_size,
-            preset=preset,
-            model_params=model_params,
-        )
-        x_train = setup.split.x_train
-        rng = np.random.default_rng(random_state)
-        rows = rng.choice(x_train.shape[0], size=min(n_reference, x_train.shape[0]), replace=False)
-        game = cls(
-            setup.model,
-            x_train[np.sort(rows)],
-            resolve_x(x, setup.split.x_test),
-            class_index=class_index,
-            normalize=normalize,
-        )
-        return game._set_config(
-            **setup.config,
-            x=x,
-            n_reference=n_reference,
-            class_index=class_index,
-            normalize=normalize,
-        )
