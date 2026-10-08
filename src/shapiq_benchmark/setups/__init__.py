@@ -11,20 +11,20 @@ form in which run specifications are stored (:meth:`Setup.to_dict`, :func:`setup
 
 Examples:
     >>> from shapiq_benchmark import Benchmark
-    >>> from shapiq_benchmark.setups import LocalExplanationSetup
-    >>> setup = LocalExplanationSetup(dataset="xor", model="decision_tree", x=3)
-    >>> game = setup.build()  # a plain shapiq_games.LocalExplanation
+    >>> from shapiq_benchmark.setups import TabularLocalExplanationSetup
+    >>> setup = TabularLocalExplanationSetup(dataset="xor", model="decision_tree", x=3)
+    >>> game = setup.build()  # a plain shapiq_games.TabularLocalExplanation
     >>> benchmark = Benchmark.from_setup(setup)  # its exact values are cached under setup.key
     >>> setup.to_dict()["setup"]
-    'local_explanation'
+    'tabular_local_explanation'
 
 Setups by kind of game:
 
 - tree, nearest-neighbor, and kernel games: :class:`PathDependentTreeSetup`,
   :class:`InterventionalTreeSetup`, :class:`KNNSetup`, :class:`WeightedKNNSetup`,
   :class:`ThresholdNNSetup`, :class:`ProductKernelSetup`
-- machine learning games on tabular data: :class:`LocalExplanationSetup`,
-  :class:`GlobalExplanationSetup`, :class:`FeatureSelectionSetup`, :class:`DataValuationSetup`,
+- machine learning games on tabular data: :class:`TabularLocalExplanationSetup`,
+  :class:`TabularGlobalExplanationSetup`, :class:`FeatureSelectionSetup`, :class:`DataValuationSetup`,
   :class:`DatasetValuationSetup`, :class:`EnsembleSelectionSetup`,
   :class:`RandomForestEnsembleSelectionSetup`, :class:`UncertaintyExplanationSetup`,
   :class:`ClusterExplanationSetup`, :class:`UnsupervisedDataSetup`
@@ -44,9 +44,9 @@ from ._ml_games import (
     DataValuationSetup,
     EnsembleSelectionSetup,
     FeatureSelectionSetup,
-    GlobalExplanationSetup,
-    LocalExplanationSetup,
     RandomForestEnsembleSelectionSetup,
+    TabularGlobalExplanationSetup,
+    TabularLocalExplanationSetup,
     UncertaintyExplanationSetup,
     UnsupervisedDataSetup,
 )
@@ -70,13 +70,13 @@ __all__ = [
     "EnsembleSelectionSetup",
     "FeatureSelectionSetup",
     "GlobalConfoundingSetup",
-    "GlobalExplanationSetup",
+    "TabularGlobalExplanationSetup",
     "ImageClassifierSetup",
     "ImageTextSimilaritySetup",
     "InterventionalTreeSetup",
     "KNNSetup",
     "LocalConfoundingSetup",
-    "LocalExplanationSetup",
+    "TabularLocalExplanationSetup",
     "ModelSetup",
     "PathDependentTreeSetup",
     "ProductKernelSetup",

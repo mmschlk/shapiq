@@ -9,7 +9,7 @@ objects and evaluate coalitions:
 >>> import shapiq_games as sg
 >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
 >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
->>> game = sg.LocalExplanation(model, data=X[:50], x=X[0])
+>>> game = sg.TabularLocalExplanation(model, data=X[:50], x=X[0])
 >>> values = game(np.array([[1, 0, 1, 0, 0], [1, 1, 1, 1, 1]], dtype=bool))
 
 All games follow the same contract (see :mod:`shapiq_games._base`): their values are
@@ -18,7 +18,7 @@ deterministic given their arguments, and the explained point and class are expli
 The games are definitions: they know how to model a problem as a cooperative game, not where
 data and models come from. Benchmarks build them from names (datasets, models, seeds) with the
 setups of :mod:`shapiq_benchmark.setups`, e.g.
-``LocalExplanationSetup(dataset="breast_cancer", model="xgboost").build()``.
+``TabularLocalExplanationSetup(dataset="breast_cancer", model="xgboost").build()``.
 
 Game families:
 
@@ -27,7 +27,7 @@ Game families:
 - model-specific games with exact explainers: :class:`PathDependentTreeGame`,
   :class:`InterventionalTreeGame`, :class:`KNNGame`, :class:`WeightedKNNGame`,
   :class:`ThresholdNNGame`, :class:`ProductKernelGame`
-- machine learning games: :class:`LocalExplanation`, :class:`GlobalExplanation`,
+- machine learning games: :class:`TabularLocalExplanation`, :class:`TabularGlobalExplanation`,
   :class:`FeatureSelection`, :class:`DataValuation`, :class:`DatasetValuation`,
   :class:`EnsembleSelection`, :class:`RandomForestEnsembleSelection`,
   :class:`UncertaintyExplanation`, :class:`ClusterExplanation`, :class:`UnsupervisedData`,
@@ -39,10 +39,10 @@ from .causal import GlobalConfoundingXAI, LocalConfoundingXAI
 from .clustering import ClusterExplanation
 from .ensemble_selection import EnsembleSelection, RandomForestEnsembleSelection
 from .feature_selection import FeatureSelection
-from .global_xai import GlobalExplanation
+from .global_xai import TabularGlobalExplanation
 from .kernel import ProductKernelGame
 from .language import SentimentAnalysis
-from .local_xai import LocalExplanation
+from .local_xai import TabularLocalExplanation
 from .nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from .synthetic import SOUM, DummyGame, RandomTableGame, UnanimityGame
 from .tree import InterventionalTreeGame, PathDependentTreeGame
@@ -71,11 +71,11 @@ __all__ = [
     "EnsembleSelection",
     "FeatureSelection",
     "GlobalConfoundingXAI",
-    "GlobalExplanation",
+    "TabularGlobalExplanation",
     "ImageClassifier",
     "ImageTextSimilarity",
     "LocalConfoundingXAI",
-    "LocalExplanation",
+    "TabularLocalExplanation",
     "RandomForestEnsembleSelection",
     "SentimentAnalysis",
     "UncertaintyExplanation",

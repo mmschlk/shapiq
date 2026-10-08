@@ -20,18 +20,18 @@ from shapiq_benchmark.setups import (
     EnsembleSelectionSetup,
     FeatureSelectionSetup,
     GlobalConfoundingSetup,
-    GlobalExplanationSetup,
     ImageClassifierSetup,
     ImageTextSimilaritySetup,
     InterventionalTreeSetup,
     KNNSetup,
     LocalConfoundingSetup,
-    LocalExplanationSetup,
     PathDependentTreeSetup,
     ProductKernelSetup,
     RandomForestEnsembleSelectionSetup,
     SentimentAnalysisSetup,
     Setup,
+    TabularGlobalExplanationSetup,
+    TabularLocalExplanationSetup,
     ThresholdNNSetup,
     UncertaintyExplanationSetup,
     UnsupervisedDataSetup,
@@ -67,13 +67,13 @@ OFFLINE: dict[str, tuple[Setup, type[Game]]] = {
         ProductKernelSetup(dataset="breast_cancer", n_train=100, normalize=True),
         sg.ProductKernelGame,
     ),
-    "local_explanation": (
-        LocalExplanationSetup(dataset="condind", imputer="baseline"),
-        sg.LocalExplanation,
+    "tabular_local_explanation": (
+        TabularLocalExplanationSetup(dataset="condind", imputer="baseline"),
+        sg.TabularLocalExplanation,
     ),
-    "global_explanation": (
-        GlobalExplanationSetup(dataset="xor", model="decision_tree"),
-        sg.GlobalExplanation,
+    "tabular_global_explanation": (
+        TabularGlobalExplanationSetup(dataset="xor", model="decision_tree"),
+        sg.TabularGlobalExplanation,
     ),
     "feature_selection": (
         FeatureSelectionSetup(dataset="breast_cancer", n_train=100),
@@ -172,7 +172,7 @@ def test_a_new_recipe_version_is_a_new_key(monkeypatch: pytest.MonkeyPatch) -> N
 def test_setups_are_frozen_hashable_and_round_trip() -> None:
     """Fields are stored read-only in their JSON form, so the key cannot change under the cache."""
     params = {"hidden_layer_sizes": (8, 8)}
-    setup = LocalExplanationSetup(dataset="xor", model="mlp", model_params=params)
+    setup = TabularLocalExplanationSetup(dataset="xor", model="mlp", model_params=params)
     params["hidden_layer_sizes"] = (2,)  # the caller's dict is not the setup's
     assert setup.model_params == {"hidden_layer_sizes": (8, 8)}
     with pytest.raises(TypeError, match="read-only"):
@@ -204,10 +204,22 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         (lambda: KNNSetup(dataset="nope"), ValueError, "Unknown dataset 'nope'"),
         (lambda: KNNSetup(dataset="independentlinear60"), ValueError, "classification"),
         (lambda: UncertaintyExplanationSetup(dataset="independentlinear60"), ValueError, "class"),
-        (lambda: LocalExplanationSetup(dataset="xor", model="nope"), ValueError, "Unknown model"),
-        (lambda: LocalExplanationSetup(dataset="xor", imputer="foo"), ValueError, "one of"),
-        (lambda: LocalExplanationSetup(dataset="xor", preset="tuned"), ValueError, "No tuned"),
-        (lambda: LocalExplanationSetup(dataset="xor", imputer="tabpfn"), ValueError, "'tabpfn'"),
+        (
+            lambda: TabularLocalExplanationSetup(dataset="xor", model="nope"),
+            ValueError,
+            "Unknown model",
+        ),
+        (lambda: TabularLocalExplanationSetup(dataset="xor", imputer="foo"), ValueError, "one of"),
+        (
+            lambda: TabularLocalExplanationSetup(dataset="xor", preset="tuned"),
+            ValueError,
+            "No tuned",
+        ),
+        (
+            lambda: TabularLocalExplanationSetup(dataset="xor", imputer="tabpfn"),
+            ValueError,
+            "'tabpfn'",
+        ),
         (lambda: PathDependentTreeSetup(dataset="xor", model="svm"), ValueError, "one of"),
         (lambda: ProductKernelSetup(dataset="xor", model="linear"), ValueError, "one of"),
         (lambda: EnsembleSelectionSetup(dataset="xor", members=("nope",)), ValueError, "member"),
@@ -230,7 +242,9 @@ def test_setup_names_are_unique() -> None:
 
 
 def test_background_size_is_the_imputer_sample_size() -> None:
-    game = LocalExplanationSetup(dataset="breast_cancer", model="decision_tree", n_background=150)
+    game = TabularLocalExplanationSetup(
+        dataset="breast_cancer", model="decision_tree", n_background=150
+    )
     assert game.build().imputer.sample_size == 150
     uncertainty = UncertaintyExplanationSetup(dataset="breast_cancer", n_background=150).build()
     assert uncertainty.imputer.sample_size == 150
@@ -312,8 +326,8 @@ def test_image_text_similarity_setup(monkeypatch: pytest.MonkeyPatch) -> None:
         ImageTextSimilaritySetup(model="clip_rn50")  # type: ignore[arg-type]
 
 
-def test_local_explanation_with_missing_values_and_a_training_cap() -> None:
-    setup = LocalExplanationSetup(
+def test_tabular_local_explanation_with_missing_values_and_a_training_cap() -> None:
+    setup = TabularLocalExplanationSetup(
         dataset="breast_cancer",
         model="decision_tree",
         imputer="baseline",
@@ -326,9 +340,11 @@ def test_local_explanation_with_missing_values_and_a_training_cap() -> None:
     assert setup.key != dataclasses.replace(setup, n_train=None).key
     assert setup.key != dataclasses.replace(setup, baseline="mean").key
     with pytest.raises(ValueError, match="reads missing values"):
-        LocalExplanationSetup(dataset="xor", model="linear", imputer="baseline", baseline="missing")
+        TabularLocalExplanationSetup(
+            dataset="xor", model="linear", imputer="baseline", baseline="missing"
+        )
     with pytest.raises(ValueError, match="baseline applies to imputer='baseline'"):
-        LocalExplanationSetup(dataset="xor", model="xgboost", baseline="missing")
+        TabularLocalExplanationSetup(dataset="xor", model="xgboost", baseline="missing")
 
 
 def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -361,7 +377,7 @@ def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         setups._ml_games, "build_model", lambda *_, **params: TabPFNRegressor(**params)
     )
-    setup = LocalExplanationSetup(
+    setup = TabularLocalExplanationSetup(
         dataset="independentlinear60",
         dataset_params={"n_samples": 100},
         model="tabpfn",

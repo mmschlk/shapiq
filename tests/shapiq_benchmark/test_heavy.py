@@ -17,8 +17,8 @@ from shapiq_benchmark.setups import (
     GlobalConfoundingSetup,
     ImageClassifierSetup,
     ImageTextSimilaritySetup,
-    LocalExplanationSetup,
     SentimentAnalysisSetup,
+    TabularLocalExplanationSetup,
 )
 from tests.shapiq_games.helpers import is_installed
 
@@ -75,7 +75,7 @@ def test_clip_image_text_game() -> None:
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
 def test_tabpfn_missing_value_game() -> None:
     """TabPFN v2 (no license token needed) reads absent features masked as +inf."""
-    setup = LocalExplanationSetup(
+    setup = TabularLocalExplanationSetup(
         dataset="california_housing",
         model="tabpfn",
         imputer="baseline",
@@ -98,7 +98,9 @@ def test_sentiment_game() -> None:
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
 def test_tabpfn_recontextualization_game() -> None:
-    setup = LocalExplanationSetup(dataset="xor", model="tabpfn", imputer="tabpfn", n_background=50)
+    setup = TabularLocalExplanationSetup(
+        dataset="xor", model="tabpfn", imputer="tabpfn", n_background=50
+    )
     game = setup.build()
     _assert_deterministic(game)
 

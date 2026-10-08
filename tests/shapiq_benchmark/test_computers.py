@@ -34,10 +34,10 @@ from shapiq_games import (
     DummyGame,
     InterventionalTreeGame,
     KNNGame,
-    LocalExplanation,
     PathDependentTreeGame,
     ProductKernelGame,
     RandomTableGame,
+    TabularLocalExplanation,
     WeightedKNNGame,
 )
 
@@ -204,7 +204,7 @@ def test_default_computer_mapping(forest_data) -> None:
         # exact weights are not what the explainer computes: brute force
         (WeightedKNNGame(weighted, x[9], 1), BruteForceComputer),
         (ProductKernelGame(SVR().fit(x, x[:, 0]), x[0]), ProductKernelComputer),
-        (LocalExplanation(model, x, x=0), BruteForceComputer),
+        (TabularLocalExplanation(model, x, x=0), BruteForceComputer),
         (RandomTableGame(4), BruteForceComputer),
     ]
     for game, computer_class in expected:

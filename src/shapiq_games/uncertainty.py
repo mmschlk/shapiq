@@ -7,7 +7,7 @@ from typing import Any, Literal
 import numpy as np
 from scipy.stats import entropy
 
-from shapiq_games.local_xai import LocalExplanation
+from shapiq_games.local_xai import TabularLocalExplanation
 
 __all__ = ["UncertaintyExplanation"]
 
@@ -31,13 +31,13 @@ def _uncertainty_function(forest: Any, uncertainty: Uncertainty):  # noqa: ANN20
     return _predict
 
 
-class UncertaintyExplanation(LocalExplanation):
+class UncertaintyExplanation(TabularLocalExplanation):
     """The uncertainty explanation game of a random forest classifier.
 
     The value of a coalition is the imputed predictive uncertainty of the forest at ``x`` when only
     the features in the coalition are known: the total uncertainty (entropy of the mean class
     probabilities), the aleatoric part (mean entropy of the trees), or the epistemic part (their
-    difference). Absent features are imputed as in :class:`~shapiq_games.local_xai.LocalExplanation`.
+    difference). Absent features are imputed as in :class:`~shapiq_games.local_xai.TabularLocalExplanation`.
 
     Attributes:
         uncertainty: The explained kind of uncertainty.

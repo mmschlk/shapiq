@@ -50,8 +50,8 @@ shapiq_games/
   tree/                 PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
   nn/                   KNNGame, WeightedKNNGame, ThresholdNNGame (moved from core)
   kernel/               ProductKernelGame (moved from core)
-  local_xai.py          LocalExplanation (marginal / conditional / baseline / missing imputers, TabPFN)
-  global_xai.py         GlobalExplanation (SAGE-like)
+  local_xai.py          TabularLocalExplanation (marginal / conditional / baseline imputers, TabPFN)
+  global_xai.py         TabularGlobalExplanation (SAGE-like)
   feature_selection.py  FeatureSelection
   valuation.py          DataValuation, DatasetValuation (one shared implementation)
   ensemble_selection.py EnsembleSelection, RandomForestEnsembleSelection
@@ -120,7 +120,7 @@ No method in `src/shapiq` uses them. Only `__init__` re-exports and tests refere
 | `shapiq.explainer.product_kernel.game.ProductKernelGame` | `shapiq_games.kernel` |
 
 - `WeightedKNNExplainerGame` instantiated a `WeightedKNNExplainer` to call its private weight-discretization helpers. Their round trip is just rounding to multiples of `2**-n_bits`, so the moved game implements that rounding itself: no core change, and the ground-truth game no longer depends on the explainer it checks.
-- Imputers (`MarginalImputer`, `TabPFNImputer`, …) are also `Game`s but are used by core explainers, so they stay in core. `LocalExplanation` wraps them.
+- Imputers (`MarginalImputer`, `TabPFNImputer`, …) are also `Game`s but are used by core explainers, so they stay in core. `TabularLocalExplanation` wraps them.
 
 ### Deleted
 
@@ -142,8 +142,8 @@ frozen, keyword-only dataclass with exactly the fields its kind of game needs, a
 that returns the plain game.
 
 ```python
-setup = LocalExplanationSetup(dataset="adult_census", model="xgboost", x=3)
-game = setup.build()                        # a plain shapiq_games.LocalExplanation
+setup = TabularLocalExplanationSetup(dataset="adult_census", model="xgboost", x=3)
+game = setup.build()                        # a plain shapiq_games.TabularLocalExplanation
 benchmark = Benchmark.from_setup(setup)     # exact values cached under setup.key
 setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run specifications
 ```
@@ -208,7 +208,7 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   grid of near-equal rectangular blocks of the token grid (`np.array_split`), the models see a
   `224 x 224` center crop (the game's `image`), and every forward pass is padded to the batch
   size, so values do not depend on the batch.
-- **Missing values.** `LocalExplanation(imputer="baseline", baseline=np.nan)` passes absent
+- **Missing values.** `TabularLocalExplanation(imputer="baseline", baseline=np.nan)` passes absent
   features as missing values to a model that reads them (`np.inf` for TabPFN with
   `PASSTHROUGH_INF`). `baseline` sets the values of core's `BaselineImputer` (one value or one
   per feature) instead of the background mean, so no new imputer was needed. The setups say

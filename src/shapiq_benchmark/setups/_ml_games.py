@@ -16,9 +16,9 @@ from shapiq_games import (
     DataValuation,
     EnsembleSelection,
     FeatureSelection,
-    GlobalExplanation,
-    LocalExplanation,
     RandomForestEnsembleSelection,
+    TabularGlobalExplanation,
+    TabularLocalExplanation,
     UncertaintyExplanation,
     UnsupervisedData,
 )
@@ -40,9 +40,9 @@ __all__ = [
     "DatasetValuationSetup",
     "EnsembleSelectionSetup",
     "FeatureSelectionSetup",
-    "GlobalExplanationSetup",
-    "LocalExplanationSetup",
     "RandomForestEnsembleSelectionSetup",
+    "TabularGlobalExplanationSetup",
+    "TabularLocalExplanationSetup",
     "UncertaintyExplanationSetup",
     "UnsupervisedDataSetup",
 ]
@@ -69,8 +69,8 @@ DEFAULT_MEMBER_POOL: tuple[str, ...] = (
 
 
 @dataclass(frozen=True, kw_only=True)
-class LocalExplanationSetup(ModelSetup, name="local_explanation"):
-    """A :class:`~shapiq_games.LocalExplanation` of a model trained on a dataset.
+class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation"):
+    """A :class:`~shapiq_games.TabularLocalExplanation` of a model trained on a dataset.
 
     The model is trained on the training split (or a seeded subset of ``n_train`` rows, e.g. for
     TabPFN's context limit). The background data is a seeded random subset of ``n_background``
@@ -97,12 +97,12 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         normalize: Whether to center the game. Defaults to ``True``.
 
     Examples:
-        >>> setup = LocalExplanationSetup(dataset="breast_cancer", model="decision_tree")
+        >>> setup = TabularLocalExplanationSetup(dataset="breast_cancer", model="decision_tree")
         >>> setup.build().n_players
         30
         >>> # TabPFN v3 with absent features masked as +inf, trained on 1,040 rows (on a CPU,
         >>> # tabpfn takes more than 1,000 only with ignore_pretraining_limits):
-        >>> setup = LocalExplanationSetup(
+        >>> setup = TabularLocalExplanationSetup(
         ...     dataset="adult_census",
         ...     model="tabpfn",
         ...     model_params={"version": "v3", "ignore_pretraining_limits": True},
@@ -136,7 +136,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
             )
             raise ValueError(msg)
 
-    def build(self) -> LocalExplanation:
+    def build(self) -> TabularLocalExplanation:
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
         params, baseline = dict(self.model_params), None
@@ -164,7 +164,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
             imputer = _tabpfn_imputer(
                 model, background, split.y_train[rows], split.x_test, point, self.class_index
             )
-        return LocalExplanation(
+        return TabularLocalExplanation(
             model,
             background,
             point,
@@ -205,8 +205,8 @@ def _tabpfn_imputer(
 
 
 @dataclass(frozen=True, kw_only=True)
-class GlobalExplanationSetup(ModelSetup, name="global_explanation"):
-    """A :class:`~shapiq_games.GlobalExplanation` of a model trained on a dataset.
+class TabularGlobalExplanationSetup(ModelSetup, name="tabular_global_explanation"):
+    """A :class:`~shapiq_games.TabularGlobalExplanation` of a model trained on a dataset.
 
     The evaluation rows are drawn from the test split.
 
@@ -218,7 +218,7 @@ class GlobalExplanationSetup(ModelSetup, name="global_explanation"):
         normalize: Whether to center the game. Defaults to ``True``.
 
     Examples:
-        >>> GlobalExplanationSetup(dataset="xor", model="decision_tree").build().n_players
+        >>> TabularGlobalExplanationSetup(dataset="xor", model="decision_tree").build().n_players
         4
     """
 
@@ -227,10 +227,10 @@ class GlobalExplanationSetup(ModelSetup, name="global_explanation"):
     n_samples: int = 100
     normalize: bool = True
 
-    def build(self) -> GlobalExplanation:
+    def build(self) -> TabularGlobalExplanation:
         """Train the model and build the game on the test split."""
         split = self.load_split()
-        return GlobalExplanation(
+        return TabularGlobalExplanation(
             self.fit(split),
             split.x_test,
             class_index=self.class_index,

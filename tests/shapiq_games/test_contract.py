@@ -75,29 +75,29 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
     "soum": (lambda: sg.SOUM(6, 10, random_state=3, normalize=True), True),
     "random_table": (lambda: sg.RandomTableGame(5, random_state=1, normalize=True), True),
     "local_xai_marginal": (
-        lambda: sg.LocalExplanation(_tree_regressor(), _X_TRAIN[:50], x=_X_TEST[0]),
+        lambda: sg.TabularLocalExplanation(_tree_regressor(), _X_TRAIN[:50], x=_X_TEST[0]),
         True,
     ),
     "local_xai_baseline": (
-        lambda: sg.LocalExplanation(
+        lambda: sg.TabularLocalExplanation(
             _forest_classifier(), _X_TRAIN[:50], x=_X_TEST[1], imputer="baseline"
         ),
         True,
     ),
     "local_xai_conditional": (
-        lambda: sg.LocalExplanation(
+        lambda: sg.TabularLocalExplanation(
             _tree_regressor(), _X_TRAIN, x=_X_TEST[2], imputer="conditional", random_state=0
         ),
         True,
     ),
-    "local_xai_index": (lambda: sg.LocalExplanation(_tree_regressor(), _X, x=3), True),
+    "local_xai_index": (lambda: sg.TabularLocalExplanation(_tree_regressor(), _X, x=3), True),
     "local_xai_nan_baseline": (
-        lambda: sg.LocalExplanation(
+        lambda: sg.TabularLocalExplanation(
             _tree_regressor(), _X_TRAIN, x=_X_TEST[4], imputer="baseline", baseline=np.nan
         ),
         True,
     ),
-    "global_xai": (lambda: sg.GlobalExplanation(_tree_regressor(), _X_TEST), True),
+    "global_xai": (lambda: sg.TabularGlobalExplanation(_tree_regressor(), _X_TEST), True),
     "feature_selection": (
         lambda: sg.FeatureSelection(
             DecisionTreeClassifier(max_depth=3, random_state=0),
@@ -298,14 +298,16 @@ def _booster_without_feature_3() -> HistGradientBoostingRegressor:
 # the conditional imputer: conditioning on an ignored feature changes the sampled background, so
 # observational values need not vanish)
 NULL_PLAYER_GAMES: dict[str, Callable[[], Game]] = {
-    "local_xai_marginal": lambda: sg.LocalExplanation(_ignores_feature_3, _X_TRAIN, x=_X_TEST[0]),
-    "local_xai_baseline": lambda: sg.LocalExplanation(
+    "local_xai_marginal": lambda: sg.TabularLocalExplanation(
+        _ignores_feature_3, _X_TRAIN, x=_X_TEST[0]
+    ),
+    "local_xai_baseline": lambda: sg.TabularLocalExplanation(
         _ignores_feature_3, _X_TRAIN, x=_X_TEST[0], imputer="baseline"
     ),
-    "local_xai_nan_baseline": lambda: sg.LocalExplanation(
+    "local_xai_nan_baseline": lambda: sg.TabularLocalExplanation(
         _booster_without_feature_3(), _X_TRAIN, x=_X_TEST[0], imputer="baseline", baseline=np.nan
     ),
-    "global_xai": lambda: sg.GlobalExplanation(_tree_without_feature_3(), _X_TEST),
+    "global_xai": lambda: sg.TabularGlobalExplanation(_tree_without_feature_3(), _X_TEST),
     "path_dependent_tree": lambda: sg.PathDependentTreeGame(_tree_without_feature_3(), _X_TEST[0]),
     "interventional_tree": lambda: sg.InterventionalTreeGame(
         _tree_without_feature_3(), _X_TRAIN[:20], _X_TEST[0]

@@ -1,4 +1,4 @@
-"""Local feature attribution games: a model's prediction for one point with features removed."""
+"""Tabular local explanation games: a model's prediction for one row with features removed."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from shapiq_games._base import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["LocalExplanation", "require_inf_passthrough"]
+__all__ = ["TabularLocalExplanation", "require_inf_passthrough"]
 
 type ImputerName = Literal["marginal", "conditional", "baseline"]
 
@@ -44,8 +44,8 @@ _BATCH_SAFE_IMPUTERS = (
 )
 
 
-class LocalExplanation(Game):
-    """The local explanation game: the prediction for ``x`` when only a coalition of features is known.
+class TabularLocalExplanation(Game):
+    """The tabular local explanation game: the prediction for ``x`` given a coalition of features.
 
     The players are the features. Absent features are removed with an imputer from
     :mod:`shapiq.imputer`:
@@ -58,7 +58,7 @@ class LocalExplanation(Game):
       gradient boosting; TabPFN also reads ``np.inf`` as missing when it is built with
       ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``),
     - an :class:`~shapiq.imputer.TabPFNImputer` removes them from TabPFN's context
-      (remove-and-recontextualize; :class:`shapiq_benchmark.setups.LocalExplanationSetup` builds
+      (remove-and-recontextualize; :class:`shapiq_benchmark.setups.TabularLocalExplanationSetup` builds
       one with ``imputer="tabpfn"``).
 
     The values are deterministic: the imputers are seeded and reseeded before every evaluation, so
@@ -77,7 +77,7 @@ class LocalExplanation(Game):
         >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
         >>> from sklearn.ensemble import RandomForestRegressor
         >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
-        >>> game = LocalExplanation(model, data=X[:50], x=X[0], imputer="marginal")
+        >>> game = TabularLocalExplanation(model, data=X[:50], x=X[0], imputer="marginal")
         >>> game.n_players
         5
 
@@ -85,10 +85,10 @@ class LocalExplanation(Game):
 
         >>> from sklearn.ensemble import HistGradientBoostingRegressor
         >>> booster = HistGradientBoostingRegressor(max_iter=20, random_state=0).fit(X, y)
-        >>> game = LocalExplanation(booster, data=X, x=0, imputer="baseline", baseline=np.nan)
+        >>> game = TabularLocalExplanation(booster, data=X, x=0, imputer="baseline", baseline=np.nan)
         >>> game.n_players
         5
-        >>> # TabPFN: LocalExplanation(tabpfn, X, x=0, imputer="baseline", baseline=np.inf)
+        >>> # TabPFN: TabularLocalExplanation(tabpfn, X, x=0, imputer="baseline", baseline=np.inf)
     """
 
     def __init__(

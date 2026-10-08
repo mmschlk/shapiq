@@ -17,12 +17,12 @@ from shapiq_games import (
     EnsembleSelection,
     FeatureSelection,
     GlobalConfoundingXAI,
-    GlobalExplanation,
     ImageClassifier,
     LocalConfoundingXAI,
-    LocalExplanation,
     RandomForestEnsembleSelection,
     SentimentAnalysis,
+    TabularGlobalExplanation,
+    TabularLocalExplanation,
     UncertaintyExplanation,
     UnsupervisedData,
 )
@@ -51,35 +51,35 @@ def data() -> dict[str, np.ndarray]:
     }
 
 
-def test_local_explanation_full_coalition_is_the_prediction(data) -> None:
+def test_tabular_local_explanation_full_coalition_is_the_prediction(data) -> None:
     model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(
         data["x_train"], data["yr_train"]
     )
-    game = LocalExplanation(model, data["x_train"], x=data["x_test"][0], normalize=False)
+    game = TabularLocalExplanation(model, data["x_train"], x=data["x_test"][0], normalize=False)
     assert game.class_index is None
     assert game(game.grand_coalition)[0] == pytest.approx(model.predict(data["x_test"][:1])[0])
     assert game(game.empty_coalition)[0] == pytest.approx(game.empty_prediction_value)
 
 
-def test_local_explanation_classifier_and_callable(data) -> None:
+def test_tabular_local_explanation_classifier_and_callable(data) -> None:
     model = DecisionTreeClassifier(max_depth=3, random_state=0).fit(
         data["x_train"], data["yc_train"]
     )
-    game = LocalExplanation(model, data["x_train"], x=5, normalize=False)
+    game = TabularLocalExplanation(model, data["x_train"], x=5, normalize=False)
     assert game.class_index == 1
     assert game(game.grand_coalition)[0] == pytest.approx(
         model.predict_proba(data["x_train"][5:6])[0, 1]
     )
-    game = LocalExplanation(lambda z: z.sum(axis=1), data["x_train"], x=0, normalize=False)
+    game = TabularLocalExplanation(lambda z: z.sum(axis=1), data["x_train"], x=0, normalize=False)
     assert game.class_index is None
     assert game(game.grand_coalition)[0] == pytest.approx(data["x_train"][0].sum())
     with pytest.raises(ValueError, match="Unknown imputer"):
-        LocalExplanation(model, data["x_train"], imputer="nearest")  # type: ignore[arg-type]
+        TabularLocalExplanation(model, data["x_train"], imputer="nearest")  # type: ignore[arg-type]
     with pytest.raises(IndexError, match="out of range"):
-        LocalExplanation(model, data["x_train"], x=10_000)
+        TabularLocalExplanation(model, data["x_train"], x=10_000)
 
 
-def test_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
+def test_tabular_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
     """An imputer brings its own point and seed, and the game stays centered and batch-free."""
     from shapiq.imputer import GaussianImputer, GenerativeConditionalImputer
 
@@ -91,7 +91,7 @@ def test_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
         model=model.predict, data=data["x_train"], x=data["x_test"][3], sample_size=20,
         random_state=0,
     )  # fmt: skip
-    game = LocalExplanation(model, data["x_train"], imputer=imputer)
+    game = TabularLocalExplanation(model, data["x_train"], imputer=imputer)
     np.testing.assert_array_equal(game.x, data["x_test"][3])
     assert game.random_state == 0
     assert game(game.empty_coalition)[0] == 0.0
@@ -104,7 +104,7 @@ def test_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
         normalize=False,
     )  # fmt: skip
     expected = conditional.value_function(coalition)[0]  # drawn with a fresh generator seeded 7
-    game = LocalExplanation(model, data["x_train"], imputer=conditional, normalize=False)
+    game = TabularLocalExplanation(model, data["x_train"], imputer=conditional, normalize=False)
     assert game(coalition)[0] == pytest.approx(expected)
 
 
@@ -115,7 +115,7 @@ def test_nan_baseline_passes_absent_features_as_missing_values(data) -> None:
         data["x_train"], data["yr_train"]
     )
     point = data["x_test"][0]
-    game = LocalExplanation(
+    game = TabularLocalExplanation(
         model, data["x_train"], x=point, imputer="baseline", baseline=np.nan, normalize=False
     )
     masked = point.copy()
@@ -131,18 +131,18 @@ def test_baseline_is_the_background_mean_or_given_values(data) -> None:
 
     x, point = data["x_train"], data["x_test"][0]
     coalition = np.array([[True, False, True, False]])
-    mean = LocalExplanation(model, x, x=point, imputer="baseline", normalize=False)
+    mean = TabularLocalExplanation(model, x, x=point, imputer="baseline", normalize=False)
     expected = point[[0, 2]].sum() + x[:, [1, 3]].mean(axis=0).sum()
     assert mean(coalition)[0] == pytest.approx(expected)
     values = np.array([10.0, 20.0, 30.0, 40.0])
-    given = LocalExplanation(model, x, x=point, imputer="baseline", baseline=values)
+    given = TabularLocalExplanation(model, x, x=point, imputer="baseline", baseline=values)
     assert given(coalition)[0] + given.normalization_value == pytest.approx(
         point[[0, 2]].sum() + 60.0
     )
     with pytest.raises(ValueError, match="one value or one per feature"):
-        LocalExplanation(model, x, x=point, imputer="baseline", baseline=[1.0, 2.0])
+        TabularLocalExplanation(model, x, x=point, imputer="baseline", baseline=[1.0, 2.0])
     with pytest.raises(ValueError, match="baseline applies to imputer='baseline'"):
-        LocalExplanation(model, x, x=point, baseline=np.nan)
+        TabularLocalExplanation(model, x, x=point, baseline=np.nan)
 
 
 def test_tabpfn_reads_inf_as_missing_only_with_passthrough(
@@ -167,21 +167,23 @@ def test_tabpfn_reads_inf_as_missing_only_with_passthrough(
     monkeypatch.setattr(importlib.metadata, "version", lambda _: "9.1.0")
     x, point = data["x_train"], data["x_test"][0]
     with pytest.raises(ValueError, match="PASSTHROUGH_INF"):
-        LocalExplanation(TabPFNRegressor(), x, x=point, imputer="baseline", baseline=np.inf)
+        TabularLocalExplanation(TabPFNRegressor(), x, x=point, imputer="baseline", baseline=np.inf)
     model = TabPFNRegressor({"PASSTHROUGH_INF": True})
-    game = LocalExplanation(model, x, x=point, imputer="baseline", baseline=np.inf, normalize=False)
+    game = TabularLocalExplanation(
+        model, x, x=point, imputer="baseline", baseline=np.inf, normalize=False
+    )
     assert game(np.array([[True, False, True, False]]))[0] == pytest.approx(point[[0, 2]].sum())
     assert game(game.empty_coalition)[0] == 0.0
     monkeypatch.setattr(importlib.metadata, "version", lambda _: "6.4.1")
     with pytest.raises(ValueError, match="tabpfn 8.1"):
-        LocalExplanation(model, x, x=point, imputer="baseline", baseline=np.inf)
+        TabularLocalExplanation(model, x, x=point, imputer="baseline", baseline=np.inf)
 
 
-def test_global_explanation_explains_loss_reduction(data) -> None:
+def test_tabular_global_explanation_explains_loss_reduction(data) -> None:
     model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(
         data["x_train"], data["yr_train"]
     )
-    game = GlobalExplanation(model, data["x_test"], n_samples=50, normalize=False)
+    game = TabularGlobalExplanation(model, data["x_test"], n_samples=50, normalize=False)
     assert game(game.grand_coalition)[0] == pytest.approx(0.0)  # no loss with all features
     assert game(game.empty_coalition)[0] < 0.0
     # the model never splits on feature 3, so it explains nothing on its own

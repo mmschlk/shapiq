@@ -1,4 +1,4 @@
-"""Global feature importance games: how much of a model's behavior a coalition of features explains."""
+"""Tabular global explanation games: how much of a model's behavior a set of features explains."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from shapiq_games._base import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["GlobalExplanation"]
+__all__ = ["TabularGlobalExplanation"]
 
 _LOSSES: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
     "mse": lambda reference, prediction: float(np.mean((reference - prediction) ** 2)),
@@ -24,8 +24,8 @@ _LOSSES: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
 }
 
 
-class GlobalExplanation(Game):
-    r"""The global explanation game (SAGE-like): the loss a coalition of features explains.
+class TabularGlobalExplanation(Game):
+    r"""The tabular global explanation game (SAGE-like): the loss a coalition of features explains.
 
     For evaluation rows :math:`X` and replacement rows :math:`R` (each feature independently
     permuted, i.e. drawn from the product of the marginals), let :math:`X_S` keep the features in
@@ -49,7 +49,7 @@ class GlobalExplanation(Game):
         >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
         >>> from sklearn.ensemble import RandomForestRegressor
         >>> model = RandomForestRegressor(n_estimators=10, random_state=0).fit(X, y)
-        >>> game = GlobalExplanation(model, data=X[:100], loss="mse")
+        >>> game = TabularGlobalExplanation(model, data=X[:100], loss="mse")
         >>> game.n_players
         5
     """
