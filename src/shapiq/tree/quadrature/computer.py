@@ -56,6 +56,9 @@ def _collect_cooccurring_subsets(
     Each subset is emitted at the first-occurrence edge of its deepest member (``ancestors``
     marks repeated features), so the work is bounded by the same per-edge enumeration the
     kernel performs for one explanation instead of the much larger per-leaf count.
+
+    Note: Changing the traversal order will break the traverser implemented in the C++ kernel.
+    Therefore any changes here must be reflected in the kernel's path bookkeeping (``path_feats``) and
     """
     path: list[int] = []  # sorted distinct features on the current path
     stack: list[tuple[int, int]] = [(0, -1)]  # (node, feature to remove on leave; -1 = enter)
@@ -81,6 +84,95 @@ def _collect_cooccurring_subsets(
             stack.append((left, -1))
         elif new_feature >= 0:
             path.remove(new_feature)
+
+
+# Multiplier of the subset index hash; must equal kIndexHashMultiplier in
+# cext/quadrature_tree_shap.cc (2^64 / golden ratio).
+_INDEX_HASH_MULTIPLIER = np.uint64(0x9E3779B97F4A7C15)
+
+
+def _build_subset_index(
+    n_features: int,
+    max_order: int,
+    keys: np.ndarray,
+    starts: np.ndarray,
+    counts: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    """Builds the lookup from each subset to the output position its value is stored at.
+
+    The C++ extension enumerates subsets along decision paths to have a fast lookup of where subset contribution belong in the output.
+    This function builds a array flat hash table for every order >= 2, where each slot holds a subset's key and row id (with -1 marking an empty slot).
+    It is built once per explainer.
+    Its hashing must match ``merged_position`` in ``cext/quadrature_tree_shap.cc``, which reads it.
+
+    Args:
+        n_features: Number of features the ensemble splits on. Subsets use the remapped ids
+            ``0 .. n_features - 1``, and each subset's key is read as a number in this base.
+
+        max_order: Highest interaction order. Orders ``2 .. max_order`` each get their own
+            block of the index; order 1 needs none, as a feature's position is its id.
+
+        keys: The flat ``int32`` subset tables from ``_subset_table_args``: per order, its
+            sorted subsets back to back, ``order`` feature ids each.
+
+        starts: Per order, the position in ``keys`` where its table begins.
+
+        counts: Per order, the number of subsets in its table.
+
+    Returns:
+        ``(slot_keys, slot_rows, block_starts, block_shifts)``, the arrays the kernel reads:
+        each slot holds a subset's key and row id (``-1`` marks an empty slot), and per order
+        ``block_starts`` and ``block_shifts`` give where its slots begin and how many there
+        are (``2 ** (64 - shift)``). ``None`` when there is no order ``>= 2`` or the keys would
+        overflow an ``int64``; the kernel then searches the subset tables directly.
+    """
+    if max_order < 2 or n_features**max_order > np.iinfo(np.int64).max:
+        return None
+    if int(np.max(counts)) > np.iinfo(np.int32).max:  # row ids are stored as int32
+        return None
+    # Build hash table flat arrays for every order >= 2.
+    block_starts = np.zeros(max_order + 1, dtype=np.int64)
+    block_shifts = np.full(max_order + 1, 63, dtype=np.int64)
+    slot_keys: list[np.ndarray] = []
+    slot_rows: list[np.ndarray] = []
+    position = 0
+    for order in range(2, max_order + 1):
+        count = int(counts[order])
+        # 2d array of the order's subsets, each row is a sorted tuple of feature ids
+        table = keys[starts[order] : starts[order] + count * order].reshape(count, order)
+        row_keys = np.zeros(count, dtype=np.int64)
+        # Compute a unique integer key for each row by treating the row as a base-n_features
+        for column in range(order):
+            row_keys = row_keys * n_features + table[:, column]
+        # Compute the smallest power-of-two block size that can hold all rows with at least one
+        bits = max(1, (2 * count - 1).bit_length())  # 2**bits >= 2 * count
+        size = 1 << bits
+        # The hash of a row key is the top bits of key * _INDEX_HASH_MULTIPLIER, which is uniformly distributed over the 64-bit space.
+        # Standard linear probing is used to resolve collisions, wrapping within the block.
+        home = (row_keys.astype(np.uint64) * _INDEX_HASH_MULTIPLIER) >> np.uint64(64 - bits)
+        block_keys = np.full(size, -1, dtype=np.int64)
+        block_rows = np.full(size, -1, dtype=np.int32)
+        slot = home.astype(np.int64)
+        pending = np.arange(count)
+        # linear probing for all rows at once: every pending row tries its current slot, one
+        # row wins each free slot, and the others move on by one
+        while pending.size:
+            target = slot[pending]
+            free = block_keys[target] == -1
+            # Find the first free slot for each pending row
+            claimed, first = np.unique(target[free], return_index=True)
+            winners = pending[free][first]
+            block_keys[claimed] = row_keys[winners]
+            block_rows[claimed] = winners
+            # The remaining rows that didn't find a free slot will try the next slot in the next iteration
+            pending = np.setdiff1d(pending, winners, assume_unique=True)
+            slot[pending] = (slot[pending] + 1) & (size - 1)
+        block_starts[order] = position
+        block_shifts[order] = 64 - bits
+        slot_keys.append(block_keys)
+        slot_rows.append(block_rows)
+        position += size
+    return np.concatenate(slot_keys), np.concatenate(slot_rows), block_starts, block_shifts
 
 
 def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -390,6 +482,13 @@ class QuadratureTreeSHAP:
 
         if self._kernel_args is None:
             arrays = self._arrays
+            subset_tables = self._subset_table_args()
+            keys, starts, counts, _ = subset_tables
+            # hash index of the subset tables, built once from the very arrays the kernel
+            # receives; None leaves the kernel to search the tables by tuple comparison
+            subset_index = _build_subset_index(
+                int(self._n_features_in_tree), int(self._max_order), keys, starts, counts
+            )
             self._kernel_args = (
                 np.ascontiguousarray(arrays["thresholds"], dtype=np.float64),
                 np.ascontiguousarray(arrays["features"], dtype=np.int32),
@@ -407,12 +506,13 @@ class QuadratureTreeSHAP:
                 int(self._n_features_in_tree),
                 int(self._min_order),
                 int(self._max_order),
-                *self._subset_table_args(),
+                *subset_tables,
                 self._decision_type,
                 np.ascontiguousarray(arrays["cat_values"], dtype=np.int64),
                 np.ascontiguousarray(arrays["cat_start"], dtype=np.int64),
                 np.ascontiguousarray(arrays["cat_size"], dtype=np.int64),
                 np.ascontiguousarray(arrays["children_left_default"], dtype=bool),
+                *(() if subset_index is None else subset_index),
             )
         args = self._kernel_args
         out = np.zeros((1, self._output_size), dtype=np.float64)

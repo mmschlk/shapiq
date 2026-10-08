@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import get_args
 
 import numpy as np
@@ -252,3 +253,19 @@ def test_explain_sv(dt_reg_model, background_reg_data, approximator):
     interaction_values = explainer.explain(x, budget=20)
     assert interaction_values.index == "SV"
     assert interaction_values.max_order == 1
+
+
+def test_marginal_subsampling_warning(dt_reg_model, background_reg_data):
+    """Test the warning when the default marginal imputer subsamples a larger background."""
+    data = np.concatenate([background_reg_data, background_reg_data])  # more than 100 rows
+    with pytest.warns(UserWarning, match="sample_size=None"):
+        explainer = TabularExplainer(model=dt_reg_model.predict, data=data)
+    assert explainer.imputer.sample_size == 100
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        explainer = TabularExplainer(model=dt_reg_model.predict, data=data, sample_size=None)
+        assert explainer.imputer.sample_size == data.shape[0]
+        _ = TabularExplainer(model=dt_reg_model.predict, data=data, sample_size=50)
+        _ = TabularExplainer(model=dt_reg_model.predict, data=background_reg_data)  # 100 rows
+    assert not [r for r in records if "sample_size" in str(r.message)]

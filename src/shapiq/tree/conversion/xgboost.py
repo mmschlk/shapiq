@@ -55,14 +55,14 @@ def convert_xgboost_model(
 
     For multiclass models, only the trees for ``class_label`` are returned (round-robin
     index ``i % num_class == class_label``); ``class_label=None`` defaults to class ``1``,
-    consistent with the other converters. For binary/regression models all trees are
-    returned unchanged.
+    consistent with the other converters. For binary classifiers, which model the class-``1``
+    log-odds, ``class_label=0`` negates the trees to model the class-``0`` log-odds.
+    Regression models are returned unchanged.
 
     Args:
         model: The XGBoost regressor or classifier to convert.
-        class_label: For multiclass classifiers, the class index to extract trees for.
-            Defaults to ``None``, which selects class ``1`` for multiclass models and is
-            ignored for regression / binary models.
+        class_label: For classifiers, the class index to explain. Defaults to ``None``,
+            which selects class ``1``. Ignored for regression models.
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting round for the selected class.
@@ -70,12 +70,13 @@ def convert_xgboost_model(
     booster = model if isinstance(model, Booster) else model.get_booster()
     cfg = json.loads(booster.save_config())
     if class_label is None:
-        class_label = -1  # sentinel: the parser defaults to class 1 for multiclass models
+        class_label = -1  # sentinel: the parser defaults to class 1
     margin_base_score = _xgboost_margin_base_score(cfg, class_label)
     trees = parse_xgboost_ubjson_treemodels(
         booster.save_raw(),
         class_label,
         margin_base_score,
+        isinstance(model, XGBClassifier),
     )
     for tree in trees:
         # XGBoost casts prediction inputs to float32 before comparing against its float32

@@ -62,6 +62,22 @@ struct QuadFrame
     int stage;  // 0 enter, 1 after left, 2 after right, 3 leave
 };
 
+// Hash index of the subset tables, built once per explainer in Python
+// (`_build_subset_index` in computer.py) and passed to every kernel call as flat arrays.
+// A sorted row (a, b, c) is keyed as (a * n_feats + b) * n_feats + c -- unique, since
+// features are remapped to [0, n_feats). Each order owns a power-of-two block of slots
+// (key, row); a key's probe starts at its multiplicative hash and steps linearly.
+struct SubsetIndex
+{
+    const int64_t *keys;    // slot keys; -1 marks an empty slot
+    const int32_t *rows;    // slot row ids within the order's table
+    const int64_t *starts;  // per order: first slot of its block
+    const int64_t *shifts;  // per order: 64 - log2(block size)
+};
+
+// Must equal _INDEX_HASH_MULTIPLIER in computer.py (2^64 / golden ratio).
+constexpr uint64_t kIndexHashMultiplier = 0x9E3779B97F4A7C15ULL;
+
 // Workspace reused across instances; sized once per kernel invocation.
 struct QuadWorkspace
 {
@@ -87,13 +103,18 @@ struct QuadWorkspace
     std::vector<int> candidates;
     std::vector<int> chosen;
     std::vector<int64_t> cursor;  // per order: table position of the last emitted subset
+    // Hash index of the subset tables (see SubsetIndex); nullptr when the key encoding would
+    // overflow, in which case merged_position falls back to the tuple search.
+    const SubsetIndex *row_index;
+    bool missing_subset = false;  // a lookup found no table row; reported by the binding
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
                   const int32_t *subset_keys_, const int64_t *subset_starts_,
-                  const int64_t *subset_counts_, const int64_t *order_offsets_)
+                  const int64_t *subset_counts_, const int64_t *order_offsets_,
+                  const SubsetIndex *row_index_)
         : n_quad(n_quad_), n_feats(n_feats_), min_order(min_order_), max_order(max_order_),
           subset_keys(subset_keys_), subset_starts(subset_starts_),
-          subset_counts(subset_counts_), order_offsets(order_offsets_)
+          subset_counts(subset_counts_), order_offsets(order_offsets_), row_index(row_index_)
     {
         A.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 1.0);
         E.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 0.0);
@@ -120,10 +141,60 @@ struct QuadWorkspace
 
     // Position (within the order's table) of the sorted tuple formed by merging `feature`
     // into the first `size` chosen path features (chosen[] sorted, feature not among them).
-    // Every merged tuple lies on the current path, so it is guaranteed to be in the table.
+    // Every merged tuple lies on the current path, so it is guaranteed to be in the table (Note: This is ensured in the Python code).
+    // Returns -1 if it is not -- the caller flags it and the binding raises.
+    int64_t merged_position(const int *chosen, int size, int feature)
+    {
+        if (row_index == nullptr)
+            return merged_position_tuple(chosen, size, feature);
+        const int s = size + 1;
+        // Key of the merged tuple, with the pivot spliced in -- no tuple is materialized.
+        // A fixed `s` iterations rather than two data-dependent loops: the trip count is
+        // then predictable, where the first loop's exit point varies with every call.
+        int64_t merged_key = 0;
+        int taken = 0;
+        bool placed = false;
+        for (int i = 0; i < s; i++)
+        {
+            int current_feature;
+            if (!placed && (taken == size || chosen[taken] > feature))
+            {
+                current_feature = feature;
+                placed = true;
+            }
+            else
+            {
+                current_feature = chosen[taken];
+                taken++;
+            }
+            merged_key = merged_key * n_feats + current_feature;
+        }
+
+        const int64_t block = row_index->starts[s];
+        const int64_t *keys = row_index->keys + block;
+        const int shift = static_cast<int>(row_index->shifts[s]);
+        const uint64_t mask = (uint64_t(1) << (64 - shift)) - 1;
+        uint64_t slot = (static_cast<uint64_t>(merged_key) * kIndexHashMultiplier) >> shift;
+        // bounded by the block size, so even a malformed index cannot loop forever
+        for (uint64_t probe = 0; probe <= mask; ++probe)
+        {
+            const int64_t key = keys[slot];
+            if (key == merged_key)
+            {
+                const int64_t row = row_index->rows[block + slot];
+                return (row >= 0 && row < subset_counts[s]) ? row : -1;
+            }
+            if (key < 0)
+                return -1;  // empty slot: the subset is not in the table
+            slot = (slot + 1) & mask;
+        }
+        return -1;
+    }
+
+    // Original tuple-comparison search; used when the int64 encoding would overflow.
     // Within one edge extraction the emitted tuples are strictly increasing per order, so the
     // search gallops forward from the per-order cursor instead of bisecting the whole table.
-    int64_t merged_position(const int *chosen, int size, int feature)
+    int64_t merged_position_tuple(const int *chosen, int size, int feature)
     {
         merged_scratch.resize(static_cast<size_t>(size) + 1);
         int *merged = merged_scratch.data();
@@ -155,6 +226,8 @@ struct QuadWorkspace
             else
                 hi = mid;
         }
+        if (lo >= count || compare_row(base + lo * s, merged, s) != 0)
+            return -1;  // the subset is not in the table
         cursor[s] = lo + 1;
         return lo;
     }
@@ -192,7 +265,10 @@ static void quad_enumerate(
             for (int m = 0; m < n_quad; ++m)
                 contribution += weighted[m] * gamma_level[m];
             int64_t position = ws.merged_position(chosen, level + 1, feature);
-            out[ws.order_offsets[order] + position] += contribution;
+            if (position >= 0)
+                out[ws.order_offsets[order] + position] += contribution;
+            else
+                ws.missing_subset = true;
         }
         if (order < ws.max_order)
         {
@@ -316,9 +392,12 @@ inline void quadrature_inference(
                         A_row[m] = A_prev[m] * u_new;
                         g_row[m] = (h - c) / u_new;
                     }
-                    ws.path_feats.insert(
-                        std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
-                        feature);
+                    // Only the interaction enumeration reads this; for order 1 the sorted
+                    // insert/erase pair is pure overhead on every first-occurrence edge.
+                    if (ws.max_order > 1)
+                        ws.path_feats.insert(
+                            std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
+                            feature);
                 }
             }
             int left = tree.children_left[node];
@@ -352,7 +431,7 @@ inline void quadrature_inference(
                         for (int m = 0; m < n_quad; ++m)
                             g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
                     }
-                    else
+                    else if (ws.max_order > 1)
                     {
                         ws.path_feats.erase(
                             std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -382,7 +461,7 @@ inline void quadrature_inference(
                 for (int m = 0; m < n_quad; ++m)
                     g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
             }
-            else
+            else if (ws.max_order > 1)
             {
                 ws.path_feats.erase(
                     std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -392,7 +471,9 @@ inline void quadrature_inference(
     }
 }
 
-inline void quadrature_tree_shap(
+// Returns false when a subset was missing from the tables (the Python tables and this
+// kernel's traversal disagree); the output is then incomplete.
+inline bool quadrature_tree_shap(
     const QuadTree &tree,
     const double *t,
     const double *w,
@@ -410,14 +491,16 @@ inline void quadrature_tree_shap(
     int n_row,
     int n_col,
     int64_t out_stride,
-    double *out)
+    double *out,
+    const SubsetIndex *subset_index)
 {
     QuadWorkspace ws(tree, n_quad, n_feats, min_order, max_order,
-                     subset_keys, subset_starts, subset_counts, order_offsets);
+                     subset_keys, subset_starts, subset_counts, order_offsets, subset_index);
     for (int i = 0; i < n_row; ++i)
     {
         quadrature_inference(tree, ws, t, w, roots, n_trees,
                              X + static_cast<size_t>(i) * n_col,
                              out + static_cast<size_t>(i) * out_stride);
     }
+    return !ws.missing_subset;
 }
