@@ -89,19 +89,6 @@ public:
 
     }
 
-    void from_array(const int64_t *feature_ids, size_t count)
-    {
-        for (size_t i = 0; i < count; i++)
-        {
-            if (feature_ids[i] < 0)
-            {
-                // Assume that -1 is used as a sentinel value to indicate the end of the feature list. If we encounter a negative feature ID, we stop processing further.
-                break;
-            }
-            add(feature_ids[i]);
-        }
-    }
-
     bool add(int64_t feature_id)
     {
         // (feature_id & 63) is equivalent to feature_id % 64, which gives us the position of the bit within the uint64_t word.

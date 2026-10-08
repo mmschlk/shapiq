@@ -28,6 +28,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
 
   and verify with `stat -f "%Sm %N" build/temp.*/src/shapiq/tree/*/cext/cext.o`
   that the object file is fresh before trusting a benchmark or a test result.
+- `src/shapiq/tree/cext/subset_tables.hpp` (subset tables, hash index, the
+  `preprocess_subset_tables` and `layout_to_dict` bindings) is `#include`d by BOTH the interventional and the
+  quadrature extension and registered in both modules. Same rule: editing it needs
+  `rm -rf build`. The kernels receive only `(keys, counts, slot_keys, slot_rows)` and derive
+  table starts, index block geometry and output offsets from `counts` (`derive_geometry`);
+  `shapiq/tree/subset_layout.py` and the numpy oracle `tests/.../subset_index_reference.py`
+  mirror the key encoding, the hash and the `block_bits` rule, so a change to any of them
+  must be made in all three places.
 - The kernels are built with `-ffast-math`, which compiles `std::isnan` to
   `false` and silently breaks missing-value (NaN) routing.
   `-fno-finite-math-only` must stay AFTER `-ffast-math` in `setup.py`.
@@ -37,6 +45,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
   predictors live in that transformed space. Converters must map feature
   indices and category codes back (see `_convert_hist_tree_predictor` in
   `src/shapiq/tree/conversion/sklearn.py`).
+- Don't allocate inside OpenMP loops per work item. The interventional sparse kernel did
+  `stack.reserve(1000)` (~200 KB) per (tree, reference) pair; on macOS that hits the
+  large-allocation path and threads contend: 14 threads ran 2-4x SLOWER than 4. Give each
+  thread one scratch buffer in the parallel region and reuse it (now passed into
+  `traverse_explain_vs_reference`). If more threads make a kernel slower, suspect this first.
 - Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
   the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
   the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:

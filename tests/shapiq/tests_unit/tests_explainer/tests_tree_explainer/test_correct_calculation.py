@@ -31,7 +31,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
+        model, X_train, index=index, max_order=order
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -84,7 +84,6 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
         X_train,
         index=index,
         max_order=order,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -135,7 +134,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -188,7 +187,6 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -239,7 +237,7 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -293,7 +291,6 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -344,7 +341,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -397,7 +394,6 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -421,23 +417,36 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
             )
 
 
-@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4)])
-def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, index, order):
-    """Indices with any-order closed forms match the ExactComputer on the sparse C kernel.
+@pytest.fixture(params=["structural", "sparse"])
+def interventional_route(request, monkeypatch):
+    """Both C routes of ``InterventionalTreeSHAPIQ``: the structural layout, or the sparse
+    per-explanation kernel (forced by a zero memory budget)."""
+    import shapiq.tree.interventional.computer as interventional_module
 
-    The dense correctness tests above (orders <= 3, few features) only exercise the
-    flatten kernel; ``max_order > 3`` routes through the sparse batched kernel, whose
-    weights come from ``weight_func`` in ``weights.cpp``. This guards the per-index
-    dispatch there (STII and FSII fell back to the top-order-only general path before).
+    if request.param == "sparse":
+        monkeypatch.setattr(interventional_module, "_STRUCTURAL_MAX_ROWS", 0)
+    return request.param
+
+
+@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4)])
+def test_correct_calculation_index_order_4(
+    dt_reg_model, reg_data, index, order, interventional_route
+):
+    """Indices with any-order closed forms match the ExactComputer at order 4 on both routes.
+
+    The dense correctness tests above stop at order 3; at order 4 the weights come from
+    ``weight_func`` in ``weights.cpp`` on both the structural and the sparse kernel. This
+    guards the per-index dispatch there (STII and FSII fell back to the top-order-only
+    general path before).
     """
     X_train, X_test, _y_train, _y_test = reg_data
     model = dt_reg_model
     point_to_explain = X_test[0:1]
 
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
+        model, X_train, index=index, max_order=order
     )
-    assert own_interventional_explainer._use_sparse_path
+    assert own_interventional_explainer._use_sparse_path == (interventional_route == "sparse")
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
 
@@ -454,6 +463,60 @@ def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, ind
             game_interactions.get(interaction, 0),
             atol=1e-6,
         )
+
+
+def _perfect_tree_with_distinct_features(depth: int, seed: int = 0):
+    """A perfect binary tree of the given depth splitting each node on its own feature.
+
+    It holds ``2**depth - 1`` features while a root-to-leaf path holds only ``depth``, so a
+    modest depth reaches a feature space wide enough to overflow the sparse kernel's keys.
+    """
+    n_decision_nodes = 2**depth - 1
+    node = np.arange(2 ** (depth + 1) - 1)
+    is_leaf = node >= n_decision_nodes
+    node_depth = np.floor(np.log2(node + 1)).astype(int)
+    rng = np.random.default_rng(seed)
+    tree = {
+        "children_left": np.where(is_leaf, -1, 2 * node + 1),
+        "children_right": np.where(is_leaf, -1, 2 * node + 2),
+        "children_missing": np.where(is_leaf, -1, 2 * node + 1),
+        "features": np.where(is_leaf, -2, node),
+        "thresholds": np.where(is_leaf, -2.0, 0.0),
+        "node_sample_weight": 2.0 ** (depth - node_depth),
+        "values": np.where(is_leaf, rng.normal(size=node.size), 0.0),
+    }
+    return tree, rng.normal(size=n_decision_nodes)
+
+
+def test_sparse_path_flat_keys_match_the_bitset_fallback(monkeypatch):
+    """The sparse kernel's flat subset map and its BitSet-keyed fallback agree.
+
+    The sparse kernel keys each subset as an int64 in base ``n_features + 1`` and falls back
+    to a BitSet-keyed map once ``(n_features + 1) ** max_order`` overflows an int64. With 255
+    features, order 3 runs the flat map and order 8 the fallback; SII values do not depend on
+    the maximum order, so both must touch the same subsets with the same values. Feature 0
+    splits the root, so subsets of different sizes with and without a leading 0 all occur --
+    an encoding that let them collide would fail here.
+    """
+    import shapiq.tree.interventional.computer as interventional_module
+
+    monkeypatch.setattr(interventional_module, "_STRUCTURAL_MAX_ROWS", 0)
+    tree, x = _perfect_tree_with_distinct_features(depth=8)
+    data = np.random.default_rng(1).normal(size=(6, 255))
+    flat = InterventionalTreeSHAPIQ(tree, data, max_order=3, index="SII")
+    fallback = InterventionalTreeSHAPIQ(tree, data, max_order=8, index="SII")
+    assert flat._use_sparse_path
+    assert fallback._use_sparse_path
+
+    from_flat = flat.explain(x).dict_values
+    from_fallback = fallback.explain(x).dict_values
+
+    shared = {key for key in from_flat if 0 < len(key) <= 3}
+    assert len(shared) > 100  # precondition: the comparison covers real interactions
+    assert any(len(key) == 3 and key[0] == 0 for key in shared)  # ... with a leading feature 0
+    assert {key for key in from_fallback if 0 < len(key) <= 3} == shared
+    for interaction in shared:
+        assert from_fallback[interaction] == pytest.approx(from_flat[interaction], abs=1e-12)
 
 
 @pytest.mark.parametrize(("index", "order"), [("SV", 1), ("SII", 2)])

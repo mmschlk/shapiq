@@ -2,6 +2,11 @@
 
 ## Development
 
+### Improvement
+- speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`): one C++ kernel now serves every interaction order. It walks each tree once for all reference rows and accumulates into a flat array over the feature subsets that co-occur on a root-to-leaf path (the only interactions that can be non-zero), a layout and hash index built once per explainer, instead of filling a per-explanation hash map keyed by feature-width bitsets. Orders above 3 and wide feature spaces are up to two orders of magnitude faster. The unused `bool_tree`, `debug`, and `index_func` constructor arguments are removed.
+- `QuadratureTreeSHAP` and `InterventionalTreeSHAPIQ` share one C++ preprocessing step (`preprocess_subset_tables`) that collects the co-occurring subset tables and builds their hash index as flat arrays at construction; the Python collector and index builder of the quadrature explainer are removed. Both kernels now receive only the per-order row counts and the two index arrays and derive every offset of the layout from the counts (`shapiq.tree.subset_layout` does the same on the Python side), and both explainers read the kernel's output array back into the result with the same C++ routine (`layout_to_dict`).
+- Constructing an `InteractionValues` from an array and an `interaction_lookup` is several times faster (one vectorised gather instead of a numpy scalar lookup per interaction).
+
 ### Bugfix
 
 - `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.

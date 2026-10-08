@@ -25,8 +25,6 @@ per-tree Python objects are involved on the hot path.
 
 from __future__ import annotations
 
-from bisect import bisect_left, insort
-from itertools import combinations
 from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
@@ -34,6 +32,7 @@ import numpy as np
 from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion.edges import create_edge_tree
+from shapiq.tree.subset_layout import output_size
 from shapiq.tree.validation import validate_tree_model
 
 if TYPE_CHECKING:
@@ -41,138 +40,6 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
-
-
-def _collect_cooccurring_subsets(
-    children_left: np.ndarray,
-    children_right: np.ndarray,
-    features: np.ndarray,
-    parents: np.ndarray,
-    ancestors: np.ndarray,
-    subset_sets: dict[int, set[tuple[int, ...]]],
-) -> None:
-    """Add every feature subset (order >= 2) co-occurring on some root-to-leaf path.
-
-    Each subset is emitted at the first-occurrence edge of its deepest member (``ancestors``
-    marks repeated features), so the work is bounded by the same per-edge enumeration the
-    kernel performs for one explanation instead of the much larger per-leaf count.
-
-    Note: Changing the traversal order will break the traverser implemented in the C++ kernel.
-    Therefore any changes here must be reflected in the kernel's path bookkeeping (``path_feats``) and
-    """
-    path: list[int] = []  # sorted distinct features on the current path
-    stack: list[tuple[int, int]] = [(0, -1)]  # (node, feature to remove on leave; -1 = enter)
-    while stack:
-        node, leave_feature = stack.pop()
-        if leave_feature >= 0:
-            path.remove(leave_feature)
-            continue
-        new_feature = -1
-        if parents[node] >= 0 and ancestors[node] < 0:
-            new_feature = int(features[parents[node]])
-            for order, subsets in subset_sets.items():
-                if len(path) >= order - 1:
-                    for chosen in combinations(path, order - 1):
-                        position = bisect_left(chosen, new_feature)
-                        subsets.add((*chosen[:position], new_feature, *chosen[position:]))
-            insort(path, new_feature)
-        left = int(children_left[node])
-        if left >= 0:
-            if new_feature >= 0:
-                stack.append((node, new_feature))
-            stack.append((int(children_right[node]), -1))
-            stack.append((left, -1))
-        elif new_feature >= 0:
-            path.remove(new_feature)
-
-
-# Multiplier of the subset index hash; must equal kIndexHashMultiplier in
-# cext/quadrature_tree_shap.cc (2^64 / golden ratio).
-_INDEX_HASH_MULTIPLIER = np.uint64(0x9E3779B97F4A7C15)
-
-
-def _build_subset_index(
-    n_features: int,
-    max_order: int,
-    keys: np.ndarray,
-    starts: np.ndarray,
-    counts: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
-    """Builds the lookup from each subset to the output position its value is stored at.
-
-    The C++ extension enumerates subsets along decision paths to have a fast lookup of where subset contribution belong in the output.
-    This function builds a array flat hash table for every order >= 2, where each slot holds a subset's key and row id (with -1 marking an empty slot).
-    It is built once per explainer.
-    Its hashing must match ``merged_position`` in ``cext/quadrature_tree_shap.cc``, which reads it.
-
-    Args:
-        n_features: Number of features the ensemble splits on. Subsets use the remapped ids
-            ``0 .. n_features - 1``, and each subset's key is read as a number in this base.
-
-        max_order: Highest interaction order. Orders ``2 .. max_order`` each get their own
-            block of the index; order 1 needs none, as a feature's position is its id.
-
-        keys: The flat ``int32`` subset tables from ``_subset_table_args``: per order, its
-            sorted subsets back to back, ``order`` feature ids each.
-
-        starts: Per order, the position in ``keys`` where its table begins.
-
-        counts: Per order, the number of subsets in its table.
-
-    Returns:
-        ``(slot_keys, slot_rows, block_starts, block_shifts)``, the arrays the kernel reads:
-        each slot holds a subset's key and row id (``-1`` marks an empty slot), and per order
-        ``block_starts`` and ``block_shifts`` give where its slots begin and how many there
-        are (``2 ** (64 - shift)``). ``None`` when there is no order ``>= 2`` or the keys would
-        overflow an ``int64``; the kernel then searches the subset tables directly.
-    """
-    if max_order < 2 or n_features**max_order > np.iinfo(np.int64).max:
-        return None
-    if int(np.max(counts)) > np.iinfo(np.int32).max:  # row ids are stored as int32
-        return None
-    # Build hash table flat arrays for every order >= 2.
-    block_starts = np.zeros(max_order + 1, dtype=np.int64)
-    block_shifts = np.full(max_order + 1, 63, dtype=np.int64)
-    slot_keys: list[np.ndarray] = []
-    slot_rows: list[np.ndarray] = []
-    position = 0
-    for order in range(2, max_order + 1):
-        count = int(counts[order])
-        # 2d array of the order's subsets, each row is a sorted tuple of feature ids
-        table = keys[starts[order] : starts[order] + count * order].reshape(count, order)
-        row_keys = np.zeros(count, dtype=np.int64)
-        # Compute a unique integer key for each row by treating the row as a base-n_features
-        for column in range(order):
-            row_keys = row_keys * n_features + table[:, column]
-        # Compute the smallest power-of-two block size that can hold all rows with at least one
-        bits = max(1, (2 * count - 1).bit_length())  # 2**bits >= 2 * count
-        size = 1 << bits
-        # The hash of a row key is the top bits of key * _INDEX_HASH_MULTIPLIER, which is uniformly distributed over the 64-bit space.
-        # Standard linear probing is used to resolve collisions, wrapping within the block.
-        home = (row_keys.astype(np.uint64) * _INDEX_HASH_MULTIPLIER) >> np.uint64(64 - bits)
-        block_keys = np.full(size, -1, dtype=np.int64)
-        block_rows = np.full(size, -1, dtype=np.int32)
-        slot = home.astype(np.int64)
-        pending = np.arange(count)
-        # linear probing for all rows at once: every pending row tries its current slot, one
-        # row wins each free slot, and the others move on by one
-        while pending.size:
-            target = slot[pending]
-            free = block_keys[target] == -1
-            # Find the first free slot for each pending row
-            claimed, first = np.unique(target[free], return_index=True)
-            winners = pending[free][first]
-            block_keys[claimed] = row_keys[winners]
-            block_rows[claimed] = winners
-            # The remaining rows that didn't find a free slot will try the next slot in the next iteration
-            pending = np.setdiff1d(pending, winners, assume_unique=True)
-            slot[pending] = (slot[pending] + 1) & (size - 1)
-        block_starts[order] = position
-        block_shifts[order] = 64 - bits
-        slot_keys.append(block_keys)
-        slot_rows.append(block_rows)
-        position += size
-    return np.concatenate(slot_keys), np.concatenate(slot_rows), block_starts, block_shifts
 
 
 def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -302,9 +169,8 @@ class QuadratureTreeSHAP:
         roots: list[int] = []
         node_offset = 0
         cat_offset = 0
-        subset_sets: dict[int, set[tuple[int, ...]]] = {
-            order: set() for order in range(max(self._min_order, 2), self._max_order + 1)
-        }
+        children_left_local: list[np.ndarray] = []  # tree-relative, for the subset collector
+        children_right_local: list[np.ndarray] = []
         for tree in self._trees:
             features_ens = np.array(
                 [ensemble_id[f] if f >= 0 else -2 for f in tree.features], dtype=np.int64
@@ -347,16 +213,9 @@ class QuadratureTreeSHAP:
                 rebased[rebased >= 0] += offset
                 return rebased
 
-            if self._max_order >= 2:
-                _collect_cooccurring_subsets(
-                    tree.children_left,
-                    tree.children_right,
-                    features_ens,
-                    edge_tree.parents,
-                    edge_tree.ancestors,
-                    subset_sets,
-                )
             roots.append(node_offset)
+            children_left_local.append(np.asarray(tree.children_left, dtype=np.int64))
+            children_right_local.append(np.asarray(tree.children_right, dtype=np.int64))
             parts["children_left"].append(rebase(tree.children_left))
             parts["children_right"].append(rebase(tree.children_right))
             parts["parents"].append(rebase(edge_tree.parents))
@@ -380,36 +239,6 @@ class QuadratureTreeSHAP:
         self._n_nodes_total: int = node_offset
         self._roots = np.array(roots, dtype=np.int32)
 
-        # sparse interaction support: only subsets whose features co-occur on at least one
-        # decision path can be nonzero, so the output enumerates exactly those. Order 1 stays
-        # a dense per-feature block (every union feature appears on some path) — the Shapley
-        # hot path keeps direct indexing while higher orders avoid the C(F, order) blow-up.
-        self._order_lookups: dict[int, dict[tuple, int]] = {}
-        self._output_offsets: dict[int, int] = {}
-        self._subset_tables: dict[int, np.ndarray] = {}
-        offset = 0
-        if self._min_order == 1:
-            self._order_lookups[1] = {(f,): f for f in range(self._n_features_in_tree)}
-            self._output_offsets[1] = 0
-            offset = self._n_features_in_tree
-        for order in range(max(self._min_order, 2), self._max_order + 1):
-            ordered = sorted(subset_sets[order])
-            self._order_lookups[order] = {subset: pos for pos, subset in enumerate(ordered)}
-            self._output_offsets[order] = offset
-            self._subset_tables[order] = np.asarray(ordered, dtype=np.int32).reshape(
-                len(ordered), order
-            )
-            offset += len(ordered)
-        self._output_size: int = offset
-
-        # output lookup over the original feature ids for the returned InteractionValues
-        lookup: dict[tuple, int] = {}
-        original_ids = self._relevant_features
-        for order in range(self._min_order, self._max_order + 1):
-            base = self._output_offsets[order]
-            for subset, position in self._order_lookups[order].items():
-                lookup[tuple(int(original_ids[j]) for j in subset)] = base + position
-        self._interactions_lookup_relevant: dict[tuple, int] = lookup
         self._arrays = {key: np.concatenate(arrs) for key, arrs in parts.items()}
         self._decision_type: DecisionType = self._trees[0].decision_type
 
@@ -429,6 +258,8 @@ class QuadratureTreeSHAP:
 
         try:
             from .cext import (
+                layout_to_dict,  # ty: ignore[unresolved-import]  # noqa: F401
+                preprocess_subset_tables,  # ty: ignore[unresolved-import]
                 quadrature_tree_shap,  # ty: ignore[unresolved-import]  # noqa: F401
             )
         except ImportError:
@@ -438,6 +269,28 @@ class QuadratureTreeSHAP:
             )
             raise ImportError(msg) from None
         self._kernel_args: tuple | None = None
+
+        # sparse interaction support: only subsets whose features co-occur on at least one
+        # decision path can be nonzero, so the output enumerates exactly those. Order 1 stays
+        # a dense per-feature block (every union feature appears on some path) — the Shapley
+        # hot path keeps direct indexing while higher orders avoid the C(F, order) blow-up.
+        # The per-order sorted tables and their hash index come from the C++ collector shared
+        # with the interventional explainer (``preprocess_subset_tables``); the index is None
+        # when the integer key encoding would overflow, and the kernel then searches the tables.
+        tree_offsets = np.append(self._roots, node_offset).astype(np.int64)
+        self._subset_tables: tuple[np.ndarray, np.ndarray]
+        self._subset_index: tuple[np.ndarray, np.ndarray] | None
+        self._subset_tables, self._subset_index = preprocess_subset_tables(
+            np.ascontiguousarray(self._arrays["features"], dtype=np.int64),
+            np.ascontiguousarray(np.concatenate(children_left_local), dtype=np.int64),
+            np.ascontiguousarray(np.concatenate(children_right_local), dtype=np.int64),
+            tree_offsets,
+            max(self._n_features_in_tree, 1),
+            self._max_order,
+        )
+        self._output_size: int = output_size(
+            self._subset_tables[1], self._n_features_in_tree, self._min_order
+        )
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley interaction values for a given instance ``x``.
@@ -453,10 +306,9 @@ class QuadratureTreeSHAP:
         x_relevant = x_full[self._relevant_features]
         n_players = max(x_full.shape[0], self._n_features_in_tree)
 
-        if self._trivial_computation:
-            interactions = np.zeros(0, dtype=float)
-        else:
-            interactions = self._explain_cpp(x_relevant)
+        interactions: dict[tuple[int, ...], float] = {}
+        if not self._trivial_computation:
+            interactions = self._read_out(self._explain_cpp(x_relevant))
 
         return InteractionValues(
             values=interactions,
@@ -465,9 +317,23 @@ class QuadratureTreeSHAP:
             max_order=self._max_order,
             n_players=n_players,
             estimated=False,
-            interaction_lookup=self._interactions_lookup_relevant,
             baseline_value=self.empty_prediction,
             target_index=self._index,
+        )
+
+    def _read_out(self, out: np.ndarray) -> dict[tuple[int, ...], float]:
+        """The kernel's output array as ``{original feature tuple: value}`` (shared C++ readout)."""
+        from .cext import layout_to_dict  # ty: ignore[unresolved-import]
+
+        keys, counts = self._subset_tables
+        return layout_to_dict(
+            out,
+            keys,
+            counts,
+            self._n_features_in_tree,
+            self._min_order,
+            np.ascontiguousarray(self._relevant_features, dtype=np.int64),
+            False,  # noqa: FBT003  # every interaction of the layout is reported, zeros included
         )
 
     def explain_function(self, x: np.ndarray) -> InteractionValues:
@@ -480,13 +346,10 @@ class QuadratureTreeSHAP:
 
         if self._kernel_args is None:
             arrays = self._arrays
-            subset_tables = self._subset_table_args()
-            keys, starts, counts, _ = subset_tables
-            # hash index of the subset tables, built once from the very arrays the kernel
-            # receives; None leaves the kernel to search the tables by tuple comparison
-            subset_index = _build_subset_index(
-                int(self._n_features_in_tree), int(self._max_order), keys, starts, counts
-            )
+            keys, counts = self._subset_tables
+            # None leaves the kernel to search the tables by tuple comparison; every offset of
+            # the layout is derived from `counts` on both sides
+            subset_index = self._subset_index
             self._kernel_args = (
                 np.ascontiguousarray(arrays["thresholds"], dtype=np.float64),
                 np.ascontiguousarray(arrays["features"], dtype=np.int32),
@@ -504,7 +367,8 @@ class QuadratureTreeSHAP:
                 int(self._n_features_in_tree),
                 int(self._min_order),
                 int(self._max_order),
-                *subset_tables,
+                keys,
+                counts,
                 self._decision_type,
                 np.ascontiguousarray(arrays["cat_values"], dtype=np.int64),
                 np.ascontiguousarray(arrays["cat_start"], dtype=np.int64),
@@ -515,27 +379,9 @@ class QuadratureTreeSHAP:
         args = self._kernel_args
         out = np.zeros((1, self._output_size), dtype=np.float64)
         quadrature_tree_shap(
-            *args[:20],
+            *args[:18],
             np.ascontiguousarray(x_relevant.reshape(1, -1), dtype=np.float64),
             out,
-            *args[20:],
+            *args[18:],
         )
         return out[0]
-
-    def _subset_table_args(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """The kernel's sparse subset tables: flat keys, per-order starts/counts/offsets."""
-        n_orders = self._max_order + 1
-        starts = np.zeros(n_orders, dtype=np.int64)
-        counts = np.zeros(n_orders, dtype=np.int64)
-        offsets = np.zeros(n_orders, dtype=np.int64)
-        keys: list[np.ndarray] = []
-        position = 0
-        for order in range(max(self._min_order, 2), self._max_order + 1):
-            table = self._subset_tables[order]
-            starts[order] = position
-            counts[order] = table.shape[0]
-            offsets[order] = self._output_offsets[order]
-            keys.append(table.reshape(-1))
-            position += table.size
-        flat = np.concatenate(keys) if keys else np.zeros(0, dtype=np.int32)
-        return np.ascontiguousarray(flat, dtype=np.int32), starts, counts, offsets

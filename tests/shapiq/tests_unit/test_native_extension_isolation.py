@@ -85,7 +85,7 @@ def test_interventional_cext_loads_only_on_use():
         "X = np.random.RandomState(0).rand(40, 4);"
         "y = X[:, 0] + X[:, 1];"
         "m = DecisionTreeRegressor(max_depth=3).fit(X, y);"
-        "expl = InterventionalTreeSHAPIQ(m, X, index='SV', max_order=1, debug=False);"
+        "expl = InterventionalTreeSHAPIQ(m, X, index='SV', max_order=1);"
         "expl.explain_function(X[0]);"
         "assert 'shapiq.tree.interventional.cext' in sys.modules, 'cext never loaded';"
         "print('OK')"
@@ -132,7 +132,7 @@ def test_shapiq_xgboost_openmp_coexistence(omp_threads):
         "rng = np.random.RandomState(0);"
         "X = rng.rand(128, 6); y = X[:, 0] + X[:, 1] * X[:, 2];"
         "m = xgb.XGBRegressor(n_estimators=8, max_depth=3, n_jobs=4).fit(X, y);"
-        "expl = InterventionalTreeSHAPIQ(m, X, index='SV', max_order=1, debug=False);"
+        "expl = InterventionalTreeSHAPIQ(m, X, index='SV', max_order=1);"
         "expl.explain_function(X[0]);"
         "print('OK')"
     )
