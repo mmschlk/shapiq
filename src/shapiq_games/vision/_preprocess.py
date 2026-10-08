@@ -1,4 +1,9 @@
-"""The standard ImageNet preprocessing: resize the shorter side, then crop the center."""
+"""Image preprocessing of the vision games.
+
+RGB conversion of arrays and paths (:func:`as_rgb_array`), the standard ImageNet resize and center
+crop (:func:`center_crop`), and the normalized pixel tensors the models read, to and from
+``uint8`` images (:func:`normalized_pixels`, :func:`displayed_image`).
+"""
 
 from __future__ import annotations
 
