@@ -117,7 +117,9 @@ def test_drift_brute_force_and_moebius() -> None:
         for order in (1, 2, 3):
             if brute_force.supports(index, order):
                 assert _core_runs(lambda index=index, order=order: exact(index=index, order=order))
-            if moebius.supports(index, order):
+            if index == "Moebius":  # the representation itself, not converted
+                assert moebius.supports(index, order)
+            elif moebius.supports(index, order):
                 assert _core_runs(lambda index=index, order=order: converter(index, order))
             elif order >= 2 and index not in ("SV", "BV"):
                 assert not _core_runs(lambda index=index, order=order: converter(index, order))
@@ -131,7 +133,10 @@ def test_supported_indices_come_from_core_declarations() -> None:
     from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
 
     assert BruteForceComputer.supported_indices() == tuple(ExactComputer.valid_indices)
-    assert MoebiusComputer.supported_indices() == get_args(ValidMoebiusConverterIndices)
+    assert MoebiusComputer.supported_indices() == (
+        *get_args(ValidMoebiusConverterIndices),
+        "Moebius",  # the representation itself
+    )
     assert PathDependentTreeComputer.supported_indices() == get_args(QuadratureTreeSHAPIndices)
     assert KNNComputer.supported_indices() == get_args(ValidNNExplainerIndices)
     assert ProductKernelComputer.supported_indices() == get_args(ProductKernelSHAPIQIndices)
@@ -160,13 +165,30 @@ def test_output_convention() -> None:
         assert values.min_order == 1
         assert values.max_order == 2
         assert values.index == "k-SII"
-        assert len(values.interaction_lookup) == 5 + 10
-        assert () not in values.interaction_lookup
+        assert all(1 <= len(interaction) <= 2 for interaction in values.dict_values)
         assert (
             values.baseline_value
             == pytest.approx(game(game.empty_coalition)[0])
             == pytest.approx(0.0)
         )
+
+
+def test_structured_ground_truth_stays_sparse_for_many_players() -> None:
+    """Ground truth keeps the sparsity of the core result instead of listing all C(n, k)."""
+    from sklearn.datasets import make_regression
+    from sklearn.tree import DecisionTreeRegressor
+
+    from shapiq_benchmark import Benchmark
+
+    game = SOUM(200, n_basis_games=10, max_interaction_size=4, random_state=0)
+    moebius = Benchmark(game).exact_values("Moebius", 200)  # 2**200 - 1 interactions possible
+    expected = {s: v for s, v in game.moebius_coefficients.dict_values.items() if s}
+    assert moebius.dict_values == pytest.approx(expected)
+
+    x, y = make_regression(n_samples=300, n_features=100, random_state=0)
+    model = DecisionTreeRegressor(max_depth=5, random_state=0).fit(x, y)
+    values = Benchmark(PathDependentTreeGame(model, x[0])).exact_values("k-SII", 4)
+    assert len(values.dict_values) < 1000  # of C(100, 1) + ... + C(100, 4) = 4087975
 
 
 def test_brute_force_player_cap() -> None:

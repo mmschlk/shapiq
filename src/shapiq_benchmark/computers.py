@@ -34,7 +34,6 @@ from shapiq.tree.interventional import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
 from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
 from shapiq.tree.validation import validate_tree_model
-from shapiq.utils import powerset
 from shapiq_games.kernel import ProductKernelGame
 from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from shapiq_games.nn._base import NNGameBase
@@ -74,19 +73,27 @@ def _standardize(
     index: IndexType,
     order: int,
 ) -> InteractionValues:
-    """Return the interactions of order 1 to ``order`` and the game's empty value as baseline."""
-    lookup: dict[tuple[int, ...], int] = {}
-    entries = []
-    for i, interaction in enumerate(powerset(range(game.n_players), min_size=1, max_size=order)):
-        lookup[interaction] = i
-        entries.append(float(values[interaction]))
+    """Return the interactions of order 1 to ``order`` and the game's empty value as baseline.
+
+    Only the interactions the core algorithm stored are kept (an interaction that is not stored is
+    0), so a sparse result stays sparse: a tree with 100 features has a few hundred nonzero
+    interactions of order 4, not all ``C(100, 4) = 3921225``.
+    """
+    interactions = sorted(
+        (
+            (interaction, float(value))
+            for interaction, value in values.dict_values.items()
+            if 1 <= len(interaction) <= order
+        ),
+        key=lambda item: (len(item[0]), item[0]),  # by order, then lexicographic
+    )
     return InteractionValues(
-        values=np.asarray(entries, dtype=float),
+        values=np.array([value for _, value in interactions], dtype=float),
         index=index,
         max_order=order,
         min_order=1,
         n_players=game.n_players,
-        interaction_lookup=lookup,
+        interaction_lookup={interaction: i for i, (interaction, _) in enumerate(interactions)},
         estimated=False,
         estimation_budget=None,
         baseline_value=float(game(game.empty_coalition)[0]),
@@ -237,7 +244,8 @@ class MoebiusComputer(Computer[SOUM | UnanimityGame | DummyGame]):
     """Synthetic games with a known Möbius representation, via :class:`~shapiq.MoebiusConverter`.
 
     Supports :class:`~shapiq_games.synthetic.SOUM`, :class:`~shapiq_games.synthetic.UnanimityGame`
-    and :class:`~shapiq_games.synthetic.DummyGame`, for any number of players.
+    and :class:`~shapiq_games.synthetic.DummyGame`, for any number of players. Besides the indices
+    of the converter, it returns the Möbius transform itself (``"Moebius"``), which is sparse.
     """
 
     name = "moebius"
@@ -249,13 +257,15 @@ class MoebiusComputer(Computer[SOUM | UnanimityGame | DummyGame]):
 
     @classmethod
     def supported_indices(cls) -> tuple[IndexType, ...]:
-        """The indices of :class:`~shapiq.MoebiusConverter`."""
-        return get_args(ValidMoebiusConverterIndices)
+        """The indices of :class:`~shapiq.MoebiusConverter`, and ``"Moebius"``."""
+        return (*get_args(ValidMoebiusConverterIndices), "Moebius")
 
     def _compute(self, index: IndexType, order: int) -> InteractionValues:
         moebius = moebius_representation(self.game)
         if moebius is None:  # excluded by supports_game
             raise UnsupportedComputationError(type(self.game).__name__)
+        if index == "Moebius":
+            return moebius
         # supports() checked the index against the converter's declaration
         return MoebiusConverter(moebius)(cast("ValidMoebiusConverterIndices", index), order)
 

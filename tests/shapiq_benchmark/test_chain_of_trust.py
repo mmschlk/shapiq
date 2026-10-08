@@ -105,10 +105,16 @@ def _assert_agrees_with_brute_force(computer: Computer, *, atol: float = 1e-10) 
                 continue
             expected = brute_force.exact_values(index, order)
             actual = computer.exact_values(index, order)
+            # structured computers may leave out zeros, so compare interaction by interaction
+            interactions = sorted({*expected.dict_values, *actual.dict_values})
+            assert all(1 <= len(interaction) <= order for interaction in interactions)
             # brute-force FSII solves a weighted least-squares problem (numerical error ~1e-10)
             tolerance = max(atol, 1e-8) if index == "FSII" else atol
             np.testing.assert_allclose(
-                actual.values, expected.values, atol=tolerance, err_msg=f"{index} order {order}"
+                [actual[interaction] for interaction in interactions],
+                [expected[interaction] for interaction in interactions],
+                atol=tolerance,
+                err_msg=f"{index} order {order}",
             )
             assert actual.baseline_value == pytest.approx(expected.baseline_value)
             compared += 1
@@ -121,8 +127,8 @@ def _assert_agrees_with_brute_force(computer: Computer, *, atol: float = 1e-10) 
 def test_moebius_computer(seed: int, normalize: bool) -> None:  # noqa: FBT001
     game = SOUM(7, n_basis_games=20, max_interaction_size=4, random_state=seed, normalize=normalize)
     assert (
-        _assert_agrees_with_brute_force(MoebiusComputer(game)) == 3 * 6 + 2
-    )  # 6 indices x 3 orders + SV, BV
+        _assert_agrees_with_brute_force(MoebiusComputer(game)) == 3 * 7 + 2
+    )  # 7 indices (6 of the converter and Moebius itself) x 3 orders + SV, BV
 
 
 def test_moebius_computer_dummy_and_unanimity_games() -> None:

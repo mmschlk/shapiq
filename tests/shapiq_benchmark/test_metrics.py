@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 import numpy as np
 import pytest
@@ -117,3 +118,28 @@ def test_faithfulness_is_one_for_exact_moebius_values() -> None:
     assert faithfulness(game, moebius) == pytest.approx(1.0)
     shapley = BruteForceComputer(game).exact_values("SV", 1)
     assert faithfulness(game, shapley) < 1.0
+
+
+def test_interactions_zero_in_both_only_count_in_the_means(truth: InteractionValues) -> None:
+    """The same nonzero values among 300 players: errors and rankings agree, means divide by all."""
+    estimate = _values(truth.values + np.random.default_rng(1).normal(size=15))
+    small = compare(truth, estimate, k=5)
+
+    def padded(values: InteractionValues) -> InteractionValues:
+        return InteractionValues(
+            values=dict(values.dict_values),
+            index="k-SII",
+            max_order=2,
+            min_order=1,
+            n_players=300,
+            baseline_value=0.0,
+        )
+
+    large = compare(padded(truth), padded(estimate), k=5)
+    n_interactions = math.comb(300, 1) + math.comb(300, 2)
+    assert large["mse"] == pytest.approx(small["sse"] / n_interactions)
+    assert large["mae"] == pytest.approx(small["sae"] / n_interactions)
+    for name in ("sse", "sae", "nmse", "kendall_tau", "spearman", "precision_at_k"):
+        assert large[name] == pytest.approx(small[name])
+    # a count beyond the float range (all orders of 1100 players) gives a mean, not an OverflowError
+    assert error_metrics(np.zeros(1), np.ones(1), n_interactions=2**1100)["mse"] == 0.0

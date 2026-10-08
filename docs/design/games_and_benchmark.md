@@ -256,12 +256,12 @@ class Computer[G: Game](ABC):            # G: the game family it understands
 
   Constraints core does not declare (for example a maximum order) are added inside the computer, not in core. A drift test calls each core algorithm for every index and order: everything `supports` accepts must run, and everything it rejects must be rejected by core too.
 - **Never a silent fallback.** If `supports(index, order)` is false, `exact_values` raises an error instead of computing something else. Today `PathdependentComputer` returns order-1 SV when asked for order-2 k-SII.
-- **One output convention.** A computer returns the values of the game *as `game(...)` evaluates it* (same output space, same class): the interactions of order 1 to `order`, with the game's v(∅) as `baseline_value` (0 when normalized). The order-0 term is excluded: core algorithms disagree on it, and no metric uses it.
+- **One output convention.** A computer returns the values of the game *as `game(...)` evaluates it* (same output space, same class): the interactions of order 1 to `order`, with the game's v(∅) as `baseline_value` (0 when normalized). The order-0 term is excluded: core algorithms disagree on it, and no metric uses it. The result is as sparse as the core algorithm's (an interaction that is not stored is 0): nothing in the benchmark lists all `C(n, k)` interactions, so the structured computers serve games with hundreds of players (a 1,000-feature tree at order 4 stores under 1,000 interactions).
 
 | Computer | Games | Core algorithm |
 |----------|-------|----------------|
 | `BruteForceComputer` | any game, with a player cap (default 20, overridable) | `ExactComputer` |
-| `MoebiusComputer` | Dummy, Unanimity, SOUM | `MoebiusConverter` |
+| `MoebiusComputer` | Dummy, Unanimity, SOUM (also their `Moebius` values themselves) | `MoebiusConverter` |
 | `PathDependentTreeComputer` | `PathDependentTreeGame` | `TreeSHAPIQ` / `TreeExplainer` |
 | `InterventionalTreeComputer` | `InterventionalTreeGame` | `InterventionalTreeSHAPIQ` |
 | `KNNComputer` | KNN, weighted KNN, threshold NN games | `KNNExplainer` & co. |
@@ -302,6 +302,7 @@ The metrics are rewritten and property-tested. An identical estimate must score 
 a uniform shift or rescaling must behave as documented.
 
 - **Errors:** MSE, MAE, SSE and SAE over all interactions of order 1..k. The order-0 entry is excluded explicitly.
+- **Sparse.** The metrics visit only the interactions where the ground truth or the estimate is nonzero; the means still divide by the number of all interactions of the compared orders. The ranking metrics leave out pairs that are 0 in both, which carry no ranking information (otherwise τ of a sparse game drifts with the number of players).
 - **Ranking:** Kendall τ and Spearman ρ are computed on the values themselves. Today Kendall τ correlates `argsort` positions: a true τ of 0.97 scores 0.55.
 - **Top-k:** Precision@k uses top-k by |ground truth|, counting every value tied with the k-th largest. Today `KendallTau@k` uses the k *smallest* values, and `Spearman@k` ignores k.
 - **Ties:** values within 1e-6 × max |ground truth| rank as equal, so float noise among the many zeros of a sparse game does not decide a ranking.

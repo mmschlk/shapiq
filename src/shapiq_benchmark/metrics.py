@@ -4,16 +4,21 @@ All metrics compare the interactions of order ``1`` to the ground truth's ``max_
 single order). The order-0 term is excluded: it is the value of the empty coalition, not an
 attribution. Higher is better for the ranking metrics and for faithfulness; lower is better for
 the error metrics.
+
+An interaction that an :class:`~shapiq.InteractionValues` does not store is 0. The metrics only
+visit the interactions where the ground truth or the estimate is nonzero, so their cost grows with
+the stored interactions, not with the ``C(n, k)`` possible ones: a sparse game with hundreds of
+players is compared as quickly as a small one.
 """
 
 from __future__ import annotations
 
+import math
+from fractions import Fraction
 from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import kendalltau, spearmanr
-
-from shapiq.utils import powerset
 
 if TYPE_CHECKING:
     from shapiq import Game, InteractionValues
@@ -28,8 +33,11 @@ def _aligned(
     ground_truth: InteractionValues,
     estimate: InteractionValues,
     order: int | None,
-) -> tuple[list[tuple[int, ...]], np.ndarray, np.ndarray]:
-    """Return the compared interactions and their ground-truth and estimated values."""
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Return the values where the ground truth or the estimate is nonzero, and their total count.
+
+    The count is that of all compared interactions, including those that are 0 in both.
+    """
     if order is None:
         min_size, max_size = 1, ground_truth.max_order
     elif 1 <= order <= ground_truth.max_order:
@@ -37,31 +45,55 @@ def _aligned(
     else:
         msg = f"order must be between 1 and the ground truth's max_order {ground_truth.max_order}."
         raise ValueError(msg)
-    interactions = list(
-        powerset(range(ground_truth.n_players), min_size=min_size, max_size=max_size)
+    support = sorted(
+        {
+            interaction
+            for values in (ground_truth, estimate)
+            for interaction, value in values.dict_values.items()
+            if min_size <= len(interaction) <= max_size and value != 0
+        },
+        key=lambda interaction: (len(interaction), interaction),
     )
-    truth = np.array([ground_truth[interaction] for interaction in interactions], dtype=float)
-    estimated = np.array([estimate[interaction] for interaction in interactions], dtype=float)
-    return interactions, truth, estimated
+    truth = np.array([ground_truth[interaction] for interaction in support], dtype=float)
+    estimated = np.array([estimate[interaction] for interaction in support], dtype=float)
+    n = ground_truth.n_players
+    n_interactions = sum(math.comb(n, size) for size in range(min_size, max_size + 1))
+    return truth, estimated, n_interactions
 
 
-def error_metrics(truth: np.ndarray, estimated: np.ndarray) -> dict[str, float]:
+def error_metrics(
+    truth: np.ndarray, estimated: np.ndarray, n_interactions: int | None = None
+) -> dict[str, float]:
     """Return the squared and absolute errors between two aligned value vectors.
+
+    Args:
+        truth: The ground-truth values.
+        estimated: The estimated values.
+        n_interactions: The number of compared interactions, if the vectors leave out interactions
+            that are 0 in both. Defaults to ``None``, the length of the vectors.
 
     Returns:
         ``mse``, ``mae``, ``sse``, ``sae``, and ``nmse`` (the squared error relative to the squared
-        norm of the ground truth; ``nan`` if the ground truth is zero).
+        norm of the ground truth; ``nan`` if the ground truth is zero). The means are over all
+        ``n_interactions``.
     """
+    n_interactions = truth.size if n_interactions is None else n_interactions
     difference = estimated - truth
     sse = float(np.sum(difference**2))
+    sae = float(np.sum(np.abs(difference)))
     norm = float(np.sum(truth**2))
     return {
-        "mse": sse / truth.size,
-        "mae": float(np.mean(np.abs(difference))),
+        "mse": _mean(sse, n_interactions),
+        "mae": _mean(sae, n_interactions),
         "sse": sse,
-        "sae": float(np.sum(np.abs(difference))),
+        "sae": sae,
         "nmse": sse / norm if norm > 0 else float("nan"),
     }
+
+
+def _mean(total: float, count: int) -> float:
+    """Return ``total / count``; exact for counts beyond the float range (e.g. ``2**1100``)."""
+    return float(Fraction(total) / count) if count > 0 else float("nan")
 
 
 def _top_k(values: np.ndarray, k: int) -> np.ndarray:
@@ -74,7 +106,8 @@ def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> di
 
     Values that differ by less than :data:`RANK_TOLERANCE` times the largest absolute ground-truth
     value rank as equal, so float noise does not order values that are equal (e.g. the many zeros
-    of a sparse game).
+    of a sparse game). :func:`compare` passes only the interactions where the ground truth or the
+    estimate is nonzero: pairs of zeros carry no ranking information.
 
     Args:
         truth: The ground-truth values.
@@ -129,14 +162,18 @@ def compare(
             all orders from ``1`` to the ground truth's ``max_order``.
 
     Returns:
-        The error metrics and the ranking metrics (see :func:`error_metrics` and
-        :func:`ranking_metrics`).
+        The error metrics, averaged over all interactions of the compared orders, and the ranking
+        metrics over the interactions where the ground truth or the estimate is nonzero (see
+        :func:`error_metrics` and :func:`ranking_metrics`).
 
     Raises:
         ValueError: If ``order`` is not between ``1`` and the ground truth's ``max_order``.
     """
-    _, truth, estimated = _aligned(ground_truth, estimate, order)
-    return {**error_metrics(truth, estimated), **ranking_metrics(truth, estimated, k=k)}
+    truth, estimated, n_interactions = _aligned(ground_truth, estimate, order)
+    return {
+        **error_metrics(truth, estimated, n_interactions),
+        **ranking_metrics(truth, estimated, k=k),
+    }
 
 
 def faithfulness(
@@ -164,19 +201,15 @@ def faithfulness(
         The coefficient of determination between the game values and the reconstruction.
     """
     n = game.n_players
-    if 2**n <= n_samples:
-        coalitions = np.array([[i in s for i in range(n)] for s in powerset(range(n))], dtype=bool)
+    if 2**n <= n_samples:  # every coalition, as the binary digits of 0, ..., 2**n - 1
+        coalitions = (np.arange(2**n)[:, None] >> np.arange(n) & 1).astype(bool)
     else:
         coalitions = np.random.default_rng(random_state).random((n_samples, n)) < 0.5
     values = game(coalitions)
-    interactions = [
-        (interaction, estimate[interaction])
-        for interaction in estimate.interaction_lookup
-        if len(interaction) >= 1
-    ]
     reconstruction = np.full(coalitions.shape[0], float(estimate.baseline_value))
-    for interaction, value in interactions:
-        reconstruction += value * coalitions[:, list(interaction)].all(axis=1)
+    for interaction, value in estimate.dict_values.items():
+        if len(interaction) >= 1 and value != 0:
+            reconstruction += value * coalitions[:, list(interaction)].all(axis=1)
     residual = float(np.sum((values - reconstruction) ** 2))
     total = float(np.sum((values - values.mean()) ** 2))
     return 1.0 - residual / total if total > 0 else float("nan")
