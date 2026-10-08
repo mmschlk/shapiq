@@ -706,3 +706,10 @@ uv run pre-commit run --all-files
   hook and propagate to preparation/evaluation/isolated-estimator children; verify
   unchanged source provenance and retain the pinned `sys.executable`. Do not edit
   active worker scripts or assume this removes executable/shared-artifact I/O.
+
+- Combined campaign pools can preserve original task directories as authenticated
+  symlinks. The reproduction packager's blanket nonsymlink input guard rejects
+  those otherwise valid snapshots. Resolve only links pinned in the collection's
+  authenticated selection map, verify each target and its ancestry, and retain
+  every original artifact hash check. Do not broadly enable arbitrary symlinks
+  or rewrite original snapshots merely to package the combined cohort.
