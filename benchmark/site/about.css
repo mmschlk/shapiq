@@ -110,3 +110,11 @@ code {
     padding: 8px;
   }
 }
+
+blockquote {
+  margin: 20px 0;
+  padding: 2px 20px;
+  border-left: 3px solid #426be0;
+  background: #f4f7fc;
+  overflow-wrap: anywhere;
+}

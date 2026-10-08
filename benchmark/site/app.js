@@ -777,7 +777,7 @@ async function renderPartitioned() {
     for (const [id, rows] of Object.entries(result.issues)) {
       $(id).replaceChildren();
       const texts = result.details_deferred
-        ? ["Load timing & details to view the breakdown."]
+        ? ["Loading breakdown…"]
         : rows.length
         ? rows.map((row) => `${row.description} — ${row.count} run(s)`)
         : [
@@ -793,10 +793,18 @@ async function renderPartitioned() {
     }
     const hardware = result.hardware;
     $("hardware").textContent = result.details_deferred
-      ? "Load timing & details to view worker hardware."
+      ? "Loading worker hardware…"
       : hardware.cpu_models.length
       ? `Measured workers: ${hardware.cpu_models.join("; ")}. Profiles: ${hardware.timing_profiles.join(", ")}. Per-run placement and thread details are included in JSON downloads.`
       : "Worker hardware was not recorded in this older result.";
+    if (result.details_deferred) {
+      // Paint the small precomputed view before fetching timing in the worker.
+      setTimeout(() => {
+        if (client !== partitionClient || version !== partitionRenderVersion) return;
+        requestPartitionDetails();
+        renderPartitioned();
+      }, 0);
+    }
   } catch (error) {
     if (
       client === partitionClient &&
@@ -1229,10 +1237,6 @@ function download(kind) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-$("loadDetails").addEventListener("click", () => {
-  requestPartitionDetails();
-  renderPartitioned();
-});
 [
   "panel",
   "target",

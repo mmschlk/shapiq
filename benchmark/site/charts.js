@@ -34,7 +34,6 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
           name: methodLabel(s.method),
           color: colorFor(s.method),
         }));
-    $("loadDetails").hidden = !computed.details_deferred;
     const estimated = $("timeMetric").value === "estimated_uncached_seconds";
     $("timeChartNote").textContent = estimated
       ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
@@ -62,12 +61,11 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
           : "No methods meet 80% coverage in this selection.";
       });
     if (computed.details_deferred) {
-      $("timeChart").textContent = "Timing loads on request.";
+      $("timeChart").textContent = "Loading timing…";
       $("timeChartNote").textContent = "";
     }
     return;
   }
-  $("loadDetails").hidden = true;
   const gamesById = new Map(chartPanel.games.map((g) => [g.id, g]));
   const chartRatios =
     data.suite.relative_budgets ||
@@ -242,7 +240,12 @@ function renderHistory(s, preset, computed = null) {
       (d - new Date(Date.UTC(d.getUTCFullYear(), 0, 1))) / 31557600000
     );
   };
-  const historyMethods = (history?.methods || [])
+  const releases = new Map((history?.methods || []).map((method) => [method.method, method]));
+  for (const method of s.methods) {
+    const release = window.METHOD_DETAILS?.[method]?.release;
+    if (release) releases.set(method, { method, ...release });
+  }
+  const historyMethods = [...releases.values()]
     .map((method) => ({
       ...method,
       ...(computed
@@ -252,7 +255,7 @@ function renderHistory(s, preset, computed = null) {
             s,
           )),
     }))
-    .filter((method) => method.complete);
+    .filter(hasPlotCoverage);
   const historySeries = historyMethods
     .filter((method) => showMethod(method.method))
     .map((method) => ({
@@ -270,7 +273,7 @@ function renderHistory(s, preset, computed = null) {
     }));
   chart("historyChart", historySeries, "Publication year", true, metric);
   $("historySources").replaceChildren();
-  (history?.methods || []).forEach((m) => {
+  historyMethods.forEach((m) => {
     const a = document.createElement("a");
     if (!/^https:\/\/arxiv\.org\//.test(m.url)) return;
     a.href = m.url;
@@ -354,7 +357,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     const p = document.createElement("p");
     p.className = "emptyNote";
     p.textContent = dates
-      ? "History requires complete coverage and a verified publication date."
+      ? "History requires ≥80% coverage and a verified publication date."
       : "No successful results in this view.";
     box.append(p);
     return;

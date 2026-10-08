@@ -1,4 +1,5 @@
 // Paper links identify the method or explicitly named baseline; source links pin the benchmark revision.
+// Release dates mirror the verified RELEASES catalog in shapiq_benchmark/summary.py.
 window.METHOD_DETAILS = {
   "PermutationSamplingSII": {
     "description": "Samples random player orderings and averages joint marginal contributions to estimate SII or k-SII interactions. The linked SHAP-IQ paper describes this permutation baseline in Appendix D.1.",
@@ -42,6 +43,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/marginals/stratified.py#L21"
+    },
+    "release": {
+      "date": "2013-06-18",
+      "url": "https://arxiv.org/abs/1306.4265"
     }
   },
   "OwenSamplingSV": {
@@ -53,6 +58,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/marginals/owen.py#L21"
+    },
+    "release": {
+      "date": "2020-10-22",
+      "url": "https://arxiv.org/abs/2010.12082"
     }
   },
   "KernelSHAP": {
@@ -64,6 +73,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/regression/kernelshap.py#L17"
+    },
+    "release": {
+      "date": "2017-05-22",
+      "url": "https://arxiv.org/abs/1705.07874"
     }
   },
   "LeverageSHAP": {
@@ -75,6 +88,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/d4ac18e674841f79c1ca25d8cfbf550e84dc21a7/src/shapiq/approximator/regression/leverageshap.py#L26"
+    },
+    "release": {
+      "date": "2024-10-02",
+      "url": "https://arxiv.org/abs/2410.01917"
     }
   },
   "RegressionFSII": {
@@ -108,6 +125,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/regression/kernelshapiq.py#L16"
+    },
+    "release": {
+      "date": "2024-05-17",
+      "url": "https://arxiv.org/abs/2405.10852"
     }
   },
   "InconsistentKernelSHAPIQ": {
@@ -130,6 +151,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/proxy/proxyspex.py#L36"
+    },
+    "release": {
+      "date": "2025-05-23",
+      "url": "https://arxiv.org/abs/2505.17495"
     }
   },
   "ProxySHAP": {
@@ -141,6 +166,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/proxy/proxyshap.py#L160"
+    },
+    "release": {
+      "date": "2026-05-21",
+      "url": "https://arxiv.org/abs/2605.22738"
     }
   },
   "OddSHAP": {
@@ -152,6 +181,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/regression/oddshap.py#L109"
+    },
+    "release": {
+      "date": "2026-02-01",
+      "url": "https://arxiv.org/abs/2602.01399"
     }
   },
   "RegressionMSR": {
@@ -163,6 +196,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/proxy/regressionmsr.py#L38"
+    },
+    "release": {
+      "date": "2025-06-13",
+      "url": "https://arxiv.org/abs/2506.11849"
     }
   },
   "ShaplEIG": {
@@ -174,6 +211,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/shapleig/shapleig.py#L35"
+    },
+    "release": {
+      "date": "2026-06-01",
+      "url": "https://arxiv.org/abs/2606.02247"
     }
   },
   "SHAPIQ": {
@@ -185,6 +226,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/montecarlo/shapiq.py#L22"
+    },
+    "release": {
+      "date": "2023-03-02",
+      "url": "https://arxiv.org/abs/2303.01179"
     }
   },
   "SVARM": {
@@ -196,6 +241,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/montecarlo/svarmiq.py#L75"
+    },
+    "release": {
+      "date": "2023-02-01",
+      "url": "https://arxiv.org/abs/2302.00736"
     }
   },
   "SVARMIQ": {
@@ -207,6 +256,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/montecarlo/svarmiq.py#L16"
+    },
+    "release": {
+      "date": "2024-01-24",
+      "url": "https://arxiv.org/abs/2401.13371"
     }
   },
   "kADDSHAP": {
@@ -218,6 +271,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/regression/kadd_shap.py#L15"
+    },
+    "release": {
+      "date": "2022-11-03",
+      "url": "https://arxiv.org/abs/2211.02166"
     }
   },
   "SPEX": {
@@ -229,6 +286,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/sparse/spex.py#L10"
+    },
+    "release": {
+      "date": "2025-02-19",
+      "url": "https://arxiv.org/abs/2502.13870"
     }
   },
   "UnbiasedKernelSHAP": {
@@ -240,6 +301,10 @@ window.METHOD_DETAILS = {
     "implementation": {
       "title": "shapiq implementation",
       "url": "https://github.com/rtealwitter/shapiq/blob/1472a0035f4e54df9eb4bdf6f771330f8b93d856/src/shapiq/approximator/montecarlo/shapiq.py#L100"
+    },
+    "release": {
+      "date": "2020-12-02",
+      "url": "https://arxiv.org/abs/2012.01536"
     }
   }
 };

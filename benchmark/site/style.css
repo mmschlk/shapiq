@@ -1307,18 +1307,6 @@ footer a {
   font-weight: 600;
 }
 .lowCoverage td { color: var(--muted); }
-#loadDetails {
-  margin: 12px 20px 16px;
-  padding: 9px 14px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #f4f7ff;
-  color: var(--blue);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-#loadDetails:hover { background: #eaf0ff; }
 
 .coverageDetails { margin-top: 6px; font-size: 12px; }
 .coverageDetails summary { cursor: pointer; color: var(--muted); }
