@@ -5,6 +5,22 @@ column blocks. The browser supports this format alongside legacy reports. The
 live dataset remains in its existing format until real-release parity and
 resource checks pass.
 
+Partition transport can use gzip without changing the decoded `columns-v2`
+payload. `benchmark/compress_report.py REPORT --workers 1` authenticates the
+plain partitions, writes deterministic `.json.gz` assets, and updates the
+manifest only after every compression succeeds. Use up to 32 workers within an
+existing CPU allocation. Run this before the final output hashes and Pages size
+check; publish only the resulting files, not duplicate plain partitions.
+
+Compressed descriptors retain `bytes` and `sha256` for decoded contents and add
+`encoding: "gzip"`, `compressed_bytes`, and `compressed_sha256` for the delivered
+file. The Pages downloader and browser authenticate both layers, enforce a
+64-MiB decoded block limit, and retain all schema/privacy checks. The browser
+uses native `DecompressionStream("gzip")`; hosting must deliver `.gz` file bytes
+without a `Content-Encoding: gzip` header, which would decode them before the
+transport checksum check. Verify actual delivery before switching the pointer.
+Plain descriptors and legacy reports remain supported.
+
 ```python
 with RecordStore(work / "records.sqlite") as records:
     panel = compose_matrix(plan, plan_sha256=reviewed_sha, record_store=records)

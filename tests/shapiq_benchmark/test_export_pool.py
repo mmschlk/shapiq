@@ -15,9 +15,11 @@ import pytest
 
 from shapiq import ExactComputer
 from shapiq_benchmark import runner
+from shapiq_benchmark.duplicates import remove_aliases
 from shapiq_benchmark.exact import exact_table_truth
 from shapiq_benchmark.games import signal_metadata, truth_dict
 from shapiq_benchmark.results_io import Checkpoint
+from shapiq_benchmark.summary import weights_for
 from tests.shapiq_benchmark import test_collect_pool as fixtures
 from tests.shapiq_benchmark.test_collect_pool import collector, lines, save
 
@@ -188,8 +190,46 @@ def test_duplicate_ownership_is_stable_and_preserves_weight_branches():
     second["id"], second["metadata"]["instance_seed"] = "b", 1
     assert exporter.aliases_for([second, first], {"a": "same", "b": "same"}) == {"b": "a"}
     second["metadata"]["focused_design"]["recipe"] = "different"
-    with pytest.raises(ValueError, match="cross weighting branches"):
-        exporter.aliases_for([first, second], {"a": "same", "b": "same"})
+    assert exporter.aliases_for([first, second], {"a": "same", "b": "same"}) == {}
+
+
+@pytest.mark.parametrize("dimension", ["application", "subtype", "recipe", "role"])
+def test_equal_payoffs_preserve_each_declared_branch(dimension):
+    games = []
+    for name, branch, seed in [("a", 0, 0), ("b", 0, 1), ("c", 1, 0), ("d", 1, 1)]:
+        design = {"application": "local", "subtype": "generic", "recipe": "rf"}
+        if branch and dimension != "role":
+            design[dimension] = "another"
+        games.append(
+            {
+                "id": name,
+                "n_players": 8,
+                "metadata": {
+                    "instance_seed": seed,
+                    "focused_design": design,
+                    "game_quality": {
+                        "role": "control" if branch and dimension == "role" else "core"
+                    },
+                },
+            }
+        )
+    original = copy.deepcopy(games)
+    aliases = exporter.aliases_for(list(reversed(games)), dict.fromkeys("abcd", "equal"))
+    assert aliases == {"b": "a", "d": "c"}
+    assert games == original
+    # Canonical ownership cannot favor a successful later seed over a failed first seed.
+    data = {
+        "games": games,
+        "records": [
+            {"game_id": g["id"], "status": "failed" if g["id"] in "ac" else "ok"} for g in games
+        ],
+        "suite": {},
+    }
+    remove_aliases(data, aliases)
+    assert [g["id"] for g in data["games"]] == ["a", "c"]
+    assert all(row["status"] == "failed" for row in data["records"])
+    cells, weights = weights_for(data["games"], [8], [0])
+    assert dict(zip(cells, weights, strict=True)) == {("a", 8, 0): 0.5, ("c", 8, 0): 0.5}
 
 
 def exportable_campaign(campaign):

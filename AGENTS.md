@@ -675,3 +675,11 @@ uv run pre-commit run --all-files
   `about.md`; deploying changed Markdown alone leaves the visible article stale.
   After editing the Markdown, run `benchmark/render_about.py` and its `--check`
   mode, and commit both files.
+
+- `RecordStore` deletes its disposable SQLite file on exit, including exceptions.
+  Long exports must save authenticated collection checkpoints before reference,
+  summary and packaging work; otherwise a late export error repeats hours of
+  collection. Operational pool checkpoints preserve rows and original run IDs.
+- Equal payoff tables can occur across deliberately different comprehensive
+  recipes. Deduplicate within application/subtype/recipe/qualification role;
+  preserve declared weights across branches and record their equal-payoff groups.

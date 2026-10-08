@@ -2,6 +2,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { createHash, webcrypto } = require("node:crypto");
+const { gzipSync } = require("node:zlib");
 globalThis.crypto = webcrypto;
 require("../../benchmark/site/partitions.js");
 
@@ -31,6 +32,34 @@ function fixture(change = () => {}, text) {
   };
 }
 const read = (f) => BenchmarkPartitions.read(f.manifest, f.descriptor, f.options);
+
+function compressedFixture() {
+  const f = fixture(), compressed = gzipSync(f.bytes);
+  Object.assign(f.descriptor, {file:f.descriptor.file + ".gz", encoding:"gzip",
+    compressed_bytes:compressed.length,
+    compressed_sha256:createHash("sha256").update(compressed).digest("hex")});
+  f.options.files = new Map([[f.descriptor.file, new Blob([compressed])]]);
+  return f;
+}
+
+test("gzip preserves exact decoded values and both hash layers", async () => {
+  const plain = await read(fixture()), zipped = await read(compressedFixture());
+  for (let i=0; i<plain.count; i++) assert.deepEqual(zipped.row(i), plain.row(i));
+  assert.ok(Object.is(zipped.get("score", 2), -0));
+});
+
+for (const [name, mutate] of [
+  ["transport hash", f => f.descriptor.compressed_sha256 = "f".repeat(64)],
+  ["decoded hash", f => f.descriptor.sha256 = "f".repeat(64)],
+  ["transport size", f => f.descriptor.compressed_bytes++],
+  ["decoded overrun", f => f.descriptor.bytes--],
+  ["decoded truncation", f => f.descriptor.bytes++],
+  ["unknown compression", f => f.descriptor.encoding = "brotli"],
+  ["wrong gzip suffix", f => f.descriptor.file = "partition-metrics-0.json"],
+]) test(`gzip rejects ${name}`, async () => {
+  const f = compressedFixture(); mutate(f);
+  await assert.rejects(read(f), /Invalid benchmark block/);
+});
 
 test("column access preserves absent/null/signed zero/nested values without expanding rows", async () => {
   const f = fixture(), block = await read(f);

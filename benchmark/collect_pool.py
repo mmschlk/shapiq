@@ -421,7 +421,9 @@ def validate_scores(row: dict, game: dict) -> None:
     )
 
 
-def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
+def collect(
+    config: dict, store: RecordStore, *, case_ids: list[int] | None = None
+) -> tuple[dict, dict]:
     """Assemble exactly the configured pool; store is an open disposable RecordStore.
 
     Pin entries use {path, sha256}. jobs maps numeric job IDs to registration and
@@ -506,6 +508,17 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
     require(
         actual_directories <= names, "Foreign task directory outside the comprehensive inventory"
     )
+    inventory_size = len(inventory)
+    if case_ids is not None:
+        require(
+            bool(case_ids)
+            and all(type(case) is int for case in case_ids)
+            and case_ids == sorted(set(case_ids))
+            and set(case_ids) <= {task["case"] for task in inventory},
+            "Invalid explicit collection case selection",
+        )
+        selected = set(case_ids)
+        inventory = [task for task in inventory if task["case"] in selected]
     data = {
         "schema_version": 1,
         "snapshot_provenance": source,
@@ -1009,4 +1022,7 @@ def collect(config: dict, store: RecordStore) -> tuple[dict, dict]:
         "statuses": dict(counts),
         "slurm_accounting": accounting,
     }
+    if case_ids is not None:
+        audit["collection_cases"] = case_ids
+        audit["inventory_size"] = inventory_size
     return data, audit

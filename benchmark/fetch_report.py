@@ -7,7 +7,9 @@ This checks packaging; scientific release audits remain a separate prerequisite.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
+import io
 import json
 import math
 import re
@@ -103,6 +105,27 @@ def download(url: str, sha256: str, expected_size: int | None = None) -> bytes:
     return content
 
 
+def decode_partition(content: bytes, descriptor: dict) -> bytes:
+    """Verify transport before bounded gzip decode, then authenticate original bytes."""
+    if "encoding" not in descriptor:
+        require(
+            not {"compressed_bytes", "compressed_sha256"}.intersection(descriptor),
+            "Compression metadata without encoding",
+        )
+        return content
+    require(descriptor["encoding"] == "gzip", "Unknown partition encoding")
+    size = descriptor["bytes"]
+    require(type(size) is int and 0 < size <= MAX_BLOCK_BYTES, "Invalid decoded size")
+    with gzip.GzipFile(fileobj=io.BytesIO(content), mode="rb") as stream:
+        decoded = stream.read(size + 1)
+    require(len(decoded) == size, "Decoded partition size mismatch")
+    require(
+        hashlib.sha256(decoded).hexdigest() == descriptor["sha256"],
+        "Decoded partition checksum mismatch",
+    )
+    return decoded
+
+
 def fetch_report(source: dict, output: Path) -> dict:
     """Write only the authenticated closure of a legacy or partitioned report."""
     payload = download(source["url"], source["sha256"])
@@ -151,7 +174,7 @@ def fetch_report(source: dict, output: Path) -> dict:
     for descriptor in descriptors:
         name = descriptor["file"]
         pattern = (
-            r"partition-(?:raw|metrics|games|details|runs|profiles|summaries)-\d+\.json"
+            r"partition-(?:raw|metrics|games|details|runs|profiles|summaries)-\d+\.json(?:\.gz)?"
             if partitioned
             else r"records-[a-z-]+-\d+\.json"
         )
@@ -168,14 +191,32 @@ def fetch_report(source: dict, output: Path) -> dict:
             require(name.startswith(f"partition-{descriptor['kind']}-"), "Wrong partition filename")
             require(descriptor["snapshot_id"] == data["snapshot_id"], "Wrong descriptor snapshot")
             require(0 < descriptor["bytes"] <= MAX_BLOCK_BYTES, "Oversized block")
+            compressed = "encoding" in descriptor
+            require(name.endswith(".json.gz") == compressed, "Encoding/filename mismatch")
+            if compressed:
+                require(descriptor["encoding"] == "gzip", "Unknown partition encoding")
+                require(
+                    type(descriptor.get("compressed_bytes")) is int
+                    and 0 < descriptor["compressed_bytes"] <= MAX_BLOCK_BYTES,
+                    "Invalid compressed size",
+                )
+                require(
+                    isinstance(descriptor.get("compressed_sha256"), str)
+                    and bool(re.fullmatch(r"[0-9a-f]{64}", descriptor["compressed_sha256"])),
+                    "Invalid compressed checksum",
+                )
+                require(
+                    bool(re.fullmatch(r"[0-9a-f]{64}", descriptor["sha256"])),
+                    "Invalid decoded checksum",
+                )
         content = download(
             urljoin(source["url"], name),
-            descriptor["sha256"],
-            descriptor.get("bytes") if partitioned else None,
+            descriptor.get("compressed_sha256", descriptor["sha256"]),
+            descriptor.get("compressed_bytes", descriptor.get("bytes")) if partitioned else None,
         )
         total += len(content)
         require(total <= MAX_SITE_BYTES, "Report exceeds the Pages packaging limit")
-        part = parse(content)
+        part = parse(decode_partition(content, descriptor) if partitioned else content)
         require(part["snapshot_id"] == data["snapshot_id"], "Wrong asset snapshot")
         require(
             part["codec"] == ("columns-v2" if partitioned else "columns-v1"), "Wrong column codec"

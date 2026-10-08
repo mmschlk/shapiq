@@ -11,6 +11,7 @@ import json
 import math
 import shutil
 from collections import defaultdict
+from contextlib import nullcontext
 from pathlib import Path
 
 from collect_pool import Inputs, collect, digest, require, terminal_accounting
@@ -229,30 +230,27 @@ def check_snapshot(snapshot: dict, root: Path) -> tuple[list[dict], dict]:
 
 
 def aliases_for(games: list[dict], fingerprints: dict) -> dict:
-    """Deduplicate within a weighting branch; never silently remove another branch."""
+    """Deduplicate exact payoffs within each declared weighting/qualification branch.
+
+    Equal games in different recipes retain their planned weight. Ownership uses
+    construction seed and ID only, never estimator outcomes or score coverage.
+    """
     groups = defaultdict(list)
     for game in games:
         fingerprint = fingerprints.get(game["id"])
         if fingerprint is not None:
-            groups[fingerprint].append(game)
-    aliases = {}
-    for group in groups.values():
-        if len(group) < 2:
-            continue
-        branches = {
-            (
+            branch = (
                 *[
                     game["metadata"]["focused_design"][key]
                     for key in ("application", "subtype", "recipe")
                 ],
                 game["metadata"].get("game_quality", {}).get("role", "unqualified"),
             )
-            for game in group
-        }
-        require(
-            len(branches) == 1,
-            "Identical payoffs cross weighting branches; explicit reconciliation required",
-        )
+            groups[fingerprint, branch].append(game)
+    aliases = {}
+    for group in groups.values():
+        if len(group) < 2:
+            continue
         canonical = min(group, key=lambda g: (g["metadata"]["instance_seed"], g["id"]))["id"]
         aliases.update({g["id"]: canonical for g in group if g["id"] != canonical})
     return aliases
@@ -313,7 +311,17 @@ def coverage_summary(data: dict, audit: dict, closed: dict | None) -> dict:
     }
 
 
-def export(config_path: Path, output: Path, database: Path, audit_path: Path) -> dict:
+def export(
+    config_path: Path,
+    output: Path,
+    database: Path,
+    audit_path: Path,
+    *,
+    checkpoint: Path | None = None,
+    cache: Path | None = None,
+    workers: int = 1,
+    compress: bool = False,
+) -> dict:
     """Create a local report after complete execution or an authenticated closeout."""
     from shapiq_benchmark.duplicates import remove_aliases
     from shapiq_benchmark.partitioned import write_partitioned_report
@@ -335,6 +343,11 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
     )
     for path in (Path(__file__), Path(__file__).with_name("collect_pool.py")):
         inputs.pin(path)
+    if checkpoint is not None:
+        for name in ("pool_checkpoints.py", "parallel_export.py", "parallel_summaries.py"):
+            inputs.pin(Path(__file__).with_name(name))
+    if compress:
+        inputs.pin(Path(__file__).with_name("compress_report.py"))
     assets = Path(__file__).with_name("site")
     names = inputs.read(assets / "assets.json")
     require(
@@ -343,29 +356,52 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
     )
     for name in names:
         inputs.pin(assets / name)
-    with RecordStore(database) as records:
-        data, audit = collect(config, records)
+    if checkpoint is None:
+        store = RecordStore(database)
+        collected = None
+    else:
+        from pool_checkpoints import open_checkpoint
+
+        store, data, audit = open_checkpoint(checkpoint, database)
+        collected = (data, audit)
+    with store as records:
+        data, audit = collect(config, records) if collected is None else collected
+        if checkpoint is not None:
+            require(
+                audit["input_hashes"].get(str(config_path.absolute())) == digest(config_path),
+                "Checkpoint collection configuration differs",
+            )
         closed = closeout(config, audit, inputs)
         require(data["games"], "No qualified measured games to export")
         for path, sha in audit["input_hashes"].items():
             inputs.pin(path, sha)
         inputs.absent.update(audit["absent_files"])
-        checks, fingerprints = [], {}
-        pool = Path(config["pool_directory"])
-        for case in audit["cases"]:
-            path = pool / "tasks" / f"case-{case['case']:06d}" / "prepared/snapshot.json"
-            if str(path.absolute()) not in audit["input_hashes"]:
-                continue
-            snapshot, root = load_snapshot(path)
-            checked, found = check_snapshot(snapshot, root)
-            checks.extend(checked)
-            fingerprints.update(found)
+        if cache is not None:
+            from parallel_export import parallel_references
+
+            checks, fingerprints = parallel_references(config, audit, cache / "references", workers)
+        else:
+            checks, fingerprints = [], {}
+            pool = Path(config["pool_directory"])
+            for case in audit["cases"]:
+                path = pool / "tasks" / f"case-{case['case']:06d}" / "prepared/snapshot.json"
+                if str(path.absolute()) not in audit["input_hashes"]:
+                    continue
+                snapshot, root = load_snapshot(path)
+                checked, found = check_snapshot(snapshot, root)
+                checks.extend(checked)
+                fingerprints.update(found)
         require(
             {r["game_id"] for r in checks} == {g["id"] for g in data["games"]}
             and len(checks) == len(data["games"]),
             "Reference inventory differs",
         )
         aliases = aliases_for(data["games"], fingerprints)
+        equal_payoffs = defaultdict(list)
+        for game in data["games"]:
+            if game["id"] in fingerprints:
+                equal_payoffs[fingerprints[game["id"]]].append(game["id"])
+        equality_groups = [sorted(ids) for ids in equal_payoffs.values() if len(ids) > 1]
         remove_aliases(data, aliases)
         coverage = coverage_summary(data, audit, closed)
         collection_id = data["snapshot_id"]
@@ -374,13 +410,22 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
             "collection_id": collection_id,
             "reference_check_sha256": identity({"checks": checks}),
             "aliases": data["duplicate_games"],
+            "duplicate_policy": "Exact aliases within application/subtype/recipe/qualification role; equal payoffs across branches retain their planned weight.",
+            "equal_payoff_groups": equality_groups,
             "intended_instances": audit["intended_instances"],
             "closeout": closed,
             "coverage_sha256": identity(coverage),
         }
         data["snapshot_id"] = identity(data["composition"])
         inputs.stable()
-        manifest = write_partitioned_report(data, output)
+        if cache is not None:
+            from parallel_summaries import cached_summaries
+
+            summaries = cached_summaries(data, cache / "summaries", workers)
+        else:
+            summaries = nullcontext()
+        with summaries:
+            manifest = write_partitioned_report(data, output)
         # The frozen writer already preserves coverage in authenticated detail
         # blocks. Add only its small discoverable summary to the manifest.
         manifest["campaign_coverage"] = coverage
@@ -390,6 +435,12 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
         for name in names:
             shutil.copyfile(assets / name, output / name)
         shutil.copyfile(output / "data.json", output / "about.json")
+        if compress:
+            from compress_report import compress_report
+
+            compression = compress_report(output, workers=min(workers, 32))
+        else:
+            compression = None
         files = {
             str(p.relative_to(output)): digest(p) for p in sorted(output.rglob("*")) if p.is_file()
         }
@@ -410,6 +461,9 @@ def export(config_path: Path, output: Path, database: Path, audit_path: Path) ->
             campaign_coverage=coverage,
             reference_checks=checks,
             duplicate_games=data["duplicate_games"],
+            duplicate_policy=data["composition"]["duplicate_policy"],
+            equal_payoff_groups=equality_groups,
+            transport=compression,
             native_duplicate_uniqueness="not established by table fingerprints",
             input_hashes=inputs.hashes,
             absent_files=sorted(inputs.absent),

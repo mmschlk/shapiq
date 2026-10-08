@@ -76,22 +76,63 @@ globalThis.BenchmarkPartitions = (() => {
     }
   }
 
+  async function verifyHash(bytes, expected) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    require(hash === expected, "checksum mismatch");
+  }
+
+  async function inflate(bytes, size, signal) {
+    require(typeof DecompressionStream === "function", "this browser lacks gzip decompression");
+    const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")).getReader();
+    const decoded = new Uint8Array(size);
+    let offset = 0;
+    try {
+      while (true) {
+        signal?.throwIfAborted();
+        const {done, value} = await reader.read();
+        if (done) break;
+        require(offset + value.byteLength <= size, "decoded data exceeds declared size");
+        decoded.set(value, offset);
+        offset += value.byteLength;
+      }
+      require(offset === size, "truncated decoded data");
+      return decoded;
+    } finally {
+      await reader.cancel();
+      reader.releaseLock();
+    }
+  }
+
   async function read(manifest, descriptor, options = {}) {
     const cap = options.maxBytes ?? maximumBytes;
     require(Number.isSafeInteger(cap) && cap > 0 && cap <= maximumBytes, "byte limit");
     require(manifest.layout === "partitioned-v1" && manifest.schema_version === 1, "manifest layout");
     require(typeof manifest.snapshot_id === "string" && /^[a-f0-9]{64}$/.test(manifest.snapshot_id), "snapshot identity");
     require(kinds.has(descriptor.kind), "kind");
-    require(new RegExp(`^partition-${descriptor.kind}-[0-9]+\\.json$`).test(descriptor.file), "filename");
+    const compressed = Object.hasOwn(descriptor, "encoding");
+    require(!compressed || descriptor.encoding === "gzip", "unknown encoding");
+    const ending = compressed ? "\\.json\\.gz" : "\\.json";
+    require(new RegExp(`^partition-${descriptor.kind}-[0-9]+${ending}$`).test(descriptor.file), "filename");
     require(descriptor.snapshot_id === manifest.snapshot_id, "descriptor snapshot");
     require(typeof descriptor.sha256 === "string" && /^[a-f0-9]{64}$/.test(descriptor.sha256), "checksum");
     require(Number.isSafeInteger(descriptor.bytes) && descriptor.bytes > 0 && descriptor.bytes <= cap, "byte size");
     require(Number.isSafeInteger(descriptor.count) && descriptor.count >= 0, "descriptor count");
-    const bytes = await bytesFor(descriptor, options);
+    let transport = descriptor;
+    if (compressed) {
+      require(Number.isSafeInteger(descriptor.compressed_bytes) && descriptor.compressed_bytes > 0 && descriptor.compressed_bytes <= cap, "compressed byte size");
+      require(typeof descriptor.compressed_sha256 === "string" && /^[a-f0-9]{64}$/.test(descriptor.compressed_sha256), "compressed checksum");
+      transport = {...descriptor, bytes: descriptor.compressed_bytes, sha256: descriptor.compressed_sha256};
+    } else {
+      require(!Object.hasOwn(descriptor, "compressed_bytes") && !Object.hasOwn(descriptor, "compressed_sha256"), "compression metadata without encoding");
+    }
+    let bytes = await bytesFor(transport, options);
     options.signal?.throwIfAborted();
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    const hash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-    require(hash === descriptor.sha256, "checksum mismatch");
+    await verifyHash(bytes, transport.sha256);
+    if (compressed) {
+      bytes = await inflate(bytes, descriptor.bytes, options.signal);
+      await verifyHash(bytes, descriptor.sha256);
+    }
     const payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes), (_key, value) => {
       require(typeof value !== "number" || Number.isFinite(value), "nonfinite number");
       return value;

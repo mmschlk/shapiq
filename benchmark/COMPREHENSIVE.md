@@ -108,6 +108,12 @@ the current hierarchy does not balance datasets separately. Zero-energy targets 
 normalized score. Failures have no invented timing or error value. Report success
 coverage alongside scores, with construction seeds grouped for uncertainty.
 
+Identical payoff tables are aliases only within the same application, subtype,
+recipe and qualification role. Their canonical instance is the lowest construction
+seed, then game ID, irrespective of estimator outcomes. Equal tables across declared
+branches retain each branch's planned contribution and are reported explicitly;
+they do not justify deleting a recipe or changing its weight after seeing results.
+
 ## Publication
 
 Keep the existing website dataset until the replacement is checked. Publish one
