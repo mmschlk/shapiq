@@ -6,18 +6,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions
-
-from ._display import RegionPlots, gray_masked_image
-from ._fill import fill_image, filled_images
+from ._fill import fill_image
 from ._image_text_model import ImageTextTokenModel, imagenet_class_names
 from ._preprocess import as_rgb_array
+from ._region_game import RegionGame, resolve_removal
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from numpy.typing import ArrayLike
 
     from shapiq.typing import CoalitionMatrix, GameValues
     from shapiq_games.typing import Fill, ImageTextModel, MaskStrategy
@@ -25,7 +20,7 @@ if TYPE_CHECKING:
 __all__ = ["ImageTextSimilarity"]
 
 
-class ImageTextSimilarity(RegionPlots, Game):
+class ImageTextSimilarity(RegionGame):
     """The image-text similarity game: how well the visible regions of an image match a text.
 
     CLIP, SigLIP, and SigLIP 2 embed images and texts in one space. The players are rectangular
@@ -59,6 +54,7 @@ class ImageTextSimilarity(RegionPlots, Game):
         text: The explained text.
         label: The model's zero-shot ImageNet label of the image if no text was given, else ``None``.
         original_model_output: The similarity of the full image and the text.
+        empty_value: The similarity with every region removed, before centering.
         mask_strategy: ``"mask"`` or ``"remove"`` in token space, ``None`` in image space.
 
     Examples:
@@ -117,12 +113,7 @@ class ImageTextSimilarity(RegionPlots, Game):
         Raises:
             ValueError: If both ``mask_strategy`` and ``fill`` are given, or either is invalid.
         """
-        if fill is not None and mask_strategy is not None:
-            msg = "Choose mask_strategy (token space) or fill (image space), not both."
-            raise ValueError(msg)
-        self.mask_strategy: MaskStrategy | None = (
-            None if fill is not None else mask_strategy or "remove"
-        )
+        self.mask_strategy = resolve_removal(mask_strategy, fill, default="remove")
         self._model = ImageTextTokenModel(
             as_rgb_array(image),
             tuple(grid),
@@ -144,46 +135,13 @@ class ImageTextSimilarity(RegionPlots, Game):
             self.label, text = labels[best], prompts[best]
         self.text = text
         self._text_embedding = self._model.text_embeddings([text])[0]
-        self.original_model_output = float(full_image @ self._text_embedding)
-        self._empty_value = float(self._similarity(np.zeros((1, n_players), dtype=bool))[0])
-        super().__init__(
-            n_players,
-            normalize=normalize,
-            normalization_value=self._empty_value,
-            verbose=verbose,
-        )
+        super().__init__(normalize=normalize, verbose=verbose)
 
     def _image_embeddings(self, coalitions: CoalitionMatrix) -> np.ndarray:
         if self._fill is None:
             return self._model.image_embeddings(coalitions)
-        return self._model.filled_embeddings(coalitions, self.regions, self._fill)
+        return self._model.filled_embeddings(coalitions, self._fill)
 
-    def _similarity(self, coalitions: CoalitionMatrix) -> GameValues:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         # a row-wise sum, not a matrix product, whose summation order depends on the batch
         return np.sum(self._image_embeddings(coalitions) * self._text_embedding, axis=1)
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the cosine similarity of the text and the image restricted to each coalition."""
-        coalitions = as_bool_coalitions(coalitions)
-        values = np.full(coalitions.shape[0], self._empty_value)
-        present = coalitions.any(axis=1)  # the empty coalition is exactly the stored value
-        if present.any():
-            values[present] = self._similarity(coalitions[present])
-        return values
-
-    def masked_image(self, coalition: ArrayLike) -> np.ndarray:
-        """Return the image with the players outside ``coalition`` removed.
-
-        In image space this is the image the model embeds. In token space the model removes the
-        tokens inside the network, so the removed regions are shown in gray.
-
-        Args:
-            coalition: The players, as a boolean or 0/1 vector of length ``n_players``.
-
-        Returns:
-            The image as a ``uint8`` array of shape ``(224, 224, 3)``.
-        """
-        coalitions = as_bool_coalitions(coalition)
-        if self._fill is not None:
-            return filled_images(self.image, self.regions, self._fill, coalitions)[0]
-        return gray_masked_image(self.image, self.regions, coalitions[0])

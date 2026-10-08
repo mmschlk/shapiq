@@ -133,12 +133,15 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
     class FakeViT:
         def __init__(self, image: np.ndarray, n_players: int, **kwargs: object) -> None:
             calls.append(kwargs)
-            self.n_players = n_players
-            self.class_index = 7
-            self.class_name = "tabby cat"
+            self.image, self.n_players = image, n_players
+            side = round(n_players**0.5)
+            self.regions = grid_regions(*image.shape[:2], side, side)
+            self.categories = [f"class {i}" for i in range(7)] + ["tabby cat"]
 
-        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
-            return coalitions.mean(axis=1)
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:  # class 7: the visible share
+            probabilities = np.zeros((coalitions.shape[0], 8))
+            probabilities[:, 7] = coalitions.mean(axis=1)
+            return probabilities
 
         def classify(self, images: np.ndarray) -> np.ndarray:  # class 7: the share of black pixels
             black = (images == 0).all(axis=-1).mean(axis=(1, 2))
@@ -146,7 +149,7 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
 
     import shapiq_games.vision.image_classifier as module
 
-    monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
+    monkeypatch.setattr(module, "ViTTokenModel", FakeViT)
     game = ImageClassifier(_IMAGE, "vit_9_patches")
     assert calls[-1]["mask_strategy"] == "mask"  # the vision transformers mask by default
     assert game.mask_strategy == "mask"
@@ -170,6 +173,15 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
         ImageClassifier(_IMAGE, "vit_9_patches", regions=grid_regions(40, 60, 3, 3))
     with pytest.raises(ValueError, match="mask_strategy applies"):
         ImageClassifier(_IMAGE, lambda images: images.mean(axis=(1, 2)), mask_strategy="mask")
+    with pytest.raises(ValueError, match="mask_strategy must be"):  # before any model is loaded
+        ImageClassifier(_IMAGE, "vit_9_patches", mask_strategy="drop")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="fill must be"):
+        ImageClassifier(_IMAGE, "vit_9_patches", fill="white")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="out of range"):
+        ImageClassifier(_IMAGE, "vit_9_patches", class_index=8)
+    assert game.class_index == 7
+    assert game.original_model_output == pytest.approx(1.0)  # the full image
+    assert game.empty_value == 0.0
 
 
 @pytest.mark.skipif(
@@ -234,7 +246,7 @@ def test_token_masking_keeps_every_token_and_its_position() -> None:
 
 
 def test_token_players_are_rectangular_blocks_of_the_token_grid() -> None:
-    from shapiq_games.vision._token_removal import pixel_regions, token_players
+    from shapiq_games.vision._regions import pixel_regions, token_players
 
     players = token_players(16, 5, 4)  # DINOv2's 16 x 16 tokens in a 5 x 4 grid
     assert players.max() == 19
@@ -293,7 +305,7 @@ def test_token_removal_without_a_class_token() -> None:
 
 
 def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch) -> None:
-    from shapiq_games.vision._token_removal import pixel_regions, token_players
+    from shapiq_games.vision._regions import pixel_regions, token_players
 
     calls: list[dict] = []
 
@@ -302,10 +314,13 @@ def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch
             calls.append({"n_players": n_players, **kwargs})
             self.image = np.full((224, 224, 3), 7, dtype=np.uint8)
             self.regions = pixel_regions(token_players(16, 5, 4), 14)
-            self.class_index, self.class_name = 217, "English springer"
+            self.n_players = n_players
+            self.categories = ["other"] * 217 + ["English springer"]
 
-        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
-            return coalitions.mean(axis=1)
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:  # class 217: the visible share
+            probabilities = np.zeros((coalitions.shape[0], 218))
+            probabilities[:, 217] = coalitions.mean(axis=1)
+            return probabilities
 
     import shapiq_games.vision.image_classifier as module
 
@@ -324,13 +339,15 @@ def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch
     for removal in ({"mask_strategy": "mask"}, {"fill": "black"}):
         with pytest.raises(ValueError, match="only by dropping"):
             ImageClassifier(_IMAGE, "dinov2_20_patches", **removal)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="mask_strategy must be"):  # no longer stored silently
+        ImageClassifier(_IMAGE, "dinov2_20_patches", mask_strategy="drop")  # type: ignore[arg-type]
 
 
 class FakeClip:
     """CLIP on a 4 x 4 token grid: embeddings in 2-d, the first axis grows with the visible area."""
 
     def __init__(self, image: np.ndarray, grid: tuple[int, int], **_: object) -> None:
-        from shapiq_games.vision._token_removal import pixel_regions, token_players
+        from shapiq_games.vision._regions import pixel_regions, token_players
 
         self.image = np.zeros((8, 8, 3), dtype=np.uint8)
         self.regions = pixel_regions(token_players(4, *grid), 2)
@@ -343,9 +360,9 @@ class FakeClip:
         return np.array([[1.0, 0.0] if "dog" in text else [0.0, 1.0] for text in texts])
 
     def filled_embeddings(
-        self, coalitions: np.ndarray, regions: np.ndarray, fill: np.ndarray
+        self, coalitions: np.ndarray, fill: np.ndarray
     ) -> np.ndarray:  # the share of pixels that are not filled
-        share = np.asarray(coalitions, dtype=bool)[:, regions].mean(axis=(1, 2))
+        share = np.asarray(coalitions, dtype=bool)[:, self.regions].mean(axis=(1, 2))
         return np.stack([share, 1.0 - share], axis=1)
 
 

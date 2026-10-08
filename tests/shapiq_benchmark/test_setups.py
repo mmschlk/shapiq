@@ -273,7 +273,7 @@ def test_image_classifier_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(setups._vision, "load_imagenette", lambda **_: FakeImages([1, 2]))
     monkeypatch.setattr(setups._vision, "ImageClassifier", FakeImageClassifier)
-    setup = ImageClassifierSetup(index=1, model="resnet_18", class_index="label", revision="v1")
+    setup = ImageClassifierSetup(index=1, class_index="label", revision="v1")
     setup.build()
     assert calls[0]["image"] == 2
     assert calls[0]["class_index"] == 3  # the label of image 1
@@ -293,6 +293,13 @@ def test_image_classifier_setup(monkeypatch: pytest.MonkeyPatch) -> None:
         ImageClassifierSetup(model="dinov2_20_patches", mask_strategy="mask")
     with pytest.raises(ValueError, match="only by dropping"):
         ImageClassifierSetup(model="dinov2_20_patches", fill="gray")
+    # invalid removals fail when the setup is created, before any download
+    with pytest.raises(ValueError, match="not both"):
+        ImageClassifierSetup(mask_strategy="mask", fill="gray")
+    with pytest.raises(ValueError, match="apply to the transformers"):
+        ImageClassifierSetup(model="resnet_18", revision="v1")
+    with pytest.raises(ValueError, match="not both"):
+        ImageTextSimilaritySetup(mask_strategy="mask", fill="gray")
 
 
 def test_sentiment_analysis_setup(monkeypatch: pytest.MonkeyPatch) -> None:

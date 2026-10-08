@@ -17,6 +17,7 @@ from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
     ImageTextModel,
     MaskStrategy,
 )
+from shapiq_games.vision._region_game import resolve_removal
 
 from ._base import Setup, runtime_field
 
@@ -71,12 +72,17 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
     batch_size: int = runtime_field(16)
 
     def __post_init__(self) -> None:
-        """Check that DINOv2 is asked only to drop tokens, as in the paper."""
+        """Check the removal of players when the setup is created, not after the downloads."""
         super().__post_init__()
-        if self.model.startswith("dinov2") and (
-            self.fill is not None or self.mask_strategy == "mask"
-        ):
+        dinov2 = self.model.startswith("dinov2")
+        strategy = resolve_removal(
+            self.mask_strategy, self.fill, default="remove" if dinov2 else "mask"
+        )
+        if dinov2 and strategy != "remove":
             msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
+            raise ValueError(msg)
+        if self.model == "resnet_18" and (self.mask_strategy, self.revision) != (None, None):
+            msg = "mask_strategy and revision apply to the transformers (vision transformers, DINOv2)."
             raise ValueError(msg)
 
     def build(self) -> ImageClassifier:
@@ -136,6 +142,11 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
     normalize: bool = True
     device: str = runtime_field("cpu")
     batch_size: int = runtime_field(16)
+
+    def __post_init__(self) -> None:
+        """Check the removal of players when the setup is created, not after the downloads."""
+        super().__post_init__()
+        resolve_removal(self.mask_strategy, self.fill, default="remove")
 
     def build(self) -> ImageTextSimilarity:
         """Load the image and the model and build the game."""

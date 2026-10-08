@@ -412,16 +412,18 @@ def test_image_classifier_forwards_the_vit_revision(monkeypatch: pytest.MonkeyPa
     class FakeViT:
         def __init__(self, image: np.ndarray, n_players: int, **kwargs: object) -> None:
             calls.append(kwargs)
-            self.n_players = n_players
-            self.class_index = 3
-            self.class_name = "class 3"
+            self.image, self.n_players = image, n_players
+            self.regions = np.arange(64).reshape(8, 8) % n_players
+            self.categories = [f"class {i}" for i in range(4)]
 
-        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
-            return coalitions.mean(axis=1)
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:  # class 3: the visible share
+            probabilities = np.zeros((coalitions.shape[0], 4))
+            probabilities[:, 3] = coalitions.mean(axis=1)
+            return probabilities
 
     import shapiq_games.vision.image_classifier as module
 
-    monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
+    monkeypatch.setattr(module, "ViTTokenModel", FakeViT)
     game = ImageClassifier(np.zeros((8, 8, 3), np.uint8), "vit_16_patches", revision="v1")
     assert calls[0]["revision"] == "v1"
     assert game.class_name == "class 3"

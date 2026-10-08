@@ -14,7 +14,8 @@ from shapiq_games._optional import require
 
 from ._batching import pad_batch
 from ._preprocess import displayed_image, normalized_pixels
-from ._token_removal import pixel_regions, token_players, token_remover
+from ._regions import pixel_regions, token_players
+from ._token_removal import token_remover
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix
@@ -159,16 +160,13 @@ class ImageTextTokenModel:
         """Return the unit-length image embedding of each coalition."""
         return self._remover(coalitions)
 
-    def filled_embeddings(
-        self, coalitions: CoalitionMatrix, regions: np.ndarray, fill: np.ndarray
-    ) -> np.ndarray:
+    def filled_embeddings(self, coalitions: CoalitionMatrix, fill: np.ndarray) -> np.ndarray:
         """Return the unit-length embedding of the image with each coalition's absent players filled.
 
         The present pixels are the processor's, so the full coalition is the plain model.
 
         Args:
             coalitions: The boolean coalitions, of shape ``(n_coalitions, n_players)``.
-            regions: The player of every pixel of :attr:`image`.
             fill: The fill, an RGB ``uint8`` image of :attr:`image`'s shape.
 
         Returns:
@@ -176,7 +174,7 @@ class ImageTextTokenModel:
         """
         torch = self._torch
         fill_pixels = normalized_pixels(torch, fill, self._mean, self._std, self._device)
-        player = torch.as_tensor(np.asarray(regions), device=self._device)
+        player = torch.as_tensor(self.regions, device=self._device)
         outputs = []
         for start in range(0, coalitions.shape[0], self.batch_size):
             chunk = np.array(coalitions[start : start + self.batch_size], dtype=bool)

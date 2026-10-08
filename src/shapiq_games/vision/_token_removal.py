@@ -1,10 +1,11 @@
 """Removing players from a vision transformer in token space.
 
 A vision transformer reads an image as a sequence of patch tokens, after a class token in most
-models (SigLIP has none: it pools all tokens by attention). The tokens of absent players are either dropped from the sequence (``"remove"``), while the present tokens
-keep their position embeddings, or masked (``"mask"``): their content is replaced by the model's
-mask token, and they keep their position. Neither invents replacement pixels. The players are
-rectangular blocks of the token grid.
+models (SigLIP has none: it pools all tokens by attention). The tokens of absent players are
+either dropped from the sequence (``"remove"``), while the present tokens keep their position
+embeddings, or masked (``"mask"``): their content is replaced by the model's mask token, and they
+keep their position. Neither invents replacement pixels. The players are rectangular blocks of
+the token grid (:func:`~shapiq_games.vision._regions.token_players`).
 """
 
 from __future__ import annotations
@@ -21,49 +22,7 @@ if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix
     from shapiq_games.typing import MaskStrategy
 
-__all__ = ["TokenDropper", "TokenMasker", "pixel_regions", "token_players", "token_remover"]
-
-
-def token_players(side: int, rows: int, cols: int) -> np.ndarray:
-    """Group a ``side x side`` token grid into ``rows x cols`` near-equal rectangular players.
-
-    Args:
-        side: The number of tokens per side of the grid.
-        rows: The number of player rows.
-        cols: The number of player columns.
-
-    Returns:
-        The player of every token, of shape ``(side, side)``, numbered row by row. Uneven splits
-        give the first rows and columns one token more (``np.array_split``).
-
-    Examples:
-        >>> token_players(5, 2, 2)
-        array([[0, 0, 0, 1, 1],
-               [0, 0, 0, 1, 1],
-               [0, 0, 0, 1, 1],
-               [2, 2, 2, 3, 3],
-               [2, 2, 2, 3, 3]])
-    """
-    players = np.empty((side, side), dtype=int)
-    row_groups = np.array_split(np.arange(side), rows)
-    col_groups = np.array_split(np.arange(side), cols)
-    for row, row_tokens in enumerate(row_groups):
-        for col, col_tokens in enumerate(col_groups):
-            players[np.ix_(row_tokens, col_tokens)] = row * cols + col
-    return players
-
-
-def pixel_regions(players: np.ndarray, patch_size: int) -> np.ndarray:
-    """Spread the players of a token grid over the pixels, each token covering a square patch.
-
-    Args:
-        players: The player of every token, of shape ``(side, side)``.
-        patch_size: The side length of a patch in pixels.
-
-    Returns:
-        The player of every pixel, of shape ``(side * patch_size, side * patch_size)``.
-    """
-    return np.repeat(np.repeat(players, patch_size, axis=0), patch_size, axis=1)
+__all__ = ["TokenDropper", "TokenMasker", "token_remover"]
 
 
 class TokenDropper:

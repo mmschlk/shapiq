@@ -2,74 +2,32 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
-from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions
-
 from ._dinov2 import DINOV2_GRIDS, DinoV2TokenModel
-from ._display import RegionPlots, gray_masked_image
 from ._fill import fill_image, filled_images
 from ._preprocess import as_rgb_array
+from ._region_game import RegionGame, resolve_removal
+from ._regions import check_regions
 from ._superpixels import get_superpixels
-from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
+from ._vit import VIT_PATCH_GRIDS, ViTTokenModel
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
-
-    from numpy.typing import ArrayLike
 
     from shapiq.typing import CoalitionMatrix, GameValues
     from shapiq_games.typing import Fill, ImageModel, MaskStrategy
 
-__all__ = ["ImageClassifier", "grid_regions"]
+__all__ = ["ImageClassifier"]
 
 _VIT_MODELS = {f"vit_{n}_patches": n for n in VIT_PATCH_GRIDS}
 _DINOV2_MODELS = {f"dinov2_{n}_patches": n for n in DINOV2_GRIDS}
 
 
-def grid_regions(height: int, width: int, rows: int, cols: int) -> np.ndarray:
-    """Split an image into a ``rows x cols`` grid of regions.
-
-    Args:
-        height: The image height in pixels.
-        width: The image width in pixels.
-        rows: The number of grid rows.
-        cols: The number of grid columns.
-
-    Returns:
-        The region of every pixel, of shape ``(height, width)``, numbered row by row from ``0``.
-
-    Examples:
-        >>> grid_regions(4, 6, rows=2, cols=3)
-        array([[0, 0, 1, 1, 2, 2],
-               [0, 0, 1, 1, 2, 2],
-               [3, 3, 4, 4, 5, 5],
-               [3, 3, 4, 4, 5, 5]])
-    """
-    row = np.minimum(np.arange(height) * rows // height, rows - 1)
-    col = np.minimum(np.arange(width) * cols // width, cols - 1)
-    return row[:, None] * cols + col[None, :]
-
-
-def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
-    regions = np.asarray(regions)
-    if regions.shape != image.shape[:2]:
-        msg = f"regions must have the image's shape {image.shape[:2]}, got {regions.shape}."
-        raise ValueError(msg)
-    labels = np.unique(regions)
-    if not np.issubdtype(regions.dtype, np.integer) or not np.array_equal(
-        labels, np.arange(labels.shape[0])
-    ):
-        msg = "regions must label every pixel with a player 0, ..., n - 1, using every label."
-        raise ValueError(msg)
-    return regions.astype(int)
-
-
-class ImageClassifier(RegionPlots, Game):
+class ImageClassifier(RegionGame):
     """The image classification game: the probability of a class when only some regions are visible.
 
     The players are regions of the image, given by :attr:`regions` for every model:
@@ -108,6 +66,8 @@ class ImageClassifier(RegionPlots, Game):
             ``"remove"``; always ``"remove"`` for DINOv2), or ``None`` in image space.
         class_index: The explained class.
         class_name: The name of the explained class, if the model provides class names.
+        empty_value: The probability of the class with every region removed, before centering.
+        original_model_output: The probability of the class on the full image.
 
     Examples:
         >>> image = np.random.default_rng(0).integers(0, 255, (64, 64, 3), dtype=np.uint8)
@@ -117,6 +77,7 @@ class ImageClassifier(RegionPlots, Game):
         >>> game = ImageClassifier(image, model=classifier, n_superpixels=8)
         >>> game.n_players
         8
+        >>> from shapiq_games.vision import grid_regions
         >>> grid = ImageClassifier(image, classifier, regions=grid_regions(64, 64, 2, 2), fill="blur")
         >>> grid.n_players, grid.masked_image([1, 0, 0, 1]).shape
         (4, (64, 64, 3))
@@ -184,56 +145,51 @@ class ImageClassifier(RegionPlots, Game):
                 Hugging Face model (vision transformer or DINOv2); ``regions`` are given for a
                 transformer (its players are its patch grid); ``mask_strategy`` is given for a
                 model without tokens, or together with a ``fill``; DINOv2 is asked to mask or to
-                fill; or the regions or the fill are invalid.
+                fill; the regions, the fill or the mask strategy are invalid; or ``class_index``
+                is out of range.
         """
         self.image = as_rgb_array(image)
         self.batch_size = batch_size
-        self.class_name: str | None = None
         self.mask_strategy: MaskStrategy | None = None
-        # a model that removes the players itself, in token space
-        self._patch_model: ViTPatchModel | DinoV2TokenModel | None = None
+        # a model that removes the players itself, in token space, or the fill of image space
+        self._token_model: ViTTokenModel | DinoV2TokenModel | None = None
+        self._fill: np.ndarray | None = None
 
         if isinstance(model, str) and model in {**_VIT_MODELS, **_DINOV2_MODELS}:
             if regions is not None:
                 msg = "regions apply to superpixel models; a transformer's players are its patches."
                 raise ValueError(msg)
-            if fill is not None and mask_strategy is not None:
-                msg = "Choose mask_strategy (token space) or fill (image space), not both."
-                raise ValueError(msg)
-            if model in _DINOV2_MODELS and (fill is not None or mask_strategy == "mask"):
-                msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
-                raise ValueError(msg)
-            strategy: MaskStrategy = mask_strategy or ("mask" if model in _VIT_MODELS else "remove")
-            if model in _VIT_MODELS:
-                patch_model: ViTPatchModel | DinoV2TokenModel = ViTPatchModel(
+            is_vit = model in _VIT_MODELS
+            strategy = resolve_removal(mask_strategy, fill, default="mask" if is_vit else "remove")
+            if is_vit:
+                vit = ViTTokenModel(
                     self.image,
                     _VIT_MODELS[model],
-                    mask_strategy=strategy,
-                    class_index=class_index,
+                    mask_strategy=strategy or "mask",
                     device=device,
                     batch_size=batch_size,
                     revision=revision,
                 )
-                grid = VIT_PATCH_GRIDS[_VIT_MODELS[model]]
-                height, width = self.image.shape[:2]
-                self.regions = grid_regions(height, width, grid, grid)
+                if fill is not None:  # image space: the vision transformer classifies filled images
+                    self._classifier, self._fill = vit.classify, fill_image(self.image, fill)
+                token_model: ViTTokenModel | DinoV2TokenModel = vit
+            elif strategy != "remove":
+                msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
+                raise ValueError(msg)
             else:
-                patch_model = DinoV2TokenModel(
+                token_model = DinoV2TokenModel(
                     self.image,
                     _DINOV2_MODELS[model],
-                    class_index=class_index,
                     device=device,
                     batch_size=batch_size,
                     revision=revision,
                 )
-                self.image, self.regions = patch_model.image, patch_model.regions
-            self.class_index = patch_model.class_index
-            self.class_name = patch_model.class_name
-            if fill is None:
-                self._patch_model, self.mask_strategy = patch_model, strategy
-            elif isinstance(patch_model, ViTPatchModel):  # image space: it classifies filled images
-                self._classifier = patch_model.classify
-                self._baseline = fill_image(self.image, fill)
+            self.image, self.regions = token_model.image, token_model.regions
+            # the explained class comes from the token path, also when the image is filled
+            probabilities = token_model(np.ones((1, token_model.n_players), dtype=bool))[0]
+            categories: Sequence[str] | None = token_model.categories
+            if strategy is not None:
+                self._token_model, self.mask_strategy = token_model, strategy
         else:
             if revision is not None:
                 msg = "revision applies to the Hugging Face models (vision transformers, DINOv2)."
@@ -241,6 +197,7 @@ class ImageClassifier(RegionPlots, Game):
             if mask_strategy is not None:
                 msg = "mask_strategy applies to the transformers (vision transformers, DINOv2)."
                 raise ValueError(msg)
+            resolve_removal(None, fill, default=None)
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
 
@@ -257,58 +214,26 @@ class ImageClassifier(RegionPlots, Game):
             if regions is None:
                 self.regions = get_superpixels(self.image, n_superpixels) - 1
             else:
-                self.regions = _check_regions(regions, self.image)
-            self._baseline = fill_image(self.image, "mean" if fill is None else fill)
+                self.regions = check_regions(regions, self.image)
+            self._fill = fill_image(self.image, "mean" if fill is None else fill)
             probabilities = np.asarray(self._classifier(self.image[None]))[0]
-            self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
             categories = getattr(classifier, "categories", None)
-            if categories is not None:
-                self.class_name = str(categories[self.class_index])
 
-        n_players = int(self.regions.max()) + 1
-        self._empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
-        super().__init__(
-            n_players,
-            normalize=normalize,
-            normalization_value=self._empty_value,
-            verbose=verbose,
-        )
-
-    def _masked_images(self, coalitions: CoalitionMatrix) -> np.ndarray:
-        return filled_images(self.image, self.regions, self._baseline, coalitions)
+        if class_index is None:
+            class_index = int(np.argmax(probabilities))
+        elif not 0 <= class_index < len(probabilities):
+            msg = f"class_index={class_index} is out of range for {len(probabilities)} classes."
+            raise ValueError(msg)
+        self.class_index = class_index
+        self.class_name = None if categories is None else str(categories[class_index])
+        super().__init__(normalize=normalize, verbose=verbose)
 
     def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
-        if self._patch_model is not None:
-            return self._patch_model(coalitions)
+        if self._token_model is not None:
+            return self._token_model(coalitions)[:, self.class_index]
         values = []
         for start in range(0, coalitions.shape[0], self.batch_size):
-            batch = self._masked_images(coalitions[start : start + self.batch_size])
+            chunk = coalitions[start : start + self.batch_size]
+            batch = filled_images(self.image, self.regions, cast("np.ndarray", self._fill), chunk)
             values.append(np.asarray(self._classifier(batch))[:, self.class_index])
         return np.concatenate(values).astype(float)
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the probability of the explained class for each coalition of regions."""
-        coalitions = as_bool_coalitions(coalitions)
-        values = np.full(coalitions.shape[0], self._empty_value)
-        present = coalitions.any(axis=1)  # the empty coalition is exactly the stored value
-        if present.any():
-            values[present] = self._evaluate(coalitions[present])
-        return values
-
-    def masked_image(self, coalition: ArrayLike) -> np.ndarray:
-        """Return the image with the players outside ``coalition`` removed.
-
-        In image space (a ``fill``, ResNet-18, custom classifiers) this is exactly the image the
-        classifier sees. In token space the transformers remove patches inside the model, so
-        their removed regions are shown in gray.
-
-        Args:
-            coalition: The players, as a boolean or 0/1 vector of length ``n_players``.
-
-        Returns:
-            The image as a ``uint8`` array of shape ``(height, width, 3)``.
-        """
-        coalition = as_bool_coalitions(coalition)
-        if self._patch_model is None:
-            return self._masked_images(coalition)[0]
-        return gray_masked_image(self.image, self.regions, coalition[0])

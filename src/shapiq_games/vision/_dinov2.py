@@ -10,10 +10,11 @@ from PIL import Image
 from shapiq_games._optional import require
 
 from ._preprocess import displayed_image
-from ._token_removal import TokenDropper, pixel_regions, token_players
+from ._regions import pixel_regions, token_players
+from ._token_removal import TokenDropper
 
 if TYPE_CHECKING:
-    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq.typing import CoalitionMatrix
 
 __all__ = ["DINOV2_GRIDS", "DINOV2_MODEL_ID", "DinoV2TokenModel"]
 
@@ -30,15 +31,15 @@ class DinoV2TokenModel:
     The players are near-equal rectangular blocks of the 16 x 16 patch tokens. The tokens of absent
     players are dropped from the sequence; the present ones keep their position embeddings. The
     classifier reads the class token and the mean of the present patch tokens (zeros if there are
-    none), as the ImageNet head of the model does. The output is the softmax probability of the
-    explained class. This is the game of the benchmarking paper; DINOv2 offers no masking or
+    none), as the ImageNet head of the model does. The outputs are the class probabilities
+    (softmax). This is the game of the benchmarking paper; DINOv2 offers no masking or
     image-space removal (its checkpoint has no trained mask token, and the paper drops tokens).
 
     Attributes:
         image: The ``224 x 224`` crop the model sees.
         regions: The player of every pixel of :attr:`image`.
-        class_index: The explained class.
-        class_name: The name of the explained class.
+        n_players: The number of players.
+        categories: The class names, by class index.
     """
 
     def __init__(
@@ -46,7 +47,6 @@ class DinoV2TokenModel:
         image: np.ndarray,
         n_players: int,
         *,
-        class_index: int | None = None,
         device: str = "cpu",
         batch_size: int = 16,
         revision: str | None = None,
@@ -56,7 +56,6 @@ class DinoV2TokenModel:
         Args:
             image: The RGB image of shape ``(height, width, 3)``.
             n_players: The number of players: 16, 20, or 25.
-            class_index: The explained class, or ``None`` for the class predicted on the image.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
             revision: The Hugging Face revision (branch, tag, or commit) of the model. ``None``
@@ -65,6 +64,7 @@ class DinoV2TokenModel:
         if n_players not in DINOV2_GRIDS:
             msg = f"n_players must be one of {sorted(DINOV2_GRIDS)}, got {n_players}."
             raise ValueError(msg)
+        self.n_players = n_players
         torch = require("torch", purpose="the DINOv2 image games")
         transformers = require("transformers", purpose="the DINOv2 image games")
         device_ = torch.device(device)
@@ -96,10 +96,8 @@ class DinoV2TokenModel:
         self._dropper = TokenDropper(
             torch, embeddings[:, :1], embeddings[0, 1:], players, encode, batch_size
         )
-        probabilities = self._dropper(np.ones((1, n_players), dtype=bool))[0]
-        self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
-        self.class_name = str(model.config.id2label[self.class_index])
+        self.categories = [str(model.config.id2label[i]) for i in range(len(model.config.id2label))]
 
-    def __call__(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the probability of the explained class for each coalition."""
-        return self._dropper(coalitions)[:, self.class_index]
+    def __call__(self, coalitions: CoalitionMatrix) -> np.ndarray:
+        """Return the class probabilities of each coalition, of shape ``(n_coalitions, n_classes)``."""
+        return self._dropper(coalitions)

@@ -7,14 +7,19 @@ from typing import TYPE_CHECKING
 import numpy as np
 from PIL import Image, ImageFilter
 
-from ._display import DISPLAY_GRAY
 from ._preprocess import as_rgb_array
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix
     from shapiq_games.typing import Fill
 
-__all__ = ["fill_image", "filled_images"]
+__all__ = ["FILLS", "GRAY", "fill_image", "filled_images"]
+
+FILLS = ("mean", "gray", "black", "blur")
+"""The named fills of :func:`fill_image`."""
+
+GRAY = 128
+"""The gray of ``fill="gray"``, which also shows the regions a model removes internally."""
 
 
 def fill_image(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
@@ -41,7 +46,7 @@ def fill_image(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
         color = image.reshape(-1, 3).mean(axis=0).round()
         return np.broadcast_to(color.astype(np.uint8), image.shape).copy()
     if fill == "gray":
-        return np.full_like(image, DISPLAY_GRAY)
+        return np.full_like(image, GRAY)
     if fill == "black":
         return np.zeros_like(image)
     if fill == "blur":
