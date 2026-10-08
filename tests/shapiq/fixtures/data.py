@@ -256,13 +256,12 @@ def get_california_housing_train_test_explain() -> tuple[
             _california_loaded_data["x_explain"],
         )
 
+    from sklearn.datasets import fetch_california_housing
     from sklearn.model_selection import train_test_split
-
-    from shapiq.datasets import load_california_housing
 
     x_explain_id = 2  # index of the data point to explain (third data point of the test set)
 
-    x_data, y_data = load_california_housing(to_numpy=True)
+    x_data, y_data = fetch_california_housing(return_X_y=True)
     x_train, x_test, y_train, y_test = train_test_split(
         x_data, y_data, test_size=0.2, random_state=DATASETS_RANDOM_STATE
     )

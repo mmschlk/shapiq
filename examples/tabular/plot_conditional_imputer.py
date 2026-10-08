@@ -14,15 +14,17 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # Load Data and Train Model
 # --------------------------
 
-X, y = shapiq.load_california_housing()
+dataset = load_dataset("california_housing")
+X, y, feature_names = dataset.x, dataset.y, list(dataset.feature_names)
 X_train, X_test, y_train, y_test = train_test_split(
-    X.values,
-    y.values,
+    X,
+    y,
     test_size=0.25,
     random_state=42,
 )
@@ -73,4 +75,4 @@ print(iv)
 # Network Plot
 # -------------
 
-shapiq.network_plot(interaction_values=iv, feature_names=list(X.columns))
+shapiq.network_plot(interaction_values=iv, feature_names=feature_names)

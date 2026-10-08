@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # The Cooking Game
@@ -95,13 +96,14 @@ sv_approx.plot_stacked_bar(
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
-data, targets = shapiq.datasets.load_california_housing()
-feature_names = list(data.columns)
+dataset = load_dataset("california_housing")
+data, targets = dataset.x, dataset.y
+feature_names = list(dataset.feature_names)
 n_features = len(feature_names)
 
 x_train, x_test, y_train, y_test = train_test_split(
-    data.values,
-    targets.values,
+    data,
+    targets,
     test_size=0.2,
     random_state=42,
 )
