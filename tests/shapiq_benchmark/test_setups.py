@@ -277,12 +277,16 @@ def test_image_classifier_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert setup.key != ImageClassifierSetup(index=1, model="resnet_18", class_index="label").key
     assert setup_from_dict(setup.to_dict()) == setup
-    ImageClassifierSetup(model="dinov2_20_patches", mask_strategy="mask").build()
+    ImageClassifierSetup(model="vit_16_patches", mask_strategy="remove").build()
     ImageClassifierSetup(model="vit_16_patches", fill="blur").build()
-    assert (calls[1]["mask_strategy"], calls[1]["fill"]) == ("mask", None)
+    assert (calls[1]["mask_strategy"], calls[1]["fill"]) == ("remove", None)
     assert (calls[2]["mask_strategy"], calls[2]["fill"]) == (None, "blur")
     with pytest.raises(ValueError, match="one of"):
         ImageClassifierSetup(mask_strategy="zero")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="only by dropping"):
+        ImageClassifierSetup(model="dinov2_20_patches", mask_strategy="mask")
+    with pytest.raises(ValueError, match="only by dropping"):
+        ImageClassifierSetup(model="dinov2_20_patches", fill="gray")
 
 
 def test_sentiment_analysis_setup(monkeypatch: pytest.MonkeyPatch) -> None:

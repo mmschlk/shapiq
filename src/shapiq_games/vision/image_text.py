@@ -149,9 +149,7 @@ class ImageTextSimilarity(RegionPlots, Game):
     def _image_embeddings(self, coalitions: CoalitionMatrix) -> np.ndarray:
         if self._fill is None:
             return self._clip.image_embeddings(coalitions)
-        return self._clip.embed_images(
-            filled_images(self.image, self.regions, self._fill, coalitions)
-        )
+        return self._clip.filled_embeddings(coalitions, self.regions, self._fill)
 
     def _similarity(self, coalitions: CoalitionMatrix) -> GameValues:
         # a row-wise sum, not a matrix product, whose summation order depends on the batch

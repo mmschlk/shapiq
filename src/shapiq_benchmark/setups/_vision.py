@@ -39,9 +39,10 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
             ``"resnet_18"``.
         n_superpixels: The number of superpixels for ``"resnet_18"``. Defaults to ``14``.
         fill: Remove players in image space with this fill (for ``"resnet_18"``, ``None`` means
-            the mean color; a transformer given a fill removes its patches in image space).
-        mask_strategy: How a transformer removes players in token space, ``"mask"`` or
-            ``"remove"`` (``None`` for the model's default; see
+            the mean color; a vision transformer given a fill removes its patches in image space;
+            DINOv2 takes none).
+        mask_strategy: How a vision transformer removes players in token space, ``"mask"``
+            (``None``, the default) or ``"remove"``; DINOv2 only drops tokens (see
             :class:`~shapiq_games.ImageClassifier`).
         class_index: The explained ImageNet class: ``None`` for the predicted class, ``"label"``
             for the image's true class, or a class index.
@@ -68,6 +69,15 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
     normalize: bool = True
     device: str = runtime_field("cpu")
     batch_size: int = runtime_field(16)
+
+    def __post_init__(self) -> None:
+        """Check that DINOv2 is asked only to drop tokens, as in the paper."""
+        super().__post_init__()
+        if self.model.startswith("dinov2") and (
+            self.fill is not None or self.mask_strategy == "mask"
+        ):
+            msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
+            raise ValueError(msg)
 
     def build(self) -> ImageClassifier:
         """Load the image and the model and build the game."""

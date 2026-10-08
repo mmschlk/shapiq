@@ -74,18 +74,10 @@ def test_clip_image_text_game() -> None:
 
 
 @pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
-@pytest.mark.parametrize(
-    ("model", "removal"),
-    [
-        ("vit_9_patches", {"mask_strategy": "remove"}),
-        ("vit_9_patches", {"fill": "blur"}),
-        ("dinov2_16_patches", {"mask_strategy": "mask"}),
-        ("dinov2_16_patches", {"fill": "gray"}),
-    ],
-)
-def test_transformer_removal_strategies(model: str, removal: dict) -> None:
+@pytest.mark.parametrize("removal", [{"mask_strategy": "remove"}, {"fill": "blur"}])
+def test_vision_transformer_removal_strategies(removal: dict) -> None:
     """Every way of removing players keeps the full image's prediction and is batch-independent."""
-    default = ImageClassifierSetup(index=388, size="160px", model=model, normalize=False)
+    default = ImageClassifierSetup(index=388, size="160px", model="vit_9_patches", normalize=False)
     game = dataclasses.replace(default, **removal).build()
     expected = default.build()(np.ones((1, game.n_players), dtype=bool))[0]
     assert game(game.grand_coalition)[0] == pytest.approx(expected, abs=1e-6)

@@ -204,17 +204,19 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
 - **Core loaders keep their source.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing. Without the bundled CSVs that fallback always runs, so it now caches the downloaded file verbatim in `~/.cache/shapiq/core_datasets` (or `$SHAPIQ_DATA_DIR`) with an atomic write, instead of in the installed package. The repo-root `data/` folder stays; it is not part of any wheel.
 - **Removal in token space or image space.** The transformer image games remove players in
-  token space: their patch tokens are masked (`mask_strategy="mask"`: content replaced by the
-  model's mask token, zeros for all three checkpoints, the position embedding kept; the ViT
-  default) or dropped from the sequence (`"remove"`: the present tokens keep their position
-  embeddings; the DINOv2 and CLIP default, as in the paper). With a `fill` they remove them in
-  image space instead, like ResNet-18 and custom classifiers. The players are a grid of
-  near-equal rectangular blocks of the token grid (`np.array_split`) in all three cases, DINOv2
-  and CLIP see a `224 x 224` center crop (the game's `image`), and every forward pass is padded
-  to the batch size, so values do not depend on the batch. With a full coalition every strategy
-  is the plain model. DINOv2's checkpoint has no trained mask token, and its head averages all
-  patch tokens, so masking is far out of distribution: masking one of 20 players can drop the
-  explained probability from 0.85 to 0.001 (dropping keeps it above 0.77).
+  token space. DINOv2 drops their patch tokens from the sequence (the present tokens keep their
+  position embeddings), as in the paper, and only so: its checkpoint has no trained mask token
+  (it is zeros), and its head averages all patch tokens, so masking would be far out of
+  distribution (one masked player of 20 dropped the explained probability from 0.85 to 0.001).
+  The vision transformers and CLIP mask them (`mask_strategy="mask"`: a zero mask token, the
+  position embedding kept; the ViT default) or drop them (`"remove"`; the CLIP default, as in the
+  paper), or with a `fill` remove them in image space, like ResNet-18 and custom classifiers. The
+  players are a grid of near-equal rectangular blocks of the token grid (`np.array_split`),
+  DINOv2 and CLIP see a `224 x 224` center crop (the game's `image`), and every forward pass is
+  padded to the batch size, so values do not depend on the batch. With a full coalition every
+  strategy is the plain model. DINOv2 and CLIP get exactly the processor's `pixel_values`, as in
+  the paper's scripts, and match them to 3e-6 and 1e-7 on CPU (a PIL resize rounded to `uint8`
+  had moved DINOv2's values by up to 0.2).
 - **Missing values.** `TabularLocalExplanation(imputer="baseline", baseline=np.nan)` passes absent
   features as missing values to a model that reads them (`np.inf` for TabPFN with
   `PASSTHROUGH_INF`). `baseline` sets the values of core's `BaselineImputer` (one value or one

@@ -281,27 +281,23 @@ def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             return coalitions.mean(axis=1)
 
-        def classify(self, images: np.ndarray) -> np.ndarray:
-            return np.zeros((images.shape[0], 1000))
-
     import shapiq_games.vision.image_classifier as module
 
     monkeypatch.setattr(module, "DinoV2TokenModel", FakeDinoV2)
     game = ImageClassifier(_IMAGE, "dinov2_20_patches", revision="v1", batch_size=8)
     assert calls[0]["n_players"] == 20
     assert calls[0]["revision"] == "v1"
-    assert calls[0]["mask_strategy"] == "remove"  # DINOv2 drops tokens by default
+    assert game.mask_strategy == "remove"  # DINOv2 drops tokens, as in the paper
     assert game.n_players == 20
     assert game.image.shape == (224, 224, 3)  # the crop, not the original image
     assert game.class_name == "English springer"
     shown = game.masked_image(np.eye(20, dtype=bool)[0])
     assert np.all(shown[game.regions != 0] == 128)
     assert game(game.grand_coalition)[0] == pytest.approx(1.0)
-    ImageClassifier(_IMAGE, "dinov2_20_patches", mask_strategy="mask")
-    assert calls[-1]["mask_strategy"] == "mask"
-    filled = ImageClassifier(_IMAGE, "dinov2_20_patches", fill="black")
-    assert filled.image.shape == (224, 224, 3)  # image space on the crop the model sees
-    assert np.all(filled.masked_image(np.eye(20, dtype=bool)[0])[filled.regions != 0] == 0)
+    ImageClassifier(_IMAGE, "dinov2_20_patches", mask_strategy="remove")
+    for removal in ({"mask_strategy": "mask"}, {"fill": "black"}):
+        with pytest.raises(ValueError, match="only by dropping"):
+            ImageClassifier(_IMAGE, "dinov2_20_patches", **removal)  # type: ignore[arg-type]
 
 
 class FakeClip:
@@ -320,8 +316,10 @@ class FakeClip:
     def text_embeddings(self, texts: list[str]) -> np.ndarray:
         return np.array([[1.0, 0.0] if "dog" in text else [0.0, 1.0] for text in texts])
 
-    def embed_images(self, images: np.ndarray) -> np.ndarray:  # the share of unfilled pixels
-        share = (np.asarray(images) == 0).all(axis=-1).mean(axis=(1, 2))
+    def filled_embeddings(
+        self, coalitions: np.ndarray, regions: np.ndarray, fill: np.ndarray
+    ) -> np.ndarray:  # the share of pixels that are not filled
+        share = np.asarray(coalitions, dtype=bool)[:, regions].mean(axis=(1, 2))
         return np.stack([share, 1.0 - share], axis=1)
 
 

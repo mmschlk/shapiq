@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-__all__ = ["as_rgb_array", "center_crop", "normalized_pixels"]
+__all__ = ["as_rgb_array", "center_crop", "displayed_image", "normalized_pixels"]
 
 
 def as_rgb_array(image: np.ndarray | str | Path) -> np.ndarray:
@@ -67,3 +67,10 @@ def normalized_pixels(
     mean_ = torch.tensor(mean, device=device).view(1, 3, 1, 1)
     std_ = torch.tensor(std, device=device).view(1, 3, 1, 1)
     return (pixels - mean_) / std_
+
+
+def displayed_image(pixels: Any, mean: list[float], std: list[float]) -> np.ndarray:  # noqa: ANN401
+    """Return a normalized ``(1, 3, height, width)`` tensor as the RGB ``uint8`` image it shows."""
+    values = pixels[0].permute(1, 2, 0).float().cpu().numpy()
+    rgb = (values * np.asarray(std) + np.asarray(mean)) * 255.0
+    return np.clip(np.rint(rgb), 0, 255).astype(np.uint8)

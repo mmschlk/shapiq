@@ -131,10 +131,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - A float32 matrix product's summation order depends on the number of rows, so
   `embeddings @ text` changed in the 16th digit with the batch; the CLIP game sums row-wise.
 - The Hugging Face DINOv2 checkpoint (`facebook/dinov2-base-imagenet1k-1-layer`) has an all-zero,
-  untrained mask token (`use_mask_token=True`, but iBOT's token was not converted). Masking
-  (`mask_strategy="mask"`) is therefore far out of distribution for DINOv2: one masked player of 20
-  can drop the probability from 0.85 to 0.001. It matches HF's own `bool_masked_pos` path, so it
-  is the model, not a bug; token dropping stays the DINOv2 default.
+  untrained mask token (`use_mask_token=True`, but iBOT's token was not converted). Masking is far
+  out of distribution for it (one masked player of 20: probability 0.85 -> 0.001, the same through
+  HF's own `bool_masked_pos`), so the DINOv2 game only drops tokens, as the paper's script does;
+  do not add masking or image-space removal back for DINOv2.
+- Feed the Hugging Face models the processor's own `pixel_values` (resized and cropped in float),
+  not a PIL resize rounded to `uint8`: that one-pixel-level difference moved DINOv2's values by up
+  to 0.2 against the paper's script. The DINOv2 and CLIP games now match their scripts to 3e-6 and
+  1e-7 on CPU; their `image` is the processor's pixels shown as `uint8` (`displayed_image`).
 - A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
   follow that path at every split, which makes a NaN-baseline game constant. Use a
   model that learns missing-value directions (`HistGradientBoosting*`) in tests.

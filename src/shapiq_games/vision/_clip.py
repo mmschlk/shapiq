@@ -10,7 +10,7 @@ from PIL import Image
 from shapiq_games._optional import require
 
 from ._batching import pad_batch
-from ._preprocess import center_crop, normalized_pixels
+from ._preprocess import displayed_image, normalized_pixels
 from ._token_removal import pixel_regions, token_players, token_remover
 
 if TYPE_CHECKING:
@@ -42,8 +42,9 @@ class ClipTokenModel:
     The players are near-equal rectangular blocks of CLIP's patch tokens. The tokens of absent
     players are dropped from the sequence (``"remove"``; the present ones keep their position
     embeddings) or masked (``"mask"``: CLIP has no mask token, so a masked patch keeps only its
-    position embedding). :meth:`embed_images` embeds whole crops instead, for removal in image
-    space.
+    position embedding). :meth:`filled_embeddings` embeds the crop with the absent players'
+    pixels filled instead, for removal in image space. The model sees exactly the processor's
+    pixels, as in the paper's script.
 
     Attributes:
         image: The ``224 x 224`` crop the model sees.
@@ -86,18 +87,17 @@ class ClipTokenModel:
         self._model = transformers.CLIPModel.from_pretrained(model_id, revision=revision)
         self._model.eval().to(self._device)
         image_processor = processor.image_processor
-        self.image = center_crop(
-            image,
-            image_processor.size["shortest_edge"],
-            image_processor.crop_size["height"],
-            Image.Resampling(int(image_processor.resample)),
-        )
         self._mean, self._std = image_processor.image_mean, image_processor.image_std
+        # the model sees exactly the processor's pixels (resized and cropped in float), as in the
+        # paper's script; the game's image shows them as uint8
+        pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
+        self._pixels = processor(images=pil, return_tensors="pt")["pixel_values"].to(self._device)
+        self.image = displayed_image(self._pixels, self._mean, self._std)
         vision = self._model.vision_model
         self._embed = lambda pixels: vision.pre_layrnorm(vision.embeddings(pixels))
         with torch.no_grad():
             # the layer norm before the encoder acts per token, so it commutes with dropping
-            embeddings = self._embed(self._pixels(self.image[None]))
+            embeddings = self._embed(self._pixels)
             # a masked patch has no content: its position embedding alone
             positions = vision.embeddings.position_embedding(vision.embeddings.position_ids)
             masked = vision.pre_layrnorm(positions)
@@ -121,29 +121,35 @@ class ClipTokenModel:
             mask_strategy, torch, embeddings, masked, players, encode, batch_size
         )
 
-    def _pixels(self, images: np.ndarray) -> Any:  # noqa: ANN401
-        torch = self._torch
-        return torch.cat(
-            [
-                normalized_pixels(torch, image, self._mean, self._std, self._device)
-                for image in images
-            ]
-        )
-
     def image_embeddings(self, coalitions: CoalitionMatrix) -> np.ndarray:
         """Return the unit-length image embedding of each coalition."""
         return self._remover(coalitions)
 
-    def embed_images(self, images: np.ndarray) -> np.ndarray:
-        """Return the unit-length embedding of each whole crop, of shape ``(n_images, dim)``."""
+    def filled_embeddings(
+        self, coalitions: CoalitionMatrix, regions: np.ndarray, fill: np.ndarray
+    ) -> np.ndarray:
+        """Return the unit-length embedding of the crop with each coalition's absent players filled.
+
+        The present pixels are the processor's, so the full coalition is the plain model.
+
+        Args:
+            coalitions: The boolean coalitions, of shape ``(n_coalitions, n_players)``.
+            regions: The player of every pixel of :attr:`image`.
+            fill: The fill, an RGB ``uint8`` image of :attr:`image`'s shape.
+
+        Returns:
+            The embeddings, of shape ``(n_coalitions, dim)``.
+        """
         torch = self._torch
+        fill_pixels = normalized_pixels(torch, fill, self._mean, self._std, self._device)
+        player = torch.as_tensor(np.asarray(regions), device=self._device)
         outputs = []
-        for start in range(0, images.shape[0], self.batch_size):
-            chunk = np.asarray(images[start : start + self.batch_size])
+        for start in range(0, coalitions.shape[0], self.batch_size):
+            chunk = np.array(coalitions[start : start + self.batch_size], dtype=bool)
+            present = torch.as_tensor(pad_batch(chunk, self.batch_size), device=self._device)
+            pixels = torch.where(present[:, player][:, None], self._pixels, fill_pixels)
             with torch.no_grad():
-                features = self._encode(
-                    self._embed(self._pixels(pad_batch(chunk, self.batch_size)))
-                )
+                features = self._encode(self._embed(pixels))
             outputs.append(features.float().cpu().numpy()[: chunk.shape[0]])
         return np.concatenate(outputs).astype(float)
 

@@ -1,4 +1,4 @@
-"""DINOv2 with players removed in token space as an image classifier (needs torch, transformers)."""
+"""DINOv2 with token dropping as an image classifier (requires ``torch`` and ``transformers``)."""
 
 from __future__ import annotations
 
@@ -9,13 +9,11 @@ from PIL import Image
 
 from shapiq_games._optional import require
 
-from ._batching import pad_batch
-from ._preprocess import center_crop, normalized_pixels
-from ._token_removal import pixel_regions, token_players, token_remover
+from ._preprocess import displayed_image
+from ._token_removal import TokenDropper, pixel_regions, token_players
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
-    from shapiq_games.typing import MaskStrategy
 
 __all__ = ["DINOV2_GRIDS", "DINOV2_MODEL_ID", "DinoV2TokenModel"]
 
@@ -27,15 +25,14 @@ DINOV2_GRIDS: dict[int, tuple[int, int]] = {16: (4, 4), 20: (5, 4), 25: (5, 5)}
 
 
 class DinoV2TokenModel:
-    """DINOv2 on a ``224 x 224`` center crop, with absent players removed in token space.
+    """DINOv2 on a ``224 x 224`` center crop, with absent players' tokens dropped.
 
     The players are near-equal rectangular blocks of the 16 x 16 patch tokens. The tokens of absent
-    players are dropped from the sequence (``"remove"``; the present ones keep their position
-    embeddings) or masked (``"mask"``: the model's mask token, which is zeros in this checkpoint,
-    plus the position embedding). The classifier reads the class token and the mean of the patch
-    tokens in the sequence (zeros if there are none), as the ImageNet head of the model does.
-    :meth:`classify` runs the model on whole crops instead, for removal in image space. The output
-    is the softmax probability of the explained class.
+    players are dropped from the sequence; the present ones keep their position embeddings. The
+    classifier reads the class token and the mean of the present patch tokens (zeros if there are
+    none), as the ImageNet head of the model does. The output is the softmax probability of the
+    explained class. This is the game of the benchmarking paper; DINOv2 offers no masking or
+    image-space removal (its checkpoint has no trained mask token, and the paper drops tokens).
 
     Attributes:
         image: The ``224 x 224`` crop the model sees.
@@ -49,7 +46,6 @@ class DinoV2TokenModel:
         image: np.ndarray,
         n_players: int,
         *,
-        mask_strategy: MaskStrategy = "remove",
         class_index: int | None = None,
         device: str = "cpu",
         batch_size: int = 16,
@@ -60,7 +56,6 @@ class DinoV2TokenModel:
         Args:
             image: The RGB image of shape ``(height, width, 3)``.
             n_players: The number of players: 16, 20, or 25.
-            mask_strategy: ``"remove"`` (default, as in the paper) or ``"mask"``.
             class_index: The explained class, or ``None`` for the class predicted on the image.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
@@ -72,28 +67,21 @@ class DinoV2TokenModel:
             raise ValueError(msg)
         torch = require("torch", purpose="the DINOv2 image games")
         transformers = require("transformers", purpose="the DINOv2 image games")
-        self._torch, self.batch_size = torch, batch_size
-        self._device = device_ = torch.device(device)
+        device_ = torch.device(device)
         processor = transformers.AutoImageProcessor.from_pretrained(
-            DINOV2_MODEL_ID, revision=revision, use_fast=True
+            DINOV2_MODEL_ID, revision=revision
         )
         model = transformers.AutoModelForImageClassification.from_pretrained(
             DINOV2_MODEL_ID, revision=revision
         )
         model.eval().to(device_)
-        self.image = center_crop(
-            image,
-            processor.size["shortest_edge"],
-            processor.crop_size["height"],
-            Image.Resampling(int(processor.resample)),
-        )
-        self._mean, self._std = processor.image_mean, processor.image_std
-        pixels = self._pixels(self.image[None])
+        # the model sees exactly the processor's pixels (resized and cropped in float), as in the
+        # paper's script; the game's image shows them as uint8
+        pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
+        pixels = processor(images=pil, return_tensors="pt")["pixel_values"].to(device_)
+        self.image = displayed_image(pixels, processor.image_mean, processor.image_std)
         with torch.no_grad():
             embeddings = model.dinov2.embeddings(pixels)  # class token + patches, with positions
-            all_masked = torch.ones(embeddings.shape[:2], dtype=torch.bool, device=device_)[:, 1:]
-            masked = model.dinov2.embeddings(pixels, bool_masked_pos=all_masked)
-        self._embed = model.dinov2.embeddings
         side = round((embeddings.shape[1] - 1) ** 0.5)
         players = token_players(side, *DINOV2_GRIDS[n_players])
         self.regions = pixel_regions(players, model.config.patch_size)
@@ -105,35 +93,13 @@ class DinoV2TokenModel:
             mean = patches.mean(dim=1) if patches.shape[1] > 0 else torch.zeros_like(cls)
             return torch.softmax(model.classifier(torch.cat((cls, mean), dim=1)), dim=-1)
 
-        self._encode = encode
-        self._remover = token_remover(
-            mask_strategy, torch, embeddings, masked, players, encode, batch_size
+        self._dropper = TokenDropper(
+            torch, embeddings[:, :1], embeddings[0, 1:], players, encode, batch_size
         )
-        probabilities = self._remover(np.ones((1, n_players), dtype=bool))[0]
+        probabilities = self._dropper(np.ones((1, n_players), dtype=bool))[0]
         self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
         self.class_name = str(model.config.id2label[self.class_index])
 
-    def _pixels(self, images: np.ndarray) -> Any:  # noqa: ANN401
-        torch = self._torch
-        return torch.cat(
-            [
-                normalized_pixels(torch, image, self._mean, self._std, self._device)
-                for image in images
-            ]
-        )
-
-    def classify(self, images: np.ndarray) -> np.ndarray:
-        """Return the class probabilities of whole crops, of shape ``(n_images, n_classes)``."""
-        torch = self._torch
-        outputs = []
-        for start in range(0, images.shape[0], self.batch_size):
-            chunk = np.asarray(images[start : start + self.batch_size])
-            with torch.no_grad():
-                pixels = self._pixels(pad_batch(chunk, self.batch_size))
-                probabilities = self._encode(self._embed(pixels))
-            outputs.append(probabilities.float().cpu().numpy()[: chunk.shape[0]])
-        return np.concatenate(outputs).astype(float)
-
     def __call__(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the probability of the explained class for each coalition."""
-        return self._remover(coalitions)[:, self.class_index]
+        return self._dropper(coalitions)[:, self.class_index]
