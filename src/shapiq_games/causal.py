@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions
+from shapiq_games._base import as_bool_coalitions, resolve_x
 from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
 
 if TYPE_CHECKING:
@@ -254,11 +254,7 @@ class LocalConfoundingXAI(_ConfoundingGame):
             regressor: A function returning a fresh, seeded regressor. Defaults to
                 :func:`tabpfn_regressor` (TabPFN v2 configured as in the paper).
         """
-        covariates = np.asarray(x, dtype=float)
-        if isinstance(unit, int | np.integer):
-            self.unit = covariates[int(unit)].copy()
-        else:
-            self.unit = np.asarray(unit, dtype=float).reshape(-1)
+        self.unit = resolve_x(unit, np.asarray(x, dtype=float)).astype(float)
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)
 
     def _coalition_value(self, players: tuple[int, ...]) -> float:

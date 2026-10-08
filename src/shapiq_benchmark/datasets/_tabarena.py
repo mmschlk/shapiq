@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from shapiq_benchmark._optional import require
+from shapiq_games._optional import require
 
 from ._cache import atomic_write_bytes, get_data_dir
 from ._registry import DatasetSpec, register_dataset
@@ -104,7 +104,7 @@ def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
     recipe = f"{openml_id}/{target}/{_PREPROCESSING_VERSION}".encode()
     path = get_data_dir() / "tabarena" / f"{name}-{hashlib.sha256(recipe).hexdigest()[:8]}.csv"
     if not path.exists():
-        openml = require("openml", purpose="the TabArena datasets")
+        openml = require("openml", purpose="the TabArena datasets", extra="benchmark")
         dataset = openml.datasets.get_dataset(openml_id, download_data=True)
         x, y, _, _ = dataset.get_data(target=target, dataset_format="dataframe")
         frame = _encode_categorical(_impute(x))  # impute categories before encoding them

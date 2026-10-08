@@ -58,7 +58,8 @@ def test_tabular_local_explanation_full_coalition_is_the_prediction(data) -> Non
     game = TabularLocalExplanation(model, data["x_train"], x=data["x_test"][0], normalize=False)
     assert game.class_index is None
     assert game(game.grand_coalition)[0] == pytest.approx(model.predict(data["x_test"][:1])[0])
-    assert game(game.empty_coalition)[0] == pytest.approx(game.empty_prediction_value)
+    assert game(game.empty_coalition)[0] == pytest.approx(game.empty_value)
+    assert game(game.grand_coalition)[0] == pytest.approx(game.original_model_output)
 
 
 def test_tabular_local_explanation_classifier_and_callable(data) -> None:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.metadata
-import re
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -16,21 +14,14 @@ from shapiq.imputer import (
     TabPFNImputer,
 )
 from shapiq.imputer.base import Imputer
-from shapiq.utils.modules import safe_isinstance
-from shapiq_games._base import (
-    as_bool_coalitions,
-    make_predict_function,
-    resolve_class_index,
-    resolve_x,
-)
+from shapiq_games._base import as_bool_coalitions, resolve_predict_function, resolve_x
+from shapiq_games._tabpfn import check_inf_baseline
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
     from shapiq_games.typing import ImputerName, PredictFunction
 
-__all__ = ["TabularLocalExplanation", "require_inf_passthrough"]
-
-_PASSTHROUGH_INF_TABPFN = (8, 1)  # the first tabpfn release with inference_config PASSTHROUGH_INF
+__all__ = ["TabularLocalExplanation"]
 
 # imputers whose value of a coalition does not depend on the other coalitions of the batch once
 # their generator is reseeded per evaluation; others (e.g. the Gaussian imputers, which draw
@@ -69,7 +60,8 @@ class TabularLocalExplanation(Game):
         x: The explained point.
         class_index: The explained class for classifiers, ``None`` for regressors or callables.
         imputer: The imputer turning the model into a game.
-        empty_prediction_value: The prediction with all features absent.
+        empty_value: The prediction with all features absent (before centering).
+        original_model_output: The prediction with all features present (before centering).
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -111,7 +103,8 @@ class TabularLocalExplanation(Game):
                 ``(n_samples, n_features)`` matrix to ``(n_samples,)`` predictions.
             data: The background data of shape ``(n_samples, n_features)``.
             x: The explained point, or its index in ``data``. Defaults to ``0``.
-            imputer: ``"marginal"``, ``"conditional"``, ``"baseline"``, or an already fitted :class:`~shapiq.imputer.base.Imputer`. An imputer brings its own model,
+            imputer: ``"marginal"``, ``"conditional"``, ``"baseline"``, or an already fitted
+                :class:`~shapiq.imputer.base.Imputer`. An imputer brings its own model,
                 background data, point, and seed: ``x`` and ``random_state`` are then taken from
                 it, and ``model`` and ``class_index`` only set :attr:`class_index`.
             class_index: The explained class for classifiers. Defaults to ``None``, which means
@@ -131,67 +124,46 @@ class TabularLocalExplanation(Game):
             ValueError: If ``baseline`` is given for another imputer, or passes ``inf`` to a
                 TabPFN model that would not read it as missing.
         """
+        if baseline is not None and not (isinstance(imputer, str) and imputer == "baseline"):
+            msg = f"baseline applies to imputer='baseline', got imputer={imputer!r}."
+            raise ValueError(msg)
         data = np.asarray(data)
-        if isinstance(imputer, Imputer):  # the imputer brings its own point and seed
+        predict, self.class_index = resolve_predict_function(model, class_index)
+        if isinstance(imputer, Imputer):  # the imputer brings its own model, point, and seed
+            self.imputer = imputer
             self.x = np.asarray(imputer.x).reshape(-1)
             self.random_state = imputer.random_state
         else:
             self.x = resolve_x(x, data)
             self.random_state = random_state
-        self.class_index: int | None = None
-        if callable(model) and not hasattr(model, "predict"):
-            predict: PredictFunction = model
-        else:
-            self.class_index = resolve_class_index(model, class_index)
-            predict = make_predict_function(model, self.class_index)
-
-        if baseline is not None and not (isinstance(imputer, str) and imputer == "baseline"):
-            msg = f"baseline applies to imputer='baseline', got imputer={imputer!r}."
-            raise ValueError(msg)
-        if isinstance(imputer, Imputer):
-            self.imputer = imputer
-        elif imputer == "marginal":
-            self.imputer = MarginalImputer(
-                model=predict,
-                data=data,
-                x=self.x,
+            self.imputer = _build_imputer(
+                imputer,
+                predict,
+                data,
+                self.x,
+                model=model,
                 sample_size=sample_size,
+                baseline=baseline,
                 random_state=random_state,
-                normalize=False,
             )
-        elif imputer == "conditional":
-            self.imputer = GenerativeConditionalImputer(
-                model=predict, data=data, x=self.x, random_state=random_state, normalize=False
-            )
-        elif imputer == "baseline":
-            if baseline is not None:  # a single row is the baseline itself
-                data = _baseline_row(baseline, data.shape[1])
-                _check_tabpfn_baseline(model, data)
-            self.imputer = BaselineImputer(
-                model=predict, data=data, x=self.x, random_state=random_state, normalize=False
-            )
-        else:
-            msg = (
-                f"Unknown imputer {imputer!r}. Choose 'marginal', 'conditional', 'baseline', or "
-                "pass an Imputer instance."
-            )
-            raise ValueError(msg)
 
         n_players = self.imputer.n_features
         # through the value function, as not every imputer sets its ``empty_prediction``
-        self.empty_prediction_value = float(
-            self.value_function(np.zeros((1, n_players), dtype=bool))[0]
+        self.empty_value = float(self.value_function(np.zeros((1, n_players), dtype=bool))[0])
+        self.original_model_output = float(
+            self.value_function(np.ones((1, n_players), dtype=bool))[0]
         )
         super().__init__(
             n_players,
             normalize=normalize,
-            normalization_value=self.empty_prediction_value,
+            normalization_value=self.empty_value,
             verbose=verbose,
         )
 
     def _impute(self, coalitions: CoalitionMatrix) -> GameValues:
         # reseeding makes every evaluation draw the same samples (the conditional imputer samples
-        # its background from a stateful generator)
+        # its background from a stateful generator); the imputers' public set_random_state would
+        # redraw their background and call the model again on every evaluation
         self.imputer._rng = np.random.default_rng(self.random_state)  # noqa: SLF001
         return np.asarray(self.imputer.value_function(coalitions), dtype=float).reshape(-1)
 
@@ -203,22 +175,6 @@ class TabularLocalExplanation(Game):
         return np.array([self._impute(coalition[None])[0] for coalition in coalitions])
 
 
-def require_inf_passthrough() -> None:
-    """Raise unless the installed TabPFN reads ``inf`` as a missing value (``tabpfn>=8.1``).
-
-    Raises:
-        ValueError: If the installed ``tabpfn`` is older than 8.1.
-    """
-    installed = importlib.metadata.version("tabpfn")
-    version = tuple(int(part) for part in re.findall(r"\d+", installed)[:2])
-    if version < _PASSTHROUGH_INF_TABPFN:
-        msg = (
-            "TabPFN reads inf as a missing value only from tabpfn 8.1 on (built with "
-            f"inference_config={{'PASSTHROUGH_INF': True}}); installed: tabpfn {installed}."
-        )
-        raise ValueError(msg)
-
-
 def _baseline_row(baseline: float | np.ndarray, n_features: int) -> FloatVector:
     """Return the baseline as one row of ``n_features`` values."""
     values = np.asarray(baseline, dtype=float).reshape(-1)
@@ -228,22 +184,40 @@ def _baseline_row(baseline: float | np.ndarray, n_features: int) -> FloatVector:
     return np.broadcast_to(values, (1, n_features)).copy()
 
 
-def _check_tabpfn_baseline(model: Any, baseline: np.ndarray) -> None:  # noqa: ANN401
-    """Reject an ``inf`` baseline for a TabPFN model that does not read it as a missing value.
-
-    Without ``PASSTHROUGH_INF``, tabpfn 8.1 and later reject ``inf``, and older releases transform it
-    in their preprocessing, so the game would silently explain something else.
-    """
-    if not np.isinf(baseline).any() or not safe_isinstance(
-        model, ["tabpfn.TabPFNClassifier", "tabpfn.TabPFNRegressor"]
-    ):
-        return
-    require_inf_passthrough()
-    config = getattr(model, "inference_config", None) or {}
-    if isinstance(config, dict):
-        passthrough = config.get("PASSTHROUGH_INF")
-    else:
-        passthrough = getattr(config, "PASSTHROUGH_INF", None)
-    if not passthrough:
-        msg = "Build the TabPFN model with inference_config={'PASSTHROUGH_INF': True}."
-        raise ValueError(msg)
+def _build_imputer(
+    imputer: ImputerName,
+    predict: PredictFunction,
+    data: np.ndarray,
+    x: FloatVector,
+    *,
+    model: Any,  # noqa: ANN401
+    sample_size: int,
+    baseline: float | np.ndarray | None,
+    random_state: int,
+) -> Imputer:
+    """Build the imputer named ``imputer`` for the point ``x``."""
+    if imputer == "marginal":
+        return MarginalImputer(
+            model=predict,
+            data=data,
+            x=x,
+            sample_size=sample_size,
+            random_state=random_state,
+            normalize=False,
+        )
+    if imputer == "conditional":
+        return GenerativeConditionalImputer(
+            model=predict, data=data, x=x, random_state=random_state, normalize=False
+        )
+    if imputer == "baseline":
+        if baseline is not None:  # a single row is the baseline itself
+            data = _baseline_row(baseline, data.shape[1])
+            check_inf_baseline(model, data)
+        return BaselineImputer(
+            model=predict, data=data, x=x, random_state=random_state, normalize=False
+        )
+    msg = (
+        f"Unknown imputer {imputer!r}. Choose 'marginal', 'conditional', 'baseline', or pass an "
+        "Imputer instance."
+    )
+    raise ValueError(msg)

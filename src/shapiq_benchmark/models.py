@@ -20,9 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
+from shapiq_games._optional import require
 from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
-
-from ._optional import require
 
 if TYPE_CHECKING:
     from shapiq_games.typing import Task
@@ -221,15 +220,15 @@ def build_model(
 
     classification = task == "classification"
     if name == "xgboost":
-        xgboost = require("xgboost", purpose="the 'xgboost' model")
+        xgboost = require("xgboost", purpose="the 'xgboost' model", extra="benchmark")
         cls = xgboost.XGBClassifier if classification else xgboost.XGBRegressor
         return cls(**{"n_jobs": 1, "random_state": random_state, **params})
     if name == "lightgbm":
-        lightgbm = require("lightgbm", purpose="the 'lightgbm' model")
+        lightgbm = require("lightgbm", purpose="the 'lightgbm' model", extra="benchmark")
         cls = lightgbm.LGBMClassifier if classification else lightgbm.LGBMRegressor
         return cls(**{"n_jobs": 1, "verbose": -1, "random_state": random_state, **params})
     if name == "catboost":
-        catboost = require("catboost", purpose="the 'catboost' model")
+        catboost = require("catboost", purpose="the 'catboost' model", extra="benchmark")
         cls = catboost.CatBoostClassifier if classification else catboost.CatBoostRegressor
         return cls(**{"thread_count": 1, "verbose": 0, "random_seed": random_state, **params})
     if name == "tabpfn":

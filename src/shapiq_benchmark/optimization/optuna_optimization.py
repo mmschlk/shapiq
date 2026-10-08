@@ -20,9 +20,9 @@ import numpy as np
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.model_selection import KFold, StratifiedKFold
 
-from shapiq_benchmark._optional import require
 from shapiq_benchmark.datasets import list_datasets, load_dataset
 from shapiq_benchmark.models import build_model
+from shapiq_games._optional import require
 
 if TYPE_CHECKING:
     import optuna
@@ -97,7 +97,7 @@ def cross_validated_score(
 
 def main() -> None:
     """Tune a model on a dataset and write the best parameters."""
-    optuna = require("optuna")
+    optuna = require("optuna", extra="benchmark")
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Tune model hyperparameters with Optuna.")
     parser.add_argument("--model", required=True, choices=TUNABLE_MODELS)

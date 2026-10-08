@@ -7,19 +7,15 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import (
-    as_bool_coalitions,
-    make_predict_function,
-    resolve_class_index,
-)
+from shapiq_games._base import as_bool_coalitions, resolve_predict_function
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
-    from shapiq_games.typing import LossName, Metric, PredictFunction
+    from shapiq_games.typing import Loss, LossName
 
 __all__ = ["TabularGlobalExplanation"]
 
-_LOSSES: dict[LossName, Metric] = {
+_LOSSES: dict[LossName, Loss] = {
     "mse": lambda reference, prediction: float(np.mean((reference - prediction) ** 2)),
     "mae": lambda reference, prediction: float(np.mean(np.abs(reference - prediction))),
 }
@@ -44,6 +40,7 @@ class TabularGlobalExplanation(Game):
         class_index: The explained class for classifiers, ``None`` for regressors or callables.
         x_eval: The evaluation rows.
         x_replacement: The replacement rows.
+        empty_value: The value of the empty coalition before centering (all features replaced).
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -61,7 +58,7 @@ class TabularGlobalExplanation(Game):
         data: np.ndarray,
         *,
         class_index: int | None = None,
-        loss: LossName | Metric = "mse",
+        loss: LossName | Loss = "mse",
         n_samples: int = 100,
         random_state: int = 42,
         normalize: bool = True,
@@ -84,12 +81,7 @@ class TabularGlobalExplanation(Game):
             verbose: Whether to show a progress bar when evaluating the game.
         """
         data = np.asarray(data)
-        self.class_index: int | None = None
-        if callable(model) and not hasattr(model, "predict"):
-            self._predict: PredictFunction = model
-        else:
-            self.class_index = resolve_class_index(model, class_index)
-            self._predict = make_predict_function(model, self.class_index)
+        self._predict, self.class_index = resolve_predict_function(model, class_index)
         if callable(loss):
             self._loss = loss
         elif loss in _LOSSES:
@@ -107,22 +99,20 @@ class TabularGlobalExplanation(Game):
             self.x_replacement[:, feature] = data[rows, feature]
         self._reference_predictions = np.asarray(self._predict(self.x_eval), dtype=float)
 
-        empty_value = float(self._evaluate(np.zeros((1, data.shape[1]), dtype=bool))[0])
+        self.empty_value = float(self.value_function(np.zeros((1, data.shape[1]), dtype=bool))[0])
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=empty_value,
+            normalization_value=self.empty_value,
             verbose=verbose,
         )
 
-    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return the negative loss between full and masked predictions."""
+        coalitions = as_bool_coalitions(coalitions)
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             masked = np.where(coalition, self.x_eval, self.x_replacement)
             predictions = np.asarray(self._predict(masked), dtype=float)
             values[i] = -self._loss(self._reference_predictions, predictions)
         return values
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the negative loss between full and masked predictions."""
-        return self._evaluate(as_bool_coalitions(coalitions))

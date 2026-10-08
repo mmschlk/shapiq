@@ -6,17 +6,18 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.stats import entropy
+from sklearn.ensemble import RandomForestClassifier
 
 from shapiq_games.local_xai import TabularLocalExplanation
 
 if TYPE_CHECKING:
     from shapiq.typing import FloatVector
-    from shapiq_games.typing import ImputerName, Uncertainty
+    from shapiq_games.typing import ImputerName, PredictFunction, Uncertainty
 
 __all__ = ["TabularUncertaintyExplanation"]
 
 
-def _uncertainty_function(forest: Any, uncertainty: Uncertainty):  # noqa: ANN202, ANN401
+def _uncertainty_function(forest: Any, uncertainty: Uncertainty) -> PredictFunction:  # noqa: ANN401
     """Return a function computing the entropy-based uncertainty of a random forest classifier."""
     trees = list(forest.estimators_)
 
@@ -80,8 +81,6 @@ class TabularUncertaintyExplanation(TabularLocalExplanation):
             normalize: Whether to center the game. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
-        from sklearn.ensemble import RandomForestClassifier
-
         if not isinstance(model, RandomForestClassifier):
             msg = f"Expected a fitted RandomForestClassifier, got {type(model).__name__}."
             raise TypeError(msg)

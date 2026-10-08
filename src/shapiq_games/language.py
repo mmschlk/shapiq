@@ -32,7 +32,9 @@ class SentimentAnalysis(Game):
     Attributes:
         input_text: The decoded input text.
         tokens: The token ids of the players.
-        original_model_output: The signed score of the full text.
+        original_model_output: The signed score of the full text (:attr:`input_text`), the value
+            of the grand coalition before centering.
+        empty_value: The signed score with every token removed (or masked), before centering.
 
     Examples:
         >>> game = SentimentAnalysis("A great cast, but a thin plot.")  # doctest: +SKIP
@@ -95,13 +97,15 @@ class SentimentAnalysis(Game):
             self._tokenizer(input_text, add_special_tokens=False)["input_ids"], dtype=int
         )
         self.input_text = str(self._tokenizer.decode(self.tokens))
-        self.original_model_output = float(self._scores([input_text])[0])
+        # the decoded tokens, which the grand coalition scores, not the raw input: tokenizers
+        # normalize text (an uncased model lowercases it and respaces punctuation)
+        self.original_model_output = float(self._scores([self.input_text])[0])
         n_players = self.tokens.shape[0]
-        empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
+        self.empty_value = float(self.value_function(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(
             n_players,
             normalize=normalize,
-            normalization_value=empty_value,
+            normalization_value=self.empty_value,
             verbose=verbose,
         )
 
@@ -120,9 +124,10 @@ class SentimentAnalysis(Game):
             scores[i] = 2.0 * float(probabilities[self.positive_label]) - 1.0
         return scores
 
-    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return the signed sentiment score of the text restricted to each coalition."""
         texts = []
-        for coalition in coalitions:
+        for coalition in as_bool_coalitions(coalitions):
             if self.mask_strategy == "remove":
                 tokens = self.tokens[coalition]
             else:
@@ -130,7 +135,3 @@ class SentimentAnalysis(Game):
                 tokens[~coalition] = self._tokenizer.mask_token_id
             texts.append(str(self._tokenizer.decode(tokens)))
         return self._scores(texts)
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the signed sentiment score of the text restricted to each coalition."""
-        return self._evaluate(as_bool_coalitions(coalitions))

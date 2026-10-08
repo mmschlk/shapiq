@@ -5,10 +5,14 @@ Every game in this package follows the same contract:
 1. Its values are a pure function of its constructor arguments, including ``random_state``.
    Randomness is drawn once at construction, never during evaluation, so the value of a
    coalition does not depend on call order, batching, or repetition.
-2. Local games take the explained point ``x`` as an index into the explanation data or as an
-   array. The default is index ``0``, never a random point.
+2. Local games take the explained point ``x`` explicitly, never a random one. Games that hold
+   explanation data also accept an index into it (default ``0``).
 3. Classification games resolve ``class_index`` once at construction. Following the convention of
-   the shapiq explainers, ``None`` means class ``1`` for classifiers.
+   the shapiq explainers, ``None`` means class ``1`` for classifiers; the image games, whose
+   models have many classes, explain the class predicted for the full image instead.
+4. Games that explain one model output store it before centering: ``empty_value`` is the value
+   of the empty coalition and ``original_model_output`` the value of the grand coalition (the
+   model's output on the full input).
 
 Building games from names (datasets, models, seeds) for benchmarks is the job of
 :mod:`shapiq_benchmark.setups`, not of the games.
@@ -31,6 +35,7 @@ __all__ = [
     "is_classifier",
     "make_predict_function",
     "resolve_class_index",
+    "resolve_predict_function",
     "resolve_x",
 ]
 
@@ -153,3 +158,25 @@ def make_predict_function(
         return np.asarray(predict_proba(x), dtype=float)[:, class_index]
 
     return _predict_proba
+
+
+def resolve_predict_function(
+    model: object,
+    class_index: int | None,
+) -> tuple[PredictFunction, int | None]:
+    """Turn a model into a function with one output per row, and resolve the explained class.
+
+    Args:
+        model: A fitted scikit-learn compatible model, or a callable mapping a
+            ``(n_samples, n_features)`` matrix to ``(n_samples,)`` outputs, used as is.
+        class_index: The requested class for classifiers, or ``None`` (see
+            :func:`resolve_class_index`).
+
+    Returns:
+        The prediction function and the resolved class index (``None`` for regressors and
+        callables).
+    """
+    if callable(model) and not hasattr(model, "predict"):
+        return model, None  # type: ignore[return-value]
+    resolved = resolve_class_index(model, class_index)
+    return make_predict_function(model, resolved), resolved

@@ -23,7 +23,7 @@ from shapiq_games import (
     UnsupervisedData,
 )
 from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
-from shapiq_games.local_xai import require_inf_passthrough
+from shapiq_games._tabpfn import require_inf_passthrough
 from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
     ClusterMethod,
     ClusterScore,

@@ -34,7 +34,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder, RobustScaler, StandardScaler
 
-from shapiq_benchmark._optional import require
+from shapiq_games._optional import require
 
 from ._cache import RemoteFile, atomic_write_bytes, fetch, get_data_dir
 from ._registry import DatasetSpec, register_dataset
@@ -187,11 +187,11 @@ def _download_table(name: str) -> pd.DataFrame:
     """Download the raw table of ``name`` (features and target) from its original source."""
     upstream = _UPSTREAM[name]
     if upstream.source == "openml":
-        openml = require("openml", purpose=f"the {name} dataset")
+        openml = require("openml", purpose=f"the {name} dataset", extra="benchmark")
         dataset = openml.datasets.get_dataset(upstream.dataset_id, download_data=True)
         table, *_ = dataset.get_data(dataset_format="dataframe")
     elif upstream.source == "uci":
-        ucimlrepo = require("ucimlrepo", purpose=f"the {name} dataset")
+        ucimlrepo = require("ucimlrepo", purpose=f"the {name} dataset", extra="benchmark")
         data = ucimlrepo.fetch_ucirepo(id=upstream.dataset_id).data
         table = data.features.copy()
         table["target"] = data.targets.squeeze()
@@ -365,7 +365,7 @@ def load_wine_quality() -> tuple[pd.DataFrame, pd.Series]:
 
 def load_real_estate() -> tuple[pd.DataFrame, pd.Series]:
     """Real estate valuation (UCI), regression. Requires ``openpyxl``."""
-    require("openpyxl", purpose="reading the real_estate dataset")
+    require("openpyxl", purpose="reading the real_estate dataset", extra="benchmark")
     data = pd.read_excel(fetch(_UCI_FILES["real_estate.xlsx"]))
     data = data.drop(columns=["No"])
     data["month"] = (data["X1 transaction date"] % 1 * 12).round().astype(int)

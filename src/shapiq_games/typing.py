@@ -23,6 +23,7 @@ __all__ = [
     "ImageModel",
     "ImageTextModel",
     "ImputerName",
+    "Loss",
     "LossName",
     "MaskStrategy",
     "Metric",
@@ -44,6 +45,9 @@ type Metric = Callable[[np.ndarray, np.ndarray], float]
 
 type MetricName = Literal["accuracy", "r2", "neg_mse", "neg_mae"]
 """The built-in metrics of the games that train models."""
+
+type Loss = Callable[[np.ndarray, np.ndarray], float]
+"""Compares predictions as ``loss(reference, prediction)``; lower is better."""
 
 type LossName = Literal["mse", "mae"]
 """The built-in losses of :class:`~shapiq_games.TabularGlobalExplanation`; lower is better."""
