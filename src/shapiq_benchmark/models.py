@@ -28,7 +28,17 @@ if TYPE_CHECKING:
 
     from .datasets import DatasetSplit
 
-__all__ = ["MODEL_NAMES", "TUNED_PRESETS", "ModelName", "Preset", "build_model", "fit_model"]
+__all__ = [
+    "MISSING_VALUE_MODELS",
+    "MODEL_NAMES",
+    "TUNED_PRESETS",
+    "ModelName",
+    "Preset",
+    "TreeModelName",
+    "build_model",
+    "fit_model",
+    "tuned_params",
+]
 
 type ModelName = Literal[
     "catboost",
@@ -52,6 +62,19 @@ type Preset = Literal["tuned"]
 
 MODEL_NAMES: tuple[ModelName, ...] = get_args(ModelName.__value__)
 """All model names understood by :func:`build_model`."""
+
+type TreeModelName = Literal["decision_tree", "random_forest", "xgboost", "lightgbm", "catboost"]
+"""The tree models of the registry."""
+
+MISSING_VALUE_MODELS: tuple[ModelName, ...] = (
+    "catboost",
+    "decision_tree",
+    "lightgbm",
+    "random_forest",
+    "tabpfn",
+    "xgboost",
+)
+"""The registry models that read missing values natively (for ``baseline="missing"``)."""
 
 # The LightGBM presets were tuned with a subsample that LightGBM ignores without
 # subsample_freq; it is left out, which builds the same models.
@@ -177,6 +200,20 @@ def _sklearn_model(
     raise ValueError(msg)
 
 
+def tuned_params(name: ModelName, dataset: str | None) -> dict[str, Any]:
+    """Return the tuned hyperparameters of a model on a dataset (see :data:`TUNED_PRESETS`).
+
+    Raises:
+        ValueError: If there is no tuned preset for the model on the dataset.
+    """
+    tuned = TUNED_PRESETS.get((name, dataset)) if dataset is not None else None
+    if tuned is None:
+        available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
+        msg = f"No tuned preset for model '{name}' on '{dataset}'. Available: {available}."
+        raise ValueError(msg)
+    return dict(tuned)
+
+
 def build_model(
     name: ModelName,
     task: Task,
@@ -211,12 +248,7 @@ def build_model(
         if preset != "tuned":
             msg = f"Unknown preset {preset!r}; the only preset is 'tuned'."
             raise ValueError(msg)
-        tuned = TUNED_PRESETS.get((name, dataset)) if dataset is not None else None
-        if tuned is None:
-            available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
-            msg = f"No tuned preset for model '{name}' on '{dataset}'. Available: {available}."
-            raise ValueError(msg)
-        params = {**tuned, **params}
+        params = {**tuned_params(name, dataset), **params}
 
     classification = task == "classification"
     if name == "xgboost":

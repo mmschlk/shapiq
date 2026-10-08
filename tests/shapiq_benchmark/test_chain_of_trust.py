@@ -32,8 +32,8 @@ from shapiq_benchmark.computers import (
     BruteForceComputer,
     Computer,
     InterventionalTreeComputer,
-    KNNComputer,
     MoebiusComputer,
+    NearestNeighborComputer,
     PathDependentTreeComputer,
     ProductKernelComputer,
 )
@@ -340,7 +340,7 @@ def test_nearest_neighbor_computers(tabular: dict[str, np.ndarray], class_index:
         WeightedKNNGame(weighted, point, class_index=class_index, n_bits=3),
         ThresholdNNGame(radius, point, class_index=class_index),
     ):
-        _assert_agrees_with_brute_force(KNNComputer(game))
+        _assert_agrees_with_brute_force(NearestNeighborComputer(game))
 
 
 def test_product_kernel_computer(tabular: dict[str, np.ndarray]) -> None:

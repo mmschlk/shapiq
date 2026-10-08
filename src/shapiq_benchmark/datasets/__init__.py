@@ -31,6 +31,7 @@ from ._registry import (
     get_dataset_spec,
     list_datasets,
     load_dataset,
+    register_dataset,
 )
 from ._synthetic import CausalSetting, load_curthvds_synthetic
 from ._tabarena import TABARENA_DATASETS
@@ -52,4 +53,5 @@ __all__ = [
     "load_curthvds_synthetic",
     "load_dataset",
     "load_imagenette",
+    "register_dataset",
 ]

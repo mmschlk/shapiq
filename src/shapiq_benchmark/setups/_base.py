@@ -13,26 +13,38 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NoReturn
 
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 from shapiq_benchmark.datasets import Dataset, DatasetSplit, get_dataset_spec, load_dataset
-from shapiq_benchmark.models import (
-    TUNED_PRESETS,
-    ModelName,
-    Preset,
-    build_model,
-    fit_model,
-)
+from shapiq_benchmark.models import ModelName, Preset, build_model, tuned_params
 from shapiq_games.typing import Task  # noqa: TC001  (resolved by the field checks)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from shapiq import Game
+    from shapiq.typing import IntVector
 
-__all__ = ["SETUPS", "ModelSetup", "Setup", "TabularSetup", "runtime_field", "setup_from_dict"]
+__all__ = [
+    "RECIPE_VERSION",
+    "SETUPS",
+    "DatasetSetup",
+    "ModelSetup",
+    "Setup",
+    "TabularSetup",
+    "runtime_field",
+    "setup_from_dict",
+]
 
 SETUPS: dict[str, type[Setup]] = {}
 """Every setup class by its name, the ``"setup"`` entry of :meth:`Setup.to_dict`."""
+
+RECIPE_VERSION = 1
+"""The version of the code every setup shares, part of every :attr:`Setup.key`.
+
+Bump it when a change to the shared recipe changes the games the setups build for the same
+fields: the datasets and their preprocessing, row sampling and splits, or the defaults of the
+model registry. Cached ground truth is then not reused."""
 
 _IN_KEY = "in_key"
 
@@ -165,7 +177,7 @@ class Setup(ABC):
     Subclasses declare their fields as a frozen, keyword-only dataclass and pass ``name=`` to the
     class statement; a subclass without a name of its own cannot be created, as it would share its
     parent's cache. They bump :attr:`version` when :meth:`build` changes the game it builds for
-    the same fields.
+    the same fields; changes to the code all setups share bump :data:`RECIPE_VERSION`.
     """
 
     name: ClassVar[str]
@@ -234,15 +246,20 @@ class Setup(ABC):
     def key(self) -> str:
         """A stable identifier of the game this setup builds, used as its cache key.
 
-        It is a digest of the setup's name, :attr:`version`, and fields (runtime fields excluded),
-        so it is the same across processes and machines.
+        It is a digest of the setup's name, :attr:`version`, :data:`RECIPE_VERSION`, and fields
+        (runtime fields excluded), so it is the same across processes and machines.
         """
         params = {
             f.name: getattr(self, f.name)
             for f in dataclasses.fields(self)
             if f.metadata.get(_IN_KEY, True)
         }
-        payload = {"setup": self.name, "version": self.version, "params": _jsonable(params)}
+        payload = {
+            "setup": self.name,
+            "version": self.version,
+            "recipe": RECIPE_VERSION,
+            "params": _jsonable(params),
+        }
         digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8"))
         return digest.hexdigest()[:16]
 
@@ -275,13 +292,12 @@ def setup_from_dict(data: Mapping[str, Any]) -> Setup:
 
 
 @dataclass(frozen=True, kw_only=True)
-class TabularSetup(Setup):
-    """A setup on a registered tabular dataset (see :func:`shapiq_benchmark.datasets.load_dataset`).
+class DatasetSetup(Setup):
+    """A setup on a registered dataset (see :func:`shapiq_benchmark.datasets.load_dataset`).
 
     Attributes:
         dataset: The dataset name.
-        random_state: The seed of the split and of everything else the setup draws.
-        test_size: The fraction of the data used as test set. Defaults to ``0.2``.
+        random_state: The seed of everything the setup draws.
         dataset_params: Parameters of synthetic datasets (e.g. ``{"n_samples": 300}``).
     """
 
@@ -290,7 +306,6 @@ class TabularSetup(Setup):
 
     dataset: str
     random_state: int = 42
-    test_size: float = 0.2
     dataset_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -308,10 +323,6 @@ class TabularSetup(Setup):
         """Load the dataset."""
         return load_dataset(self.dataset, **self.dataset_params)
 
-    def load_split(self) -> DatasetSplit:
-        """Load the dataset and split it (seeded, stratified for classification)."""
-        return self.load().split(test_size=self.test_size, random_state=self.random_state)
-
     def sample_rows(self, n_rows: int, n: int | None) -> np.ndarray:
         """Return ``n`` sorted row indices out of ``n_rows``, drawn with :attr:`random_state`.
 
@@ -321,6 +332,39 @@ class TabularSetup(Setup):
             return np.arange(n_rows)
         rng = np.random.default_rng(self.random_state)
         return np.sort(rng.choice(n_rows, size=n, replace=False))
+
+    def stratified_rows(self, y: np.ndarray, n: int | None, task: Task) -> IntVector:
+        """Return ``n`` sorted row indices, drawn with :attr:`random_state` and stratified by class.
+
+        The rows are stratified for classification where every class has enough rows. All rows
+        are returned if ``n`` is ``None`` or at least the number of rows.
+        """
+        indices = np.arange(y.shape[0])
+        if n is None or n >= indices.shape[0]:
+            return indices
+        stratify = y if task == "classification" else None
+        try:
+            rows, _ = train_test_split(
+                indices, train_size=n, random_state=self.random_state, stratify=stratify
+            )
+        except ValueError:  # too few rows per class to stratify
+            rows, _ = train_test_split(indices, train_size=n, random_state=self.random_state)
+        return np.sort(rows)
+
+
+@dataclass(frozen=True, kw_only=True)
+class TabularSetup(DatasetSetup):
+    """A setup on a registered dataset split into a training and a test part.
+
+    Attributes:
+        test_size: The fraction of the data used as test set. Defaults to ``0.2``.
+    """
+
+    test_size: float = 0.2
+
+    def load_split(self) -> DatasetSplit:
+        """Load the dataset and split it (seeded, stratified for classification)."""
+        return self.load().split(test_size=self.test_size, random_state=self.random_state)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -341,28 +385,25 @@ class ModelSetup(TabularSetup):
     def __post_init__(self) -> None:
         """Check that a tuned preset exists."""
         super().__post_init__()
-        if self.preset == "tuned" and (self.model, self.dataset) not in TUNED_PRESETS:
-            available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
-            msg = f"No tuned preset for '{self.model}' on '{self.dataset}'. Available: {available}."
-            raise ValueError(msg)
+        if self.preset == "tuned":
+            tuned_params(self.model, self.dataset)
 
-    def estimator(self, task: Task) -> Any:  # noqa: ANN401
-        """Return the unfitted, seeded model for a task."""
+    def estimator(self, task: Task, **overrides: Any) -> Any:  # noqa: ANN401
+        """Return the unfitted, seeded model for a task.
+
+        Args:
+            task: ``"classification"`` or ``"regression"``.
+            **overrides: Hyperparameters overriding :attr:`model_params`.
+        """
         return build_model(
             self.model,
             task,
             random_state=self.random_state,
             preset=self.preset,
             dataset=self.dataset,
-            **self.model_params,
+            **{**self.model_params, **overrides},
         )
 
     def fit(self, split: DatasetSplit) -> Any:  # noqa: ANN401
         """Return the seeded model fitted on the training part of ``split``."""
-        return fit_model(
-            self.model,
-            split,
-            random_state=self.random_state,
-            preset=self.preset,
-            **self.model_params,
-        )
+        return self.estimator(split.task).fit(split.x_train, split.y_train)

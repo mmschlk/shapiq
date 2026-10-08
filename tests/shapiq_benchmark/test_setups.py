@@ -406,9 +406,7 @@ def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         importlib.metadata, "version", lambda name: "9.1.0" if name == "tabpfn" else version(name)
     )
-    monkeypatch.setattr(
-        setups._ml_games, "build_model", lambda *_, **params: TabPFNRegressor(**params)
-    )
+    monkeypatch.setattr(setups._base, "build_model", lambda *_, **params: TabPFNRegressor(**params))
     setup = TabularLocalExplanationSetup(
         dataset="independentlinear60",
         dataset_params={"n_samples": 100},

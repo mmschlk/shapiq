@@ -123,6 +123,9 @@ def main() -> None:
         ),
         n_trials=args.trials,
     )
+    # the best trial's parameters with the constants of the search space (e.g. LightGBM's
+    # subsample_freq), which study.best_params leaves out
+    best_params = get_hyperparameters(optuna.trial.FixedTrial(study.best_params), args.model)
     payload = {
         "dataset": args.dataset,
         "model": args.model,
@@ -131,7 +134,7 @@ def main() -> None:
         "n_trials": args.trials,
         "random_state": args.random_state,
         "best_score": study.best_value,
-        "best_params": study.best_params,
+        "best_params": best_params,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -140,7 +143,7 @@ def main() -> None:
         "Add to TUNED_PRESETS in shapiq_benchmark/models.py: (%r, %r): %r",
         args.model,
         args.dataset,
-        study.best_params,
+        best_params,
     )
 
 

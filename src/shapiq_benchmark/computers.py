@@ -48,8 +48,8 @@ __all__ = [
     "BruteForceComputer",
     "Computer",
     "InterventionalTreeComputer",
-    "KNNComputer",
     "MoebiusComputer",
+    "NearestNeighborComputer",
     "PathDependentTreeComputer",
     "ProductKernelComputer",
     "UnsupportedComputationError",
@@ -318,14 +318,14 @@ class InterventionalTreeComputer(Computer[InterventionalTreeGame]):
         return computer.explain_function(x=self.game.x)
 
 
-class KNNComputer(Computer[NNGameBase[Any]]):
+class NearestNeighborComputer(Computer[NNGameBase[Any]]):
     """Nearest-neighbor games via the KNN, weighted KNN, and threshold NN explainers.
 
     A :class:`~shapiq_games.nn.WeightedKNNGame` is supported when it uses the explainer's weight
     discretization (``n_bits`` is set) and ``k > 1``.
     """
 
-    name = "knn"
+    name = "knn"  # part of the ground-truth cache file names
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
@@ -392,15 +392,14 @@ class ProductKernelComputer(Computer[ProductKernelGame]):
             min_order=1,
             n_players=model.d,
             interaction_lookup={(j,): j for j in range(model.d)},
-            baseline_value=float(self.game(self.game.empty_coalition)[0]),
-        )
+        )  # Computer.exact_values sets the game's empty value as the baseline
 
 
 _STRUCTURED_COMPUTERS: tuple[type[Computer[Any]], ...] = (
     MoebiusComputer,
     PathDependentTreeComputer,
     InterventionalTreeComputer,
-    KNNComputer,
+    NearestNeighborComputer,
     ProductKernelComputer,
 )
 

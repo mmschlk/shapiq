@@ -22,8 +22,8 @@ from shapiq_benchmark.computers import (
     BruteForceComputer,
     Computer,
     InterventionalTreeComputer,
-    KNNComputer,
     MoebiusComputer,
+    NearestNeighborComputer,
     PathDependentTreeComputer,
     ProductKernelComputer,
     UnsupportedComputationError,
@@ -138,7 +138,7 @@ def test_supported_indices_come_from_core_declarations() -> None:
         "Moebius",  # the representation itself
     )
     assert PathDependentTreeComputer.supported_indices() == get_args(QuadratureTreeSHAPIndices)
-    assert KNNComputer.supported_indices() == get_args(ValidNNExplainerIndices)
+    assert NearestNeighborComputer.supported_indices() == get_args(ValidNNExplainerIndices)
     assert ProductKernelComputer.supported_indices() == get_args(ProductKernelSHAPIQIndices)
     assert "CUSTOM" not in InterventionalTreeComputer.supported_indices()
     assert "CV" not in InterventionalTreeComputer.supported_indices()  # relabelled CHII in core
@@ -222,8 +222,8 @@ def test_default_computer_mapping(forest_data) -> None:
         (DummyGame(4), MoebiusComputer),
         (PathDependentTreeGame(model, x[0]), PathDependentTreeComputer),
         (InterventionalTreeGame(model, x[:5], x[0]), InterventionalTreeComputer),
-        (KNNGame(knn, x[9], class_index=1), KNNComputer),
-        (WeightedKNNGame(weighted, x[9], class_index=1, n_bits=3), KNNComputer),
+        (KNNGame(knn, x[9], class_index=1), NearestNeighborComputer),
+        (WeightedKNNGame(weighted, x[9], class_index=1, n_bits=3), NearestNeighborComputer),
         # exact weights are not what the explainer computes: brute force
         (WeightedKNNGame(weighted, x[9], class_index=1), BruteForceComputer),
         (ProductKernelGame(SVR().fit(x, x[:, 0]), x[0]), ProductKernelComputer),

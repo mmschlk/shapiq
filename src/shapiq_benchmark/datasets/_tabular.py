@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import tempfile
 from dataclasses import dataclass
-from io import StringIO
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
@@ -36,8 +35,9 @@ from sklearn.preprocessing import OrdinalEncoder, RobustScaler, StandardScaler
 
 from shapiq_games._optional import require
 
-from ._cache import RemoteFile, atomic_write_bytes, fetch, get_data_dir
-from ._registry import DatasetSpec, register_dataset
+from ._cache import RemoteFile, fetch, get_data_dir, read_table, write_table
+from ._preprocess import encode_categorical, impute
+from ._registry import DatasetSpec, Loader, register_dataset
 
 if TYPE_CHECKING:
     from shapiq_games.typing import Task
@@ -230,43 +230,15 @@ def _read_table(name: str) -> pd.DataFrame:
     """
     path = get_data_dir() / "tabular" / f"{name}.csv"
     if path.exists():
-        table = pd.read_csv(path, low_memory=False, float_precision="round_trip")
+        table = read_table(path, low_memory=False)
         if table.shape == _UPSTREAM[name].shape:
             return table
-    table = _download_table(name)
-    buffer = StringIO()
-    table.to_csv(buffer, index=False, float_format="%.17g")  # lossless
-    atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
-    return pd.read_csv(path, low_memory=False, float_precision="round_trip")
+    write_table(path, _download_table(name))
+    return read_table(path, low_memory=False)
 
 
 def _read_shap_file(filename: str, **kwargs: Any) -> pd.DataFrame:
     return pd.read_csv(fetch(_SHAP_FILES[filename]), **kwargs)
-
-
-def _impute(x: pd.DataFrame) -> pd.DataFrame:
-    """Impute numeric columns with their median and other columns with their mode."""
-    for column in x.columns:
-        if x[column].isna().any():
-            if pd.api.types.is_numeric_dtype(x[column]):
-                x[column] = x[column].fillna(x[column].median())
-            else:
-                x[column] = x[column].fillna(x[column].mode()[0])
-    return x
-
-
-def _encode_categorical(x: pd.DataFrame) -> pd.DataFrame:
-    """Ordinal-encode all text and category columns (missing and unknown categories become ``-1``)."""
-    categorical = x.select_dtypes(include=["object", "category", "string"]).columns
-    if len(categorical) == 0:
-        return x
-    encoder = OrdinalEncoder(
-        handle_unknown="use_encoded_value", unknown_value=-1, encoded_missing_value=-1
-    )
-    x = x.copy()
-    values = x[categorical].astype(object)
-    x[categorical] = encoder.fit_transform(values.where(values.notna(), np.nan))  # pd.NA -> NaN
-    return x
 
 
 def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
@@ -417,97 +389,92 @@ def load_communities_and_crime() -> tuple[pd.DataFrame, pd.Series]:
     return x.iloc[:, valid_columns], y
 
 
-def _load_with_class_column(name: str, target: str) -> tuple[pd.DataFrame, pd.Series]:
-    data = _read_table(name)
-    return data, data.pop(target).rename("target")  # load_dataset encodes the labels
-
-
 def load_amazon() -> tuple[pd.DataFrame, pd.Series]:
     """Amazon commerce reviews (OpenML 1457), classification."""
-    return _load_with_class_column("amazon", "Class")
+    return _load_classification("amazon", target="Class")
 
 
 def load_microresponse() -> tuple[pd.DataFrame, pd.Series]:
     """Micro-mass response (OpenML 1515), classification."""
-    return _load_with_class_column("microresponse", "Class")
+    return _load_classification("microresponse", target="Class")
 
 
 def load_bioresponse() -> tuple[pd.DataFrame, pd.Series]:
     """Bioresponse (OpenML 4134), binary classification."""
-    data = _read_table("bioresponse")
-    y = data.pop("target").rename("target")
-    return data, y
+    return _load_classification("bioresponse")
 
 
 def load_leukemia() -> tuple[pd.DataFrame, pd.Series]:
     """Leukemia gene expression (OpenML 45090), binary classification."""
-    return _load_with_class_column("leukemia", "CLASS")
+    return _load_classification("leukemia", target="CLASS")
 
 
-def _load_uci_classification(
+def _load_classification(
     name: str,
     *,
-    impute: bool = False,
+    target: str = "target",
+    impute_missing: bool = False,
     encode: bool = False,
     drop_constant: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series]:
+    """Read a classification table and split off its class column (``load_dataset`` encodes it)."""
     data = _read_table(name)
-    y = data.pop("target")
-    if impute:
-        data = _impute(data)
+    y = data.pop(target)
+    if impute_missing:
+        data = impute(data)
     if encode:
-        data = _encode_categorical(data)
+        data = encode_categorical(data)
     if drop_constant:
         data = data.loc[:, ~(data.iloc[0] == data).all()]
-    return data, y.rename("target")  # load_dataset encodes the labels
+    return data, y.rename("target")
 
 
 def load_annealing() -> tuple[pd.DataFrame, pd.Series]:
     """Annealing (UCI 3), multiclass classification."""
-    return _load_uci_classification("annealing", impute=True, encode=True)
+    return _load_classification("annealing", impute_missing=True, encode=True)
 
 
 def load_arrhythmia() -> tuple[pd.DataFrame, pd.Series]:
     """Arrhythmia (UCI 5), multiclass classification."""
-    return _load_uci_classification("arrhythmia", impute=True, encode=True)
+    return _load_classification("arrhythmia", impute_missing=True, encode=True)
 
 
 def load_hepatitis() -> tuple[pd.DataFrame, pd.Series]:
     """Hepatitis (UCI 46), binary classification."""
-    return _load_uci_classification("hepatitis", impute=True, encode=True)
+    return _load_classification("hepatitis", impute_missing=True, encode=True)
 
 
 def load_ionosphere() -> tuple[pd.DataFrame, pd.Series]:
     """Ionosphere (UCI 52), binary classification."""
-    return _load_uci_classification("ionosphere", drop_constant=True)
+    return _load_classification("ionosphere", drop_constant=True)
 
 
 def load_mushroom() -> tuple[pd.DataFrame, pd.Series]:
     """Mushroom (UCI 73), binary classification."""
-    return _load_uci_classification("mushroom", encode=True)
+    return _load_classification("mushroom", encode=True)
 
 
 def load_nursery() -> tuple[pd.DataFrame, pd.Series]:
     """Nursery (UCI 76), multiclass classification."""
-    return _load_uci_classification("nursery", encode=True)
+    return _load_classification("nursery", encode=True)
 
 
 def load_soybean() -> tuple[pd.DataFrame, pd.Series]:
     """Soybean, large (UCI 90), multiclass classification."""
-    return _load_uci_classification("soybean", impute=True, encode=True)
+    return _load_classification("soybean", impute_missing=True, encode=True)
 
 
 def load_thyroid() -> tuple[pd.DataFrame, pd.Series]:
     """Thyroid disease (UCI 102), multiclass classification."""
-    return _load_uci_classification("thyroid")
+    return _load_classification("thyroid")
 
 
 def load_zoo() -> tuple[pd.DataFrame, pd.Series]:
     """Zoo (UCI 111), multiclass classification."""
-    return _load_uci_classification("zoo")
+    return _load_classification("zoo")
 
 
-_TABULAR: list[tuple[str, Task, object, str]] = [
+_TABULAR: list[tuple[str, Task, Loader, str]] = [
     ("adult_census", "classification", load_adult_census, "OpenML 1590"),
     ("amazon", "classification", load_amazon, "OpenML 1457"),
     ("annealing", "classification", load_annealing, "UCI 3 (ucimlrepo)"),
@@ -539,5 +506,5 @@ _TABULAR: list[tuple[str, Task, object, str]] = [
 
 for _name, _task, _loader, _source in _TABULAR:
     register_dataset(
-        DatasetSpec(name=_name, task=_task, loader=_loader, source=_source, kind="tabular")  # type: ignore[arg-type]
+        DatasetSpec(name=_name, task=_task, loader=_loader, source=_source, kind="tabular")
     )

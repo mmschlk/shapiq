@@ -33,12 +33,22 @@ Setups by kind of game:
   :class:`SentimentAnalysisSetup`
 """
 
-from ._base import SETUPS, ModelSetup, Setup, TabularSetup, runtime_field, setup_from_dict
+from shapiq_benchmark.models import MISSING_VALUE_MODELS
+
+from ._base import (
+    RECIPE_VERSION,
+    SETUPS,
+    DatasetSetup,
+    ModelSetup,
+    Setup,
+    TabularSetup,
+    runtime_field,
+    setup_from_dict,
+)
 from ._causal import GlobalConfoundingSetup, LocalConfoundingSetup
 from ._language import SentimentAnalysisSetup
 from ._ml_games import (
     DEFAULT_MEMBER_POOL,
-    MISSING_VALUE_MODELS,
     ClusterExplanationSetup,
     DatasetValuationSetup,
     DataValuationSetup,
@@ -50,7 +60,7 @@ from ._ml_games import (
     TabularUncertaintyExplanationSetup,
     UnsupervisedDataSetup,
 )
-from ._model_games import (
+from ._structured import (
     InterventionalTreeSetup,
     KNNSetup,
     PathDependentTreeSetup,
@@ -63,29 +73,31 @@ from ._vision import ImageClassifierSetup, ImageTextSimilaritySetup
 __all__ = [
     "DEFAULT_MEMBER_POOL",
     "MISSING_VALUE_MODELS",
+    "RECIPE_VERSION",
     "SETUPS",
     "ClusterExplanationSetup",
     "DataValuationSetup",
+    "DatasetSetup",
     "DatasetValuationSetup",
     "EnsembleSelectionSetup",
     "FeatureSelectionSetup",
     "GlobalConfoundingSetup",
-    "TabularGlobalExplanationSetup",
     "ImageClassifierSetup",
     "ImageTextSimilaritySetup",
     "InterventionalTreeSetup",
     "KNNSetup",
     "LocalConfoundingSetup",
-    "TabularLocalExplanationSetup",
     "ModelSetup",
     "PathDependentTreeSetup",
     "ProductKernelSetup",
     "RandomForestEnsembleSelectionSetup",
     "SentimentAnalysisSetup",
     "Setup",
+    "TabularGlobalExplanationSetup",
+    "TabularLocalExplanationSetup",
     "TabularSetup",
-    "ThresholdNNSetup",
     "TabularUncertaintyExplanationSetup",
+    "ThresholdNNSetup",
     "UnsupervisedDataSetup",
     "WeightedKNNSetup",
     "runtime_field",

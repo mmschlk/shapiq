@@ -14,16 +14,15 @@ values, but it does for model accuracy on datasets with many missing values.
 from __future__ import annotations
 
 import hashlib
-from io import StringIO
 from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from shapiq_games._optional import require
 
-from ._cache import atomic_write_bytes, get_data_dir
+from ._cache import get_data_dir, read_table, write_table
+from ._preprocess import encode_categorical, impute
 from ._registry import DatasetSpec, register_dataset
-from ._tabular import _encode_categorical, _impute
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -107,12 +106,10 @@ def _load_tabarena(name: str) -> tuple[pd.DataFrame, pd.Series]:
         openml = require("openml", purpose="the TabArena datasets", extra="benchmark")
         dataset = openml.datasets.get_dataset(openml_id, download_data=True)
         x, y, _, _ = dataset.get_data(target=target, dataset_format="dataframe")
-        frame = _encode_categorical(_impute(x))  # impute categories before encoding them
+        frame = encode_categorical(impute(x))  # impute categories before encoding them
         frame[_TARGET_COLUMN] = y.astype(str) if not pd.api.types.is_numeric_dtype(y) else y
-        buffer = StringIO()
-        frame.to_csv(buffer, index=False, float_format="%.17g")  # lossless round trip
-        atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
-    data = pd.read_csv(path, float_precision="round_trip")
+        write_table(path, frame)
+    data = read_table(path)
     y = data.pop(_TARGET_COLUMN).rename("target")
     return data, y
 

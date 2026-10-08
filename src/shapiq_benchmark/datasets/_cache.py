@@ -17,11 +17,21 @@ import hashlib
 import os
 import tempfile
 from dataclasses import dataclass
+from io import StringIO
 from pathlib import Path
+from typing import Any
 
+import pandas as pd
 import requests
 
-__all__ = ["RemoteFile", "atomic_write_bytes", "fetch", "get_data_dir"]
+__all__ = [
+    "RemoteFile",
+    "atomic_write_bytes",
+    "fetch",
+    "get_data_dir",
+    "read_table",
+    "write_table",
+]
 
 _TIMEOUT_SECONDS = 120
 
@@ -78,6 +88,24 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
         raise
+
+
+def write_table(path: Path, table: pd.DataFrame) -> None:
+    """Write a table as CSV atomically and losslessly (every float to 17 significant digits).
+
+    ``DataFrame.to_csv`` can drop the last digit of a float by default; see :func:`read_table`.
+    """
+    buffer = StringIO()
+    table.to_csv(buffer, index=False, float_format="%.17g")
+    atomic_write_bytes(path, buffer.getvalue().encode("utf-8"))
+
+
+def read_table(path: Path, **kwargs: Any) -> pd.DataFrame:
+    """Read a table written by :func:`write_table`, parsing floats correctly rounded.
+
+    The default fast parser of ``pd.read_csv`` is not correctly rounded for 17-digit strings.
+    """
+    return pd.read_csv(path, float_precision="round_trip", **kwargs)
 
 
 def fetch(remote: RemoteFile) -> Path:

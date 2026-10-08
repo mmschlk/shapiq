@@ -105,13 +105,13 @@ def test_features_have_no_missing_values_and_labels_keep_their_names(
     import pandas as pd
 
     from shapiq_benchmark.datasets import _registry
-    from shapiq_benchmark.datasets._tabular import _encode_categorical
+    from shapiq_benchmark.datasets._preprocess import encode_categorical
 
     def loader() -> tuple[pd.DataFrame, pd.Series]:
         x = pd.DataFrame({
             "empty": [np.nan] * 4,
             "number": [1.0, np.nan, 3.0, 5.0],
-            "color": _encode_categorical(
+            "color": encode_categorical(
                 pd.DataFrame({"c": pd.array(["red", None, "blue", "red"], dtype="string")})
             )["c"],
         })  # fmt: skip

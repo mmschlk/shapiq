@@ -6,10 +6,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from shapiq_benchmark.models import ModelName, build_model
+from shapiq_benchmark.models import MISSING_VALUE_MODELS, ModelName, build_model
 from shapiq_games import (
     ClusterExplanation,
     DatasetValuation,
@@ -22,7 +21,7 @@ from shapiq_games import (
     TabularUncertaintyExplanation,
     UnsupervisedData,
 )
-from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
+from shapiq_games._base import resolve_class_index, resolve_x
 from shapiq_games._tabpfn import require_inf_passthrough
 from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
     ClusterMethod,
@@ -34,16 +33,13 @@ from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
     Uncertainty,
 )
 
-from ._base import ModelSetup, TabularSetup
+from ._base import DatasetSetup, ModelSetup, TabularSetup
 
 if TYPE_CHECKING:
     from shapiq.imputer.base import Imputer
-    from shapiq.typing import IntVector
-    from shapiq_games.typing import Task
 
 __all__ = [
     "DEFAULT_MEMBER_POOL",
-    "MISSING_VALUE_MODELS",
     "ClusterExplanationSetup",
     "DataValuationSetup",
     "DatasetValuationSetup",
@@ -55,16 +51,6 @@ __all__ = [
     "TabularUncertaintyExplanationSetup",
     "UnsupervisedDataSetup",
 ]
-
-MISSING_VALUE_MODELS: tuple[ModelName, ...] = (
-    "catboost",
-    "decision_tree",
-    "lightgbm",
-    "random_forest",
-    "tabpfn",
-    "xgboost",
-)
-"""The registry models that read missing values natively (for ``baseline="missing"``)."""
 
 DEFAULT_MEMBER_POOL: tuple[ModelName, ...] = (
     "linear",
@@ -148,24 +134,18 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
     def build(self) -> TabularLocalExplanation:
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
-        params: dict[str, Any] = dict(self.model_params)
+        overrides: dict[str, Any] = {}
         baseline: float | None = None
         if self.baseline == "missing":
             baseline = np.nan
             if self.model == "tabpfn":  # TabPFN reads +inf as missing
                 require_inf_passthrough()
-                config = dict(params.get("inference_config", {}))
-                params["inference_config"] = {**config, "PASSTHROUGH_INF": True}
+                config = dict(self.model_params.get("inference_config", {}))
+                overrides["inference_config"] = {**config, "PASSTHROUGH_INF": True}
                 baseline = np.inf
         train = self.sample_rows(split.x_train.shape[0], self.n_train)
-        model = build_model(
-            self.model,
-            split.task,
-            random_state=self.random_state,
-            preset=self.preset,
-            dataset=self.dataset,
-            **params,
-        ).fit(split.x_train[train], split.y_train[train])
+        model = self.estimator(split.task, **overrides)
+        model.fit(split.x_train[train], split.y_train[train])
         rows = self.sample_rows(split.x_train.shape[0], self.n_background)
         background = split.x_train[rows]
         point = resolve_x(self.x, split.x_test)
@@ -201,7 +181,7 @@ def _tabpfn_imputer(
     from shapiq.explainer.utils import get_predict_function_and_model_type
     from shapiq.imputer import TabPFNImputer
 
-    resolved = resolve_class_index(model, class_index) if is_classifier(model) else None
+    resolved = resolve_class_index(model, class_index)
     predict_function, _ = get_predict_function_and_model_type(model, class_index=resolved)
     if isinstance(predict_function, Exception):
         raise predict_function
@@ -290,21 +270,6 @@ class FeatureSelectionSetup(ModelSetup, name="feature_selection"):
         )
 
 
-def _stratified_rows(y: np.ndarray, n: int | None, task: Task, random_state: int) -> IntVector:
-    """Draw ``n`` row indices, stratified by class for classification where possible."""
-    indices = np.arange(y.shape[0])
-    if n is None or n >= indices.shape[0]:
-        return indices
-    stratify = y if task == "classification" else None
-    try:
-        rows, _ = train_test_split(
-            indices, train_size=n, random_state=random_state, stratify=stratify
-        )
-    except ValueError:  # too few points per class to stratify
-        rows, _ = train_test_split(indices, train_size=n, random_state=random_state)
-    return np.sort(rows)
-
-
 @dataclass(frozen=True, kw_only=True)
 class DataValuationSetup(ModelSetup, name="data_valuation"):
     """A :class:`~shapiq_games.DataValuation` game with ``n_players`` training points.
@@ -333,7 +298,7 @@ class DataValuationSetup(ModelSetup, name="data_valuation"):
     def build(self) -> DataValuation:
         """Draw the players and build the game with the unfitted model."""
         split = self.load_split()
-        rows = _stratified_rows(split.y_train, self.n_players, split.task, self.random_state)
+        rows = self.stratified_rows(split.y_train, self.n_players, split.task)
         return DataValuation(
             self.estimator(split.task),
             split.x_train[rows],
@@ -377,7 +342,7 @@ class DatasetValuationSetup(ModelSetup, name="dataset_valuation"):
     def build(self) -> DatasetValuation:
         """Split the training rows into groups and build the game with the unfitted model."""
         split = self.load_split()
-        rows = _stratified_rows(split.y_train, self.n_train, split.task, self.random_state)
+        rows = self.stratified_rows(split.y_train, self.n_train, split.task)
         return DatasetValuation(
             self.estimator(split.task),
             split.x_train[rows],
@@ -531,7 +496,7 @@ class TabularUncertaintyExplanationSetup(TabularSetup, name="tabular_uncertainty
 
 
 @dataclass(frozen=True, kw_only=True)
-class ClusterExplanationSetup(TabularSetup, name="cluster_explanation"):
+class ClusterExplanationSetup(DatasetSetup, name="cluster_explanation"):
     """A :class:`~shapiq_games.ClusterExplanation` on a seeded, standardized sample of a dataset.
 
     Attributes:
@@ -571,7 +536,7 @@ class ClusterExplanationSetup(TabularSetup, name="cluster_explanation"):
 
 
 @dataclass(frozen=True, kw_only=True)
-class UnsupervisedDataSetup(TabularSetup, name="unsupervised_data"):
+class UnsupervisedDataSetup(DatasetSetup, name="unsupervised_data"):
     """An :class:`~shapiq_games.UnsupervisedData` game on (a seeded sample of) a dataset.
 
     Attributes:

@@ -6,12 +6,17 @@ is identified by its name and parameters.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
 
 from ._registry import DatasetSpec, register_dataset
+
+if TYPE_CHECKING:
+    from shapiq_games.typing import Task
+
+    from ._registry import Loader
 
 __all__ = ["CausalSetting", "load_curthvds_synthetic"]
 
@@ -268,7 +273,7 @@ def load_curthvds_synthetic(
     return pd.DataFrame(data)
 
 
-_SYNTHETIC = [
+_SYNTHETIC: list[tuple[str, Task, Loader]] = [
     ("chess", "classification", load_chess),
     ("condind", "classification", load_condind),
     ("corrgroups60", "regression", load_corrgroups60),
@@ -285,7 +290,7 @@ for _name, _task, _loader in _SYNTHETIC:
     register_dataset(
         DatasetSpec(
             name=_name,
-            task=_task,  # type: ignore[arg-type]
+            task=_task,
             loader=_loader,
             source="seeded generator",
             kind="synthetic",
