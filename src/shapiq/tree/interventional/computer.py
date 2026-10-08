@@ -10,6 +10,7 @@ from scipy.special import binom
 from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.base import predict_ensemble
+from shapiq.tree.subset_layout import output_size
 from shapiq.tree.validation import validate_tree_model
 
 
@@ -111,10 +112,8 @@ class InterventionalTreeSHAPIQ:
         data: np.ndarray,
         *,
         class_index: int | None = None,
-        debug: bool = False,
         max_order: int = 2,
         index: InterventionalTreeSHAPIQIndices = "SII",
-        index_func: Callable | None = None,
         weight_fn: Callable[[int, int, int], float] | None = None,
     ) -> None:
         r"""Initialize the InterventionalTreeSHAPIQ.
@@ -128,15 +127,11 @@ class InterventionalTreeSHAPIQ:
             class_index: Class index for classifiers. For binary
                 ``predict_proba`` models, defaults to ``1`` if left as
                 ``None``. Ignored for regressors.
-            debug: If ``True``, the C++ kernel prints debug information.
-                Defaults to ``False``.
             max_order: Maximum interaction order to compute. Defaults to ``2``.
             index: Interaction index; one of
                 :data:`InterventionalTreeSHAPIQIndices`. Replaced with
                 ``"CUSTOM"`` when ``weight_fn`` is supplied. Defaults to
                 ``"SII"``.
-            index_func: Reserved for a Python-side custom index function.
-                Defaults to ``None``.
             weight_fn: Optional custom weight callable with signature
                 ``weight_fn(coalition_size, interaction_size, n_players) -> float``.
                 When supplied, overrides ``index`` and triggers building a
@@ -150,14 +145,11 @@ class InterventionalTreeSHAPIQ:
         self.reference_data: np.ndarray = self.tree[0].cast_input(
             np.asarray(data, dtype=np.float64)
         )
-        self.debug = debug
         self.max_order = max_order
         self.index = index
         self.n_players = data.shape[1]
         self.n_features = self.reference_data.shape[1]
-        self.index_func = index_func
         self.look_up_table: np.ndarray | None = None
-        self._custom_weight_table: np.ndarray | None = None
         if weight_fn is not None:
             self.weight_fn = weight_fn
             self.index = "CUSTOM"
@@ -228,19 +220,18 @@ class InterventionalTreeSHAPIQ:
         features co-occurring on some path can be non-zero -- usually a small fraction of all
         ``C(n_features, order)`` combinations. One structural DFS per tree (C++
         ``preprocess_subset_tables``) collects them into per-order sorted tables together with
-        the flat hash index the kernel probes (the layout of :mod:`shapiq.tree.subset_index`).
-        Tables and index are ``None`` when the integer key encoding would overflow
-        (``n_features ** max_order`` beyond ``int64``); the sparse kernel is used then.
+        the flat hash index the kernel probes (``cext/subset_tables.hpp``, shared with the
+        quadrature explainer). The index is ``None`` when the integer key encoding would
+        overflow (``n_features ** max_order`` beyond ``int64``); the sparse kernel is used then.
         """
         from .cext import preprocess_subset_tables  # ty: ignore[unresolved-import]
 
         self._ensemble: tuple[np.ndarray, ...] = _ensemble_block(self.tree)
         self._decision_type: str = self.tree[0].decision_type
         _, _, features, children_left, children_right, _, _, _, _, tree_offsets, _ = self._ensemble
-        self._subset_tables: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
-        self._subset_index: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None = None
-        self._n_structural_interactions: int = self.n_features
-        tables = preprocess_subset_tables(
+        self._subset_tables: tuple[np.ndarray, np.ndarray]
+        self._subset_index: tuple[np.ndarray, np.ndarray] | None
+        self._subset_tables, self._subset_index = preprocess_subset_tables(
             features,
             children_left,
             children_right,
@@ -248,37 +239,36 @@ class InterventionalTreeSHAPIQ:
             int(self.n_features),
             int(self.max_order),
         )
-        if tables is None:
-            return
-        self._subset_tables, self._subset_index = tables
-        counts = self._subset_tables[2]
-        self._n_structural_interactions = int(self.n_features + counts[2:].sum())
+        self._n_structural_interactions = output_size(self._subset_tables[1], self.n_features, 1)
 
     def _explain_structural(self, x: np.ndarray, computation_index: str) -> dict:
         """Cohort kernel over the structural layout; the non-zero interactions as a dict."""
-        from .cext import compute_interactions_cohort  # ty: ignore[unresolved-import]
+        from .cext import (
+            compute_interactions_cohort,  # ty: ignore[unresolved-import]
+            layout_to_dict,  # ty: ignore[unresolved-import]
+        )
 
-        if self._subset_tables is None or self._subset_index is None:
+        if self._subset_index is None:
             msg = "the structural layout is unavailable for this explainer (keys overflow)."
             raise RuntimeError(msg)
-        keys, starts, counts = self._subset_tables
+        keys, counts = self._subset_tables
         if self._structural_out is None:
             self._structural_out = np.zeros(self._n_structural_interactions, dtype=np.float64)
-        return compute_interactions_cohort(
+        compute_interactions_cohort(
             *self._ensemble,
             self.reference_data,
             x.flatten(),
             self._decision_type,
             computation_index,
             self.max_order,
-            self.debug,
             self.look_up_table,
-            keys,
-            starts,
             counts,
             *self._subset_index,
-            self._structural_out,  # scratch for the kernel; the dict holds the result
+            self._structural_out,
         )
+        # the shared C++ readout, skipping exact zeros (as the sparse route reports only the
+        # interactions it touched)
+        return layout_to_dict(self._structural_out, keys, counts, self.n_features, 1, None, True)  # noqa: FBT003
 
     def _build_custom_weight_table(self) -> np.ndarray:
         """Precompute the flat weight lookup table for the custom weight function.
@@ -302,8 +292,6 @@ class InterventionalTreeSHAPIQ:
                     for s_cap_r in range(
                         min(r, s) + 1
                     ):  # s_cap_r can only go up to min(r, s) since we can't have more than r features in R and we can't have more than s features in the interaction
-                        if s_cap_r > r:
-                            continue
                         idx = e * (N * K * K * K) + r * (K * K) + s_cap_r * K + s
                         table[idx] = self._general_weight(e, r, s_cap_r, s, n)
         return table
@@ -373,7 +361,8 @@ class InterventionalTreeSHAPIQ:
         """Compute interaction values for a single instance.
 
         Routes to the structural cohort kernel while its layout fits the memory budget and
-        to the sparse batched kernel otherwise (see the class docstring). The empty interaction ``()`` is always populated with
+        to the sparse batched kernel otherwise (see the class docstring). Both routes report
+        the non-zero interactions; the empty interaction ``()`` is always populated with
         ``self.baseline_value`` before constructing the result.
 
         Args:
@@ -384,9 +373,6 @@ class InterventionalTreeSHAPIQ:
             :class:`~shapiq.interaction_values.InteractionValues` carrying the
             requested interaction ``index``, ``max_order=self.max_order``, and
             ``min_order=1`` as the declared lower bound on computed orders.
-            Note that the underlying interactions dict still contains the
-            empty-set entry ``()`` set to ``self.baseline_value``, even though
-            ``min_order`` reports ``1``.
         """
         from .cext import compute_interactions_batched_sparse  # ty: ignore[unresolved-import]
 
@@ -394,9 +380,8 @@ class InterventionalTreeSHAPIQ:
         x = self.tree[0].cast_input(np.asarray(x, dtype=np.float64))
 
         computation_index = get_computation_index(self.index)
-        interactions = {}
         # _use_sparse_path is set in __init__: the structural layout within the memory budget,
-        # else the per-explanation sparse kernel
+        # else the per-explanation sparse kernel; both report the non-zero interactions
         if not self._use_sparse_path:
             interactions = self._explain_structural(x, computation_index)
         else:
@@ -407,7 +392,6 @@ class InterventionalTreeSHAPIQ:
                 self._decision_type,
                 computation_index,
                 self.max_order,
-                self.debug,  # whether to print debug information
                 self.look_up_table,  # optional custom weight table (None → built-in index)
             )
         interactions[()] = self.baseline_value

@@ -1,4 +1,3 @@
-
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <cstring>
@@ -9,6 +8,12 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args);
 static PyMethodDef module_methods[] = {
     {"quadrature_tree_shap", quadrature_tree_shap, METH_VARARGS,
      "Compute path-dependent Shapley interaction values with Gauss-Legendre quadrature."},
+    {"preprocess_subset_tables", preprocess_subset_tables, METH_VARARGS,
+     "Per order >= 2 the sorted feature subsets co-occurring on some root-to-leaf path and their hash index, "
+     "((keys, counts), (slot_keys, slot_rows) or None when the keys overflow)."},
+    {"layout_to_dict", layout_to_dict, METH_VARARGS,
+     "Read a kernel's output array over the subset layout back into {feature tuple: value}: "
+     "layout_to_dict(out, keys, counts, n_features, min_order, feature_ids or None, skip_zeros)."},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef moduledef = {
@@ -31,8 +36,16 @@ PyMODINIT_FUNC PyInit_cext(void)
     return module;
 }
 
+// quadrature_tree_shap(thresholds, features, children_left, children_right, parents, ancestors,
+//                      c_acc, values, max_depth, num_nodes, roots, t, w, n_feats, min_order,
+//                      max_order, subset_keys, subset_counts, X, out, decision_type, cat_values,
+//                      cat_start, cat_size, children_left_default[, slot_keys, slot_rows])
+// The subset tables and their optional hash index are the layout of preprocess_subset_tables;
+// every offset is derived from subset_counts (subset_tables::derive_geometry). Without the
+// index the kernel searches the sorted tables by tuple comparison.
 static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
 {
+    (void)self;
     PyObject *thresholds_obj;
     PyObject *features_obj;
     PyObject *children_left_obj;
@@ -50,9 +63,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     int min_order;
     int max_order;
     PyObject *subset_keys_obj;
-    PyObject *subset_starts_obj;
     PyObject *subset_counts_obj;
-    PyObject *order_offsets_obj;
     PyObject *X_obj;
     PyObject *out_obj;
     const char *decision_type_cptr;
@@ -62,11 +73,9 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyObject *children_left_default_obj;
     PyObject *index_keys_obj = Py_None;
     PyObject *index_rows_obj = Py_None;
-    PyObject *index_starts_obj = Py_None;
-    PyObject *index_shifts_obj = Py_None;
 
     if (!PyArg_ParseTuple(
-            args, "OOOOOOOOiiOOOiiiOOOOOOsOOOO|OOOO",
+            args, "OOOOOOOOiiOOOiiiOOOOsOOOO|OO",
             &thresholds_obj,
             &features_obj,
             &children_left_obj,
@@ -84,9 +93,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             &min_order,
             &max_order,
             &subset_keys_obj,
-            &subset_starts_obj,
             &subset_counts_obj,
-            &order_offsets_obj,
             &X_obj,
             &out_obj,
             &decision_type_cptr,
@@ -95,23 +102,17 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             &cat_size_obj,
             &children_left_default_obj,
             &index_keys_obj,
-            &index_rows_obj,
-            &index_starts_obj,
-            &index_shifts_obj))
+            &index_rows_obj))
         return NULL;
 
-    // optional subset hash index: all four arrays, or None (the kernel then searches the tables)
+    // optional subset hash index: both arrays, or None (the kernel then searches the tables)
     const bool has_index = index_keys_obj != Py_None;
     PyArrayObject *index_keys_array = NULL;
     PyArrayObject *index_rows_array = NULL;
-    PyArrayObject *index_starts_array = NULL;
-    PyArrayObject *index_shifts_array = NULL;
     if (has_index)
     {
         index_keys_array = (PyArrayObject *)PyArray_FROM_OTF(index_keys_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
         index_rows_array = (PyArrayObject *)PyArray_FROM_OTF(index_rows_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
-        index_starts_array = (PyArrayObject *)PyArray_FROM_OTF(index_starts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-        index_shifts_array = (PyArrayObject *)PyArray_FROM_OTF(index_shifts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     }
 
     PyArrayObject *thresholds_array = (PyArrayObject *)PyArray_FROM_OTF(thresholds_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -126,9 +127,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyArrayObject *t_array = (PyArrayObject *)PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *w_array = (PyArrayObject *)PyArray_FROM_OTF(w_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *subset_keys_array = (PyArrayObject *)PyArray_FROM_OTF(subset_keys_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *subset_starts_array = (PyArrayObject *)PyArray_FROM_OTF(subset_starts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *subset_counts_array = (PyArrayObject *)PyArray_FROM_OTF(subset_counts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *order_offsets_array = (PyArrayObject *)PyArray_FROM_OTF(order_offsets_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *out_array = (PyArrayObject *)PyArray_FROM_OTF(out_obj, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY2);
     PyArrayObject *cat_values_array = (PyArrayObject *)PyArray_FROM_OTF(cat_values_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
@@ -136,14 +135,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     PyArrayObject *cat_size_array = (PyArrayObject *)PyArray_FROM_OTF(cat_size_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *children_left_default_array = (PyArrayObject *)PyArray_FROM_OTF(children_left_default_obj, NPY_BOOL, NPY_ARRAY_IN_ARRAY);
 
-    if (!thresholds_array || !features_array || !children_left_array || !children_right_array ||
-        !parents_array || !ancestors_array || !c_acc_array || !values_array || !roots_array ||
-        !t_array ||
-        !w_array || !subset_keys_array || !subset_starts_array || !subset_counts_array ||
-        !order_offsets_array || !X_array || !out_array || !cat_values_array ||
-        !cat_start_array || !cat_size_array || !children_left_default_array ||
-        (has_index && (!index_keys_array || !index_rows_array || !index_starts_array ||
-                       !index_shifts_array)))
+    auto release = [&]()
     {
         Py_XDECREF(thresholds_array);
         Py_XDECREF(features_array);
@@ -157,9 +149,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         Py_XDECREF(t_array);
         Py_XDECREF(w_array);
         Py_XDECREF(subset_keys_array);
-        Py_XDECREF(subset_starts_array);
         Py_XDECREF(subset_counts_array);
-        Py_XDECREF(order_offsets_array);
         Py_XDECREF(X_array);
         Py_XDECREF(cat_values_array);
         Py_XDECREF(cat_start_array);
@@ -167,11 +157,18 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         Py_XDECREF(children_left_default_array);
         Py_XDECREF(index_keys_array);
         Py_XDECREF(index_rows_array);
-        Py_XDECREF(index_starts_array);
-        Py_XDECREF(index_shifts_array);
         if (out_array)
             PyArray_ResolveWritebackIfCopy(out_array);
         Py_XDECREF(out_array);
+    };
+
+    if (!thresholds_array || !features_array || !children_left_array || !children_right_array ||
+        !parents_array || !ancestors_array || !c_acc_array || !values_array || !roots_array ||
+        !t_array || !w_array || !subset_keys_array || !subset_counts_array || !X_array ||
+        !out_array || !cat_values_array || !cat_start_array || !cat_size_array ||
+        !children_left_default_array || (has_index && (!index_keys_array || !index_rows_array)))
+    {
+        release();
         return NULL;
     }
 
@@ -200,6 +197,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     // validate dimensions before any PyArray_DIM(_, 1) read: on a 1-D array that would read
     // past the dims block, and a mis-sized out array would let the kernel corrupt the heap
     const char *arg_error = NULL;
+    subset_tables::Geometry geometry;
     if (num_nodes < 1 || n_feats < 1 || min_order < 1 || max_order < min_order || max_depth < 0)
         arg_error = "invalid tree or order parameters.";
     else if (PyArray_NDIM(X_array) != 2 || PyArray_NDIM(out_array) != 2)
@@ -225,37 +223,30 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         arg_error = "X must have at least n_features columns.";
     else if (PyArray_DIM(out_array, 0) != PyArray_DIM(X_array, 0))
         arg_error = "out must have one row per row of X.";
-    else if (PyArray_NDIM(subset_keys_array) != 1 ||
-             PyArray_NDIM(subset_starts_array) != 1 || PyArray_NDIM(subset_counts_array) != 1 ||
-             PyArray_NDIM(order_offsets_array) != 1 ||
-             PyArray_DIM(subset_starts_array, 0) != max_order + 1 ||
-             PyArray_DIM(subset_counts_array, 0) != max_order + 1 ||
-             PyArray_DIM(order_offsets_array, 0) != max_order + 1)
-        arg_error = "subset table descriptors must be 1-dimensional arrays of length max_order + 1.";
+    else if (PyArray_NDIM(subset_keys_array) != 1 || PyArray_NDIM(subset_counts_array) != 1 ||
+             PyArray_DIM(subset_counts_array, 0) != max_order + 1)
+        arg_error = "subset_keys and subset_counts must be 1-dimensional, counts of length max_order + 1.";
+    else if (has_index && (PyArray_NDIM(index_keys_array) != 1 || PyArray_NDIM(index_rows_array) != 1 ||
+                           PyArray_DIM(index_rows_array, 0) != PyArray_DIM(index_keys_array, 0)))
+        arg_error = "subset index arrays must be 1-dimensional and of equal length.";
+    else if (has_index && !subset_tables::keys_fit(n_feats, max_order))
+        arg_error = "the subset index key encoding overflows for this order.";
     else
     {
-        // the out width and every table slice must be consistent with the descriptors, or the
-        // kernel would write past the buffers
-        const int64_t *starts = (const int64_t *)PyArray_DATA(subset_starts_array);
         const int64_t *counts = (const int64_t *)PyArray_DATA(subset_counts_array);
-        const int64_t *offsets = (const int64_t *)PyArray_DATA(order_offsets_array);
-        const int64_t n_keys = (int64_t)PyArray_DIM(subset_keys_array, 0);
-        const int64_t out_width = (int64_t)PyArray_DIM(out_array, 1);
-        int64_t expected = (min_order <= 1) ? n_feats : 0;
-        if (min_order <= 1 && offsets[1] != 0)
-            arg_error = "the order-1 block must start at output position 0.";
-        for (int order = std::max(min_order, 2); arg_error == NULL && order <= max_order; ++order)
+        for (int order = 2; arg_error == NULL && order <= max_order; ++order)
+            if (counts[order] < 0)
+                arg_error = "subset counts must be non-negative.";
+        if (arg_error == NULL)
         {
-            if (counts[order] < 0 || starts[order] < 0 ||
-                starts[order] + counts[order] * order > n_keys)
-                arg_error = "subset tables are inconsistent with the subset_keys length.";
-            else if (offsets[order] < 0 || offsets[order] + counts[order] > out_width)
-                arg_error = "an order's output block lies outside the out array.";
-            else
-                expected += counts[order];
+            // every table slice, index block and output block must be consistent with the
+            // counts, or the kernel would read or write past the buffers
+            geometry = subset_tables::derive_geometry(counts, max_order, n_feats, min_order);
+            arg_error = subset_tables::check_layout(
+                geometry, (int64_t)PyArray_DIM(subset_keys_array, 0),
+                has_index ? (int64_t)PyArray_DIM(index_keys_array, 0) : -1,
+                (int64_t)PyArray_DIM(out_array, 1));
         }
-        if (arg_error == NULL && out_width != expected)
-            arg_error = "out width does not match the number of requested interactions.";
     }
 
     const int *roots = (const int *)PyArray_DATA(roots_array);
@@ -271,38 +262,6 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             }
         }
     }
-    if (arg_error == NULL && has_index)
-    {
-        // every probe must stay inside the index arrays (rows are bounds-checked per lookup)
-        if (PyArray_NDIM(index_keys_array) != 1 || PyArray_NDIM(index_rows_array) != 1 ||
-            PyArray_NDIM(index_starts_array) != 1 || PyArray_NDIM(index_shifts_array) != 1)
-            arg_error = "subset index arrays must be 1-dimensional.";
-        else if (PyArray_DIM(index_rows_array, 0) != PyArray_DIM(index_keys_array, 0) ||
-                 PyArray_DIM(index_starts_array, 0) != max_order + 1 ||
-                 PyArray_DIM(index_shifts_array, 0) != max_order + 1)
-            arg_error = "subset index arrays have inconsistent lengths.";
-        else
-        {
-            const int64_t n_slots = (int64_t)PyArray_DIM(index_keys_array, 0);
-            const int64_t *starts = (const int64_t *)PyArray_DATA(index_starts_array);
-            const int64_t *shifts = (const int64_t *)PyArray_DATA(index_shifts_array);
-            int64_t cap = 1;  // the int64 key encoding needs n_feats^max_order to fit
-            for (int i = 0; arg_error == NULL && i < max_order; ++i)
-            {
-                if (cap > INT64_MAX / n_feats)
-                    arg_error = "the subset index key encoding overflows for this order.";
-                else
-                    cap *= n_feats;
-            }
-            for (int order = 2; arg_error == NULL && order <= max_order; ++order)
-            {
-                // block of 2^(64 - shift) slots, 1 <= 64 - shift <= 62
-                if (shifts[order] < 2 || shifts[order] > 63 || starts[order] < 0 ||
-                    starts[order] > n_slots - (int64_t(1) << (64 - shifts[order])))
-                    arg_error = "subset index blocks lie outside the index arrays.";
-            }
-        }
-    }
     const char *kernel_error = NULL;
     if (arg_error == NULL)
     {
@@ -315,47 +274,20 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
         {
             subset_index.keys = (const int64_t *)PyArray_DATA(index_keys_array);
             subset_index.rows = (const int32_t *)PyArray_DATA(index_rows_array);
-            subset_index.starts = (const int64_t *)PyArray_DATA(index_starts_array);
-            subset_index.shifts = (const int64_t *)PyArray_DATA(index_shifts_array);
+            subset_index.starts = geometry.block_starts.data();
+            subset_index.shifts = geometry.block_shifts.data();
         }
         const bool complete = quadrature_tree_shap(
             tree, t, w, n_quad, roots, n_trees, n_feats, min_order, max_order,
             (const int32_t *)PyArray_DATA(subset_keys_array),
-            (const int64_t *)PyArray_DATA(subset_starts_array),
             (const int64_t *)PyArray_DATA(subset_counts_array),
-            (const int64_t *)PyArray_DATA(order_offsets_array),
-            X, n_row, n_col, out_stride, out, has_index ? &subset_index : NULL);
+            geometry, X, n_row, n_col, out_stride, out, has_index ? &subset_index : NULL);
         if (!complete)
             kernel_error = "a subset on a decision path is missing from the subset tables; the "
-                           "tables (_collect_cooccurring_subsets) and the kernel traversal disagree.";
+                           "tables (preprocess_subset_tables) and the kernel traversal disagree.";
     }
 
-    Py_XDECREF(thresholds_array);
-    Py_XDECREF(features_array);
-    Py_XDECREF(children_left_array);
-    Py_XDECREF(children_right_array);
-    Py_XDECREF(parents_array);
-    Py_XDECREF(ancestors_array);
-    Py_XDECREF(c_acc_array);
-    Py_XDECREF(values_array);
-    Py_XDECREF(roots_array);
-    Py_XDECREF(t_array);
-    Py_XDECREF(w_array);
-    Py_XDECREF(subset_keys_array);
-    Py_XDECREF(subset_starts_array);
-    Py_XDECREF(subset_counts_array);
-    Py_XDECREF(order_offsets_array);
-    Py_XDECREF(X_array);
-    Py_XDECREF(cat_values_array);
-    Py_XDECREF(cat_start_array);
-    Py_XDECREF(cat_size_array);
-    Py_XDECREF(children_left_default_array);
-    Py_XDECREF(index_keys_array);
-    Py_XDECREF(index_rows_array);
-    Py_XDECREF(index_starts_array);
-    Py_XDECREF(index_shifts_array);
-    PyArray_ResolveWritebackIfCopy(out_array);
-    Py_XDECREF(out_array);
+    release();
 
     if (arg_error != NULL)
     {

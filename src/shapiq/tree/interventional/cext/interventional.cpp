@@ -6,15 +6,12 @@
 #include <algorithm>
 #include "weights.cpp"
 #include "utils.cpp"
+#include "../../cext/subset_tables.hpp"
 
 namespace algorithms
 {
 
     using SparseInteractionMap = std::unordered_map<BitSet, double, BitSetHash, BitSetEqual>;
-
-    // Multiplier of the multiply-shift subset hash; must equal INDEX_HASH_MULTIPLIER in
-    // shapiq/tree/subset_index.py (2^64 / golden ratio).
-    constexpr uint64_t kIndexHashMultiplier = 0x9E3779B97F4A7C15ULL;
 
     // A feature subset as one int64: its sorted features read as the digits (feature + 1) of a
     // number in base num_features + 1. The +1 keeps a leading feature 0 from vanishing, so
@@ -36,7 +33,7 @@ namespace algorithms
     // Open-addressing map from a subset key to its accumulated contribution, filled per
     // explanation with exactly the subsets the E/R sets of its leaves produce. Replaces the
     // std::unordered_map<BitSet, double> of the sparse path: no allocation per entry, an
-    // integer key, a multiply-shift hash (the multiplier of the quadrature subset index), and
+    // integer key, the multiply-shift hash of the shared subset index, and
     // linear probing in contiguous arrays. Grows by doubling to stay at most half full.
     class FlatSubsetMap
     {
@@ -105,7 +102,7 @@ namespace algorithms
 
         uint64_t home(int64_t key) const
         {
-            return (static_cast<uint64_t>(key) * kIndexHashMultiplier) >> shift_;
+            return (static_cast<uint64_t>(key) * subset_tables::kIndexHashMultiplier) >> shift_;
         }
 
         void grow()
@@ -126,48 +123,6 @@ namespace algorithms
         int shift_ = 63;
         size_t size_ = 0;
     };
-
-    inline int get_interaction_index(int i, int j, int num_features, int max_order)
-    {
-        // Helper function to compute compact index for order-2 interactions
-        // For max_order=1: just returns feature (linear indexing)
-        // For max_order=2: maps (i,j) pairs to compact indices:
-        //   - Indices 0..n-1: main effects (i,i)
-        //   - Indices n onwards: pairwise (i,j) where i < j in row-major upper triangle order
-        if (max_order > 3)
-        {
-            throw std::invalid_argument("get_interaction_index only supports max_order 1, 2, or 3");
-        }
-        if (max_order == 1)
-        {
-            return i;
-        }
-        if (i == j)
-        {
-            return i;
-        }
-        if (i > j)
-        {
-            std::swap(i, j);
-        }
-        // We store as upper triangle without diagonal (since diagonal are the main effects).
-        // The first num_features are the main effects (i,i).
-        // The first term shifts us past the main effects.
-        // Then we calculate the offset for the upper triangle index.
-        // The number of interactions before row i is the sum of (num_features - 1) + (num_features - 2) + ... + (num_features - i) = i * num_features - i*(i+1)/2.
-        // Then we add (j - i - 1) to get to the correct column within row i.
-        return num_features + (i * num_features - i * (i + 1) / 2) + (j - i - 1);
-    }
-
-    inline int get_interaction_index3(int i, int j, int k, int num_features)
-    {
-        // Ensure i < j < k
-        if (i > j) std::swap(i, j);
-        if (j > k) std::swap(j, k);
-        if (i > j) std::swap(i, j);
-        int base = num_features + num_features * (num_features - 1) / 2;
-        return base + i + j * (j - 1) / 2 + k * (k - 1) * (k - 2) / 6;
-    }
 
     void enumerate_r_subsets(const uint64_t *r_features,
                              int r_count,
@@ -439,7 +394,6 @@ namespace algorithms
                                       int num_features,
                                       IndexType index,
                                       int max_order,
-                                      int verbose,
                                       std::vector<StackFrame> &stack)
     {
         traverse_explain_vs_reference(
@@ -498,237 +452,5 @@ namespace algorithms
                 }
             });
     }
-
-
-    void first_order_bitset_update(const BitSet E, const BitSet R, double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
-    {
-        const double wE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, 1));
-        const double wR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 1));
-        E.for_each_set_bit([&](uint64_t feature)
-                                         { interactions[feature] += value * wE; });
-        R.for_each_set_bit([&](uint64_t feature)
-                                         { interactions[feature] += value * wR; });
-    }
-
-    void second_order_bitset_update(const BitSet E, const BitSet R,
-        uint64_t *e_buffer, uint64_t *r_buffer,
-        uint64_t e_count, uint64_t r_count,
-        double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
-    {
-        // Main Effect updates (diagonal elements)
-        const double wE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(),R.num_bits(), 1, 0, 1, index, 2));
-        const double wR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 2));
-        E.for_each_set_bit([&](uint64_t feature)
-                                 {
-            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, 2);
-            interactions[idx] += value * wE; });
-        R.for_each_set_bit([&](uint64_t feature)
-                                 {
-            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, 2);
-            interactions[idx] += value * wR; });
-
-        // Fill the buffers with the feature indices in E and R.
-        // This avoids repeated memory allocations during the interaction updates.
-        E.fill_buffer(e_buffer);
-        R.fill_buffer(r_buffer);
-
-        // Interaction in E (upper triangle)
-        const double wEE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, 2));
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = i + 1; j < e_count; j++)
-            {
-                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, 2);
-                interactions[idx] += value * wEE;
-            }
-        }
-        // Interactions in R (upper triangle)
-        const double wRR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, 2));
-        for (size_t i = 0; i < r_count; i++)
-        {
-            for (size_t j = i + 1; j < r_count; j++)
-            {
-                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
-                interactions[idx] += value * wRR;
-            }
-        }
-        // Cross interactions (E × R)
-        const double wER = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, 2));
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = 0; j < r_count; j++)
-            {
-                if (e_buffer[i] == r_buffer[j])
-                    continue; // Skip if the same feature is in both E and R, as this would correspond to a main effect, not an interaction.
-                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
-                interactions[idx] += value * wER;
-            }
-        }
-    }
-
-    void third_order_bitset_update(const BitSet E, const BitSet R,
-        uint64_t *e_buffer, uint64_t *r_buffer,
-        uint64_t e_count, uint64_t r_count,
-        double value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
-    {
-        // Precompute all weight types
-        const double wE   = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, max_order));
-        const double wR   = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, max_order));
-        const double wEE  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, max_order));
-        const double wRR  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, max_order));
-        const double wER  = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, max_order));
-        const double wEEE = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 3, 0, 3, index, max_order));
-        const double wRRR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 3, 3, index, max_order));
-        const double wEER = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 1, 3, index, max_order));
-        const double wERR = static_cast<double>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 2, 3, index, max_order));
-
-        E.fill_buffer(e_buffer);
-        R.fill_buffer(r_buffer);
-
-        // Order-1
-        for (size_t i = 0; i < e_count; i++)
-        {
-            int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[i]), num_features, 2);
-            interactions[idx] += value * wE;
-        }
-        for (size_t i = 0; i < r_count; i++)
-        {
-            int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[i]), num_features, 2);
-            interactions[idx] += value * wR;
-        }
-
-        // Order-2 EE
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = i + 1; j < e_count; j++)
-            {
-                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, 2);
-                interactions[idx] += value * wEE;
-            }
-        }
-        // Order-2 RR
-        for (size_t i = 0; i < r_count; i++)
-        {
-            for (size_t j = i + 1; j < r_count; j++)
-            {
-                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
-                interactions[idx] += value * wRR;
-            }
-        }
-        // Order-2 ER
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = 0; j < r_count; j++)
-            {
-                if (e_buffer[i] == r_buffer[j]) continue;
-                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
-                interactions[idx] += value * wER;
-            }
-        }
-
-        // Order-3 EEE
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = i + 1; j < e_count; j++)
-            {
-                for (size_t k = j + 1; k < e_count; k++)
-                {
-                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(e_buffer[k]), num_features);
-                    interactions[idx] += value * wEEE;
-                }
-            }
-        }
-        // Order-3 RRR
-        for (size_t i = 0; i < r_count; i++)
-        {
-            for (size_t j = i + 1; j < r_count; j++)
-            {
-                for (size_t k = j + 1; k < r_count; k++)
-                {
-                    int idx = get_interaction_index3(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
-                    interactions[idx] += value * wRRR;
-                }
-            }
-        }
-        // Order-3 EER
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = i + 1; j < e_count; j++)
-            {
-                for (size_t k = 0; k < r_count; k++)
-                {
-                    uint64_t rk = r_buffer[k];
-                    if (e_buffer[i] == rk || e_buffer[j] == rk) continue;
-                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), static_cast<int>(rk), num_features);
-                    interactions[idx] += value * wEER;
-                }
-            }
-        }
-        // Order-3 ERR
-        for (size_t i = 0; i < e_count; i++)
-        {
-            for (size_t j = 0; j < r_count; j++)
-            {
-                if (e_buffer[i] == r_buffer[j]) continue;
-                for (size_t k = j + 1; k < r_count; k++)
-                {
-                    if (e_buffer[i] == r_buffer[k]) continue;
-                    int idx = get_interaction_index3(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), static_cast<int>(r_buffer[k]), num_features);
-                    interactions[idx] += value * wERR;
-                }
-            }
-        }
-    }
-
-    void any_order_bitset_update(const BitSet E, const BitSet R,
-        uint64_t *e_buffer, uint64_t *r_buffer,
-        uint64_t e_count, uint64_t r_count,
-        double value, SparseInteractionMap &interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
-    {
-
-        if (e_count > 0)
-        {
-            E.fill_buffer(e_buffer);
-        }
-        if (r_count > 0)
-        {
-            R.fill_buffer(r_buffer);
-        }
-
-        BitSet subset(num_features);
-        // Compute contributions for all subsets of E and R up to the specified max_order.
-        //  We iterate over all possible subset sizes s from 1 to max_order.
-        // For each subset size s, we determine how many features in the subset come from E (s_cap_e) and how many come from R (s_cap_r).
-        // We then compute the weight for that combination of features using the weight cache and call the recursive enumeration functions to generate all subsets of E and R with the specified number of features, updating the interactions map with the contributions.
-        for (int s = 1; s <= max_order; ++s)
-        {
-            int min_from_e = std::max(0, s - static_cast<int>(r_count));
-            int max_from_e = std::min(s, static_cast<int>(e_count));
-            for (int s_cap_e = min_from_e; s_cap_e <= max_from_e; ++s_cap_e)
-            {
-                int s_cap_r = s - s_cap_e;
-                const double weight = weight_cache.get_weight(num_features, e_count, r_count, s_cap_e, s_cap_r, s, index, max_order);
-                if (weight == 0.0)
-                {
-                    continue;
-                }
-                const double contribution = static_cast<double>(value) * weight;
-                // We now update all the interactions corresponding to subsets of E and R with s_cap_e features from E and s_cap_r features from R by calling the enumerate_e_subsets function, which will recursively generate all such subsets and update the interactions map with the computed contribution for each subset.
-                enumerate_e_subsets(
-                    e_buffer,
-                    static_cast<int>(e_count),
-                    r_buffer,
-                    static_cast<int>(r_count),
-                    0,
-                    s_cap_e,
-                    s_cap_r,
-                    subset,
-                    contribution,
-                    interactions);
-            }
-        }
-    }
-
-
 
 }

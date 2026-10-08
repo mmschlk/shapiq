@@ -28,6 +28,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
 
   and verify with `stat -f "%Sm %N" build/temp.*/src/shapiq/tree/*/cext/cext.o`
   that the object file is fresh before trusting a benchmark or a test result.
+- `src/shapiq/tree/cext/subset_tables.hpp` (subset tables, hash index, the
+  `preprocess_subset_tables` and `layout_to_dict` bindings) is `#include`d by BOTH the interventional and the
+  quadrature extension and registered in both modules. Same rule: editing it needs
+  `rm -rf build`. The kernels receive only `(keys, counts, slot_keys, slot_rows)` and derive
+  table starts, index block geometry and output offsets from `counts` (`derive_geometry`);
+  `shapiq/tree/subset_layout.py` and the numpy oracle `tests/.../subset_index_reference.py`
+  mirror the key encoding, the hash and the `block_bits` rule, so a change to any of them
+  must be made in all three places.
 - The kernels are built with `-ffast-math`, which compiles `std::isnan` to
   `false` and silently breaks missing-value (NaN) routing.
   `-fno-finite-math-only` must stay AFTER `-ffast-math` in `setup.py`.

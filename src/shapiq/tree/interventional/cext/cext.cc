@@ -1,12 +1,8 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "interventional.cpp"
-#include <cstring>
-#include <iostream>
 #include <vector>
-#include <unordered_map>
 #include <omp.h>
-#include <chrono>
 
 #ifdef _MSC_VER
 #define __restrict__ __restrict
@@ -20,12 +16,16 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args);
 static PyObject *predict_ensemble_sum(PyObject *self, PyObject *args);
 static PyObject *preprocess_subset_tables(PyObject *self, PyObject *args);
+static PyObject *layout_to_dict(PyObject *self, PyObject *args);
 
 static PyMethodDef module_methods[] = {
     {"compute_interactions_batched_sparse", compute_interactions_batched_sparse, METH_VARARGS, "Compute sparse feature interactions in batches using the interventional algorithm."},
-    {"compute_interactions_cohort", compute_interactions_cohort, METH_VARARGS, "Cohort DFS sharing one tree walk across all reference samples, accumulating every order over the structural subset layout into `out`."},
+    {"compute_interactions_cohort", compute_interactions_cohort, METH_VARARGS, "Cohort DFS sharing one tree walk across all reference samples, accumulating every order into the float64 array `out` laid out as the structural subset layout (order-1 block, then the table rows of each order)."},
     {"predict_ensemble_sum", predict_ensemble_sum, METH_VARARGS, "Route every row of X through every tree and return the per-row sum of leaf predictions."},
-    {"preprocess_subset_tables", preprocess_subset_tables, METH_VARARGS, "From the ensemble block's features, children_left, children_right and tree_offsets: per order >= 2 the sorted feature subsets co-occurring on some root-to-leaf path and their hash index, ((keys, starts, counts), (slot_keys, slot_rows, block_starts, block_shifts)), or None when the keys overflow."},
+    {"preprocess_subset_tables", preprocess_subset_tables, METH_VARARGS, "From the ensemble block's features, children_left, children_right and tree_offsets: per order >= 2 the sorted feature subsets co-occurring on some root-to-leaf path and their hash index, ((keys, counts), (slot_keys, slot_rows) or None when the keys overflow)."},
+    {"layout_to_dict", layout_to_dict, METH_VARARGS,
+     "Read a kernel's output array over the subset layout back into {feature tuple: value}: "
+     "layout_to_dict(out, keys, counts, n_features, min_order, feature_ids or None, skip_zeros)."},
     {NULL, NULL, 0, NULL}};
 /** Define the Python Module for both Python 3 and Python 2 Version.
  * This code is mostly copied from https://github.com/yupbank/linear_tree_shap/blob/main/linear_tree_shap/cext/_cext.cc
@@ -362,7 +362,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
      * order into a per-thread subset map (FlatSubsetMap, or the BitSet map when the keys
      * overflow), returned as {feature tuple: value}. Arguments: the ensemble block (see
      * EnsembleBlock), reference_data (n_ref x n_features float64), explain_data (float64),
-     * decision_type, index, max_order, verbose, and an optional custom weight table.
+     * decision_type, index, max_order, and an optional custom weight table.
      */
     PyObject *values_obj, *thresholds_obj, *features_obj, *children_left_obj, *children_right_obj,
         *children_missing_obj, *cat_values_obj, *cat_start_obj, *cat_size_obj, *tree_offsets_obj,
@@ -372,9 +372,8 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     const char *decision_type_cptr;
     const char *index_cptr;
     int max_order;
-    int verbose;
     PyObject *weight_table_obj = Py_None;
-    if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOOssii|O", &values_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj, &tree_offsets_obj, &cat_offsets_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj))
+    if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOOssi|O", &values_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj, &tree_offsets_obj, &cat_offsets_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &weight_table_obj))
         return NULL;
     if (max_order < 1)
     {
@@ -501,7 +500,6 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
                         n_features,
                         index_type,
                         max_order,
-                        verbose,
                         stack);
                 }
             }
@@ -673,40 +671,18 @@ static void cohort_walk(
 // Output over the subsets that co-occur on some path (preprocess_subset_tables): a dense
 // order-1 block [0, n_features), then per order >= 2 the rows of its table at
 // order_offsets[order]. A subset's row is found through the flat hash index
-// (shapiq.tree.subset_index.build_subset_index); keys are the sorted features as base-
-// n_features digits.
+// (subset_tables::SubsetIndex, built by preprocess_subset_tables); keys are the sorted
+// features as base-n_features digits.
 struct StructuralLayout
 {
     int n_features;
     int max_order;
     const int64_t *counts;        // per order: rows in its table
     const int64_t *order_offsets; // per order: start of its block in the output
-    const int64_t *slot_keys;     // hash index: slot keys, -1 = empty
-    const int32_t *slot_rows;     // hash index: slot row ids
-    const int64_t *block_starts;  // per order: first slot of its block
-    const int64_t *block_shifts;  // per order: 64 - log2(block size)
+    subset_tables::SubsetIndex index;  // hash index of the tables (preprocess_subset_tables)
 
     // row of a sorted order-s subset with the given key, or -1 when it is not in the table
-    int64_t row(int64_t key, int s) const
-    {
-        const int64_t block = block_starts[s];
-        const int shift = static_cast<int>(block_shifts[s]);
-        const uint64_t mask = (uint64_t(1) << (64 - shift)) - 1;
-        uint64_t slot = (static_cast<uint64_t>(key) * algorithms::kIndexHashMultiplier) >> shift;
-        for (uint64_t probe = 0; probe <= mask; ++probe)
-        {
-            const int64_t stored = slot_keys[block + slot];
-            if (stored == key)
-            {
-                const int64_t r = slot_rows[block + slot];
-                return (r >= 0 && r < counts[s]) ? r : -1;
-            }
-            if (stored < 0)
-                return -1;
-            slot = (slot + 1) & mask;
-        }
-        return -1;
-    }
+    int64_t row(int64_t key, int s) const { return index.row(key, s, counts); }
 };
 
 // Weights for every (|E|, |R|, s_cap_e, s_cap_r) a leaf can produce, computed once per call:
@@ -843,149 +819,61 @@ struct StructuralLeafUpdate
     }
 };
 
-// Structural result -> {sorted feature tuple: value}, skipping zeros: the order-1 block by
-// feature id, then each table row's features (subset_keys, the layout of
-// preprocess_subset_tables).
-static PyObject *structural_result_to_dict(const double *out, int n_features, int max_order,
-                                           const int32_t *subset_keys, const int64_t *subset_starts,
-                                           const int64_t *counts, const int64_t *order_offsets)
-{
-    PyObject *output = PyDict_New();
-    if (!output)
-        return NULL;
-    std::vector<PyObject *> ids(static_cast<size_t>(n_features), nullptr);
-    auto feature_id = [&](int32_t f) -> PyObject *
-    {
-        PyObject *&id = ids[static_cast<size_t>(f)];
-        if (!id)
-            id = PyLong_FromLong(f);
-        if (id)
-            Py_INCREF(id);
-        return id;  // new reference, or NULL
-    };
-    bool failed = false;
-    auto put = [&](PyObject *key, double value)
-    {
-        PyObject *item = key ? PyFloat_FromDouble(value) : NULL;
-        if (!item || PyDict_SetItem(output, key, item) < 0)
-            failed = true;
-        Py_XDECREF(item);
-        Py_XDECREF(key);
-    };
-    for (int f = 0; f < n_features && !failed; ++f)
-    {
-        if (out[f] == 0.0)
-            continue;
-        PyObject *key = PyTuple_New(1);
-        if (key)
-            PyTuple_SET_ITEM(key, 0, feature_id(static_cast<int32_t>(f)));
-        put(key, out[f]);
-    }
-    for (int order = 2; order <= max_order && !failed; ++order)
-    {
-        const int32_t *row = subset_keys + subset_starts[order];
-        const double *values = out + order_offsets[order];
-        for (int64_t r = 0; r < counts[order] && !failed; ++r, row += order)
-        {
-            if (values[r] == 0.0)
-                continue;
-            PyObject *key = PyTuple_New(order);
-            for (int i = 0; key && i < order; ++i)
-                PyTuple_SET_ITEM(key, i, feature_id(row[i]));
-            put(key, values[r]);
-        }
-    }
-    for (PyObject *id : ids)
-        Py_XDECREF(id);
-    if (failed || PyErr_Occurred())
-    {
-        Py_DECREF(output);
-        return NULL;
-    }
-    return output;
-}
-
 // Cohort walk over every tree writing into the structural layout: one output row per
 // thread in a contiguous (threads x rows) block, merged afterwards by a parallel
 // vectorised column sum into `out`. Returns None, or raises when a subset enumerated at a
-// leaf is missing from the tables (the tables and the walk disagree).
+// leaf is missing from the tables (the tables and the walk disagree). The layout's offsets
+// and block geometry are derived from `counts` (subset_tables::derive_geometry).
 template <typename Cleanup>
 static PyObject *compute_interactions_structural(
     std::vector<Tree> &trees, const double *reference_data, const double *explain_data,
     int n_ref, int n_features, IndexType index_type, int max_order,
     const double *custom_table, int64_t custom_N, int64_t custom_K,
-    PyObject *subset_keys_obj, PyObject *subset_starts_obj, PyObject *counts_obj,
-    PyObject *slot_keys_obj, PyObject *slot_rows_obj, PyObject *block_starts_obj,
-    PyObject *block_shifts_obj, PyObject *out_obj, Cleanup &cleanup_arrays)
+    PyObject *counts_obj, PyObject *slot_keys_obj, PyObject *slot_rows_obj, PyObject *out_obj,
+    Cleanup &cleanup_arrays)
 {
-    PyArrayObject *subset_keys_arr = (PyArrayObject *)PyArray_FROM_OTF(subset_keys_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *subset_starts_arr = (PyArrayObject *)PyArray_FROM_OTF(subset_starts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *counts_arr = (PyArrayObject *)PyArray_FROM_OTF(counts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *slot_keys_arr = (PyArrayObject *)PyArray_FROM_OTF(slot_keys_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *slot_rows_arr = (PyArrayObject *)PyArray_FROM_OTF(slot_rows_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *block_starts_arr = (PyArrayObject *)PyArray_FROM_OTF(block_starts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *block_shifts_arr = (PyArrayObject *)PyArray_FROM_OTF(block_shifts_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *out_arr = (PyArrayObject *)PyArray_FROM_OTF(out_obj, NPY_FLOAT64, NPY_ARRAY_INOUT_ARRAY2);
     auto release = [&]()
     {
-        Py_XDECREF(subset_keys_arr);
-        Py_XDECREF(subset_starts_arr);
         Py_XDECREF(counts_arr);
         Py_XDECREF(slot_keys_arr);
         Py_XDECREF(slot_rows_arr);
-        Py_XDECREF(block_starts_arr);
-        Py_XDECREF(block_shifts_arr);
         if (out_arr)
             PyArray_ResolveWritebackIfCopy(out_arr);
         Py_XDECREF(out_arr);
         cleanup_arrays();
     };
-    if (!subset_keys_arr || !subset_starts_arr || !counts_arr || !slot_keys_arr || !slot_rows_arr || !block_starts_arr || !block_shifts_arr || !out_arr)
+    if (!counts_arr || !slot_keys_arr || !slot_rows_arr || !out_arr)
     {
         release();
-        PyErr_SetString(PyExc_TypeError, "structural layout arrays must be numpy arrays (int64 counts/index, int32 rows, float64 out)");
+        PyErr_SetString(PyExc_TypeError, "structural layout arrays must be numpy arrays (int64 counts and slot keys, int32 slot rows, float64 out)");
         return NULL;
     }
     const char *arg_error = NULL;
-    const int64_t n_orders = max_order + 1;
-    if (PyArray_NDIM(subset_keys_arr) != 1 || PyArray_NDIM(subset_starts_arr) != 1 ||
-        PyArray_NDIM(counts_arr) != 1 || PyArray_NDIM(slot_keys_arr) != 1 || PyArray_NDIM(slot_rows_arr) != 1 ||
-        PyArray_NDIM(block_starts_arr) != 1 || PyArray_NDIM(block_shifts_arr) != 1 || PyArray_NDIM(out_arr) != 1)
+    subset_tables::Geometry geometry;
+    const int64_t *counts = NULL;
+    if (PyArray_NDIM(counts_arr) != 1 || PyArray_NDIM(slot_keys_arr) != 1 || PyArray_NDIM(slot_rows_arr) != 1 ||
+        PyArray_NDIM(out_arr) != 1)
         arg_error = "structural layout arrays must be 1-dimensional.";
-    else if (PyArray_DIM(counts_arr, 0) != n_orders || PyArray_DIM(subset_starts_arr, 0) != n_orders ||
-             PyArray_DIM(block_starts_arr, 0) != n_orders ||
-             PyArray_DIM(block_shifts_arr, 0) != n_orders || PyArray_DIM(slot_rows_arr, 0) != PyArray_DIM(slot_keys_arr, 0))
+    else if (PyArray_DIM(counts_arr, 0) != max_order + 1 || PyArray_DIM(slot_rows_arr, 0) != PyArray_DIM(slot_keys_arr, 0))
         arg_error = "structural layout arrays have inconsistent lengths.";
-    const int64_t *counts = arg_error ? NULL : (const int64_t *)PyArray_DATA(counts_arr);
-    std::vector<int64_t> order_offsets(static_cast<size_t>(n_orders), 0);
-    int64_t n_rows = n_features;
-    if (!arg_error)
+    else if (!subset_tables::keys_fit(n_features, max_order))
+        arg_error = "the subset key encoding overflows for this order.";
+    else
     {
-        const int64_t n_slots = (int64_t)PyArray_DIM(slot_keys_arr, 0);
-        const int64_t *bstarts = (const int64_t *)PyArray_DATA(block_starts_arr);
-        const int64_t *bshifts = (const int64_t *)PyArray_DATA(block_shifts_arr);
-        int64_t cap = 1;
-        for (int i = 0; !arg_error && i < max_order; ++i)
+        counts = (const int64_t *)PyArray_DATA(counts_arr);
+        for (int order = 2; arg_error == NULL && order <= max_order; ++order)
+            if (counts[order] < 0)
+                arg_error = "subset counts must be non-negative.";
+        if (arg_error == NULL)
         {
-            if (cap > INT64_MAX / n_features)
-                arg_error = "the subset key encoding overflows for this order.";
-            else
-                cap *= n_features;
+            geometry = subset_tables::derive_geometry(counts, max_order, n_features, 1);
+            arg_error = subset_tables::check_layout(geometry, geometry.n_keys, (int64_t)PyArray_DIM(slot_keys_arr, 0),
+                                                    (int64_t)PyArray_DIM(out_arr, 0));
         }
-        const int64_t *sstarts = (const int64_t *)PyArray_DATA(subset_starts_arr);
-        const int64_t n_keys = (int64_t)PyArray_DIM(subset_keys_arr, 0);
-        for (int order = 2; !arg_error && order <= max_order; ++order)
-        {
-            order_offsets[order] = n_rows;
-            if (counts[order] < 0 || sstarts[order] < 0 || sstarts[order] + counts[order] * order > n_keys)
-                arg_error = "subset tables are inconsistent with the subset_keys length.";
-            else if (bshifts[order] < 2 || bshifts[order] > 63 || bstarts[order] < 0 ||
-                     bstarts[order] > n_slots - (int64_t(1) << (64 - bshifts[order])))
-                arg_error = "subset index blocks lie outside the index arrays.";
-            n_rows += counts[order];
-        }
-        if (!arg_error && PyArray_DIM(out_arr, 0) != n_rows)
-            arg_error = "out must have n_features + (number of table rows) entries.";
     }
     if (arg_error)
     {
@@ -993,16 +881,17 @@ static PyObject *compute_interactions_structural(
         PyErr_SetString(PyExc_ValueError, arg_error);
         return NULL;
     }
+    const int64_t n_rows = geometry.n_outputs;
 
     StructuralLayout layout;
     layout.n_features = n_features;
     layout.max_order = max_order;
     layout.counts = counts;
-    layout.order_offsets = order_offsets.data();
-    layout.slot_keys = (const int64_t *)PyArray_DATA(slot_keys_arr);
-    layout.slot_rows = (const int32_t *)PyArray_DATA(slot_rows_arr);
-    layout.block_starts = (const int64_t *)PyArray_DATA(block_starts_arr);
-    layout.block_shifts = (const int64_t *)PyArray_DATA(block_shifts_arr);
+    layout.order_offsets = geometry.output_offsets.data();
+    layout.index.keys = (const int64_t *)PyArray_DATA(slot_keys_arr);
+    layout.index.rows = (const int32_t *)PyArray_DATA(slot_rows_arr);
+    layout.index.starts = geometry.block_starts.data();
+    layout.index.shifts = geometry.block_shifts.data();
     double *out = (double *)PyArray_DATA(out_arr);
     std::fill(out, out + n_rows, 0.0);
     const double inv_scaling = (n_ref > 0) ? 1.0 / (double)n_ref : 0.0;
@@ -1076,28 +965,25 @@ static PyObject *compute_interactions_structural(
         missing = missing || (flag != 0);
     Py_END_ALLOW_THREADS
 
-    PyObject *output = NULL;
-    if (missing)
-        PyErr_SetString(PyExc_RuntimeError, "a subset reached by the walk is missing from the subset tables (preprocess_subset_tables and the cohort walk disagree), or a path holds more than 64 features.");
-    else
-        output = structural_result_to_dict(out, n_features, max_order,
-                                           (const int32_t *)PyArray_DATA(subset_keys_arr),
-                                           (const int64_t *)PyArray_DATA(subset_starts_arr),
-                                           counts, order_offsets.data());
     release();
-    return output;
+    if (missing)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "a subset reached by the walk is missing from the subset tables (preprocess_subset_tables and the cohort walk disagree), or a path holds more than 64 features.");
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args)
 {
     /**
      * Structural kernel: one cohort DFS per tree shared across the reference rows,
-     * accumulating every order over the structural subset layout (preprocess_subset_tables),
-     * returned as {feature tuple: value}. Arguments: the ensemble block (see EnsembleBlock),
-     * reference_data, explain_point, decision_type, index, max_order, verbose, the custom
-     * weight table or None, then the subset tables (keys, starts, counts), the hash index
-     * (slot_keys, slot_rows, block_starts, block_shifts) and a float64 scratch array `out`
-     * of n_features + sum(counts) entries.
+     * accumulating every order into `out`, laid out as the structural subset layout of
+     * preprocess_subset_tables (order-1 block, then each order's table rows). Arguments: the
+     * ensemble block (see EnsembleBlock), reference_data, explain_point, decision_type, index,
+     * max_order, the custom weight table or None, the per-order row counts, the hash index
+     * (slot_keys, slot_rows) and the float64 output array `out` of n_features + sum(counts)
+     * entries. Returns None.
      */
     PyObject *values_obj, *thresholds_obj, *features_obj, *children_left_obj, *children_right_obj,
         *children_missing_obj, *cat_values_obj, *cat_start_obj, *cat_size_obj, *tree_offsets_obj,
@@ -1107,11 +993,9 @@ static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args)
     const char *decision_type_cptr;
     const char *index_cptr;
     int max_order;
-    int verbose;
     PyObject *weight_table_obj;
-    PyObject *subset_keys_obj, *subset_starts_obj, *counts_obj, *slot_keys_obj, *slot_rows_obj,
-        *block_starts_obj, *block_shifts_obj, *out_obj;
-    if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOOssiiOOOOOOOOO", &values_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj, &tree_offsets_obj, &cat_offsets_obj, &reference_data_obj, &explain_point_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj, &subset_keys_obj, &subset_starts_obj, &counts_obj, &slot_keys_obj, &slot_rows_obj, &block_starts_obj, &block_shifts_obj, &out_obj))
+    PyObject *counts_obj, *slot_keys_obj, *slot_rows_obj, *out_obj;
+    if (!PyArg_ParseTuple(args, "OOOOOOOOOOOOOssiOOOOO", &values_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &cat_values_obj, &cat_start_obj, &cat_size_obj, &tree_offsets_obj, &cat_offsets_obj, &reference_data_obj, &explain_point_obj, &decision_type_cptr, &index_cptr, &max_order, &weight_table_obj, &counts_obj, &slot_keys_obj, &slot_rows_obj, &out_obj))
         return NULL;
     if (max_order < 1)
     {
@@ -1170,8 +1054,8 @@ static PyObject *compute_interactions_cohort(PyObject *self, PyObject *args)
     }
     return compute_interactions_structural(
         block.trees, reference_data, explain_data, n_ref, n_features, index_type, max_order,
-        custom_table, custom_N, custom_K, subset_keys_obj, subset_starts_obj, counts_obj,
-        slot_keys_obj, slot_rows_obj, block_starts_obj, block_shifts_obj, out_obj, cleanup_arrays);
+        custom_table, custom_N, custom_K, counts_obj, slot_keys_obj, slot_rows_obj, out_obj,
+        cleanup_arrays);
 }
 
 // === predict_ensemble_sum ===
@@ -1252,307 +1136,4 @@ static PyObject *predict_ensemble_sum(PyObject *self, PyObject *args)
     return out_array;
 }
 
-// === preprocess_subset_tables ===
-// Structural DFS over every root-to-leaf path of every tree, collecting each feature subset
-// (orders 2..max_order) that co-occurs on some path: the only interactions an explanation can
-// touch, since a leaf's E and R are always drawn from its path. A subset is emitted at the
-// first occurrence of its deepest member (a feature repeated on a path adds nothing new), and
-// both children are always walked -- which child an explain/reference pair takes is unknown
-// here. Rows are keyed as base-n_features integers while collecting (sorted features as
-// digits); the key must fit in an int64, else None is returned and the caller falls back.
-// Returns (keys, starts, counts) in the layout of shapiq.tree.subset_index.subset_table_keys.
-namespace
-{
-    // Open-addressing set of int64 keys (multiply-shift hash, linear probing, <= 1/2 full).
-    struct FlatKeySet
-    {
-        std::vector<int64_t> slots;
-        uint64_t mask = 0;
-        int shift = 63;
-        size_t size = 0;
-
-        FlatKeySet() { reset(1024); }
-
-        void reset(size_t capacity)
-        {
-            int bits = 1;
-            while ((size_t(1) << bits) < capacity)
-                ++bits;
-            slots.assign(size_t(1) << bits, -1);
-            mask = (uint64_t(1) << bits) - 1;
-            shift = 64 - bits;
-            size = 0;
-        }
-
-        void insert(int64_t key)
-        {
-            uint64_t slot = (static_cast<uint64_t>(key) * algorithms::kIndexHashMultiplier) >> shift;
-            while (true)
-            {
-                const int64_t stored = slots[slot];
-                if (stored == key)
-                    return;
-                if (stored < 0)
-                {
-                    if (2 * (size + 1) > slots.size())
-                    {
-                        grow();
-                        insert(key);
-                        return;
-                    }
-                    slots[slot] = key;
-                    ++size;
-                    return;
-                }
-                slot = (slot + 1) & mask;
-            }
-        }
-
-        void grow()
-        {
-            std::vector<int64_t> old = std::move(slots);
-            reset(old.size() * 2);
-            for (int64_t key : old)
-                if (key >= 0)
-                    insert(key);
-        }
-
-        std::vector<int64_t> sorted_keys() const
-        {
-            std::vector<int64_t> keys;
-            keys.reserve(size);
-            for (int64_t key : slots)
-                if (key >= 0)
-                    keys.push_back(key);
-            std::sort(keys.begin(), keys.end());
-            return keys;
-        }
-    };
-
-    struct SubsetCollector
-    {
-        int n_features;
-        int max_order;
-        std::vector<int> path;                        // sorted distinct features on the path
-        std::vector<FlatKeySet> keys;                 // per order: distinct keys of emitted subsets
-        std::vector<int> chosen;
-
-        void emit(int new_feature)
-        {
-            // every (order-1)-subset of the current path, merged with new_feature
-            for (int order = 2; order <= max_order; ++order)
-            {
-                if (static_cast<int>(path.size()) < order - 1)
-                    break;
-                choose(order - 1, 0, 0, new_feature, keys[order]);
-            }
-        }
-
-        void choose(int remaining, int start, int level, int new_feature, FlatKeySet &out)
-        {
-            if (remaining == 0)
-            {
-                int64_t key = 0;
-                int taken = 0;
-                bool placed = false;
-                for (int i = 0; i < level + 1; ++i)
-                {
-                    int feature;
-                    if (!placed && (taken == level || chosen[taken] > new_feature))
-                    {
-                        feature = new_feature;
-                        placed = true;
-                    }
-                    else
-                        feature = chosen[taken++];
-                    key = key * n_features + feature;
-                }
-                out.insert(key);
-                return;
-            }
-            const int n = static_cast<int>(path.size());
-            for (int i = start; i <= n - remaining; ++i)
-            {
-                chosen[level] = path[i];
-                choose(remaining - 1, i + 1, level + 1, new_feature, out);
-            }
-        }
-
-        void walk(const int64_t *features, const int64_t *cl, const int64_t *cr, int64_t node)
-        {
-            if (cl[node] == cr[node])  // leaf (both -1), as the explanation kernels test it
-                return;
-            const int feature = static_cast<int>(features[node]);
-            auto at = std::lower_bound(path.begin(), path.end(), feature);
-            const bool first = (at == path.end() || *at != feature);
-            if (first)
-            {
-                emit(feature);
-                path.insert(at, feature);
-            }
-            walk(features, cl, cr, cl[node]);
-            walk(features, cl, cr, cr[node]);
-            if (first)
-                path.erase(std::lower_bound(path.begin(), path.end(), feature));
-        }
-    };
-}
-
-static PyObject *preprocess_subset_tables(PyObject *self, PyObject *args)
-{
-    PyObject *features_obj, *children_left_obj, *children_right_obj, *tree_offsets_obj;
-    int n_features;
-    int max_order;
-    if (!PyArg_ParseTuple(args, "OOOOii", &features_obj, &children_left_obj, &children_right_obj,
-                          &tree_offsets_obj, &n_features, &max_order))
-        return NULL;
-    if (n_features < 1 || max_order < 1)
-    {
-        PyErr_SetString(PyExc_ValueError, "n_features and max_order must be >= 1");
-        return NULL;
-    }
-    // the base-n_features key of a max_order subset must fit in an int64
-    {
-        int64_t cap = 1;
-        for (int i = 0; i < max_order; ++i)
-        {
-            if (cap > INT64_MAX / n_features)
-                Py_RETURN_NONE;
-            cap *= n_features;
-        }
-    }
-    PyArrayObject *feat_arr = (PyArrayObject *)PyArray_FROM_OTF(features_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *cl_arr = (PyArrayObject *)PyArray_FROM_OTF(children_left_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *cr_arr = (PyArrayObject *)PyArray_FROM_OTF(children_right_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *toff_arr = (PyArrayObject *)PyArray_FROM_OTF(tree_offsets_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
-    auto release = [&]()
-    {
-        Py_XDECREF(feat_arr);
-        Py_XDECREF(cl_arr);
-        Py_XDECREF(cr_arr);
-        Py_XDECREF(toff_arr);
-    };
-    if (!feat_arr || !cl_arr || !cr_arr || !toff_arr || PyArray_NDIM(feat_arr) != 1 || PyArray_NDIM(cl_arr) != 1 ||
-        PyArray_NDIM(cr_arr) != 1 || PyArray_NDIM(toff_arr) != 1)
-    {
-        release();
-        PyErr_SetString(PyExc_TypeError, "features, children_left, children_right and tree_offsets must be 1-D int64 numpy arrays");
-        return NULL;
-    }
-    const npy_intp n_nodes = PyArray_DIM(feat_arr, 0);
-    const int64_t n_trees = (int64_t)PyArray_DIM(toff_arr, 0) - 1;
-    const int64_t *features = (const int64_t *)PyArray_DATA(feat_arr);
-    const int64_t *cl = (const int64_t *)PyArray_DATA(cl_arr);
-    const int64_t *cr = (const int64_t *)PyArray_DATA(cr_arr);
-    const int64_t *toff = (const int64_t *)PyArray_DATA(toff_arr);
-    bool valid = PyArray_DIM(cl_arr, 0) == n_nodes && PyArray_DIM(cr_arr, 0) == n_nodes && n_trees >= 1 &&
-                 toff[0] == 0 && toff[n_trees] == n_nodes;
-    for (int64_t t = 0; valid && t < n_trees; ++t)
-    {
-        const int64_t off = toff[t], n_t = toff[t + 1] - off;
-        if (n_t < 1)
-            valid = false;
-        for (int64_t i = off; valid && i < off + n_t; ++i)
-        {
-            if (cl[i] == cr[i])
-                continue;
-            if (features[i] < 0 || features[i] >= n_features || cl[i] < 0 || cl[i] >= n_t || cr[i] < 0 || cr[i] >= n_t)
-                valid = false;
-        }
-    }
-    if (!valid)
-    {
-        release();
-        PyErr_SetString(PyExc_ValueError, "tree arrays are inconsistent (offsets, feature or child index out of range)");
-        return NULL;
-    }
-
-    SubsetCollector collector;
-    collector.n_features = n_features;
-    collector.max_order = max_order;
-    collector.keys.resize(static_cast<size_t>(max_order) + 1);
-    collector.chosen.resize(static_cast<size_t>(max_order));
-    for (int64_t t = 0; t < n_trees; ++t)
-        collector.walk(features + toff[t], cl + toff[t], cr + toff[t], 0);
-    release();
-
-    // per order: the distinct keys in lexicographic (= numeric) order are the table rows;
-    // the hash index maps each key to its row (layout of shapiq.tree.subset_index)
-    npy_intp n_orders = max_order + 1;
-    std::vector<std::vector<int64_t>> sorted(static_cast<size_t>(n_orders));
-    int64_t total = 0, n_slots = 0;
-    std::vector<int> bits(static_cast<size_t>(n_orders), 1);
-    for (int order = 2; order <= max_order; ++order)
-    {
-        sorted[order] = collector.keys[order].sorted_keys();
-        const int64_t count = static_cast<int64_t>(sorted[order].size());
-        if (count > INT32_MAX)
-        {
-            PyErr_SetString(PyExc_ValueError, "subset tables beyond 2^31 rows per order are not supported.");
-            return NULL;
-        }
-        total += count * order;
-        while ((int64_t(1) << bits[order]) < 2 * count)  // block at most half full
-            ++bits[order];
-        n_slots += int64_t(1) << bits[order];
-    }
-    PyObject *starts = PyArray_ZEROS(1, &n_orders, NPY_INT64, 0);
-    PyObject *counts = PyArray_ZEROS(1, &n_orders, NPY_INT64, 0);
-    PyObject *block_starts = PyArray_ZEROS(1, &n_orders, NPY_INT64, 0);
-    PyObject *block_shifts = PyArray_ZEROS(1, &n_orders, NPY_INT64, 0);
-    npy_intp n_total = total, n_slots_np = n_slots;
-    PyObject *keys = PyArray_SimpleNew(1, &n_total, NPY_INT32);
-    PyObject *slot_keys = PyArray_SimpleNew(1, &n_slots_np, NPY_INT64);
-    PyObject *slot_rows = PyArray_SimpleNew(1, &n_slots_np, NPY_INT32);
-    if (!starts || !counts || !block_starts || !block_shifts || !keys || !slot_keys || !slot_rows)
-    {
-        Py_XDECREF(starts);
-        Py_XDECREF(counts);
-        Py_XDECREF(block_starts);
-        Py_XDECREF(block_shifts);
-        Py_XDECREF(keys);
-        Py_XDECREF(slot_keys);
-        Py_XDECREF(slot_rows);
-        return NULL;
-    }
-    int64_t *starts_p = (int64_t *)PyArray_DATA((PyArrayObject *)starts);
-    int64_t *counts_p = (int64_t *)PyArray_DATA((PyArrayObject *)counts);
-    int64_t *bstarts_p = (int64_t *)PyArray_DATA((PyArrayObject *)block_starts);
-    int64_t *bshifts_p = (int64_t *)PyArray_DATA((PyArrayObject *)block_shifts);
-    int32_t *out = (int32_t *)PyArray_DATA((PyArrayObject *)keys);
-    int64_t *skeys = (int64_t *)PyArray_DATA((PyArrayObject *)slot_keys);
-    int32_t *srows = (int32_t *)PyArray_DATA((PyArrayObject *)slot_rows);
-    std::fill(skeys, skeys + n_slots, int64_t(-1));
-    std::fill(srows, srows + n_slots, int32_t(-1));
-    std::fill(bshifts_p, bshifts_p + n_orders, int64_t(63));
-    int64_t position = 0, slot_position = 0;
-    for (int order = 2; order <= max_order; ++order)
-    {
-        const auto &rows = sorted[order];
-        starts_p[order] = position;
-        counts_p[order] = static_cast<int64_t>(rows.size());
-        bstarts_p[order] = slot_position;
-        bshifts_p[order] = 64 - bits[order];
-        const uint64_t mask = (uint64_t(1) << bits[order]) - 1;
-        int64_t *block_keys = skeys + slot_position;
-        int32_t *block_rows = srows + slot_position;
-        for (size_t r = 0; r < rows.size(); ++r)
-        {
-            int64_t key = rows[r];
-            uint64_t slot = (static_cast<uint64_t>(key) * algorithms::kIndexHashMultiplier) >> (64 - bits[order]);
-            while (block_keys[slot] >= 0)
-                slot = (slot + 1) & mask;
-            block_keys[slot] = key;
-            block_rows[slot] = static_cast<int32_t>(r);
-            for (int d = order - 1; d >= 0; --d)
-            {
-                out[d] = static_cast<int32_t>(key % n_features);
-                key /= n_features;
-            }
-            out += order;
-        }
-        position += static_cast<int64_t>(rows.size()) * order;
-        slot_position += int64_t(1) << bits[order];
-    }
-    return Py_BuildValue("((NNN)(NNNN))", keys, starts, counts, slot_keys, slot_rows, block_starts, block_shifts);
-}
+// preprocess_subset_tables: the shared collector and binding, see ../../cext/subset_tables.hpp
