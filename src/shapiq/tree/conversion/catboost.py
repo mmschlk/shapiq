@@ -74,6 +74,11 @@ def convert_catboost_model(
     ``FloatFeature`` splits. For CatBoost classifiers, pass ``class_label`` to select the
     raw margin for one class; ``None`` defaults to class ``1``. Binary classifiers model the
     class-``1`` log-odds, so ``class_label=0`` negates the trees.
+
+    Each oblivious tree is expanded with ``splits[0]`` (the split CatBoost chose first) at the
+    root. CatBoost's native ``ShapValues`` put the last split at the root instead. Both
+    orders predict the same values, but the path-dependent game, and therefore the
+    path-dependent attributions, depend on the order.
     """
     byte_array = _catboost_model_to_json_bytes(model)
     return _mark_float32_input(

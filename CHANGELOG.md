@@ -17,6 +17,10 @@ Folds are now split within each coalition size (complement pairs kept together),
 - `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
 
+### Documentation
+
+- documents why path-dependent `TreeExplainer` values for CatBoost models can differ from CatBoost's native `ShapValues`. shapiq expands each oblivious tree with the first-grown split at the root, and CatBoost's SHAP implementation puts the last split at the root. Both orders give the same predictions but different path-dependent games. A test pins the convention by reproducing CatBoost's native values exactly after the split order is reversed.
+
 ### Maintenance
 
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)

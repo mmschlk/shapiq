@@ -843,6 +843,89 @@ def test_catboost_multiclass_conversion_selects_requested_class():
         )
 
 
+def _reverse_catboost_tree_levels(model_json: dict) -> dict:
+    """Reverse the split order of every oblivious tree, permuting the leaves to match.
+
+    Leaf ``l`` of a CatBoost oblivious tree takes bit ``k`` from ``splits[k]``. Reversing the
+    splits therefore maps leaf ``l`` to the leaf with the bit-reversed index, which leaves the
+    model's predictions unchanged.
+    """
+    reversed_trees = []
+    for tree in model_json["oblivious_trees"]:
+        depth = len(tree["splits"])
+        permutation = [
+            sum(((leaf >> k) & 1) << (depth - 1 - k) for k in range(depth))
+            for leaf in range(2**depth)
+        ]
+        reversed_trees.append(
+            {
+                **tree,
+                "splits": tree["splits"][::-1],
+                "leaf_values": [tree["leaf_values"][leaf] for leaf in permutation],
+                "leaf_weights": [tree["leaf_weights"][leaf] for leaf in permutation],
+            }
+        )
+    return {**model_json, "oblivious_trees": reversed_trees}
+
+
+def test_catboost_native_shap_uses_last_split_as_root():
+    """Test the oblivious-tree unrolling convention against CatBoost's native SHAP values.
+
+    Path-dependent values of an oblivious tree depend on which split is placed at the root:
+    the cover weights an absent feature is averaged with are conditioned on the splits above
+    it. shapiq uses CatBoost's split order, i.e. the growth order (``splits[0]``, the split
+    chosen first, is the root); CatBoost's native ``ShapValues`` place ``splits[-1]`` at the
+    root. Both are exact path-dependent TreeSHAP on the same model, but they differ whenever
+    leaf covers are not independent across levels. Reversing the split order before
+    conversion must reproduce CatBoost's native values exactly, including features that
+    repeat across levels and NaN routing.
+    """
+    catboost = pytest.importorskip("catboost")
+    from shapiq.tree.conversion.catboost import _catboost_model_to_json
+
+    rng = np.random.default_rng(0)
+    n_samples = 400
+    X = np.column_stack(
+        [
+            rng.integers(0, 6, n_samples),
+            rng.normal(size=n_samples),
+            rng.normal(size=n_samples),
+            rng.integers(0, 4, n_samples),
+        ]
+    ).astype(float)
+    X[rng.random(n_samples) < 0.15, 1] = np.nan
+    y = (X[:, 0] % 3) + np.nan_to_num(X[:, 1]) * X[:, 2] + (X[:, 3] == 2)
+    model = catboost.CatBoostRegressor(
+        iterations=5, depth=3, random_seed=0, allow_writing_files=False, verbose=False
+    ).fit(X, y)
+    x_explain = np.array([[2.0, -1.0, 3.0, 2.0], [5.0, np.nan, -0.3, 1.0], *X[:4]])
+    native = model.get_feature_importance(data=catboost.Pool(x_explain), type="ShapValues")
+
+    model_json = _catboost_model_to_json(model)
+    reversed_trees = parse_catboost_json_model(_reverse_catboost_tree_levels(model_json))
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(reversed_trees, x_explain),
+        model.predict(x_explain, prediction_type="RawFormulaVal"),
+        rtol=1e-6,
+        atol=1e-6,
+    )
+
+    reversed_explainer = TreeExplainer(reversed_trees, index="SV", max_order=1)
+    default_explainer = TreeExplainer(model, index="SV", max_order=1)
+    max_gap_to_native = 0.0
+    for x, native_row in zip(x_explain, native, strict=True):
+        reversed_sv = reversed_explainer.explain(x)
+        np.testing.assert_allclose(
+            [reversed_sv[(i,)] for i in range(X.shape[1])], native_row[:-1], atol=1e-6
+        )
+        assert reversed_sv.baseline_value == pytest.approx(native_row[-1], abs=1e-6)
+        default_sv = default_explainer.explain(x)
+        gaps = [abs(default_sv[(i,)] - native_row[i]) for i in range(X.shape[1])]
+        max_gap_to_native = max(max_gap_to_native, *gaps)
+    # precondition: the two unrollings give different games on this model
+    assert max_gap_to_native > 1e-2
+
+
 @pytest.mark.external_libraries
 @pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):

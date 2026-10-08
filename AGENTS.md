@@ -51,6 +51,17 @@ Boosting converters live in separate modules such as `xgboost.py`,
   (`check_class_label` in `conversion/common.py` and `cext/converter.hpp`). `-1` is the C
   parsers' "unspecified" sentinel, so negative labels are rejected in `convert_tree_model`.
   `test_woodelf_matches_shapiq_for_every_class_index` guards the agreement.
+- CatBoost path-dependent values do NOT match CatBoost's native
+  `get_feature_importance(type="ShapValues")` in general, and this is not a bug. The
+  difference comes from the order in which the oblivious-tree levels are stacked.
+  `catboost_json.cc` puts `splits[0]` (the split chosen first during growth) at the root.
+  CatBoost's own SHAP code puts `splits[-1]` at the root, so the most significant bit of
+  the leaf index decides at the root. Predictions are identical either way, but the cover
+  weights for absent features, and so the game v(S), depend on the order. Both are exact
+  path-dependent TreeSHAP. Repeated features, NaN routing and leaf weights are NOT the
+  cause. `test_catboost_native_shap_uses_last_split_as_root` reverses the levels (and
+  bit-reverses the leaf indices) and then matches native values to 1e-6. Interventional
+  values are order-independent.
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical

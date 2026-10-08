@@ -84,6 +84,17 @@ class TreeExplainer(Explainer):
       polynomials by evaluation at participation probability 1/2. Supported indices:
       ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, and ``"BII"``.
 
+      For CatBoost, path-dependent values can differ from CatBoost's native
+      ``get_feature_importance(type="ShapValues")``. An oblivious tree applies the same split
+      to every node of a level, so the levels can be stacked in any order without changing
+      the predictions. The path-dependent game does change with that order, though, because
+      the cover weights for an absent feature depend on the splits above it. shapiq stacks
+      the levels in CatBoost's growth order: the split chosen first (``splits[0]`` in the
+      model's JSON export) is the root. CatBoost's own SHAP implementation puts the last
+      split at the root. Both results are exact path-dependent TreeSHAP values. They agree
+      only when the leaf weights factorize across levels. Interventional values do not
+      depend on the order.
+
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
