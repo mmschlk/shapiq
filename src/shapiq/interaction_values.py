@@ -1203,9 +1203,12 @@ def _validate_and_return_interactions(
         if not isinstance(interaction_lookup, dict):
             msg = f"Interaction lookup must be a dictionary. Got {type(interaction_lookup)}."
             raise TypeError(msg)
-        interactions = {
-            interaction: values[index].item() for interaction, index in interaction_lookup.items()
-        }
+        # one vectorised gather
+        positions = np.fromiter(
+            interaction_lookup.values(), dtype=np.intp, count=len(interaction_lookup)
+        )
+        selected = np.asarray(values)[positions].tolist()
+        interactions = dict(zip(interaction_lookup.keys(), selected, strict=True))
 
     if min_order == 0 and () not in interactions:
         interactions[()] = float(baseline_value)
