@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.utils.modules import safe_isinstance
+from shapiq_games._base import make_predict_function
 
 if TYPE_CHECKING:
     from shapiq.typing import FloatVector
@@ -57,10 +58,8 @@ def model_output(model: Any, data: np.ndarray, class_index: int | None) -> Float
         margin of the class (gradient boosting classifiers), or the prediction (regressors), of
         shape ``(n,)``.
     """
-    if class_index is None:
-        return np.asarray(model.predict(data), dtype=float).reshape(-1)
-    if not is_margin_classifier(model):
-        return np.asarray(model.predict_proba(data), dtype=float)[:, class_index]
+    if class_index is None or not is_margin_classifier(model):
+        return make_predict_function(model, class_index)(data)
     margins = np.asarray(_raw_margins(model, data), dtype=float)
     if margins.ndim == 1:  # binary: one margin, the log-odds of class 1; class 0 has its negative
         return margins if class_index == 1 else -margins

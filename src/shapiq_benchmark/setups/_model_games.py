@@ -166,7 +166,7 @@ class KNNSetup(_NearestNeighborSetup, name="knn"):
     def build(self) -> KNNGame:
         """Fit the model on the players and build the game."""
         model, point = self._fit()
-        return KNNGame(model, point, self.class_index)
+        return KNNGame(model, point, class_index=self.class_index)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -193,7 +193,7 @@ class WeightedKNNSetup(_NearestNeighborSetup, name="weighted_knn"):
     def build(self) -> WeightedKNNGame:
         """Fit the model on the players and build the game."""
         model, point = self._fit()
-        return WeightedKNNGame(model, point, self.class_index, n_bits=self.n_bits)
+        return WeightedKNNGame(model, point, class_index=self.class_index, n_bits=self.n_bits)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -217,7 +217,7 @@ class ThresholdNNSetup(_NearestNeighborSetup, name="threshold_nn"):
     def build(self) -> ThresholdNNGame:
         """Fit the model on the players and build the game."""
         model, point = self._fit()
-        return ThresholdNNGame(model, point, self.class_index)
+        return ThresholdNNGame(model, point, class_index=self.class_index)
 
 
 @dataclass(frozen=True, kw_only=True)

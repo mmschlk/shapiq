@@ -11,13 +11,17 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.interaction_values import InteractionValues
 from shapiq_games._base import as_bool_coalitions
+
+from ._moebius import moebius_values
 
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
+    from shapiq.interaction_values import InteractionValues
     from shapiq.typing import BoolVector, CoalitionMatrix, GameValues
+
+__all__ = ["SOUM", "UnanimityGame"]
 
 
 class UnanimityGame(Game):
@@ -55,6 +59,11 @@ class UnanimityGame(Game):
         """Return one if the coalition contains the interaction, zero otherwise."""
         coalitions = as_bool_coalitions(coalitions)
         return np.all(coalitions[:, self.interaction_binary], axis=1).astype(float)
+
+    @property
+    def moebius_coefficients(self) -> InteractionValues:
+        """The Möbius transform: one for the interaction, zero for every other coalition."""
+        return moebius_values({self.interaction: 1.0}, self.n_players)
 
 
 class SOUM(Game):
@@ -159,14 +168,4 @@ class SOUM(Game):
             coefficients[game.interaction] = (
                 coefficients.get(game.interaction, 0.0) + self.linear_coefficients[k]
             )
-        lookup = {interaction: i for i, interaction in enumerate(coefficients)}
-        return InteractionValues(
-            values=np.array(list(coefficients.values()), dtype=float),
-            index="Moebius",
-            max_order=self.n_players,
-            min_order=0,
-            n_players=self.n_players,
-            interaction_lookup=lookup,
-            estimated=False,
-            baseline_value=coefficients.get((), 0.0),
-        )
+        return moebius_values(coefficients, self.n_players)

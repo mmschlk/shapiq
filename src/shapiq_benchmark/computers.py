@@ -216,30 +216,9 @@ class BruteForceComputer(Computer[Game]):
 
 
 def moebius_representation(game: Game) -> InteractionValues | None:
-    """Return the Möbius transform of a synthetic game with a known representation, or ``None``."""
-    n = game.n_players
-    if isinstance(game, SOUM):
-        return game.moebius_coefficients
-    coefficients: dict[tuple[int, ...], float]
-    if isinstance(game, UnanimityGame):
-        coefficients = {game.interaction: 1.0}
-    elif isinstance(game, DummyGame):
-        coefficients = {(i,): 1.0 / n for i in range(n)}
-        if game.interaction:
-            coefficients[game.interaction] = coefficients.get(game.interaction, 0.0) + 1.0
-    else:
-        return None
-    lookup = {interaction: i for i, interaction in enumerate(coefficients)}
-    return InteractionValues(
-        values=np.array(list(coefficients.values()), dtype=float),
-        index="Moebius",
-        max_order=n,
-        min_order=0,
-        n_players=n,
-        interaction_lookup=lookup,
-        estimated=False,
-        baseline_value=coefficients.get((), 0.0),
-    )
+    """Return the Möbius transform of a game that knows it (``moebius_coefficients``), or ``None``."""
+    coefficients = getattr(game, "moebius_coefficients", None)
+    return coefficients if isinstance(coefficients, InteractionValues) else None
 
 
 class MoebiusComputer(Computer[SOUM | UnanimityGame | DummyGame]):

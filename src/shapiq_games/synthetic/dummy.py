@@ -9,8 +9,13 @@ import numpy as np
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
 
+from ._moebius import moebius_values
+
 if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
     from shapiq.typing import CoalitionMatrix, GameValues
+
+__all__ = ["DummyGame"]
 
 
 class DummyGame(Game):
@@ -27,7 +32,6 @@ class DummyGame(Game):
 
     Attributes:
         n: The number of players.
-        N: The set of players ``{0, ..., n - 1}``.
         interaction: The interaction as a sorted tuple of player indices.
         access_counter: The number of coalitions evaluated so far (used by tests to check that
             approximators respect their budget).
@@ -47,7 +51,6 @@ class DummyGame(Game):
                 interaction.
         """
         self.n = n
-        self.N = set(range(n))
         self.interaction: tuple[int, ...] = tuple(sorted(interaction))
         super().__init__(n, normalize=False)
         self.access_counter = 0
@@ -60,3 +63,11 @@ class DummyGame(Game):
             worth = worth + np.all(coalitions[:, self.interaction], axis=1)
         self.access_counter += coalitions.shape[0]
         return worth
+
+    @property
+    def moebius_coefficients(self) -> InteractionValues:
+        """The Möbius transform: ``1 / n`` for every player and one for the interaction."""
+        coefficients: dict[tuple[int, ...], float] = {(i,): 1.0 / self.n for i in range(self.n)}
+        if self.interaction:
+            coefficients[self.interaction] = coefficients.get(self.interaction, 0.0) + 1.0
+        return moebius_values(coefficients, self.n)

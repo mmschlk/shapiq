@@ -59,7 +59,7 @@ def test_sv_values_agree_with_ground_truth_game(
 
     for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = game_cls(model, x_test, class_index, **extra_kwargs)
+            ground_truth_game = game_cls(model, x_test, class_index=class_index, **extra_kwargs)
             iv_expected = ground_truth_game.exact_values(index="SV", order=1)
 
             explainer = explainer_cls(model, class_index=class_index, **extra_kwargs)
@@ -98,4 +98,4 @@ def test_knn_small_training_set_rejected(
         explainer_cls(model, class_index=0)
 
     with pytest.raises(ValueError, match="n_neighbors <= n_samples_fit"):
-        game_cls(model, X[0], 0)
+        game_cls(model, X[0], class_index=0)

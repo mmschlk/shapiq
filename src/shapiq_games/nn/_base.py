@@ -41,7 +41,7 @@ class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):
         model: The fitted nearest-neighbor classifier.
         x: The explained (validation) point.
         class_index: The explained class.
-        X_train: The training points (the players).
+        n_train: The number of training points (the players).
         y_train_indices: The class index of every training point.
         n_classes: The number of classes.
     """
@@ -50,6 +50,7 @@ class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):
         self,
         model: M,
         x: FloatVector,
+        *,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game.
@@ -58,37 +59,16 @@ class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):
             model: The fitted nearest-neighbor classifier.
             x: The explained point of shape ``(n_features,)``.
             class_index: The explained class. Defaults to ``None``, which means class ``1``.
+
+        Raises:
+            TypeError: If the model's class indices (``model._y``) are not integers.
+            ValueError: If the model has several outputs.
         """
         self.model: M = model
         self.x = np.asarray(x).reshape(-1)
         self.class_index = cast("int", resolve_class_index(model, class_index))
-
-        x_train = model._fit_X  # noqa: SLF001
-        if not isinstance(x_train, np.ndarray):
-            msg = (
-                "Expected model's training data (model._fit_X) to be np.ndarray but got "
-                f"{type(x_train)}"
-            )
-            raise TypeError(msg)
-        if not (
-            np.issubdtype(x_train.dtype, np.floating) or np.issubdtype(x_train.dtype, np.integer)
-        ):
-            msg = (
-                "Expected dtype of model's training features (model._fit_X) to be a subtype of "
-                f"np.floating or np.integer, but got {x_train.dtype}"
-            )
-            raise TypeError(msg)
-        if np.issubdtype(x_train.dtype, np.integer):
-            x_train = x_train.astype(np.float32)
-        self.X_train = x_train
-
-        y_train_indices = model._y  # noqa: SLF001
-        if not isinstance(y_train_indices, np.ndarray):
-            msg = (
-                "Expected model's training data class indices (model._y) to be np.ndarray but got "
-                f"{type(y_train_indices)}"
-            )
-            raise TypeError(msg)
+        self.n_train = int(model.n_samples_fit_)
+        y_train_indices = np.asarray(model._y)  # noqa: SLF001
         if not np.issubdtype(y_train_indices.dtype, np.integer):
             msg = (
                 "Expected dtype of model's training class indices (model._y) to be a subtype of "
@@ -102,9 +82,8 @@ class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):
             )
             raise ValueError(msg)
         self.y_train_indices = y_train_indices
-        self.y_train_classes = np.asarray(model.classes_)
-        self.n_classes = self.y_train_classes.shape[0]
-        super().__init__(n_players=self.X_train.shape[0], normalize=False)
+        self.n_classes = len(model.classes_)
+        super().__init__(n_players=self.n_train, normalize=False)
 
 
 class KNNGameBase(NNGameBase[KNeighborsClassifier]):
@@ -113,6 +92,7 @@ class KNNGameBase(NNGameBase[KNeighborsClassifier]):
     Attributes:
         k: The number of neighbors of the model.
         sortperm: The training points sorted by increasing distance to ``x``.
+        distances: The distances of the sorted training points to ``x``.
         y_train_sorted: The class indices of the sorted training points.
     """
 
@@ -120,13 +100,15 @@ class KNNGameBase(NNGameBase[KNeighborsClassifier]):
         self,
         model: KNeighborsClassifier,
         x: FloatVector,
+        *,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game (see :class:`NNGameBase`)."""
-        super().__init__(model, x, class_index)
+        super().__init__(model, x, class_index=class_index)
         self.k: int = int(model.n_neighbors)  # type: ignore[arg-type]
-        assert_enough_training_samples(self.k, self.X_train.shape[0])
-        self.sortperm = model.kneighbors(
-            self.x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=False
-        )[0]
+        assert_enough_training_samples(self.k, self.n_train)
+        distances, sortperm = model.kneighbors(
+            self.x.reshape(1, -1), n_neighbors=self.n_train, return_distance=True
+        )
+        self.distances, self.sortperm = distances[0], sortperm[0]
         self.y_train_sorted = self.y_train_indices[self.sortperm]

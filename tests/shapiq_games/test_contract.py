@@ -146,9 +146,7 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         False,
     ),
     "random_forest_ensemble_selection": (
-        lambda: sg.RandomForestEnsembleSelection.from_forest(
-            _forest_classifier(), _X_TEST, _Y_CLF_TEST
-        ),
+        lambda: sg.RandomForestEnsembleSelection(_forest_classifier(), _X_TEST, _Y_CLF_TEST),
         False,
     ),
     "uncertainty": (

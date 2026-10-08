@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.stats import mode
@@ -131,19 +131,21 @@ class RandomForestEnsembleSelection(EnsembleSelection):
     probabilities while this game takes majority votes, the full ensemble can differ slightly from
     the forest's own prediction for classification.
 
+    Attributes:
+        forest: The explained random forest.
+
     Examples:
         >>> from sklearn.datasets import make_classification
         >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
         >>> from sklearn.ensemble import RandomForestClassifier
         >>> forest = RandomForestClassifier(n_estimators=6, random_state=0).fit(X[:150], y[:150])
-        >>> game = RandomForestEnsembleSelection.from_forest(forest, X[150:], y[150:])
+        >>> game = RandomForestEnsembleSelection(forest, X[150:], y[150:])
         >>> game.n_players  # one player per tree
         6
     """
 
-    @classmethod
-    def from_forest(
-        cls,
+    def __init__(
+        self,
         forest: Any,  # noqa: ANN401
         x_test: np.ndarray,
         y_test: np.ndarray,
@@ -152,8 +154,9 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         normalize: bool = True,
-    ) -> Self:
-        """Build the game from a fitted scikit-learn random forest.
+        verbose: bool = False,
+    ) -> None:
+        """Initialize the game from a fitted scikit-learn random forest.
 
         Args:
             forest: A fitted ``RandomForestClassifier`` or ``RandomForestRegressor``.
@@ -164,9 +167,11 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             metric: The metric, or ``None`` for the default of the task.
             empty_value: The value of the empty coalition. Defaults to ``0``.
             normalize: Whether to center the game by ``empty_value``.
+            verbose: Whether to show a progress bar when evaluating the game.
 
-        Returns:
-            The game.
+        Raises:
+            TypeError: If ``forest`` is not a fitted scikit-learn random forest.
+            ValueError: If ``y_test`` has labels the forest does not know.
         """
         trees = list(getattr(forest, "estimators_", []))
         if not trees:
@@ -176,10 +181,12 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         if classes is not None:  # the trees predict class indices into the forest's classes_
             y_test = np.asarray(y_test)
             if not np.isin(y_test, classes).all():
-                msg = f"y_test has labels that the forest does not know: {sorted(set(y_test) - set(classes))}."
+                unknown = sorted(set(y_test) - set(classes))
+                msg = f"y_test has labels that the forest does not know: {unknown}."
                 raise ValueError(msg)
             y_test = np.searchsorted(classes, y_test)
-        return cls(
+        self.forest = forest
+        super().__init__(
             trees,
             x_test,
             y_test,
@@ -188,4 +195,5 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             empty_value=empty_value,
             member_names=[f"tree_{i}" for i in range(len(trees))],
             normalize=normalize,
+            verbose=verbose,
         )

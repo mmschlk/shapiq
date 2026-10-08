@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions, resolve_class_index
+from shapiq_games._base import as_bool_coalitions, resolve_class_index, resolve_x
 
 from ._output import model_output
 
@@ -39,6 +39,7 @@ class InterventionalTreeGame(Game):
         reference_data: The reference (background) rows.
         x: The explained point.
         class_index: The explained class for classifiers, ``None`` for regressors.
+        empty_value: The value of the empty coalition before centering.
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -56,7 +57,7 @@ class InterventionalTreeGame(Game):
         self,
         model: Any,  # noqa: ANN401
         reference_data: np.ndarray,
-        x: np.ndarray,
+        x: int | np.ndarray,
         *,
         class_index: int | None = None,
         normalize: bool = False,
@@ -66,7 +67,8 @@ class InterventionalTreeGame(Game):
         Args:
             model: The fitted model.
             reference_data: The reference rows of shape ``(n_reference, n_features)``.
-            x: The explained point of shape ``(n_features,)``.
+            x: The explained point of shape ``(n_features,)``, or its index in
+                ``reference_data``.
             class_index: The explained class for classifiers. Defaults to ``None``, which means
                 class ``1`` for classifiers (the convention of the shapiq explainers).
             normalize: Whether to center the game such that the value of the empty coalition is
@@ -74,19 +76,17 @@ class InterventionalTreeGame(Game):
         """
         self.model = model
         self.reference_data = np.asarray(reference_data)
-        self.x = np.asarray(x).reshape(-1)
+        self.x = resolve_x(x, self.reference_data)
         self.class_index = resolve_class_index(model, class_index)
         n_players = self.x.shape[0]
-        empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
-        super().__init__(n_players, normalize=normalize, normalization_value=empty_value)
+        self.empty_value = float(self.value_function(np.zeros((1, n_players), dtype=bool))[0])
+        super().__init__(n_players, normalize=normalize, normalization_value=self.empty_value)
 
-    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return the mean model output over the reference data for the coalitions."""
+        coalitions = as_bool_coalitions(coalitions)
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             data = np.where(coalition, self.x, self.reference_data)
             values[i] = float(np.mean(model_output(self.model, data, self.class_index)))
         return values
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the mean model output over the reference data for the coalitions."""
-        return self._evaluate(as_bool_coalitions(coalitions))

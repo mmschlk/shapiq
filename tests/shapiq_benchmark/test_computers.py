@@ -222,10 +222,10 @@ def test_default_computer_mapping(forest_data) -> None:
         (DummyGame(4), MoebiusComputer),
         (PathDependentTreeGame(model, x[0]), PathDependentTreeComputer),
         (InterventionalTreeGame(model, x[:5], x[0]), InterventionalTreeComputer),
-        (KNNGame(knn, x[9], 1), KNNComputer),
-        (WeightedKNNGame(weighted, x[9], 1, n_bits=3), KNNComputer),
+        (KNNGame(knn, x[9], class_index=1), KNNComputer),
+        (WeightedKNNGame(weighted, x[9], class_index=1, n_bits=3), KNNComputer),
         # exact weights are not what the explainer computes: brute force
-        (WeightedKNNGame(weighted, x[9], 1), BruteForceComputer),
+        (WeightedKNNGame(weighted, x[9], class_index=1), BruteForceComputer),
         (ProductKernelGame(SVR().fit(x, x[:, 0]), x[0]), ProductKernelComputer),
         (TabularLocalExplanation(model, x, x=0), BruteForceComputer),
         (RandomTableGame(4), BruteForceComputer),

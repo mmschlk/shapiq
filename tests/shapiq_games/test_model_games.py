@@ -90,6 +90,16 @@ def _line_knn(k: int) -> tuple[KNeighborsClassifier, np.ndarray]:
     return model, np.array([0.0])
 
 
+def test_nn_games_check_the_class_indices_of_the_model() -> None:
+    model, x = _line_knn(k=2)
+    model._y = np.array(["a", "b", "c", "d"])
+    with pytest.raises(TypeError, match="dtype.+_y"):
+        KNNGame(model, x)
+    model._y = np.array([[1, 0], [0, 1], [1, 1], [1, 0]])
+    with pytest.raises(ValueError, match="[Mm]ulti-output"):
+        KNNGame(model, x)
+
+
 def test_knn_game_counts_nearest_neighbors_of_the_class() -> None:
     model, x = _line_knn(k=2)
     game = KNNGame(model, x, class_index=1)
@@ -114,7 +124,7 @@ def test_weighted_knn_quantization_and_binary_games() -> None:
     model = KNeighborsClassifier(n_neighbors=2, weights="distance")
     model.fit(np.array([[1.0], [2.0], [3.0]]), np.array([0, 1, 2]))
     game = WeightedKNNGame(model, np.array([0.0]), class_index=0, n_bits=3)
-    assert sorted(game.binary_games) == [1, 2]
+    assert game.other_classes == [1, 2]
     assert game(game.empty_coalition)[0] == 0.0
     # only the explained class present: it wins every binary game
     assert game(np.array([[1, 0, 0]], dtype=bool))[0] == 1.0

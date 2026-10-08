@@ -12,6 +12,8 @@ from shapiq_games._base import as_bool_coalitions
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
 
+__all__ = ["RandomTableGame"]
+
 _MAX_PLAYERS = 20
 
 

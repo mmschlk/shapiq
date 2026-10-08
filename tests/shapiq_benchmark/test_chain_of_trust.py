@@ -336,9 +336,9 @@ def test_nearest_neighbor_computers(tabular: dict[str, np.ndarray], class_index:
     weighted = KNeighborsClassifier(n_neighbors=3, weights="distance").fit(x, y)
     radius = RadiusNeighborsClassifier(radius=2.5).fit(x, y)
     for game in (
-        KNNGame(knn, point, class_index),
-        WeightedKNNGame(weighted, point, class_index, n_bits=3),
-        ThresholdNNGame(radius, point, class_index),
+        KNNGame(knn, point, class_index=class_index),
+        WeightedKNNGame(weighted, point, class_index=class_index, n_bits=3),
+        ThresholdNNGame(radius, point, class_index=class_index),
     ):
         _assert_agrees_with_brute_force(KNNComputer(game))
 

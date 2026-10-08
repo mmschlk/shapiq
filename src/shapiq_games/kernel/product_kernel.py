@@ -37,6 +37,7 @@ class ProductKernelGame(Game):
         model: The model in the :class:`~shapiq.explainer.product_kernel.ProductKernelModel`
             format.
         x: The explained point.
+        empty_value: The value of the empty coalition before centering.
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -79,8 +80,9 @@ class ProductKernelGame(Game):
             msg = f"Kernel type '{self.model.kernel_type}' is not supported, only 'rbf'."
             raise NotImplementedError(msg)
         self.x = np.asarray(x, dtype=float).reshape(-1)
-        empty_value = float(np.sum(self.model.alpha)) + float(self.model.intercept)
-        super().__init__(self.x.shape[0], normalize=normalize, normalization_value=empty_value)
+        # with no feature the RBF kernel is one for every support vector
+        self.empty_value = float(np.sum(self.model.alpha)) + float(self.model.intercept)
+        super().__init__(self.x.shape[0], normalize=normalize, normalization_value=self.empty_value)
 
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the decision function with the kernel restricted to the coalition."""
@@ -89,7 +91,7 @@ class ProductKernelGame(Game):
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             if not coalition.any():
-                values[i] = float(np.sum(alpha)) + float(self.model.intercept)
+                values[i] = self.empty_value
                 continue
             kernel = rbf_kernel(
                 X=self.model.X_train[:, coalition],

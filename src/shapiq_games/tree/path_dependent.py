@@ -78,6 +78,7 @@ class PathDependentTreeGame(Game):
         x: The explained point.
         class_index: The explained class for classifiers, ``None`` for regressors.
         trees: The trees in the unified :class:`~shapiq.tree.TreeModel` format.
+        empty_value: The value of the empty coalition before centering.
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -115,15 +116,17 @@ class PathDependentTreeGame(Game):
         self.class_index = resolve_class_index(model, class_index)
         self.trees: list[TreeModel] = validate_tree_model(model, class_label=self.class_index)
         n_players = self.x.shape[0]
-        empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
+        self.empty_value = float(self.value_function(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(
             n_players,
             normalize=normalize,
-            normalization_value=empty_value,
+            normalization_value=self.empty_value,
             verbose=verbose,
         )
 
-    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return the path-dependent expectation of the tree model for the coalitions."""
+        coalitions = as_bool_coalitions(coalitions)
         values = np.zeros(coalitions.shape[0])
         for start in range(0, coalitions.shape[0], _CHUNK_SIZE):
             chunk = coalitions[start : start + _CHUNK_SIZE]
@@ -131,7 +134,3 @@ class PathDependentTreeGame(Game):
                 _tree_expectation(tree, self.x, chunk) for tree in self.trees
             )
         return values
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
-        """Return the path-dependent expectation of the tree model for the coalitions."""
-        return self._evaluate(as_bool_coalitions(coalitions))

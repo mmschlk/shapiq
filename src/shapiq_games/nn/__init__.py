@@ -2,6 +2,6 @@
 
 from .knn import KNNGame
 from .threshold_nn import ThresholdNNGame
-from .weighted_knn import BinaryWeightedKNNGame, WeightedKNNGame
+from .weighted_knn import WeightedKNNGame
 
-__all__ = ["BinaryWeightedKNNGame", "KNNGame", "ThresholdNNGame", "WeightedKNNGame"]
+__all__ = ["KNNGame", "ThresholdNNGame", "WeightedKNNGame"]

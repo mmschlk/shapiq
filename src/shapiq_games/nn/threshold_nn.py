@@ -39,6 +39,7 @@ class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
         self,
         model: RadiusNeighborsClassifier,
         x: FloatVector,
+        *,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game.
@@ -48,9 +49,9 @@ class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
             x: The explained point.
             class_index: The explained class. Defaults to ``None``, which means class ``1``.
         """
-        super().__init__(model, x, class_index)
+        super().__init__(model, x, class_index=class_index)
         neighbors = model.radius_neighbors(self.x.reshape(1, -1), return_distance=False)[0]
-        self.in_neighborhood = np.zeros(self.X_train.shape[0], dtype=bool)
+        self.in_neighborhood = np.zeros(self.n_train, dtype=bool)
         self.in_neighborhood[neighbors] = True
         self.is_class = self.y_train_indices == self.class_index
 

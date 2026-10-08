@@ -474,7 +474,7 @@ class RandomForestEnsembleSelectionSetup(TabularSetup, name="random_forest_ensem
         forest = build_model(
             "random_forest", split.task, random_state=self.random_state, **params
         ).fit(split.x_train, split.y_train)
-        return RandomForestEnsembleSelection.from_forest(
+        return RandomForestEnsembleSelection(
             forest,
             split.x_test,
             split.y_test,

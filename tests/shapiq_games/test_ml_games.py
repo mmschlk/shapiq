@@ -311,7 +311,7 @@ def test_ensemble_selection_single_members_and_votes(data) -> None:
     )  # fmt: skip
     assert regression(regression.grand_coalition)[0] == pytest.approx(1.0)
     with pytest.raises(TypeError, match="random forest"):
-        RandomForestEnsembleSelection.from_forest(
+        RandomForestEnsembleSelection(
             LinearRegression(), data["x_test"], data["yr_test"], task="regression"
         )
 
@@ -331,14 +331,14 @@ def test_ensemble_selection_with_any_labels(data) -> None:
     forest = RandomForestClassifier(n_estimators=5, random_state=0).fit(
         data["x_train"], data["yc_train"] + 1
     )
-    forest_game = RandomForestEnsembleSelection.from_forest(
+    forest_game = RandomForestEnsembleSelection(
         forest, data["x_test"], data["yc_test"] + 1, normalize=False
     )
     assert forest_game(forest_game.grand_coalition)[0] == pytest.approx(
         forest.score(data["x_test"], data["yc_test"] + 1), abs=0.05
     )
     with pytest.raises(ValueError, match="does not know"):
-        RandomForestEnsembleSelection.from_forest(forest, data["x_test"], data["yc_test"] + 5)
+        RandomForestEnsembleSelection(forest, data["x_test"], data["yc_test"] + 5)
 
 
 def test_uncertainty_decomposition(data) -> None:
