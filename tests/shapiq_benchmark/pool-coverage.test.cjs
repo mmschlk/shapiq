@@ -18,7 +18,7 @@ test("closed coverage exposes unprepared cases through existing authenticated de
     document: {
       getElementById: () => summary,
       createTextNode: (textContent) => ({ textContent }),
-      createElement: () => { const e = { children: [], append(...nodes) { this.children.push(...nodes); }, addEventListener: (name, fn) => { e[name] = fn; }, click() { this.clicked = true; } }; elements.push(e); return e; },
+      createElement: () => { const e = { style: { setProperty() {} }, children: [], append(...nodes) { this.children.push(...nodes); }, addEventListener: (name, fn) => { e[name] = fn; }, click() { this.clicked = true; } }; elements.push(e); return e; },
     },
     BenchmarkDetails: { object: async (manifest, key, options) => { lookup = key; await options.read({file: "authenticated-details"}); return cases; } },
     BenchmarkPartitions: { read: async (manifest, descriptor) => { assert.equal(descriptor.file, "authenticated-details"); } },
@@ -31,7 +31,6 @@ test("closed coverage exposes unprepared cases through existing authenticated de
   vm.runInContext("renderReportSummary(false)", context);
   const textOf = n => (n.textContent || "") + (n.children || []).map(textOf).join("");
   const text = summary.children.map(textOf).join("");
-  assert.match(text, /Coverage details/);
   assert.match(text, /50% reference coverage/);
   assert.match(text, /1 of 2 intended instances/);
   assert.match(text, /3 supported cells.*not attempted/);

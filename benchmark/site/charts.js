@@ -60,7 +60,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
           ? (data.campaign_coverage?.closed ? "No measured results in this selection." : "Results pending.")
           : "No methods meet 80% coverage in this selection.";
       });
-    if (computed.details_deferred) {
+    if (computed.details_deferred && !computed.timing_precomputed) {
       $("timeChart").textContent = "Loading timing…";
       $("timeChartNote").textContent = "";
     }

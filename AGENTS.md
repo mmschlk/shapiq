@@ -698,3 +698,11 @@ uv run pre-commit run --all-files
   differences as errors. A bootstrap failure on one host does not imply that
   sibling allocations failed: inspect each job's receipts and claims before
   stopping any running sibling.
+
+- Even a fully node-local `PYTHONPATH` and `sitecustomize` hook leave normal
+  Python `.pth` scanning before that hook. October 8 cgroup samples found about
+  40% CPU utilization with estimator children blocked reading the shared editable
+  package `.pth`. A `-S` operational adapter must explicitly run the authenticated
+  hook and propagate to preparation/evaluation/isolated-estimator children; verify
+  unchanged source provenance and retain the pinned `sys.executable`. Do not edit
+  active worker scripts or assume this removes executable/shared-artifact I/O.

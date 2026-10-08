@@ -7,17 +7,17 @@ We compare 22 estimators across individual predictions, training data and featur
 
 ## Games, Shapley values and estimation error
 
-- **Game:** for players N = {1, …, d}, a function f: 2ᴺ → ℝ assigns a value
-  f(S) to each coalition S ⊆ N. The applications below define the players and f.
-- **Shapley value:** player i's average marginal contribution across all player orderings:
+- **Game:** for players $N = \{1, \ldots, d\}$, a function $f: 2^N \to \mathbb{R}$ assigns a value
+  $f(S)$ to each coalition $S \subseteq N$. The applications below define the players and $f$.
+- **Shapley value:** player $i$'s average marginal contribution across all player orderings:
 
-> φᵢ = ∑ [|S|! (d − |S| − 1)! / d!] [f(S ∪ {i}) − f(S)], summed over S ⊆ N ∖ {i}.
+$$\phi_i = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!\,(d - |S| - 1)!}{d!}\left[f(S \cup \{i\}) - f(S)\right].$$
 
-- **Estimator:** an algorithm queries f at most B times and returns an estimated
-  vector **φ̂**, to approximate the exact contribution vector **φ**.
+- **Estimator:** an algorithm queries $f$ at most $B$ times and returns an estimated
+  vector $\hat{\boldsymbol{\phi}}$, to approximate the exact contribution vector $\boldsymbol{\phi}$.
 - **Normalized mean squared error (nMSE):**
 
-> nMSE = ‖**φ̂** − **φ**‖₂² / ‖**φ**‖₂²
+$$\mathbf{nMSE} = \frac{\lVert \hat{\boldsymbol{\phi}} - \boldsymbol{\phi} \rVert_2^2}{\lVert \boldsymbol{\phi} \rVert_2^2}.$$
 
 **Lower is better:** zero is exact; one is the error of estimating every contribution
 as zero. Zero or negligible reference vectors are excluded. For interaction targets,
@@ -31,14 +31,14 @@ published cohort, **not** successful estimator runs. The published total is
 
 ## Explaining an individual prediction
 
-**Players are input features.** Fit a predictor h once and explain one held-out
-point x. For the small games, keep x's selected features and replace the others
-with fixed training-background means b:
+**Players are input features.** Fit a predictor $h$ once and explain one held-out
+point $x$. For the small games, keep $x$'s selected features and replace the others
+with fixed training-background means $b$:
 
-> f(S) = h(z(S)) − h(b), where zᵢ(S) = xᵢ for i ∈ S and bᵢ otherwise.
+$$f(S) = h(z(S)) - h(b), \qquad z_i(S) = \begin{cases}x_i & i \in S,\\ b_i & i \notin S.\end{cases}$$
 
 The output is a fixed class probability or a regression prediction.
-**Exact reference:** evaluate all 2ᵈ coalitions.
+**Exact reference:** evaluate all $2^d$ coalitions.
 
 **Tree games** extend this to larger player sets. Interventional games average
 predictions with missing features filled from fixed background rows. Path-dependent games average missing
@@ -78,10 +78,10 @@ XGBoost and LightGBM. Player sets below are the planned grids, where feasible.
 
 ## Valuing training data
 
-**Players are groups of training rows.** For a coalition S, fit hₛ on the union
-of its groups and evaluate on a fixed held-out set T:
+**Players are groups of training rows.** For a coalition $S$, fit $h_S$ on the union
+of its groups and evaluate on a fixed held-out set $T$:
 
-> f(S) = accuracy(hₛ, T), or −MSE(hₛ, T) for regression; f(∅) = 0.
+$$f(S) = \begin{cases}\operatorname{accuracy}(h_S, T) & \text{classification},\\ -\operatorname{MSE}(h_S, T) & \text{regression},\end{cases} \qquad f(\varnothing) = 0.$$
 
 **Exact reference:** refit and score every coalition. Core models use up to
 12 input features. At 12 groups, the extra-model datasets also vary the core
@@ -90,8 +90,8 @@ Input width is separate from the number of players.
 
 **Neighbor games** instead use individual training rows as players, for a fixed
 test example. KNN utility is the number of matching labels among the coalition's
-nearest min(k, |S|) rows, divided by fixed k. TNN utility is the matching-label
-fraction within a fixed radius, or 1 / number of classes if none are present.
+nearest $\min(k, |S|)$ rows, divided by fixed $k$. TNN utility is the matching-label
+fraction within a fixed radius, or $1 / \text{number of classes}$ if none are present.
 Specialized formulas give **exact Shapley values** for these larger games.
 
 **Models:** core = linear/logistic regression + random forest; extra = XGBoost,
@@ -127,12 +127,12 @@ classification datasets. “—” means no neighbor games.
 
 ## Selecting useful features
 
-**Players are input features.** For every coalition S, fit a fresh predictor hₛ
+**Players are input features.** For every coalition $S$, fit a fresh predictor $h_S$
 using only those columns, keeping the training and held-out rows fixed:
 
-> f(S) = accuracy(hₛ, Tₛ), or −MSE(hₛ, Tₛ) for regression; f(∅) = 0.
+$$f(S) = \begin{cases}\operatorname{accuracy}(h_S, T_S) & \text{classification},\\ -\operatorname{MSE}(h_S, T_S) & \text{regression},\end{cases} \qquad f(\varnothing) = 0.$$
 
-**Exact reference:** fit and score all 2ᵈ coalitions. Unlike an individual-prediction
+**Exact reference:** fit and score all $2^d$ coalitions. Unlike an individual-prediction
 game, this measures how well a model can learn from the chosen features.
 
 **Models:** core = linear/logistic regression + random forest; extra = XGBoost,
@@ -167,7 +167,7 @@ LightGBM, RBF SVM + MLP, at **12 features only**.
 
 ## Comparing and reproducing results
 
-- **Budgets:** 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 × d coalition queries;
+- **Budgets:** 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 × $d$ coalition queries;
   three estimator seeds per game. Actual query use can be smaller.
 - **Targets:** Shapley values and order-two k-SII, SII, STII, FSII and FBII
   interactions, where supported. Neighbor games provide Shapley values only.

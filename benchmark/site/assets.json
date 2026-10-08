@@ -16,5 +16,8 @@
   "protocol.js",
   "about.html",
   "about.css",
-  "about.md"
+  "about.md",
+  "timing-cache.js",
+  "timing-cache.json",
+  "timing-cache-metadata.js"
 ]

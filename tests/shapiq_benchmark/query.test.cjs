@@ -605,11 +605,12 @@ test("download selection helper shares exact filters and global eligibility", ()
   assert(p.games.every((g) => p.game_budgets[g.id][0] === -1));
 });
 
-for (const variant of ["default", "separate chart family", "per-order eligibility"])
+for (const variant of ["default", "separate chart family", "per-order eligibility", "table budget"])
   test(`precomputed ${variant} matches full scores without metrics or profiles`, async () => {
     const data = fixture(), source = input(data), req = request();
     if (variant === "separate chart family") req.chart_selection.family = "f";
     if (variant === "per-order eligibility") req.score_order = "1";
+    if (variant === "table budget") req.selection.relative_budget = 0.5;
     const presets = new Map();
     const chartSelection = { ...req.chart_selection, relative_budget: null, cap: null };
     const selections = [req.selection, chartSelection,
@@ -647,6 +648,26 @@ for (const variant of ["default", "separate chart family", "per-order eligibilit
     assert.equal(fast.details_deferred, true);
     assert(fast.table.every(row => row.underBudget === null));
     assert.deepEqual(plain(fast.time_series), []);
+    const timingSelector = await api.selectorHash(
+      api.selectionPanel(data.games, chartSelection, data.suite, req.score_order),
+      { ...req, selection: chartSelection },
+    );
+    const cachedTiming = await api.query(source.manifest, req, {
+      preferPresets: true,
+      lookupPreset: async ({ sha256 }) => presets.get(sha256),
+      lookupTiming: async (selector, metric) => {
+        assert.equal(selector, timingSelector, "timing keys use all chart budgets, not the table budget");
+        assert.equal(metric, req.timing_metric);
+        return expected.time_series;
+      },
+      read: async descriptor => {
+        assert.equal(descriptor.kind, "games", "cached timing must not read metrics or profiles");
+        return source.read(descriptor);
+      },
+    });
+    assert.equal(cachedTiming.timing_precomputed, true);
+    assert.deepEqual(plain(cachedTiming.time_series), plain(expected.time_series));
+    assert.deepEqual(scores(cachedTiming.table), scores(expected.table));
     const fallback = await api.query(source.manifest, req, {
       ...source, preferPresets: true, lookupPreset: async () => null,
     });

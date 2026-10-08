@@ -18,6 +18,20 @@ SITE = Path(__file__).resolve().parent / "site"
 
 def render_about(source: str) -> str:
     """Render a static article and a table of contents from its level-two headings."""
+    # Protect TeX from Markdown's escape/emphasis processing, then emit escaped
+    # text for MathJax. Raw HTML remains disabled in the canonical source.
+    equations = []
+
+    def protect_math(match: re.Match[str]) -> str:
+        display = match.group(1) is not None
+        tex = match.group(1) if display else match.group(2)
+        tag, opening, closing = ("div", r"\[", r"\]") if display else ("span", r"\(", r"\)")
+        equations.append(
+            f'<{tag} class="math">{opening}{html.escape(tex.strip())}{closing}</{tag}>'
+        )
+        return f"SHAPIQMATH{len(equations) - 1}TOKEN"
+
+    source = re.sub(r"\$\$([\s\S]+?)\$\$|\$([^\n$]+)\$", protect_math, source)
     markdown = MarkdownIt("commonmark", {"html": False}).enable("table")
     tokens = markdown.parse(source)
     links = []
@@ -35,6 +49,15 @@ def render_about(source: str) -> str:
         if token.tag == "h2":
             links.append(f'<li><a href="#{identifier}">{html.escape(title)}</a></li>')
     article = markdown.renderer.render(tokens, markdown.options, {})
+    for index, equation in enumerate(equations):
+        placeholder = f"SHAPIQMATH{index}TOKEN"
+        if equation.startswith("<div"):
+            placeholder = f"<p>{placeholder}</p>"
+        article = article.replace(placeholder, equation)
+    article = article.replace(
+        "<table>",
+        '<details class="datasetTable"><summary>Dataset coverage</summary><table>',
+    ).replace("</table>", "</table></details>")
     contents = (
         '<nav aria-label="On this page"><h2>Contents</h2><ul>' + "".join(links) + "</ul></nav>"
     )
@@ -51,13 +74,17 @@ def render_about(source: str) -> str:
   <meta name="description" content="The Shapley estimator benchmark: how we construct games, obtain exact references, and measure error." />
   <title>About the benchmark · shapiq</title>
   <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="about.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml-full.js"></script>
 </head>
 <body>
   <a class="skipLink" href="#content">Skip to content</a>
   <header><a href="index.html">← Benchmark results</a><a href="about.md">Markdown source</a></header>
   <main id="content">
-{article}  </main>
+    <article class="aboutArticle">
+{article}    </article>
+  </main>
 </body>
 </html>
 """

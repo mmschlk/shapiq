@@ -629,8 +629,11 @@ function renderRunSettings() {
     pairs,
   );
 }
-function renderReportSummary(linkToAbout = true) {
-  const protocol = data.suite.protocol;
+function colorCoverage(element, valid, planned) {
+  const fraction = planned > 0 ? Math.max(0, Math.min(1, valid / planned)) : 0;
+  element.style.setProperty("--coverage-hue", String(Math.round(fraction * 135)));
+}
+function renderReportSummary() {
   const datasets =
     data.catalog?.datasets ||
     distinct(data.games.map((g) => g.metadata?.dataset));
@@ -640,31 +643,21 @@ function renderReportSummary(linkToAbout = true) {
   const summary = $("protocolSummary");
   summary.replaceChildren(
     document.createTextNode(
-      `${datasets.length} datasets · ${Math.min(...players)}–${Math.max(...players)} players. `,
+      `${datasets.length} datasets · ${Math.min(...players)}–${Math.max(...players)} players`,
     ),
   );
-  const excluded =
-    data.catalog?.preparation_exclusion_count ??
-    data.suite.preparation_exclusions?.length ??
-    0;
-  if (excluded)
-    summary.append(
-      document.createTextNode(
-        `${excluded} preparation configurations excluded; reasons in About. `,
-      ),
-    );
   const coverage = data.campaign_coverage;
   if (coverage) {
     const manifest = data;
     const files = typeof localReportFiles === "undefined" ? null : localReportFiles;
-    summary.append(document.createTextNode(
-      `${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage. `,
-    ));
     const details = document.createElement("details");
     details.className = "coverageDetails";
     const label = document.createElement("summary");
-    label.textContent = "Coverage details";
-    details.append(label, document.createTextNode(
+    label.textContent = `${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage`;
+    colorCoverage(label, coverage.prepared_instances, coverage.intended_instances);
+    const body = document.createElement("div");
+    body.className = "coveragePopover";
+    body.append(document.createTextNode(
       `${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
       `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells have no qualified reference. Missing results are unscored. `,
     ));
@@ -690,13 +683,8 @@ function renderReportSummary(linkToAbout = true) {
         download.textContent = `Coverage download failed: ${error.message}`;
       }
     });
-    details.append(download);
+    body.append(download);
+    details.append(label, body);
     summary.append(details);
-  }
-  if (linkToAbout) {
-    const jump = document.createElement("a");
-    jump.href = "about.html";
-    jump.textContent = "About the benchmark ↗";
-    summary.append(jump);
   }
 }

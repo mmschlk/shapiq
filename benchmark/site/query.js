@@ -290,7 +290,8 @@ globalThis.BenchmarkQuery = (() => {
         selection: { panel_ids: p.panel_ids, game_budgets: p.game_budgets },
       }, options.signal);
       options.signal?.throwIfAborted();
-      return { panel: p, preset: matchedPreset(candidate, p, scoped) };
+      return { panel: p, preset: matchedPreset(candidate, p, scoped),
+        sha256: await selectorHash(p, scoped) };
     };
     const table = await lookup(request.selection);
     if (!table.preset) return null;
@@ -313,6 +314,9 @@ globalThis.BenchmarkQuery = (() => {
       };
     });
     const tableRows = rows(table.preset), chartRows = rows(chart.preset);
+    const timing = options.lookupTiming
+      ? await options.lookupTiming(chart.sha256, request.timing_metric) : null;
+    options.signal?.throwIfAborted();
     const pending = (values) => values.some((r) => r.missing > 0) &&
       values.every((r) => r.planned - r.missing - r.unsupported === 0);
     return {
@@ -329,7 +333,8 @@ globalThis.BenchmarkQuery = (() => {
           }] : [];
         }),
       })),
-      time_series: [],
+      time_series: timing || [],
+      timing_precomputed: timing !== null,
       selection: publicPanel(table.panel, request.score_order),
       chart_selection: publicPanel(chart.panel, request.score_order),
       chart_families: [...new Set(panel(games,

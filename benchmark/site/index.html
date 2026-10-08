@@ -27,6 +27,7 @@
         ></a
       >
       <div class="headerActions">
+        <a class="headerAbout" href="about.html">About</a>
         <span class="preview"><i></i> Research preview</span
         ><label class="localButton" for="upload">Open local ↗</label
         ><input
@@ -55,8 +56,10 @@
           </p>
         </div>
       </section>
-      <div id="notice" role="status">Loading results…</div>
-      <div class="protocolSummary" id="protocolSummary"></div>
+      <div class="reportStatus">
+        <div class="protocolSummary" id="protocolSummary"></div>
+        <div id="notice" role="status">Loading…</div>
+      </div>
       <section class="toolbar" aria-label="Benchmark filters">
         <label
           >PANEL<select id="panel">
@@ -311,20 +314,10 @@
         </article>
       </section>
       <section class="belowFold">
-        <a class="aboutLink" href="about.html">
-          <strong>About the benchmark ↗</strong>
-          <span
-            >How we build games, find exact answers, and compare
-            estimators.</span
-          >
-        </a>
         <details class="methodology">
           <summary>Details for these results <span>＋</span></summary>
           <div class="methodologyContent">
             <p>
-              <a href="about.html#games-shapley-values-and-estimation-error"
-                >How to read nMSE, median/mean and Elo ↗</a
-              >
               <span id="signalRule"></span>
             </p>
             <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
@@ -364,8 +357,7 @@
     <footer>
       <span>Built for better explanations.</span>
       <div>
-        <a href="about.html">About the benchmark ↗</a
-        ><a
+        <a
           href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ESTIMATOR_NOTES.md"
           >Estimator notes ↗</a
         ><a

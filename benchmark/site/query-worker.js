@@ -1,5 +1,5 @@
 "use strict";
-importScripts("partitions.js", "partition-details.js", "query.js");
+importScripts("partitions.js", "partition-details.js", "query.js", "timing-cache-metadata.js", "timing-cache.js");
 
 let controller;
 const metadataCache = new Map();
@@ -47,6 +47,9 @@ self.onmessage = async ({ data: message }) => {
       read,
       signal,
       preferPresets: !request.load_details,
+      lookupTiming: (selector, metric) => BenchmarkTiming.lookup(
+        manifest, selector, metric, { files, baseURL: new URL("./", self.location.href) },
+      ),
       lookupPreset: ({ sha256 }) =>
         BenchmarkDetails.preset(manifest, sha256, { read, signal }),
     });

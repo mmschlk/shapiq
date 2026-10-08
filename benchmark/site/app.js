@@ -269,7 +269,7 @@ async function load(value, files = null) {
   partitionDownloadController?.abort();
   ++targetVersion;
   if (value.record_shards) {
-    $("notice").textContent = "Loading Shapley benchmark results…";
+    $("notice").textContent = "Loading…";
     const descriptor = value.record_shards.find(
       (shard) => shard.target === initialTarget,
     );
@@ -692,7 +692,7 @@ async function renderPartitioned() {
     key = JSON.stringify(request);
   try {
     if (key !== partitionKey)
-      $("notice").textContent = "Loading benchmark selection…";
+      $("notice").textContent = "Updating…";
     if (key === partitionKey) client.cancel();
     let result =
       key === partitionKey ? partitionView : await client.query(request);
@@ -741,11 +741,6 @@ async function renderPartitioned() {
       unit = data.suite.game_seeds?.length ? "game instances" : "games";
     $("chartTooltip").hidden = true;
     $("notice").textContent = [
-      pendingRuns
-        ? data.campaign_coverage?.closed
-          ? `${formatCount(pendingRuns)} unevaluated cells · Missing results are unscored.`
-          : `${formatCount(pendingRuns)} cells pending · Missing results are unscored.`
-        : "",
       result.table_pending
         ? data.campaign_coverage?.closed
           ? "No table results were measured for this budget. Charts show all measured budgets."
@@ -777,7 +772,7 @@ async function renderPartitioned() {
     for (const [id, rows] of Object.entries(result.issues)) {
       $(id).replaceChildren();
       const texts = result.details_deferred
-        ? ["Loading breakdown…"]
+        ? ["Open this section to load the breakdown."]
         : rows.length
         ? rows.map((row) => `${row.description} — ${row.count} run(s)`)
         : [
@@ -793,11 +788,12 @@ async function renderPartitioned() {
     }
     const hardware = result.hardware;
     $("hardware").textContent = result.details_deferred
-      ? "Loading worker hardware…"
+      ? "Open this section to load worker hardware."
       : hardware.cpu_models.length
       ? `Measured workers: ${hardware.cpu_models.join("; ")}. Profiles: ${hardware.timing_profiles.join(", ")}. Per-run placement and thread details are included in JSON downloads.`
       : "Worker hardware was not recorded in this older result.";
-    if (result.details_deferred) {
+    if (result.details_deferred && (!result.timing_precomputed ||
+        document.querySelector(".methodology[open], .runFailures[open]"))) {
       // Paint the small precomputed view before fetching timing in the worker.
       setTimeout(() => {
         if (client !== partitionClient || version !== partitionRenderVersion) return;
@@ -935,16 +931,7 @@ function render() {
         ? "No chart results were measured for this selection."
         : "Chart results pending for this selection."
       : "";
-  $("notice").textContent = [
-    pendingRuns
-      ? data.campaign_coverage?.closed
-        ? `${formatCount(pendingRuns)} unevaluated cells · Missing results are unscored.`
-        : `${formatCount(pendingRuns)} cells pending · Missing results are unscored.`
-      : "",
-    selectionNotice,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  $("notice").textContent = selectionNotice;
   $("budgetChartNote").textContent = allCurves
     ? "Median nMSE · ≥80% coverage"
     : "Median nMSE · ≥80% coverage";
@@ -1081,6 +1068,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
         pill.className = "coveragePill" + (item.complete ? " complete" : "");
         td.title = `${item.valid.toLocaleString("en-US")} / ${item.planned.toLocaleString("en-US")} successful runs${state ? ` · ${state}` : ""}`;
         pill.textContent = value;
+        colorCoverage(pill, item.valid, item.planned);
         td.append(pill);
       } else {
         td.textContent = value;
@@ -1237,6 +1225,14 @@ function download(kind) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+document.querySelectorAll(".methodology, .runFailures").forEach((section) => {
+  section.addEventListener("toggle", () => {
+    if (section.open && partitionClient && partitionView?.details_deferred) {
+      requestPartitionDetails();
+      renderPartitioned();
+    }
+  });
+});
 [
   "panel",
   "target",
@@ -1268,7 +1264,6 @@ function download(kind) {
     }
     if (id === "panel") $("family").value = "";
     if (id === "chartFamily") chartFamilyExplicit = true;
-    if (id === "timeMetric" && partitionClient) requestPartitionDetails();
     if (data) render();
   }),
 );
