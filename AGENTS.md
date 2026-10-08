@@ -131,7 +131,7 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - A float32 matrix product's summation order depends on the number of rows, so
   `embeddings @ text` changed in the 16th digit with the batch; the CLIP game sums row-wise.
 - A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
-  follow that path at every split, which makes the `imputer="missing"` game constant. Use a
+  follow that path at every split, which makes a NaN-baseline game constant. Use a
   model that learns missing-value directions (`HistGradientBoosting*`) in tests.
 
 ### Build Docs (only use this command verbatim from the project root)

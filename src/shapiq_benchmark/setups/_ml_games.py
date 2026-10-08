@@ -55,7 +55,7 @@ MISSING_VALUE_MODELS: tuple[str, ...] = (
     "tabpfn",
     "xgboost",
 )
-"""The registry models that read missing values natively (for ``imputer="missing"``)."""
+"""The registry models that read missing values natively (for ``baseline="missing"``)."""
 
 DEFAULT_MEMBER_POOL: tuple[str, ...] = (
     "linear",
@@ -78,8 +78,9 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
 
     - With ``imputer="tabpfn"`` the model must be ``"tabpfn"``, and the background rows are
       TabPFN's context (remove-and-recontextualize).
-    - With ``imputer="missing"`` the model reads absent features as missing values: NaN for the
-      tree models, and ``+inf`` for ``"tabpfn"``, which is then built with
+    - With ``imputer="baseline"``, absent features take the background mean (mode for categorical
+      features), or with ``baseline="missing"`` a missing value the model reads natively: NaN for
+      the tree models, and ``+inf`` for ``"tabpfn"``, which is then built with
       ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``).
     - ``"tabpfn"`` is TabPFN v2 unless ``model_params`` chooses a ``version``, e.g.
       ``{"version": "v3"}`` as in the benchmarking paper (the versions after v2 need a Prior Labs
@@ -88,8 +89,8 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
     Attributes:
         model: The model name. Defaults to ``"random_forest"``.
         x: The index of the explained point in the test split. Defaults to ``0``.
-        imputer: ``"marginal"`` (default), ``"conditional"``, ``"baseline"``, ``"missing"``, or
-            ``"tabpfn"``.
+        imputer: ``"marginal"`` (default), ``"conditional"``, ``"baseline"``, or ``"tabpfn"``.
+        baseline: For ``imputer="baseline"``: ``"mean"`` (default) or ``"missing"`` (see above).
         n_background: The number of background (or context) rows. Defaults to ``100``.
         n_train: Train the model on a seeded subset of this many training rows (``None`` for all).
         class_index: The explained class for classifiers (``None`` means class ``1``).
@@ -105,13 +106,15 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         ...     dataset="adult_census",
         ...     model="tabpfn",
         ...     model_params={"version": "v3", "ignore_pretraining_limits": True},
-        ...     imputer="missing",
+        ...     imputer="baseline",
+        ...     baseline="missing",
         ...     n_train=1040,
         ... )
     """
 
     x: int = 0
-    imputer: Literal["marginal", "conditional", "baseline", "missing", "tabpfn"] = "marginal"
+    imputer: Literal["marginal", "conditional", "baseline", "tabpfn"] = "marginal"
+    baseline: Literal["mean", "missing"] = "mean"
     n_background: int = 100
     n_train: int | None = None
     class_index: int | None = None
@@ -123,9 +126,12 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         if self.imputer == "tabpfn" and self.model != "tabpfn":
             msg = f"imputer='tabpfn' needs model='tabpfn', got model={self.model!r}."
             raise ValueError(msg)
-        if self.imputer == "missing" and self.model not in MISSING_VALUE_MODELS:
+        if self.baseline != "mean" and self.imputer != "baseline":
+            msg = f"baseline applies to imputer='baseline', got imputer={self.imputer!r}."
+            raise ValueError(msg)
+        if self.baseline == "missing" and self.model not in MISSING_VALUE_MODELS:
             msg = (
-                f"imputer='missing' needs a model that reads missing values, one of "
+                f"baseline='missing' needs a model that reads missing values, one of "
                 f"{MISSING_VALUE_MODELS}; got model={self.model!r}."
             )
             raise ValueError(msg)
@@ -133,12 +139,14 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
     def build(self) -> LocalExplanation:
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
-        params, missing_value = dict(self.model_params), np.nan
-        if self.imputer == "missing" and self.model == "tabpfn":  # TabPFN reads +inf as missing
-            require_inf_passthrough()
-            config = dict(params.get("inference_config", {}))
-            params["inference_config"] = {**config, "PASSTHROUGH_INF": True}
-            missing_value = np.inf
+        params, baseline = dict(self.model_params), None
+        if self.baseline == "missing":
+            baseline = np.nan
+            if self.model == "tabpfn":  # TabPFN reads +inf as missing
+                require_inf_passthrough()
+                config = dict(params.get("inference_config", {}))
+                params["inference_config"] = {**config, "PASSTHROUGH_INF": True}
+                baseline = np.inf
         train = self.sample_rows(split.x_train.shape[0], self.n_train)
         model = build_model(
             self.model,
@@ -163,7 +171,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
             imputer=imputer,  # type: ignore[arg-type]
             class_index=self.class_index,
             sample_size=self.n_background,
-            missing_value=missing_value,
+            baseline=baseline,
             random_state=self.random_state,
             normalize=self.normalize,
         )

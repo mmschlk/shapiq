@@ -208,9 +208,11 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   grid of near-equal rectangular blocks of the token grid (`np.array_split`), the models see a
   `224 x 224` center crop (the game's `image`), and every forward pass is padded to the batch
   size, so values do not depend on the batch.
-- **Missing values.** `LocalExplanation(imputer="missing")` passes absent features as missing
-  values (NaN, or `+inf` for TabPFN v3 with `PASSTHROUGH_INF`) to a model that reads them. It is
-  core's `BaselineImputer` with a one-row baseline of that value, so no new imputer was needed.
+- **Missing values.** `LocalExplanation(imputer="baseline", baseline=np.nan)` passes absent
+  features as missing values to a model that reads them (`np.inf` for TabPFN with
+  `PASSTHROUGH_INF`). `baseline` sets the values of core's `BaselineImputer` (one value or one
+  per feature) instead of the background mean, so no new imputer was needed. The setups say
+  `baseline="missing"` and pick NaN or `+inf` for the model, so their fields stay free of NaN.
 - **TabPFN by version.** Users choose the TabPFN version (`version="v3"` in
   `tabpfn_regressor`, in the registry's `model_params`, or in the causal setups'
   `regressor_params`); `shapiq_games._tabpfn.build_tabpfn` builds it with tabpfn's

@@ -91,8 +91,10 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         True,
     ),
     "local_xai_index": (lambda: sg.LocalExplanation(_tree_regressor(), _X, x=3), True),
-    "local_xai_missing": (
-        lambda: sg.LocalExplanation(_tree_regressor(), _X_TRAIN, x=_X_TEST[4], imputer="missing"),
+    "local_xai_nan_baseline": (
+        lambda: sg.LocalExplanation(
+            _tree_regressor(), _X_TRAIN, x=_X_TEST[4], imputer="baseline", baseline=np.nan
+        ),
         True,
     ),
     "global_xai": (lambda: sg.GlobalExplanation(_tree_regressor(), _X_TEST), True),
@@ -300,8 +302,8 @@ NULL_PLAYER_GAMES: dict[str, Callable[[], Game]] = {
     "local_xai_baseline": lambda: sg.LocalExplanation(
         _ignores_feature_3, _X_TRAIN, x=_X_TEST[0], imputer="baseline"
     ),
-    "local_xai_missing": lambda: sg.LocalExplanation(
-        _booster_without_feature_3(), _X_TRAIN, x=_X_TEST[0], imputer="missing"
+    "local_xai_nan_baseline": lambda: sg.LocalExplanation(
+        _booster_without_feature_3(), _X_TRAIN, x=_X_TEST[0], imputer="baseline", baseline=np.nan
     ),
     "global_xai": lambda: sg.GlobalExplanation(_tree_without_feature_3(), _X_TEST),
     "path_dependent_tree": lambda: sg.PathDependentTreeGame(_tree_without_feature_3(), _X_TEST[0]),

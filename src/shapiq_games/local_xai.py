@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 __all__ = ["LocalExplanation", "require_inf_passthrough"]
 
-type ImputerName = Literal["marginal", "conditional", "baseline", "missing"]
+type ImputerName = Literal["marginal", "conditional", "baseline"]
 
 _PASSTHROUGH_INF_TABPFN = (8, 1)  # the first tabpfn release with inference_config PASSTHROUGH_INF
 
@@ -52,11 +52,11 @@ class LocalExplanation(Game):
 
     - ``"marginal"`` replaces them with background rows (interventional),
     - ``"conditional"`` samples them conditionally on the present features,
-    - ``"baseline"`` replaces them with a baseline value (the background mean or mode),
-    - ``"missing"`` passes them to the model as missing values (``missing_value``, NaN by default),
-      for models that handle missing values natively, e.g. XGBoost, LightGBM, scikit-learn's
-      histogram gradient boosting, or TabPFN, which also reads ``+inf`` as missing when it is built
-      with ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``),
+    - ``"baseline"`` replaces them with a baseline: the background mean (mode for categorical
+      features) or a given ``baseline``. A baseline of ``np.nan`` passes them as missing values to
+      models that read those natively, e.g. XGBoost, LightGBM, or scikit-learn's histogram
+      gradient boosting; TabPFN also reads ``np.inf`` as missing when it is built with
+      ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``),
     - an :class:`~shapiq.imputer.TabPFNImputer` removes them from TabPFN's context
       (remove-and-recontextualize; :class:`shapiq_benchmark.setups.LocalExplanationSetup` builds
       one with ``imputer="tabpfn"``).
@@ -81,14 +81,14 @@ class LocalExplanation(Game):
         >>> game.n_players
         5
 
-        Features the model reads as missing:
+        Absent features passed as missing values (NaN):
 
         >>> from sklearn.ensemble import HistGradientBoostingRegressor
         >>> booster = HistGradientBoostingRegressor(max_iter=20, random_state=0).fit(X, y)
-        >>> game = LocalExplanation(booster, data=X, x=0, imputer="missing")  # NaN by default
+        >>> game = LocalExplanation(booster, data=X, x=0, imputer="baseline", baseline=np.nan)
         >>> game.n_players
         5
-        >>> # TabPFN, +inf: LocalExplanation(tabpfn, X, x=0, imputer="missing", missing_value=np.inf)
+        >>> # TabPFN: LocalExplanation(tabpfn, X, x=0, imputer="baseline", baseline=np.inf)
     """
 
     def __init__(
@@ -100,7 +100,7 @@ class LocalExplanation(Game):
         imputer: ImputerName | Imputer = "marginal",
         class_index: int | None = None,
         sample_size: int = 100,
-        missing_value: float = np.nan,
+        baseline: float | np.ndarray | None = None,
         random_state: int = 42,
         normalize: bool = True,
         verbose: bool = False,
@@ -112,16 +112,16 @@ class LocalExplanation(Game):
                 ``(n_samples, n_features)`` matrix to ``(n_samples,)`` predictions.
             data: The background data of shape ``(n_samples, n_features)``.
             x: The explained point, or its index in ``data``. Defaults to ``0``.
-            imputer: ``"marginal"``, ``"conditional"``, ``"baseline"``, ``"missing"``, or an
-                already fitted :class:`~shapiq.imputer.base.Imputer`. An imputer brings its own model,
+            imputer: ``"marginal"``, ``"conditional"``, ``"baseline"``, or an already fitted :class:`~shapiq.imputer.base.Imputer`. An imputer brings its own model,
                 background data, point, and seed: ``x`` and ``random_state`` are then taken from
                 it, and ``model`` and ``class_index`` only set :attr:`class_index`.
             class_index: The explained class for classifiers. Defaults to ``None``, which means
                 class ``1`` for classifiers (the convention of the shapiq explainers).
             sample_size: The number of background rows the marginal imputer averages over.
                 Defaults to ``100``.
-            missing_value: The value absent features take with ``imputer="missing"``. Defaults
-                to NaN; ``np.inf`` is TabPFN's missing marker (see above).
+            baseline: The values absent features take with ``imputer="baseline"``: one value
+                for every feature (e.g. ``np.nan``, see above) or one per feature. ``None``
+                (default) uses the mean (mode for categorical features) of ``data``.
             random_state: The seed of the imputer (unless an imputer is given). Defaults to
                 ``42``.
             normalize: Whether to center the game such that the value of the empty coalition is
@@ -129,8 +129,8 @@ class LocalExplanation(Game):
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
-            ValueError: If ``imputer="missing"`` passes ``inf`` to a TabPFN model that would not
-                read it as missing.
+            ValueError: If ``baseline`` is given for another imputer, or passes ``inf`` to a
+                TabPFN model that would not read it as missing.
         """
         data = np.asarray(data)
         if isinstance(imputer, Imputer):  # the imputer brings its own point and seed
@@ -146,6 +146,9 @@ class LocalExplanation(Game):
             self.class_index = resolve_class_index(model, class_index)
             predict = make_predict_function(model, self.class_index)
 
+        if baseline is not None and not (isinstance(imputer, str) and imputer == "baseline"):
+            msg = f"baseline applies to imputer='baseline', got imputer={imputer!r}."
+            raise ValueError(msg)
         if isinstance(imputer, Imputer):
             self.imputer = imputer
         elif imputer == "marginal":
@@ -161,23 +164,17 @@ class LocalExplanation(Game):
             self.imputer = GenerativeConditionalImputer(
                 model=predict, data=data, x=self.x, random_state=random_state, normalize=False
             )
-        elif imputer == "missing":
-            _check_missing_value(model, missing_value)
-            self.imputer = BaselineImputer(  # with a single row, the row is the baseline
-                model=predict,
-                data=np.full((1, data.shape[1]), missing_value, dtype=float),
-                x=self.x,
-                random_state=random_state,
-                normalize=False,
-            )
         elif imputer == "baseline":
+            if baseline is not None:  # a single row is the baseline itself
+                data = _baseline_row(baseline, data.shape[1])
+                _check_tabpfn_baseline(model, data)
             self.imputer = BaselineImputer(
                 model=predict, data=data, x=self.x, random_state=random_state, normalize=False
             )
         else:
             msg = (
-                f"Unknown imputer {imputer!r}. Choose 'marginal', 'conditional', 'baseline', "
-                "'missing', or pass an Imputer instance."
+                f"Unknown imputer {imputer!r}. Choose 'marginal', 'conditional', 'baseline', or "
+                "pass an Imputer instance."
             )
             raise ValueError(msg)
 
@@ -223,13 +220,22 @@ def require_inf_passthrough() -> None:
         raise ValueError(msg)
 
 
-def _check_missing_value(model: Any, missing_value: float) -> None:  # noqa: ANN401
-    """Reject ``inf`` for a TabPFN model that does not read it as a missing value.
+def _baseline_row(baseline: float | np.ndarray, n_features: int) -> np.ndarray:
+    """Return the baseline as one row of ``n_features`` values."""
+    values = np.asarray(baseline, dtype=float).reshape(-1)
+    if values.size not in (1, n_features):
+        msg = f"baseline must be one value or one per feature ({n_features}), got {values.size}."
+        raise ValueError(msg)
+    return np.broadcast_to(values, (1, n_features)).copy()
+
+
+def _check_tabpfn_baseline(model: Any, baseline: np.ndarray) -> None:  # noqa: ANN401
+    """Reject an ``inf`` baseline for a TabPFN model that does not read it as a missing value.
 
     Without ``PASSTHROUGH_INF``, tabpfn 8.1 and later reject ``inf``, and older releases transform it
     in their preprocessing, so the game would silently explain something else.
     """
-    if not np.isinf(missing_value) or not safe_isinstance(
+    if not np.isinf(baseline).any() or not safe_isinstance(
         model, ("tabpfn.TabPFNClassifier", "tabpfn.TabPFNRegressor")
     ):
         return

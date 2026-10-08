@@ -78,7 +78,8 @@ def test_tabpfn_missing_value_game() -> None:
     setup = LocalExplanationSetup(
         dataset="california_housing",
         model="tabpfn",
-        imputer="missing",
+        imputer="baseline",
+        baseline="missing",
         n_train=500,  # tabpfn refuses more than 1,000 rows on a CPU by default
         model_params={"n_estimators": 1},
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import pickle
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -313,18 +314,21 @@ def test_image_text_similarity_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_local_explanation_with_missing_values_and_a_training_cap() -> None:
     setup = LocalExplanationSetup(
-        dataset="breast_cancer", model="decision_tree", imputer="missing", n_train=100
+        dataset="breast_cancer",
+        model="decision_tree",
+        imputer="baseline",
+        baseline="missing",
+        n_train=100,
     )
     game = setup.build()
     assert game.n_players == 30
-    assert (
-        setup.key
-        != LocalExplanationSetup(
-            dataset="breast_cancer", model="decision_tree", imputer="missing"
-        ).key
-    )
+    np.testing.assert_array_equal(game.imputer.baseline_values, np.full((1, 30), np.nan))
+    assert setup.key != dataclasses.replace(setup, n_train=None).key
+    assert setup.key != dataclasses.replace(setup, baseline="mean").key
     with pytest.raises(ValueError, match="reads missing values"):
-        LocalExplanationSetup(dataset="xor", model="linear", imputer="missing")
+        LocalExplanationSetup(dataset="xor", model="linear", imputer="baseline", baseline="missing")
+    with pytest.raises(ValueError, match="baseline applies to imputer='baseline'"):
+        LocalExplanationSetup(dataset="xor", model="xgboost", baseline="missing")
 
 
 def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -362,7 +366,8 @@ def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -
         dataset_params={"n_samples": 100},
         model="tabpfn",
         model_params={"version": "v3"},
-        imputer="missing",
+        imputer="baseline",
+        baseline="missing",
         n_train=50,
     )
     game = setup.build()

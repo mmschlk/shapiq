@@ -44,7 +44,9 @@ def build_tabpfn(
     if version not in known:
         installed = importlib.metadata.version("tabpfn")
         hint = f"it knows {', '.join(known)}" if known else "choosing a version needs tabpfn>=6.0"
-        msg = f"tabpfn {installed} has no TabPFN {version!r}: {hint}. Upgrade tabpfn for newer ones."
+        msg = (
+            f"tabpfn {installed} has no TabPFN {version!r}: {hint}. Upgrade tabpfn for newer ones."
+        )
         raise ValueError(msg)
     cls = tabpfn.TabPFNClassifier if task == "classification" else tabpfn.TabPFNRegressor
     return cls.create_default_for_version(model_version(version), **params)
