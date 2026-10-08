@@ -689,3 +689,12 @@ uv run pre-commit run --all-files
   checksum-pinned stored ZIP for Pages deployment, retaining each member's hash.
   The optional `data-source.json.archive` transport avoids changing report bytes.
   See https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases.
+
+- The comprehensive node-local runtime archive contains redundant stdlib files
+  under `src` as well as `stdlib`, plus an inactive copied `stdlib/site-packages`.
+  gpu01 lacked three zero-byte duplicate package markers while their canonical
+  stdlib copies and every scientific source file were unchanged. Validate the
+  actual active import trees and explicit equivalences; preserve unexpected
+  differences as errors. A bootstrap failure on one host does not imply that
+  sibling allocations failed: inspect each job's receipts and claims before
+  stopping any running sibling.
