@@ -151,5 +151,13 @@ def test_class_index():
         assert return_value[0] == i + 1
 
 
+def test_predict_hf_vlm_raises():
+    """The VLM predict stub always raises RuntimeError (utils.py 285, 290)."""
+    from shapiq.explainer.utils import _predict_hf_vlm
+
+    with pytest.raises(RuntimeError, match="vision-language"):
+        _predict_hf_vlm(model=object(), data=np.zeros((1, 1)))
+
+
 def _valid_sig(param: inspect.Parameter):
     return param.annotation in (np.ndarray, inspect._empty, Any)
