@@ -117,6 +117,15 @@ Boosting converters live in separate modules such as `xgboost.py`,
   sampled background). The null-player contract test covers the interventional games only.
 - Setup fields are stored read-only in JSON form (`_FrozenDict`, tuples): derive variants with
   `dataclasses.replace`, and give a setup subclass its own `name=`, or creating it raises.
+- A setup's cache key covers its fields, its class `version` and `RECIPE_VERSION`
+  (`setups/_base.py`). Bump `version` when one setup's `build` changes its game, and
+  `RECIPE_VERSION` when shared code does (datasets and their preprocessing, `sample_rows`,
+  `stratified_rows`, splits, registry defaults); otherwise stale ground truth is served silently.
+- The image games derive from `RegionGame` (`vision/_region_game.py`): a subclass sets `image`,
+  `regions` and `_fill` (`None` in token space), implements `_evaluate`, and calls
+  `super().__init__` last; do not override `value_function` (it answers the empty coalition with
+  the stored value). The token backends (ViT, DINOv2) return every class probability; the game
+  picks the class.
 - LightGBM ignores `subsample` unless `subsample_freq` > 0 (the tuned presets carried a
   `subsample` that did nothing).
 - shapiq's Monte Carlo approximators (SHAP-IQ, SVARM-IQ) estimate FSII and FBII of the top order
