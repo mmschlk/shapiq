@@ -1312,19 +1312,16 @@ footer a {
 .headerAbout { font-size: 12px; text-decoration: none; }
 .headerAbout:hover { text-decoration: underline; }
 .reportStatus, .protocolSummary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
-.reportStatus { margin: 0 0 16px; min-height: 28px; }
+.reportStatus { position: relative; margin: 0 0 16px; min-height: 28px; }
 .reportStatus .protocolSummary, .reportStatus #notice { margin: 0; }
 .coveragePill, .coverageDetails > summary {
   color: hsl(var(--coverage-hue, 0) 55% 28%);
   background: hsl(var(--coverage-hue, 0) 45% 94%);
 }
-.coverageDetails { position: relative; display: inline-block; }
+.coverageDetails { position: static; display: inline-block; }
 .coverageDetails > summary { padding: 3px 10px; border-radius: 6px; font-size: 11px; }
-.coveragePopover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 12;
-  width: min(380px, 80vw); padding: 16px; border: 1px solid var(--line); border-radius: 10px;
+.coveragePopover { position: absolute; top: calc(100% + 8px); left: 0; z-index: 12;
+  width: min(380px, 100%); padding: 16px; border: 1px solid var(--line); border-radius: 10px;
   background: white; color: var(--muted); box-shadow: 0 8px 28px #182c5018; }
 .coveragePopover a { display: block; margin: 8px 0 0; }
 
-@media (max-width: 600px) {
-  .coveragePopover { left: 0; right: auto; }
-}
