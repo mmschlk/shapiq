@@ -214,15 +214,15 @@ def _catboost_oblivious_tree_to_treemodel(
         msg = "CatBoost leaf_weights length is incompatible with the number of leaves."
         raise ValueError(msg)
 
-    def build_node(level: int, leaf_index: int) -> int:
+    # the root is splits[-1] (CatBoost's SHAP convention); position = leaf-index bits fixed above
+    def build_node(level: int, position: int) -> int:
+        node_id = (1 << level) - 1 + position
         if level == depth:
-            node_id = internal_count + leaf_index
-            values[node_id] = scaling * leaf_values[leaf_index] + bias
-            node_sample_weight[node_id] = leaf_weights[leaf_index]
+            values[node_id] = scaling * leaf_values[position] + bias
+            node_sample_weight[node_id] = leaf_weights[position]
             return node_id
 
-        node_id = (1 << level) - 1 + leaf_index
-        split = splits[level]
+        split = splits[depth - 1 - level]
         if split.get("split_type") != "FloatFeature":
             msg = (
                 "Only CatBoost JSON models with FloatFeature splits are supported. "
@@ -230,8 +230,8 @@ def _catboost_oblivious_tree_to_treemodel(
             )
             raise NotImplementedError(msg)
         feature_id = int(split["float_feature_index"])
-        left_child = build_node(level + 1, leaf_index)
-        right_child = build_node(level + 1, leaf_index | (1 << level))
+        left_child = build_node(level + 1, 2 * position)
+        right_child = build_node(level + 1, 2 * position + 1)
         nan_treatment = nan_treatments.get(feature_id, "AsIs")
 
         children_left[node_id] = left_child
@@ -248,7 +248,7 @@ def _catboost_oblivious_tree_to_treemodel(
         values[0] = scaling * leaf_values[0] + bias
         node_sample_weight[0] = leaf_weights[0]
     else:
-        build_node(level=0, leaf_index=0)
+        build_node(level=0, position=0)
 
     return TreeModel(
         children_left=children_left,

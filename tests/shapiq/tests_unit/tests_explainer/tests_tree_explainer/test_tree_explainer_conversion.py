@@ -843,45 +843,17 @@ def test_catboost_multiclass_conversion_selects_requested_class():
         )
 
 
-def _reverse_catboost_tree_levels(model_json: dict) -> dict:
-    """Reverse the split order of every oblivious tree, permuting the leaves to match.
+def test_catboost_path_dependent_values_match_native_shap():
+    """Test that path-dependent values match CatBoost's native (and shap's) SHAP values.
 
-    Leaf ``l`` of a CatBoost oblivious tree takes bit ``k`` from ``splits[k]``. Reversing the
-    splits therefore maps leaf ``l`` to the leaf with the bit-reversed index, which leaves the
-    model's predictions unchanged.
-    """
-    reversed_trees = []
-    for tree in model_json["oblivious_trees"]:
-        depth = len(tree["splits"])
-        permutation = [
-            sum(((leaf >> k) & 1) << (depth - 1 - k) for k in range(depth))
-            for leaf in range(2**depth)
-        ]
-        reversed_trees.append(
-            {
-                **tree,
-                "splits": tree["splits"][::-1],
-                "leaf_values": [tree["leaf_values"][leaf] for leaf in permutation],
-                "leaf_weights": [tree["leaf_weights"][leaf] for leaf in permutation],
-            }
-        )
-    return {**model_json, "oblivious_trees": reversed_trees}
-
-
-def test_catboost_native_shap_uses_last_split_as_root():
-    """Test the oblivious-tree unrolling convention against CatBoost's native SHAP values.
-
-    Path-dependent values of an oblivious tree depend on which split is placed at the root:
-    the cover weights an absent feature is averaged with are conditioned on the splits above
-    it. shapiq uses CatBoost's split order, i.e. the growth order (``splits[0]``, the split
-    chosen first, is the root); CatBoost's native ``ShapValues`` place ``splits[-1]`` at the
-    root. Both are exact path-dependent TreeSHAP on the same model, but they differ whenever
-    leaf covers are not independent across levels. Reversing the split order before
-    conversion must reproduce CatBoost's native values exactly, including features that
-    repeat across levels and NaN routing.
+    An oblivious tree applies one split per level, so its levels can be stacked in any order
+    without changing the predictions, but the path-dependent game depends on that order.
+    CatBoost's ``ShapValues`` (which ``shap.TreeExplainer`` returns for CatBoost) put the
+    last split of ``splits`` at the root. The converter used to put the first split there,
+    which gave attributions differing from shap by more than the mean attribution on
+    deeper models. The model covers features repeated across levels and NaN routing.
     """
     catboost = pytest.importorskip("catboost")
-    from shapiq.tree.conversion.catboost import _catboost_model_to_json
 
     rng = np.random.default_rng(0)
     n_samples = 400
@@ -899,31 +871,26 @@ def test_catboost_native_shap_uses_last_split_as_root():
         iterations=5, depth=3, random_seed=0, allow_writing_files=False, verbose=False
     ).fit(X, y)
     x_explain = np.array([[2.0, -1.0, 3.0, 2.0], [5.0, np.nan, -0.3, 1.0], *X[:4]])
-    native = model.get_feature_importance(data=catboost.Pool(x_explain), type="ShapValues")
+    pool = catboost.Pool(x_explain)
+    native = model.get_feature_importance(data=pool, type="ShapValues")
+    native_interactions = model.get_feature_importance(data=pool, type="ShapInteractionValues")
 
-    model_json = _catboost_model_to_json(model)
-    reversed_trees = parse_catboost_json_model(_reverse_catboost_tree_levels(model_json))
-    np.testing.assert_allclose(
-        _predict_tree_ensemble(reversed_trees, x_explain),
-        model.predict(x_explain, prediction_type="RawFormulaVal"),
-        rtol=1e-6,
-        atol=1e-6,
-    )
-
-    reversed_explainer = TreeExplainer(reversed_trees, index="SV", max_order=1)
-    default_explainer = TreeExplainer(model, index="SV", max_order=1)
-    max_gap_to_native = 0.0
-    for x, native_row in zip(x_explain, native, strict=True):
-        reversed_sv = reversed_explainer.explain(x)
+    sv_explainer = TreeExplainer(model, index="SV", max_order=1)
+    sii_explainer = TreeExplainer(model, index="SII", max_order=2)
+    n_features = X.shape[1]
+    for x, native_row, native_interaction in zip(
+        x_explain, native, native_interactions, strict=True
+    ):
+        sv = sv_explainer.explain(x)
         np.testing.assert_allclose(
-            [reversed_sv[(i,)] for i in range(X.shape[1])], native_row[:-1], atol=1e-6
+            [sv[(i,)] for i in range(n_features)], native_row[:-1], atol=1e-10
         )
-        assert reversed_sv.baseline_value == pytest.approx(native_row[-1], abs=1e-6)
-        default_sv = default_explainer.explain(x)
-        gaps = [abs(default_sv[(i,)] - native_row[i]) for i in range(X.shape[1])]
-        max_gap_to_native = max(max_gap_to_native, *gaps)
-    # precondition: the two unrollings give different games on this model
-    assert max_gap_to_native > 1e-2
+        assert sv.baseline_value == pytest.approx(native_row[-1], abs=1e-10)
+        # shap interaction values split the pairwise Shapley interaction index in half
+        sii = sii_explainer.explain(x)
+        for i in range(n_features):
+            for j in range(i + 1, n_features):
+                assert sii[(i, j)] / 2 == pytest.approx(native_interaction[i, j], abs=1e-10)
 
 
 @pytest.mark.external_libraries

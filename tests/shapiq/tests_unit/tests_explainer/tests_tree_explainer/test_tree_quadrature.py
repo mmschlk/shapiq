@@ -448,7 +448,12 @@ def test_zero_cover_constant_tree_is_null_player(x, index, implementation):
 
 
 def _catboost_zero_cover_model():
-    """The CatBoost regressor of the bug report: NaNs in feature 1, oblivious depth-3 trees."""
+    """The bug report's CatBoost data (NaNs in feature 1) with oblivious depth-5 trees.
+
+    The bug report used depth 3. Since oblivious trees are expanded with CatBoost's level
+    order (last split at the root), depth-3 trees no longer drop mass on any instance, so
+    depth 5 keeps this a regression test.
+    """
     catboost = pytest.importorskip("catboost")
     rng = np.random.default_rng(0)
     n = 400
@@ -458,12 +463,12 @@ def _catboost_zero_cover_model():
     X[rng.random(n) < 0.15, 1] = np.nan
     y = (X[:, 0] % 3) + np.nan_to_num(X[:, 1]) * X[:, 2] + (X[:, 3] == 2)
     model = catboost.CatBoostRegressor(
-        iterations=5, depth=3, random_seed=0, verbose=0, allow_writing_files=False
+        iterations=5, depth=5, random_seed=0, verbose=0, allow_writing_files=False
     )
     return model.fit(X, y)
 
 
-_ZERO_COVER_INSTANCES = [[2.0, np.nan, 0.5, 2.0], [2.0, -1.0, 3.0, 2.0]]
+_ZERO_COVER_INSTANCES = [[5.0, np.nan, 0.5, 0.0], [4.0, 3.07, 1.56, 0.0]]
 
 
 @pytest.mark.parametrize("x", _ZERO_COVER_INSTANCES)

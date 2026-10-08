@@ -453,6 +453,11 @@ public:
     }
 };
 
+// Expands an oblivious tree level by level. Leaf ``l`` takes bit ``k`` from ``splits[k]``. As
+// in CatBoost's own SHAP values (and shap's CatBoost loader), the root is ``splits[depth - 1]``
+// and ``splits[0]`` is the last level. The level order changes the path-dependent game, not the
+// predictions. ``position`` is the node's index within its level, i.e. the leaf-index bits fixed
+// above it, so at the bottom it is the leaf index.
 static void fill_catboost_tree_node(
     const std::vector<CatBoostSplit> &splits,
     const std::vector<double> &leaf_values,
@@ -460,36 +465,31 @@ static void fill_catboost_tree_node(
     const std::unordered_map<int64_t, std::string> &nan_treatments,
     ParsedTreeArrays &tree,
     uint64_t depth,
-    uint64_t internal_count,
     uint64_t level,
-    uint64_t leaf_index,
+    uint64_t position,
     double scaling,
     double bias)
 {
+    uint64_t node_id = (uint64_t{1} << level) - 1 + position;
     if (level == depth)
     {
-        uint64_t node_id = internal_count + leaf_index;
         tree.node_ids[node_id] = static_cast<int64_t>(node_id);
         tree.feature_ids[node_id] = -2;
         tree.thresholds[node_id] = 0.0;
-        tree.values[node_id] = scaling * leaf_values[leaf_index] + bias;
+        tree.values[node_id] = scaling * leaf_values[position] + bias;
         tree.left_children[node_id] = -1;
         tree.right_children[node_id] = -1;
         tree.default_children[node_id] = -1;
-        tree.node_sample_weights[node_id] = leaf_weights[leaf_index];
+        tree.node_sample_weights[node_id] = leaf_weights[position];
         return;
     }
 
-    uint64_t node_id = (uint64_t{1} << level) - 1 + leaf_index;
-    uint64_t left_child = (uint64_t{1} << (level + 1)) - 1 + leaf_index;
-    uint64_t right_leaf_index = leaf_index | (uint64_t{1} << level); // CatBoost oblivious trees use the bits of the leaf index to determine the path, so the right child index is obtained by setting the current level bit.
-    uint64_t right_child = (level + 1 == depth)
-                               ? internal_count + right_leaf_index
-                               : (uint64_t{1} << (level + 1)) - 1 + right_leaf_index;
-    const CatBoostSplit &split = splits[level];
+    uint64_t left_child = (uint64_t{1} << (level + 1)) - 1 + 2 * position;
+    uint64_t right_child = left_child + 1;
+    const CatBoostSplit &split = splits[depth - 1 - level];
 
-    fill_catboost_tree_node(splits, leaf_values, leaf_weights, nan_treatments, tree, depth, internal_count, level + 1, leaf_index, scaling, bias);
-    fill_catboost_tree_node(splits, leaf_values, leaf_weights, nan_treatments, tree, depth, internal_count, level + 1, right_leaf_index, scaling, bias);
+    fill_catboost_tree_node(splits, leaf_values, leaf_weights, nan_treatments, tree, depth, level + 1, 2 * position, scaling, bias);
+    fill_catboost_tree_node(splits, leaf_values, leaf_weights, nan_treatments, tree, depth, level + 1, 2 * position + 1, scaling, bias);
 
     tree.node_ids[node_id] = static_cast<int64_t>(node_id);
     tree.feature_ids[node_id] = split.feature_id;
@@ -571,7 +571,7 @@ ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_si
         }
         else
         {
-            fill_catboost_tree_node(cat_tree.splits, leaf_values, leaf_weights, model.nan_treatments, parsed_tree, depth, internal_count, 0, 0, scaling, bias);
+            fill_catboost_tree_node(cat_tree.splits, leaf_values, leaf_weights, model.nan_treatments, parsed_tree, depth, 0, 0, scaling, bias);
         }
         forest.trees.push_back(std::move(parsed_tree));
     }

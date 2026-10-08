@@ -58,17 +58,18 @@ Boosting converters live in separate modules such as `xgboost.py`,
   (`check_class_label` in `conversion/common.py` and `cext/converter.hpp`). `-1` is the C
   parsers' "unspecified" sentinel, so negative labels are rejected in `convert_tree_model`.
   `test_woodelf_matches_shapiq_for_every_class_index` guards the agreement.
-- CatBoost path-dependent values do NOT match CatBoost's native
-  `get_feature_importance(type="ShapValues")` in general, and this is not a bug. The
-  difference comes from the order in which the oblivious-tree levels are stacked.
-  `catboost_json.cc` puts `splits[0]` (the split chosen first during growth) at the root.
-  CatBoost's own SHAP code puts `splits[-1]` at the root, so the most significant bit of
-  the leaf index decides at the root. Predictions are identical either way, but the cover
-  weights for absent features, and so the game v(S), depend on the order. Both are exact
-  path-dependent TreeSHAP. Repeated features, NaN routing and leaf weights are NOT the
-  cause. `test_catboost_native_shap_uses_last_split_as_root` reverses the levels (and
-  bit-reverses the leaf indices) and then matches native values to 1e-6. Interventional
-  values are order-independent.
+- CatBoost oblivious trees: the level order is NOT arbitrary for path-dependent values.
+  Leaf `l` takes bit `k` from `splits[k]`, and any order of the levels predicts the same
+  values. But the cover weights for absent features, and so the path-dependent game v(S),
+  depend on which split is the root. CatBoost's native `ShapValues` (which
+  `shap.TreeExplainer` returns for CatBoost) and shap's `CatBoostTreeModelLoader` put
+  `splits[-1]` at the root. `catboost_json.cc` (and the Python reference in
+  `conversion_reference.py`) must do the same. They used to put `splits[0]` there, which
+  differed from shap by up to ~0.5 per attribution on depth-6 models.
+  `test_catboost_path_dependent_values_match_native_shap` guards this, for SV and SII.
+  Interventional values are order-independent. On rows whose routing enters a zero-cover
+  subtree, exact agreement also needs the equal-split zero-cover handling in
+  `create_edge_tree_arrays` (CatBoost does the same).
 - XGBoost routes in-set categorical values to the RIGHT ("yes") child;
   sklearn/LightGBM route them LEFT. The internal `TreeModel` convention is
   "in set -> left"; the XGBoost parser therefore swaps children at categorical
