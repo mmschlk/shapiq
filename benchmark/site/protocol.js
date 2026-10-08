@@ -640,7 +640,7 @@ function renderReportSummary(linkToAbout = true) {
   const summary = $("protocolSummary");
   summary.replaceChildren(
     document.createTextNode(
-      `${protocol?.name || "Earlier benchmark preview"} · ${datasets.length} data sources · ${Math.min(...players)}–${Math.max(...players)} players. `,
+      `${datasets.length} datasets · ${Math.min(...players)}–${Math.max(...players)} players. `,
     ),
   );
   const excluded =
@@ -658,12 +658,19 @@ function renderReportSummary(linkToAbout = true) {
     const manifest = data;
     const files = typeof localReportFiles === "undefined" ? null : localReportFiles;
     summary.append(document.createTextNode(
-      `${coverage.closed ? "Campaign closed · " : ""}${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage (${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references); ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
-      `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells on qualified games were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells were not reached because no qualified reference was prepared. Scores cover qualified games only. `,
+      `${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage. `,
+    ));
+    const details = document.createElement("details");
+    details.className = "coverageDetails";
+    const label = document.createElement("summary");
+    label.textContent = "Coverage details";
+    details.append(label, document.createTextNode(
+      `${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
+      `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells have no qualified reference. Missing results are unscored. `,
     ));
     const download = document.createElement("a");
     download.href = "#";
-    download.textContent = "Download planned-case coverage · ";
+    download.textContent = "Download coverage";
     download.addEventListener("click", async (event) => {
       event.preventDefault();
       try {
@@ -683,7 +690,8 @@ function renderReportSummary(linkToAbout = true) {
         download.textContent = `Coverage download failed: ${error.message}`;
       }
     });
-    summary.append(download);
+    details.append(download);
+    summary.append(details);
   }
   if (linkToAbout) {
     const jump = document.createElement("a");

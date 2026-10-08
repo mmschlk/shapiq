@@ -604,3 +604,52 @@ test("download selection helper shares exact filters and global eligibility", ()
   assert.equal(p.planned, 6);
   assert(p.games.every((g) => p.game_budgets[g.id][0] === -1));
 });
+
+for (const variant of ["default", "separate chart family", "per-order eligibility"])
+  test(`precomputed ${variant} matches full scores without metrics or profiles`, async () => {
+    const data = fixture(), source = input(data), req = request();
+    if (variant === "separate chart family") req.chart_selection.family = "f";
+    if (variant === "per-order eligibility") req.score_order = "1";
+    const presets = new Map();
+    const chartSelection = { ...req.chart_selection, relative_budget: null, cap: null };
+    const selections = [req.selection, chartSelection,
+      ...data.suite.relative_budgets.map(relative_budget => ({ ...chartSelection, relative_budget }))];
+    for (const selection of selections) {
+      const scoped = { ...req, selection };
+      const full = await api.query(source.manifest, scoped, source);
+      const panel = api.selectionPanel(data.games, selection, data.suite, req.score_order);
+      const hash = await api.selectorHash(panel, scoped);
+      presets.set(hash, {
+        id: hash, game_ids: panel.panel_ids, game_budgets: panel.game_budgets,
+        methods: req.methods, score_order: req.score_order, include_controls: false,
+        panel: "real", rows: full.table.map(row => ({ ...row, mean: row.average })),
+        history: { methods: [] },
+      });
+    }
+    const expected = await api.query(source.manifest, req, source);
+    const fast = await api.query(source.manifest, req, {
+      preferPresets: true,
+      lookupPreset: async ({ sha256 }) => presets.get(sha256),
+      read: async descriptor => {
+        assert.equal(descriptor.kind, "games", "precomputed views must not read raw metrics/profiles");
+        return source.read(descriptor);
+      },
+    });
+    const scores = rows => plain(rows.map(({ underBudget, ...row }) => row));
+    assert.deepEqual(scores(fast.table), scores(expected.table));
+    assert.deepEqual(scores(fast.chart_ranking), scores(expected.chart_ranking));
+    const curves = rows => plain(rows.map(series => ({ ...series,
+      points: series.points.map(({ queryUsage, ...point }) => point),
+    })));
+    assert.deepEqual(curves(fast.budget_series), curves(expected.budget_series));
+    for (const field of ["selection", "chart_selection", "chart_families", "table_pending", "chart_pending"])
+      assert.deepEqual(plain(fast[field]), plain(expected[field]), field);
+    assert.equal(fast.details_deferred, true);
+    assert(fast.table.every(row => row.underBudget === null));
+    assert.deepEqual(plain(fast.time_series), []);
+    const fallback = await api.query(source.manifest, req, {
+      ...source, preferPresets: true, lookupPreset: async () => null,
+    });
+    assert.deepEqual(plain(fallback.table), plain(expected.table));
+    assert.equal(fallback.details_deferred, undefined);
+  });

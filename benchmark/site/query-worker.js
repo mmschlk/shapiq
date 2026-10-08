@@ -2,6 +2,9 @@
 importScripts("partitions.js", "partition-details.js", "query.js");
 
 let controller;
+const metadataCache = new Map();
+let metadataBytes = 0;
+const metadataLimit = 32 * 1024 * 1024;
 self.onmessage = async ({ data: message }) => {
   controller?.abort();
   controller = new AbortController();
@@ -14,15 +17,36 @@ self.onmessage = async ({ data: message }) => {
     if (message.type !== "query")
       throw Error("Unknown benchmark worker request.");
     const { manifest, request, files } = message;
-    const read = (descriptor) =>
-      BenchmarkPartitions.read(manifest, descriptor, {
-        files,
-        signal,
-        baseURL: new URL("./", self.location.href),
-      });
+    const pendingReads = new Map();
+    const read = async (descriptor) => {
+      signal.throwIfAborted();
+      const cacheable = ["games", "summaries"].includes(descriptor.kind) &&
+        descriptor.bytes <= metadataLimit;
+      const key = `${manifest.snapshot_id}:${JSON.stringify(descriptor)}`;
+      if (cacheable && metadataCache.has(key)) return metadataCache.get(key).block;
+      if (cacheable && pendingReads.has(key)) return pendingReads.get(key);
+      const promise = BenchmarkPartitions.read(manifest, descriptor, {
+        files, signal, baseURL: new URL("./", self.location.href),
+      }).then((block) => {
+        signal.throwIfAborted();
+        if (cacheable) {
+          while (metadataBytes + descriptor.bytes > metadataLimit) {
+            const oldest = metadataCache.keys().next().value;
+            metadataBytes -= metadataCache.get(oldest).bytes;
+            metadataCache.delete(oldest);
+          }
+          metadataCache.set(key, { block, bytes: descriptor.bytes });
+          metadataBytes += descriptor.bytes;
+        }
+        return block;
+      }).finally(() => pendingReads.delete(key));
+      if (cacheable) pendingReads.set(key, promise);
+      return promise;
+    };
     const result = await BenchmarkQuery.query(manifest, request, {
       read,
       signal,
+      preferPresets: !request.load_details,
       lookupPreset: ({ sha256 }) =>
         BenchmarkDetails.preset(manifest, sha256, { read, signal }),
     });

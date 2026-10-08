@@ -21,6 +21,8 @@ let partitionClient = null,
   partitionKey = null,
   partitionRenderVersion = 0,
   partitionDownloadController = null;
+let partitionDetailsKey = null;
+const hasPlotCoverage = (row) => row.planned > 0 && row.valid / row.planned >= 0.8;
 let uploadVersion = 0;
 let sourceVersion = 0,
   targetVersion = 0,
@@ -71,6 +73,8 @@ function numericOrder(a, b, descending = false) {
   );
 }
 function rankingOrder(a, b) {
+  const coverageGroup = Number(hasPlotCoverage(b)) - Number(hasPlotCoverage(a));
+  if (coverageGroup) return coverageGroup;
   const { key, descending } = tableSort;
   const value = (row) =>
     key === "method"
@@ -393,6 +397,7 @@ async function load(value, files = null) {
   $("runCount").textContent = formatCount(evaluations);
   $("runCount").title = `${evaluations.toLocaleString("en-US")} evaluations`;
 
+  partitionDetailsKey = null;
   $("methodSearch").value = "";
   buildMethodPicker();
   renderReportSummary();
@@ -659,7 +664,7 @@ function partitionRequest() {
       : null,
     cap: $("cap").value === "" ? null : Number($("cap").value),
   };
-  return {
+  const request = {
     selection: selected,
     chart_selection: {
       ...selected,
@@ -669,6 +674,7 @@ function partitionRequest() {
     score_order: $("scoreOrder").value || null,
     timing_metric: $("timeMetric").value,
   };
+  return { ...request, load_details: partitionDetailsKey === JSON.stringify(request) };
 }
 
 async function renderPartitioned() {
@@ -714,7 +720,8 @@ async function renderPartitioned() {
       all = $("chartLimit").value === "all";
     chartNames = result.chart_ranking
       .filter(
-        (row) => visible.includes(row.method) && Number.isFinite(row.median),
+        (row) => visible.includes(row.method) && Number.isFinite(row.median) &&
+          hasPlotCoverage(result.table.find((item) => item.method === row.method)),
       )
       .sort((a, b) =>
         all
@@ -736,8 +743,8 @@ async function renderPartitioned() {
     $("notice").textContent = [
       pendingRuns
         ? data.campaign_coverage?.closed
-          ? `Campaign closed · ${formatCount(pendingRuns)} cells on qualified games were not evaluated. Missing results do not count as zero error.`
-          : `Provisional results · ${formatCount(pendingRuns)} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+          ? `${formatCount(pendingRuns)} unevaluated cells · Missing results are unscored.`
+          : `${formatCount(pendingRuns)} cells pending · Missing results are unscored.`
         : "",
       result.table_pending
         ? data.campaign_coverage?.closed
@@ -752,14 +759,14 @@ async function renderPartitioned() {
       .filter(Boolean)
       .join(" ");
     $("budgetChartNote").textContent = all
-      ? "Family-balanced median · Coverage on hover"
-      : "Family-balanced median · Complete coverage preferred";
+      ? "Median nMSE · ≥80% coverage"
+      : "Median nMSE · ≥80% coverage";
     $("chartPanelMeta").textContent =
       `${result.chart_selection.game_count} ${unit} · All measured budgets`;
     $("gameDetails").textContent =
       `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
     $("panelSummary").textContent =
-      `${result.selection.game_count} ${unit} · ${result.selection.planned} cells / estimator${result.selection.excluded ? ` · ${result.selection.excluded} negligible-truth cases excluded` : ""}`;
+      `${result.selection.game_count} ${unit} · ${formatCount(result.selection.planned)} cells / estimator${result.selection.excluded ? ` · ${result.selection.excluded} negligible-truth cases excluded` : ""}`;
     if (request.score_order)
       $("panelSummary").textContent +=
         ` · ${$("scoreOrder").selectedOptions[0].textContent}${result.selection.median_energy_share === null ? "" : ` · median truth-energy share ${(100 * result.selection.median_energy_share).toFixed(1)}%`}`;
@@ -769,7 +776,9 @@ async function renderPartitioned() {
     renderPerformanceCharts(null, result.chart_pending, result);
     for (const [id, rows] of Object.entries(result.issues)) {
       $(id).replaceChildren();
-      const texts = rows.length
+      const texts = result.details_deferred
+        ? ["Load timing & details to view the breakdown."]
+        : rows.length
         ? rows.map((row) => `${row.description} — ${row.count} run(s)`)
         : [
             id === "underBudget"
@@ -783,7 +792,9 @@ async function renderPartitioned() {
       });
     }
     const hardware = result.hardware;
-    $("hardware").textContent = hardware.cpu_models.length
+    $("hardware").textContent = result.details_deferred
+      ? "Load timing & details to view worker hardware."
+      : hardware.cpu_models.length
       ? `Measured workers: ${hardware.cpu_models.join("; ")}. Profiles: ${hardware.timing_profiles.join(", ")}. Per-run placement and thread details are included in JSON downloads.`
       : "Worker hardware was not recorded in this older result.";
   } catch (error) {
@@ -794,6 +805,11 @@ async function renderPartitioned() {
     )
       $("notice").textContent = error.message;
   }
+}
+
+function requestPartitionDetails() {
+  const { load_details, ...request } = partitionRequest();
+  partitionDetailsKey = JSON.stringify(request);
 }
 
 async function downloadPartitioned(kind) {
@@ -881,7 +897,9 @@ function render() {
         chartPanel,
       ),
     }))
-    .filter((item) => Number.isFinite(item.median))
+    .filter((item) => Number.isFinite(item.median) && hasPlotCoverage(summary(
+      s.rows.filter((row) => row.method === item.method), s,
+    )))
     .sort((a, b) =>
       allCurves
         ? a.method.localeCompare(b.method)
@@ -912,23 +930,23 @@ function render() {
   $("notice").textContent = [
     pendingRuns
       ? data.campaign_coverage?.closed
-        ? `Campaign closed · ${formatCount(pendingRuns)} cells on qualified games were not evaluated. Missing results do not count as zero error.`
-        : `Provisional results · ${formatCount(pendingRuns)} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+        ? `${formatCount(pendingRuns)} unevaluated cells · Missing results are unscored.`
+        : `${formatCount(pendingRuns)} cells pending · Missing results are unscored.`
       : "",
     selectionNotice,
   ]
     .filter(Boolean)
     .join(" ");
   $("budgetChartNote").textContent = allCurves
-    ? "Family-balanced median · Coverage on hover"
-    : "Family-balanced median · Complete coverage preferred";
+    ? "Median nMSE · ≥80% coverage"
+    : "Median nMSE · ≥80% coverage";
   const gameUnit = data.suite.game_seeds?.length ? "game instances" : "games";
   $("chartPanelMeta").textContent =
     `${chartPanel.games.length} ${gameUnit} · All measured budgets`;
   $("gameDetails").textContent =
     `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
   $("panelSummary").textContent =
-    `${s.games.length} ${gameUnit} · ${s.cells.length} cells / estimator${s.excluded ? ` · ${s.excluded} negligible-truth cases excluded` : ""}`;
+    `${s.games.length} ${gameUnit} · ${formatCount(s.cells.length)} cells / estimator${s.excluded ? ` · ${s.excluded} negligible-truth cases excluded` : ""}`;
   if ($("scoreOrder").value) {
     const shares = s.games
       .map(
@@ -987,11 +1005,21 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
     }))
     .sort(rankingOrder);
   $("ranking").replaceChildren();
-  let rank = 0;
+  let rank = 0, lowCoverageStarted = false;
   summaries.forEach((item) => {
+    if (!hasPlotCoverage(item) && !lowCoverageStarted) {
+      const section = document.createElement("tr"), label = document.createElement("th");
+      section.className = "lowCoverageHeading";
+      label.colSpan = 7;
+      label.textContent = "Low coverage · below 80% · excluded from figures";
+      section.append(label);
+      $("ranking").append(section);
+      lowCoverageStarted = true;
+    }
     const tr = document.createElement("tr"),
       detailRow = document.createElement("tr"),
       detailCell = document.createElement("td");
+    if (!hasPlotCoverage(item)) tr.classList.add("lowCoverage");
     detailRow.className = "methodDetailRow";
     detailCell.colSpan = 7;
     detailCell.append(methodDetails(item.method));
@@ -1000,8 +1028,8 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
       ? "Complete"
       : [
           item.underBudget ? `${item.underBudget} under budget` : "",
-          item.failed > item.underBudget
-            ? `${item.failed - item.underBudget} failed`
+          item.failed > (item.underBudget ?? 0)
+            ? `${item.failed - (item.underBudget ?? 0)} failed`
             : "",
           item.unsupported ? `${item.unsupported} unsupported` : "",
           item.missing ? `${item.missing} missing` : "",
@@ -1015,7 +1043,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
           .filter(Boolean)
           .join(" · ");
     [
-      (sortByElo ? Number.isFinite(item.elo) : Number.isFinite(item.average))
+      hasPlotCoverage(item) && (sortByElo ? Number.isFinite(item.elo) : Number.isFinite(item.average))
         ? ++rank
         : "—",
       methodLabel(item.method),
@@ -1068,9 +1096,9 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
     appendRow("ranking", ["—", "Select an estimator", "—", "—", "—", "—", "—"]);
   $("statisticsNote").textContent = preset
     ? common
-      ? `Elo uses the same ${preset.common_panel?.cells ?? 0} successful cells for all ${preset.common_panel?.methods?.length ?? 0} methods with results (${((preset.common_panel?.coverage_weight ?? 0) * 100).toFixed(1)}% of panel weight). Error columns still use each method's available cells. No shared cells means no common-panel rating.`
-      : "Elo pairs available successful runs; missing outcomes can change rankings. Compare “same cells for all” to check this sensitivity. Hiding variants does not change the competitor set."
-    : "Available for preset panels with the full competitor set. Custom filters still show error and coverage.";
+      ? `Elo compares ${formatCount(preset.common_panel?.cells ?? 0)} shared cells (${((preset.common_panel?.coverage_weight ?? 0) * 100).toFixed(1)}% of panel weight). Error columns use each method's successful runs.`
+      : "Elo compares overlapping successful runs. Choose “same cells for all” to compare shared results."
+    : "Elo is available for precomputed panels with all competitors.";
 }
 
 function renderRunIssues(s) {
@@ -1201,6 +1229,10 @@ function download(kind) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+$("loadDetails").addEventListener("click", () => {
+  requestPartitionDetails();
+  renderPartitioned();
+});
 [
   "panel",
   "target",
@@ -1232,6 +1264,7 @@ function download(kind) {
     }
     if (id === "panel") $("family").value = "";
     if (id === "chartFamily") chartFamilyExplicit = true;
+    if (id === "timeMetric" && partitionClient) requestPartitionDetails();
     if (data) render();
   }),
 );

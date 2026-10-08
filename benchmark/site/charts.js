@@ -34,6 +34,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
           name: methodLabel(s.method),
           color: colorFor(s.method),
         }));
+    $("loadDetails").hidden = !computed.details_deferred;
     const estimated = $("timeMetric").value === "estimated_uncached_seconds";
     $("timeChartNote").textContent = estimated
       ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
@@ -54,12 +55,19 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
       false,
       "median",
     );
-    if (chartPending)
-      ["budgetChart", "timeChart"].forEach(
-        (id) => ($(id).textContent = "Results pending for this selection."),
-      );
+    if (chartPending || !chartNames.length)
+      ["budgetChart", "timeChart"].forEach((id) => {
+        $(id).textContent = chartPending
+          ? (data.campaign_coverage?.closed ? "No measured results in this selection." : "Results pending.")
+          : "No methods meet 80% coverage in this selection.";
+      });
+    if (computed.details_deferred) {
+      $("timeChart").textContent = "Timing loads on request.";
+      $("timeChartNote").textContent = "";
+    }
     return;
   }
+  $("loadDetails").hidden = true;
   const gamesById = new Map(chartPanel.games.map((g) => [g.id, g]));
   const chartRatios =
     data.suite.relative_budgets ||
@@ -215,10 +223,12 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
     false,
     "median",
   );
-  if (chartPending)
-    ["budgetChart", "timeChart"].forEach(
-      (id) => ($(id).textContent = "Results pending for this selection."),
-    );
+  if (chartPending || !chartNames.length)
+    ["budgetChart", "timeChart"].forEach((id) => {
+      $(id).textContent = chartPending
+        ? (data.campaign_coverage?.closed ? "No measured results in this selection." : "Results pending.")
+        : "No methods meet 80% coverage in this selection.";
+    });
 }
 
 function renderHistory(s, preset, computed = null) {

@@ -48,15 +48,15 @@
           <div><strong id="gameCount">—</strong><span>game settings</span></div>
           <div>
             <strong id="runCount">—</strong
-            ><span>evaluated runs · all targets</span>
+            ><span>evaluations</span>
           </div>
           <p>
-            <span class="miniStar">✳</span> Exact ground truth. Open results.
+            Exact references · Open results
           </p>
         </div>
       </section>
       <div id="notice" role="status">Loading results…</div>
-      <p class="protocolSummary" id="protocolSummary"></p>
+      <div class="protocolSummary" id="protocolSummary"></div>
       <section class="toolbar" aria-label="Benchmark filters">
         <label
           >PANEL<select id="panel">
@@ -94,7 +94,7 @@
         ></select>
         <details class="advanced">
           <summary aria-label="More filters">
-            Tune filters <span>＋</span>
+            More filters <span>＋</span>
           </summary>
           <div class="advancedPanel">
             <label>Dataset<select id="dataset"></select></label>
@@ -246,8 +246,8 @@
           ><label class="chartLimitLabel"
             ><span class="srOnly">Methods to chart</span
             ><select id="chartLimit">
-              <option value="5">Top 5 methods</option>
-              <option value="all">All methods</option>
+              <option value="5">Top 5 eligible</option>
+              <option value="all">All eligible</option>
             </select></label
           >
         </div>
@@ -261,7 +261,7 @@
             </div>
             <div id="budgetChart"></div>
             <p class="chartNote" id="budgetChartNote">
-              Family-balanced median · Complete coverage preferred
+              Median nMSE · ≥80% coverage
             </p>
           </article>
           <article class="chartCard timeCard">
@@ -280,6 +280,7 @@
               </label>
             </div>
             <div id="timeChart"></div>
+            <button id="loadDetails" type="button" hidden>Load timing &amp; details</button>
             <p class="chartNote" id="timeChartNote">
               Family-balanced median · Comparable timing profiles
             </p>
@@ -343,23 +344,19 @@
         <details class="runFailures">
           <summary>Under-budget runs <span>＋</span></summary>
           <p class="drawerIntro">
-            The requested budget was too small for these estimators. These runs
-            remain unscored and reduce coverage. The six most frequent cases
-            appear below.
+            Budgets too small for the estimator. These runs remain unscored.
           </p>
           <ul id="underBudget"></ul>
         </details>
         <details class="runFailures">
           <summary>Other failed runs <span>＋</span></summary>
           <p class="drawerIntro">
-            Timeouts and other errors, excluding insufficient budgets and
-            unsupported explanation types. The six most frequent issues appear
-            below.
+            Timeouts and errors. The six most common are shown.
           </p>
           <ul id="failures"></ul>
         </details>
         <div class="downloadActions">
-          <span>Take the data with you.</span
+          <span>Download selection</span
           ><button id="downloadJson">JSON ↓</button
           ><button id="downloadCsv">CSV ↓</button>
         </div>

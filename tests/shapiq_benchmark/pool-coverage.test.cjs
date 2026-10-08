@@ -18,7 +18,7 @@ test("closed coverage exposes unprepared cases through existing authenticated de
     document: {
       getElementById: () => summary,
       createTextNode: (textContent) => ({ textContent }),
-      createElement: () => { const e = { addEventListener: (name, fn) => { e[name] = fn; }, click() { this.clicked = true; } }; elements.push(e); return e; },
+      createElement: () => { const e = { children: [], append(...nodes) { this.children.push(...nodes); }, addEventListener: (name, fn) => { e[name] = fn; }, click() { this.clicked = true; } }; elements.push(e); return e; },
     },
     BenchmarkDetails: { object: async (manifest, key, options) => { lookup = key; await options.read({file: "authenticated-details"}); return cases; } },
     BenchmarkPartitions: { read: async (manifest, descriptor) => { assert.equal(descriptor.file, "authenticated-details"); } },
@@ -29,13 +29,14 @@ test("closed coverage exposes unprepared cases through existing authenticated de
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../../benchmark/site/query.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../../benchmark/site/protocol.js"), "utf8"), context);
   vm.runInContext("renderReportSummary(false)", context);
-  const text = summary.children.map(n => n.textContent).join("");
-  assert.match(text, /Campaign closed/);
+  const textOf = n => (n.textContent || "") + (n.children || []).map(textOf).join("");
+  const text = summary.children.map(textOf).join("");
+  assert.match(text, /Coverage details/);
   assert.match(text, /50% reference coverage/);
   assert.match(text, /1 of 2 intended instances/);
   assert.match(text, /3 supported cells.*not attempted/);
   assert.match(text, /9 planned supported cells.*no qualified reference/);
-  await elements[0].click({preventDefault() {}});
+  await elements.find(e => e.href === "#").click({preventDefault() {}});
   assert.deepEqual(JSON.parse(JSON.stringify(lookup)), {type: "report", id: "coverage"});
   assert.deepEqual(JSON.parse(await downloaded.text()).cases, cases);
   downloaded = null;
@@ -43,6 +44,6 @@ test("closed coverage exposes unprepared cases through existing authenticated de
     context.data = { suite: {} }; // A different report was opened during the read.
     return cases;
   };
-  await elements[0].click({preventDefault() {}});
+  await elements.find(e => e.href === "#").click({preventDefault() {}});
   assert.equal(downloaded, null);
 });

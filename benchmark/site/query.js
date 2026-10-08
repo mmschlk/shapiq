@@ -271,6 +271,79 @@ globalThis.BenchmarkQuery = (() => {
       : null;
   }
 
+  const displayPreset = (preset) => preset
+    ? Object.fromEntries(
+        ["id", "rows", "history", "common_panel", "uncertainty", "elo_l2"]
+          .filter((key) => Object.hasOwn(preset, key))
+          .map((key) => [key, preset[key]]),
+      )
+    : null;
+
+  async function presetView(manifest, request, games, zero, options) {
+    if (!options.preferPresets || !options.lookupPreset ||
+        !games.every((g) => Object.hasOwn(g, "row_zero_truth_energy"))) return null;
+    const lookup = async (selection, allBudgets = false) => {
+      const p = panel(games, selection, manifest.suite, zero, allBudgets);
+      const scoped = { ...request, selection };
+      const candidate = await options.lookupPreset({
+        sha256: await selectorHash(p, scoped),
+        selection: { panel_ids: p.panel_ids, game_budgets: p.game_budgets },
+      }, options.signal);
+      options.signal?.throwIfAborted();
+      return { panel: p, preset: matchedPreset(candidate, p, scoped) };
+    };
+    const table = await lookup(request.selection);
+    if (!table.preset) return null;
+    const chartSelection = { ...request.chart_selection, relative_budget: null, cap: null };
+    const chart = await lookup(chartSelection, true);
+    if (!chart.preset || !manifest.suite.relative_budgets?.length) return null;
+    const points = [];
+    for (const ratio of manifest.suite.relative_budgets) {
+      const point = await lookup({ ...chartSelection, relative_budget: ratio });
+      if (!point.preset) return null;
+      points.push({ ...point, ratio });
+    }
+    const rows = (preset) => request.methods.map((method) => {
+      const row = preset.rows.find((item) => item.method === method);
+      require(row, "preset omits a method");
+      return {
+        method, average: row.mean, median: row.median, valid: row.valid,
+        planned: row.planned, failed: row.failed, unsupported: row.unsupported,
+        missing: row.missing, complete: row.complete, underBudget: null,
+      };
+    });
+    const tableRows = rows(table.preset), chartRows = rows(chart.preset);
+    const pending = (values) => values.some((r) => r.missing > 0) &&
+      values.every((r) => r.planned - r.missing - r.unsupported === 0);
+    return {
+      table: tableRows,
+      chart_ranking: chartRows,
+      budget_series: request.methods.map((method) => ({
+        method,
+        points: points.flatMap(({ preset, panel: p, ratio }) => {
+          const row = preset.rows.find((item) => item.method === method);
+          return Number.isFinite(row?.median) ? [{
+            x: ratio, y: row.median, relativeBudget: ratio,
+            coverage: `${formatCoverage(row.valid, row.planned)} coverage · ${formatCount(row.valid)} successful runs · ${p.games.length} games`,
+            queryUsage: null,
+          }] : [];
+        }),
+      })),
+      time_series: [],
+      selection: publicPanel(table.panel, request.score_order),
+      chart_selection: publicPanel(chart.panel, request.score_order),
+      chart_families: [...new Set(panel(games,
+        { ...chartSelection, family: "" }, manifest.suite, zero, true,
+      ).games.map((g) => g.family))],
+      issues: { underBudget: [], failures: [] },
+      hardware: { cpu_models: [], timing_profiles: [] },
+      table_pending: pending(tableRows),
+      chart_pending: pending(chartRows),
+      preset: displayPreset(table.preset),
+      details_deferred: true,
+    };
+  }
+
   async function query(manifest, request, options = {}) {
     const signal = options.signal,
       read =
@@ -315,6 +388,13 @@ globalThis.BenchmarkQuery = (() => {
     games.sort((a, b) => a.sequence - b.sequence);
     const byId = new Map(games.map((g) => [g.id, g]));
     require(byId.size === games.length, "repeated game");
+    const frozenZero = new Set(games.filter((g) =>
+      g.row_zero_truth_energy || g.metadata?.zero_truth_energy ||
+      g.metadata?.score_eligible === false || (request.score_order &&
+        g.metadata?.order_scores?.[request.score_order]?.score_eligible !== true),
+    ).map((g) => g.id));
+    const precomputed = await presetView(manifest, request, games, frozenZero, options);
+    if (precomputed) return precomputed;
     for (const d of manifest.assets.profiles) {
       check();
       const block = await read(d);
