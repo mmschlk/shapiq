@@ -8,8 +8,8 @@ A **player** is a feature or training example. A **coalition** is a subset of
 players. Shapley values measure each player's contribution; interactions measure
 contributions from players working together.
 
-**Status:** computation has finished; results are being prepared for publication.
-The dashboard still shows the previous published cohort.
+**The comprehensive results are published.** Coverage is shown alongside scores,
+including comparisons that failed or were not reached.
 
 [TOC]
 
@@ -99,8 +99,9 @@ full input widths, before selecting features for a game.
 - **Feature selection:** larger selections contain the smaller selections from
   the same seed. Include natural full widths below 16; never add artificial features.
 - **Repetition:** four game-construction seeds and three estimator seeds.
-- **Coverage:** 5,080 intended game instances. Published coverage distinguishes
-  usable references, completed runs, failures and missing results.
+- **Coverage:** exact references for **2,964 of 5,080 planned game instances**.
+  The report contains **14,733 targets** after duplicate removal. The run window
+  ended before all planned comparisons finished; missing results stay visible.
 - **Dataset notes:** Wine classification and Wine Quality regression are distinct.
   NHANES I's supplied survival label is used as a regression surrogate.
 
@@ -138,5 +139,5 @@ full input widths, before selecting features for a game.
   reference values. Preparation failures and resource limits remain visible.
 - **Timing:** recorded successful timings measure estimator calls on cached games.
   Timeouts also include process startup and input loading.
-- **Publication:** the combined results and reproduction artifacts will replace
-  the previous cohort when ready.
+- **Downloads:** [saved games, results and restoration instructions](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-07).
+  The dashboard also exports selected measurements as JSON or CSV.

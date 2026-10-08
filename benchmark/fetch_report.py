@@ -13,10 +13,18 @@ import io
 import json
 import math
 import re
+import stat
 import sys
+import tempfile
+import zipfile
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 from urllib.request import urlopen
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 MAX_BLOCK_BYTES = 64 * 1024 * 1024
 MAX_SITE_BYTES = 950 * 1024 * 1024  # Reserve room beneath Pages' limit for UI assets.
@@ -126,9 +134,95 @@ def decode_partition(content: bytes, descriptor: dict) -> bytes:
     return decoded
 
 
+@contextmanager
+def report_archive(pin: dict) -> Iterator[zipfile.ZipFile]:
+    """Spool and authenticate one stored ZIP without expanding it in memory."""
+    require(set(pin) == {"url", "sha256", "bytes"}, "Invalid archive pin")
+    require(
+        type(pin["bytes"]) is int and 0 < pin["bytes"] <= MAX_SITE_BYTES + MAX_BLOCK_BYTES,
+        "Invalid archive size",
+    )
+    require(
+        isinstance(pin["sha256"], str) and bool(re.fullmatch(r"[0-9a-f]{64}", pin["sha256"])),
+        "Invalid archive checksum",
+    )
+    with tempfile.TemporaryFile() as spool:
+        checksum, size = hashlib.sha256(), 0
+        with urlopen(pin["url"], timeout=120) as response:  # noqa: S310 -- checksum-pinned release ZIP
+            while block := response.read(min(1024 * 1024, pin["bytes"] - size + 1)):
+                size += len(block)
+                require(size <= pin["bytes"], "Archive exceeds declared size")
+                checksum.update(block)
+                spool.write(block)
+        require(size == pin["bytes"], "Truncated archive")
+        require(checksum.hexdigest() == pin["sha256"], "Archive checksum mismatch")
+        spool.seek(0)
+        with zipfile.ZipFile(spool) as archive:
+            entries = archive.infolist()
+            names = [entry.filename for entry in entries]
+            require(len(names) == len(set(names)), "Duplicate archive member")
+            require("data.json" in names, "Archive lacks data.json")
+            for entry in entries:
+                require(
+                    re.fullmatch(
+                        r"(?:data\.json|partition-(?:raw|metrics|games|details|runs|profiles|summaries)-\d+\.json(?:\.gz)?)",
+                        entry.filename,
+                    ),
+                    "Unsafe archive member name",
+                )
+                require(
+                    not entry.is_dir()
+                    and stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG),
+                    "Archive member is not a regular file",
+                )
+                require(
+                    entry.compress_type == zipfile.ZIP_STORED and not entry.flag_bits & 1,
+                    "Archive must contain unencrypted stored files",
+                )
+                require(
+                    0 < entry.file_size <= MAX_BLOCK_BYTES
+                    and entry.compress_size == entry.file_size,
+                    "Oversized archive member",
+                )
+            require(
+                sum(entry.file_size for entry in entries) <= MAX_SITE_BYTES,
+                "Archive exceeds the Pages payload limit",
+            )
+            yield archive
+
+
+def archive_member(
+    archive: zipfile.ZipFile, name: str, expected: str, size: int | None = None
+) -> bytes:
+    """Read one bounded member and authenticate its original release bytes."""
+    require(
+        isinstance(expected, str) and bool(re.fullmatch(r"[0-9a-f]{64}", expected)),
+        "Invalid member checksum",
+    )
+    entry = archive.getinfo(name)
+    require(size is None or entry.file_size == size, "Archive member size differs")
+    with archive.open(entry) as stream:
+        content = stream.read(MAX_BLOCK_BYTES + 1)
+    require(len(content) == entry.file_size <= MAX_BLOCK_BYTES, "Archive member size differs")
+    require(hashlib.sha256(content).hexdigest() == expected, "Archive member checksum mismatch")
+    return content
+
+
 def fetch_report(source: dict, output: Path) -> dict:
+    """Fetch individual release assets or a pinned archive of the same closure."""
+    if "archive" in source:
+        with report_archive(source["archive"]) as archive:
+            return _fetch_report(source, output, archive)
+    return _fetch_report(source, output)
+
+
+def _fetch_report(source: dict, output: Path, archive: zipfile.ZipFile | None = None) -> dict:
     """Write only the authenticated closure of a legacy or partitioned report."""
-    payload = download(source["url"], source["sha256"])
+    payload = (
+        archive_member(archive, "data.json", source["sha256"])
+        if archive is not None
+        else download(source["url"], source["sha256"])
+    )
     data = parse(payload)
     require(data["schema_version"] == 1, "Unknown benchmark schema")
     require(
@@ -142,6 +236,7 @@ def fetch_report(source: dict, output: Path) -> dict:
     total = len(payload)
     files = {"data.json", "about.json"}
     partitioned = data.get("layout") == "partitioned-v1"
+    require(archive is None or partitioned, "Archive transport requires a partitioned report")
     if partitioned:
         require(
             isinstance(data["snapshot_id"], str)
@@ -171,6 +266,11 @@ def fetch_report(source: dict, output: Path) -> dict:
             "Private record fields",
         )
         descriptors = data.get("record_shards", [])
+    if archive is not None:
+        require(
+            set(archive.namelist()) == {"data.json", *(d["file"] for d in descriptors)},
+            "Archive must contain exactly the manifest and its declared assets",
+        )
     for descriptor in descriptors:
         name = descriptor["file"]
         pattern = (
@@ -209,10 +309,12 @@ def fetch_report(source: dict, output: Path) -> dict:
                     bool(re.fullmatch(r"[0-9a-f]{64}", descriptor["sha256"])),
                     "Invalid decoded checksum",
                 )
-        content = download(
-            urljoin(source["url"], name),
-            descriptor.get("compressed_sha256", descriptor["sha256"]),
-            descriptor.get("compressed_bytes", descriptor.get("bytes")) if partitioned else None,
+        sha = descriptor.get("compressed_sha256", descriptor["sha256"])
+        size = descriptor.get("compressed_bytes", descriptor.get("bytes")) if partitioned else None
+        content = (
+            archive_member(archive, name, sha, size)
+            if archive is not None
+            else download(urljoin(source["url"], name), sha, size)
         )
         total += len(content)
         require(total <= MAX_SITE_BYTES, "Report exceeds the Pages packaging limit")

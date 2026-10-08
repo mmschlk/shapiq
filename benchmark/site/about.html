@@ -20,8 +20,8 @@ small to large player sets.</p>
 <p>A <strong>player</strong> is a feature or training example. A <strong>coalition</strong> is a subset of
 players. Shapley values measure each player's contribution; interactions measure
 contributions from players working together.</p>
-<p><strong>Status:</strong> computation has finished; results are being prepared for publication.
-The dashboard still shows the previous published cohort.</p>
+<p><strong>The comprehensive results are published.</strong> Coverage is shown alongside scores,
+including comparisons that failed or were not reached.</p>
 <nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#explaining-an-individual-prediction">Explaining an individual prediction</a></li><li><a href="#valuing-training-data">Valuing training data</a></li><li><a href="#selecting-useful-features">Selecting useful features</a></li><li><a href="#datasets-and-variation">Datasets and variation</a></li><li><a href="#comparing-estimators-fairly">Comparing estimators fairly</a></li><li><a href="#measuring-error-and-reading-the-results">Measuring error and reading the results</a></li><li><a href="#compute-and-reproducibility">Compute and reproducibility</a></li></ul></nav>
 <h2 id="explaining-an-individual-prediction">Explaining an individual prediction</h2>
 <p><strong>Why did a model make this prediction?</strong> Train the model once, then vary which
@@ -174,8 +174,9 @@ Wine Quality, Miami Housing, Superconductivity and QSAR-TID11.</li>
 <li><strong>Feature selection:</strong> larger selections contain the smaller selections from
 the same seed. Include natural full widths below 16; never add artificial features.</li>
 <li><strong>Repetition:</strong> four game-construction seeds and three estimator seeds.</li>
-<li><strong>Coverage:</strong> 5,080 intended game instances. Published coverage distinguishes
-usable references, completed runs, failures and missing results.</li>
+<li><strong>Coverage:</strong> exact references for <strong>2,964 of 5,080 planned game instances</strong>.
+The report contains <strong>14,733 targets</strong> after duplicate removal. The run window
+ended before all planned comparisons finished; missing results stay visible.</li>
 <li><strong>Dataset notes:</strong> Wine classification and Wine Quality regression are distinct.
 NHANES I's supplied survival label is used as a regression surrogate.</li>
 </ul>
@@ -212,8 +213,8 @@ cores to leave room for other work.</li>
 reference values. Preparation failures and resource limits remain visible.</li>
 <li><strong>Timing:</strong> recorded successful timings measure estimator calls on cached games.
 Timeouts also include process startup and input loading.</li>
-<li><strong>Publication:</strong> the combined results and reproduction artifacts will replace
-the previous cohort when ready.</li>
+<li><strong>Downloads:</strong> <a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-07">saved games, results and restoration instructions</a>.
+The dashboard also exports selected measurements as JSON or CSV.</li>
 </ul>
   </main>
 </body>

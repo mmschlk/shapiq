@@ -683,3 +683,9 @@ uv run pre-commit run --all-files
 - Equal payoff tables can occur across deliberately different comprehensive
   recipes. Deduplicate within application/subtype/recipe/qualification role;
   preserve declared weights across branches and record their equal-payoff groups.
+
+- GitHub releases allow at most 1,000 assets per release; the comprehensive
+  report has 1,154 partitions. Bundle the exact manifest and partitions in one
+  checksum-pinned stored ZIP for Pages deployment, retaining each member's hash.
+  The optional `data-source.json.archive` transport avoids changing report bytes.
+  See https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases.

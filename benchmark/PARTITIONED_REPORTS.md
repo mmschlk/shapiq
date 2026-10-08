@@ -21,6 +21,16 @@ without a `Content-Encoding: gzip` header, which would decode them before the
 transport checksum check. Verify actual delivery before switching the pointer.
 Plain descriptors and legacy reports remain supported.
 
+When partition counts exceed a release's asset limit, the Pages source pointer
+can add `archive: {"url": "…/website-data.zip", "sha256": "…", "bytes": N}`.
+Keep the ordinary `url` and `sha256` identifying `data.json`. The archive must
+contain exactly that manifest and every declared partition file at its root,
+using ZIP_STORED. It excludes UI assets and the generated `about.json` copy.
+The downloader spools and authenticates the bounded archive, rejects extra,
+missing, duplicate or nonregular members, and applies the same individual
+partition validation. Pages serves the original partition bytes after extraction;
+the browser schema, scores and report identity do not change.
+
 ```python
 with RecordStore(work / "records.sqlite") as records:
     panel = compose_matrix(plan, plan_sha256=reviewed_sha, record_store=records)
