@@ -670,3 +670,8 @@ uv run pre-commit run --all-files
   not make unprepared games visible in the dashboard. Preserve missing results
   as missing, expose the intended design, and require an authenticated closeout
   before publishing an incomplete cohort.
+
+- The About page serves committed `benchmark/site/about.html`, generated from
+  `about.md`; deploying changed Markdown alone leaves the visible article stale.
+  After editing the Markdown, run `benchmark/render_about.py` and its `--check`
+  mode, and commit both files.

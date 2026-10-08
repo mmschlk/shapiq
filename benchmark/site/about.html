@@ -14,98 +14,76 @@
   <header><a href="index.html">← Benchmark results</a><a href="about.md">Markdown source</a></header>
   <main id="content">
 <h1 id="about-the-benchmark">About the benchmark</h1>
-<p>Which Shapley estimator gives the most accurate answer for the computation we can
-afford? We study this across three uses of machine learning: explaining a
-prediction, valuing training data, and choosing features.</p>
-<p>Each use becomes a <strong>cooperative game</strong>. The players might be input features or
-training examples. A coalition is a subset of those players, and its payoff is a
-prediction or a measure of predictive performance. A Shapley value measures a
-player's contribution, averaged over the different coalitions it could join.
-Interactions measure contributions that arise from players working together.</p>
-<p>Computing these quantities exactly can require evaluating every possible
-coalition. Estimators try to recover them from far fewer evaluations. Our
-benchmark tests how well that works as the dataset, model and number of players
-change.</p>
-<p><strong>The 24-dataset benchmark described here is running.</strong> The dashboard currently
-shows the earlier published results; it will update when the new results are ready.</p>
+<p><strong>How accurately can we estimate Shapley values with a limited number of model
+queries?</strong> We compare 22 estimators across three applications, 24 datasets, and
+small to large player sets.</p>
+<p>A <strong>player</strong> is a feature or training example. A <strong>coalition</strong> is a subset of
+players. Shapley values measure each player's contribution; interactions measure
+contributions from players working together.</p>
+<p><strong>Status:</strong> computation has finished; results are being prepared for publication.
+The dashboard still shows the previous published cohort.</p>
 <nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#explaining-an-individual-prediction">Explaining an individual prediction</a></li><li><a href="#valuing-training-data">Valuing training data</a></li><li><a href="#selecting-useful-features">Selecting useful features</a></li><li><a href="#datasets-and-variation">Datasets and variation</a></li><li><a href="#comparing-estimators-fairly">Comparing estimators fairly</a></li><li><a href="#measuring-error-and-reading-the-results">Measuring error and reading the results</a></li><li><a href="#compute-and-reproducibility">Compute and reproducibility</a></li></ul></nav>
 <h2 id="explaining-an-individual-prediction">Explaining an individual prediction</h2>
-<p>Suppose a model predicts the price of a house. We want to understand how its
-inputs contributed to that particular prediction. Here, <strong>features are players</strong>
-and the payoff is the model's prediction for one held-out example.</p>
-<p>We first train a model and then keep it fixed. To evaluate a coalition, we retain
-the example's selected features and replace its other features with their means
-from the training data. For a classifier, we explain a fixed class's predicted
-probability; for regression, we explain the predicted value. Adding a feature
-reveals how much it changes the prediction in that context.</p>
-<p>The core uses <strong>all 24 datasets listed below</strong>, with logistic regression for
-classification, linear regression for regression, and random forests for both.
-On Adult Census, Breast Cancer, Digits, Bioresponse, Wine Quality, Miami Housing,
-Superconductivity and QSAR-TID11, we also compare XGBoost, LightGBM, support-vector
-machines with an RBF kernel, and multilayer perceptrons at twelve players.</p>
-<p>For these baseline-replacement games, we use <strong>4, 8, 12, 14 and 16 features</strong> where
-available. We evaluate every coalition to obtain the exact reference. A
-12-feature game has 4,096 coalitions; a 16-feature game has 65,536.</p>
-<p>We also study larger tree explanations using random forests, XGBoost and
-LightGBM on datasets with enough columns: <strong>8, 16, 32, 64, 128, 256 and 512
-features</strong>. These use two tree-specific constructions. Interventional games fill
-missing features from fixed background examples and average the predictions.
-Path-dependent games average missing branches using the tree's training-path
-weights. Each has its own matching exact tree solver. Their explanations refer
-to those particular missing-feature rules; boosted classifier games use the
-recorded model margin rather than assuming a probability scale.</p>
+<p><strong>Why did a model make this prediction?</strong> Train the model once, then vary which
+features it can see for one held-out example.</p>
+<ul>
+<li><strong>Players:</strong> input features.</li>
+<li><strong>Payoff:</strong> a fixed class's predicted probability, or a regression prediction.
+Missing features are replaced with their training-data means.</li>
+<li><strong>Player counts:</strong> 4, 8, 12, 14 and 16, where available.</li>
+<li><strong>Datasets and models:</strong> all 24 datasets with logistic/linear regression and
+random forests. On the eight comparison datasets below, add XGBoost, LightGBM,
+RBF support-vector machines and multilayer perceptrons at 12 players.</li>
+<li><strong>Ground truth:</strong> evaluate every coalition—4,096 at 12 players; 65,536 at 16.</li>
+</ul>
+<p><strong>Larger tree games: 8, 16, 32, 64, 128, 256 and 512 features</strong>, where available,
+using random forests, XGBoost and LightGBM.</p>
+<ul>
+<li><strong>Interventional:</strong> fill missing features from fixed background examples and
+average predictions.</li>
+<li><strong>Path-dependent:</strong> average missing branches using training-path weights.</li>
+<li><strong>Ground truth:</strong> matching exact tree solvers. These explain their respective
+missing-feature rules; boosted classifiers use the recorded model margin.</li>
+</ul>
 <h2 id="valuing-training-data">Valuing training data</h2>
-<p>Suppose we can collect data from several sources. Which sources help a model
-predict well on new examples? Here, <strong>groups of training rows are players</strong>, and
-the payoff is the performance of a model trained on the selected groups.</p>
-<p>We split the training rows into <strong>4, 8, 12, 14 or 16 groups</strong>. For each coalition,
-we combine its groups, train a fresh model, and evaluate it on the same held-out
-test set. Classification games use accuracy; regression games use negative mean
-squared prediction error, so larger payoffs mean better predictions. The empty
-coalition is assigned a payoff of zero. Model settings are chosen before the
-game and stay fixed across coalitions.</p>
-<p>This construction uses <strong>all 24 datasets</strong>, with logistic/linear regression and
-random forests. We additionally use XGBoost, LightGBM and multilayer perceptrons
-at twelve groups on Adult Census, Breast Cancer, Digits, Bioresponse, Wine
-Quality, Miami Housing, Superconductivity and QSAR-TID11. We obtain ground truth
-by retraining on every coalition of groups.</p>
-<p>The number of players and the number of input features are separate choices:
-a twelve-player game can contain twelve groups of rows, each with many columns.
-The core uses up to twelve input features. On the same eight comparison datasets,
-we hold the group count at twelve and vary input width through <strong>8, 16, 32, 64,
-128 and the full dataset width</strong>, where available. This tests whether estimator
-behavior changes with the underlying learning problem, even when the number of
-players stays fixed.</p>
-<p>To study much larger player sets, we also use <strong>individual training examples</strong>
-as players in nearest-neighbor games. These cover all twelve classification
-datasets below, with <strong>32, 64, 128, 256, 512 or 1,024 examples</strong> where enough rows
-are available. A coalition's utility depends on its neighbors' labels around a
-held-out example, using either a fixed number of nearest neighbors (KNN) or a
-distance threshold (TNN). Specialized formulas give exact Shapley values without
-training and evaluating all possible subsets. These larger games test Shapley
-values, not interaction indices.</p>
+<p><strong>Which training data helps a model learn?</strong> Train on selected groups of rows and
+measure performance on the same held-out test set.</p>
+<ul>
+<li><strong>Players:</strong> 4, 8, 12, 14 or 16 groups of training rows.</li>
+<li><strong>Payoff:</strong> classification accuracy or negative mean squared prediction error.
+Higher is better; the empty coalition has payoff zero.</li>
+<li><strong>Datasets and models:</strong> all 24 datasets with logistic/linear regression and
+random forests. Add XGBoost, LightGBM and multilayer perceptrons at 12 groups
+on the eight comparison datasets.</li>
+<li><strong>Ground truth:</strong> retrain and score every coalition, keeping model settings fixed.</li>
+<li><strong>Feature diversity:</strong> the core uses up to 12 input features. At 12 groups,
+the eight comparison datasets also vary input width through 8, 16, 32, 64,
+128 and full width, where available. Groups are players; columns are inputs.</li>
+</ul>
+<p><strong>Larger neighbor games: 32, 64, 128, 256, 512 or 1,024 individual training rows.</strong></p>
+<ul>
+<li>Use all 12 classification datasets, subject to available rows.</li>
+<li>Utility depends on nearby labels around a held-out example: a fixed number of
+neighbors (<strong>KNN</strong>) or a distance threshold (<strong>TNN</strong>).</li>
+<li>Specialized formulas give <strong>exact Shapley values</strong> without enumerating subsets.
+These games do not benchmark interactions.</li>
+</ul>
 <h2 id="selecting-useful-features">Selecting useful features</h2>
-<p>Suppose we want to decide which measurements a future model needs. Here,
-<strong>features are players</strong>, and a coalition's payoff measures how well a model can
-learn using only those features.</p>
-<p>For every coalition, we select its columns in both the training and test data,
-fit a fresh model, and score its held-out predictions. As in data valuation, the
-payoff is classification accuracy or negative mean squared prediction error,
-with zero assigned to the empty coalition. This asks how useful a set of features
-is for learning across examples; the individual-prediction games above explain
-one prediction from an already fitted model.</p>
-<p>We use <strong>all 24 datasets</strong> with logistic/linear regression and random forests.
-At twelve features, we also compare XGBoost, LightGBM, RBF support-vector machines
-and multilayer perceptrons on Adult Census, Breast Cancer, Digits, Bioresponse,
-Wine Quality, Miami Housing, Superconductivity and QSAR-TID11.</p>
-<p>The requested feature counts are <strong>4, 8, 12, 14 and 16</strong>, bounded by the dataset's
-actual width. Ground truth comes from fitting and scoring every coalition. This
-is more expensive than querying a fixed predictor, which is why these games
-remain small enough for exhaustive evaluation.</p>
+<p><strong>Which measurements should a future model use?</strong> Fit a fresh model for each
+selected set of columns, then evaluate its held-out predictions.</p>
+<ul>
+<li><strong>Players:</strong> 4, 8, 12, 14 or 16 features, where available.</li>
+<li><strong>Payoff:</strong> accuracy or negative mean squared prediction error; zero for the
+empty coalition.</li>
+<li><strong>Datasets and models:</strong> all 24 datasets with logistic/linear regression and
+random forests. Add XGBoost, LightGBM, RBF support-vector machines and
+multilayer perceptrons at 12 features on the eight comparison datasets.</li>
+<li><strong>Ground truth:</strong> fit and score every coalition. These games stay small enough
+for exhaustive evaluation.</li>
+</ul>
 <h2 id="datasets-and-variation">Datasets and variation</h2>
-<p>We use twelve classification and twelve regression datasets to cover different
-sample sizes, input dimensions and prediction problems. The table gives each
-loader's full input width, before selecting a game's features.</p>
+<p><strong>12 classification + 12 regression datasets.</strong> Counts below are the loaders'
+full input widths, before selecting features for a game.</p>
 <table>
 <thead>
 <tr>
@@ -190,63 +168,53 @@ loader's full input width, before selecting a game's features.</p>
 </tr>
 </tbody>
 </table>
-<p>We also include a dataset's natural full width when it has fewer than sixteen
-features. Larger feature selections contain the smaller selections from the
-same construction seed, so changing dimension does not select an unrelated set
-of columns. We never add artificial features to reach a requested player count.
-The Wine classification and Wine Quality regression datasets are distinct.
-NHANES I uses its supplied survival label as a regression surrogate.</p>
-<p>Four construction seeds vary the games' splits and selections. Each estimator
-then runs with three random seeds on the same frozen game. The design contains
-5,080 intended game instances; the published coverage will show which produced
-usable exact references and completed estimator runs.</p>
+<ul>
+<li><strong>Eight comparison datasets:</strong> Adult Census, Breast Cancer, Digits, Bioresponse,
+Wine Quality, Miami Housing, Superconductivity and QSAR-TID11.</li>
+<li><strong>Feature selection:</strong> larger selections contain the smaller selections from
+the same seed. Include natural full widths below 16; never add artificial features.</li>
+<li><strong>Repetition:</strong> four game-construction seeds and three estimator seeds.</li>
+<li><strong>Coverage:</strong> 5,080 intended game instances. Published coverage distinguishes
+usable references, completed runs, failures and missing results.</li>
+<li><strong>Dataset notes:</strong> Wine classification and Wine Quality regression are distinct.
+NHANES I's supplied survival label is used as a regression surrogate.</li>
+</ul>
 <h2 id="comparing-estimators-fairly">Comparing estimators fairly</h2>
-<p>We compare <strong>22 estimators</strong>, using only the targets each method supports. The
-targets include ordinary Shapley values and five interaction definitions—k-SII,
-SII, STII, FSII and FBII—through order two. Each estimate is compared with the
-exact reference for that same definition, game and player count.</p>
-<p>The main computational allowance is the number of coalition evaluations.
-For a game with <strong>d players</strong>, we give methods budgets of <strong>0.5, 1, 2, 4, 8, 16,
-32, 64 and 128 times d</strong>. For example, a budget of 8d permits 128 evaluations in
-a 16-player game. We record actual queries too: a method may use fewer, and a
-small game may run out of distinct coalitions.</p>
-<p>Ground truth is computed separately and is not provided to the estimator. Small
-games use complete payoff tables; large tree and neighbor games use their
-matching exact solvers. Exactness is relative to the specified game and subject
-to floating-point precision. We do not use a long estimator run as supposed
-exact truth for a generic high-dimensional game.</p>
+<ul>
+<li><strong>22 estimators</strong>, evaluated only on supported targets: Shapley values and
+k-SII, SII, STII, FSII and FBII interactions through order two.</li>
+<li><strong>Query budgets:</strong> 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 times the player count.
+For 16 players, 8d allows 128 coalition evaluations. Actual usage is also recorded.</li>
+<li><strong>Separate ground truth:</strong> complete payoff tables for small games; exact tree
+or neighbor solvers for larger games. References are withheld from estimators.</li>
+<li><strong>Exactness:</strong> relative to the specified game, subject to floating-point precision.
+Generic large games are not assigned an approximate run as “exact” truth.</li>
+</ul>
 <h2 id="measuring-error-and-reading-the-results">Measuring error and reading the results</h2>
-<p>For each run, we compare the estimated contribution of every player—or every
-relevant interaction—with its reference value. We sum the squared differences
-and divide by the sum of squared reference contributions:</p>
 <p><strong>Normalized error = sum of squared estimation errors / sum of squared reference values.</strong></p>
-<p>This makes errors comparable across games with different payoff scales. <strong>Lower
-is better:</strong> zero means an exact match, and one is the error obtained by
-predicting zero for every nonzero reference contribution. The empty-coalition
-baseline is excluded from this comparison. A game whose reference contributions
-are all zero has no defined normalized error.</p>
-<p>We also report first-order and pairwise errors separately, so an accurate main
-effect cannot conceal poor interaction estimates. Interaction panels with
-negligible reference signal are excluded from normalized comparisons.</p>
-<p>Overall summaries give the three applications equal weight, then divide weight
-among their game subtypes and recipes. Repeated runs share their recipe's weight.
-This is application-and-recipe balancing; datasets with more recipes can have
-more weight within an application. Weighted means and medians summarize error,
-and pairwise ratings compare methods where both have valid results. Lower error
-wins those comparisons; higher ratings are better. Success coverage is shown
-alongside scores, because failures and missing runs are not zero-error results.</p>
+<ul>
+<li><strong>Lower error is better:</strong> zero is exact; one matches predicting zero throughout.</li>
+<li><strong>Main effects and pairs:</strong> reported separately as well as together.</li>
+<li><strong>Zero or negligible signal:</strong> excluded from normalized comparisons. The empty
+coalition's baseline is also excluded.</li>
+<li><strong>Weights:</strong> equal weight across applications, then subtypes and recipes;
+repeated runs share recipe weight. Datasets with more recipes can carry more weight.</li>
+<li><strong>Summaries:</strong> weighted mean and median errors; pairwise ratings compare methods
+where both succeeded. <strong>Higher ratings are better.</strong></li>
+<li><strong>Coverage matters:</strong> failures and missing runs never count as zero error.</li>
+</ul>
 <h2 id="compute-and-reproducibility">Compute and reproducibility</h2>
-<p>The compute budget is equivalent to <strong>1,024 CPU cores running for 24 hours</strong> on
-Hopper. The active pool uses AMD EPYC 9754 processors, with one thread per worker
-and no GPUs.</p>
-<p>We save the games, model settings, selected rows and columns, random seeds and
-reference values so each comparison can be reproduced. Games that exceed the
-preparation limit or fail model-quality checks are recorded as exclusions.
-Cached-game timings describe estimator execution; they are not direct timings
-of an application repeatedly training its models from scratch.</p>
-<p>When the runs finish, we check the combined results and automatically publish the
-new cohort, its actual coverage and reproduction artifacts. Until then, the
-previous results remain available.</p>
+<ul>
+<li><strong>Hardware:</strong> Hopper's AMD EPYC 9754 CPUs, one thread per worker, no GPUs.
+The main run lasted about a day; concurrency was reduced from 1,024 to 1,000
+cores to leave room for other work.</li>
+<li><strong>Saved inputs:</strong> games, model settings, selected rows and columns, seeds and
+reference values. Preparation failures and resource limits remain visible.</li>
+<li><strong>Timing:</strong> recorded successful timings measure estimator calls on cached games.
+Timeouts also include process startup and input loading.</li>
+<li><strong>Publication:</strong> the combined results and reproduction artifacts will replace
+the previous cohort when ready.</li>
+</ul>
   </main>
 </body>
 </html>
