@@ -109,7 +109,7 @@ def test_siglip_image_text_game(model: str) -> None:
     _assert_deterministic(game)
 
     model_id = IMAGE_TEXT_MODEL_IDS[model]
-    processor = transformers.SiglipProcessor.from_pretrained(model_id)
+    processor = transformers.SiglipProcessor.from_pretrained(model_id, use_fast=True)
     siglip = transformers.SiglipModel.from_pretrained(model_id).eval()
     inputs = processor(
         text=[game.text.lower()],

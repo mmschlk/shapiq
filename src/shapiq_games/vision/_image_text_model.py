@@ -102,7 +102,11 @@ class ImageTextTokenModel:
         model_id = IMAGE_TEXT_MODEL_IDS[model]
         self._siglip = model.startswith("siglip")
         if self._siglip:
-            processor = transformers.SiglipProcessor.from_pretrained(model_id, revision=revision)
+            # the fast image processor, transformers 5's default, pinned: its pixels can differ
+            # from the slow one's, and naming it silences the warning about the changed default
+            processor = transformers.SiglipProcessor.from_pretrained(
+                model_id, revision=revision, use_fast=True
+            )
             self._model = transformers.SiglipModel.from_pretrained(model_id, revision=revision)
         else:
             processor = transformers.CLIPProcessor.from_pretrained(model_id, revision=revision)
