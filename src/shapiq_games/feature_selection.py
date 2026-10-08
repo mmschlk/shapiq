@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
 from shapiq_games._training import (
-    Metric,
-    MetricName,
     empty_model_score,
     fit_and_score,
     resolve_metric,
     resolve_task,
 )
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import Metric, MetricName, Task
 
 __all__ = ["FeatureSelection"]
 
@@ -50,7 +52,7 @@ class FeatureSelection(Game):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str | None = None,
+        task: Task | None = None,
         metric: MetricName | Metric | None = None,
         random_state: int = 42,
         normalize: bool = True,
@@ -91,7 +93,7 @@ class FeatureSelection(Game):
             verbose=verbose,
         )
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the test metric of the model retrained on each coalition of features."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.zeros(coalitions.shape[0])

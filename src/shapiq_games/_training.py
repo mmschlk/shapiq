@@ -2,27 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.base import clone
 from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, r2_score
 
+from ._base import is_classifier
+
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from shapiq_games.typing import Metric, MetricName, Task
 
 __all__ = [
-    "Metric",
-    "MetricName",
     "empty_model_score",
     "fit_and_score",
     "resolve_metric",
     "resolve_task",
 ]
-
-type Metric = Callable[[np.ndarray, np.ndarray], float]
-type MetricName = Literal["accuracy", "r2", "neg_mse", "neg_mae"]
 
 _METRICS: dict[str, Metric] = {
     "accuracy": lambda y_true, y_pred: float(accuracy_score(y_true, y_pred)),
@@ -32,15 +29,13 @@ _METRICS: dict[str, Metric] = {
 }
 
 
-def resolve_task(task: str | None, model: object) -> str:
+def resolve_task(task: Task | None, model: object) -> Task:
     """Return ``task``, or infer it from the model when ``None``.
 
     Raises:
         ValueError: If ``task`` is neither ``"classification"`` nor ``"regression"``.
     """
     if task is None:
-        from ._base import is_classifier
-
         return "classification" if is_classifier(model) else "regression"
     if task not in ("classification", "regression"):
         msg = f"task must be 'classification' or 'regression', got {task!r}."
@@ -48,7 +43,7 @@ def resolve_task(task: str | None, model: object) -> str:
     return task
 
 
-def resolve_metric(metric: MetricName | Metric | None, task: str) -> Metric:
+def resolve_metric(metric: MetricName | Metric | None, task: Task) -> Metric:
     """Return the metric ``metric(y_true, y_pred) -> float`` (higher is better).
 
     Args:
@@ -101,7 +96,7 @@ def fit_and_score(
     x_test: np.ndarray,
     y_test: np.ndarray,
     *,
-    task: str,
+    task: Task,
     metric: Metric,
     random_state: int | None = None,
 ) -> float:
@@ -145,7 +140,7 @@ def empty_model_score(
     x_test: np.ndarray,
     y_test: np.ndarray,
     *,
-    task: str,
+    task: Task,
     metric: Metric,
 ) -> float:
     """Return the test metric of a model without features (majority class or training mean)."""

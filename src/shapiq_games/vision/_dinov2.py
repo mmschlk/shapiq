@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from PIL import Image
 
@@ -9,6 +11,9 @@ from shapiq_games._optional import require
 
 from ._preprocess import center_crop, normalized_pixels
 from ._token_drop import TokenDropper, pixel_regions, token_players
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["DINOV2_GRIDS", "DINOV2_MODEL_ID", "DinoV2TokenModel"]
 
@@ -98,6 +103,6 @@ class DinoV2TokenModel:
         self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
         self.class_name = str(model.config.id2label[self.class_index])
 
-    def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+    def __call__(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the probability of the explained class for each coalition."""
         return self._dropper(coalitions)[:, self.class_index]

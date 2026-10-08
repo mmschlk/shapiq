@@ -2,23 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.stats import entropy
 
 from shapiq_games.local_xai import TabularLocalExplanation
 
-__all__ = ["UncertaintyExplanation"]
+if TYPE_CHECKING:
+    from shapiq.typing import FloatVector
+    from shapiq_games.typing import ImputerName, Uncertainty
 
-type Uncertainty = Literal["total", "aleatoric", "epistemic"]
+__all__ = ["UncertaintyExplanation"]
 
 
 def _uncertainty_function(forest: Any, uncertainty: Uncertainty):  # noqa: ANN202, ANN401
     """Return a function computing the entropy-based uncertainty of a random forest classifier."""
     trees = list(forest.estimators_)
 
-    def _predict(x: np.ndarray) -> np.ndarray:
+    def _predict(x: np.ndarray) -> FloatVector:
         probabilities = np.stack(
             [tree.predict_proba(x) for tree in trees]
         )  # (trees, rows, classes)
@@ -59,7 +61,7 @@ class UncertaintyExplanation(TabularLocalExplanation):
         x: int | np.ndarray = 0,
         *,
         uncertainty: Uncertainty = "total",
-        imputer: Literal["marginal", "conditional", "baseline"] = "marginal",
+        imputer: ImputerName = "marginal",
         sample_size: int = 100,
         random_state: int = 42,
         normalize: bool = True,

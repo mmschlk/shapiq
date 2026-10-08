@@ -5,19 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
+from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 
 from shapiq.explainer.nn._util import assert_enough_training_samples
 from shapiq.game import Game
 from shapiq_games._base import resolve_class_index
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
-    from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
+    from shapiq.typing import CoalitionMatrix, FloatVector
 
 __all__ = ["KNNGameBase", "NNGameBase", "keep_first_n"]
 
 
-def keep_first_n(mask: npt.NDArray[np.bool_], n: int) -> npt.NDArray[np.bool_]:
+def keep_first_n(mask: CoalitionMatrix, n: int) -> CoalitionMatrix:
     """Return a copy of ``mask`` in which only the first ``n`` ``True`` entries are kept.
 
     Returns ``mask`` itself if it has at most ``n`` ``True`` entries.
@@ -34,7 +34,7 @@ def keep_first_n(mask: npt.NDArray[np.bool_], n: int) -> npt.NDArray[np.bool_]:
     return mask
 
 
-class NNGameBase(Game):
+class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):
     """Base of the games whose players are the training points of a nearest-neighbor classifier.
 
     Attributes:
@@ -48,8 +48,8 @@ class NNGameBase(Game):
 
     def __init__(
         self,
-        model: KNeighborsClassifier | RadiusNeighborsClassifier,
-        x: npt.NDArray[np.floating],
+        model: M,
+        x: FloatVector,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game.
@@ -59,7 +59,7 @@ class NNGameBase(Game):
             x: The explained point of shape ``(n_features,)``.
             class_index: The explained class. Defaults to ``None``, which means class ``1``.
         """
-        self.model = model
+        self.model: M = model
         self.x = np.asarray(x).reshape(-1)
         self.class_index = cast("int", resolve_class_index(model, class_index))
 
@@ -107,7 +107,7 @@ class NNGameBase(Game):
         super().__init__(n_players=self.X_train.shape[0], normalize=False)
 
 
-class KNNGameBase(NNGameBase):
+class KNNGameBase(NNGameBase[KNeighborsClassifier]):
     """Base of the games of k-nearest-neighbor classifiers.
 
     Attributes:
@@ -119,14 +119,13 @@ class KNNGameBase(NNGameBase):
     def __init__(
         self,
         model: KNeighborsClassifier,
-        x: npt.NDArray[np.floating],
+        x: FloatVector,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game (see :class:`NNGameBase`)."""
         super().__init__(model, x, class_index)
         self.k: int = int(model.n_neighbors)  # type: ignore[arg-type]
         assert_enough_training_samples(self.k, self.X_train.shape[0])
-        self.knn_model = model
         self.sortperm = model.kneighbors(
             self.x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=False
         )[0]

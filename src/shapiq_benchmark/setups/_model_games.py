@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Literal
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from shapiq_benchmark.models import build_model
+from shapiq_benchmark.models import ModelName, build_model
 from shapiq_games import (
     InterventionalTreeGame,
     KNNGame,
@@ -113,7 +113,7 @@ class InterventionalTreeSetup(ModelSetup, name="interventional_tree"):
 class _NearestNeighborSetup(TabularSetup):
     """Shared fields: ``n_train`` training points as players, a point from the test split."""
 
-    model_name: ClassVar[str]
+    model_name: ClassVar[ModelName]
     tasks = ("classification",)
 
     n_train: int = 10

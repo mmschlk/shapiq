@@ -12,18 +12,22 @@ from sklearn.model_selection import train_test_split
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq_games.typing import Task
+
 __all__ = [
     "Dataset",
+    "DatasetKind",
     "DatasetSpec",
     "DatasetSplit",
-    "Task",
     "get_dataset_spec",
     "list_datasets",
     "load_dataset",
     "register_dataset",
 ]
 
-type Task = Literal["classification", "regression"]
+type DatasetKind = Literal["tabular", "synthetic", "tabarena"]
+"""``"tabular"`` for real-world data, ``"synthetic"`` for seeded generators, and ``"tabarena"`` for
+the TabArena-v0.1 collection."""
 type Loader = Callable[..., tuple[pd.DataFrame, pd.Series]]
 
 _MIN_TEST_SAMPLES = 30
@@ -46,7 +50,7 @@ class DatasetSpec:
     task: Task
     loader: Loader
     source: str
-    kind: Literal["tabular", "synthetic", "tabarena"] = "tabular"
+    kind: DatasetKind = "tabular"
 
 
 @dataclass(frozen=True)
@@ -189,7 +193,7 @@ def get_dataset_spec(name: str) -> DatasetSpec:
 def list_datasets(
     *,
     task: Task | None = None,
-    kind: Literal["tabular", "synthetic", "tabarena"] | None = None,
+    kind: DatasetKind | None = None,
 ) -> list[str]:
     """List the names of the registered datasets, optionally filtered.
 

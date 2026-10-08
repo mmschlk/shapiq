@@ -13,13 +13,14 @@ from shapiq_games._base import as_bool_coalitions, resolve_class_index
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
 __all__ = ["PathDependentTreeGame"]
 
 _CHUNK_SIZE = 4096
 
 
-def _tree_expectation(tree: TreeModel, x: np.ndarray, coalitions: np.ndarray) -> np.ndarray:
+def _tree_expectation(tree: TreeModel, x: FloatVector, coalitions: CoalitionMatrix) -> GameValues:
     """Evaluate the path-dependent expectation of one tree for many coalitions at once.
 
     At a split on a feature in the coalition, the instance follows its path. At a split on an
@@ -122,7 +123,7 @@ class PathDependentTreeGame(Game):
             verbose=verbose,
         )
 
-    def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         values = np.zeros(coalitions.shape[0])
         for start in range(0, coalitions.shape[0], _CHUNK_SIZE):
             chunk = coalitions[start : start + _CHUNK_SIZE]
@@ -131,6 +132,6 @@ class PathDependentTreeGame(Game):
             )
         return values
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the path-dependent expectation of the tree model for the coalitions."""
         return self._evaluate(as_bool_coalitions(coalitions))

@@ -5,19 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sklearn.neighbors import RadiusNeighborsClassifier
 
 from shapiq_games._base import as_bool_coalitions
 
 from ._base import NNGameBase
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
-    from sklearn.neighbors import RadiusNeighborsClassifier
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
 __all__ = ["ThresholdNNGame"]
 
 
-class ThresholdNNGame(NNGameBase):
+class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
     """The utility game of a threshold (radius) nearest-neighbor classifier.
 
     The players are the training points. The value of a coalition is the share of the explained
@@ -38,7 +38,7 @@ class ThresholdNNGame(NNGameBase):
     def __init__(
         self,
         model: RadiusNeighborsClassifier,
-        x: npt.NDArray[np.floating],
+        x: FloatVector,
         class_index: int | None = None,
     ) -> None:
         """Initialize the game.
@@ -54,7 +54,7 @@ class ThresholdNNGame(NNGameBase):
         self.in_neighborhood[neighbors] = True
         self.is_class = self.y_train_indices == self.class_index
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the share of the explained class among the coalition's points in the radius."""
         coalitions = as_bool_coalitions(coalitions)
         utilities = np.zeros(coalitions.shape[0])

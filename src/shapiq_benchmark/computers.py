@@ -19,16 +19,31 @@ structured computers used as ground truth for large games.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, get_args
+from typing import TYPE_CHECKING, Any, ClassVar, cast, get_args
 
 import numpy as np
 
-from shapiq import ExactComputer, InteractionValues
+from shapiq import ExactComputer, Game, InteractionValues
+from shapiq.explainer.custom_types import ValidNNExplainerIndices
+from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
+from shapiq.explainer.product_kernel import ProductKernelComputer as CoreProductKernelComputer
+from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
+from shapiq.tree.explainer import TreeExplainer
+from shapiq.tree.interventional import InterventionalTreeSHAPIQ
+from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
+from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
+from shapiq.tree.validation import validate_tree_model
 from shapiq.utils import powerset
+from shapiq_games.kernel import ProductKernelGame
+from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
+from shapiq_games.nn._base import NNGameBase
+from shapiq_games.synthetic import SOUM, DummyGame, UnanimityGame
+from shapiq_games.tree import InterventionalTreeGame, PathDependentTreeGame
 
 if TYPE_CHECKING:
-    from shapiq import Game
+    from shapiq.tree.explainer import TreeExplainerIndices
+    from shapiq.typing import IndexType
 
 __all__ = [
     "BruteForceComputer",
@@ -45,7 +60,7 @@ __all__ = [
 DEFAULT_MAX_PLAYERS = 20
 """The default player cap of brute-force computation (``2**20`` game evaluations)."""
 
-_VALUE_INDICES = frozenset({"SV", "BV", "ELC"})
+VALUE_INDICES: frozenset[IndexType] = frozenset({"SV", "BV", "ELC"})
 """Values (one number per player), not interactions: only defined for order 1."""
 
 
@@ -56,7 +71,7 @@ class UnsupportedComputationError(ValueError):
 def _standardize(
     values: InteractionValues,
     game: Game,
-    index: str,
+    index: IndexType,
     order: int,
 ) -> InteractionValues:
     """Return the interactions of order 1 to ``order`` and the game's empty value as baseline."""
@@ -78,8 +93,8 @@ def _standardize(
     )
 
 
-class Computer(ABC):
-    """A ground-truth computer bound to one game.
+class Computer[G: Game](ABC):
+    """A ground-truth computer bound to one game of the family ``G`` it understands.
 
     Attributes:
         game: The game.
@@ -88,7 +103,7 @@ class Computer(ABC):
     name: ClassVar[str]
     """A short, stable name of the computer (part of ground-truth cache keys)."""
 
-    def __init__(self, game: Game) -> None:
+    def __init__(self, game: G) -> None:
         """Bind the computer to a game.
 
         Raises:
@@ -97,7 +112,7 @@ class Computer(ABC):
         if not self.supports_game(game):
             msg = f"{type(self).__name__} cannot compute {type(game).__name__} games exactly."
             raise UnsupportedComputationError(msg)
-        self.game = game
+        self.game: G = game
 
     @classmethod
     @abstractmethod
@@ -106,22 +121,22 @@ class Computer(ABC):
 
     @classmethod
     @abstractmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """Return the indices the wrapped core algorithm declares."""
 
     def max_order(self) -> int:
         """Return the highest supported interaction order (the number of players by default)."""
         return self.game.n_players
 
-    def supports(self, index: str, order: int) -> bool:
+    def supports(self, index: IndexType, order: int) -> bool:
         """Return whether the computer can compute ``index`` up to ``order`` for its game."""
         if index not in self.supported_indices():
             return False
-        if index in _VALUE_INDICES and order != 1:
+        if index in VALUE_INDICES and order != 1:
             return False
         return 1 <= order <= self.max_order()
 
-    def exact_values(self, index: str, order: int) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Compute the exact interaction values of order 1 to ``order``.
 
         Args:
@@ -143,11 +158,11 @@ class Computer(ABC):
         return _standardize(self._compute(index, order), self.game, index, order)
 
     @abstractmethod
-    def _compute(self, index: str, order: int) -> InteractionValues:
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
         """Run the core algorithm."""
 
 
-class BruteForceComputer(Computer):
+class BruteForceComputer(Computer[Game]):
     """Brute force: evaluates all ``2**n`` coalitions with :class:`~shapiq.ExactComputer`.
 
     Works for every game up to ``max_players`` players (default 20). The game values are evaluated
@@ -181,11 +196,11 @@ class BruteForceComputer(Computer):
         return True
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The indices of :class:`~shapiq.ExactComputer`."""
         return tuple(ExactComputer.valid_indices)
 
-    def _compute(self, index: str, order: int) -> InteractionValues:
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
         if self._exact is None:
             self._exact = ExactComputer(game=self.game, n_players=self.game.n_players)
         return self._exact(index=index, order=order)
@@ -193,11 +208,10 @@ class BruteForceComputer(Computer):
 
 def moebius_representation(game: Game) -> InteractionValues | None:
     """Return the Möbius transform of a synthetic game with a known representation, or ``None``."""
-    from shapiq_games.synthetic import SOUM, DummyGame, UnanimityGame
-
     n = game.n_players
     if isinstance(game, SOUM):
         return game.moebius_coefficients
+    coefficients: dict[tuple[int, ...], float]
     if isinstance(game, UnanimityGame):
         coefficients = {game.interaction: 1.0}
     elif isinstance(game, DummyGame):
@@ -219,7 +233,7 @@ def moebius_representation(game: Game) -> InteractionValues | None:
     )
 
 
-class MoebiusComputer(Computer):
+class MoebiusComputer(Computer[SOUM | UnanimityGame | DummyGame]):
     """Synthetic games with a known Möbius representation, via :class:`~shapiq.MoebiusConverter`.
 
     Supports :class:`~shapiq_games.synthetic.SOUM`, :class:`~shapiq_games.synthetic.UnanimityGame`
@@ -234,16 +248,19 @@ class MoebiusComputer(Computer):
         return moebius_representation(game) is not None
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The indices of :class:`~shapiq.MoebiusConverter`."""
         return get_args(ValidMoebiusConverterIndices)
 
-    def _compute(self, index: str, order: int) -> InteractionValues:
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
         moebius = moebius_representation(self.game)
-        return MoebiusConverter(moebius)(index, order)  # type: ignore[arg-type]
+        if moebius is None:  # excluded by supports_game
+            raise UnsupportedComputationError(type(self.game).__name__)
+        # supports() checked the index against the converter's declaration
+        return MoebiusConverter(moebius)(cast("ValidMoebiusConverterIndices", index), order)
 
 
-class PathDependentTreeComputer(Computer):
+class PathDependentTreeComputer(Computer[PathDependentTreeGame]):
     """Path-dependent tree games via :class:`~shapiq.tree.TreeExplainer`."""
 
     name = "path_dependent_tree"
@@ -251,32 +268,26 @@ class PathDependentTreeComputer(Computer):
     @classmethod
     def supports_game(cls, game: Game) -> bool:
         """:class:`~shapiq_games.tree.PathDependentTreeGame` games."""
-        from shapiq_games.tree import PathDependentTreeGame
-
         return isinstance(game, PathDependentTreeGame)
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The path-dependent indices (``QuadratureTreeSHAPIndices``)."""
-        from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
-
         return get_args(QuadratureTreeSHAPIndices)
 
-    def _compute(self, index: str, order: int) -> InteractionValues:
-        from shapiq.tree import TreeExplainer
-
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
         explainer = TreeExplainer(
-            model=self.game.model,  # type: ignore[attr-defined]
+            model=self.game.model,
             mode="pathdependent",
-            index=index,  # type: ignore[arg-type]
+            index=cast("TreeExplainerIndices", index),  # checked by supports()
             max_order=order,
             min_order=1,
-            class_index=self.game.class_index,  # type: ignore[attr-defined]
+            class_index=self.game.class_index,
         )
-        return explainer.explain(self.game.x)  # type: ignore[attr-defined]
+        return explainer.explain(self.game.x)
 
 
-class InterventionalTreeComputer(Computer):
+class InterventionalTreeComputer(Computer[InterventionalTreeGame]):
     """Interventional tree games via :class:`~shapiq.tree.interventional.InterventionalTreeSHAPIQ`.
 
     A new core computer is built for every call, so any order is supported.
@@ -287,9 +298,6 @@ class InterventionalTreeComputer(Computer):
     @classmethod
     def supports_game(cls, game: Game) -> bool:
         """:class:`~shapiq_games.tree.InterventionalTreeGame` games of tree models."""
-        from shapiq.tree.validation import validate_tree_model
-        from shapiq_games.tree import InterventionalTreeGame
-
         if not isinstance(game, InterventionalTreeGame):
             return False
         try:
@@ -299,31 +307,27 @@ class InterventionalTreeComputer(Computer):
         return True
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The indices of ``InterventionalTreeSHAPIQ``.
 
         Excluded: ``"CUSTOM"`` (needs a user-defined weight function) and ``"CV"``, which core
         returns as relabelled ``CHII`` values and which brute force cannot check.
         """
-        from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
-
         excluded = {"CUSTOM", "CV"}
         return tuple(i for i in get_args(InterventionalTreeSHAPIQIndices) if i not in excluded)
 
-    def _compute(self, index: str, order: int) -> InteractionValues:
-        from shapiq.tree.interventional import InterventionalTreeSHAPIQ
-
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
         computer = InterventionalTreeSHAPIQ(
-            model=self.game.model,  # type: ignore[attr-defined]
-            data=self.game.reference_data,  # type: ignore[attr-defined]
-            class_index=self.game.class_index,  # type: ignore[attr-defined]
-            index=index,  # type: ignore[arg-type]
+            model=self.game.model,
+            data=self.game.reference_data,
+            class_index=self.game.class_index,
+            index=cast("InterventionalTreeSHAPIQIndices", index),  # checked by supports()
             max_order=order,
         )
-        return computer.explain_function(x=self.game.x)  # type: ignore[attr-defined]
+        return computer.explain_function(x=self.game.x)
 
 
-class KNNComputer(Computer):
+class KNNComputer(Computer[NNGameBase[Any]]):
     """Nearest-neighbor games via the KNN, weighted KNN, and threshold NN explainers.
 
     A :class:`~shapiq_games.nn.WeightedKNNGame` is supported when it uses the explainer's weight
@@ -335,40 +339,35 @@ class KNNComputer(Computer):
     @classmethod
     def supports_game(cls, game: Game) -> bool:
         """KNN, weighted KNN (with ``n_bits`` and ``k > 1``), and threshold NN games."""
-        from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
-
         if isinstance(game, WeightedKNNGame):  # the weighted KNN explainer needs k > 1
             return game.n_bits is not None and game.k > 1
         return isinstance(game, KNNGame | ThresholdNNGame)
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The indices of the nearest-neighbor explainers (``ValidNNExplainerIndices``)."""
-        from shapiq.explainer.custom_types import ValidNNExplainerIndices
-
         return get_args(ValidNNExplainerIndices)
 
     def max_order(self) -> int:
         """The nearest-neighbor explainers compute order-1 values only."""
         return 1
 
-    def _compute(self, index: str, order: int) -> InteractionValues:  # noqa: ARG002
-        from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
-        from shapiq_games.nn import KNNGame, WeightedKNNGame
-
-        game: Any = self.game
-        if isinstance(game, WeightedKNNGame):
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:  # noqa: ARG002
+        game = self.game
+        if isinstance(game, WeightedKNNGame) and game.n_bits is not None:
             explainer = WeightedKNNExplainer(
                 game.model, class_index=game.class_index, n_bits=game.n_bits
             )
         elif isinstance(game, KNNGame):
             explainer = KNNExplainer(game.model, class_index=game.class_index)
-        else:
+        elif isinstance(game, ThresholdNNGame):
             explainer = ThresholdNNExplainer(game.model, class_index=game.class_index)
+        else:  # excluded by supports_game
+            raise UnsupportedComputationError(type(game).__name__)
         return explainer.explain(game.x)
 
 
-class ProductKernelComputer(Computer):
+class ProductKernelComputer(Computer[ProductKernelGame]):
     """Product kernel games via :class:`~shapiq.explainer.product_kernel.ProductKernelExplainer`."""
 
     name = "product_kernel"
@@ -376,29 +375,24 @@ class ProductKernelComputer(Computer):
     @classmethod
     def supports_game(cls, game: Game) -> bool:
         """:class:`~shapiq_games.kernel.ProductKernelGame` games."""
-        from shapiq_games.kernel import ProductKernelGame
-
         return isinstance(game, ProductKernelGame)
 
     @classmethod
-    def supported_indices(cls) -> tuple[str, ...]:
+    def supported_indices(cls) -> tuple[IndexType, ...]:
         """The indices of the product kernel explainer (``ProductKernelSHAPIQIndices``)."""
-        from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
-
         return get_args(ProductKernelSHAPIQIndices)
 
     def max_order(self) -> int:
         """The product kernel explainer computes order-1 values only."""
         return 1
 
-    def _compute(self, index: str, order: int) -> InteractionValues:  # noqa: ARG002
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:  # noqa: ARG002
         # the explainer only accepts library models, so the core computer it uses is called with
         # the converted model directly (the same two calls as ProductKernelExplainer)
-        from shapiq.explainer.product_kernel import ProductKernelComputer as CoreComputer
 
-        model = self.game.model  # type: ignore[attr-defined]
-        core = CoreComputer(model, max_order=1, index="SV")
-        kernel_vectors = core.compute_kernel_vectors(model.X_train, self.game.x)  # type: ignore[attr-defined]
+        model = self.game.model
+        core = CoreProductKernelComputer(model, max_order=1, index="SV")
+        kernel_vectors = core.compute_kernel_vectors(model.X_train, self.game.x)
         values = np.array([core.compute_shapley_value(kernel_vectors, j) for j in range(model.d)])
         return InteractionValues(
             values=values,
@@ -411,7 +405,7 @@ class ProductKernelComputer(Computer):
         )
 
 
-_STRUCTURED_COMPUTERS: tuple[type[Computer], ...] = (
+_STRUCTURED_COMPUTERS: tuple[type[Computer[Any]], ...] = (
     MoebiusComputer,
     PathDependentTreeComputer,
     InterventionalTreeComputer,
@@ -420,7 +414,7 @@ _STRUCTURED_COMPUTERS: tuple[type[Computer], ...] = (
 )
 
 
-def default_computer(game: Game, *, max_players: int = DEFAULT_MAX_PLAYERS) -> Computer:
+def default_computer(game: Game, *, max_players: int = DEFAULT_MAX_PLAYERS) -> Computer[Any]:
     """Return the best available computer for a game.
 
     A structured computer for the game's type is preferred; otherwise brute force is used up to

@@ -9,7 +9,7 @@ the confounding bias left by omitting the other covariates.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -20,9 +20,11 @@ from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
+    from shapiq_games.typing import ConfoundingMode, PredictFunction
+
 __all__ = ["GlobalConfoundingXAI", "LocalConfoundingXAI", "tabpfn_regressor"]
 
-type Mode = Literal["signed", "abs", "sq"]
 type RegressorFactory = Callable[[], Any]
 
 
@@ -68,7 +70,7 @@ def tabpfn_regressor(
     )
 
 
-def _predictor(model: Any) -> Callable[[np.ndarray], np.ndarray]:  # noqa: ANN401
+def _predictor(model: Any) -> PredictFunction:  # noqa: ANN401
     return lambda x: np.asarray(model.predict(x), dtype=float).reshape(-1)
 
 
@@ -77,16 +79,16 @@ def _fit_s_learner(
     treatment: np.ndarray,
     outcome: np.ndarray,
     regressor: RegressorFactory,
-) -> tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]:
+) -> tuple[PredictFunction, PredictFunction]:
     """Fit an S-learner on ``(X_S, A) -> Y`` and return the predictors for ``A = 1`` and ``A = 0``."""
     model = regressor()
     model.fit(np.column_stack([x_s, treatment]), outcome)
     predict = _predictor(model)
 
-    def predict_treated(x: np.ndarray) -> np.ndarray:
+    def predict_treated(x: np.ndarray) -> FloatVector:
         return predict(np.column_stack([x, np.ones(x.shape[0])]))
 
-    def predict_control(x: np.ndarray) -> np.ndarray:
+    def predict_control(x: np.ndarray) -> FloatVector:
         return predict(np.column_stack([x, np.zeros(x.shape[0])]))
 
     return predict_treated, predict_control
@@ -94,7 +96,7 @@ def _fit_s_learner(
 
 def _fit_projection(
     x_s: np.ndarray, tau_hat: np.ndarray, regressor: RegressorFactory
-) -> Callable[[np.ndarray], np.ndarray]:
+) -> PredictFunction:
     """Project the reference effect onto the coalition's covariates (a constant without any)."""
     if x_s.shape[1] == 0:
         mean = float(np.mean(tau_hat))
@@ -104,7 +106,7 @@ def _fit_projection(
     return _predictor(model)
 
 
-def _aggregate(bias: np.ndarray, mode: Mode) -> float:
+def _aggregate(bias: np.ndarray, mode: ConfoundingMode) -> float:
     if mode == "signed":
         return float(np.mean(-bias))
     if mode == "abs":
@@ -125,7 +127,7 @@ class _ConfoundingGame(Game):
         outcome: np.ndarray,
         tau_hat: np.ndarray | None,
         *,
-        mode: Mode,
+        mode: ConfoundingMode,
         regressor: RegressorFactory | None,
     ) -> None:
         if mode not in ("signed", "abs", "sq"):
@@ -134,7 +136,7 @@ class _ConfoundingGame(Game):
         self.X = np.asarray(x, dtype=float)
         self.A = np.asarray(treatment, dtype=float).reshape(-1)
         self.Y = np.asarray(outcome, dtype=float).reshape(-1)
-        self.mode: Mode = mode
+        self.mode: ConfoundingMode = mode
         self.regressor: RegressorFactory = regressor if regressor is not None else tabpfn_regressor
         if tau_hat is None:  # the reference: an S-learner on all covariates
             treated, control = _fit_s_learner(self.X, self.A, self.Y, self.regressor)
@@ -148,7 +150,7 @@ class _ConfoundingGame(Game):
     def _coalition_value(self, players: tuple[int, ...]) -> float:
         raise NotImplementedError
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the (cached) confounding value of each coalition."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.empty(coalitions.shape[0])
@@ -186,7 +188,7 @@ class GlobalConfoundingXAI(_ConfoundingGame):
         outcome: np.ndarray,
         tau_hat: np.ndarray | None = None,
         *,
-        mode: Mode = "signed",
+        mode: ConfoundingMode = "signed",
         regressor: RegressorFactory | None = None,
     ) -> None:
         """Initialize the global confounding game.
@@ -236,7 +238,7 @@ class LocalConfoundingXAI(_ConfoundingGame):
         tau_hat: np.ndarray | None = None,
         unit: int | np.ndarray = 0,
         *,
-        mode: Mode = "signed",
+        mode: ConfoundingMode = "signed",
         regressor: RegressorFactory | None = None,
     ) -> None:
         """Initialize the local confounding game.

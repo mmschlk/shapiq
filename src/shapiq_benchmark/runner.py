@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import inspect
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
+from .computers import VALUE_INDICES
 from .metrics import compare, faithfulness
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Iterable, Sequence
 
     from shapiq.approximator.base import Approximator
+    from shapiq.typing import IndexType
 
     from .benchmark import Benchmark
 
@@ -25,7 +28,7 @@ def build_approximator(
     approximator: type[Approximator],
     *,
     n_players: int,
-    index: str,
+    index: IndexType,
     order: int,
     random_state: int,
 ) -> Approximator | None:
@@ -37,7 +40,7 @@ def build_approximator(
     ``valid_indices``.
     """
     valid_indices = getattr(approximator, "valid_indices", ())
-    if index not in valid_indices or (index in ("SV", "BV") and order != 1):
+    if index not in valid_indices or (index in VALUE_INDICES and order != 1):
         return None
     parameters = inspect.signature(approximator.__init__).parameters
     takes_all = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values())
@@ -62,7 +65,7 @@ def run(
     approximators: Mapping[str, type[Approximator]] | Sequence[type[Approximator]],
     budgets: Iterable[int],
     *,
-    index: str,
+    index: IndexType,
     order: int,
     seeds: Iterable[int] = (0,),
     k: int = 10,
@@ -92,8 +95,11 @@ def run(
         faithfulness, so compare rows with equal ``scored_orders``.
     """
     budgets, seeds = list(budgets), list(seeds)  # they are iterated once per approximator
-    if not isinstance(approximators, dict):
-        approximators = {approximator.__name__: approximator for approximator in approximators}
+    named: dict[str, type[Approximator]]
+    if isinstance(approximators, Mapping):
+        named = dict(cast("Mapping[str, type[Approximator]]", approximators))
+    else:
+        named = {approximator.__name__: approximator for approximator in approximators}
     ground_truth = benchmark.exact_values(index, order)
     game = benchmark.game
     context = {
@@ -106,7 +112,7 @@ def run(
         "order": order,
     }
     rows = []
-    for name, approximator_class in approximators.items():
+    for name, approximator_class in named.items():
         for budget in budgets:
             for seed in seeds:
                 row: dict[str, Any] = {

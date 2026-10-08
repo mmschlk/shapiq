@@ -15,7 +15,14 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, NoReturn
 import numpy as np
 
 from shapiq_benchmark.datasets import Dataset, DatasetSplit, get_dataset_spec, load_dataset
-from shapiq_benchmark.models import MODEL_NAMES, TUNED_PRESETS, build_model, fit_model
+from shapiq_benchmark.models import (
+    TUNED_PRESETS,
+    ModelName,
+    Preset,
+    build_model,
+    fit_model,
+)
+from shapiq_games.typing import Task  # noqa: TC001  (resolved by the field checks)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -42,7 +49,7 @@ def runtime_field(default: Any) -> Any:  # noqa: ANN401
 def _to_builtin(value: object) -> object:
     """Convert numpy scalars and arrays to Python objects for JSON."""
     if isinstance(value, np.generic | np.ndarray):
-        return value.tolist()
+        return np.asarray(value).tolist()
     msg = f"Object of type {type(value).__name__} is not JSON serializable"
     raise TypeError(msg)
 
@@ -54,7 +61,7 @@ def _jsonable(value: object) -> Any:  # noqa: ANN401
 class _FrozenDict(dict):
     """A read-only dict, so that a setup cannot change after its key was taken."""
 
-    def __hash__(self) -> int:  # type: ignore[override]
+    def __hash__(self) -> int:
         return hash(json.dumps(self, sort_keys=True))
 
     def __reduce__(self) -> tuple[type, tuple[dict]]:
@@ -64,8 +71,8 @@ class _FrozenDict(dict):
         msg = "The fields of a setup are read-only; create a new setup instead."
         raise TypeError(msg)
 
-    __setitem__ = __delitem__ = __ior__ = _read_only  # type: ignore[assignment]
-    clear = pop = popitem = setdefault = update = _read_only  # type: ignore[assignment]
+    __setitem__ = __delitem__ = __ior__ = _read_only
+    clear = pop = popitem = setdefault = update = _read_only
 
 
 def _check_keys(value: object, name: str) -> None:
@@ -96,7 +103,7 @@ def _literal_options(hint: object) -> tuple[object, ...]:
         return _literal_options(hint.__value__)
     if typing.get_origin(hint) is Literal:
         return typing.get_args(hint)
-    if typing.get_origin(hint) in (typing.Union, types.UnionType):
+    if typing.get_origin(hint) in (typing.Union, types.UnionType, tuple):
         return tuple(o for arg in typing.get_args(hint) for o in _literal_options(arg))
     return ()
 
@@ -208,7 +215,7 @@ class Setup(ABC):
             object.__setattr__(self, f.name, value)
             if not _matches(value, hint):
                 options = _literal_options(hint)
-                if options and isinstance(value, str):
+                if options and isinstance(value, str | tuple):
                     msg = f"{cls.__name__}.{f.name} must be one of {options}, got {value!r}."
                     raise ValueError(msg)
                 msg = f"{cls.__name__}.{f.name} must be of type {hint}, got {value!r}."
@@ -278,7 +285,7 @@ class TabularSetup(Setup):
         dataset_params: Parameters of synthetic datasets (e.g. ``{"n_samples": 300}``).
     """
 
-    tasks: ClassVar[tuple[str, ...]] = ("classification", "regression")
+    tasks: ClassVar[tuple[Task, ...]] = ("classification", "regression")
     """The tasks of the datasets the setup accepts."""
 
     dataset: str
@@ -327,26 +334,23 @@ class ModelSetup(TabularSetup):
         model_params: Hyperparameters of the model, overriding the preset.
     """
 
-    model: str = "random_forest"
-    preset: Literal["tuned"] | None = None
+    model: ModelName = "random_forest"
+    preset: Preset | None = None
     model_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Check the model name and that a tuned preset exists."""
+        """Check that a tuned preset exists."""
         super().__post_init__()
-        if self.model not in MODEL_NAMES:
-            msg = f"Unknown model {self.model!r}. Available: {', '.join(MODEL_NAMES)}."
-            raise ValueError(msg)
         if self.preset == "tuned" and (self.model, self.dataset) not in TUNED_PRESETS:
             available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
             msg = f"No tuned preset for '{self.model}' on '{self.dataset}'. Available: {available}."
             raise ValueError(msg)
 
-    def estimator(self, task: str) -> Any:  # noqa: ANN401
+    def estimator(self, task: Task) -> Any:  # noqa: ANN401
         """Return the unfitted, seeded model for a task."""
         return build_model(
             self.model,
-            task,  # type: ignore[arg-type]
+            task,
             random_state=self.random_state,
             preset=self.preset,
             dataset=self.dataset,

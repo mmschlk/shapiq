@@ -5,10 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from shapiq_benchmark.datasets import load_imagenette
+from shapiq_benchmark.datasets import (
+    ImagenetteSize,
+    ImagenetteSplit,
+    load_imagenette,
+)
 from shapiq_games import ImageClassifier, ImageTextSimilarity
-from shapiq_games.vision.image_classifier import BuiltinModel, Fill  # noqa: TC001  (field checks)
-from shapiq_games.vision.image_text import ClipModel  # noqa: TC001  (field checks)
+from shapiq_games.typing import ClipModel, Fill, ImageModel  # noqa: TC001  (field checks)
 
 from ._base import Setup, runtime_field
 
@@ -45,9 +48,9 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
     """
 
     index: int = 0
-    split: Literal["train", "val"] = "val"
-    size: Literal["160px", "320px"] = "320px"
-    model: BuiltinModel = "vit_9_patches"
+    split: ImagenetteSplit = "val"
+    size: ImagenetteSize = "320px"
+    model: ImageModel = "vit_9_patches"
     n_superpixels: int = 14
     fill: Fill | None = None
     class_index: int | Literal["label"] | None = None
@@ -97,8 +100,8 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
     """
 
     index: int = 0
-    split: Literal["train", "val"] = "val"
-    size: Literal["160px", "320px"] = "320px"
+    split: ImagenetteSplit = "val"
+    size: ImagenetteSize = "320px"
     model: ClipModel = "clip_vit_b16"
     grid: tuple[int, int] = (4, 4)
     text: str | None = None

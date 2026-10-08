@@ -17,6 +17,8 @@ from ._batching import pad_batch
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import CoalitionMatrix
+
 __all__ = ["TokenDropper", "pixel_regions", "token_players"]
 
 
@@ -97,7 +99,7 @@ class TokenDropper:
         self._encode = encode
         self.batch_size = batch_size
 
-    def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+    def __call__(self, coalitions: CoalitionMatrix) -> np.ndarray:
         """Return the encoder output of every coalition, of shape ``(n_coalitions, out_dim)``."""
         torch = self._torch
         kept = np.asarray(coalitions, dtype=bool)[:, self.token_player]

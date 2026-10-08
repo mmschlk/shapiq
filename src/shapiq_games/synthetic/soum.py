@@ -6,11 +6,18 @@ interaction indices: every index can be computed from the Möbius coefficients e
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from shapiq.game import Game
 from shapiq.interaction_values import InteractionValues
 from shapiq_games._base import as_bool_coalitions
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from shapiq.typing import BoolVector, CoalitionMatrix, GameValues
 
 
 class UnanimityGame(Game):
@@ -32,19 +39,19 @@ class UnanimityGame(Game):
         array([0., 1., 1.])
     """
 
-    def __init__(self, interaction_binary: np.ndarray) -> None:
+    def __init__(self, interaction_binary: ArrayLike) -> None:
         """Initialize the unanimity game.
 
         Args:
             interaction_binary: The interaction encoded as a binary vector of shape ``(n,)``.
         """
-        self.interaction_binary: np.ndarray = np.asarray(interaction_binary).astype(bool)
+        self.interaction_binary: BoolVector = np.asarray(interaction_binary).astype(bool)
         self.interaction: tuple[int, ...] = tuple(
             int(i) for i in np.flatnonzero(self.interaction_binary)
         )
         super().__init__(n_players=len(self.interaction_binary), normalize=False)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return one if the coalition contains the interaction, zero otherwise."""
         coalitions = as_bool_coalitions(coalitions)
         return np.all(coalitions[:, self.interaction_binary], axis=1).astype(float)
@@ -125,7 +132,7 @@ class SOUM(Game):
             verbose=verbose,
         )
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Sum the coefficients of the unanimity games whose interaction is in the coalition."""
         coalitions = as_bool_coalitions(coalitions)
         worth = np.zeros(coalitions.shape[0])

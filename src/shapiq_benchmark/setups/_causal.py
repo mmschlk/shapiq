@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
-from shapiq_benchmark.datasets import load_curthvds_synthetic
-from shapiq_benchmark.models import MODEL_NAMES, build_model
+from shapiq_benchmark.datasets import CausalSetting, load_curthvds_synthetic
+from shapiq_benchmark.models import ModelName, build_model
 from shapiq_games import GlobalConfoundingXAI, LocalConfoundingXAI
-from shapiq_games.causal import Mode, tabpfn_regressor  # Mode is resolved by the field checks
+from shapiq_games.causal import tabpfn_regressor
+from shapiq_games.typing import ConfoundingMode  # noqa: TC001  (resolved by the field checks)
 
 from ._base import Setup
 
@@ -27,18 +28,11 @@ class _ConfoundingSetup(Setup):
 
     n: int = 500
     d: int = 4
-    setting: Literal["i", "ii"] = "ii"
-    mode: Mode = "signed"
-    regressor: str = "tabpfn"
+    setting: CausalSetting = "ii"
+    mode: ConfoundingMode = "signed"
+    regressor: ModelName = "tabpfn"
     regressor_params: dict[str, Any] = field(default_factory=dict)
     random_state: int = 42
-
-    def __post_init__(self) -> None:
-        """Check the regressor name."""
-        super().__post_init__()
-        if self.regressor not in MODEL_NAMES:
-            msg = f"Unknown regressor {self.regressor!r}. Available: {', '.join(MODEL_NAMES)}."
-            raise ValueError(msg)
 
     def _data(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, Callable[[], Any]]:
         """Return covariates, treatment, outcome, and a factory of seeded regressors."""

@@ -41,7 +41,7 @@ def build_tabpfn(
     except (ImportError, AttributeError):  # tabpfn before 6.0
         model_version = None
     known = [str(member.value) for member in model_version] if model_version is not None else []
-    if version not in known:
+    if model_version is None or version not in known:
         installed = importlib.metadata.version("tabpfn")
         hint = f"it knows {', '.join(known)}" if known else "choosing a version needs tabpfn>=6.0"
         msg = (

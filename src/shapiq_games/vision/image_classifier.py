@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -20,19 +20,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from numpy.typing import ArrayLike
+
+    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import Fill, ImageModel
+
 __all__ = ["ImageClassifier", "grid_regions"]
 
-type BuiltinModel = Literal[
-    "vit_9_patches",
-    "vit_16_patches",
-    "vit_36_patches",
-    "vit_144_patches",
-    "dinov2_16_patches",
-    "dinov2_20_patches",
-    "dinov2_25_patches",
-    "resnet_18",
-]
-type Fill = Literal["mean", "gray", "black", "blur"]
 _VIT_MODELS = {f"vit_{n}_patches": n for n in VIT_PATCH_GRIDS}
 _DINOV2_MODELS = {f"dinov2_{n}_patches": n for n in DINOV2_GRIDS}
 
@@ -146,7 +140,7 @@ class ImageClassifier(RegionPlots, Game):
     def __init__(
         self,
         image: np.ndarray | str | Path,
-        model: BuiltinModel | Callable[[np.ndarray], np.ndarray] = "vit_9_patches",
+        model: ImageModel | Callable[[np.ndarray], np.ndarray] = "vit_9_patches",
         *,
         n_superpixels: int = 14,
         regions: np.ndarray | None = None,
@@ -215,7 +209,8 @@ class ImageClassifier(RegionPlots, Game):
                     revision=revision,
                 )
                 grid = VIT_PATCH_GRIDS[_VIT_MODELS[model]]
-                self.regions = grid_regions(*self.image.shape[:2], grid, grid)
+                height, width = self.image.shape[:2]
+                self.regions = grid_regions(height, width, grid, grid)
             else:
                 dinov2 = DinoV2TokenModel(
                     self.image,
@@ -266,14 +261,14 @@ class ImageClassifier(RegionPlots, Game):
             verbose=verbose,
         )
 
-    def _masked_images(self, coalitions: np.ndarray) -> np.ndarray:
+    def _masked_images(self, coalitions: CoalitionMatrix) -> np.ndarray:
         images = np.repeat(self.image[None], coalitions.shape[0], axis=0)
         for i, coalition in enumerate(coalitions):
             absent = ~coalition[self.regions]
             images[i][absent] = self._baseline[absent]
         return images
 
-    def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         if self._patch_model is not None:
             return self._patch_model(coalitions)
         values = []
@@ -282,7 +277,7 @@ class ImageClassifier(RegionPlots, Game):
             values.append(np.asarray(self._classifier(batch))[:, self.class_index])
         return np.concatenate(values).astype(float)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the probability of the explained class for each coalition of regions."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.full(coalitions.shape[0], self._empty_value)
@@ -291,7 +286,7 @@ class ImageClassifier(RegionPlots, Game):
             values[present] = self._evaluate(coalitions[present])
         return values
 
-    def masked_image(self, coalition: np.ndarray | list[int]) -> np.ndarray:
+    def masked_image(self, coalition: ArrayLike) -> np.ndarray:
         """Return the image with the players outside ``coalition`` removed.
 
         For superpixel models this is exactly the image the classifier sees. The vision
@@ -304,7 +299,7 @@ class ImageClassifier(RegionPlots, Game):
         Returns:
             The image as a ``uint8`` array of shape ``(height, width, 3)``.
         """
-        coalition = as_bool_coalitions(np.asarray(coalition).reshape(1, -1))
+        coalition = as_bool_coalitions(coalition)
         if self._patch_model is None:
             return self._masked_images(coalition)[0]
         return gray_masked_image(self.image, self.regions, coalition[0])

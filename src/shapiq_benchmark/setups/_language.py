@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from shapiq_games import SentimentAnalysis
+from shapiq_games.typing import MaskStrategy  # noqa: TC001  (resolved by the field checks)
 
 from ._base import Setup, runtime_field
 
@@ -29,7 +29,7 @@ class SentimentAnalysisSetup(Setup, name="sentiment_analysis"):
     """
 
     input_text: str
-    mask_strategy: Literal["mask", "remove"] = "mask"
+    mask_strategy: MaskStrategy = "mask"
     revision: str | None = None
     normalize: bool = True
     device: int | str | None = runtime_field(None)

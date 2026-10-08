@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
 from shapiq_games._optional import require
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
+    from shapiq_games.typing import MaskStrategy
 
 __all__ = ["SENTIMENT_MODEL_ID", "SentimentAnalysis"]
 
@@ -40,7 +44,7 @@ class SentimentAnalysis(Game):
         input_text: str,
         *,
         classifier: Any = None,  # noqa: ANN401
-        mask_strategy: Literal["mask", "remove"] = "mask",
+        mask_strategy: MaskStrategy = "mask",
         positive_label: str = "POSITIVE",
         device: int | str | None = None,
         revision: str | None = None,
@@ -101,7 +105,7 @@ class SentimentAnalysis(Game):
             verbose=verbose,
         )
 
-    def _scores(self, texts: list[str]) -> np.ndarray:
+    def _scores(self, texts: list[str]) -> FloatVector:
         """Return the signed score ``2 P(positive) - 1`` of every text."""
         outputs = self._classifier(texts, truncation=True, top_k=None)
         scores = np.zeros(len(texts))
@@ -116,7 +120,7 @@ class SentimentAnalysis(Game):
             scores[i] = 2.0 * float(probabilities[self.positive_label]) - 1.0
         return scores
 
-    def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         texts = []
         for coalition in coalitions:
             if self.mask_strategy == "remove":
@@ -127,6 +131,6 @@ class SentimentAnalysis(Game):
             texts.append(str(self._tokenizer.decode(tokens)))
         return self._scores(texts)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the signed sentiment score of the text restricted to each coalition."""
         return self._evaluate(as_bool_coalitions(coalitions))

@@ -21,10 +21,16 @@ from PIL import Image
 
 from ._cache import RemoteFile, fetch, get_data_dir
 
-__all__ = ["IMAGENETTE_CLASSES", "ImageDataset", "load_imagenette"]
+__all__ = [
+    "IMAGENETTE_CLASSES",
+    "ImageDataset",
+    "ImagenetteSize",
+    "ImagenetteSplit",
+    "load_imagenette",
+]
 
-type Split = Literal["train", "val"]
-type Size = Literal["160px", "320px"]
+type ImagenetteSplit = Literal["train", "val"]
+type ImagenetteSize = Literal["160px", "320px"]
 
 # WordNet id -> (ImageNet class index, class name)
 IMAGENETTE_CLASSES: dict[str, tuple[int, str]] = {
@@ -120,7 +126,9 @@ def _extract(archive: Path, target: Path) -> None:
         shutil.rmtree(staging, ignore_errors=True)  # gone once renamed
 
 
-def load_imagenette(*, split: Split = "val", size: Size = "320px") -> ImageDataset:
+def load_imagenette(
+    *, split: ImagenetteSplit = "val", size: ImagenetteSize = "320px"
+) -> ImageDataset:
     """Load the Imagenette images, downloading the archive on first use.
 
     The first call downloads the archive (about 99 MB for ``"160px"`` and 342 MB for ``"320px"``),

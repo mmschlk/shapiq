@@ -211,6 +211,9 @@ exclude = [
     "D102",  # we don't need docstrings for protocol stubs
     "ANN401",  # any return type is okay in typing.py for protocol subts
 ]
+"src/shapiq_games/typing.py" = [
+    "A005",  # mirrors shapiq.typing
+]
 "tests/*.py" = [
     # "ALL",
     "S101", # we need asserts in tests
@@ -265,8 +268,8 @@ exclude = [
 convention = "google"
 
 [tool.ty.src]
-include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
+include = ["src/shapiq", "src/shapiq_games", "src/shapiq_benchmark"]
+exclude = ["tests", "docs", "benchmark", "scripts"]
 
 [tool.ty.environment]
 python-version = "3.12"

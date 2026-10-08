@@ -8,21 +8,24 @@ compared with the tree algorithms.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.utils.modules import safe_isinstance
 
+if TYPE_CHECKING:
+    from shapiq.typing import FloatVector
+
 __all__ = ["is_margin_classifier", "model_output"]
 
-_MARGIN_CLASSIFIERS = (
+_MARGIN_CLASSIFIERS = [
     "sklearn.ensemble.GradientBoostingClassifier",
     "sklearn.ensemble.HistGradientBoostingClassifier",
     "xgboost.XGBClassifier",
     "lightgbm.LGBMClassifier",
     "catboost.CatBoostClassifier",
-)
+]
 
 
 def is_margin_classifier(model: Any) -> bool:  # noqa: ANN401
@@ -41,7 +44,7 @@ def _raw_margins(model: Any, data: np.ndarray) -> np.ndarray:  # noqa: ANN401
     return model.decision_function(data)  # scikit-learn gradient boosting
 
 
-def model_output(model: Any, data: np.ndarray, class_index: int | None) -> np.ndarray:  # noqa: ANN401
+def model_output(model: Any, data: np.ndarray, class_index: int | None) -> FloatVector:  # noqa: ANN401
     """Return the model output for every row in the space the tree algorithms explain.
 
     Args:

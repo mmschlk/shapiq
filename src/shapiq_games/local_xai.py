@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -25,11 +25,10 @@ from shapiq_games._base import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
+    from shapiq_games.typing import ImputerName, PredictFunction
 
 __all__ = ["TabularLocalExplanation", "require_inf_passthrough"]
-
-type ImputerName = Literal["marginal", "conditional", "baseline"]
 
 _PASSTHROUGH_INF_TABPFN = (8, 1)  # the first tabpfn release with inference_config PASSTHROUGH_INF
 
@@ -141,7 +140,7 @@ class TabularLocalExplanation(Game):
             self.random_state = random_state
         self.class_index: int | None = None
         if callable(model) and not hasattr(model, "predict"):
-            predict: Callable[[np.ndarray], np.ndarray] = model
+            predict: PredictFunction = model
         else:
             self.class_index = resolve_class_index(model, class_index)
             predict = make_predict_function(model, self.class_index)
@@ -190,13 +189,13 @@ class TabularLocalExplanation(Game):
             verbose=verbose,
         )
 
-    def _impute(self, coalitions: np.ndarray) -> np.ndarray:
+    def _impute(self, coalitions: CoalitionMatrix) -> GameValues:
         # reseeding makes every evaluation draw the same samples (the conditional imputer samples
         # its background from a stateful generator)
         self.imputer._rng = np.random.default_rng(self.random_state)  # noqa: SLF001
         return np.asarray(self.imputer.value_function(coalitions), dtype=float).reshape(-1)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the imputed prediction for the coalitions."""
         coalitions = as_bool_coalitions(coalitions)
         if isinstance(self.imputer, _BATCH_SAFE_IMPUTERS):
@@ -220,7 +219,7 @@ def require_inf_passthrough() -> None:
         raise ValueError(msg)
 
 
-def _baseline_row(baseline: float | np.ndarray, n_features: int) -> np.ndarray:
+def _baseline_row(baseline: float | np.ndarray, n_features: int) -> FloatVector:
     """Return the baseline as one row of ``n_features`` values."""
     values = np.asarray(baseline, dtype=float).reshape(-1)
     if values.size not in (1, n_features):
@@ -236,7 +235,7 @@ def _check_tabpfn_baseline(model: Any, baseline: np.ndarray) -> None:  # noqa: A
     in their preprocessing, so the game would silently explain something else.
     """
     if not np.isinf(baseline).any() or not safe_isinstance(
-        model, ("tabpfn.TabPFNClassifier", "tabpfn.TabPFNRegressor")
+        model, ["tabpfn.TabPFNClassifier", "tabpfn.TabPFNRegressor"]
     ):
         return
     require_inf_passthrough()

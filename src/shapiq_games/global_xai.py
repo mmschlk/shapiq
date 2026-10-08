@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -14,11 +14,12 @@ from shapiq_games._base import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import LossName, Metric, PredictFunction
 
 __all__ = ["TabularGlobalExplanation"]
 
-_LOSSES: dict[str, Callable[[np.ndarray, np.ndarray], float]] = {
+_LOSSES: dict[LossName, Metric] = {
     "mse": lambda reference, prediction: float(np.mean((reference - prediction) ** 2)),
     "mae": lambda reference, prediction: float(np.mean(np.abs(reference - prediction))),
 }
@@ -60,7 +61,7 @@ class TabularGlobalExplanation(Game):
         data: np.ndarray,
         *,
         class_index: int | None = None,
-        loss: Literal["mse", "mae"] | Callable[[np.ndarray, np.ndarray], float] = "mse",
+        loss: LossName | Metric = "mse",
         n_samples: int = 100,
         random_state: int = 42,
         normalize: bool = True,
@@ -85,7 +86,7 @@ class TabularGlobalExplanation(Game):
         data = np.asarray(data)
         self.class_index: int | None = None
         if callable(model) and not hasattr(model, "predict"):
-            self._predict: Callable[[np.ndarray], np.ndarray] = model
+            self._predict: PredictFunction = model
         else:
             self.class_index = resolve_class_index(model, class_index)
             self._predict = make_predict_function(model, self.class_index)
@@ -114,7 +115,7 @@ class TabularGlobalExplanation(Game):
             verbose=verbose,
         )
 
-    def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             masked = np.where(coalition, self.x_eval, self.x_replacement)
@@ -122,6 +123,6 @@ class TabularGlobalExplanation(Game):
             values[i] = -self._loss(self._reference_predictions, predictions)
         return values
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the negative loss between full and masked predictions."""
         return self._evaluate(as_bool_coalitions(coalitions))

@@ -28,7 +28,7 @@ from ._tabular import _encode_categorical, _impute
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ._registry import Task
+    from shapiq_games.typing import Task
 
 __all__ = ["TABARENA_DATASETS"]
 

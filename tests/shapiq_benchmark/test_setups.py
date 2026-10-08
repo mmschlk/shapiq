@@ -207,7 +207,7 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         (
             lambda: TabularLocalExplanationSetup(dataset="xor", model="nope"),
             ValueError,
-            "Unknown model",
+            "one of",
         ),
         (lambda: TabularLocalExplanationSetup(dataset="xor", imputer="foo"), ValueError, "one of"),
         (
@@ -222,8 +222,12 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         ),
         (lambda: PathDependentTreeSetup(dataset="xor", model="svm"), ValueError, "one of"),
         (lambda: ProductKernelSetup(dataset="xor", model="linear"), ValueError, "one of"),
-        (lambda: EnsembleSelectionSetup(dataset="xor", members=("nope",)), ValueError, "member"),
-        (lambda: GlobalConfoundingSetup(regressor="nope"), ValueError, "Unknown regressor"),
+        (
+            lambda: EnsembleSelectionSetup(dataset="xor", members=("nope",)),
+            ValueError,
+            "members must be one of",
+        ),
+        (lambda: GlobalConfoundingSetup(regressor="nope"), ValueError, "regressor must be one of"),
         (lambda: ImageClassifierSetup(class_index="labels"), ValueError, "one of"),
         (lambda: setup_from_dict({"setup": "nope"}), ValueError, "Unknown setup 'nope'"),
     ],

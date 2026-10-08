@@ -20,6 +20,7 @@ from .computers import (
 
 if TYPE_CHECKING:
     from shapiq import Game
+    from shapiq.typing import IndexType
 
     from .computers import Computer
     from .setups import Setup
@@ -121,7 +122,7 @@ class Benchmark:
             return None
         return get_data_dir() / "ground_truth" / self.setup.name / self.setup.key
 
-    def computer_for(self, index: str, order: int) -> Computer:
+    def computer_for(self, index: IndexType, order: int) -> Computer:
         """Return the computer of ``index`` up to ``order``: brute force where it must fill in."""
         if not self._fallback or self.computer.supports(index, order):
             return self.computer
@@ -132,11 +133,11 @@ class Benchmark:
                 return self.computer
         return self._brute_force if self._brute_force.supports(index, order) else self.computer
 
-    def supports(self, index: str, order: int) -> bool:
+    def supports(self, index: IndexType, order: int) -> bool:
         """Return whether the benchmark can compute ``index`` up to ``order``."""
         return self.computer_for(index, order).supports(index, order)
 
-    def exact_values(self, index: str, order: int) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Return the exact interaction values of order 1 to ``order`` (cached if possible).
 
         Args:

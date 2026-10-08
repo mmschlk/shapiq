@@ -14,6 +14,7 @@ from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
     from shapiq.explainer.product_kernel.base import ProductKernelModel
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["ProductKernelGame"]
 
@@ -81,7 +82,7 @@ class ProductKernelGame(Game):
         empty_value = float(np.sum(self.model.alpha)) + float(self.model.intercept)
         super().__init__(self.x.shape[0], normalize=normalize, normalization_value=empty_value)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the decision function with the kernel restricted to the coalition."""
         coalitions = as_bool_coalitions(coalitions)
         alpha = self.model.alpha

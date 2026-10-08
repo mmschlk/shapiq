@@ -6,12 +6,17 @@ is identified by its name and parameters.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 
 from ._registry import DatasetSpec, register_dataset
 
-__all__ = ["load_curthvds_synthetic"]
+__all__ = ["CausalSetting", "load_curthvds_synthetic"]
+
+type CausalSetting = Literal["i", "ii"]
+"""The setting of :func:`load_curthvds_synthetic`: ``"i"`` without effect heterogeneity, ``"ii"`` with."""
 
 _DEFAULT_SEED = 42
 
@@ -20,7 +25,7 @@ def _with_irrelevant(
     data: dict[str, np.ndarray],
     rng: np.random.Generator,
     n_irrelevant: int,
-    draw: str,
+    draw: Literal["uniform01", "uniform11", "normal", "binary"],
     n_samples: int,
 ) -> pd.DataFrame:
     for i in range(1, n_irrelevant + 1):
@@ -208,7 +213,7 @@ def load_curthvds_synthetic(
     n: int = 500,
     d: int = 4,
     random_state: int = _DEFAULT_SEED,
-    setting: str = "ii",
+    setting: CausalSetting = "ii",
 ) -> pd.DataFrame:
     """Synthetic observational study with known causal roles (Curth and van der Schaar, 2021).
 

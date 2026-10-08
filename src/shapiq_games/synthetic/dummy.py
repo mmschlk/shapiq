@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 
 class DummyGame(Game):
@@ -47,7 +52,7 @@ class DummyGame(Game):
         super().__init__(n, normalize=False)
         self.access_counter = 0
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return ``|S| / n`` plus one if the coalition contains the interaction."""
         coalitions = as_bool_coalitions(coalitions)
         worth = np.sum(coalitions, axis=1) / self.n

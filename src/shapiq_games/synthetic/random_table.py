@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 _MAX_PLAYERS = 20
 
@@ -50,11 +55,11 @@ class RandomTableGame(Game):
             msg = f"RandomTableGame supports 1 to {_MAX_PLAYERS} players, got {n}."
             raise ValueError(msg)
         rng = np.random.default_rng(random_state)
-        self.values: np.ndarray = rng.uniform(low, high, size=2**n)
+        self.values: GameValues = rng.uniform(low, high, size=2**n)
         self._powers = 2 ** np.arange(n)
         super().__init__(n, normalize=normalize, normalization_value=float(self.values[0]))
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Look up the values of the coalitions in the value table."""
         coalitions = as_bool_coalitions(coalitions)
         return self.values[coalitions.astype(np.int64) @ self._powers]

@@ -28,13 +28,14 @@ if TYPE_CHECKING:
     import optuna
 
     from shapiq_benchmark.datasets import DatasetSplit
+    from shapiq_benchmark.models import ModelName
 
 logger = logging.getLogger(__name__)
 
-TUNABLE_MODELS = ("lightgbm", "random_forest", "xgboost")
+TUNABLE_MODELS: tuple[ModelName, ...] = ("lightgbm", "random_forest", "xgboost")
 
 
-def get_hyperparameters(trial: optuna.Trial, model_name: str) -> dict[str, Any]:
+def get_hyperparameters(trial: optuna.Trial, model_name: ModelName) -> dict[str, Any]:
     """Return the hyperparameters of a trial (the search space of the model)."""
     if model_name == "lightgbm":
         return {
@@ -75,7 +76,7 @@ def get_hyperparameters(trial: optuna.Trial, model_name: str) -> dict[str, Any]:
 
 def cross_validated_score(
     split: DatasetSplit,
-    model_name: str,
+    model_name: ModelName,
     params: dict[str, Any],
     *,
     n_splits: int,

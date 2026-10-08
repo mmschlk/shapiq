@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from PIL import Image
 
 from shapiq.interaction_values import InteractionValues
+
+if TYPE_CHECKING:
+    from shapiq.typing import BoolVector
 
 __all__ = ["DISPLAY_GRAY", "RegionPlots", "gray_masked_image"]
 
@@ -65,7 +70,7 @@ class RegionPlots:
         return int(self.regions.max()) + 1
 
 
-def gray_masked_image(image: np.ndarray, regions: np.ndarray, coalition: np.ndarray) -> np.ndarray:
+def gray_masked_image(image: np.ndarray, regions: np.ndarray, coalition: BoolVector) -> np.ndarray:
     """Return ``image`` with the regions of the players outside ``coalition`` in gray."""
     shown = image.copy()
     shown[~np.asarray(coalition, dtype=bool).reshape(-1)[regions]] = DISPLAY_GRAY

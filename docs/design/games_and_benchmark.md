@@ -46,6 +46,7 @@ already do for `DummyGame`).
 shapiq_games/
   _base.py              the game contract (bool coalitions, explicit x, class index)
   _training.py          clone-per-coalition training, metrics, constant predictors
+  typing.py             the games' Literal choices (Task, ImputerName, ...), next to shapiq.typing
   synthetic/            DummyGame, UnanimityGame, SOUM, RandomTableGame (replaces RandomGame)
   tree/                 PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
   nn/                   KNNGame, WeightedKNNGame, ThresholdNNGame (moved from core)
@@ -234,9 +235,9 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
 ### Computers
 
 ```python
-class Computer(ABC):
+class Computer[G: Game](ABC):            # G: the game family it understands
     name: ClassVar[str]                      # part of the cache file names
-    game: Game                               # bound at construction
+    game: G                                  # bound at construction
     @classmethod
     def supports_game(cls, game) -> bool: ...
     @classmethod

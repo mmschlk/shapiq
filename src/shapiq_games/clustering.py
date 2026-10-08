@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
@@ -10,6 +10,10 @@ from sklearn.metrics import calinski_harabasz_score, silhouette_score
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues, IntVector
+    from shapiq_games.typing import ClusterMethod, ClusterScore
 
 __all__ = ["ClusterExplanation"]
 
@@ -43,9 +47,9 @@ class ClusterExplanation(Game):
         self,
         data: np.ndarray,
         *,
-        method: Literal["kmeans", "agglomerative"] = "kmeans",
+        method: ClusterMethod = "kmeans",
         n_clusters: int = 3,
-        score: Literal["calinski_harabasz", "silhouette"] = "calinski_harabasz",
+        score: ClusterScore = "calinski_harabasz",
         empty_value: float = 0.0,
         random_state: int = 42,
         normalize: bool = True,
@@ -83,14 +87,14 @@ class ClusterExplanation(Game):
             verbose=verbose,
         )
 
-    def _cluster_labels(self, data: np.ndarray) -> np.ndarray:
+    def _cluster_labels(self, data: np.ndarray) -> IntVector:
         if self.method == "kmeans":
             model = KMeans(n_clusters=self.n_clusters, n_init=10, random_state=self.random_state)
         else:
             model = AgglomerativeClustering(n_clusters=self.n_clusters)
         return model.fit_predict(data)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the clustering score on the features of each coalition."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.full(coalitions.shape[0], self.empty_value)

@@ -39,7 +39,7 @@ from ._cache import RemoteFile, atomic_write_bytes, fetch, get_data_dir
 from ._registry import DatasetSpec, register_dataset
 
 if TYPE_CHECKING:
-    from ._registry import Task
+    from shapiq_games.typing import Task
 
 
 def _generic_columns(n_features: int) -> tuple[str, ...]:

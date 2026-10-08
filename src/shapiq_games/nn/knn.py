@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from shapiq_games._base import as_bool_coalitions
 
 from ._base import KNNGameBase, keep_first_n
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["KNNGame"]
 
@@ -29,7 +34,7 @@ class KNNGame(KNNGameBase):
         10
     """
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the share of the explained class among the coalition's k nearest neighbors."""
         coalitions = as_bool_coalitions(coalitions)
         utilities = np.zeros(coalitions.shape[0])

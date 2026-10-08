@@ -21,9 +21,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from numpy.typing import ArrayLike
+
+    from shapiq.typing import CoalitionMatrix, FloatVector
+    from shapiq_games.typing import PredictFunction
 
 __all__ = [
     "as_bool_coalitions",
@@ -34,7 +35,7 @@ __all__ = [
 ]
 
 
-def as_bool_coalitions(coalitions: ArrayLike) -> np.ndarray:
+def as_bool_coalitions(coalitions: ArrayLike) -> CoalitionMatrix:
     """Return the coalitions as a two-dimensional boolean matrix.
 
     ``shapiq.Game.__call__`` already hands boolean coalitions to the value function, but a value
@@ -53,7 +54,7 @@ def as_bool_coalitions(coalitions: ArrayLike) -> np.ndarray:
     return coalitions.astype(bool, copy=False)
 
 
-def resolve_x(x: int | np.integer | ArrayLike, data: np.ndarray) -> np.ndarray:
+def resolve_x(x: int | np.integer | ArrayLike, data: np.ndarray) -> FloatVector:
     """Resolve the explained point given as an index or as an array.
 
     Args:
@@ -127,7 +128,7 @@ def resolve_class_index(model: object, class_index: int | None) -> int | None:
 def make_predict_function(
     model: object,
     class_index: int | None,
-) -> Callable[[np.ndarray], np.ndarray]:
+) -> PredictFunction:
     """Build a function returning one output per row: a class probability or a regression value.
 
     Args:
@@ -141,14 +142,14 @@ def make_predict_function(
     if class_index is None:
         predict = model.predict  # type: ignore[attr-defined]
 
-        def _predict(x: np.ndarray) -> np.ndarray:
+        def _predict(x: np.ndarray) -> FloatVector:
             return np.asarray(predict(x), dtype=float).reshape(-1)
 
         return _predict
 
     predict_proba = model.predict_proba  # type: ignore[attr-defined]
 
-    def _predict_proba(x: np.ndarray) -> np.ndarray:
+    def _predict_proba(x: np.ndarray) -> FloatVector:
         return np.asarray(predict_proba(x), dtype=float)[:, class_index]
 
     return _predict_proba

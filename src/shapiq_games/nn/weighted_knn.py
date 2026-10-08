@@ -11,8 +11,9 @@ from shapiq_games._base import as_bool_coalitions
 from ._base import KNNGameBase, keep_first_n
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
+
+    from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
 __all__ = ["BinaryWeightedKNNGame", "WeightedKNNGame"]
 
@@ -22,7 +23,7 @@ def _greater_or_close(a: float, b: float) -> bool:
     return bool(a >= b or np.isclose(a, b))
 
 
-def quantize_weights(weights: np.ndarray, n_bits: int) -> np.ndarray:
+def quantize_weights(weights: FloatVector, n_bits: int) -> FloatVector:
     """Round weights to multiples of ``2**-n_bits``.
 
     This is the weight discretization of :class:`~shapiq.explainer.nn.WeightedKNNExplainer`
@@ -58,7 +59,7 @@ class WeightedKNNGame(KNNGameBase):
     def __init__(
         self,
         model: KNeighborsClassifier,
-        x: npt.NDArray[np.floating],
+        x: FloatVector,
         class_index: int | None = None,
         n_bits: int | None = None,
     ) -> None:
@@ -82,7 +83,7 @@ class WeightedKNNGame(KNNGameBase):
             if other != self.class_index
         }
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Average the binary games of the explained class against every other class."""
         coalitions = as_bool_coalitions(coalitions)
         values = [game.value_function(coalitions) for game in self.binary_games.values()]
@@ -101,7 +102,7 @@ class BinaryWeightedKNNGame(KNNGameBase):
     def __init__(
         self,
         model: KNeighborsClassifier,
-        x: npt.NDArray[np.floating],
+        x: FloatVector,
         class_index: int,
         class_index_other: int,
         n_bits: int | None = None,
@@ -119,9 +120,9 @@ class BinaryWeightedKNNGame(KNNGameBase):
         self.class_index_other = class_index_other
         self.n_bits = n_bits
 
-    def _normalized_weights(self) -> tuple[np.ndarray, np.ndarray]:
+    def _normalized_weights(self) -> tuple[FloatVector, FloatVector]:
         """Return the training points sorted by decreasing weight and their weights in [0, 1]."""
-        distances, sortperm = self.knn_model.kneighbors(
+        distances, sortperm = self.model.kneighbors(
             self.x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=True
         )
         distances, sortperm = distances[0], sortperm[0]
@@ -134,7 +135,7 @@ class BinaryWeightedKNNGame(KNNGameBase):
             weights = distances[0] / distances
         return sortperm, weights
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return whether the explained class outweighs the other class among the neighbors."""
         coalitions = as_bool_coalitions(coalitions)
         sortperm, weights = self._normalized_weights()

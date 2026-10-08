@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from shapiq_games._optional import require
 
 from ._batching import pad_batch
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["VIT_MODEL_ID", "VIT_PATCH_GRIDS", "ViTPatchModel"]
 
@@ -91,7 +96,7 @@ class ViTPatchModel:
         self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
         self.class_name = str(model.config.id2label[self.class_index])
 
-    def _probabilities(self, coalitions: np.ndarray) -> np.ndarray:
+    def _probabilities(self, coalitions: CoalitionMatrix) -> np.ndarray:
         torch = self._torch
         outputs = []
         for start in range(0, coalitions.shape[0], self.batch_size):
@@ -109,6 +114,6 @@ class ViTPatchModel:
             outputs.append(torch.softmax(logits, dim=-1).cpu().numpy()[: rows.shape[0]])
         return np.concatenate(outputs, axis=0)
 
-    def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+    def __call__(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the probability of the explained class for each coalition."""
         return self._probabilities(coalitions)[:, self.class_index]

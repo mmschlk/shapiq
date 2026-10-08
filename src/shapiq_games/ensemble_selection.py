@@ -9,10 +9,13 @@ from scipy.stats import mode
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
-from shapiq_games._training import Metric, MetricName, resolve_metric, resolve_task
+from shapiq_games._training import resolve_metric, resolve_task
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import Metric, MetricName, Task
 
 __all__ = ["EnsembleSelection", "RandomForestEnsembleSelection"]
 
@@ -51,7 +54,7 @@ class EnsembleSelection(Game):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str | None = None,
+        task: Task | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         member_names: Sequence[str] | None = None,
@@ -104,7 +107,7 @@ class EnsembleSelection(Game):
             player_names=self.member_names,
         )
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the test metric of each coalition's combined prediction."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.zeros(coalitions.shape[0])
@@ -145,7 +148,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         x_test: np.ndarray,
         y_test: np.ndarray,
         *,
-        task: str | None = None,
+        task: Task | None = None,
         metric: MetricName | Metric | None = None,
         empty_value: float = 0.0,
         normalize: bool = True,

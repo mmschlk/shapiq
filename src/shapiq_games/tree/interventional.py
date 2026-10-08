@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -10,6 +10,9 @@ from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions, resolve_class_index
 
 from ._output import model_output
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["InterventionalTreeGame"]
 
@@ -77,13 +80,13 @@ class InterventionalTreeGame(Game):
         empty_value = float(self._evaluate(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(n_players, normalize=normalize, normalization_value=empty_value)
 
-    def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
+    def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             data = np.where(coalition, self.x, self.reference_data)
             values[i] = float(np.mean(model_output(self.model, data, self.class_index)))
         return values
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the mean model output over the reference data for the coalitions."""
         return self._evaluate(as_bool_coalitions(coalitions))

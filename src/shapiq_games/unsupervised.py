@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.stats import entropy
 from sklearn.preprocessing import KBinsDiscretizer
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["UnsupervisedData", "total_correlation"]
 
@@ -77,7 +82,7 @@ class UnsupervisedData(Game):
         )
         super().__init__(data.shape[1], normalize=False, verbose=verbose)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the total correlation of the features of each coalition."""
         coalitions = as_bool_coalitions(coalitions)
         return np.array(

@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from shapiq_benchmark.models import MODEL_NAMES, build_model
+from shapiq_benchmark.models import ModelName, build_model
 from shapiq_games import (
     ClusterExplanation,
     DatasetValuation,
@@ -23,14 +23,23 @@ from shapiq_games import (
     UnsupervisedData,
 )
 from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
-from shapiq_games._training import MetricName  # noqa: TC001  (resolved by the field checks)
 from shapiq_games.local_xai import require_inf_passthrough
-from shapiq_games.uncertainty import Uncertainty  # noqa: TC001
+from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
+    ClusterMethod,
+    ClusterScore,
+    ImputerName,
+    LossName,
+    MetricName,
+    PlayerSizes,
+    Uncertainty,
+)
 
 from ._base import ModelSetup, TabularSetup
 
 if TYPE_CHECKING:
     from shapiq.imputer.base import Imputer
+    from shapiq.typing import IntVector
+    from shapiq_games.typing import Task
 
 __all__ = [
     "DEFAULT_MEMBER_POOL",
@@ -47,7 +56,7 @@ __all__ = [
     "UnsupervisedDataSetup",
 ]
 
-MISSING_VALUE_MODELS: tuple[str, ...] = (
+MISSING_VALUE_MODELS: tuple[ModelName, ...] = (
     "catboost",
     "decision_tree",
     "lightgbm",
@@ -57,7 +66,7 @@ MISSING_VALUE_MODELS: tuple[str, ...] = (
 )
 """The registry models that read missing values natively (for ``baseline="missing"``)."""
 
-DEFAULT_MEMBER_POOL: tuple[str, ...] = (
+DEFAULT_MEMBER_POOL: tuple[ModelName, ...] = (
     "linear",
     "decision_tree",
     "random_forest",
@@ -113,7 +122,7 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
     """
 
     x: int = 0
-    imputer: Literal["marginal", "conditional", "baseline", "tabpfn"] = "marginal"
+    imputer: ImputerName | Literal["tabpfn"] = "marginal"
     baseline: Literal["mean", "missing"] = "mean"
     n_background: int = 100
     n_train: int | None = None
@@ -139,7 +148,8 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
     def build(self) -> TabularLocalExplanation:
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
-        params, baseline = dict(self.model_params), None
+        params: dict[str, Any] = dict(self.model_params)
+        baseline: float | None = None
         if self.baseline == "missing":
             baseline = np.nan
             if self.model == "tabpfn":  # TabPFN reads +inf as missing
@@ -159,16 +169,18 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
         rows = self.sample_rows(split.x_train.shape[0], self.n_background)
         background = split.x_train[rows]
         point = resolve_x(self.x, split.x_test)
-        imputer: str | Imputer = self.imputer
+        imputer: ImputerName | Imputer
         if self.imputer == "tabpfn":
             imputer = _tabpfn_imputer(
                 model, background, split.y_train[rows], split.x_test, point, self.class_index
             )
+        else:
+            imputer = self.imputer
         return TabularLocalExplanation(
             model,
             background,
             point,
-            imputer=imputer,  # type: ignore[arg-type]
+            imputer=imputer,
             class_index=self.class_index,
             sample_size=self.n_background,
             baseline=baseline,
@@ -223,7 +235,7 @@ class TabularGlobalExplanationSetup(ModelSetup, name="tabular_global_explanation
     """
 
     class_index: int | None = None
-    loss: Literal["mse", "mae"] = "mse"
+    loss: LossName = "mse"
     n_samples: int = 100
     normalize: bool = True
 
@@ -256,7 +268,7 @@ class FeatureSelectionSetup(ModelSetup, name="feature_selection"):
         30
     """
 
-    model: str = "decision_tree"
+    model: ModelName = "decision_tree"
     metric: MetricName | None = None
     n_train: int | None = None
     normalize: bool = True
@@ -278,7 +290,7 @@ class FeatureSelectionSetup(ModelSetup, name="feature_selection"):
         )
 
 
-def _stratified_rows(y: np.ndarray, n: int | None, task: str, random_state: int) -> np.ndarray:
+def _stratified_rows(y: np.ndarray, n: int | None, task: Task, random_state: int) -> IntVector:
     """Draw ``n`` row indices, stratified by class for classification where possible."""
     indices = np.arange(y.shape[0])
     if n is None or n >= indices.shape[0]:
@@ -312,7 +324,7 @@ class DataValuationSetup(ModelSetup, name="data_valuation"):
         8
     """
 
-    model: str = "decision_tree"
+    model: ModelName = "decision_tree"
     n_players: int = 10
     metric: MetricName | None = None
     empty_value: float = 0.0
@@ -354,9 +366,9 @@ class DatasetValuationSetup(ModelSetup, name="dataset_valuation"):
         4
     """
 
-    model: str = "decision_tree"
+    model: ModelName = "decision_tree"
     n_players: int = 10
-    player_sizes: Literal["uniform", "increasing", "random"] = "uniform"
+    player_sizes: PlayerSizes = "uniform"
     n_train: int | None = None
     metric: MetricName | None = None
     empty_value: float = 0.0
@@ -402,19 +414,11 @@ class EnsembleSelectionSetup(TabularSetup, name="ensemble_selection"):
         2
     """
 
-    members: tuple[str, ...] | None = None
+    members: tuple[ModelName, ...] | None = None
     n_members: int = 10
     metric: MetricName | None = None
     empty_value: float = 0.0
     normalize: bool = True
-
-    def __post_init__(self) -> None:
-        """Check the member names."""
-        super().__post_init__()
-        unknown = sorted(set(self.members or ()) - set(MODEL_NAMES))
-        if unknown:
-            msg = f"Unknown member models {unknown}. Available: {', '.join(MODEL_NAMES)}."
-            raise ValueError(msg)
 
     def build(self) -> EnsembleSelection:
         """Train the members and build the game on the test split."""
@@ -422,10 +426,11 @@ class EnsembleSelectionSetup(TabularSetup, name="ensemble_selection"):
         members = self.members
         if members is None:
             rng = np.random.default_rng(self.random_state)
-            members = tuple(str(name) for name in rng.choice(DEFAULT_MEMBER_POOL, self.n_members))
+            draws = rng.choice(len(DEFAULT_MEMBER_POOL), self.n_members)
+            members = tuple(DEFAULT_MEMBER_POOL[i] for i in draws)
         fitted = []
         for i, name in enumerate(members):
-            params = {"n_neighbors": 3} if name == "knn" else {}
+            params: dict[str, Any] = {"n_neighbors": 3} if name == "knn" else {}
             model = build_model(name, split.task, random_state=self.random_state + i, **params)
             fitted.append(model.fit(split.x_train, split.y_train))
         return EnsembleSelection(
@@ -465,11 +470,9 @@ class RandomForestEnsembleSelectionSetup(TabularSetup, name="random_forest_ensem
     def build(self) -> RandomForestEnsembleSelection:
         """Train the forest and build the game on the test split."""
         split = self.load_split()
+        params: dict[str, Any] = {**self.model_params, "n_estimators": self.n_members}
         forest = build_model(
-            "random_forest",
-            split.task,
-            random_state=self.random_state,
-            **{**self.model_params, "n_estimators": self.n_members},
+            "random_forest", split.task, random_state=self.random_state, **params
         ).fit(split.x_train, split.y_train)
         return RandomForestEnsembleSelection.from_forest(
             forest,
@@ -503,7 +506,7 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
 
     x: int = 0
     uncertainty: Uncertainty = "total"
-    imputer: Literal["marginal", "conditional", "baseline"] = "marginal"
+    imputer: ImputerName = "marginal"
     n_background: int = 100
     model_params: dict[str, Any] = field(default_factory=dict)
     normalize: bool = True
@@ -546,9 +549,9 @@ class ClusterExplanationSetup(TabularSetup, name="cluster_explanation"):
     """
 
     n_samples: int = 1000
-    method: Literal["kmeans", "agglomerative"] = "kmeans"
+    method: ClusterMethod = "kmeans"
     n_clusters: int = 3
-    score: Literal["calinski_harabasz", "silhouette"] = "calinski_harabasz"
+    score: ClusterScore = "calinski_harabasz"
     empty_value: float = 0.0
     normalize: bool = True
 

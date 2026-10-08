@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from PIL import Image
 
@@ -9,6 +11,9 @@ from shapiq_games._optional import require
 
 from ._preprocess import center_crop, normalized_pixels
 from ._token_drop import TokenDropper, pixel_regions, token_players
+
+if TYPE_CHECKING:
+    from shapiq.typing import CoalitionMatrix
 
 __all__ = ["CLIP_MODEL_IDS", "IMAGENET_LABEL_SOURCE", "ClipTokenModel", "imagenet_class_names"]
 
@@ -106,7 +111,7 @@ class ClipTokenModel:
             torch, embeddings[:, :1], embeddings[0, 1:], players, encode, batch_size
         )
 
-    def image_embeddings(self, coalitions: np.ndarray) -> np.ndarray:
+    def image_embeddings(self, coalitions: CoalitionMatrix) -> np.ndarray:
         """Return the unit-length image embedding of each coalition."""
         return self._dropper(coalitions)
 

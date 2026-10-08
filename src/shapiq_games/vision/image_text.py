@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -16,9 +16,12 @@ from ._preprocess import as_rgb_array
 if TYPE_CHECKING:
     from pathlib import Path
 
-__all__ = ["ImageTextSimilarity"]
+    from numpy.typing import ArrayLike
 
-type ClipModel = Literal["clip_vit_b16", "clip_vit_b32"]
+    from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import ClipModel
+
+__all__ = ["ImageTextSimilarity"]
 
 
 class ImageTextSimilarity(RegionPlots, Game):
@@ -90,7 +93,7 @@ class ImageTextSimilarity(RegionPlots, Game):
         """
         self._clip = ClipTokenModel(
             as_rgb_array(image),
-            tuple(grid),  # type: ignore[arg-type]
+            tuple(grid),
             model=model,
             device=device,
             batch_size=batch_size,
@@ -116,11 +119,11 @@ class ImageTextSimilarity(RegionPlots, Game):
             verbose=verbose,
         )
 
-    def _similarity(self, coalitions: np.ndarray) -> np.ndarray:
+    def _similarity(self, coalitions: CoalitionMatrix) -> GameValues:
         # a row-wise sum, not a matrix product, whose summation order depends on the batch
         return np.sum(self._clip.image_embeddings(coalitions) * self._text_embedding, axis=1)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the cosine similarity of the text and the image restricted to each coalition."""
         coalitions = as_bool_coalitions(coalitions)
         values = np.full(coalitions.shape[0], self._empty_value)
@@ -129,7 +132,7 @@ class ImageTextSimilarity(RegionPlots, Game):
             values[present] = self._similarity(coalitions[present])
         return values
 
-    def masked_image(self, coalition: np.ndarray | list[int]) -> np.ndarray:
+    def masked_image(self, coalition: ArrayLike) -> np.ndarray:
         """Return the image with the players outside ``coalition`` in gray.
 
         CLIP drops the tokens of removed regions, so gray only shows which regions are removed.
@@ -140,5 +143,5 @@ class ImageTextSimilarity(RegionPlots, Game):
         Returns:
             The image as a ``uint8`` array of shape ``(224, 224, 3)``.
         """
-        coalition = as_bool_coalitions(np.asarray(coalition).reshape(1, -1))[0]
+        coalition = as_bool_coalitions(coalition)[0]
         return gray_masked_image(self.image, self.regions, coalition)

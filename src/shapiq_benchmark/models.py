@@ -18,20 +18,20 @@ Examples:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
 
 from ._optional import require
 
 if TYPE_CHECKING:
+    from shapiq_games.typing import Task
+
     from .datasets import DatasetSplit
 
-__all__ = ["MODEL_NAMES", "TUNED_PRESETS", "build_model", "fit_model"]
+__all__ = ["MODEL_NAMES", "TUNED_PRESETS", "ModelName", "Preset", "build_model", "fit_model"]
 
-type Task = Literal["classification", "regression"]
-
-MODEL_NAMES: tuple[str, ...] = (
+type ModelName = Literal[
     "catboost",
     "decision_tree",
     "gaussian_process",
@@ -45,12 +45,18 @@ MODEL_NAMES: tuple[str, ...] = (
     "threshold_nn",
     "weighted_knn",
     "xgboost",
-)
+]
+"""The names of the models :func:`build_model` builds."""
+
+type Preset = Literal["tuned"]
+"""A hyperparameter preset: ``"tuned"`` takes the hyperparameters of :data:`TUNED_PRESETS`."""
+
+MODEL_NAMES: tuple[ModelName, ...] = get_args(ModelName.__value__)
 """All model names understood by :func:`build_model`."""
 
 # The LightGBM presets were tuned with a subsample that LightGBM ignores without
 # subsample_freq; it is left out, which builds the same models.
-TUNED_PRESETS: dict[tuple[str, str], dict[str, Any]] = {
+TUNED_PRESETS: dict[tuple[ModelName, str], dict[str, Any]] = {
     ("lightgbm", "adult_census"): {
         "n_estimators": 944,
         "num_leaves": 47,
@@ -112,7 +118,9 @@ TUNED_PRESETS: dict[tuple[str, str], dict[str, Any]] = {
 ``(model, dataset)``. Produced by ``shapiq_benchmark/optimization/optuna_optimization.py``."""
 
 
-def _sklearn_model(name: str, task: Task, random_state: int | None, params: dict[str, Any]) -> Any:  # noqa: ANN401
+def _sklearn_model(
+    name: ModelName, task: Task, random_state: int | None, params: dict[str, Any]
+) -> Any:  # noqa: ANN401
     """Build one of the scikit-learn models."""
     classification = task == "classification"
     if name == "decision_tree":
@@ -171,11 +179,11 @@ def _sklearn_model(name: str, task: Task, random_state: int | None, params: dict
 
 
 def build_model(
-    name: str,
+    name: ModelName,
     task: Task,
     *,
     random_state: int | None = 42,
-    preset: str | None = None,
+    preset: Preset | None = None,
     dataset: str | None = None,
     **params: Any,
 ) -> Any:  # noqa: ANN401
@@ -204,11 +212,12 @@ def build_model(
         if preset != "tuned":
             msg = f"Unknown preset {preset!r}; the only preset is 'tuned'."
             raise ValueError(msg)
-        if (name, dataset) not in TUNED_PRESETS:
+        tuned = TUNED_PRESETS.get((name, dataset)) if dataset is not None else None
+        if tuned is None:
             available = ", ".join(f"{m}/{d}" for m, d in sorted(TUNED_PRESETS))
             msg = f"No tuned preset for model '{name}' on '{dataset}'. Available: {available}."
             raise ValueError(msg)
-        params = {**TUNED_PRESETS[(name, dataset)], **params}
+        params = {**tuned, **params}
 
     classification = task == "classification"
     if name == "xgboost":
@@ -232,11 +241,11 @@ def build_model(
 
 
 def fit_model(
-    name: str,
+    name: ModelName,
     split: DatasetSplit,
     *,
     random_state: int | None = 42,
-    preset: str | None = None,
+    preset: Preset | None = None,
     **params: Any,
 ) -> Any:  # noqa: ANN401
     """Build a seeded model and fit it on the training part of a dataset split.

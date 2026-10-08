@@ -16,24 +16,35 @@ Examples:
 
 from . import _synthetic, _tabarena, _tabular  # noqa: F401  (registers the datasets)
 from ._cache import get_data_dir
-from ._imagenette import IMAGENETTE_CLASSES, ImageDataset, load_imagenette
+from ._imagenette import (
+    IMAGENETTE_CLASSES,
+    ImageDataset,
+    ImagenetteSize,
+    ImagenetteSplit,
+    load_imagenette,
+)
 from ._registry import (
     Dataset,
+    DatasetKind,
     DatasetSpec,
     DatasetSplit,
     get_dataset_spec,
     list_datasets,
     load_dataset,
 )
-from ._synthetic import load_curthvds_synthetic
+from ._synthetic import CausalSetting, load_curthvds_synthetic
 from ._tabarena import TABARENA_DATASETS
 
 __all__ = [
+    "CausalSetting",
     "Dataset",
+    "DatasetKind",
     "DatasetSpec",
     "DatasetSplit",
     "IMAGENETTE_CLASSES",
     "ImageDataset",
+    "ImagenetteSize",
+    "ImagenetteSplit",
     "TABARENA_DATASETS",
     "get_data_dir",
     "get_dataset_spec",
