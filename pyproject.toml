@@ -88,11 +88,13 @@ shapleig = [
 ]
 games = [
     # optional dependencies of shapiq_games, imported lazily by the games that need them
+    "protobuf",      # with sentencepiece: the SigLIP tokenizer
     "scikit-image",  # superpixels of the image games
+    "sentencepiece", # the SigLIP tokenizer
     "tabpfn>=6.0",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
     "torch",         # image games
     "torchvision",   # ResNet image games
-    "transformers",  # vision transformer, DINOv2, CLIP, and sentiment games
+    "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
     "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [

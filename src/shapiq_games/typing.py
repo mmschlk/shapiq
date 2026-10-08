@@ -16,12 +16,12 @@ import numpy as np
 from shapiq.typing import FloatVector
 
 __all__ = [
-    "ClipModel",
     "ClusterMethod",
     "ClusterScore",
     "ConfoundingMode",
     "Fill",
     "ImageModel",
+    "ImageTextModel",
     "ImputerName",
     "LossName",
     "MaskStrategy",
@@ -85,5 +85,5 @@ type ImageModel = Literal[
 type Fill = Literal["mean", "gray", "black", "blur"]
 """How the image games fill removed regions in image space."""
 
-type ClipModel = Literal["clip_vit_b16", "clip_vit_b32"]
-"""The CLIP models of :class:`~shapiq_games.ImageTextSimilarity`."""
+type ImageTextModel = Literal["clip_vit_b16", "clip_vit_b32", "siglip_vit_b16", "siglip2_vit_b16"]
+"""The image-text models of :class:`~shapiq_games.ImageTextSimilarity`: CLIP, SigLIP, SigLIP 2."""

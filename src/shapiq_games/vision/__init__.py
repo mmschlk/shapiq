@@ -1,4 +1,4 @@
-"""Image games: classifiers (vision transformers, DINOv2, ResNet, custom) and CLIP similarity."""
+"""Image games: classifiers (ViT, DINOv2, ResNet, custom) and image-text similarity."""
 
 from ._superpixels import get_superpixels
 from .image_classifier import ImageClassifier, grid_regions

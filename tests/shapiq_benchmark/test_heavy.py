@@ -13,7 +13,7 @@ import os
 import numpy as np
 import pytest
 
-from shapiq_benchmark.datasets import load_dataset
+from shapiq_benchmark.datasets import load_dataset, load_imagenette
 from shapiq_benchmark.setups import (
     GlobalConfoundingSetup,
     ImageClassifierSetup,
@@ -91,6 +91,44 @@ def test_clip_removal_strategies(removal: dict) -> None:
     game = dataclasses.replace(default, **removal).build()
     assert game.original_model_output == pytest.approx(default.build().original_model_output)
     _assert_deterministic(game)
+
+
+@pytest.mark.skipif(not is_installed("sentencepiece"), reason="sentencepiece is not installed")
+@pytest.mark.parametrize("model", ["siglip_vit_b16", "siglip2_vit_b16"])
+def test_siglip_image_text_game(model: str) -> None:
+    """The full image is SigLIP's own forward pass; masking a token is filling its patch gray."""
+    import torch
+    import transformers
+    from PIL import Image
+
+    from shapiq_games.vision._image_text_model import IMAGE_TEXT_MODEL_IDS
+
+    setup = ImageTextSimilaritySetup(index=388, model=model, grid=(5, 4), batch_size=4)
+    game = setup.build()
+    assert game.label == "English springer"  # the zero-shot label is the true class
+    _assert_deterministic(game)
+
+    model_id = IMAGE_TEXT_MODEL_IDS[model]
+    processor = transformers.SiglipProcessor.from_pretrained(model_id)
+    siglip = transformers.SiglipModel.from_pretrained(model_id).eval()
+    inputs = processor(
+        text=[game.text.lower()],
+        images=Image.fromarray(load_imagenette(split="val", size="320px")[388]),
+        padding="max_length",
+        max_length=64,
+        return_tensors="pt",
+    )
+    with torch.no_grad():
+        logit = float(siglip(**inputs).logits_per_image[0, 0])
+        cosine = (logit - float(siglip.logit_bias)) / float(siglip.logit_scale.exp())
+    assert game.original_model_output == pytest.approx(cosine, abs=1e-6)
+
+    masked = dataclasses.replace(setup, mask_strategy="mask", normalize=False).build()
+    gray = dataclasses.replace(setup, fill="gray", normalize=False).build()
+    assert masked(masked.grand_coalition)[0] == pytest.approx(game.original_model_output)
+    assert masked(masked.empty_coalition)[0] == pytest.approx(
+        gray(gray.empty_coalition)[0], abs=1e-3
+    )
 
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")

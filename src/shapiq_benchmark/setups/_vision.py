@@ -12,9 +12,9 @@ from shapiq_benchmark.datasets import (
 )
 from shapiq_games import ImageClassifier, ImageTextSimilarity
 from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
-    ClipModel,
     Fill,
     ImageModel,
+    ImageTextModel,
     MaskStrategy,
 )
 
@@ -105,14 +105,15 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
         index: The position of the image in the split. Defaults to ``0``.
         split: The Imagenette split, ``"val"`` (default) or ``"train"``.
         size: The image size, ``"320px"`` (default) or ``"160px"``.
-        model: ``"clip_vit_b16"`` (default) or ``"clip_vit_b32"``.
+        model: CLIP (``"clip_vit_b16"``, default, or ``"clip_vit_b32"``), SigLIP
+            (``"siglip_vit_b16"``), or SigLIP 2 (``"siglip2_vit_b16"``).
         grid: The ``(rows, columns)`` of the player grid. Defaults to ``(4, 4)``.
-        text: The text to match: ``None`` (default) for CLIP's zero-shot ImageNet label of the
-            image, ``"label"`` for the prompt of the image's true class, or any text.
+        text: The text to match: ``None`` (default) for the model's zero-shot ImageNet label of
+            the image, ``"label"`` for the prompt of the image's true class, or any text.
         prompt_template: The prompt of a class. Defaults to ``"a photo of a {}."``.
         mask_strategy: ``"remove"`` (``None``, the default) or ``"mask"`` in token space.
         fill: Remove regions in image space with this fill instead (``None`` for token space).
-        revision: The Hugging Face revision of the CLIP model (``None`` for the default branch).
+        revision: The Hugging Face revision of the model (``None`` for the default branch).
         normalize: Whether to center the game. Defaults to ``True``.
         device: The torch device. A runtime field: it does not change the cache key.
         batch_size: The number of coalitions per forward pass (a runtime field).
@@ -125,7 +126,7 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
     index: int = 0
     split: ImagenetteSplit = "val"
     size: ImagenetteSize = "320px"
-    model: ClipModel = "clip_vit_b16"
+    model: ImageTextModel = "clip_vit_b16"
     grid: tuple[int, int] = (4, 4)
     text: str | None = None
     prompt_template: str = "a photo of a {}."
@@ -137,7 +138,7 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
     batch_size: int = runtime_field(16)
 
     def build(self) -> ImageTextSimilarity:
-        """Load the image and CLIP and build the game."""
+        """Load the image and the model and build the game."""
         images = load_imagenette(split=self.split, size=self.size)
         text = self.text
         if text == "label":

@@ -266,6 +266,32 @@ def test_token_dropping_encodes_only_the_present_tokens() -> None:
     np.testing.assert_array_equal(dropper(coalitions[::-1])[::-1], outputs)
 
 
+@pytest.mark.skipif(not is_installed("torch"), reason="torch is not installed")
+def test_token_removal_without_a_class_token() -> None:
+    """SigLIP has no class token: dropping every token leaves an empty sequence."""
+    import torch
+
+    from shapiq_games.vision._token_removal import token_remover
+
+    embeddings = torch.tensor([[[0.0], [1.0], [2.0], [2.0]]])  # four patch tokens, no prefix
+    masked = torch.full((1, 4, 1), 100.0)
+
+    def encode_sum_and_length(tokens: torch.Tensor) -> torch.Tensor:  # works on empty sequences
+        length = torch.full((tokens.shape[0], 1), float(tokens.shape[1]))
+        return torch.cat([tokens.sum(dim=1), length], 1)
+
+    players = np.array([0, 1, 2, 2])
+    coalitions = np.array([[0, 0, 0], [1, 0, 1], [1, 1, 1]], dtype=bool)
+    dropper = token_remover(
+        "remove", torch, embeddings, masked, players, encode_sum_and_length, 2, n_prefix=0
+    )
+    np.testing.assert_array_equal(dropper(coalitions), [[0, 0], [4, 3], [5, 4]])
+    masker = token_remover(
+        "mask", torch, embeddings, masked, players, encode_sum_and_length, 2, n_prefix=0
+    )
+    np.testing.assert_array_equal(masker(coalitions), [[400, 4], [104, 4], [5, 4]])
+
+
 def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch) -> None:
     from shapiq_games.vision._token_removal import pixel_regions, token_players
 
@@ -329,7 +355,7 @@ def test_image_text_similarity_matches_a_text_or_the_zero_shot_label(
     import shapiq_games.vision.image_text as module
     from shapiq_games import ImageTextSimilarity
 
-    monkeypatch.setattr(module, "ClipTokenModel", FakeClip)
+    monkeypatch.setattr(module, "ImageTextTokenModel", FakeClip)
     monkeypatch.setattr(module, "imagenet_class_names", lambda: ["cat", "dog"])
     game = ImageTextSimilarity(_IMAGE, grid=(2, 2), normalize=False)
     assert (game.label, game.text) == ("dog", "a photo of a dog.")  # the full image is all "dog"

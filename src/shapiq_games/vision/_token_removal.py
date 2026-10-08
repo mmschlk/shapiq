@@ -1,7 +1,7 @@
 """Removing players from a vision transformer in token space.
 
-A vision transformer reads an image as a sequence of patch tokens (plus a class token). The tokens
-of absent players are either dropped from the sequence (``"remove"``), while the present tokens
+A vision transformer reads an image as a sequence of patch tokens, after a class token in most
+models (SigLIP has none: it pools all tokens by attention). The tokens of absent players are either dropped from the sequence (``"remove"``), while the present tokens
 keep their position embeddings, or masked (``"mask"``): their content is replaced by the model's
 mask token, and they keep their position. Neither invents replacement pixels. The players are
 rectangular blocks of the token grid.
@@ -67,7 +67,7 @@ def pixel_regions(players: np.ndarray, patch_size: int) -> np.ndarray:
 
 
 class TokenDropper:
-    """Encode the class token and the patch tokens of each coalition's players.
+    """Encode the prefix tokens and the patch tokens of each coalition's players.
 
     Coalitions with the same number of kept tokens are encoded together. Every forward pass is
     padded to ``batch_size`` rows, so a coalition's output does not depend on the coalitions
@@ -75,11 +75,12 @@ class TokenDropper:
 
     Args:
         torch: The ``torch`` module.
-        cls_token: The class token, of shape ``(1, 1, dim)``.
+        prefix_tokens: The tokens before the patch tokens (the class token), of shape
+            ``(1, n_prefix, dim)``; ``n_prefix`` may be zero.
         patch_tokens: The patch tokens with their position embeddings, of shape
             ``(n_tokens, dim)``.
         token_player: The player of every patch token, of shape ``(n_tokens,)``.
-        encode: Maps a batch of token sequences ``(batch, 1 + kept, dim)`` to outputs
+        encode: Maps a batch of token sequences ``(batch, n_prefix + kept, dim)`` to outputs
             ``(batch, out_dim)``.
         batch_size: The number of sequences per forward pass.
     """
@@ -87,7 +88,7 @@ class TokenDropper:
     def __init__(
         self,
         torch: Any,  # noqa: ANN401
-        cls_token: Any,  # noqa: ANN401
+        prefix_tokens: Any,  # noqa: ANN401
         patch_tokens: Any,  # noqa: ANN401
         token_player: np.ndarray,
         encode: Callable[[Any], Any],
@@ -95,7 +96,7 @@ class TokenDropper:
     ) -> None:
         """Store the tokens and the encoder."""
         self._torch = torch
-        self._cls_token = cls_token
+        self._prefix_tokens = prefix_tokens
         self._patch_tokens = patch_tokens
         self.token_player = np.asarray(token_player).reshape(-1)
         self._encode = encode
@@ -115,9 +116,9 @@ class TokenDropper:
                 chunk = indices[start : start + self.batch_size]
                 index = torch.as_tensor(pad_batch(chunk, self.batch_size))
                 tokens = self._patch_tokens[index.to(self._patch_tokens.device)]
-                cls = self._cls_token.expand(index.shape[0], -1, -1)
+                prefix = self._prefix_tokens.expand(index.shape[0], -1, -1)
                 with torch.no_grad():
-                    encoded = self._encode(torch.cat((cls, tokens), dim=1))
+                    encoded = self._encode(torch.cat((prefix, tokens), dim=1))
                 result = encoded[: chunk.shape[0]].float().cpu().numpy().astype(float)
                 if outputs is None:
                     outputs = np.empty((kept.shape[0], result.shape[1]))
@@ -138,13 +139,14 @@ class TokenMasker:
 
     Args:
         torch: The ``torch`` module.
-        cls_token: The class token, of shape ``(1, 1, dim)``.
+        prefix_tokens: The tokens before the patch tokens (the class token), of shape
+            ``(1, n_prefix, dim)``; ``n_prefix`` may be zero.
         patch_tokens: The patch tokens with their position embeddings, of shape
             ``(n_tokens, dim)``.
         masked_tokens: The masked patch tokens (mask token plus position embedding), of shape
             ``(n_tokens, dim)``.
         token_player: The player of every patch token, of shape ``(n_tokens,)``.
-        encode: Maps a batch of token sequences ``(batch, 1 + n_tokens, dim)`` to outputs
+        encode: Maps a batch of token sequences ``(batch, n_prefix + n_tokens, dim)`` to outputs
             ``(batch, out_dim)``.
         batch_size: The number of sequences per forward pass.
     """
@@ -152,7 +154,7 @@ class TokenMasker:
     def __init__(
         self,
         torch: Any,  # noqa: ANN401
-        cls_token: Any,  # noqa: ANN401
+        prefix_tokens: Any,  # noqa: ANN401
         patch_tokens: Any,  # noqa: ANN401
         masked_tokens: Any,  # noqa: ANN401
         token_player: np.ndarray,
@@ -161,7 +163,7 @@ class TokenMasker:
     ) -> None:
         """Store the tokens and the encoder."""
         self._torch = torch
-        self._cls_token = cls_token
+        self._prefix_tokens = prefix_tokens
         self._patch_tokens = patch_tokens
         self._masked_tokens = masked_tokens
         self.token_player = np.asarray(token_player).reshape(-1)
@@ -178,9 +180,9 @@ class TokenMasker:
             mask = torch.as_tensor(pad_batch(chunk, self.batch_size))
             mask = mask.to(self._patch_tokens.device)[..., None]
             tokens = torch.where(mask, self._patch_tokens, self._masked_tokens)
-            cls = self._cls_token.expand(mask.shape[0], -1, -1)
+            prefix = self._prefix_tokens.expand(mask.shape[0], -1, -1)
             with torch.no_grad():
-                encoded = self._encode(torch.cat((cls, tokens), dim=1))
+                encoded = self._encode(torch.cat((prefix, tokens), dim=1))
             outputs.append(encoded[: chunk.shape[0]].float().cpu().numpy().astype(float))
         if not outputs:
             msg = "Expected at least one coalition."
@@ -196,19 +198,24 @@ def token_remover(
     token_player: np.ndarray,
     encode: Callable[[Any], Any],
     batch_size: int,
+    *,
+    n_prefix: int = 1,
 ) -> TokenDropper | TokenMasker:
     """Return the token remover of a strategy for an embedded image.
 
     Args:
         mask_strategy: ``"mask"`` (mask the absent tokens) or ``"remove"`` (drop them).
         torch: The ``torch`` module.
-        embeddings: The class token and the patch tokens with their position embeddings, of
-            shape ``(1, 1 + n_tokens, dim)``.
+        embeddings: The prefix tokens and the patch tokens with their position embeddings, of
+            shape ``(1, n_prefix + n_tokens, dim)``.
         masked_embeddings: The same with every patch token masked, of the same shape (only used
             for ``"mask"``).
         token_player: The player of every patch token, of shape ``(n_tokens,)``.
         encode: Maps a batch of token sequences to outputs ``(batch, out_dim)``.
         batch_size: The number of sequences per forward pass.
+        n_prefix: The number of tokens before the patch tokens, which are never removed.
+            Defaults to ``1`` (the class token); SigLIP has ``0``, so its empty coalition is an
+            empty sequence.
 
     Returns:
         A callable mapping a coalition matrix to the encoder outputs.
@@ -216,11 +223,11 @@ def token_remover(
     Raises:
         ValueError: If ``mask_strategy`` is unknown.
     """
-    cls_token, patch_tokens = embeddings[:, :1], embeddings[0, 1:]
+    prefix, patch_tokens = embeddings[:, :n_prefix], embeddings[0, n_prefix:]
     if mask_strategy == "remove":
-        return TokenDropper(torch, cls_token, patch_tokens, token_player, encode, batch_size)
+        return TokenDropper(torch, prefix, patch_tokens, token_player, encode, batch_size)
     if mask_strategy == "mask":
-        masked = masked_embeddings[0, 1:]
-        return TokenMasker(torch, cls_token, patch_tokens, masked, token_player, encode, batch_size)
+        masked = masked_embeddings[0, n_prefix:]
+        return TokenMasker(torch, prefix, patch_tokens, masked, token_player, encode, batch_size)
     msg = f"mask_strategy must be 'mask' or 'remove', got {mask_strategy!r}."
     raise ValueError(msg)

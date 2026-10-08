@@ -6,7 +6,7 @@
 
 - `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the 153 dataset-specific classes of `shapiq_games.benchmark`.
 - `shapiq_benchmark` builds games from names (`shapiq_benchmark.setups`), downloads and caches its 83 datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`).
-- new games from the benchmarking paper: DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity`, and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
+- new games from the benchmarking paper: DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
 - no data files ship in the wheel anymore (previously ~89 MB).
 
 ### Breaking Changes

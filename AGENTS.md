@@ -141,6 +141,14 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
   follow that path at every split, which makes a NaN-baseline game constant. Use a
   model that learns missing-value directions (`HistGradientBoosting*`) in tests.
+- SigLIP texts must be padded to 64 tokens (`padding="max_length", max_length=64`) and
+  lowercased, as the models were trained; the SigLIP 2 tokenizer of transformers 5.3 does not
+  lowercase by itself ("A Photo of a Dog" scored 0.046 instead of 0.094). Its tokenizers need
+  `sentencepiece` and `protobuf` (both in the games extra). Only the fixed-resolution SigLIP 2
+  checkpoints load as `SiglipModel`; the NaFlex ones are `Siglip2Model` with patchified input.
+- SigLIP has no class token (it pools all tokens by attention), so token dropping uses
+  `n_prefix=0` and the empty coalition is an empty sequence, which pools to the head's output
+  bias. SigLIP's processor resizes the whole image to 224 x 224 without cropping.
 
 ### Build Docs (only use this command verbatim from the project root)
 
