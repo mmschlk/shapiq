@@ -201,3 +201,109 @@ def test_vision_transformer_accepts_any_coalition_layout() -> None:
     forward = vit(coalitions)
     np.testing.assert_allclose(vit(coalitions[::-1])[::-1], forward)
     assert forward.shape == (7,)
+
+
+def test_token_players_are_rectangular_blocks_of_the_token_grid() -> None:
+    from shapiq_games.vision._token_drop import pixel_regions, token_players
+
+    players = token_players(16, 5, 4)  # DINOv2's 16 x 16 tokens in a 5 x 4 grid
+    assert players.max() == 19
+    np.testing.assert_array_equal(np.bincount(players.ravel()), [16] * 4 + [12] * 16)
+    regions = pixel_regions(token_players(2, 2, 2), 3)
+    np.testing.assert_array_equal(regions[:, 0], [0, 0, 0, 2, 2, 2])
+    assert regions.shape == (6, 6)
+
+
+@pytest.mark.skipif(not is_installed("torch"), reason="torch is not installed")
+def test_token_dropping_encodes_only_the_present_tokens() -> None:
+    """Absent players' tokens are dropped; the output of a coalition does not depend on its batch."""
+    import torch
+
+    from shapiq_games.vision._token_drop import TokenDropper
+
+    # four tokens, each carrying its player's number; the class token carries 10
+    patch_tokens = torch.tensor([[0.0], [1.0], [2.0], [2.0]])
+    cls_token = torch.tensor([[[10.0]]])
+
+    def encode(tokens: torch.Tensor) -> torch.Tensor:  # (sum of tokens, sequence length)
+        return torch.cat([tokens.sum(dim=1), torch.full_like(tokens[:, 0], tokens.shape[1])], 1)
+
+    dropper = TokenDropper(torch, cls_token, patch_tokens, np.array([0, 1, 2, 2]), encode, 4)
+    coalitions = np.array([[0, 0, 0], [1, 0, 1], [0, 1, 0], [1, 1, 1], [0, 0, 1]], dtype=bool)
+    outputs = dropper(coalitions)
+    np.testing.assert_array_equal(outputs[:, 0], [10, 14, 11, 15, 14])
+    np.testing.assert_array_equal(outputs[:, 1], [1, 4, 2, 5, 3])
+    np.testing.assert_array_equal(dropper(coalitions[::-1])[::-1], outputs)
+
+
+def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch) -> None:
+    from shapiq_games.vision._token_drop import pixel_regions, token_players
+
+    calls: list[dict] = []
+
+    class FakeDinoV2:
+        def __init__(self, image: np.ndarray, n_players: int, **kwargs: object) -> None:
+            calls.append({"n_players": n_players, **kwargs})
+            self.image = np.full((224, 224, 3), 7, dtype=np.uint8)
+            self.regions = pixel_regions(token_players(16, 5, 4), 14)
+            self.class_index, self.class_name = 217, "English springer"
+
+        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+            return coalitions.mean(axis=1)
+
+    import shapiq_games.vision.image_classifier as module
+
+    monkeypatch.setattr(module, "DinoV2TokenModel", FakeDinoV2)
+    game = ImageClassifier(_IMAGE, "dinov2_20_patches", revision="v1", batch_size=8)
+    assert calls[0]["n_players"] == 20
+    assert calls[0]["revision"] == "v1"
+    assert game.n_players == 20
+    assert game.image.shape == (224, 224, 3)  # the crop, not the original image
+    assert game.class_name == "English springer"
+    shown = game.masked_image(np.eye(20, dtype=bool)[0])
+    assert np.all(shown[game.regions != 0] == 128)
+    assert game(game.grand_coalition)[0] == pytest.approx(1.0)
+    with pytest.raises(ValueError, match="regions and fill"):
+        ImageClassifier(_IMAGE, "dinov2_16_patches", fill="black")
+
+
+class FakeClip:
+    """CLIP on a 4 x 4 token grid: embeddings in 2-d, the first axis grows with the visible area."""
+
+    def __init__(self, image: np.ndarray, grid: tuple[int, int], **_: object) -> None:
+        from shapiq_games.vision._token_drop import pixel_regions, token_players
+
+        self.image = np.zeros((8, 8, 3), dtype=np.uint8)
+        self.regions = pixel_regions(token_players(4, *grid), 2)
+
+    def image_embeddings(self, coalitions: np.ndarray) -> np.ndarray:
+        share = np.asarray(coalitions, dtype=float).mean(axis=1)
+        return np.stack([share, 1.0 - share], axis=1)
+
+    def text_embeddings(self, texts: list[str]) -> np.ndarray:
+        return np.array([[1.0, 0.0] if "dog" in text else [0.0, 1.0] for text in texts])
+
+
+def test_image_text_similarity_matches_a_text_or_the_zero_shot_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import shapiq_games.vision.image_text as module
+    from shapiq_games import ImageTextSimilarity
+
+    monkeypatch.setattr(module, "ClipTokenModel", FakeClip)
+    monkeypatch.setattr(module, "imagenet_class_names", lambda: ["cat", "dog"])
+    game = ImageTextSimilarity(_IMAGE, grid=(2, 2), normalize=False)
+    assert (game.label, game.text) == ("dog", "a photo of a dog.")  # the full image is all "dog"
+    assert game.n_players == 4
+    assert game.original_model_output == pytest.approx(1.0)
+    half = np.array([[True, True, False, False]])
+    assert game(half)[0] == pytest.approx(0.5)  # the visible share
+    assert game(game.empty_coalition)[0] == 0.0
+
+    given = ImageTextSimilarity(_IMAGE, "a cat", grid=(2, 2))
+    assert given.label is None
+    assert given.text == "a cat"
+    assert given(given.empty_coalition)[0] == 0.0  # centered at the empty image's similarity
+    assert given(half)[0] == pytest.approx(-0.5)
+    assert np.all(given.masked_image([1, 0, 0, 0])[given.regions != 0] == 128)
+    assert given.attribution_map(np.arange(4.0)).shape == (8, 8)

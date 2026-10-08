@@ -32,7 +32,7 @@ Game families:
   :class:`EnsembleSelection`, :class:`RandomForestEnsembleSelection`,
   :class:`UncertaintyExplanation`, :class:`ClusterExplanation`, :class:`UnsupervisedData`,
   :class:`GlobalConfoundingXAI`, :class:`LocalConfoundingXAI`, :class:`ImageClassifier`,
-  :class:`SentimentAnalysis`
+  :class:`ImageTextSimilarity`, :class:`SentimentAnalysis`
 """
 
 from .causal import GlobalConfoundingXAI, LocalConfoundingXAI
@@ -49,7 +49,7 @@ from .tree import InterventionalTreeGame, PathDependentTreeGame
 from .uncertainty import UncertaintyExplanation
 from .unsupervised import UnsupervisedData
 from .valuation import DatasetValuation, DataValuation
-from .vision import ImageClassifier
+from .vision import ImageClassifier, ImageTextSimilarity
 
 __all__ = [
     # synthetic
@@ -73,6 +73,7 @@ __all__ = [
     "GlobalConfoundingXAI",
     "GlobalExplanation",
     "ImageClassifier",
+    "ImageTextSimilarity",
     "LocalConfoundingXAI",
     "LocalExplanation",
     "RandomForestEnsembleSelection",

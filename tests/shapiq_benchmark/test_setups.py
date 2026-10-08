@@ -21,6 +21,7 @@ from shapiq_benchmark.setups import (
     GlobalConfoundingSetup,
     GlobalExplanationSetup,
     ImageClassifierSetup,
+    ImageTextSimilaritySetup,
     InterventionalTreeSetup,
     KNNSetup,
     LocalConfoundingSetup,
@@ -36,6 +37,7 @@ from shapiq_benchmark.setups import (
     WeightedKNNSetup,
     setup_from_dict,
 )
+from tests.shapiq_games.helpers import is_installed
 
 if TYPE_CHECKING:
     from shapiq import Game
@@ -122,11 +124,13 @@ def test_every_game_but_the_synthetic_ones_has_one_setup() -> None:
     games = {name for name in sg.__all__ if name not in _SYNTHETIC_GAMES}
     built = {game.__name__ for _, game in OFFLINE.values()} | {
         "ImageClassifier",  # tested below with a stand-in model
+        "ImageTextSimilarity",
         "SentimentAnalysis",
     }
     assert built == games
     assert len(SETUPS) == len(games)
-    assert set(OFFLINE) | {"image_classifier", "sentiment_analysis"} == set(SETUPS)
+    stand_ins = {"image_classifier", "image_text_similarity", "sentiment_analysis"}
+    assert set(OFFLINE) | stand_ins == set(SETUPS)
 
 
 @pytest.mark.parametrize("name", sorted(OFFLINE))
@@ -277,3 +281,61 @@ def test_sentiment_analysis_setup(monkeypatch: pytest.MonkeyPatch) -> None:
         }
     ]
     assert setup.key == SentimentAnalysisSetup(input_text="a fine film", mask_strategy="remove").key
+
+
+def test_image_text_similarity_setup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The text is the zero-shot label (None), the prompt of the true class ("label"), or given."""
+    calls: list[dict] = []
+
+    class FakeImages(list):
+        labels = np.array([0, 217])
+
+        def label_name(self, index: int) -> str:
+            return ["tench", "English springer"][index]
+
+    class FakeImageTextSimilarity:
+        def __init__(self, image: object, text: str | None, **kwargs: object) -> None:
+            calls.append({"image": image, "text": text, **kwargs})
+
+    monkeypatch.setattr(setups._vision, "load_imagenette", lambda **_: FakeImages([1, 2]))
+    monkeypatch.setattr(setups._vision, "ImageTextSimilarity", FakeImageTextSimilarity)
+    ImageTextSimilaritySetup(index=1, text="label", grid=(5, 4)).build()
+    ImageTextSimilaritySetup(index=0).build()
+    assert calls[0]["image"] == 2
+    assert calls[0]["text"] == "a photo of a English springer."
+    assert calls[0]["grid"] == (5, 4)
+    assert calls[1]["text"] is None  # the game finds the zero-shot label
+    assert ImageTextSimilaritySetup(device="cuda", batch_size=64).key == (
+        ImageTextSimilaritySetup().key
+    )
+    with pytest.raises(ValueError, match="one of"):
+        ImageTextSimilaritySetup(model="clip_rn50")  # type: ignore[arg-type]
+
+
+def test_local_explanation_with_missing_values_and_a_training_cap() -> None:
+    setup = LocalExplanationSetup(
+        dataset="breast_cancer", model="decision_tree", imputer="missing", n_train=100
+    )
+    game = setup.build()
+    assert game.n_players == 30
+    assert (
+        setup.key
+        != LocalExplanationSetup(
+            dataset="breast_cancer", model="decision_tree", imputer="missing"
+        ).key
+    )
+    with pytest.raises(ValueError, match="reads missing values"):
+        LocalExplanationSetup(dataset="xor", model="linear", imputer="missing")
+
+
+@pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
+def test_tabpfn_with_missing_values_needs_tabpfn_v3() -> None:
+    import importlib.metadata
+    import re
+
+    installed = importlib.metadata.version("tabpfn")
+    if tuple(int(part) for part in re.findall(r"\d+", installed)[:2]) >= (8, 1):
+        pytest.skip("tabpfn reads +inf as missing; the heavy tests cover it")
+    setup = LocalExplanationSetup(dataset="xor", model="tabpfn", imputer="missing", n_train=50)
+    with pytest.raises(ValueError, match="tabpfn 8.1"):
+        setup.build()

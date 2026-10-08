@@ -2,30 +2,39 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from PIL import Image, ImageFilter
 
 from shapiq.game import Game
-from shapiq.interaction_values import InteractionValues
 from shapiq_games._base import as_bool_coalitions
 
+from ._dinov2 import DINOV2_GRIDS, DinoV2TokenModel
+from ._display import DISPLAY_GRAY, RegionPlots, gray_masked_image
+from ._preprocess import as_rgb_array
 from ._superpixels import get_superpixels
 from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 __all__ = ["ImageClassifier", "grid_regions"]
 
 type BuiltinModel = Literal[
-    "vit_9_patches", "vit_16_patches", "vit_36_patches", "vit_144_patches", "resnet_18"
+    "vit_9_patches",
+    "vit_16_patches",
+    "vit_36_patches",
+    "vit_144_patches",
+    "dinov2_16_patches",
+    "dinov2_20_patches",
+    "dinov2_25_patches",
+    "resnet_18",
 ]
 type Fill = Literal["mean", "gray", "black", "blur"]
 _VIT_MODELS = {f"vit_{n}_patches": n for n in VIT_PATCH_GRIDS}
-_DISPLAY_GRAY = 128
+_DINOV2_MODELS = {f"dinov2_{n}_patches": n for n in DINOV2_GRIDS}
 
 
 def grid_regions(height: int, width: int, rows: int, cols: int) -> np.ndarray:
@@ -52,24 +61,6 @@ def grid_regions(height: int, width: int, rows: int, cols: int) -> np.ndarray:
     return row[:, None] * cols + col[None, :]
 
 
-def _as_rgb_array(image: np.ndarray | str | Path) -> np.ndarray:
-    if isinstance(image, str | Path):
-        with Image.open(image) as img:
-            return np.asarray(img.convert("RGB"))
-    array = np.asarray(image)
-    if array.ndim == 2:
-        array = np.repeat(array[..., None], 3, axis=-1)
-    if array.ndim != 3 or array.shape[-1] not in (3, 4):
-        msg = f"Expected an RGB image of shape (height, width, 3), got shape {array.shape}."
-        raise ValueError(msg)
-    array = array[..., :3]
-    if np.issubdtype(array.dtype, np.floating):
-        if array.size and float(np.nanmax(array)) <= 1.0:  # matplotlib and scikit-image floats
-            array = array * 255.0
-        array = np.rint(array)
-    return np.ascontiguousarray(np.clip(array, 0, 255).astype(np.uint8))
-
-
 def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
     regions = np.asarray(regions)
     if regions.shape != image.shape[:2]:
@@ -87,7 +78,7 @@ def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
 def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
     """Return the image that shows through where regions are removed."""
     if isinstance(fill, np.ndarray):
-        baseline = _as_rgb_array(fill)
+        baseline = as_rgb_array(fill)
         if baseline.shape != image.shape:
             msg = f"A fill image must have the image's shape {image.shape}, got {baseline.shape}."
             raise ValueError(msg)
@@ -96,7 +87,7 @@ def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
         color = image.reshape(-1, 3).mean(axis=0).round()
         return np.broadcast_to(color.astype(np.uint8), image.shape).copy()
     if fill == "gray":
-        return np.full_like(image, _DISPLAY_GRAY)
+        return np.full_like(image, DISPLAY_GRAY)
     if fill == "black":
         return np.zeros_like(image)
     if fill == "blur":
@@ -106,7 +97,7 @@ def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
     raise ValueError(msg)
 
 
-class ImageClassifier(Game):
+class ImageClassifier(RegionPlots, Game):
     """The image classification game: the probability of a class when only some regions are visible.
 
     The players are regions of the image, given by :attr:`regions` for every model:
@@ -114,13 +105,17 @@ class ImageClassifier(Game):
     - for the vision transformers (``"vit_9_patches"``, ``"vit_16_patches"``, ``"vit_36_patches"``,
       ``"vit_144_patches"``), square groups of the model's patches, which are removed inside the
       model with a zero mask token;
+    - for DINOv2 (``"dinov2_16_patches"``, ``"dinov2_20_patches"``, ``"dinov2_25_patches"``: a
+      4 x 4, 5 x 4, or 5 x 5 grid), rectangular groups of the model's 16 x 16 patch tokens, which
+      are removed by dropping their tokens from the sequence (the present tokens keep their
+      position embeddings);
     - for ``"resnet_18"`` or a custom classifier, SLIC superpixels or your own ``regions``, which
       are removed by replacing their pixels (``fill``: the image's mean color by default, or gray,
       black, a blurred copy, or any image of the same shape).
 
-    ResNet-18 sees a ``224 x 224`` center crop, so the game explains that crop: :attr:`image` is
-    what the model sees and every region is visible to it. The explained class defaults to the
-    class predicted on the full image.
+    ResNet-18 and DINOv2 see a ``224 x 224`` center crop, so the game explains that crop:
+    :attr:`image` is what the model sees and every region is visible to it. The explained class
+    defaults to the class predicted on the full image.
 
     To look at the game, :meth:`masked_image` shows what the model sees for a coalition,
     :meth:`attribution_map` spreads first-order values over the pixels for a heatmap, and
@@ -128,7 +123,7 @@ class ImageClassifier(Game):
     :func:`shapiq.plot.si_graph_plot`.
 
     Attributes:
-        image: The explained RGB image (for ResNet-18, its ``224 x 224`` crop).
+        image: The explained RGB image (for ResNet-18 and DINOv2, its ``224 x 224`` crop).
         regions: The player of every pixel, of shape ``(height, width)``, numbered from ``0``.
         class_index: The explained class.
         class_name: The name of the explained class, if the model provides class names.
@@ -145,6 +140,7 @@ class ImageClassifier(Game):
         >>> grid.n_players, grid.masked_image([1, 0, 0, 1]).shape
         (4, (64, 64, 3))
         >>> game = ImageClassifier(image, model="vit_16_patches")  # doctest: +SKIP
+        >>> game = ImageClassifier(image, model="dinov2_20_patches")  # doctest: +SKIP
     """
 
     def __init__(
@@ -185,44 +181,57 @@ class ImageClassifier(Game):
                 Defaults to ``16``.
             device: The torch device of the builtin models. Defaults to ``"cpu"``.
             revision: The Hugging Face revision (branch, tag, or commit) of the vision
-                transformer. ``None`` loads the default branch. ResNet-18 uses pinned torchvision
-                weights and takes no revision.
+                transformer or DINOv2. ``None`` loads the default branch. ResNet-18 uses pinned
+                torchvision weights and takes no revision.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
             ValueError: If the model is unknown, a revision is given for a model that is not a
-                vision transformer, or ``regions`` or ``fill`` are given for a vision
-                transformer or are invalid.
+                Hugging Face model (vision transformer or DINOv2), or ``regions`` or ``fill`` are
+                given for a model that removes its own patches or are invalid.
         """
-        self.image = _as_rgb_array(image)
+        self.image = as_rgb_array(image)
         self.batch_size = batch_size
         self.class_name: str | None = None
-        self._vit: ViTPatchModel | None = None
+        # a model that removes the players itself (patch masking or token dropping)
+        self._patch_model: ViTPatchModel | DinoV2TokenModel | None = None
 
-        if isinstance(model, str) and model in _VIT_MODELS:
+        if isinstance(model, str) and model in {**_VIT_MODELS, **_DINOV2_MODELS}:
             if regions is not None or fill is not None:
                 msg = (
                     "regions and fill apply to superpixel models; a vision transformer removes "
                     "its own patches."
                 )
                 raise ValueError(msg)
-            self._vit = ViTPatchModel(
-                self.image,
-                _VIT_MODELS[model],
-                class_index=class_index,
-                device=device,
-                batch_size=batch_size,
-                revision=revision,
-            )
-            grid = VIT_PATCH_GRIDS[_VIT_MODELS[model]]
-            self.regions = grid_regions(*self.image.shape[:2], grid, grid)
-            self.class_index = self._vit.class_index
-            self.class_name = self._vit.class_name
+            if model in _VIT_MODELS:
+                self._patch_model = ViTPatchModel(
+                    self.image,
+                    _VIT_MODELS[model],
+                    class_index=class_index,
+                    device=device,
+                    batch_size=batch_size,
+                    revision=revision,
+                )
+                grid = VIT_PATCH_GRIDS[_VIT_MODELS[model]]
+                self.regions = grid_regions(*self.image.shape[:2], grid, grid)
+            else:
+                dinov2 = DinoV2TokenModel(
+                    self.image,
+                    _DINOV2_MODELS[model],
+                    class_index=class_index,
+                    device=device,
+                    batch_size=batch_size,
+                    revision=revision,
+                )
+                self._patch_model = dinov2
+                self.image, self.regions = dinov2.image, dinov2.regions
+            self.class_index = self._patch_model.class_index
+            self.class_name = self._patch_model.class_name
         else:
             if revision is not None:
-                msg = "revision applies to the vision transformer models only."
+                msg = "revision applies to the Hugging Face models (vision transformers, DINOv2)."
                 raise ValueError(msg)
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
@@ -265,8 +274,8 @@ class ImageClassifier(Game):
         return images
 
     def _evaluate(self, coalitions: np.ndarray) -> np.ndarray:
-        if self._vit is not None:
-            return self._vit(coalitions)
+        if self._patch_model is not None:
+            return self._patch_model(coalitions)
         values = []
         for start in range(0, coalitions.shape[0], self.batch_size):
             batch = self._masked_images(coalitions[start : start + self.batch_size])
@@ -285,8 +294,9 @@ class ImageClassifier(Game):
     def masked_image(self, coalition: np.ndarray | list[int]) -> np.ndarray:
         """Return the image with the players outside ``coalition`` removed.
 
-        For superpixel models this is exactly the image the classifier sees. A vision transformer
-        removes patches inside the model, so its removed regions are shown in gray.
+        For superpixel models this is exactly the image the classifier sees. The vision
+        transformers and DINOv2 remove patches inside the model, so their removed regions are
+        shown in gray.
 
         Args:
             coalition: The players, as a boolean or 0/1 vector of length ``n_players``.
@@ -295,50 +305,6 @@ class ImageClassifier(Game):
             The image as a ``uint8`` array of shape ``(height, width, 3)``.
         """
         coalition = as_bool_coalitions(np.asarray(coalition).reshape(1, -1))
-        if self._vit is None:
+        if self._patch_model is None:
             return self._masked_images(coalition)[0]
-        image = self.image.copy()
-        image[~coalition[0][self.regions]] = _DISPLAY_GRAY
-        return image
-
-    def attribution_map(self, values: InteractionValues | np.ndarray) -> np.ndarray:
-        """Spread one value per player over the player's pixels, e.g. for a heatmap.
-
-        Args:
-            values: Interaction values (their first-order values are used) or one value per
-                player.
-
-        Returns:
-            The value of every pixel, of shape ``(height, width)``.
-        """
-        if isinstance(values, InteractionValues):
-            values = values.get_n_order_values(1)
-        values = np.asarray(values, dtype=float).reshape(-1)
-        if values.shape[0] != self.n_players:
-            msg = f"Expected {self.n_players} values, one per player, got {values.shape[0]}."
-            raise ValueError(msg)
-        return values[self.regions]
-
-    def player_images(self, *, fade: float = 0.75) -> list[Image.Image]:
-        """Return one image per player: its bounding box, with other pixels faded to white.
-
-        The images can be passed to :func:`shapiq.plot.si_graph_plot` as
-        ``feature_image_patches``.
-
-        Args:
-            fade: How strongly pixels outside the player's region are faded, from ``0`` (not at
-                all) to ``1`` (white). Defaults to ``0.75``.
-
-        Returns:
-            The images, in player order.
-        """
-        images = []
-        for player in range(self.n_players):
-            mask = self.regions == player
-            rows, cols = np.flatnonzero(mask.any(axis=1)), np.flatnonzero(mask.any(axis=0))
-            box = (slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1))
-            crop = self.image[box].astype(float)
-            outside = ~mask[box]
-            crop[outside] = crop[outside] * (1.0 - fade) + 255.0 * fade
-            images.append(Image.fromarray(crop.round().astype(np.uint8)))
-        return images
+        return gray_masked_image(self.image, self.regions, coalition[0])

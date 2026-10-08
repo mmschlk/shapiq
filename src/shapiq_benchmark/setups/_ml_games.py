@@ -24,6 +24,7 @@ from shapiq_games import (
 )
 from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
 from shapiq_games._training import MetricName  # noqa: TC001  (resolved by the field checks)
+from shapiq_games.local_xai import require_inf_passthrough
 from shapiq_games.uncertainty import Uncertainty  # noqa: TC001
 
 from ._base import ModelSetup, TabularSetup
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DEFAULT_MEMBER_POOL",
+    "MISSING_VALUE_MODELS",
     "ClusterExplanationSetup",
     "DataValuationSetup",
     "DatasetValuationSetup",
@@ -44,6 +46,16 @@ __all__ = [
     "UncertaintyExplanationSetup",
     "UnsupervisedDataSetup",
 ]
+
+MISSING_VALUE_MODELS: tuple[str, ...] = (
+    "catboost",
+    "decision_tree",
+    "lightgbm",
+    "random_forest",
+    "tabpfn",
+    "xgboost",
+)
+"""The registry models that read missing values natively (for ``imputer="missing"``)."""
 
 DEFAULT_MEMBER_POOL: tuple[str, ...] = (
     "linear",
@@ -60,15 +72,23 @@ DEFAULT_MEMBER_POOL: tuple[str, ...] = (
 class LocalExplanationSetup(ModelSetup, name="local_explanation"):
     """A :class:`~shapiq_games.LocalExplanation` of a model trained on a dataset.
 
-    The background data is a seeded random subset of ``n_background`` training rows; the explained
-    point is taken from the test split. With ``imputer="tabpfn"`` the model must be ``"tabpfn"``,
-    and the background rows are TabPFN's context (remove-and-recontextualize).
+    The model is trained on the training split (or a seeded subset of ``n_train`` rows, e.g. for
+    TabPFN's context limit). The background data is a seeded random subset of ``n_background``
+    training rows; the explained point is taken from the test split.
+
+    - With ``imputer="tabpfn"`` the model must be ``"tabpfn"``, and the background rows are
+      TabPFN's context (remove-and-recontextualize).
+    - With ``imputer="missing"`` the model reads absent features as missing values: NaN for the
+      tree models, and ``+inf`` for ``"tabpfn"``, which is then built with
+      ``inference_config={"PASSTHROUGH_INF": True}`` (TabPFN v3, ``tabpfn>=8.1``).
 
     Attributes:
         model: The model name. Defaults to ``"random_forest"``.
         x: The index of the explained point in the test split. Defaults to ``0``.
-        imputer: ``"marginal"`` (default), ``"conditional"``, ``"baseline"``, or ``"tabpfn"``.
+        imputer: ``"marginal"`` (default), ``"conditional"``, ``"baseline"``, ``"missing"``, or
+            ``"tabpfn"``.
         n_background: The number of background (or context) rows. Defaults to ``100``.
+        n_train: Train the model on a seeded subset of this many training rows (``None`` for all).
         class_index: The explained class for classifiers (``None`` means class ``1``).
         normalize: Whether to center the game. Defaults to ``True``.
 
@@ -76,25 +96,50 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         >>> setup = LocalExplanationSetup(dataset="breast_cancer", model="decision_tree")
         >>> setup.build().n_players
         30
+        >>> # TabPFN v3 with absent features masked as +inf, trained on 1,040 rows:
+        >>> setup = LocalExplanationSetup(
+        ...     dataset="adult_census", model="tabpfn", imputer="missing", n_train=1040
+        ... )
     """
 
     x: int = 0
-    imputer: Literal["marginal", "conditional", "baseline", "tabpfn"] = "marginal"
+    imputer: Literal["marginal", "conditional", "baseline", "missing", "tabpfn"] = "marginal"
     n_background: int = 100
+    n_train: int | None = None
     class_index: int | None = None
     normalize: bool = True
 
     def __post_init__(self) -> None:
-        """Check that the TabPFN imputer gets a TabPFN model."""
+        """Check that the TabPFN imputer gets TabPFN and missing values a model that reads them."""
         super().__post_init__()
         if self.imputer == "tabpfn" and self.model != "tabpfn":
             msg = f"imputer='tabpfn' needs model='tabpfn', got model={self.model!r}."
+            raise ValueError(msg)
+        if self.imputer == "missing" and self.model not in MISSING_VALUE_MODELS:
+            msg = (
+                f"imputer='missing' needs a model that reads missing values, one of "
+                f"{MISSING_VALUE_MODELS}; got model={self.model!r}."
+            )
             raise ValueError(msg)
 
     def build(self) -> LocalExplanation:
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
-        model = self.fit(split)
+        params, missing_value = dict(self.model_params), np.nan
+        if self.imputer == "missing" and self.model == "tabpfn":  # TabPFN v3 reads +inf as missing
+            require_inf_passthrough()
+            config = dict(params.get("inference_config", {}))
+            params["inference_config"] = {**config, "PASSTHROUGH_INF": True}
+            missing_value = np.inf
+        train = self.sample_rows(split.x_train.shape[0], self.n_train)
+        model = build_model(
+            self.model,
+            split.task,
+            random_state=self.random_state,
+            preset=self.preset,
+            dataset=self.dataset,
+            **params,
+        ).fit(split.x_train[train], split.y_train[train])
         rows = self.sample_rows(split.x_train.shape[0], self.n_background)
         background = split.x_train[rows]
         point = resolve_x(self.x, split.x_test)
@@ -110,6 +155,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
             imputer=imputer,  # type: ignore[arg-type]
             class_index=self.class_index,
             sample_size=self.n_background,
+            missing_value=missing_value,
             random_state=self.random_state,
             normalize=self.normalize,
         )

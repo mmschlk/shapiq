@@ -50,7 +50,7 @@ shapiq_games/
   tree/                 PathDependentTreeGame (was TreeSHAPIQXAI), InterventionalTreeGame (moved from core)
   nn/                   KNNGame, WeightedKNNGame, ThresholdNNGame (moved from core)
   kernel/               ProductKernelGame (moved from core)
-  local_xai.py          LocalExplanation (marginal / conditional / baseline imputers, TabPFN)
+  local_xai.py          LocalExplanation (marginal / conditional / baseline / missing imputers, TabPFN)
   global_xai.py         GlobalExplanation (SAGE-like)
   feature_selection.py  FeatureSelection
   valuation.py          DataValuation, DatasetValuation (one shared implementation)
@@ -59,7 +59,8 @@ shapiq_games/
   clustering.py         ClusterExplanation
   unsupervised.py       UnsupervisedData
   causal.py             GlobalConfoundingXAI, LocalConfoundingXAI
-  vision/               ImageClassifier (ViT, ResNet, custom classifiers)   [torch, transformers]
+  vision/               ImageClassifier (ViT, DINOv2, ResNet, custom), ImageTextSimilarity (CLIP)
+                                                                           [torch, transformers]
   language.py           SentimentAnalysis                                  [transformers]
 ```
 
@@ -148,7 +149,7 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
 ```
 
 - **One setup per game**, except the synthetic games, which take only plain values anyway
-  (20 setups). Their fields differ with the kind of game: `TabularSetup` holds `dataset`,
+  (21 setups). Their fields differ with the kind of game: `TabularSetup` holds `dataset`,
   `random_state`, `test_size` and `dataset_params`; `ModelSetup` adds `model`, `preset` and
   `model_params`; the image, text and causal setups have their own fields.
 - **Typed.** Fields have defaults and `Literal` choices, and a setup is validated when it is
@@ -201,6 +202,17 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   - `shapiq/datasets/data` (8.5 MB)
   - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
 - **Core loaders keep their source.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing. Without the bundled CSVs that fallback always runs, so it now caches the downloaded file verbatim in `~/.cache/shapiq/core_datasets` (or `$SHAPIQ_DATA_DIR`) with an atomic write, instead of in the installed package. The repo-root `data/` folder stays; it is not part of any wheel.
+- **Token dropping.** DINOv2 (`ImageClassifier`, `"dinov2_*_patches"`) and CLIP
+  (`ImageTextSimilarity`) remove a region by dropping its patch tokens from the sequence; the
+  present tokens keep their position embeddings, so nothing is filled in. The players are a
+  grid of near-equal rectangular blocks of the token grid (`np.array_split`), the models see a
+  `224 x 224` center crop (the game's `image`), and every forward pass is padded to the batch
+  size, so values do not depend on the batch.
+- **Missing values.** `LocalExplanation(imputer="missing")` passes absent features as missing
+  values (NaN, or `+inf` for TabPFN v3 with `PASSTHROUGH_INF`) to a model that reads them. It is
+  core's `BaselineImputer` with a one-row baseline of that value, so no new imputer was needed.
+  Downloading TabPFN v3 weights (`tabpfn>=8.1`) needs a Prior Labs license token
+  (`TABPFN_TOKEN`); the lock stays at tabpfn 6.4.1, so this game runs only where v3 is installed.
 - **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
 - **Declared dependencies.** `openml`, `ucimlrepo` and `openpyxl` are part of the `benchmark` extra; before, they were not declared at all.
 

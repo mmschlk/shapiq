@@ -8,6 +8,7 @@ from PIL import Image
 from shapiq_games._optional import require
 
 from ._batching import pad_batch
+from ._preprocess import center_crop
 
 __all__ = ["ResNetClassifier"]
 
@@ -49,13 +50,7 @@ class ResNetClassifier:
 
     def prepare(self, image: np.ndarray) -> np.ndarray:
         """Return the ``224 x 224`` center crop the model sees, as an RGB ``uint8`` array."""
-        pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
-        scale = self._resize_size / min(pil.size)
-        width, height = round(pil.width * scale), round(pil.height * scale)
-        pil = pil.resize((width, height), Image.Resampling.BILINEAR)
-        left, top = (width - self._crop_size) // 2, (height - self._crop_size) // 2
-        pil = pil.crop((left, top, left + self._crop_size, top + self._crop_size))
-        return np.asarray(pil)
+        return center_crop(image, self._resize_size, self._crop_size, Image.Resampling.BILINEAR)
 
     def __call__(self, images: np.ndarray) -> np.ndarray:
         """Return the class probabilities of a batch of prepared RGB images."""

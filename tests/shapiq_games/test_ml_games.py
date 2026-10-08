@@ -108,6 +108,55 @@ def test_local_explanation_takes_point_and_seed_from_an_imputer(data) -> None:
     assert game(coalition)[0] == pytest.approx(expected)
 
 
+def test_missing_imputer_passes_absent_features_as_missing_values(data) -> None:
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    model = HistGradientBoostingRegressor(max_iter=20, random_state=0).fit(
+        data["x_train"], data["yr_train"]
+    )
+    point = data["x_test"][0]
+    game = LocalExplanation(model, data["x_train"], x=point, imputer="missing", normalize=False)
+    masked = point.copy()
+    masked[[1, 3]] = np.nan
+    coalition = np.array([[True, False, True, False]])
+    assert game(coalition)[0] == pytest.approx(model.predict(masked[None])[0])
+    assert game(game.empty_coalition)[0] == pytest.approx(model.predict(np.full((1, 4), np.nan))[0])
+
+
+def test_tabpfn_reads_inf_as_missing_only_with_passthrough(
+    data, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """TabPFN v3 (tabpfn>=8.1) reads +inf as missing when built with PASSTHROUGH_INF."""
+    import importlib.metadata
+    import sys
+    import types
+
+    class TabPFNRegressor:
+        def __init__(self, inference_config: dict | None = None) -> None:
+            self.inference_config = inference_config
+
+        def predict(self, x: np.ndarray) -> np.ndarray:  # the sum of the features it can read
+            return np.where(np.isinf(x), 0.0, x).sum(axis=1)
+
+    TabPFNRegressor.__module__ = "tabpfn"
+    fake = types.ModuleType("tabpfn")
+    fake.TabPFNRegressor = TabPFNRegressor  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "tabpfn", fake)
+    monkeypatch.setattr(importlib.metadata, "version", lambda _: "9.1.0")
+    x, point = data["x_train"], data["x_test"][0]
+    with pytest.raises(ValueError, match="PASSTHROUGH_INF"):
+        LocalExplanation(TabPFNRegressor(), x, x=point, imputer="missing", missing_value=np.inf)
+    model = TabPFNRegressor({"PASSTHROUGH_INF": True})
+    game = LocalExplanation(
+        model, x, x=point, imputer="missing", missing_value=np.inf, normalize=False
+    )
+    assert game(np.array([[True, False, True, False]]))[0] == pytest.approx(point[[0, 2]].sum())
+    assert game(game.empty_coalition)[0] == 0.0
+    monkeypatch.setattr(importlib.metadata, "version", lambda _: "6.4.1")
+    with pytest.raises(ValueError, match="tabpfn 8.1"):
+        LocalExplanation(model, x, x=point, imputer="missing", missing_value=np.inf)
+
+
 def test_global_explanation_explains_loss_reduction(data) -> None:
     model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(
         data["x_train"], data["yr_train"]

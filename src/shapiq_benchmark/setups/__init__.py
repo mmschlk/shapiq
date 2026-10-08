@@ -29,7 +29,8 @@ Setups by kind of game:
   :class:`RandomForestEnsembleSelectionSetup`, :class:`UncertaintyExplanationSetup`,
   :class:`ClusterExplanationSetup`, :class:`UnsupervisedDataSetup`
 - causal games: :class:`GlobalConfoundingSetup`, :class:`LocalConfoundingSetup`
-- image and text games: :class:`ImageClassifierSetup`, :class:`SentimentAnalysisSetup`
+- image and text games: :class:`ImageClassifierSetup`, :class:`ImageTextSimilaritySetup`,
+  :class:`SentimentAnalysisSetup`
 """
 
 from ._base import SETUPS, ModelSetup, Setup, TabularSetup, runtime_field, setup_from_dict
@@ -37,6 +38,7 @@ from ._causal import GlobalConfoundingSetup, LocalConfoundingSetup
 from ._language import SentimentAnalysisSetup
 from ._ml_games import (
     DEFAULT_MEMBER_POOL,
+    MISSING_VALUE_MODELS,
     ClusterExplanationSetup,
     DatasetValuationSetup,
     DataValuationSetup,
@@ -56,10 +58,11 @@ from ._model_games import (
     ThresholdNNSetup,
     WeightedKNNSetup,
 )
-from ._vision import ImageClassifierSetup
+from ._vision import ImageClassifierSetup, ImageTextSimilaritySetup
 
 __all__ = [
     "DEFAULT_MEMBER_POOL",
+    "MISSING_VALUE_MODELS",
     "SETUPS",
     "ClusterExplanationSetup",
     "DataValuationSetup",
@@ -69,6 +72,7 @@ __all__ = [
     "GlobalConfoundingSetup",
     "GlobalExplanationSetup",
     "ImageClassifierSetup",
+    "ImageTextSimilaritySetup",
     "InterventionalTreeSetup",
     "KNNSetup",
     "LocalConfoundingSetup",

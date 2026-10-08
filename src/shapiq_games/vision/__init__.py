@@ -1,6 +1,7 @@
-"""Image classification games (vision transformers, ResNet, custom classifiers)."""
+"""Image games: classifiers (vision transformers, DINOv2, ResNet, custom) and CLIP similarity."""
 
 from ._superpixels import get_superpixels
 from .image_classifier import ImageClassifier, grid_regions
+from .image_text import ImageTextSimilarity
 
-__all__ = ["ImageClassifier", "get_superpixels", "grid_regions"]
+__all__ = ["ImageClassifier", "ImageTextSimilarity", "get_superpixels", "grid_regions"]

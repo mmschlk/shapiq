@@ -16,6 +16,7 @@ from shapiq_benchmark.datasets import load_dataset
 from shapiq_benchmark.setups import (
     GlobalConfoundingSetup,
     ImageClassifierSetup,
+    ImageTextSimilaritySetup,
     LocalExplanationSetup,
     SentimentAnalysisSetup,
 )
@@ -47,6 +48,53 @@ def test_resnet_game() -> None:
     )
     game = setup.build()
     assert game.class_index == 0  # the first Imagenette class, tench, is ImageNet class 0
+    assert game.n_players == 8
+    _assert_deterministic(game)
+
+
+@pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
+def test_dinov2_token_drop_game() -> None:
+    game = ImageClassifierSetup(index=388, model="dinov2_20_patches", batch_size=4).build()
+    assert game.n_players == 20
+    assert game.image.shape == (224, 224, 3)
+    assert game.class_index == 217  # the image's true class, English springer
+    _assert_deterministic(game)
+
+
+@pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
+def test_clip_image_text_game() -> None:
+    game = ImageTextSimilaritySetup(index=388, grid=(5, 4), batch_size=4).build()
+    assert game.n_players == 20
+    assert "spaniel" in game.label  # CLIP's zero-shot label of an English springer
+    assert 0.2 < game.original_model_output < 0.4
+    _assert_deterministic(game)
+    labelled = ImageTextSimilaritySetup(index=388, text="label", model="clip_vit_b32").build()
+    assert labelled.text == "a photo of a English springer."
+
+
+def _tabpfn_reads_inf() -> bool:
+    import importlib.metadata
+    import re
+
+    if not is_installed("tabpfn"):
+        return False
+    installed = importlib.metadata.version("tabpfn")
+    return tuple(int(part) for part in re.findall(r"\d+", installed)[:2]) >= (8, 1)
+
+
+@pytest.mark.skipif(
+    not (_tabpfn_reads_inf() and os.environ.get("TABPFN_TOKEN")),
+    reason="needs tabpfn>=8.1 (TabPFN v3) and a Prior Labs license token in TABPFN_TOKEN",
+)
+def test_tabpfn_v3_missing_value_game() -> None:
+    setup = LocalExplanationSetup(
+        dataset="california_housing",
+        model="tabpfn",
+        imputer="missing",
+        n_train=1040,
+        model_params={"n_estimators": 1},
+    )
+    game = setup.build()
     assert game.n_players == 8
     _assert_deterministic(game)
 

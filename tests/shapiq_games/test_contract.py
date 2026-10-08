@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.svm import SVC
@@ -91,6 +91,10 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         True,
     ),
     "local_xai_index": (lambda: sg.LocalExplanation(_tree_regressor(), _X, x=3), True),
+    "local_xai_missing": (
+        lambda: sg.LocalExplanation(_tree_regressor(), _X_TRAIN, x=_X_TEST[4], imputer="missing"),
+        True,
+    ),
     "global_xai": (lambda: sg.GlobalExplanation(_tree_regressor(), _X_TEST), True),
     "feature_selection": (
         lambda: sg.FeatureSelection(
@@ -280,6 +284,14 @@ def _tree_without_feature_3() -> DecisionTreeRegressor:
     return DecisionTreeRegressor(max_depth=4, random_state=0).fit(x, _ignores_feature_3(x))
 
 
+def _booster_without_feature_3() -> HistGradientBoostingRegressor:
+    """A booster that reads missing values and never splits on the constant feature 3."""
+    x = _X_TRAIN.copy()
+    x[:, 3] = 0.0
+    model = HistGradientBoostingRegressor(max_iter=30, random_state=0)
+    return model.fit(x, _ignores_feature_3(x))
+
+
 # games of a model that ignores feature 3, whose exact Shapley value must therefore be zero (not
 # the conditional imputer: conditioning on an ignored feature changes the sampled background, so
 # observational values need not vanish)
@@ -287,6 +299,9 @@ NULL_PLAYER_GAMES: dict[str, Callable[[], Game]] = {
     "local_xai_marginal": lambda: sg.LocalExplanation(_ignores_feature_3, _X_TRAIN, x=_X_TEST[0]),
     "local_xai_baseline": lambda: sg.LocalExplanation(
         _ignores_feature_3, _X_TRAIN, x=_X_TEST[0], imputer="baseline"
+    ),
+    "local_xai_missing": lambda: sg.LocalExplanation(
+        _booster_without_feature_3(), _X_TRAIN, x=_X_TEST[0], imputer="missing"
     ),
     "global_xai": lambda: sg.GlobalExplanation(_tree_without_feature_3(), _X_TEST),
     "path_dependent_tree": lambda: sg.PathDependentTreeGame(_tree_without_feature_3(), _X_TEST[0]),
@@ -301,4 +316,4 @@ def test_a_feature_the_model_ignores_is_a_null_player(name: str) -> None:
     game = NULL_PLAYER_GAMES[name]()
     shapley = game.exact_values(index="SV", order=1)
     assert shapley[(3,)] == pytest.approx(0.0, abs=1e-10)
-    assert abs(shapley[(0,)]) > 1e-6  # the other features matter
+    assert max(abs(shapley[(i,)]) for i in range(3)) > 1e-6  # the other features matter

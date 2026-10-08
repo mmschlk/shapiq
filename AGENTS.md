@@ -113,6 +113,21 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - shapiq's Monte Carlo approximators (SHAP-IQ, SVARM-IQ) estimate FSII and FBII of the top order
   only (`estimate.min_order == order`); the runner scores those on that order.
 
+## Games and benchmark gotchas (observed 2026-10-08, DINOv2 / CLIP / TabPFN v3)
+
+- `tabpfn>=8.1` (TabPFN v3, needed for `inference_config={"PASSTHROUGH_INF": True}`) refuses to
+  download ANY weights without a Prior Labs license token (`TABPFN_TOKEN`) in non-interactive
+  shells, although the Hugging Face repo is not gated. Bumping the lock past 6.4.1 broke every
+  TabPFN game and heavy test here, so the lock stays at 6.4.1 and the `+inf` game checks the
+  version at runtime. Do not fetch the checkpoints directly to get around the license step.
+- In transformers 5, `CLIPModel.get_text_features` returns an output object, not a tensor (the
+  paper script divided it by its norm). Use `text_projection(text_model(...).pooler_output)`.
+- A float32 matrix product's summation order depends on the number of rows, so
+  `embeddings @ text` changed in the 16th digit with the batch; the CLIP game sums row-wise.
+- A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
+  follow that path at every split, which makes the `imputer="missing"` game constant. Use a
+  model that learns missing-value directions (`HistGradientBoosting*`) in tests.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
