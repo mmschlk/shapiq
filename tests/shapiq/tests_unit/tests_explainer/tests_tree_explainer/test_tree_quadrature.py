@@ -14,10 +14,14 @@ from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.tree import QuadratureTreeSHAP, TreeExplainer, TreeSHAPIQ
 from shapiq.tree.linear import LinearTreeSHAP
-from shapiq.tree.quadrature.computer import _INDEX_HASH_MULTIPLIER, _build_subset_index
+from shapiq.tree.subset_layout import block_geometry, table_rows, table_starts
 from shapiq.utils.sets import powerset
 from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.quadrature_numpy_reference import (
     numpy_explain,
+)
+from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.subset_index_reference import (
+    INDEX_HASH_MULTIPLIER,
+    build_subset_index,
 )
 
 IMPLEMENTATIONS = ["numpy", "cpp"]
@@ -419,15 +423,38 @@ def test_explainer_pickles_after_explaining():
 def test_subset_index_finds_every_row_where_the_kernel_probes():
     """Probing the flat hash index the way the kernel does finds every table row's id.
 
-    The index is built in Python and probed in C++ (``merged_position``); both sides must
-    agree on the key, the hash, and the linear probe sequence.
+    The index is built by the shared C++ collector and probed in C++ (``merged_position``);
+    it must agree with the numpy reference builder on the key, the hash, and the linear
+    probe sequence.
     """
     tree, _ = _perfect_tree_with_distinct_features(depth=5)
     explainer = QuadratureTreeSHAP(tree, max_order=3, index="SII")
-    keys, starts, counts, _ = explainer._subset_table_args()
+    keys, counts = explainer._subset_tables
+    starts = table_starts(counts)
     n_features = explainer._n_features_in_tree
-    index = _build_subset_index(n_features, 3, keys, starts, counts)
-    assert index is not None
+    assert explainer._subset_index is not None
+    index = (*explainer._subset_index, *block_geometry(counts))  # geometry as the kernel derives it
+    reference = build_subset_index(n_features, 3, keys, starts, counts)
+    assert reference is not None
+    np.testing.assert_array_equal(index[2], reference[2])  # block starts
+    np.testing.assert_array_equal(index[3], reference[3])  # block shifts
+    # colliding keys may be placed in a different probe order; per block the (key, row)
+    # entries must match
+    for order in (2, 3):
+        block = slice(
+            int(index[2][order]), int(index[2][order]) + (1 << (64 - int(index[3][order])))
+        )
+        got = {
+            (int(k), int(r))
+            for k, r in zip(index[0][block], index[1][block], strict=True)
+            if k >= 0
+        }
+        expected = {
+            (int(k), int(r))
+            for k, r in zip(reference[0][block], reference[1][block], strict=True)
+            if k >= 0
+        }
+        assert got == expected
     slot_keys, slot_rows, block_starts, block_shifts = index
 
     for order in (2, 3):
@@ -437,12 +464,12 @@ def test_subset_index_finds_every_row_where_the_kernel_probes():
         assert 0 < 2 * count <= size  # non-trivial and at most half full
         block = slice(int(block_starts[order]), int(block_starts[order]) + size)
         block_keys, block_rows = slot_keys[block], slot_rows[block]
-        table = keys[starts[order] : starts[order] + count * order].reshape(count, order)
+        table = table_rows(keys, counts, order)
         for row_id, row in enumerate(table):
             key = 0
             for feature in row:
                 key = key * n_features + int(feature)
-            slot = ((key * int(_INDEX_HASH_MULTIPLIER)) % 2**64) >> (64 - bits)
+            slot = ((key * int(INDEX_HASH_MULTIPLIER)) % 2**64) >> (64 - bits)
             while block_keys[slot] != key:
                 assert block_keys[slot] != -1, "the probe reached an empty slot before the key"
                 slot = (slot + 1) % size
@@ -461,30 +488,28 @@ def _kernel_call_parts(depth: int = 4):
 def test_kernel_raises_when_a_subset_is_missing_from_the_index():
     """A subset the traversal reaches but the index lacks raises instead of being misplaced.
 
-    The Python tables and the kernel traversal must agree (see ``_collect_cooccurring_subsets``);
+    The tables (``preprocess_subset_tables``) and the kernel traversal must agree;
     if they drift apart, the kernel's probe ends on an empty slot and the call fails loudly.
     """
     from shapiq.tree.quadrature.cext import quadrature_tree_shap
 
     args, x_relevant, out = _kernel_call_parts()
-    slot_keys = args[-4].copy()
+    slot_keys = args[-2].copy()
     slot_keys[np.flatnonzero(slot_keys >= 0)[0]] = -1  # drop one subset from the index
 
     with pytest.raises(RuntimeError, match="missing from the subset tables"):
-        quadrature_tree_shap(*args[:20], x_relevant, out, *args[20:-4], slot_keys, *args[-3:])
+        quadrature_tree_shap(*args[:18], x_relevant, out, *args[18:-2], slot_keys, args[-1])
 
 
 def test_kernel_rejects_an_index_whose_blocks_exceed_its_arrays():
-    """Index arrays too short for their declared blocks are rejected before any probe runs."""
+    """Index arrays shorter than the blocks derived from counts are rejected before any probe."""
     from shapiq.tree.quadrature.cext import quadrature_tree_shap
 
     args, x_relevant, out = _kernel_call_parts()
-    slot_keys, slot_rows = args[-4][:-1], args[-3][:-1]
+    slot_keys, slot_rows = args[-2][:-1], args[-1][:-1]
 
-    with pytest.raises(ValueError, match="outside the index arrays"):
-        quadrature_tree_shap(
-            *args[:20], x_relevant, out, *args[20:-4], slot_keys, slot_rows, *args[-2:]
-        )
+    with pytest.raises(ValueError, match="do not match the block sizes"):
+        quadrature_tree_shap(*args[:18], x_relevant, out, *args[18:-2], slot_keys, slot_rows)
 
 
 # ------------------------------- edge cases and API -------------------------------

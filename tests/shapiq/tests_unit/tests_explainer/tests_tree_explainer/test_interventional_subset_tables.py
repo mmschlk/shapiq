@@ -12,7 +12,11 @@ from shapiq.tree.interventional import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.cext import (
     preprocess_subset_tables,  # ty: ignore[unresolved-import]
 )
-from shapiq.tree.subset_index import INDEX_HASH_MULTIPLIER, build_subset_index
+from shapiq.tree.subset_layout import block_geometry, table_rows, table_starts
+from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.subset_index_reference import (
+    INDEX_HASH_MULTIPLIER,
+    build_subset_index,
+)
 
 
 def _cooccurring_subsets_reference(trees, max_order: int) -> dict[int, set[tuple[int, ...]]]:
@@ -47,23 +51,33 @@ def forest_explainer():
 def test_subset_tables_hold_exactly_the_path_cooccurring_subsets(forest_explainer):
     """The C++ collector emits each co-occurring subset once, sorted, in lexicographic order."""
     ex = forest_explainer
-    keys, starts, counts = ex._subset_tables
+    keys, counts = ex._subset_tables
     reference = _cooccurring_subsets_reference(ex.tree, ex.max_order)
     for order in range(2, ex.max_order + 1):
-        rows = keys[starts[order] : starts[order] + counts[order] * order].reshape(-1, order)
+        rows = table_rows(keys, counts, order)
         as_tuples = [tuple(int(v) for v in row) for row in rows]
         assert set(as_tuples) == reference[order]
         assert as_tuples == sorted(reference[order])  # lexicographic, no duplicates
     assert counts[2] > 50  # precondition: a real forest, not a trivial table
 
 
-def test_subset_tables_overflow_returns_none():
-    """Keys that would not fit in an int64 leave the tables unbuilt (the kernel falls back)."""
-    features, left, right = np.array([0, -2, -2]), np.array([1, -1, -1]), np.array([2, -1, -1])
-    offsets = np.array([0, 3])
-    assert (
-        preprocess_subset_tables(features, left, right, offsets, 1000, 7) is None
+def test_subset_tables_without_index_when_keys_overflow():
+    """Keys that would not fit in an int64 leave the index unbuilt; the tables are still collected.
+
+    The interventional explainer takes its sparse route then, the quadrature kernel searches
+    the tables by tuple comparison.
+    """
+    # a perfect depth-2 tree splitting on features 0, 1 and 2: the pairs (0, 1) and (0, 2)
+    features = np.array([0, 1, 2, -2, -2, -2, -2])
+    left = np.array([1, 3, 5, -1, -1, -1, -1])
+    right = np.array([2, 4, 6, -1, -1, -1, -1])
+    offsets = np.array([0, 7])
+    (keys, counts), index = preprocess_subset_tables(
+        features, left, right, offsets, 1000, 7
     )  # 1000**7 > 2**63
+    assert index is None
+    np.testing.assert_array_equal(counts, [0, 0, 2, 0, 0, 0, 0, 0])
+    np.testing.assert_array_equal(table_rows(keys, counts, 2), [[0, 1], [0, 2]])
 
 
 def test_cpp_index_matches_the_python_builder(forest_explainer):
@@ -73,10 +87,12 @@ def test_cpp_index_matches_the_python_builder(forest_explainer):
     comparison is per block on the set of entries, not on the arrays.
     """
     ex = forest_explainer
-    keys, starts, counts = ex._subset_tables
+    keys, counts = ex._subset_tables
+    starts = table_starts(counts)
     expected = build_subset_index(ex.n_features, ex.max_order, keys, starts, counts)
     assert expected is not None
-    got_keys, got_rows, got_starts, got_shifts = ex._subset_index
+    got_keys, got_rows = ex._subset_index
+    got_starts, got_shifts = block_geometry(counts)  # derived, as the kernels derive it
     exp_keys, exp_rows, exp_starts, exp_shifts = expected
     np.testing.assert_array_equal(got_starts, exp_starts)
     np.testing.assert_array_equal(got_shifts, exp_shifts)
@@ -100,14 +116,15 @@ def test_cpp_index_matches_the_python_builder(forest_explainer):
 def test_subset_index_finds_every_row_the_way_the_kernel_probes(forest_explainer):
     """Probing the flat index as the C++ kernels do yields every table row's id."""
     ex = forest_explainer
-    keys, starts, counts = ex._subset_tables
-    slot_keys, slot_rows, block_starts, block_shifts = ex._subset_index
+    keys, counts = ex._subset_tables
+    slot_keys, slot_rows = ex._subset_index
+    block_starts, block_shifts = block_geometry(counts)
     for order in range(2, ex.max_order + 1):
         bits = 64 - int(block_shifts[order])
         size = 1 << bits
         block = slice(int(block_starts[order]), int(block_starts[order]) + size)
         block_keys, block_rows = slot_keys[block], slot_rows[block]
-        rows = keys[starts[order] : starts[order] + counts[order] * order].reshape(-1, order)
+        rows = table_rows(keys, counts, order)
         for row_id, row in enumerate(rows):
             key = 0
             for feature in row:
@@ -117,3 +134,36 @@ def test_subset_index_finds_every_row_the_way_the_kernel_probes(forest_explainer
                 assert block_keys[slot] != -1
                 slot = (slot + 1) % size
             assert block_rows[slot] == row_id
+
+
+def test_both_explainers_share_the_output_layout():
+    """Quadrature and interventional build the same tables and read their arrays out alike.
+
+    Both explainers run `preprocess_subset_tables` on the same trees, derive the layout with
+    `shapiq.tree.subset_layout` and read the kernel's array back with `layout_to_dict`, each
+    through its own extension module. For a model that splits on every feature (no feature-id
+    remapping on the quadrature side) the tables and the readout order must coincide.
+    """
+    from shapiq.tree.interventional.cext import layout_to_dict as interventional_readout
+    from shapiq.tree.quadrature import QuadratureTreeSHAP
+    from shapiq.tree.quadrature.cext import layout_to_dict as quadrature_readout
+
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(400, 6))
+    y = X[:, 0] * X[:, 1] + X[:, 2] * X[:, 3] * X[:, 4] + X[:, 5] + rng.normal(size=400)
+    model = RandomForestRegressor(n_estimators=5, max_depth=6, random_state=0).fit(X, y)
+    interventional = InterventionalTreeSHAPIQ(model, X[:10], max_order=3, index="SII")
+    quadrature = QuadratureTreeSHAP(model, max_order=3, index="SII")
+    assert quadrature._n_features_in_tree == 6  # precondition: no remapping
+    for got, expected in zip(interventional._subset_tables, quadrature._subset_tables, strict=True):
+        np.testing.assert_array_equal(got, expected)
+    keys, counts = interventional._subset_tables
+    out = np.arange(1, interventional._n_structural_interactions + 1, dtype=np.float64)
+    readouts = [quadrature_readout, interventional_readout]
+    first, second = (read(out, keys, counts, 6, 1, None, False) for read in readouts)  # noqa: FBT003
+    assert first == second
+    # the explained results agree on every interaction they both report
+    iv_i, iv_q = interventional.explain(X[0]), quadrature.explain(X[0])
+    # interventional skips exact zeros and carries the baseline under (); quadrature reports
+    # every interaction of the layout
+    assert {k for k in iv_i.interaction_lookup if k} <= set(iv_q.interaction_lookup)

@@ -31,7 +31,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
+        model, X_train, index=index, max_order=order
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -84,7 +84,6 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
         X_train,
         index=index,
         max_order=order,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -135,7 +134,7 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -188,7 +187,6 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -239,7 +237,7 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -293,7 +291,6 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -344,7 +341,7 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
 
     # Our InterventionalTreeSHAPIQ
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+        model, X_train, max_order=order, index=index
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
@@ -397,7 +394,6 @@ def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data,
         X_train,
         max_order=order,
         index=index,
-        debug=False,
         class_index=CLASS_INDEX,
     )
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
@@ -448,7 +444,7 @@ def test_correct_calculation_index_order_4(
     point_to_explain = X_test[0:1]
 
     own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
+        model, X_train, index=index, max_order=order
     )
     assert own_interventional_explainer._use_sparse_path == (interventional_route == "sparse")
     explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
