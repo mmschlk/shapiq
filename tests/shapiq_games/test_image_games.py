@@ -128,8 +128,11 @@ def test_torch_batches_are_padded_to_one_size() -> None:
 
 
 def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+
     class FakeViT:
-        def __init__(self, image: np.ndarray, n_players: int, **_: object) -> None:
+        def __init__(self, image: np.ndarray, n_players: int, **kwargs: object) -> None:
+            calls.append(kwargs)
             self.n_players = n_players
             self.class_index = 7
             self.class_name = "tabby cat"
@@ -137,17 +140,36 @@ def test_vision_transformer_regions_follow_the_patch_grid(monkeypatch: pytest.Mo
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             return coalitions.mean(axis=1)
 
+        def classify(self, images: np.ndarray) -> np.ndarray:  # class 7: the share of black pixels
+            black = (images == 0).all(axis=-1).mean(axis=(1, 2))
+            return np.tile(black[:, None], (1, 8))
+
     import shapiq_games.vision.image_classifier as module
 
     monkeypatch.setattr(module, "ViTPatchModel", FakeViT)
     game = ImageClassifier(_IMAGE, "vit_9_patches")
+    assert calls[-1]["mask_strategy"] == "mask"  # the vision transformers mask by default
+    assert game.mask_strategy == "mask"
     assert game.class_name == "tabby cat"
     np.testing.assert_array_equal(game.regions, grid_regions(40, 60, 3, 3))
     shown = game.masked_image(np.eye(9, dtype=bool)[4])  # only the center patch
     assert np.all(shown[~(game.regions == 4)] == 128)
     np.testing.assert_array_equal(shown[game.regions == 4], _IMAGE[game.regions == 4])
-    with pytest.raises(ValueError, match="regions and fill"):
-        ImageClassifier(_IMAGE, "vit_9_patches", fill="black")
+    ImageClassifier(_IMAGE, "vit_9_patches", mask_strategy="remove")
+    assert calls[-1]["mask_strategy"] == "remove"
+
+    # image space: the model classifies the filled image
+    filled = ImageClassifier(_IMAGE, "vit_9_patches", fill="black", normalize=False)
+    assert filled.mask_strategy is None
+    one = np.eye(9, dtype=bool)[4]
+    assert filled(one[None])[0] == pytest.approx((filled.regions != 4).mean())  # the black share
+    assert np.all(filled.masked_image(one)[filled.regions != 4] == 0)
+    with pytest.raises(ValueError, match="not both"):
+        ImageClassifier(_IMAGE, "vit_9_patches", fill="black", mask_strategy="mask")
+    with pytest.raises(ValueError, match="its patches"):
+        ImageClassifier(_IMAGE, "vit_9_patches", regions=grid_regions(40, 60, 3, 3))
+    with pytest.raises(ValueError, match="mask_strategy applies"):
+        ImageClassifier(_IMAGE, lambda images: images.mean(axis=(1, 2)), mask_strategy="mask")
 
 
 @pytest.mark.skipif(
@@ -176,35 +198,43 @@ def test_resnet_players_live_on_the_crop_the_model_sees(monkeypatch: pytest.Monk
 
 
 @pytest.mark.skipif(not is_installed("torch"), reason="torch is not installed")
-def test_vision_transformer_accepts_any_coalition_layout() -> None:
-    """The ViT batches coalitions into torch; reversed (negative-stride) views must work too."""
+def test_token_masking_keeps_every_token_and_its_position() -> None:
+    """Absent players' tokens are masked in place; any coalition layout gives the same outputs."""
     import torch
 
-    from shapiq_games.vision._vit import ViTPatchModel, _player_masks
+    from shapiq_games.vision._token_removal import TokenMasker, token_remover
 
-    class TinyViT(torch.nn.Module):
-        """Returns, as the class-0 logit, the share of unmasked patches."""
+    # four tokens carrying their player's number, masked tokens carrying 100 (their position)
+    patch_tokens = torch.tensor([[0.0], [1.0], [2.0], [2.0]])
+    masked_tokens = torch.full((4, 1), 100.0)
+    cls_token = torch.tensor([[[10.0]]])
 
-        def vit(self, pixels: torch.Tensor, bool_masked_pos: torch.Tensor) -> object:
-            visible = (~bool_masked_pos).float().mean(dim=1, keepdim=True)
-            hidden = visible.repeat(1, 145).unsqueeze(-1).repeat(1, 1, 2)
-            return type("Output", (), {"last_hidden_state": hidden})
+    def encode(tokens: torch.Tensor) -> torch.Tensor:  # (sum of tokens, sequence length)
+        return torch.cat([tokens.sum(dim=1), torch.full_like(tokens[:, 0], tokens.shape[1])], 1)
 
-        def classifier(self, cls_token: torch.Tensor) -> torch.Tensor:
-            return torch.cat([cls_token[:, :1], torch.zeros_like(cls_token[:, :1])], dim=1)
+    masker = TokenMasker(
+        torch, cls_token, patch_tokens, masked_tokens, np.array([0, 1, 2, 2]), encode, 3
+    )
+    coalitions = np.array([[0, 0, 0], [1, 0, 1], [0, 1, 0], [1, 1, 1], [0, 0, 1]], dtype=bool)
+    outputs = masker(coalitions)
+    np.testing.assert_array_equal(outputs[:, 0], [410, 114, 311, 15, 214])
+    np.testing.assert_array_equal(outputs[:, 1], [5] * 5)  # the sequence never shrinks
+    np.testing.assert_array_equal(masker(coalitions[::-1])[::-1], outputs)  # negative strides
 
-    vit = object.__new__(ViTPatchModel)
-    vit._torch, vit._device, vit.batch_size, vit.class_index = torch, torch.device("cpu"), 3, 0
-    vit._model, vit._pixels = TinyViT(), torch.zeros(1, 3, 8, 8)
-    vit._player_masks = torch.as_tensor(_player_masks(9))
-    coalitions = np.random.default_rng(0).random((7, 9)) < 0.5
-    forward = vit(coalitions)
-    np.testing.assert_allclose(vit(coalitions[::-1])[::-1], forward)
-    assert forward.shape == (7,)
+    embeddings = torch.cat([cls_token, patch_tokens[None]], dim=1)
+    masked = torch.cat([cls_token, masked_tokens[None]], dim=1)
+    players = np.array([0, 1, 2, 2])
+    dropper = token_remover("remove", torch, embeddings, masked, players, encode, 3)
+    assert dropper(coalitions[:1])[0, 1] == 1  # only the class token is left
+    assert isinstance(
+        token_remover("mask", torch, embeddings, masked, players, encode, 3), TokenMasker
+    )
+    with pytest.raises(ValueError, match="mask_strategy"):
+        token_remover("blank", torch, embeddings, masked, players, encode, 3)  # type: ignore[arg-type]
 
 
 def test_token_players_are_rectangular_blocks_of_the_token_grid() -> None:
-    from shapiq_games.vision._token_drop import pixel_regions, token_players
+    from shapiq_games.vision._token_removal import pixel_regions, token_players
 
     players = token_players(16, 5, 4)  # DINOv2's 16 x 16 tokens in a 5 x 4 grid
     assert players.max() == 19
@@ -219,7 +249,7 @@ def test_token_dropping_encodes_only_the_present_tokens() -> None:
     """Absent players' tokens are dropped; the output of a coalition does not depend on its batch."""
     import torch
 
-    from shapiq_games.vision._token_drop import TokenDropper
+    from shapiq_games.vision._token_removal import TokenDropper
 
     # four tokens, each carrying its player's number; the class token carries 10
     patch_tokens = torch.tensor([[0.0], [1.0], [2.0], [2.0]])
@@ -237,7 +267,7 @@ def test_token_dropping_encodes_only_the_present_tokens() -> None:
 
 
 def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch) -> None:
-    from shapiq_games.vision._token_drop import pixel_regions, token_players
+    from shapiq_games.vision._token_removal import pixel_regions, token_players
 
     calls: list[dict] = []
 
@@ -251,27 +281,34 @@ def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             return coalitions.mean(axis=1)
 
+        def classify(self, images: np.ndarray) -> np.ndarray:
+            return np.zeros((images.shape[0], 1000))
+
     import shapiq_games.vision.image_classifier as module
 
     monkeypatch.setattr(module, "DinoV2TokenModel", FakeDinoV2)
     game = ImageClassifier(_IMAGE, "dinov2_20_patches", revision="v1", batch_size=8)
     assert calls[0]["n_players"] == 20
     assert calls[0]["revision"] == "v1"
+    assert calls[0]["mask_strategy"] == "remove"  # DINOv2 drops tokens by default
     assert game.n_players == 20
     assert game.image.shape == (224, 224, 3)  # the crop, not the original image
     assert game.class_name == "English springer"
     shown = game.masked_image(np.eye(20, dtype=bool)[0])
     assert np.all(shown[game.regions != 0] == 128)
     assert game(game.grand_coalition)[0] == pytest.approx(1.0)
-    with pytest.raises(ValueError, match="regions and fill"):
-        ImageClassifier(_IMAGE, "dinov2_16_patches", fill="black")
+    ImageClassifier(_IMAGE, "dinov2_20_patches", mask_strategy="mask")
+    assert calls[-1]["mask_strategy"] == "mask"
+    filled = ImageClassifier(_IMAGE, "dinov2_20_patches", fill="black")
+    assert filled.image.shape == (224, 224, 3)  # image space on the crop the model sees
+    assert np.all(filled.masked_image(np.eye(20, dtype=bool)[0])[filled.regions != 0] == 0)
 
 
 class FakeClip:
     """CLIP on a 4 x 4 token grid: embeddings in 2-d, the first axis grows with the visible area."""
 
     def __init__(self, image: np.ndarray, grid: tuple[int, int], **_: object) -> None:
-        from shapiq_games.vision._token_drop import pixel_regions, token_players
+        from shapiq_games.vision._token_removal import pixel_regions, token_players
 
         self.image = np.zeros((8, 8, 3), dtype=np.uint8)
         self.regions = pixel_regions(token_players(4, *grid), 2)
@@ -282,6 +319,10 @@ class FakeClip:
 
     def text_embeddings(self, texts: list[str]) -> np.ndarray:
         return np.array([[1.0, 0.0] if "dog" in text else [0.0, 1.0] for text in texts])
+
+    def embed_images(self, images: np.ndarray) -> np.ndarray:  # the share of unfilled pixels
+        share = (np.asarray(images) == 0).all(axis=-1).mean(axis=(1, 2))
+        return np.stack([share, 1.0 - share], axis=1)
 
 
 def test_image_text_similarity_matches_a_text_or_the_zero_shot_label(
@@ -307,3 +348,11 @@ def test_image_text_similarity_matches_a_text_or_the_zero_shot_label(
     assert given(half)[0] == pytest.approx(-0.5)
     assert np.all(given.masked_image([1, 0, 0, 0])[given.regions != 0] == 128)
     assert given.attribution_map(np.arange(4.0)).shape == (8, 8)
+    assert given.mask_strategy == "remove"
+
+    filled = ImageTextSimilarity(_IMAGE, "a dog", grid=(2, 2), fill="gray", normalize=False)
+    assert filled.mask_strategy is None
+    assert filled(half)[0] == pytest.approx(0.5)  # the share of pixels CLIP still sees
+    assert np.all(filled.masked_image([1, 0, 0, 0])[filled.regions != 0] == 128)
+    with pytest.raises(ValueError, match="not both"):
+        ImageTextSimilarity(_IMAGE, "a dog", grid=(2, 2), fill="gray", mask_strategy="mask")

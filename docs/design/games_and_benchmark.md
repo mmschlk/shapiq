@@ -203,12 +203,18 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
   - `shapiq/datasets/data` (8.5 MB)
   - the 31 ImageNet example JPEGs, replaced by Imagenette (below)
 - **Core loaders keep their source.** Core's three public loaders (`load_california_housing` & co.) already fall back to downloading from `main/data/` on GitHub when their CSV is missing. Without the bundled CSVs that fallback always runs, so it now caches the downloaded file verbatim in `~/.cache/shapiq/core_datasets` (or `$SHAPIQ_DATA_DIR`) with an atomic write, instead of in the installed package. The repo-root `data/` folder stays; it is not part of any wheel.
-- **Token dropping.** DINOv2 (`ImageClassifier`, `"dinov2_*_patches"`) and CLIP
-  (`ImageTextSimilarity`) remove a region by dropping its patch tokens from the sequence; the
-  present tokens keep their position embeddings, so nothing is filled in. The players are a
-  grid of near-equal rectangular blocks of the token grid (`np.array_split`), the models see a
-  `224 x 224` center crop (the game's `image`), and every forward pass is padded to the batch
-  size, so values do not depend on the batch.
+- **Removal in token space or image space.** The transformer image games remove players in
+  token space: their patch tokens are masked (`mask_strategy="mask"`: content replaced by the
+  model's mask token, zeros for all three checkpoints, the position embedding kept; the ViT
+  default) or dropped from the sequence (`"remove"`: the present tokens keep their position
+  embeddings; the DINOv2 and CLIP default, as in the paper). With a `fill` they remove them in
+  image space instead, like ResNet-18 and custom classifiers. The players are a grid of
+  near-equal rectangular blocks of the token grid (`np.array_split`) in all three cases, DINOv2
+  and CLIP see a `224 x 224` center crop (the game's `image`), and every forward pass is padded
+  to the batch size, so values do not depend on the batch. With a full coalition every strategy
+  is the plain model. DINOv2's checkpoint has no trained mask token, and its head averages all
+  patch tokens, so masking is far out of distribution: masking one of 20 players can drop the
+  explained probability from 0.85 to 0.001 (dropping keeps it above 0.77).
 - **Missing values.** `TabularLocalExplanation(imputer="baseline", baseline=np.nan)` passes absent
   features as missing values to a model that reads them (`np.inf` for TabPFN with
   `PASSTHROUGH_INF`). `baseline` sets the values of core's `BaselineImputer` (one value or one

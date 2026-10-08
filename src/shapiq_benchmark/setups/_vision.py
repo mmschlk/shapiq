@@ -11,7 +11,12 @@ from shapiq_benchmark.datasets import (
     load_imagenette,
 )
 from shapiq_games import ImageClassifier, ImageTextSimilarity
-from shapiq_games.typing import ClipModel, Fill, ImageModel  # noqa: TC001  (field checks)
+from shapiq_games.typing import (  # noqa: TC001  (resolved by the field checks)
+    ClipModel,
+    Fill,
+    ImageModel,
+    MaskStrategy,
+)
 
 from ._base import Setup, runtime_field
 
@@ -30,10 +35,14 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
         split: The Imagenette split, ``"val"`` (default) or ``"train"``.
         size: The image size, ``"320px"`` (default) or ``"160px"``.
         model: The builtin model: a vision transformer (``"vit_9_patches"``, default), DINOv2
-            with token dropping (``"dinov2_16_patches"``, ``"dinov2_20_patches"``,
-            ``"dinov2_25_patches"``), or ``"resnet_18"``.
+            (``"dinov2_16_patches"``, ``"dinov2_20_patches"``, ``"dinov2_25_patches"``), or
+            ``"resnet_18"``.
         n_superpixels: The number of superpixels for ``"resnet_18"``. Defaults to ``14``.
-        fill: How ``"resnet_18"`` replaces removed superpixels (``None`` for the mean color).
+        fill: Remove players in image space with this fill (for ``"resnet_18"``, ``None`` means
+            the mean color; a transformer given a fill removes its patches in image space).
+        mask_strategy: How a transformer removes players in token space, ``"mask"`` or
+            ``"remove"`` (``None`` for the model's default; see
+            :class:`~shapiq_games.ImageClassifier`).
         class_index: The explained ImageNet class: ``None`` for the predicted class, ``"label"``
             for the image's true class, or a class index.
         revision: The Hugging Face revision of a vision transformer (``None`` for the default
@@ -53,6 +62,7 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
     model: ImageModel = "vit_9_patches"
     n_superpixels: int = 14
     fill: Fill | None = None
+    mask_strategy: MaskStrategy | None = None
     class_index: int | Literal["label"] | None = None
     revision: str | None = None
     normalize: bool = True
@@ -68,6 +78,7 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
             self.model,
             n_superpixels=self.n_superpixels,
             fill=self.fill,
+            mask_strategy=self.mask_strategy,
             class_index=label if self.class_index == "label" else self.class_index,
             batch_size=self.batch_size,
             device=self.device,
@@ -89,6 +100,8 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
         text: The text to match: ``None`` (default) for CLIP's zero-shot ImageNet label of the
             image, ``"label"`` for the prompt of the image's true class, or any text.
         prompt_template: The prompt of a class. Defaults to ``"a photo of a {}."``.
+        mask_strategy: ``"remove"`` (``None``, the default) or ``"mask"`` in token space.
+        fill: Remove regions in image space with this fill instead (``None`` for token space).
         revision: The Hugging Face revision of the CLIP model (``None`` for the default branch).
         normalize: Whether to center the game. Defaults to ``True``.
         device: The torch device. A runtime field: it does not change the cache key.
@@ -106,6 +119,8 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
     grid: tuple[int, int] = (4, 4)
     text: str | None = None
     prompt_template: str = "a photo of a {}."
+    mask_strategy: MaskStrategy | None = None
+    fill: Fill | None = None
     revision: str | None = None
     normalize: bool = True
     device: str = runtime_field("cpu")
@@ -123,6 +138,8 @@ class ImageTextSimilaritySetup(Setup, name="image_text_similarity"):
             model=self.model,
             grid=self.grid,
             prompt_template=self.prompt_template,
+            mask_strategy=self.mask_strategy,
+            fill=self.fill,
             batch_size=self.batch_size,
             device=self.device,
             revision=self.revision,

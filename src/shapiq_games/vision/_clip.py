@@ -1,19 +1,21 @@
-"""CLIP image and text embeddings with token dropping (requires ``torch`` and ``transformers``)."""
+"""CLIP image and text embeddings with players removed in token space (needs torch, transformers)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from PIL import Image
 
 from shapiq_games._optional import require
 
+from ._batching import pad_batch
 from ._preprocess import center_crop, normalized_pixels
-from ._token_drop import TokenDropper, pixel_regions, token_players
+from ._token_removal import pixel_regions, token_players, token_remover
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix
+    from shapiq_games.typing import MaskStrategy
 
 __all__ = ["CLIP_MODEL_IDS", "IMAGENET_LABEL_SOURCE", "ClipTokenModel", "imagenet_class_names"]
 
@@ -38,7 +40,10 @@ class ClipTokenModel:
     """CLIP on a ``224 x 224`` center crop, with absent players' patch tokens dropped.
 
     The players are near-equal rectangular blocks of CLIP's patch tokens. The tokens of absent
-    players are dropped from the sequence; the present ones keep their position embeddings.
+    players are dropped from the sequence (``"remove"``; the present ones keep their position
+    embeddings) or masked (``"mask"``: CLIP has no mask token, so a masked patch keeps only its
+    position embedding). :meth:`embed_images` embeds whole crops instead, for removal in image
+    space.
 
     Attributes:
         image: The ``224 x 224`` crop the model sees.
@@ -51,6 +56,7 @@ class ClipTokenModel:
         grid: tuple[int, int],
         *,
         model: str = "clip_vit_b16",
+        mask_strategy: MaskStrategy = "remove",
         device: str = "cpu",
         batch_size: int = 16,
         revision: str | None = None,
@@ -61,6 +67,7 @@ class ClipTokenModel:
             image: The RGB image of shape ``(height, width, 3)``.
             grid: The ``(rows, columns)`` of the player grid over the token grid.
             model: ``"clip_vit_b16"`` (default) or ``"clip_vit_b32"``.
+            mask_strategy: ``"remove"`` (default, as in the paper) or ``"mask"``.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
             revision: The Hugging Face revision (branch, tag, or commit) of the model. ``None``
@@ -71,7 +78,7 @@ class ClipTokenModel:
             raise ValueError(msg)
         torch = require("torch", purpose="the CLIP image games")
         transformers = require("transformers", purpose="the CLIP image games")
-        self._torch = torch
+        self._torch, self.batch_size = torch, batch_size
         self._device = torch.device(device)
         model_id = CLIP_MODEL_IDS[model]
         processor = transformers.CLIPProcessor.from_pretrained(model_id, revision=revision)
@@ -85,13 +92,15 @@ class ClipTokenModel:
             image_processor.crop_size["height"],
             Image.Resampling(int(image_processor.resample)),
         )
-        pixels = normalized_pixels(
-            torch, self.image, image_processor.image_mean, image_processor.image_std, self._device
-        )
+        self._mean, self._std = image_processor.image_mean, image_processor.image_std
         vision = self._model.vision_model
+        self._embed = lambda pixels: vision.pre_layrnorm(vision.embeddings(pixels))
         with torch.no_grad():
             # the layer norm before the encoder acts per token, so it commutes with dropping
-            embeddings = vision.pre_layrnorm(vision.embeddings(pixels))
+            embeddings = self._embed(self._pixels(self.image[None]))
+            # a masked patch has no content: its position embedding alone
+            positions = vision.embeddings.position_embedding(vision.embeddings.position_ids)
+            masked = vision.pre_layrnorm(positions)
         side = round((embeddings.shape[1] - 1) ** 0.5)
         rows, cols = grid
         if not (1 <= rows <= side and 1 <= cols <= side):
@@ -100,20 +109,43 @@ class ClipTokenModel:
         players = token_players(side, rows, cols)
         self.regions = pixel_regions(players, self._model.config.vision_config.patch_size)
 
-        def encode(tokens: object) -> object:
+        def encode(tokens: Any) -> Any:  # noqa: ANN401
             pooled = vision.post_layernorm(
                 vision.encoder(inputs_embeds=tokens).last_hidden_state[:, 0]
             )
             features = self._model.visual_projection(pooled)
             return features / features.norm(dim=-1, keepdim=True)
 
-        self._dropper = TokenDropper(
-            torch, embeddings[:, :1], embeddings[0, 1:], players, encode, batch_size
+        self._encode = encode
+        self._remover = token_remover(
+            mask_strategy, torch, embeddings, masked, players, encode, batch_size
+        )
+
+    def _pixels(self, images: np.ndarray) -> Any:  # noqa: ANN401
+        torch = self._torch
+        return torch.cat(
+            [
+                normalized_pixels(torch, image, self._mean, self._std, self._device)
+                for image in images
+            ]
         )
 
     def image_embeddings(self, coalitions: CoalitionMatrix) -> np.ndarray:
         """Return the unit-length image embedding of each coalition."""
-        return self._dropper(coalitions)
+        return self._remover(coalitions)
+
+    def embed_images(self, images: np.ndarray) -> np.ndarray:
+        """Return the unit-length embedding of each whole crop, of shape ``(n_images, dim)``."""
+        torch = self._torch
+        outputs = []
+        for start in range(0, images.shape[0], self.batch_size):
+            chunk = np.asarray(images[start : start + self.batch_size])
+            with torch.no_grad():
+                features = self._encode(
+                    self._embed(self._pixels(pad_batch(chunk, self.batch_size)))
+                )
+            outputs.append(features.float().cpu().numpy()[: chunk.shape[0]])
+        return np.concatenate(outputs).astype(float)
 
     def text_embeddings(self, texts: list[str], *, batch_size: int = 256) -> np.ndarray:
         """Return the unit-length embedding of each text."""

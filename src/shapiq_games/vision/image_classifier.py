@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from PIL import Image, ImageFilter
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
 
 from ._dinov2 import DINOV2_GRIDS, DinoV2TokenModel
-from ._display import DISPLAY_GRAY, RegionPlots, gray_masked_image
+from ._display import RegionPlots, gray_masked_image
+from ._fill import fill_image, filled_images
 from ._preprocess import as_rgb_array
 from ._superpixels import get_superpixels
 from ._vit import VIT_PATCH_GRIDS, ViTPatchModel
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
     from shapiq.typing import CoalitionMatrix, GameValues
-    from shapiq_games.typing import Fill, ImageModel
+    from shapiq_games.typing import Fill, ImageModel, MaskStrategy
 
 __all__ = ["ImageClassifier", "grid_regions"]
 
@@ -69,43 +69,31 @@ def _check_regions(regions: np.ndarray, image: np.ndarray) -> np.ndarray:
     return regions.astype(int)
 
 
-def _baseline(image: np.ndarray, fill: Fill | np.ndarray) -> np.ndarray:
-    """Return the image that shows through where regions are removed."""
-    if isinstance(fill, np.ndarray):
-        baseline = as_rgb_array(fill)
-        if baseline.shape != image.shape:
-            msg = f"A fill image must have the image's shape {image.shape}, got {baseline.shape}."
-            raise ValueError(msg)
-        return baseline
-    if fill == "mean":
-        color = image.reshape(-1, 3).mean(axis=0).round()
-        return np.broadcast_to(color.astype(np.uint8), image.shape).copy()
-    if fill == "gray":
-        return np.full_like(image, DISPLAY_GRAY)
-    if fill == "black":
-        return np.zeros_like(image)
-    if fill == "blur":
-        radius = max(image.shape[:2]) / 32
-        return np.asarray(Image.fromarray(image).filter(ImageFilter.GaussianBlur(radius)))
-    msg = f"fill must be 'mean', 'gray', 'black', 'blur', or an image, got {fill!r}."
-    raise ValueError(msg)
-
-
 class ImageClassifier(RegionPlots, Game):
     """The image classification game: the probability of a class when only some regions are visible.
 
     The players are regions of the image, given by :attr:`regions` for every model:
 
     - for the vision transformers (``"vit_9_patches"``, ``"vit_16_patches"``, ``"vit_36_patches"``,
-      ``"vit_144_patches"``), square groups of the model's patches, which are removed inside the
-      model with a zero mask token;
+      ``"vit_144_patches"``), square groups of the model's 12 x 12 patches;
     - for DINOv2 (``"dinov2_16_patches"``, ``"dinov2_20_patches"``, ``"dinov2_25_patches"``: a
-      4 x 4, 5 x 4, or 5 x 5 grid), rectangular groups of the model's 16 x 16 patch tokens, which
-      are removed by dropping their tokens from the sequence (the present tokens keep their
-      position embeddings);
-    - for ``"resnet_18"`` or a custom classifier, SLIC superpixels or your own ``regions``, which
-      are removed by replacing their pixels (``fill``: the image's mean color by default, or gray,
-      black, a blurred copy, or any image of the same shape).
+      4 x 4, 5 x 4, or 5 x 5 grid), rectangular groups of the model's 16 x 16 patch tokens;
+    - for ``"resnet_18"`` or a custom classifier, SLIC superpixels or your own ``regions``.
+
+    How absent players are removed:
+
+    - **In token space** (the transformers, by default): their patch tokens are masked
+      (``mask_strategy="mask"``: the content is replaced by a zero mask token, the position
+      embedding is kept; the default of the vision transformers) or dropped from the sequence
+      (``"remove"``: the present tokens keep their position embeddings; the default of DINOv2).
+    - **In image space** (``fill``; always for ResNet-18 and custom classifiers): their pixels are
+      replaced by the image's mean color (the default), gray, black, a blurred copy, or any image
+      of the same shape, and the model sees the filled image. A transformer given a ``fill``
+      removes its patch-grid players this way.
+
+    The mask token is zeros for both transformers (their checkpoints carry no trained one).
+    DINOv2's head averages all patch tokens, so masking is far out of distribution for it: one
+    masked player can drop the explained probability to near zero, while dropping it hardly does.
 
     ResNet-18 and DINOv2 see a ``224 x 224`` center crop, so the game explains that crop:
     :attr:`image` is what the model sees and every region is visible to it. The explained class
@@ -119,6 +107,8 @@ class ImageClassifier(RegionPlots, Game):
     Attributes:
         image: The explained RGB image (for ResNet-18 and DINOv2, its ``224 x 224`` crop).
         regions: The player of every pixel, of shape ``(height, width)``, numbered from ``0``.
+        mask_strategy: How a transformer removes players in token space (``"mask"`` or
+            ``"remove"``), or ``None`` when players are removed in image space.
         class_index: The explained class.
         class_name: The name of the explained class, if the model provides class names.
 
@@ -133,8 +123,13 @@ class ImageClassifier(RegionPlots, Game):
         >>> grid = ImageClassifier(image, classifier, regions=grid_regions(64, 64, 2, 2), fill="blur")
         >>> grid.n_players, grid.masked_image([1, 0, 0, 1]).shape
         (4, (64, 64, 3))
-        >>> game = ImageClassifier(image, model="vit_16_patches")  # doctest: +SKIP
-        >>> game = ImageClassifier(image, model="dinov2_20_patches")  # doctest: +SKIP
+
+        The transformers remove players in token space, or in image space with a ``fill``:
+
+        >>> game = ImageClassifier(image, "vit_16_patches")  # doctest: +SKIP
+        >>> game = ImageClassifier(image, "vit_16_patches", mask_strategy="remove")  # doctest: +SKIP
+        >>> game = ImageClassifier(image, "dinov2_20_patches", mask_strategy="mask")  # doctest: +SKIP
+        >>> game = ImageClassifier(image, "dinov2_20_patches", fill="blur")  # doctest: +SKIP
     """
 
     def __init__(
@@ -145,6 +140,7 @@ class ImageClassifier(RegionPlots, Game):
         n_superpixels: int = 14,
         regions: np.ndarray | None = None,
         fill: Fill | np.ndarray | None = None,
+        mask_strategy: MaskStrategy | None = None,
         class_index: int | None = None,
         batch_size: int = 16,
         device: str = "cpu",
@@ -166,9 +162,13 @@ class ImageClassifier(RegionPlots, Game):
             regions: Your own players for ``"resnet_18"`` and custom classifiers: the player of
                 every pixel, of shape ``(height, width)``, numbered ``0, ..., n - 1`` (see
                 :func:`grid_regions`). For ResNet-18 they refer to its ``224 x 224`` crop.
-            fill: How removed regions are replaced for ``"resnet_18"`` and custom classifiers:
-                ``"mean"`` (the image's mean color, default), ``"gray"``, ``"black"``, ``"blur"``,
-                or an image of the same shape.
+            fill: Remove players in image space, replacing their pixels with ``"mean"`` (the
+                image's mean color), ``"gray"``, ``"black"``, ``"blur"``, or an image of the same
+                shape. ResNet-18 and custom classifiers always do (``"mean"`` by default); the
+                transformers only when a fill is given.
+            mask_strategy: How a transformer removes players in token space: ``"mask"`` or
+                ``"remove"`` (see above). ``None`` (default) takes the model's default:
+                ``"mask"`` for the vision transformers, ``"remove"`` for DINOv2.
             class_index: The explained class, or ``None`` for the class predicted on the image.
             batch_size: The number of masked images per forward pass. The builtin models pad
                 smaller batches to this size, so that a value does not depend on the batch.
@@ -182,27 +182,32 @@ class ImageClassifier(RegionPlots, Game):
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
-            ValueError: If the model is unknown, a revision is given for a model that is not a
-                Hugging Face model (vision transformer or DINOv2), or ``regions`` or ``fill`` are
-                given for a model that removes its own patches or are invalid.
+            ValueError: If the model is unknown; a revision is given for a model that is not a
+                Hugging Face model (vision transformer or DINOv2); ``regions`` are given for a
+                transformer (its players are its patch grid); ``mask_strategy`` is given for a
+                model without tokens, or together with a ``fill``; or the regions or the fill are
+                invalid.
         """
         self.image = as_rgb_array(image)
         self.batch_size = batch_size
         self.class_name: str | None = None
-        # a model that removes the players itself (patch masking or token dropping)
+        self.mask_strategy: MaskStrategy | None = None
+        # a model that removes the players itself, in token space
         self._patch_model: ViTPatchModel | DinoV2TokenModel | None = None
 
         if isinstance(model, str) and model in {**_VIT_MODELS, **_DINOV2_MODELS}:
-            if regions is not None or fill is not None:
-                msg = (
-                    "regions and fill apply to superpixel models; a vision transformer removes "
-                    "its own patches."
-                )
+            if regions is not None:
+                msg = "regions apply to superpixel models; a transformer's players are its patches."
                 raise ValueError(msg)
+            if fill is not None and mask_strategy is not None:
+                msg = "Choose mask_strategy (token space) or fill (image space), not both."
+                raise ValueError(msg)
+            strategy: MaskStrategy = mask_strategy or ("mask" if model in _VIT_MODELS else "remove")
             if model in _VIT_MODELS:
-                self._patch_model = ViTPatchModel(
+                patch_model: ViTPatchModel | DinoV2TokenModel = ViTPatchModel(
                     self.image,
                     _VIT_MODELS[model],
+                    mask_strategy=strategy,
                     class_index=class_index,
                     device=device,
                     batch_size=batch_size,
@@ -212,21 +217,29 @@ class ImageClassifier(RegionPlots, Game):
                 height, width = self.image.shape[:2]
                 self.regions = grid_regions(height, width, grid, grid)
             else:
-                dinov2 = DinoV2TokenModel(
+                patch_model = DinoV2TokenModel(
                     self.image,
                     _DINOV2_MODELS[model],
+                    mask_strategy=strategy,
                     class_index=class_index,
                     device=device,
                     batch_size=batch_size,
                     revision=revision,
                 )
-                self._patch_model = dinov2
-                self.image, self.regions = dinov2.image, dinov2.regions
-            self.class_index = self._patch_model.class_index
-            self.class_name = self._patch_model.class_name
+                self.image, self.regions = patch_model.image, patch_model.regions
+            self.class_index = patch_model.class_index
+            self.class_name = patch_model.class_name
+            if fill is None:
+                self._patch_model, self.mask_strategy = patch_model, strategy
+            else:  # image space: the model classifies the filled images
+                self._classifier = patch_model.classify
+                self._baseline = fill_image(self.image, fill)
         else:
             if revision is not None:
                 msg = "revision applies to the Hugging Face models (vision transformers, DINOv2)."
+                raise ValueError(msg)
+            if mask_strategy is not None:
+                msg = "mask_strategy applies to the transformers (vision transformers, DINOv2)."
                 raise ValueError(msg)
             if model == "resnet_18":
                 from ._resnet import ResNetClassifier
@@ -237,7 +250,7 @@ class ImageClassifier(RegionPlots, Game):
             elif callable(model):
                 classifier = model
             else:
-                valid = [*_VIT_MODELS, "resnet_18"]
+                valid = [*_VIT_MODELS, *_DINOV2_MODELS, "resnet_18"]
                 msg = f"Unknown model {model!r}. Choose one of {valid} or pass a classifier."
                 raise ValueError(msg)
             self._classifier = classifier
@@ -245,7 +258,7 @@ class ImageClassifier(RegionPlots, Game):
                 self.regions = get_superpixels(self.image, n_superpixels) - 1
             else:
                 self.regions = _check_regions(regions, self.image)
-            self._baseline = _baseline(self.image, "mean" if fill is None else fill)
+            self._baseline = fill_image(self.image, "mean" if fill is None else fill)
             probabilities = np.asarray(self._classifier(self.image[None]))[0]
             self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
             categories = getattr(classifier, "categories", None)
@@ -262,11 +275,7 @@ class ImageClassifier(RegionPlots, Game):
         )
 
     def _masked_images(self, coalitions: CoalitionMatrix) -> np.ndarray:
-        images = np.repeat(self.image[None], coalitions.shape[0], axis=0)
-        for i, coalition in enumerate(coalitions):
-            absent = ~coalition[self.regions]
-            images[i][absent] = self._baseline[absent]
-        return images
+        return filled_images(self.image, self.regions, self._baseline, coalitions)
 
     def _evaluate(self, coalitions: CoalitionMatrix) -> GameValues:
         if self._patch_model is not None:
@@ -289,9 +298,9 @@ class ImageClassifier(RegionPlots, Game):
     def masked_image(self, coalition: ArrayLike) -> np.ndarray:
         """Return the image with the players outside ``coalition`` removed.
 
-        For superpixel models this is exactly the image the classifier sees. The vision
-        transformers and DINOv2 remove patches inside the model, so their removed regions are
-        shown in gray.
+        In image space (a ``fill``, ResNet-18, custom classifiers) this is exactly the image the
+        classifier sees. In token space the transformers remove patches inside the model, so
+        their removed regions are shown in gray.
 
         Args:
             coalition: The players, as a boolean or 0/1 vector of length ``n_players``.

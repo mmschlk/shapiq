@@ -7,6 +7,7 @@ repository, and some need optional packages. They are skipped unless the environ
 
 from __future__ import annotations
 
+import dataclasses
 import os
 
 import numpy as np
@@ -70,6 +71,34 @@ def test_clip_image_text_game() -> None:
     _assert_deterministic(game)
     labelled = ImageTextSimilaritySetup(index=388, text="label", model="clip_vit_b32").build()
     assert labelled.text == "a photo of a English springer."
+
+
+@pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
+@pytest.mark.parametrize(
+    ("model", "removal"),
+    [
+        ("vit_9_patches", {"mask_strategy": "remove"}),
+        ("vit_9_patches", {"fill": "blur"}),
+        ("dinov2_16_patches", {"mask_strategy": "mask"}),
+        ("dinov2_16_patches", {"fill": "gray"}),
+    ],
+)
+def test_transformer_removal_strategies(model: str, removal: dict) -> None:
+    """Every way of removing players keeps the full image's prediction and is batch-independent."""
+    default = ImageClassifierSetup(index=388, size="160px", model=model, normalize=False)
+    game = dataclasses.replace(default, **removal).build()
+    expected = default.build()(np.ones((1, game.n_players), dtype=bool))[0]
+    assert game(game.grand_coalition)[0] == pytest.approx(expected, abs=1e-6)
+    _assert_deterministic(game)
+
+
+@pytest.mark.skipif(not is_installed("transformers"), reason="transformers is not installed")
+@pytest.mark.parametrize("removal", [{"mask_strategy": "mask"}, {"fill": "gray"}])
+def test_clip_removal_strategies(removal: dict) -> None:
+    default = ImageTextSimilaritySetup(index=388, model="clip_vit_b32", text="label")
+    game = dataclasses.replace(default, **removal).build()
+    assert game.original_model_output == pytest.approx(default.build().original_model_output)
+    _assert_deterministic(game)
 
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")

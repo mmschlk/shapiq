@@ -46,7 +46,7 @@ type MetricName = Literal["accuracy", "r2", "neg_mse", "neg_mae"]
 """The built-in metrics of the games that train models."""
 
 type LossName = Literal["mse", "mae"]
-"""The built-in losses of :class:`~shapiq_games.GlobalExplanation`; lower is better."""
+"""The built-in losses of :class:`~shapiq_games.TabularGlobalExplanation`; lower is better."""
 
 type ImputerName = Literal["marginal", "conditional", "baseline"]
 """How :class:`~shapiq_games.TabularLocalExplanation` removes features."""
@@ -67,7 +67,8 @@ type ConfoundingMode = Literal["signed", "abs", "sq"]
 """How the confounding games aggregate the bias of the treatment effect."""
 
 type MaskStrategy = Literal["mask", "remove"]
-"""How :class:`~shapiq_games.SentimentAnalysis` removes tokens."""
+"""How :class:`~shapiq_games.SentimentAnalysis` and the transformer image games remove tokens:
+replace them with a mask token, or drop them from the sequence."""
 
 type ImageModel = Literal[
     "vit_9_patches",
@@ -82,7 +83,7 @@ type ImageModel = Literal[
 """The built-in classifiers of :class:`~shapiq_games.ImageClassifier`."""
 
 type Fill = Literal["mean", "gray", "black", "blur"]
-"""How :class:`~shapiq_games.ImageClassifier` fills removed regions."""
+"""How the image games fill removed regions in image space."""
 
 type ClipModel = Literal["clip_vit_b16", "clip_vit_b32"]
 """The CLIP models of :class:`~shapiq_games.ImageTextSimilarity`."""

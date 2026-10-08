@@ -1,17 +1,19 @@
-"""Patch masking of a Hugging Face vision transformer (requires ``torch`` and ``transformers``)."""
+"""A Hugging Face vision transformer with players removed in token space (needs torch, transformers)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq_games._optional import require
 
 from ._batching import pad_batch
+from ._token_removal import token_players, token_remover
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
+    from shapiq_games.typing import MaskStrategy
 
 __all__ = ["VIT_MODEL_ID", "VIT_PATCH_GRIDS", "ViTPatchModel"]
 
@@ -24,27 +26,19 @@ VIT_PATCH_GRIDS: dict[int, int] = {9: 3, 16: 4, 36: 6, 144: 12}
 _N_PATCHES_PER_SIDE = 12
 
 
-def _player_masks(n_players: int) -> np.ndarray:
-    """Return, per player, the boolean mask of the 144 model patches it covers."""
-    grid = VIT_PATCH_GRIDS[n_players]
-    size = _N_PATCHES_PER_SIDE // grid
-    masks = np.zeros((n_players, _N_PATCHES_PER_SIDE, _N_PATCHES_PER_SIDE), dtype=bool)
-    for player in range(n_players):
-        row, col = divmod(player, grid)
-        masks[player, row * size : (row + 1) * size, col * size : (col + 1) * size] = True
-    return masks.reshape(n_players, -1)
-
-
 class ViTPatchModel:
-    """A vision transformer whose patches are removed by replacing their embeddings with zeros.
+    """A vision transformer whose players are removed in token space.
 
-    Players are square groups of the model's 12x12 patches (3x3, 4x4, 6x6, or all 12x12).
-    Absent patches are masked through the transformer's ``bool_masked_pos`` with a zero mask
-    token. The output is the class probability (softmax) of the explained class.
+    Players are square groups of the model's 12x12 patches (3x3, 4x4, 6x6, or all 12x12). The
+    patch tokens of absent players are masked (``"mask"``: a zero mask token, the position
+    embedding kept) or dropped from the sequence (``"remove"``). :meth:`classify` runs the model
+    on whole images instead, for removal in image space. The output is the class probability
+    (softmax) of the explained class.
 
     Attributes:
         n_players: The number of players (super-patches).
         class_index: The explained class.
+        class_name: The name of the explained class.
     """
 
     def __init__(
@@ -52,16 +46,18 @@ class ViTPatchModel:
         image: np.ndarray,
         n_players: int,
         *,
+        mask_strategy: MaskStrategy = "mask",
         class_index: int | None = None,
         device: str = "cpu",
         batch_size: int = 16,
         revision: str | None = None,
     ) -> None:
-        """Load the model and preprocess the image.
+        """Load the model and embed the image's patches once.
 
         Args:
             image: The RGB image of shape ``(height, width, 3)``.
             n_players: The number of players: 9, 16, 36, or 144.
+            mask_strategy: ``"mask"`` (default) or ``"remove"``.
             class_index: The explained class, or ``None`` for the class predicted on the image.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
@@ -78,42 +74,53 @@ class ViTPatchModel:
         self.batch_size = batch_size
         self._device = torch.device(device)
 
-        processor = transformers.ViTImageProcessor.from_pretrained(VIT_MODEL_ID, revision=revision)
+        self._processor = transformers.ViTImageProcessor.from_pretrained(
+            VIT_MODEL_ID, revision=revision
+        )
         model = transformers.ViTForImageClassification.from_pretrained(
             VIT_MODEL_ID, revision=revision
         )
         model.eval().to(self._device)
-        hidden_size = model.config.hidden_size
         # a zero mask token: masked patches lose their content but keep their position embedding
         model.vit.embeddings.mask_token = torch.nn.Parameter(
-            torch.zeros(1, 1, hidden_size, device=self._device)
+            torch.zeros(1, 1, model.config.hidden_size, device=self._device)
         )
         self._model = model
-        self._pixels = processor(images=image, return_tensors="pt")["pixel_values"].to(self._device)
-        self._player_masks = torch.as_tensor(_player_masks(n_players), device=self._device)
+        pixels = self._pixels(np.asarray(image)[None])
+        all_masked = torch.ones(1, _N_PATCHES_PER_SIDE**2, dtype=torch.bool, device=self._device)
+        with torch.no_grad():
+            embeddings = model.vit.embeddings(pixels)
+            masked = model.vit.embeddings(pixels, bool_masked_pos=all_masked)
 
-        probabilities = self._probabilities(np.ones((1, n_players), dtype=bool))[0]
+        def encode(tokens: Any) -> Any:  # noqa: ANN401
+            hidden = model.vit.layernorm(model.vit.encoder(tokens).last_hidden_state)
+            return torch.softmax(model.classifier(hidden[:, 0]), dim=-1)
+
+        grid = VIT_PATCH_GRIDS[n_players]
+        players = token_players(_N_PATCHES_PER_SIDE, grid, grid)
+        self._remover = token_remover(
+            mask_strategy, torch, embeddings, masked, players, encode, batch_size
+        )
+        probabilities = self._remover(np.ones((1, n_players), dtype=bool))[0]
         self.class_index = int(np.argmax(probabilities)) if class_index is None else class_index
         self.class_name = str(model.config.id2label[self.class_index])
 
-    def _probabilities(self, coalitions: CoalitionMatrix) -> np.ndarray:
+    def _pixels(self, images: np.ndarray) -> Any:  # noqa: ANN401
+        pixels = self._processor(images=list(images), return_tensors="pt")["pixel_values"]
+        return pixels.to(self._device)
+
+    def classify(self, images: np.ndarray) -> np.ndarray:
+        """Return the class probabilities of whole images, of shape ``(n_images, n_classes)``."""
         torch = self._torch
         outputs = []
-        for start in range(0, coalitions.shape[0], self.batch_size):
-            # a copy: torch rejects negative strides (a reversed view of the coalitions), and
-            # np.ascontiguousarray keeps them for a single row, which NumPy deems contiguous
-            rows = np.array(coalitions[start : start + self.batch_size], dtype=bool)
-            batch = torch.as_tensor(pad_batch(rows, self.batch_size), device=self._device)
-            # a model patch is masked unless a present player covers it
-            covered = (batch.float() @ self._player_masks.float()) > 0
+        for start in range(0, images.shape[0], self.batch_size):
+            chunk = np.asarray(images[start : start + self.batch_size])
             with torch.no_grad():
-                hidden = self._model.vit(
-                    self._pixels.expand(batch.shape[0], -1, -1, -1), bool_masked_pos=~covered
-                ).last_hidden_state
-                logits = self._model.classifier(hidden[:, 0, :])
-            outputs.append(torch.softmax(logits, dim=-1).cpu().numpy()[: rows.shape[0]])
-        return np.concatenate(outputs, axis=0)
+                logits = self._model(pixel_values=self._pixels(pad_batch(chunk, self.batch_size)))
+            probabilities = torch.softmax(logits.logits, dim=-1)
+            outputs.append(probabilities.float().cpu().numpy()[: chunk.shape[0]])
+        return np.concatenate(outputs).astype(float)
 
     def __call__(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the probability of the explained class for each coalition."""
-        return self._probabilities(coalitions)[:, self.class_index]
+        return self._remover(coalitions)[:, self.class_index]

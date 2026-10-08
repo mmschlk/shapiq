@@ -130,6 +130,11 @@ Boosting converters live in separate modules such as `xgboost.py`,
   paper script divided it by its norm). Use `text_projection(text_model(...).pooler_output)`.
 - A float32 matrix product's summation order depends on the number of rows, so
   `embeddings @ text` changed in the 16th digit with the batch; the CLIP game sums row-wise.
+- The Hugging Face DINOv2 checkpoint (`facebook/dinov2-base-imagenet1k-1-layer`) has an all-zero,
+  untrained mask token (`use_mask_token=True`, but iBOT's token was not converted). Masking
+  (`mask_strategy="mask"`) is therefore far out of distribution for DINOv2: one masked player of 20
+  can drop the probability from 0.85 to 0.001. It matches HF's own `bool_masked_pos` path, so it
+  is the model, not a bug; token dropping stays the DINOv2 default.
 - A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
   follow that path at every split, which makes a NaN-baseline game constant. Use a
   model that learns missing-value directions (`HistGradientBoosting*`) in tests.

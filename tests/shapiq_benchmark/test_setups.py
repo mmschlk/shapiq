@@ -277,6 +277,12 @@ def test_image_classifier_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert setup.key != ImageClassifierSetup(index=1, model="resnet_18", class_index="label").key
     assert setup_from_dict(setup.to_dict()) == setup
+    ImageClassifierSetup(model="dinov2_20_patches", mask_strategy="mask").build()
+    ImageClassifierSetup(model="vit_16_patches", fill="blur").build()
+    assert (calls[1]["mask_strategy"], calls[1]["fill"]) == ("mask", None)
+    assert (calls[2]["mask_strategy"], calls[2]["fill"]) == (None, "blur")
+    with pytest.raises(ValueError, match="one of"):
+        ImageClassifierSetup(mask_strategy="zero")  # type: ignore[arg-type]
 
 
 def test_sentiment_analysis_setup(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -323,6 +329,11 @@ def test_image_text_similarity_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls[0]["text"] == "a photo of a English springer."
     assert calls[0]["grid"] == (5, 4)
     assert calls[1]["text"] is None  # the game finds the zero-shot label
+    assert (calls[1]["mask_strategy"], calls[1]["fill"]) == (None, None)
+    ImageTextSimilaritySetup(mask_strategy="mask").build()
+    ImageTextSimilaritySetup(fill="gray").build()
+    assert (calls[2]["mask_strategy"], calls[3]["fill"]) == ("mask", "gray")
+    assert ImageTextSimilaritySetup(fill="gray").key != ImageTextSimilaritySetup().key
     assert ImageTextSimilaritySetup(device="cuda", batch_size=64).key == (
         ImageTextSimilaritySetup().key
     )
