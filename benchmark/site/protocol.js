@@ -658,8 +658,8 @@ function renderReportSummary(linkToAbout = true) {
     const manifest = data;
     const files = typeof localReportFiles === "undefined" ? null : localReportFiles;
     summary.append(document.createTextNode(
-      `${coverage.closed ? "Campaign closed · " : ""}${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
-      `${coverage.never_attempted_supported.toLocaleString()} supported cells on qualified games were not attempted; ${coverage.not_reached_supported.toLocaleString()} planned supported cells were not reached because no qualified reference was prepared. Scores cover qualified games only. `,
+      `${coverage.closed ? "Campaign closed · " : ""}${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage (${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references); ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
+      `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells on qualified games were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells were not reached because no qualified reference was prepared. Scores cover qualified games only. `,
     ));
     const download = document.createElement("a");
     download.href = "#";

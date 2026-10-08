@@ -99,7 +99,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
       x: ratio,
       y: stats.median,
       relativeBudget: ratio,
-      coverage: `${stats.valid}/${stats.planned} successful runs · ${panel.games.length} games`,
+      coverage: `${BenchmarkQuery.formatCoverage(stats.valid, stats.planned)} coverage · ${BenchmarkQuery.formatCount(stats.valid)} successful runs · ${panel.games.length} games`,
       queryUsage: used.length
         ? `${format(low)}${high > low ? `–${format(high)}` : ""} × players`
         : null,

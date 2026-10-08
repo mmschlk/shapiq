@@ -3,6 +3,20 @@
 globalThis.BenchmarkQuery = (() => {
   const target = (g) => `${g.index} · order ${g.order}`;
   const format = (n) => (Number.isFinite(n) ? n.toPrecision(4) : "—");
+  const compactNumbers = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 0,
+  });
+  const percentages = new Intl.NumberFormat("en-US", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  });
+  const formatCount = (n) => compactNumbers.format(n);
+  const formatCoverage = (valid, planned) => {
+    if (!(planned > 0)) return "—";
+    const percent = percentages.format(valid / planned);
+    return valid < planned && percent === "100%" ? "<100%" : percent;
+  };
   const same = (a, b) =>
     JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
   const require = (condition, message) => {
@@ -527,7 +541,7 @@ globalThis.BenchmarkQuery = (() => {
         x: ratio,
         y: stats.median,
         relativeBudget: ratio,
-        coverage: `${stats.valid}/${stats.planned} successful runs · ${p.games.length} games`,
+        coverage: `${formatCoverage(stats.valid, stats.planned)} coverage · ${formatCount(stats.valid)} successful runs · ${p.games.length} games`,
         queryUsage: valid
           ? `${format(low)}${high > low ? `–${format(high)}` : ""} × players`
           : null,
@@ -749,6 +763,8 @@ globalThis.BenchmarkQuery = (() => {
   }
   return Object.freeze({
     query,
+    formatCount,
+    formatCoverage,
     canonicalOracleTiming,
     selectorHash,
     selectionPanel,

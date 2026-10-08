@@ -26,10 +26,12 @@ test("closed coverage exposes unprepared cases through existing authenticated de
     URL: { createObjectURL: (blob) => { downloaded = blob; return "blob:test"; }, revokeObjectURL() {} },
     setTimeout: (fn) => fn(),
   });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../../benchmark/site/query.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../../benchmark/site/protocol.js"), "utf8"), context);
   vm.runInContext("renderReportSummary(false)", context);
   const text = summary.children.map(n => n.textContent).join("");
   assert.match(text, /Campaign closed/);
+  assert.match(text, /50% reference coverage/);
   assert.match(text, /1 of 2 intended instances/);
   assert.match(text, /3 supported cells.*not attempted/);
   assert.match(text, /9 planned supported cells.*no qualified reference/);

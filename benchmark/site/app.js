@@ -1,4 +1,5 @@
 "use strict";
+const { formatCount, formatCoverage } = BenchmarkQuery;
 const palette = [
   "#426BE0",
   "#BF2355",
@@ -387,10 +388,11 @@ async function load(value, files = null) {
           .filter((g) => !isSynthetic(g))
           .map((g) => g.metadata?.case_id || g.id),
       ).size;
-  $("runCount").textContent = new Intl.NumberFormat().format(
-    data.evaluated_count ??
-      data.records.filter((r) => r.status !== "unsupported").length,
-  );
+  const evaluations = data.evaluated_count ??
+    data.records.filter((r) => r.status !== "unsupported").length;
+  $("runCount").textContent = formatCount(evaluations);
+  $("runCount").title = `${evaluations.toLocaleString("en-US")} evaluations`;
+
   $("methodSearch").value = "";
   buildMethodPicker();
   renderReportSummary();
@@ -734,8 +736,8 @@ async function renderPartitioned() {
     $("notice").textContent = [
       pendingRuns
         ? data.campaign_coverage?.closed
-          ? `Campaign closed · ${pendingRuns.toLocaleString()} cells on qualified games were not evaluated. Missing results do not count as zero error.`
-          : `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+          ? `Campaign closed · ${formatCount(pendingRuns)} cells on qualified games were not evaluated. Missing results do not count as zero error.`
+          : `Provisional results · ${formatCount(pendingRuns)} cells pending. Coverage is incomplete; missing results do not count as zero error.`
         : "",
       result.table_pending
         ? data.campaign_coverage?.closed
@@ -910,8 +912,8 @@ function render() {
   $("notice").textContent = [
     pendingRuns
       ? data.campaign_coverage?.closed
-        ? `Campaign closed · ${pendingRuns.toLocaleString()} cells on qualified games were not evaluated. Missing results do not count as zero error.`
-        : `Provisional results · ${pendingRuns.toLocaleString()} cells pending. Coverage is incomplete; missing results do not count as zero error.`
+        ? `Campaign closed · ${formatCount(pendingRuns)} cells on qualified games were not evaluated. Missing results do not count as zero error.`
+        : `Provisional results · ${formatCount(pendingRuns)} cells pending. Coverage is incomplete; missing results do not count as zero error.`
       : "",
     selectionNotice,
   ]
@@ -1021,7 +1023,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
       format(item.average),
       format(item.median),
       format(item.elo),
-      `${item.valid} / ${item.planned}`,
+      formatCoverage(item.valid, item.planned),
     ].forEach((value, i) => {
       const td = document.createElement("td");
       if (i === 1) {
@@ -1041,7 +1043,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
       } else if (i === 6) {
         const pill = document.createElement("span");
         pill.className = "coveragePill" + (item.complete ? " complete" : "");
-        td.title = state || "No games";
+        td.title = `${item.valid.toLocaleString("en-US")} / ${item.planned.toLocaleString("en-US")} successful runs${state ? ` · ${state}` : ""}`;
         pill.textContent = value;
         td.append(pill);
       } else {
@@ -1058,7 +1060,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
     bindHighlight(
       tr,
       item.method,
-      `${item.method} · ${Number.isFinite(item.average) ? `median nMSE ${format(item.median)} over available successful runs` : "No successful runs"} · ${item.valid}/${item.planned} coverage${state ? ` · ${state}` : ""}${chartNames.includes(item.method) ? "" : " · not shown in the current chart"}`,
+      `${item.method} · ${Number.isFinite(item.average) ? `median nMSE ${format(item.median)} over available successful runs` : "No successful runs"} · ${formatCoverage(item.valid, item.planned)} coverage${state ? ` · ${state}` : ""}${chartNames.includes(item.method) ? "" : " · not shown in the current chart"}`,
     );
     $("ranking").append(tr, detailRow);
   });
