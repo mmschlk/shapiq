@@ -21,6 +21,7 @@ tables reproduce the files that used to ship with the package exactly.
 
 from __future__ import annotations
 
+import tempfile
 from dataclasses import dataclass
 from io import StringIO
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -205,8 +206,12 @@ def _download_table(name: str) -> pd.DataFrame:
     else:
         from sklearn.datasets import fetch_california_housing
 
-        home = get_data_dir() / "scikit_learn"
-        table = fetch_california_housing(data_home=str(home), as_frame=True).frame
+        # a fresh folder per download: processes fetching into one folder race (one deletes the
+        # archive while another opens it), and the table is cached as a CSV anyway
+        parent = get_data_dir() / "scikit_learn"
+        parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as home:
+            table = fetch_california_housing(data_home=home, as_frame=True).frame
     if table.shape != upstream.shape:
         msg = (
             f"The {name} table from {upstream.source} {upstream.dataset_id or ''} has shape "

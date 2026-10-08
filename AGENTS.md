@@ -68,6 +68,10 @@ Boosting converters live in separate modules such as `xgboost.py`,
   download their `shapiq.load_*` files from `main/data/` on first use, so deleting them breaks
   every release's loaders. scikit-learn's California housing differs from that CSV by one unit
   in the last digit of three columns (the CSV lost it); the core test fixture uses scikit-learn.
+- scikit-learn's fetchers race when several processes fetch into one data folder (observed
+  2026-10-08 under `pytest -n logical` in the coverage job: one worker deletes `cal_housing.tgz`
+  while another opens it, 134 errors). The core fixture fetches into one folder per xdist worker,
+  and `shapiq_benchmark` into a temporary folder per download (its CSV cache is atomic).
 - `shapiq_games` holds game definitions only, built from objects (a model, data, a point). Datasets,
   the model registry, and building games from names live in `shapiq_benchmark` (`datasets/`,
   `models.py`, `setups/`); do not add dataset loading or a `from_config` to a game. A new game
