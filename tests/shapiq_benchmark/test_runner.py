@@ -104,10 +104,10 @@ def test_from_setup_passes_the_player_cap_to_the_computer(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
-    setup = DataValuationSetup(dataset="xor", n_players=21)
-    with pytest.raises(UnsupportedComputationError, match="capped at 20"):
+    setup = DataValuationSetup(dataset="xor", n_players=26)
+    with pytest.raises(UnsupportedComputationError, match="capped at 25"):
         Benchmark.from_setup(setup, BruteForceComputer)
-    assert Benchmark.from_setup(setup, BruteForceComputer, max_players=21).game.n_players == 21
+    assert Benchmark.from_setup(setup, BruteForceComputer, max_players=26).game.n_players == 26
 
 
 def test_top_order_estimates_are_scored_on_their_order() -> None:

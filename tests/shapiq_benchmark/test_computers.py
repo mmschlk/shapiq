@@ -194,10 +194,11 @@ def test_structured_ground_truth_stays_sparse_for_many_players() -> None:
 def test_brute_force_player_cap() -> None:
     with pytest.raises(UnsupportedComputationError, match="capped at 4"):
         BruteForceComputer(RandomTableGame(5), max_players=4)
-    assert DEFAULT_MAX_PLAYERS == 20
-    big = SOUM(25, 5, random_state=0)
+    assert DEFAULT_MAX_PLAYERS == 25  # the largest games of the benchmarking paper
+    BruteForceComputer(SOUM(25, 5, random_state=0))  # 25 players: the cap is inclusive
+    big = SOUM(26, 5, random_state=0)
     assert isinstance(default_computer(big), MoebiusComputer)  # structured games have no cap
-    with pytest.raises(UnsupportedComputationError):
+    with pytest.raises(UnsupportedComputationError, match="capped at 25"):
         BruteForceComputer(big)
 
 

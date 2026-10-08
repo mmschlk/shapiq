@@ -12,7 +12,7 @@
 ### Breaking Changes
 
 - the ground-truth games move out of core: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame`, `shapiq.explainer.nn.games` is now `shapiq_games.nn`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame`.
-- removes `shapiq_games.benchmark`, `shapiq_games.tabular`, and the `*Bench` classes; `LocalExplanation` and `GlobalExplanation` are now `TabularLocalExplanation` and `TabularGlobalExplanation`.
+- removes `shapiq_games.benchmark`, `shapiq_games.tabular`, and the `*Bench` classes; `LocalExplanation`, `GlobalExplanation` and `UncertaintyExplanation` are now `TabularLocalExplanation`, `TabularGlobalExplanation` and `TabularUncertaintyExplanation`.
 - some game values change, e.g. the interventional tree game uses raw margins for boosted classifiers, and `SentimentAnalysis` returns `2 P(positive) - 1`.
 - the `shapiq.datasets` loaders download their file on first use and cache it in `~/.cache/shapiq` (or `$SHAPIQ_DATA_DIR`).
 - the games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.

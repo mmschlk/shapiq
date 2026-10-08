@@ -19,7 +19,7 @@ from shapiq_games import (
     RandomForestEnsembleSelection,
     TabularGlobalExplanation,
     TabularLocalExplanation,
-    UncertaintyExplanation,
+    TabularUncertaintyExplanation,
     UnsupervisedData,
 )
 from shapiq_games._base import is_classifier, resolve_class_index, resolve_x
@@ -52,7 +52,7 @@ __all__ = [
     "RandomForestEnsembleSelectionSetup",
     "TabularGlobalExplanationSetup",
     "TabularLocalExplanationSetup",
-    "UncertaintyExplanationSetup",
+    "TabularUncertaintyExplanationSetup",
     "UnsupervisedDataSetup",
 ]
 
@@ -486,8 +486,8 @@ class RandomForestEnsembleSelectionSetup(TabularSetup, name="random_forest_ensem
 
 
 @dataclass(frozen=True, kw_only=True)
-class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
-    """An :class:`~shapiq_games.UncertaintyExplanation` of a random forest on a classification dataset.
+class TabularUncertaintyExplanationSetup(TabularSetup, name="tabular_uncertainty_explanation"):
+    """An :class:`~shapiq_games.TabularUncertaintyExplanation` of a random forest on a classification dataset.
 
     Attributes:
         x: The index of the explained point in the test split. Defaults to ``0``.
@@ -498,7 +498,7 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
         normalize: Whether to center the game. Defaults to ``True``.
 
     Examples:
-        >>> UncertaintyExplanationSetup(dataset="breast_cancer").build().n_players
+        >>> TabularUncertaintyExplanationSetup(dataset="breast_cancer").build().n_players
         30
     """
 
@@ -511,14 +511,14 @@ class UncertaintyExplanationSetup(TabularSetup, name="uncertainty_explanation"):
     model_params: dict[str, Any] = field(default_factory=dict)
     normalize: bool = True
 
-    def build(self) -> UncertaintyExplanation:
+    def build(self) -> TabularUncertaintyExplanation:
         """Train the forest and build the game."""
         split = self.load_split()
         forest = build_model(
             "random_forest", split.task, random_state=self.random_state, **self.model_params
         ).fit(split.x_train, split.y_train)
         rows = self.sample_rows(split.x_train.shape[0], self.n_background)
-        return UncertaintyExplanation(
+        return TabularUncertaintyExplanation(
             forest,
             split.x_train[rows],
             resolve_x(self.x, split.x_test),

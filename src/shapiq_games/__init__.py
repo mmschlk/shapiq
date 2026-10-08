@@ -30,7 +30,7 @@ Game families:
 - machine learning games: :class:`TabularLocalExplanation`, :class:`TabularGlobalExplanation`,
   :class:`FeatureSelection`, :class:`DataValuation`, :class:`DatasetValuation`,
   :class:`EnsembleSelection`, :class:`RandomForestEnsembleSelection`,
-  :class:`UncertaintyExplanation`, :class:`ClusterExplanation`, :class:`UnsupervisedData`,
+  :class:`TabularUncertaintyExplanation`, :class:`ClusterExplanation`, :class:`UnsupervisedData`,
   :class:`GlobalConfoundingXAI`, :class:`LocalConfoundingXAI`, :class:`ImageClassifier`,
   :class:`ImageTextSimilarity`, :class:`SentimentAnalysis`
 """
@@ -46,7 +46,7 @@ from .local_xai import TabularLocalExplanation
 from .nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from .synthetic import SOUM, DummyGame, RandomTableGame, UnanimityGame
 from .tree import InterventionalTreeGame, PathDependentTreeGame
-from .uncertainty import UncertaintyExplanation
+from .uncertainty import TabularUncertaintyExplanation
 from .unsupervised import UnsupervisedData
 from .valuation import DatasetValuation, DataValuation
 from .vision import ImageClassifier, ImageTextSimilarity
@@ -78,6 +78,6 @@ __all__ = [
     "TabularLocalExplanation",
     "RandomForestEnsembleSelection",
     "SentimentAnalysis",
-    "UncertaintyExplanation",
+    "TabularUncertaintyExplanation",
     "UnsupervisedData",
 ]

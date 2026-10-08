@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from shapiq.typing import FloatVector
     from shapiq_games.typing import ImputerName, Uncertainty
 
-__all__ = ["UncertaintyExplanation"]
+__all__ = ["TabularUncertaintyExplanation"]
 
 
 def _uncertainty_function(forest: Any, uncertainty: Uncertainty):  # noqa: ANN202, ANN401
@@ -33,8 +33,8 @@ def _uncertainty_function(forest: Any, uncertainty: Uncertainty):  # noqa: ANN20
     return _predict
 
 
-class UncertaintyExplanation(TabularLocalExplanation):
-    """The uncertainty explanation game of a random forest classifier.
+class TabularUncertaintyExplanation(TabularLocalExplanation):
+    """The tabular uncertainty explanation game of a random forest classifier.
 
     The value of a coalition is the imputed predictive uncertainty of the forest at ``x`` when only
     the features in the coalition are known: the total uncertainty (entropy of the mean class
@@ -49,7 +49,7 @@ class UncertaintyExplanation(TabularLocalExplanation):
         >>> X, y = make_classification(n_samples=200, n_features=5, random_state=0)
         >>> from sklearn.ensemble import RandomForestClassifier
         >>> model = RandomForestClassifier(n_estimators=10, random_state=0).fit(X, y)
-        >>> game = UncertaintyExplanation(model, data=X[:50], x=X[0], uncertainty="epistemic")
+        >>> game = TabularUncertaintyExplanation(model, data=X[:50], x=X[0], uncertainty="epistemic")
         >>> game.n_players
         5
     """

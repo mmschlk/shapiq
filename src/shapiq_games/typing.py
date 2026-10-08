@@ -52,7 +52,7 @@ type ImputerName = Literal["marginal", "conditional", "baseline"]
 """How :class:`~shapiq_games.TabularLocalExplanation` removes features."""
 
 type Uncertainty = Literal["total", "aleatoric", "epistemic"]
-"""The uncertainty :class:`~shapiq_games.UncertaintyExplanation` explains."""
+"""The uncertainty :class:`~shapiq_games.TabularUncertaintyExplanation` explains."""
 
 type PlayerSizes = Literal["uniform", "increasing", "random"]
 """How :class:`~shapiq_games.DatasetValuation` splits the training data into players."""

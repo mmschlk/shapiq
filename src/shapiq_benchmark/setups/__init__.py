@@ -26,7 +26,7 @@ Setups by kind of game:
 - machine learning games on tabular data: :class:`TabularLocalExplanationSetup`,
   :class:`TabularGlobalExplanationSetup`, :class:`FeatureSelectionSetup`, :class:`DataValuationSetup`,
   :class:`DatasetValuationSetup`, :class:`EnsembleSelectionSetup`,
-  :class:`RandomForestEnsembleSelectionSetup`, :class:`UncertaintyExplanationSetup`,
+  :class:`RandomForestEnsembleSelectionSetup`, :class:`TabularUncertaintyExplanationSetup`,
   :class:`ClusterExplanationSetup`, :class:`UnsupervisedDataSetup`
 - causal games: :class:`GlobalConfoundingSetup`, :class:`LocalConfoundingSetup`
 - image and text games: :class:`ImageClassifierSetup`, :class:`ImageTextSimilaritySetup`,
@@ -47,7 +47,7 @@ from ._ml_games import (
     RandomForestEnsembleSelectionSetup,
     TabularGlobalExplanationSetup,
     TabularLocalExplanationSetup,
-    UncertaintyExplanationSetup,
+    TabularUncertaintyExplanationSetup,
     UnsupervisedDataSetup,
 )
 from ._model_games import (
@@ -85,7 +85,7 @@ __all__ = [
     "Setup",
     "TabularSetup",
     "ThresholdNNSetup",
-    "UncertaintyExplanationSetup",
+    "TabularUncertaintyExplanationSetup",
     "UnsupervisedDataSetup",
     "WeightedKNNSetup",
     "runtime_field",

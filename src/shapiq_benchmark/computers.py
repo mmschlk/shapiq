@@ -56,8 +56,10 @@ __all__ = [
     "default_computer",
 ]
 
-DEFAULT_MAX_PLAYERS = 20
-"""The default player cap of brute-force computation (``2**20`` game evaluations)."""
+DEFAULT_MAX_PLAYERS = 25
+"""The default player cap of brute-force computation (``2**25`` game evaluations), the size of the
+largest games of the benchmarking paper. Brute force more than doubles its time and memory with
+every player: at 22 players, the Shapley values of a cheap game take about 2.5 minutes and 2.6 GB."""
 
 VALUE_INDICES: frozenset[IndexType] = frozenset({"SV", "BV", "ELC"})
 """Values (one number per player), not interactions: only defined for order 1."""
@@ -172,7 +174,7 @@ class Computer[G: Game](ABC):
 class BruteForceComputer(Computer[Game]):
     """Brute force: evaluates all ``2**n`` coalitions with :class:`~shapiq.ExactComputer`.
 
-    Works for every game up to ``max_players`` players (default 20). The game values are evaluated
+    Works for every game up to ``max_players`` players (default 25). The game values are evaluated
     once and reused for every index and order.
     """
 
@@ -183,7 +185,7 @@ class BruteForceComputer(Computer[Game]):
 
         Args:
             game: The game.
-            max_players: The player cap. Defaults to ``20``.
+            max_players: The player cap. Defaults to ``25``.
 
         Raises:
             UnsupportedComputationError: If the game has more than ``max_players`` players.
@@ -432,7 +434,7 @@ def default_computer(game: Game, *, max_players: int = DEFAULT_MAX_PLAYERS) -> C
 
     Args:
         game: The game.
-        max_players: The player cap of brute force. Defaults to ``20``.
+        max_players: The player cap of brute force. Defaults to ``25``.
 
     Returns:
         The computer bound to the game.

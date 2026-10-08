@@ -23,7 +23,7 @@ from shapiq_games import (
     SentimentAnalysis,
     TabularGlobalExplanation,
     TabularLocalExplanation,
-    UncertaintyExplanation,
+    TabularUncertaintyExplanation,
     UnsupervisedData,
 )
 from shapiq_games.unsupervised import total_correlation
@@ -345,7 +345,7 @@ def test_uncertainty_decomposition(data) -> None:
         data["x_train"], data["yc_train"]
     )
     values = {
-        kind: UncertaintyExplanation(
+        kind: TabularUncertaintyExplanation(
             forest, data["x_train"], x=1, uncertainty=kind, normalize=False
         )
         for kind in ("total", "aleatoric", "epistemic")
@@ -353,7 +353,7 @@ def test_uncertainty_decomposition(data) -> None:
     full = {kind: game(game.grand_coalition)[0] for kind, game in values.items()}
     assert full["total"] == pytest.approx(full["aleatoric"] + full["epistemic"])
     with pytest.raises(TypeError, match="RandomForestClassifier"):
-        UncertaintyExplanation(
+        TabularUncertaintyExplanation(
             DecisionTreeClassifier().fit(data["x_train"], data["yc_train"]), data["x_train"]
         )
 

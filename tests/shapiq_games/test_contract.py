@@ -152,7 +152,7 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         False,
     ),
     "uncertainty": (
-        lambda: sg.UncertaintyExplanation(_forest_classifier(), _X_TRAIN[:50], _X_TEST[0]),
+        lambda: sg.TabularUncertaintyExplanation(_forest_classifier(), _X_TRAIN[:50], _X_TEST[0]),
         True,
     ),
     "clustering": (lambda: sg.ClusterExplanation(_X, n_clusters=3, random_state=0), False),

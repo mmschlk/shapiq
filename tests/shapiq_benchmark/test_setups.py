@@ -32,8 +32,8 @@ from shapiq_benchmark.setups import (
     Setup,
     TabularGlobalExplanationSetup,
     TabularLocalExplanationSetup,
+    TabularUncertaintyExplanationSetup,
     ThresholdNNSetup,
-    UncertaintyExplanationSetup,
     UnsupervisedDataSetup,
     WeightedKNNSetup,
     setup_from_dict,
@@ -100,9 +100,9 @@ OFFLINE: dict[str, tuple[Setup, type[Game]]] = {
         RandomForestEnsembleSelectionSetup(dataset="xor", n_members=5),
         sg.RandomForestEnsembleSelection,
     ),
-    "uncertainty_explanation": (
-        UncertaintyExplanationSetup(dataset="breast_cancer", n_background=20),
-        sg.UncertaintyExplanation,
+    "tabular_uncertainty_explanation": (
+        TabularUncertaintyExplanationSetup(dataset="breast_cancer", n_background=20),
+        sg.TabularUncertaintyExplanation,
     ),
     "cluster_explanation": (
         ClusterExplanationSetup(dataset="group", n_samples=200),
@@ -203,7 +203,11 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         (lambda: KNNSetup(dataset="xor", x=1.5), TypeError, "KNNSetup.x"),
         (lambda: KNNSetup(dataset="nope"), ValueError, "Unknown dataset 'nope'"),
         (lambda: KNNSetup(dataset="independentlinear60"), ValueError, "classification"),
-        (lambda: UncertaintyExplanationSetup(dataset="independentlinear60"), ValueError, "class"),
+        (
+            lambda: TabularUncertaintyExplanationSetup(dataset="independentlinear60"),
+            ValueError,
+            "class",
+        ),
         (
             lambda: TabularLocalExplanationSetup(dataset="xor", model="nope"),
             ValueError,
@@ -250,7 +254,9 @@ def test_background_size_is_the_imputer_sample_size() -> None:
         dataset="breast_cancer", model="decision_tree", n_background=150
     )
     assert game.build().imputer.sample_size == 150
-    uncertainty = UncertaintyExplanationSetup(dataset="breast_cancer", n_background=150).build()
+    uncertainty = TabularUncertaintyExplanationSetup(
+        dataset="breast_cancer", n_background=150
+    ).build()
     assert uncertainty.imputer.sample_size == 150
 
 
