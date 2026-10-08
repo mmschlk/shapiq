@@ -37,6 +37,13 @@ Boosting converters live in separate modules such as `xgboost.py`,
   predictors live in that transformed space. Converters must map feature
   indices and category codes back (see `_convert_hist_tree_predictor` in
   `src/shapiq/tree/conversion/sklearn.py`).
+- Zero-cover nodes are NOT always unreachable: the explained point's routing can enter
+  one (NaN default routing, out-of-range values; common in CatBoost's oblivious trees),
+  often only partway down after cover-weighting an absent feature above it. The
+  path-dependent cover ratio below a zero-cover node is defined in ONE place,
+  `create_edge_tree_arrays` in `src/shapiq/tree/conversion/cext/cext.cc` (equal split,
+  1/2 per child), mirrored by the Python reference
+  `tests/.../tests_tree_explainer/conversion_reference.py`; keep the two in sync.
 - Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
   the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
   the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:
