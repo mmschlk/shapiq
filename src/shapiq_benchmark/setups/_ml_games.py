@@ -80,7 +80,10 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
       TabPFN's context (remove-and-recontextualize).
     - With ``imputer="missing"`` the model reads absent features as missing values: NaN for the
       tree models, and ``+inf`` for ``"tabpfn"``, which is then built with
-      ``inference_config={"PASSTHROUGH_INF": True}`` (TabPFN v3, ``tabpfn>=8.1``).
+      ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``).
+    - ``"tabpfn"`` is TabPFN v2 unless ``model_params`` chooses a ``version``, e.g.
+      ``{"version": "v3"}`` as in the benchmarking paper (the versions after v2 need a Prior Labs
+      license token to download).
 
     Attributes:
         model: The model name. Defaults to ``"random_forest"``.
@@ -96,9 +99,14 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         >>> setup = LocalExplanationSetup(dataset="breast_cancer", model="decision_tree")
         >>> setup.build().n_players
         30
-        >>> # TabPFN v3 with absent features masked as +inf, trained on 1,040 rows:
+        >>> # TabPFN v3 with absent features masked as +inf, trained on 1,040 rows (on a CPU,
+        >>> # tabpfn takes more than 1,000 only with ignore_pretraining_limits):
         >>> setup = LocalExplanationSetup(
-        ...     dataset="adult_census", model="tabpfn", imputer="missing", n_train=1040
+        ...     dataset="adult_census",
+        ...     model="tabpfn",
+        ...     model_params={"version": "v3", "ignore_pretraining_limits": True},
+        ...     imputer="missing",
+        ...     n_train=1040,
         ... )
     """
 
@@ -126,7 +134,7 @@ class LocalExplanationSetup(ModelSetup, name="local_explanation"):
         """Train the model, draw the background rows, and build the game."""
         split = self.load_split()
         params, missing_value = dict(self.model_params), np.nan
-        if self.imputer == "missing" and self.model == "tabpfn":  # TabPFN v3 reads +inf as missing
+        if self.imputer == "missing" and self.model == "tabpfn":  # TabPFN reads +inf as missing
             require_inf_passthrough()
             config = dict(params.get("inference_config", {}))
             params["inference_config"] = {**config, "PASSTHROUGH_INF": True}

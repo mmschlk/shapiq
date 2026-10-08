@@ -15,6 +15,7 @@ import numpy as np
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
+from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -25,16 +26,45 @@ type Mode = Literal["signed", "abs", "sq"]
 type RegressorFactory = Callable[[], Any]
 
 
-def tabpfn_regressor(device: str = "cpu", n_estimators: int = 1, random_state: int = 42) -> Any:  # noqa: ANN401
-    """Return a TabPFN regressor configured as in the ConfoundingSHAP paper (requires ``tabpfn``)."""
-    from shapiq_games._optional import require
+def tabpfn_regressor(
+    device: str = "cpu",
+    n_estimators: int = 1,
+    random_state: int = 42,
+    *,
+    version: str = DEFAULT_TABPFN_VERSION,
+    **params: Any,
+) -> Any:  # noqa: ANN401
+    """Return a TabPFN regressor configured as in the ConfoundingSHAP paper (requires ``tabpfn``).
 
-    tabpfn = require("tabpfn", purpose="the default regressor of the causal games")
-    return tabpfn.TabPFNRegressor(
+    Args:
+        device: The torch device. Defaults to ``"cpu"``.
+        n_estimators: The number of ensemble members. Defaults to ``1``.
+        random_state: The seed. Defaults to ``42``.
+        version: The TabPFN version, e.g. ``"v2"`` (default, downloads without a license),
+            ``"v2.5"`` (the paper's), ``"v3"``, or ``"v3.5"``. The versions after v2 need a
+            Prior Labs license token to download (see the TabPFN documentation).
+        **params: Further TabPFN settings, e.g. ``model_path`` for a checkpoint of your own.
+
+    Returns:
+        The unfitted regressor.
+
+    Raises:
+        ValueError: If the installed ``tabpfn`` does not know ``version``.
+
+    Examples:
+        >>> from functools import partial
+        >>> regressor = partial(tabpfn_regressor, version="v3")  # doctest: +SKIP
+        >>> GlobalConfoundingXAI(X, treatment, outcome, regressor=regressor)  # doctest: +SKIP
+    """
+    config = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,), **params.pop("inference_config", {})}
+    return build_tabpfn(
+        "regression",
+        version,
         device=device,
         n_estimators=n_estimators,
         random_state=random_state,
-        inference_config={"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)},
+        inference_config=config,
+        **params,
     )
 
 
@@ -168,8 +198,9 @@ class GlobalConfoundingXAI(_ConfoundingGame):
             tau_hat: The reference conditional treatment effects of shape ``(n_samples,)``.
                 If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
-            regressor: A function returning a fresh, seeded regressor. Defaults to TabPFN as in
-                the paper (requires ``tabpfn``).
+            regressor: A function returning a fresh, seeded regressor. Defaults to
+                :func:`tabpfn_regressor`: TabPFN v2 configured as in the paper (requires
+                ``tabpfn``); ``partial(tabpfn_regressor, version="v2.5")`` is the paper's model.
         """
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)
 
@@ -218,7 +249,8 @@ class LocalConfoundingXAI(_ConfoundingGame):
                 If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             unit: The explained unit as an index into ``x`` or its covariates. Defaults to ``0``.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
-            regressor: A function returning a fresh, seeded regressor. Defaults to TabPFN.
+            regressor: A function returning a fresh, seeded regressor. Defaults to
+                :func:`tabpfn_regressor` (TabPFN v2 configured as in the paper).
         """
         covariates = np.asarray(x, dtype=float)
         if isinstance(unit, int | np.integer):

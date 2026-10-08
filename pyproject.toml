@@ -89,10 +89,10 @@ shapleig = [
 games = [
     # optional dependencies of shapiq_games, imported lazily by the games that need them
     "scikit-image",  # superpixels of the image games
-    "tabpfn",        # the default regressor of the causal games
+    "tabpfn>=6.0",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
     "torch",         # image games
     "torchvision",   # ResNet image games
-    "transformers",  # vision transformer and sentiment games
+    "transformers",  # vision transformer, DINOv2, CLIP, and sentiment games
     "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [

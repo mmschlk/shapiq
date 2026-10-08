@@ -45,6 +45,17 @@ def test_every_model_fits_and_is_reproducible(name: str, task: str, splits: dict
     np.testing.assert_allclose(first.predict(split.x_test), second.predict(split.x_test))
 
 
+@pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
+def test_tabpfn_is_v2_unless_a_version_is_chosen() -> None:
+    """Building TabPFN downloads nothing; fitting it is covered by the heavy tests."""
+    assert build_model("tabpfn", "regression").model_path.endswith("tabpfn-v2-regressor.ckpt")
+    classifier = build_model("tabpfn", "classification", version="v2.5", n_estimators=2)
+    assert "v2.5" in classifier.model_path
+    assert classifier.n_estimators == 2
+    with pytest.raises(ValueError, match="has no TabPFN 'v0.9'"):
+        build_model("tabpfn", "regression", version="v0.9")
+
+
 def test_svm_classifiers_predict_probabilities(splits: dict) -> None:
     model = fit_model("svm", splits["classification"])
     probabilities = model.predict_proba(splits["classification"].x_test)

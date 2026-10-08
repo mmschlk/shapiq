@@ -477,3 +477,22 @@ def test_confounding_games_fit_their_own_reference_effect() -> None:
     local = LocalConfoundingXAI(x, treatment, outcome, unit=3, regressor=LinearRegression)
     assert local.n_players == 4
     np.testing.assert_allclose(local.unit, x[3])
+
+
+@pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
+def test_tabpfn_regressor_is_v2_unless_a_version_is_chosen() -> None:
+    """The causal games' default regressor needs no license token; building downloads nothing."""
+    from shapiq_games.causal import tabpfn_regressor
+
+    model = tabpfn_regressor()
+    assert model.model_path.endswith("tabpfn-v2-regressor.ckpt")
+    assert model.n_estimators == 1
+    assert model.inference_config == {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
+    paper = tabpfn_regressor(version="v2.5", inference_config={"PASSTHROUGH_INF": True})
+    assert "v2.5" in paper.model_path
+    assert paper.inference_config == {
+        "REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,),
+        "PASSTHROUGH_INF": True,
+    }
+    with pytest.raises(ValueError, match="has no TabPFN 'v0.9'"):
+        tabpfn_regressor(version="v0.9")

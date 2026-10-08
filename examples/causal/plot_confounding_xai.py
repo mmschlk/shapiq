@@ -25,13 +25,11 @@ largest absolute attribution.
 from __future__ import annotations
 
 import numpy as np
-from tabpfn import TabPFNRegressor
 
 import shapiq
 from shapiq_benchmark.datasets import load_curthvds_synthetic
 from shapiq_games import GlobalConfoundingXAI
-
-_TABPFN_INFERENCE_CONFIG = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,)}
+from shapiq_games.causal import tabpfn_regressor
 
 # %%
 # Load Data
@@ -55,13 +53,12 @@ Y = curthvds_data["Outcome"].to_numpy()
 # We use a single TabPFN S-learner trained on the full dataset with treatment
 # A appended as a feature.  Predicting twice — once with A set to 1 and once
 # with A set to 0 — gives the individual treatment effect estimate tau_hat.
-# This matches the default regressor of :class:`~shapiq_games.GlobalConfoundingXAI`.
+# The regressor is configured as in the paper; it is the default regressor of
+# :class:`~shapiq_games.GlobalConfoundingXAI`. It runs TabPFN v2, which
+# downloads without a license; ``tabpfn_regressor(version="v2.5")`` is the
+# paper's model (its download needs a Prior Labs license token).
 
-model = TabPFNRegressor(
-    device="cpu",
-    n_estimators=1,
-    inference_config=_TABPFN_INFERENCE_CONFIG,
-)
+model = tabpfn_regressor()
 XA = np.concatenate([X, A.reshape(-1, 1)], axis=1)
 model.fit(XA, Y)
 XA1 = np.concatenate([X, np.ones((len(X), 1))], axis=1)
@@ -78,7 +75,7 @@ print(f"Observed outcome difference: {Y[A == 1].mean() - Y[A == 0].mean():.3f}")
 # features in S are observed.  For ``mode='signed'`` a positive value means the
 # naive estimator (using only S) over-estimates the true effect.
 
-# The game fits its S-learners with a seeded TabPFN regressor on the CPU by default.
+# The game fits its S-learners with fresh, seeded ``tabpfn_regressor()`` models by default.
 game = GlobalConfoundingXAI(X, A, Y, tau_hat, mode="signed")
 print(f"\nEmpty coalition value v({{}}): {game.empty_value:.4f}")
 print(f"Grand coalition value v(N): {game.grand_coalition_value:.4f}")

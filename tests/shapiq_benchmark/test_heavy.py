@@ -72,30 +72,19 @@ def test_clip_image_text_game() -> None:
     assert labelled.text == "a photo of a English springer."
 
 
-def _tabpfn_reads_inf() -> bool:
-    import importlib.metadata
-    import re
-
-    if not is_installed("tabpfn"):
-        return False
-    installed = importlib.metadata.version("tabpfn")
-    return tuple(int(part) for part in re.findall(r"\d+", installed)[:2]) >= (8, 1)
-
-
-@pytest.mark.skipif(
-    not (_tabpfn_reads_inf() and os.environ.get("TABPFN_TOKEN")),
-    reason="needs tabpfn>=8.1 (TabPFN v3) and a Prior Labs license token in TABPFN_TOKEN",
-)
-def test_tabpfn_v3_missing_value_game() -> None:
+@pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
+def test_tabpfn_missing_value_game() -> None:
+    """TabPFN v2 (no license token needed) reads absent features masked as +inf."""
     setup = LocalExplanationSetup(
         dataset="california_housing",
         model="tabpfn",
         imputer="missing",
-        n_train=1040,
+        n_train=500,  # tabpfn refuses more than 1,000 rows on a CPU by default
         model_params={"n_estimators": 1},
     )
     game = setup.build()
     assert game.n_players == 8
+    assert game(game.grand_coalition)[0] != 0.0
     _assert_deterministic(game)
 
 
@@ -115,7 +104,7 @@ def test_tabpfn_recontextualization_game() -> None:
 
 @pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
 def test_confounding_game_with_tabpfn() -> None:
-    game = GlobalConfoundingSetup(n=100).build()  # the default regressor is TabPFN
+    game = GlobalConfoundingSetup(n=100).build()  # the default regressor is TabPFN v2
     _assert_deterministic(game)
 
 

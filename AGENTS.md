@@ -115,11 +115,17 @@ Boosting converters live in separate modules such as `xgboost.py`,
 
 ## Games and benchmark gotchas (observed 2026-10-08, DINOv2 / CLIP / TabPFN v3)
 
-- `tabpfn>=8.1` (TabPFN v3, needed for `inference_config={"PASSTHROUGH_INF": True}`) refuses to
-  download ANY weights without a Prior Labs license token (`TABPFN_TOKEN`) in non-interactive
-  shells, although the Hugging Face repo is not gated. Bumping the lock past 6.4.1 broke every
-  TabPFN game and heavy test here, so the lock stays at 6.4.1 and the `+inf` game checks the
-  version at runtime. Do not fetch the checkpoints directly to get around the license step.
+- tabpfn 9.1 asks for a Prior Labs license token (`TABPFN_TOKEN`, or a token cached by a
+  one-time browser login) before downloading the gated checkpoints v2.5, v2.6, v3 and v3.5 (its
+  default); TabPFN v2 is license-free, and a checkpoint already on disk is never checked. Our
+  TabPFN default is therefore v2 everywhere (`DEFAULT_TABPFN_VERSION`), users opt into other
+  versions with `version=`, and nothing in the repository (tests, docs examples, CI) may need a
+  token. Do not fetch the checkpoints directly to get around the license step.
+- tabpfn 9.1 refuses more than 1,000 training rows on a CPU unless
+  `ignore_pretraining_limits=True` (6.4.1 only warned); the registry builds TabPFN on the CPU.
+- TabPFN's predictions depend on the `tabpfn` version, not only the checkpoint: the causal game
+  on v2.5 moved by up to 0.47 between tabpfn 6.4.1 and 9.1. Cached ground truth of a TabPFN
+  setup is stale after a tabpfn upgrade (the cache does not track package versions).
 - In transformers 5, `CLIPModel.get_text_features` returns an output object, not a tensor (the
   paper script divided it by its norm). Use `text_projection(text_model(...).pooler_output)`.
 - A float32 matrix product's summation order depends on the number of rows, so

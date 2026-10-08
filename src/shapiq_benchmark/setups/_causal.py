@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 from shapiq_benchmark.datasets import load_curthvds_synthetic
@@ -30,6 +30,7 @@ class _ConfoundingSetup(Setup):
     setting: Literal["i", "ii"] = "ii"
     mode: Mode = "signed"
     regressor: str = "tabpfn"
+    regressor_params: dict[str, Any] = field(default_factory=dict)
     random_state: int = 42
 
     def __post_init__(self) -> None:
@@ -45,12 +46,12 @@ class _ConfoundingSetup(Setup):
             n=self.n, d=self.d, random_state=self.random_state, setting=self.setting
         )
         covariates = [column for column in frame.columns if column not in {"Treatment", "Outcome"}]
-        name, random_state = self.regressor, self.random_state
+        name, params, random_state = self.regressor, dict(self.regressor_params), self.random_state
 
         def regressor() -> Any:  # noqa: ANN401
             if name == "tabpfn":  # configured as in the ConfoundingSHAP paper
-                return tabpfn_regressor(random_state=random_state)
-            return build_model(name, "regression", random_state=random_state)
+                return tabpfn_regressor(random_state=random_state, **params)
+            return build_model(name, "regression", random_state=random_state, **params)
 
         return (
             frame[covariates].to_numpy(dtype=float),
@@ -71,8 +72,11 @@ class GlobalConfoundingSetup(_ConfoundingSetup, name="global_confounding"):
         d: The number of covariates (players), at least ``4``. Defaults to ``4``.
         setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect, default).
         mode: ``"signed"`` (default), ``"abs"``, or ``"sq"``.
-        regressor: ``"tabpfn"`` (default, configured as in the ConfoundingSHAP paper) or a model
-            name of :mod:`shapiq_benchmark.models` (e.g. ``"linear"``).
+        regressor: ``"tabpfn"`` (default, TabPFN configured as in the ConfoundingSHAP paper) or a
+            model name of :mod:`shapiq_benchmark.models` (e.g. ``"linear"``).
+        regressor_params: Parameters of the regressor, e.g. ``{"version": "v2.5"}`` for the
+            paper's TabPFN (the default is TabPFN v2, see
+            :func:`~shapiq_games.causal.tabpfn_regressor`).
         random_state: The seed of the data and the regressors.
 
     Examples:
@@ -97,6 +101,7 @@ class LocalConfoundingSetup(_ConfoundingSetup, name="local_confounding"):
         setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect, default).
         mode: ``"signed"`` (default), ``"abs"``, or ``"sq"``.
         regressor: ``"tabpfn"`` (default) or a model name of :mod:`shapiq_benchmark.models`.
+        regressor_params: Parameters of the regressor, e.g. ``{"version": "v2.5"}``.
         random_state: The seed of the data and the regressors.
 
     Examples:

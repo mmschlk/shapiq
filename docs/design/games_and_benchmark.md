@@ -211,14 +211,21 @@ setup_from_dict(setup.to_dict()) == setup   # the stored form, e.g. for run spec
 - **Missing values.** `LocalExplanation(imputer="missing")` passes absent features as missing
   values (NaN, or `+inf` for TabPFN v3 with `PASSTHROUGH_INF`) to a model that reads them. It is
   core's `BaselineImputer` with a one-row baseline of that value, so no new imputer was needed.
-  Downloading TabPFN v3 weights (`tabpfn>=8.1`) needs a Prior Labs license token
-  (`TABPFN_TOKEN`); the lock stays at tabpfn 6.4.1, so this game runs only where v3 is installed.
+- **TabPFN by version.** Users choose the TabPFN version (`version="v3"` in
+  `tabpfn_regressor`, in the registry's `model_params`, or in the causal setups'
+  `regressor_params`); `shapiq_games._tabpfn.build_tabpfn` builds it with tabpfn's
+  `create_default_for_version`, so a new TabPFN needs no code here. The default everywhere is
+  TabPFN v2, whose checkpoints download without a license: nothing in the repository (tests,
+  docs, CI) needs a Prior Labs license token, and the paper's versions (v2.5 for the causal
+  games, v3 for the `+inf` game) are an explicit opt-in. The `games` extra needs `tabpfn>=6.0`
+  (version selection); a version the installed tabpfn does not know, and `+inf` before
+  tabpfn 8.1, raise. The predictions also depend on the tabpfn version.
 - **Images.** The image games use [Imagenette](https://github.com/fastai/imagenette) (fast.ai, Apache-2.0), a ten-class subset of ImageNet with full-size photos: `load_imagenette(split, size)` downloads the official archive (160 or 320 px) from fast.ai, verifies its SHA-256, extracts the JPEGs once into the cache (path-checked), and returns them with their ImageNet class indices, so pretrained ImageNet classifiers explain them directly. The 31 example JPEGs that were served from a pinned commit of this repository are gone.
 - **Declared dependencies.** `openml`, `ucimlrepo` and `openpyxl` are part of the `benchmark` extra; before, they were not declared at all.
 
 ### Models
 
-- `build_model(name, task, random_state=..., preset=..., **params)` covers decision trees, random forests, XGBoost, LightGBM, CatBoost, MLPs, linear models, SVMs, Gaussian processes, nearest neighbors, and TabPFN. `random_state` is always passed through, and models run single-threaded where the library allows it.
+- `build_model(name, task, random_state=..., preset=..., **params)` covers decision trees, random forests, XGBoost, LightGBM, CatBoost, MLPs, linear models, SVMs, Gaussian processes, nearest neighbors, and TabPFN (v2 unless `version=` chooses another). `random_state` is always passed through, and models run single-threaded where the library allows it.
 - Hyperparameter presets (previously the Optuna JSONs in `shapiq_benchmark`) are Python dicts next to the registry (`preset="tuned"`). The Optuna script stays a benchmark tool and now works for any registered dataset.
 - The California torch network (it currently loads weights from a `tests/` path and silently falls back to random weights) is dropped in favor of the seeded generic `mlp` model.
 
@@ -274,7 +281,7 @@ results = run(benchmark, approximators, budgets, index="k-SII", order=2, seeds=[
 ```
 
 - `run` evaluates approximators × budgets × seeds, scores them with the metrics and returns a tidy table, which it can also write to a local CSV/JSON file. Which approximator runs for which index comes from the approximator's existing `valid_indices`; unsupported combinations are skipped and recorded as such, not dropped silently. Approximators that estimate the top order only (SHAP-IQ and SVARM-IQ for FSII and FBII) are scored on that order, marked in the `scored_orders` column, and get no faithfulness.
-- Exact values of `Benchmark.from_setup` are cached under `$SHAPIQ_DATA_DIR/ground_truth/<setup name>/<setup key>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, next to a `setup.json` that records what the key stands for. `Benchmark(game)` is not cached. The cache does not track package or model versions: the setup identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute.
+- Exact values of `Benchmark.from_setup` are cached under `$SHAPIQ_DATA_DIR/ground_truth/<setup name>/<setup key>/<computer>_<index>_<order>.json` using `InteractionValues.to_json_file`, next to a `setup.json` that records what the key stands for. `Benchmark(game)` is not cached. The cache does not track package or model versions: the setup identifies the game, so a genuinely new model (say, a new TabPFN) gets a new model name, and the cache is deleted (or `cache=False` passed) to recompute. TabPFN's predictions change with the `tabpfn` version even for the same checkpoint, so delete the cached values of TabPFN setups after a tabpfn upgrade.
 - `LocalXAIBench`, `PathdependentBench`, `InterventionalBench`, `TabPFNBench`, `ImageBench`, `bench_types.py` and `setup.py` go away. Building games from names lives in the setups.
 
 ### Chain of trust (enforced by `tests/shapiq_benchmark`)

@@ -37,7 +37,6 @@ from shapiq_benchmark.setups import (
     WeightedKNNSetup,
     setup_from_dict,
 )
-from tests.shapiq_games.helpers import is_installed
 
 if TYPE_CHECKING:
     from shapiq import Game
@@ -328,14 +327,59 @@ def test_local_explanation_with_missing_values_and_a_training_cap() -> None:
         LocalExplanationSetup(dataset="xor", model="linear", imputer="missing")
 
 
-@pytest.mark.skipif(not is_installed("tabpfn"), reason="tabpfn is not installed")
-def test_tabpfn_with_missing_values_needs_tabpfn_v3() -> None:
+def test_tabpfn_with_missing_values_reads_inf(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The setup builds TabPFN with PASSTHROUGH_INF and masks with +inf (a fake, no download)."""
     import importlib.metadata
-    import re
+    import sys
+    import types
 
-    installed = importlib.metadata.version("tabpfn")
-    if tuple(int(part) for part in re.findall(r"\d+", installed)[:2]) >= (8, 1):
-        pytest.skip("tabpfn reads +inf as missing; the heavy tests cover it")
-    setup = LocalExplanationSetup(dataset="xor", model="tabpfn", imputer="missing", n_train=50)
-    with pytest.raises(ValueError, match="tabpfn 8.1"):
-        setup.build()
+    built: list[dict] = []
+
+    class TabPFNRegressor:
+        def __init__(self, **params: object) -> None:
+            built.append(params)
+            self.inference_config = params.get("inference_config")
+
+        def fit(self, x: np.ndarray, y: np.ndarray) -> TabPFNRegressor:
+            return self
+
+        def predict(self, x: np.ndarray) -> np.ndarray:  # the sum of the features it can read
+            return np.where(np.isinf(x), 0.0, x).sum(axis=1)
+
+    TabPFNRegressor.__module__ = "tabpfn"
+    fake = types.ModuleType("tabpfn")
+    fake.TabPFNRegressor = TabPFNRegressor  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "tabpfn", fake)
+    version = importlib.metadata.version
+    monkeypatch.setattr(
+        importlib.metadata, "version", lambda name: "9.1.0" if name == "tabpfn" else version(name)
+    )
+    monkeypatch.setattr(
+        setups._ml_games, "build_model", lambda *_, **params: TabPFNRegressor(**params)
+    )
+    setup = LocalExplanationSetup(
+        dataset="independentlinear60",
+        dataset_params={"n_samples": 100},
+        model="tabpfn",
+        model_params={"version": "v3"},
+        imputer="missing",
+        n_train=50,
+    )
+    game = setup.build()
+    assert built[0]["version"] == "v3"
+    assert built[0]["inference_config"] == {"PASSTHROUGH_INF": True}
+    coalition = np.zeros((1, game.n_players), dtype=bool)
+    coalition[0, [0, 5]] = True
+    assert game(coalition)[0] == pytest.approx(game.x[[0, 5]].sum())  # absent features are +inf
+
+
+def test_confounding_setups_pass_the_regressor_params(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+    monkeypatch.setattr(setups._causal, "tabpfn_regressor", lambda **params: calls.append(params))
+    GlobalConfoundingSetup(regressor_params={"version": "v2.5"})._data()[3]()
+    assert calls == [{"random_state": 42, "version": "v2.5"}]
+    setup = GlobalConfoundingSetup(
+        n=200, regressor="linear", regressor_params={"fit_intercept": False}
+    )
+    assert setup.build().n_players == 4
+    assert setup.key != GlobalConfoundingSetup(n=200, regressor="linear").key

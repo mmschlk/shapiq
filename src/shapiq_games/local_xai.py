@@ -55,7 +55,7 @@ class LocalExplanation(Game):
     - ``"baseline"`` replaces them with a baseline value (the background mean or mode),
     - ``"missing"`` passes them to the model as missing values (``missing_value``, NaN by default),
       for models that handle missing values natively, e.g. XGBoost, LightGBM, scikit-learn's
-      histogram gradient boosting, or TabPFN v3, which reads ``+inf`` as missing when it is built
+      histogram gradient boosting, or TabPFN, which also reads ``+inf`` as missing when it is built
       with ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``),
     - an :class:`~shapiq.imputer.TabPFNImputer` removes them from TabPFN's context
       (remove-and-recontextualize; :class:`shapiq_benchmark.setups.LocalExplanationSetup` builds
@@ -88,7 +88,7 @@ class LocalExplanation(Game):
         >>> game = LocalExplanation(booster, data=X, x=0, imputer="missing")  # NaN by default
         >>> game.n_players
         5
-        >>> # TabPFN v3: LocalExplanation(tabpfn, X, x=0, imputer="missing", missing_value=np.inf)
+        >>> # TabPFN, +inf: LocalExplanation(tabpfn, X, x=0, imputer="missing", missing_value=np.inf)
     """
 
     def __init__(
@@ -121,7 +121,7 @@ class LocalExplanation(Game):
             sample_size: The number of background rows the marginal imputer averages over.
                 Defaults to ``100``.
             missing_value: The value absent features take with ``imputer="missing"``. Defaults
-                to NaN; TabPFN v3 needs ``np.inf`` (see above).
+                to NaN; ``np.inf`` is TabPFN's missing marker (see above).
             random_state: The seed of the imputer (unless an imputer is given). Defaults to
                 ``42``.
             normalize: Whether to center the game such that the value of the empty coalition is
@@ -208,7 +208,7 @@ class LocalExplanation(Game):
 
 
 def require_inf_passthrough() -> None:
-    """Raise unless the installed TabPFN reads ``inf`` as a missing value (``tabpfn>=8.1``, v3).
+    """Raise unless the installed TabPFN reads ``inf`` as a missing value (``tabpfn>=8.1``).
 
     Raises:
         ValueError: If the installed ``tabpfn`` is older than 8.1.
@@ -217,7 +217,7 @@ def require_inf_passthrough() -> None:
     version = tuple(int(part) for part in re.findall(r"\d+", installed)[:2])
     if version < _PASSTHROUGH_INF_TABPFN:
         msg = (
-            "TabPFN reads inf as a missing value only from tabpfn 8.1 on (TabPFN v3, built with "
+            "TabPFN reads inf as a missing value only from tabpfn 8.1 on (built with "
             f"inference_config={{'PASSTHROUGH_INF': True}}); installed: tabpfn {installed}."
         )
         raise ValueError(msg)
@@ -226,7 +226,7 @@ def require_inf_passthrough() -> None:
 def _check_missing_value(model: Any, missing_value: float) -> None:  # noqa: ANN401
     """Reject ``inf`` for a TabPFN model that does not read it as a missing value.
 
-    Without ``PASSTHROUGH_INF``, TabPFN v3 rejects ``inf``, and older TabPFN versions transform it
+    Without ``PASSTHROUGH_INF``, tabpfn 8.1 and later reject ``inf``, and older releases transform it
     in their preprocessing, so the game would silently explain something else.
     """
     if not np.isinf(missing_value) or not safe_isinstance(

@@ -4,6 +4,11 @@ Every model is built with an explicit ``random_state`` and single-threaded where
 allows it, so that a game built by a setup is reproducible. Optional backends (``xgboost``,
 ``lightgbm``, ``catboost``, ``tabpfn``) are imported lazily.
 
+``"tabpfn"`` builds TabPFN v2, whose checkpoints download without a license, with the version's
+default settings. Choose another version with ``version`` (e.g.
+``build_model("tabpfn", "regression", version="v3")``; the versions after v2 need a Prior Labs
+license token to download) or a checkpoint of your own with ``model_path``.
+
 Examples:
     >>> from shapiq_benchmark.datasets import load_dataset
     >>> from shapiq_benchmark.models import fit_model
@@ -14,6 +19,8 @@ Examples:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
+
+from shapiq_games._tabpfn import DEFAULT_TABPFN_VERSION, build_tabpfn
 
 from ._optional import require
 
@@ -181,7 +188,8 @@ def build_model(
         preset: ``"tuned"`` to use the hyperparameters in :data:`TUNED_PRESETS` (requires
             ``dataset``), or ``None`` for the defaults of the registry.
         dataset: The dataset name, needed for ``preset="tuned"``.
-        **params: Hyperparameters overriding the defaults and the preset.
+        **params: Hyperparameters overriding the defaults and the preset; for ``"tabpfn"``, also
+            the TabPFN ``version`` (default ``"v2"``).
 
     Returns:
         The unfitted model.
@@ -216,9 +224,10 @@ def build_model(
         cls = catboost.CatBoostClassifier if classification else catboost.CatBoostRegressor
         return cls(**{"thread_count": 1, "verbose": 0, "random_seed": random_state, **params})
     if name == "tabpfn":
-        tabpfn = require("tabpfn", purpose="the 'tabpfn' model")
-        cls = tabpfn.TabPFNClassifier if classification else tabpfn.TabPFNRegressor
-        return cls(**{"device": "cpu", "random_state": random_state, **params})
+        version = params.pop("version", DEFAULT_TABPFN_VERSION)
+        return build_tabpfn(
+            task, version, **{"device": "cpu", "random_state": random_state, **params}
+        )
     return _sklearn_model(name, task, random_state, params)
 
 
