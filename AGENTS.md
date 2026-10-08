@@ -61,8 +61,7 @@ Boosting converters live in separate modules such as `xgboost.py`,
 - Every git-tracked file under `src/` ships in the `shapiq` wheel (setuptools_scm
   file finder): the 1.7.0 wheel carried ~89 MB of `shapiq_games` CSVs and JPEGs.
   Never add data files (CSVs, images, weights, precomputed game values) under
-  `src/`; datasets are fetched and cached locally. See
-  `docs/design/games_and_benchmark.md` for the design.
+  `src/`; datasets are fetched and cached locally (`shapiq_benchmark.datasets`).
 - `shapiq_games` holds game definitions only, built from objects (a model, data, a point). Datasets,
   the model registry, and building games from names live in `shapiq_benchmark` (`datasets/`,
   `models.py`, `setups/`); do not add dataset loading or a `from_config` to a game. A new game
