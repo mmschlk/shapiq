@@ -56,6 +56,146 @@ Boosting converters live in separate modules such as `xgboost.py`,
   "in set -> left"; the XGBoost parser therefore swaps children at categorical
   nodes.
 
+## Games and benchmark gotchas (observed 2026-10-06)
+
+- Every git-tracked file under `src/` ships in the `shapiq` wheel (setuptools_scm
+  file finder): the 1.7.0 wheel carried ~89 MB of `shapiq_games` CSVs and JPEGs.
+  Never add data files (CSVs, images, weights, precomputed game values) under
+  `src/`; datasets are fetched and cached locally (`shapiq_benchmark.datasets`).
+- Core has no dataset loaders anymore (`shapiq.datasets` was removed); examples and the
+  README load data with `shapiq_benchmark.datasets.load_dataset` or scikit-learn's fetchers.
+  Keep the three CSVs in `data/` at the repository root anyway: released versions (up to 1.7.x)
+  download their `shapiq.load_*` files from `main/data/` on first use, so deleting them breaks
+  every release's loaders. scikit-learn's California housing differs from that CSV by one unit
+  in the last digit of three columns (the CSV lost it); the core test fixture uses scikit-learn.
+- scikit-learn's fetchers race when several processes fetch into one data folder (observed
+  2026-10-08 under `pytest -n logical` in the coverage job: one worker deletes `cal_housing.tgz`
+  while another opens it, 134 errors). The core fixture fetches into one folder per xdist worker,
+  and `shapiq_benchmark` into a temporary folder per download (its CSV cache is atomic).
+- `shapiq_games` holds game definitions only, built from objects (a model, data, a point). Datasets,
+  the model registry, and building games from names live in `shapiq_benchmark` (`datasets/`,
+  `models.py`, `setups/`); do not add dataset loading or a `from_config` to a game. A new game
+  follows the contract in `shapiq_games/_base.py` (checked by `tests/shapiq_games/test_contract.py`)
+  and, unless it is synthetic, gets a typed setup (`tests/shapiq_benchmark/test_setups.py`
+  fails while one is missing).
+- `shapiq_benchmark` datasets are downloaded on first use into `~/.cache/shapiq` (override with
+  `$SHAPIQ_DATA_DIR`). Tests that download pretrained models or OpenML/UCI data only run with
+  `SHAPIQ_RUN_HEAVY_TESTS=1`.
+- Run `tests/shapiq_games` and `tests/shapiq_benchmark` serially (observed 2026-10-07): under
+  `pytest -n 8` on 4 cores, the multi-threaded model libraries (XGBoost inside the conditional
+  imputer, k-means) oversubscribe the cores, and the contract tests took 410 s instead of 4 s.
+  Both suites together take about a minute serially.
+- A pandas CSV round trip is not lossless by default: `DataFrame.to_csv` can drop the last
+  significant digit of a float, and `pd.read_csv`'s default fast parser is not correctly
+  rounded for 17-digit strings. Data caches that must reproduce values exactly write with
+  `float_format="%.17g"` and read with `float_precision="round_trip"` (see
+  `shapiq_benchmark/datasets/_tabular.py`).
+- `ucimlrepo` does not serve every UCI dataset as the website does (observed 2026-10-07): it
+  refuses to export arrhythmia (5) and thyroid (102), has only the small soybean table, and
+  some column names differ from the UCI files (`famiily`). Before pointing a loader at it, run
+  `SHAPIQ_RUN_HEAVY_TESTS=1 uv run pytest tests/shapiq_benchmark/test_heavy.py -k upstream`.
+- Hand numpy arrays to torch as a copy (`np.array(x)`), not `np.ascontiguousarray(x)`: torch
+  rejects negative strides, and a one-row reversed view counts as contiguous, so
+  `ascontiguousarray` returns it unchanged (the ViT game crashed on `coalitions[::-1]`).
+- With the full core suite under `pytest -n 8`, the ProxySPEX tests
+  (`test_approximator_proxyspex.py`, `test_explainer_proxy_integration.py`) time out or raise
+  `LightGBMError: Replace training data failed`; run serially, they pass in seconds. Re-run
+  them alone before blaming a change. The SPEX tests also need the optional `sparse` extra
+  (`sparse-transform`, `galois`); without it they fail with `ModuleNotFoundError`.
+
+## Games and benchmark gotchas (observed 2026-10-07, self-review)
+
+- A torch forward pass on CPU picks kernels by batch size, so ResNet-18 and the ViT gave the
+  same coalition values up to 1e-6 apart in a batch of 16 and alone. The image games pad every
+  pass to `batch_size` (`vision/_batching.py`) and return the stored v(∅) for empty rows; keep
+  both, or the batch-composition contract breaks for the real models (the contract tests only
+  use a numpy classifier).
+- `DataFrame.to_numpy(dtype=float)` can return a read-only view under pandas 3 (copy-on-write)
+  when no conversion is needed; pass `copy=True` before writing into the array.
+- Observational value functions are not null-player games: with the conditional imputer, a
+  feature the model ignores still gets a nonzero Shapley value (conditioning on it changes the
+  sampled background). The null-player contract test covers the interventional games only.
+- Setup fields are stored read-only in JSON form (`_FrozenDict`, tuples): derive variants with
+  `dataclasses.replace`, and give a setup subclass its own `name=`, or creating it raises.
+- A setup's cache key covers its fields, its class `version` and `RECIPE_VERSION`
+  (`setups/_base.py`). Bump `version` when one setup's `build` changes its game, and
+  `RECIPE_VERSION` when shared code does (datasets and their preprocessing, `sample_rows`,
+  `stratified_rows`, splits, registry defaults); otherwise stale ground truth is served silently.
+- The image games derive from `RegionGame` (`vision/_region_game.py`): a subclass sets `image`,
+  `regions` and `_fill` (`None` in token space), implements `_evaluate`, and calls
+  `super().__init__` last; do not override `value_function` (it answers the empty coalition with
+  the stored value). The token backends (ViT, DINOv2) return every class probability; the game
+  picks the class.
+- LightGBM ignores `subsample` unless `subsample_freq` > 0 (the tuned presets carried a
+  `subsample` that did nothing).
+- shapiq's Monte Carlo approximators (SHAP-IQ, SVARM-IQ) estimate FSII and FBII of the top order
+  only (`estimate.min_order == order`); the runner scores those on that order.
+
+## Games and benchmark gotchas (observed 2026-10-08, DINOv2 / CLIP / TabPFN v3)
+
+- tabpfn 9.1 asks for a Prior Labs license token (`TABPFN_TOKEN`, or a token cached by a
+  one-time browser login) before downloading the gated checkpoints v2.5, v2.6, v3 and v3.5 (its
+  default); TabPFN v2 is license-free, and a checkpoint already on disk is never checked. Our
+  TabPFN default is therefore v2 everywhere (`DEFAULT_TABPFN_VERSION`), users opt into other
+  versions with `version=`, and nothing in the repository (tests, docs examples, CI) may need a
+  token. Do not fetch the checkpoints directly to get around the license step.
+- tabpfn 9.1 refuses more than 1,000 training rows on a CPU unless
+  `ignore_pretraining_limits=True` (6.4.1 only warned); the registry builds TabPFN on the CPU.
+- TabPFN's predictions depend on the `tabpfn` version, not only the checkpoint: the causal game
+  on v2.5 moved by up to 0.47 between tabpfn 6.4.1 and 9.1. Cached ground truth of a TabPFN
+  setup is stale after a tabpfn upgrade (the cache does not track package versions).
+- In transformers 5, `CLIPModel.get_text_features` returns an output object, not a tensor (the
+  paper script divided it by its norm). Use `text_projection(text_model(...).pooler_output)`.
+- A float32 matrix product's summation order depends on the number of rows, so
+  `embeddings @ text` changed in the 16th digit with the batch; the CLIP game sums row-wise.
+- The Hugging Face DINOv2 checkpoint (`facebook/dinov2-base-imagenet1k-1-layer`) has an all-zero,
+  untrained mask token (`use_mask_token=True`, but iBOT's token was not converted). Masking is far
+  out of distribution for it (one masked player of 20: probability 0.85 -> 0.001, the same through
+  HF's own `bool_masked_pos`), so the DINOv2 game only drops tokens, as the paper's script does;
+  do not add masking or image-space removal back for DINOv2.
+- Feed the Hugging Face models the processor's own `pixel_values` (resized and cropped in float),
+  not a PIL resize rounded to `uint8`: that one-pixel-level difference moved DINOv2's values by up
+  to 0.2 against the paper's script. The DINOv2 and CLIP games now match their scripts to 3e-6 and
+  1e-7 on CPU; their `image` is the processor's pixels shown as `uint8` (`displayed_image`).
+- A scikit-learn tree trained without missing values sends NaN to its larger child; a point can
+  follow that path at every split, which makes a NaN-baseline game constant. Use a
+  model that learns missing-value directions (`HistGradientBoosting*`) in tests.
+- SigLIP texts must be padded to 64 tokens (`padding="max_length", max_length=64`) and
+  lowercased, as the models were trained; the SigLIP 2 tokenizer of transformers 5.3 does not
+  lowercase by itself ("A Photo of a Dog" scored 0.046 instead of 0.094). Its tokenizers need
+  `sentencepiece` and `protobuf` (both in the games extra). Only the fixed-resolution SigLIP 2
+  checkpoints load as `SiglipModel`; the NaFlex ones are `Siglip2Model` with patchified input.
+- SigLIP has no class token (it pools all tokens by attention), so token dropping uses
+  `n_prefix=0` and the empty coalition is an empty sequence, which pools to the head's output
+  bias. SigLIP's processor resizes the whole image to 224 x 224 without cropping.
+
+## Games performance gotchas (observed 2026-10-09)
+
+- The games' values must not depend on the batch, so a speed-up must keep every float's
+  arithmetic, not only the result up to rounding. Check a rewrite against the old code value by
+  value (`np.array_equal`), one coalition at a time and in a batch.
+- Batch model calls only for models whose output for a row does not depend on the other rows of
+  the call: tree models (`predicts_row_by_row` in `shapiq_games/_base.py`). A BLAS or torch model
+  can round a row differently in a call with more rows (one row of 40 changed in the last digit).
+  The core marginal and baseline imputers batch every model and are only exact up to that.
+- numpy sums are not always in order: a reduction over a `(k, 1)` or `(1, n)` array collapses to
+  one dimension and sums pairwise, while a `(k, n)` axis-0 sum adds row after row. Use
+  `np.cumsum(...)[-1]` (or `np.add.accumulate`) where the order must be fixed, e.g. the
+  path-dependent tree game summing its leaves in breadth-first order. Python's built-in `sum()`
+  of floats is compensated (Neumaier) since 3.12, so it differs from a numpy running sum too.
+- Library overhead dominates cheap games: `scipy.stats.entropy` costs about 0.3 ms per call,
+  scikit-learn metrics about 0.4 ms, a scikit-learn forest's `predict` about 1 to 5 ms (joblib).
+  `_training.py` has numpy versions of the named metrics; `tests/shapiq_games` checks that they
+  equal scikit-learn's bit for bit, so an upgrade that changes scikit-learn's arithmetic fails there.
+- XGBoost's converted trees hold float32 node weights and leaf values. Computing with them in
+  float32 (e.g. `1 - share` of a float32 share) cost the path-dependent game 1e-6 against TreeSHAP;
+  cast to float64 first.
+- The path-dependent tree game evaluates a tree level by level (one numpy operation per level for
+  all coalitions, at least 64 coalitions per pass): on a deep 10-tree forest 100x faster than node
+  by node for one coalition, 10x for 64 (the batches of the permutation approximators), about the
+  same at 1,000, but 1.45x slower at 4,096 (the level arrays are copied more often than per-node
+  vectors). A second, node-by-node path for large batches was left out for readability.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash

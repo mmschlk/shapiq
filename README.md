@@ -30,13 +30,15 @@ or via `pip`:
 pip install shapiq
 ```
 
+The games (`shapiq_games`) and the benchmark (`shapiq_benchmark`) ship with `shapiq` and need the extras `shapiq[games]` and `shapiq[benchmark]`.
+
 ## 👀 Upcoming
 See what’s on the horizon for the library in our [GitHub Project Board](https://github.com/users/mmschlk/projects/4). We plan and track upcoming features, improvements, and maintenance tasks there including new explainers, performance optimizations, and expanded model support.
 
 ## ⭐ Quickstart
 
 You can explain your model with `shapiq.explainer` and visualize Shapley interactions with `shapiq.plot`.
-If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.games` modules.
+If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.game_theory` modules, and the games of `shapiq_games`.
 
 ### Compute any-order feature interactions
 
@@ -46,7 +48,8 @@ Just load your data and model, and then use a `shapiq.Explainer` to compute Shap
 ```python
 import shapiq
 # load data
-X, y = shapiq.load_california_housing(to_numpy=True)
+from sklearn.datasets import fetch_california_housing
+X, y = fetch_california_housing(return_X_y=True)
 # train a model
 from sklearn.ensemble import RandomForestRegressor
 model = RandomForestRegressor()

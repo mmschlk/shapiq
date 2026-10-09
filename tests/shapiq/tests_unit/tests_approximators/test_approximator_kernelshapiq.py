@@ -35,7 +35,8 @@ def test_approximate(budget, order, index):
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
-    approximator = KernelSHAPIQ(n, max_order=order, index=index)
+    # seeded: unseeded, a rare sample misses the tolerances below (e.g. 0.14 for (1, 2, 3))
+    approximator = KernelSHAPIQ(n, max_order=order, index=index, random_state=42)
     estimates = approximator.approximate(budget, game)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == order

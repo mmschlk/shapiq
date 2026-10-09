@@ -7,7 +7,8 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
 
     import shapiq
     # load data
-    X, y = shapiq.load_california_housing(to_numpy=True)
+    from sklearn.datasets import fetch_california_housing
+    X, y = fetch_california_housing(return_X_y=True)
     # train a model
     from sklearn.ensemble import RandomForestRegressor
     model = RandomForestRegressor()

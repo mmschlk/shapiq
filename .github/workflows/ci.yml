@@ -63,7 +63,7 @@ jobs:
             -   name: Test import
                 run: uv run --no-sync python -c "import shapiq; print('shapiq imported successfully')"
     # ----------------------------------------------------------------------------------------------
-    # Install and Import Check `shapiq_games`
+    # Install, Import, and Test `shapiq_games` with the `games` extra only
     # ----------------------------------------------------------------------------------------------
     install_and_import_shapiq_games:
         name: Install and import check shapiq-games
@@ -77,12 +77,18 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
-            -   name: Create uv virtual environment
-                run: uv venv
-            -   name: Install shapiq package and dependencies for shapiq-games
-                run: uv sync --no-dev --all-extras --group all_ml
+            # only the games extra: proves it holds everything the games import
+            -   name: Install shapiq package with the games extra
+                run: uv sync --no-dev --extra games --group test
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
+            # the tests skip a game whose dependency is missing: check that the extra installs them all
+            -   name: Test import of the games' optional dependencies
+                run: uv run --no-sync python -c "import google.protobuf, sentencepiece, skimage, tabpfn, torch, torchvision, transformers, xgboost"
+            # serial on purpose: under pytest-xdist the multi-threaded model libraries
+            # oversubscribe the runner's cores (seconds serially, minutes in parallel)
+            -   name: Run shapiq_games unit tests
+                run: uv run --no-sync pytest "tests/shapiq_games"
     # ----------------------------------------------------------------------------------------------
     # Install, Import, and Test `shapiq_benchmark`
     # ----------------------------------------------------------------------------------------------
@@ -102,8 +108,31 @@ jobs:
                 run: uv sync --all-extras
             -   name: Test import of shapiq_benchmark
                 run: uv run --no-sync python -c "import shapiq_benchmark; print('shapiq_benchmark imported successfully')"
-            -   name: Run shapiq_benchmark unit tests
+            -   name: Run shapiq_benchmark unit tests (serially, see above)
                 run: uv run --no-sync pytest "tests/shapiq_benchmark"
+    # ----------------------------------------------------------------------------------------------
+    # Heavy Tests of `shapiq_games` and `shapiq_benchmark` (manual runs only)
+    # ----------------------------------------------------------------------------------------------
+    test_shapiq_benchmark_heavy:
+        name: Heavy tests of shapiq-benchmark (downloads)
+        # pretrained models and OpenML/UCI/Imagenette downloads: run from the Actions tab
+        if: github.event_name == 'workflow_dispatch'
+        runs-on: ubuntu-latest
+        needs:
+            - install_and_import_shapiq
+        env:
+            SHAPIQ_RUN_HEAVY_TESTS: "1"
+        steps:
+            -   uses: actions/checkout@v7
+            -   name: Set up Python and uv
+                uses: astral-sh/setup-uv@v7
+                with:
+                    python-version: "3.12"
+                    enable-cache: true
+            -   name: Install shapiq package and dependencies for shapiq-benchmark
+                run: uv sync --all-extras
+            -   name: Run the heavy tests
+                run: uv run --no-sync pytest "tests/shapiq_benchmark/test_heavy.py" -rs
     # ----------------------------------------------------------------------------------------------
     # Unit Tests for shapiq (Stable Python and Matrix)
     # ----------------------------------------------------------------------------------------------
@@ -119,6 +148,12 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Run unit tests
@@ -149,6 +184,12 @@ jobs:
             -   if: matrix.os == 'macos-latest'
                 name: Install libomp on macOS
                 run: brew install libomp
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Run unit tests
@@ -191,6 +232,12 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Measure coverage
