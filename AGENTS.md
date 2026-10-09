@@ -713,3 +713,13 @@ uv run pre-commit run --all-files
   authenticated selection map, verify each target and its ancestry, and retain
   every original artifact hash check. Do not broadly enable arbitrary symlinks
   or rewrite original snapshots merely to package the combined cohort.
+  Snapshot pins can use the case-link path while artifact pins use its canonical
+  target. Map a missing alias pin only through that authenticated link to an
+  existing canonical pin; retain the artifact's byte-hash check.
+- Browser worker queries now prefer precomputed summaries, whose deferred query
+  counts are `null`. For exact main/worker parity, request `load_details: true`
+  on the worker; separately compare the fast path against Python scores with
+  the established numerical tolerance and exact coverage/selection checks.
+- Select reproduction report files from the authenticated manifest's asset
+  descriptors. A `partition-` filename prefix also matches UI scripts such as
+  `partition-about.js`, which are not result partitions.

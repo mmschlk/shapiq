@@ -1,9 +1,9 @@
 {
-  "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-07/data.json",
-  "sha256": "2313016d6e16519a69fb3e02a6411db865fb335b7e17890d1e5911366ec33760",
+  "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-09/data.json",
+  "sha256": "3fd85eb8f59897d3724ae9c2535b65b1efcb5f00bca2dc8bdb520eda65a4f1ff",
   "archive": {
-    "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-07/website-data.zip",
-    "sha256": "d514508b8da1cb869c9d1d55ad7c2ec81b66195a491359c895718cca635ce527",
-    "bytes": 639239613
+    "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-09/website-data.zip",
+    "sha256": "d99eedecf78e88defb41a84e5ec996dd93241f7e778061c046cfd8c6a392ec59",
+    "bytes": 765538756
   }
 }

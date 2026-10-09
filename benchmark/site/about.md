@@ -27,7 +27,9 @@ baseline is excluded. Main effects and pairs can also be viewed separately.
 **Reading the tables:** an instance is one game construction with one of four
 construction seeds. “Exact / planned” counts available exact references in the
 published cohort, **not** successful estimator runs. The published total is
-**2,964 / 5,080 instances**; additional runs are in progress.
+**4,568 / 5,080 instances (89.9% reference coverage)**; 512 instances have no
+qualified reference. All admitted allocations have ended. Estimator coverage remains
+partial: failures and unattempted cells are unscored.
 
 ## Explaining an individual prediction
 
@@ -51,30 +53,30 @@ XGBoost and LightGBM. Player sets below are the planned grids, where feasible.
 
 | Dataset / models | Features: small / tree | Exact / planned instances |
 | --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14 / 8 | 32 / 72 |
-| Mushroom · core | 4, 8, 12, 14, 16 / 8, 16 | 47 / 88 |
-| Ionosphere · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 72 / 112 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 179 / 224 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 8, 16 | 63 / 104 |
-| Digits · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 112 / 152 |
-| Wine (classification) · core | 4, 8, 12, 13 / 8 | 24 / 56 |
-| Amazon Employee Access · core | 4, 8, 9 / 8 | 24 / 48 |
-| APS Failure · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128 | 118 / 160 |
-| Anneal · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 71 / 112 |
-| Splice · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 71 / 112 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 / 8, 16 | 48 / 88 |
-| Wine Quality · core + extra | 4, 8, 12 / 8 | 24 / 64 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 95 / 136 |
-| NHANES I · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 91 / 136 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 184 / 224 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 15 / 8 | 39 / 80 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 111 / 152 |
-| California Housing · core | 4, 8 / 8 | 24 / 40 |
-| Diabetes · core | 4, 8, 10 / 8 | 24 / 48 |
-| Bike Sharing · core | 4, 8, 12 / 8 | 23 / 48 |
+| Adult Census · core + extra | 4, 8, 12, 14 / 8 | 68 / 72 |
+| Mushroom · core | 4, 8, 12, 14, 16 / 8, 16 | 85 / 88 |
+| Ionosphere · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 109 / 112 |
+| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 215 / 224 |
+| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 8, 16 | 101 / 104 |
+| Digits · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 148 / 152 |
+| Wine (classification) · core | 4, 8, 12, 13 / 8 | 53 / 56 |
+| Amazon Employee Access · core | 4, 8, 9 / 8 | 44 / 48 |
+| APS Failure · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128 | 153 / 160 |
+| Anneal · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 109 / 112 |
+| Splice · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 109 / 112 |
+| Credit Card Default · core | 4, 8, 12, 14, 16 / 8, 16 | 84 / 88 |
+| Wine Quality · core + extra | 4, 8, 12 / 8 | 61 / 64 |
+| Communities and Crime · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 133 / 136 |
+| NHANES I · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 124 / 136 |
+| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 220 / 224 |
+| Miami Housing · core + extra | 4, 8, 12, 14, 15 / 8 | 76 / 80 |
+| Superconductivity · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 147 / 152 |
+| California Housing · core | 4, 8 / 8 | 36 / 40 |
+| Diabetes · core | 4, 8, 10 / 8 | 44 / 48 |
+| Bike Sharing · core | 4, 8, 12 / 8 | 45 / 48 |
 | Airfoil Self Noise · core | 4, 5 / — | 16 / 16 |
-| Concrete Strength · core | 4, 8 / 8 | 24 / 40 |
-| Protein · core | 4, 8, 9 / 8 | 24 / 48 |
+| Concrete Strength · core | 4, 8 / 8 | 37 / 40 |
+| Protein · core | 4, 8, 9 / 8 | 45 / 48 |
 
 ## Valuing training data
 
@@ -100,30 +102,30 @@ classification datasets. “—” means no neighbor games.
 
 | Dataset / models | Players: groups / neighbors | Exact / planned instances |
 | --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 74 / 116 |
-| Mushroom · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 44 / 88 |
-| Ionosphere · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 31 / 72 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 95 / 148 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 67 / 108 |
-| Digits · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 88 / 132 |
-| Wine (classification) · core | 4, 8, 12, 14, 16 / 32, 64, 128 | 23 / 64 |
-| Amazon Employee Access · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 44 / 88 |
-| APS Failure · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 46 / 88 |
-| Anneal · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512 | 38 / 80 |
-| Splice · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 46 / 88 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 43 / 88 |
-| Wine Quality · core + extra | 4, 8, 12, 14, 16 / — | 20 / 60 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 / — | 21 / 40 |
-| NHANES I · core | 4, 8, 12, 14, 16 / — | 19 / 40 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / — | 57 / 100 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 16 / — | 21 / 68 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 / — | 38 / 92 |
-| California Housing · core | 4, 8, 12, 14, 16 / — | 15 / 40 |
-| Diabetes · core | 4, 8, 12, 14, 16 / — | 23 / 40 |
-| Bike Sharing · core | 4, 8, 12, 14, 16 / — | 18 / 40 |
-| Airfoil Self Noise · core | 4, 8, 12, 14, 16 / — | 22 / 40 |
-| Concrete Strength · core | 4, 8, 12, 14, 16 / — | 20 / 40 |
-| Protein · core | 4, 8, 12, 14, 16 / — | 16 / 40 |
+| Adult Census · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 109 / 116 |
+| Mushroom · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 81 / 88 |
+| Ionosphere · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 66 / 72 |
+| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 128 / 148 |
+| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 102 / 108 |
+| Digits · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 124 / 132 |
+| Wine (classification) · core | 4, 8, 12, 14, 16 / 32, 64, 128 | 58 / 64 |
+| Amazon Employee Access · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 79 / 88 |
+| APS Failure · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 78 / 88 |
+| Anneal · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512 | 75 / 80 |
+| Splice · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 81 / 88 |
+| Credit Card Default · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 78 / 88 |
+| Wine Quality · core + extra | 4, 8, 12, 14, 16 / — | 45 / 60 |
+| Communities and Crime · core | 4, 8, 12, 14, 16 / — | 32 / 40 |
+| NHANES I · core | 4, 8, 12, 14, 16 / — | 29 / 40 |
+| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / — | 88 / 100 |
+| Miami Housing · core + extra | 4, 8, 12, 14, 16 / — | 47 / 68 |
+| Superconductivity · core + extra | 4, 8, 12, 14, 16 / — | 62 / 92 |
+| California Housing · core | 4, 8, 12, 14, 16 / — | 25 / 40 |
+| Diabetes · core | 4, 8, 12, 14, 16 / — | 35 / 40 |
+| Bike Sharing · core | 4, 8, 12, 14, 16 / — | 29 / 40 |
+| Airfoil Self Noise · core | 4, 8, 12, 14, 16 / — | 34 / 40 |
+| Concrete Strength · core | 4, 8, 12, 14, 16 / — | 32 / 40 |
+| Protein · core | 4, 8, 12, 14, 16 / — | 27 / 40 |
 
 ## Selecting useful features
 
@@ -140,24 +142,24 @@ LightGBM, RBF SVM + MLP, at **12 features only**.
 
 | Dataset / models | Features | Exact / planned instances |
 | --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14 | 23 / 48 |
-| Mushroom · core | 4, 8, 12, 14, 16 | 22 / 40 |
-| Ionosphere · core | 4, 8, 12, 14, 16 | 23 / 40 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 | 19 / 56 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 | 23 / 56 |
-| Digits · core + extra | 4, 8, 12, 14, 16 | 22 / 56 |
-| Wine (classification) · core | 4, 8, 12, 13 | 24 / 32 |
+| Adult Census · core + extra | 4, 8, 12, 14 | 42 / 48 |
+| Mushroom · core | 4, 8, 12, 14, 16 | 32 / 40 |
+| Ionosphere · core | 4, 8, 12, 14, 16 | 35 / 40 |
+| Bioresponse · core + extra | 4, 8, 12, 14, 16 | 42 / 56 |
+| Breast Cancer · core + extra | 4, 8, 12, 14, 16 | 49 / 56 |
+| Digits · core + extra | 4, 8, 12, 14, 16 | 49 / 56 |
+| Wine (classification) · core | 4, 8, 12, 13 | 29 / 32 |
 | Amazon Employee Access · core | 4, 8, 9 | 22 / 24 |
-| APS Failure · core | 4, 8, 12, 14, 16 | 19 / 40 |
-| Anneal · core | 4, 8, 12, 14, 16 | 22 / 40 |
-| Splice · core | 4, 8, 12, 14, 16 | 19 / 40 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 | 19 / 40 |
-| Wine Quality · core + extra | 4, 8, 12 | 22 / 40 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 | 20 / 40 |
-| NHANES I · core | 4, 8, 12, 14, 16 | 19 / 40 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 | 21 / 56 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 15 | 20 / 56 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 | 17 / 56 |
+| APS Failure · core | 4, 8, 12, 14, 16 | 29 / 40 |
+| Anneal · core | 4, 8, 12, 14, 16 | 34 / 40 |
+| Splice · core | 4, 8, 12, 14, 16 | 33 / 40 |
+| Credit Card Default · core | 4, 8, 12, 14, 16 | 29 / 40 |
+| Wine Quality · core + extra | 4, 8, 12 | 33 / 40 |
+| Communities and Crime · core | 4, 8, 12, 14, 16 | 31 / 40 |
+| NHANES I · core | 4, 8, 12, 14, 16 | 27 / 40 |
+| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 | 49 / 56 |
+| Miami Housing · core + extra | 4, 8, 12, 14, 15 | 40 / 56 |
+| Superconductivity · core + extra | 4, 8, 12, 14, 16 | 38 / 56 |
 | California Housing · core | 4, 8 | 15 / 16 |
 | Diabetes · core | 4, 8, 10 | 24 / 24 |
 | Bike Sharing · core | 4, 8, 12 | 24 / 24 |
@@ -181,5 +183,5 @@ LightGBM, RBF SVM + MLP, at **12 features only**.
   NHANES I uses its supplied survival label as a regression surrogate.
 - **Timing:** measured estimator time on cached games; estimated oracle costs are
   shown separately. These are diagnostic timings, not isolated end-to-end timings.
-- **Reproduction:** [download saved games, results and instructions](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-07).
+- **Reproduction:** [download saved games, results and instructions](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-09).
   The dashboard also exports selected results as JSON or CSV.

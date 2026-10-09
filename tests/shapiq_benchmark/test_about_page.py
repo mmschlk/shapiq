@@ -47,7 +47,7 @@ def test_math_preserves_tex_and_escapes_html() -> None:
     assert '<p><div class="math">' not in rendered
 
 
-def test_all_dataset_tables_are_closed_with_original_counts() -> None:
+def test_all_dataset_tables_are_closed_with_published_counts() -> None:
     source = (SITE / "about.md").read_text()
     rendered = render_about(source)
     assert rendered.count('<details class="datasetTable">') == 3
@@ -57,9 +57,12 @@ def test_all_dataset_tables_are_closed_with_original_counts() -> None:
     totals = re.findall(r"\| (\d+) / (\d+) \|", source)
     assert len(totals) == 72
     assert tuple(map(sum, zip(*[(int(a), int(b)) for a, b in totals], strict=True))) == (
-        2964,
+        4568,
         5080,
     )
+    assert "89.9% reference coverage" in source
+    assert "Estimator coverage remains\npartial" in source
+    assert "additional runs are in progress" not in source
 
 
 @pytest.mark.parametrize("source", ["# Title", "# Title\n\n[TOC]\n\n[TOC]"])

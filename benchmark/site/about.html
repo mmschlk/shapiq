@@ -40,7 +40,9 @@ baseline is excluded. Main effects and pairs can also be viewed separately.</p>
 <p><strong>Reading the tables:</strong> an instance is one game construction with one of four
 construction seeds. “Exact / planned” counts available exact references in the
 published cohort, <strong>not</strong> successful estimator runs. The published total is
-<strong>2,964 / 5,080 instances</strong>; additional runs are in progress.</p>
+<strong>4,568 / 5,080 instances (89.9% reference coverage)</strong>; 512 instances have no
+qualified reference. All admitted allocations have ended. Estimator coverage remains
+partial: failures and unattempted cells are unscored.</p>
 <h2 id="explaining-an-individual-prediction">Explaining an individual prediction</h2>
 <p><strong>Players are input features.</strong> Fit a predictor <span class="math">\(h\)</span> once and explain one held-out
 point <span class="math">\(x\)</span>. For the small games, keep <span class="math">\(x\)</span>'s selected features and replace the others
@@ -67,107 +69,107 @@ XGBoost and LightGBM. Player sets below are the planned grids, where feasible.</
 <tr>
 <td>Adult Census · core + extra</td>
 <td>4, 8, 12, 14 / 8</td>
-<td style="text-align:right">32 / 72</td>
+<td style="text-align:right">68 / 72</td>
 </tr>
 <tr>
 <td>Mushroom · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16</td>
-<td style="text-align:right">47 / 88</td>
+<td style="text-align:right">85 / 88</td>
 </tr>
 <tr>
 <td>Ionosphere · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32</td>
-<td style="text-align:right">72 / 112</td>
+<td style="text-align:right">109 / 112</td>
 </tr>
 <tr>
 <td>Bioresponse · core + extra</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512</td>
-<td style="text-align:right">179 / 224</td>
+<td style="text-align:right">215 / 224</td>
 </tr>
 <tr>
 <td>Breast Cancer · core + extra</td>
 <td>4, 8, 12, 14, 16 / 8, 16</td>
-<td style="text-align:right">63 / 104</td>
+<td style="text-align:right">101 / 104</td>
 </tr>
 <tr>
 <td>Digits · core + extra</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64</td>
-<td style="text-align:right">112 / 152</td>
+<td style="text-align:right">148 / 152</td>
 </tr>
 <tr>
 <td>Wine (classification) · core</td>
 <td>4, 8, 12, 13 / 8</td>
-<td style="text-align:right">24 / 56</td>
+<td style="text-align:right">53 / 56</td>
 </tr>
 <tr>
 <td>Amazon Employee Access · core</td>
 <td>4, 8, 9 / 8</td>
-<td style="text-align:right">24 / 48</td>
+<td style="text-align:right">44 / 48</td>
 </tr>
 <tr>
 <td>APS Failure · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64, 128</td>
-<td style="text-align:right">118 / 160</td>
+<td style="text-align:right">153 / 160</td>
 </tr>
 <tr>
 <td>Anneal · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32</td>
-<td style="text-align:right">71 / 112</td>
+<td style="text-align:right">109 / 112</td>
 </tr>
 <tr>
 <td>Splice · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32</td>
-<td style="text-align:right">71 / 112</td>
+<td style="text-align:right">109 / 112</td>
 </tr>
 <tr>
 <td>Credit Card Default · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16</td>
-<td style="text-align:right">48 / 88</td>
+<td style="text-align:right">84 / 88</td>
 </tr>
 <tr>
 <td>Wine Quality · core + extra</td>
 <td>4, 8, 12 / 8</td>
-<td style="text-align:right">24 / 64</td>
+<td style="text-align:right">61 / 64</td>
 </tr>
 <tr>
 <td>Communities and Crime · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64</td>
-<td style="text-align:right">95 / 136</td>
+<td style="text-align:right">133 / 136</td>
 </tr>
 <tr>
 <td>NHANES I · core</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64</td>
-<td style="text-align:right">91 / 136</td>
+<td style="text-align:right">124 / 136</td>
 </tr>
 <tr>
 <td>QSAR-TID11 · core + extra</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512</td>
-<td style="text-align:right">184 / 224</td>
+<td style="text-align:right">220 / 224</td>
 </tr>
 <tr>
 <td>Miami Housing · core + extra</td>
 <td>4, 8, 12, 14, 15 / 8</td>
-<td style="text-align:right">39 / 80</td>
+<td style="text-align:right">76 / 80</td>
 </tr>
 <tr>
 <td>Superconductivity · core + extra</td>
 <td>4, 8, 12, 14, 16 / 8, 16, 32, 64</td>
-<td style="text-align:right">111 / 152</td>
+<td style="text-align:right">147 / 152</td>
 </tr>
 <tr>
 <td>California Housing · core</td>
 <td>4, 8 / 8</td>
-<td style="text-align:right">24 / 40</td>
+<td style="text-align:right">36 / 40</td>
 </tr>
 <tr>
 <td>Diabetes · core</td>
 <td>4, 8, 10 / 8</td>
-<td style="text-align:right">24 / 48</td>
+<td style="text-align:right">44 / 48</td>
 </tr>
 <tr>
 <td>Bike Sharing · core</td>
 <td>4, 8, 12 / 8</td>
-<td style="text-align:right">23 / 48</td>
+<td style="text-align:right">45 / 48</td>
 </tr>
 <tr>
 <td>Airfoil Self Noise · core</td>
@@ -177,12 +179,12 @@ XGBoost and LightGBM. Player sets below are the planned grids, where feasible.</
 <tr>
 <td>Concrete Strength · core</td>
 <td>4, 8 / 8</td>
-<td style="text-align:right">24 / 40</td>
+<td style="text-align:right">37 / 40</td>
 </tr>
 <tr>
 <td>Protein · core</td>
 <td>4, 8, 9 / 8</td>
-<td style="text-align:right">24 / 48</td>
+<td style="text-align:right">45 / 48</td>
 </tr>
 </tbody>
 </table></details>
@@ -214,122 +216,122 @@ classification datasets. “—” means no neighbor games.</p>
 <tr>
 <td>Adult Census · core + extra</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">74 / 116</td>
+<td style="text-align:right">109 / 116</td>
 </tr>
 <tr>
 <td>Mushroom · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">44 / 88</td>
+<td style="text-align:right">81 / 88</td>
 </tr>
 <tr>
 <td>Ionosphere · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256</td>
-<td style="text-align:right">31 / 72</td>
+<td style="text-align:right">66 / 72</td>
 </tr>
 <tr>
 <td>Bioresponse · core + extra</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">95 / 148</td>
+<td style="text-align:right">128 / 148</td>
 </tr>
 <tr>
 <td>Breast Cancer · core + extra</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256</td>
-<td style="text-align:right">67 / 108</td>
+<td style="text-align:right">102 / 108</td>
 </tr>
 <tr>
 <td>Digits · core + extra</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">88 / 132</td>
+<td style="text-align:right">124 / 132</td>
 </tr>
 <tr>
 <td>Wine (classification) · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128</td>
-<td style="text-align:right">23 / 64</td>
+<td style="text-align:right">58 / 64</td>
 </tr>
 <tr>
 <td>Amazon Employee Access · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">44 / 88</td>
+<td style="text-align:right">79 / 88</td>
 </tr>
 <tr>
 <td>APS Failure · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">46 / 88</td>
+<td style="text-align:right">78 / 88</td>
 </tr>
 <tr>
 <td>Anneal · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512</td>
-<td style="text-align:right">38 / 80</td>
+<td style="text-align:right">75 / 80</td>
 </tr>
 <tr>
 <td>Splice · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">46 / 88</td>
+<td style="text-align:right">81 / 88</td>
 </tr>
 <tr>
 <td>Credit Card Default · core</td>
 <td>4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024</td>
-<td style="text-align:right">43 / 88</td>
+<td style="text-align:right">78 / 88</td>
 </tr>
 <tr>
 <td>Wine Quality · core + extra</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">20 / 60</td>
+<td style="text-align:right">45 / 60</td>
 </tr>
 <tr>
 <td>Communities and Crime · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">21 / 40</td>
+<td style="text-align:right">32 / 40</td>
 </tr>
 <tr>
 <td>NHANES I · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">19 / 40</td>
+<td style="text-align:right">29 / 40</td>
 </tr>
 <tr>
 <td>QSAR-TID11 · core + extra</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">57 / 100</td>
+<td style="text-align:right">88 / 100</td>
 </tr>
 <tr>
 <td>Miami Housing · core + extra</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">21 / 68</td>
+<td style="text-align:right">47 / 68</td>
 </tr>
 <tr>
 <td>Superconductivity · core + extra</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">38 / 92</td>
+<td style="text-align:right">62 / 92</td>
 </tr>
 <tr>
 <td>California Housing · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">15 / 40</td>
+<td style="text-align:right">25 / 40</td>
 </tr>
 <tr>
 <td>Diabetes · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">23 / 40</td>
+<td style="text-align:right">35 / 40</td>
 </tr>
 <tr>
 <td>Bike Sharing · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">18 / 40</td>
+<td style="text-align:right">29 / 40</td>
 </tr>
 <tr>
 <td>Airfoil Self Noise · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">22 / 40</td>
+<td style="text-align:right">34 / 40</td>
 </tr>
 <tr>
 <td>Concrete Strength · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">20 / 40</td>
+<td style="text-align:right">32 / 40</td>
 </tr>
 <tr>
 <td>Protein · core</td>
 <td>4, 8, 12, 14, 16 / —</td>
-<td style="text-align:right">16 / 40</td>
+<td style="text-align:right">27 / 40</td>
 </tr>
 </tbody>
 </table></details>
@@ -353,37 +355,37 @@ LightGBM, RBF SVM + MLP, at <strong>12 features only</strong>.</p>
 <tr>
 <td>Adult Census · core + extra</td>
 <td>4, 8, 12, 14</td>
-<td style="text-align:right">23 / 48</td>
+<td style="text-align:right">42 / 48</td>
 </tr>
 <tr>
 <td>Mushroom · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">22 / 40</td>
+<td style="text-align:right">32 / 40</td>
 </tr>
 <tr>
 <td>Ionosphere · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">23 / 40</td>
+<td style="text-align:right">35 / 40</td>
 </tr>
 <tr>
 <td>Bioresponse · core + extra</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">19 / 56</td>
+<td style="text-align:right">42 / 56</td>
 </tr>
 <tr>
 <td>Breast Cancer · core + extra</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">23 / 56</td>
+<td style="text-align:right">49 / 56</td>
 </tr>
 <tr>
 <td>Digits · core + extra</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">22 / 56</td>
+<td style="text-align:right">49 / 56</td>
 </tr>
 <tr>
 <td>Wine (classification) · core</td>
 <td>4, 8, 12, 13</td>
-<td style="text-align:right">24 / 32</td>
+<td style="text-align:right">29 / 32</td>
 </tr>
 <tr>
 <td>Amazon Employee Access · core</td>
@@ -393,52 +395,52 @@ LightGBM, RBF SVM + MLP, at <strong>12 features only</strong>.</p>
 <tr>
 <td>APS Failure · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">19 / 40</td>
+<td style="text-align:right">29 / 40</td>
 </tr>
 <tr>
 <td>Anneal · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">22 / 40</td>
+<td style="text-align:right">34 / 40</td>
 </tr>
 <tr>
 <td>Splice · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">19 / 40</td>
+<td style="text-align:right">33 / 40</td>
 </tr>
 <tr>
 <td>Credit Card Default · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">19 / 40</td>
+<td style="text-align:right">29 / 40</td>
 </tr>
 <tr>
 <td>Wine Quality · core + extra</td>
 <td>4, 8, 12</td>
-<td style="text-align:right">22 / 40</td>
+<td style="text-align:right">33 / 40</td>
 </tr>
 <tr>
 <td>Communities and Crime · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">20 / 40</td>
+<td style="text-align:right">31 / 40</td>
 </tr>
 <tr>
 <td>NHANES I · core</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">19 / 40</td>
+<td style="text-align:right">27 / 40</td>
 </tr>
 <tr>
 <td>QSAR-TID11 · core + extra</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">21 / 56</td>
+<td style="text-align:right">49 / 56</td>
 </tr>
 <tr>
 <td>Miami Housing · core + extra</td>
 <td>4, 8, 12, 14, 15</td>
-<td style="text-align:right">20 / 56</td>
+<td style="text-align:right">40 / 56</td>
 </tr>
 <tr>
 <td>Superconductivity · core + extra</td>
 <td>4, 8, 12, 14, 16</td>
-<td style="text-align:right">17 / 56</td>
+<td style="text-align:right">38 / 56</td>
 </tr>
 <tr>
 <td>California Housing · core</td>
@@ -488,7 +490,7 @@ Generic large games never use an approximate estimate as an exact reference.</li
 NHANES I uses its supplied survival label as a regression surrogate.</li>
 <li><strong>Timing:</strong> measured estimator time on cached games; estimated oracle costs are
 shown separately. These are diagnostic timings, not isolated end-to-end timings.</li>
-<li><strong>Reproduction:</strong> <a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-07">download saved games, results and instructions</a>.
+<li><strong>Reproduction:</strong> <a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-09">download saved games, results and instructions</a>.
 The dashboard also exports selected results as JSON or CSV.</li>
 </ul>
     </article>
