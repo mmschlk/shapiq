@@ -177,6 +177,12 @@ def test_tabarena_dataset_download() -> None:
     assert dataset.n_samples == 748
 
 
+def test_shap_dataset_download() -> None:
+    """A checksum-pinned file from shap's data on GitHub."""
+    dataset = load_dataset("communities_and_crime")
+    assert dataset.x.shape == (1994, 101)
+
+
 @pytest.mark.parametrize("name", ["wine_quality", "forest_fires"])
 def test_uci_dataset_download(name: str) -> None:
     dataset = load_dataset(name)

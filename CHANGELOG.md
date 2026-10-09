@@ -4,7 +4,7 @@
 
 ### Harmonized `shapiq_games` and `shapiq_benchmark` [#616](https://github.com/mmschlk/shapiq/pull/616)
 
-- `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the 153 dataset-specific classes of `shapiq_games.benchmark`.
+- `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`.
 - `shapiq_benchmark` builds games from names (`shapiq_benchmark.setups`), downloads and caches its 83 datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`).
 - new games from the benchmarking paper: DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
 - no data files ship in the wheel anymore (previously ~89 MB).
@@ -12,9 +12,11 @@
 ### Breaking Changes
 
 - the ground-truth games move out of core: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame`, `shapiq.explainer.nn.games` is now `shapiq_games.nn`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame`.
+- the moved games take the model first and the class as a keyword: `InterventionalTreeGame(model, reference_data, x, class_index=...)` (was `target_instance`), `ProductKernelGame(model, x)` (was `ProductKernelGame(n_players, explain_point, model)`), and `KNNGame`, `WeightedKNNGame` and `ThresholdNNGame` (were `KNNExplainerGame`, `WeightedKNNExplainerGame` and `TNNExplainerGame`) take `class_index=None` (class 1) instead of a required positional class; `BinaryWeightedKNNExplainerGame` is removed (`WeightedKNNGame` averages the binary games itself).
+- `RandomGame` is now `RandomTableGame`, `SOUM` is seeded with `random_state=42` by default (was unseeded), and `DummyGame.N` is removed (use `range(game.n_players)`).
 - removes `shapiq_games.benchmark`, `shapiq_games.tabular`, and the `*Bench` classes; `LocalExplanation`, `GlobalExplanation` and `UncertaintyExplanation` are now `TabularLocalExplanation`, `TabularGlobalExplanation` and `TabularUncertaintyExplanation`.
 - some game values change, e.g. the interventional tree game uses raw margins for boosted classifiers, and `SentimentAnalysis` returns `2 P(positive) - 1`.
-- removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (these three need no extra) or scikit-learn's fetchers.
+- removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (`california_housing` comes from scikit-learn; `bike_sharing` and `adult_census` come from OpenML and need `shapiq[benchmark]`) or scikit-learn's fetchers.
 - the games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
 
 ### Bugfix

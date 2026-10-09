@@ -82,6 +82,9 @@ jobs:
                 run: uv sync --no-dev --extra games --group test
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
+            # the tests skip a game whose dependency is missing: check that the extra installs them all
+            -   name: Test import of the games' optional dependencies
+                run: uv run --no-sync python -c "import google.protobuf, sentencepiece, skimage, tabpfn, torch, torchvision, transformers, xgboost"
             # serial on purpose: under pytest-xdist the multi-threaded model libraries
             # oversubscribe the runner's cores (seconds serially, minutes in parallel)
             -   name: Run shapiq_games unit tests
@@ -145,6 +148,12 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Run unit tests
@@ -175,6 +184,12 @@ jobs:
             -   if: matrix.os == 'macos-latest'
                 name: Install libomp on macOS
                 run: brew install libomp
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Run unit tests
@@ -217,6 +232,12 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
+            # California housing of the core fixtures: fetched once, not on every run
+            -   name: Cache scikit-learn datasets
+                uses: actions/cache@v6
+                with:
+                    path: ~/scikit_learn_data
+                    key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
             -   name: Measure coverage

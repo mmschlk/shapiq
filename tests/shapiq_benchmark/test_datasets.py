@@ -310,12 +310,6 @@ def test_upstream_tables_are_cached_and_shape_checked(
         _tabular._download_table("zoo")
 
 
-def test_shap_dataset_downloads() -> None:
-    """End-to-end check of a checksum-pinned file from shap's data (requires access to GitHub)."""
-    dataset = load_dataset("communities_and_crime")
-    assert dataset.x.shape == (1994, 101)
-
-
 def _fake_imagenette(tmp_path: Path, extra: dict[str, bytes] | None = None) -> Path:
     """Write a tiny archive with Imagenette's layout (and its stray non-image files)."""
     import io
