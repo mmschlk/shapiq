@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING, Any, cast
 import pandas as pd
 
 from .computers import VALUE_INDICES
-from .metrics import compare, faithfulness
+from .metrics import compare, faithfulness, faithfulness_sample
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from shapiq.approximator.base import Approximator
-    from shapiq.typing import IndexType
+    from shapiq.typing import CoalitionMatrix, GameValues, IndexType
 
     from .benchmark import Benchmark
 
@@ -112,6 +112,8 @@ def run(
         "order": order,
     }
     rows = []
+    # the faithfulness sample depends on the seed only: evaluate the game once per seed
+    samples: dict[int, tuple[CoalitionMatrix, GameValues]] = {}
     for name, approximator_class in named.items():
         for budget in budgets:
             for seed in seeds:
@@ -145,11 +147,14 @@ def run(
                         ),
                     }
                     if with_faithfulness:  # a top-order-only estimate cannot rebuild the game
-                        metrics["faithfulness"] = (
-                            float("nan")
-                            if top_order_only
-                            else faithfulness(game, estimate, random_state=seed)
-                        )
+                        if top_order_only:
+                            metrics["faithfulness"] = float("nan")
+                        else:
+                            if seed not in samples:
+                                samples[seed] = faithfulness_sample(game, random_state=seed)
+                            metrics["faithfulness"] = faithfulness(
+                                game, estimate, sample=samples[seed]
+                            )
                     rows.append({**row, "status": "ok", "runtime_s": runtime, **metrics})
                 except Exception as error:  # noqa: BLE001 - failures are results, not crashes
                     rows.append(

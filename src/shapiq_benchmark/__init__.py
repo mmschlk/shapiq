@@ -34,7 +34,7 @@ from .computers import (
     UnsupportedComputationError,
     default_computer,
 )
-from .metrics import compare, faithfulness
+from .metrics import compare, faithfulness, faithfulness_sample
 from .runner import run, save_results
 
 __all__ = [
@@ -50,6 +50,7 @@ __all__ = [
     "compare",
     "default_computer",
     "faithfulness",
+    "faithfulness_sample",
     "run",
     "save_results",
 ]

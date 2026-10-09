@@ -22,8 +22,16 @@ from scipy.stats import kendalltau, spearmanr
 
 if TYPE_CHECKING:
     from shapiq import Game, InteractionValues
+    from shapiq.typing import CoalitionMatrix, GameValues
 
-__all__ = ["RANK_TOLERANCE", "compare", "error_metrics", "faithfulness", "ranking_metrics"]
+__all__ = [
+    "RANK_TOLERANCE",
+    "compare",
+    "error_metrics",
+    "faithfulness",
+    "faithfulness_sample",
+    "ranking_metrics",
+]
 
 RANK_TOLERANCE = 1e-6
 """Values closer than this times the largest absolute ground-truth value rank as equal."""
@@ -176,12 +184,38 @@ def compare(
     }
 
 
+def faithfulness_sample(
+    game: Game, *, n_samples: int = 1000, random_state: int = 0
+) -> tuple[CoalitionMatrix, GameValues]:
+    """Return the coalitions :func:`faithfulness` evaluates and the game's values on them.
+
+    Coalitions are sampled uniformly at random (every player present with probability one half),
+    or all coalitions are used if there are at most ``n_samples``. The sample can be reused to
+    score many estimates of the same game without evaluating it again.
+
+    Args:
+        game: The game.
+        n_samples: The number of sampled coalitions. Defaults to ``1000``.
+        random_state: The seed of the coalition sample. Defaults to ``0``.
+
+    Returns:
+        The coalitions, of shape ``(n_coalitions, n_players)``, and the game's values on them.
+    """
+    n = game.n_players
+    if 2**n <= n_samples:  # every coalition, as the binary digits of 0, ..., 2**n - 1
+        coalitions = (np.arange(2**n)[:, None] >> np.arange(n) & 1).astype(bool)
+    else:
+        coalitions = np.random.default_rng(random_state).random((n_samples, n)) < 0.5
+    return coalitions, game(coalitions)
+
+
 def faithfulness(
     game: Game,
     estimate: InteractionValues,
     *,
     n_samples: int = 1000,
     random_state: int = 0,
+    sample: tuple[CoalitionMatrix, GameValues] | None = None,
 ) -> float:
     r"""Return how well the estimate reconstructs the game (the R² of the reconstruction).
 
@@ -196,16 +230,16 @@ def faithfulness(
         estimate: The estimated interaction values.
         n_samples: The number of sampled coalitions. Defaults to ``1000``.
         random_state: The seed of the coalition sample. Defaults to ``0``.
+        sample: The coalitions and game values of :func:`faithfulness_sample`, to score many
+            estimates without evaluating the game again; ``n_samples`` and ``random_state`` are
+            then not used.
 
     Returns:
         The coefficient of determination between the game values and the reconstruction.
     """
-    n = game.n_players
-    if 2**n <= n_samples:  # every coalition, as the binary digits of 0, ..., 2**n - 1
-        coalitions = (np.arange(2**n)[:, None] >> np.arange(n) & 1).astype(bool)
-    else:
-        coalitions = np.random.default_rng(random_state).random((n_samples, n)) < 0.5
-    values = game(coalitions)
+    if sample is None:
+        sample = faithfulness_sample(game, n_samples=n_samples, random_state=random_state)
+    coalitions, values = sample
     reconstruction = np.full(coalitions.shape[0], float(estimate.baseline_value))
     for interaction, value in estimate.dict_values.items():
         if len(interaction) >= 1 and value != 0:

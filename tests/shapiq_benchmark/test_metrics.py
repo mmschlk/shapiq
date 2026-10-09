@@ -11,7 +11,13 @@ import pytest
 from shapiq import InteractionValues
 from shapiq.utils import powerset
 from shapiq_benchmark.computers import BruteForceComputer
-from shapiq_benchmark.metrics import compare, error_metrics, faithfulness, ranking_metrics
+from shapiq_benchmark.metrics import (
+    compare,
+    error_metrics,
+    faithfulness,
+    faithfulness_sample,
+    ranking_metrics,
+)
 from shapiq_games import SOUM
 
 
@@ -118,6 +124,16 @@ def test_faithfulness_is_one_for_exact_moebius_values() -> None:
     assert faithfulness(game, moebius) == pytest.approx(1.0)
     shapley = BruteForceComputer(game).exact_values("SV", 1)
     assert faithfulness(game, shapley) < 1.0
+
+
+def test_faithfulness_of_a_reused_sample_is_the_same() -> None:
+    """The runner evaluates the game once per seed and scores every estimate on that sample."""
+    game = SOUM(12, 20, max_interaction_size=2, random_state=0)
+    shapley = BruteForceComputer(game).exact_values("SV", 1)
+    sample = faithfulness_sample(game, n_samples=300, random_state=7)
+    assert sample[0].shape == (300, 12)
+    reused = faithfulness(game, shapley, sample=sample)
+    assert reused == faithfulness(game, shapley, n_samples=300, random_state=7)
 
 
 def test_interactions_zero_in_both_only_count_in_the_means(truth: InteractionValues) -> None:

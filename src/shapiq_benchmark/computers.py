@@ -98,7 +98,7 @@ def _standardize(
         interaction_lookup={interaction: i for i, (interaction, _) in enumerate(interactions)},
         estimated=False,
         estimation_budget=None,
-        baseline_value=float(game(game.empty_coalition)[0]),
+        baseline_value=float(game.empty_coalition_value),  # cached by the game
     )
 
 
