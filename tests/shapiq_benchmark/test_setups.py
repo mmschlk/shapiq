@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import pickle
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -234,6 +235,28 @@ def test_unregistered_subclasses_cannot_share_their_parents_cache() -> None:
         (lambda: GlobalConfoundingSetup(regressor="nope"), ValueError, "regressor must be one of"),
         (lambda: ImageClassifierSetup(class_index="labels"), ValueError, "one of"),
         (lambda: setup_from_dict({"setup": "nope"}), ValueError, "Unknown setup 'nope'"),
+        (
+            lambda: TabularLocalExplanationSetup(dataset="xor", model_params={"random_state": 1}),
+            ValueError,
+            "set random_state instead",
+        ),
+        (
+            lambda: GlobalConfoundingSetup(regressor_params={"random_state": 1}),
+            ValueError,
+            "set random_state instead",
+        ),
+        (
+            lambda: KNNSetup(dataset="xor", dataset_params={"random_state": None}),
+            ValueError,
+            "unseeded",
+        ),
+        (
+            lambda: TabularLocalExplanationSetup(
+                dataset="xor", model="lightgbm", imputer="baseline", baseline="missing"
+            ),
+            ValueError,
+            "reads missing values",
+        ),
     ],
 )
 def test_setups_are_checked_when_created(make, error: type[Exception], match: str) -> None:
@@ -434,3 +457,18 @@ def test_confounding_setups_pass_the_regressor_params(monkeypatch: pytest.Monkey
     )
     assert setup.build().n_players == 4
     assert setup.key != GlobalConfoundingSetup(n=200, regressor="linear").key
+
+
+def test_nearest_neighbor_setups_explain_a_label_of_the_dataset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``class_index`` is a dataset label; the game gets its position among the drawn classes."""
+    rng = np.random.default_rng(0)
+    split = SimpleNamespace(
+        x_train=rng.normal(size=(30, 2)), y_train=np.repeat([0, 2, 5], 10), x_test=np.zeros((1, 2))
+    )
+    monkeypatch.setattr(KNNSetup, "load_split", lambda _: split)
+    game = KNNSetup(dataset="xor", n_train=9, class_index=5).build()
+    assert game.model.classes_[game.class_index] == 5
+    with pytest.raises(ValueError, match="Class 1 is not among"):
+        KNNSetup(dataset="xor", n_train=9).build()  # class 1 by default

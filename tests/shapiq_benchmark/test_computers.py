@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, get_args
 
 import numpy as np
 import pytest
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, IsolationForest, RandomForestRegressor
 from sklearn.neighbors import KNeighborsClassifier
 
+from shapiq.tree.base import TreeModel
 from shapiq.typing import IndexType
 from shapiq_benchmark.computers import (
     DEFAULT_MAX_PLAYERS,
@@ -232,3 +233,33 @@ def test_default_computer_mapping(forest_data) -> None:
     ]
     for game, computer_class in expected:
         assert type(default_computer(game)) is computer_class, type(game).__name__
+
+
+def test_tree_computers_only_take_games_whose_values_core_computes() -> None:
+    """Games that core's tree algorithms would explain differently fall back to brute force."""
+    # the root sends x0 > 0 right, to a node without training samples (cover 0): the game splits
+    # such a node evenly, while core's TreeSHAP drops its subtree
+    tree = TreeModel(
+        children_left=np.array([1, -1, 3, -1, -1]),
+        children_right=np.array([2, -1, 4, -1, -1]),
+        children_missing=np.array([1, -1, 3, -1, -1]),
+        features=np.array([0, -2, 1, -2, -2]),
+        thresholds=np.array([0.0, np.nan, 0.0, np.nan, np.nan]),
+        values=np.array([0.0, 1.0, 0.0, 5.0, 7.0]),
+        node_sample_weight=np.array([10.0, 10.0, 0.0, 0.0, 0.0]),
+    )
+    entering = PathDependentTreeGame(tree, np.array([1.0, -1.0]))
+    assert entering.enters_empty_node
+    assert type(default_computer(entering)) is BruteForceComputer
+    passing = PathDependentTreeGame(tree, np.array([-1.0, -1.0]))
+    assert not passing.enters_empty_node
+    assert type(default_computer(passing)) is PathDependentTreeComputer
+    # interventional TreeSHAP explains the sum of the trees; these models transform it
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(200, 4))
+    poisson = HistGradientBoostingRegressor(loss="poisson", max_iter=5).fit(x, np.exp(x[:, 0]))
+    isolation = IsolationForest(n_estimators=5, random_state=0).fit(x)
+    for model in (poisson, isolation):
+        game = InterventionalTreeGame(model, x[:10], x[0])
+        assert not InterventionalTreeComputer.supports_game(game), type(model).__name__
+        assert type(default_computer(game)) is BruteForceComputer

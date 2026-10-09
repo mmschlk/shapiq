@@ -238,6 +238,13 @@ def test_interventional_tree_computer(tabular: dict[str, np.ndarray], name: str)
     _assert_agrees_with_brute_force(InterventionalTreeComputer(game), atol=atol)
 
 
+def _lightgbm_booster(x: np.ndarray, y: np.ndarray) -> object:
+    import lightgbm as lgb
+
+    params = {"objective": "multiclass", "num_class": 3, "max_depth": 2, "verbose": -1}
+    return lgb.train(params, lgb.Dataset(x, y), num_boost_round=3)
+
+
 _MULTICLASS_BOOSTERS: dict[str, tuple[str | None, Callable[[dict], object]]] = {
     "gb": (
         None,
@@ -253,6 +260,8 @@ _MULTICLASS_BOOSTERS: dict[str, tuple[str | None, Callable[[dict], object]]] = {
             .fit(t["x"], t["y_multi"])
         ),
     ),
+    # a raw booster: no classifier, the class_index still selects the class
+    "lgbm_booster": ("lightgbm", lambda t: _lightgbm_booster(t["x"], t["y_multi"])),
 }
 
 

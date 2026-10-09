@@ -84,6 +84,36 @@ def test_precision_at_k_uses_the_largest_magnitudes() -> None:
     assert metrics["precision_at_k"] == pytest.approx(0.5)  # {0, 1} vs {0, 3}
 
 
+def test_precision_at_k_counts_only_nonzero_estimates_and_shares_ties() -> None:
+    truth = np.array([5.0, 4.0, 3.0, 2.0, 1.0, 0.0])
+    off_top = np.array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0])  # zeros are never selected
+    assert ranking_metrics(truth, off_top, k=2)["precision_at_k"] == 0.0
+    assert ranking_metrics(truth, np.zeros(6), k=2)["precision_at_k"] == 0.0
+    # interactions 0 and 2 tie for the one place: the expected precision of a random pick
+    tied = np.array([1.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    assert ranking_metrics(truth, tied, k=1)["precision_at_k"] == pytest.approx(0.5)
+
+
+def test_at_k_metrics_are_nan_when_k_covers_every_interaction() -> None:
+    truth = np.array([3.0, 2.0, 1.0])
+    for k in (3, 10):  # any estimate would pick every interaction
+        metrics = ranking_metrics(truth, np.array([0.0, 0.0, 1.0]), k=k)
+        assert np.isnan(metrics["precision_at_k"])
+        assert np.isnan(metrics["kendall_tau_at_k"])
+    # interactions left out of the vectors (0 in both) still count
+    metrics = ranking_metrics(truth, np.array([0.0, 0.0, 1.0]), k=3, n_interactions=6)
+    assert metrics["precision_at_k"] == pytest.approx(1 / 3)
+
+
+def test_compare_scores_failed_estimates(truth: InteractionValues) -> None:
+    values = truth.values.copy()
+    values[3] = np.nan
+    assert all(np.isnan(value) for value in compare(truth, _values(values), k=5).values())
+    values[3] = np.inf
+    metrics = compare(truth, _values(values), k=5)
+    assert metrics["mse"] == metrics["sse"] == np.inf
+
+
 def test_ranking_metrics_ignore_float_noise_among_ties() -> None:
     """A sparse ground truth: 2 non-zero values, the rest zero up to float noise in the estimate."""
     truth = np.zeros(55)

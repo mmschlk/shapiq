@@ -88,7 +88,7 @@ def test_benchmark_falls_back_to_brute_force(
     assert benchmark.computer.name == "path_dependent_tree"
     assert benchmark.computer_for("FSII", 2).name == "brute_force"
     assert benchmark.exact_values("FSII", 2).index == "FSII"
-    assert (tmp_path / "ground_truth" / "path_dependent_tree").rglob("brute_force_FSII_2.json")
+    assert any((tmp_path / "ground_truth" / "path_dependent_tree").rglob("brute_force_FSII_2.json"))
     explicit = Benchmark(benchmark.game, PathDependentTreeComputer(benchmark.game))
     assert not explicit.supports("FSII", 2)
     with pytest.raises(UnsupportedComputationError):
@@ -166,6 +166,15 @@ def test_run_accepts_one_shot_iterables() -> None:
         seeds=iter([0, 1]),
     )
     assert len(results) == 2 * 2 * 2
+
+
+def test_run_has_the_same_columns_whatever_the_outcomes() -> None:
+    benchmark = Benchmark(SOUM(6, 8, random_state=0))
+    unsupported = run(benchmark, [shapiq.KernelSHAP], budgets=[32], index="k-SII", order=2)
+    ok = run(benchmark, [shapiq.KernelSHAPIQ], budgets=[32], index="k-SII", order=2)
+    assert list(unsupported.columns) == list(ok.columns)
+    assert {"error", "mse", "precision_at_k"} <= set(ok.columns)
+    assert unsupported["mse"].isna().all()
 
 
 def test_run_records_every_outcome(tmp_path: Path) -> None:

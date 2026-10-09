@@ -29,6 +29,7 @@ from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNE
 from shapiq.explainer.product_kernel import ProductKernelComputer as CoreProductKernelComputer
 from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
+from shapiq.tree.base import predict_ensemble
 from shapiq.tree.explainer import TreeExplainer
 from shapiq.tree.interventional import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
@@ -258,8 +259,12 @@ class PathDependentTreeComputer(Computer[PathDependentTreeGame]):
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """:class:`~shapiq_games.tree.PathDependentTreeGame` games."""
-        return isinstance(game, PathDependentTreeGame)
+        """:class:`~shapiq_games.tree.PathDependentTreeGame` games TreeSHAP explains as they are.
+
+        TreeSHAP treats a decision node without training samples differently from the game, so
+        games whose explained point's path enters one are not supported.
+        """
+        return isinstance(game, PathDependentTreeGame) and not game.enters_empty_node
 
     @classmethod
     def supported_indices(cls) -> tuple[IndexType, ...]:
@@ -288,14 +293,21 @@ class InterventionalTreeComputer(Computer[InterventionalTreeGame]):
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """:class:`~shapiq_games.tree.InterventionalTreeGame` games of tree models."""
+        """:class:`~shapiq_games.tree.InterventionalTreeGame` games of models that sum their trees.
+
+        The game evaluates the model's predictions; TreeSHAP explains the sum of the trees. The two
+        differ for models with a link function (e.g. a Poisson loss) or ``IsolationForest``.
+        """
         if not isinstance(game, InterventionalTreeGame):
             return False
         try:
-            validate_tree_model(game.model, class_label=game.class_index)
-        except TypeError:
+            trees = validate_tree_model(game.model, class_label=game.class_index)
+        except (TypeError, ValueError):  # e.g. gradient boosting with a custom init model
             return False
-        return True
+        tree_output = float(np.asarray(predict_ensemble(trees, game.x[None])).reshape(-1)[0])
+        game_output = float(game.value_function(np.ones((1, game.n_players), dtype=bool))[0])
+        # XGBoost sums its trees in float32
+        return bool(np.isclose(game_output, tree_output, rtol=1e-6, atol=1e-6))
 
     @classmethod
     def supported_indices(cls) -> tuple[IndexType, ...]:

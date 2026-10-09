@@ -73,10 +73,12 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
 
     - With ``imputer="tabpfn"`` the model must be ``"tabpfn"``, and the background rows are
       TabPFN's context (remove-and-recontextualize).
-    - With ``imputer="baseline"``, absent features take the background mean (mode for categorical
-      features), or with ``baseline="missing"`` a missing value the model reads natively: NaN for
-      the tree models, and ``+inf`` for ``"tabpfn"``, which is then built with
-      ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``).
+    - With ``imputer="baseline"``, absent features take the background mean (of the category
+      codes for categorical features, which the datasets encode as numbers), or with
+      ``baseline="missing"`` a missing value the model reads natively (see
+      :data:`~shapiq_benchmark.models.MISSING_VALUE_MODELS`): NaN for the tree models, and ``+inf``
+      for ``"tabpfn"``, which is then built with ``inference_config={"PASSTHROUGH_INF": True}``
+      (``tabpfn>=8.1``).
     - ``"tabpfn"`` is TabPFN v2 unless ``model_params`` chooses a ``version``, e.g.
       ``{"version": "v3"}`` as in the benchmarking paper (the versions after v2 need a Prior Labs
       license token to download).

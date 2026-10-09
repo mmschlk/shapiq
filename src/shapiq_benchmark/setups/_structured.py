@@ -118,13 +118,30 @@ class _NearestNeighborSetup(TabularSetup):
     class_index: int | None = None
     model_params: dict[str, Any] = field(default_factory=dict)
 
-    def _fit(self) -> tuple[Any, np.ndarray]:
-        """Fit the nearest-neighbor model on the players; return it and the explained point."""
+    def _fit(self) -> tuple[Any, np.ndarray, int]:
+        """Fit the nearest-neighbor model on the players.
+
+        Returns:
+            The model, the explained point, and the explained class's position in the model's
+            classes. The players are a small sample, which can lack classes of the dataset, so the
+            position of a class depends on which classes were drawn.
+
+        Raises:
+            ValueError: If the explained class is not among the players' classes.
+        """
         split = self.load_split()
         indices = self.stratified_rows(split.y_train, self.n_train, "classification")
         model = build_model(self.model_name, "classification", **self.model_params)
         model.fit(split.x_train[indices], split.y_train[indices])
-        return model, resolve_x(self.x, split.x_test)
+        label = 1 if self.class_index is None else self.class_index
+        classes = list(model.classes_)
+        if label not in classes:
+            msg = (
+                f"Class {label} is not among the {self.n_train} drawn training points (classes "
+                f"{classes}); raise n_train or choose another class_index."
+            )
+            raise ValueError(msg)
+        return model, resolve_x(self.x, split.x_test), classes.index(label)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -137,7 +154,8 @@ class KNNSetup(_NearestNeighborSetup, name="knn"):
     Attributes:
         n_train: The number of training points, i.e. players. Defaults to ``10``.
         x: The index of the explained point in the test split. Defaults to ``0``.
-        class_index: The explained class (``None`` means class ``1``).
+        class_index: The explained class, a label of the dataset (``None`` means class ``1``).
+            It must be among the classes of the drawn training points.
         model_params: Parameters of the model (e.g. ``{"n_neighbors": 3}``).
 
     Examples:
@@ -149,8 +167,8 @@ class KNNSetup(_NearestNeighborSetup, name="knn"):
 
     def build(self) -> KNNGame:
         """Fit the model on the players and build the game."""
-        model, point = self._fit()
-        return KNNGame(model, point, class_index=self.class_index)
+        model, point, class_index = self._fit()
+        return KNNGame(model, point, class_index=class_index)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -160,7 +178,8 @@ class WeightedKNNSetup(_NearestNeighborSetup, name="weighted_knn"):
     Attributes:
         n_train: The number of training points, i.e. players. Defaults to ``10``.
         x: The index of the explained point in the test split. Defaults to ``0``.
-        class_index: The explained class (``None`` means class ``1``).
+        class_index: The explained class, a label of the dataset (``None`` means class ``1``).
+            It must be among the classes of the drawn training points.
         model_params: Parameters of the model (e.g. ``{"n_neighbors": 3}``).
         n_bits: The weight discretization of the game (``None`` for exact weights); set it to
             compare with the weighted KNN explainer.
@@ -176,8 +195,8 @@ class WeightedKNNSetup(_NearestNeighborSetup, name="weighted_knn"):
 
     def build(self) -> WeightedKNNGame:
         """Fit the model on the players and build the game."""
-        model, point = self._fit()
-        return WeightedKNNGame(model, point, class_index=self.class_index, n_bits=self.n_bits)
+        model, point, class_index = self._fit()
+        return WeightedKNNGame(model, point, class_index=class_index, n_bits=self.n_bits)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -187,7 +206,8 @@ class ThresholdNNSetup(_NearestNeighborSetup, name="threshold_nn"):
     Attributes:
         n_train: The number of training points, i.e. players. Defaults to ``10``.
         x: The index of the explained point in the test split. Defaults to ``0``.
-        class_index: The explained class (``None`` means class ``1``).
+        class_index: The explained class, a label of the dataset (``None`` means class ``1``).
+            It must be among the classes of the drawn training points.
         model_params: Parameters of the model (e.g. ``{"radius": 1.0}``).
 
     Examples:
@@ -200,8 +220,8 @@ class ThresholdNNSetup(_NearestNeighborSetup, name="threshold_nn"):
 
     def build(self) -> ThresholdNNGame:
         """Fit the model on the players and build the game."""
-        model, point = self._fit()
-        return ThresholdNNGame(model, point, class_index=self.class_index)
+        model, point, class_index = self._fit()
+        return ThresholdNNGame(model, point, class_index=class_index)
 
 
 @dataclass(frozen=True, kw_only=True)

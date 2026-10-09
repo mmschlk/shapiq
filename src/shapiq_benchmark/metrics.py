@@ -101,15 +101,32 @@ def error_metrics(
 
 def _mean(total: float, count: int) -> float:
     """Return ``total / count``; exact for counts beyond the float range (e.g. ``2**1100``)."""
-    return float(Fraction(total) / count) if count > 0 else float("nan")
+    if count <= 0:
+        return float("nan")
+    if not math.isfinite(total):  # e.g. an estimate with nan or inf values
+        return total / count
+    return float(Fraction(total) / count)
 
 
-def _top_k(values: np.ndarray, k: int) -> np.ndarray:
-    """Indices of the ``k`` largest absolute values (ties broken by position)."""
-    return np.argsort(-np.abs(values), kind="stable")[:k]
+def _precision(is_top: np.ndarray, estimated: np.ndarray, k: int) -> float:
+    """Return the share of the ``k`` largest absolute estimates that are true top interactions.
+
+    Zero estimates are never selected, and estimates tied at the ``k``-th largest value count
+    with the share of them that is true top, the expected precision of breaking the ties at random.
+    """
+    magnitude = np.abs(estimated)
+    cutoff = np.sort(magnitude)[::-1][k - 1]
+    selected = magnitude > cutoff
+    hits = float(np.sum(selected & is_top))
+    tied = magnitude == cutoff
+    if cutoff > 0:
+        hits += (k - np.sum(selected)) * np.sum(tied & is_top) / np.sum(tied)
+    return float(hits / k)
 
 
-def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> dict[str, float]:
+def ranking_metrics(
+    truth: np.ndarray, estimated: np.ndarray, k: int = 10, n_interactions: int | None = None
+) -> dict[str, float]:
     """Return rank agreement metrics between two aligned value vectors.
 
     Values that differ by less than :data:`RANK_TOLERANCE` times the largest absolute ground-truth
@@ -121,30 +138,40 @@ def ranking_metrics(truth: np.ndarray, estimated: np.ndarray, k: int = 10) -> di
         truth: The ground-truth values.
         estimated: The estimated values.
         k: The number of top interactions (by absolute ground-truth value) for the ``@k`` metrics.
+        n_interactions: The number of compared interactions, if the vectors leave out interactions
+            that are 0 in both. Defaults to ``None``, the length of the vectors.
 
     Returns:
         ``kendall_tau`` and ``spearman`` of all values; ``precision_at_k``, the share of the ``k``
-        largest absolute estimates that are among the largest absolute ground-truth values (all
-        values tied with the ``k``-th largest included); and ``kendall_tau_at_k``, Kendall's tau
-        restricted to those top ground-truth interactions. Correlations of constant vectors are
-        ``nan``.
+        largest absolute estimates that are among the ``k`` largest absolute ground-truth values
+        (only nonzero ones, so ``k`` is at most their number; values tied with the ``k``-th
+        largest included; zero estimates never count; estimates tied at the ``k``-th largest count
+        with their expected share); and ``kendall_tau_at_k``, Kendall's tau restricted to those top
+        ground-truth interactions. Correlations of constant vectors are ``nan``, and so are the
+        ``@k`` metrics when the ground truth is zero or its top ``k`` are all compared
+        interactions (any estimate would score perfectly). All four are ``nan`` if the estimate
+        holds ``nan``.
     """
-    k = min(k, truth.size)
-    if k == 0:
-        nan = float("nan")
+    nan = float("nan")
+    if truth.size == 0:
         return {"kendall_tau": nan, "spearman": nan, "precision_at_k": nan, "kendall_tau_at_k": nan}
+    n_interactions = truth.size if n_interactions is None else n_interactions
     scale = RANK_TOLERANCE * float(np.max(np.abs(truth)))
     if scale > 0:
         truth, estimated = np.round(truth / scale) * scale, np.round(estimated / scale) * scale
-    threshold = np.sort(np.abs(truth))[::-1][k - 1]  # the k-th largest absolute ground truth
-    top_truth = np.flatnonzero(np.abs(truth) >= threshold)
-    top_estimate = _top_k(estimated, k)
-    return {
+    metrics = {
         "kendall_tau": _correlation(kendalltau, truth, estimated),
         "spearman": _correlation(spearmanr, truth, estimated),
-        "precision_at_k": float(np.mean(np.abs(truth[top_estimate]) >= threshold)),
-        "kendall_tau_at_k": _correlation(kendalltau, truth[top_truth], estimated[top_truth]),
+        "precision_at_k": nan,
+        "kendall_tau_at_k": nan,
     }
+    nonzero = np.abs(truth[truth != 0])
+    k = min(k, nonzero.size)
+    if 0 < k < n_interactions and not np.isnan(estimated).any():
+        is_top = np.abs(truth) >= np.sort(nonzero)[::-1][k - 1]  # ties with the k-th included
+        metrics["precision_at_k"] = _precision(is_top, estimated, k)
+        metrics["kendall_tau_at_k"] = _correlation(kendalltau, truth[is_top], estimated[is_top])
+    return metrics
 
 
 def _correlation(statistic, a: np.ndarray, b: np.ndarray) -> float:  # noqa: ANN001
@@ -180,7 +207,7 @@ def compare(
     truth, estimated, n_interactions = _aligned(ground_truth, estimate, order)
     return {
         **error_metrics(truth, estimated, n_interactions),
-        **ranking_metrics(truth, estimated, k=k),
+        **ranking_metrics(truth, estimated, k=k, n_interactions=n_interactions),
     }
 
 

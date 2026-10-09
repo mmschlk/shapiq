@@ -23,6 +23,11 @@ if TYPE_CHECKING:
 
 __all__ = ["build_approximator", "run", "save_results"]
 
+_METRIC_NAMES = (
+    *("mse", "mae", "sse", "sae", "nmse"),
+    *("kendall_tau", "spearman", "precision_at_k", "kendall_tau_at_k"),
+)
+
 
 def build_approximator(
     approximator: type[Approximator],
@@ -160,7 +165,13 @@ def run(
                     rows.append(
                         {**row, "status": "failed", "error": f"{type(error).__name__}: {error}"}
                     )
-    return pd.DataFrame(rows)
+    # the same columns whatever the outcomes (e.g. an "error" column without failures)
+    columns = [*context, "approximator", "budget", "seed", "status", "error", "runtime_s"]
+    columns += ["scored_orders", *_METRIC_NAMES]
+    if with_faithfulness:
+        columns.append("faithfulness")
+    results = pd.DataFrame(rows)
+    return results.reindex(columns=[*columns, *results.columns.difference(columns, sort=False)])
 
 
 def save_results(results: pd.DataFrame, path: str | Path) -> Path:

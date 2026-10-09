@@ -203,7 +203,8 @@ class Setup(ABC):
         Raises:
             TypeError: If the setup is not registered, or a field cannot be stored or has the
                 wrong type.
-            ValueError: If a field is not one of the choices of its ``Literal`` annotation.
+            ValueError: If a field is not one of the choices of its ``Literal`` annotation, or
+                the model parameters hold a ``random_state`` (the setup's seeds the model).
         """
         cls = type(self)
         if SETUPS.get(getattr(cls, "name", "")) is not cls:
@@ -232,6 +233,10 @@ class Setup(ABC):
                     raise ValueError(msg)
                 msg = f"{cls.__name__}.{f.name} must be of type {hint}, got {value!r}."
                 raise TypeError(msg)
+        for name in ("model_params", "regressor_params"):
+            if "random_state" in getattr(self, name, {}):
+                msg = f"{cls.__name__}.{name} cannot seed the model: set random_state instead."
+                raise ValueError(msg)
 
     @abstractmethod
     def build(self) -> Game:
@@ -297,8 +302,10 @@ class DatasetSetup(Setup):
 
     Attributes:
         dataset: The dataset name.
-        random_state: The seed of everything the setup draws.
-        dataset_params: Parameters of synthetic datasets (e.g. ``{"n_samples": 300}``).
+        random_state: The seed of everything the setup draws (rows, splits, models); synthetic
+            datasets have their own seed in ``dataset_params``.
+        dataset_params: Parameters of synthetic datasets (e.g. ``{"n_samples": 300}``, or
+            ``{"random_state": 1}`` for other data than the default seed ``42``).
     """
 
     tasks: ClassVar[tuple[Task, ...]] = ("classification", "regression")
@@ -309,8 +316,11 @@ class DatasetSetup(Setup):
     dataset_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Check that the dataset is registered and of a task the setup accepts."""
+        """Check that the dataset is registered, of a task the setup accepts, and seeded."""
         super().__post_init__()
+        if "random_state" in self.dataset_params and self.dataset_params["random_state"] is None:
+            msg = "dataset_params cannot leave the data unseeded (random_state=None)."
+            raise ValueError(msg)
         task = get_dataset_spec(self.dataset).task
         if task not in self.tasks:
             msg = (

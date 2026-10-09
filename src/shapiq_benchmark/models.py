@@ -69,12 +69,17 @@ type TreeModelName = Literal["decision_tree", "random_forest", "xgboost", "light
 MISSING_VALUE_MODELS: tuple[ModelName, ...] = (
     "catboost",
     "decision_tree",
-    "lightgbm",
     "random_forest",
     "tabpfn",
     "xgboost",
 )
-"""The registry models that read missing values natively (for ``baseline="missing"``)."""
+"""The registry models that read missing values natively (for ``baseline="missing"``).
+
+The models are trained without missing values, so a missing value follows a fixed rule: the child
+with more training samples (scikit-learn trees), each split's default direction (XGBoost), the
+smallest value (CatBoost), or TabPFN's own encoding of ``+inf``. LightGBM is not one of them: a
+model trained without missing values reads NaN as ``0``.
+"""
 
 # The LightGBM presets were tuned with a subsample that LightGBM ignores without
 # subsample_freq; it is left out, which builds the same models.
