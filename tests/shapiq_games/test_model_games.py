@@ -11,6 +11,7 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.explainer.product_kernel.conversion import convert_svm
+from shapiq_games._base import predicts_row_by_row
 from shapiq_games.kernel import ProductKernelGame
 from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from shapiq_games.nn.weighted_knn import quantize_weights
@@ -46,6 +47,42 @@ def test_path_dependent_game_matches_the_model(regression_data, classification_d
     assert game.class_index == 1
     full = game(game.grand_coalition)[0] + game.normalization_value
     assert full == pytest.approx(forest.predict_proba(x[:1])[0, 1])
+
+
+def test_path_dependent_game_is_the_same_level_by_level_and_node_by_node(
+    regression_data,
+) -> None:
+    """Small batches are evaluated level by level, large ones node by node: the same floats."""
+    x, y = regression_data
+    forest = RandomForestClassifier(n_estimators=3, random_state=0).fit(x, y > 0)
+    game = PathDependentTreeGame(forest, x[0])
+    coalitions = np.random.default_rng(0).random((1500, 4)) < 0.5
+    together = game(coalitions)  # node by node
+    in_parts = np.concatenate([game(coalitions[i : i + 100]) for i in range(0, 1500, 100)])
+    np.testing.assert_array_equal(together, in_parts)
+
+
+@pytest.mark.skipif(not is_installed("xgboost"), reason="xgboost is not installed")
+def test_path_dependent_game_of_xgboost_matches_tree_shap(regression_data) -> None:
+    """XGBoost stores node weights as float32; the game computes the shares in float64."""
+    import xgboost
+
+    from shapiq import ExactComputer, TreeExplainer
+
+    x, y = regression_data
+    model = xgboost.XGBRegressor(n_estimators=10, max_depth=4, n_jobs=1).fit(x, y)
+    game = PathDependentTreeGame(model, x[0], normalize=False)
+    shapley = ExactComputer(game, n_players=4)("SV", 1).get_n_order_values(1)
+    expected = TreeExplainer(model, index="SV", max_order=1).explain(x[0])
+    np.testing.assert_allclose(shapley, expected.get_n_order_values(1), rtol=0, atol=1e-10)
+
+
+def test_only_tree_models_predict_row_by_row() -> None:
+    forest = RandomForestClassifier(n_estimators=2)
+    assert predicts_row_by_row(forest)
+    assert predicts_row_by_row(forest.predict_proba)  # a bound method of a tree model
+    assert not predicts_row_by_row(SVC())  # BLAS can round a row differently in larger calls
+    assert not predicts_row_by_row(lambda rows: rows.sum(axis=1))
 
 
 def test_interventional_game_matches_its_definition(regression_data) -> None:

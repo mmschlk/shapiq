@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq.imputer import (
     BaselineImputer,
+    GaussianImputer,
     GenerativeConditionalImputer,
     MarginalImputer,
     TabPFNImputer,
 )
 from shapiq.imputer.base import Imputer
-from shapiq_games._base import as_bool_coalitions, resolve_predict_function, resolve_x
+from shapiq_games._base import (
+    as_bool_coalitions,
+    predicts_row_by_row,
+    resolve_predict_function,
+    resolve_x,
+)
 from shapiq_games._tabpfn import check_inf_baseline
 
 if TYPE_CHECKING:
@@ -24,14 +30,15 @@ if TYPE_CHECKING:
 __all__ = ["TabularLocalExplanation"]
 
 # imputers whose value of a coalition does not depend on the other coalitions of the batch once
-# their generator is reseeded per evaluation; others (e.g. the Gaussian imputers, which draw
-# samples coalition after coalition) are evaluated one coalition at a time
+# their generator is reseeded per evaluation; the Gaussian imputers draw their samples coalition
+# after coalition, and other imputers are evaluated one coalition at a time
 _BATCH_SAFE_IMPUTERS = (
     MarginalImputer,
     BaselineImputer,
     GenerativeConditionalImputer,
     TabPFNImputer,
 )
+_MAX_ROWS = 2**16  # the most rows passed to the model at once
 
 
 class TabularLocalExplanation(Game):
@@ -53,8 +60,9 @@ class TabularLocalExplanation(Game):
 
     The values are deterministic: the imputers are seeded and reseeded before every evaluation, so
     the value of a coalition does not depend on call order or batching. An imputer that draws its
-    samples coalition after coalition (e.g. :class:`~shapiq.imputer.GaussianImputer`) is therefore
-    evaluated one coalition at a time.
+    samples coalition after coalition (e.g. :class:`~shapiq.imputer.GaussianImputer`) therefore
+    draws them for one coalition at a time; for a tree model, the Gaussian imputers' model calls
+    are batched.
 
     Attributes:
         x: The explained point.
@@ -172,7 +180,31 @@ class TabularLocalExplanation(Game):
         coalitions = as_bool_coalitions(coalitions)
         if isinstance(self.imputer, _BATCH_SAFE_IMPUTERS):
             return self._impute(coalitions)
+        if isinstance(self.imputer, GaussianImputer) and predicts_row_by_row(self.imputer.model):
+            return self._gaussian_values(coalitions)
         return np.array([self._impute(coalition[None])[0] for coalition in coalitions])
+
+    def _gaussian_values(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Evaluate a Gaussian (or Gaussian copula) imputer of a tree model, batching model calls.
+
+        Its samples come from a generator seeded anew for every call and drawn coalition after
+        coalition, so every coalition's samples are drawn alone, as the first of a batch. Only
+        the model calls, which dominate the time, are batched (the imputer calls the model once
+        per coalition): a tree model's output for a row does not depend on the other rows.
+        """
+        imputer = cast("GaussianImputer", self.imputer)
+        x = np.asarray(imputer.x).reshape(-1)
+        n_samples = imputer.sample_size
+        step = max(1, _MAX_ROWS // n_samples)
+        values = np.zeros(coalitions.shape[0])
+        for start in range(0, coalitions.shape[0], step):
+            chunk = coalitions[start : start + step]
+            samples = np.concatenate(
+                [imputer._draw_samples(x, coalition[None]) for coalition in chunk]  # noqa: SLF001
+            )
+            predictions = np.asarray(imputer.predict(samples.reshape(-1, x.shape[0])), dtype=float)
+            values[start : start + step] = np.mean(predictions.reshape(-1, n_samples), axis=1)
+        return values
 
 
 def _baseline_row(baseline: float | np.ndarray, n_features: int) -> FloatVector:

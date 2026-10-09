@@ -7,25 +7,60 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from sklearn.base import clone
 from sklearn.dummy import DummyClassifier, DummyRegressor
-from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, r2_score
 
 from ._base import is_classifier
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from shapiq_games.typing import Metric, MetricName, Task
+
+    # a metric of many predictions at once: (y_true, predictions of shape (n, n_test)) -> (n,)
+    type RowMetric = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
 __all__ = [
     "empty_model_score",
     "fit_and_score",
     "resolve_metric",
+    "resolve_row_metric",
     "resolve_task",
 ]
 
-_METRICS: dict[str, Metric] = {
-    "accuracy": lambda y_true, y_pred: float(accuracy_score(y_true, y_pred)),
-    "r2": lambda y_true, y_pred: float(r2_score(y_true, y_pred)),
-    "neg_mse": lambda y_true, y_pred: -float(mean_squared_error(y_true, y_pred)),
-    "neg_mae": lambda y_true, y_pred: -float(mean_absolute_error(y_true, y_pred)),
+
+# The named metrics of scikit-learn for many predictions at once, with scikit-learn's arithmetic
+# (the tests check that the values are the same bit for bit) but without its input validation,
+# which costs about 0.4 ms per call.
+def _accuracy(y_true: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    return np.mean(predictions == np.asarray(y_true), axis=1)
+
+
+def _neg_mse(y_true: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    errors = np.asarray(y_true, dtype=float) - np.asarray(predictions, dtype=float)
+    return -np.mean(errors**2, axis=1)
+
+
+def _neg_mae(y_true: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    errors = np.asarray(predictions, dtype=float) - np.asarray(y_true, dtype=float)
+    return -np.mean(np.abs(errors), axis=1)
+
+
+def _r2(y_true: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    y_true = np.asarray(y_true, dtype=float)
+    if y_true.shape[0] < 2:  # undefined, as in scikit-learn
+        return np.full(predictions.shape[0], np.nan)
+    numerator = np.sum((y_true - np.asarray(predictions, dtype=float)) ** 2, axis=1)
+    denominator = np.sum((y_true - np.mean(y_true)) ** 2)
+    # scikit-learn's force_finite: 1 for perfect predictions, 0 for a constant target
+    if denominator == 0:
+        return np.where(numerator == 0, 1.0, 0.0)
+    return np.where(numerator == 0, 1.0, 1 - numerator / denominator)
+
+
+_ROW_METRICS: dict[str, RowMetric] = {
+    "accuracy": _accuracy,
+    "r2": _r2,
+    "neg_mse": _neg_mse,
+    "neg_mae": _neg_mae,
 }
 
 
@@ -54,14 +89,27 @@ def resolve_metric(metric: MetricName | Metric | None, task: Task) -> Metric:
     Returns:
         The metric function.
     """
-    if metric is None:
-        metric = "accuracy" if task == "classification" else "r2"
     if callable(metric):
         return metric
+    row_metric = resolve_row_metric(metric, task)
+    return lambda y_true, y_pred: float(row_metric(y_true, np.asarray(y_pred)[None])[0])
+
+
+def resolve_row_metric(metric: MetricName | Metric | None, task: Task) -> RowMetric:
+    """Return the metric of many predictions at once (see :func:`resolve_metric`).
+
+    Returns:
+        A function mapping the labels and predictions of shape ``(n, n_test)`` to ``n`` values.
+    """
+    if callable(metric):
+        scalar = metric
+        return lambda y_true, predictions: np.array([scalar(y_true, p) for p in predictions])
+    if metric is None:
+        metric = "accuracy" if task == "classification" else "r2"
     try:
-        return _METRICS[metric]
+        return _ROW_METRICS[metric]
     except KeyError:
-        msg = f"Unknown metric {metric!r}. Choose one of {sorted(_METRICS)} or pass a callable."
+        msg = f"Unknown metric {metric!r}. Choose one of {sorted(_ROW_METRICS)} or pass a callable."
         raise ValueError(msg) from None
 
 

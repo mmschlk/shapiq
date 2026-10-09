@@ -18,11 +18,6 @@ if TYPE_CHECKING:
 __all__ = ["WeightedKNNGame"]
 
 
-def _greater_or_close(a: float, b: float) -> bool:
-    """Return ``a >= b``, allowing for floating point error."""
-    return bool(a >= b or np.isclose(a, b))
-
-
 def quantize_weights(weights: FloatVector, n_bits: int) -> FloatVector:
     """Round weights to multiples of ``2**-n_bits``.
 
@@ -102,16 +97,10 @@ class WeightedKNNGame(KNNGameBase):
         """Return whether the explained class outweighs ``other`` among each coalition's neighbors."""
         is_class = self.y_train_sorted == self.class_index
         is_other = self.y_train_sorted == other
-        utilities = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            relevant = coalition[self.sortperm] & (is_class | is_other)
-            if not np.any(relevant):
-                continue  # the empty coalition has value zero
-            nearest = keep_first_n(relevant, self.k)
-            utilities[i] = int(
-                _greater_or_close(
-                    np.sum(self.weights[is_class & nearest]),
-                    np.sum(self.weights[is_other & nearest]),
-                )
-            )
-        return utilities
+        relevant = coalitions[:, self.sortperm] & (is_class | is_other)
+        nearest = keep_first_n(relevant, self.k)
+        class_weight = np.sum(np.where(nearest & is_class, self.weights, 0.0), axis=1)
+        other_weight = np.sum(np.where(nearest & is_other, self.weights, 0.0), axis=1)
+        # at least as heavy, allowing for floating point error; the empty coalition has value zero
+        wins = (class_weight >= other_weight) | np.isclose(class_weight, other_weight)
+        return (wins & relevant.any(axis=1)).astype(float)

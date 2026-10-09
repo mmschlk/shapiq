@@ -19,6 +19,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 import shapiq_games as sg
+from shapiq.imputer import GaussianImputer
 from tests.shapiq_games.helpers import (
     FakeSentimentPipeline,
     is_installed,
@@ -63,6 +64,14 @@ def _treatment_data() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 _TREATMENT = _treatment_data()
 
 
+def _gaussian_game(model: object) -> Game:
+    """A local game with a Gaussian imputer, which draws its samples coalition after coalition."""
+    imputer = GaussianImputer(
+        model=model.predict, data=_X_TRAIN[:50], x=_X_TEST[5], sample_size=20, random_state=0
+    )
+    return sg.TabularLocalExplanation(model, _X_TRAIN[:50], imputer=imputer)
+
+
 def _image_game() -> Game:
     image = np.random.default_rng(0).integers(0, 255, (48, 48, 3), dtype=np.uint8)
     return sg.ImageClassifier(image, model=mean_brightness_classifier, n_superpixels=6)
@@ -91,6 +100,11 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         True,
     ),
     "local_xai_index": (lambda: sg.TabularLocalExplanation(_tree_regressor(), _X, x=3), True),
+    "local_xai_gaussian": (lambda: _gaussian_game(_tree_regressor()), True),
+    "local_xai_gaussian_linear": (
+        lambda: _gaussian_game(LinearRegression().fit(_X_TRAIN, _Y_REG_TRAIN)),
+        True,
+    ),
     "local_xai_nan_baseline": (
         lambda: sg.TabularLocalExplanation(
             _tree_regressor(), _X_TRAIN, x=_X_TEST[4], imputer="baseline", baseline=np.nan

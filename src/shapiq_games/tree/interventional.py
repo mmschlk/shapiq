@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions, resolve_class_index, resolve_x
+from shapiq_games._base import (
+    as_bool_coalitions,
+    predicts_row_by_row,
+    resolve_class_index,
+    resolve_x,
+)
 
 from ._output import model_output
 
@@ -15,6 +20,8 @@ if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["InterventionalTreeGame"]
+
+_MAX_ROWS = 2**16  # the most rows passed to the model at once
 
 
 class InterventionalTreeGame(Game):
@@ -85,8 +92,13 @@ class InterventionalTreeGame(Game):
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the mean model output over the reference data for the coalitions."""
         coalitions = as_bool_coalitions(coalitions)
+        n_reference = self.reference_data.shape[0]
+        # many coalitions per model call where that cannot change a row's output
+        step = max(1, _MAX_ROWS // n_reference) if predicts_row_by_row(self.model) else 1
         values = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            data = np.where(coalition, self.x, self.reference_data)
-            values[i] = float(np.mean(model_output(self.model, data, self.class_index)))
+        for start in range(0, coalitions.shape[0], step):
+            chunk = coalitions[start : start + step]
+            data = np.where(chunk[:, None, :], self.x, self.reference_data)
+            output = model_output(self.model, data.reshape(-1, self.x.shape[0]), self.class_index)
+            values[start : start + step] = np.mean(output.reshape(-1, n_reference), axis=1)
         return values

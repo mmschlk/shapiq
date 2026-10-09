@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq.utils.modules import safe_isinstance
+
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
@@ -34,10 +36,43 @@ __all__ = [
     "as_bool_coalitions",
     "is_classifier",
     "make_predict_function",
+    "predicts_row_by_row",
     "resolve_class_index",
     "resolve_predict_function",
     "resolve_x",
 ]
+
+
+# Models whose output for a row is the same, bit for bit, in a call with any other rows: tree
+# models sum their trees row by row. Other models need not be: BLAS and torch pick kernels and
+# summation orders by the number of rows, which changes the last digits.
+_ROW_BY_ROW_MODELS = [
+    f"{module}.{kind}{task}"
+    for module, kind in (
+        ("sklearn.tree", "DecisionTree"),
+        ("sklearn.tree", "ExtraTree"),
+        ("sklearn.ensemble", "RandomForest"),
+        ("sklearn.ensemble", "ExtraTrees"),
+        ("sklearn.ensemble", "GradientBoosting"),
+        ("sklearn.ensemble", "HistGradientBoosting"),
+        ("xgboost", "XGB"),
+        ("lightgbm", "LGBM"),
+        ("catboost", "CatBoost"),
+    )
+    for task in ("Classifier", "Regressor")
+]
+
+
+def predicts_row_by_row(model: object) -> bool:
+    """Return whether the model's output for a row does not depend on the other rows of a call.
+
+    Games may then pass the rows of many coalitions to the model at once without their values
+    depending on the batch. This holds bit for bit for tree models (scikit-learn, XGBoost,
+    LightGBM, CatBoost), also given as a bound method such as ``model.predict``; other models
+    are evaluated one coalition at a time.
+    """
+    model = getattr(model, "__self__", model)
+    return safe_isinstance(model, _ROW_BY_ROW_MODELS)
 
 
 def as_bool_coalitions(coalitions: ArrayLike) -> CoalitionMatrix:

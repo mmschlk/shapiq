@@ -17,21 +17,17 @@ if TYPE_CHECKING:
 __all__ = ["KNNGameBase", "NNGameBase", "keep_first_n"]
 
 
-def keep_first_n(mask: CoalitionMatrix, n: int) -> CoalitionMatrix:
-    """Return a copy of ``mask`` in which only the first ``n`` ``True`` entries are kept.
+def keep_first_n(masks: CoalitionMatrix, n: int) -> CoalitionMatrix:
+    """Return ``masks`` with only the first ``n`` ``True`` entries of every row kept.
 
-    Returns ``mask`` itself if it has at most ``n`` ``True`` entries.
+    Args:
+        masks: A boolean matrix of shape ``(n_rows, n_columns)``.
+        n: The number of ``True`` entries to keep per row.
+
+    Returns:
+        A new boolean matrix of the same shape.
     """
-    if n == 0:
-        return np.zeros_like(mask)
-    n_true = 0
-    for i, value in enumerate(mask):
-        n_true += int(value)
-        if n_true == n:
-            out = np.zeros_like(mask)
-            out[: i + 1] = mask[: i + 1]
-            return out
-    return mask
+    return masks & (np.cumsum(masks, axis=1, dtype=np.int32) <= n)
 
 
 class NNGameBase[M: KNeighborsClassifier | RadiusNeighborsClassifier](Game):

@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from scipy.stats import (
+    entropy as scipy_entropy,
+    mode,
+)
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
@@ -26,7 +31,8 @@ from shapiq_games import (
     TabularUncertaintyExplanation,
     UnsupervisedData,
 )
-from shapiq_games.unsupervised import total_correlation
+from shapiq_games._training import resolve_metric, resolve_row_metric
+from shapiq_games.unsupervised import _entropy, total_correlation
 from tests.shapiq_games.helpers import (
     FakeSentimentPipeline,
     is_installed,
@@ -316,6 +322,61 @@ def test_ensemble_selection_single_members_and_votes(data) -> None:
         )
 
 
+def test_ensemble_selection_equals_votes_and_scores_coalition_by_coalition(data) -> None:
+    """The vectorized game equals scipy's majority vote and scikit-learn's metrics, bit for bit."""
+    x, y = make_classification(n_samples=300, n_classes=3, n_informative=3, random_state=0)
+    members = [
+        DecisionTreeClassifier(max_depth=depth, random_state=0).fit(x[:200], y[:200])
+        for depth in (1, 2, 3, 4, 5)
+    ]
+    game = EnsembleSelection(members, x[200:], y[200:], empty_value=0.25, normalize=False)
+    coalitions = np.random.default_rng(0).random((64, 5)) < 0.5
+    votes = np.stack([member.predict(x[200:]) for member in members])
+    expected = [
+        accuracy_score(y[200:], mode(votes[coalition], axis=0).mode) if coalition.any() else 0.25
+        for coalition in coalitions
+    ]
+    np.testing.assert_array_equal(game(coalitions), expected)
+
+    regressors = [
+        DecisionTreeRegressor(max_depth=depth, random_state=0).fit(
+            data["x_train"], data["yr_train"]
+        )
+        for depth in (1, 2, 3, 4, 5)
+    ]
+    regression = EnsembleSelection(regressors, data["x_test"], data["yr_test"], normalize=False)
+    predictions = np.stack([member.predict(data["x_test"]) for member in regressors])
+    expected = [
+        r2_score(data["yr_test"], predictions[coalition].mean(axis=0)) if coalition.any() else 0.0
+        for coalition in coalitions
+    ]
+    np.testing.assert_array_equal(regression(coalitions), expected)
+
+
+@pytest.mark.parametrize(
+    ("name", "reference"),
+    [
+        ("accuracy", accuracy_score),
+        ("r2", r2_score),
+        ("neg_mse", lambda y, p: -mean_squared_error(y, p)),
+        ("neg_mae", lambda y, p: -mean_absolute_error(y, p)),
+    ],
+)
+def test_named_metrics_are_those_of_scikit_learn_bit_for_bit(name, reference) -> None:
+    rng = np.random.default_rng(0)
+    task = "classification" if name == "accuracy" else "regression"
+    if task == "classification":
+        targets = [rng.integers(0, 3, size=50), np.array(["a", "b"])[rng.integers(0, 2, size=50)]]
+    else:  # also a constant target and integer targets
+        targets = [rng.normal(size=50) * 1e3, np.full(50, 2.0), rng.integers(0, 3, size=50)]
+    for y in targets:
+        other = y + rng.normal(size=50) if task == "regression" else np.roll(y, 1)
+        predictions = np.stack([y, rng.permutation(y), other])
+        expected = [float(reference(y, p)) for p in predictions]
+        np.testing.assert_array_equal(resolve_row_metric(name, task)(y, predictions), expected)
+        assert [resolve_metric(name, task)(y, p) for p in predictions] == expected
+
+
 def test_ensemble_selection_with_any_labels(data) -> None:
     labels = np.array(["no", "yes"])
     members = [
@@ -376,6 +437,20 @@ def test_clustering_and_unsupervised_games(data) -> None:
     )  # duplicated features share all information
     discrete = np.array([[0, 0], [1, 1], [0, 0], [1, 1]])
     assert total_correlation(discrete) == pytest.approx(np.log(2))
+
+
+def test_entropies_are_those_of_scipy_bit_for_bit() -> None:
+    """The fast entropy and joint entropy reproduce scipy and ``np.unique(axis=0)`` exactly."""
+    rng = np.random.default_rng(0)
+    for size in (1, 2, 7, 100, 10_000):
+        counts = rng.integers(1, 1000, size=size)
+        assert _entropy(counts) == float(scipy_entropy(counts))
+    data = rng.integers(-3, 4, size=(2000, 6))
+    data[:, 2] = rng.integers(0, 10**15, size=2000)  # codes that would overflow int64 together
+    expected = sum(
+        float(scipy_entropy(np.unique(column, return_counts=True)[1])) for column in data.T
+    ) - float(scipy_entropy(np.unique(data, axis=0, return_counts=True)[1]))
+    assert total_correlation(data) == expected
 
 
 def test_confounding_game_with_a_linear_regressor() -> None:

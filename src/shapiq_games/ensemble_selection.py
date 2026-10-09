@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.stats import mode
 
 from shapiq.game import Game
 from shapiq_games._base import as_bool_coalitions
-from shapiq_games._training import resolve_metric, resolve_task
+from shapiq_games._training import resolve_row_metric, resolve_task
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -18,6 +17,8 @@ if TYPE_CHECKING:
     from shapiq_games.typing import Metric, MetricName, Task
 
 __all__ = ["EnsembleSelection", "RandomForestEnsembleSelection"]
+
+_MAX_ELEMENTS = 2**22  # the most predictions or votes held at once
 
 
 class EnsembleSelection(Game):
@@ -86,7 +87,7 @@ class EnsembleSelection(Game):
             if member_names is not None
             else [f"{i}_{type(member).__name__}" for i, member in enumerate(self.members)]
         )
-        self._metric = resolve_metric(metric, self.task)
+        self._row_metric = resolve_row_metric(metric, self.task)
         self._y_test = np.asarray(y_test)
         self.predictions = np.stack(
             [np.asarray(member.predict(x_test)).reshape(-1) for member in self.members]
@@ -110,18 +111,35 @@ class EnsembleSelection(Game):
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the test metric of each coalition's combined prediction."""
         coalitions = as_bool_coalitions(coalitions)
-        values = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            if not coalition.any():
-                values[i] = self.empty_value
-                continue
-            if self.task == "regression":
-                prediction = self.predictions[coalition].mean(axis=0)
-            else:
-                votes = mode(self._codes[coalition], axis=0, keepdims=False).mode
-                prediction = self._classes[votes]
-            values[i] = self._metric(self._y_test, prediction)
+        values = np.full(coalitions.shape[0], self.empty_value)
+        n_classes = self._classes.shape[0] if self.task == "classification" else 1
+        step = max(1, _MAX_ELEMENTS // (self.predictions.shape[1] * n_classes))
+        for start in range(0, coalitions.shape[0], step):
+            chunk = coalitions[start : start + step]
+            present = chunk.any(axis=1)  # the empty ensemble has the value empty_value
+            if present.any():
+                predictions = self._combined_predictions(chunk[present])
+                values[start : start + step][present] = self._row_metric(self._y_test, predictions)
         return values
+
+    def _combined_predictions(self, coalitions: CoalitionMatrix) -> np.ndarray:
+        """Return every (non-empty) coalition's prediction, of shape ``(n_coalitions, n_test)``.
+
+        Regression averages the members' predictions, added member after member (the order of
+        ``predictions[coalition].mean(axis=0)``); classification counts the votes for every class
+        and takes the most frequent one, the smallest on ties (as ``scipy.stats.mode``).
+        """
+        n_test = self.predictions.shape[1]
+        if self.task == "regression":
+            sums = np.zeros((coalitions.shape[0], n_test))
+            for member, prediction in enumerate(self.predictions):
+                sums[coalitions[:, member]] += prediction
+            return sums / np.sum(coalitions, axis=1, keepdims=True)
+        votes = np.zeros((coalitions.shape[0], n_test, self._classes.shape[0]), dtype=np.int32)
+        tests = np.arange(n_test)
+        for member, codes in enumerate(self._codes):
+            votes[:, tests, codes] += coalitions[:, member, None]
+        return self._classes[np.argmax(votes, axis=2)]
 
 
 class RandomForestEnsembleSelection(EnsembleSelection):

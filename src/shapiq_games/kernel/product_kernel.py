@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from sklearn.metrics.pairwise import rbf_kernel
 
 from shapiq.explainer.product_kernel.validation import validate_pk_model
 from shapiq.game import Game
@@ -17,6 +16,8 @@ if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["ProductKernelGame"]
+
+_MAX_ELEMENTS = 2**20  # the most kernel values held at once (coalitions times support vectors)
 
 
 class ProductKernelGame(Game):
@@ -80,6 +81,7 @@ class ProductKernelGame(Game):
             msg = f"Kernel type '{self.model.kernel_type}' is not supported, only 'rbf'."
             raise NotImplementedError(msg)
         self.x = np.asarray(x, dtype=float).reshape(-1)
+        self._squared_distances = (np.asarray(self.model.X_train, dtype=float) - self.x) ** 2
         # with no feature the RBF kernel is one for every support vector
         self.empty_value = float(np.sum(self.model.alpha)) + float(self.model.intercept)
         super().__init__(self.x.shape[0], normalize=normalize, normalization_value=self.empty_value)
@@ -87,16 +89,19 @@ class ProductKernelGame(Game):
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the decision function with the kernel restricted to the coalition."""
         coalitions = as_bool_coalitions(coalitions)
-        alpha = self.model.alpha
-        values = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            if not coalition.any():
-                values[i] = self.empty_value
-                continue
-            kernel = rbf_kernel(
-                X=self.model.X_train[:, coalition],
-                Y=self.x[coalition].reshape(1, -1),
-                gamma=self.model.gamma,
-            )
-            values[i] = float((alpha @ kernel).squeeze()) + float(self.model.intercept)
+        n_support = self._squared_distances.shape[0]
+        step = max(1, _MAX_ELEMENTS // n_support)
+        values = np.full(coalitions.shape[0], self.empty_value)
+        for start in range(0, coalitions.shape[0], step):
+            chunk = coalitions[start : start + step]
+            # the squared distance over the coalition's features, added feature by feature
+            distances = np.zeros((chunk.shape[0], n_support))
+            for feature in range(chunk.shape[1]):
+                distances[chunk[:, feature]] += self._squared_distances[:, feature]
+            gamma = self.model.gamma
+            if gamma is None:  # scikit-learn's default: one over the number of features
+                gamma = 1.0 / np.maximum(chunk.sum(axis=1, keepdims=True), 1)
+            kernel = np.exp(-gamma * distances)
+            decision = np.sum(kernel * self.model.alpha, axis=1) + float(self.model.intercept)
+            values[start : start + step] = np.where(chunk.any(axis=1), decision, self.empty_value)
         return values

@@ -57,13 +57,8 @@ class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
 
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the share of the explained class among the coalition's points in the radius."""
-        coalitions = as_bool_coalitions(coalitions)
-        utilities = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            in_radius = coalition & self.in_neighborhood
-            n_in_radius = np.sum(in_radius)
-            if n_in_radius == 0:
-                utilities[i] = 1 / self.n_classes
-            else:
-                utilities[i] = np.sum(in_radius & self.is_class) / n_in_radius
-        return utilities
+        in_radius = as_bool_coalitions(coalitions) & self.in_neighborhood
+        n_in_radius = np.sum(in_radius, axis=1)
+        n_of_class = np.sum(in_radius & self.is_class, axis=1)
+        share = n_of_class / np.maximum(n_in_radius, 1)
+        return np.where(n_in_radius == 0, 1 / self.n_classes, share)

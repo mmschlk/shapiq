@@ -7,13 +7,19 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq_games._base import as_bool_coalitions, resolve_predict_function
+from shapiq_games._base import (
+    as_bool_coalitions,
+    predicts_row_by_row,
+    resolve_predict_function,
+)
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
     from shapiq_games.typing import Loss, LossName
 
 __all__ = ["TabularGlobalExplanation"]
+
+_MAX_ROWS = 2**16  # the most rows passed to the model at once
 
 _LOSSES: dict[LossName, Loss] = {
     "mse": lambda reference, prediction: float(np.mean((reference - prediction) ** 2)),
@@ -90,6 +96,7 @@ class TabularGlobalExplanation(Game):
             msg = f"Unknown loss {loss!r}. Choose 'mse', 'mae', or pass a callable."
             raise ValueError(msg)
 
+        self._row_by_row = predicts_row_by_row(model)
         rng = np.random.default_rng(random_state)
         n_rows = min(n_samples, data.shape[0])
         self.x_eval = data[rng.choice(data.shape[0], size=n_rows, replace=False)]
@@ -110,9 +117,15 @@ class TabularGlobalExplanation(Game):
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the negative loss between full and masked predictions."""
         coalitions = as_bool_coalitions(coalitions)
+        n_rows, n_features = self.x_eval.shape
+        # many coalitions per model call where that cannot change a row's prediction
+        step = max(1, _MAX_ROWS // n_rows) if self._row_by_row else 1
         values = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            masked = np.where(coalition, self.x_eval, self.x_replacement)
-            predictions = np.asarray(self._predict(masked), dtype=float)
-            values[i] = -self._loss(self._reference_predictions, predictions)
+        for start in range(0, coalitions.shape[0], step):
+            chunk = coalitions[start : start + step]
+            masked = np.where(chunk[:, None, :], self.x_eval, self.x_replacement)
+            predictions = np.asarray(self._predict(masked.reshape(-1, n_features)), dtype=float)
+            predictions = predictions.reshape(chunk.shape[0], n_rows, *predictions.shape[1:])
+            for i, prediction in enumerate(predictions, start=start):
+                values[i] = -self._loss(self._reference_predictions, prediction)
         return values

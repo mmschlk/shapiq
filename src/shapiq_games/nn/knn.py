@@ -37,8 +37,6 @@ class KNNGame(KNNGameBase):
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the share of the explained class among the coalition's k nearest neighbors."""
         coalitions = as_bool_coalitions(coalitions)
-        utilities = np.zeros(coalitions.shape[0])
-        for i, coalition in enumerate(coalitions):
-            k_nearest = keep_first_n(coalition[self.sortperm], n=self.k)
-            utilities[i] = np.sum(self.y_train_sorted[k_nearest] == self.class_index) / self.k
-        return utilities
+        k_nearest = keep_first_n(coalitions[:, self.sortperm], n=self.k)
+        n_of_class = np.sum(k_nearest & (self.y_train_sorted == self.class_index), axis=1)
+        return n_of_class / self.k

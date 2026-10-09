@@ -169,6 +169,33 @@ Boosting converters live in separate modules such as `xgboost.py`,
   `n_prefix=0` and the empty coalition is an empty sequence, which pools to the head's output
   bias. SigLIP's processor resizes the whole image to 224 x 224 without cropping.
 
+## Games performance gotchas (observed 2026-10-09)
+
+- The games' values must not depend on the batch, so a speed-up must keep every float's
+  arithmetic, not only the result up to rounding. Check a rewrite against the old code value by
+  value (`np.array_equal`), one coalition at a time and in a batch.
+- Batch model calls only for models whose output for a row does not depend on the other rows of
+  the call: tree models (`predicts_row_by_row` in `shapiq_games/_base.py`). A BLAS or torch model
+  can round a row differently in a call with more rows (one row of 40 changed in the last digit).
+  The core marginal and baseline imputers batch every model and are only exact up to that.
+- numpy sums are not always in order: a reduction over a `(k, 1)` or `(1, n)` array collapses to
+  one dimension and sums pairwise, while a `(k, n)` axis-0 sum adds row after row. Use
+  `np.cumsum(...)[-1]` (or `np.add.accumulate`) where the order must be fixed, e.g. the
+  path-dependent tree game summing its leaves in breadth-first order. Python's built-in `sum()`
+  of floats is compensated (Neumaier) since 3.12, so it differs from a numpy running sum too.
+- Library overhead dominates cheap games: `scipy.stats.entropy` costs about 0.3 ms per call,
+  scikit-learn metrics about 0.4 ms, a scikit-learn forest's `predict` about 1 to 5 ms (joblib).
+  `_training.py` has numpy versions of the named metrics; `tests/shapiq_games` checks that they
+  equal scikit-learn's bit for bit, so an upgrade that changes scikit-learn's arithmetic fails there.
+- XGBoost's converted trees hold float32 node weights and leaf values. Computing with them in
+  float32 (e.g. `1 - share` of a float32 share) cost the path-dependent game 1e-6 against TreeSHAP;
+  cast to float64 first.
+- The path-dependent tree game evaluates a tree level by level (one numpy operation per level for
+  all coalitions, at least 64 coalitions per pass): on a deep 10-tree forest 100x faster than node
+  by node for one coalition, 10x for 64 (the batches of the permutation approximators), about the
+  same at 1,000, but 1.45x slower at 4,096 (the level arrays are copied more often than per-node
+  vectors). A second, node-by-node path for large batches was left out for readability.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
