@@ -69,6 +69,7 @@ class ProductKernelGame(Game):
 
         Raises:
             ValueError: If the model is a Gaussian process with ``normalize_y=True``.
+            NotImplementedError: If the kernel is not an RBF kernel with one length scale.
         """
         if getattr(model, "normalize_y", False) and safe_isinstance(
             model, "sklearn.gaussian_process.GaussianProcessRegressor"
@@ -80,6 +81,12 @@ class ProductKernelGame(Game):
         if self.model.kernel_type != "rbf":
             msg = f"Kernel type '{self.model.kernel_type}' is not supported, only 'rbf'."
             raise NotImplementedError(msg)
+        gamma = self.model.gamma
+        if gamma is not None and np.size(gamma) > 1:  # as in shapiq's product-kernel explainer
+            msg = "RBF kernels with one length scale per feature are not supported."
+            raise NotImplementedError(msg)
+        # each factor of the product kernel has one feature, so scikit-learn's default gamma is 1
+        self._gamma = 1.0 if gamma is None else float(np.squeeze(gamma))
         self.x = np.asarray(x, dtype=float).reshape(-1)
         self._squared_distances = (np.asarray(self.model.X_train, dtype=float) - self.x) ** 2
         # with no feature the RBF kernel is one for every support vector
@@ -98,10 +105,7 @@ class ProductKernelGame(Game):
             distances = np.zeros((chunk.shape[0], n_support))
             for feature in range(chunk.shape[1]):
                 distances[chunk[:, feature]] += self._squared_distances[:, feature]
-            gamma = self.model.gamma
-            if gamma is None:  # scikit-learn's default: one over the number of features
-                gamma = 1.0 / np.maximum(chunk.sum(axis=1, keepdims=True), 1)
-            kernel = np.exp(-gamma * distances)
+            kernel = np.exp(-self._gamma * distances)
             decision = np.sum(kernel * self.model.alpha, axis=1) + float(self.model.intercept)
             values[start : start + step] = np.where(chunk.any(axis=1), decision, self.empty_value)
         return values

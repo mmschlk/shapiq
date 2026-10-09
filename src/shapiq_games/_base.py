@@ -61,6 +61,7 @@ _ROW_BY_ROW_MODELS = [
     )
     for task in ("Classifier", "Regressor")
 ]
+_GRADIENT_BOOSTING = [f"sklearn.ensemble.GradientBoosting{t}" for t in ("Classifier", "Regressor")]
 
 
 def predicts_row_by_row(model: object) -> bool:
@@ -69,9 +70,15 @@ def predicts_row_by_row(model: object) -> bool:
     Games may then pass the rows of many coalitions to the model at once without their values
     depending on the batch. This holds bit for bit for tree models (scikit-learn, XGBoost,
     LightGBM, CatBoost), also given as a bound method such as ``model.predict``; other models
-    are evaluated one coalition at a time.
+    are evaluated one coalition at a time. (A scikit-learn forest with several ``n_jobs`` adds its
+    trees in the order its threads finish, so its output varies in the last digits anyway.)
     """
     model = getattr(model, "__self__", model)
+    if safe_isinstance(model, _GRADIENT_BOOSTING) and getattr(model, "init", None) not in (
+        None,
+        "zero",
+    ):  # its initial model, e.g. a linear one, is evaluated on all rows at once
+        return False
     return safe_isinstance(model, _ROW_BY_ROW_MODELS)
 
 

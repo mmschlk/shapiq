@@ -80,9 +80,17 @@ class TabularUncertaintyExplanation(TabularLocalExplanation):
             random_state: The seed of the imputer. Defaults to ``42``.
             normalize: Whether to center the game. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
+
+        Raises:
+            TypeError: If ``model`` is not a fitted ``RandomForestClassifier`` or ``imputer`` is
+                not a name.
+            ValueError: If ``uncertainty`` is unknown.
         """
         if not isinstance(model, RandomForestClassifier):
             msg = f"Expected a fitted RandomForestClassifier, got {type(model).__name__}."
+            raise TypeError(msg)
+        if not isinstance(imputer, str):  # an imputer object would bring its own model
+            msg = f"imputer must be 'marginal', 'conditional', or 'baseline', got {imputer!r}."
             raise TypeError(msg)
         if uncertainty not in ("total", "aleatoric", "epistemic"):
             msg = f"uncertainty must be 'total', 'aleatoric', or 'epistemic', got {uncertainty!r}."

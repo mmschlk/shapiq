@@ -38,6 +38,8 @@ _BATCH_SAFE_IMPUTERS = (
     GenerativeConditionalImputer,
     TabPFNImputer,
 )
+# imputers that draw random samples, so that an unseeded one gives different values every call
+_SAMPLING_IMPUTERS = (MarginalImputer, GenerativeConditionalImputer, GaussianImputer)
 _MAX_ROWS = 2**16  # the most rows passed to the model at once
 
 
@@ -49,10 +51,11 @@ class TabularLocalExplanation(Game):
 
     - ``"marginal"`` replaces them with background rows (interventional),
     - ``"conditional"`` samples them conditionally on the present features,
-    - ``"baseline"`` replaces them with a baseline: the background mean (mode for categorical
-      features) or a given ``baseline``. A baseline of ``np.nan`` passes them as missing values to
-      models that read those natively, e.g. XGBoost, LightGBM, or scikit-learn's histogram
-      gradient boosting; TabPFN also reads ``np.inf`` as missing when it is built with
+    - ``"baseline"`` replaces them with a baseline: the background mean (the mode of non-numeric
+      features; numeric category codes are averaged) or a given ``baseline``. A baseline of
+      ``np.nan`` passes them as missing values to models that read those natively, e.g. XGBoost or
+      scikit-learn's trees (LightGBM reads NaN as ``0`` unless it was trained with missing
+      values); TabPFN also reads ``np.inf`` as missing when it is built with
       ``inference_config={"PASSTHROUGH_INF": True}`` (``tabpfn>=8.1``),
     - an :class:`~shapiq.imputer.TabPFNImputer` removes them from TabPFN's context
       (remove-and-recontextualize; :class:`shapiq_benchmark.setups.TabularLocalExplanationSetup` builds
@@ -121,7 +124,7 @@ class TabularLocalExplanation(Game):
                 Defaults to ``100``.
             baseline: The values absent features take with ``imputer="baseline"``: one value
                 for every feature (e.g. ``np.nan``, see above) or one per feature. ``None``
-                (default) uses the mean (mode for categorical features) of ``data``.
+                (default) uses the mean (the mode of non-numeric features) of ``data``.
             random_state: The seed of the imputer (unless an imputer is given). Defaults to
                 ``42``.
             normalize: Whether to center the game such that the value of the empty coalition is
@@ -130,7 +133,8 @@ class TabularLocalExplanation(Game):
 
         Raises:
             ValueError: If ``baseline`` is given for another imputer, or passes ``inf`` to a
-                TabPFN model that would not read it as missing.
+                TabPFN model that would not read it as missing, or an imputer that samples has no
+                ``random_state``.
         """
         if baseline is not None and not (isinstance(imputer, str) and imputer == "baseline"):
             msg = f"baseline applies to imputer='baseline', got imputer={imputer!r}."
@@ -138,6 +142,12 @@ class TabularLocalExplanation(Game):
         data = np.asarray(data)
         predict, self.class_index = resolve_predict_function(model, class_index)
         if isinstance(imputer, Imputer):  # the imputer brings its own model, point, and seed
+            if imputer.random_state is None and isinstance(imputer, _SAMPLING_IMPUTERS):
+                msg = (
+                    f"The {type(imputer).__name__} draws random samples: give it a random_state, "
+                    "so that the game's values are deterministic."
+                )
+                raise ValueError(msg)
             self.imputer = imputer
             self.x = np.asarray(imputer.x).reshape(-1)
             self.random_state = imputer.random_state

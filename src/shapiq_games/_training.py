@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from sklearn.base import clone
 from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, r2_score
 
 from ._base import is_classifier
 
@@ -26,10 +27,17 @@ __all__ = [
     "resolve_task",
 ]
 
+_METRICS: dict[str, Metric] = {
+    "accuracy": lambda y_true, y_pred: float(accuracy_score(y_true, y_pred)),
+    "r2": lambda y_true, y_pred: float(r2_score(y_true, y_pred)),
+    "neg_mse": lambda y_true, y_pred: -float(mean_squared_error(y_true, y_pred)),
+    "neg_mae": lambda y_true, y_pred: -float(mean_absolute_error(y_true, y_pred)),
+}
 
-# The named metrics of scikit-learn for many predictions at once, with scikit-learn's arithmetic
-# (the tests check that the values are the same bit for bit) but without its input validation,
-# which costs about 0.4 ms per call.
+
+# The named metrics for many predictions of one target at once (labels of shape (n_test,)), with
+# scikit-learn's arithmetic (the tests check that the values are the same bit for bit) but without
+# its input validation, which costs about 0.4 ms per call.
 def _accuracy(y_true: np.ndarray, predictions: np.ndarray) -> np.ndarray:
     return np.mean(predictions == np.asarray(y_true), axis=1)
 
@@ -89,17 +97,23 @@ def resolve_metric(metric: MetricName | Metric | None, task: Task) -> Metric:
     Returns:
         The metric function.
     """
+    if metric is None:
+        metric = "accuracy" if task == "classification" else "r2"
     if callable(metric):
         return metric
-    row_metric = resolve_row_metric(metric, task)
-    return lambda y_true, y_pred: float(row_metric(y_true, np.asarray(y_pred)[None])[0])
+    try:
+        return _METRICS[metric]
+    except KeyError:
+        msg = f"Unknown metric {metric!r}. Choose one of {sorted(_METRICS)} or pass a callable."
+        raise ValueError(msg) from None
 
 
 def resolve_row_metric(metric: MetricName | Metric | None, task: Task) -> RowMetric:
-    """Return the metric of many predictions at once (see :func:`resolve_metric`).
+    """Return the metric of many predictions of one target at once (see :func:`resolve_metric`).
 
     Returns:
-        A function mapping the labels and predictions of shape ``(n, n_test)`` to ``n`` values.
+        A function mapping the labels of shape ``(n_test,)`` and the predictions of shape
+        ``(n, n_test)`` to ``n`` values.
     """
     if callable(metric):
         scalar = metric

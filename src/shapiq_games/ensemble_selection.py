@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
+from shapiq.utils.modules import safe_isinstance
 from shapiq_games._base import as_bool_coalitions
 from shapiq_games._training import resolve_row_metric, resolve_task
 
@@ -19,6 +20,11 @@ if TYPE_CHECKING:
 __all__ = ["EnsembleSelection", "RandomForestEnsembleSelection"]
 
 _MAX_ELEMENTS = 2**22  # the most predictions or votes held at once
+_FORESTS = [
+    f"sklearn.ensemble.{kind}{task}"
+    for kind in ("RandomForest", "ExtraTrees")
+    for task in ("Classifier", "Regressor")
+]
 
 
 class EnsembleSelection(Game):
@@ -67,7 +73,7 @@ class EnsembleSelection(Game):
         Args:
             members: The fitted ensemble members (scikit-learn compatible).
             x_test: The test features.
-            y_test: The test labels.
+            y_test: The test labels of one target, of shape ``(n_test,)`` or ``(n_test, 1)``.
             task: ``"classification"`` or ``"regression"``, or ``None`` (default) to infer it
                 from the model.
             metric: ``"accuracy"``, ``"r2"``, ``"neg_mse"``, ``"neg_mae"``, a callable, or ``None``
@@ -76,6 +82,9 @@ class EnsembleSelection(Game):
             member_names: A name per member, used as player names.
             normalize: Whether to center the game by ``empty_value``. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
+
+        Raises:
+            ValueError: If there are no members, or ``y_test`` holds more than one target.
         """
         self.members = list(members)
         if not self.members:
@@ -89,6 +98,11 @@ class EnsembleSelection(Game):
         )
         self._row_metric = resolve_row_metric(metric, self.task)
         self._y_test = np.asarray(y_test)
+        if self._y_test.ndim == 2 and self._y_test.shape[1] == 1:  # a column vector
+            self._y_test = self._y_test[:, 0]
+        if self._y_test.ndim != 1:
+            msg = f"Expected one target, got y_test of shape {self._y_test.shape}."
+            raise ValueError(msg)
         self.predictions = np.stack(
             [np.asarray(member.predict(x_test)).reshape(-1) for member in self.members]
         )
@@ -188,12 +202,16 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             verbose: Whether to show a progress bar when evaluating the game.
 
         Raises:
-            TypeError: If ``forest`` is not a fitted scikit-learn random forest.
+            TypeError: If ``forest`` is not a fitted scikit-learn random forest or extra-trees
+                ensemble.
             ValueError: If ``y_test`` has labels the forest does not know.
         """
         trees = list(getattr(forest, "estimators_", []))
-        if not trees:
-            msg = "Expected a fitted scikit-learn random forest with `estimators_`."
+        if not (safe_isinstance(forest, _FORESTS) and trees):
+            # other ensembles' members can predict labels instead of indices into classes_
+            msg = (
+                "Expected a fitted scikit-learn random forest (or extra trees) with `estimators_`."
+            )
             raise TypeError(msg)
         classes = getattr(forest, "classes_", None)
         if classes is not None:  # the trees predict class indices into the forest's classes_

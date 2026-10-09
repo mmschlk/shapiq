@@ -34,6 +34,8 @@ class KNNGame(KNNGameBase):
         10
     """
 
+    model_weights = "uniform"
+
     def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
         """Return the share of the explained class among the coalition's k nearest neighbors."""
         coalitions = as_bool_coalitions(coalitions)

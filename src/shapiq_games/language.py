@@ -111,7 +111,8 @@ class SentimentAnalysis(Game):
 
     def _scores(self, texts: list[str]) -> FloatVector:
         """Return the signed score ``2 P(positive) - 1`` of every text."""
-        outputs = self._classifier(texts, truncation=True, top_k=None)
+        # one text per forward pass: padding texts to a common length can change the last digits
+        outputs = self._classifier(texts, truncation=True, top_k=None, batch_size=1)
         scores = np.zeros(len(texts))
         for i, labels in enumerate(outputs):
             probabilities = {out["label"]: out["score"] for out in labels}

@@ -56,6 +56,8 @@ class WeightedKNNGame(KNNGameBase):
         10
     """
 
+    model_weights = "distance"
+
     def __init__(
         self,
         model: KNeighborsClassifier,
@@ -72,6 +74,10 @@ class WeightedKNNGame(KNNGameBase):
             class_index: The explained class. Defaults to ``None``, which means class ``1``.
             n_bits: The number of bits of the weight discretization of the explainer, or ``None``
                 for exact weights.
+
+        Raises:
+            ValueError: If the model does not use ``weights="distance"``, or its training data has
+                one class only.
         """
         super().__init__(model, x, class_index=class_index)
         self.n_bits = n_bits

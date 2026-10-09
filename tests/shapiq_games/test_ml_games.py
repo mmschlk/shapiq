@@ -115,6 +115,17 @@ def test_tabular_local_explanation_takes_point_and_seed_from_an_imputer(data) ->
     assert game(coalition)[0] == pytest.approx(expected)
 
 
+def test_an_imputer_that_samples_must_be_seeded(data) -> None:
+    from shapiq.imputer import GaussianImputer
+
+    model = DecisionTreeRegressor(max_depth=2, random_state=0).fit(
+        data["x_train"], data["yr_train"]
+    )
+    unseeded = GaussianImputer(model=model.predict, data=data["x_train"], x=data["x_test"][0])
+    with pytest.raises(ValueError, match="random_state"):
+        TabularLocalExplanation(model, data["x_train"], imputer=unseeded)
+
+
 def test_nan_baseline_passes_absent_features_as_missing_values(data) -> None:
     from sklearn.ensemble import HistGradientBoostingRegressor
 
@@ -353,6 +364,34 @@ def test_ensemble_selection_equals_votes_and_scores_coalition_by_coalition(data)
     np.testing.assert_array_equal(regression(coalitions), expected)
 
 
+def test_labels_as_a_column_vector_give_the_same_games(data) -> None:
+    """Labels of shape (n, 1), e.g. ``df[["target"]].to_numpy()``, mean the same as shape (n,)."""
+    tree = DecisionTreeClassifier(max_depth=3, random_state=0)
+    rng = np.random.default_rng(0)
+    for game_class, x_train, y_train in (
+        (FeatureSelection, data["x_train"], data["yc_train"]),
+        (DataValuation, data["x_train"][:6], data["yc_train"][:6]),  # six points as players
+    ):
+        flat = game_class(tree, x_train, y_train, data["x_test"], data["yc_test"])
+        column = game_class(
+            tree, x_train, y_train[:, None], data["x_test"], data["yc_test"][:, None]
+        )
+        coalitions = rng.random((8, flat.n_players)) < 0.5
+        np.testing.assert_array_equal(column(coalitions), flat(coalitions))
+    coalitions = rng.random((8, 3)) < 0.5
+    members = [
+        DecisionTreeRegressor(max_depth=depth, random_state=0).fit(
+            data["x_train"], data["yr_train"]
+        )
+        for depth in (1, 2, 3)
+    ]
+    flat = EnsembleSelection(members, data["x_test"], data["yr_test"])
+    column = EnsembleSelection(members, data["x_test"], data["yr_test"][:, None])
+    np.testing.assert_array_equal(column(coalitions), flat(coalitions))
+    with pytest.raises(ValueError, match="one target"):
+        EnsembleSelection(members, data["x_test"], np.ones((len(data["x_test"]), 2)))
+
+
 @pytest.mark.parametrize(
     ("name", "reference"),
     [
@@ -400,6 +439,14 @@ def test_ensemble_selection_with_any_labels(data) -> None:
     )
     with pytest.raises(ValueError, match="does not know"):
         RandomForestEnsembleSelection(forest, data["x_test"], data["yc_test"] + 5)
+    # the members of other ensembles may predict labels instead of indices into classes_
+    from sklearn.ensemble import AdaBoostClassifier
+
+    boosted = AdaBoostClassifier(n_estimators=3, random_state=0).fit(
+        data["x_train"], data["yc_train"]
+    )
+    with pytest.raises(TypeError, match="random forest"):
+        RandomForestEnsembleSelection(boosted, data["x_test"], data["yc_test"])
 
 
 def test_uncertainty_decomposition(data) -> None:
@@ -418,6 +465,12 @@ def test_uncertainty_decomposition(data) -> None:
         TabularUncertaintyExplanation(
             DecisionTreeClassifier().fit(data["x_train"], data["yc_train"]), data["x_train"]
         )
+    # an imputer object would explain its own model instead of the forest's uncertainty
+    from shapiq.imputer import BaselineImputer
+
+    imputer = BaselineImputer(model=forest.predict, data=data["x_train"], x=data["x_train"][1])
+    with pytest.raises(TypeError, match="imputer"):
+        TabularUncertaintyExplanation(forest, data["x_train"], imputer=imputer)
 
 
 def test_clustering_and_unsupervised_games(data) -> None:
@@ -513,6 +566,8 @@ def test_sentiment_analysis_with_a_fake_pipeline() -> None:
     assert game(np.array([[0, 0, 1, 1]], dtype=bool))[0] == pytest.approx(-0.2)
     # the score is continuous: an undecided classifier scores 0, not +-0.5
     assert game(np.array([[1, 0, 1, 1]], dtype=bool))[0] == pytest.approx(0.0)
+    # padded batches can round a text differently: one text per forward pass
+    assert set(pipeline.batch_sizes) == {1}
     removed = SentimentAnalysis(
         "good bad", classifier=pipeline, mask_strategy="remove", normalize=False
     )

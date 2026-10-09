@@ -49,17 +49,17 @@ def test_path_dependent_game_matches_the_model(regression_data, classification_d
     assert full == pytest.approx(forest.predict_proba(x[:1])[0, 1])
 
 
-def test_path_dependent_game_is_the_same_level_by_level_and_node_by_node(
-    regression_data,
-) -> None:
-    """Small batches are evaluated level by level, large ones node by node: the same floats."""
+def test_path_dependent_game_does_not_depend_on_the_batch(regression_data) -> None:
+    """The game evaluates a batch in chunks of coalitions: the same floats for any chunking."""
     x, y = regression_data
     forest = RandomForestClassifier(n_estimators=3, random_state=0).fit(x, y > 0)
     game = PathDependentTreeGame(forest, x[0])
     coalitions = np.random.default_rng(0).random((1500, 4)) < 0.5
-    together = game(coalitions)  # node by node
+    together = game(coalitions)
     in_parts = np.concatenate([game(coalitions[i : i + 100]) for i in range(0, 1500, 100)])
     np.testing.assert_array_equal(together, in_parts)
+    one_by_one = np.concatenate([game(coalitions[i : i + 1]) for i in range(50)])
+    np.testing.assert_array_equal(together[:50], one_by_one)
 
 
 @pytest.mark.skipif(not is_installed("xgboost"), reason="xgboost is not installed")
@@ -83,6 +83,12 @@ def test_only_tree_models_predict_row_by_row() -> None:
     assert predicts_row_by_row(forest.predict_proba)  # a bound method of a tree model
     assert not predicts_row_by_row(SVC())  # BLAS can round a row differently in larger calls
     assert not predicts_row_by_row(lambda rows: rows.sum(axis=1))
+    # gradient boosting starts from its init model, here a linear one
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.linear_model import LinearRegression
+
+    assert predicts_row_by_row(GradientBoostingRegressor())
+    assert not predicts_row_by_row(GradientBoostingRegressor(init=LinearRegression()))
 
 
 def test_interventional_game_matches_its_definition(regression_data) -> None:
@@ -120,6 +126,32 @@ def test_interventional_game_accepts_boosters_trained_on_dataframes(classificati
     assert game(game.grand_coalition)[0] == pytest.approx(margin, rel=1e-6)
 
 
+@pytest.mark.skipif(not is_installed("lightgbm"), reason="lightgbm is not installed")
+def test_tree_games_explain_the_raw_scores_of_lightgbm_boosters(classification_data) -> None:
+    """A raw ``Booster`` is no classifier, but its class_index still selects the class."""
+    import lightgbm as lgb
+
+    x, _ = classification_data
+    labels = np.digitize(x[:, 0] + x[:, 1] * x[:, 2], [-0.5, 0.5])
+    params = {"objective": "multiclass", "num_class": 3, "num_leaves": 8, "verbose": -1}
+    booster = lgb.train(params, lgb.Dataset(x, labels), num_boost_round=5)
+    raw = booster.predict(x[:1], raw_score=True)[0]
+    for class_index in (0, 2):
+        for game in (
+            PathDependentTreeGame(booster, x[0], class_index=class_index, normalize=False),
+            InterventionalTreeGame(booster, x[:10], x[0], class_index=class_index),
+        ):
+            assert game.class_index == class_index
+            assert game(game.grand_coalition)[0] == pytest.approx(raw[class_index])
+    with pytest.raises(ValueError, match="pass the class_index"):
+        InterventionalTreeGame(booster, x[:10], x[0])
+    binary = lgb.train(
+        {"objective": "binary", "verbose": -1}, lgb.Dataset(x, labels > 0), num_boost_round=5
+    )
+    game = InterventionalTreeGame(binary, x[:10], x[0])
+    assert game(game.grand_coalition)[0] == pytest.approx(binary.predict(x[:1], raw_score=True)[0])
+
+
 def _line_knn(k: int) -> tuple[KNeighborsClassifier, np.ndarray]:
     """Training points at 1, 2, 3, 4 with labels 1, 0, 1, 1; explained point at 0."""
     x_train = np.array([[1.0], [2.0], [3.0], [4.0]])
@@ -135,6 +167,17 @@ def test_nn_games_check_the_class_indices_of_the_model() -> None:
     model._y = np.array([[1, 0], [0, 1], [1, 1], [1, 0]])
     with pytest.raises(ValueError, match="[Mm]ulti-output"):
         KNNGame(model, x)
+
+
+def test_knn_games_check_the_weights_of_the_model() -> None:
+    """Each game describes one weighting (as its explainer); the other one is refused."""
+    model, x = _line_knn(k=2)
+    with pytest.raises(ValueError, match="weights='distance'"):
+        WeightedKNNGame(model, x)
+    model.set_params(weights="distance")
+    with pytest.raises(ValueError, match="weights='uniform'"):
+        KNNGame(model, x)
+    assert WeightedKNNGame(model, x).n_players == 4
 
 
 def test_knn_game_counts_nearest_neighbors_of_the_class() -> None:
@@ -184,6 +227,21 @@ def test_product_kernel_game_matches_the_decision_function(classification_data) 
     svr = SVR(kernel="rbf").fit(x[:100], x[:100, 0])
     game = ProductKernelGame(svr, x[1])
     assert game(game.grand_coalition)[0] == pytest.approx(svr.predict(x[1:2])[0])
+
+
+def test_product_kernel_game_resolves_the_kernel_width(regression_data) -> None:
+    """Each factor of the product kernel has one feature: gamma=None is gamma=1."""
+    x, y = regression_data
+    converted = convert_svm(SVR(kernel="rbf", gamma=1.0).fit(x[:60], y[:60]))
+    unit = ProductKernelGame(converted, x[0], normalize=False)
+    coalitions = np.random.default_rng(0).random((20, 4)) < 0.5
+    for gamma in (None, np.array([1.0])):
+        converted.gamma = gamma
+        game = ProductKernelGame(converted, x[0], normalize=False)
+        np.testing.assert_array_equal(game(coalitions), unit(coalitions))
+    converted.gamma = np.ones(4)
+    with pytest.raises(NotImplementedError, match="one length scale"):
+        ProductKernelGame(converted, x[0])
 
 
 def test_product_kernel_game_rejects_other_models(regression_data) -> None:

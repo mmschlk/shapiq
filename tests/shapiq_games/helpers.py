@@ -65,11 +65,18 @@ class FakeSentimentPipeline:
         self.tokenizer = FakeTokenizer()
         self.labels = labels
         self.calls = 0
+        self.batch_sizes: list[int | None] = []
 
     def __call__(
-        self, texts: list[str], *, top_k: int | None = 1, **_: object
+        self,
+        texts: list[str],
+        *,
+        top_k: int | None = 1,
+        batch_size: int | None = None,
+        **_: object,
     ) -> list[list[dict[str, float | str]]] | list[dict[str, float | str]]:
         self.calls += len(texts)
+        self.batch_sizes.append(batch_size)
         outputs = []
         for text in texts:
             words = text.split()

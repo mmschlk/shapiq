@@ -9,7 +9,9 @@ import numpy as np
 
 from shapiq.game import Game
 from shapiq.tree.validation import validate_tree_model
-from shapiq_games._base import as_bool_coalitions, resolve_class_index
+from shapiq_games._base import as_bool_coalitions
+
+from ._output import tree_class_index
 
 if TYPE_CHECKING:
     from shapiq.tree.base import TreeModel
@@ -33,17 +35,22 @@ class _Level:
     share_left: FloatVector  # the share of the training samples that went left
 
 
-def _levels(tree: TreeModel, x: FloatVector) -> list[_Level]:
+def _levels(tree: TreeModel, x: FloatVector) -> tuple[list[_Level], bool]:
     """Split a tree into levels and decide the explained point's path at every decision node.
 
     The nodes of a level are the children of the decision nodes of the level above, left child
     first: the order in which a breadth-first traversal visits them.
+
+    Returns:
+        The levels, and whether the explained point's direction at a split leads from a node that
+        training samples reached into a decision node that none reached.
     """
     x = tree.cast_input(np.asarray(x, dtype=np.float64))
     to_original = np.zeros(max(tree.feature_map_internal_original, default=0) + 1, dtype=int)
     for internal, original in tree.feature_map_internal_original.items():
         to_original[internal] = original
     levels = []
+    enters_empty_node = False
     nodes = np.array([int(tree.root_node_id)])
     while nodes.size:
         is_leaf = np.asarray(tree.leaf_mask[nodes], dtype=bool)
@@ -57,6 +64,14 @@ def _levels(tree: TreeModel, x: FloatVector) -> list[_Level]:
         follows_left = [
             tree.goes_left(int(node), x[to_original[tree.features[node]]]) for node in internal
         ]
+        followed = np.where(follows_left, left, right).astype(int)
+        enters_empty_node |= bool(
+            np.any(
+                (tree.node_sample_weight[internal] > 0)
+                & (tree.node_sample_weight[followed] == 0)
+                & ~np.asarray(tree.leaf_mask[followed], dtype=bool)
+            )
+        )
         levels.append(
             _Level(
                 leaf_positions=np.flatnonzero(is_leaf),
@@ -68,7 +83,7 @@ def _levels(tree: TreeModel, x: FloatVector) -> list[_Level]:
             )
         )
         nodes = np.column_stack([left, right]).reshape(-1)  # left child first
-    return levels
+    return levels, enters_empty_node
 
 
 def _tree_expectation(levels: list[_Level], coalitions_by_player: np.ndarray) -> GameValues:
@@ -124,12 +139,19 @@ class PathDependentTreeGame(Game):
     trees and forests, margins for gradient boosting classifiers; class 0 of a binary booster is
     the negated margin of class 1).
 
+    Where the explained point's path leads into a decision node that no training sample reached
+    (common in CatBoost's oblivious trees), the game splits the weight evenly between its
+    children. shapiq's path-dependent TreeSHAP drops such subtrees instead, so its values are not
+    this game's there (:attr:`enters_empty_node`).
+
     Attributes:
         model: The tree model.
         x: The explained point.
         class_index: The explained class for classifiers, ``None`` for regressors.
         trees: The trees in the unified :class:`~shapiq.tree.TreeModel` format.
         empty_value: The value of the empty coalition before centering.
+        enters_empty_node: Whether the explained point's path leads into a decision node that no
+            training sample reached.
 
     Examples:
         >>> from sklearn.datasets import make_regression
@@ -164,9 +186,11 @@ class PathDependentTreeGame(Game):
         """
         self.model = model
         self.x = np.asarray(x, dtype=float).reshape(-1)
-        self.class_index = resolve_class_index(model, class_index)
+        self.class_index = tree_class_index(model, class_index)
         self.trees: list[TreeModel] = validate_tree_model(model, class_label=self.class_index)
-        self._levels = [_levels(tree, self.x) for tree in self.trees]
+        prepared = [_levels(tree, self.x) for tree in self.trees]
+        self._levels = [levels for levels, _ in prepared]
+        self.enters_empty_node = any(empty for _, empty in prepared)
         self._widest_level = max(
             level.leaf_positions.size + 2 * level.internal_positions.size
             for levels in self._levels

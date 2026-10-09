@@ -213,10 +213,17 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         ),
         True,
     ),
+    "image_callable": (_image_game, True),
 }
+_NEEDS = {"image_callable": "skimage"}  # games with an optional dependency (superpixels)
 
-if is_installed("skimage"):
-    GAMES["image_callable"] = (_image_game, True)
+
+def _game_param(name: str) -> object:
+    """A fixture parameter: a game whose dependency is missing is skipped, not left out."""
+    module = _NEEDS.get(name)
+    if module is None or is_installed(module):
+        return name
+    return pytest.param(name, marks=pytest.mark.skip(reason=f"{module} is not installed"))
 
 
 def _coalitions(n_players: int) -> np.ndarray:
@@ -227,7 +234,7 @@ def _coalitions(n_players: int) -> np.ndarray:
     return coalitions
 
 
-@pytest.fixture(params=sorted(GAMES), scope="module")
+@pytest.fixture(params=[_game_param(name) for name in sorted(GAMES)], scope="module")
 def game_pair(request: pytest.FixtureRequest) -> tuple[str, Game, Game, bool]:
     """Two instances of the same game, built with the same arguments."""
     factory, centered = GAMES[request.param]

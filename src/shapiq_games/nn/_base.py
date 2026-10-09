@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
@@ -92,6 +92,9 @@ class KNNGameBase(NNGameBase[KNeighborsClassifier]):
         y_train_sorted: The class indices of the sorted training points.
     """
 
+    model_weights: ClassVar[str]
+    """The ``weights`` of the classifiers the game describes (as the matching explainer)."""
+
     def __init__(
         self,
         model: KNeighborsClassifier,
@@ -99,7 +102,17 @@ class KNNGameBase(NNGameBase[KNeighborsClassifier]):
         *,
         class_index: int | None = None,
     ) -> None:
-        """Initialize the game (see :class:`NNGameBase`)."""
+        """Initialize the game (see :class:`NNGameBase`).
+
+        Raises:
+            ValueError: If the model weights its neighbors otherwise than the game.
+        """
+        if model.weights != self.model_weights:
+            msg = (
+                f"{type(self).__name__} describes a KNeighborsClassifier with "
+                f"weights={self.model_weights!r}, but the model has weights={model.weights!r}."
+            )
+            raise ValueError(msg)
         super().__init__(model, x, class_index=class_index)
         self.k: int = int(model.n_neighbors)  # type: ignore[arg-type]
         assert_enough_training_samples(self.k, self.n_train)

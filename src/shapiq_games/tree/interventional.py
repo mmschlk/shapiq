@@ -10,11 +10,10 @@ from shapiq.game import Game
 from shapiq_games._base import (
     as_bool_coalitions,
     predicts_row_by_row,
-    resolve_class_index,
     resolve_x,
 )
 
-from ._output import model_output
+from ._output import model_output, tree_class_index
 
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues
@@ -36,10 +35,10 @@ class InterventionalTreeGame(Game):
     For tree models, this is the game that interventional TreeSHAP-IQ explains, so its exact values
     are available through :class:`~shapiq.tree.interventional.InterventionalTreeSHAPIQ`. The game
     evaluates the model's own predictions in the output space of that explainer: raw margins
-    (log-odds) for gradient boosting classifiers (scikit-learn, XGBoost, LightGBM, CatBoost), class
-    probabilities for other classifiers, and predictions for regressors. Class ``0`` of a binary
-    gradient boosting classifier is the negated margin of class ``1``. The game is not normalized
-    by default.
+    (log-odds) for gradient boosting classifiers (scikit-learn, XGBoost, LightGBM, CatBoost) and
+    raw LightGBM ``Booster`` objects, class probabilities for other classifiers, and predictions for
+    regressors. Class ``0`` of a binary gradient boosting classifier is the negated margin of class
+    ``1``. The game is not normalized by default.
 
     Attributes:
         model: The model.
@@ -84,7 +83,7 @@ class InterventionalTreeGame(Game):
         self.model = model
         self.reference_data = np.asarray(reference_data)
         self.x = resolve_x(x, self.reference_data)
-        self.class_index = resolve_class_index(model, class_index)
+        self.class_index = tree_class_index(model, class_index)
         n_players = self.x.shape[0]
         self.empty_value = float(self.value_function(np.zeros((1, n_players), dtype=bool))[0])
         super().__init__(n_players, normalize=normalize, normalization_value=self.empty_value)
