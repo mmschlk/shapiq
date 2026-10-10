@@ -732,3 +732,9 @@ uv run pre-commit run --all-files
   Hopper Monitor. Check both CPU and job limits; group independent workers into
   shared allocations and reserve job slots for monitoring. Preserve active claims
   and estimator intents when changing allocation grouping.
+- Slurm can report the same numeric array-root `JobIDRaw` for multiple cancelled
+  tasks that never started. Recovery export observed this for 329 tasks with
+  zero allocated CPUs, zero CPU-time, and no assigned node. Authenticate these
+  tasks against the recorded never-started cancellations and require all those
+  fields before exempting them from numeric-owner uniqueness; actual allocations
+  must still have unique numeric owners.
