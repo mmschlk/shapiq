@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f4f7fc" />
+    <title>shapiq · Estimator benchmark</title>
+    <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="methods.js"></script>
+    <script defer src="charts.js"></script>
+    <script defer src="protocol.js"></script>
+    <script defer src="records.js"></script>
+    <script defer src="partitions.js"></script>
+    <script defer src="partition-details.js"></script>
+    <script defer src="query.js"></script>
+    <script defer src="partition-download.js"></script>
+    <script defer src="partition-client.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="https://github.com/mmschlk/shapiq"
+        ><img class="brandMark" src="shapiq.svg" alt="" />shapiq<span
+          class="brandSuffix"
+          >/ benchmark</span
+        ></a
+      >
+      <div class="headerActions">
+        <a class="headerAbout" href="about.html">About</a>
+        <span class="preview"><i></i> Research preview</span
+        ><label class="localButton" for="upload">Open local ↗</label
+        ><input
+          id="upload"
+          multiple
+          type="file"
+          accept=".json,.gz,application/json,application/gzip"
+          hidden
+        />
+      </div>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <h1>The Shapley Value<br /><span>Estimator Benchmark</span></h1>
+        </div>
+        <div class="heroStats">
+          <div><strong id="methodCount">—</strong><span>estimators</span></div>
+          <div><strong id="gameCount">—</strong><span>game settings</span></div>
+          <div>
+            <strong id="runCount">—</strong
+            ><span>evaluations</span>
+          </div>
+          <p>
+            Exact references · Open results
+          </p>
+        </div>
+      </section>
+      <div class="reportStatus">
+        <div class="protocolSummary" id="protocolSummary"></div>
+        <div id="notice" role="status">Loading…</div>
+      </div>
+      <section class="toolbar" aria-label="Benchmark filters">
+        <label
+          >PANEL<select id="panel">
+            <option value="real">Real games</option>
+            <option value="diagnostic">Diagnostics</option>
+          </select></label
+        >
+        <label>EXPLANATION<select id="target"></select></label>
+        <label>GAME FAMILY<select id="family"></select></label>
+        <label>BUDGET / PLAYER<select id="budget"></select></label>
+        <details class="methodPicker">
+          <summary>
+            <span>ESTIMATORS</span
+            ><strong id="methodLabel">All selected</strong>
+          </summary>
+          <div class="pickerPanel">
+            <input
+              id="methodSearch"
+              type="search"
+              placeholder="Find an estimator…"
+              aria-label="Search estimators"
+            />
+            <div class="pickerActions">
+              <button id="selectAll" type="button">Select all</button
+              ><button id="selectNone" type="button">Clear</button>
+            </div>
+            <div id="methodOptions"></div>
+          </div>
+        </details>
+        <select
+          id="methods"
+          multiple
+          hidden
+          aria-label="Selected estimators"
+        ></select>
+        <details class="advanced">
+          <summary aria-label="More filters">
+            More filters <span>＋</span>
+          </summary>
+          <div class="advancedPanel">
+            <label>Dataset<select id="dataset"></select></label>
+            <label>Prediction model<select id="model"></select></label>
+            <label
+              >Scored coefficients<select id="scoreOrder">
+                <option value="">All nonempty coefficients</option>
+                <option value="1">Singletons only</option>
+                <option value="2">Pairs only</option>
+              </select></label
+            >
+            <label class="checkboxField"
+              ><input id="includeControls" type="checkbox" /> Include control
+              games</label
+            >
+            <div class="fieldPair">
+              <label
+                >Min players<input
+                  id="minPlayers"
+                  type="number"
+                  min="1"
+                  value="1" /></label
+              ><label
+                >Max players<input
+                  id="maxPlayers"
+                  type="number"
+                  min="1"
+                  value="10000"
+              /></label>
+            </div>
+            <label
+              >Budget cap · × players<input
+                id="cap"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="No cap"
+            /></label>
+            <p>A cap selects the largest measured budget within it.</p>
+          </div>
+        </details>
+      </section>
+      <div class="viewbar">
+        <span class="viewTitle">Explore the results</span
+        ><span id="panelSummary"></span>
+      </div>
+      <section id="overview" class="tabPanel">
+        <article class="leaderboard">
+          <div class="tableHeading">
+            <h2>The leaderboard</h2>
+            <label class="compactSelect"
+              ><span class="srOnly">Elo comparison panel</span>
+              <select id="eloPanel">
+                <option value="available">Elo · available pairs</option>
+                <option value="common">Elo · same cells for all</option>
+              </select>
+            </label>
+            <label class="variantToggle"
+              ><span class="srOnly">Estimator variants</span>
+              <select id="showVariants">
+                <option value="main">Main estimators</option>
+                <option value="all">All variants</option>
+              </select>
+            </label>
+          </div>
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="default"
+                      title="Reset: complete coverage first, then median nMSE"
+                    >
+                      # <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="method"
+                      title="Sort by estimator"
+                    >
+                      Estimator
+                      <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="capability"
+                      title="Sort by supported explanation types"
+                    >
+                      Estimates
+                      <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="average"
+                      title="Available successful runs; coverage differs between estimators"
+                    >
+                      Mean nMSE
+                      <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="median"
+                      title="Available successful runs; coverage differs between estimators"
+                    >
+                      Median nMSE
+                      <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="elo"
+                      title="Sort by Elo rating"
+                    >
+                      Elo <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                  <th aria-sort="none">
+                    <button
+                      type="button"
+                      data-sort="coverage"
+                      title="Sort by successful fraction of planned runs"
+                    >
+                      Coverage
+                      <span class="sortArrow" aria-hidden="true"></span>
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="ranking"></tbody>
+            </table>
+          </div>
+        </article>
+        <div class="chartControls">
+          <label class="chartFamilyLabel"
+            >Plot family<select id="chartFamily"></select
+          ></label>
+          <span id="chartPanelMeta"></span
+          ><label class="chartLimitLabel"
+            ><span class="srOnly">Methods to chart</span
+            ><select id="chartLimit">
+              <option value="5">Top 5 eligible</option>
+              <option value="all">All eligible</option>
+            </select></label
+          >
+        </div>
+        <div class="charts">
+          <article class="chartCard budgetCard">
+            <div class="cardHeading">
+              <div>
+                <h2>Error vs queries</h2>
+              </div>
+              <span class="chartBadge">Lower is better ↘</span>
+            </div>
+            <div id="budgetChart"></div>
+            <p class="chartNote" id="budgetChartNote">
+              Median nMSE · ≥80% coverage
+            </p>
+          </article>
+          <article class="chartCard timeCard">
+            <div class="cardHeading">
+              <div>
+                <h2>Error vs time</h2>
+              </div>
+              <label class="compactSelect">
+                <span class="srOnly">Time measurement</span>
+                <select id="timeMetric">
+                  <option value="seconds">Measured estimator time</option>
+                  <option value="estimated_uncached_seconds">
+                    Estimated work + oracle time
+                  </option>
+                </select>
+              </label>
+            </div>
+            <div id="timeChart"></div>
+            <p class="chartNote" id="timeChartNote">
+              Family-balanced median · Comparable timing profiles
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="history" class="historySection">
+        <article class="chartCard historyCard">
+          <div class="cardHeading">
+            <div>
+              <h2>Historical progress</h2>
+            </div>
+            <label class="compactSelect"
+              ><span class="srOnly">Summary metric</span
+              ><select id="historyMetric">
+                <option value="median">Median nMSE</option>
+                <option value="mean">Mean nMSE</option>
+              </select></label
+            >
+          </div>
+          <p class="chartNote">
+            Current implementations by first publication · ≥80% coverage.
+          </p>
+          <div id="historyChart"></div>
+          <details class="sourceDetails">
+            <summary>Publication sources</summary>
+            <p id="historySources"></p>
+          </details>
+        </article>
+      </section>
+      <section class="belowFold">
+        <details class="methodology">
+          <summary>Details for these results <span>＋</span></summary>
+          <div class="methodologyContent">
+            <p>
+              <span id="signalRule"></span>
+            </p>
+            <p><strong>Elo.</strong> <span id="statisticsNote"></span></p>
+            <p id="gameDetails"></p>
+            <p><strong>Hardware.</strong> <span id="hardware"></span></p>
+            <p id="snapshot"></p>
+            <p>
+              <a
+                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-09"
+                id="reproductionLink"
+                >Get the frozen games and baseline results ↗</a
+              >
+            </p>
+          </div>
+        </details>
+        <details class="runFailures">
+          <summary>Under-budget runs <span>＋</span></summary>
+          <p class="drawerIntro">
+            Budgets too small for the estimator. These runs remain unscored.
+          </p>
+          <ul id="underBudget"></ul>
+        </details>
+        <details class="runFailures">
+          <summary>Other failed runs <span>＋</span></summary>
+          <p class="drawerIntro">
+            Timeouts and errors. The six most common are shown.
+          </p>
+          <ul id="failures"></ul>
+        </details>
+        <div class="downloadActions">
+          <span>Download selection</span
+          ><button id="downloadJson">JSON ↓</button
+          ><button id="downloadCsv">CSV ↓</button>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>Built for better explanations.</span>
+      <div>
+        <a
+          href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ESTIMATOR_NOTES.md"
+          >Estimator notes ↗</a
+        ><a
+          href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/README.md"
+          >Reproduce ↗</a
+        >
+      </div>
+    </footer>
+    <div id="chartTooltip" class="chartTooltip" role="tooltip" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-09/data.json",
+  "sha256": "3fd85eb8f59897d3724ae9c2535b65b1efcb5f00bca2dc8bdb520eda65a4f1ff",
+  "archive": {
+    "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-comprehensive-2026-10-09/website-data.zip",
+    "sha256": "d99eedecf78e88defb41a84e5ec996dd93241f7e778061c046cfd8c6a392ec59",
+    "bytes": 765538756
+  }
+}
