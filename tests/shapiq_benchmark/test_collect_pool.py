@@ -281,6 +281,40 @@ def test_complete_run_preserves_identity_and_design(campaign, tmp_path):
     assert [r["nmse"] for r in data["records"]] == [0.0, None]
 
 
+def test_explicit_admission_script_allows_trailing_arguments(campaign, tmp_path):
+    evidence = campaign[0]["jobs"]["1"]
+    path = Path(evidence["intent"]["path"])
+    admission = json.loads(path.read_text())
+    admission["script"] = admission["command"][-1]
+    admission["command"].extend(["128", "64"])
+    evidence["intent"] = save(path, admission)
+    data, audit = run_collection(campaign, tmp_path)
+    assert audit["complete"]
+    assert audit["input_hashes"][admission["script"]] == admission["script_sha256"]
+    assert set(data["runs"]) == {runner.identity(campaign[2])}
+    assert json.loads(path.read_text())["command"] == admission["command"]
+
+
+@pytest.mark.parametrize("mutation", ["missing", "relative", "duplicate", "changed_bytes"])
+def test_explicit_admission_script_fails_closed(campaign, tmp_path, mutation):
+    evidence = campaign[0]["jobs"]["1"]
+    path = Path(evidence["intent"]["path"])
+    admission = json.loads(path.read_text())
+    admission["script"] = admission["command"][-1]
+    admission["command"].extend(["128", "64"])
+    if mutation == "missing":
+        admission["script"] = str(tmp_path / "another-script")
+    elif mutation == "relative":
+        admission["command"][-3] = admission["script"] = "launcher"
+    elif mutation == "duplicate":
+        admission["command"].append(admission["script"])
+    else:
+        Path(admission["script"]).write_text("changed launcher")
+    evidence["intent"] = save(path, admission)
+    with pytest.raises(ValueError, match=r"Input hash differs|Explicit admission script"):
+        run_collection(campaign, tmp_path)
+
+
 def test_unanswered_intent_is_explicit_unscored_outcome(campaign, tmp_path):
     _, directory, raw, _, _ = campaign
     (directory / "responses.jsonl").unlink()

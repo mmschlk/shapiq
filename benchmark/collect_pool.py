@@ -467,7 +467,15 @@ def collect(
             "Job registration differs",
         )
         command = admission["command"]
-        inputs.pin(command[-1], admission["script_sha256"])
+        script = admission.get("script", command[-1])
+        if "script" in admission:
+            require(
+                isinstance(script, str)
+                and Path(script).is_absolute()
+                and command.count(script) == 1,
+                "Explicit admission script must occur exactly once as an absolute command path",
+            )
+        inputs.pin(script, admission["script_sha256"])
         require(
             f"--cpus-per-task={registration['cpus']}" in command
             and f"--nodelist={accounting[job]['node']}" in command,
