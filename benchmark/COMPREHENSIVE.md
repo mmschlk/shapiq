@@ -9,7 +9,8 @@ evaluation running together in a shared queue.
 
 - At most **1,000 concurrent CPUs**, no production GPUs. This ceiling was
   reduced on October 7 to leave room for Hopper Monitor and other user jobs.
-- **24,576 allocated CPU-hours total, including all prior campaign work**.
+- **27,576 allocated CPU-hours total, including all prior campaign work**.
+  The user approved a 3,000 CPU-hour extension on October 10 for the recovery below.
 - The initial launch used sixteen allocations of 64 single-thread workers and
   512 GiB RAM for twenty hours each. One allocation was cancelled at the user's
   request on October 7; the remaining fifteen use 960 CPUs. Future allocations
@@ -30,6 +31,23 @@ evaluation running together in a shared queue.
 The CPU-hour cap is a ceiling, not a promise that every expensive combination
 finishes. Publish actual coverage and explicit failures/exclusions; never hide
 incomplete cells or infer completion from Slurm alone.
+
+### October 10 preparation recovery
+
+- Recover the **228 interrupted** and **229 timed-out** preparations from the
+  published cohort. Keep the 55 model-quality exclusions and all prior results.
+- Give each selected game **four hours for preparation** (twice the original
+  limit), then up to two hours for its first estimator evaluations.
+- Run up to **457 games concurrently**, one CPU per game, with a
+  6-hour-10-minute allocation ceiling. Keep 120 admitted single-game tasks and
+  group the other 337 games into six allocations to respect Hopper's
+  128-running-job limit and leave job slots for monitoring.
+- Copy authenticated saved payoff chunks into fresh attempt directories; the
+  frozen preparation code validates them before reuse. Preserve games, seeds,
+  source, estimator settings, and original evidence. No estimator attempts existed
+  for these selected games.
+- Keep the verified website until the combined replacement has been exported
+  and checked. Monitor automatically through publication and live verification.
 
 ## Datasets
 

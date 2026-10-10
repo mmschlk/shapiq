@@ -723,3 +723,12 @@ uv run pre-commit run --all-files
 - Select reproduction report files from the authenticated manifest's asset
   descriptors. A `partition-` filename prefix also matches UI scripts such as
   `partition-about.js`, which are not result partitions.
+- Hopper's Slurm node names can be short names (`gpu01`) while `hostname` and
+  Python report fully qualified names (`gpu01.cluster`). Runtime receipts retain
+  the actual hostname; map its short name explicitly when matching a Slurm node
+  or node-keyed admission, and verify the full receipt hostname separately.
+- Hopper's normal QOS also limits a user to 128 running jobs. Hundreds of
+  single-CPU array tasks can exhaust those slots while using few CPUs and block
+  Hopper Monitor. Check both CPU and job limits; group independent workers into
+  shared allocations and reserve job slots for monitoring. Preserve active claims
+  and estimator intents when changing allocation grouping.
