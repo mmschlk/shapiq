@@ -772,7 +772,7 @@ async function renderPartitioned() {
     for (const [id, rows] of Object.entries(result.issues)) {
       $(id).replaceChildren();
       const texts = result.details_deferred
-        ? ["Open this section to load the breakdown."]
+        ? ["Loading breakdown…"]
         : rows.length
         ? rows.map((row) => `${row.description} — ${row.count} run(s)`)
         : [
@@ -788,7 +788,7 @@ async function renderPartitioned() {
     }
     const hardware = result.hardware;
     $("hardware").textContent = result.details_deferred
-      ? "Open this section to load worker hardware."
+      ? "Loading hardware…"
       : hardware.cpu_models.length
       ? `Measured workers: ${hardware.cpu_models.join("; ")}. Profiles: ${hardware.timing_profiles.join(", ")}. Per-run placement and thread details are included in JSON downloads.`
       : "Worker hardware was not recorded in this older result.";
