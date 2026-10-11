@@ -34,6 +34,14 @@ Publish actual coverage and explicit failures/exclusions; never hide incomplete
 cells or infer completion from Slurm alone. Exact-reference coverage and
 successful estimator coverage are different quantities.
 
+The user clarified the completion goal on October 11: **100% successful coverage
+for every supported estimator except ShaplEIG and SPEX**. ProxySPEX is included
+in that goal. Remaining failures in other methods, including genuine execution
+timeouts, require investigation and recovery; merely recording a failure does
+not fulfill the goal. Keep failures visible and do not change denominators to
+raise coverage. Qualify repairs or longer execution allowances separately,
+preserving existing workers, scientific inputs and successful results.
+
 ### October 11 evaluation completion
 
 - The authenticated inventory contains **2,401,614 never-attempted supported
@@ -47,7 +55,7 @@ successful estimator coverage are different quantities.
 - User-authorized retries replace historical timeout outcomes in the published
   comparison. Old attempts remain diagnostic evidence, with one scored outcome
   per game/method/budget/seed cell.
-- Every estimator receives **ten minutes of actual `approximate` execution**,
+- The current admitted workers allow **ten minutes of actual `approximate` execution**,
   including its game queries. Imports, game loading and estimator construction
   are excluded from this limit. Separate startup/output watchdogs report
   operational failures. Recorded timing retains the original constructor-plus-
