@@ -182,6 +182,15 @@ class MonteCarlo(Approximator[TIndices]):
             else:  # this is SHAP-IQ
                 precomputed_log_adjustment = self._sampler.log_sampling_adjustment_weights
 
+        # Sampler properties copy arrays (some also rescan the full coalition matrix).
+        # Sampling is fixed throughout this call; reuse one snapshot for all interactions.
+        svarmiq_coalitions = svarmiq_counter = svarmiq_sampled = None
+        if self.stratify_intersection and self.stratify_coalition_size:
+            # The game may have mutated its exposed matrix; preserve the sampler's own snapshot.
+            svarmiq_coalitions = self._sampler.coalitions_matrix
+            svarmiq_counter = self._sampler.coalitions_counter
+            svarmiq_sampled = self._sampler.is_coalition_sampled
+
         # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
             interaction_size = len(interaction)
@@ -199,7 +208,13 @@ class MonteCarlo(Approximator[TIndices]):
             if precomputed_log_adjustment is not None:  # SHAP-IQ / coalition-size stratification
                 log_sampling_adjustment_weights = precomputed_log_adjustment
             elif self.stratify_coalition_size:  # this is SVARM-IQ
-                log_sampling_adjustment_weights = self._log_svarmiq_routine(interaction)
+                log_sampling_adjustment_weights = self._log_svarmiq_routine(
+                    interaction,
+                    coalitions_matrix=svarmiq_coalitions,
+                    coalitions_size=coalitions_size,
+                    counter=svarmiq_counter,
+                    sampled=svarmiq_sampled,
+                )
             else:  # intersection stratification only
                 log_sampling_adjustment_weights = self._log_intersection_stratification(interaction)
 
@@ -312,7 +327,15 @@ class MonteCarlo(Approximator[TIndices]):
             )
         return log_sampling_adjustment_weights
 
-    def _log_svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
+    def _log_svarmiq_routine(
+        self,
+        interaction: tuple[int, ...],
+        *,
+        coalitions_matrix: np.ndarray | None = None,
+        coalitions_size: np.ndarray | None = None,
+        counter: np.ndarray | None = None,
+        sampled: np.ndarray | None = None,
+    ) -> np.ndarray:
         """Log of the SVARM-IQ sampling adjustment weights, stable for large n.
 
         Log-space counterpart of :func:`Kolpaczki et al. (2024)
@@ -322,18 +345,27 @@ class MonteCarlo(Approximator[TIndices]):
 
         Args:
             interaction: The interaction for the intersection stratification.
+            coalitions_matrix: Sampled coalitions, reused within a Monte Carlo call.
+            coalitions_size: Sizes of those coalitions.
+            counter: Multiplicity of each coalition.
+            sampled: Mask distinguishing sampled from enumerated coalitions.
 
         Returns:
             The log adjusted sampling weights for the SVARM-IQ routine.
 
         """
-        coalitions_size = self._sampler.coalitions_size
-        counter = self._sampler.coalitions_counter
-        sampled = self._sampler.is_coalition_sampled
+        if coalitions_matrix is None:
+            coalitions_matrix = self._sampler.coalitions_matrix
+        if coalitions_size is None:
+            coalitions_size = self._sampler.coalitions_size
+        if counter is None:
+            counter = self._sampler.coalitions_counter
+        if sampled is None:
+            sampled = self._sampler.is_coalition_sampled
         # Enumerated coalitions retain their unadjusted multiplicity.
         log_sampling_adjustment_weights = np.log(counter)
         interaction_size = len(interaction)
-        interaction_columns = self._sampler.coalitions_matrix[:, interaction]
+        interaction_columns = coalitions_matrix[:, interaction]
         for intersection in powerset(interaction):
             in_intersection = np.all(
                 interaction_columns == [player in intersection for player in interaction],
