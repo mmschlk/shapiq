@@ -746,6 +746,13 @@ uv run pre-commit run --all-files
   Hopper Monitor. Check both CPU and job limits; group independent workers into
   shared allocations and reserve job slots for monitoring. Preserve active claims
   and estimator intents when changing allocation grouping.
+- Estimator memory limits apply to virtual address space, not peak RSS. An
+  8-GiB cap rejected OddSHAP's 1.6-GiB regression arrays at 1,024 players despite
+  about 3 GiB peak RSS. InconsistentKernelSHAPIQ at 512 players/order two needs
+  a 32-GiB design array before its additional regression copies. Retry such
+  failures in separately reserved higher-memory workers; raising a child's cap
+  alone cannot override its parent's hard RLIMIT_AS. Keep successful cells and
+  frozen estimator settings unchanged, and authenticate the prior MemoryError.
 - Slurm can report the same numeric array-root `JobIDRaw` for multiple cancelled
   tasks that never started. Recovery export observed this for 329 tasks with
   zero allocated CPUs, zero CPU-time, and no assigned node. Authenticate these
