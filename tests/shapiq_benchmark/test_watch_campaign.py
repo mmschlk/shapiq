@@ -51,6 +51,55 @@ def test_idle_implementation_and_terminal_jobs() -> None:
         assert watch.wake_reason({**config, "status": status}, {}, {}, 300) is None
 
 
+def test_completion_group_waits_for_every_member_without_periodic_wakes() -> None:
+    config = {
+        "status": "active",
+        "batch_completion_only": True,
+        "completion_groups": {"memory qualification": ["1", "2"]},
+    }
+    jobs = {"1": "COMPLETED", "2": "RUNNING", "3": "COMPLETED", "4": "RUNNING"}
+    assert watch.wake_reason(config, {}, jobs, 999999) is None
+    assert watch.wake_reason(config, {}, {"1": "COMPLETED", "4": "RUNNING"}, 999999) is None
+    complete = {**jobs, "2": "COMPLETED"}
+    assert "memory qualification completed" in watch.wake_reason(config, {}, complete, 1)
+    notified = {"notified_jobs": {"1": "COMPLETED", "2": "COMPLETED", "3": "COMPLETED"}}
+    assert watch.wake_reason(config, notified, complete, 999999) is None
+    assert watch.wake_reason(config, {"pending_delivery": True}, complete, 1) is None
+    assert "allocation failed" in watch.wake_reason(config, {}, {**complete, "4": "FAILED"}, 1)
+
+
+def test_completion_group_delivers_once_while_other_jobs_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = {
+        "status": "active",
+        "batch_completion_only": True,
+        "completion_groups": {"qualification": ["1", "2"]},
+        "codex": "codex",
+        "thread_id": "thread",
+        "cwd": str(tmp_path),
+    }
+    (tmp_path / "watch.json").write_text(json.dumps(config))
+    jobs = {"1": "COMPLETED", "2": "RUNNING", "3": "RUNNING"}
+    monkeypatch.setattr(watch, "job_states", lambda _: jobs.copy())
+    calls = []
+    monkeypatch.setattr(
+        watch.subprocess,
+        "run",
+        lambda *a, **k: (
+            calls.append(a) or type("Result", (), {"stdout": "receipt", "returncode": 0})()
+        ),
+    )
+    watch.check(tmp_path)
+    assert not calls
+    jobs["2"] = "COMPLETED"
+    watch.check(tmp_path)
+    watch.check(tmp_path, acknowledge=True)
+    watch.check(tmp_path)
+    assert len(calls) == 1
+    assert "qualification completed" in calls[0][0][-1]
+
+
 def test_missing_accounting_is_not_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(watch.subprocess, "check_output", lambda *a, **kw: "1|COMPLETED|\n")
     with pytest.raises(RuntimeError, match="Accounting is incomplete"):

@@ -108,6 +108,16 @@ def wake_reason(config: dict, state: dict, jobs: dict, now: float) -> str | None
             return (
                 "A benchmark allocation failed; inspect the outputs and repair the remaining work."
             )
+        for label, members in config.get("completion_groups", {}).items():
+            if (
+                members
+                and all(jobs.get(job) == "COMPLETED" for job in members)
+                and any(job in changed for job in members)
+            ):
+                return (
+                    f"Benchmark job group {label} completed; verify its outputs and continue "
+                    "the authorized downstream work."
+                )
         if jobs and len(terminal) == len(jobs) and changed:
             return "All benchmark allocations ended; finish any remaining evaluations and publish verified results."
         return None
