@@ -574,7 +574,9 @@ globalThis.BenchmarkQuery = (() => {
       const under = row.failure_reason === "insufficient_budget";
       const explanation = under
         ? Number.isFinite(row.minimum_budget)
-          ? `requires at least ${Number(format(row.minimum_budget / byId.get(row.game_id).n_players))} × players`
+          ? row.method === "ShaplEIG" && row.minimum_budget === byId.get(row.game_id).n_players + 2
+            ? "requires at least players + 2 evaluations"
+            : `requires at least ${Number(format(row.minimum_budget / byId.get(row.game_id).n_players))} × players`
           : row.method === "ProxySPEX"
             ? "too few samples for five-fold proxy fitting"
             : "budget below the sparse transform's minimum"

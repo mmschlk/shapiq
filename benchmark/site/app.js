@@ -774,7 +774,7 @@ async function renderPartitioned() {
       const texts = result.details_deferred
         ? ["Loading breakdown…"]
         : rows.length
-        ? rows.map((row) => `${row.description} — ${row.count} run(s)`)
+        ? rows.map((row) => `${row.description} — ${row.count} ${row.count === 1 ? "run" : "runs"}`)
         : [
             id === "underBudget"
               ? "No under-budget runs in this selection."
@@ -1104,7 +1104,9 @@ function renderRunIssues(s) {
     const underBudget = isUnderBudget(row);
     const explanation = underBudget
       ? Number.isFinite(row.minimum_budget)
-        ? `requires at least ${Number(format(row.minimum_budget / players.get(row.game_id)))} × players`
+        ? row.method === "ShaplEIG" && row.minimum_budget === players.get(row.game_id) + 2
+          ? "requires at least players + 2 evaluations"
+          : `requires at least ${Number(format(row.minimum_budget / players.get(row.game_id)))} × players`
         : row.method === "ProxySPEX"
           ? "too few samples for five-fold proxy fitting"
           : "budget below the sparse transform's minimum"
@@ -1127,7 +1129,7 @@ function renderRunIssues(s) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)) {
       const item = document.createElement("li");
-      item.textContent = `${description} — ${count} run(s)`;
+      item.textContent = `${description} — ${count} ${count === 1 ? "run" : "runs"}`;
       $(id).append(item);
     }
     if (!counts.size) {
