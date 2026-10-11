@@ -57,10 +57,10 @@ def test_all_dataset_tables_are_closed_with_published_counts() -> None:
     totals = re.findall(r"\| (\d+) / (\d+) \|", source)
     assert len(totals) == 72
     assert tuple(map(sum, zip(*[(int(a), int(b)) for a, b in totals], strict=True))) == (
-        4568,
+        4928,
         5080,
     )
-    assert "89.9% reference coverage" in source
+    assert "97.0% reference coverage" in source
     assert "Estimator coverage remains\npartial" in source
     assert "additional runs are in progress" not in source
 
