@@ -1324,4 +1324,3 @@ footer a {
   width: min(380px, 100%); padding: 16px; border: 1px solid var(--line); border-radius: 10px;
   background: white; color: var(--muted); box-shadow: 0 8px 28px #182c5018; }
 .coveragePopover a { display: block; margin: 8px 0 0; }
-
