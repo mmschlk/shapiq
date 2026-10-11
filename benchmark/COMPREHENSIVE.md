@@ -9,8 +9,9 @@ evaluation running together in a shared queue.
 
 - At most **1,000 concurrent CPUs**, no production GPUs. This ceiling was
   reduced on October 7 to leave room for Hopper Monitor and other user jobs.
-- **27,576 allocated CPU-hours total, including all prior campaign work**.
-  The user approved a 3,000 CPU-hour extension on October 10 for the recovery below.
+- The user waived the previous **27,576 allocated CPU-hour cap** on October 11
+  to finish the missing supported evaluations. Continue recording allocated
+  CPU-hours; the 1,000 concurrent CPU limit still applies.
 - The initial launch used sixteen allocations of 64 single-thread workers and
   512 GiB RAM for twenty hours each. One allocation was cancelled at the user's
   request on October 7; the remaining fifteen use 960 CPUs. Future allocations
@@ -28,9 +29,22 @@ evaluation running together in a shared queue.
   resource limits. There are no per-batch human or independent approval gates.
   One consolidated coverage and score check precedes publication.
 
-The CPU-hour cap is a ceiling, not a promise that every expensive combination
-finishes. Publish actual coverage and explicit failures/exclusions; never hide
-incomplete cells or infer completion from Slurm alone.
+Complete the never-attempted supported evaluations for every prepared game.
+Publish actual coverage and explicit failures/exclusions; never hide incomplete
+cells or infer completion from Slurm alone. Exact-reference coverage and
+successful estimator coverage are different quantities.
+
+### October 11 evaluation completion
+
+- The authenticated inventory contains **2,401,614 never-attempted supported
+  evaluations across 2,936 prepared games**. No new games or estimator settings.
+- Rotate methods and budgets through small independent work units, avoiding the
+  earlier method-order bias when an allocation ended before reaching later methods.
+- Run up to **1,000 single-CPU workers**, with separate durable intents and result
+  journals. Preserve all historical attempts, including interrupted attempts.
+- Continue any never-attempted remainder after allocation limits. Merge only
+  authenticated new responses, then update the website with the combined cohort.
+- Routine queued reminders remain disabled at the user's request.
 
 ### October 10 preparation recovery
 

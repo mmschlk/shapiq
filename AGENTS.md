@@ -1,5 +1,13 @@
 # AGENTS.md
 
+- A published, time-bounded campaign is not a completed estimator comparison.
+  The comprehensive runner's game/method/budget/seed order left later methods
+  unattempted when allocations ended, despite 97% exact-reference coverage.
+  Track remaining supported evaluations separately from reference coverage and
+  successful scores; rotate methods in the work queue and finish the supported
+  inventory before claiming the benchmark is complete. Preserve all prior
+  attempts, including durable intents without responses, when filling gaps.
+
 This role of this file is to describe common mistakes and confusion points that agents might encounter as they work in this project. If you ever encounter something in the project that surprises you, please alert the developer working with you and indicate that this is the case in the Agent.md file to help prevent future agents from having the same issue.
 
 ## Commands to interact with the codebase which you should run:
