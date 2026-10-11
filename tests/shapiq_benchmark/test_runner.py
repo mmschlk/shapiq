@@ -112,11 +112,12 @@ def test_runtime_estimate_is_separate(
             return estimate({(0,): 2.0})
 
     monkeypatch.setattr("shapiq_benchmark.runner.builtin_factory", lambda *_: Candidate())
-    clock = iter([0.0, 2.0, 2.5, 5.0, 6.0] if with_costs else [0.0, 5.0, 6.0])
+    clock = iter([0.0, 1.0, 2.0, 2.5, 4.5, 5.0, 6.0] if with_costs else [0.0, 1.0, 4.5, 5.0, 6.0])
     monkeypatch.setattr("shapiq_benchmark.runner.time.perf_counter", lambda: next(clock))
     record = run_one(game, tmp_path, "test", 3, 0)
     assert record["status"] == "ok"
     assert record["seconds"] == 5
+    assert record["execution_seconds"] == 3.5
     assert record["queries"] == 3
     if with_costs:
         assert record["cache_lookup_seconds"] == 0.5

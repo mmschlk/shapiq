@@ -149,14 +149,18 @@ def test_campaign_resume_matches_full_run(tmp_path: Path) -> None:
 
 
 def test_timeout_preserves_next_seed_and_changed_candidate_refuses_resume(tmp_path: Path) -> None:
-    """A hanging factory cannot prevent later cells from running or forge zero queries."""
+    """A hanging approximation cannot prevent later cells or forge zero queries."""
     path = snapshot(tmp_path)
     candidate = tmp_path / "candidate.py"
     candidate.write_text(
         "import time\nfrom shapiq.approximator import KernelSHAP\n"
         "def factory(n,index,order,seed):\n"
-        "    if seed == 0: time.sleep(60)\n"
-        "    return KernelSHAP(n=n,random_state=seed)\n"
+        "    estimator = KernelSHAP(n=n,random_state=seed)\n"
+        "    class Candidate:\n"
+        "        def approximate(self, budget, game):\n"
+        "            if seed == 0: time.sleep(60)\n"
+        "            return estimator.approximate(budget=budget, game=game)\n"
+        "    return Candidate()\n"
     )
     spec = f"{candidate}:factory"
     result = run(path, tmp_path / "results", spec, timeout=10)
