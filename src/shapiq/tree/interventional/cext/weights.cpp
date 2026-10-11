@@ -2,23 +2,17 @@
 #define WEIGHTS_H
 
 #include <cstdint>
-#include <unordered_map>
 #include <stdexcept>
-#include <tuple>
 #include <cmath>
+#include <vector>
+#include <algorithm>
 #include "utils.cpp"
 #include <string>
 
 namespace inter_weights
 {
-    /**
-     * For the weight computation we deviate from Zern's notation.
-     * In our algorithm we keep track of the necessary features:
-     * - E: The set of features that are necessary to reach the current node based on the explain point.
-     * - R: The set of features that are necessary to reach the current node based on the reference point.
-     * We denote the size of E with e and the size of R with r.
-     * In Zern's paper, A=E and B=N\R, where N is the set of all features. Thus, we have b = num_features - r.
-     */
+    // E: the features fixed by the explained point on the way to a leaf, R: those fixed by the
+    // reference point; e = |E|, r = |R|. In Zern's notation A = E and B = N \ R.
     constexpr uint64_t binom(signed n, signed k)
     {
         // source: https://github.com/BiagioFesta/algorithms/blob/master/src/DynamicProgramming/BinomialCoefficient.cpp
@@ -40,9 +34,8 @@ namespace inter_weights
         return (n <= 1) ? 1.0 : static_cast<double>(n) * factorial(n - 1);
     }
 
-    // Sign convention: every per-index weight function returns the SIGNED
-    // lambda, i.e. the (-1)^s_cap_r factor is already included. weight_func
-    // below is the single dispatch point; never dispatch per-index elsewhere.
+    // Every per-index weight function returns the signed lambda, the (-1)^s_cap_r factor
+    // included; weight_func is the only dispatch point.
     inline double signed_unit(int64_t s_cap_r)
     {
         return (s_cap_r % 2 == 0) ? 1.0 : -1.0;
@@ -70,14 +63,12 @@ namespace inter_weights
 
     inline double fsii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
-        // Compute the lambda
         double w = 0.0;
         for (int i = 0; i <= r - s_cap_r; i++)
         {
-            // We can ignore terms where max_order + 1 - u0 - e  < 0 as they contribute 0
             uint64_t denom = binom(e + s_cap_r + i + max_order - 1, max_order + s);
             if (denom == 0)
-                continue; // numerator is also 0 here; skip to avoid 0/0 = NaN
+                continue; // the numerator is 0 as well: skip the 0/0 term
             w += std::pow(-1.0, s_cap_r + i + max_order - s) * (static_cast<double>(s) / (static_cast<double>(max_order) + static_cast<double>(s))) * binom(max_order, s) * binom(r - s_cap_r, i) * (static_cast<double>(binom(e + i + s_cap_r - 1, max_order)) / static_cast<double>(denom));
         }
         w += (s_cap_e == e) ? (std::pow(-1.0, s_cap_r)) : 0.0;
@@ -86,12 +77,9 @@ namespace inter_weights
 
     inline double fbii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
-        // Comput the lambda
         double w = 0.0;
         for (int i = 0; i <= r - s_cap_r; i++)
         {
-            // We can ignore terms where max_order + 1 - u0 - e  < 0 as they contribute 0
-
             w += std::pow(-1.0, s_cap_r + i + max_order - s) * std::ldexp(1.0, -(e + i + s_cap_r - s)) * binom(e + i + s_cap_r - s - 1, max_order - s) * binom(r - s_cap_r, i);
         }
         w += (s_cap_e == e) ? (std::pow(-1.0, s_cap_r)) : 0.0;
@@ -100,10 +88,8 @@ namespace inter_weights
 
     inline double stii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
-        // Compute the lambda. Unlike the general path (which applies the top-order
-        // discrete-derivative weight at every order), STII defines interactions of
-        // size s < max_order as the discrete derivative at the empty coalition:
-        // the leaf contributes iff E is contained in S, with sign (-1)^|S cap R|.
+        // Interactions of size s < max_order are the discrete derivative at the empty
+        // coalition: the leaf contributes iff E is contained in S, with sign (-1)^|S n R|.
         double w = 0.0;
         if (s < max_order)
         {
@@ -162,9 +148,7 @@ namespace inter_weights
         return signed_unit(s_cap_r) * w;
     }
 
-    /**
-     * Single dispatch point for the signed leaf weight (lambda).
-     */
+    // The signed leaf weight lambda of an index; the only dispatch point.
     inline double weight_func(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, IndexType index, int64_t max_order = 1)
     {
         switch (index)
@@ -193,77 +177,33 @@ namespace inter_weights
         return e * (N * K * K * K) + r * (K * K) + s_cap_r * K + s;
     }
 
-    // Hash function for tuple-based cache key
-    struct CacheKeyHash
+    // The weights of one explanation as one array, built per call and indexed
+    //   w[((e * stride + r) * k1 + s_cap_e) * k1 + s_cap_r], stride = max_width + 1, k1 = max_order + 1,
+    // for every e = |E|, r = |R| with e + r <= max_width (distinct features on the longest path).
+    // A custom table (InterventionalTreeSHAPIQ._build_custom_weight_table, custom_N =
+    // n_features + 1, custom_K = max_order + 1) is copied into the same shape.
+    inline std::vector<double> build_weight_table(IndexType index, int64_t n_features, int max_order, int max_width,
+                                                  const double *custom_table, int64_t custom_N, int64_t custom_K)
     {
-        std::size_t operator()(const std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int, int64_t> &t) const
-        {
-            // Get all arguments from the tuple and compute individual hashes. Then combine them using XOR and bit rotation to get a single hash value for the entire tuple.
-            std::size_t h1 = std::hash<int64_t>{}(std::get<0>(t));
-            std::size_t h2 = std::hash<int64_t>{}(std::get<1>(t));
-            std::size_t h3 = std::hash<int64_t>{}(std::get<2>(t));
-            std::size_t h4 = std::hash<int64_t>{}(std::get<3>(t));
-            std::size_t h5 = std::hash<int64_t>{}(std::get<4>(t));
-            std::size_t h6 = std::hash<int64_t>{}(std::get<5>(t));
-            std::size_t h7 = std::hash<int>{}(std::get<6>(t));
-            std::size_t h8 = std::hash<int64_t>{}(std::get<7>(t));
-
-            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4) ^ (h6 << 5) ^ (h7 << 6) ^ (h8 << 7);
-        }
-    };
-
-    class WeightCache
-    {
-    public:
-        using CacheKey = std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int, int64_t>;
-        // Define a HashMap using as key Cachekey (tuple of the arguments of the weight function) and as value the computed weight.
-        // The CacheKeyHash struct is used to compute hash values for the tuple keys.
-        std::unordered_map<CacheKey, double, CacheKeyHash> cache;
-
-        // Optional custom weight table (nullptr when not in use)
-        const double *custom_table;
-        int64_t custom_N; // n_features + 1
-        int64_t custom_K; // max_order + 1
-
-        // Existing constructor (no custom table)
-        WeightCache(uint64_t max_number)
-            : custom_table(nullptr), custom_N(0), custom_K(0), max_number(max_number)
-        {
-        }
-
-        // New constructor for custom table
-        WeightCache(uint64_t max_number, const double *table, int64_t N, int64_t K)
-            : custom_table(table), custom_N(N), custom_K(K), max_number(max_number)
-        {
-        }
-
-        uint64_t max_number;
-
-        double get_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, IndexType index, int64_t max_order)
-        {
-            // Early return for custom index: look up directly in the precomputed table
-            if (index == IndexType::CUSTOM)
-            {
-                int64_t idx = custom_weight_index(e, r, s_cap_r, s, custom_N, custom_K);
-                return custom_table[idx];
-            }
-            // Construct the key
-            CacheKey key = std::make_tuple(num_features, e, r, s_cap_e, s_cap_r, s, static_cast<int>(index), max_order);
-            // Find inherently calls the hash function (CacheKeyHash) to compute the hash value for the key and then looks up the corresponding value in the cache.
-            // If the key is found, it returns the cached weight.
-            // If the key is not found, it computes the weight using the weight_func, stores it in the cache, and then returns it.
-            auto it = cache.find(key);
-            if (it != cache.end())
-            {
-                return it->second;
-            }
-            else
-            {
-                double weight = inter_weights::weight_func(num_features, e, r, s_cap_e, s_cap_r, s, index, max_order);
-                cache[key] = weight;
-                return weight;
-            }
-        }
-    };
+        const int stride = max_width + 1;
+        const int k1 = max_order + 1;
+        std::vector<double> w(static_cast<size_t>(stride) * stride * k1 * k1, 0.0);
+        for (int e = 0; e <= max_width; ++e)
+            for (int r = 0; e + r <= max_width; ++r)
+                for (int sce = 0; sce <= std::min(e, max_order); ++sce)
+                    for (int scr = 0; scr <= std::min(r, max_order - sce); ++scr)
+                    {
+                        const int s = sce + scr;
+                        if (s == 0)
+                            continue;
+                        double value;
+                        if (index == IndexType::CUSTOM)
+                            value = custom_table[custom_weight_index(e, r, scr, s, custom_N, custom_K)];
+                        else
+                            value = weight_func(n_features, e, r, sce, scr, s, index, max_order);
+                        w[((static_cast<size_t>(e) * stride + r) * k1 + sce) * k1 + scr] = value;
+                    }
+        return w;
+    }
 }
 #endif

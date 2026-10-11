@@ -1,26 +1,17 @@
 """Quadrature-based path-dependent TreeSHAP explainer.
 
-Implements the quadrature reformulation of path-dependent TreeSHAP for Shapley values and
-any-order Shapley interactions. Shapley (interaction) values are expressed as integrals of
-weighted Banzhaf interaction polynomials over the participation probability and evaluated
-exactly with Gauss-Legendre quadrature; see Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a`
-and, for the first-order case, TreeGrad-Ranker :cite:t:`Li.2026`. Unlike the
-interpolation-based :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ`
-and :class:`~shapiq.tree.linear.computer.LinearTreeSHAP`, every maintained quantity is a
-product of factors ``h*t + c*(1-t)`` in ``(0, 1]``, so the computation is numerically exact in
-float64 at any tree depth (issue #545).
+Shapley (interaction) values are expressed as integrals of weighted Banzhaf interaction
+polynomials over the participation probability and evaluated exactly with Gauss-Legendre
+quadrature; see Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a` and, for the first-order case,
+TreeGrad-Ranker :cite:t:`Li.2026`. Every maintained quantity is a product of factors
+``h*t + c*(1-t)`` in ``(0, 1]``, so the computation is numerically exact in float64 at any
+tree depth. Edges carry the hot indicator ``h`` and the accumulated cover ``c`` separately
+rather than the papers' marginal multiplier ``q = h/c``, which keeps every intermediate
+product bounded by one.
 
-The papers (and the XGBoost implementation) parameterize edges by the marginal multiplier
-``q = h/c`` and fold the cover products into the leaf's empty prediction; this module instead
-keeps the hot indicator ``h`` and the accumulated cover ``c`` separate. The algebra is
-identical, but folding the covers in edge by edge is what bounds every intermediate product by
-one — the ``q`` form maintains ``prod(1 + (q-1)t)``, which can overflow on deep hot chains
-with small covers.
-
-Ensembles are explained in a single C++ kernel invocation: all trees are mapped into one
-shared (ensemble-reduced) feature space, their node arrays are concatenated, and the kernel
-loops the trees and accumulates the contributions directly into the output buffer — no
-per-tree Python objects are involved on the hot path.
+An ensemble is explained in one C++ kernel call: all trees are mapped into one shared feature
+space, their node arrays are concatenated, and the kernel adds every tree's contributions into
+the output array.
 """
 
 from __future__ import annotations
@@ -59,14 +50,12 @@ class QuadratureTreeSHAP:
     same computation by evaluating the polynomial at participation probability ``1/2``
     instead of integrating.
 
-    The returned :class:`~shapiq.interaction_values.InteractionValues` enumerates exactly the
-    interactions whose features co-occur on at least one decision path — every other
-    interaction is structurally zero and therefore not part of the output. This keeps the
-    result and the computation sparse at higher orders (the dense ``C(n_features, order)``
-    enumeration is never materialized); order 1 remains a dense per-feature block.
+    The returned :class:`~shapiq.interaction_values.InteractionValues` holds exactly the
+    interactions whose features all occur on at least one decision path; every other
+    interaction is zero and not part of the output. Order 1 is a dense per-feature block.
 
-    The class explains single trees and ensembles alike (ensembles run as one batched kernel
-    call) and is the default path-dependent algorithm of the
+    The class explains single trees and ensembles alike (an ensemble runs as one kernel call)
+    and is the default path-dependent algorithm of the
     :class:`~shapiq.tree.explainer.TreeExplainer`.
     """
 
@@ -100,12 +89,10 @@ class QuadratureTreeSHAP:
 
             n_quadrature_points: Number of Gauss-Legendre points. Defaults to ``None``, which
                 uses the exact bound ``ceil(d / 2)`` where ``d`` is the maximum number of
-                distinct features along a root-to-leaf path (over all trees). A fixed ``8``
-                (the rule of Wettenstein et al.) is only useful on trees with more than ~16
-                features per path — below that the default already uses fewer points — where it
-                measured 13-35% faster with deviations from the exact result within ``2e-14``
-                up to ``d = 100``. Ignored for Banzhaf indices, which need a single evaluation
-                point.
+                distinct features along a root-to-leaf path (over all trees). A fixed small
+                number (``8`` is the rule of Wettenstein et al.) trades exactness for speed on
+                paths with more features than that. Ignored for Banzhaf indices, which need a
+                single evaluation point.
 
         Raises:
             ValueError: If the index or the interaction orders are invalid.
@@ -137,7 +124,7 @@ class QuadratureTreeSHAP:
             msg = "All trees of an ensemble must share the same input precision."
             raise ValueError(msg)
 
-        # ensemble-shared feature space: the sorted union of the trees' original feature ids
+        # the shared feature space: the sorted union of the trees' original feature ids
         self._relevant_features: np.ndarray = np.array(
             sorted(set().union(*(tree.feature_ids for tree in self._trees))), dtype=int
         )
@@ -145,7 +132,7 @@ class QuadratureTreeSHAP:
         ensemble_id = {orig: pos for pos, orig in enumerate(self._relevant_features)}
         self._trivial_computation = self._n_features_in_tree == 0
 
-        # concatenate all trees into one node-array block with globally rebased indices
+        # concatenate all trees' node arrays with globally rebased node ids
         empty_prediction = 0.0
         max_features_per_path = 0
         max_depth = 0
@@ -169,7 +156,7 @@ class QuadratureTreeSHAP:
         roots: list[int] = []
         node_offset = 0
         cat_offset = 0
-        children_left_local: list[np.ndarray] = []  # tree-relative, for the subset collector
+        children_left_local: list[np.ndarray] = []  # tree-relative, for preprocess_subset_tables
         children_right_local: list[np.ndarray] = []
         for tree in self._trees:
             features_ens = np.array(
@@ -198,9 +185,8 @@ class QuadratureTreeSHAP:
             empty_prediction += float(tree_empty)
             max_features_per_path = max(max_features_per_path, int(edge_tree.edge_heights.max()))
             max_depth = max(max_depth, int(edge_tree.max_depth))
-            # unreachable (zero-cover) subtrees contribute exactly zero in the limit c -> 0; a
-            # tiny positive cover realizes that limit without 0/0 factors. p_e is inf on a dead
-            # subtree's entry edge and NaN strictly inside it, so test p_e before inverting.
+            # a zero-cover subtree gets a tiny positive cover, which realizes its zero
+            # contribution without 0/0 factors (p_e is inf on its entry edge, NaN inside)
             with np.errstate(divide="ignore"):
                 c_acc = np.where(
                     np.isfinite(edge_tree.p_e_values) & (edge_tree.p_e_values > 0),
@@ -242,8 +228,7 @@ class QuadratureTreeSHAP:
         self._arrays = {key: np.concatenate(arrs) for key, arrs in parts.items()}
         self._decision_type: DecisionType = self._trees[0].decision_type
 
-        # quadrature rule: exact for the degree-(d - order) integrands; Banzhaf indices are a
-        # single evaluation of the weighted Banzhaf polynomial at p = 1/2
+        # the quadrature rule; Banzhaf indices evaluate the polynomial once at p = 1/2
         if n_quadrature_points is not None and n_quadrature_points < 1:
             msg = f"n_quadrature_points={n_quadrature_points} must be a positive integer."
             raise ValueError(msg)
@@ -270,13 +255,9 @@ class QuadratureTreeSHAP:
             raise ImportError(msg) from None
         self._kernel_args: tuple | None = None
 
-        # sparse interaction support: only subsets whose features co-occur on at least one
-        # decision path can be nonzero, so the output enumerates exactly those. Order 1 stays
-        # a dense per-feature block (every union feature appears on some path) — the Shapley
-        # hot path keeps direct indexing while higher orders avoid the C(F, order) blow-up.
-        # The per-order sorted tables and their hash index come from the C++ collector shared
-        # with the interventional explainer (``preprocess_subset_tables``); the index is None
-        # when the integer key encoding would overflow, and the kernel then searches the tables.
+        # per order the table of interactions whose features all occur on one decision path
+        # (each entry listing its feature ids) and the hash index from interaction to position;
+        # the index is None when a 128-bit key would overflow, and the kernel then searches
         tree_offsets = np.append(self._roots, node_offset).astype(np.int64)
         self._subset_tables: tuple[np.ndarray, np.ndarray]
         self._subset_index: tuple[np.ndarray, np.ndarray] | None
@@ -322,7 +303,7 @@ class QuadratureTreeSHAP:
         )
 
     def _read_out(self, out: np.ndarray) -> dict[tuple[int, ...], float]:
-        """The kernel's output array as ``{original feature tuple: value}`` (shared C++ readout)."""
+        """The kernel's output array as ``{original feature tuple: value}``."""
         from .cext import layout_to_dict  # ty: ignore[unresolved-import]
 
         keys, counts = self._subset_tables
@@ -333,7 +314,7 @@ class QuadratureTreeSHAP:
             self._n_features_in_tree,
             self._min_order,
             np.ascontiguousarray(self._relevant_features, dtype=np.int64),
-            False,  # noqa: FBT003  # every interaction of the layout is reported, zeros included
+            False,  # noqa: FBT003  # every table entry is reported, zeros included
         )
 
     def explain_function(self, x: np.ndarray) -> InteractionValues:
@@ -341,14 +322,13 @@ class QuadratureTreeSHAP:
         return self.explain(x)
 
     def _explain_cpp(self, x_relevant: np.ndarray) -> np.ndarray:
-        """C-extension implementation: one batched kernel call over all trees."""
+        """One kernel call over all trees; returns the output array."""
         from .cext import quadrature_tree_shap  # ty: ignore[unresolved-import]
 
         if self._kernel_args is None:
             arrays = self._arrays
             keys, counts = self._subset_tables
-            # None leaves the kernel to search the tables by tuple comparison; every offset of
-            # the layout is derived from `counts` on both sides
+            # without a hash index the kernel searches the tables
             subset_index = self._subset_index
             self._kernel_args = (
                 np.ascontiguousarray(arrays["thresholds"], dtype=np.float64),

@@ -9,10 +9,10 @@ static PyMethodDef module_methods[] = {
     {"quadrature_tree_shap", quadrature_tree_shap, METH_VARARGS,
      "Compute path-dependent Shapley interaction values with Gauss-Legendre quadrature."},
     {"preprocess_subset_tables", preprocess_subset_tables, METH_VARARGS,
-     "Per order >= 2 the sorted feature subsets co-occurring on some root-to-leaf path and their hash index, "
-     "((keys, counts), (slot_keys, slot_rows) or None when the keys overflow)."},
+     "Collect per order the interactions whose feature ids all occur on one root-to-leaf path, with the hash index from interaction to position: "
+     "((keys, counts), (slot_keys, slot_rows) or None when a key would overflow 127 bits)."},
     {"layout_to_dict", layout_to_dict, METH_VARARGS,
-     "Read a kernel's output array over the subset layout back into {feature tuple: value}: "
+     "Read a kernel's output array back into {feature tuple: value}: "
      "layout_to_dict(out, keys, counts, n_features, min_order, feature_ids or None, skip_zeros)."},
     {NULL, NULL, 0, NULL}};
 
@@ -40,9 +40,14 @@ PyMODINIT_FUNC PyInit_cext(void)
 //                      c_acc, values, max_depth, num_nodes, roots, t, w, n_feats, min_order,
 //                      max_order, subset_keys, subset_counts, X, out, decision_type, cat_values,
 //                      cat_start, cat_size, children_left_default[, slot_keys, slot_rows])
-// The subset tables and their optional hash index are the layout of preprocess_subset_tables;
-// every offset is derived from subset_counts (subset_tables::derive_geometry). Without the
-// index the kernel searches the sorted tables by tuple comparison.
+// Node arrays: all trees back to back with globally rebased ids, one root per tree in `roots`.
+// parents: parent node (-1 at a root); ancestors: closest ancestor whose incoming edge has the
+//   same feature (-1 if none); c_acc: the accumulated cover factor of the node's edge chain.
+// t, w: the quadrature nodes and weights on [0, 1].
+// subset_keys, subset_counts, slot_keys, slot_rows: the tables and hash index from
+//   preprocess_subset_tables; without the index the kernel searches the tables.
+// X: n_rows x n_cols with n_cols >= n_feats; out: n_rows x output length, one entry per
+//   feature (min_order == 1) and per table entry of orders max(min_order, 2)..max_order.
 static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
 {
     (void)self;
@@ -105,7 +110,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             &index_rows_obj))
         return NULL;
 
-    // optional subset hash index: both arrays, or None (the kernel then searches the tables)
+    // the hash index: both arrays, or None (the kernel then searches the tables)
     const bool has_index = index_keys_obj != Py_None;
     PyArrayObject *index_keys_array = NULL;
     PyArrayObject *index_rows_array = NULL;
@@ -194,8 +199,7 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
     const double *X = (const double *)PyArray_DATA(X_array);
     double *out = (double *)PyArray_DATA(out_array);
 
-    // validate dimensions before any PyArray_DIM(_, 1) read: on a 1-D array that would read
-    // past the dims block, and a mis-sized out array would let the kernel corrupt the heap
+    // the dimensions are checked before any PyArray_DIM(_, 1) read and before the kernel writes
     const char *arg_error = NULL;
     subset_tables::Geometry geometry;
     if (num_nodes < 1 || n_feats < 1 || min_order < 1 || max_order < min_order || max_depth < 0)
@@ -227,24 +231,21 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
              PyArray_DIM(subset_counts_array, 0) != max_order + 1)
         arg_error = "subset_keys and subset_counts must be 1-dimensional, counts of length max_order + 1.";
     else if (has_index && (PyArray_NDIM(index_keys_array) != 1 || PyArray_NDIM(index_rows_array) != 1 ||
-                           PyArray_DIM(index_rows_array, 0) != PyArray_DIM(index_keys_array, 0)))
-        arg_error = "subset index arrays must be 1-dimensional and of equal length.";
-    else if (has_index && !subset_tables::keys_fit(n_feats, max_order))
-        arg_error = "the subset index key encoding overflows for this order.";
+                           2 * PyArray_DIM(index_rows_array, 0) != PyArray_DIM(index_keys_array, 0)))
+        arg_error = "index arrays must be 1-dimensional, slot_keys twice as long as slot_rows.";
     else
     {
         const int64_t *counts = (const int64_t *)PyArray_DATA(subset_counts_array);
         for (int order = 2; arg_error == NULL && order <= max_order; ++order)
             if (counts[order] < 0)
-                arg_error = "subset counts must be non-negative.";
+                arg_error = "interaction counts must be non-negative.";
         if (arg_error == NULL)
         {
-            // every table slice, index block and output block must be consistent with the
-            // counts, or the kernel would read or write past the buffers
+            // the table, index and output lengths must match the geometry derived from counts
             geometry = subset_tables::derive_geometry(counts, max_order, n_feats, min_order);
             arg_error = subset_tables::check_layout(
                 geometry, (int64_t)PyArray_DIM(subset_keys_array, 0),
-                has_index ? (int64_t)PyArray_DIM(index_keys_array, 0) : -1,
+                has_index ? (int64_t)PyArray_DIM(index_rows_array, 0) : -1,
                 (int64_t)PyArray_DIM(out_array, 1));
         }
     }
@@ -283,8 +284,8 @@ static PyObject *quadrature_tree_shap(PyObject *self, PyObject *args)
             (const int64_t *)PyArray_DATA(subset_counts_array),
             geometry, X, n_row, n_col, out_stride, out, has_index ? &subset_index : NULL);
         if (!complete)
-            kernel_error = "a subset on a decision path is missing from the subset tables; the "
-                           "tables (preprocess_subset_tables) and the kernel traversal disagree.";
+            kernel_error = "an interaction on a decision path is missing from the interaction tables; "
+                           "the tables (preprocess_subset_tables) and the kernel traversal disagree.";
     }
 
     release();
