@@ -759,6 +759,12 @@ uv run pre-commit run --all-files
   array views and solver workspace add more. A 128-GiB retry cap is insufficient
   for these largest cases. The recovery policy uses 512 GiB for future
   higher-order KernelSHAPIQ admissions, preserving earlier admitted policies.
+- Higher-order `RegressionFSII` and `RegressionFBII` use the same full interaction
+  design: at 512 players and budget 65,536, its two main arrays also exceed
+  128 GiB before weighted SVD workspace. New recovery admissions use 512 GiB
+  for these higher-order configurations; their SV configurations retain 128 GiB.
+  Authenticate the requested target/order rather than inferring memory from the
+  estimator name alone. More memory does not guarantee completion within 600 seconds.
 - Slurm can report the same numeric array-root `JobIDRaw` for multiple cancelled
   tasks that never started. Recovery export observed this for 329 tasks with
   zero allocated CPUs, zero CPU-time, and no assigned node. Authenticate these
