@@ -776,3 +776,10 @@ uv run pre-commit run --all-files
   ordinary retry launcher uses explicit paths. Authenticate the actual admitted
   arguments when adopting a diagnostic; assuming `[manifest_path, SHA]` rejects
   valid saved results. Keep the original admission and launcher immutable.
+- Pending successors can share a predecessor's CPU capacity only through an
+  authenticated Slurm dependency. The comprehensive campaign now uses
+  `capacity-admission-v1/admit.py` and `capacity-tree.json`: every job retains its
+  full CPU-hour reservation, while non-requeued `afterany` trees bound concurrent
+  CPUs. Do not use the old admission helper after adopting this policy, or treat
+  the sum of all pending reservations as simultaneous CPU use. Settlement must
+  retain the capacity charged to unfinished descendants.
