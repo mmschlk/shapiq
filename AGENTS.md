@@ -753,6 +753,12 @@ uv run pre-commit run --all-files
   failures in separately reserved higher-memory workers; raising a child's cap
   alone cannot override its parent's hard RLIMIT_AS. Keep successful cells and
   frozen estimator settings unchanged, and authenticate the prior MemoryError.
+- Higher-order `KernelSHAPIQ` also builds the full interaction design before
+  selecting each order's columns. At 512 players and budget 65,536, its int64
+  intersection and float64 design arrays alone coexist at 128.25 GiB; retained
+  array views and solver workspace add more. A 128-GiB retry cap is insufficient
+  for these largest cases. The recovery policy uses 512 GiB for future
+  higher-order KernelSHAPIQ admissions, preserving earlier admitted policies.
 - Slurm can report the same numeric array-root `JobIDRaw` for multiple cancelled
   tasks that never started. Recovery export observed this for 329 tasks with
   zero allocated CPUs, zero CPU-time, and no assigned node. Authenticate these
