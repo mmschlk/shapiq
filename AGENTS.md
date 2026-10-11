@@ -783,3 +783,13 @@ uv run pre-commit run --all-files
   CPUs. Do not use the old admission helper after adopting this policy, or treat
   the sum of all pending reservations as simultaneous CPU use. Settlement must
   retain the capacity charged to unfinished descendants.
+- ProxySPEX's default binomial size weights can each be finite at 1,024 players
+  while their sum, `2**1024`, overflows float64. Normalizing that sum produces
+  zero probabilities and can raise `Maximum allowed dimension exceeded` before
+  any oracle queries. Longer timeouts cannot repair this. The qualified fix uses
+  exact-integer ratios for this default high-dimensional path; preserve custom
+  weights and the existing lower-dimensional sampling behavior.
+- LightGBM can wrap an allocation failure as `LightGBMError: std::bad_alloc`.
+  OddSHAP recovery must recognize that exact authenticated error, rather than
+  treating every LightGBM exception as a memory failure or missing it because
+  its Python exception type is not `MemoryError`.
