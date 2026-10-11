@@ -98,6 +98,19 @@ def wake_reason(config: dict, state: dict, jobs: dict, now: float) -> str | None
     if config.get("status") != "active" or state.get("pending_delivery"):
         return None
     terminal = {job: status for job, status in jobs.items() if status in TERMINAL}
+    if config.get("batch_completion_only"):
+        changed = {
+            job: status
+            for job, status in terminal.items()
+            if state.get("notified_jobs", {}).get(job) != status
+        }
+        if any(status != "COMPLETED" for status in changed.values()):
+            return (
+                "A benchmark allocation failed; inspect the outputs and repair the remaining work."
+            )
+        if jobs and len(terminal) == len(jobs) and changed:
+            return "All benchmark allocations ended; finish any remaining evaluations and publish verified results."
+        return None
     if any(state.get("notified_jobs", {}).get(job) != status for job, status in terminal.items()):
         return "A campaign job finished or failed; verify its actual outputs and continue the accepted plan."
     idle = now - state.get("last_progress_at", config["created_at"])

@@ -44,7 +44,18 @@ successful estimator coverage are different quantities.
   journals. Preserve all historical attempts, including interrupted attempts.
 - Continue any never-attempted remainder after allocation limits. Merge only
   authenticated new responses, then update the website with the combined cohort.
-- Routine queued reminders remain disabled at the user's request.
+- User-authorized retries replace historical timeout outcomes in the published
+  comparison. Old attempts remain diagnostic evidence, with one scored outcome
+  per game/method/budget/seed cell.
+- Every estimator receives **ten minutes of actual `approximate` execution**,
+  including its game queries. Imports, game loading and estimator construction
+  are excluded from this limit. Separate startup/output watchdogs report
+  operational failures. Recorded timing retains the original constructor-plus-
+  execution definition for comparison with completed results.
+- Finish remaining supported cells and investigate unexpected failures among
+  the faster methods. Do not treat an allocation's end as completed coverage.
+- Monitoring wakes only on allocation failure or complete batch termination;
+  periodic queued reminders remain disabled.
 
 ### October 10 preparation recovery
 

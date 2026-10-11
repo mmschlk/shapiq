@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import math
 import os
 import platform
 import signal
@@ -99,12 +100,65 @@ def verify_profile(profile: str) -> None:
         raise ValueError(message)
 
 
-def isolated(request: dict, timeout: float, memory_gb: float | None) -> dict:
-    """Run one cell in a process group; kill the whole group when its wall limit expires."""
+def execution_phase(request: dict, phase: str, seconds: float | None = None) -> None:
+    """Publish a local atomic phase marker; legacy direct-worker requests need none."""
+    if "execution_phase_path" not in request:
+        return
+    path = Path(request["execution_phase_path"])
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps({"phase": phase, "time": time.perf_counter(), "seconds": seconds})
+    )
+    temporary.replace(path)
+
+
+def wait_for_estimator(
+    process: subprocess.Popen, phase_path: Path, timeout: float, startup_timeout: float
+) -> str | None:
+    """Enforce startup, estimator and output deadlines without charging imports to execution."""
+    deadline = time.perf_counter() + startup_timeout
+    phase = None
+    error = "StartupTimeoutError: worker initialization limit exceeded."
+    while True:
+        if phase_path.exists():
+            marker = json.loads(phase_path.read_text())
+            if marker["phase"] != phase:
+                phase = marker["phase"]
+                if phase == "started":
+                    deadline = marker["time"] + timeout
+                    error = "TimeoutError: estimator execution limit exceeded."
+                elif phase == "finished":
+                    if marker["seconds"] > timeout:
+                        return "TimeoutError: estimator execution limit exceeded."
+                    deadline = marker["time"] + startup_timeout
+                    error = "OutputTimeoutError: worker scoring/output limit exceeded."
+                else:
+                    message = "Invalid worker execution phase"
+                    raise ValueError(message)
+        if process.poll() is not None:
+            return None
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            return error
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=min(0.02, remaining))
+
+
+def isolated(
+    request: dict, timeout: float, memory_gb: float | None, *, startup_timeout: float = 600
+) -> dict:
+    """Bound startup separately; the estimator limit starts immediately before approximate."""
+    if not all(math.isfinite(value) and value > 0 for value in (timeout, startup_timeout)):
+        message = "Timeout limits must be positive and finite"
+        raise ValueError(message)
     with tempfile.TemporaryDirectory(prefix="shapiq-worker-") as directory:
         root = Path(directory)
         source, destination = root / "request.json", root / "response.json"
-        request = {**request, "memory_gb": memory_gb}
+        request = {
+            **request,
+            "memory_gb": memory_gb,
+            "execution_phase_path": str(root / "phase.json"),
+        }
         source.write_text(json.dumps(request))
         env = {**os.environ, **dict.fromkeys(THREAD_VARIABLES, "1"), "PYTHONHASHSEED": "0"}
         start = time.perf_counter()
@@ -117,14 +171,17 @@ def isolated(request: dict, timeout: float, memory_gb: float | None) -> dict:
                 start_new_session=True,
             )
             try:
-                process.wait(timeout=timeout)
+                failure = wait_for_estimator(process, root / "phase.json", timeout, startup_timeout)
+                if failure is not None:
+                    raise subprocess.TimeoutExpired(process.args, timeout)  # noqa: TRY301
             except subprocess.TimeoutExpired:
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(process.pid, signal.SIGKILL)
                 process.wait()
                 return {
                     "status": "failed",
-                    "error": "TimeoutError: worker wall-time limit exceeded.",
+                    "error": failure,
+                    "timeout_scope": "estimator_approximate",
                     "queries": None,
                     "requested_queries": None,
                     "seconds": None,
@@ -140,6 +197,7 @@ def isolated(request: dict, timeout: float, memory_gb: float | None) -> dict:
                 return {
                     "status": "failed",
                     "error": f"WorkerError: exit {process.returncode}; {log.read(2000).decode(errors='replace')}",
+                    "timeout_scope": "estimator_approximate",
                     "queries": None,
                     "requested_queries": None,
                     "seconds": None,
@@ -151,6 +209,19 @@ def isolated(request: dict, timeout: float, memory_gb: float | None) -> dict:
                 message = "Invalid worker response."
                 raise ValueError(message)  # noqa: TRY301
             json.dumps(result, allow_nan=False)
+            # The child can finish between the last phase read and poll(). Its
+            # measured duration remains authoritative even if both markers were missed.
+            if (
+                result.get("execution_seconds") is not None
+                and result["execution_seconds"] > timeout
+            ):
+                result = {
+                    "status": "failed",
+                    "error": "TimeoutError: estimator execution limit exceeded.",
+                    "queries": None,
+                    "requested_queries": None,
+                    "seconds": None,
+                }
         except (ValueError, OSError) as error:
             result = {
                 "status": "failed",
@@ -160,6 +231,7 @@ def isolated(request: dict, timeout: float, memory_gb: float | None) -> dict:
                 "seconds": None,
             }
         result["wall_seconds"] = time.perf_counter() - start
+        result["timeout_scope"] = "estimator_approximate"
         return result
 
 
@@ -221,6 +293,8 @@ def worker(source: Path, destination: Path) -> None:
                 request["seed"],
                 request.get("candidate"),
                 parameters=request.get("method_parameters"),
+                execution_started=lambda: execution_phase(request, "started"),
+                execution_finished=lambda seconds: execution_phase(request, "finished", seconds),
             )
             pools = [
                 {key: pool.get(key) for key in ("internal_api", "num_threads", "version")}

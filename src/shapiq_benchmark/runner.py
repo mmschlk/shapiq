@@ -461,8 +461,13 @@ def run_one(
     candidate: str | None = None,
     *,
     parameters: dict | None = None,
+    execution_started: Callable[[], None] | None = None,
+    execution_finished: Callable[[float], None] | None = None,
 ) -> dict:
     """Time the estimator excluding imports, oracle reconstruction, and scoring.
+
+    ``seconds`` retains constructor plus approximation time; ``execution_seconds``
+    measures only approximation and controls its independent timeout.
 
     Saved batch-amortized oracle costs yield a separate uncached-time estimate:
     measured estimator time minus cache calls plus charged original-game costs.
@@ -476,14 +481,23 @@ def run_one(
     factory = candidate_factory(candidate)[1] if candidate else None
     record: dict = {"status": "failed", "nmse": None, "mse": None, "error": None}
     start = time.perf_counter()
+    record["execution_seconds"] = None
     try:
         estimator = (
             factory(n=game["n_players"], index=game["index"], order=game["order"], seed=seed)
             if factory
             else builtin_factory(method, game, seed, parameters)
         )
-        estimate = estimator.approximate(budget=budget, game=counted)
-        record["seconds"] = time.perf_counter() - start
+        if execution_started is not None:
+            execution_started()
+        execution_start = time.perf_counter()
+        try:
+            estimate = estimator.approximate(budget=budget, game=counted)
+        finally:
+            record["execution_seconds"] = time.perf_counter() - execution_start
+            record["seconds"] = time.perf_counter() - start
+            if execution_finished is not None:
+                execution_finished(record["execution_seconds"])
         if counted.exceeded:
             message = "Estimator caught a budget exception."
             raise BudgetExceededError(message)  # noqa: TRY301

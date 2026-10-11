@@ -1,5 +1,11 @@
 # AGENTS.md
 
+- Estimator timeouts must start at `approximate`, after Python imports, artifact
+  validation, game loading and estimator construction. A subprocess wall limit
+  misclassified millisecond Permutation/Stratified/Owen evaluations as timeouts
+  when startup consumed the allowance. Bound startup separately and identify
+  startup failures separately; test both slow startup and slow estimation.
+
 - A published, time-bounded campaign is not a completed estimator comparison.
   The comprehensive runner's game/method/budget/seed order left later methods
   unattempted when allocations ended, despite 97% exact-reference coverage.

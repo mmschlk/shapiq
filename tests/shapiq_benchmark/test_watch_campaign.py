@@ -25,6 +25,18 @@ def test_optional_heartbeat_continues_work_while_jobs_run() -> None:
     assert watch.wake_reason({**config, "status": "cancelled"}, state, jobs, 910) is None
 
 
+def test_batch_monitor_only_wakes_for_failure_or_final_completion() -> None:
+    config = {"status": "active", "created_at": 0, "batch_completion_only": True}
+    assert watch.wake_reason(config, {}, {"1": "COMPLETED", "2": "RUNNING"}, 999999) is None
+    assert watch.wake_reason(config, {}, {"1": "FAILED", "2": "RUNNING"}, 1)
+    notified = {"notified_jobs": {"1": "FAILED"}}
+    assert watch.wake_reason(config, notified, {"1": "FAILED", "2": "RUNNING"}, 999999) is None
+    assert watch.wake_reason(config, notified, {"1": "FAILED", "2": "COMPLETED"}, 2)
+    assert watch.wake_reason(config, {}, {"1": "COMPLETED", "2": "COMPLETED"}, 2)
+    assert watch.wake_reason(config, {"pending_delivery": True}, {"1": "FAILED"}, 2) is None
+    assert watch.wake_reason(config, {}, {}, 999999) is None
+
+
 def test_idle_implementation_and_terminal_jobs() -> None:
     config = {"status": "active", "created_at": 0, "idle_seconds": 100}
     assert watch.wake_reason(config, {}, {}, 99) is None
