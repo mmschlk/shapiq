@@ -771,3 +771,8 @@ uv run pre-commit run --all-files
   tasks against the recorded never-started cancellations and require all those
   fields before exempting them from numeric-owner uniqueness; actual allocations
   must still have unique numeric owners.
+- Saved diagnostic launchers can accept only a manifest SHA because their script
+  fixes the manifest path. SVARMIQ diagnostic 370882 used `[SHA]`, while the
+  ordinary retry launcher uses explicit paths. Authenticate the actual admitted
+  arguments when adopting a diagnostic; assuming `[manifest_path, SHA]` rejects
+  valid saved results. Keep the original admission and launcher immutable.
