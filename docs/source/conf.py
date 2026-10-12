@@ -174,6 +174,7 @@ intersphinx_mapping = {
 # -- Options for HTML output -----------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = "furo"
+html_title = "shapiq documentation"
 html_static_path = ["_static"]
 html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
@@ -181,11 +182,60 @@ html_css_files = [
     "css/custom.css",
 ]
 html_favicon = "_static/logo/shapiq.ico"
-pygments_dark_style = "monokai"
+pygments_style = "github-light"
+pygments_dark_style = "github-dark"
+
+# The footer icons are the octicons "mark-github" and "package" (as bundled with sphinx-design).
+_GITHUB_ICON = (
+    '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">'
+    '<path fill-rule="evenodd" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55'
+    "-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31"
+    "-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2"
+    " .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86"
+    " 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27"
+    ".38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995"
+    ' 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>'
+)
+_PYPI_ICON = (
+    '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">'
+    '<path d="m8.878.392 5.25 3.045c.54.314.872.89.872 1.514v6.098a1.75 1.75 0 0 1-.872 1.514l-5.25'
+    " 3.045a1.75 1.75 0 0 1-1.756 0l-5.25-3.045A1.75 1.75 0 0 1 1 11.049V4.951c0-.624.332-1.201.872"
+    "-1.514L7.122.392a1.75 1.75 0 0 1 1.756 0ZM7.875 1.69l-4.63 2.685L8 7.133l4.755-2.758-4.63-2.685a"
+    ".248.248 0 0 0-.25 0ZM2.5 5.677v5.372c0 .09.047.171.125.216l4.625 2.683V8.432Zm6.25 8.271"
+    ' 4.625-2.683a.25.25 0 0 0 .125-.216V5.677L8.75 8.432Z"></path></svg>'
+)
 html_theme_options = {
     "sidebar_hide_name": True,
     "light_logo": "logo/logo_shapiq_light.svg",
     "dark_logo": "logo/logo_shapiq_dark.svg",
+    # "view" and "edit" buttons; _templates/components maps the gallery pages to their scripts
+    # and leaves them out on the generated API pages, which have no source file in the repository
+    "source_repository": "https://github.com/mmschlk/shapiq/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
+    "footer_icons": [
+        {"name": "GitHub", "url": "https://github.com/mmschlk/shapiq", "html": _GITHUB_ICON},
+        {"name": "PyPI", "url": "https://pypi.org/project/shapiq/", "html": _PYPI_ICON},
+    ],
+    # brand colors of the logo (see _static/css/tokens.css), darkened or lightened for contrast
+    "light_css_variables": {
+        "color-brand-primary": "#d0245c",
+        "color-brand-content": "#3a57cf",
+        "color-brand-visited": "#3a57cf",
+        "color-sidebar-link-text--top-level": "var(--color-foreground-primary)",
+        "color-highlighted-background": "#fde7ef",
+        "color-inline-code-background": "#f3f4f9",
+        "color-code-background": "var(--shapiq-surface-raised)",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#ff6b95",
+        "color-brand-content": "#8fb3ff",
+        "color-brand-visited": "#8fb3ff",
+        "color-sidebar-link-text--top-level": "var(--color-foreground-primary)",
+        "color-highlighted-background": "#3b1d2a",
+        "color-inline-code-background": "#1d2027",
+        "color-code-background": "var(--shapiq-surface-raised)",
+    },
 }
 
 html_sidebars = {
