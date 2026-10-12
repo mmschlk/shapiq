@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>Random permutations of the players</title>
+  <rect x="61" y="39" width="54" height="54" rx="27" fill="#5773e5" fill-opacity="0.14"/>
+  <path d="M88 66 H312" stroke="#8b93a7" stroke-width="3" stroke-opacity="0.5"/>
+  <circle cx="88" cy="66" r="15" fill="#5773e5"/>
+  <circle cx="144" cy="66" r="22" stroke="#e3326a" stroke-width="3"/>
+  <circle cx="144" cy="66" r="15" fill="#e3326a"/>
+  <circle cx="200" cy="66" r="15" fill="#b3c2e5" stroke="#8b93a7" stroke-width="2.5"/>
+  <circle cx="256" cy="66" r="15" fill="#8b93a7"/>
+  <circle cx="312" cy="66" r="15" fill="#79ace5"/>
+  <path d="M340 66 H364 M356 58 L364 66 L356 74" stroke="#8b93a7" stroke-width="3"/>
+  <rect x="61" y="113" width="166" height="54" rx="27" fill="#5773e5" fill-opacity="0.14"/>
+  <path d="M88 140 H312" stroke="#8b93a7" stroke-width="3" stroke-opacity="0.5"/>
+  <circle cx="88" cy="140" r="15" fill="#79ace5"/>
+  <circle cx="144" cy="140" r="15" fill="#8b93a7"/>
+  <circle cx="200" cy="140" r="15" fill="#b3c2e5" stroke="#8b93a7" stroke-width="2.5"/>
+  <circle cx="256" cy="140" r="22" stroke="#e3326a" stroke-width="3"/>
+  <circle cx="256" cy="140" r="15" fill="#e3326a"/>
+  <circle cx="312" cy="140" r="15" fill="#5773e5"/>
+  <path d="M340 140 H364 M356 132 L364 140 L356 148" stroke="#8b93a7" stroke-width="3"/>
+  <rect x="61" y="187" width="222" height="54" rx="27" fill="#5773e5" fill-opacity="0.14"/>
+  <path d="M88 214 H312" stroke="#8b93a7" stroke-width="3" stroke-opacity="0.5"/>
+  <circle cx="88" cy="214" r="15" fill="#8b93a7"/>
+  <circle cx="144" cy="214" r="15" fill="#5773e5"/>
+  <circle cx="200" cy="214" r="15" fill="#79ace5"/>
+  <circle cx="256" cy="214" r="15" fill="#b3c2e5" stroke="#8b93a7" stroke-width="2.5"/>
+  <circle cx="312" cy="214" r="22" stroke="#e3326a" stroke-width="3"/>
+  <circle cx="312" cy="214" r="15" fill="#e3326a"/>
+  <path d="M340 214 H364 M356 206 L364 214 L356 222" stroke="#8b93a7" stroke-width="3"/>
+</svg>

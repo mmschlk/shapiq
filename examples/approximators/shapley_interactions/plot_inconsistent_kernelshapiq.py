@@ -2,9 +2,12 @@
 InconsistentKernelSHAPIQ
 ========================
 
-Faster variant of KernelSHAPIQ that does not converge to true SII, using
-:class:`~shapiq.InconsistentKernelSHAPIQ`.
+Estimate SII and k-SII with :class:`~shapiq.approximator.InconsistentKernelSHAPIQ`, a variant of
+KernelSHAP-IQ that does not converge to the exact values but often estimates them better at small
+budgets.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
 
 from __future__ import annotations
 

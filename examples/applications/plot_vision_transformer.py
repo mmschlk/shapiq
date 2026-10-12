@@ -9,6 +9,8 @@ with the :class:`~shapiq_games.ImageClassifier` game: it shows what the players 
 model sees, computes exact Shapley values and interactions, and draws them on the image.
 """
 
+# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+
 from __future__ import annotations
 
 import os
@@ -62,8 +64,8 @@ plt.show()
 # %%
 # Exact Values
 # ------------
-# With 9 players, :class:`~shapiq.ExactComputer` evaluates all 512 coalitions once; every index
-# is then exact.
+# With 9 players, :class:`~shapiq.game_theory.ExactComputer` evaluates all 512 coalitions once;
+# every index is then exact.
 
 computer = shapiq.ExactComputer(game)
 shapley_values = computer("SV", 1)

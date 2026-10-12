@@ -2,10 +2,10 @@
 Conditional Data Imputation
 ============================
 
-This example shows how to use :class:`~shapiq.ConditionalImputer` for
-conditional (observational) imputation when computing Shapley interactions.
-Conditional imputation respects feature dependencies, unlike marginal
-(interventional) imputation.
+This example shows how to use conditional (observational) imputation, the
+:class:`~shapiq.imputer.GenerativeConditionalImputer` behind ``imputer="conditional"``, when
+computing Shapley interactions. Conditional imputation respects feature dependencies, unlike
+marginal (interventional) imputation.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ print(f"Test  R2: {model.score(X_test, y_test):.4f}")
 # %%
 # Conditional Imputer
 # --------------------
-# Set ``imputer="conditional"`` in :class:`~shapiq.TabularExplainer`.
+# Set ``imputer="conditional"`` in :class:`~shapiq.explainer.TabularExplainer`.
 # The imputer trains a gradient boosting model per feature to learn the
 # conditional distribution. Key parameters:
 #

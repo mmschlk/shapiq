@@ -2,9 +2,12 @@
 OwenSamplingSV
 ==============
 
-Owen sampling for Shapley value approximation using
-:class:`~shapiq.OwenSamplingSV`.
+Estimate Shapley values with :class:`~shapiq.approximator.OwenSamplingSV`: the Shapley value is an
+integral over the probability with which the other players join a coalition, evaluated at a few
+anchor points.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_owen.png"  # noqa: ERA001
 
 from __future__ import annotations
 

@@ -82,6 +82,80 @@ EXAMPLE_GROUPS = (
     "benchmarking",
     "technicalities",
 )
+# The examples of each gallery (and subsection) in learning order, by folder below ``examples``.
+# Examples that are not listed follow by file name, so a new example appears without an entry.
+EXAMPLE_ORDER = {
+    "basics": (
+        "plot_sv_calculation.py",
+        "plot_shapiq_scikit_learn.py",
+        "plot_custom_games.py",
+    ),
+    "exact_computation": ("plot_exact_computer.py", "plot_core.py"),
+    "approximators/shapley_values": (
+        "plot_kernelshap.py",
+        "plot_permutation_sampling_sv.py",
+        "plot_svarm.py",
+        "plot_stratified_sampling_sv.py",
+        "plot_owen_sampling_sv.py",
+        "plot_unbiased_kernelshap.py",
+        "plot_kadd_shap.py",
+    ),
+    "approximators/shapley_interactions": (
+        "plot_kernelshapiq.py",
+        "plot_inconsistent_kernelshapiq.py",
+        "plot_regression_fsii.py",
+        "plot_regression_fbii.py",
+        "plot_shapiq_approximator.py",
+        "plot_svarmiq.py",
+        "plot_permutation_sampling_sii.py",
+        "plot_permutation_sampling_stii.py",
+    ),
+    "approximators/surrogate_and_sparse": (
+        "plot_regression_msr.py",
+        "plot_proxyshap.py",
+        "plot_spex.py",
+        "plot_proxyspex.py",
+    ),
+    "trees": ("plot_treeshapiq_lightgbm.py", "plot_treeshapiq_custom_tree.py"),
+    "visualization": (
+        "plot_interaction_values.py",
+        "plot_visualizing_interactions.py",
+        "plot_si_graph.py",
+        "plot_upset.py",
+        "plot_beeswarm.py",
+        "plot_scatter.py",
+        "plot_shapley_values.py",
+    ),
+    "applications": (
+        "plot_explaining_tabpfn.py",
+        "plot_vision_transformer.py",
+        "plot_sentiment_analysis.py",
+        "plot_confounding_xai.py",
+    ),
+    "technicalities": ("plot_conditional_imputer.py", "plot_parallel_computation.py"),
+}
+
+
+class ExampleOrder:
+    """Sort key for sphinx-gallery: the examples of ``EXAMPLE_ORDER`` first, then the others."""
+
+    def __init__(self, src_dir: str) -> None:
+        """Look up the order of the gallery folder ``src_dir`` (none for an unknown folder)."""
+        folder, examples = Path(src_dir).resolve(), root / "examples"
+        known = bool(src_dir) and folder.is_relative_to(examples)
+        self.order = EXAMPLE_ORDER.get(folder.relative_to(examples).as_posix(), ()) if known else ()
+
+    def __call__(self, filename: str) -> tuple[int, str]:
+        """Return the position of an example (a file name or path) and its name."""
+        name = Path(filename).name
+        position = self.order.index(name) if name in self.order else len(self.order)
+        return position, name
+
+    def __repr__(self) -> str:
+        """Show the order (sphinx-gallery prints the sort key in its messages)."""
+        return f"ExampleOrder({self.order})"
+
+
 sphinx_gallery_conf = {
     "examples_dirs": [str(root / "examples" / group) for group in EXAMPLE_GROUPS],
     "gallery_dirs": [f"auto_examples/{group}" for group in EXAMPLE_GROUPS],
@@ -93,6 +167,9 @@ sphinx_gallery_conf = {
         ),
         "*",
     ],
+    "within_subsection_order": ExampleOrder,
+    # thumbnails of examples without a telling figure: `# sphinx_gallery_thumbnail_path = ...`
+    "remove_config_comments": True,
     "backreferences_dir": "gen_modules/backreferences",
     "doc_module": ("shapiq", "shapiq_games", "shapiq_benchmark"),
     "reference_url": {"shapiq": None, "shapiq_games": None, "shapiq_benchmark": None},
@@ -177,6 +254,7 @@ html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
     "css/tokens.css",  # colors, radii, shadows and motion shared by the custom pages
     "css/custom.css",
+    "css/gallery.css",  # the examples landing page, the group pages and their thumbnails
 ]
 html_favicon = "_static/logo/shapiq.ico"
 pygments_dark_style = "monokai"

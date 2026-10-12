@@ -2,9 +2,11 @@
 StratifiedSamplingSV
 ====================
 
-Stratified sampling for Shapley value approximation using
-:class:`~shapiq.StratifiedSamplingSV`.
+Estimate Shapley values with :class:`~shapiq.approximator.StratifiedSamplingSV`: it samples marginal
+contributions of every player per coalition size (a stratum) and averages over the strata.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"  # noqa: ERA001
 
 from __future__ import annotations
 

@@ -1,8 +1,9 @@
-"""Computing Shapley Values.
-=========================
+"""
+Plotting Shapley Values with Matplotlib
+=======================================
 
-A minimal example showing how to compute exact Shapley values for a small
-cooperative game using :class:`~shapiq.ExactComputer`.
+A minimal example: compute the exact Shapley values of a small voting game with
+:class:`~shapiq.game_theory.ExactComputer` and draw them as a bar chart with plain matplotlib.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ def voting_game(coalitions: np.ndarray) -> np.ndarray:
 # %%
 # Compute Exact Shapley Values
 # ----------------------------
-# :class:`~shapiq.ExactComputer` exhaustively evaluates all 2^n coalitions to
+# :class:`~shapiq.game_theory.ExactComputer` exhaustively evaluates all 2^n coalitions to
 # compute exact interaction values. It accepts any callable game directly.
 
 computer = shapiq.ExactComputer(voting_game, n_players=4)

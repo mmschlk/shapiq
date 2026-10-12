@@ -2,9 +2,11 @@
 UnbiasedKernelSHAP
 ==================
 
-Unbiased Monte Carlo variant of KernelSHAP using
-:class:`~shapiq.UnbiasedKernelSHAP`.
+Estimate Shapley values with :class:`~shapiq.approximator.UnbiasedKernelSHAP`, an unbiased Monte
+Carlo variant of KernelSHAP and the Shapley value case of the SHAP-IQ estimator.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"  # noqa: ERA001
 
 from __future__ import annotations
 

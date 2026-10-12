@@ -2,9 +2,13 @@
 ProxySPEX
 =========
 
-Proxy-based SPEX approximation using
-:class:`~shapiq.ProxySPEX` :footcite:p:`Butler.2025`.
+Estimate interactions among many players with ProxySPEX: fit a tree ensemble (LightGBM by default)
+to the sampled coalition values and read its sparse interactions off the trees.
+
+:class:`~shapiq.approximator.ProxySPEX` was introduced by :footcite:t:`Butler.2025`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"  # noqa: ERA001
 
 from __future__ import annotations
 

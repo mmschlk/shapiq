@@ -2,9 +2,12 @@
 RegressionMSR
 =============
 
-Proxy model-based Shapley value approximation using
-:class:`~shapiq.approximator.proxy.regressionmsr.RegressionMSR`.
+Estimate Shapley values with :class:`~shapiq.approximator.RegressionMSR`: fit a surrogate model
+(XGBoost by default) to the sampled coalition values, read its Shapley values off exactly, and
+correct the surrogate's error with a Monte Carlo estimate on its residuals.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"  # noqa: ERA001
 
 from __future__ import annotations
 

@@ -2,9 +2,12 @@
 PermutationSamplingSV
 =====================
 
-Permutation-based Shapley value approximation using
-:class:`~shapiq.PermutationSamplingSV`.
+Estimate Shapley values from random permutations of the players with
+:class:`~shapiq.approximator.PermutationSamplingSV`: every permutation yields one marginal
+contribution per player, the change in value when it joins the players before it.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
 
 from __future__ import annotations
 

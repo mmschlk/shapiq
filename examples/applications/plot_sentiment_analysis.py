@@ -11,6 +11,8 @@ from the ``shapiq_games`` package, which wraps a pretrained DistilBERT model
 fine-tuned on IMDb reviews.
 """
 
+# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+
 from __future__ import annotations
 
 import os
@@ -96,7 +98,7 @@ sv_neg.plot_force(feature_names=token_names_neg)
 # %%
 # Sentence Plot
 # --------------
-# The :func:`~shapiq.sentence_plot` colors each word by its first-order
+# The :func:`~shapiq.plot.sentence_plot` colors each word by its first-order
 # attribution, giving an inline text visualization.
 
 sv.plot_sentence(words=token_names)

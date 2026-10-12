@@ -4,8 +4,10 @@ The Core: A Different View on Explanation
 
 This example introduces the game-theoretic concept of the *core* and the
 *egalitarian least core* (ELC), and shows how to compute them with
-:class:`~shapiq.ExactComputer`.
+:class:`~shapiq.game_theory.ExactComputer`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/exact_computation.png"  # noqa: ERA001
 
 from __future__ import annotations
 

@@ -53,7 +53,7 @@ shapiq.network_plot(interaction_values=iv, feature_names=[f"x{i}" for i in range
 # %%
 # Parallel Explanation of Multiple Instances
 # --------------------------------------------
-# Use ``n_jobs`` in :meth:`~shapiq.Explainer.explain_X` to parallelize.
+# Use ``n_jobs`` in :meth:`~shapiq.explainer.Explainer.explain_X` to parallelize.
 
 ivs = explainer.explain_X(X_test, budget=256, n_jobs=2)
 print(f"Computed {len(ivs)} explanations")
