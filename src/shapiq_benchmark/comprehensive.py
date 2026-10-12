@@ -11,12 +11,12 @@ import argparse
 import csv
 import io
 import json
+import math
 from collections import Counter
 from pathlib import Path
 
 from shapiq_benchmark import focused
 from shapiq_benchmark.datasets import DATASETS
-from shapiq_benchmark.protocol import CONSTRUCTIONS
 
 CLASSIFICATION = (
     "adult_census",
@@ -46,24 +46,10 @@ REGRESSION = (
     "tabarena_concrete_strength",
     "tabarena_protein",
 )
-CONTRAST_DATASETS = (
-    "adult_census",
-    "breast_cancer",
-    "digits",
-    "tabarena_bioresponse",
-    "wine_quality",
-    "tabarena_miami_housing",
-    "tabarena_superconductivity",
-    "tabarena_qsar_tid11",
-)
 CORE_MODELS = ("linear", "random_forest")
-GENERIC_COUNTS = (4, 8, 12, 14, 16)
-TREE_COUNTS = (8, 16, 32, 64, 128, 256, 512)
-NEIGHBOR_COUNTS = (32, 64, 128, 256, 512, 1024)
-INPUT_COUNTS = (8, 16, 32, 64, 128)
-NEIGHBOR_POOL = 5000
-# These sklearn/shipped datasets predate n_samples in the expanded catalog.
-_BASE_ROWS = {"breast_cancer": 569, "digits": 1797, "wine": 178}
+GENERIC_COUNTS = (4, 8, 12)
+TREE_COUNTS = (8, 16, 32)
+RELATIVE_BUDGETS = (0.5, 1, 2, 4, 8, 16, 32)
 COLUMNS = (
     "id",
     "application",
@@ -87,15 +73,10 @@ def recipes() -> list[dict]:
     def add(
         dataset: str, model: str, construction: str, players: int, *, inputs: int | None = None
     ) -> None:
-        neighbor = construction in {"knn", "tnn"}
         tree = construction in {"pathdependent_tree", "interventional_tree"}
         valuation = construction == "dataset_valuation"
         application = (
-            "data"
-            if neighbor or valuation
-            else "features"
-            if construction == "feature_selection"
-            else "local"
+            "data" if valuation else "features" if construction == "feature_selection" else "local"
         )
         identity = (dataset, model, construction, players, inputs)
         if identity in rows:
@@ -109,16 +90,16 @@ def recipes() -> list[dict]:
                 (
                     identifier,
                     application,
-                    "neighbor_examples" if neighbor else "retraining_groups" if valuation else "",
+                    "retraining_groups" if valuation else "",
                     dataset,
                     model,
                     construction,
                     str(players),
-                    "neighbor_solver" if neighbor else "tree_solver" if tree else "enumeration",
+                    "tree_solver" if tree else "enumeration",
                     str(inputs) if inputs is not None else "",
                     "nested",
-                    str(NEIGHBOR_POOL) if neighbor else "",
-                    "nested_stratified" if neighbor else "",
+                    "",
+                    "",
                 ),
                 strict=True,
             )
@@ -127,7 +108,7 @@ def recipes() -> list[dict]:
     for dataset in (*CLASSIFICATION, *REGRESSION):
         width = DATASETS[dataset]["n_features"]
         feature_counts = sorted(
-            {n for n in GENERIC_COUNTS if n <= width} | ({width} if width < 16 else set())
+            {n for n in GENERIC_COUNTS if n <= width} | ({width} if width < 12 else set())
         )
         for model in CORE_MODELS:
             for construction in ("local_baseline", "dataset_valuation", "feature_selection"):
@@ -141,40 +122,40 @@ def recipes() -> list[dict]:
                         players,
                         inputs=min(12, width) if construction == "dataset_valuation" else None,
                     )
-        for model in ("random_forest", "xgboost", "lightgbm"):
-            for construction in ("pathdependent_tree", "interventional_tree"):
-                for players in TREE_COUNTS:
-                    if players <= width:
-                        add(dataset, model, construction, players)
-        if dataset in CLASSIFICATION:
-            samples = DATASETS[dataset].get("n_samples", _BASE_ROWS.get(dataset))
-            if samples is None:
-                msg = f"Missing row count for neighbor recipe: {dataset}"
-                raise ValueError(msg)
-            available = min(NEIGHBOR_POOL, samples * 4 // 5)
-            for construction in ("knn", "tnn"):
-                for players in NEIGHBOR_COUNTS:
-                    if players <= available:
-                        add(dataset, construction, construction, players, inputs=min(12, width))
+        for construction in ("pathdependent_tree", "interventional_tree"):
+            for players in TREE_COUNTS:
+                if players <= width:
+                    add(dataset, "random_forest", construction, players)
 
-    for dataset in CONTRAST_DATASETS:
-        width = DATASETS[dataset]["n_features"]
-        for model in ("xgboost", "lightgbm", "rbf_svm", "mlp"):
-            for construction in ("local_baseline", "dataset_valuation", "feature_selection"):
-                if model in CONSTRUCTIONS[construction]["models"] and (
-                    construction == "dataset_valuation" or width >= 12
-                ):
-                    add(
-                        dataset,
-                        model,
-                        construction,
-                        12,
-                        inputs=min(12, width) if construction == "dataset_valuation" else None,
-                    )
-        for model in CORE_MODELS:
-            for inputs in sorted({n for n in INPUT_COUNTS if n <= width} | {width}):
-                add(dataset, model, "dataset_valuation", 12, inputs=inputs)
     return list(rows.values())
+
+
+def selection_manifest() -> dict:
+    """Map exact retained recipes and relative budgets for filtering frozen snapshots.
+
+    Match a snapshot's recorded ``focused_design.recipes`` entry, rather than
+    parsing its game ID. This selects design cells; reuse still requires the
+    original authenticated artifacts, target, construction seed and source.
+    """
+    return {
+        "version": 2,
+        "recipes": {row["id"]: row for row in recipes()},
+        "relative_budgets": list(RELATIVE_BUDGETS),
+    }
+
+
+def retains_cell(selection: dict, recipe: dict, budget: int) -> bool:
+    """Select an unchanged recipe at an exact retained budget, including odd widths."""
+    expected = selection["recipes"].get(recipe.get("id"))
+    if expected is None or set(recipe) - set(COLUMNS):
+        return False
+    # Focused manifests omit blank optional fields; CSV rows retain them.
+    if {column: str(recipe.get(column, "")) for column in COLUMNS} != expected:
+        return False
+    players = int(expected["n_players"])
+    return type(budget) is int and budget in {
+        math.ceil(ratio * players) for ratio in selection["relative_budgets"]
+    }
 
 
 def manifest_text() -> str:
@@ -192,17 +173,16 @@ def build_suite(manifest: Path) -> dict:
         msg = "Comprehensive manifest differs from the deterministic approved design."
         raise ValueError(msg)
     suite = focused.build_suite(
-        manifest, min_players=4, max_players=1024, extended_features=True, estimator_seeds=(0, 1, 2)
+        manifest, min_players=4, max_players=32, extended_features=True, estimator_seeds=(0, 1, 2)
     )
-    suite["name"] = "comprehensive-24-datasets-v1"
+    suite["name"] = "comprehensive-24-datasets-compact-v2"
+    suite["relative_budgets"] = list(RELATIVE_BUDGETS)
     suite["comprehensive_design"] = {
-        "version": 1,
+        "version": 2,
         "classification_datasets": list(CLASSIFICATION),
         "regression_datasets": list(REGRESSION),
-        "contrast_datasets": list(CONTRAST_DATASETS),
         "reuse_rule": "Exact recipe identity and authenticated frozen artifacts only.",
         "nested_features": True,
-        "neighbor_training_pool": NEIGHBOR_POOL,
     }
     return suite
 

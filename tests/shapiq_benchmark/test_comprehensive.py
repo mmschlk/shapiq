@@ -1,4 +1,4 @@
-"""Bounded checks of the expanded manifest; no dataset downloads or model fits."""
+"""Bounded checks of the compact manifest; no dataset downloads or model fits."""
 
 from __future__ import annotations
 
@@ -39,11 +39,10 @@ def test_fixed_manifest_and_balanced_dataset_inventory() -> None:
     assert all(DATASETS[d]["task"] == "classification" for d in c.CLASSIFICATION)
     assert all(DATASETS[d]["task"] == "regression" for d in c.REGRESSION)
     rows = c.recipes()
-    assert len(rows) == len({r["id"] for r in rows}) == 1270
+    assert len(rows) == len({r["id"] for r in rows}) == 512
     assert Counter(r["reference"] for r in rows) == {
-        "enumeration": 782,
-        "tree_solver": 360,
-        "neighbor_solver": 128,
+        "enumeration": 420,
+        "tree_solver": 92,
     }
     assert not {r["id"] for r in rows} & {
         r["id"] for r in csv.DictReader((ROOT / "benchmark/suites/focused.csv").open())
@@ -59,7 +58,7 @@ def test_dimensions_are_independent_and_nested() -> None:
         for family in ("local_baseline", "feature_selection"):
             actual = {int(r["n_players"]) for r in core if r["construction"] == family}
             assert actual == {n for n in c.GENERIC_COUNTS if n <= width} | (
-                {width} if width < 16 else set()
+                {width} if width < 12 else set()
             )
         assert {
             int(r["n_players"])
@@ -67,31 +66,22 @@ def test_dimensions_are_independent_and_nested() -> None:
             if r["construction"] == "dataset_valuation"
             and int(r["input_features"]) == min(12, width)
         } == set(c.GENERIC_COUNTS)
-    for dataset in c.CONTRAST_DATASETS:
-        width = DATASETS[dataset]["n_features"]
-        widths = {
-            int(r["input_features"])
-            for r in rows
-            if r["dataset"] == dataset
-            and r["model"] == "linear"
-            and r["construction"] == "dataset_valuation"
-            and r["n_players"] == "12"
-        }
-        assert widths == {n for n in c.INPUT_COUNTS if n <= width} | {width, min(12, width)}
-    assert not any(
-        r["model"] == "rbf_svm" and r["construction"] == "dataset_valuation" for r in rows
-    )
-
-
-def test_neighbor_rows_not_feature_counts_bound_players() -> None:
-    rows = [r for r in c.recipes() if r["reference"] == "neighbor_solver"]
-    expected_max = {"wine": 128, "ionosphere": 256, "breast_cancer": 256, "digits": 1024}
-    for dataset, maximum in expected_max.items():
-        assert max(int(r["n_players"]) for r in rows if r["dataset"] == dataset) == maximum
     assert all(
-        r["training_rows"] == "5000" and r["row_selection"] == "nested_stratified" for r in rows
+        int(r["input_features"]) == min(12, DATASETS[r["dataset"]]["n_features"])
+        for r in rows
+        if r["construction"] == "dataset_valuation"
     )
-    assert all(r["dataset"] in c.CLASSIFICATION for r in rows)
+    assert all(r["model"] in c.CORE_MODELS for r in rows if r["reference"] == "enumeration")
+    assert all(
+        r["model"] == "random_forest" and int(r["n_players"]) in {8, 16, 32}
+        for r in rows
+        if r["reference"] == "tree_solver"
+    )
+
+
+def test_compact_design_has_no_valuation_subtype() -> None:
+    assert not {"knn", "tnn"} & {r["construction"] for r in c.recipes()}
+    assert {r["application"] for r in c.recipes()} == {"local", "data", "features"}
 
 
 def test_suite_preserves_settings_and_reference_targets(approved_constructors: None) -> None:
@@ -99,17 +89,40 @@ def test_suite_preserves_settings_and_reference_targets(approved_constructors: N
     assert suite["seeds"] == [0, 1, 2] and suite["game_seeds"] == [0, 1, 2, 3]
     assert len(suite["methods"]) == 22
     assert suite["method_parameters"] == focused.METHOD_PARAMETERS
-    assert suite["relative_budgets"] == [0.5, 1, 2, 4, 8, 16, 32, 64, 128]
+    assert suite["relative_budgets"] == [0.5, 1, 2, 4, 8, 16, 32]
     assert suite["min_players"] == 4
-    assert len(suite["families"]) == 782
-    assert len(suite["games"]) == 1748
+    assert len(suite["families"]) == 420
+    assert len(suite["games"]) == 414
     for game in suite["games"]:
-        if game["oracle"] in {"knn", "tnn"}:
-            assert (game["index"], game["order"]) == ("SV", 1)
-            assert game["training_rows"] == 5000
-        elif game["oracle"] == "pathdependent_tree":
+        if game["oracle"] == "pathdependent_tree":
             assert game["index"] in {"SV", "k-SII", "SII"}
-    assert c.summary(suite)["intended_targets"] == 25760
+    assert c.summary(suite)["intended_targets"] == 11736
+
+
+def test_retained_recipe_settings_equal_historical_subset() -> None:
+    # Exact dictionaries selected from the former 1,270-row manifest, in its order.
+    assert (
+        hashlib.sha256(
+            json.dumps(c.recipes(), sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        == "cced9a64325b08f9b1de70c03eab33e6ff28dafaba1245feeccbc1a2d17a721c"
+    )
+
+
+def test_snapshot_selection_uses_full_recipe_and_budget_identity() -> None:
+    selection = c.selection_manifest()
+    valuation = next(r for r in c.recipes() if r["construction"] == "dataset_valuation")
+    assert c.retains_cell(selection, valuation, 32 * int(valuation["n_players"]))
+    assert not c.retains_cell(selection, valuation, 64 * int(valuation["n_players"]))
+    assert not c.retains_cell(selection, {**valuation, "input_features": "1"}, 32)
+    assert not c.retains_cell(selection, {**valuation, "feature_rule": "all"}, 32)
+    assert not c.retains_cell(selection, {**valuation, "new_scientific_option": "x"}, 32)
+    assert not c.retains_cell(selection, {**valuation, "id": "unknown"}, 32)
+    assert not c.retains_cell(selection, valuation, 33)
+    natural = next(r for r in c.recipes() if r["n_players"] == "5")
+    sparse = {k: v for k, v in natural.items() if v}
+    assert c.retains_cell(selection, sparse, 3)  # ceil(0.5 * 5), not exact ratio equality.
+    assert not c.retains_cell(selection, sparse, 2)
 
 
 def test_changed_fixed_manifest_rejected(tmp_path: Path, approved_constructors: None) -> None:

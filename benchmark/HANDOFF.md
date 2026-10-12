@@ -1,49 +1,47 @@
-# Benchmark handoff cleanup plan
+# Compact benchmark handoff
 
-The goal is a reusable benchmark package and a small, understandable integration
-with shapiq. The benchmark PR currently changes no files under `src/shapiq`;
-estimator fixes and speedups stay in their separate PRs.
+The active design is [scope version 2](COMPREHENSIVE.md): 512 recipes and 2,048
+intended instances across all 24 datasets. Estimator fixes and speedups remain
+in their separate PRs; the benchmark does not silently change core algorithms.
 
-## Finish the results
+## Complete and publish the selected cohort
 
-- Complete the supported, never-attempted evaluations described in
-  [COMPREHENSIVE.md](COMPREHENSIVE.md). Keep failures and missing references visible.
-- Preserve frozen games, source, seeds, prior attempts and published run IDs.
-  Distinguish reference coverage, attempted coverage and successful coverage.
-- Publish the combined cohort and verify the actual deployed scores and filters.
+- Authenticate exact recipe, game, source, settings, budget and seed matches before
+  reusing historical results. Preserve successful matched outcomes and original
+  run IDs; the broader historical cohort is not compact coverage.
+- Complete 100% successful supported coverage except ShaplEIG and SPEX. Distinguish
+  reference coverage, attempted coverage and successful coverage; keep exclusions,
+  failures and missing work visible without invented scores.
+- Run one consolidated ownership, reference, score and coverage validation.
+  Publish the replacement data and About page together, with source-aware
+  reproduction artifacts, then verify the live scores, coverage and filters.
 
-## Make the entry points clear
+## Keep the integration small
 
-- Implemented: current-design README, explicit execution settings, separate phase
-  watchdogs and authenticated per-method source overlays. The portable local
-  example covers preparation, execution, resumption and reporting. Final release
-  packaging still needs the actual frozen source and recovery supplements.
-- Keep one scientific plan, the mathematical About page and one operations guide.
-  Move superseded campaign narratives out of the main reading path.
-- Rewrite PR #602's description around its final scope and current validation;
-  remove references to superseded phases and counts.
+- Keep reusable construction, execution, scoring and result I/O in
+  `src/shapiq_benchmark`. Keep Slurm placement, staging and monitoring optional.
+- Maintain one active plan, the mathematical About page, portable README commands
+  and the short operations guide. Do not revive removed campaign launchers.
+- Preserve explicit execution limits, source overlays and original result mappings
+  in replay instructions. A generic snapshot ZIP alone may not include historical
+  patches or the full environment.
 
-## Separate reusable code from campaign operations
+## Delete obsolete material safely
 
-- Keep game construction, execution, scoring, result I/O and export in
-  `src/shapiq_benchmark`, with explicit inputs and no required Hopper paths.
-- Keep Slurm launchers, node-local dependency staging and monitoring in optional
-  operational scripts. Document the pinned environment and concurrency control.
-- Inventory imports before retiring legacy campaign/matrix helpers: historical
-  exporters still use them. Avoid a broad refactor while jobs are active.
+- Remove unused plans, launchers, duplicate working copies and rebuildable caches.
+  Check executable imports, fixture dependencies and registered worktrees first.
+- Retain the evidence required for selected results and any promised published
+  reproduction. Materialize and verify those dependencies before deleting their
+  old locations; out-of-scope artifacts need not all be retained indefinitely.
+- Keep large campaign artifacts on lab storage. Do not delete an entire historical
+  directory merely because its name is old: staging and audit pins can cross it.
+- Record actual deletions and remaining dependency holds in the campaign cleanup
+  manifest. Avoid rewriting historical receipts to make missing files appear valid.
 
-## Remove only disposable material
+## Leave an actionable handoff
 
-- Retain authenticated snapshots, journals, source revisions, release artifacts
-  and the manifests needed to reproduce published results.
-- After publication, identify rebuildable caches, duplicate working copies and
-  obsolete launch scripts. Record what replaces each item before removing it.
-- Keep large campaign artifacts on lab storage, outside the package and website.
-
-## Leave a reproducible handoff
-
-- Provide one small portable end-to-end example and commands for reproducing a
-  published game, adding an estimator, exporting a report and publishing the site.
-- Run the existing relevant Python/browser tests and resolve current PR failures.
-- Record final artifact locations, current limitations and remaining maintenance
-  work. Keep library changes minimal and independently reviewable.
+Record the current scope, owned jobs, actual CPU accounting, remaining cells,
+artifact locations, source/replay requirements and publication status. Run the
+relevant Python and browser tests, resolve PR failures, and update the PR description
+to the final compact implementation. The README should remain sufficient for a
+small local comparison and adding a private estimator.

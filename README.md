@@ -20,6 +20,8 @@ Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approx
 Explore the [interactive estimator benchmark](https://www.rtealwitter.com/shapiq/) or
 [run a private local comparison](benchmark/README.md). The research preview compares
 measured error and budgets on frozen real-data games with exact ground truth.
+The [active compact scope version 2](benchmark/COMPREHENSIVE.md) is a planned
+replacement; the currently published broader cohort remains historical.
 
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above**.
