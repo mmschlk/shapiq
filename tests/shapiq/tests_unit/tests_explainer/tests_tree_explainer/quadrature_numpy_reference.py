@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.interaction_values import InteractionValues
+from shapiq.tree.subset_layout import output_offsets, output_size, table_rows
 
 if TYPE_CHECKING:
     from shapiq.tree.quadrature import QuadratureTreeSHAP
@@ -37,10 +38,32 @@ def numpy_explain(explainer: QuadratureTreeSHAP, x: np.ndarray) -> InteractionVa
         max_order=explainer._max_order,
         n_players=n_players,
         estimated=False,
-        interaction_lookup=explainer._interactions_lookup_relevant,
+        interaction_lookup=_output_lookup(explainer),
         baseline_value=explainer.empty_prediction,
         target_index=explainer._index,
     )
+
+
+def _output_lookup(explainer: QuadratureTreeSHAP) -> dict[tuple[int, ...], int]:
+    """The subset (original feature ids) at every position of the explainer's output array.
+
+    The Python mirror of the C++ ``layout_to_dict`` key order: the order-1 block by feature,
+    then every table row of each computed order.
+    """
+    keys, counts = explainer._subset_tables
+    n_features, min_order = explainer._n_features_in_tree, explainer._min_order
+    ids = np.asarray(explainer._relevant_features)
+    offsets = output_offsets(counts, n_features, min_order)
+    lookup: dict[tuple[int, ...], int] = {}
+    if min_order <= 1:
+        lookup = {(int(ids[f]),): f for f in range(n_features)}
+    for order in range(max(min_order, 2), len(counts)):
+        rows = table_rows(keys, counts, order)
+        base = offsets[order]
+        lookup.update(
+            zip(map(tuple, ids[rows].tolist()), range(base, base + len(rows)), strict=True)
+        )
+    return lookup
 
 
 def _traverse(explainer: QuadratureTreeSHAP, x_relevant: np.ndarray) -> np.ndarray:
@@ -63,8 +86,19 @@ def _traverse(explainer: QuadratureTreeSHAP, x_relevant: np.ndarray) -> np.ndarr
     children_left_default = arrays["children_left_default"]
     strict = explainer._decision_type == "<"
 
-    offsets = explainer._output_offsets
-    out = np.zeros(explainer._output_size, dtype=float)
+    keys, counts = explainer._subset_tables
+    offsets = output_offsets(counts, explainer._n_features_in_tree, explainer._min_order)
+    out = np.zeros(
+        output_size(counts, explainer._n_features_in_tree, explainer._min_order), dtype=float
+    )
+    # per order: sorted subset (remapped feature ids) -> row of its table
+    order_lookups: dict[int, dict[tuple[int, ...], int]] = {
+        order: {
+            tuple(row): position
+            for position, row in enumerate(table_rows(keys, counts, order).tolist())
+        }
+        for order in range(max(explainer._min_order, 2), explainer._max_order + 1)
+    }
 
     act = np.zeros(explainer._n_nodes_total, dtype=bool)
     A = np.ones((explainer._max_depth + 2, n_quad))
@@ -109,7 +143,7 @@ def _traverse(explainer: QuadratureTreeSHAP, x_relevant: np.ndarray) -> np.ndarr
         if explainer._max_order > 1:
             others = [j for j in path_feats if j != feature]
             for order in range(max(explainer._min_order, 2), explainer._max_order + 1):
-                lookup = explainer._order_lookups[order]
+                lookup = order_lookups[order]
                 for subset in combinations(others, order - 1):
                     gamma = weighted
                     for j in subset:

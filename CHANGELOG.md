@@ -19,8 +19,15 @@
 - removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (`california_housing` comes from scikit-learn; `bike_sharing` and `adult_census` come from OpenML and need `shapiq[benchmark]`) or scikit-learn's fetchers.
 - the games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
 
+### Improvement
+- `TreeExplainer(mode="interventional")` applies `min_order` like the path-dependent mode (`min_order=0` adds the empty interaction with the baseline value; larger values drop the lower orders).
+- speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`) by up to two orders of magnitude for orders above 3 and wide feature spaces. The C++ extension is restructured into one output layout over the interactions that can be non-zero, a cohort fill over the background data and a single-reference fill for one background row, and one leaf update; there is no limit on depth, order or feature count. Refactoring removed unused `bool_tree`, `debug`, and `index_func` constructor arguments.
+- `QuadratureTreeSHAP` and `InterventionalTreeSHAPIQ` share the C++ preprocessing of that layout and the readout of the result; the Python collector of the quadrature explainer is removed.
+- Constructing an `InteractionValues` from an array and an `interaction_lookup` is several times faster (one vectorised gather instead of a numpy scalar lookup per interaction).
+
 ### Bugfix
 
+- `InterventionalTreeSHAPIQ(weight_fn=...)` dropped the terms whose interaction size equals `|E| + |R|`, so custom weights never reproduced a built-in index.
 - `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
 - `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
