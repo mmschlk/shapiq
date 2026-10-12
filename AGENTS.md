@@ -793,3 +793,13 @@ uv run pre-commit run --all-files
   OddSHAP recovery must recognize that exact authenticated error, rather than
   treating every LightGBM exception as a memory failure or missing it because
   its Python exception type is not `MemoryError`.
+
+- Frozen suite `cell_timeout_policy` overrides the runner's legacy `--timeout`.
+  Fresh reproductions should use explicit `--settings benchmark/settings.json`,
+  which records separate startup/approximation/output limits without editing the
+  snapshot. Campaign source overlays are separate from the installed base source;
+  replay them per method in a fresh child, and retain both hashes in provenance.
+- The pinned benchmark environment lacks optional `woodelf` modules. Repository-wide
+  `ty` can fail on those imports in `src/shapiq/tree/explainer.py` even when the
+  changed benchmark modules type-check. Do not install into the active shared
+  environment to make this unrelated check pass.

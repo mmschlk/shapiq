@@ -117,11 +117,12 @@ def test_worker_authenticates_only_parent_selected_artifact(
 
 
 @pytest.mark.parametrize(
-    ("startup", "estimator", "scoring", "startup_limit", "expected"),
+    ("startup", "estimator", "scoring", "startup_limit", "output_limit", "expected"),
     [
-        (0.25, 0.01, 0.25, 2, "ok"),
-        (0, 0.4, 0, 2, "TimeoutError:"),
-        (0.4, 0.01, 0, 0.1, "StartupTimeoutError:"),
+        (0.25, 0.01, 0.25, 2, 2, "ok"),
+        (0, 0.4, 0, 2, 2, "TimeoutError:"),
+        (0.4, 0.01, 0, 0.1, 2, "StartupTimeoutError:"),
+        (0, 0.01, 0.4, 2, 0.1, "OutputTimeoutError:"),
     ],
 )
 def test_estimator_timeout_excludes_startup_and_scoring(
@@ -130,6 +131,7 @@ def test_estimator_timeout_excludes_startup_and_scoring(
     estimator: float,
     scoring: float,
     startup_limit: float,
+    output_limit: float,
     expected: str,
 ) -> None:
     """Real child processes exercise independent startup/execution/output deadlines."""
@@ -161,6 +163,7 @@ pathlib.Path(sys.argv[2]).write_text(json.dumps({'status': 'ok', 'seconds': elap
         0.1,
         None,
         startup_timeout=startup_limit,
+        output_timeout=output_limit,
     )
     if expected == "ok":
         assert result["status"] == "ok"

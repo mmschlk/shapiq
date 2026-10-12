@@ -17,6 +17,9 @@ parser.add_argument("output", type=Path)
 parser.add_argument("--workers", type=int, default=128)
 parser.add_argument("--timeout", type=float, default=120)
 parser.add_argument("--seconds", type=float, default=1620)
+parser.add_argument("--settings", type=Path)
+parser.add_argument("--overlays", type=Path)
+parser.add_argument("--memory-gb", type=float)
 args = parser.parse_args()
 manifest = args.snapshot / "snapshot.json"
 snapshot = json.loads(manifest.read_text())
@@ -56,11 +59,15 @@ def shard(slot: int) -> int:
         *selected,
         "--timeout",
         str(args.timeout),
-        "--memory-gb",
-        "12",
         "--max-seconds",
         str(args.seconds),
     ]
+    if args.settings:
+        command.extend(["--settings", str(args.settings)])
+    if args.overlays:
+        command.extend(["--overlays", str(args.overlays)])
+    if args.memory_gb is not None or args.settings is None:
+        command.extend(["--memory-gb", str(args.memory_gb if args.memory_gb is not None else 12)])
     if (output / "results.json").exists():
         command.append("--resume")
     with (args.output / f"shard-{slot:03}.log").open("a") as log:

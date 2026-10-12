@@ -1,7 +1,7 @@
 # Benchmark operations and historical reference
 
 For the current cohort, local commands and active compute limits, start with
-[README.md](README.md) and [FOCUSED.md](FOCUSED.md). This file preserves detailed protocols,
+[README.md](README.md) and [COMPREHENSIVE.md](COMPREHENSIVE.md). This file preserves detailed protocols,
 recovery procedures and older command templates; **it is not an instruction to
 restart archived campaigns**. Frozen plans and reviewed recovery journals govern
 existing jobs. Read their current `WAKEUP.md` and state before acting.
@@ -22,7 +22,7 @@ existing jobs. Read their current `WAKEUP.md` and state before acting.
 The earlier phased and 38-wave launchers have been removed from the active
 checkout. Their exact code remains in Git history and authenticated historical
 worktrees for reproduction. Do not restart those campaigns. The active plan is
-[FOCUSED.md](FOCUSED.md); its campaign journal owns current jobs and reservations.
+[COMPREHENSIVE.md](COMPREHENSIVE.md); its campaign journal owns current jobs and reservations.
 The following notes explain recorded historical behavior, not current defaults.
 
 The quality protocol stratifies classification row players and scales SVR training

@@ -14,8 +14,10 @@ estimator fixes and speedups stay in their separate PRs.
 
 ## Make the entry points clear
 
-- Rewrite `benchmark/README.md` around the current design and a short local example:
-  prepare games, run estimators, summarize results, export the browser report.
+- Implemented: current-design README, explicit execution settings, separate phase
+  watchdogs and authenticated per-method source overlays. The portable local
+  example covers preparation, execution, resumption and reporting. Final release
+  packaging still needs the actual frozen source and recovery supplements.
 - Keep one scientific plan, the mathematical About page and one operations guide.
   Move superseded campaign narratives out of the main reading path.
 - Rewrite PR #602's description around its final scope and current validation;

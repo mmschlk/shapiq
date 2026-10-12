@@ -19,6 +19,7 @@ import random
 import subprocess
 import sys
 import time
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 from shapiq_benchmark.games import load_game
 from shapiq_benchmark.order_metrics import order_scores
 from shapiq_benchmark.results_io import Checkpoint, read_results
+from shapiq_benchmark.runtime import ExecutionSettings, load_overlays
 
 METHOD_NAMES = (
     "PermutationSamplingSII",
@@ -538,6 +540,8 @@ def run(
     timing_profile: str = "diagnostic",
     method_names: list[str] | None = None,
     game_ids: list[str] | None = None,
+    settings: ExecutionSettings | None = None,
+    overlays: Path | None = None,
 ) -> dict:
     """Checkpoint a finite matrix of isolated cells and safely resume identical campaigns."""
     from shapiq_benchmark.execution import (
@@ -546,6 +550,17 @@ def run(
         verify_profile,
     )
 
+    source_overlays = load_overlays(overlays) if overlays is not None else {}
+    if candidate and source_overlays:
+        message = "Source overlays cannot accompany a private candidate."
+        raise ValueError(message)
+    if settings is not None:
+        if memory_gb is not None:
+            settings = replace(settings, memory_gib=memory_gb)
+        timeout, memory_gb = settings.approximate_seconds, settings.memory_gib
+        if max_seconds <= settings.wall_seconds:
+            message = "max_seconds must exceed startup + approximate + output allowances."
+            raise ValueError(message)
     if (
         not math.isfinite(timeout)
         or not math.isfinite(max_seconds)
@@ -565,7 +580,7 @@ def run(
         snapshot_path = snapshot_path.resolve()
         # Private factories do not execute the snapshot's historical baselines.
         snapshot, artifact_root = load_snapshot(snapshot_path, historical=bool(candidate))
-        timeout_policy = cell_timeout_policy(snapshot["suite"])
+        timeout_policy = None if settings is not None else cell_timeout_policy(snapshot["suite"])
         if timeout_policy is not None and max_seconds <= timeout_policy["extended_seconds"]:
             message = "max_seconds must exceed the longest cell timeout in the suite policy."
             raise ValueError(message)
@@ -583,6 +598,9 @@ def run(
             or not set(method_names) <= set(snapshot["suite"]["methods"])
         ):
             message = "--methods must select unique suite methods and cannot accompany a candidate."
+            raise ValueError(message)
+        if not set(source_overlays) <= set(snapshot["suite"]["methods"]):
+            message = "Overlay method names must belong to the snapshot suite."
             raise ValueError(message)
         selected_games = snapshot["games"]
         if game_ids is not None:
@@ -608,6 +626,13 @@ def run(
             }
             for name in (method_names or snapshot["suite"]["methods"])
         }
+        for name in methods.keys() & source_overlays.keys():
+            # Keep the installed source identity and explicit patch identity together.
+            descriptor = {
+                key: value for key, value in source_overlays[name].items() if key != "path"
+            }
+            methods[name]["source_overlay"] = descriptor
+            methods[name]["software_sha256"] = identity({"base": software, "overlay": descriptor})
         if candidate:
             filename, function = candidate.rsplit(":", 1)
             path = Path(filename).resolve()
@@ -630,6 +655,8 @@ def run(
             "hardware": hardware(),
             "game_ids": [game["id"] for game in selected_games],
         }
+        if settings is not None:
+            execution["settings"] = asdict(settings)
         if timeout_policy is not None:
             execution["cell_timeout_policy"] = timeout_policy
         result: dict = {
@@ -699,7 +726,8 @@ def run(
                 continue
             remaining = max_seconds - (time.monotonic() - start)
             selected_timeout = cell_timeout(game, budget, timeout, timeout_policy)
-            if remaining < selected_timeout or (max_runs is not None and added >= max_runs):
+            cell_wall = settings.wall_seconds if settings is not None else selected_timeout
+            if remaining < cell_wall or (max_runs is not None and added >= max_runs):
                 break
             record = {
                 "game_id": game["id"],
@@ -747,7 +775,21 @@ def run(
                     "candidate_sha256": methods[name]["source_sha256"] if candidate else None,
                     "method_parameters": methods[name].get("parameters"),
                 }
-                record.update(isolated(request, selected_timeout, memory_gb))
+                if name in source_overlays:
+                    request["source_overlay"] = source_overlays[name]
+                    record["source_overlay_sha256"] = source_overlays[name]["sha256"]
+                if settings is not None:
+                    record["execution_settings"] = asdict(settings)
+                    response = isolated(
+                        request,
+                        selected_timeout,
+                        memory_gb,
+                        startup_timeout=settings.startup_seconds,
+                        output_timeout=settings.output_seconds,
+                    )
+                else:
+                    response = isolated(request, selected_timeout, memory_gb)
+                record.update(response)
             result["records"].append(record)
             added += 1
             result["campaign"] = {
@@ -791,8 +833,17 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--list-methods", action="store_true")
     parser.add_argument(
-        "--timeout", type=float, default=60, help="Whole-worker wall seconds per cell"
+        "--timeout",
+        type=float,
+        default=60,
+        help="Approximate-only seconds per cell (legacy suite policy takes precedence)",
     )
+    parser.add_argument(
+        "--settings",
+        type=Path,
+        help="Execution settings JSON; overrides legacy suite timeout policy",
+    )
+    parser.add_argument("--overlays", type=Path, help="Trusted per-method source overlay manifest")
     parser.add_argument("--memory-gb", type=float, help="POSIX worker address-space cap in GiB")
     parser.add_argument("--max-runs", type=int)
     parser.add_argument("--max-seconds", type=float, default=600)
@@ -815,6 +866,8 @@ def main() -> None:
         timing_profile=args.timing_profile,
         method_names=args.methods,
         game_ids=args.games,
+        settings=ExecutionSettings.load(args.settings) if args.settings else None,
+        overlays=args.overlays,
     )
 
 

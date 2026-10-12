@@ -96,7 +96,14 @@ def test_public_method_overrides_remain_reproducible(tmp_path: Path) -> None:
     data = result_fixture()
     data["suite"]["method_parameters"] = {"baseline": {"ridge": 0.001}}
     data["methods"]["baseline"]["parameters"] = {"ridge": 0.001}
+    overlay = {
+        "module": "shapiq.approximator.montecarlo.base",
+        "sha256": "a" * 64,
+        "base_sha256": "b" * 64,
+    }
+    data["methods"]["baseline"]["source_overlay"] = overlay
     public = merge_results([write(tmp_path, data)])
+    assert public["methods"]["baseline"]["source_overlay"] == overlay
     assert public["suite"]["method_parameters"] == data["suite"]["method_parameters"]
     assert public["methods"]["baseline"]["parameters"] == {"ridge": 0.001}
 

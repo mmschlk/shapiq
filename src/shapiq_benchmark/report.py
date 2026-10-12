@@ -475,7 +475,15 @@ def merge_results(paths: list[Path]) -> dict:
             name: {
                 key: value
                 for key, value in metadata.items()
-                if key in ("source_sha256", "software_sha256", "private", "factory", "parameters")
+                if key
+                in (
+                    "source_sha256",
+                    "software_sha256",
+                    "private",
+                    "factory",
+                    "parameters",
+                    "source_overlay",
+                )
             }
             for name, metadata in methods.items()
         },

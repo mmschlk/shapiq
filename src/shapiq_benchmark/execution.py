@@ -113,7 +113,11 @@ def execution_phase(request: dict, phase: str, seconds: float | None = None) -> 
 
 
 def wait_for_estimator(
-    process: subprocess.Popen, phase_path: Path, timeout: float, startup_timeout: float
+    process: subprocess.Popen,
+    phase_path: Path,
+    timeout: float,
+    startup_timeout: float,
+    output_timeout: float | None = None,
 ) -> str | None:
     """Enforce startup, estimator and output deadlines without charging imports to execution."""
     deadline = time.perf_counter() + startup_timeout
@@ -130,7 +134,9 @@ def wait_for_estimator(
                 elif phase == "finished":
                     if marker["seconds"] > timeout:
                         return "TimeoutError: estimator execution limit exceeded."
-                    deadline = marker["time"] + startup_timeout
+                    deadline = marker["time"] + (
+                        output_timeout if output_timeout is not None else startup_timeout
+                    )
                     error = "OutputTimeoutError: worker scoring/output limit exceeded."
                 else:
                     message = "Invalid worker execution phase"
@@ -145,10 +151,19 @@ def wait_for_estimator(
 
 
 def isolated(
-    request: dict, timeout: float, memory_gb: float | None, *, startup_timeout: float = 600
+    request: dict,
+    timeout: float,
+    memory_gb: float | None,
+    *,
+    startup_timeout: float = 600,
+    output_timeout: float | None = None,
 ) -> dict:
     """Bound startup separately; the estimator limit starts immediately before approximate."""
-    if not all(math.isfinite(value) and value > 0 for value in (timeout, startup_timeout)):
+    if output_timeout is None:
+        output_timeout = startup_timeout
+    if not all(
+        math.isfinite(value) and value > 0 for value in (timeout, startup_timeout, output_timeout)
+    ):
         message = "Timeout limits must be positive and finite"
         raise ValueError(message)
     with tempfile.TemporaryDirectory(prefix="shapiq-worker-") as directory:
@@ -171,7 +186,9 @@ def isolated(
                 start_new_session=True,
             )
             try:
-                failure = wait_for_estimator(process, root / "phase.json", timeout, startup_timeout)
+                failure = wait_for_estimator(
+                    process, root / "phase.json", timeout, startup_timeout, output_timeout
+                )
                 if failure is not None:
                     raise subprocess.TimeoutExpired(process.args, timeout)  # noqa: TRY301
             except subprocess.TimeoutExpired:
@@ -245,6 +262,10 @@ def worker(source: Path, destination: Path) -> None:
         if request["memory_gb"] is not None:
             size = int(request["memory_gb"] * 1024**3)
             resource.setrlimit(resource.RLIMIT_AS, (size, size))
+        if request.get("source_overlay"):
+            from shapiq_benchmark.runtime import install_overlay
+
+            install_overlay(request["source_overlay"])
         from threadpoolctl import threadpool_info, threadpool_limits
 
         from shapiq_benchmark.runner import (
@@ -254,6 +275,12 @@ def worker(source: Path, destination: Path) -> None:
             run_one,
         )
 
+        if request.get("source_overlay"):
+            descriptor = request["source_overlay"]
+            imported = sys.modules.get(descriptor["module"])
+            if imported is None or getattr(imported, "__file__", None) != descriptor["path"]:
+                message = "Requested source overlay was not imported by the estimator package."
+                raise ValueError(message)  # noqa: TRY301
         if "authenticated_game" in request:
             # The locked parent authenticated the complete snapshot once. The
             # worker receives only its selected game and authenticates that file.

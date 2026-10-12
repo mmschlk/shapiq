@@ -16,8 +16,9 @@ evaluation running together in a shared queue.
   512 GiB RAM for twenty hours each. One allocation was cancelled at the user's
   request on October 7; the remaining fifteen use 960 CPUs. Future allocations
   must fit the 1,000-CPU ceiling; release workers when work ends.
-- Each game has at most two CPU-hours to prepare its exact reference. A timeout
-  is an explicit resource exclusion, never an approximate reference.
+- Initial preparation allowed two CPU-hours per exact reference; authorized
+  recovery allows four (see below). A timeout is an explicit resource exclusion,
+  never an approximate reference.
 - Existing jobs, frozen games, results, seeds and estimator settings stay intact.
   Reuse requires identical construction and authenticated artifacts.
 - Byte-identical node-local dependencies are loaded before Python starts. Dataset
@@ -55,7 +56,7 @@ preserving existing workers, scientific inputs and successful results.
 - User-authorized retries replace historical timeout outcomes in the published
   comparison. Old attempts remain diagnostic evidence, with one scored outcome
   per game/method/budget/seed cell.
-- The current admitted workers allow **ten minutes of actual `approximate` execution**,
+- Original completion workers allow **ten minutes of actual `approximate` execution**,
   including its game queries. Imports, game loading and estimator construction
   are excluded from this limit. Separate startup/output watchdogs report
   operational failures. Recorded timing retains the original constructor-plus-
@@ -64,6 +65,22 @@ preserving existing workers, scientific inputs and successful results.
   the faster methods. Do not treat an allocation's end as completed coverage.
 - Monitoring wakes only on allocation failure or complete batch termination;
   periodic queued reminders remain disabled.
+
+### Reusable execution settings
+
+[settings.json](settings.json) sets fresh runs to **3,600 seconds of actual
+`approximate` execution**, with separate 600-second startup and output watchdogs.
+Use the runner's explicit `--settings` option to override legacy suite timeout
+policies without editing a frozen snapshot. Historical successes and active
+workers retain their admitted limits; qualified longer-timeout retries use the
+3,600-second allowance. Both limits coexist in campaign provenance.
+
+Normal workers use an 8-GiB address-space cap. Memory-error recovery uses 128 GiB,
+or 512 GiB for higher-order KernelSHAPIQ, InconsistentKernelSHAPIQ, RegressionFSII
+and RegressionFBII, never lowering a previous cap. Timeout-only recovery inherits
+the prior cap. Execution settings, source overlays and attempt ownership are
+operational inputs; games, budgets, seeds and estimator parameters stay frozen.
+See [README.md](README.md) for portable commands and exact-source replay.
 
 ### October 10 preparation recovery
 
