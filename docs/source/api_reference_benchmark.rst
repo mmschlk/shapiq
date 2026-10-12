@@ -2,10 +2,58 @@
 shapiq_benchmark
 ================
 
+.. grid:: 1 2 3 3
+   :gutter: 2
+   :class-container: shapiq-cards shapiq-cards-compact
+
+   .. grid-item-card:: :octicon:`trophy` Benchmarks
+      :link: benchmark-benchmarks
+      :link-type: ref
+      :class-card: shapiq-card
+
+      A game and its exact values; run and score approximators
+
+   .. grid-item-card:: :octicon:`check-circle` Computers
+      :link: benchmark-computers
+      :link-type: ref
+      :class-card: shapiq-card
+
+      The exact values of a game
+
+   .. grid-item-card:: :octicon:`graph` Metrics
+      :link: benchmark-metrics
+      :link-type: ref
+      :class-card: shapiq-card
+
+      Error, ranking, and faithfulness
+
+   .. grid-item-card:: :octicon:`gear` Setups
+      :link: benchmark-setups
+      :link-type: ref
+      :class-card: shapiq-card
+
+      Games built from datasets, models, and seeds
+
+   .. grid-item-card:: :octicon:`database` Datasets
+      :link: benchmark-datasets
+      :link-type: ref
+      :class-card: shapiq-card
+
+      Downloaded on first use, cached locally
+
+   .. grid-item-card:: :octicon:`cpu` Models
+      :link: benchmark-models
+      :link-type: ref
+      :class-card: shapiq-card
+
+      A registry of seeded, tuned models
+
 .. automodule:: shapiq_benchmark
    :no-members:
 
 .. currentmodule:: shapiq_benchmark
+
+.. _benchmark-benchmarks:
 
 Benchmarks
 ----------
@@ -18,6 +66,8 @@ Benchmarks
    run
    save_results
    runner.build_approximator
+
+.. _benchmark-computers:
 
 Computers
 ---------
@@ -41,6 +91,8 @@ Computers
    default_computer
    UnsupportedComputationError
 
+.. _benchmark-metrics:
+
 Metrics
 -------
 
@@ -59,6 +111,8 @@ Metrics
    faithfulness
    faithfulness_sample
    RANK_TOLERANCE
+
+.. _benchmark-setups:
 
 Setups
 ------
@@ -130,6 +184,8 @@ Base Classes and Helpers
    RECIPE_VERSION
    DEFAULT_MEMBER_POOL
 
+.. _benchmark-datasets:
+
 Datasets
 --------
 
@@ -159,6 +215,8 @@ Datasets
    ImagenetteSize
    load_curthvds_synthetic
    CausalSetting
+
+.. _benchmark-models:
 
 Models
 ------
