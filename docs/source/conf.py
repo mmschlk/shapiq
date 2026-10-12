@@ -175,6 +175,7 @@ html_theme = "furo"
 html_static_path = ["_static"]
 html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
+    "css/tokens.css",  # colors, radii, shadows and motion shared by the custom pages
     "css/custom.css",
 ]
 html_favicon = "_static/logo/shapiq.ico"
