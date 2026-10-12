@@ -56,3 +56,31 @@ artifact locations, source/replay requirements and publication status. Run the
 relevant Python and browser tests, resolve PR failures, and update the PR description
 to the final compact implementation. The README should remain sufficient for a
 small local comparison and adding a private estimator.
+
+## Upstream integration remains open
+
+The published compact release is complete, but PR #602 is **not merge-ready**
+against upstream `da6381c3` (PR #616). That change replaces the benchmark/game
+APIs. Resolve this separately from website edits; do not overwrite either API
+with an `ours`/`theirs` conflict resolution.
+
+1. Preserve upstream `shapiq_benchmark.runner.run`, `models.build_model` and
+   `datasets.load_dataset`. Our same-named helpers have different contracts;
+   move them to explicit `campaign_runner`, `campaign_models` and
+   `campaign_datasets` modules, updating their imports, CLI commands and tests.
+   Upstream's new `datasets/` package otherwise silently shadows our `datasets.py`.
+2. Adapt construction code in `prepare.py`, `families.py`, `games.py`,
+   `structured.py` and `native_tree_backend.py`. Upstream removes
+   `shapiq.datasets`, `shapiq_games.datasets`, `shapiq_games.benchmark`,
+   `shapiq.explainer.nn.games`, `shapiq.explainer.product_kernel.game` and
+   `shapiq.tree.interventional.game`; their replacements live in
+   `shapiq_benchmark.datasets` and `shapiq_games`. Verify constructor semantics,
+   preprocessing, coalition payoffs and exact references before treating new
+   preparations as equivalent. Published replay keeps its pinned source/data.
+3. Retain both branches' dataset/model/runner/metric tests under distinct names.
+   Merge dependency extras and regenerate the lock in an isolated environment.
+   Upstream now type-checks the whole benchmark package and changes native tree
+   kernels: rebuild native extensions there and run both API test suites.
+4. Check a small portable prepare/evaluate/report run and a frozen-result replay,
+   then rerun full CI before calling the integration ready. Do not regenerate or
+   relabel the published cohort to make the new APIs fit.

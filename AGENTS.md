@@ -867,3 +867,8 @@ uv run pre-commit run --all-files
   A single method curve must pool the underlying weighted cells, never average
   profile medians. Update both browser reducers and regenerate the authenticated
   timing cache after changing the query reducer.
+
+- Upstream harmonization #616 adds a `shapiq_benchmark/datasets/` package that
+  silently shadows the campaign `datasets.py`, plus incompatible `runner.run`
+  and `models.build_model` APIs. Preserve upstream APIs and isolate campaign
+  helpers before merging; a textual conflict resolution alone is not sufficient.
