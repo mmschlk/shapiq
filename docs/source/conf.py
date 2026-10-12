@@ -117,6 +117,7 @@ EXAMPLE_ORDER = {
         "plot_proxyspex.py",
     ),
     "trees": ("plot_treeshapiq_lightgbm.py", "plot_treeshapiq_custom_tree.py"),
+    "kernel_methods": ("plot_gaussian_process_exact.py", "plot_kernel_svm_scaling.py"),
     "visualization": (
         "plot_interaction_values.py",
         "plot_visualizing_interactions.py",
@@ -132,6 +133,7 @@ EXAMPLE_ORDER = {
         "plot_sentiment_analysis.py",
         "plot_confounding_xai.py",
     ),
+    "benchmarking": ("plot_games_tour.py", "plot_benchmark_approximators.py"),
     "technicalities": ("plot_conditional_imputer.py", "plot_parallel_computation.py"),
 }
 

@@ -1,7 +1,7 @@
 /* The examples: the landing page (examples.rst), the group pages (the GALLERY_HEADER.rst of every
-   folder of examples), and the thumbnail cards of sphinx-gallery. Colors, radii, shadows and motion come from
-   tokens.css, text colors from furo. The illustrations in _static/gallery have transparent
-   backgrounds and sit on a "stage" that follows the theme. */
+   folder of examples), and the thumbnail cards of sphinx-gallery. Colors, radii, shadows and
+   motion come from tokens.css, text colors from furo. The illustrations in _static/gallery have
+   transparent backgrounds and sit on a "stage" that follows the theme. */
 
 body {
   --shapiq-stage: linear-gradient(160deg, #f8f9fd 0%, #eef1fa 100%);
