@@ -1,4 +1,15 @@
+"""Does the interventional tree explainer compute the right values?
+
+The oracle is the exact interventional game: ``InterventionalGame`` evaluates the model under
+every coalition (coalition features from ``x``, the others from each reference row) and
+``ExactComputer`` turns the game into any interaction index. The explainer runs the cohort fill
+over a background dataset and the single-reference fill over one row; both must equal the exact
+game, and the cohort fill must equal the average of the single-reference fills over its rows.
+"""
+
 from __future__ import annotations
+
+from math import comb
 
 import numpy as np
 import pytest
@@ -6,492 +17,171 @@ import pytest
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
 
-SEED = 1337
-np.random.seed(SEED)
+# every index the explainer supports, at the orders its closed-form weights cover
+INDEX_ORDERS = [
+    ("SV", 1),
+    ("BV", 1),
+    ("FBII", 1),
+    ("SII", 2),
+    ("BII", 2),
+    ("CHII", 2),
+    ("FBII", 2),
+    ("FSII", 2),
+    ("STII", 2),
+    ("SII", 3),
+    ("BII", 3),
+    ("CHII", 3),
+    ("FBII", 3),
+    ("FSII", 3),
+    ("STII", 3),
+    ("STII", 4),
+    ("FSII", 4),
+]
+
+# (model fixture, (X_train, X_test, ...) fixture, class_index)
+MODEL_FAMILIES = [
+    ("dt_clf_model", "cls_data", 1),
+    ("rf_reg_model", "reg_data", None),
+    ("rf_clf_model", "cls_data", 1),
+    ("xgb_reg_model", "reg_data", None),
+    ("xgb_clf_model", "cls_data", 1),
+    ("lightgbm_reg_model", "reg_data", None),
+    ("lightgbm_clf_model", "cls_data", 1),
+]
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FBII", 1),
-        ("FSII", 2),
-        ("STII", 2),
-    ],
-)
-def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, order):
-    X_train, X_test, _y_train, _y_test = reg_data
-    model = dt_reg_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for _i, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
+def _exact_interactions(model, reference, x, index, order, class_index=None) -> dict:
+    """Every interaction of the exact interventional game, by ``ExactComputer``."""
+    game = InterventionalGame(model, reference, x, class_index=class_index)
+    return ExactComputer(game)(index, order).interactions
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, order):
-    CLASS_INDEX = 1
-    X_train, X_test, _, _ = cls_data
-    model = dt_clf_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model,
-        X_train,
-        index=index,
-        max_order=order,
-        debug=False,
-        class_index=CLASS_INDEX,
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
-        model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
-    )
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for _i, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
+def _assert_equal_interactions(got: dict, expected: dict, *, atol: float) -> None:
+    """Both dicts hold the same values on every non-empty interaction (missing means zero)."""
+    for interaction in {*got, *expected}:
+        if len(interaction) == 0:
+            continue
+        assert got.get(interaction, 0.0) == pytest.approx(
+            expected.get(interaction, 0.0), abs=atol
+        ), interaction
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, order):
-    X_train, X_test, _y_train, _y_test = reg_data
-    model = rf_reg_model
-    point_to_explain = X_test[0:1]
+def _average_single_reference(model, reference_data, x, index, order, class_index=None) -> dict:
+    """The cohort result computed the slow way: one single-reference explainer per row.
 
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for _i, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
+    Both fills share the layout and the leaf update; the cohort fill over a dataset must equal
+    the average of the single-reference fill over its rows. Interactions that are exactly zero
+    in one explainer are missing from its dict.
+    """
+    total: dict = {}
+    for row in reference_data:
+        single = InterventionalTreeSHAPIQ(
+            model, row[None, :], index=index, max_order=order, class_index=class_index
+        )
+        assert single.reference_data.shape[0] == 1
+        for key, value in single.explain_function(x).dict_values.items():
+            total[key] = total.get(key, 0.0) + value / reference_data.shape[0]
+    return total
 
 
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, order):
-    CLASS_INDEX = 1
-    X_train, X_test, _, _ = cls_data
-    model = rf_clf_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model,
-        X_train,
-        max_order=order,
-        index=index,
-        debug=False,
-        class_index=CLASS_INDEX,
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
-        model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
-    )
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for interaction in own_interactions:
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-
-
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index, order):
+@pytest.mark.parametrize(("index", "order"), INDEX_ORDERS)
+def test_every_index_matches_the_exact_game(dt_reg_model, reg_data, index, order):
+    """The cohort fill equals the exact game for every supported index at orders 1 to 4."""
     X_train, X_test, _, _ = reg_data
-    model = xgb_reg_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
+    x = X_test[0]
+    got = InterventionalTreeSHAPIQ(dt_reg_model, X_train, index=index, max_order=order)
+    _assert_equal_interactions(
+        got.explain_function(x).interactions,
+        _exact_interactions(dt_reg_model, X_train, x, index, order),
+        atol=1e-6,
     )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
 
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
 
-    # Assertions that own Interventional Implementation matches Exact Computer
-    for _, interaction in enumerate(own_interactions.keys()):
-        # Using 1e-5 tolerance due to float32 vs float64 precision differences in XGBoost calculations
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-5,
-            )
+@pytest.mark.parametrize(("index", "order"), [("SII", 3), ("STII", 2)])
+@pytest.mark.parametrize(("model_fixture", "data_fixture", "class_index"), MODEL_FAMILIES)
+def test_every_model_family_matches_the_exact_game(
+    request, model_fixture, data_fixture, class_index, index, order
+):
+    """Converted sklearn, XGBoost and LightGBM trees, classifiers and regressors, equal the exact game."""
+    model = request.getfixturevalue(model_fixture)
+    X_train, X_test, _, _ = request.getfixturevalue(data_fixture)
+    x = X_test[0]
+    got = InterventionalTreeSHAPIQ(
+        model, X_train, index=index, max_order=order, class_index=class_index
+    )
+    _assert_equal_interactions(
+        got.explain_function(x).interactions,
+        _exact_interactions(model, X_train, x, index, order, class_index),
+        atol=1e-5 if "xgb" in model_fixture else 1e-6,  # XGBoost leaves are float32
+    )
+
+
+@pytest.mark.parametrize(("index", "order"), [("SII", 3), ("FBII", 2), ("STII", 4)])
+def test_single_reference_fill_matches_the_exact_game(dt_reg_model, reg_data, index, order):
+    """An explainer holding one reference row (the single-reference fill) equals the exact game."""
+    X_train, X_test, _, _ = reg_data
+    reference, x = X_train[:1], X_test[0]
+    got = InterventionalTreeSHAPIQ(dt_reg_model, reference, index=index, max_order=order)
+    assert got.reference_data.shape[0] == 1
+    _assert_equal_interactions(
+        got.explain_function(x).interactions,
+        _exact_interactions(dt_reg_model, reference, x, index, order),
+        atol=1e-6,
+    )
 
 
 @pytest.mark.parametrize(
-    ("index", "order"),
+    ("model_fixture", "data_fixture", "order"),
     [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
+        ("rf_clf_model", "background_clf_data", 3),
+        ("hist_gb_cat_reg_model", "background_cat_dataset", 2),  # categorical splits, NaN rows
+        ("xgb_cat_reg_model", "background_cat_dataset", 2),
     ],
 )
-def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index, order):
-    CLASS_INDEX = 1
-    X_train, X_test, _y_train, _y_test = cls_data
-    model = xgb_clf_model
-    point_to_explain = X_test[0:1]
+def test_cohort_fill_equals_averaged_single_reference_fills(
+    request, model_fixture, data_fixture, order
+):
+    """The cohort fill over 20 rows equals the average of the single-reference fills over them.
 
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model,
-        X_train,
-        max_order=order,
-        index=index,
-        debug=False,
-        class_index=CLASS_INDEX,
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
-        model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
-    )
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for _, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-
-
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, index, order):
-    X_train, X_test, _y_train, _y_test = reg_data
-    model = lightgbm_reg_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, max_order=order, index=index, debug=False
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementation matches Exact Computer
-    for _, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-
-
-@pytest.mark.parametrize(
-    ("index", "order"),
-    [
-        ("SV", 1),
-        ("BV", 1),
-        ("FBII", 1),
-        ("SII", 2),
-        ("BII", 2),
-        ("CHII", 2),
-        ("FBII", 2),
-        ("FSII", 2),
-        ("STII", 2),
-        ("SII", 3),
-        ("BII", 3),
-        ("CHII", 3),
-        ("FBII", 3),
-        ("FSII", 3),
-        ("STII", 3),
-    ],
-)
-def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data, index, order):
-    CLASS_INDEX = 1
-    X_train, X_test, _, _ = cls_data
-    model = lightgbm_clf_model
-    point_to_explain = X_test[0:1]
-
-    # Our InterventionalTreeSHAPIQ
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model,
-        X_train,
-        max_order=order,
-        index=index,
-        debug=False,
-        class_index=CLASS_INDEX,
-    )
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    # Interventional Game with Exact Computer
-    interventional_game = InterventionalGame(
-        model, X_train, point_to_explain.flatten(), class_index=CLASS_INDEX
-    )
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    # Assertions that own Interventional Implementatoin matches Exact Computer
-    for _, interaction in enumerate(own_interactions.keys()):
-        if len(interaction) > 0:
-            assert np.isclose(
-                own_interactions[interaction],
-                game_interactions.get(interaction, 0),
-                atol=1e-6,
-            )
-
-
-@pytest.mark.parametrize(("index", "order"), [("STII", 4), ("FSII", 4)])
-def test_correct_calculation_sparse_path_index_order(dt_reg_model, reg_data, index, order):
-    """Indices with any-order closed forms match the ExactComputer on the sparse C kernel.
-
-    The dense correctness tests above (orders <= 3, few features) only exercise the
-    flatten kernel; ``max_order > 3`` routes through the sparse batched kernel, whose
-    weights come from ``weight_func`` in ``weights.cpp``. This guards the per-index
-    dispatch there (STII and FSII fell back to the top-order-only general path before).
+    The categorical models route in-set values and NaN (to the missing child) in both fills.
     """
-    X_train, X_test, _y_train, _y_test = reg_data
-    model = dt_reg_model
-    point_to_explain = X_test[0:1]
-
-    own_interventional_explainer = InterventionalTreeSHAPIQ(
-        model, X_train, index=index, max_order=order, debug=False
-    )
-    assert own_interventional_explainer._use_sparse_path
-    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
-    own_interactions = explanation.interactions
-
-    interventional_game = InterventionalGame(model, X_train, point_to_explain.flatten())
-    exact_computer = ExactComputer(interventional_game)
-    exact_values = exact_computer(index, order)
-    game_interactions = exact_values.interactions
-
-    for interaction in own_interactions:
-        if len(interaction) == 0:
-            continue
-        assert np.isclose(
-            own_interactions[interaction],
-            game_interactions.get(interaction, 0),
-            atol=1e-6,
-        )
+    model = request.getfixturevalue(model_fixture)
+    data = request.getfixturevalue(data_fixture)
+    X = np.asarray(data[0] if isinstance(data, tuple) else data, dtype=float)
+    reference = X[:20]
+    cohort = InterventionalTreeSHAPIQ(model, reference, index="SII", max_order=order)
+    for x in X[20:23]:
+        got = cohort.explain_function(x).dict_values
+        expected = _average_single_reference(model, reference, x, "SII", order)
+        assert set(got) == set(expected)
+        for key, value in expected.items():
+            assert got[key] == pytest.approx(value, rel=1e-9, abs=1e-9)
 
 
-@pytest.mark.parametrize(("index", "order"), [("SV", 1), ("SII", 2)])
-def test_interventional_float64_point_matches_model(index, order):
-    """A float64 explain point must route identically to the float32 model it explains.
+@pytest.mark.parametrize("order", [1, 2, 3])
+def test_custom_weight_fn_reproduces_sii(dt_reg_model, reg_data, order):
+    """A ``weight_fn`` carrying the SII discrete-derivative weights equals ``index="SII"``.
 
-    Regression test for a precision bug in the dense E/R path: tree thresholds and
-    the reference data are float32 (XGBoost evaluates splits in float32), but the
-    explain point was routed at its incoming float64 precision. A feature value
-    lying between the float32 and float64 representation of a split threshold then
-    flipped the routing, sending the explanation to the wrong leaf and disagreeing
-    with the true model (and the exact interventional game) by a whole leaf value.
+    The SII weight of a coalition of size ``t`` for an interaction of size ``s`` among ``n``
+    players is ``1 / ((n - s + 1) * C(n - s, t))``.
     """
-    xgboost = pytest.importorskip("xgboost")
-    from sklearn.datasets import make_regression
+    X_train, X_test, _, _ = reg_data
 
-    # Deep ensemble so root->leaf paths split the same feature repeatedly and
-    # produce thresholds prone to the float32/float64 boundary collision.
-    X, y = make_regression(n_samples=300, n_features=5, noise=0.1, random_state=2)
-    model = xgboost.XGBRegressor(n_estimators=10, max_depth=6, random_state=0).fit(X, y)
+    def sii_weight(coalition_size: int, interaction_size: int, n: int) -> float:
+        # the Möbius conversion asks for coalitions the interaction does not fit into: weight 0
+        if coalition_size < 0 or n < interaction_size:
+            return 0.0
+        return 1.0 / ((n - interaction_size + 1) * comb(n - interaction_size, coalition_size))
 
-    X_train = X[:25]
-    # float64 explain point that lands on the wrong leaf pre-fix.
-    point_to_explain = X[250].astype(np.float64)
-    assert point_to_explain.dtype == np.float64
-
-    explainer = InterventionalTreeSHAPIQ(model, X_train, index=index, max_order=order)
-    own_interactions = explainer.explain_function(point_to_explain).interactions
-
-    game = InterventionalGame(model, X_train, point_to_explain)
-    exact_values = ExactComputer(game)(index, order)
-    game_interactions = exact_values.interactions
-
-    for interaction in own_interactions:
-        if len(interaction) == 0:
-            continue
-        assert np.isclose(
-            own_interactions[interaction],
-            game_interactions.get(interaction, 0),
-            atol=1e-4,
-        )
+    reference = X_train[:20]
+    built_in = InterventionalTreeSHAPIQ(dt_reg_model, reference, index="SII", max_order=order)
+    custom = InterventionalTreeSHAPIQ(
+        dt_reg_model, reference, max_order=order, weight_fn=sii_weight
+    )
+    assert custom.index == "CUSTOM"
+    for x in X_test[:3]:
+        expected = built_in.explain_function(x).dict_values
+        got = custom.explain_function(x).dict_values
+        assert set(got) == set(expected)
+        for key, value in expected.items():
+            assert got[key] == pytest.approx(value, rel=1e-9, abs=1e-12)

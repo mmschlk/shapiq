@@ -66,7 +66,6 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
         self._computer = InterventionalTreeSHAPIQ(
             model=self.game.model,
             data=self.game.data,
-            debug=False,
             class_index=self.game.class_index,
         )
 
