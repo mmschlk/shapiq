@@ -182,13 +182,20 @@ class MonteCarlo(Approximator[TIndices]):
             else:  # this is SHAP-IQ
                 precomputed_log_adjustment = self._sampler.log_sampling_adjustment_weights
 
+        # Sampler properties copy arrays (some also rescan the full coalition matrix).
+        # Sampling is fixed throughout this call; reuse one snapshot for all interactions.
+        svarmiq_coalitions = svarmiq_counter = svarmiq_sampled = None
+        if self.stratify_intersection and self.stratify_coalition_size:
+            # The game may have mutated its exposed matrix; preserve the sampler's own snapshot.
+            svarmiq_coalitions = self._sampler.coalitions_matrix
+            svarmiq_counter = self._sampler.coalitions_counter
+            svarmiq_sampled = self._sampler.is_coalition_sampled
+
         # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
-            interaction_binary = np.zeros(self.n, dtype=int)
-            interaction_binary[list(interaction)] = 1
             interaction_size = len(interaction)
-            # find intersection sizes with current interaction
-            intersections_size = np.sum(coalitions_matrix * interaction_binary, axis=1)
+            # Only the interaction's columns can contribute to its intersection size.
+            intersections_size = np.sum(coalitions_matrix[:, interaction], axis=1)
             # pre-compute all coalition weights with interaction, coalition, and intersection size
             interaction_sign = sign_weights[interaction_size, coalitions_size, intersections_size]
             log_interaction_weight = log_abs_weights[
@@ -201,7 +208,13 @@ class MonteCarlo(Approximator[TIndices]):
             if precomputed_log_adjustment is not None:  # SHAP-IQ / coalition-size stratification
                 log_sampling_adjustment_weights = precomputed_log_adjustment
             elif self.stratify_coalition_size:  # this is SVARM-IQ
-                log_sampling_adjustment_weights = self._log_svarmiq_routine(interaction)
+                log_sampling_adjustment_weights = self._log_svarmiq_routine(
+                    interaction,
+                    coalitions_matrix=svarmiq_coalitions,
+                    coalitions_size=coalitions_size,
+                    counter=svarmiq_counter,
+                    sampled=svarmiq_sampled,
+                )
             else:  # intersection stratification only
                 log_sampling_adjustment_weights = self._log_intersection_stratification(interaction)
 
@@ -314,7 +327,15 @@ class MonteCarlo(Approximator[TIndices]):
             )
         return log_sampling_adjustment_weights
 
-    def _log_svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
+    def _log_svarmiq_routine(
+        self,
+        interaction: tuple[int, ...],
+        *,
+        coalitions_matrix: np.ndarray | None = None,
+        coalitions_size: np.ndarray | None = None,
+        counter: np.ndarray | None = None,
+        sampled: np.ndarray | None = None,
+    ) -> np.ndarray:
         """Log of the SVARM-IQ sampling adjustment weights, stable for large n.
 
         Log-space counterpart of :func:`Kolpaczki et al. (2024)
@@ -324,49 +345,41 @@ class MonteCarlo(Approximator[TIndices]):
 
         Args:
             interaction: The interaction for the intersection stratification.
+            coalitions_matrix: Sampled coalitions, reused within a Monte Carlo call.
+            coalitions_size: Sizes of those coalitions.
+            counter: Multiplicity of each coalition.
+            sampled: Mask distinguishing sampled from enumerated coalitions.
 
         Returns:
             The log adjusted sampling weights for the SVARM-IQ routine.
 
         """
-        log_sampling_adjustment_weights = np.zeros(self._sampler.n_coalitions)
+        if coalitions_matrix is None:
+            coalitions_matrix = self._sampler.coalitions_matrix
+        if coalitions_size is None:
+            coalitions_size = self._sampler.coalitions_size
+        if counter is None:
+            counter = self._sampler.coalitions_counter
+        if sampled is None:
+            sampled = self._sampler.is_coalition_sampled
+        # Enumerated coalitions retain their unadjusted multiplicity.
+        log_sampling_adjustment_weights = np.log(counter)
         interaction_size = len(interaction)
-        interaction_binary = np.zeros(self.n, dtype=int)
-        interaction_binary[list(interaction)] = 1
-        size_strata = np.unique(self._sampler.coalitions_size)
+        interaction_columns = coalitions_matrix[:, interaction]
         for intersection in powerset(interaction):
-            # stratify by intersection for interaction and coalition
-            intersection_size = len(intersection)
-            intersection_binary = np.zeros(self.n, dtype=int)
-            intersection_binary[list(intersection)] = 1
-            # Compute current intersection stratum
-            in_intersection_stratum = np.prod(
-                self._sampler.coalitions_matrix * interaction_binary == intersection_binary,
+            in_intersection = np.all(
+                interaction_columns == [player in intersection for player in interaction],
                 axis=1,
-            ).astype(bool)
-            for size_stratum in size_strata:
-                # compute current intersection-coalition-size stratum
-                in_stratum = in_intersection_stratum * (
-                    self._sampler.coalitions_size == size_stratum
-                )
-                in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
-                # log stratum probability ``log(binom(n - m, size - i))`` (without size probabilities  as they cancel
-                # with the coalition size probabilities, hence they can be omitted here)
-                log_stratum_probabilities = np.zeros(self._sampler.n_coalitions)
-                log_stratum_probabilities[in_stratum_and_sampled] = log_binom(
-                    self.n - interaction_size,
-                    size_stratum - intersection_size,
-                )
-                # Get sampled coalitions per stratum
-                stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
-                n_samples_helper = np.array([1, stratum_n_samples])
-                coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
-                # Set sampling adjustment weights for stratum
-                log_sampling_adjustment_weights[in_stratum] = (
-                    np.log(self._sampler.coalitions_counter[in_stratum])
-                    + log_stratum_probabilities[in_stratum]
-                    - np.log(coalitions_n_samples[in_stratum])
-                )
+            )
+            selected = in_intersection & sampled
+            sizes = coalitions_size[selected]
+            # Count every coalition-size stratum in one pass, including repeated samples.
+            stratum_counts = np.bincount(sizes, weights=counter[selected], minlength=self.n + 1)
+            log_sampling_adjustment_weights[selected] = (
+                np.log(counter[selected])
+                + log_binom(self.n - interaction_size, sizes - len(intersection))
+                - np.log(stratum_counts[sizes])
+            )
         return log_sampling_adjustment_weights
 
     def _get_standard_form_log_weights(self, index: str) -> tuple[np.ndarray, np.ndarray]:

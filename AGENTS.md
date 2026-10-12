@@ -234,3 +234,10 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 ```bash
 uv run pre-commit run --all-files
 ```
+
+- CoalitionSampler properties are not cheap views: `coalitions_matrix` copies the full
+  sample matrix, while `coalitions_size` and `is_coalition_sampled` also rescan it.
+  Monte Carlo interaction loops should reuse call-local sampled arrays; never retain
+  them across `approximate` calls, which resample and advance the sampler RNG.
+  A game can mutate its exposed coalition matrix: sampler-internal stratification
+  must cache a fresh sampler copy, not reuse that game-exposed matrix.
