@@ -420,7 +420,7 @@ function updateRecordControls(reset = false) {
     reset ||
     (!hasCosts && $("timeMetric").value === "estimated_uncached_seconds")
   )
-    $("timeMetric").value = hasCosts ? "estimated_uncached_seconds" : "seconds";
+    $("timeMetric").value = "seconds";
   const games = new Map(data.games.map((game) => [game.id, game]));
   for (const option of $("budget").options) {
     if (!option.value.startsWith("r:")) continue;

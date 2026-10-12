@@ -872,3 +872,8 @@ uv run pre-commit run --all-files
   silently shadows the campaign `datasets.py`, plus incompatible `runner.run`
   and `models.build_model` APIs. Preserve upstream APIs and isolate campaign
   helpers before merging; a textual conflict resolution alone is not sufficient.
+
+- `has_estimated_costs` means some games have oracle-cost estimates, not all.
+  The compact SV panel has these for 765/1,253 eligible games. Default to
+  measured seconds; label the estimated-time subset rather than comparing its
+  median against the full budget panel or mistaking it for failed evaluations.

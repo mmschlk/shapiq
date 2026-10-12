@@ -13,7 +13,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
         }));
     const estimated = $("timeMetric").value === "estimated_uncached_seconds";
     $("timeChartNote").textContent = estimated
-      ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
+      ? "Only games with recorded oracle costs. Estimated work + batch-amortized oracle cost; not measured runtime."
       : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
     chart(
       "budgetChart",
@@ -116,7 +116,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
   const timeMetric = $("timeMetric").value;
   const estimatedTime = timeMetric === "estimated_uncached_seconds";
   $("timeChartNote").textContent = estimatedTime
-    ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
+    ? "Only games with recorded oracle costs. Estimated work + batch-amortized oracle cost; not measured runtime."
     : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
   const timeSeries = chartNames.map((method) => {
     // Reduce the raw cells together: profile medians cannot be averaged.
