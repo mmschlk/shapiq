@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import pkgutil
 import sys
 from importlib.metadata import version
@@ -22,6 +23,10 @@ sys.path.insert(0, str(root))
 sys.path.insert(0, str(root / "shapiq"))
 sys.path.insert(0, str(root / "examples"))
 sys.path.insert(0, str(root / "src"))  # get the shapiq package
+
+# The examples download public Hugging Face models without a token; the hub's notice that a token
+# raises its rate limits would otherwise show up in an example's rendered output.
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")
 
 
 # -- Read the Docs ---------------------------------------------------------------------------------

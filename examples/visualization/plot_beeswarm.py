@@ -41,6 +41,7 @@ x_explain = x_test[:20]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="FSII",
     max_order=3,
     random_state=42,

@@ -45,7 +45,13 @@ print(f"Test  R2: {model.score(X_test, y_test):.4f}")
 # :class:`~shapiq.TabularExplainer` with ``index="SII"`` and ``max_order=2``
 # computes pairwise Shapley interaction values.
 
-explainer = shapiq.TabularExplainer(model=model, data=X_train, index="SII", max_order=2)
+explainer = shapiq.TabularExplainer(
+    model=model,
+    data=X_train,
+    sample_size=100,  # background rows the imputer averages over
+    index="SII",
+    max_order=2,
+)
 x = X_test[24]
 iv = explainer.explain(x, budget=2**n_features, random_state=0)
 print(iv)

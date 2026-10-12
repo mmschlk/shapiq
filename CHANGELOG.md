@@ -44,6 +44,9 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 ### Maintenance
 
+- the API reference documents `shapiq_games` and `shapiq_benchmark`; a test checks that it lists every public name of both packages.
+- the documentation build (with every gallery example, warnings as errors) no longer runs on every pull request: a reviewer requests it with the label `build docs`, or runs the `Documentation` workflow from the Actions tab.
+- the gallery examples run without warnings: the custom games example loads its saved values again (it passed the removed `path_to_values`, so the loaded game was empty), the tabular examples pass `sample_size`, and the LightGBM proxies of `ProxySPEX` and `ProxySHAP` no longer print LightGBM's log (`verbose=-1`; their grid tunes `n_estimators` instead of its alias `max_iter`, the same models). The lock moves to LightGBM 4.7.0, whose models fitted on arrays no longer warn about feature names.
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 

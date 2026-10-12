@@ -101,6 +101,8 @@ with tempfile.TemporaryDirectory() as tmpdir:
     save_path = Path(tmpdir) / "cooking_game_values.npz"
     cooking_game.save_values(save_path)
 
-    loaded_game = shapiq.Game(n_players=3, path_to_values=save_path)
+    # an empty game of three players; the file also restores the normalization value
+    loaded_game = shapiq.Game(n_players=3, normalize=False)
+    loaded_game.load_values(save_path)
     print(loaded_game)
-    print("Stored game values:", loaded_game.game_values)
+    print("Same values as saved:", loaded_game.game_values == cooking_game.game_values)
