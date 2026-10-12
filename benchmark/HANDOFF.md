@@ -1,7 +1,7 @@
 # Compact benchmark handoff
 
 The active design is [scope version 2](COMPREHENSIVE.md): 512 recipes and 2,048
-intended instances across all 24 datasets. Estimator fixes and speedups remain
+prepared instances across all 24 datasets. Estimator fixes and speedups remain
 in their separate PRs; the benchmark does not silently change core algorithms.
 
 ## Complete and publish the selected cohort

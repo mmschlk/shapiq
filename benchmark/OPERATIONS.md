@@ -1,7 +1,7 @@
 # Compact benchmark operations
 
 The active design is [scope version 2](COMPREHENSIVE.md): 512 recipes, four
-construction seeds and 2,048 intended instances. Start with the portable commands
+construction seeds and 2,048 prepared instances. Start with the portable commands
 in [README.md](README.md). Superseded campaigns and their counts are historical;
 this guide does not authorize restarting them.
 

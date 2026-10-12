@@ -7,43 +7,57 @@ estimator seeds. The executable recipe list is
 [suites/comprehensive.csv](suites/comprehensive.csv), generated and validated by
 `shapiq_benchmark.comprehensive`.
 
-**512 recipes × four construction seeds = 2,048 intended instances**, before
-qualification. These are planned counts, not measured coverage. The historical
-5,080-instance design and its recovery campaigns are not version 2 coverage.
-Keep the existing published report until the replacement passes validation;
-deploy its About page and data together.
+**512 recipes × four construction seeds = 2,048 prepared instances**: 477
+core recipes plus 35 KNN/TNN recipes with 32 or 64 training-row players. Metadata
+checks verify existing exact references for all selected instances; this is not
+100% successful estimator coverage or a published replacement report. No new
+preparation is required.
+
+Thirty-five core recipes were excluded in full because at least one of their four
+construction seeds failed the model-quality check against the dummy predictor.
+All four seeds of each retained recipe remain together. Neighbor replacements
+were selected for balanced coverage without consulting estimator accuracy.
+The public [selection manifest](suites/compact-selection.json) records the exact
+retained and excluded recipes and the deterministic balancing rule.
+
+Historical broader results outside this selection do not count toward version 2
+coverage. Keep the existing published report until the replacement passes
+validation; deploy its About page and data together.
 
 ## Fixed scope
 
-| Application | Construction and models | Players | Recipes |
+| Application | Construction and models | Retained player grids | Recipes |
 | --- | --- | --- | ---: |
-| Individual prediction | Baseline masking; linear/logistic regression and random forest | 4, 8, 12 where feasible, plus full widths below 12 | 138 |
-| Individual prediction | Path-dependent and interventional random-forest tree games | 8, 16, 32 where feasible | 92 |
-| Data valuation | Groups of training rows; linear/logistic regression and random forest | 4, 8, 12 groups | 144 |
-| Feature selection | Retraining linear/logistic regression and random forest | 4, 8, 12 where feasible, plus full widths below 12 | 138 |
+| Individual prediction | Baseline masking; linear/logistic regression and random forest | Up to 12 features | 127 |
+| Individual prediction | Path-dependent and interventional random-forest trees | 8, 16, 32 features | 88 |
+| Data valuation | Training-row groups; linear/logistic regression and random forest | 4, 8, 12 groups | 135 |
+| Data valuation | Selected KNN and TNN games | 32, 64 training rows | 35 |
+| Feature selection | Retraining linear/logistic regression and random forest | Up to 12 features | 127 |
 
 Valuation models use **exactly `min(12, dataset width)` input features**. Input
 width is distinct from the number of training-row groups. There is no width
-sweep, neighbor-game branch or special-model contrast. Nested feature selections, training/held-out
+sweep or special-model contrast. Selected native KNN/TNN games provide exact SV
+on classification datasets. Nested feature selections, training/held-out
 splits, model profiles and construction seeds remain explicit recipe inputs.
 
 The datasets are Adult Census, Mushroom, Ionosphere, Bioresponse, Breast Cancer,
 Digits, Wine classification, Amazon Employee Access, APS Failure, Anneal,
 Splice, Credit Card Default, Wine Quality, Communities and Crime, NHANES I,
 QSAR-TID11, Miami Housing, Superconductivity, California Housing, Diabetes,
-Bike Sharing, Airfoil Self Noise, Concrete Strength and Protein. Actual shipped
-loader widths determine feasible grids. Wine classification and Wine Quality
+Bike Sharing, Airfoil Self Noise, Concrete Strength and Protein. Generic grids start at 4, 8 and 12 features where feasible, with natural full
+widths below 12; whole-recipe quality exclusions then determine retained grids.
+Actual shipped loader widths determine feasibility. Wine classification and Wine Quality
 regression are different datasets; NHANES I uses its supplied survival label as
 a regression surrogate. [About](site/about.md) lists each dataset's player grids.
 
 ## References and evaluation
 
 - Generic games enumerate all coalitions, with **at most 12 players**. Native
-  random-forest tree games use their matching exact solvers. Preserve recorded
+  random-forest tree and KNN/TNN games use their matching exact solvers. Preserve recorded
   floating-point qualification and finite-endpoint FSII reference-floor policies;
   never replace a missing exact reference with an approximate estimate.
 - Targets are **SV and order-two k-SII, SII, STII, FSII and FBII**, where supported.
-  Constructor-supported targets determine the capability catalog; unsupported
+  KNN/TNN supply SV only. Constructor-supported targets determine the capability catalog; unsupported
   method/target combinations are not failures.
 - Relative budgets are **0.5, 1, 2, 4, 8, 16, 32 × players**, with the existing
   query-counting and finite-game budget rules. No 64× or 128× budget belongs to
@@ -71,9 +85,15 @@ Reuse historical results only when the exact version 2 recipe, artifacts,
 settings, budget, seed, source and ownership match. Historical outcomes outside
 this scope must not enter the replacement report. Obsolete artifacts may be
 deleted after required retained-result provenance is safely materialized and
-verified. One
-consolidated reference, ownership, numerical and coverage check precedes
+verified. One consolidated reference, ownership, numerical and coverage check precedes
 publication of the report and its reproducibility artifacts.
+
+## Planned estimator-combination analysis
+
+Fit signed linear estimator weights separately for each target and budget.
+Evaluate held-out R² and nMSE with dataset-grouped splits, keeping all games from
+a dataset together. PCA of normalized estimator errors will describe shared
+error patterns. This is planned analysis, with no performance claims yet.
 
 ## Execution
 

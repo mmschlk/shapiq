@@ -5,9 +5,11 @@
 
 The active **scope version 2** compares **22 estimator configurations** across
 individual predictions, data valuation and feature selection on **24 datasets**.
-Its **512 recipes × four construction seeds = 2,048 intended instances** are
-planned coverage. Generic linear/random-forest games have at most 12 players;
-RF tree games use 8/16/32 features. Data valuation uses retraining groups only.
+Its **512 recipes × four construction seeds = 2,048 prepared instances** have
+metadata-verified existing exact references, not yet complete estimator coverage.
+The selection retains 477 core recipes and adds 35 balanced KNN/TNN recipes;
+35 core recipes failing the model-quality check on any seed are excluded in full. Generic linear/random-forest games have at most 12 players;
+RF tree games use 8/16/32 features; selected KNN/TNN games use 32/64 training rows.
 Valuation input width is exactly `min(12, dataset width)`, with no width sweep or
 special-model contrasts. Historical broader results remain a separate cohort;
 the existing website stays in place until the version 2 replacement is validated.
@@ -26,8 +28,9 @@ uv run python -m shapiq_benchmark.report --results benchmark/results/baselines/r
 uv run python -m http.server 8000 --bind 127.0.0.1 --directory benchmark/results/report
 ```
 
-For the full design, generate the suite from the CSV, then pass that suite to
-`prepare`. This is substantial preparation, not a quick smoke test:
+Generate the selected suite from the CSV for replay or a new independent run.
+The active campaign reuses authenticated prepared snapshots; it does not rerun
+preparation merely to regenerate this manifest:
 
 ```bash
 uv run python -m shapiq_benchmark.comprehensive benchmark/suites/comprehensive.csv benchmark/results/suite.json

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import math
@@ -46,6 +47,7 @@ REGRESSION = (
     "tabarena_concrete_strength",
     "tabarena_protein",
 )
+PREPARED_SELECTION = Path(__file__).resolve().parents[2] / "benchmark/suites/compact-selection.json"
 CORE_MODELS = ("linear", "random_forest")
 GENERIC_COUNTS = (4, 8, 12)
 TREE_COUNTS = (8, 16, 32)
@@ -127,7 +129,26 @@ def recipes() -> list[dict]:
                 if players <= width:
                     add(dataset, "random_forest", construction, players)
 
-    return list(rows.values())
+    selection = json.loads(PREPARED_SELECTION.read_text())
+    excluded = {row["id"] for row in selection["excluded_core"]}
+    core = list(rows.values())
+    if len(excluded) != 35 or not excluded <= {row["id"] for row in core}:
+        msg = "Prepared selection must exclude exactly 35 known core recipes."
+        raise ValueError(msg)
+    selected = [row for row in core if row["id"] not in excluded] + selection["neighbor_recipes"]
+    identity = hashlib.sha256(
+        json.dumps(selected, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    if (
+        selection["version"] != 3
+        or len(selection["neighbor_recipes"]) != 35
+        or len({row["id"] for row in selected}) != 512
+        or len(selected) != 512
+        or identity != selection["selected_recipe_rows_sha256"]
+    ):
+        msg = "Prepared selection differs from its fixed recipe inventory."
+        raise ValueError(msg)
+    return selected
 
 
 def selection_manifest() -> dict:
@@ -138,8 +159,9 @@ def selection_manifest() -> dict:
     original authenticated artifacts, target, construction seed and source.
     """
     return {
-        "version": 2,
+        "version": 3,
         "recipes": {row["id"]: row for row in recipes()},
+        "prepared_selection_sha256": hashlib.sha256(PREPARED_SELECTION.read_bytes()).hexdigest(),
         "relative_budgets": list(RELATIVE_BUDGETS),
     }
 
@@ -173,16 +195,17 @@ def build_suite(manifest: Path) -> dict:
         msg = "Comprehensive manifest differs from the deterministic approved design."
         raise ValueError(msg)
     suite = focused.build_suite(
-        manifest, min_players=4, max_players=32, extended_features=True, estimator_seeds=(0, 1, 2)
+        manifest, min_players=4, max_players=64, extended_features=True, estimator_seeds=(0, 1, 2)
     )
-    suite["name"] = "comprehensive-24-datasets-compact-v2"
+    suite["name"] = "comprehensive-24-datasets-compact-v3"
     suite["relative_budgets"] = list(RELATIVE_BUDGETS)
     suite["comprehensive_design"] = {
-        "version": 2,
+        "version": 3,
         "classification_datasets": list(CLASSIFICATION),
         "regression_datasets": list(REGRESSION),
         "reuse_rule": "Exact recipe identity and authenticated frozen artifacts only.",
         "nested_features": True,
+        "prepared_selection_sha256": hashlib.sha256(PREPARED_SELECTION.read_bytes()).hexdigest(),
     }
     return suite
 

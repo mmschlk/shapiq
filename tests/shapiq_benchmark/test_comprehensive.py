@@ -41,8 +41,9 @@ def test_fixed_manifest_and_balanced_dataset_inventory() -> None:
     rows = c.recipes()
     assert len(rows) == len({r["id"] for r in rows}) == 512
     assert Counter(r["reference"] for r in rows) == {
-        "enumeration": 420,
-        "tree_solver": 92,
+        "enumeration": 389,
+        "tree_solver": 88,
+        "neighbor_solver": 35,
     }
     assert not {r["id"] for r in rows} & {
         r["id"] for r in csv.DictReader((ROOT / "benchmark/suites/focused.csv").open())
@@ -51,21 +52,32 @@ def test_fixed_manifest_and_balanced_dataset_inventory() -> None:
 
 def test_dimensions_are_independent_and_nested() -> None:
     rows = c.recipes()
+    excluded = {r["id"] for r in json.loads(c.PREPARED_SELECTION.read_text())["excluded_core"]}
     assert all(r["feature_rule"] == "nested" for r in rows)
     for dataset in c.CLASSIFICATION + c.REGRESSION:
         width = DATASETS[dataset]["n_features"]
         core = [r for r in rows if r["dataset"] == dataset and r["model"] == "linear"]
         for family in ("local_baseline", "feature_selection"):
             actual = {int(r["n_players"]) for r in core if r["construction"] == family}
-            assert actual == {n for n in c.GENERIC_COUNTS if n <= width} | (
+            intended = {n for n in c.GENERIC_COUNTS if n <= width} | (
                 {width} if width < 12 else set()
             )
+            assert actual == {
+                n
+                for n in intended
+                if f"comprehensive-{family}-{dataset}-linear-p{n}" not in excluded
+            }
         assert {
             int(r["n_players"])
             for r in core
             if r["construction"] == "dataset_valuation"
             and int(r["input_features"]) == min(12, width)
-        } == set(c.GENERIC_COUNTS)
+        } == {
+            n
+            for n in c.GENERIC_COUNTS
+            if f"comprehensive-dataset_valuation-{dataset}-linear-p{n}-f{min(12, width)}"
+            not in excluded
+        }
     assert all(
         int(r["input_features"]) == min(12, DATASETS[r["dataset"]]["n_features"])
         for r in rows
@@ -79,8 +91,19 @@ def test_dimensions_are_independent_and_nested() -> None:
     )
 
 
-def test_compact_design_has_no_valuation_subtype() -> None:
-    assert not {"knn", "tnn"} & {r["construction"] for r in c.recipes()}
+def test_prepared_neighbor_replacements_preserve_original_settings() -> None:
+    selection = json.loads(c.PREPARED_SELECTION.read_text())
+    neighbors = [r for r in c.recipes() if r["reference"] == "neighbor_solver"]
+    assert len(selection["excluded_core"]) == len(neighbors) == 35
+    assert neighbors == selection["neighbor_recipes"]
+    assert all(
+        r["dataset"] in c.CLASSIFICATION
+        and int(r["n_players"]) in {32, 64}
+        and r["training_rows"] == "5000"
+        and r["row_selection"] == "nested_stratified"
+        and int(r["input_features"]) == min(12, DATASETS[r["dataset"]]["n_features"])
+        for r in neighbors
+    )
     assert {r["application"] for r in c.recipes()} == {"local", "data", "features"}
 
 
@@ -91,21 +114,24 @@ def test_suite_preserves_settings_and_reference_targets(approved_constructors: N
     assert suite["method_parameters"] == focused.METHOD_PARAMETERS
     assert suite["relative_budgets"] == [0.5, 1, 2, 4, 8, 16, 32]
     assert suite["min_players"] == 4
-    assert len(suite["families"]) == 420
-    assert len(suite["games"]) == 414
+    assert len(suite["families"]) == 389
+    assert len(suite["games"]) == 431
     for game in suite["games"]:
-        if game["oracle"] == "pathdependent_tree":
+        if game["oracle"] in {"knn", "tnn"}:
+            assert (game["index"], game["order"]) == ("SV", 1)
+            assert game["training_rows"] == 5000
+        elif game["oracle"] == "pathdependent_tree":
             assert game["index"] in {"SV", "k-SII", "SII"}
-    assert c.summary(suite)["intended_targets"] == 11736
+    assert c.summary(suite)["intended_targets"] == 11060
 
 
 def test_retained_recipe_settings_equal_historical_subset() -> None:
-    # Exact dictionaries selected from the former 1,270-row manifest, in its order.
+    # Exact historical dictionaries, in the frozen prepared-selection order.
     assert (
         hashlib.sha256(
             json.dumps(c.recipes(), sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
-        == "cced9a64325b08f9b1de70c03eab33e6ff28dafaba1245feeccbc1a2d17a721c"
+        == "5e8b5539ca82aaaee02a5cef8afb1bea8fad8f936a367f199b051d4b268e897f"
     )
 
 
