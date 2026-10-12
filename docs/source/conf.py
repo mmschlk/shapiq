@@ -6,6 +6,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
+import functools
 import importlib
 import os
 import pkgutil
@@ -167,6 +168,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
 # -- Options for HTML output -----------------------------------------------------------------------
@@ -276,9 +278,57 @@ def _format_type_alias(annotation: object, config: object) -> str | None:  # noq
 typehints_formatter = _format_type_alias
 
 
+_PACKAGES = ("shapiq", "shapiq_games", "shapiq_benchmark")
+
+
+@functools.cache
+def _import_path(path: str) -> object | None:
+    """Return the object at a dotted path such as ``shapiq.KernelSHAP``, or ``None``."""
+    parts = path.split(".")
+    for split in range(len(parts), 0, -1):
+        try:
+            obj = importlib.import_module(".".join(parts[:split]))
+        except ImportError:
+            continue
+        for attribute in parts[split:]:
+            obj = getattr(obj, attribute, None)
+        return obj
+    return None
+
+
+def _link_reexported_names(app, env, node, contnode):  # noqa: ANN202
+    """Link a re-exported name (``shapiq.KernelSHAP``) to the page that documents its object.
+
+    The API reference documents each object once, under its subpackage (e.g.
+    ``shapiq.approximator.KernelSHAP``); references to the shorter public alias, or to a bare name
+    outside its module (``MoebiusConverter``), would otherwise render as plain text.
+    """
+    target = node.get("reftarget", "")
+    if node.get("refdomain") != "py":
+        return None
+    domain = env.domains.python_domain
+    name = target.rpartition(".")[2]
+    candidates = [
+        documented
+        for documented in domain.objects
+        if documented.split(".")[0] in _PACKAGES and documented.rpartition(".")[2] == name
+    ]
+    obj = _import_path(target) if target.split(".")[0] in _PACKAGES else None
+    if obj is not None:  # a public alias of a documented object
+        candidates = [c for c in candidates if _import_path(c) is obj]
+    elif len({id(_import_path(c)) for c in candidates}) != 1:
+        return None  # otherwise the name links only if it names one documented object
+    if not candidates:
+        return None
+    return domain.resolve_xref(
+        env, node["refdoc"], app.builder, node["reftype"], candidates[0], node, contnode
+    )
+
+
 def setup(app) -> None:
     """Connect the docstring handler (before napoleon, which formats the docstrings)."""
     app.connect("autodoc-process-docstring", _use_the_defining_module_docstring, priority=400)
+    app.connect("missing-reference", _link_reexported_names)
 
 
 # -- Suppress warnings -----------------------------------------------------------------------------

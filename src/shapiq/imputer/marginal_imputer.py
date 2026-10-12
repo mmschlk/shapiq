@@ -39,7 +39,7 @@ class MarginalImputer(Imputer):
         >>> imputer.init_background(data=new_data)
 
     See Also:
-        - :class:`shapiq.imputer.ConditionalImputer` for the conditional imputer.
+        - :class:`shapiq.imputer.GenerativeConditionalImputer` for the conditional imputer.
         - :class:`shapiq.imputer.BaselineImputer` for the baseline imputer.
         - :class:`shapiq.imputer.base.Imputer` for the base imputer class.
 

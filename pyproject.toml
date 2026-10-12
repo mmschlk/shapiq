@@ -239,6 +239,7 @@ exclude = [
     "D",  # docstrings are not required in examples
     "SLF001",  # private members are okay in examples
     "ANN001",  # type annotations are not required in examples
+    "ERA001",  # sphinx-gallery reads settings from comments such as `# sphinx_gallery_thumbnail_number = 2`
     "INP",  # examples are an implicit namespace package
 ]
 "docs/source/*.py" = [

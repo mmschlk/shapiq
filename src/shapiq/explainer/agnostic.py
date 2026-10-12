@@ -51,11 +51,11 @@ class AgnosticExplainer(Explainer):
 
         Args:
             game: The cooperative game to be explained. This can be an instance of
-                :class:`shapiq.games.base.Game` or a callable value function that expects a
+                :class:`~shapiq.game.Game` or a callable value function that expects a
                 one-hot matrix of coalitions as input and returns the value of the coalition.
 
             n_players: The number of players in the game. If not provided, it will be inferred from
-                the :class:`shapiq.games.base.Game`.
+                the :class:`~shapiq.game.Game`.
 
             index: The type of game-theoretic index to be used for the explanation.
                 Defaults to ``"SV"``.
@@ -67,12 +67,12 @@ class AgnosticExplainer(Explainer):
                 which will automatically select the appropriate approximator based on the index and
                 max_order. Other options include "regression", "spex", "svarm", "montecarlo", and
                 "permutation". Can also be an instance of
-                :class:`shapiq.approximator._base.Approximator`.
+                :class:`~shapiq.approximator.Approximator`.
 
             random_state: The random state to use for reproducibility. Defaults to None.
 
         Raises:
-            ValueError: If the `game` is not an instance of `shapiq.games.base.Game` and `n_players`
+            ValueError: If the `game` is not an instance of :class:`~shapiq.game.Game` and `n_players`
                 is not specified.
 
         """
@@ -80,7 +80,7 @@ class AgnosticExplainer(Explainer):
             if not isinstance(game, Game):
                 msg = (
                     f"The number of players must be specified with the `n_players` argument if no "
-                    f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
+                    f"`shapiq.Game` instance is provided. Got {type(game)}."
                 )
                 raise ValueError(msg)
             n_players = game.n_players

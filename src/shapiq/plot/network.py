@@ -48,7 +48,7 @@ def network_plot(
             containing the plot are returned, otherwise ``None``.
 
         **kwargs: Additional keyword arguments passed to the plotting function of
-            :meth:`shapiq.plot.si_graph_plot.si_graph_plot`. See the documentation of that
+            :func:`shapiq.plot.si_graph_plot`. See the documentation of that
             function for more details on the available keyword arguments.
 
     Returns:
