@@ -9,7 +9,7 @@ sampled coalition for all interactions at once.
 interactions.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"
 
 from __future__ import annotations
 

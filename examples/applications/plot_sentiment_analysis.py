@@ -11,7 +11,7 @@ from the ``shapiq_games`` package, which wraps a pretrained DistilBERT model
 fine-tuned on IMDb reviews.
 """
 
-# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 2
 
 from __future__ import annotations
 

@@ -6,7 +6,7 @@ This example demonstrates how to use :class:`~shapiq.explainer.TreeExplainer` to
 a custom tree model built from scratch using the Play Tennis dataset.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/trees.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/trees.png"
 
 from __future__ import annotations
 

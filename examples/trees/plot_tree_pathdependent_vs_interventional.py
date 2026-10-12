@@ -3,8 +3,9 @@ Path-Dependent versus Interventional Tree Explanations
 ======================================================
 
 :class:`~shapiq.explainer.TreeExplainer` computes Shapley values and Shapley interactions of
-tree ensembles exactly, in two modes that differ in what it means for a feature to be absent
-:footcite:p:`Lundberg.2020`:
+tree ensembles exactly, in two modes that differ in what it means for a feature to be absent.
+
+Both modes go back to TreeSHAP :footcite:p:`Lundberg.2020`:
 
 - ``mode="pathdependent"`` (the default): at a split on an absent feature, the explanation follows
   both children, weighted by the share of training samples that went each way. The distribution

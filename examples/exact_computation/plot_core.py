@@ -7,7 +7,7 @@ This example introduces the game-theoretic concept of the *core* and the
 :class:`~shapiq.game_theory.ExactComputer`.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/exact_computation.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/exact_computation.png"
 
 from __future__ import annotations
 

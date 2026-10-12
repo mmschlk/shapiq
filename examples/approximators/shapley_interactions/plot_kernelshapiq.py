@@ -8,7 +8,7 @@ interactions order by order, each order on the residuals of the lower ones.
 :class:`~shapiq.approximator.KernelSHAPIQ` was introduced by :footcite:t:`Fumagalli.2024`.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

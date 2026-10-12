@@ -10,7 +10,7 @@ All examples use the same XGBoost model on the California housing dataset
 for consistency with the other visualization gallery scripts.
 """
 
-# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 3
 
 from __future__ import annotations
 

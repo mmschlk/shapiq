@@ -8,7 +8,7 @@ to the sampled coalition values and read its sparse interactions off the trees.
 :class:`~shapiq.approximator.ProxySPEX` was introduced by :footcite:t:`Butler.2025`.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"
 
 from __future__ import annotations
 

@@ -6,7 +6,7 @@ Exact computation of Shapley values and interaction indices for small games
 using :class:`~shapiq.game_theory.ExactComputer`.
 """
 
-# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 3
 
 from __future__ import annotations
 

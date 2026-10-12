@@ -14,7 +14,7 @@ and inexpensive, because TabPFN's "retraining" is just an in-context forward
 pass.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/applications.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/applications.png"
 
 from __future__ import annotations
 

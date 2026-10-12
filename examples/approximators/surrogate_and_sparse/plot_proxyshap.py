@@ -7,7 +7,7 @@ Estimate Shapley interactions with :class:`~shapiq.approximator.ProxySHAP`: fit 
 ``adjustment=True``, a Monte Carlo estimate on the residuals corrects the surrogate's error.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"
 
 from __future__ import annotations
 

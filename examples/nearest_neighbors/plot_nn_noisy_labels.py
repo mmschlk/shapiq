@@ -2,11 +2,12 @@
 Finding Mislabeled Training Data with KNN-Shapley
 =================================================
 
-A mislabeled training point misleads the predictions for its neighbors. Data valuation makes
-this measurable: the value of a training point is its Shapley value in a game whose value is the
-performance of the model trained on a coalition of training points :footcite:p:`Ghorbani.2019`.
-Mislabeled points get negative values, so sorting the training data by value brings them to the
+A mislabeled training point misleads the predictions for its neighbors. Data valuation finds
+such points: they get negative values, so sorting the training data by value brings them to the
 front.
+
+The value of a training point is its Shapley value in a game whose value is the performance of
+the model trained on a coalition of training points :footcite:p:`Ghorbani.2019`.
 
 For a :math:`k`-nearest-neighbor classifier, :footcite:t:`Jia.2019a` compute these Shapley
 values exactly in :math:`O(n \\log n)` time for :math:`n` training points ("KNN-Shapley"), which

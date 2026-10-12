@@ -2,13 +2,17 @@
 Exact Shapley Values of a Gaussian Process
 ==========================================
 
+A Gaussian process with an RBF kernel is a product-kernel model, so its Shapley values can be
+computed exactly in polynomial time, without evaluating the exponentially many coalitions of the
+features.
+
 The posterior mean of a Gaussian process (GP) regression is a weighted sum of kernels,
 :math:`f(x) = \\sum_i \\alpha_i k(x^i, x)`, over the training points :math:`x^i`. With an RBF
 kernel, :math:`k` is a *product* of one-dimensional kernels, one per feature.
-:footcite:t:`Mohammadi.2025a` showed that the Shapley values of such product-kernel models can be
-computed exactly in polynomial time, without evaluating any of the :math:`2^d` coalitions of the
-:math:`d` features. :class:`~shapiq.explainer.product_kernel.ProductKernelExplainer` implements
-their algorithm for Gaussian processes and support vector machines.
+:footcite:t:`Mohammadi.2025a` showed how to compute the Shapley values of such product-kernel
+models exactly, without evaluating any of the :math:`2^d` coalitions of the :math:`d` features.
+:class:`~shapiq.explainer.product_kernel.ProductKernelExplainer` implements their algorithm for
+Gaussian processes and support vector machines.
 
 This example fits a GP to the diabetes dataset, explains its predictions exactly, and checks the
 result against a brute-force evaluation of all :math:`2^{10}` coalitions.

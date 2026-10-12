@@ -7,7 +7,7 @@ Estimate Shapley values with :class:`~shapiq.approximator.RegressionMSR`: fit a 
 correct the surrogate's error with a Monte Carlo estimate on its residuals.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"
 
 from __future__ import annotations
 

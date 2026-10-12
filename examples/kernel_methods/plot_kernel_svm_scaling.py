@@ -2,6 +2,10 @@
 Kernel SVMs: Exact Shapley Values for Many Features
 ===================================================
 
+A support vector machine with an RBF kernel is a product-kernel model, so its Shapley values can
+be computed exactly even for 30 features, where brute force would evaluate about a billion
+coalitions.
+
 The decision function of a support vector machine (SVM) with an RBF kernel is a weighted sum of
 kernels over its support vectors, :math:`f(x) = \\sum_i \\alpha_i k(x^i, x) + b`, and the RBF
 kernel is a product of one kernel per feature. For such product-kernel models,

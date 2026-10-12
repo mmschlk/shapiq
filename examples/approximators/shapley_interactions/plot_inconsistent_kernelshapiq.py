@@ -7,7 +7,7 @@ KernelSHAP-IQ that does not converge to the exact values but often estimates the
 budgets.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

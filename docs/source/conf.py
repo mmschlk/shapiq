@@ -97,15 +97,23 @@ EXAMPLE_ORDER = {
         "plot_shapiq_scikit_learn.py",
         "plot_custom_games.py",
     ),
-    "exact_computation": ("plot_exact_computer.py", "plot_core.py"),
+    "exact_computation": (
+        "plot_exact_computer.py",
+        "plot_interaction_indices.py",
+        "plot_moebius_conversion.py",
+        "plot_core.py",
+    ),
     "approximators/shapley_values": (
         "plot_kernelshap.py",
+        "plot_leverageshap.py",
         "plot_permutation_sampling_sv.py",
         "plot_svarm.py",
         "plot_stratified_sampling_sv.py",
         "plot_owen_sampling_sv.py",
         "plot_unbiased_kernelshap.py",
         "plot_kadd_shap.py",
+        "plot_oddshap.py",
+        "plot_shapleig.py",
     ),
     "approximators/shapley_interactions": (
         "plot_kernelshapiq.py",
@@ -123,7 +131,17 @@ EXAMPLE_ORDER = {
         "plot_spex.py",
         "plot_proxyspex.py",
     ),
-    "trees": ("plot_treeshapiq_lightgbm.py", "plot_treeshapiq_custom_tree.py"),
+    "trees": (
+        "plot_treeshapiq_lightgbm.py",
+        "plot_tree_libraries.py",
+        "plot_tree_pathdependent_vs_interventional.py",
+        "plot_treeshapiq_custom_tree.py",
+    ),
+    "nearest_neighbors": (
+        "plot_nn_explainers_exact.py",
+        "plot_nn_data_valuation.py",
+        "plot_nn_noisy_labels.py",
+    ),
     "kernel_methods": ("plot_gaussian_process_exact.py", "plot_kernel_svm_scaling.py"),
     "visualization": (
         "plot_interaction_values.py",
@@ -141,7 +159,12 @@ EXAMPLE_ORDER = {
         "plot_confounding_xai.py",
     ),
     "benchmarking": ("plot_games_tour.py", "plot_benchmark_approximators.py"),
-    "technicalities": ("plot_conditional_imputer.py", "plot_parallel_computation.py"),
+    "technicalities": (
+        "plot_imputers.py",
+        "plot_conditional_imputer.py",
+        "plot_budgets_and_seeds.py",
+        "plot_parallel_computation.py",
+    ),
 }
 
 

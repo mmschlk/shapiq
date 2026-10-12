@@ -4,9 +4,10 @@ Exact Data Shapley Values of Three Nearest-Neighbor Classifiers
 
 For a nearest-neighbor classifier, the training points are the players of a cooperative game:
 the value of a coalition is how well the classifier, restricted to the coalition as its training
-data, predicts the class of a test point. The Shapley values of this game value each training point
-for that prediction :footcite:p:`Ghorbani.2019,Jia.2019a`. For general models, they are
-expensive: a game with :math:`n` training points has :math:`2^n` coalitions. For nearest-neighbor
+data, predicts the class of a test point.
+
+The Shapley values of this game value each training point for that prediction
+:footcite:p:`Ghorbani.2019,Jia.2019a`. For general models, they are expensive: a game with :math:`n` training points has :math:`2^n` coalitions. For nearest-neighbor
 models, the structure of the prediction yields exact algorithms that are fast enough for large
 datasets.
 

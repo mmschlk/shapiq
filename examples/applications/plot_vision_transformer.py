@@ -9,7 +9,7 @@ with the :class:`~shapiq_games.ImageClassifier` game: it shows what the players 
 model sees, computes exact Shapley values and interactions, and draws them on the image.
 """
 
-# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 2
 
 from __future__ import annotations
 

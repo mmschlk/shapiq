@@ -6,7 +6,7 @@ This example shows how to compute second-order Shapley Interaction Index (SII)
 values for a scikit-learn Random Forest on the California housing dataset.
 """
 
-# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 3
 
 from __future__ import annotations
 

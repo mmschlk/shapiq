@@ -2,9 +2,14 @@
 OddSHAP
 =======
 
-Shapley value approximation by a sparse regression on the odd part of the game using
-:class:`~shapiq.approximator.OddSHAP` :footcite:p:`Fumagalli.2026a`.
+Estimate Shapley values from the odd part of the game only: a surrogate tree model screens for
+the few odd interactions, and a small regression on them yields the Shapley values.
+
+:class:`~shapiq.approximator.OddSHAP` :footcite:p:`Fumagalli.2026a` approximates Shapley values by
+a sparse regression on the odd part of the game.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

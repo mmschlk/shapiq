@@ -9,7 +9,7 @@ coalitions, and its coefficients are the Shapley values.
 Shapley values by default.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

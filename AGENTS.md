@@ -263,6 +263,27 @@ public name of `shapiq_games` or `shapiq_benchmark` (anything in an `__all__`) a
 `docs/source/api_reference_games.rst` or `api_reference_benchmark.rst`; the docstring-example
 tests fail until it has one.
 
+Docs layout (observed 2026-10-12):
+
+- Every folder `examples/<group>/` is its own sphinx-gallery gallery (`EXAMPLE_GROUPS` in
+  `docs/source/conf.py`), linked from the hand-written landing page `docs/source/examples.rst`.
+  A new example goes into its group's entry of `EXAMPLE_ORDER` in `conf.py` (unlisted files come
+  last), and a new group needs `EXAMPLE_GROUPS`, a `GALLERY_HEADER.rst` and a card in
+  `examples.rst`.
+- The first paragraph of an example's docstring is the text of its gallery card, and sphinx-gallery
+  strips roles badly (`:footcite:p:` became ":footciteMusco.2025", `:math:` raw LaTeX). Keep that
+  paragraph plain; put citations and math into the next one.
+- `nitpicky` is off, so an unresolvable cross-reference renders as plain text without a warning.
+  The core API reference documents objects under their subpackage (`shapiq.approximator.KernelSHAP`);
+  a `missing-reference` hook in `conf.py` links the public aliases (`shapiq.KernelSHAP`) and bare
+  names that match one documented object. Check new references in the built HTML.
+- The timeline page reads `docs/source/_data/timeline.toml` (directive in
+  `docs/source/_ext/shapiq_timeline.py`); its API, example and citation references are checked by
+  Sphinx and warn at the entry's line. A new method in shapiq deserves an entry there.
+- In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
+  `conf.py` puts the worktree's `src` first on `sys.path`: copy the `*.so` files from the main
+  checkout before building the docs there.
+
 ### Run Pre-commit (takes only 3s)
 
 ```bash

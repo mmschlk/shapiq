@@ -2,9 +2,15 @@
 ShaplEIG
 ========
 
-Bayesian experimental design for Shapley value approximation using
-:class:`~shapiq.approximator.ShaplEIG` :footcite:p:`Rundel.2026`.
+Estimate Shapley values by Bayesian experimental design: a Gaussian process models the game,
+and each next coalition is the one with the largest expected information gain about the Shapley
+values.
+
+:class:`~shapiq.approximator.ShaplEIG` :footcite:p:`Rundel.2026` also returns the posterior
+variance of every estimate.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"
 
 from __future__ import annotations
 

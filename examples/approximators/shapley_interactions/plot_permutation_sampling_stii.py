@@ -6,7 +6,7 @@ Estimate the Shapley-Taylor Interaction Index (STII) from random permutations of
 :class:`~shapiq.approximator.PermutationSamplingSTII`.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"
 
 from __future__ import annotations
 

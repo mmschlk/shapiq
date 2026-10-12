@@ -9,7 +9,7 @@ coalitions by size and updates the estimates of all players with every sample.
 (``index="BV"``).
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"
 
 from __future__ import annotations
 

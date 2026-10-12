@@ -6,8 +6,10 @@ A Tour of the Interaction Indices
 This example computes nine of them exactly with :class:`~shapiq.game_theory.ExactComputer` on
 one small game whose structure we know, and compares how each index distributes the same
 interactions: a pairwise synergy, a pairwise redundancy, and an interaction of four players that
-no explanation of order two can show as it is. Along the way, we check which indices are
-*efficient*, i.e. sum up to :math:`\\nu(N) - \\nu(\\emptyset)`.
+no explanation of order two can show as it is.
+
+Along the way, we check which indices are *efficient*, i.e. sum up to
+:math:`\\nu(N) - \\nu(\\emptyset)`.
 """
 
 from __future__ import annotations

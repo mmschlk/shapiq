@@ -7,7 +7,7 @@ Estimate Shapley values from random permutations of the players with
 contribution per player, the change in value when it joins the players before it.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"
 
 from __future__ import annotations
 

@@ -7,7 +7,7 @@ interactions as a network. Players are nodes; interactions are edges whose
 color, thickness, and opacity encode strength and direction.
 """
 
-# sphinx_gallery_thumbnail_number = 7  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 7
 
 from __future__ import annotations
 

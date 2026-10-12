@@ -9,7 +9,7 @@ to sampled coalitions by weighted least squares.
 values up to order k.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

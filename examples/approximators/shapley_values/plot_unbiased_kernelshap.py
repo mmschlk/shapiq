@@ -6,7 +6,7 @@ Estimate Shapley values with :class:`~shapiq.approximator.UnbiasedKernelSHAP`, a
 Carlo variant of KernelSHAP and the Shapley value case of the SHAP-IQ estimator.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"
 
 from __future__ import annotations
 

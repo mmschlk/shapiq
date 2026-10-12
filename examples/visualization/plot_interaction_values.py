@@ -7,7 +7,7 @@ This example shows how to create, manipulate, aggregate, and visualize
 ``shapiq``.
 """
 
-# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 2
 
 from __future__ import annotations
 

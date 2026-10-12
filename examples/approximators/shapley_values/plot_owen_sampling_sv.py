@@ -7,7 +7,7 @@ integral over the probability with which the other players join a coalition, eva
 anchor points.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_owen.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_owen.png"
 
 from __future__ import annotations
 

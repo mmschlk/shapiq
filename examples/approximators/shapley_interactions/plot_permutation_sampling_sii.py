@@ -7,7 +7,7 @@ Estimate SII and k-SII from random permutations of the players with
 interactions.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"
 
 from __future__ import annotations
 

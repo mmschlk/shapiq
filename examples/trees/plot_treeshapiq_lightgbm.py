@@ -11,7 +11,7 @@ TreeSHAP-IQ :footcite:p:`Muschalik.2024a`, via the numerically exact Quadrature-
 :footcite:p:`Wettenstein.2026a`.
 """
 
-# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 3
 
 from __future__ import annotations
 

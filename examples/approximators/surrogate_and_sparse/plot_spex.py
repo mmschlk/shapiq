@@ -9,7 +9,7 @@ of the game from sampled coalitions.
 (``pip install shapiq[sparse]``).
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"
 
 from __future__ import annotations
 

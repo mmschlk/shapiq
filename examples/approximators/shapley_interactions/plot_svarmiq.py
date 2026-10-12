@@ -9,7 +9,7 @@ the sampled coalition and by its intersection with each interaction.
 interactions.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"
 
 from __future__ import annotations
 

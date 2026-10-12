@@ -7,7 +7,7 @@ Estimate the Faithful Banzhaf Interaction Index (FBII) with
 approximation of the game by interactions up to a given order, with all coalitions weighted equally.
 """
 
-# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 

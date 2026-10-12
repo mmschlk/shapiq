@@ -2,9 +2,14 @@
 LeverageSHAP
 ============
 
-Regression-based Shapley value approximation with leverage score sampling using
-:class:`~shapiq.approximator.LeverageSHAP` :footcite:p:`Musco.2025`.
+Estimate Shapley values by weighted least squares, like KernelSHAP, but sample the coalitions
+by their leverage scores, which makes the regression accurate with fewer evaluations.
+
+:class:`~shapiq.approximator.LeverageSHAP` :footcite:p:`Musco.2025` solves the regression of
+KernelSHAP on coalitions drawn by leverage score sampling.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 
