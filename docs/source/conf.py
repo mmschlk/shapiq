@@ -158,7 +158,9 @@ autodoc_default_options = {
 autoclass_content = "both"
 autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
-autodoc_typehints = "both"
+# sphinx-autodoc-typehints adds the types to the documented parameters; Sphinx's own type hints
+# ("both" or "description") would add a second, types-only parameter list to every class page
+autodoc_typehints = "none"
 
 # -- Re-exported constants -------------------------------------------------------------------------
 # A package may define a constant in a private module and re-export it, e.g.

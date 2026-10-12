@@ -54,6 +54,9 @@ def runtime_field(default: Any) -> Any:  # noqa: ANN401
 
     Runtime fields are part of :meth:`Setup.to_dict` but not of :attr:`Setup.key`, so changing them
     reuses cached ground truth.
+
+    Args:
+        default: The default value of the field.
     """
     return field(default=default, metadata={_IN_KEY: False})
 

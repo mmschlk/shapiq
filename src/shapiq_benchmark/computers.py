@@ -116,6 +116,9 @@ class Computer[G: Game](ABC):
     def __init__(self, game: G) -> None:
         """Bind the computer to a game.
 
+        Args:
+            game: The game whose exact values the computer computes.
+
         Raises:
             UnsupportedComputationError: If the computer cannot handle the game.
         """

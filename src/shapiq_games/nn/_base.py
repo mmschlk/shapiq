@@ -102,10 +102,17 @@ class KNNGameBase(NNGameBase[KNeighborsClassifier]):
         *,
         class_index: int | None = None,
     ) -> None:
-        """Initialize the game (see :class:`NNGameBase`).
+        """Initialize the game.
+
+        Args:
+            model: The fitted nearest-neighbor classifier.
+            x: The explained point of shape ``(n_features,)``.
+            class_index: The explained class. Defaults to ``None``, which means class ``1``.
 
         Raises:
-            ValueError: If the model weights its neighbors otherwise than the game.
+            TypeError: If the model's class indices (``model._y``) are not integers.
+            ValueError: If the model weights its neighbors otherwise than the game, or has several
+                outputs.
         """
         if model.weights != self.model_weights:
             msg = (

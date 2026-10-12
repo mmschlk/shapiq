@@ -208,6 +208,10 @@ def _sklearn_model(
 def tuned_params(name: ModelName, dataset: str | None) -> dict[str, Any]:
     """Return the tuned hyperparameters of a model on a dataset (see :data:`TUNED_PRESETS`).
 
+    Args:
+        name: The model name.
+        dataset: The dataset name.
+
     Raises:
         ValueError: If there is no tuned preset for the model on the dataset.
     """
