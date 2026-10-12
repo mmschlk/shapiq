@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
 from shapiq.explainer.product_kernel.conversion import convert_svm
-from shapiq.explainer.product_kernel.game import ProductKernelGame
 from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
 from shapiq.game_theory.exact import ExactComputer
+from shapiq_games.kernel import ProductKernelGame
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain
 from tests.shapiq.fixtures.models import get_california_housing_svr
 
@@ -68,8 +68,7 @@ def compute_product_kernel_explanations(
 
     game = ProductKernelGame(
         model=converted_model,
-        n_players=x_explain.shape[1],
-        explain_point=x_explain.flatten(),
+        x=x_explain.flatten(),
         normalize=False,
     )
 

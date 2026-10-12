@@ -11,12 +11,12 @@ from shapiq_games.synthetic.soum import SOUM
 
 def test_soum_moebius_conversion():
     """Test the basic funcitonality of the Möbius converter."""
-    for _ in range(10):
+    for seed in range(10):
         n = np.random.randint(low=2, high=20)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
 
-        soum = SOUM(n, n_basis_games=n_basis_games)
+        soum = SOUM(n, n_basis_games=n_basis_games, random_state=seed)
 
         predicted_value = soum(np.ones(n))[0]
         emptyset_prediction = soum(np.zeros(n))[0]

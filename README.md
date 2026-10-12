@@ -19,7 +19,7 @@ Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approx
 
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above** and is tested on Python 3.12 to 3.15.
-On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, and `scikit-image`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, and CatBoost models) are only available on Python 3.12 to 3.14 for now.
+On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models, and the image and SigLIP games of `shapiq_games`) are only available on Python 3.12 to 3.14 for now.
 Installation can be done via `uv` :
 ```sh
 uv add shapiq
@@ -31,13 +31,15 @@ or via `pip`:
 pip install shapiq
 ```
 
+The games (`shapiq_games`) and the benchmark (`shapiq_benchmark`) ship with `shapiq` and need the extras `shapiq[games]` and `shapiq[benchmark]`.
+
 ## 👀 Upcoming
 See what’s on the horizon for the library in our [GitHub Project Board](https://github.com/users/mmschlk/projects/4). We plan and track upcoming features, improvements, and maintenance tasks there including new explainers, performance optimizations, and expanded model support.
 
 ## ⭐ Quickstart
 
 You can explain your model with `shapiq.explainer` and visualize Shapley interactions with `shapiq.plot`.
-If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.games` modules.
+If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.game_theory` modules, and the games of `shapiq_games`.
 
 ### Compute any-order feature interactions
 
@@ -47,7 +49,8 @@ Just load your data and model, and then use a `shapiq.Explainer` to compute Shap
 ```python
 import shapiq
 # load data
-X, y = shapiq.load_california_housing(to_numpy=True)
+from sklearn.datasets import fetch_california_housing
+X, y = fetch_california_housing(return_X_y=True)
 # train a model
 from sklearn.ensemble import RandomForestRegressor
 model = RandomForestRegressor()

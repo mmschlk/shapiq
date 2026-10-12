@@ -2,6 +2,23 @@
 
 ## Development
 
+### Harmonized `shapiq_games` and `shapiq_benchmark` [#616](https://github.com/mmschlk/shapiq/pull/616)
+
+- `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`.
+- `shapiq_benchmark` builds games from names (`shapiq_benchmark.setups`), downloads and caches its 83 datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`).
+- new games from the benchmarking paper: DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
+- no data files ship in the wheel anymore (previously ~89 MB).
+
+### Breaking Changes
+
+- the ground-truth games move out of core: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame`, `shapiq.explainer.nn.games` is now `shapiq_games.nn`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame`.
+- the moved games take the model first and the class as a keyword: `InterventionalTreeGame(model, reference_data, x, class_index=...)` (was `target_instance`), `ProductKernelGame(model, x)` (was `ProductKernelGame(n_players, explain_point, model)`), and `KNNGame`, `WeightedKNNGame` and `ThresholdNNGame` (were `KNNExplainerGame`, `WeightedKNNExplainerGame` and `TNNExplainerGame`) take `class_index=None` (class 1) instead of a required positional class; `BinaryWeightedKNNExplainerGame` is removed (`WeightedKNNGame` averages the binary games itself).
+- `RandomGame` is now `RandomTableGame`, `SOUM` is seeded with `random_state=42` by default (was unseeded), and `DummyGame.N` is removed (use `range(game.n_players)`).
+- removes `shapiq_games.benchmark`, `shapiq_games.tabular`, and the `*Bench` classes; `LocalExplanation`, `GlobalExplanation` and `UncertaintyExplanation` are now `TabularLocalExplanation`, `TabularGlobalExplanation` and `TabularUncertaintyExplanation`.
+- some game values change, e.g. the interventional tree game uses raw margins for boosted classifiers, and `SentimentAnalysis` returns `2 P(positive) - 1`.
+- removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (`california_housing` comes from scikit-learn; `bike_sharing` and `adult_census` come from OpenML and need `shapiq[benchmark]`) or scikit-learn's fetchers.
+- the games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
+
 ### Improvement
 - `TreeExplainer(mode="interventional")` applies `min_order` like the path-dependent mode (`min_order=0` adds the empty interaction with the baseline value; larger values drop the lower orders).
 - speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`) by up to two orders of magnitude for orders above 3 and wide feature spaces. The C++ extension is restructured into one output layout over the interactions that can be non-zero, a cohort fill over the background data and a single-reference fill for one background row, and one leaf update; there is no limit on depth, order or feature count. Refactoring removed unused `bool_tree`, `debug`, and `index_func` constructor arguments.
@@ -18,6 +35,7 @@
 Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
 - fixes `MarginalImputer` mixing two level of qualities in estimating the marginalized model output. While, the empty prediction was computed over the whole dataset, each individual coalition was subsampled by default. Each `v(S) - v(∅)` contained the gap between the two estimates. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `MarginalImputer.init_background` keeping the row limit of an earlier, smaller background data set, which would silently use fewer rows of a larger new background than `sample_size` allows. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes the benchmark's ground truth of path-dependent tree games, which ignored the requested index and order, and its Kendall's tau, which correlated `argsort` positions instead of values. [#616](https://github.com/mmschlk/shapiq/pull/616)
 
 ### Improved API Behavior
 
@@ -26,7 +44,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 ### Maintenance
 
-- adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, and `scikit-image` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
+- adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 

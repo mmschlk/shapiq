@@ -2,14 +2,11 @@
 Explaining a Vision Transformer
 =================================
 
-This example shows how to explain an image classification by a Vision
-Transformer (ViT) using ``shapiq``. The image is divided into patches
-and each patch becomes a player in a cooperative game. Shapley values
-then quantify how much each patch contributes to the predicted class.
-
-We use the :class:`~shapiq_games.benchmark.ImageClassifierLocalXAI` game
-from the ``shapiq_games`` package, which wraps a pretrained ViT model and
-handles patch masking internally.
+In an image classification game, the players are regions of an image, and the value of a
+coalition is the probability of a class when only those regions are visible. This example
+explains a Vision Transformer (ViT) on a photo from Imagenette, a ten-class subset of ImageNet,
+with the :class:`~shapiq_games.ImageClassifier` game: it shows what the players are and what the
+model sees, computes exact Shapley values and interactions, and draws them on the image.
 """
 
 from __future__ import annotations
@@ -20,68 +17,82 @@ import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
-import tempfile
-from pathlib import Path
-
+import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 
 import shapiq
-from shapiq_games.benchmark import ImageClassifierLocalXAI
+from shapiq_benchmark.datasets import load_imagenette
+from shapiq_games import ImageClassifier
 
 # %%
-# Set Up the Image Game
-# ----------------------
-# We use a ViT model with a 3x3 grid (9 patches). Each patch is a player
-# in the cooperative game. The game value for a coalition is the model's
-# predicted probability for the top class when only those patches are visible.
-#
-# We create a synthetic image here for portability. In practice you would
-# pass the path to a real photograph.
+# The Game
+# --------
+# :func:`~shapiq_benchmark.datasets.load_imagenette` downloads the Imagenette validation images
+# once and caches them. Every image keeps its ImageNet class, so the pretrained ViT classifies it
+# directly. We explain an English springer for its true class. With ``"vit_9_patches"``, the
+# players are a 3x3 grid of the ViT's patches.
 
-rng = np.random.default_rng(42)
-image = Image.fromarray(rng.integers(0, 255, (384, 384, 3), dtype=np.uint8))
-image_path = str(Path(tempfile.gettempdir()) / "shapiq_vit_example.png")
-image.save(image_path)
-
-game = ImageClassifierLocalXAI(
-    model_name="vit_9_patches",
-    x_explain_path=image_path,
-    normalize=True,
-)
-print(f"Number of patches (players): {game.n_players}")
-print(f"Grand coalition value: {game.grand_coalition_value:.3f}")
+images = load_imagenette(split="val")
+image, label = images[388], int(images.labels[388])
+game = ImageClassifier(image, model="vit_9_patches", class_index=label)
+print(f"{game.n_players} players, explained class: {game.class_name}")
 
 # %%
-# Compute Shapley Values
-# -----------------------
-# With 9 patches we use :class:`~shapiq.KernelSHAP` with a small budget.
+# What the Players Are and What the Model Sees
+# ---------------------------------------------
+# :attr:`~shapiq_games.ImageClassifier.regions` assigns every pixel to a player. For a coalition,
+# the ViT sees only the patches of its players; the others are removed inside the model with a
+# mask token (shown in gray by :meth:`~shapiq_games.ImageClassifier.masked_image`).
 
-approx = shapiq.KernelSHAP(n=game.n_players, random_state=42)
-sv = approx.approximate(budget=50, game=game)
-print(sv)
+coalition = np.array([0, 1, 0, 1, 1, 1, 0, 1, 0], dtype=bool)
+probability = game(coalition.reshape(1, -1))[0] + game.normalization_value
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+axes[0].imshow(game.image)
+axes[0].set_title("Image")
+axes[1].imshow(game.regions, cmap="tab10")
+axes[1].set_title("Players")
+axes[2].imshow(game.masked_image(coalition))
+axes[2].set_title(f"A coalition: p = {probability:.2f}")
+for ax in axes:
+    ax.axis("off")
+plt.tight_layout()
+plt.show()
 
 # %%
-# Visualize Patch Importance
+# Exact Values
+# ------------
+# With 9 players, :class:`~shapiq.ExactComputer` evaluates all 512 coalitions once; every index
+# is then exact.
+
+computer = shapiq.ExactComputer(game)
+shapley_values = computer("SV", 1)
+interactions = computer("k-SII", 2)
+
+# %%
+# Shapley Values on the Image
 # ---------------------------
-# A force plot shows how each patch pushes the prediction away from the
-# baseline (all patches masked).
+# :meth:`~shapiq_games.ImageClassifier.attribution_map` spreads each player's value over its
+# pixels: red regions raise the probability of the class, blue regions lower it.
 
-patch_names = [f"Patch {i}" for i in range(game.n_players)]
-sv.plot_force(feature_names=patch_names)
-
-# %%
-# Second-Order Interactions
-# --------------------------
-# We can also compute pairwise interactions to see which patches
-# interact with each other.
-
-approx_k_sii = shapiq.KernelSHAPIQ(n=game.n_players, index="k-SII", max_order=2, random_state=42)
-sii = approx_k_sii.approximate(budget=50, game=game)
-
-sii.plot_network(feature_names=patch_names)
+heatmap = game.attribution_map(shapley_values)
+bound = np.abs(heatmap).max()
+fig, ax = plt.subplots(figsize=(5, 5))
+ax.imshow(game.image)
+overlay = ax.imshow(heatmap, cmap="RdBu_r", alpha=0.55, vmin=-bound, vmax=bound)
+fig.colorbar(overlay, ax=ax, shrink=0.8, label="Shapley value")
+ax.axis("off")
+plt.show()
 
 # %%
-# References
-# ----------
-# .. footbibliography::
+# Interactions Between Patches
+# ----------------------------
+# The explanation graph shows each patch as a node, with its image from
+# :meth:`~shapiq_games.ImageClassifier.player_images`; edges show the pairwise interactions.
+
+shapiq.si_graph_plot(
+    interactions,
+    feature_image_patches=game.player_images(),
+    center_image=game.image,
+    show=True,
+)
