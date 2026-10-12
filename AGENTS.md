@@ -862,3 +862,8 @@ uv run pre-commit run --all-files
   (`planned - unsupported`) and still reject genuine failures or missing results;
   preserve exact Python-preset counts rather than treating unsupported rows as
   unfinished evaluations.
+
+- Timing plots previously split a method into hardware/oracle-profile curves.
+  A single method curve must pool the underlying weighted cells, never average
+  profile medians. Update both browser reducers and regenerate the authenticated
+  timing cache after changing the query reducer.

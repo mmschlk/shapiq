@@ -1,29 +1,6 @@
 "use strict";
 // Chart series and rendering; app.js owns page state and shared scoring helpers.
 
-function canonicalOracleTiming(timing) {
-  if (timing?.protocol !== "batch-amortized-wall-seconds-v1") return timing;
-  return {
-    ...timing,
-    profiles: timing.profiles.map((profile) => {
-      const hardware = profile.preparation_hardware;
-      if (
-        profile.cpu_model &&
-        hardware?.device === "cpu" &&
-        hardware.cpu_model === profile.cpu_model &&
-        Object.keys(hardware).every((key) =>
-          ["device", "cpu_model"].includes(key),
-        )
-      ) {
-        // Older CPU records omit this redundant object; their timing is equivalent.
-        const { preparation_hardware, ...cpu } = profile;
-        return cpu;
-      }
-      return profile;
-    }),
-  };
-}
-
 function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
   if (computed) {
     const decorate = (series) =>
@@ -136,82 +113,30 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
     false,
     "median",
   );
-  const profiles = new Map();
   const timeMetric = $("timeMetric").value;
   const estimatedTime = timeMetric === "estimated_uncached_seconds";
   $("timeChartNote").textContent = estimatedTime
     ? "Estimated estimator work + batch-amortized oracle costs; not measured end-to-end runtime."
     : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
-  chartPanel.rows.forEach((row) => {
-    if (
-      estimatedTime &&
-      !gamesById.get(row.game_id)?.metadata?.evaluation_timing
-    )
-      return;
-    const worker = row.worker;
-    const verified =
-      worker?.cpu_model && worker?.thread_pools?.length && row.timing_profile;
-    const key = JSON.stringify([
-      row.timing_profile,
-      worker?.cpu_model,
-      worker?.machine,
-      worker?.thread_pools,
-      worker?.thread_environment,
-      ...(estimatedTime
-        ? [
-            canonicalOracleTiming(
-              gamesById.get(row.game_id)?.metadata?.evaluation_timing,
-            ),
-          ]
-        : []),
-      ...(verified ? [] : [row.run_id, row.game_id]),
-    ]);
-    if (!profiles.has(key))
-      profiles.set(key, {
-        rows: [],
-        games: new Set(),
-        label: `${worker?.cpu_model || "Unverified hardware"} · ${row.timing_profile || "diagnostic"}`,
-      });
-    const profile = profiles.get(key);
-    profile.rows.push(row);
-    profile.games.add(row.game_id);
-  });
-  const timeSeries = [];
-  chartNames.forEach((method) =>
-    profiles.forEach((profile) => {
-      const games = chartPanel.games.filter((g) => profile.games.has(g.id));
-      const points = chartRatios
-        .map((ratio) => {
-          const panel = panelAt(ratio, games);
-          const rows = rowsAt(
-            profile.rows.filter(
-              (r) => r.method === method && Number.isFinite(r[timeMetric]),
-            ),
-            panel,
-          );
-          const result = point(rows, panel, ratio);
-          if (result)
-            result.x = summary(
-              rows.map((r) => ({
-                ...r,
-                nmse: Number.isFinite(r.nmse) ? r[timeMetric] : null,
-              })),
-              panel,
-            ).average;
-          return result;
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.x - b.x);
-      if (points.length)
-        timeSeries.push({
-          name: methodLabel(method),
-          method,
-          color: colorFor(method),
-          profile: profile.label,
-          points,
-        });
-    }),
-  );
+  const timeSeries = chartNames.map((method) => {
+    // Reduce the raw cells together: profile medians cannot be averaged.
+    const eligible = chartPanel.rows.filter((row) =>
+      row.method === method && Number.isFinite(row[timeMetric]) &&
+      (!estimatedTime || gamesById.get(row.game_id)?.metadata?.evaluation_timing),
+    );
+    const points = chartRatios.map((ratio) => {
+      const panel = panelAt(ratio);
+      const rows = rowsAt(eligible, panel);
+      const result = point(rows, panel, ratio);
+      if (result)
+        result.x = summary(rows.map((row) => ({
+          ...row,
+          nmse: Number.isFinite(row.nmse) ? row[timeMetric] : null,
+        })), panel).average;
+      return result;
+    }).filter(Boolean).sort((a, b) => a.x - b.x);
+    return { name: methodLabel(method), method, color: colorFor(method), points };
+  }).filter((series) => series.points.length);
   chart(
     "timeChart",
     timeSeries,
@@ -540,7 +465,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     const method = s.method || s.name,
       color = s.color || colorFor(method),
       dash = dashFor(method),
-      marker = Math.floor(methodIndex(method) / palette.length) % 4;
+      marker = methodIndex(method) % 4;
     const group = element("g", {
       class: "series",
       "data-method": method,

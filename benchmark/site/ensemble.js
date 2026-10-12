@@ -6,6 +6,7 @@
   if (!section) return;
   const targetSelect = document.getElementById("ensembleTarget");
   const budgetSelect = document.getElementById("ensembleBudget");
+  const methods = document.getElementById("ensembleMethods");
   const weights = document.getElementById("ensembleWeights");
   const scores = document.getElementById("ensembleScores");
   const note = document.getElementById("ensembleNote");
@@ -66,7 +67,7 @@
 
   function scatter(pca) {
     plot.replaceChildren();
-    const svg = svgNode("svg", { viewBox: "0 0 540 310", role: "img", "aria-label": "PCA of normalized estimator errors" });
+    const svg = svgNode("svg", { viewBox: "0 0 640 320", role: "img", "aria-label": "PCA of normalized estimator errors" });
     const bounds = (key) => {
       const values = pca.points.map((point) => point[key]);
       const min = Math.min(0, ...values), max = Math.max(0, ...values);
@@ -74,18 +75,45 @@
       return [min - pad, max + pad];
     };
     const [xmin, xmax] = bounds("x"), [ymin, ymax] = bounds("y");
-    const x = (value) => 50 + 425 * (value - xmin) / (xmax - xmin);
-    const y = (value) => 255 - 225 * (value - ymin) / (ymax - ymin);
-    svg.append(svgNode("line", { x1: 50, x2: 475, y1: y(0), y2: y(0), class: "ensembleAxis" }),
-      svgNode("line", { x1: x(0), x2: x(0), y1: 30, y2: 255, class: "ensembleAxis" }),
-      svgNode("text", { x: 270, y: 292, "text-anchor": "middle" }, `PC1 · ${number(100 * pca.explained_variance[0])}% variance`),
-      svgNode("text", { x: 16, y: 150, transform: "rotate(-90 16 150)", "text-anchor": "middle" }, `PC2 · ${number(100 * pca.explained_variance[1])}% variance`));
+    const x = (value) => 62 + 553 * (value - xmin) / (xmax - xmin);
+    const y = (value) => 273 - 250 * (value - ymin) / (ymax - ymin);
+    svg.append(svgNode("rect", { x: 62, y: 23, width: 553, height: 250, fill: "#f8faff", rx: 6 }));
+    for (let i = 0; i <= 4; i++) {
+      const xx = xmin + (xmax - xmin) * i / 4;
+      const yy = ymin + (ymax - ymin) * i / 4;
+      svg.append(
+        svgNode("line", { x1: 62, x2: 615, y1: y(yy), y2: y(yy), stroke: "#dfe6f0", "stroke-dasharray": "3 4" }),
+        svgNode("text", { x: 55, y: y(yy) + 4, "text-anchor": "end" }, Number(yy.toPrecision(2)).toString()),
+        svgNode("text", { x: x(xx), y: 292, "text-anchor": "middle" }, Number(xx.toPrecision(2)).toString()),
+      );
+    }
+    svg.append(
+      svgNode("text", { x: 338, y: 317, "text-anchor": "middle" }, `PC1 · ${Math.round(100 * pca.explained_variance[0])}% variance`),
+      svgNode("text", { x: 62, y: 12 }, `PC2 · ${Math.round(100 * pca.explained_variance[1])}% variance`),
+    );
+    const legend = document.createElement("div");
+    legend.className = "legend";
     pca.points.forEach((point) => {
-      const dot = svgNode("circle", { cx: x(point.x), cy: y(point.y), r: 4, tabindex: 0 });
-      dot.append(svgNode("title", {}, `${point.method}: ${number(point.x)}, ${number(point.y)}`));
-      svg.append(dot, svgNode("text", { x: x(point.x) + 7, y: y(point.y) - 7, class: "ensemblePointLabel" }, point.method));
+      const color = colorFor(point.method);
+      const label = `${point.method}: PC1 ${number(point.x)}, PC2 ${number(point.y)}`;
+      const dot = svgNode("circle", { cx: x(point.x), cy: y(point.y), r: 4, fill: color,
+        stroke: "white", "stroke-width": 1, tabindex: 0, role: "img", "aria-label": label });
+      dot.append(svgNode("title", {}, label));
+      bindHighlight(dot, point.method, label);
+      svg.append(dot);
+      const button = document.createElement("button");
+      button.type = "button";
+      const swatch = document.createElement("span");
+      swatch.className = "ensembleSwatch";
+      swatch.style.backgroundColor = color;
+      button.append(swatch, document.createTextNode(methodLabel(point.method)));
+      bindHighlight(button, point.method, label);
+      // Bring even coincident points to the front when their legend is selected.
+      button.addEventListener("pointerenter", () => svg.append(dot));
+      button.addEventListener("focus", () => svg.append(dot));
+      legend.append(button);
     });
-    plot.append(svg);
+    plot.append(svg, legend);
   }
 
   function render() {
@@ -93,14 +121,20 @@
     if (section.hidden) return;
     const panel = artifact.panels.find((p) => p.target === targetSelect.value && p.relative_budget === Number(budgetSelect.value));
     if (!panel) { section.hidden = true; return; }
-    weights.replaceChildren(); scores.replaceChildren();
-    panel.methods.map((method, i) => ({ method, alpha: panel.coefficients[i] }))
-      .sort((a, b) => Math.abs(b.alpha) - Math.abs(a.alpha))
-      .forEach(({ method, alpha }) => row(weights, [method, `${alpha > 0 ? "+" : ""}${number(alpha)}`]));
-    row(scores, ["Fitted combination · held out", number(panel.held_out.r2), number(panel.held_out.nmse)]);
-    row(scores, ["Equal weights · held out", number(panel.equal_weights.r2), number(panel.equal_weights.nmse)]);
-    row(scores, ["Fitted combination · training", number(panel.train.r2), number(panel.train.nmse)]);
-    note.textContent = `${panel.n_panels.toLocaleString()} matched game panels · ${panel.n_datasets} datasets · ${panel.folds.length} dataset-grouped folds. Higher R² and lower nMSE are better; — means undefined.`;
+    weights.replaceChildren(); methods.replaceChildren();
+    const ordered = panel.methods.map((method, i) => ({ method, alpha: panel.coefficients[i] }))
+      .sort((a, b) => Math.abs(b.alpha) - Math.abs(a.alpha));
+    const header = document.createElement("tr");
+    ["Estimator", ...ordered.map(({ method }) => methodLabel(method))].forEach((name) => {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = name;
+      header.append(th);
+    });
+    methods.append(header);
+    row(weights, ["Coefficient α", ...ordered.map(({ alpha }) => `${alpha > 0 ? "+" : ""}${number(alpha)}`)]);
+    scores.textContent = `Held-out normalized R²: ${number(panel.held_out.r2)} · nMSE: ${number(panel.held_out.nmse)} (equal weights: ${number(panel.equal_weights.r2)} R², ${number(panel.equal_weights.nmse)} nMSE).`;
+    note.textContent = `${panel.n_panels.toLocaleString()} matched panels · ${panel.n_datasets} datasets · ${panel.folds.length} dataset-grouped folds.`;
     scatter(panel.pca);
   }
 
@@ -110,7 +144,8 @@
     artifact.panels.filter((p) => p.target === targetSelect.value)
       .sort((a, b) => a.relative_budget - b.relative_budget)
       .forEach((panel) => budgetSelect.add(new Option(`${panel.relative_budget} × players`, String(panel.relative_budget))));
-    if ([...budgetSelect.options].some((option) => option.value === previous)) budgetSelect.value = previous;
+    budgetSelect.value = [...budgetSelect.options].some((option) => option.value === previous)
+      ? previous : budgetSelect.options[budgetSelect.options.length - 1].value;
     render();
   }
 
@@ -129,7 +164,8 @@
     const value = JSON.parse(text);
     if (!validate(value)) return;
     artifact = value;
-    [...new Set(artifact.panels.map((panel) => panel.target))].forEach((target) => targetSelect.add(new Option(target, target)));
+    [...new Set(artifact.panels.map((panel) => panel.target))].forEach((target) => targetSelect.add(new Option(targetLabel(target), target)));
+    if ([...targetSelect.options].some((option) => option.value === "SV · order 1")) targetSelect.value = "SV · order 1";
     budgets();
   }).catch(() => { section.hidden = true; });
 })();

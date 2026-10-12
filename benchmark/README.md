@@ -6,13 +6,16 @@
 The active **scope version 2** compares **22 estimator configurations** across
 individual predictions, data valuation and feature selection on **24 datasets**.
 Its **512 recipes × four construction seeds = 2,048 prepared instances** have
-metadata-verified existing exact references, not yet complete estimator coverage.
+exact references and **100% successful supported coverage for the 20 required
+estimators** (1,071,525 evaluations). ShaplEIG and SPEX remain the two declared
+partial-coverage methods. The [verified compact release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-compact-2026-10-12)
+is published and live.
 The selection retains 477 core recipes and adds 35 balanced KNN/TNN recipes;
 35 core recipes failing the model-quality check on any seed are excluded in full. Generic linear/random-forest games have at most 12 players;
 RF tree games use 8/16/32 features; selected KNN/TNN games use 32/64 training rows.
 Valuation input width is exactly `min(12, dataset width)`, with no width sweep or
-special-model contrasts. Historical broader results remain a separate cohort;
-the existing website stays in place until the version 2 replacement is validated.
+special-model contrasts. Historical broader results remain a separate cohort
+and do not enter the published compact comparison.
 
 ## Prepare → evaluate → report
 
@@ -107,8 +110,8 @@ Historical campaigns have separate qualified patches for **SVARMIQ caching**,
 **SHAPIQ contribution caching** and **ProxySPEX high-dimensional sampling weights**.
 They remain outside deployed `shapiq`. Use the source files and replay adapters
 from the corresponding authenticated campaign/release supplement; the generic
-snapshot ZIP does not package these patches or the full environment. These historical supplements do not by themselves establish a completed
-version 2 release.
+snapshot ZIP does not package these patches or the full environment. The compact
+release includes its own authenticated source/replay supplement.
 
 ## Add an estimator
 
@@ -135,11 +138,10 @@ comparison on the same snapshot.
   cap was waived; allocation costs remain recorded. No production GPUs.
 - Preserve preparation failures and exclusions rather than inventing truth.
   Reuse old outcomes only when their exact inputs match the version 2 design.
-- Event-only monitoring remains active; periodic progress reminders are disabled.
-  Publication waits for actual completed outputs and verified coverage/scores,
-  with 100% supported success sought for every method except ShaplEIG and SPEX.
-- Keep the existing website until the replacement passes. The final combined
-  exporter must preserve source overlays and authenticate recovery ownership.
+- The compact campaign is complete and live-verified. Its watcher and reminder
+  schedule are stopped; do not restart historical jobs.
+- The published export preserves source overlays and authenticates recovery
+  ownership. New runs and future replacements need their own validation.
 
 Edit [site/about.md](site/about.md), then run:
 

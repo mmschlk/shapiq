@@ -1,12 +1,11 @@
 "use strict";
 const { formatCount, formatCoverage } = BenchmarkQuery;
+// Distinct hues shared by every chart; shapes and dashes also encode method identity.
 const palette = [
-  "#426BE0",
-  "#BF2355",
-  "#007C59",
-  "#A34B87",
-  "#947000",
-  "#287FA8",
+  "#0072B2", "#D55E00", "#009E73", "#CC79A7", "#8A6D00", "#56B4E9",
+  "#7B2CBF", "#B2182B", "#4D7C0F", "#008B8B", "#E07000", "#333333",
+  "#AA4499", "#332288", "#886644", "#117733", "#CC6677", "#777700",
+  "#4477AA", "#AA3377", "#666666", "#007A99",
 ];
 let data,
   pendingRuns = 0,
@@ -39,7 +38,7 @@ const methodIndex = (method) =>
 const colorFor = (method) => palette[methodIndex(method) % palette.length];
 const dashFor = (method) =>
   ["", "7 3", "2 3", "9 3 2 3"][
-    Math.floor(methodIndex(method) / palette.length) % 4
+    methodIndex(method) % 4
   ];
 const isSynthetic = (game) => Boolean(game.metadata?.synthetic);
 const isUnderBudget = (row) =>
@@ -514,7 +513,7 @@ function countPendingRuns() {
 function selection(family = $("family").value, allBudgets = false) {
   const games = data.games.filter(
     (g) =>
-      isSynthetic(g) === ($("panel").value === "diagnostic") &&
+      !isSynthetic(g) &&
       ($("includeControls").checked ||
         g.metadata?.game_quality?.role !== "control") &&
       target(g) === $("target").value &&
@@ -652,7 +651,7 @@ const same = (a, b) =>
 function partitionRequest() {
   const selected = {
     target: $("target").value,
-    panel: $("panel").value,
+    panel: "real",
     include_controls: $("includeControls").checked,
     family: $("family").value,
     dataset: $("dataset").value,
@@ -792,9 +791,8 @@ async function renderPartitioned() {
       : hardware.cpu_models.length
       ? `Measured workers: ${hardware.cpu_models.join("; ")}. Profiles: ${hardware.timing_profiles.join(", ")}. Per-run placement and thread details are included in JSON downloads.`
       : "Worker hardware was not recorded in this older result.";
-    if (result.details_deferred && (!result.timing_precomputed ||
-        document.querySelector(".methodology[open], .runFailures[open]"))) {
-      // Paint the small precomputed view before fetching timing in the worker.
+    if (result.details_deferred) {
+      // Paint the precomputed charts first, then load failure/hardware details automatically.
       setTimeout(() => {
         if (client !== partitionClient || version !== partitionRenderVersion) return;
         requestPartitionDetails();
@@ -872,7 +870,7 @@ function render() {
       Boolean(p.include_controls) === $("includeControls").checked &&
       same(p.game_ids, s.panel_ids) &&
       same(p.methods, s.methods) &&
-      (!p.panel || p.panel === $("panel").value) &&
+      (!p.panel || p.panel === "real") &&
       s.panel_ids.every((id) =>
         same(p.game_budgets?.[id] || p.budgets, s.game_budgets[id]),
       ),
@@ -1236,7 +1234,6 @@ document.querySelectorAll(".methodology, .runFailures").forEach((section) => {
   });
 });
 [
-  "panel",
   "target",
   "family",
   "dataset",
@@ -1264,7 +1261,6 @@ document.querySelectorAll(".methodology, .runFailures").forEach((section) => {
       loadTarget();
       return;
     }
-    if (id === "panel") $("family").value = "";
     if (id === "chartFamily") chartFamilyExplicit = true;
     if (data) render();
   }),

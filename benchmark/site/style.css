@@ -222,7 +222,7 @@ h1 span {
 /* Filters */
 .toolbar {
   display: grid;
-  grid-template-columns: 0.85fr 1.1fr 1.1fr 0.9fr 1.05fr auto;
+  grid-template-columns: 1.1fr 1.1fr 0.9fr 1.05fr auto;
   background: #fff;
   border: 1px solid var(--line);
   box-shadow: 0 6px 18px #33274c03;
@@ -1329,18 +1329,19 @@ footer a {
 .ensembleSection[hidden] { display: none; }
 .ensembleSelectors { display: flex; flex-wrap: wrap; gap: 12px; }
 .ensembleSelectors label { color: var(--muted); font-size: 12px; }
-.ensembleGrid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(300px, 2fr); gap: 24px; }
-.ensembleGrid h3 { font-size: 14px; margin: 22px 0 10px; }
+.ensembleWeightsWrap { margin-top: 18px; }
 .ensembleTable { width: 100%; min-width: 0; font-size: 12px; }
-.ensembleTable th, .ensembleTable td { padding: 10px 12px; white-space: normal; }
+.ensembleTable th, .ensembleTable td { padding: 10px 12px; white-space: nowrap; text-align: center; }
 .ensembleTable th:first-child, .ensembleTable td:first-child { text-align: left; }
-#ensemblePca svg { display: block; width: 100%; height: auto; overflow: visible; }
-#ensemblePca text { fill: var(--muted); font-size: 11px; }
-#ensemblePca .ensemblePointLabel { font-size: 9px; }
-#ensemblePca circle { fill: var(--blue); }
-#ensemblePca circle:focus { outline: 2px solid var(--ink); }
-.ensembleAxis { stroke: var(--line); stroke-width: 1; }
+.ensembleTable td { font-variant-numeric: tabular-nums; font-weight: 400; }
+.ensembleDetails { margin-top: 12px; color: var(--muted); font-size: 11px; }
+.ensemblePlotHeading { font-size: 14px; margin: 24px 0 14px; }
+#ensemblePca { max-width: 800px; margin: 0 auto; }
+#ensemblePca text { fill: #596980; font-size: 10px; }
+#ensemblePca circle.dimmed { opacity: 0.15; }
+#ensemblePca circle.emphasis { r: 6; stroke: var(--ink); }
+#ensemblePca circle:focus { outline: none; stroke: var(--ink); stroke-width: 2; }
+.legend .ensembleSwatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 @media (max-width: 760px) {
-  .ensembleGrid { grid-template-columns: minmax(0, 1fr); }
   .ensembleSection .cardHeading { align-items: flex-start; flex-direction: column; gap: 12px; }
 }

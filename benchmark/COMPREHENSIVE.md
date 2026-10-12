@@ -8,10 +8,12 @@ estimator seeds. The executable recipe list is
 `shapiq_benchmark.comprehensive`.
 
 **512 recipes × four construction seeds = 2,048 prepared instances**: 477
-core recipes plus 35 KNN/TNN recipes with 32 or 64 training-row players. Metadata
-checks verify existing exact references for all selected instances; this is not
-100% successful estimator coverage or a published replacement report. No new
-preparation is required.
+core recipes plus 35 KNN/TNN recipes with 32 or 64 training-row players. Exact
+references are available for all selected instances. The
+[compact release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-compact-2026-10-12)
+is published and live-verified: all 20 required estimators have 100% successful
+supported coverage (1,071,525 evaluations). ShaplEIG and SPEX retain explicit
+partial coverage.
 
 Thirty-five core recipes were excluded in full because at least one of their four
 construction seeds failed the model-quality check against the dummy predictor.
@@ -21,8 +23,7 @@ The public [selection manifest](suites/compact-selection.json) records the exact
 retained and excluded recipes and the deterministic balancing rule.
 
 Historical broader results outside this selection do not count toward version 2
-coverage. Keep the existing published report until the replacement passes
-validation; deploy its About page and data together.
+coverage. The compact report and its matching About page are deployed together.
 
 ## Fixed scope
 

@@ -62,12 +62,6 @@
         <div id="notice" role="status">Loading…</div>
       </div>
       <section class="toolbar" aria-label="Benchmark filters">
-        <label
-          >PANEL<select id="panel">
-            <option value="real">Real games</option>
-            <option value="diagnostic">Diagnostics</option>
-          </select></label
-        >
         <label>EXPLANATION<select id="target"></select></label>
         <label>GAME FAMILY<select id="family"></select></label>
         <label>BUDGET / PLAYER<select id="budget"></select></label>
@@ -334,14 +328,14 @@
             </p>
           </div>
         </details>
-        <details class="runFailures">
+        <details class="runFailures" open>
           <summary>Under-budget runs <span>＋</span></summary>
           <p class="drawerIntro">
             Budgets too small for the estimator. These runs remain unscored.
           </p>
           <ul id="underBudget"></ul>
         </details>
-        <details class="runFailures">
+        <details class="runFailures" open>
           <summary>Other failed runs <span>＋</span></summary>
           <p class="drawerIntro">
             Timeouts and errors. The six most common are shown.
@@ -363,33 +357,28 @@
               <label class="compactSelect">Budget <select id="ensembleBudget"></select></label>
             </div>
           </div>
-          <p class="chartNote">Precomputed for the selected cohort, independent of the filters above.
-            Signed linear weights are fitted separately for each target and budget.
-            All games from a dataset stay together in cross-validation.</p>
-          <p class="chartNote" id="ensembleNote"></p>
-          <div class="ensembleGrid">
-            <div>
-              <h3>Combination weights</h3>
-              <div class="tableWrap"><table class="ensembleTable">
-                <thead><tr><th>Estimator</th><th>Signed coefficient</th></tr></thead>
-                <tbody id="ensembleWeights"></tbody>
-              </table></div>
-              <p class="chartNote">Weights fitted on all available matched panels; held-out scores
-                use weights fitted without the held-out datasets. Correlated estimators can
-                cancel each other, so weights are not importance scores.</p>
-            </div>
-            <div>
-              <h3>Predictive accuracy</h3>
-              <div class="tableWrap"><table class="ensembleTable">
-                <thead><tr><th>Comparison</th><th>Normalized R²</th><th>nMSE</th></tr></thead>
-                <tbody id="ensembleScores"></tbody>
-              </table></div>
-              <h3>Shared error patterns</h3>
-              <div id="ensemblePca"></div>
-              <p class="chartNote">PCA of normalized estimator errors. Nearby estimators have
-                similar projected error patterns; position is not an accuracy ranking.</p>
-            </div>
+          <p class="chartNote">Signed coefficients combine estimates of the same game.
+            This analysis uses the full cohort, independently of the filters above.</p>
+          <div class="tableWrap ensembleWeightsWrap" tabindex="0" aria-label="Estimator coefficients; scroll horizontally">
+            <table class="ensembleTable">
+              <thead id="ensembleMethods"></thead>
+              <tbody id="ensembleWeights"></tbody>
+            </table>
           </div>
+          <p class="chartNote" id="ensembleScores"></p>
+          <p class="chartNote" id="ensembleNote"></p>
+          <details class="ensembleDetails">
+            <summary>How the coefficients are fitted</summary>
+            <p class="chartNote">Displayed coefficients are fitted on all matched panels.
+              Held-out scores use dataset-grouped cross-validation: no games from the test
+              dataset enter the fit. Correlated estimators can cancel each other, so
+              coefficients are not importance scores.</p>
+          </details>
+          <h3 class="ensemblePlotHeading">Shared error patterns</h3>
+          <div id="ensemblePca"></div>
+          <p class="chartNote">PCA of normalized errors. Nearby estimators have similar projected
+            error patterns, not necessarily similar accuracy. Hover or focus a point or name
+            to highlight its estimator.</p>
         </article>
       </section>
     </main>

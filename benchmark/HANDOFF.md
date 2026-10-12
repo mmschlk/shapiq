@@ -4,7 +4,18 @@ The active design is [scope version 2](COMPREHENSIVE.md): 512 recipes and 2,048
 prepared instances across all 24 datasets. Estimator fixes and speedups remain
 in their separate PRs; the benchmark does not silently change core algorithms.
 
-## Complete and publish the selected cohort
+## Published result
+
+- [Live benchmark](https://www.rtealwitter.com/shapiq/) and
+  [reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-compact-2026-10-12).
+- All 20 required estimators: **1,071,525 / 1,071,525 successful supported
+  evaluations**. ShaplEIG and SPEX are the two explicit partial-coverage methods.
+- Final outputs, scores, coverage, filters and live delivery were independently
+  verified. The campaign is complete; the watcher and reminder schedule are off.
+- `benchmark/site/data-source.json` pins the deployed release bytes. Scientific
+  inputs and replay instructions are in the README and release artifacts.
+
+## Requirements for future replacements
 
 - Authenticate exact recipe, game, source, settings, budget and seed matches before
   reusing historical results. Preserve successful matched outcomes and original

@@ -729,40 +729,23 @@ globalThis.BenchmarkQuery = (() => {
           })
           .filter(Boolean),
       });
-      const byProfile = new Map(),
-        successfulProfiles = new Set();
-      for (const i of chartIndexes) {
-        const id = c.profile[i];
-        if (id == null || !Number.isFinite(c.time[i])) continue;
-        if (!byProfile.has(id)) byProfile.set(id, []);
-        byProfile.get(id).push(i);
-        if (c.status[i] === "ok" && Number.isFinite(c.score[i]))
-          successfulProfiles.add(id);
-      }
-      // Failed/unverified profiles can number in the thousands but have no curve.
-      // Group once; never rescan every method row for each timing profile.
-      for (const id of [...successfulProfiles].sort((a, b) => a - b)) {
-        const profile = orderedProfiles[id];
-        const selected = [...profile.games]
-          .map((id) => byId.get(id))
-          .sort((a, b) => a.sequence - b.sequence);
-        const points = ratios
-          .map((ratio) => {
-            const p = at(ratio, selected),
-              indexes = byProfile.get(id).filter((i) => contains(p, c, i));
-            const result = point(c, indexes, p, ratio);
-            if (result) result.x = summary(c, indexes, p, true).average;
-            return result;
-          })
-          .filter(Boolean)
-          .sort((a, b) => a.x - b.x);
-        if (points.length) {
-          outputPoints += points.length;
-          timeSeries.push({ method, profile: profile.label, points });
-          require(timeSeries.length <= limits.series &&
-            outputPoints <=
-              limits.points, "timing output exceeds memory limit");
-        }
+      // One curve per method, using the same game weights as the error chart.
+      // Aggregate raw cells, never medians of separate hardware profiles.
+      const timedIndexes = chartIndexes.filter((i) =>
+        c.profile[i] != null && Number.isFinite(c.time[i]),
+      );
+      const points = ratios.map((ratio) => {
+        const p = at(ratio);
+        const indexes = timedIndexes.filter((i) => contains(p, c, i));
+        const result = point(c, indexes, p, ratio);
+        if (result) result.x = summary(c, indexes, p, true).average;
+        return result;
+      }).filter(Boolean).sort((a, b) => a.x - b.x);
+      if (points.length) {
+        outputPoints += points.length;
+        timeSeries.push({ method, points });
+        require(timeSeries.length <= limits.series &&
+          outputPoints <= limits.points, "timing output exceeds memory limit");
       }
     }
     check();

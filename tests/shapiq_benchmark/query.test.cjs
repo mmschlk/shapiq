@@ -230,7 +230,7 @@ function legacy(data, req) {
   );
   vm.runInContext(
     charts.slice(
-      charts.indexOf("function canonicalOracleTiming"),
+      charts.indexOf("function renderPerformanceCharts"),
       charts.indexOf("function renderHistory"),
     ),
     c,
@@ -288,7 +288,6 @@ for (const timing_metric of ["seconds", "estimated_uncached_seconds"])
     "filtered",
     "order",
     "controls",
-    "diagnostic",
   ])
     test(`legacy exact ${timing_metric}/${variant}`, async () => {
       const data = fixture(),
@@ -308,10 +307,6 @@ for (const timing_metric of ["seconds", "estimated_uncached_seconds"])
       if (variant === "controls") {
         r.selection.include_controls = true;
         r.chart_selection.include_controls = true;
-      }
-      if (variant === "diagnostic") {
-        r.selection.panel = "diagnostic";
-        r.chart_selection.panel = "diagnostic";
       }
       const got = await api.query(options.manifest, r, options),
         expected = legacy(data, r);
@@ -432,7 +427,7 @@ test("198 equal weights hit the exact compensated half-mass midpoint", async () 
   assert.equal(got.table[0].median, 0.5);
   assert.deepEqual(plain(got.table), legacy(data, q).table);
 });
-test("zero-game profile encounter cannot reorder surviving curves", async () => {
+test("timing combines raw cells across profiles and excludes zero games", async () => {
   const data = fixture(),
     worker = data.records.find((r) => r.worker).worker;
   data.games = data.games.slice(0, 3).map((g, i) => ({
@@ -461,10 +456,30 @@ test("zero-game profile encounter cannot reorder surviving curves", async () => 
     o = input(data);
   const got = await api.query(o.manifest, q, o);
   assert.deepEqual(plain(got.time_series), legacy(data, q).time_series);
-  assert.deepEqual(plain(got.time_series.map((s) => s.profile)), [
-    "CPU · B",
-    "CPU · A",
-  ]);
+  assert.equal(got.time_series.length, 1);
+  assert.equal(got.time_series[0].points[0].x, 1.5);
+  assert.equal(got.time_series[0].points[0].y, 1.5);
+});
+test("timing merges unequal profile groups before computing median error", async () => {
+  const data = fixture();
+  const worker = data.records.find((r) => r.worker).worker;
+  data.games = data.games.slice(0, 3).map((game) => ({
+    ...game, stratum: "same", budgets: [game.n_players],
+  }));
+  data.records = data.games.map((game, i) => ({
+    sequence: i, game_id: game.id, method: "A", budget: game.n_players,
+    seed: 0, status: "ok", nmse: [0, 0, 9][i], seconds: [1, 1, 10][i],
+    estimated_uncached_seconds: [2, 2, 20][i], queries: game.n_players,
+    worker, run_id: "r", timing_profile: i < 2 ? "first" : "second",
+  }));
+  data.suite.seeds = [0];
+  data.suite.relative_budgets = [1];
+  const o = input(data), q = request({ methods: ["A"] });
+  const got = await api.query(o.manifest, q, o);
+  assert.equal(got.time_series.length, 1);
+  assert.equal(got.time_series[0].points[0].y, 0);
+  assert(Math.abs(got.time_series[0].points[0].x - 4) < 1e-12);
+  assert.deepEqual(plain(got.time_series), legacy(data, q).time_series);
 });
 test("empty and all-pending panels retain planned coverage and no finite scores", async () => {
   const data = fixture(),
@@ -574,7 +589,7 @@ test("many successful unverified profiles use linear row filtering work", async 
         request({ methods: ["A"] }),
         o,
       );
-    assert.equal(result.time_series.length, n);
+    assert.equal(result.time_series.length, 1);
     return c.predicateCalls;
   };
   const small = await measure(40),
