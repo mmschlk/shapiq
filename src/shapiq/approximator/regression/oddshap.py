@@ -1,6 +1,6 @@
 """This module contains the OddSHAP approximator for estimating Shapley values.
 
-OddSHAP is a value estimator based on paired sampling, odd-only Fourier regression, and sparse odd interaction detection as introduced in Fumagalli et al. (2026) :cite:t:`Fumagalli.2026`
+OddSHAP is a value estimator based on paired sampling, odd-only Fourier regression, and sparse odd interaction detection as introduced by :cite:t:`Fumagalli.2026a`.
 """
 
 from __future__ import annotations
@@ -107,7 +107,9 @@ def _ensemble_to_fourier(tree_models: list[TreeModel]) -> dict[tuple[int, ...], 
 
 
 class OddSHAP(Approximator):
-    """OddSHAP approximator for first-order Shapley values (Fumagalli et al., 2026).
+    """OddSHAP approximator for first-order Shapley values.
+
+    OddSHAP was introduced by :cite:t:`Fumagalli.2026a`.
 
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
@@ -361,7 +363,7 @@ class OddSHAP(Approximator):
         """Build the active OddSHAP support from a list of selected terms.
 
         The support always contains the empty interaction ``()`` plus the given
-        terms (deduplicated and sorted by size then value). Unlike in Fumagalli et al. (2026),
+        terms (deduplicated and sorted by size then value). Unlike in :cite:t:`Fumagalli.2026a`,
         singletons are *not* auto-injected here: relevance-based
         individual selection now happens upstream in ``_select_active_terms``, so
         only individuals that were actually selected end up in the support.
@@ -404,8 +406,8 @@ class OddSHAP(Approximator):
     ) -> tuple[list[tuple[int, ...]], list[tuple[int, ...]]]:
         """Split the shared candidate budget between individuals and interactions.
 
-        Implements the paper's "Controlling Higher-Order Terms" priority
-        (Fumagalli et al. 2026, Algorithm 1): the most relevant individuals are
+        Implements the "Controlling Higher-Order Terms" priority of Algorithm 1 of
+        :cite:t:`Fumagalli.2026a`: the most relevant individuals are
         screened first from the surrogate's Fourier spectrum (all ``n`` of them
         are always ranked, whether or not the surrogate happened to split on
         them), and only the remaining candidate budget is spent screening
@@ -476,8 +478,8 @@ class OddSHAP(Approximator):
     ) -> list[tuple[int, ...]]:
         """Screen higher-order odd interactions from the surrogate's Fourier spectrum.
 
-        Implements the paper's ``OddInteractionExtract`` (Fumagalli et al. 2026,
-        Algorithm 1 / "Controlling Higher-Order Terms"): the fitted GBT is
+        Implements ``OddInteractionExtract`` of :cite:t:`Fumagalli.2026a` (Algorithm 1 /
+        "Controlling Higher-Order Terms"): the fitted GBT is
         converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
         frequencies with the largest coefficient magnitudes are kept.
 

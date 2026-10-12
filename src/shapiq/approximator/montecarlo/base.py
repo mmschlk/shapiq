@@ -317,10 +317,9 @@ class MonteCarlo(Approximator[TIndices]):
     def _log_svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
         """Log of the SVARM-IQ sampling adjustment weights, stable for large n.
 
-        Log-space counterpart of :func:`Kolpaczki et al. (2024)
-        <https://doi.org/10.48550/arXiv.2401.13371>`'s SVARM-IQ routine, deploying both intersection
-        and coalition-size stratification. The stratum probability ``binom(n - m, size - i)`` is
-        kept in log-space (``log_binom``) so it does not overflow.
+        Log-space counterpart of the SVARM-IQ routine of :cite:t:`Kolpaczki.2024b`, deploying both
+        intersection and coalition-size stratification. The stratum probability
+        ``binom(n - m, size - i)`` is kept in log-space (``log_binom``) so it does not overflow.
 
         Args:
             interaction: The interaction for the intersection stratification.
@@ -373,8 +372,7 @@ class MonteCarlo(Approximator[TIndices]):
         """Sign and log-magnitude of the standard form weights, stable for large ``n``.
 
         Initializes the weights for the interaction index re-written from discrete derivatives to
-        standard form. Standard form according to Theorem 1 by
-        `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+        standard form. Standard form according to Theorem 1 by :cite:t:`Fumagalli.2023`.
 
         The discrete-derivative weights are non-negative, so the standard-form weight
         ``(-1) ** (order - intersection) * w`` factors into a sign and a magnitude. The magnitude is
@@ -473,7 +471,7 @@ class MonteCarlo(Approximator[TIndices]):
 
         The weight is ``max_order / (n * binom(n - 1, t))`` for top-order interactions and
         coalition size ``t`` (an indicator on the empty coalition for lower orders). For details,
-        refer to `Dhamdhere et al. (2020) <https://doi.org/10.48550/arXiv.1902.05622>`_.
+        refer to :cite:t:`Sundararajan.2020`.
         """
         if interaction_size == self.max_order:
             return float(
@@ -485,8 +483,7 @@ class MonteCarlo(Approximator[TIndices]):
         """Log of the FSII discrete derivative weight, defined for top-order interactions only.
 
         The weight is a factorial ratio (computed via ``gammaln``) based on the FSII
-        representation according to Theorem 19 by `Tsai et al. (2023)
-        <https://doi.org/10.48550/arXiv.2203.00870>`_.
+        representation according to Theorem 19 by :cite:t:`Tsai.2022`.
         """
         if interaction_size == self.max_order:
             return float(
@@ -503,8 +500,7 @@ class MonteCarlo(Approximator[TIndices]):
         """Log of the FBII discrete derivative weight, defined for top-order interactions only.
 
         The weight is ``1 / 2 ** (n - s)`` for interaction size ``s``, based on the FBII
-        representation according to Theorem 17 by `Tsai et al. (2023)
-        <https://doi.org/10.48550/arXiv.2203.00870>`_.
+        representation according to Theorem 17 by :cite:t:`Tsai.2022`.
         """
         if interaction_size == self.max_order:
             return float(-(self.n - interaction_size) * np.log(2))

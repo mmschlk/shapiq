@@ -68,19 +68,19 @@ class TreeExplainer(Explainer):
 
     :meth:`explain_X` explains a whole data matrix at once, where we return a :class:`~shapiq.interaction_values.InteractionValuesBatch` object, for which ``values[(1,)]`` is a 1D array of the attributions of feature 1 for all explained instances, and ``values[(1, 2)]`` is a 1D array of the interactions of features 1 and 2 for all explained instances.
 
-    Two established tree-explanation modes :cite:t:`Lundberg.2020` differ in what "feature
+    Two established tree-explanation modes :cite:p:`Lundberg.2020` differ in what "feature
     :math:`i` is absent" means:
 
     - In ``"pathdependent"`` mode (the default) an absent feature follows *both* children of
       its split nodes, weighted by the share of training samples that went each way — the
       background distribution is the one already stored in the tree, so no data is needed.
-      The computation uses Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a` (whose first-order
-      case was independently derived in TreeGrad-Ranker :cite:t:`Li.2026`), implemented in
+      The computation uses Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` (whose first-order
+      case was independently derived in TreeGrad-Ranker by :cite:t:`Li.2026`), implemented in
       :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP`: values and interactions are
       Gauss-Legendre integrals of weighted Banzhaf interaction polynomials, numerically exact
       in float64 at any tree depth. The algorithm descends from Linear TreeSHAP
-      :cite:t:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
-      by TreeSHAP-IQ :cite:t:`Muschalik.2024a`; Banzhaf indices fall out of the same
+      :cite:p:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
+      by TreeSHAP-IQ :cite:p:`Muschalik.2024a`; Banzhaf indices fall out of the same
       polynomials by evaluation at participation probability 1/2. Supported indices:
       ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, and ``"BII"``.
 
@@ -89,7 +89,7 @@ class TreeExplainer(Explainer):
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
       additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
-      :cite:t:`Nadel.2026` :cite:t:`Wettenstein.2026b` when the optional
+      :cite:p:`Nadel.2025,Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
       ``backend`` parameter overrides this routing.
 

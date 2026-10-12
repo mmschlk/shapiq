@@ -138,7 +138,7 @@ fsii.plot_force(feature_names=feature_names)
 # %%
 # References
 # ----------
-# This example uses TabPFN :footcite:t:`Hollmann.2025` with the
+# This example uses TabPFN :footcite:p:`Hollmann.2025` with the
 # remove-and-recontextualize strategy from :footcite:t:`Rundel.2024`.
 #
 # .. footbibliography::

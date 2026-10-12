@@ -25,7 +25,7 @@ class TabPFNExplainer(TabularExplainer):
     """The TabPFN explainer as the main interface for the shapiq package.
 
     The ``TabPFNExplainer`` class is the dedicated interface for the ``shapiq`` package and
-    TabPFN :footcite:t:`Hollmann.2025` models such as the ``TabPFNClassifier`` and
+    TabPFN :footcite:p:`Hollmann.2025` models such as the ``TabPFNClassifier`` and
     ``TabPFNRegressor``. The explainer does not rely on classical imputation methods and is
     optimized for TabPFN's in-context learning approach. The explanation paradigm for TabPFN is
     described in :footcite:t:`Rundel.2024`. In essence the explainer is a wrapper around the

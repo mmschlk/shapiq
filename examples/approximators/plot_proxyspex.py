@@ -3,7 +3,7 @@ ProxySPEX
 =========
 
 Proxy-based SPEX approximation using
-:class:`~shapiq.ProxySPEX` :footcite:t:`Butler.2025`.
+:class:`~shapiq.ProxySPEX` :footcite:p:`Butler.2025`.
 """
 
 from __future__ import annotations

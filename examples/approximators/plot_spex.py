@@ -3,7 +3,7 @@ SPEX
 ====
 
 Sparse Explainer via Fourier transforms using
-:class:`~shapiq.SPEX` :footcite:t:`Kang.2025`.
+:class:`~shapiq.SPEX` :footcite:p:`Kang.2025`.
 """
 
 from __future__ import annotations

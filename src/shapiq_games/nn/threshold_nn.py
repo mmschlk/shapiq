@@ -22,8 +22,8 @@ class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
 
     The players are the training points. The value of a coalition is the share of the explained
     class among the coalition's training points within the radius of ``x``, and ``1 / n_classes``
-    if there are none (equation 3 of Wang et al., 2023). Its exact Shapley values are computed by
-    :class:`~shapiq.explainer.nn.ThresholdNNExplainer`.
+    if there are none (equation 3 of :footcite:t:`Wang.2023`). Its exact Shapley values are
+    computed by :class:`~shapiq.explainer.nn.ThresholdNNExplainer`.
 
     Examples:
         >>> from sklearn.datasets import make_classification
@@ -33,6 +33,9 @@ class ThresholdNNGame(NNGameBase[RadiusNeighborsClassifier]):
         >>> game = ThresholdNNGame(model, x=X[10])
         >>> game.n_players
         10
+
+    References:
+        .. footbibliography::
     """
 
     def __init__(

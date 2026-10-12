@@ -3,7 +3,7 @@ kADDSHAP
 ========
 
 k-additive SHAP approximation using
-:class:`~shapiq.kADDSHAP` :footcite:t:`Pelegrina.2023`.
+:class:`~shapiq.kADDSHAP` :footcite:p:`Pelegrina.2023`.
 """
 
 from __future__ import annotations

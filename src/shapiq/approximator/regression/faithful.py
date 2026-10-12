@@ -19,8 +19,8 @@ ValidRegressionFBIIIndices = Literal["FBII", "BV"]
 class RegressionFSII(Regression[ValidRegressionFSIIIndices]):
     """Estimates the FSII values using KernelSHAP.
 
-    The Faithful KernelSHAP regression is described in Tsai et al. (2023)
-    :cite:t:`Tsai.2023`. The method estimates the Faithful Shapley interaction index (FSII).
+    The Faithful KernelSHAP regression is described in :cite:t:`Tsai.2022`. The method estimates
+    the Faithful Shapley interaction index (FSII).
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
@@ -77,8 +77,8 @@ class RegressionFSII(Regression[ValidRegressionFSIIIndices]):
 class RegressionFBII(Regression[ValidRegressionFBIIIndices]):
     """Estimates the FBII values using KernelSHAP.
 
-    The Faithful KernelSHAP regression is described in Tsai et al. (2023)
-    :cite:t:`Tsai.2023`. The method estimates the Faithful Banzhaf interaction index (FBII).
+    The Faithful KernelSHAP regression is described in :cite:t:`Tsai.2022`. The method estimates
+    the Faithful Banzhaf interaction index (FBII).
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP

@@ -63,7 +63,7 @@ InterventionalTreeSHAPIQIndices = Literal[
 class InterventionalTreeSHAPIQ:
     """Any-order interventional Shapley-interaction explainer for tree models.
 
-    Extends interventional TreeSHAP :cite:t:`Zern.2023` to compute exact Shapley
+    Extends interventional TreeSHAP :cite:p:`Zern.2023` to compute exact Shapley
     interactions of arbitrary order over a single decision tree or a tree ensemble (as
     validated by :func:`shapiq.tree.validation.validate_tree_model`). Each leaf's
     contribution is decomposed with the ``E``/``R`` partition (features fixed by the

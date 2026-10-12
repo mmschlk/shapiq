@@ -3,7 +3,7 @@ KernelSHAPIQ
 ============
 
 Regression-based k-SII approximation using
-:class:`~shapiq.KernelSHAPIQ` :footcite:t:`Fumagalli.2024`.
+:class:`~shapiq.KernelSHAPIQ` :footcite:p:`Fumagalli.2024`.
 """
 
 from __future__ import annotations

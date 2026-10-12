@@ -43,7 +43,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
     generating polynomials, so the full ``2^n`` coalition space is never
     enumerated and each iteration costs only polynomial time in ``n``.
     (``n``, shapiq's number of players, is denoted ``p`` in the paper.)
-    For more information, see Rundel et al. (2026) :cite:t:`rundel2026shapleig`.
+    For more information, see :cite:t:`Rundel.2026`.
 
     The returned :class:`~shapiq.interaction_values.InteractionValues` contain
     the posterior-mean Shapley value estimates (order 1, index ``"SV"``).

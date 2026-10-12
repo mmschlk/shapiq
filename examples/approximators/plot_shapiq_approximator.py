@@ -3,7 +3,7 @@ SHAPIQ Approximator
 ===================
 
 General Monte Carlo approximator for any-order interactions using
-:class:`~shapiq.SHAPIQ` :footcite:t:`Muschalik.2024a`.
+:class:`~shapiq.SHAPIQ` :footcite:p:`Fumagalli.2023`.
 """
 
 from __future__ import annotations

@@ -3,7 +3,7 @@ RegressionFSII
 ==============
 
 Faithful Shapley Interaction Index via regression using
-:class:`~shapiq.RegressionFSII` :footcite:t:`Fumagalli.2023`.
+:class:`~shapiq.RegressionFSII` :footcite:p:`Tsai.2022`.
 """
 
 from __future__ import annotations

@@ -25,11 +25,11 @@ class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
     The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
-    classification models. See [pkex-shapley]_ for details.
+    classification models. See :footcite:t:`Mohammadi.2025a` for details.
 
 
     References:
-        .. [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
+        .. footbibliography::
 
     Attributes:
         model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.

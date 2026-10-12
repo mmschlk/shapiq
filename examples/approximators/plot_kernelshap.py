@@ -3,7 +3,7 @@ KernelSHAP
 ==========
 
 Regression-based Shapley value approximation using
-:class:`~shapiq.KernelSHAP` :footcite:t:`Lundberg.2017`.
+:class:`~shapiq.KernelSHAP` :footcite:p:`Lundberg.2017`.
 """
 
 from __future__ import annotations

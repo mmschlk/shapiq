@@ -3,7 +3,7 @@ SVARM
 =====
 
 Stratified SVARM for Shapley value approximation using
-:class:`~shapiq.SVARM` :footcite:t:`Kolpaczki.2024a`.
+:class:`~shapiq.SVARM` :footcite:p:`Kolpaczki.2024a`.
 """
 
 from __future__ import annotations

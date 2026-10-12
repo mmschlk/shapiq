@@ -24,7 +24,7 @@ class StratifiedSamplingSV(Approximator[ValidStratifiedSamplingSVIndices]):
     The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
     marginal contributions for each player and each coalition size. The marginal contributions are
     grouped into strata by size. The strata are aggregated for each player after sampling to obtain
-    the final estimate. For more information, see Maleki et al. (2013) :cite:t:`Maleki.2013`.
+    the final estimate. For more information, see :cite:t:`Maleki.2013`.
 
     See Also:
         - :class:`~shapiq.approximator.montecarlo.svarmiq.SVARM`: The SVARM approximator

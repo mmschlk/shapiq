@@ -22,10 +22,9 @@ ValidPermutationSVIndices = Literal["SV"]
 class PermutationSamplingSV(Approximator[ValidPermutationSVIndices]):
     """The Permutation Sampling algorithm for estimating the Shapley values.
 
-    Permutation Sampling :cite:t:`Castro.2009` (also known as ApproShapley) estimates the
+    Permutation Sampling :cite:p:`Castro.2009` (also known as ApproShapley) estimates the
     Shapley values by drawing random permutations of the player set and extracting all marginal
-    contributions from each permutation. For details, see Castro et al. (2009)
-    :cite:t:`Castro.2009`.
+    contributions from each permutation. For details, see :cite:t:`Castro.2009`.
 
     Args:
         n: The number of players.

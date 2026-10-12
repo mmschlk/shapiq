@@ -18,8 +18,9 @@ from .gaussian_imputer import GaussianImputer
 
 
 class GaussianCopulaImputer(GaussianImputer):
-    r"""Implements the Gaussian copula-based approach for imputation according to [Aas21]_.
+    r"""Implements the Gaussian copula-based approach for imputation.
 
+    The approach follows :footcite:t:`Aas.2021`.
     This method models feature dependence using a Gaussian copula, separating the modeling of marginal distributions
     from their joint dependence structure. Each feature is first transformed to follow a standard normal distribution by
     applying the empirical cumulative distribution function (CDF), followed by the standard normal quantile function.
@@ -27,6 +28,9 @@ class GaussianCopulaImputer(GaussianImputer):
     Monte Carlo samples are then drawn from the conditional multivariate normal distribution in this transformed (Gaussian)
     space, given the observed values in a coalition. These samples are finally transformed back to the original feature space
     using the inverse of the empirical CDFs.
+
+    References:
+        .. footbibliography::
 
     """
 

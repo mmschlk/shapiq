@@ -17,11 +17,12 @@ ProductKernelSHAPIQIndices = Literal["SV"]
 class ProductKernelComputer:
     """The Product Kernel Computer for product kernel-based models.
 
-    This class computes the Shapley values for product kernel-based models.
+    This class computes the Shapley values for product kernel-based models as described by
+    :footcite:t:`Mohammadi.2025a`.
     The functions are obtained from the PKeX-Shapley LocalExplainer. https://github.com/Majeed7/RKHS-ExactSHAP/blob/main/explainer/LocalExplainer.py#L3
 
     References:
-        -- [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
+        .. footbibliography::
 
     Attributes:
         model: The product kernel model to explain.

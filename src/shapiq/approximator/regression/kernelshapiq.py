@@ -19,14 +19,14 @@ class KernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     The KernelSHAP-IQ regression approximator for estimating the Shapley interaction index (SII)
     and the k-Shapley interaction index (k-SII).
 
-    The KernelSHAP-IQ approximator is described in Fumagalli et al. (2024)
-    :cite:t:`Fumagalli.2024`. The method estimates the Shapley interaction index (SII) and the
-    k-Shapley interaction index (k-SII) by solving a weighted regression problem, where the Shapley
-    interaction indices are the coefficients of the regression problem. The estimation happens in
-    subsequent steps, where first the first-order SII values are estimated. Then, the second-order
-    SII values are estimated using the first-order estimations and their residuals. This process is
-    repeated up to the desired interaction order. Another variant of KernelSHAP-IQ is the
-    Inconsistent KernelSHAP-IQ :cite:t:`Fumagalli.2024`, which works in a similar way but does
+    The KernelSHAP-IQ approximator is described in :cite:t:`Fumagalli.2024`. The method estimates
+    the Shapley interaction index (SII) and the k-Shapley interaction index (k-SII) by solving a
+    weighted regression problem, where the Shapley interaction indices are the coefficients of the
+    regression problem. The estimation happens in subsequent steps, where first the first-order SII
+    values are estimated. Then, the second-order SII values are estimated using the first-order
+    estimations and their residuals. This process is repeated up to the desired interaction order.
+    Another variant of KernelSHAP-IQ is the
+    Inconsistent KernelSHAP-IQ :cite:p:`Fumagalli.2024`, which works in a similar way but does
     not converge to the true SII values, but often provides better estimates for lower computational
     budgets.
 
@@ -90,11 +90,10 @@ class InconsistentKernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     The Inconsistent KernelSHAP-IQ regression approximator for estimating the Shapley interaction
     index (SII) and the k-Shapley interaction index (k-SII).
 
-    Inconsistent KernelSHAP-IQ :cite:t:`Pelegrina.2023` is a variant of the KernelSHAP-IQ
+    Inconsistent KernelSHAP-IQ :cite:p:`Fumagalli.2024` is a variant of the KernelSHAP-IQ
     estimator that does not converge to the true SII values, but often provides better estimates
     for lower computational budgets. The algorithm is also similar to kADD-SHAP
-    :cite:t:`Pelegrina.2023`. For details, we refer to Fumagalli et al. (2024)
-    :cite:t:`Fumagalli.2024`.
+    :cite:p:`Pelegrina.2023`. For details, we refer to :cite:t:`Fumagalli.2024`.
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAPIQ

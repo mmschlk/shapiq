@@ -3,7 +3,7 @@ SVARMIQ
 =======
 
 Stratified Monte Carlo with coalition-size and intersection stratification
-using :class:`~shapiq.SVARMIQ` :footcite:t:`Kolpaczki.2024a`.
+using :class:`~shapiq.SVARMIQ` :footcite:p:`Kolpaczki.2024b`.
 """
 
 from __future__ import annotations

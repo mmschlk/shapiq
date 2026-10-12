@@ -2,13 +2,13 @@
 ====================
 
 ``shapiq`` is a Library for computing Shapley Interactions and Shapley
-Values for Machine Learning :cite:p:`Muschalik.2024b`. The following
+Values for Machine Learning :cite:p:`Muschalik.2024`. The following
 table contains a list of related software:
 
 +------------------+-------------------------------+-------------------------------------------------------+
 | Software         | Citation                      | Description                                           |
 +==================+===============================+=======================================================+
-| ``shapiq``       | :cite:p:`Muschalik.2024b`     | This Python library for interpreting machine learning |
+| ``shapiq``       | :cite:p:`Muschalik.2024`      | This Python library for interpreting machine learning |
 |                  |                               | models with general game-theoretic concpts such as    |
 |                  |                               | Shapley interactions, Shapley values, or Banzhaf      |
 |                  |                               | values.                                               |
@@ -42,7 +42,7 @@ table contains a list of related software:
 | ``XAI-bench``    | :cite:p:`Liu.2021`            | Synthetic Benchmarks for Scientific Research in       |
 |                  |                               | Explainable Machine Learning                          |
 +------------------+-------------------------------+-------------------------------------------------------+
-| ``M4``           | :cite:p:`Li.2023`             | A Unified XAI Benchmark for Faithfulness Evaluation   |
+| ``M4``           | :cite:p:`Li.2023a`            | A Unified XAI Benchmark for Faithfulness Evaluation   |
 |                  |                               | of Feature Attribution Methods across Metrics,        |
 |                  |                               | Modalities and Models                                 |
 +------------------+-------------------------------+-------------------------------------------------------+
