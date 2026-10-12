@@ -183,6 +183,12 @@ uv run pre-commit run --all-files
 
 ## Shared environment checks
 
+- CPU-only jobs must use CPU-only nodes. Omitting GPU GRES does not keep a job
+  off a GPU node: its CPU/RAM reservation can block GPU workloads. The user now
+  forbids benchmark CPU placement on GPU nodes; use qualified `himem01`/`himem02`
+  and the campaign's CPU-only admission wrapper. Preserve cancelled work for
+  CPU-only recovery; never revive the old GPU placements.
+
 - On this checkout, plain `uv run pre-commit run --all-files` can rebuild and
   reinstall the editable shapiq package when Git-derived version metadata changes.
   This changes package provenance for running jobs even if their source checkout

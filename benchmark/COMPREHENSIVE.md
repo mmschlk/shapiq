@@ -9,6 +9,11 @@ evaluation running together in a shared queue.
 
 - At most **1,000 concurrent CPUs**, no production GPUs. This ceiling was
   reduced on October 7 to leave room for Hopper Monitor and other user jobs.
+- **CPU-only nodes only**, per the October 12 placement correction. GPU nodes
+  are forbidden for CPU preparation, evaluation, retries, and analysis, even
+  without a GPU request. Existing GPU-node CPU allocations were cancelled to
+  release resources for higher-priority work; preserve their saved results and
+  resume only authenticated remaining work on qualified CPU-only nodes.
 - The user waived the previous **27,576 allocated CPU-hour cap** on October 11
   to finish the missing supported evaluations. Continue recording allocated
   CPU-hours; the 1,000 concurrent CPU limit still applies.
