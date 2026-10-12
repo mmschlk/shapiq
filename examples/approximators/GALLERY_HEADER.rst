@@ -29,8 +29,10 @@ Approximators
 Which approximator?
 -------------------
 
-With ``approximator="auto"``, the explainers choose an approximator for the index; the last column
-lists the other approximators of the index.
+.. container:: shapiq-gallery-notes
+
+   With ``approximator="auto"``, the explainers choose an approximator for the index; the last
+   column lists the other approximators of the index.
 
 .. list-table::
    :header-rows: 1

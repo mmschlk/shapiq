@@ -287,6 +287,63 @@ table.shapiq-approximator-guide p {
   text-align: left;
 }
 
+/* on phones, every row of the guide becomes a small card */
+@media (max-width: 40em) {
+  table.shapiq-approximator-guide,
+  table.shapiq-approximator-guide tbody,
+  table.shapiq-approximator-guide tr,
+  table.shapiq-approximator-guide td {
+    display: block;
+    width: auto;
+  }
+
+  table.shapiq-approximator-guide {
+    border: 0;
+    box-shadow: none;
+  }
+
+  table.shapiq-approximator-guide thead,
+  table.shapiq-approximator-guide colgroup {
+    display: none;
+  }
+
+  table.shapiq-approximator-guide tr {
+    margin-bottom: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--shapiq-border);
+    border-radius: var(--shapiq-radius-small);
+    background: var(--shapiq-surface-raised);
+  }
+
+  table.shapiq-approximator-guide td {
+    padding: 0.1rem 0;
+    border: 0;
+  }
+
+  table.shapiq-approximator-guide td:nth-child(2)::before,
+  table.shapiq-approximator-guide td:nth-child(3)::before {
+    display: inline-block;
+    min-width: 2.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-foreground-muted);
+  }
+
+  table.shapiq-approximator-guide td:nth-child(2)::before {
+    content: "auto";
+  }
+
+  table.shapiq-approximator-guide td:nth-child(3)::before {
+    content: "also";
+  }
+
+  table.shapiq-approximator-guide td > p {
+    display: inline;
+  }
+}
+
 .shapiq-gallery-notes p,
 .shapiq-gallery-notes li {
   text-align: left;
