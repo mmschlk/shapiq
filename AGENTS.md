@@ -229,6 +229,13 @@ Boosting converters live in separate modules such as `xgboost.py`,
 rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b html docs/source docs/build/html
 ```
 
+CI does not build the docs by default (observed 2026-10-12): the `Documentation` workflow runs
+only on pull requests with the label `build docs` or from the Actions tab, with warnings as errors
+(`-W`). Before pushing a docs change, build locally and check the output for `WARNING`. A new
+public name of `shapiq_games` or `shapiq_benchmark` (anything in an `__all__`) also needs a line in
+`docs/source/api_reference_games.rst` or `api_reference_benchmark.rst`; the docstring-example
+tests fail until it has one.
+
 ### Run Pre-commit (takes only 3s)
 
 ```bash

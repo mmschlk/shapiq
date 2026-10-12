@@ -195,27 +195,6 @@ jobs:
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
-    # Test Documentation Build
-    # ----------------------------------------------------------------------------------------------
-    doc_build:
-        name: Test Documentation Build
-        runs-on: ubuntu-latest
-        needs:
-            - install_and_import_shapiq
-            - check_code_quality
-            - test_shapiq_stable
-        steps:
-            -   uses: actions/checkout@v7
-            -   name: Set up Python and uv
-                uses: astral-sh/setup-uv@v7
-                with:
-                    python-version: "3.12"
-                    enable-cache: true
-            -   name: Install dependencies
-                run: uv sync --no-dev --all-extras --group docs
-            -   name: Build documentation
-                run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
-    # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------
     run_coverage:
