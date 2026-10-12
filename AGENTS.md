@@ -815,3 +815,8 @@ uv run pre-commit run --all-files
   `ty` can fail on those imports in `src/shapiq/tree/explainer.py` even when the
   changed benchmark modules type-check. Do not install into the active shared
   environment to make this unrelated check pass.
+- Inventory inputs can pin the active campaign `scope.json`, even when their
+  executable selection is frozen separately. Updating that scope while an
+  inventory runs invalidates its final stability check. Pin a versioned immutable
+  scope copy for new admissions; keep active steering separate. Saved partial
+  inventory outputs require explicit revalidation before reuse.
