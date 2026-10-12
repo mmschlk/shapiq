@@ -149,10 +149,7 @@ The nodes represent feature **attributions** and the edges represent the **inter
 The strength and size of the nodes and edges are proportional to the absolute value of attributions and interactions, respectively.
 
 ```python
-shapiq.network_plot(
-    first_order_values=interaction_values.get_n_order_values(1),
-    second_order_values=interaction_values.get_n_order_values(2)
-)
+shapiq.network_plot(interaction_values)
 # or use
 interaction_values.plot_network()
 ```
