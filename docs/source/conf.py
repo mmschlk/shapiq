@@ -12,11 +12,18 @@ import pkgutil
 import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import TypeAliasType
+from typing import TYPE_CHECKING, TypeAliasType, override
 
+from pybtex.plugin import register_plugin
+from pybtex.style.formatting.alpha import Style as AlphaStyle
+from pybtex.style.template import field, href, join, sentence, words
 from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.errors import PycodeError
 from sphinx.pycode import ModuleAnalyzer
+
+if TYPE_CHECKING:
+    from pybtex.database import Entry
+    from pybtex.style.template import Node
 
 root = Path(__file__).resolve().parents[2]  # ../../ from this file
 sys.path.insert(0, str(root))
@@ -88,8 +95,40 @@ exclude_patterns = [
     "sg_execution_times.rst",
 ]
 bibtex_bibfiles = ["references.bib"]
+
+
+def _unescape_latex(text: str) -> str:
+    r"""Undo the LaTeX escaping of underscores, e.g. in DOIs such as ``10.1007/...-1\_23``."""
+    return text.replace("\\_", "_")
+
+
+class _BibStyle(AlphaStyle):
+    r"""The ``alpha`` style, but titles keep the capitalization of ``references.bib``.
+
+    ``references.bib`` is written for LaTeX styles that print titles as written, so its titles are
+    not all brace-protected; ``alpha`` would lowercase them (e.g. "Shapley" -> "shapley"). Links
+    from the ``doi`` and ``url`` fields are unescaped (``\_`` -> ``_``) so that they resolve.
+    """
+
+    @override
+    def format_title(self, e: Entry, which_field: str, *, as_sentence: bool = True) -> Node:
+        title = field(which_field)
+        return sentence[title] if as_sentence else title
+
+    @override
+    def format_url(self, e: Entry) -> Node:
+        url = field("url", raw=True, apply_func=_unescape_latex)
+        return words["URL:", href(url)[url]]
+
+    @override
+    def format_doi(self, e: Entry) -> Node:
+        doi = field("doi", raw=True, apply_func=_unescape_latex)
+        return href(join["https://doi.org/", doi])[join["doi:", doi]]
+
+
+register_plugin("pybtex.style.formatting", "shapiq_alpha", _BibStyle)
 bibtex_default_style = (
-    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+    "shapiq_alpha"  # alpha labels so that the references of the docs differ from the footcites
 )
 bibtex_reference_style = "author_year"
 
