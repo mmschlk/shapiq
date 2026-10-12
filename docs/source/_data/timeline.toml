@@ -97,6 +97,7 @@ Möbius representation into any interaction index.
 """
 cite = ["Harsanyi.1963", "Rota.1964"]
 api = ["shapiq.game_theory.ExactComputer.moebius_transform", "shapiq.game_theory.MoebiusConverter"]
+examples = ["auto_examples/exact_computation/plot_moebius_conversion"]
 related = ["moebius-representation", "k-sii", "spex"]
 
 [[entries]]
@@ -113,6 +114,7 @@ interaction counterpart as ``index="BII"``.
 """
 cite = ["Banzhaf.1964"]
 api = ["shapiq.game_theory.ExactComputer"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["weighted-banzhaf", "sii"]
 
 [[entries]]
@@ -174,6 +176,7 @@ representation read Shapley values and interactions out of it in closed form.
 """
 cite = ["Grabisch.2000"]
 api = ["shapiq.game_theory.MoebiusConverter"]
+examples = ["auto_examples/exact_computation/plot_moebius_conversion"]
 related = ["moebius-transform", "spex"]
 
 [[entries]]
@@ -271,6 +274,7 @@ up to the prediction; aggregated variants such as the k-SII restore efficiency.
 """
 cite = ["Grabisch.1999"]
 api = ["shapiq.game_theory.ExactComputer.shapley_interactions"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["k-sii", "shap-iq", "kernelshap-iq"]
 
 [[entries]]
@@ -348,6 +352,7 @@ is efficient: the interactions up to the explanation order sum to the prediction
 """
 cite = ["Sundararajan.2020"]
 api = ["shapiq.game_theory.ExactComputer.compute_stii"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["permutation-stii", "moebius-transform"]
 
 [[entries]]
@@ -379,6 +384,7 @@ The FSII is efficient and extends the regression view of KernelSHAP to interacti
 """
 cite = ["Tsai.2022"]
 api = ["shapiq.game_theory.ExactComputer.compute_fii"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["faithful-estimators", "wls-representation"]
 
 [[entries]]
@@ -395,6 +401,7 @@ throughout shapiq.
 """
 cite = ["Bordt.2023"]
 api = ["shapiq.game_theory.ExactComputer.shapley_interactions"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["sii", "shap-interaction-values", "gams"]
 
 # -- Approximating Shapley values -------------------------------------------------------------------
@@ -581,6 +588,7 @@ accurate. In shapiq it is the recommended drop-in replacement for KernelSHAP.
 """
 cite = ["Musco.2025"]
 api = ["shapiq.approximator.LeverageSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_leverageshap"]
 related = ["kernelshap", "regression-msr", "polyshap"]
 
 [[entries]]
@@ -626,6 +634,7 @@ relevant odd interactions, and an odd Fourier regression that enforces efficienc
 """
 cite = ["Fumagalli.2026a"]
 api = ["shapiq.approximator.OddSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_oddshap"]
 related = ["polyshap", "proxyspex"]
 
 [[entries]]
@@ -641,6 +650,7 @@ form without enumerating all coalitions. It returns posterior means and variance
 """
 cite = ["Rundel.2026"]
 api = ["shapiq.approximator.ShaplEIG"]
+examples = ["auto_examples/approximators/shapley_values/plot_shapleig"]
 related = ["kernelshap"]
 
 # -- Approximating interactions ---------------------------------------------------------------------
@@ -844,7 +854,7 @@ KNNExplainer computes them for scikit-learn models.
 """
 cite = ["Jia.2019a"]
 api = ["shapiq.explainer.KNNExplainer", "shapiq_games.KNNGame"]
-examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact", "auto_examples/nearest_neighbors/plot_nn_noisy_labels"]
 related = ["data-shapley", "tknn-shapley", "wknn-shapley"]
 
 [[entries]]
@@ -861,6 +871,7 @@ many local ones. shapiq's TreeExplainer uses ``mode="pathdependent"`` by default
 """
 cite = ["Lundberg.2020"]
 api = ["shapiq.explainer.TreeExplainer", "shapiq_games.PathDependentTreeGame"]
+examples = ["auto_examples/trees/plot_tree_pathdependent_vs_interventional", "auto_examples/trees/plot_tree_libraries"]
 related = ["linear-treeshap", "treeshap-iq", "shap-plots"]
 
 [[entries]]
@@ -891,6 +902,7 @@ regression trees exactly against a background dataset. shapiq's TreeExplainer wi
 """
 cite = ["Zern.2023"]
 api = ["shapiq.tree.InterventionalTreeSHAPIQ", "shapiq_games.InterventionalTreeGame"]
+examples = ["auto_examples/trees/plot_tree_pathdependent_vs_interventional"]
 related = ["treeshap", "woodelf", "proxyshap"]
 
 [[entries]]
@@ -926,7 +938,7 @@ Shapley values of this classifier have a closed form and can be computed with di
 """
 cite = ["Wang.2023"]
 api = ["shapiq.explainer.ThresholdNNExplainer", "shapiq_games.ThresholdNNGame"]
-examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact"]
 related = ["knn-shapley"]
 
 [[entries]]
@@ -941,7 +953,7 @@ counting the coalitions that change the prediction, in quadratic time.
 """
 cite = ["Wang.2024a"]
 api = ["shapiq.explainer.WeightedKNNExplainer", "shapiq_games.WeightedKNNGame"]
-examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact"]
 related = ["knn-shapley"]
 
 [[entries]]
@@ -972,6 +984,7 @@ exploiting the product structure of the kernel. In shapiq, the
 """
 cite = ["Mohammadi.2025a"]
 api = ["shapiq_games.ProductKernelGame"]
+examples = ["auto_examples/kernel_methods/plot_gaussian_process_exact", "auto_examples/kernel_methods/plot_kernel_svm_scaling"]
 related = ["fanova-gp", "rkhs-shap"]
 
 [[entries]]
@@ -1053,6 +1066,7 @@ true to the data. In shapiq, it is the marginal and the baseline imputer.
 """
 cite = ["Janzing.2020", "Chen.2020"]
 api = ["shapiq.imputer.MarginalImputer", "shapiq.imputer.BaselineImputer"]
+examples = ["auto_examples/technicalities/plot_imputers"]
 related = ["conditional-removal", "explaining-by-removing"]
 
 [[entries]]
@@ -1087,7 +1101,7 @@ api = [
     "shapiq.imputer.GaussianCopulaImputer",
     "shapiq.imputer.GenerativeConditionalImputer",
 ]
-examples = ["auto_examples/technicalities/plot_conditional_imputer"]
+examples = ["auto_examples/technicalities/plot_conditional_imputer", "auto_examples/technicalities/plot_imputers"]
 related = ["interventional-removal", "shapr"]
 
 [[entries]]
@@ -1137,6 +1151,7 @@ mislabeled) training data.
 """
 cite = ["Ghorbani.2019"]
 api = ["shapiq_games.DataValuation"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_noisy_labels"]
 related = ["knn-shapley", "least-core"]
 
 [[entries]]
