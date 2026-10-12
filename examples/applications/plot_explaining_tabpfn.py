@@ -6,13 +6,15 @@ Explaining TabPFN
 tabular data that uses **in-context learning** -- fitting is just storing the
 training data, and inference contextualises new inputs against that context.
 
-``shapiq`` provides a dedicated :class:`~shapiq.TabPFNExplainer` that exploits
+``shapiq`` provides a dedicated :class:`~shapiq.explainer.TabPFNExplainer` that exploits
 this property with a **remove-and-recontextualize** strategy: instead of
 imputing missing features, it simply drops feature columns from the training
 *and* test data and re-fits the model. This is both faithful to the model
 and inexpensive, because TabPFN's "retraining" is just an in-context forward
 pass.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/applications.png"  # noqa: ERA001
 
 from __future__ import annotations
 
@@ -69,9 +71,9 @@ print(f"Average prediction: {avg_pred:.3f}")
 # %%
 # Auto-Detection of TabPFNExplainer
 # -----------------------------------
-# When you pass a TabPFN model to :class:`~shapiq.Explainer`, ``shapiq``
-# automatically selects :class:`~shapiq.TabPFNExplainer` and sets up a
-# :class:`~shapiq.TabPFNImputer` under the hood.  No special configuration
+# When you pass a TabPFN model to :class:`~shapiq.explainer.Explainer`, ``shapiq``
+# automatically selects :class:`~shapiq.explainer.TabPFNExplainer` and sets up a
+# :class:`~shapiq.imputer.TabPFNImputer` under the hood.  No special configuration
 # is needed -- just pass the model, training data, and training labels.
 
 x_explain = x_test[0]
@@ -95,7 +97,7 @@ print(f"Auto-selected explainer: {type(explainer).__name__}")
 # background samples (marginal or conditional imputation).  This can
 # create out-of-distribution inputs that mislead the model.
 #
-# The :class:`~shapiq.TabPFNImputer` takes a different approach:
+# The :class:`~shapiq.imputer.TabPFNImputer` takes a different approach:
 #
 # 1. For each coalition :math:`S \subseteq \{1, \dots, d\}` of features:
 # 2. **Remove** the columns *not* in :math:`S` from both training and

@@ -2,9 +2,14 @@
 RegressionFSII
 ==============
 
-Faithful Shapley Interaction Index via regression using
-:class:`~shapiq.RegressionFSII` :footcite:p:`Tsai.2022`.
+Estimate the Faithful Shapley Interaction Index (FSII): the coefficients of the best approximation
+of the game by interactions up to a given order, in Shapley-weighted least squares.
+
+:class:`~shapiq.approximator.RegressionFSII` solves this regression on sampled coalitions
+:footcite:p:`Tsai.2022`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
 
 from __future__ import annotations
 

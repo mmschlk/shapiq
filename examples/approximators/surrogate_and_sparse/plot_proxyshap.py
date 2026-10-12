@@ -2,9 +2,12 @@
 ProxySHAP
 =========
 
-Proxy model-based interaction approximation using
-:class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP`.
+Estimate Shapley interactions with :class:`~shapiq.approximator.ProxySHAP`: fit a surrogate model
+(XGBoost by default) to the sampled coalition values and read the interactions off it exactly; with
+``adjustment=True``, a Monte Carlo estimate on the residuals corrects the surrogate's error.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_surrogate.png"  # noqa: ERA001
 
 from __future__ import annotations
 

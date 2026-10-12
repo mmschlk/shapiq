@@ -6,6 +6,8 @@ This example shows how to compute second-order Shapley Interaction Index (SII)
 values for a scikit-learn Random Forest on the California housing dataset.
 """
 
+# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+
 from __future__ import annotations
 
 from sklearn.ensemble import RandomForestRegressor
@@ -42,7 +44,7 @@ print(f"Test  R2: {model.score(X_test, y_test):.4f}")
 # %%
 # Compute Second-Order SII
 # -------------------------
-# :class:`~shapiq.TabularExplainer` with ``index="SII"`` and ``max_order=2``
+# :class:`~shapiq.explainer.TabularExplainer` with ``index="SII"`` and ``max_order=2``
 # computes pairwise Shapley interaction values.
 
 explainer = shapiq.TabularExplainer(

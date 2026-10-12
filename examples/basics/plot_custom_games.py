@@ -7,6 +7,8 @@ with :mod:`shapiq`. We model a simple cooking game and show how to query the
 value function, precompute all coalition values, and save/load them.
 """
 
+# sphinx_gallery_thumbnail_path = "_static/gallery/basics.png"  # noqa: ERA001
+
 from __future__ import annotations
 
 import numpy as np

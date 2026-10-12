@@ -3,9 +3,11 @@ Working with InteractionValues
 ==============================
 
 This example shows how to create, manipulate, aggregate, and visualize
-:class:`~shapiq.InteractionValues` objects -- the central output type of
+:class:`~shapiq.interaction_values.InteractionValues` objects -- the central output type of
 ``shapiq``.
 """
+
+# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
 
 from __future__ import annotations
 

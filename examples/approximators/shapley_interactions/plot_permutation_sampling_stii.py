@@ -2,9 +2,11 @@
 PermutationSamplingSTII
 =======================
 
-Permutation-based STII approximation using
-:class:`~shapiq.PermutationSamplingSTII`.
+Estimate the Shapley-Taylor Interaction Index (STII) from random permutations of the players with
+:class:`~shapiq.approximator.PermutationSamplingSTII`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
 
 from __future__ import annotations
 

@@ -2,9 +2,14 @@
 SVARMIQ
 =======
 
-Stratified Monte Carlo with coalition-size and intersection stratification
-using :class:`~shapiq.SVARMIQ` :footcite:p:`Kolpaczki.2024b`.
+Estimate interactions of any order with SVARM-IQ, a Monte Carlo estimator stratified by the size of
+the sampled coalition and by its intersection with each interaction.
+
+:class:`~shapiq.approximator.SVARMIQ` :footcite:p:`Kolpaczki.2024b` extends SVARM to Shapley
+interactions.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"  # noqa: ERA001
 
 from __future__ import annotations
 

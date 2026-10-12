@@ -2,9 +2,14 @@
 SPEX
 ====
 
-Sparse Explainer via Fourier transforms using
-:class:`~shapiq.SPEX` :footcite:p:`Kang.2025`.
+Estimate interactions among many players with SPEX, which recovers a sparse Fourier representation
+of the game from sampled coalitions.
+
+:class:`~shapiq.approximator.SPEX` :footcite:p:`Kang.2025` needs the optional ``sparse`` extra
+(``pip install shapiq[sparse]``).
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"  # noqa: ERA001
 
 from __future__ import annotations
 

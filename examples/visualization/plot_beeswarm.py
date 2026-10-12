@@ -2,7 +2,7 @@
 Beeswarm Plot
 =============
 
-This example demonstrates :func:`~shapiq.beeswarm_plot`, which provides a
+This example demonstrates :func:`~shapiq.plot.beeswarm_plot`, which provides a
 global perspective on feature interactions by plotting interaction values
 across multiple instances, colored by feature value.
 """

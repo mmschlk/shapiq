@@ -2,9 +2,13 @@
 KernelSHAPIQ
 ============
 
-Regression-based k-SII approximation using
-:class:`~shapiq.KernelSHAPIQ` :footcite:p:`Fumagalli.2024`.
+Estimate Shapley interactions (SII and k-SII) by weighted least squares: KernelSHAP-IQ fits the
+interactions order by order, each order on the residuals of the lower ones.
+
+:class:`~shapiq.approximator.KernelSHAPIQ` was introduced by :footcite:t:`Fumagalli.2024`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
 
 from __future__ import annotations
 

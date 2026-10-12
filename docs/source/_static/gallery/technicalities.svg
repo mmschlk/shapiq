@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>A masked feature vector imputed from background data</title>
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M1 1 L8 5 L1 9" fill="none" stroke="#e3326a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="42" y="40" width="46" height="46" rx="9" fill="#5773e5"/>
+  <rect x="96" y="40" width="46" height="46" rx="9" fill="#e3326a" fill-opacity="0.16" stroke="#e3326a" stroke-width="3" stroke-dasharray="6 6"/>
+  <rect x="150" y="40" width="46" height="46" rx="9" fill="#5773e5"/>
+  <rect x="204" y="40" width="46" height="46" rx="9" fill="#5773e5"/>
+  <rect x="258" y="40" width="46" height="46" rx="9" fill="#e3326a" fill-opacity="0.16" stroke="#e3326a" stroke-width="3" stroke-dasharray="6 6"/>
+  <rect x="312" y="40" width="46" height="46" rx="9" fill="#5773e5"/>
+  <rect x="42" y="170" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="96" y="170" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="150" y="170" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="204" y="170" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="258" y="170" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="312" y="170" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="42" y="194" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="96" y="194" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.75"/>
+  <rect x="150" y="194" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="204" y="194" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="258" y="194" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.75"/>
+  <rect x="312" y="194" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="42" y="218" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="96" y="218" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="150" y="218" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="204" y="218" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="258" y="218" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="312" y="218" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="42" y="242" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="96" y="242" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="150" y="242" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="204" y="242" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <rect x="258" y="242" width="46" height="18" rx="4" fill="#e3326a" fill-opacity="0.3"/>
+  <rect x="312" y="242" width="46" height="18" rx="4" fill="#b3c2e5" fill-opacity="0.3"/>
+  <path d="M119 160 V100" stroke="#e3326a" stroke-width="3.5" marker-end="url(#tip)"/>
+  <path d="M281 160 V100" stroke="#e3326a" stroke-width="3.5" marker-end="url(#tip)"/>
+</svg>

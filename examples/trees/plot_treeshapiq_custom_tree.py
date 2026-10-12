@@ -2,9 +2,11 @@
 TreeSHAP-IQ for Custom Tree Models
 ===================================
 
-This example demonstrates how to use :class:`~shapiq.TreeExplainer` to explain
+This example demonstrates how to use :class:`~shapiq.explainer.TreeExplainer` to explain
 a custom tree model built from scratch using the Play Tennis dataset.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/trees.png"  # noqa: ERA001
 
 from __future__ import annotations
 

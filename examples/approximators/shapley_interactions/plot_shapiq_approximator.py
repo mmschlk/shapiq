@@ -2,9 +2,14 @@
 SHAPIQ Approximator
 ===================
 
-General Monte Carlo approximator for any-order interactions using
-:class:`~shapiq.SHAPIQ` :footcite:p:`Fumagalli.2023`.
+Estimate interactions of any order and index with SHAP-IQ, a Monte Carlo estimator that uses every
+sampled coalition for all interactions at once.
+
+:class:`~shapiq.approximator.SHAPIQ` :footcite:p:`Fumagalli.2023` generalizes Unbiased KernelSHAP to
+interactions.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators.png"  # noqa: ERA001
 
 from __future__ import annotations
 

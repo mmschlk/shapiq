@@ -2,7 +2,7 @@
 Scatter Plot
 ============
 
-This example demonstrates :func:`~shapiq.scatter_plot`, which plots the
+This example demonstrates :func:`~shapiq.plot.scatter_plot`, which plots the
 per-sample value of an interaction against the value of one feature. For
 first-order interactions this matches SHAP's ``shap.plots.scatter``; for
 higher-order interactions the x-axis is restricted to a single feature in

@@ -2,9 +2,14 @@
 SVARM
 =====
 
-Stratified SVARM for Shapley value approximation using
-:class:`~shapiq.SVARM` :footcite:p:`Kolpaczki.2024a`.
+Estimate Shapley values by stratified sampling without marginal contributions: SVARM samples
+coalitions by size and updates the estimates of all players with every sample.
+
+:class:`~shapiq.approximator.SVARM` :footcite:p:`Kolpaczki.2024a` also estimates the Banzhaf value
+(``index="BV"``).
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_stratified.png"  # noqa: ERA001
 
 from __future__ import annotations
 

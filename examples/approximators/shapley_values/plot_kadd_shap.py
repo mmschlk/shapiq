@@ -2,9 +2,14 @@
 kADDSHAP
 ========
 
-k-additive SHAP approximation using
-:class:`~shapiq.kADDSHAP` :footcite:p:`Pelegrina.2023`.
+Estimate Shapley values by fitting a k-additive model, a model with interactions of up to k players,
+to sampled coalitions by weighted least squares.
+
+:class:`~shapiq.approximator.kADDSHAP` :footcite:p:`Pelegrina.2023` returns the k-additive Shapley
+values up to order k.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
 
 from __future__ import annotations
 
@@ -25,8 +30,8 @@ def game_fun(coalitions: np.ndarray) -> np.ndarray:
 
 
 # %%
-# Approximate k-SII values
-# ------------------------
+# Approximate kADD-SHAP values
+# ----------------------------
 
 approximator = shapiq.kADDSHAP(n=N_PLAYERS, max_order=2, random_state=42)
 iv = approximator.approximate(BUDGET, game_fun)

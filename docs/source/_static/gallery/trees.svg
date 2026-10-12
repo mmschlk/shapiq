@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>A decision tree with the path of one prediction highlighted</title>
+  <line x1="184.8" y1="54.5" x2="127.2" y2="109.5" stroke="#8b93a7" stroke-width="3"/>
+  <line x1="215.2" y1="54.5" x2="272.8" y2="109.5" stroke="#e3326a" stroke-width="5"/>
+  <line x1="102" y1="142.5" x2="72.7" y2="196.2" stroke="#8b93a7" stroke-width="3"/>
+  <line x1="122" y1="142.5" x2="151.3" y2="196.2" stroke="#8b93a7" stroke-width="3"/>
+  <line x1="278" y1="142.5" x2="248.7" y2="196.2" stroke="#e3326a" stroke-width="5"/>
+  <line x1="298" y1="142.5" x2="327.3" y2="196.2" stroke="#8b93a7" stroke-width="3"/>
+  <circle cx="200" cy="40" r="19" fill="#e3326a"/>
+  <circle cx="112" cy="124" r="19" fill="#5773e5" fill-opacity="0.14" stroke="#8b93a7" stroke-width="3"/>
+  <circle cx="288" cy="124" r="19" fill="#e3326a"/>
+  <rect x="36" y="198" width="52" height="36" rx="9" fill="#b3c2e5" fill-opacity="0.35" stroke="#8b93a7" stroke-width="3"/>
+  <rect x="136" y="198" width="52" height="36" rx="9" fill="#b3c2e5" fill-opacity="0.35" stroke="#8b93a7" stroke-width="3"/>
+  <rect x="212" y="198" width="52" height="36" rx="9" fill="#e3326a"/>
+  <rect x="312" y="198" width="52" height="36" rx="9" fill="#b3c2e5" fill-opacity="0.35" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M238 240 V262" stroke="#e3326a" stroke-width="4"/>
+  <path d="M230 256 L238 266 L246 256" stroke="#e3326a" stroke-width="4"/>
+</svg>

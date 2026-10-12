@@ -2,7 +2,8 @@
 Data Valuation with Nearest Neighbor Explainers
 ===============================================
 
-This notebook shows how explainers of nearest-neighbor (NN) models can be used for Data Valuation, the task of evaluating the usefulness of individual training data points in classification problems.
+This example shows how the explainers of nearest-neighbor (NN) models value training data: the Shapley value of a training point measures its usefulness for a classification.
+
 When explaining NN models, a game is defined by first choosing an explanation point :math:`x_\\text{explain}` and class :math:`y_\\text{explain}`; the training data points :math:`\\mathcal{D} := \\mathcal{X} \\times \\mathcal{Y}` are the game's players, and the definition of the utility :math:`\\nu(S)` of a coalition :math:`S \\subseteq \\mathcal{D}` is based on the probability of the model predicting class :math:`y_\\text{explain}` on :math:`x_\\text{explain}` if it's training data were limited to :math:`S`.
 """
 

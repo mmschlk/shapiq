@@ -2,9 +2,12 @@
 PermutationSamplingSII
 ======================
 
-Permutation-based SII/k-SII approximation using
-:class:`~shapiq.PermutationSamplingSII`.
+Estimate SII and k-SII from random permutations of the players with
+:class:`~shapiq.approximator.PermutationSamplingSII`, the permutation sampling estimator for
+interactions.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_permutation.png"  # noqa: ERA001
 
 from __future__ import annotations
 

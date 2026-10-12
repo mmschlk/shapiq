@@ -2,9 +2,14 @@
 KernelSHAP
 ==========
 
-Regression-based Shapley value approximation using
-:class:`~shapiq.KernelSHAP` :footcite:p:`Lundberg.2017`.
+Estimate Shapley values by weighted least squares: KernelSHAP fits a linear model to sampled
+coalitions, and its coefficients are the Shapley values.
+
+:class:`~shapiq.approximator.KernelSHAP` :footcite:p:`Lundberg.2017` is what the explainers use for
+Shapley values by default.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"  # noqa: ERA001
 
 from __future__ import annotations
 
