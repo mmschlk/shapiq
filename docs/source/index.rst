@@ -88,8 +88,8 @@ Install
 
          pip install git+https://github.com/mmschlk/shapiq
 
-Extras add the fast tree backend, more approximators, and the dependencies of the games and the
-benchmark, e.g. ``pip install "shapiq[tree]"``: see :doc:`introduction/installation`.
+Extras such as ``shapiq[tree]`` add a faster tree backend, more approximators, and the
+dependencies of the games and the benchmark: see :doc:`introduction/installation`.
 
 
 Explain a Prediction

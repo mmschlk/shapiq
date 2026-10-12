@@ -2,7 +2,7 @@
 shapiq_games
 ============
 
-.. grid:: 1 2 4 4
+.. grid:: 2 2 4 4
    :gutter: 2
    :class-container: shapiq-cards shapiq-cards-compact
 

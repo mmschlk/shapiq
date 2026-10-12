@@ -2,7 +2,7 @@
 shapiq_benchmark
 ================
 
-.. grid:: 1 2 3 3
+.. grid:: 2 2 3 3
    :gutter: 2
    :class-container: shapiq-cards shapiq-cards-compact
 

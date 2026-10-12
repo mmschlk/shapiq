@@ -142,6 +142,7 @@ Plot the Values
          interaction_values.plot_force(feature_names=feature_names)
 
       .. image:: ../_static/images/fsii_tabpfn_force_plot_example.png
+         :class: shapiq-framed
          :alt: A force plot of Shapley interactions: features and pairs of features push the
                prediction up (red) or down (blue) from the baseline.
 
@@ -152,6 +153,7 @@ Plot the Values
          interaction_values.plot_network(feature_names=feature_names)
 
       .. image:: ../_static/network_example2.png
+         :class: shapiq-framed
          :width: 480
          :alt: A network plot of the interactions between image patches: the nodes are the
                patches, the edges their interactions.
@@ -163,6 +165,7 @@ Plot the Values
          interaction_values.plot_upset(feature_names=feature_names)
 
       .. image:: ../_static/images/upset_plot.png
+         :class: shapiq-framed
          :width: 560
          :alt: An UpSet plot: bars of the largest values, with the features of each value
                marked below.

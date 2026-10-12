@@ -172,7 +172,7 @@ intersphinx_mapping = {
 # -- Options for HTML output -----------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = "furo"
-html_title = "shapiq"
+html_title = "shapiq documentation"
 html_static_path = ["_static"]
 html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
