@@ -143,7 +143,7 @@ shapley_values.plot_waterfall(feature_names=feature_names, abbreviate=False)
 explanations = explainer.explain_X(X_test)
 shapiq.beeswarm_plot(explanations, X_test, feature_names=feature_names, abbreviate=False)
 
-# sphinx_gallery_thumbnail_number = 2  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 2
 
 # %%
 # A high body mass index (``bmi``), blood pressure (``bp``), and log triglycerides (``ltg``)

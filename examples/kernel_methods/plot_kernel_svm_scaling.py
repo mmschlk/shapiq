@@ -143,7 +143,7 @@ ax.legend()
 fig.tight_layout()
 plt.show()
 
-# sphinx_gallery_thumbnail_number = 3  # noqa: ERA001
+# sphinx_gallery_thumbnail_number = 3
 
 # %%
 # For a handful of features, brute force is just as fast. From about ten features on, the
