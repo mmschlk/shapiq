@@ -26,10 +26,6 @@ class PermutationSamplingSV(Approximator[ValidPermutationSVIndices]):
     Shapley values by drawing random permutations of the player set and extracting all marginal
     contributions from each permutation. For details, see :cite:t:`Castro.2009`.
 
-    Args:
-        n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
-
     See Also:
         - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
             Sampling approximator for the SII index

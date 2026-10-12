@@ -50,12 +50,6 @@ class ExactComputer:
         - Egalitarian Least Core (ELC) :cite:p:`Yan.2021`
 
 
-    Args:
-        n_players: The number of players in the game.
-        game: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
-            and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
-        evaluate_game: whether to compute the values at init (if True) or first call (False)
-
     Attributes:
         n: The number of players.
         _game_fun: The callable game function.

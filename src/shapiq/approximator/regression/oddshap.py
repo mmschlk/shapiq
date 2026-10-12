@@ -175,6 +175,19 @@ class OddSHAP(Approximator):
         ``tree_params`` entries override the surrogate defaults — including
         ``random_state``, ``n_jobs``, and ``verbose``; ``max_depth`` defaults to 10
         (the paper's configuration) unless overridden.
+
+        Args:
+            n: The number of players.
+            sampling_weights: The sampling weights of the coalition sizes. Defaults to ``None``,
+                which samples the sizes ``1`` to ``n - 1`` uniformly.
+            random_state: The random state of the sampler and the surrogate. Defaults to ``None``.
+            interaction_factor: The number of samples per active term (``eta``), at least ``1``.
+                Defaults to ``10``, the paper's choice.
+            tree_params: Parameters of the gradient-boosted tree surrogate. Defaults to ``None``.
+            **kwargs: Ignored, for compatibility with the other approximators.
+
+        Raises:
+            ValueError: If ``interaction_factor`` is smaller than ``1``.
         """
         del kwargs
 
