@@ -223,6 +223,33 @@ Boosting converters live in separate modules such as `xgboost.py`,
   same at 1,000, but 1.45x slower at 4,096 (the level arrays are copied more often than per-node
   vectors). A second, node-by-node path for large batches was left out for readability.
 
+## Citation and docs gotchas (observed 2026-10-12)
+
+- `docs/source/references.bib` is the maintainer's thesis bibliography; keep its entries and keys
+  as they are and add new ones in its style (`Surname.Year` keys with an `a`/`b` suffix on
+  collisions, e.g. `Jia.2019` is the AISTATS paper and `Jia.2019a` the KNN one; venue names like
+  `International Conference on Machine Learning (ICML)`, PMLR `series`/`volume`, `--` page
+  ranges). Check a key's title before citing it: several keys mean another work than a guess
+  from the name (`Covert.2021` is "Explaining by Removing", `Covert.2021b` "Improving KernelSHAP").
+- Its titles are written for LaTeX styles that print them as written, and some DOIs escape `_`
+  as `\_`. The docs therefore use the `shapiq_alpha` pybtex style registered in
+  `docs/source/conf.py` (titles kept as written, `\_` unescaped in links); plain `alpha`
+  lowercases titles ("shapley values") and breaks those DOI links.
+- The `approximator`, `tree` and `game_theory` docstrings cite with `:cite:t:`/`:cite:p:`
+  (listed on the bibliography page); the other docstrings and the gallery examples use
+  `:footcite:` with a `.. footbibliography::` after it in the same docstring (a `References:`
+  section) or example. A footbibliography lists each work once per HTML page, so when the class
+  and its methods cite the same work (as in `ExactComputer`), the methods' `References:` sections
+  render empty: use `:cite:` there. Never put a `:footcite:` in the first line of a class or
+  function docstring: autosummary copies that line into the module's table, where no
+  footbibliography follows.
+- `uv run pre-commit` in a git worktree: the `ty` hook runs `uv run ty check` without
+  `--no-sync`, so with `UV_PROJECT_ENVIRONMENT` pointing at the main checkout's `.venv` it
+  re-syncs that shared environment to the worktree (editable `shapiq` re-pointed, locked packages
+  changed), and ty's `python = "./.venv"` fails where the worktree has no `.venv`. In a worktree,
+  run `SKIP=ty uv run --no-sync pre-commit run --all-files` and
+  `uv run --no-sync ty check --python <venv>` separately.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
