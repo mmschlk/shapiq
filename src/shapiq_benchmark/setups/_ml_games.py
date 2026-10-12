@@ -84,8 +84,8 @@ class TabularLocalExplanationSetup(ModelSetup, name="tabular_local_explanation")
       for ``"tabpfn"``, which is then built with ``inference_config={"PASSTHROUGH_INF": True}``
       (``tabpfn>=8.1``).
     - ``"tabpfn"`` is TabPFN v2 unless ``model_params`` chooses a ``version``, e.g.
-      ``{"version": "v3"}`` as in the benchmarking paper (the versions after v2 need a Prior Labs
-      license token to download).
+      ``{"version": "v3"}`` (the versions after v2 need a Prior Labs license token to
+      download).
 
     Attributes:
         model: The model name. Defaults to ``"random_forest"``.

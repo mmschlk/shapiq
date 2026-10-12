@@ -32,8 +32,8 @@ class DinoV2TokenModel:
     players are dropped from the sequence; the present ones keep their position embeddings. The
     classifier reads the class token and the mean of the present patch tokens (zeros if there are
     none), as the ImageNet head of the model does. The outputs are the class probabilities
-    (softmax). This is the game of the benchmarking paper; DINOv2 offers no masking or
-    image-space removal (its checkpoint has no trained mask token, and the paper drops tokens).
+    (softmax). There is no masking (the checkpoint has no trained mask token) and no
+    image-space removal.
 
     Attributes:
         image: The ``224 x 224`` crop the model sees.
@@ -75,8 +75,8 @@ class DinoV2TokenModel:
             DINOV2_MODEL_ID, revision=revision
         )
         model.eval().to(device_)
-        # the model sees exactly the processor's pixels (resized and cropped in float), as in the
-        # paper's script; the game's image shows them as uint8
+        # the model sees exactly the processor's pixels (resized and cropped in float); the
+        # game's image shows them as uint8
         pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
         pixels = processor(images=pil, return_tensors="pt")["pixel_values"].to(device_)
         self.image = displayed_image(pixels, processor.image_mean, processor.image_std)

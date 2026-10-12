@@ -93,8 +93,7 @@ class ImageTextSimilarity(RegionGame):
                 label of the image.
             model: CLIP (``"clip_vit_b16"``, default, or ``"clip_vit_b32"``), SigLIP
                 (``"siglip_vit_b16"``), or SigLIP 2 (``"siglip2_vit_b16"``).
-            grid: The ``(rows, columns)`` of the player grid. Defaults to ``(4, 4)``; the paper
-                grids are ``(4, 4)``, ``(5, 4)``, and ``(5, 5)``.
+            grid: The ``(rows, columns)`` of the player grid. Defaults to ``(4, 4)``.
             prompt_template: The prompt of an ImageNet class for the zero-shot label. Defaults to
                 ``"a photo of a {}."``.
             mask_strategy: ``"remove"`` or ``"mask"`` (see above). ``None`` (default) means

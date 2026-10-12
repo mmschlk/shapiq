@@ -89,7 +89,7 @@ class TreeExplainer(Explainer):
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
       additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
-      :cite:p:`Nadel.2025,Wettenstein.2026b` when the optional
+      :cite:p:`Nadel.2026,Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
       ``backend`` parameter overrides this routing.
 

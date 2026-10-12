@@ -58,9 +58,9 @@ __all__ = [
 ]
 
 DEFAULT_MAX_PLAYERS = 25
-"""The default player cap of brute-force computation (``2**25`` game evaluations), the size of the
-largest games of the benchmarking paper. Brute force more than doubles its time and memory with
-every player: at 22 players, the Shapley values of a cheap game take about 2.5 minutes and 2.6 GB."""
+"""The default player cap of brute-force computation (``2**25`` game evaluations). Brute force
+more than doubles its time and memory with every player: at 22 players, the Shapley values of a
+cheap game take about 2.5 minutes and 2.6 GB."""
 
 VALUE_INDICES: frozenset[IndexType] = frozenset({"SV", "BV", "ELC"})
 """Values (one number per player), not interactions: only defined for order 1."""

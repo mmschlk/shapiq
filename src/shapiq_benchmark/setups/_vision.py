@@ -79,7 +79,7 @@ class ImageClassifierSetup(Setup, name="image_classifier"):
             self.mask_strategy, self.fill, default="remove" if dinov2 else "mask"
         )
         if dinov2 and strategy != "remove":
-            msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
+            msg = "DINOv2 removes players only by dropping their tokens."
             raise ValueError(msg)
         if self.model == "resnet_18" and (self.mask_strategy, self.revision) != (None, None):
             msg = "mask_strategy and revision apply to the transformers (vision transformers, DINOv2)."

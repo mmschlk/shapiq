@@ -2,8 +2,7 @@
 
 Two grids live here, on purpose with different splits: :func:`grid_regions` divides pixels
 (``floor(i * rows / height)``, so uneven rows alternate), while :func:`token_players` divides a
-transformer's token grid like the paper scripts (``np.array_split``, so the first rows get one
-more token). Merging them would move the DINOv2 and CLIP regions.
+transformer's token grid with ``np.array_split`` (so the first rows get one more token). Merging them would move the DINOv2 and CLIP regions.
 """
 
 from __future__ import annotations
