@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, get_args
 from shapiq.explainer.tabular import TabularExplainerIndices
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.tree.treeshapiq import TreeSHAPIQIndices
-from shapiq_games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
+from shapiq_games.tree import PathDependentTreeGame
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain
 from tests.shapiq.fixtures.games import get_california_housing_imputer
 from tests.shapiq.fixtures.models import get_california_housing_random_forest
@@ -109,12 +109,7 @@ def compute_tree_explanations(save_path: Path | None = None) -> dict[str, Intera
     print(f"Model score: {model.score(x_test, y_test)}")
     print(f"Model prediction for x_explain: {model.predict(x_explain)}")
 
-    game = TreeSHAPIQXAI(
-        x=x_explain,
-        tree_model=model,
-        normalize=False,
-        verbose=False,
-    )
+    game = PathDependentTreeGame(model, x_explain.flatten(), normalize=False)
 
     # compute explanations
     return _compute_values(

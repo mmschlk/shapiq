@@ -1,6 +1,6 @@
 """Does the interventional tree explainer compute the right values?
 
-The oracle is the exact interventional game: ``InterventionalGame`` evaluates the model under
+The oracle is the exact interventional game: ``InterventionalTreeGame`` evaluates the model under
 every coalition (coalition features from ``x``, the others from each reference row) and
 ``ExactComputer`` turns the game into any interaction index. The explainer runs the cohort fill
 over a background dataset and the single-reference fill over one row; both must equal the exact
@@ -15,7 +15,8 @@ import numpy as np
 import pytest
 
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.tree import InterventionalGame, InterventionalTreeSHAPIQ
+from shapiq.tree import InterventionalTreeSHAPIQ
+from shapiq_games.tree import InterventionalTreeGame
 
 # every index the explainer supports, at the orders its closed-form weights cover
 INDEX_ORDERS = [
@@ -52,7 +53,7 @@ MODEL_FAMILIES = [
 
 def _exact_interactions(model, reference, x, index, order, class_index=None) -> dict:
     """Every interaction of the exact interventional game, by ``ExactComputer``."""
-    game = InterventionalGame(model, reference, x, class_index=class_index)
+    game = InterventionalTreeGame(model, reference, x, class_index=class_index)
     return ExactComputer(game)(index, order).interactions
 
 

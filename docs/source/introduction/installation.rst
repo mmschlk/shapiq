@@ -17,6 +17,19 @@ The development version can be installed from
    pip install git+https://github.com/mmschlk/shapiq
 
 
+Games and Benchmark
+~~~~~~~~~~~~~~~~~~~
+
+The games of ``shapiq_games`` and the benchmark ``shapiq_benchmark`` ship with ``shapiq``. Their
+optional dependencies (e.g. ``torch`` and ``transformers`` for the image and language games,
+``openml`` for the benchmark's datasets) are installed with the extras:
+
+.. code::
+
+   pip install "shapiq[games]"      # shapiq_games
+   pip install "shapiq[benchmark]"  # shapiq_benchmark, includes the games extra
+
+
 Development
 ~~~~~~~~~~~
 

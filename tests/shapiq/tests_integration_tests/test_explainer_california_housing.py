@@ -190,7 +190,7 @@ class TestCaliforniaHousingExplainers:
         california_housing_rf_model: RandomForestRegressor,
         california_interaction_values: dict[str, InteractionValues],
     ):
-        """Test the TreeSHAPIQXAI game on the California Housing dataset."""
+        """Test the TreeExplainer on the California Housing dataset against stored values."""
         expected_index = get_expected_index_or_skip(index, order)
 
         # get the data and model

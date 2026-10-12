@@ -37,9 +37,6 @@ from .approximator import (
     kADDSHAP,
 )
 
-# dataset functions
-from .datasets import load_adult_census, load_bike_sharing, load_california_housing
-
 # explainer classes
 from .explainer import (
     AgnosticExplainer,
@@ -150,8 +147,4 @@ __all__ = [
     "get_explicit_subsets",
     "split_subsets_budget",
     "safe_isinstance",
-    # datasets
-    "load_bike_sharing",
-    "load_adult_census",
-    "load_california_housing",
 ]
