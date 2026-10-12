@@ -46,3 +46,37 @@ test("closed coverage exposes unprepared cases through existing authenticated de
   await elements.find(e => e.href === "#").click({preventDefault() {}});
   assert.equal(downloaded, null);
 });
+
+test("actual compact coverage renders required success and downloads method counts without legacy details", async () => {
+  const coverage = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures/compact-coverage.json"), "utf8"));
+  const summary = { children: [], replaceChildren(...nodes) { this.children = nodes; }, append(node) { this.children.push(node); } };
+  const elements = [];
+  let downloaded;
+  const context = vm.createContext({
+    data: { suite: {}, catalog: { datasets: ["fixture"], min_players: 4, max_players: 64 }, campaign_coverage: coverage },
+    document: {
+      getElementById: () => summary,
+      createTextNode: (textContent) => ({ textContent }),
+      createElement: () => { const e = { style: { setProperty() {} }, children: [], append(...nodes) { this.children.push(...nodes); }, addEventListener: (name, fn) => { e[name] = fn; }, click() {} }; elements.push(e); return e; },
+    },
+    BenchmarkDetails: { object: () => { throw new Error("Compact coverage has no legacy details descriptor"); } },
+    Blob,
+    URL: { createObjectURL: (blob) => { downloaded = blob; return "blob:test"; }, revokeObjectURL() {} },
+    setTimeout: (fn) => fn(),
+  });
+  for (const name of ["query.js", "protocol.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../../benchmark/site", name), "utf8"), context);
+  vm.runInContext("renderReportSummary()", context);
+  const textOf = n => (n.textContent || "") + (n.children || []).map(textOf).join("");
+  const text = summary.children.map(textOf).join("");
+  assert.match(text, /100% required evaluation coverage/);
+  assert.match(text, /2,048 prepared game instances/);
+  assert.match(text, /20 required estimators/);
+  assert.match(text, /ShaplEIG and SPEX.*partial coverage/);
+  assert.doesNotMatch(text, /undefined|NaN|unprepared/);
+  await elements.find(e => e.href === "#").click({preventDefault() {}});
+  const exported = JSON.parse(await downloaded.text());
+  assert.deepEqual(exported, {summary: coverage});
+  assert.equal(exported.summary.nonexempt.successes, 1071525);
+  assert.equal(exported.summary.methods.ShaplEIG.successes, 13948);
+  assert.equal(exported.summary.methods.SPEX.successes, 6020);
+});

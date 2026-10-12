@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 MAX_BLOCK_BYTES = 64 * 1024 * 1024
+MAX_ENSEMBLE_BYTES = 2 * 1024 * 1024
 MAX_SITE_BYTES = 950 * 1024 * 1024  # Reserve room beneath Pages' limit for UI assets.
 KINDS = {"raw", "metrics", "games", "details", "runs", "profiles", "summaries"}
 
@@ -352,6 +353,26 @@ def _fetch_report(source: dict, output: Path, archive: zipfile.ZipFile | None = 
             json.dumps({key: data[key] for key in keys}, separators=(",", ":"), allow_nan=False)
             + "\n"
         ).encode()
+    if "ensemble" in source:
+        pin = source["ensemble"]
+        require(set(pin) == {"url", "sha256", "bytes"}, "Invalid ensemble pin")
+        require(
+            type(pin["bytes"]) is int and 0 < pin["bytes"] <= MAX_ENSEMBLE_BYTES,
+            "Invalid ensemble size",
+        )
+        content = download(pin["url"], pin["sha256"], pin["bytes"])
+        ensemble = parse(content)
+        require(
+            ensemble.get("version") == 1 and ensemble.get("report_id") == data["snapshot_id"],
+            "Ensemble belongs to a different report",
+        )
+        require(
+            isinstance(ensemble.get("panels"), list) and bool(ensemble["panels"]),
+            "Missing ensemble panels",
+        )
+        total += len(content)
+        (output / "ensemble.json").write_bytes(content)
+        files.add("ensemble.json")
     require(
         total + len(about) <= MAX_SITE_BYTES, "Report metadata exceeds the Pages packaging limit"
     )

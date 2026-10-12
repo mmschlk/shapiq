@@ -88,12 +88,15 @@ deleted after required retained-result provenance is safely materialized and
 verified. One consolidated reference, ownership, numerical and coverage check precedes
 publication of the report and its reproducibility artifacts.
 
-## Planned estimator-combination analysis
+## Estimator-combination analysis
 
-Fit signed linear estimator weights separately for each target and budget.
-Evaluate held-out R² and nMSE with dataset-grouped splits, keeping all games from
-a dataset together. PCA of normalized estimator errors will describe shared
-error patterns. This is planned analysis, with no performance claims yet.
+Fit signed linear weights without an intercept separately for each target and
+budget, using complete same-game/budget/seed panels of supported nonexempt methods.
+Dataset-grouped cross-validation keeps all games from a dataset together.
+Held-out normalized R² and nMSE compare the fitted combination with equal weights;
+PCA of normalized estimator errors describes shared error patterns. Coefficients
+are not importance scores. Publish this analysis only with its authenticated,
+report-matched artifact; the method description makes no performance claim.
 
 ## Execution
 

@@ -1,0 +1,99 @@
+{
+  "scope_version": 3,
+  "prepared_instances": 2048,
+  "methods": {
+    "PermutationSamplingSII": {
+      "supported": 46872,
+      "successes": 46872
+    },
+    "PermutationSamplingSTII": {
+      "supported": 19740,
+      "successes": 19740
+    },
+    "PermutationSamplingSV": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "StratifiedSamplingSV": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "OwenSamplingSV": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "KernelSHAP": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "LeverageSHAP": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "RegressionFSII": {
+      "supported": 46053,
+      "successes": 46053
+    },
+    "RegressionFBII": {
+      "supported": 19740,
+      "successes": 19740
+    },
+    "KernelSHAPIQ": {
+      "supported": 73185,
+      "successes": 73185
+    },
+    "InconsistentKernelSHAPIQ": {
+      "supported": 73185,
+      "successes": 73185
+    },
+    "ProxySPEX": {
+      "supported": 132405,
+      "successes": 132405
+    },
+    "ProxySHAP": {
+      "supported": 132405,
+      "successes": 132405
+    },
+    "OddSHAP": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "RegressionMSR": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "ShaplEIG": {
+      "supported": 26313,
+      "successes": 13948
+    },
+    "SHAPIQ": {
+      "supported": 132405,
+      "successes": 132405
+    },
+    "SVARM": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "SVARMIQ": {
+      "supported": 132405,
+      "successes": 132405
+    },
+    "kADDSHAP": {
+      "supported": 26313,
+      "successes": 26313
+    },
+    "SPEX": {
+      "supported": 132405,
+      "successes": 6020
+    },
+    "UnbiasedKernelSHAP": {
+      "supported": 26313,
+      "successes": 26313
+    }
+  },
+  "nonexempt": {
+    "supported": 1071525,
+    "successes": 1071525,
+    "remaining": 0
+  }
+}

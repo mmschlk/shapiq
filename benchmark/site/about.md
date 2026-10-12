@@ -1,7 +1,8 @@
 # About the benchmark
 
 **How well can we estimate contributions with a limited number of queries?**
-We compare 22 estimators across individual predictions, training data and feature selection.
+Scope version 2 compares 22 estimator configurations across individual predictions,
+training data and feature selection on all 24 datasets.
 
 [TOC]
 
@@ -24,12 +25,20 @@ as zero. Zero or negligible reference vectors are excluded. For interaction targ
 the vectors contain the requested interaction coefficients; the empty-coalition
 baseline is excluded. Main effects and pairs can also be viewed separately.
 
-**Reading the tables:** an instance is one game construction with one of four
-construction seeds. “Exact / planned” counts available exact references in the
-published cohort, **not** successful estimator runs. The published total is
-**4,928 / 5,080 instances (97.0% reference coverage)**; 152 instances have no
-qualified reference. All admitted allocations have ended. Estimator coverage remains
-partial: failures and unattempted cells are unscored.
+**The selected cohort has 512 recipes and 2,048 prepared instances**, with four
+construction seeds per recipe: 477 core recipes and 35 KNN/TNN recipes.
+Every selected instance has a qualified reference. All 20 required estimators
+have **100% successful supported coverage**; ShaplEIG and SPEX retain partial
+coverage. The tables show selected player grids; estimator coverage counts only
+eligible, supported cells.
+
+Thirty-five core recipes were excluded in full because at least one seed failed
+the model-quality check against a dummy predictor. Neighbor replacements were
+selected for balanced coverage without using estimator accuracy; the
+[selection manifest](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json)
+records the exclusions and deterministic replacement rule. All 24 datasets
+and all three applications remain represented. Historical broader results outside
+this selection do not count toward this cohort’s coverage.
 
 ## Explaining an individual prediction
 
@@ -45,38 +54,40 @@ The output is a fixed class probability or a regression prediction.
 **Tree games** extend this to larger player sets. Interventional games average
 predictions with missing features filled from fixed background rows. Path-dependent games average missing
 branches using training-path weights. Matching exact tree solvers supply the
-references; boosted classifiers use their recorded output margin.
+references. Both tree constructions use random forests only.
 
-**Models:** core = linear/logistic regression + random forest; extra = XGBoost,
-LightGBM, RBF SVM + MLP, at **12 features only**. Tree games use random forest,
-XGBoost and LightGBM. Player sets below are the planned grids, where feasible.
+**Models:** linear/logistic regression and random forest for baseline games,
+with nested feature sets of at most 12 players. RF tree games use 8, 16 and 32
+features where available. A dataset's full width below 12 is also included in the
+baseline grid. There are no extra-model contrasts. Each table lists the retained
+model-specific grids; “—” means no selected recipe for that model/construction.
 
-| Dataset / models | Features: small / tree | Exact / planned instances |
-| --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14 / 8 | 72 / 72 |
-| Mushroom · core | 4, 8, 12, 14, 16 / 8, 16 | 88 / 88 |
-| Ionosphere · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 112 / 112 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 219 / 224 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 8, 16 | 104 / 104 |
-| Digits · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 152 / 152 |
-| Wine (classification) · core | 4, 8, 12, 13 / 8 | 56 / 56 |
-| Amazon Employee Access · core | 4, 8, 9 / 8 | 46 / 48 |
-| APS Failure · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128 | 157 / 160 |
-| Anneal · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 112 / 112 |
-| Splice · core | 4, 8, 12, 14, 16 / 8, 16, 32 | 112 / 112 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 / 8, 16 | 88 / 88 |
-| Wine Quality · core + extra | 4, 8, 12 / 8 | 64 / 64 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 136 / 136 |
-| NHANES I · core | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 128 / 136 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64, 128, 256, 512 | 224 / 224 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 15 / 8 | 80 / 80 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 / 8, 16, 32, 64 | 152 / 152 |
-| California Housing · core | 4, 8 / 8 | 39 / 40 |
-| Diabetes · core | 4, 8, 10 / 8 | 48 / 48 |
-| Bike Sharing · core | 4, 8, 12 / 8 | 48 / 48 |
-| Airfoil Self Noise · core | 4, 5 / — | 16 / 16 |
-| Concrete Strength · core | 4, 8 / 8 | 40 / 40 |
-| Protein · core | 4, 8, 9 / 8 | 48 / 48 |
+| Dataset | Baseline features (linear / RF) | RF tree features (path / interventional) |
+| --- | --- | --- |
+| Adult Census | 4, 8, 12 / 4, 8, 12 | 8 / 8 |
+| Mushroom | 4, 8, 12 / 4, 8, 12 | 8, 16 / 8, 16 |
+| Ionosphere | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Bioresponse | — / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Breast Cancer | 4, 8, 12 / 4, 8, 12 | 8, 16 / 8, 16 |
+| Digits | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Wine (classification) | 4, 8, 12 / 4, 8, 12 | 8 / 8 |
+| Amazon Employee Access | 8, 9 / 8, 9 | 8 / 8 |
+| APS Failure | 4, 8, 12 / 4, 12 | 16, 32 / 16, 32 |
+| Anneal | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Splice | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Credit Card Default | 4, 8, 12 / 4, 8, 12 | 8, 16 / 8, 16 |
+| Wine Quality | 4, 8, 12 / 4, 8, 12 | 8 / 8 |
+| Communities and Crime | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| NHANES I | — / 8, 12 | 8, 32 / 8, 32 |
+| QSAR-TID11 | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| Miami Housing | 4, 8, 12 / 4, 8, 12 | 8 / 8 |
+| Superconductivity | 4, 8, 12 / 4, 8, 12 | 8, 16, 32 / 8, 16, 32 |
+| California Housing | 4 / 4, 8 | 8 / 8 |
+| Diabetes | 4, 8, 10 / 4, 8, 10 | 8 / 8 |
+| Bike Sharing | 4, 8, 12 / 4, 8, 12 | 8 / 8 |
+| Airfoil Self Noise | 4, 5 / 4, 5 | — / — |
+| Concrete Strength | 4, 8 / 4, 8 | 8 / 8 |
+| Protein | 4, 8, 9 / 4, 8, 9 | 8 / 8 |
 
 ## Valuing training data
 
@@ -85,47 +96,44 @@ of its groups and evaluate on a fixed held-out set $T$:
 
 $$f(S) = \begin{cases}\operatorname{accuracy}(h_S, T) & \text{classification},\\ -\operatorname{MSE}(h_S, T) & \text{regression},\end{cases} \qquad f(\varnothing) = 0.$$
 
-**Exact reference:** refit and score every coalition. Core models use up to
-12 input features. At 12 groups, the extra-model datasets also vary the core
-models' input width through 8, 16, 32, 64, 128 and full width, where available.
-Input width is separate from the number of players.
+**Exact reference:** refit and score every coalition of 4, 8 or 12 groups.
+Both linear/logistic regression and random forest use exactly
+$\min(12, \text{dataset width})$ input features. There is no input-width sweep;
+input width is separate from the number of players.
 
-**Neighbor games** instead use individual training rows as players, for a fixed
-test example. KNN utility is the number of matching labels among the coalition's
-nearest $\min(k, |S|)$ rows, divided by fixed $k$. TNN utility is the matching-label
-fraction within a fixed radius, or $1 / \text{number of classes}$ if none are present.
-Specialized formulas give **exact Shapley values** for these larger games.
+**Neighbor games** use individual training rows as players for a fixed test
+example. KNN utility counts matching labels among the coalition's nearest
+$\min(k, |S|)$ rows, divided by fixed $k$. TNN utility is the matching-label fraction
+within a fixed radius, or $1 / \text{number of classes}$ when no rows are present.
+Selected classification games use 32 or 64 players, with exact native Shapley
+references. All input selections are fixed before estimator evaluation.
 
-**Models:** core = linear/logistic regression + random forest; extra = XGBoost,
-LightGBM + MLP, at **12 groups only**. Neighbor games use KNN and TNN on the
-classification datasets. “—” means no neighbor games.
-
-| Dataset / models | Players: groups / neighbors | Exact / planned instances |
-| --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 116 / 116 |
-| Mushroom · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 88 / 88 |
-| Ionosphere · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 72 / 72 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 132 / 148 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256 | 108 / 108 |
-| Digits · core + extra | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 132 / 132 |
-| Wine (classification) · core | 4, 8, 12, 14, 16 / 32, 64, 128 | 64 / 64 |
-| Amazon Employee Access · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 84 / 88 |
-| APS Failure · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 86 / 88 |
-| Anneal · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512 | 80 / 80 |
-| Splice · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 88 / 88 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 / 32, 64, 128, 256, 512, 1024 | 84 / 88 |
-| Wine Quality · core + extra | 4, 8, 12, 14, 16 / — | 56 / 60 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 / — | 38 / 40 |
-| NHANES I · core | 4, 8, 12, 14, 16 / — | 34 / 40 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 / — | 96 / 100 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 16 / — | 60 / 68 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 / — | 77 / 92 |
-| California Housing · core | 4, 8, 12, 14, 16 / — | 31 / 40 |
-| Diabetes · core | 4, 8, 12, 14, 16 / — | 40 / 40 |
-| Bike Sharing · core | 4, 8, 12, 14, 16 / — | 36 / 40 |
-| Airfoil Self Noise · core | 4, 8, 12, 14, 16 / — | 40 / 40 |
-| Concrete Strength · core | 4, 8, 12, 14, 16 / — | 40 / 40 |
-| Protein · core | 4, 8, 12, 14, 16 / — | 36 / 40 |
+| Dataset | Training-row groups (linear / RF) | Neighbor players (KNN / TNN) | Input features |
+| --- | --- | --- | --- |
+| Adult Census | 4, 8, 12 / 4, 8, 12 | 64 / 64 | 12 |
+| Mushroom | 4, 8, 12 / 4, 8, 12 | 32 / 32, 64 | 12 |
+| Ionosphere | 4, 8, 12 / 4, 8, 12 | 32, 64 / 64 | 12 |
+| Bioresponse | — / 4, 8, 12 | 32, 64 / 32 | 12 |
+| Breast Cancer | 4, 8, 12 / 4, 8, 12 | 64 / 32, 64 | 12 |
+| Digits | 4, 8, 12 / 4, 8, 12 | 32 / 32, 64 | 12 |
+| Wine (classification) | 4, 8, 12 / 4, 8, 12 | 32, 64 / 64 | 12 |
+| Amazon Employee Access | 4, 8, 12 / 4, 8, 12 | 32, 64 / 32 | 9 |
+| APS Failure | 4, 8, 12 / 4, 8, 12 | 64 / 32, 64 | 12 |
+| Anneal | 4, 8, 12 / 4, 8, 12 | 32 / 32, 64 | 12 |
+| Splice | 4, 8, 12 / 4, 8, 12 | 32, 64 / 64 | 12 |
+| Credit Card Default | 4, 8, 12 / 4, 8, 12 | 32, 64 / 32 | 12 |
+| Wine Quality | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| Communities and Crime | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| NHANES I | — / 4, 8, 12 | — / — | 12 |
+| QSAR-TID11 | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| Miami Housing | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| Superconductivity | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| California Housing | — / 4, 8, 12 | — / — | 8 |
+| Diabetes | 4, 8, 12 / 4, 8, 12 | — / — | 10 |
+| Bike Sharing | 4, 8, 12 / 4, 8, 12 | — / — | 12 |
+| Airfoil Self Noise | 4, 8, 12 / 4, 8, 12 | — / — | 5 |
+| Concrete Strength | 4, 8, 12 / 4, 8, 12 | — / — | 8 |
+| Protein | 4, 8, 12 / 4, 8, 12 | — / — | 9 |
 
 ## Selecting useful features
 
@@ -137,51 +145,72 @@ $$f(S) = \begin{cases}\operatorname{accuracy}(h_S, T_S) & \text{classification},
 **Exact reference:** fit and score all $2^d$ coalitions. Unlike an individual-prediction
 game, this measures how well a model can learn from the chosen features.
 
-**Models:** core = linear/logistic regression + random forest; extra = XGBoost,
-LightGBM, RBF SVM + MLP, at **12 features only**.
+**Models:** linear/logistic regression and random forest, with the same nested
+feature grids of at most 12 players used by the baseline prediction games.
 
-| Dataset / models | Features | Exact / planned instances |
-| --- | --- | ---: |
-| Adult Census · core + extra | 4, 8, 12, 14 | 48 / 48 |
-| Mushroom · core | 4, 8, 12, 14, 16 | 40 / 40 |
-| Ionosphere · core | 4, 8, 12, 14, 16 | 40 / 40 |
-| Bioresponse · core + extra | 4, 8, 12, 14, 16 | 51 / 56 |
-| Breast Cancer · core + extra | 4, 8, 12, 14, 16 | 56 / 56 |
-| Digits · core + extra | 4, 8, 12, 14, 16 | 56 / 56 |
-| Wine (classification) · core | 4, 8, 12, 13 | 32 / 32 |
-| Amazon Employee Access · core | 4, 8, 9 | 22 / 24 |
-| APS Failure · core | 4, 8, 12, 14, 16 | 35 / 40 |
-| Anneal · core | 4, 8, 12, 14, 16 | 40 / 40 |
-| Splice · core | 4, 8, 12, 14, 16 | 40 / 40 |
-| Credit Card Default · core | 4, 8, 12, 14, 16 | 36 / 40 |
-| Wine Quality · core + extra | 4, 8, 12 | 40 / 40 |
-| Communities and Crime · core | 4, 8, 12, 14, 16 | 36 / 40 |
-| NHANES I · core | 4, 8, 12, 14, 16 | 32 / 40 |
-| QSAR-TID11 · core + extra | 4, 8, 12, 14, 16 | 56 / 56 |
-| Miami Housing · core + extra | 4, 8, 12, 14, 15 | 46 / 56 |
-| Superconductivity · core + extra | 4, 8, 12, 14, 16 | 44 / 56 |
-| California Housing · core | 4, 8 | 15 / 16 |
-| Diabetes · core | 4, 8, 10 | 24 / 24 |
-| Bike Sharing · core | 4, 8, 12 | 24 / 24 |
-| Airfoil Self Noise · core | 4, 5 | 16 / 16 |
-| Concrete Strength · core | 4, 8 | 16 / 16 |
-| Protein · core | 4, 8, 9 | 24 / 24 |
+| Dataset | Linear features | RF features |
+| --- | --- | --- |
+| Adult Census | 4, 8, 12 | 4, 8, 12 |
+| Mushroom | 4, 8, 12 | 4, 8, 12 |
+| Ionosphere | 4, 8, 12 | 4, 8, 12 |
+| Bioresponse | — | 4, 8, 12 |
+| Breast Cancer | 4, 8, 12 | 4, 8, 12 |
+| Digits | 4, 8, 12 | 4, 8, 12 |
+| Wine (classification) | 4, 8, 12 | 4, 8, 12 |
+| Amazon Employee Access | 8, 9 | 8, 9 |
+| APS Failure | 4, 8, 12 | 4, 12 |
+| Anneal | 4, 8, 12 | 4, 8, 12 |
+| Splice | 4, 8, 12 | 4, 8, 12 |
+| Credit Card Default | 4, 8, 12 | 4, 8, 12 |
+| Wine Quality | 4, 8, 12 | 4, 8, 12 |
+| Communities and Crime | 4, 8, 12 | 4, 8, 12 |
+| NHANES I | — | 8, 12 |
+| QSAR-TID11 | 4, 8, 12 | 4, 8, 12 |
+| Miami Housing | 4, 8, 12 | 4, 8, 12 |
+| Superconductivity | 4, 8, 12 | 4, 8, 12 |
+| California Housing | 4 | 4, 8 |
+| Diabetes | 4, 8, 10 | 4, 8, 10 |
+| Bike Sharing | 4, 8, 12 | 4, 8, 12 |
+| Airfoil Self Noise | 4, 5 | 4, 5 |
+| Concrete Strength | 4, 8 | 4, 8 |
+| Protein | 4, 8, 9 | 4, 8, 9 |
 
 ## Comparing and reproducing results
 
-- **Budgets:** 0.5, 1, 2, 4, 8, 16, 32, 64 and 128 × $d$ coalition queries;
+- **Budgets:** 0.5, 1, 2, 4, 8, 16 and 32 × $d$ coalition queries;
   three estimator seeds per game. Actual query use can be smaller.
 - **Targets:** Shapley values and order-two k-SII, SII, STII, FSII and FBII
-  interactions, where supported. Neighbor games provide Shapley values only.
+  interactions, where supported. KNN/TNN games provide SV only.
 - **Scores:** weighted means and medians. Applications receive equal weight,
   followed by subtype and recipe; datasets with more recipes can have more weight.
-- **Coverage:** failures and missing runs are unscored. Methods below **80%**
-  successful/planned coverage appear at the leaderboard's bottom and leave the figures.
-- **Ground truth:** exact for the saved game, subject to floating-point precision.
-  Generic large games never use an approximate estimate as an exact reference.
+- **Completion:** 100% successful supported coverage for every estimator
+  except ShaplEIG and SPEX. ProxySPEX is included. Failed and missing runs for the
+  two exempt estimators remain visible and unscored.
+- **Coverage:** exact-reference coverage and successful estimator coverage are
+  separate. Unsupported targets are not failures. Zero-signal and quality
+  exclusions are reported without changing frozen games to improve coverage.
+- **Ground truth:** exhaustive tables for generic games of at most 12 players;
+  matching exact native solvers for random-forest tree and neighbor games. References are
+  subject to floating-point precision; small-game solver checks do not establish
+  independent full-dimensional validation.
 - **Data notes:** Wine classification differs from Wine Quality regression.
   NHANES I uses its supplied survival label as a regression surrogate.
 - **Timing:** measured estimator time on cached games; estimated oracle costs are
   shown separately. These are diagnostic timings, not isolated end-to-end timings.
-- **Reproduction:** [download saved games, results and instructions](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11).
-  The dashboard also exports selected results as JSON or CSV.
+- **Reproduction:** the dashboard exports selected results as JSON or CSV.
+  [Historical broad-cohort artifacts](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11)
+  remain available separately and do not contribute to this cohort. Frozen-game
+  reproduction preserves authenticated references, original result identities
+  and the source overlays used by each run.
+
+## Estimator combinations
+
+For each target and budget, we fit signed linear weights with no intercept:
+
+$$\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.$$
+
+Complete panels contain the same game, budget and seed for every supported
+nonexempt estimator. Dataset-grouped cross-validation keeps all games from a
+dataset together. Held-out normalized R² and nMSE compare the fitted combination
+with equal weights. PCA of normalized estimator errors describes shared error
+patterns. Signed coefficients may be negative and are not importance scores.

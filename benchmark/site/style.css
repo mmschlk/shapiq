@@ -1324,3 +1324,23 @@ footer a {
   width: min(380px, 100%); padding: 16px; border: 1px solid var(--line); border-radius: 10px;
   background: white; color: var(--muted); box-shadow: 0 8px 28px #182c5018; }
 .coveragePopover a { display: block; margin: 8px 0 0; }
+
+.ensembleSection { margin-top: 28px; }
+.ensembleSection[hidden] { display: none; }
+.ensembleSelectors { display: flex; flex-wrap: wrap; gap: 12px; }
+.ensembleSelectors label { color: var(--muted); font-size: 12px; }
+.ensembleGrid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(300px, 2fr); gap: 24px; }
+.ensembleGrid h3 { font-size: 14px; margin: 22px 0 10px; }
+.ensembleTable { width: 100%; min-width: 0; font-size: 12px; }
+.ensembleTable th, .ensembleTable td { padding: 10px 12px; white-space: normal; }
+.ensembleTable th:first-child, .ensembleTable td:first-child { text-align: left; }
+#ensemblePca svg { display: block; width: 100%; height: auto; overflow: visible; }
+#ensemblePca text { fill: var(--muted); font-size: 11px; }
+#ensemblePca .ensemblePointLabel { font-size: 9px; }
+#ensemblePca circle { fill: var(--blue); }
+#ensemblePca circle:focus { outline: 2px solid var(--ink); }
+.ensembleAxis { stroke: var(--line); stroke-width: 1; }
+@media (max-width: 760px) {
+  .ensembleGrid { grid-template-columns: minmax(0, 1fr); }
+  .ensembleSection .cardHeading { align-items: flex-start; flex-direction: column; gap: 12px; }
+}

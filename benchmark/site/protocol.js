@@ -653,27 +653,34 @@ function renderReportSummary() {
     const details = document.createElement("details");
     details.className = "coverageDetails";
     const label = document.createElement("summary");
-    label.textContent = `${BenchmarkQuery.formatCoverage(coverage.prepared_instances, coverage.intended_instances)} reference coverage`;
-    colorCoverage(label, coverage.prepared_instances, coverage.intended_instances);
+    const compact = coverage.nonexempt && coverage.methods;
+    const valid = compact ? coverage.nonexempt.successes : coverage.prepared_instances;
+    const planned = compact ? coverage.nonexempt.supported : coverage.intended_instances;
+    label.textContent = `${BenchmarkQuery.formatCoverage(valid, planned)} ${compact ? "required evaluation" : "reference"} coverage`;
+    colorCoverage(label, valid, planned);
     const body = document.createElement("div");
     body.className = "coveragePopover";
-    body.append(document.createTextNode(
-      `${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
-      `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells have no qualified reference. Missing results are unscored. `,
-    ));
+    const description = compact
+      ? `${coverage.prepared_instances.toLocaleString()} prepared game instances. ` +
+        `${BenchmarkQuery.formatCoverage(valid, planned)} successful supported coverage across ` +
+        `${Object.keys(coverage.methods).filter((name) => !["ShaplEIG", "SPEX"].includes(name)).length} required estimators. ` +
+        `ShaplEIG and SPEX are reported separately and may have partial coverage. `
+      : `${coverage.prepared_instances.toLocaleString()} of ${coverage.intended_instances.toLocaleString()} intended instances have qualified references; ${coverage.unprepared_instances.toLocaleString()} unprepared. ` +
+        `${BenchmarkQuery.formatCount(coverage.never_attempted_supported)} supported cells were not attempted; ${BenchmarkQuery.formatCount(coverage.not_reached_supported)} planned supported cells have no qualified reference. Missing results are unscored. `;
+    body.append(document.createTextNode(description));
     const download = document.createElement("a");
     download.href = "#";
     download.textContent = "Download coverage";
     download.addEventListener("click", async (event) => {
       event.preventDefault();
       try {
-        const cases = await BenchmarkDetails.object(manifest, coverage.details, {
+        const cases = coverage.details ? await BenchmarkDetails.object(manifest, coverage.details, {
           read: (descriptor) => BenchmarkPartitions.read(manifest, descriptor, {
             files,
           }),
-        });
+        }) : null;
         if (data !== manifest) return;
-        const url = URL.createObjectURL(new Blob([JSON.stringify({summary: coverage, cases}, null, 2)], {type: "application/json"}));
+        const url = URL.createObjectURL(new Blob([JSON.stringify(cases === null ? {summary: coverage} : {summary: coverage, cases}, null, 2)], {type: "application/json"}));
         const link = document.createElement("a");
         link.href = url;
         link.download = "benchmark-coverage.json";

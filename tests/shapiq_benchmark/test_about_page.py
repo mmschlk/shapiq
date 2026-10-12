@@ -47,22 +47,33 @@ def test_math_preserves_tex_and_escapes_html() -> None:
     assert '<p><div class="math">' not in rendered
 
 
-def test_all_dataset_tables_are_closed_with_published_counts() -> None:
+def test_all_dataset_tables_are_closed_with_prepared_compact_scope() -> None:
     source = (SITE / "about.md").read_text()
     rendered = render_about(source)
     assert rendered.count('<details class="datasetTable">') == 3
     assert "<details open" not in rendered
     assert rendered.count("<tbody>") == 3
     assert rendered.count("<tr>") == 75  # Three headings plus 72 dataset rows.
-    totals = re.findall(r"\| (\d+) / (\d+) \|", source)
-    assert len(totals) == 72
-    assert tuple(map(sum, zip(*[(int(a), int(b)) for a, b in totals], strict=True))) == (
-        4928,
-        5080,
-    )
-    assert "97.0% reference coverage" in source
-    assert "Estimator coverage remains\npartial" in source
-    assert "additional runs are in progress" not in source
+    assert "Scope version 2" in source
+    assert "512 recipes and 2,048" in source
+    assert "selected player grids; estimator coverage counts only" in source
+    assert "477 core recipes and 35 KNN/TNN recipes" in source
+    assert "All 20 required estimators" in source
+    assert "**100% successful supported coverage**" in source
+    assert "ShaplEIG and SPEX retain partial" in source
+    assert "Historical broader results" in source
+    assert "97.0% reference coverage" not in source
+    assert "Exact / planned instances" not in source
+    assert "except ShaplEIG and SPEX. ProxySPEX is included." in source
+    assert "0.5, 1, 2, 4, 8, 16 and 32" in source
+    assert "64 and 128" not in source
+    assert "Neighbor players (KNN / TNN)" in source
+    assert "| Adult Census | 4, 8, 12 / 4, 8, 12 | 64 / 64 | 12 |" in source
+    assert "| California Housing | — / 4, 8, 12 | — / — | 8 |" in source
+    assert "signed linear weights with no intercept" in source
+    assert "Dataset-grouped cross-validation" in source
+    assert "Signed coefficients may be negative and are not importance scores" in source
+    assert "Training-row groups" in source
 
 
 @pytest.mark.parametrize("source", ["# Title", "# Title\n\n[TOC]\n\n[TOC]"])

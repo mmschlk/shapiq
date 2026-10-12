@@ -17,6 +17,7 @@
     <script defer src="partition-download.js"></script>
     <script defer src="partition-client.js"></script>
     <script defer src="app.js"></script>
+    <script defer src="ensemble.js"></script>
   </head>
   <body>
     <header>
@@ -326,9 +327,9 @@
             <p id="snapshot"></p>
             <p>
               <a
-                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11"
+                href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-compact-2026-10-12"
                 id="reproductionLink"
-                >Get the frozen games and baseline results ↗</a
+                >Get the frozen games and benchmark results ↗</a
               >
             </p>
           </div>
@@ -352,6 +353,44 @@
           ><button id="downloadJson">JSON ↓</button
           ><button id="downloadCsv">CSV ↓</button>
         </div>
+      </section>
+      <section id="ensemble" class="ensembleSection" hidden>
+        <article class="chartCard">
+          <div class="cardHeading">
+            <h2>Combining estimators</h2>
+            <div class="ensembleSelectors">
+              <label class="compactSelect">Target <select id="ensembleTarget"></select></label>
+              <label class="compactSelect">Budget <select id="ensembleBudget"></select></label>
+            </div>
+          </div>
+          <p class="chartNote">Precomputed for the selected cohort, independent of the filters above.
+            Signed linear weights are fitted separately for each target and budget.
+            All games from a dataset stay together in cross-validation.</p>
+          <p class="chartNote" id="ensembleNote"></p>
+          <div class="ensembleGrid">
+            <div>
+              <h3>Combination weights</h3>
+              <div class="tableWrap"><table class="ensembleTable">
+                <thead><tr><th>Estimator</th><th>Signed coefficient</th></tr></thead>
+                <tbody id="ensembleWeights"></tbody>
+              </table></div>
+              <p class="chartNote">Weights fitted on all available matched panels; held-out scores
+                use weights fitted without the held-out datasets. Correlated estimators can
+                cancel each other, so weights are not importance scores.</p>
+            </div>
+            <div>
+              <h3>Predictive accuracy</h3>
+              <div class="tableWrap"><table class="ensembleTable">
+                <thead><tr><th>Comparison</th><th>Normalized R²</th><th>nMSE</th></tr></thead>
+                <tbody id="ensembleScores"></tbody>
+              </table></div>
+              <h3>Shared error patterns</h3>
+              <div id="ensemblePca"></div>
+              <p class="chartNote">PCA of normalized estimator errors. Nearby estimators have
+                similar projected error patterns; position is not an accuracy ranking.</p>
+            </div>
+          </div>
+        </article>
       </section>
     </main>
     <footer>

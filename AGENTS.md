@@ -209,6 +209,9 @@ uv run pre-commit run --all-files
   field rather than treating all canonical JSON hashes as interchangeable.
 
 - Splitting report files does not avoid GitHub Pages' 1-GB published-site limit.
+  Apply the existing `benchmark/compress_report.py` lossless transport before
+  checking deployed size; the compact report is about 2.4 GiB uncompressed.
+  Browser, download and reproduction readers already support its gzip descriptors.
   Release assets work as direct downloads but are not automatically browser-fetch
   storage: public HEAD and ranged GET checks on 2026-10-05 returned no CORS
   permission for this site's origin. Verify payload size and delivery before
@@ -389,6 +392,9 @@ uv run pre-commit run --all-files
   `squeue -j ROOT` fail with `Invalid job id specified`. Query the user's live
   queue and filter exact IDs when checking for remaining allocations; establish
   terminal completion separately through full task accounting.
+- `sacct -P` emits no trailing field delimiter on Hopper. Parse its fields and
+  validate their values; literal comparisons against lines ending in `|` reject
+  valid accounting records and can block export, packaging, or browser jobs.
 - Live accounting counts can transiently disagree with the planned task count
   during transitions (343 reported rows for a 342-task preparation wave).
   Verify exact task IDs and uniqueness, and retry inconsistent reads before
@@ -820,3 +826,39 @@ uv run pre-commit run --all-files
   inventory runs invalidates its final stability check. Pin a versioned immutable
   scope copy for new admissions; keep active steering separate. Saved partial
   inventory outputs require explicit revalidation before reuse.
+- Compact runtime parent `started` headers contain placement/CPU hardware only;
+  their authenticated top-level header binds the Slurm job. Child
+  `response.worker` additionally contains `slurm_job_id` and thread settings.
+  Validate these schemas separately: applying the child worker validator to a
+  parent header rejects valid completed allocations.
+- The compact baseline continuation plan adds an `execution_exclusion` routing
+  annotation to its copied census entry. Authenticate the companion planner's
+  exact allowed annotation, then compare every original census field unchanged;
+  raw dictionary equality incorrectly rejects these valid baseline assignments.
+
+- Compact final collection receipts do not flatten historical oracle-artifact
+  pins: they authenticate selected snapshots and current records, without opening
+  all oracle payloads. A reproduction adapter must authenticate the exact selected
+  snapshot first, then stream each artifact against its original `artifacts` hash
+  mapping. Do not require a nonexistent flat artifact pin or rewrite snapshots;
+  retained source-overlay files still need the collector's explicit code pins.
+
+- Creating a hardlink changes the source inode's ctime, even when its bytes are
+  unchanged. Export input guards that pin ctime will correctly reject a report
+  manifest after hardlink-based delivery staging. Copy files into the separate
+  delivery directory instead; preserve both the original audited bytes and file
+  stamps when refreshing timing-cache or ensemble assets.
+
+- The partitioned report exporter publishes an explicit nine-field suite
+  projection, omitting private recipe families and per-game budget grids. When
+  authenticating a completed report against its collection, compare that exact
+  frozen projection rather than the full internal suite or an arbitrary subset.
+  Include the actual saved manifest in recovery tests; identical toy suite
+  dictionaries miss this boundary.
+
+- Summary tables retain rows for methods that do not support the selected target:
+  their `planned` count is the full panel while `unsupported` can equal it and
+  `valid` is zero. Browser completeness checks must compare supported cells
+  (`planned - unsupported`) and still reject genuine failures or missing results;
+  preserve exact Python-preset counts rather than treating unsupported rows as
+  unfinished evaluations.

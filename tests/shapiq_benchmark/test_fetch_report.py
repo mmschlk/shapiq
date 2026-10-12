@@ -140,3 +140,33 @@ def test_reject_coerced_descriptor_numbers(tmp_path: Path, field: str, value: ob
     manifest["assets"]["raw"][0][field] = value
     with pytest.raises(ValueError, match="descriptor"):
         fetch_report(seal(source, manifest), tmp_path / "out")
+
+
+@pytest.mark.parametrize("fault", [None, "hash", "snapshot", "size"])
+def test_optional_ensemble_delivery(tmp_path: Path, fault: str | None) -> None:
+    pin, source, manifest = fixture(tmp_path)
+    path = source / "ensemble.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "report_id": "wrong" if fault == "snapshot" else manifest["snapshot_id"],
+                "panels": [{"target": "SV", "relative_budget": 1}],
+            }
+        )
+    )
+    pin["ensemble"] = {
+        "url": path.as_uri(),
+        "sha256": "0" * 64 if fault == "hash" else digest(path),
+        "bytes": 2 * 1024 * 1024 + 1 if fault == "size" else path.stat().st_size,
+    }
+    out = tmp_path / "out"
+    if fault:
+        with pytest.raises(ValueError):
+            fetch_report(pin, out)
+        assert not (out / "data.json").exists()
+    else:
+        result = fetch_report(pin, out)
+        assert "ensemble.json" in result["files"]
+        assert (out / "ensemble.json").read_bytes() == path.read_bytes()
+        assert result["bytes"] == sum(p.stat().st_size for p in out.iterdir())

@@ -19,5 +19,6 @@
   "about.md",
   "timing-cache.js",
   "timing-cache.json",
-  "timing-cache-metadata.js"
+  "timing-cache-metadata.js",
+  "ensemble.js"
 ]
