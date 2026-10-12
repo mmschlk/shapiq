@@ -40,7 +40,7 @@ class TabularUncertaintyExplanation(TabularLocalExplanation):
     The value of a coalition is the imputed predictive uncertainty of the forest at ``x`` when only
     the features in the coalition are known: the total uncertainty (entropy of the mean class
     probabilities), the aleatoric part (mean entropy of the trees), or the epistemic part (their
-    difference). Absent features are imputed as in :class:`~shapiq_games.local_xai.TabularLocalExplanation`.
+    difference). Absent features are imputed as in :class:`~shapiq_games.TabularLocalExplanation`.
 
     Attributes:
         uncertainty: The explained kind of uncertainty.

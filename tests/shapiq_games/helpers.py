@@ -6,6 +6,7 @@ import doctest
 import importlib
 import importlib.util
 import pkgutil
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -34,6 +35,50 @@ def run_docstring_examples(name: str) -> None:
         module, optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE, report=True
     )
     assert result.failed == 0, f"{result.failed} docstring example(s) failed in {name}"
+
+
+_DOCS = Path(__file__).resolve().parents[2] / "docs" / "source"
+
+
+def _api_reference_names(page: str) -> list[str]:
+    """Return the full names an API reference page lists in its autosummary tables."""
+    names, module, in_table = [], "", False
+    for line in (_DOCS / page).read_text().splitlines():
+        if line.startswith(".. currentmodule::"):
+            module, in_table = line.partition("::")[2].strip(), False
+        elif line.startswith(".. autosummary::"):
+            in_table = True
+        elif line and not line.startswith(" "):
+            in_table = False
+        elif in_table and line.strip() and not line.strip().startswith(":"):
+            names.append(f"{module}.{line.strip()}")
+    return names
+
+
+def undocumented_names(package: ModuleType, page: str) -> list[str]:
+    """Return the public names of a package that its API reference page does not list.
+
+    A name is public if a module without a leading underscore lists it in ``__all__``. A name the
+    page lists under another module (a re-export) counts as listed, except for constants.
+    """
+    listed = _api_reference_names(page)
+    documented = []
+    for name in listed:
+        module_name, _, attribute = name.rpartition(".")
+        documented.append(getattr(importlib.import_module(module_name), attribute))
+    missing = []
+    for module_name in package_modules(package):
+        if any(part.startswith("_") for part in module_name.split(".")):
+            continue
+        module = importlib.import_module(module_name)
+        for name in getattr(module, "__all__", ()):
+            obj = getattr(module, name)
+            if f"{module_name}.{name}" in listed:
+                continue
+            if not isinstance(obj, int | float | str) and any(obj is d for d in documented):
+                continue
+            missing.append(f"{module_name}.{name}")
+    return missing
 
 
 skip_if_no_skimage = pytest.mark.skipif(

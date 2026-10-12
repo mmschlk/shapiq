@@ -60,7 +60,7 @@ class SentimentAnalysis(Game):
             classifier: A Hugging Face text-classification pipeline (anything with a ``tokenizer``
                 attribute that maps a list of texts and ``top_k=None`` to the scores of all labels,
                 ``[[{"label": ..., "score": ...}, ...], ...]``). If ``None``, the pipeline of
-                :data:`SENTIMENT_MODEL_ID` is loaded.
+                :data:`~shapiq_games.language.SENTIMENT_MODEL_ID` is loaded.
             mask_strategy: ``"mask"`` or ``"remove"``. Defaults to ``"mask"``.
             positive_label: The label whose probability is explained. Defaults to
                 ``"POSITIVE"``, the label of the default model.

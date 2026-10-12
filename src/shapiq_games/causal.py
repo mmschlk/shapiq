@@ -201,8 +201,9 @@ class GlobalConfoundingXAI(_ConfoundingGame):
                 If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to
-                :func:`tabpfn_regressor`: TabPFN v2 configured as in the paper (requires
-                ``tabpfn``); ``partial(tabpfn_regressor, version="v2.5")`` is the paper's model.
+                :func:`~shapiq_games.causal.tabpfn_regressor`: TabPFN v2 configured as in the
+                paper (requires ``tabpfn``); ``partial(tabpfn_regressor, version="v2.5")`` is the
+                paper's model.
         """
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)
 
@@ -252,7 +253,8 @@ class LocalConfoundingXAI(_ConfoundingGame):
             unit: The explained unit as an index into ``x`` or its covariates. Defaults to ``0``.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to
-                :func:`tabpfn_regressor` (TabPFN v2 configured as in the paper).
+                :func:`~shapiq_games.causal.tabpfn_regressor` (TabPFN v2 configured as in the
+                paper).
         """
         self.unit = resolve_x(unit, np.asarray(x, dtype=float)).astype(float)
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)

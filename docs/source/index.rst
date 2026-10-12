@@ -40,6 +40,8 @@ Contents
    :caption: API REFERENCE
 
    api_reference
+   api_reference_games
+   api_reference_benchmark
 
 .. toctree::
    :maxdepth: 1

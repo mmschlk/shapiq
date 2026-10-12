@@ -6,11 +6,16 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
+import importlib
+import pkgutil
 import sys
 from importlib.metadata import version
 from pathlib import Path
+from typing import TypeAliasType
 
 from sphinx.builders.html import StandaloneHTMLBuilder
+from sphinx.errors import PycodeError
+from sphinx.pycode import ModuleAnalyzer
 
 root = Path(__file__).resolve().parents[2]  # ../../ from this file
 sys.path.insert(0, str(root))
@@ -54,8 +59,8 @@ sphinx_gallery_conf = {
     "examples_dirs": [str(root / "examples")],
     "gallery_dirs": ["auto_examples"],
     "backreferences_dir": "gen_modules/backreferences",
-    "doc_module": ("shapiq",),
-    "reference_url": {"shapiq": None},
+    "doc_module": ("shapiq", "shapiq_games", "shapiq_benchmark"),
+    "reference_url": {"shapiq": None, "shapiq_games": None, "shapiq_benchmark": None},
     "filename_pattern": r"plot_.*\.py",
     "ignore_pattern": r"util_.*\.py",
     "plot_gallery": True,
@@ -150,9 +155,65 @@ autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
 autodoc_typehints = "both"
 
+# -- Re-exported constants -------------------------------------------------------------------------
+# A package may define a constant in a private module and re-export it, e.g.
+# shapiq_benchmark.datasets.TABARENA_DATASETS. Autodoc reads the docstring of a constant from the
+# source of the module it documents, finds none there, and shows the docstring of its type (dict,
+# int) instead. Take the docstring from the module that defines it.
+
+
+def _defining_module_docstring(package_name: str, attribute: str, obj: object) -> list[str] | None:
+    """Return the docstring of ``attribute`` in the submodule of a package that defines ``obj``."""
+    package = sys.modules.get(package_name)
+    if package is None or not hasattr(package, "__path__"):
+        return None
+    for submodule in pkgutil.iter_modules(package.__path__, f"{package_name}."):
+        module = importlib.import_module(submodule.name)
+        if getattr(module, attribute, None) is not obj:
+            continue
+        docs = ModuleAnalyzer.for_module(submodule.name).find_attr_docs().get(("", attribute))
+        if docs:
+            return list(docs)
+    return None
+
+
+def _use_the_defining_module_docstring(app, what, name, obj, options, lines) -> None:  # noqa: ARG001
+    if what != "data":
+        return
+    package_name, _, attribute = name.rpartition(".")
+    try:
+        if ("", attribute) in ModuleAnalyzer.for_module(package_name).find_attr_docs():
+            return  # the documenting module has its docstring
+    except PycodeError:  # no source to read
+        return
+    lines[:] = _defining_module_docstring(package_name, attribute, obj) or []
+
+
+# -- Type aliases ----------------------------------------------------------------------------------
+# The games and the benchmark declare their choices as type aliases (``type Task = Literal[...]``),
+# which sphinx-autodoc-typehints shows as "TypeAliasType". Show the alias, linked to its page (an
+# alias of a private module is documented under the package that re-exports it).
+
+
+def _format_type_alias(annotation: object, config: object) -> str | None:  # noqa: ARG001
+    if not isinstance(annotation, TypeAliasType):
+        return None  # the default formatting
+    module = ".".join(part for part in annotation.__module__.split(".") if not part.startswith("_"))
+    return f":py:type:`~{module}.{annotation.__name__}`"
+
+
+typehints_formatter = _format_type_alias
+
+
+def setup(app) -> None:
+    """Connect the docstring handler (before napoleon, which formats the docstrings)."""
+    app.connect("autodoc-process-docstring", _use_the_defining_module_docstring, priority=400)
+
+
 # -- Suppress warnings -----------------------------------------------------------------------------
 suppress_warnings = [
     "misc.highlighting_failure",  # should be fixed in the future
+    "config.cache",  # typehints_formatter is a function, which Sphinx cannot pickle with the config
 ]
 
 # -- Images ----------------------------------------------------------------------------------------

@@ -21,6 +21,10 @@ from ._base import ModelSetup, TabularSetup
 if TYPE_CHECKING:
     import numpy as np
 
+    # the dataclasses below inherit ModelSetup's field `preset: Preset | None`, whose annotation
+    # the documentation (sphinx-autodoc-typehints) resolves in this module
+    from shapiq_benchmark.models import Preset  # noqa: F401
+
 __all__ = [
     "InterventionalTreeSetup",
     "KNNSetup",

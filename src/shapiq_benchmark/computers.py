@@ -225,8 +225,8 @@ def moebius_representation(game: Game) -> InteractionValues | None:
 class MoebiusComputer(Computer[SOUM | UnanimityGame | DummyGame]):
     """Synthetic games with a known Möbius representation, via :class:`~shapiq.MoebiusConverter`.
 
-    Supports :class:`~shapiq_games.synthetic.SOUM`, :class:`~shapiq_games.synthetic.UnanimityGame`
-    and :class:`~shapiq_games.synthetic.DummyGame`, for any number of players. Besides the indices
+    Supports :class:`~shapiq_games.SOUM`, :class:`~shapiq_games.UnanimityGame`
+    and :class:`~shapiq_games.DummyGame`, for any number of players. Besides the indices
     of the converter, it returns the Möbius transform itself (``"Moebius"``), which is sparse.
     """
 
@@ -259,7 +259,7 @@ class PathDependentTreeComputer(Computer[PathDependentTreeGame]):
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """:class:`~shapiq_games.tree.PathDependentTreeGame` games TreeSHAP explains as they are.
+        """:class:`~shapiq_games.PathDependentTreeGame` games TreeSHAP explains as they are.
 
         TreeSHAP treats a decision node without training samples differently from the game, so
         games whose explained point's path enters one are not supported.
@@ -293,7 +293,7 @@ class InterventionalTreeComputer(Computer[InterventionalTreeGame]):
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """:class:`~shapiq_games.tree.InterventionalTreeGame` games of models that sum their trees.
+        """:class:`~shapiq_games.InterventionalTreeGame` games of models that sum their trees.
 
         The game evaluates the model's predictions; TreeSHAP explains the sum of the trees. The two
         differ for models with a link function (e.g. a Poisson loss) or ``IsolationForest``.
@@ -333,7 +333,7 @@ class InterventionalTreeComputer(Computer[InterventionalTreeGame]):
 class NearestNeighborComputer(Computer[NNGameBase[Any]]):
     """Nearest-neighbor games via the KNN, weighted KNN, and threshold NN explainers.
 
-    A :class:`~shapiq_games.nn.WeightedKNNGame` is supported when it uses the explainer's weight
+    A :class:`~shapiq_games.WeightedKNNGame` is supported when it uses the explainer's weight
     discretization (``n_bits`` is set) and ``k > 1``.
     """
 
@@ -377,7 +377,7 @@ class ProductKernelComputer(Computer[ProductKernelGame]):
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:
-        """:class:`~shapiq_games.kernel.ProductKernelGame` games."""
+        """:class:`~shapiq_games.ProductKernelGame` games."""
         return isinstance(game, ProductKernelGame)
 
     @classmethod

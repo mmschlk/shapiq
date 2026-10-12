@@ -120,7 +120,8 @@ class ImageClassifier(RegionGame):
                 classifiers when no ``regions`` are given. Defaults to ``14``.
             regions: Your own players for ``"resnet_18"`` and custom classifiers: the player of
                 every pixel, of shape ``(height, width)``, numbered ``0, ..., n - 1`` (see
-                :func:`grid_regions`). For ResNet-18 they refer to its ``224 x 224`` crop.
+                :func:`~shapiq_games.vision.grid_regions`). For ResNet-18 they refer to its
+                ``224 x 224`` crop.
             fill: Remove players in image space, replacing their pixels with ``"mean"`` (the
                 image's mean color), ``"gray"``, ``"black"``, ``"blur"``, or an image of the same
                 shape. ResNet-18 and custom classifiers always do (``"mean"`` by default); the

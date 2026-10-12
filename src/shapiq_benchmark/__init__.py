@@ -2,7 +2,7 @@
 
 - :mod:`shapiq_benchmark.computers`: ground-truth computers wrapping the exact algorithms of
   shapiq (brute force, Möbius, path-dependent and interventional trees, nearest neighbors,
-  product kernels) and :func:`default_computer` choosing one for a game.
+  product kernels) and :func:`~shapiq_benchmark.computers.default_computer` choosing one for a game.
 - :class:`Benchmark`: a game and its computer. ``Benchmark(game)`` works for any game;
   :meth:`Benchmark.from_setup` builds the game of a setup and caches its exact values locally.
 - :mod:`shapiq_benchmark.setups`: typed recipes that build the games of :mod:`shapiq_games` from
