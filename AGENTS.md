@@ -805,6 +805,12 @@ uv run pre-commit run --all-files
   which records separate startup/approximation/output limits without editing the
   snapshot. Campaign source overlays are separate from the installed base source;
   replay them per method in a fresh child, and retain both hashes in provenance.
+- Cancelling a Slurm allocation, even after sending SIGINT, does not prove its
+  workers saved final checkpoints. Recovery checkpoints exclude a cell from
+  `remaining` as soon as its launch intent is written, before its response exists.
+  Reconcile terminal jobs against durable intent/response journal prefixes;
+  preserve saved successes and classify unanswered intents as interruptions,
+  not estimator timeouts. Never reopen old claims to resume cancelled workers.
 - The pinned benchmark environment lacks optional `woodelf` modules. Repository-wide
   `ty` can fail on those imports in `src/shapiq/tree/explainer.py` even when the
   changed benchmark modules type-check. Do not install into the active shared
