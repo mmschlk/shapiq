@@ -189,7 +189,7 @@ fsii_values.plot_force()               # plot the force plot
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
-If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/auto_examples/index.html).
+If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/examples.html).
 There is a lot of great resources available to get you started with Shapley values and interactions.
 
 ## 💬 Citation

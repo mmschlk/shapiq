@@ -64,12 +64,35 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinxcontrib.bibtex",
     "sphinx_gallery.gen_gallery",
+    "sphinx_design",
 ]
 
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
+# One gallery per group of examples (``examples/<group>``), each with its own page; the landing
+# page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
+EXAMPLE_GROUPS = (
+    "basics",
+    "exact_computation",
+    "approximators",
+    "trees",
+    "nearest_neighbors",
+    "kernel_methods",
+    "visualization",
+    "applications",
+    "benchmarking",
+    "technicalities",
+)
 sphinx_gallery_conf = {
-    "examples_dirs": [str(root / "examples")],
-    "gallery_dirs": ["auto_examples"],
+    "examples_dirs": [str(root / "examples" / group) for group in EXAMPLE_GROUPS],
+    "gallery_dirs": [f"auto_examples/{group}" for group in EXAMPLE_GROUPS],
+    # subsections as paths relative to this file; the other subsections are sorted by name
+    "subsection_order": [
+        *(
+            f"../../examples/approximators/{subsection}"
+            for subsection in ("shapley_values", "shapley_interactions", "surrogate_and_sparse")
+        ),
+        "*",
+    ],
     "backreferences_dir": "gen_modules/backreferences",
     "doc_module": ("shapiq", "shapiq_games", "shapiq_benchmark"),
     "reference_url": {"shapiq": None, "shapiq_games": None, "shapiq_benchmark": None},
@@ -150,6 +173,7 @@ intersphinx_mapping = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = "furo"
 html_static_path = ["_static"]
+html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
     "css/custom.css",
 ]

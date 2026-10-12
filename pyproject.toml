@@ -338,6 +338,7 @@ docs = [
     "ipython>=9.0.0",           # for code execution in sphinx-gallery
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
+    "sphinx-design>=0.7.0",     # cards and grids on the landing and gallery pages
     {include-group = "all_ml"}
 ]
 dev = [

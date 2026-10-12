@@ -33,7 +33,7 @@ Contents
    :maxdepth: 2
    :caption: EXAMPLES & TUTORIALS
 
-   auto_examples/index
+   examples
 
 .. toctree::
    :maxdepth: 2
