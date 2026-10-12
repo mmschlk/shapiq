@@ -26,6 +26,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 ### Maintenance
 
+- adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, and `scikit-image` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 

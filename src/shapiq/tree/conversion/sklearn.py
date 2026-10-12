@@ -550,7 +550,7 @@ def _convert_hist_tree_predictor(
         cat_size = np.zeros(n_nodes, dtype=np.int64)
         left_sets: list[np.ndarray] = []
         total = 0
-        for node_id in categorical_nodes:
+        for node_id in categorical_nodes.tolist():
             stored_set, swap_children = _hist_node_stored_set(
                 nodes, node_id, raw_left_cat_bitsets, raw_categories, known_cat_bitsets, f_idx_map
             )
