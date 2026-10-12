@@ -47,7 +47,7 @@ print(f"Largest absolute error: {error.max():.1e}")
 # Visualize the result
 # --------------------
 
-iv.plot_force(feature_names=feature_names)
+iv.plot_force(feature_names=feature_names, abbreviate=False)
 
 # %%
 # Only the odd part matters

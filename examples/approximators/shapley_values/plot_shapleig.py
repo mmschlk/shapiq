@@ -14,7 +14,7 @@ import numpy as np
 import shapiq
 
 N_PLAYERS = 8
-BUDGET = 30
+BUDGET = 24
 feature_names = [f"x{i}" for i in range(N_PLAYERS)]
 
 weights = np.array([0.4, 0.3, 0.2, 0.1, 0.05, -0.1, -0.2, -0.3])
@@ -28,7 +28,7 @@ def game_fun(coalitions: np.ndarray) -> np.ndarray:
 # %%
 # Approximate Shapley values
 # --------------------------
-# ShaplEIG is designed for games whose evaluations are expensive, so we give it a budget of 30
+# ShaplEIG is designed for games whose evaluations are expensive, so we give it a budget of 24
 # evaluations instead of the 200 of the other examples. ShaplEIG needs the optional ``shapleig``
 # extra (``pip install shapiq[shapleig]``, for PyTorch, GPyTorch, and BoTorch).
 
@@ -50,7 +50,7 @@ print(f"Largest absolute error: {error.max():.1e}")
 # Visualize the result
 # --------------------
 
-iv.plot_force(feature_names=feature_names)
+iv.plot_force(feature_names=feature_names, abbreviate=False)
 
 # %%
 # Choosing the next coalition and quantifying the uncertainty
@@ -67,12 +67,12 @@ iv.plot_force(feature_names=feature_names)
 # accurate with few evaluations and reports its uncertainty:
 # :meth:`~shapiq.approximator.ShaplEIG.approximate_with_variance` returns the posterior variance of
 # every Shapley value along with the estimates. We compare the estimates and their 95% credible
-# intervals (two posterior standard deviations) after 14 and after 30 evaluations with the exact
+# intervals (two posterior standard deviations) after 12 and after 24 evaluations with the exact
 # values.
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 3.8), sharey=True)
 players = np.arange(N_PLAYERS)
-for ax, budget in zip(axes, [14, BUDGET], strict=True):
+for ax, budget in zip(axes, [12, BUDGET], strict=True):
     approximator = shapiq.ShaplEIG(n=N_PLAYERS, random_state=42, show_progress=False)
     estimate, variance = approximator.approximate_with_variance(budget=budget, game=game_fun)
     std = np.sqrt(variance)
@@ -103,9 +103,9 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# After 14 evaluations, the intervals are wide, and they contain the exact values. After 30
-# evaluations, the estimates are close to the exact values, and the intervals are about a
-# hundred times narrower.
+# After 12 evaluations, the intervals are wide, and they contain the exact values. After 24
+# evaluations, the estimates are close to the exact values, and the largest posterior standard
+# deviation has dropped from about 0.2 to below 0.01.
 
 # %%
 # References
