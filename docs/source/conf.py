@@ -67,6 +67,12 @@ extensions = [
     "sphinx_design",
 ]
 
+# -- Timeline of Shapley-based methods (timeline.rst) ----------------------------------------------
+# The ``shapiq-timeline`` directive of ``_ext/shapiq_timeline.py`` renders ``_data/timeline.toml``
+# and adds ``_static/css/timeline.css`` and ``_static/js/timeline.js`` to the pages that use it.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_ext"))
+extensions.append("shapiq_timeline")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
