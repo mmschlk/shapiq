@@ -135,7 +135,7 @@ Plot the Values
 
 .. tab-set::
 
-   .. tab-item:: Force plot
+   .. tab-item:: Force
 
       .. code-block:: python
 
@@ -146,7 +146,7 @@ Plot the Values
          :alt: A force plot of Shapley interactions: features and pairs of features push the
                prediction up (red) or down (blue) from the baseline.
 
-   .. tab-item:: Network plot
+   .. tab-item:: Network
 
       .. code-block:: python
 
@@ -158,7 +158,7 @@ Plot the Values
          :alt: A network plot of the interactions between image patches: the nodes are the
                patches, the edges their interactions.
 
-   .. tab-item:: UpSet plot
+   .. tab-item:: UpSet
 
       .. code-block:: python
 
@@ -170,7 +170,7 @@ Plot the Values
          :alt: An UpSet plot: bars of the largest values, with the features of each value
                marked below.
 
-   .. tab-item:: Many explanations
+   .. tab-item:: Beeswarm and bar
 
       .. code-block:: python
 
