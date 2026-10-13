@@ -50,7 +50,7 @@ def shard(slot: int) -> int:
         str(cpus[slot]),
         sys.executable,
         "-m",
-        "shapiq_benchmark.runner",
+        "shapiq_benchmark.campaign_runner",
         "--snapshot",
         str(args.snapshot),
         "--output",

@@ -11,8 +11,8 @@ import numpy as np
 import pytest
 
 from shapiq_benchmark.bundle import bundle, main
+from shapiq_benchmark.campaign_runner import digest, identity, load_snapshot
 from shapiq_benchmark.report import merge_results
-from shapiq_benchmark.runner import digest, identity, load_snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path

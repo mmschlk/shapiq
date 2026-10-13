@@ -21,6 +21,7 @@ struct CatBoostJsonModel
     std::vector<CatBoostObliviousTree> trees;
     std::vector<double> bias_values{0.0};
     double scaling = 1.0;
+    std::string loss_function; // model_info.params.loss_function.type, empty if absent
 };
 
 class JsonStream
@@ -209,6 +210,56 @@ public:
         }
     }
 
+    // Calls on_key(key) for every key of the next JSON object; on_key must consume the value.
+    // A value that is not an object is skipped.
+    template <typename OnKey>
+    void forEachKey(OnKey on_key)
+    {
+        skipWhitespace();
+        if (pos >= size || data[pos] != '{')
+        {
+            skipValue();
+            return;
+        }
+        expect('{');
+        if (consume('}'))
+            return;
+        while (true)
+        {
+            std::string key = readString();
+            expect(':');
+            on_key(key);
+            if (consume('}'))
+                return;
+            expect(',');
+        }
+    }
+
+    // Reads the training loss, model_info.params.loss_function.type.
+    void parseModelInfo(CatBoostJsonModel &model)
+    {
+        forEachKey([&](const std::string &info_key) {
+            if (info_key != "params")
+            {
+                skipValue();
+                return;
+            }
+            forEachKey([&](const std::string &params_key) {
+                if (params_key != "loss_function")
+                {
+                    skipValue();
+                    return;
+                }
+                forEachKey([&](const std::string &loss_key) {
+                    if (loss_key == "type")
+                        model.loss_function = readString();
+                    else
+                        skipValue();
+                });
+            });
+        });
+    }
+
     void parseScaleAndBias(CatBoostJsonModel &model)
     {
         expect('[');
@@ -381,6 +432,8 @@ public:
             expect(':');
             if (key == "features_info")
                 parseFeaturesInfo(model);
+            else if (key == "model_info")
+                parseModelInfo(model);
             else if (key == "scale_and_bias")
                 parseScaleAndBias(model);
             else if (key == "oblivious_trees")
@@ -450,10 +503,12 @@ static void fill_catboost_tree_node(
     tree.node_sample_weights[node_id] = tree.node_sample_weights[left_child] + tree.node_sample_weights[right_child];
 }
 
-ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_size, int class_label)
+// is_classifier: the caller knows the model is a classifier even if its loss is a custom one.
+ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_size, int class_label, bool is_classifier)
 {
     JsonStream stream(json_data, json_size);
     CatBoostJsonModel model = stream.parseModel();
+    bool binary_loss = model.loss_function == "Logloss" || model.loss_function == "CrossEntropy";
 
     ParsedForest forest;
     size_t tree_count = model.trees.size();
@@ -473,11 +528,15 @@ ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_si
             effective_class_label = 0;
         else if (effective_class_label < 0)
             effective_class_label = 1;
-        if (effective_class_label < 0 || effective_class_label >= class_count)
-            throw std::runtime_error("CatBoost class_label is outside the available class range.");
+        check_class_label(effective_class_label, class_count);
         if (static_cast<size_t>(effective_class_label) >= model.bias_values.size())
             throw std::runtime_error("CatBoost scale_and_bias does not contain the selected class bias.");
         double bias_per_tree = model.bias_values[static_cast<size_t>(effective_class_label)] / static_cast<double>(tree_count == 0 ? 1 : tree_count);
+        // a binary classifier has a single raw output, the class-1 log-odds
+        double class_sign = (class_count == 1 && (is_classifier || binary_loss)) ? binary_class_sign(class_label) : 1.0;
+        forest.negated_class_one = class_sign < 0.0;
+        double scaling = class_sign * model.scaling;
+        double bias = class_sign * bias_per_tree;
 
         std::vector<double> leaf_values(leaf_count);
         for (uint64_t i = 0; i < leaf_count; ++i)
@@ -507,12 +566,12 @@ ParsedForest parse_catboost_json_to_forest(const char *json_data, size_t json_si
         if (depth == 0)
         {
             parsed_tree.node_ids[0] = 0;
-            parsed_tree.values[0] = model.scaling * leaf_values[0] + bias_per_tree;
+            parsed_tree.values[0] = scaling * leaf_values[0] + bias;
             parsed_tree.node_sample_weights[0] = leaf_weights[0];
         }
         else
         {
-            fill_catboost_tree_node(cat_tree.splits, leaf_values, leaf_weights, model.nan_treatments, parsed_tree, depth, internal_count, 0, 0, model.scaling, bias_per_tree);
+            fill_catboost_tree_node(cat_tree.splits, leaf_values, leaf_weights, model.nan_treatments, parsed_tree, depth, internal_count, 0, 0, scaling, bias);
         }
         forest.trees.push_back(std::move(parsed_tree));
     }

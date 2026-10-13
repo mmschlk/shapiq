@@ -29,7 +29,7 @@ def reference_task(task: tuple) -> dict:
     """Check one snapshot, retaining a hash-bound reusable result."""
     from export_pool import check_snapshot
 
-    from shapiq_benchmark.runner import identity, load_snapshot
+    from shapiq_benchmark.campaign_runner import identity, load_snapshot
 
     path, expected_sha, source_sha, checker_sha, output = task
     require(digest(path) == expected_sha, "Reference snapshot changed")
@@ -54,7 +54,7 @@ def parallel_references(config: dict, audit: dict, directory: Path, workers: int
     """Replay independent saved games concurrently, keeping deterministic order."""
     import export_pool
 
-    from shapiq_benchmark.runner import identity
+    from shapiq_benchmark.campaign_runner import identity
 
     directory.mkdir(parents=True, exist_ok=True)
     # Alias/publication changes do not invalidate completed numerical checks.

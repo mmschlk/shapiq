@@ -17,6 +17,5 @@ This is the API reference for the ``shapiq`` package.
    shapiq.imputer
    shapiq.game_theory
    shapiq.plot
-   shapiq.datasets
    shapiq.utils
    shapiq.tree

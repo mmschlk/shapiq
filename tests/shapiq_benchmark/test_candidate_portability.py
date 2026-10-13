@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
+from shapiq_benchmark.campaign_runner import digest, identity, run
 from shapiq_benchmark.duplicates import claim_games
-from shapiq_benchmark.runner import digest, identity, run
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -8,7 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from shapiq_benchmark import execution, runner
+from shapiq_benchmark import (
+    campaign_runner as runner,
+    execution,
+)
 from shapiq_benchmark.runtime import ExecutionSettings, load_overlays, recovery_memory
 from tests.shapiq_benchmark.test_campaign import TIMEOUT_POLICY, snapshot
 

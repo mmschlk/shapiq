@@ -110,6 +110,5 @@ staging scripts still reference `production/local-environment` receipts; directo
 age alone does not make those files disposable.
 
 Keep one active plan and a concise [handoff checklist](HANDOFF.md). Git history
-retains superseded repository narratives. [DESIGN.md](DESIGN.md) and
-[AUDITS.md](AUDITS.md) contain historical technical rationale and validation,
-not current scientific scope or instructions to resume old jobs.
+retains superseded designs and audit narratives. Frozen release artifacts retain
+the evidence needed to replay published measurements.

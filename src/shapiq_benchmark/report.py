@@ -10,11 +10,11 @@ import re
 import shutil
 from pathlib import Path
 
+from shapiq_benchmark.campaign_runner import identity
 from shapiq_benchmark.duplicates import remove_aliases
 from shapiq_benchmark.order_metrics import order_scores
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.results_io import read_results
-from shapiq_benchmark.runner import identity
 from shapiq_benchmark.summary import summarize
 
 SITE_DIR = Path(__file__).resolve().parents[2] / "benchmark" / "site"

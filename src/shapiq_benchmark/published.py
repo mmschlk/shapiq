@@ -13,8 +13,8 @@ import math
 import re
 from typing import TYPE_CHECKING, cast
 
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.report import GAME_FIELDS, ROW_FIELDS
-from shapiq_benchmark.runner import digest, identity
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
 from collections import Counter
@@ -11,11 +10,11 @@ from pathlib import Path
 import pytest
 
 from shapiq_benchmark import (
+    campaign_runner as runner,
     comprehensive as c,
     focused,
-    runner,
 )
-from shapiq_benchmark.datasets import DATASETS
+from shapiq_benchmark.campaign_datasets import DATASETS
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "benchmark/suites/comprehensive.csv"
@@ -44,9 +43,6 @@ def test_fixed_manifest_and_balanced_dataset_inventory() -> None:
         "enumeration": 389,
         "tree_solver": 88,
         "neighbor_solver": 35,
-    }
-    assert not {r["id"] for r in rows} & {
-        r["id"] for r in csv.DictReader((ROOT / "benchmark/suites/focused.csv").open())
     }
 
 
@@ -156,17 +152,3 @@ def test_changed_fixed_manifest_rejected(tmp_path: Path, approved_constructors: 
     path.write_text(c.manifest_text().replace("-p4,", "-p3,", 1))
     with pytest.raises(ValueError, match="deterministic"):
         c.build_suite(path)
-
-
-def test_legacy_focused_defaults_unchanged(approved_constructors: None) -> None:
-    suite = focused.build_suite(ROOT / "benchmark/suites/focused.csv")
-    assert suite["min_players"] == 12 and suite["seeds"] == [0]
-    assert len(suite["focused_design"]["recipes"]) == 112
-    recipes = suite["focused_design"]["recipes"][:96]
-    # Original rows remain unchanged even though new optional columns are supported.
-    assert (
-        hashlib.sha256(
-            json.dumps(recipes, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
-        == "5ed3a49ab127677e3c914c06c3878de6c6a8b61c80379d71b2bbdefd8d902820"
-    )

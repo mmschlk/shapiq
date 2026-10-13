@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
 from shapiq.game_theory import ExactComputer
-from shapiq_benchmark.materialize import exact_table_truth, prepare_families, prepare_family_chunk
-from shapiq_benchmark.runner import table_game
+from shapiq_benchmark.campaign_runner import table_game
+from shapiq_benchmark.exact import exact_table_truth
+from shapiq_benchmark.materialize import prepare_families
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,68 +83,6 @@ def test_parity_zero_and_tiny_real_shapley_signal_are_preserved() -> None:
         assert result["energy"] > 0
 
 
-def test_cached_chunks_resume_validate_and_combine(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Paid oracle work is reused only for the same source, recipe and complete payload."""
-    from shapiq_benchmark import materialize, runner
-
-    calls = []
-
-    class Game:
-        n_players = 13
-
-        def __call__(self, rows: np.ndarray) -> np.ndarray:
-            calls.append(len(rows))
-            return rows @ np.arange(1, 14, dtype=float)
-
-    monkeypatch.setattr(materialize, "make_family", lambda *args, **kwargs: (Game(), {}))
-    monkeypatch.setattr(runner, "provenance", lambda: {"source_sha256": "fixed-source"})
-    spec = {"id": "chunked", "family": "dummy", "n_players": 13}
-    first = prepare_family_chunk(spec, 0, 0, tmp_path)
-    assert calls == [4096]
-    assert prepare_family_chunk(spec, 0, 0, tmp_path) == first and calls == [4096]
-    with pytest.raises(ValueError, match="does not match"):
-        prepare_family_chunk({**spec, "dataset": "changed"}, 0, 0, tmp_path)
-    games, coverage = prepare_families([spec], TARGETS, tmp_path, instance_seed=0)
-    assert coverage[0]["status"] == "measured" and len(games) == 6
-    assert calls.count(4096) == 2  # only the missing second chunk was evaluated
-    with np.load(tmp_path / games[0]["artifact"]) as artifact:
-        costs = artifact["evaluation_seconds"]
-        batches = json.loads(str(artifact["evaluation_batches"]))
-        assert costs.shape == artifact["values"].shape == (8192,)
-        assert np.isfinite(costs).all() and np.all(costs >= 0)
-        assert sum(costs) == pytest.approx(sum(batch["seconds"] for batch in batches))
-    assert games[0]["metadata"]["evaluation_timing"]["protocol"] == materialize.COST_PROTOCOL
-    assert games[0]["metadata"]["signal_ratio"] > 0
-    with np.load(first) as saved:
-        arrays = dict(saved)
-    manifest = json.loads(str(arrays["manifest"]))
-    for field, invalid in (
-        ("start", 1),
-        ("stop", 4095),
-        ("seconds", -1),
-        ("seconds", float("inf")),
-        ("seconds", manifest["batch"]["seconds"] * 2 + 1),
-    ):
-        damaged = json.loads(str(arrays["manifest"]))
-        damaged["batch"][field] = invalid
-        np.savez_compressed(first, **{**arrays, "manifest": json.dumps(damaged)})
-        with pytest.raises(ValueError, match="does not match"):
-            prepare_family_chunk(spec, 0, 0, tmp_path)
-    np.savez_compressed(first, **arrays)
-    monkeypatch.setattr(
-        runner, "provenance", lambda: {"source_sha256": "fixed-source", "numpy": "changed"}
-    )
-    with pytest.raises(ValueError, match="does not match"):
-        prepare_family_chunk(spec, 0, 0, tmp_path)
-    monkeypatch.setattr(runner, "provenance", lambda: {"source_sha256": "fixed-source"})
-    arrays["values"][0] += 1
-    np.savez_compressed(first, **arrays)
-    with pytest.raises(ValueError, match="does not match"):
-        prepare_family_chunk(spec, 0, 0, tmp_path)
-
-
 def test_signal_rms_uses_full_coordinate_space_for_sparse_truth(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -163,7 +101,7 @@ def test_signal_rms_uses_full_coordinate_space_for_sparse_truth(
         "truth_dict",
         lambda truth: {"coordinates": [[0]], "values": [1.0], "baseline": 0.0, "energy": 1.0},
     )
-    games, _ = prepare_families(["dummy"], [{"index": "k-SII", "order": 2}], tmp_path)
+    games, _ = prepare_families(["local_baseline"], [{"index": "k-SII", "order": 2}], tmp_path)
     assert games[0]["metadata"]["signal_ratio"] == pytest.approx(np.sqrt(1 / 10) / 0.5)
 
 

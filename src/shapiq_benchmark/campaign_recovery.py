@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapiq_benchmark.runner import identity
+from shapiq_benchmark.campaign_runner import identity
 
 CONFIG = (
     "protocol",

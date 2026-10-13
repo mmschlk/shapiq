@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from shapiq_benchmark.campaign import _canonical_aliases, _collect_campaign
+from shapiq_benchmark.campaign_runner import digest, identity, load_snapshot
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
 from shapiq_benchmark.published import (
     _read,
@@ -22,7 +23,6 @@ from shapiq_benchmark.published import (
 )
 from shapiq_benchmark.report import ROW_FIELDS
 from shapiq_benchmark.results_io import result_inputs
-from shapiq_benchmark.runner import digest, identity, load_snapshot
 
 if TYPE_CHECKING:
     from shapiq_benchmark.record_store import RecordStore

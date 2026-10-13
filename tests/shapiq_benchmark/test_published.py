@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from shapiq_benchmark import published
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.published import merge_method_catalogs, read_published
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import compact_workers, encode_records, write_report
-from shapiq_benchmark.runner import digest, identity
 
 if TYPE_CHECKING:
     from pathlib import Path

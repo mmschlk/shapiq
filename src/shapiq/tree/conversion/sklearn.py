@@ -28,7 +28,7 @@ from sklearn.tree import (
 
 from shapiq.tree.base import TreeModel
 
-from .common import register
+from .common import check_class_label, register
 
 if TYPE_CHECKING:
     from sklearn.tree._tree import Tree  # ty: ignore[unresolved-import]
@@ -67,6 +67,7 @@ def convert_sklearn_tree(
         if len(tree_values.shape) == 3:
             tree_values = tree_values[:, 0, :]
         tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
+        check_class_label(class_label, tree_values.shape[1])
         tree_values = tree_values[:, class_label]
         original_output_type = "probability"
     tree_values = tree_values.flatten() * scaling + offset
@@ -81,6 +82,28 @@ def convert_sklearn_tree(
         node_sample_weight=tree.weighted_n_node_samples,
         original_output_type=original_output_type,
     )
+
+
+def _binary_class_sign(class_label: int | None) -> float:
+    """Return the sign that selects ``class_label`` from the raw output of a binary classifier.
+
+    Binary gradient boosting classifiers have a single raw output, the class-``1`` log-odds;
+    the class-``0`` log-odds are its negation. Mirrors ``binary_class_sign`` of the C parsers.
+
+    Raises:
+        ValueError: If ``class_label`` is not ``None``, ``0``, or ``1``.
+    """
+    if class_label is None:
+        return 1.0
+    check_class_label(class_label, 2)
+    return -1.0 if class_label == 0 else 1.0
+
+
+def _mark_negated_class_one(trees: list[TreeModel], class_sign: float) -> None:
+    """Flag the trees of a binary classifier converted with ``class_sign=-1`` (class ``0``)."""
+    if class_sign < 0:
+        for tree in trees:
+            tree.negated_class_one = True
 
 
 def convert_extra_tree(
@@ -264,22 +287,27 @@ def convert_gradient_boosting_tree(
         tree_model: The fitted ``GradientBoostingClassifier`` or ``GradientBoostingRegressor``
             to convert.
         class_label: The class index whose trees are extracted for multiclass models.
-            Defaults to ``None``, which selects class ``1``.
+            Defaults to ``None``, which selects class ``1``. For binary classifiers, which
+            model the class-``1`` log-odds, ``0`` negates the trees.
 
     Raises:
         ValueError: If the model was fitted with a custom ``init`` estimator, whose contribution
             depends on the input and therefore cannot be folded into a constant baseline.
     """
-    scaling = tree_model.learning_rate
     n_estimators, n_classes = tree_model.estimators_.shape
+    class_sign = 1.0
     if n_classes > 1:
         if class_label is None:
             class_label = 1
+        check_class_label(class_label, n_classes)
         tree_column = class_label
     else:
         tree_column = 0
-    offset = _gradient_boosting_init_offset(tree_model, tree_column) / n_estimators
-    return [
+        if isinstance(tree_model, GradientBoostingClassifier):
+            class_sign = _binary_class_sign(class_label)
+    scaling = class_sign * tree_model.learning_rate
+    offset = class_sign * _gradient_boosting_init_offset(tree_model, tree_column) / n_estimators
+    trees = [
         convert_sklearn_tree(
             tree_model.estimators_[i, tree_column],
             class_label=class_label,
@@ -288,6 +316,8 @@ def convert_gradient_boosting_tree(
         )
         for i in range(n_estimators)
     ]
+    _mark_negated_class_one(trees, class_sign)
+    return trees
 
 
 def _gradient_boosting_init_offset(
@@ -340,17 +370,23 @@ def convert_hist_gradient_boosting_tree(
         tree_model: The fitted ``HistGradientBoostingClassifier`` or
             ``HistGradientBoostingRegressor`` to convert.
         class_label: The class index whose trees are extracted for multiclass models.
-            Defaults to ``None``, which selects class ``1``.
+            Defaults to ``None``, which selects class ``1``. For binary classifiers, which
+            model the class-``1`` log-odds, ``0`` negates the trees.
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting iteration for the selected class.
     """
     predictors = tree_model._predictors  # noqa: SLF001  # ty: ignore[unresolved-attribute]
     tree_column = 0
-    if tree_model.n_trees_per_iteration_ > 1:  # ty: ignore[unresolved-attribute]
+    class_sign = 1.0
+    n_trees_per_iteration = tree_model.n_trees_per_iteration_  # ty: ignore[unresolved-attribute]
+    if n_trees_per_iteration > 1:
         tree_column = 1 if class_label is None else class_label
+        check_class_label(tree_column, n_trees_per_iteration)
+    elif isinstance(tree_model, HistGradientBoostingClassifier):
+        class_sign = _binary_class_sign(class_label)
     baseline = tree_model._baseline_prediction  # noqa: SLF001  # ty: ignore[unresolved-attribute]
-    offset = float(np.asarray(baseline).ravel()[tree_column]) / len(predictors)
+    offset = class_sign * float(np.asarray(baseline).ravel()[tree_column]) / len(predictors)
 
     # With categorical features, sklearn routes the input through an internal
     # ColumnTransformer that orders the CATEGORICAL COLUMNS FIRST and ordinal-encodes their
@@ -372,10 +408,11 @@ def convert_hist_gradient_boosting_tree(
             )
             trans_to_orig = np.concatenate([np.flatnonzero(is_cat), np.flatnonzero(~is_cat)])
             raw_categories = list(preprocessor.named_transformers_["encoder"].categories_)
-    return [
+    trees = [
         _convert_hist_tree_predictor(
             iteration[tree_column],
             offset,
+            scaling=class_sign,
             trans_to_orig=trans_to_orig,
             raw_categories=raw_categories,
             known_cat_bitsets=known_cat_bitsets,
@@ -383,6 +420,8 @@ def convert_hist_gradient_boosting_tree(
         )
         for iteration in predictors
     ]
+    _mark_negated_class_one(trees, class_sign)
+    return trees
 
 
 def _bitset_to_categories(bitset: np.ndarray) -> np.ndarray:
@@ -450,6 +489,7 @@ def _convert_hist_tree_predictor(
     predictor: object,
     offset: float,
     *,
+    scaling: float = 1.0,
     trans_to_orig: np.ndarray | None = None,
     raw_categories: list[np.ndarray] | None = None,
     known_cat_bitsets: np.ndarray | None = None,
@@ -472,7 +512,9 @@ def _convert_hist_tree_predictor(
     Args:
         predictor: The ``TreePredictor``
             (``sklearn.ensemble._hist_gradient_boosting.predictor``).
-        offset: An additive offset applied to all leaf values.
+        offset: An additive offset applied to all leaf values after scaling.
+        scaling: A multiplicative factor applied to all leaf values; ``-1`` negates the
+            class-``1`` log-odds of a binary classifier. Defaults to ``1.0``.
         trans_to_orig: Mapping from transformed to original feature indices (``None`` when
             the model has no encoding preprocessor).
         raw_categories: Per categorical feature, the raw category values in code order
@@ -491,7 +533,7 @@ def _convert_hist_tree_predictor(
     children_missing = np.where(
         nodes["missing_go_to_left"].astype(bool), children_left, children_right
     )
-    values = np.where(is_leaf, nodes["value"] + offset, 0.0)
+    values = np.where(is_leaf, scaling * nodes["value"] + offset, 0.0)
     features = nodes["feature_idx"].astype(np.int64)
     if trans_to_orig is not None:
         features = trans_to_orig[features]

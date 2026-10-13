@@ -13,10 +13,10 @@ import itertools
 import json
 from typing import TYPE_CHECKING
 
+from shapiq_benchmark.campaign_runner import digest, identity, load_snapshot
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import merge_results
 from shapiq_benchmark.results_io import read_results, result_inputs
-from shapiq_benchmark.runner import digest, identity, load_snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -211,7 +211,9 @@ def replace_methods(data: dict, manifest_path: Path) -> dict:
             )
             for row in result["records"]:
                 old = baseline.get(_key(row))
-                _require(old is not None, "Replacement has no original cell")
+                if old is None:
+                    message = "Replacement has no original cell"
+                    raise ValueError(message)
                 for status in ("unsupported", "duplicate"):
                     _require(
                         (row["status"] == status) == (old[0] == status),

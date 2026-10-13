@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from shapiq_benchmark.campaign import assemble_campaign
-from shapiq_benchmark.runner import (
+from shapiq_benchmark.campaign_runner import (
     builtin_factory,
     identity,
     load_snapshot,

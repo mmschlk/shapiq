@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
+#SBATCH --partition=main
+#SBATCH --nodelist=himem02
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=512G

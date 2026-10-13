@@ -17,7 +17,7 @@ from collections import Counter
 from pathlib import Path
 
 from shapiq_benchmark import focused
-from shapiq_benchmark.datasets import DATASETS
+from shapiq_benchmark.campaign_datasets import DATASETS
 
 CLASSIFICATION = (
     "adult_census",

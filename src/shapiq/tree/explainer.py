@@ -358,7 +358,7 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "k-SII", "BII"):
+        if self.index not in ("SV", "BV", "SII", "k-SII", "BII", "STII", "FSII", "FBII"):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -410,8 +410,11 @@ class TreeExplainer(Explainer):
             import pandas as pd
             from woodelf.core.cube_metric import (
                 BanzhafValues,
+                FaithfulBanzhafInteractionValues,
+                FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                ShapleyTaylorInteractionValues,
                 ShapleyValues,
             )
             from woodelf.core.trees.parse_models import load_decision_tree_ensemble_model
@@ -425,21 +428,32 @@ class TreeExplainer(Explainer):
         if self._reference_dataset is not None and self.mode == "interventional":
             background_dataset = pd.DataFrame(self._reference_dataset)
 
+        index_to_metric_class = {
+            "SII": GeneralShapleyInteractionValues,
+            "k-SII": GeneralShapleyInteractionValues,  # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
+            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
+            "BII": GeneralBanzhafInteractionValues,
+            "STII": ShapleyTaylorInteractionValues,
+            "FSII": FaithfulShapleyInteractionValues,
+            "FBII": FaithfulBanzhafInteractionValues,
+        }
         if self._index == "SV":
             metric = ShapleyValues()
         elif self._index == "BV":
             metric = BanzhafValues()
-        elif self._index in ("SII", "k-SII"):
-            # k-SII is a pure aggregation of SII, Woodelf computes the SII base values and
-            # ``_aggregate_batched_sii_to_ksii`` makes them k-SII
-            metric = GeneralShapleyInteractionValues(max(self._min_order, 1), self._max_order)
-        elif self._index == "BII":
-            metric = GeneralBanzhafInteractionValues(max(self._min_order, 1), self._max_order)
+        elif self._index in index_to_metric_class:
+            metric_class = index_to_metric_class[self._index]
+            metric = metric_class(max(self._min_order, 1), self._max_order)
         else:  # pre-validated in __init__ / _woodelf_unsupported_reason; defensive
             msg = f"index='{self._index}' is not supported by Woodelf."
             raise ValueError(msg)
 
-        class_index = self._class_label if self._class_label is not None else 1
+        # class_index=0 of a binary booster: the converters negate the class-1 log-odds, but
+        # Woodelf ignores class_index for single-output models. Request the class-1 log-odds
+        # explicitly and negate them below, which stays correct if Woodelf starts negating
+        # class 0 itself; the values are linear in the model output.
+        negated_class_one = any(tree.negated_class_one for tree in self._trees)
+        class_index = 1 if negated_class_one or self._class_label is None else self._class_label
         loaded_model = load_decision_tree_ensemble_model(
             self.model, range(X.shape[1]), class_index=class_index
         )
@@ -461,6 +475,8 @@ class TreeExplainer(Explainer):
             metric=metric,
             model_was_loaded=True,
         )
+        if negated_class_one:
+            woodelf_result = {key: -value for key, value in woodelf_result.items()}
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         if self._index == "k-SII":
@@ -535,8 +551,8 @@ class TreeExplainer(Explainer):
         """Compute the explanation via the path-dependent quadrature explainer.
 
         The :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` built in ``_init_explainers``
-        validates the model and aggregates over ensembles itself; this method only enforces
-        the requested ``min_order`` on the result.
+        validates the model and aggregates over ensembles itself; the requested ``min_order``
+        is applied by :meth:`explain_function`.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
@@ -551,20 +567,7 @@ class TreeExplainer(Explainer):
         if self._pathdependent_explainer is None:
             msg = "Path-dependent explainer is not initialized; mode must be 'pathdependent'."
             raise RuntimeError(msg)
-
-        final_explanation = self._pathdependent_explainer.explain(x)
-
-        if self._min_order == 0 and final_explanation.min_order == 1:
-            final_explanation.min_order = 0
-            final_explanation.interactions[()] = float(final_explanation.baseline_value)
-
-        if self._min_order > final_explanation.min_order:
-            final_explanation = final_explanation.get_n_order(
-                min_order=self._min_order,
-                max_order=self._max_order,
-            )
-
-        return final_explanation
+        return self._pathdependent_explainer.explain(x)
 
     def _explain_function_interventionaltreeshapiq(
         self,
@@ -584,6 +587,31 @@ class TreeExplainer(Explainer):
             msg = "Interventional explainer is not initialized; mode must be 'interventional'."
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
+
+    def _enforce_min_order(self, explanation: InteractionValues) -> InteractionValues:
+        """Apply the requested ``min_order`` to the explanation of either mode's computer.
+
+        ``min_order=0`` adds the empty interaction with the baseline value; a larger
+        ``min_order`` drops every interaction below it. The k-SII aggregation reports
+        ``min_order=0`` with the empty interaction, so it is filtered like any other result.
+
+        Args:
+            explanation: The explanation as the mode's computer returned it.
+
+        Returns:
+            The explanation restricted to ``min_order .. max_order``.
+        """
+        if self._min_order == 0 and explanation.min_order >= 1:
+            explanation.min_order = 0
+            explanation.interactions[()] = float(explanation.baseline_value)
+        elif self._min_order > explanation.min_order or (
+            self._min_order >= 1 and () in explanation.interactions
+        ):
+            explanation = explanation.get_n_order(
+                min_order=self._min_order,
+                max_order=self._max_order,
+            )
+        return explanation
 
     def explain_function(  # type: ignore[override]
         self,
@@ -613,8 +641,10 @@ class TreeExplainer(Explainer):
         if not self._explainers_initialized:
             self._init_explainers()
         if self.mode == "pathdependent":
-            return self._explain_function_pathdependent(x, **kwargs)
-        return self._explain_function_interventionaltreeshapiq(x, **kwargs)
+            explanation = self._explain_function_pathdependent(x, **kwargs)
+        else:
+            explanation = self._explain_function_interventionaltreeshapiq(x, **kwargs)
+        return self._enforce_min_order(explanation)
 
     def explain_X(
         self,

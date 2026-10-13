@@ -27,7 +27,7 @@ from shapiq_benchmark.record_store import RecordStore
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-# Earliest public descriptions verified in benchmark/DESIGN.md. Unverified aliases
+# Earliest public descriptions verified in the archived benchmark design. Unverified aliases
 # and implementations intentionally stay unknown rather than receiving guessed dates.
 RELEASES = {
     "StratifiedSamplingSV": ("2013-06-18", "https://arxiv.org/abs/1306.4265"),

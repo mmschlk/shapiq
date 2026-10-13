@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from shapiq import ExactComputer
-from shapiq_benchmark import runner
+from shapiq_benchmark import campaign_runner as runner
 from shapiq_benchmark.duplicates import remove_aliases
 from shapiq_benchmark.exact import exact_table_truth
 from shapiq_benchmark.games import signal_metadata, truth_dict

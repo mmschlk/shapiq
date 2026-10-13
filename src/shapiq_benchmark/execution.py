@@ -7,6 +7,7 @@ import json
 import math
 import os
 import platform
+import runpy
 import signal
 import socket
 import subprocess
@@ -179,7 +180,7 @@ def isolated(
         start = time.perf_counter()
         with (root / "worker.log").open("w+b") as log:
             process = subprocess.Popen(  # noqa: S603 -- fixed Python module, JSON arguments
-                [sys.executable, "-m", "shapiq_benchmark.execution", str(source), str(destination)],
+                [sys.executable, __file__, str(source), str(destination)],
                 env=env,
                 stdout=log,
                 stderr=log,
@@ -263,12 +264,13 @@ def worker(source: Path, destination: Path) -> None:
             size = int(request["memory_gb"] * 1024**3)
             resource.setrlimit(resource.RLIMIT_AS, (size, size))
         if request.get("source_overlay"):
-            from shapiq_benchmark.runtime import install_overlay
-
-            install_overlay(request["source_overlay"])
+            # The upstream package initializer imports estimator classes. Load
+            # this standard-library-only hook before importing the package.
+            runtime = runpy.run_path(str(Path(__file__).with_name("runtime.py")))
+            runtime["install_overlay"](request["source_overlay"])
         from threadpoolctl import threadpool_info, threadpool_limits
 
-        from shapiq_benchmark.runner import (
+        from shapiq_benchmark.campaign_runner import (
             digest,
             load_snapshot,
             provenance,

@@ -176,7 +176,10 @@ def scientific(args: argparse.Namespace) -> None:
     """Only freshly started, pre-staged, CPU-bound children import scientific code."""
     bind(args.cpu, args.memory_gb)
     _, expected = authenticate(args)
-    from shapiq_benchmark import execution, runner
+    from shapiq_benchmark import (
+        campaign_runner as runner,
+        execution,
+    )
 
     if runner.provenance() != expected:
         message = "Scientific runtime differs from the frozen source/environment"

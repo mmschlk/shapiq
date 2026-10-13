@@ -8,9 +8,9 @@ import json
 import zipfile
 from pathlib import Path
 
+from shapiq_benchmark.campaign_runner import load_snapshot
 from shapiq_benchmark.report import merge_results
 from shapiq_benchmark.results_io import read_results
-from shapiq_benchmark.runner import load_snapshot
 
 
 def bundle(snapshot_dir: Path, results: Path | list[Path], output: Path) -> None:
@@ -105,7 +105,7 @@ and artifact hashes. From the repository root:
 
 ```bash
 uv sync --locked --extra benchmark
-uv run python -m shapiq_benchmark.runner --snapshot local_benchmark/bundle/snapshot --candidate local_benchmark/candidate.py:factory --output local_benchmark/candidate-results
+uv run python -m shapiq_benchmark.campaign_runner --snapshot local_benchmark/bundle/snapshot --candidate local_benchmark/candidate.py:factory --output local_benchmark/candidate-results
 uv run python -m shapiq_benchmark.report --results local_benchmark/bundle/baselines/*.json local_benchmark/candidate-results/results.json --output local_benchmark/report
 uv run python -m http.server 8000 --bind 127.0.0.1 --directory local_benchmark/report
 ```

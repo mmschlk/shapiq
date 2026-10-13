@@ -14,8 +14,8 @@ import pytest
 from shapiq_benchmark import campaign_replacements
 from shapiq_benchmark.campaign import assemble_campaign
 from shapiq_benchmark.campaign_replacements import replace_methods
+from shapiq_benchmark.campaign_runner import identity
 from shapiq_benchmark.results_io import Checkpoint
-from shapiq_benchmark.runner import identity
 
 from .test_campaign_export import make_campaign, write
 from .test_campaign_recovery import recovery_pair

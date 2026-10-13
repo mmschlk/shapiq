@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq_benchmark import datasets
+from shapiq_benchmark import campaign_datasets as datasets
 from shapiq_benchmark.games import load_game, prepare_structured
 
 

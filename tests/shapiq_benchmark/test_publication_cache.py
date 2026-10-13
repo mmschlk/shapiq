@@ -9,9 +9,9 @@ from unittest.mock import Mock
 import pytest
 
 from shapiq_benchmark import campaign
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.publication_cache import normalized_batch
 from shapiq_benchmark.results_io import Checkpoint
-from shapiq_benchmark.runner import digest, identity
 from tests.shapiq_benchmark.test_campaign_export import make_campaign
 from tests.shapiq_benchmark.test_campaign_recovery import recovery_pair
 from tests.shapiq_benchmark.test_campaign_replacements import reruns

@@ -4,13 +4,14 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include "../../cext/subset_tables.hpp"
 
 // MSVC uses __restrict instead of __restrict__
 #ifdef _MSC_VER
   #define __restrict__ __restrict
 #endif
 
-// Split comparison convention of the converted model; mirrors the linear kernel.
+// Split comparison convention of the converted model.
 enum QDecisionType
 {
     Q_LESS_EQUAL = 0,
@@ -23,9 +24,9 @@ struct QuadTree
     const int *features;       // split feature per node (-2 at leaves)
     const int *children_left;  // -1 at leaves
     const int *children_right;
-    const int *parents;    // tree parent of each node (-1 at the root)
-    const int *ancestors;  // closest ancestor node whose incoming edge has the same feature
-    const double *c_acc;   // accumulated cold factor (product of cover ratios of the chain)
+    const int *parents;    // parent of each node (-1 at a root)
+    const int *ancestors;  // closest ancestor whose incoming edge has the same feature (-1 if none)
+    const double *c_acc;   // accumulated cover factor of the node's edge chain
     const double *values;  // per-node prediction value (leaf values at leaves)
     const int64_t *cat_values;
     const int64_t *cat_start;
@@ -62,7 +63,10 @@ struct QuadFrame
     int stage;  // 0 enter, 1 after left, 2 after right, 3 leave
 };
 
-// Workspace reused across instances; sized once per kernel invocation.
+// The hash index from an interaction's key to its position in its table (../../cext/subset_tables.hpp).
+using subset_tables::SubsetIndex;
+
+// Workspace reused across the explained rows, sized once per kernel call.
 struct QuadWorkspace
 {
     int n_quad;
@@ -72,28 +76,34 @@ struct QuadWorkspace
     std::vector<double> A;       // (max_depth + 2) x n_quad path products
     std::vector<double> E;       // (max_depth + 2) x n_quad subtree sums
     std::vector<double> live_g;  // n_feats x n_quad current Banzhaf ratios (h - c) / u
-    std::vector<double> gamma;   // max_order x n_quad running subset products
+    std::vector<double> gamma;   // max_order x n_quad running interaction products
     std::vector<double> delta;   // n_quad weighted edge difference w * E * delta
     std::vector<bool> act;       // hot-chain activation per node
     std::vector<int> path_feats;  // sorted distinct features on the current path
-    // Sparse interaction support: for each order >= 2 a lexicographically sorted table of the
-    // co-occurring subsets (int32 rows of length `order`). Order 1 stays a dense per-feature block.
+    // Per order >= 2 the sorted table of the interactions that can be non-zero, each entry its
+    // `order` feature ids; order 1 is a dense per-feature block.
     const int32_t *subset_keys;
-    const int64_t *subset_starts;   // per order: start of its table in subset_keys (in ints)
-    const int64_t *subset_counts;   // per order: number of subsets in its table
-    const int64_t *order_offsets;   // per order: start of its block in the output
+    const int64_t *subset_starts;   // per order: start of its table in subset_keys (in feature ids)
+    const int64_t *subset_counts;   // per order: entries in its table
+    const int64_t *order_offsets;   // per order: start of its block in the output array
     std::vector<QuadFrame> stack;
-    std::vector<int> merged_scratch;
+    std::vector<int32_t> merged_scratch;
     std::vector<int> candidates;
     std::vector<int> chosen;
-    std::vector<int64_t> cursor;  // per order: table position of the last emitted subset
+    const SubsetIndex *row_index;   // the hash index, or nullptr: merged_position then searches the table
+    subset_tables::TableSearch search;
+    bool missing_subset = false;  // an interaction was not in its table; reported by the binding
+    bool dense2 = false;          // the order-2 table is complete: position = lexicographic rank
+    bool dense3 = false;          // the order-3 table is complete: position = lexicographic rank
+    std::vector<int64_t> rank3_base;  // rank3_base[i] = number of triples with smallest feature < i
 
     QuadWorkspace(const QuadTree &tree, int n_quad_, int n_feats_, int min_order_, int max_order_,
                   const int32_t *subset_keys_, const int64_t *subset_starts_,
-                  const int64_t *subset_counts_, const int64_t *order_offsets_)
+                  const int64_t *subset_counts_, const int64_t *order_offsets_,
+                  const SubsetIndex *row_index_)
         : n_quad(n_quad_), n_feats(n_feats_), min_order(min_order_), max_order(max_order_),
           subset_keys(subset_keys_), subset_starts(subset_starts_),
-          subset_counts(subset_counts_), order_offsets(order_offsets_)
+          subset_counts(subset_counts_), order_offsets(order_offsets_), row_index(row_index_)
     {
         A.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 1.0);
         E.assign(static_cast<size_t>(tree.max_depth + 2) * n_quad, 0.0);
@@ -103,66 +113,68 @@ struct QuadWorkspace
         act.assign(tree.num_nodes, false);
         path_feats.reserve(n_feats);
         chosen.resize(static_cast<size_t>(std::max(max_order, 1)));
-        cursor.assign(static_cast<size_t>(max_order) + 1, 0);
+        search = subset_tables::TableSearch(subset_keys_, subset_starts_, subset_counts_, max_order_);
         stack.reserve(static_cast<size_t>(tree.max_depth) * 5 + 10);
-    }
-
-    // Lexicographic compare of a table row against the merged tuple (both length s).
-    static int compare_row(const int32_t *row, const int *merged, int s)
-    {
-        for (int i = 0; i < s; ++i)
+        dense2 = max_order >= 2 && subset_tables::table_is_complete(subset_counts[2], 2, n_feats);
+        dense3 = max_order >= 3 && subset_tables::table_is_complete(subset_counts[3], 3, n_feats);
+        if (dense3)
         {
-            if (row[i] != merged[i])
-                return (row[i] < merged[i]) ? -1 : 1;
+            rank3_base.assign(static_cast<size_t>(n_feats), 0);
+            for (int64_t i = 1; i < n_feats; ++i)
+            {
+                const int64_t rest = n_feats - i;
+                rank3_base[static_cast<size_t>(i)] = rank3_base[static_cast<size_t>(i - 1)] + rest * (rest - 1) / 2;
+            }
         }
-        return 0;
     }
 
-    // Position (within the order's table) of the sorted tuple formed by merging `feature`
-    // into the first `size` chosen path features (chosen[] sorted, feature not among them).
-    // Every merged tuple lies on the current path, so it is guaranteed to be in the table.
-    // Within one edge extraction the emitted tuples are strictly increasing per order, so the
-    // search gallops forward from the per-order cursor instead of bisecting the whole table.
+    // Lexicographic rank of the interaction formed by inserting `feature` into chosen[0, size)
+    // among all interactions of order size + 1 (complete tables of order 2 and 3 only).
+    int64_t merged_rank(const int *chosen, int size, int feature) const
+    {
+        int a = chosen[0], b = feature;
+        if (size == 1)
+        {
+            if (a > b)
+                std::swap(a, b);
+            return static_cast<int64_t>(a) * n_feats - static_cast<int64_t>(a) * (a + 1) / 2 + (b - a - 1);
+        }
+        int f0 = chosen[0], f1 = chosen[1], f2 = feature;  // sort the three
+        if (f2 < f1)
+            std::swap(f1, f2);
+        if (f1 < f0)
+            std::swap(f0, f1);
+        if (f2 < f1)
+            std::swap(f1, f2);
+        const int64_t n = n_feats, m = n - 1 - f0, aa = f1 - f0 - 1;
+        return rank3_base[static_cast<size_t>(f0)] + aa * m - aa * (aa + 1) / 2 + (f2 - f0 - aa - 2);
+    }
+
+    // Position in its table of the interaction formed by inserting `feature` into the ascending
+    // chosen[0, size) (which does not contain it), or -1 when it is not in the table.
     int64_t merged_position(const int *chosen, int size, int feature)
     {
-        merged_scratch.resize(static_cast<size_t>(size) + 1);
-        int *merged = merged_scratch.data();
-        int insert_at = 0;
-        while (insert_at < size && chosen[insert_at] < feature)
-            ++insert_at;
-        std::memcpy(merged, chosen, static_cast<size_t>(insert_at) * sizeof(int));
-        merged[insert_at] = feature;
-        std::memcpy(merged + insert_at + 1, chosen + insert_at,
-                    static_cast<size_t>(size - insert_at) * sizeof(int));
         const int s = size + 1;
-        const int32_t *base = subset_keys + subset_starts[s];
-        const int64_t count = subset_counts[s];
-        int64_t lo = cursor[s];
-        if (lo >= count || compare_row(base + lo * s, merged, s) > 0)
-            lo = 0;  // cursor overshot (new extraction); restart from the table head
-        // exponential gallop: find a bracket [lo, hi) whose upper row is >= merged
-        int64_t bound = 1;
-        while (lo + bound < count && compare_row(base + (lo + bound) * s, merged, s) < 0)
-            bound <<= 1;
-        int64_t hi = std::min(lo + bound + 1, count);
-        lo = lo + (bound >> 1);
-        // binary search within the bracket
-        while (lo < hi)
-        {
-            const int64_t mid = lo + ((hi - lo) >> 1);
-            if (compare_row(base + mid * s, merged, s) < 0)
-                lo = mid + 1;
-            else
-                hi = mid;
-        }
-        cursor[s] = lo + 1;
-        return lo;
+        if ((s == 2 && dense2) || (s == 3 && dense3))
+            return merged_rank(chosen, size, feature);
+        if (row_index == nullptr)
+            return merged_position_tuple(chosen, size, feature);
+        const subset_tables::Key128 key = subset_tables::merged_key(chosen, size, feature, static_cast<int64_t>(n_feats));
+        return row_index->row(key, s, subset_counts);
+    }
+
+    // Without an index: the feature ids are materialized and the table of their order searched.
+    int64_t merged_position_tuple(const int *chosen, int size, int feature)
+    {
+        merged_scratch.resize(static_cast<size_t>(size) + 1);
+        subset_tables::merged_row(chosen, size, feature, merged_scratch.data());
+        return search.position(merged_scratch.data(), size + 1);
     }
 };
 
-// Enumerate the subsets of the current path features (excluding `feature`) in sorted order,
-// accumulating the gamma products level by level and adding every completed order's
-// contribution. `weighted` already carries w * E * delta.
+// Enumerates the interactions of `feature` with the other path features in sorted order,
+// accumulating the gamma products level by level and adding each completed order's
+// contribution to the output array. `weighted` carries w * E * delta per quadrature node.
 static void quad_enumerate(
     QuadWorkspace &ws,
     const std::vector<int> &candidates,
@@ -185,14 +197,17 @@ static void quad_enumerate(
             gamma_level[m] = (level == 0 ? 1.0 : gamma_prev[m]) * g_j[m];
         }
         chosen[level] = j;
-        int order = level + 2;  // subset of size level+1 plus the pivot feature
+        int order = level + 2;  // level+1 chosen features plus the pivot feature
         if (order >= ws.min_order && order >= 2)
         {
             double contribution = 0.0;
             for (int m = 0; m < n_quad; ++m)
                 contribution += weighted[m] * gamma_level[m];
             int64_t position = ws.merged_position(chosen, level + 1, feature);
-            out[ws.order_offsets[order] + position] += contribution;
+            if (position >= 0)
+                out[ws.order_offsets[order] + position] += contribution;
+            else
+                ws.missing_subset = true;
         }
         if (order < ws.max_order)
         {
@@ -316,9 +331,11 @@ inline void quadrature_inference(
                         A_row[m] = A_prev[m] * u_new;
                         g_row[m] = (h - c) / u_new;
                     }
-                    ws.path_feats.insert(
-                        std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
-                        feature);
+                    // only the interaction enumeration reads path_feats
+                    if (ws.max_order > 1)
+                        ws.path_feats.insert(
+                            std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature),
+                            feature);
                 }
             }
             int left = tree.children_left[node];
@@ -352,7 +369,7 @@ inline void quadrature_inference(
                         for (int m = 0; m < n_quad; ++m)
                             g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
                     }
-                    else
+                    else if (ws.max_order > 1)
                     {
                         ws.path_feats.erase(
                             std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -382,7 +399,7 @@ inline void quadrature_inference(
                 for (int m = 0; m < n_quad; ++m)
                     g_row[m] = (h0 - c0) / (h0 * t[m] + c0 * (1.0 - t[m]));
             }
-            else
+            else if (ws.max_order > 1)
             {
                 ws.path_feats.erase(
                     std::lower_bound(ws.path_feats.begin(), ws.path_feats.end(), feature));
@@ -392,7 +409,9 @@ inline void quadrature_inference(
     }
 }
 
-inline void quadrature_tree_shap(
+// Explains every row of X into the matching row of `out`. Returns false when an interaction
+// was missing from its table; the output is then incomplete.
+inline bool quadrature_tree_shap(
     const QuadTree &tree,
     const double *t,
     const double *w,
@@ -403,21 +422,23 @@ inline void quadrature_tree_shap(
     int min_order,
     int max_order,
     const int32_t *subset_keys,
-    const int64_t *subset_starts,
     const int64_t *subset_counts,
-    const int64_t *order_offsets,
+    const subset_tables::Geometry &geometry,  // derived from subset_counts by the binding
     const double *X,
     int n_row,
     int n_col,
     int64_t out_stride,
-    double *out)
+    double *out,
+    const SubsetIndex *subset_index)
 {
     QuadWorkspace ws(tree, n_quad, n_feats, min_order, max_order,
-                     subset_keys, subset_starts, subset_counts, order_offsets);
+                     subset_keys, geometry.table_starts.data(), subset_counts,
+                     geometry.output_offsets.data(), subset_index);
     for (int i = 0; i < n_row; ++i)
     {
         quadrature_inference(tree, ws, t, w, roots, n_trees,
                              X + static_cast<size_t>(i) * n_col,
                              out + static_cast<size_t>(i) * out_stride);
     }
+    return !ws.missing_subset;
 }

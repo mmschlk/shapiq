@@ -354,7 +354,7 @@ def worker_matches(worker: dict, claim: dict, allocation: dict) -> None:
 def validate_scores(row: dict, game: dict) -> None:
     """Recompute saved whole-vector/order errors without fitting or changing the game."""
     from shapiq import InteractionValues
-    from shapiq_benchmark.runner import score
+    from shapiq_benchmark.campaign_runner import score
 
     for name in (
         "seconds",
@@ -435,14 +435,14 @@ def collect(
         "Need numeric admitted jobs and an empty record store",
     )
     accounting = terminal_accounting(config["jobs"])  # Before opening any task journal.
-    from shapiq_benchmark.report import merge_results
-    from shapiq_benchmark.runner import (
+    from shapiq_benchmark.campaign_runner import (
         cell_timeout,
         identity,
         load_snapshot,
         method_catalog,
         provenance,
     )
+    from shapiq_benchmark.report import merge_results
 
     inputs = Inputs()
     suite, source = inputs.pinned(config["suite"]), inputs.pinned(config["source"])

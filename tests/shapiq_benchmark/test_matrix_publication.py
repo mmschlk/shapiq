@@ -10,10 +10,10 @@ import pytest
 
 from shapiq_benchmark import matrix_publication
 from shapiq_benchmark.campaign import assemble_campaign
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.matrix_publication import compose_matrix
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import ROW_FIELDS, write_report
-from shapiq_benchmark.runner import digest, identity
 from shapiq_benchmark.summary import summarize
 from tests.shapiq_benchmark.test_campaign_export import make_campaign, write
 

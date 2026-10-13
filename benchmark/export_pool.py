@@ -104,7 +104,7 @@ def table_reference(game: dict, expected: dict, values: object) -> dict:
                 )
         if not any(saved["score_eligible"] for saved in saved_orders.values()):
             from shapiq import ExactComputer
-            from shapiq_benchmark.runner import table_game
+            from shapiq_benchmark.campaign_runner import table_game
 
             replay = ExactComputer(
                 table_game(values, game["n_players"]), n_players=game["n_players"]
@@ -323,10 +323,10 @@ def export(
     compress: bool = False,
 ) -> dict:
     """Create a local report after complete execution or an authenticated closeout."""
+    from shapiq_benchmark.campaign_runner import identity, load_snapshot
     from shapiq_benchmark.duplicates import remove_aliases
     from shapiq_benchmark.partitioned import write_partitioned_report
     from shapiq_benchmark.record_store import RecordStore
-    from shapiq_benchmark.runner import identity, load_snapshot
 
     paths = [p.resolve() for p in (output, database, audit_path)]
     require(

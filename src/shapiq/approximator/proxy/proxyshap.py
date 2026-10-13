@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from functools import cached_property, reduce
 from operator import add
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import gammaln
-from sklearn.model_selection import KFold
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.proxy._models import (
@@ -213,9 +213,13 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                 their lower orders are returned as the uncorrected proxy readout.
             k_folds: Number of folds the sampled coalitions are split into. With
                 the default ``1``, a single proxy is fit on all sampled coalitions and its
-                residuals are computed in-sample. For values ``> 1``, one proxy is fit per fold
-                (KFold) on the training split, its interactions are extracted, and its residuals
-                are computed on the held-out split only; the per-fold results are averaged.
+                residuals are computed in-sample. For values ``> 1`` (cross-fitting), the sampled
+                coalitions are split into folds within each size; one proxy is fit per fold on
+                all coalitions but its held-out part, and its residuals are used on all sampled
+                coalitions: training coalitions count only for themselves, held-out ones stand in
+                for all coalitions of their size the proxy never saw. This keeps the correction
+                unbiased for any proxy and exact at full budget; the per-fold results are
+                averaged.
             sampling_weights: Optional array of weights for the sampling procedure. The weights must be of shape (n + 1,) and are used to determine the probability of sampling a coalition. Defaults to None.
                 `None` means uniform sampling by size and uniform within each size.
             pairing_trick: If True, the pairing trick is applied to the sampling procedure. Defaults to True.
@@ -276,6 +280,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         coalition_indices: np.ndarray,
         coalitions_matrix: CoalitionMatrix,
         interaction_lookup: dict[tuple[int, ...], int],
+        log_coalition_weights: np.ndarray,
     ) -> np.ndarray:
         """Vectorized MSR (unstratified SHAP-IQ) estimate of all interactions at once.
 
@@ -284,11 +289,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         *all* interactions in a single matrix product instead of the per-interaction loop of the
         generic MonteCarlo routine.
 
-        When only a subset of the sampled coalitions carries residuals (a held-out
-        cross-validation fold), the estimate is rescaled by the inverse inclusion probability
-        ``n_coalitions / len(coalition_indices)`` (Horvitz-Thompson). Since the folds partition
-        the coalitions, the fold-average of these subset estimates is exactly the full-sample MSR
-        estimate of the assembled out-of-fold residuals.
+        The per-coalition weight says for how many coalitions of the population each residual
+        counts: the sampler's inverse inclusion probability for the in-sample estimate, or the
+        cross-fitting weights of :meth:`_cross_fitting_log_weights` for a fold.
 
         Args:
             residuals: Residual values for the selected coalitions, of shape ``(m,)``, normalized
@@ -300,6 +303,8 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                 its values must be the interactions' positions in iteration order (as
                 :func:`~shapiq.utils.sets.generate_interaction_lookup` returns), since the result
                 is filled positionally and read back by lookup value.
+            log_coalition_weights: Log of the per-coalition weight of each residual, of shape
+                ``(m,)``.
 
         Returns:
             The estimated interaction values as an array aligned with ``interaction_lookup``.
@@ -312,11 +317,6 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         # exact in float64.
         coalitions = coalitions_matrix[coalition_indices].astype(np.float64)
         coalition_sizes = coalitions.sum(axis=1).astype(np.int64)[:, None]
-
-        # Per-coalition sampling adjustment, plus the Horvitz-Thompson factor for fold subsets.
-        log_adjustment = self._sampler.log_sampling_adjustment_weights[coalition_indices] + np.log(
-            coalitions_matrix.shape[0] / len(coalition_indices)
-        )
 
         # Process the interactions in blocks so the work buffers stay bounded (~1 GB each, and the loop body holds about five of them) however large the lattice grows.
         chunk_size = max(1, min(2**27 // max(len(coalition_indices), 1), 2**27 // self.n))
@@ -331,13 +331,13 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
 
             # Gather the standard-form weights for every (coalition, interaction) pair and
             # contract the residuals:
-            # estimate_S = sum_T r_T * sign(S,T) * exp(log|w|(S,T) + log_adj_T).
+            # estimate_S = sum_T r_T * sign(S,T) * exp(log|w|(S,T) + log_weight_T).
             signs = sign_table[interaction_sizes[None, :], coalition_sizes, intersection_sizes]
             log_weights = log_abs_table[
                 interaction_sizes[None, :], coalition_sizes, intersection_sizes
             ]
             estimates[start : start + len(block)] = residuals @ (
-                signs * np.exp(log_weights + log_adjustment[:, None])
+                signs * np.exp(log_weights + log_coalition_weights[:, None])
             )
 
         if () in interaction_lookup:
@@ -345,12 +345,113 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             estimates[interaction_lookup[()]] = 0.0
         return estimates
 
+    def _cross_fitting_folds(
+        self, coalitions_matrix: CoalitionMatrix
+    ) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        r"""Split the sampled coalitions into folds with conditionally unbiased residual weights.
+
+        Fold ``l``'s proxy is trained on all sampled coalitions except its held-out part, and its
+        residuals are used on *all* sampled coalitions. The weight says for how many coalitions of
+        the population each residual counts:
+
+        - a training coalition counts only for itself (weight ``1``).
+        - a held-out coalition of size ``s`` stands in for all coalitions of that size the proxy
+          never saw, i.e. weight ``(N_s - tr_s) / t_s`` with ``N_s = binom(n, s)``, ``tr_s`` the
+          fold's training and ``t_s`` its held-out coalitions of size ``s``.
+
+        The held-out part is drawn uniformly within each size, and the sampler draws uniformly
+        within each size, so given the training set the held-out coalitions are a uniform subset
+        of the unseen ones. The correction is therefore unbiased conditionally on the fitted
+        proxy, however closely it fits its training coalitions. A fully enumerated size gets weight
+        ``1`` everywhere, which keeps the estimate exact once the sampler enumerates. Under the
+        pairing trick a coalition and its complement form one unit and are held out together, so
+        the training set does not reveal which unseen coalitions were sampled.
+
+        Args:
+            coalitions_matrix: The binary coalition matrix of the sampled coalitions.
+
+        Returns:
+            One ``(train_index, residual_index, log_weights)`` tuple per fold: the rows the proxy
+            is trained on, the rows its residuals are used on, and the log weight of each of them.
+        """
+        n_players = self.n
+        sizes = coalitions_matrix.sum(axis=1).astype(np.int64)
+        n_rows = len(sizes)
+        n_sampled_per_size = np.bincount(sizes, minlength=n_players + 1)
+        # math.comb is exact for any n, and math.log accepts arbitrarily large ints, so the
+        # population sizes never overflow.
+        population_sizes = [math.comb(n_players, size) for size in range(n_players + 1)]
+
+        # Units of the split: a coalition, or a coalition together with its sampled complement.
+        unit_of_row = np.arange(n_rows)
+        stratum_of_row = sizes
+        if self._sampler.pairing_trick:
+            is_member = coalitions_matrix.astype(bool)
+            row_of_coalition = {row.tobytes(): i for i, row in enumerate(is_member)}
+            for i, row in enumerate(is_member):
+                j = row_of_coalition.get((~row).tobytes())
+                if j is not None:
+                    unit_of_row[i] = min(i, j)
+            stratum_of_row = np.minimum(sizes, n_players - sizes)
+
+        # Split the units of every stratum into k parts. A fold whose part is empty holds out one
+        # random unit instead, so the unseen coalitions of that size stay represented -- unless
+        # the stratum is fully enumerated, in which case nothing is unseen.
+        rng = np.random.default_rng(self._random_state)
+        held_out_units: list[list[int]] = [[] for _ in range(self.k_folds)]
+        for stratum in np.unique(stratum_of_row):
+            in_stratum = stratum_of_row == stratum
+            units = np.unique(unit_of_row[in_stratum])
+            is_enumerated = all(
+                n_sampled_per_size[size] == population_sizes[size]
+                for size in np.unique(sizes[in_stratum])
+            )
+            parts = np.array_split(rng.permutation(units), self.k_folds)
+            for part, fold in zip(parts, rng.permutation(self.k_folds), strict=True):
+                if len(part) == 0:
+                    if is_enumerated:
+                        continue
+                    part = rng.choice(units, size=1)  # noqa: PLW2901
+                held_out_units[fold].extend(part.tolist())
+
+        folds = []
+        for units in held_out_units:
+            is_held_out = np.isin(unit_of_row, units)
+            train_index = np.flatnonzero(~is_held_out)
+            test_index = np.flatnonzero(is_held_out)
+            n_held_out_per_size = np.bincount(sizes[test_index], minlength=n_players + 1)
+            log_weight_per_size = np.zeros(n_players + 1)
+            for size in np.flatnonzero(n_held_out_per_size):
+                n_unseen = population_sizes[size] - (
+                    int(n_sampled_per_size[size])
+                    - int(
+                        n_held_out_per_size[size]
+                    )  # Remove training coalitions of that size from the population count
+                )
+                log_weight_per_size[size] = math.log(n_unseen) - math.log(
+                    int(n_held_out_per_size[size])
+                )
+            folds.append(
+                (
+                    train_index,
+                    np.concatenate((train_index, test_index)),
+                    np.concatenate(
+                        (
+                            np.zeros(len(train_index)),
+                            log_weight_per_size[sizes[test_index]],
+                        )  # log-weights: log(0) for training coalitions, log((N_s - tr_s) / t_s) for held-out ones
+                    ),
+                )
+            )
+        return folds
+
     def _apply_msr_adjustment(
         self,
         residuals: np.ndarray,
         coalition_indices: np.ndarray,
         coalitions_matrix: CoalitionMatrix,
         proxy_interactions: InteractionValues,
+        log_coalition_weights: np.ndarray,
     ) -> InteractionValues:
         """Apply the MSR residual adjustment to the proxy's interactions.
 
@@ -360,6 +461,8 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             coalition_indices: Row indices into ``coalitions_matrix`` the residuals belong to.
             coalitions_matrix: The full binary coalition matrix.
             proxy_interactions: The interactions extracted from the fitted proxy.
+            log_coalition_weights: Log of the per-coalition weight of each residual (see
+                :meth:`_msr_routine`).
 
         Returns:
             The proxy interactions with the estimated residual interactions added.
@@ -367,7 +470,11 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         n_samples = coalitions_matrix.shape[0]
         interaction_lookup = self._lazy_interaction_lookup()
         residual_adjustment = self._msr_routine(
-            residuals, coalition_indices, coalitions_matrix, interaction_lookup
+            residuals,
+            coalition_indices,
+            coalitions_matrix,
+            interaction_lookup,
+            log_coalition_weights,
         )
         return proxy_interactions + InteractionValues(
             residual_adjustment,
@@ -396,7 +503,8 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         route to :func:`_extract_linear`, registered tree models to :func:`_extract_tree`. If
         enabled, the proxy's residuals are estimated with the vectorized MSR routine.
         Depending on ``k_folds``, the residuals are corrected either in-sample (``k_folds=1``)
-        or out-of-fold (``k_folds>1``) and added to the proxy's interactions.
+        or cross-fitted (``k_folds>1``, see :meth:`_cross_fitting_folds`) and added to the
+        proxy's interactions.
         For ``k_folds>1``, the final interaction values are the average of the per-fold results, and the baseline is fixed to the empty-coalition value of the game.
 
         Args:
@@ -419,60 +527,64 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         coalition_values = game_values - baseline_value
         n_samples, n_players = coalitions_matrix.shape
 
-        # 2. Split the coalitions into folds. With a single fold the proxy trains and predicts on
-        # all coalitions; with cross-validation each fold's proxy predicts its held-out split.
+        # 2. Split the coalitions into folds. With a single fold the proxy trains on all coalitions
+        # and its residuals carry the sampler's weights; with cross-fitting each fold's proxy
+        # corrects with the weights of ``_cross_fitting_folds``.
         if self.k_folds > 1:
-            folder = KFold(
-                n_splits=self.k_folds,
-                shuffle=True,
-                random_state=self._random_state,
-            )
-            folds = list(folder.split(coalitions_matrix, coalition_values))
+            folds = self._cross_fitting_folds(coalitions_matrix)
         else:
-            folds = [(np.arange(n_samples), np.arange(n_samples))]  # single fold, train on all
+            all_index = np.arange(n_samples)
+            folds = [(all_index, all_index, self._sampler.log_sampling_adjustment_weights)]
 
         # 3. Per fold: fit the proxy, read interactions out of the fitted model (dispatch on its
-        # type), and optionally add the MSR estimate of the fold's held-out residuals.
+        # type), and record its weighted residuals on all sampled coalitions (every fold's
+        # residual set is a permutation of all rows, stored here in row order).
         fold_results: list[InteractionValues] = []
-        for train_index, test_index in folds:
+        fold_residuals = np.zeros((len(folds), n_samples))
+        fold_log_weights = np.full((len(folds), n_samples), -np.inf)
+        for fold, (train_index, residual_index, log_coalition_weights) in enumerate(folds):
             fitted = fit_proxy(
                 self.proxy_model,
                 coalitions_matrix[train_index],
                 coalition_values[train_index],
                 max_order=self.max_order,
             )
-            fold_interactions = _extract_proxy_interactions(
-                fitted,
-                baseline_value=baseline_value,
-                max_order=self.max_order,
-                approximation_index=self.approximation_index,
-                target_index=self.index,
-                budget=n_samples,
-                n_players=n_players,
+            fold_results.append(
+                _extract_proxy_interactions(
+                    fitted,
+                    baseline_value=baseline_value,
+                    max_order=self.max_order,
+                    approximation_index=self.approximation_index,
+                    target_index=self.index,
+                    budget=n_samples,
+                    n_players=n_players,
+                )
             )
             if self.adjustment:
                 # Normalize the residuals to 0 at the empty coalition (the *centered* game value
-                # there is 0, and the empty coalition may not be part of the held-out split, so
-                # its residual is computed explicitly).
-                empty_residual = (
-                    coalition_values[empty_index]
-                    - predict_proxy(
-                        fitted,
-                        coalitions_matrix[empty_index].reshape(1, -1),
-                        max_order=self.max_order,
-                    )[0]
-                )
-                residuals = coalition_values[test_index] - predict_proxy(
-                    fitted, coalitions_matrix[test_index], max_order=self.max_order
-                )
-                residuals -= empty_residual
-                fold_interactions = self._apply_msr_adjustment(
-                    residuals, test_index, coalitions_matrix, fold_interactions
-                )
-            fold_results.append(fold_interactions)
+                # there is 0, so its residual is subtracted from all others).
+                predictions = predict_proxy(fitted, coalitions_matrix, max_order=self.max_order)
+                residuals = coalition_values - predictions
+                residuals -= residuals[empty_index]
+                fold_residuals[fold, residual_index] = residuals[residual_index]
+                fold_log_weights[fold, residual_index] = log_coalition_weights
 
         # 4. Average the fold results and fix the empty-coalition/baseline value.
         proxy_interactions = reduce(add, fold_results) * (1.0 / len(fold_results))
+        if self.adjustment:
+            # Apply the MSR residual adjustment to the combined residuals of all folds, with the log weights of each fold's residuals.
+            # The log weights are shifted by their max to avoid overflow.
+            max_log_val = fold_log_weights.max(axis=0)
+            combined_residuals = (fold_residuals * np.exp(fold_log_weights - max_log_val)).sum(
+                axis=0
+            ) / len(folds)
+            proxy_interactions = self._apply_msr_adjustment(
+                combined_residuals,
+                np.arange(n_samples),
+                coalitions_matrix,
+                proxy_interactions,
+                max_log_val,
+            )
         proxy_interactions.baseline_value = baseline_value
         proxy_interactions.interactions[()] = baseline_value  # Ensure empty coalition is correct
         return proxy_interactions

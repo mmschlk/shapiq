@@ -13,8 +13,9 @@ import json
 import re
 from pathlib import Path
 
-from shapiq_benchmark.datasets import DATASETS, feature_limit
-from shapiq_benchmark.families import dataset_compatibility
+from shapiq_benchmark.campaign_datasets import DATASETS, feature_limit
+from shapiq_benchmark.campaign_runner import METHOD_NAMES, validate_suite
+from shapiq_benchmark.families import MAX_ENUMERATION_PLAYERS, dataset_compatibility
 from shapiq_benchmark.protocol import (
     BUDGET_MULTIPLIERS,
     CONSTRUCTIONS,
@@ -23,7 +24,6 @@ from shapiq_benchmark.protocol import (
     recipe_spec,
 )
 from shapiq_benchmark.quality import QUALITY_PROTOCOL
-from shapiq_benchmark.runner import METHOD_NAMES, validate_suite
 
 TARGETS = [{"index": "SV", "order": 1}] + [
     {"index": index, "order": 2} for index in ("k-SII", "SII", "STII", "FSII", "FBII")
@@ -48,14 +48,10 @@ _OPTIONAL_COLUMNS = {"input_features", "feature_rule", "training_rows", "row_sel
 _APPLICATION_CONSTRUCTIONS = {
     "local": {
         "local_baseline",
-        "local_marginal",
-        "local_gaussian",
-        "local_copula",
-        "local_conditional",
         "pathdependent_tree",
         "interventional_tree",
     },
-    "data": {"dataset_valuation", "data_valuation", "knn", "tnn"},
+    "data": {"dataset_valuation", "knn", "tnn"},
     "features": {"feature_selection"},
 }
 
@@ -63,10 +59,10 @@ _APPLICATION_CONSTRUCTIONS = {
 def build_suite(
     manifest: Path,
     *,
-    min_players: int = 12,
-    max_players: int = 512,
-    extended_features: bool = False,
-    estimator_seeds: tuple[int, ...] = (0,),
+    min_players: int = 4,
+    max_players: int = 64,
+    extended_features: bool = True,
+    estimator_seeds: tuple[int, ...] = (0, 1, 2),
 ) -> dict:
     """Validate recipe semantics and require the approved estimator constructor options."""
     if not 1 <= min_players <= max_players:
@@ -110,12 +106,6 @@ def build_suite(
         "seeds": list(estimator_seeds),
         "min_players": min_players,
         "min_signal_ratio": 1e-6,
-        "cell_timeout_policy": {
-            "ordinary_seconds": 30,
-            "extended_seconds": 120,
-            "min_players": 128,
-            "min_relative_budget": 32,
-        },
         "focused_design": {
             "version": 1,
             "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
@@ -140,8 +130,6 @@ def build_suite(
             if family in {"knn", "tnn"}
             else "retraining_groups"
             if family == "dataset_valuation"
-            else "retraining_rows"
-            if family == "data_valuation"
             else ""
         )
         if recipe["subtype"] != expected_subtype:
@@ -163,15 +151,14 @@ def build_suite(
         if "input_features" in recipe:
             count = int(recipe["input_features"])
             if family not in (
-                {"data_valuation", "dataset_valuation"}
-                | ({"knn", "tnn"} if extended_features else set())
+                {"dataset_valuation"} | ({"knn", "tnn"} if extended_features else set())
             ) or not (1 <= count <= DATASETS[dataset]["n_features"]):
                 msg = f"Invalid valuation input-feature count: {recipe['id']}"
                 raise ValueError(msg)
             options["input_features"] = count
         if "feature_rule" in recipe:
             if family not in (
-                {"data_valuation", "dataset_valuation", "feature_selection"}
+                {"dataset_valuation", "feature_selection"}
                 | (
                     {"local_baseline", "pathdependent_tree", "interventional_tree", "knn", "tnn"}
                     if extended_features
@@ -209,8 +196,8 @@ def build_suite(
             msg = f"Repeated game recipe: {recipe['id']}"
             raise ValueError(msg)
         identities.add(identity)
-        if not structured and n > 20:
-            msg = "Enumeration is limited to twenty players."
+        if not structured and n > MAX_ENUMERATION_PLAYERS:
+            msg = f"Enumeration is limited to {MAX_ENUMERATION_PLAYERS} players."
             raise ValueError(msg)
         if CONSTRUCTIONS[family]["player_unit"] == "feature" and n > feature_limit(family, dataset):
             msg = f"Too few original features: {recipe['id']}"
@@ -232,18 +219,13 @@ def build_suite(
         for spec in recipe_spec(row, TARGETS):
             spec.update(options)
             spec["quality_protocol"] = QUALITY_PROTOCOL
-            if "device" in spec:
-                spec["device"] = "cpu"
             if structured:
                 spec["basecase_id"] = recipe["id"]
-                if (dataset, model, family) in {
-                    ("tabarena_bioresponse", "xgboost", "pathdependent_tree"),
-                    ("tabarena_qsar_tid11", "random_forest", "interventional_tree"),
-                } and n in {32, 128, 512}:
-                    spec["feature_rule"] = "nested"
             suite["games" if structured else "families"].append(spec)
     # Refuse old constructors rather than silently dropping the approved fallback.
-    validate_suite(suite)
+    # Manifest generation does not execute current estimator constructors.
+    # Preparation and evaluation enforce their compatibility separately.
+    validate_suite(suite, check_constructors=False)
     return suite
 
 

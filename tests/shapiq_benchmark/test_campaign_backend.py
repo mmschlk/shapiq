@@ -11,8 +11,8 @@ import pytest
 
 from shapiq_benchmark.campaign import _collect_campaign, assemble_campaign
 from shapiq_benchmark.campaign_backend import load_backend, merge_backend
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.report import write_report
-from shapiq_benchmark.runner import digest, identity
 
 from .test_campaign_export import make_campaign, write
 from .test_campaign_replacements import reruns

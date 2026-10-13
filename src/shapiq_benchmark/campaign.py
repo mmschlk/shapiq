@@ -17,6 +17,7 @@ import numpy as np
 from shapiq_benchmark.campaign_backend import load_backend, merge_backend
 from shapiq_benchmark.campaign_recovery import merge_recovery
 from shapiq_benchmark.campaign_replacements import replace_methods
+from shapiq_benchmark.campaign_runner import digest, identity, load_snapshot
 from shapiq_benchmark.duplicates import payoff_fingerprint, remove_aliases
 from shapiq_benchmark.planning import relative_budget_grid
 from shapiq_benchmark.publication_cache import normalization_policy, normalized_batch
@@ -27,7 +28,6 @@ from shapiq_benchmark.quality import (
 )
 from shapiq_benchmark.report import merge_results, public_preparation
 from shapiq_benchmark.results_io import read_results, result_inputs
-from shapiq_benchmark.runner import digest, identity, load_snapshot
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from shapiq_benchmark.campaign import assemble_campaign
+from shapiq_benchmark.campaign_runner import identity
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import write_report
-from shapiq_benchmark.runner import identity
 from tests.shapiq_benchmark.test_campaign_backend import recovery
 from tests.shapiq_benchmark.test_campaign_export import make_campaign
 from tests.shapiq_benchmark.test_campaign_recovery import recovery_pair

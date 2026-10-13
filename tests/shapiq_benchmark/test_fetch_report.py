@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 import pytest
 from benchmark.fetch_report import fetch_report
 
+from shapiq_benchmark.campaign_runner import digest
 from shapiq_benchmark.partitioned import write_partitioned_report
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import encode_records
-from shapiq_benchmark.runner import digest
 from tests.shapiq_benchmark.test_partitioned import fixture_data
 
 

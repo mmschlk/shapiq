@@ -232,6 +232,65 @@ def test_compute():
     assert game(coalitions[1]) + normalization_value == pytest.approx(game_values[1])
 
 
+class MaskedSumGame(Game):
+    """An additive game which uses the coalitions as boolean masks on its player weights."""
+
+    def __init__(self) -> None:
+        self.weights = np.array([1.0, 10.0, 100.0])
+        self.received_dtypes: list[np.dtype] = []
+        super().__init__(3, normalize=False)
+
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        self.received_dtypes.append(coalitions.dtype)
+        return np.array([self.weights[coalition].sum() for coalition in coalitions])
+
+
+COALITION_DTYPES = [bool, int, float]
+COALITION_SHAPES = [pytest.param(False, id="1d"), pytest.param(True, id="2d")]
+
+
+def _masked_sum_coalitions(dtype: type, *, two_dim: bool) -> np.ndarray:
+    """Returns the coalition {0, 2} as a 1-D or 2-D array of the given dtype."""
+    coalition = np.array([1, 0, 1], dtype=dtype)
+    return coalition.reshape(1, -1) if two_dim else coalition
+
+
+@pytest.mark.parametrize("two_dim", COALITION_SHAPES)
+@pytest.mark.parametrize("dtype", COALITION_DTYPES)
+@pytest.mark.parametrize("verbose", [False, True])
+def test_call_casts_coalitions_to_bool(dtype: type, *, two_dim: bool, verbose: bool):
+    """Tests that 0/1 coalitions of any dtype reach the value function as boolean masks."""
+    game = MaskedSumGame()
+    coalitions = _masked_sum_coalitions(dtype, two_dim=two_dim)
+
+    values = game(coalitions, verbose=verbose)
+
+    assert values == pytest.approx([101.0])
+    assert game.received_dtypes
+    assert all(received == np.dtype(bool) for received in game.received_dtypes)
+
+
+@pytest.mark.parametrize("two_dim", COALITION_SHAPES)
+@pytest.mark.parametrize("dtype", COALITION_DTYPES)
+def test_precompute_casts_coalitions_to_bool(dtype: type, *, two_dim: bool):
+    """Tests that precomputing and looking up 0/1 coalitions of any dtype uses boolean masks."""
+    coalitions = _masked_sum_coalitions(dtype, two_dim=two_dim)
+
+    # precompute all coalitions and look up the coalition afterwards
+    game = MaskedSumGame()
+    game.precompute()
+    assert game.precomputed
+    assert game(coalitions) == pytest.approx([101.0])
+    assert game.received_dtypes == [np.dtype(bool)]
+
+    # precompute only the given coalitions and look them up afterwards
+    game = MaskedSumGame()
+    game.precompute(coalitions=coalitions.reshape(1, -1))
+    assert game[(0, 2)] == pytest.approx(101.0)
+    assert game(coalitions) == pytest.approx([101.0])
+    assert game.received_dtypes == [np.dtype(bool)]
+
+
 def check_game_equality(game1: Game, game2: Game):
     """Check if two games are equal."""
     assert game1.n_players == game2.n_players

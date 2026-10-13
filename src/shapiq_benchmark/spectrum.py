@@ -43,7 +43,7 @@ def fourier_spectrum(values: np.ndarray, n_players: int) -> dict:
     energy = np.asarray(coefficients**2, dtype=float)
     energy[0] = 0  # The constant payoff offset does not describe interaction structure.
     degrees = np.fromiter((mask.bit_count() for mask in range(len(values))), dtype=int)
-    masses = np.bincount(degrees, weights=energy, minlength=n_players + 1)
+    masses = np.bincount(degrees, weights=energy, minlength=n_players + 1).astype(float, copy=False)
     masses /= masses.sum()
     result.update(
         degree_mass=masses.tolist(),

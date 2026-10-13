@@ -1,7 +1,34 @@
 {
-  "name": "california-pilot-relative-v2",
-  "game": "california_tree",
-  "methods": ["KernelSHAP", "PermutationSamplingSV", "SVARM"],
-  "relative_budgets": [4, 8, 16],
-  "seeds": [0, 1, 2]
+  "name": "compact-pilot",
+  "families": [
+    {
+      "id": "breast-cancer-linear-4",
+      "family": "local_baseline",
+      "dataset": "breast_cancer",
+      "n_players": 4,
+      "model_profile": "linear",
+      "feature_rule": "nested"
+    }
+  ],
+  "targets": [
+    {
+      "index": "SV",
+      "order": 1
+    }
+  ],
+  "methods": [
+    "KernelSHAP",
+    "PermutationSamplingSV",
+    "SVARM"
+  ],
+  "relative_budgets": [
+    4,
+    8,
+    16
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ]
 }

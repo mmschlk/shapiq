@@ -17,21 +17,44 @@ Valuation input width is exactly `min(12, dataset width)`, with no width sweep o
 special-model contrasts. Historical broader results remain a separate cohort
 and do not enter the published compact comparison.
 
+## Code map
+
+| Responsibility | Entry points |
+| --- | --- |
+| Compact design | `comprehensive.py`, recipe CSV, `settings.json` |
+| Data and fitted models | `campaign_datasets.py`, `campaign_models.py` |
+| Game construction and exact truth | `prepare.py`, `families.py`, `games.py`, `structured.py` |
+| Evaluation and resume | `campaign_runner.py`, `execution.py`, `runtime.py`, `results_io.py` |
+| Scores and static report | `order_metrics.py`, `summary.py`, `report.py`, `site/` |
+| Optional cluster operations | Scripts in `benchmark/`; not required for a local run |
+
+Python modules above live in `src/shapiq_benchmark`. Upstream's general-purpose
+`runner`, `models`, `datasets` and `setups` APIs remain unchanged. Campaign helpers
+have explicit names to avoid replacing those APIs. Fresh preparation uses the
+current public game classes; exact historical replay uses the release's pinned
+source and data. Neither route alters the published measurements.
+
 ## Prepare → evaluate → report
 
 Use a separate development environment; never install into one used by running
-jobs. The small pilot exercises the same snapshot, counted-query runner and
+jobs. The download-free Breast Cancer pilot exercises the same snapshot, counted-query runner and
 report format as the full design:
 
 ```bash
 uv sync --locked --extra benchmark
 uv run python -m shapiq_benchmark.prepare --suite benchmark/suites/pilot.json --output benchmark/results/pilot
-uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/baselines --settings benchmark/settings.json --max-seconds 86400
+uv run python -m shapiq_benchmark.campaign_runner --snapshot benchmark/results/pilot --output benchmark/results/baselines --settings benchmark/settings.json --max-seconds 86400
 uv run python -m shapiq_benchmark.report --results benchmark/results/baselines/results.json --output benchmark/results/report
 uv run python -m http.server 8000 --bind 127.0.0.1 --directory benchmark/results/report
 ```
 
 Generate the selected suite from the CSV for replay or a new independent run.
+Full-grid execution requires the explicit LeverageSHAP/OddSHAP options from
+[regression PR #611](https://github.com/mmschlk/shapiq/pull/611), or the release's
+frozen implementation. Until that PR merges, merge its branch into a separate
+development checkout before preparing/evaluating the full grid. The three-method
+pilot runs on unmodified upstream estimators. Manifest generation only validates
+the design; preparation and execution reject incompatible constructors.
 The active campaign reuses authenticated prepared snapshots; it does not rerun
 preparation merely to regenerate this manifest:
 
@@ -118,7 +141,7 @@ release includes its own authenticated source/replay supplement.
 Copy [example_estimator.py](example_estimator.py), implement its factory, then:
 
 ```bash
-uv run python -m shapiq_benchmark.runner --snapshot benchmark/results/pilot --output benchmark/results/candidate --candidate benchmark/example_estimator.py:factory --settings benchmark/settings.json --max-seconds 86400
+uv run python -m shapiq_benchmark.campaign_runner --snapshot benchmark/results/pilot --output benchmark/results/candidate --candidate benchmark/example_estimator.py:factory --settings benchmark/settings.json --max-seconds 86400
 ```
 
 The factory receives `n`, `index`, `order` and `seed`, and returns an estimator

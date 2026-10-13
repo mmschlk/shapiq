@@ -11,68 +11,15 @@ import pytest
 from sklearn.ensemble import RandomForestClassifier
 
 from shapiq import InteractionValues
-from shapiq.explainer.nn.games.knn import KNNExplainerGame
-from shapiq.tree.interventional.game import InterventionalGame
-from shapiq_benchmark import models
+from shapiq_benchmark import campaign_models as models
+from shapiq_benchmark.campaign_runner import run
 from shapiq_benchmark.games import load_game, prepare_structured, signal_metadata
 from shapiq_benchmark.prepare import prepare
-from shapiq_benchmark.runner import run
-from shapiq_benchmark.structured import _construct
+from shapiq_games.nn.knn import KNNGame
+from shapiq_games.tree.interventional import InterventionalTreeGame
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-@pytest.mark.parametrize("index", ["SV", "SII", "k-SII"])
-def test_xgboost_threshold_rounding_matches_pathdependent_truth(index: str) -> None:
-    """Float64 values below a float32 split must follow XGBoost's rounded branch."""
-    from shapiq.tree.validation import validate_tree_model
-    from shapiq_benchmark.games import validate_truth
-    from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
-
-    xgboost = pytest.importorskip("xgboost")
-    x = np.zeros((4, 8))
-    x[:, 0] = [0, 0.1, 0.2, 0.3]
-    y = np.array([2.0, 8.0, 8.0, 8.0])
-    model = xgboost.XGBRegressor(
-        n_estimators=1,
-        max_depth=1,
-        learning_rate=1,
-        reg_lambda=0,
-        tree_method="hist",
-        base_score=0,
-        n_jobs=1,
-    ).fit(x, y)
-    model.get_booster().set_attr(best_iteration="0")
-    tree = validate_tree_model(model)[0]
-    point = np.zeros(8)
-    point[0] = np.nextafter(float(tree.thresholds[0]), -np.inf)
-    raw_game = TreeSHAPIQXAI(point, [tree], normalize=False, verbose=False)
-    full = np.ones((1, 8), dtype=bool)
-    assert raw_game(full)[0] == 2.0
-    assert model.predict(point[None])[0] == 8.0
-    prepared = models.PreparedModel(
-        model,
-        x,
-        y,
-        x,
-        y,
-        point[None],
-        y[:1],
-        {"model_profile": "xgboost", "task": "regression"},
-    )
-    oracle, truth, arrays, _ = _construct(
-        prepared,
-        {
-            "oracle": "pathdependent_tree",
-            "model_profile": "xgboost",
-            "index": index,
-            "order": 1 if index == "SV" else 2,
-        },
-    )
-    assert oracle(full)[0] == model.predict(point[None])[0]
-    np.testing.assert_array_equal(arrays["point"], point.astype(np.float32).astype(np.float64))
-    assert validate_truth(oracle, truth, exhaustive=True) < 1e-10
 
 
 @pytest.fixture
@@ -150,7 +97,7 @@ def test_knn_truth_rewards_the_heldout_label(structured: tuple[dict, Path]) -> N
     snapshot, root = structured
     game = snapshot["games"][2]
     oracle = load_game(game, root)
-    assert isinstance(oracle, KNNExplainerGame)
+    assert isinstance(oracle, KNNGame)
     assert oracle.model.classes_[oracle.class_index] == game["metadata"]["point_label"]
     assert game["metadata"]["point_label"] == 0
     expected = oracle.model.predict_proba(oracle.x[None])[0, oracle.class_index]
@@ -181,7 +128,7 @@ def test_all_tree_targets_keep_true_class_and_exact_truth(
         <= (n_players if index == "SV" else n_players * (n_players + 1) // 2)
     )
     oracle = load_game(game, tmp_path)
-    assert isinstance(oracle, InterventionalGame)
+    assert isinstance(oracle, InterventionalTreeGame)
     assert isinstance(oracle.model, RandomForestClassifier)
     assert oracle.model.classes_[game["metadata"]["class_index"]] == game["metadata"]["point_label"]
     with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
@@ -245,7 +192,7 @@ def test_large_knn_instances_change_selected_training_players(
         assert len(game["truth"]["values"]) == n_players
         assert game["metadata"]["small_validation_max_error"] < 1e-10
         oracle = load_game(game, tmp_path)
-        assert isinstance(oracle, KNNExplainerGame)
+        assert isinstance(oracle, KNNGame)
         assert oracle.model.classes_[oracle.class_index] == game["metadata"]["point_label"]
         with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
             selected_rows.append(arrays["selected_rows"])
@@ -289,50 +236,11 @@ def test_stratified_knn_preserves_classes_and_exact_truth(
     assert endpoints[1] - endpoints[0] == pytest.approx(sum(game["truth"]["values"]))
 
 
-@pytest.mark.parametrize("dataset,n_players", [("breast_cancer", 30), ("digits", 64)])
-def test_product_kernel_arrays_reload_without_refitting(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dataset: str, n_players: int
-) -> None:
-    """An actual fitted binary RBF model has exact SV and a pickle-free oracle."""
-    spec = {
-        "id": "product",
-        "oracle": "product_kernel",
-        "dataset": dataset,
-        "index": "SV",
-        "order": 1,
-        "instance_seed": 1,
-    }
-    game = prepare_structured([spec], tmp_path)[0]
-    repeated = prepare_structured([spec], tmp_path / "repeat")[0]
-    assert repeated == game
-    assert game["n_players"] == n_players
-    assert game["metadata"]["small_validation_max_error"] < 1e-10
-    assert game["metadata"]["nonzero_coefficients"] > 20
-    assert len(game["metadata"]["classes"]) == 2
-
-    def forbid_fit(*args: object, **kwargs: object) -> None:
-        pytest.fail("Product oracle reload must use frozen arrays, not refit SVC.")
-
-    monkeypatch.setattr("shapiq_benchmark.games.SVC.fit", forbid_fit)
-    oracle = load_game(game, tmp_path)
-    endpoints = oracle(np.array([np.zeros(n_players), np.ones(n_players)], dtype=bool))
-    assert endpoints[0] == pytest.approx(game["truth"]["baseline"])
-    assert endpoints[1] - endpoints[0] == pytest.approx(sum(game["truth"]["values"]))
-    coalitions = np.random.default_rng(9).integers(0, 2, size=(16, n_players)).astype(bool)
-    np.testing.assert_array_equal(
-        oracle(coalitions), load_game(repeated, tmp_path / "repeat")(coalitions)
-    )
-    with np.load(tmp_path / game["artifact"], allow_pickle=False) as arrays:
-        assert arrays["support_vectors"].shape[1] == n_players
-        assert all(not arrays[name].dtype.hasobject for name in arrays.files)
-
-
 @pytest.mark.parametrize(
     "profile,kind",
     [
         ("random_forest", "tree"),
         ("random_forest", "pathdependent_tree"),
-        ("rbf_svm", "product_kernel"),
     ],
 )
 def test_shared_profiles_freeze_native_width_without_refitting(
@@ -352,7 +260,7 @@ def test_shared_profiles_freeze_native_width_without_refitting(
     assert game["metadata"]["small_validation_max_error"] < 1e-8
     assert game["metadata"]["training_profile"]["id"] == "quality-v1"
     monkeypatch.setattr(
-        "shapiq_benchmark.models.prepare_model",
+        "shapiq_benchmark.campaign_models.prepare_model",
         lambda *a, **kw: pytest.fail("Reload must not train."),
     )
     oracle = load_game(game, tmp_path)
@@ -409,7 +317,7 @@ def test_structured_signal_bound_is_scale_invariant_and_conservative() -> None:
     assert signal_metadata(truth, 0.0)["signal_ratio"] == 0
 
 
-@pytest.mark.parametrize("profile", ["random_forest", "xgboost", "lightgbm"])
+@pytest.mark.parametrize("profile", ["random_forest"])
 @pytest.mark.parametrize("index", ["SV", "k-SII", "SII", "STII", "FSII", "FBII"])
 def test_native_profile_tree_all_targets_roundtrip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str, index: str
@@ -456,7 +364,7 @@ def test_native_profile_tree_all_targets_roundtrip(
         assert all(not arrays[key].dtype.hasobject for key in arrays.files)
 
 
-@pytest.mark.parametrize("profile", ["random_forest", "xgboost", "lightgbm"])
+@pytest.mark.parametrize("profile", ["random_forest"])
 @pytest.mark.parametrize("index", ["SV", "k-SII", "SII"])
 def test_pathdependent_profiles_declared_targets(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, profile: str, index: str

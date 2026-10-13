@@ -14,10 +14,10 @@ import math
 import shutil
 from typing import TYPE_CHECKING, cast
 
+from shapiq_benchmark.campaign_runner import identity
 from shapiq_benchmark.published import HASH, _require
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.report import GAME_FIELDS, ROW_FIELDS, compact_workers, encode_records
-from shapiq_benchmark.runner import identity
 from shapiq_benchmark.summary import iter_summaries
 
 if TYPE_CHECKING:

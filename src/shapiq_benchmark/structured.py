@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import copy
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
-from shapiq.tree.base import TreeModel
-from shapiq_benchmark.native_tree_backend import BatchedPathDependentGame, NumericTreePredictor
+from shapiq.tree.base import TreeModel, predict_ensemble
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -16,7 +14,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from shapiq.game import Game
-    from shapiq_benchmark.models import PreparedModel
+    from shapiq_benchmark.campaign_models import PreparedModel
 
 TREE_ARRAYS = (
     "children_left",
@@ -33,83 +31,43 @@ TREE_ARRAYS = (
 TREE_SCALARS = ("decision_type", "input_precision", "empty_prediction")
 
 
-class FrozenTreePredictor(NumericTreePredictor):
+class FrozenTreePredictor:
     """Predict the already converted scalar output without refitting a model."""
+
+    def __init__(self, trees: list[TreeModel]) -> None:
+        """Keep validated numeric trees for a portable artifact."""
+        self.trees = trees
+
+    def predict(self, rows: np.ndarray) -> np.ndarray:
+        """Use upstream routing and summation for every prediction."""
+        return predict_ensemble(self.trees, rows)
 
 
 def _tree_game(trees: list, background: np.ndarray, point: np.ndarray, kind: str) -> Game:
-    from shapiq.tree.interventional.game import InterventionalGame
-    from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
+    from shapiq_games.tree.interventional import InterventionalTreeGame
+    from shapiq_games.tree.path_dependent import PathDependentTreeGame
 
     if kind == "pathdependent_tree":
-        return BatchedPathDependentGame(TreeSHAPIQXAI(point, trees, normalize=False, verbose=False))
-    return InterventionalGame(FrozenTreePredictor(trees), background, point)
+        return PathDependentTreeGame(trees, point, normalize=False, verbose=False)
+    return InterventionalTreeGame(FrozenTreePredictor(trees), background, point)
 
 
 def _construct(prepared: PreparedModel, spec: dict) -> tuple:
     """Use shipped exact computers on precisely the scalar output stored in the oracle."""
-    from shapiq import InteractionValues
-    from shapiq.explainer.product_kernel.game import ProductKernelGame
-    from shapiq.explainer.product_kernel.product_kernel import ProductKernelComputer
     from shapiq.tree import TreeExplainer
     from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
     from shapiq.tree.validation import validate_tree_model
-    from shapiq_benchmark.models import converted_svm
 
-    model = copy.deepcopy(prepared.model)
+    model = prepared.model
     point, background = prepared.x_test[0], prepared.x_train[:16]
     kind, index, order = spec["oracle"], spec["index"], spec["order"]
-    if kind == "product_kernel":
-        if (index, order) != ("SV", 1):
-            message = "Structured product kernels currently qualify SV only."
-            raise ValueError(message)
-        if hasattr(model, "steps"):
-            point = model[:-1].transform(point[None])[0]
-            model = model.steps[-1][1]
-        if hasattr(model, "classes_") and len(model.classes_) != 2:
-            message = "Product-kernel classification requires exactly two classes."
-            raise ValueError(message)
-        converted = converted_svm(model)
-        if converted.gamma is None:
-            message = "RBF conversion requires an explicit kernel bandwidth."
-            raise ValueError(message)
-        oracle = ProductKernelGame(len(point), point, converted)
-        computer = ProductKernelComputer(converted)
-        vectors = computer.compute_kernel_vectors(converted.X_train, point)
-        scores: dict[tuple[int, ...], float] = {
-            (i,): float(computer.compute_shapley_value(vectors, i)) for i in range(len(point))
-        }
-        truth = InteractionValues(
-            values=scores,
-            index="SV",
-            min_order=0,
-            max_order=1,
-            n_players=len(point),
-            estimated=False,
-            baseline_value=float(converted.alpha.sum() + converted.intercept),
-        )
-        arrays = {"point": point, "support_vectors": converted.X_train, "alpha": converted.alpha}
-        details: dict = {
-            "payoff_range_upper_bound": float(np.abs(converted.alpha).sum()),
-            "gamma": float(converted.gamma),
-            "intercept": float(converted.intercept),
-            "semantics": "RBF decision margin or regression score with omitted factors set to one",
-        }
-        return oracle, truth, arrays, details
-    if kind not in ("tree", "pathdependent_tree") or spec["model_profile"] not in (
-        "random_forest",
-        "xgboost",
-        "lightgbm",
-    ):
+    if kind not in ("tree", "pathdependent_tree") or spec["model_profile"] != "random_forest":
         message = "Structured tree profiles require a qualified tree family."
         raise ValueError(message)
-    if spec["model_profile"] in {"random_forest", "xgboost"}:
-        # Source predictors round inputs; the legacy coalition traversal must see
-        # the same values as exact solvers that honor TreeModel.input_precision.
+    if spec["model_profile"] == "random_forest":
+        # The oracle and exact solver must see sklearn's float32 inputs.
         point = point.astype(np.float32).astype(np.float64)
         background = background.astype(np.float32).astype(np.float64)
-    if spec["model_profile"] == "xgboost":
-        model._Booster = model.get_booster()[: model.best_iteration + 1]  # noqa: SLF001 -- preserve validated early stopping
     class_index = 1 if prepared.metadata["task"] == "classification" else None
     trees = validate_tree_model(model, class_label=class_index)
     for tree in trees:
@@ -137,9 +95,9 @@ def _construct(prepared: PreparedModel, spec: dict) -> tuple:
             point
         )
         # Independently check conversion against the source predictor on all tested coalitions.
-        from shapiq.tree.interventional.game import InterventionalGame
+        from shapiq_games.tree.interventional import InterventionalTreeGame
 
-        source = InterventionalGame(model, background, point, class_index=class_index)
+        source = InterventionalTreeGame(model, background, point, class_index=class_index)
         probes = np.random.default_rng(0).integers(0, 2, (12, len(point))).astype(bool)
         converted_values, source_values = oracle(probes), source(probes)
         np.testing.assert_allclose(
@@ -162,7 +120,7 @@ def _construct(prepared: PreparedModel, spec: dict) -> tuple:
         "trees": [{name: getattr(tree, name) for name in TREE_SCALARS} for tree in trees],
         "semantics": "class-one probability"
         if class_index is not None and spec["model_profile"] == "random_forest"
-        else "raw model score (boosted classifiers use margins)",
+        else "prediction",
         "truth_method": "InterventionalTreeSHAPIQ" if kind == "tree" else "TreeExplainer",
     }
     if kind == "tree":
@@ -174,9 +132,9 @@ def _construct(prepared: PreparedModel, spec: dict) -> tuple:
 
 def prepare_profiled(spec: dict, output: Path) -> dict:
     """Qualify a small counterpart before freezing a native-width structured game."""
-    from shapiq_benchmark.datasets import DATASETS
+    from shapiq_benchmark.campaign_datasets import DATASETS
+    from shapiq_benchmark.campaign_models import prepare_model
     from shapiq_benchmark.games import signal_metadata, truth_dict, validate_truth
-    from shapiq_benchmark.models import prepare_model
 
     dataset, profile = spec["dataset"], spec["model_profile"]
     n = spec.get("n_players", DATASETS[dataset]["n_features"])
@@ -219,6 +177,7 @@ def prepare_profiled(spec: dict, output: Path) -> dict:
             **prepared.metadata,
             **details,
             "structured_format": "numeric-model-v1",
+            "construction_protocol": "compact-games-v2",
             "instance_seed": seed,
             "case_id": spec.get("basecase_id", spec["id"]),
             "recipe": spec["oracle"],
@@ -233,19 +192,6 @@ def prepare_profiled(spec: dict, output: Path) -> dict:
 
 def load_profiled(game: dict, arrays: Mapping[str, np.ndarray]) -> Game:
     """Reload numeric tree/kernel arrays; no pickle and no training on evaluation workers."""
-    if game["oracle"] == "product_kernel":
-        from shapiq.explainer.product_kernel.base import ProductKernelModel
-        from shapiq.explainer.product_kernel.game import ProductKernelGame
-
-        model = ProductKernelModel(
-            X_train=arrays["support_vectors"].copy(),
-            alpha=arrays["alpha"].copy(),
-            n=len(arrays["alpha"]),
-            d=game["n_players"],
-            gamma=game["metadata"]["gamma"],
-            intercept=game["metadata"]["intercept"],
-        )
-        return ProductKernelGame(game["n_players"], arrays["point"].copy(), model)
     trees = []
     for i, scalars in enumerate(game["metadata"]["trees"]):
         parameters: dict = {name: arrays[f"tree_{i}_{name}"].copy() for name in TREE_ARRAYS}

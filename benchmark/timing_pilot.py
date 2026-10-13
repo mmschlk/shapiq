@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 from threadpoolctl import threadpool_limits
 
+from shapiq_benchmark.campaign_runner import CountedGame, builtin_factory, provenance, table_game
 from shapiq_benchmark.execution import hardware
 from shapiq_benchmark.families import make_family
-from shapiq_benchmark.runner import CountedGame, builtin_factory, provenance, table_game
 
 if TYPE_CHECKING:
     from collections.abc import Callable

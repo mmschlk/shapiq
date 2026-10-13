@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from shapiq_benchmark import materialize, models, qualification
+from shapiq_benchmark import (
+    campaign_models as models,
+    materialize,
+)
+from shapiq_benchmark.campaign_runner import load_snapshot
 from shapiq_benchmark.families import make_family
 from shapiq_benchmark.partitioned import _filter_game
 from shapiq_benchmark.prepare import prepare
 from shapiq_benchmark.report import merge_results, public_preparation
-from shapiq_benchmark.runner import load_snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +32,7 @@ def small_data(monkeypatch: pytest.MonkeyPatch) -> np.ndarray:
     return x
 
 
-@pytest.mark.parametrize("family", ["data_valuation", "dataset_valuation"])
+@pytest.mark.parametrize("family", ["dataset_valuation"])
 def test_input_width_preserves_row_players_and_splits(small_data: np.ndarray, family: str) -> None:
     """Adding model inputs changes neither training players nor disjoint evaluation pools."""
     constructed = [
@@ -59,7 +62,8 @@ def test_input_width_preserves_row_players_and_splits(small_data: np.ndarray, fa
         assert small["group_indices"] == large["group_indices"]
         for group in range(3):
             np.testing.assert_array_equal(
-                small_game.data_sets[group], large_game.data_sets[group][:, positions]
+                small_game._x_train[small_game.groups[group]],
+                large_game._x_train[large_game.groups[group]][:, positions],
             )
         assert sorted(i for group in small["group_indices"] for i in group) == sorted(
             small["train_indices"]
@@ -89,10 +93,11 @@ def test_feature_player_dimensions_are_nested(small_data: np.ndarray, family: st
     assert small["feature_rule"] == large["feature_rule"] == "nested"
     for key in ("train_indices", "test_indices", "validation_indices"):
         assert small[key] == large[key]
-    assert "input_features" not in small and "input_features" not in large
+    if family == "local_baseline":
+        assert "input_features" not in small and "input_features" not in large
 
 
-@pytest.mark.parametrize("family", ["feature_selection", "data_valuation", "dataset_valuation"])
+@pytest.mark.parametrize("family", ["feature_selection", "dataset_valuation"])
 def test_omitted_options_keep_legacy_features_and_model_identity(
     small_data: np.ndarray, family: str
 ) -> None:
@@ -108,7 +113,7 @@ def test_omitted_options_keep_legacy_features_and_model_identity(
     width = 3 if family == "feature_selection" else 12
     expected = np.sort(np.random.default_rng(2).choice(30, width, replace=False)).tolist()
     assert metadata["feature_indices"] == expected
-    assert "feature_rule" not in metadata and "input_features" not in metadata
+    assert "feature_rule" not in metadata
     assert metadata == explicit_metadata
     prepared = models.prepare_model("breast_cancer", width, 2, "linear")
     assert metadata["model_key"] == prepared.metadata["model_key"]
@@ -138,13 +143,6 @@ def test_invalid_dimension_options_fail_before_loading(
     monkeypatch.setattr(models, "load_raw_dataset", unexpected_load)
     with pytest.raises(ValueError):
         make_family(family, dataset="breast_cancer", n_players=3, model_profile="linear", **extra)
-
-
-@pytest.mark.parametrize("extra", [{"input_features": 12}, {"feature_rule": "nested"}])
-def test_dimension_options_require_profile(extra: dict) -> None:
-    """Legacy non-profiled construction cannot silently ignore explicit settings."""
-    with pytest.raises(ValueError, match="require a model profile"):
-        make_family("data_valuation", **extra)
 
 
 def test_dimensions_survive_real_snapshot_serialization(
@@ -198,50 +196,6 @@ def test_dimensions_survive_real_snapshot_serialization(
         filtered = _filter_game(game, 0, [3, 6], set())
         assert filtered["metadata"]["input_features"] in (12, 24)
         assert filtered["metadata"]["feature_rule"] == "nested"
-
-
-def test_pilot_and_chunk_forward_dimensions(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Pilot and independent chunk construction carry the same explicit recipe fields."""
-    calls = []
-
-    class CheapGame:
-        n_players = 13
-
-        def __call__(self, coalitions):
-            return coalitions.sum(axis=1).astype(float)
-
-    def factory(name, **kwargs):
-        calls.append((name, kwargs))
-        return CheapGame(), {
-            "input_features": kwargs["input_features"],
-            "feature_rule": kwargs["feature_rule"],
-        }
-
-    monkeypatch.setattr(materialize, "make_family", factory)
-    monkeypatch.setattr(qualification, "make_family", factory)
-    spec = {
-        "id": "grouped-wide",
-        "family": "dataset_valuation",
-        "dataset": "breast_cancer",
-        "n_players": 13,
-        "model_profile": "linear",
-        "input_features": 24,
-        "feature_rule": "nested",
-    }
-    pilot = qualification._pilot(spec, 2, str(tmp_path / "models"))
-    chunk = materialize.prepare_family_chunk(spec, 2, 0, tmp_path)
-    assert pilot["status"] == "measured"
-    assert len(calls) == 2
-    for family, options in calls:
-        assert family == "dataset_valuation"
-        assert options["input_features"] == 24 and options["feature_rule"] == "nested"
-        assert options["n_players"] == 13 and options["instance_seed"] == 2
-    with np.load(chunk, allow_pickle=False) as stored:
-        manifest = json.loads(str(stored["manifest"]))
-    assert manifest["identity"]["spec"] == spec
-    assert manifest["metadata"] == {"input_features": 24, "feature_rule": "nested"}
 
 
 def test_public_exclusions_keep_explicit_dimensions() -> None:

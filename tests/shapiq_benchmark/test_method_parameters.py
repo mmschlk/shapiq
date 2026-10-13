@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import pytest
 
-from shapiq_benchmark import execution, runner
+from shapiq_benchmark import (
+    campaign_runner as runner,
+    execution,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

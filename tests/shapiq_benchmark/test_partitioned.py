@@ -12,10 +12,10 @@ from typing import cast
 import pytest
 
 from shapiq_benchmark import partitioned
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.partitioned import METRIC_FIELDS, summary_selector, write_partitioned_report
 from shapiq_benchmark.published import _restore_worker, _rows
 from shapiq_benchmark.record_store import RecordStore
-from shapiq_benchmark.runner import digest, identity
 from shapiq_benchmark.summary import iter_summaries
 from tests.shapiq_benchmark.test_published import panel
 

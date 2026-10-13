@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from shapiq_benchmark.campaign import _canonical_aliases, _historical_quality, assemble_campaign
-from shapiq_benchmark.runner import digest, identity
+from shapiq_benchmark.campaign_runner import digest, identity
 from shapiq_benchmark.summary import summarize
 from tests.shapiq_benchmark.test_report import decode_columns
 

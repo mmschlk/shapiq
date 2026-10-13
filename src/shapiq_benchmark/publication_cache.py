@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq_benchmark.runner import digest, identity
+from shapiq_benchmark.campaign_runner import digest, identity
 
 if TYPE_CHECKING:
     from collections.abc import Callable

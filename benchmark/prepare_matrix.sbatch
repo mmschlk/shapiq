@@ -4,11 +4,10 @@
 #SBATCH --nodelist=himem02
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=128
+#SBATCH --cpus-per-task=16
 #SBATCH --hint=nomultithread
-#SBATCH --exclusive
-#SBATCH --mem=384G
-#SBATCH --time=3-00:00:00
+#SBATCH --mem=128G
+#SBATCH --time=24:00:00
 
 # Submit from the frozen checkout: sbatch benchmark/prepare_matrix.sbatch SUITE STAGE SNAPSHOT
 # Rerun unchanged to resume. Fewer active workers leave memory headroom per game.

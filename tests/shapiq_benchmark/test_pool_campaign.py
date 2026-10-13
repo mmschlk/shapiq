@@ -95,7 +95,7 @@ def test_intent_precedes_execution_and_response_is_preserved(tmp_path, monkeypat
 
     runner = types.SimpleNamespace(provenance=lambda: {"source": "pinned"}, run=run)
     package = types.ModuleType("shapiq_benchmark")
-    package.execution, package.runner = execution, runner
+    package.execution, package.campaign_runner = execution, runner
     monkeypatch.setitem(sys.modules, "shapiq_benchmark", package)
     monkeypatch.setattr(pool, "bind", lambda *args: None)
     monkeypatch.setattr(pool, "authenticate", lambda args: ({}, {"source": "pinned"}))
@@ -133,7 +133,7 @@ def test_unanswered_intent_survives_operational_interruption(tmp_path, monkeypat
 
     package = types.ModuleType("shapiq_benchmark")
     package.execution = execution
-    package.runner = types.SimpleNamespace(provenance=dict, run=run)
+    package.campaign_runner = types.SimpleNamespace(provenance=dict, run=run)
     monkeypatch.setitem(sys.modules, "shapiq_benchmark", package)
     monkeypatch.setattr(pool, "bind", lambda *args: None)
     monkeypatch.setattr(pool, "authenticate", lambda args: ({}, {}))

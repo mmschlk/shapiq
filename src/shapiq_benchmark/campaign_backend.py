@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from shapiq_benchmark.runner import digest, identity
+from shapiq_benchmark.campaign_runner import digest, identity
 
 if TYPE_CHECKING:
     from pathlib import Path

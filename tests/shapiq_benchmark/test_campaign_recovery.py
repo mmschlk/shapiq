@@ -12,7 +12,7 @@ import pytest
 
 from shapiq_benchmark.campaign import assemble_campaign
 from shapiq_benchmark.campaign_recovery import merge_recovery
-from shapiq_benchmark.runner import identity
+from shapiq_benchmark.campaign_runner import identity
 
 from .test_campaign_export import make_campaign, write
 

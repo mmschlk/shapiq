@@ -57,30 +57,20 @@ relevant Python and browser tests, resolve PR failures, and update the PR descri
 to the final compact implementation. The README should remain sufficient for a
 small local comparison and adding a private estimator.
 
-## Upstream integration remains open
+## Upstream integration
 
-The published compact release is complete, but PR #602 is **not merge-ready**
-against upstream `da6381c3` (PR #616). That change replaces the benchmark/game
-APIs. Resolve this separately from website edits; do not overwrite either API
-with an `ours`/`theirs` conflict resolution.
+The benchmark now uses upstream's public game classes and preserves its `runner`,
+`models`, `datasets` and `setups` APIs. Campaign-specific helpers are named
+`campaign_runner`, `campaign_models` and `campaign_datasets`; the README maps
+construction, execution and reporting to their modules.
 
-1. Preserve upstream `shapiq_benchmark.runner.run`, `models.build_model` and
-   `datasets.load_dataset`. Our same-named helpers have different contracts;
-   move them to explicit `campaign_runner`, `campaign_models` and
-   `campaign_datasets` modules, updating their imports, CLI commands and tests.
-   Upstream's new `datasets/` package otherwise silently shadows our `datasets.py`.
-2. Adapt construction code in `prepare.py`, `families.py`, `games.py`,
-   `structured.py` and `native_tree_backend.py`. Upstream removes
-   `shapiq.datasets`, `shapiq_games.datasets`, `shapiq_games.benchmark`,
-   `shapiq.explainer.nn.games`, `shapiq.explainer.product_kernel.game` and
-   `shapiq.tree.interventional.game`; their replacements live in
-   `shapiq_benchmark.datasets` and `shapiq_games`. Verify constructor semantics,
-   preprocessing, coalition payoffs and exact references before treating new
-   preparations as equivalent. Published replay keeps its pinned source/data.
-3. Retain both branches' dataset/model/runner/metric tests under distinct names.
-   Merge dependency extras and regenerate the lock in an isolated environment.
-   Upstream now type-checks the whole benchmark package and changes native tree
-   kernels: rebuild native extensions there and run both API test suites.
-4. Check a small portable prepare/evaluate/report run and a frozen-result replay,
-   then rerun full CI before calling the integration ready. Do not regenerate or
-   relabel the published cohort to make the new APIs fit.
+Only the compact construction paths remain. Superseded matrix/media/GPU
+launchers, profiles and historical planning documents were removed; historical
+result readers and the published reproduction artifacts remain available.
+
+Full-grid execution requires the estimator options in
+[PR #611](https://github.com/mmschlk/shapiq/pull/611). The download-free pilot works
+on upstream estimators. Manifest generation validates the design without importing
+those optional constructor parameters; preparation and execution enforce them.
+New preparations use current loader/game APIs. Exact historical replay retains
+the release's pinned source, data and overlays, without relabeling measurements.

@@ -64,6 +64,8 @@ class TreeModel:
             Currently not used by downstream algorithms.
         intercepts: Per-leaf intercept terms for linear-leaf tree models. Currently unused.
         coeffs: Per-leaf coefficient vectors for linear-leaf tree models. Currently unused.
+        negated_class_one: Whether the tree models the class-0 log-odds of a binary classifier
+            as the negated class-1 log-odds (the single raw output of binary boosters).
 
     """
 
@@ -95,6 +97,7 @@ class TreeModel:
     intercepts: NDArray[np.floating]
     coeffs: NDArray[np.floating]
     input_precision: InputPrecision = "float64"
+    negated_class_one: bool = False
 
     def __init__(
         self,
@@ -123,6 +126,7 @@ class TreeModel:
         cat_start: NDArray[np.int_] | None = None,
         cat_size: NDArray[np.int_] | None = None,
         input_precision: InputPrecision = "float64",
+        negated_class_one: bool = False,  # noqa: FBT001, FBT002
     ) -> None:
         """Initialize the :class:`TreeModel`.
 
@@ -168,6 +172,9 @@ class TreeModel:
                 thresholds at prediction time: ``"float32"`` for XGBoost and CatBoost (inputs
                 are cast before routing, see :meth:`cast_input`), ``"float64"`` otherwise.
                 Defaults to ``"float64"``.
+            negated_class_one: Whether the tree models the class-0 log-odds of a binary
+                classifier as the negated class-1 log-odds. Set by the converters for
+                ``class_label=0``; the leaf values are already negated. Defaults to ``False``.
         """
         self.children_left = children_left
         self.children_right = children_right
@@ -229,6 +236,7 @@ class TreeModel:
             msg = f"input_precision must be 'float64' or 'float32', got {input_precision!r}."
             raise ValueError(msg)
         self.input_precision = input_precision
+        self.negated_class_one = negated_class_one
         # setup empty prediction
         if empty_prediction is None:
             self.compute_empty_prediction()

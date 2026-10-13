@@ -12,11 +12,17 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.datasets import load_california_housing
 from shapiq.game_theory import ExactComputer
+from shapiq_benchmark.campaign_runner import (
+    digest,
+    identity,
+    provenance,
+    table_game,
+    validate_suite,
+)
+from shapiq_benchmark.datasets import load_dataset
 from shapiq_benchmark.games import prepare_structured
 from shapiq_benchmark.planning import relative_budget_grid
-from shapiq_benchmark.runner import digest, identity, provenance, table_game, validate_suite
 
 
 def prepare(suite_path: Path, output: Path) -> dict:
@@ -91,8 +97,9 @@ def prepare(suite_path: Path, output: Path) -> dict:
     if suite["game"] != "california_tree":
         message = "The pilot supports only california_tree."
         raise ValueError(message)
-    features, target = load_california_housing()
-    features = pd.DataFrame(features)
+    dataset = load_dataset("california_housing")
+    features, target = dataset.x, dataset.y
+    features = pd.DataFrame(features, columns=dataset.feature_names)
     x, y = np.asarray(features), np.asarray(target)
     train, test = train_test_split(np.arange(len(x)), test_size=0.2, random_state=0)
     model = DecisionTreeRegressor(max_depth=5, min_samples_leaf=20, random_state=0)
@@ -140,7 +147,7 @@ def prepare(suite_path: Path, output: Path) -> dict:
         "metadata": {
             "dataset": "California Housing",
             "data_sha256": data_hash,
-            "data_source": "shapiq.datasets.load_california_housing",
+            "data_source": "shapiq_benchmark.datasets.load_dataset:california_housing",
             "features": list(features.columns),
             "model": "DecisionTreeRegressor",
             "model_parameters": model.get_params(),

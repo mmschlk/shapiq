@@ -14,18 +14,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
 
-from shapiq.explainer.nn.games.knn import KNNExplainerGame
 from shapiq.explainer.nn.knn import KNNExplainer
-from shapiq.explainer.product_kernel import ProductKernelExplainer
-from shapiq.explainer.product_kernel.base import ProductKernelModel
-from shapiq.explainer.product_kernel.conversion import convert_svm
-from shapiq.explainer.product_kernel.game import ProductKernelGame
 from shapiq.game_theory import ExactComputer
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
-from shapiq.tree.interventional.game import InterventionalGame
 from shapiq_benchmark.exact import exact_table_truth
+from shapiq_games.nn.knn import KNNGame
+from shapiq_games.tree.interventional import InterventionalTreeGame
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -72,7 +67,7 @@ def tree_game(
     model = RandomForestClassifier(**(TREE_PARAMETERS if parameters is None else parameters)).fit(
         x, y
     )
-    return model, InterventionalGame(model, background, point, class_index=class_index)
+    return model, InterventionalTreeGame(model, background, point, class_index=class_index)
 
 
 def knn_game(
@@ -94,7 +89,7 @@ def knn_game(
     if len(matches) != 1:
         message = "The valued training subset must contain the held-out point's true class."
         raise ValueError(message)
-    return model, KNNExplainerGame(model, point, class_index=int(matches[0]))
+    return model, KNNGame(model, point, class_index=int(matches[0]))
 
 
 def tnn_game(
@@ -103,7 +98,7 @@ def tnn_game(
     """Construct the shipped radius-neighbor utility with an explicit training-only radius."""
     from sklearn.neighbors import RadiusNeighborsClassifier
 
-    from shapiq.explainer.nn.games.tnn import TNNExplainerGame
+    from shapiq_games.nn.threshold_nn import ThresholdNNGame
 
     if parameters is None:
         message = "Radius-neighbor reconstruction requires explicit parameters."
@@ -113,7 +108,7 @@ def tnn_game(
     if len(matches) != 1:
         message = "Selected radius-neighbor rows omit the held-out true class."
         raise ValueError(message)
-    return model, TNNExplainerGame(model, point, class_index=int(matches[0]))
+    return model, ThresholdNNGame(model, point, class_index=int(matches[0]))
 
 
 def validate_truth(oracle: Callable, truth: InteractionValues, *, exhaustive: bool) -> float:
@@ -196,7 +191,7 @@ def signal_metadata(truth: InteractionValues, payoff_range: float) -> dict:
 
 
 def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
-    """Freeze seeded tree, nearest-neighbor, and product-kernel games with exact truth."""
+    """Freeze seeded tree, nearest-neighbor games with exact truth."""
     ids = [spec.get("id") for spec in specs]
     if (
         not ids
@@ -223,7 +218,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
         )
         neighbor_metadata = {}
         if explicit_neighbors:
-            from shapiq_benchmark.datasets import DATASETS, load_dataset
+            from shapiq_benchmark.campaign_datasets import DATASETS, load_dataset
 
             if (
                 spec["oracle"] not in ("knn", "tnn")
@@ -258,7 +253,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
             dataset = loaders[dataset_name]()
             x, y = dataset.data, dataset.target
         else:
-            from shapiq_benchmark.datasets import DATASETS, load_dataset
+            from shapiq_benchmark.campaign_datasets import DATASETS, load_dataset
 
             if (
                 spec["oracle"] not in ("knn", "tnn")
@@ -365,7 +360,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 message = "KNN row_selection must be first, stratified or nested_stratified."
                 raise ValueError(message)
             if row_selection == "nested_stratified":
-                from shapiq_benchmark.datasets import nested_stratified_rows
+                from shapiq_benchmark.campaign_datasets import nested_stratified_rows
 
                 if count < len(np.unique(y[train])):
                     message = "Neighbor players must cover every fitting-pool class."
@@ -436,58 +431,11 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                 )
                 metadata.pop("n_neighbors")
             n, family = count, "data_valuation"
-        elif kind == "product_kernel" and (index, order) == ("SV", 1):
-            scaler = StandardScaler().fit(x[train])
-            scaled = scaler.transform(x)
-            selected, point = train[:128], scaled[test[0]]
-            model = SVC(kernel="rbf", gamma="scale", random_state=seed).fit(
-                scaled[selected], y[selected]
-            )
-            converted = convert_svm(model)
-            if converted.gamma is None:
-                message = "RBF conversion must preserve the fitted kernel bandwidth."
-                raise ValueError(message)
-            n = x.shape[1]
-            oracle = ProductKernelGame(n, point, converted)
-            truth = ProductKernelExplainer(model).explain(point)
-            small_model = SVC(kernel="rbf", gamma="scale", random_state=seed).fit(
-                scaled[selected, :8], y[selected]
-            )
-            small_oracle = ProductKernelGame(8, point[:8], convert_svm(small_model))
-            small_truth = ProductKernelExplainer(small_model).explain(point[:8])
-            error = validate_truth(small_oracle, small_truth, exhaustive=True)
-            arrays = {
-                "x_train": scaled[selected],
-                "y_train": y[selected],
-                "point": point,
-                "support_vectors": converted.X_train,
-                "alpha": converted.alpha,
-                "scaler_mean": scaler.mean_,
-                "scaler_scale": scaler.scale_,
-                "selected_rows": selected,
-            }
-            metadata = {
-                "model": "SVC",
-                "model_parameters": model.get_params(),
-                "classes": model.classes_.tolist(),
-                "gamma": float(converted.gamma),
-                "intercept": float(converted.intercept),
-                "test_accuracy": model.score(scaled[test], y[test]) if kind != "tnn" else None,
-                "preprocessing": "StandardScaler fitted on training split only",
-                "semantics": "RBF decision margin with omitted feature kernel factors set to one",
-                "truth_method": "ProductKernelExplainer",
-                "player_unit": "feature",
-                "active_players": int(np.count_nonzero(np.ptp(scaled[train], axis=0))),
-                "active_players_definition": "features varying in the training split",
-            }
-            family = "local_explanation"
         else:
             message = f"Unsupported structured game specification: {spec}."
             raise ValueError(message)
         validate_truth(oracle, truth, exhaustive=False)
-        payoff_range = (
-            1.0 if kind in ("tree", "knn", "tnn") else float(np.abs(converted.alpha).sum())
-        )
+        payoff_range = 1.0
         metadata.update(signal_metadata(truth, payoff_range))
         artifact = output / f"{spec['id']}.npz"
         np.savez_compressed(
@@ -513,6 +461,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
                     "dataset": dataset_name,
                     "data_sha256": hashlib.sha256(x.tobytes() + y.tobytes()).hexdigest(),
                     "sklearn_version": importlib.metadata.version("scikit-learn"),
+                    "construction_protocol": "compact-games-v2",
                     "point_row": int(test[0]),
                     "small_validation_players": 8,
                     "nonzero_coefficients": sum(
@@ -527,7 +476,7 @@ def prepare_structured(specs: list[dict], output: Path) -> list[dict]:
 
 def load_game(game: dict, root: Path) -> Callable:
     """Rebuild a live oracle from verified arrays and the qualified sklearn version."""
-    from shapiq_benchmark.runner import table_game
+    from shapiq_benchmark.campaign_runner import table_game
 
     with np.load(root / game["artifact"], allow_pickle=False) as artifact:
         if game.get("oracle", "table") == "table":
@@ -566,16 +515,6 @@ def load_game(game: dict, root: Path) -> Callable:
                 raise ValueError(message)
             if game["oracle"] == "knn":
                 np.testing.assert_array_equal(oracle.sortperm, artifact["sortperm"])
-        elif game["oracle"] == "product_kernel":
-            converted = ProductKernelModel(
-                X_train=artifact["support_vectors"].copy(),
-                alpha=artifact["alpha"].copy(),
-                n=len(artifact["alpha"]),
-                d=game["n_players"],
-                gamma=game["metadata"]["gamma"],
-                intercept=game["metadata"]["intercept"],
-            )
-            oracle = ProductKernelGame(game["n_players"], point, converted)
         else:
             message = "Unknown oracle type."
             raise ValueError(message)

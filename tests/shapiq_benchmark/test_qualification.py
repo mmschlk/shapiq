@@ -90,14 +90,14 @@ def test_failures_are_explicit_and_private(
     assert "/secret" in next((tmp_path / "private").glob("*-dataset.log")).read_text()
 
 
-def test_zero_payoffs_are_valid_and_cost_projection_counts_chunks(
+def test_zero_payoffs_are_valid_and_cost_projection_counts_one_construction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Cost gating must not quietly become a near-zero-truth or difficult-game filter."""
     seen = []
 
     class Game:
-        n_players = 13
+        n_players = 12
 
         def __call__(self, coalitions: np.ndarray) -> np.ndarray:
             seen.append(coalitions.copy())
@@ -106,12 +106,12 @@ def test_zero_payoffs_are_valid_and_cost_projection_counts_chunks(
     monkeypatch.setattr(qualification, "make_family", lambda *args, **kwargs: (Game(), {}))
     times = iter([10, 12, 20, 23])
     monkeypatch.setattr(qualification.time, "perf_counter", lambda: next(times))
-    result = qualification._pilot({"family": "dummy", "n_players": 13}, 2, "cache")
+    result = qualification._pilot({"family": "dummy", "n_players": 12}, 2, "cache")
     assert result["status"] == "measured"
-    assert len(seen[0]) == 15 and len(seen[1]) == 32
+    assert len(seen[0]) == 14 and len(seen[1]) == 32
     assert not seen[0][0].any() and seen[0][1].all()
-    assert result["projected_constructions"] == 3
-    assert result["projected_seconds"] == 2 * (2 * 3 + 3 / 32 * 8192)
+    assert result["projected_constructions"] == 1
+    assert result["projected_seconds"] == 2 * (2 + 3 / 32 * 4096)
 
 
 def test_source_change_rejects_decision(
@@ -206,32 +206,3 @@ def test_structured_pilot_measures_full_requested_solver(
     assert result["artifact_bytes"] == len(b"fixture artifact")
     assert result["peak_rss_bytes"] > 0
     assert not list(tmp_path.glob("structured-pilot-*"))
-
-
-@pytest.mark.parametrize("status", ["noise_dominated", "indeterminate"])
-def test_noisy_imputation_is_excluded_without_changing_the_game(
-    monkeypatch: pytest.MonkeyPatch, status: str
-) -> None:
-    """The gate keeps evidence and never silently substitutes the higher-sample oracle."""
-    game = object()
-    options = []
-
-    def factory(*args: object, **kwargs: object) -> tuple:
-        options.append(kwargs)
-        return game, {}
-
-    def stability(actual: object, *, seed: int) -> dict:
-        assert actual is game and seed == 3
-        return {"status": status, "levels": [{"noise_ratio": 0.9}]}
-
-    monkeypatch.setattr(qualification, "make_family", factory)
-    monkeypatch.setattr(qualification, "imputation_stability", stability)
-    with pytest.raises(qualification.QualityExclusion) as caught:
-        qualification._pilot(
-            {"family": "local_gaussian", "n_players": 11, "quality_protocol": "quality-v2"},
-            3,
-            "cache",
-        )
-    assert caught.value.reason == "unstable_imputation"
-    assert caught.value.details["status"] == status
-    assert options == [{"instance_seed": 3, "n_players": 11, "quality_protocol": "quality-v2"}]

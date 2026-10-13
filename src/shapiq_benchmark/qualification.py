@@ -29,14 +29,12 @@ from pathlib import Path
 
 import numpy as np
 
-from shapiq_benchmark.datasets import load_raw_dataset
+from shapiq_benchmark.campaign_datasets import load_raw_dataset
+from shapiq_benchmark.campaign_runner import provenance
 from shapiq_benchmark.execution import THREAD_VARIABLES, hardware
 from shapiq_benchmark.families import make_family
 from shapiq_benchmark.games import prepare_structured
-from shapiq_benchmark.materialize import CHUNK_SIZE, _synchronize
-from shapiq_benchmark.media import EXTRA_CATALOG, make_extra, preparation_backend
-from shapiq_benchmark.quality import QUALITY_PROTOCOL, QualityExclusion, imputation_stability
-from shapiq_benchmark.runner import provenance
+from shapiq_benchmark.payoff_cache import CHUNK_SIZE
 
 PILOT_PROTOCOL: dict = {
     "version": 2,
@@ -59,7 +57,7 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
     """Validate without a score-based selection rule, then measure the uniform workload."""
     random.seed(seed)
     np.random.seed(seed % 2**32)  # noqa: NPY002 -- optional backend global RNGs
-    factory = make_extra if spec["family"] in EXTRA_CATALOG else make_family
+    factory = make_family
     options = {
         key: spec[key]
         for key in (
@@ -73,27 +71,13 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
         )
         if key in spec
     }
-    if factory is make_extra:
-        options.pop("quality_protocol", None)
     if "model_profile" in spec:
         options["model_cache"] = model_cache
-    _synchronize(spec)
     started = time.perf_counter()
     game, metadata = factory(spec["family"], instance_seed=seed, **options)
-    _synchronize(spec)
     setup_seconds = time.perf_counter() - started
-    stability = None
-    if spec.get("quality_protocol") == QUALITY_PROTOCOL and spec["family"] in (
-        "local_gaussian",
-        "local_copula",
-        "local_conditional",
-    ):
-        stability = imputation_stability(game, seed=seed)
-        if stability["status"] != "stable":
-            reason = "unstable_imputation"
-            raise QualityExclusion(reason, stability)
     n = game.n_players
-    if n != spec["n_players"] or not 1 <= n <= 20:
+    if n != spec["n_players"] or not 1 <= n <= 12:
         message = "Constructed player count disagrees with the bounded recipe."
         raise ValueError(message)
     checks = np.vstack((np.zeros(n), np.ones(n), np.eye(n))).astype(bool)
@@ -106,16 +90,14 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
         .integers(0, 2, size=(PILOT_PROTOCOL["uniform_coalitions"], n))
         .astype(bool)
     )
-    _synchronize(spec)
     started = time.perf_counter()
     values = np.asarray(game(coalitions), dtype=float)
-    _synchronize(spec)
     oracle_seconds = time.perf_counter() - started
     if values.shape != (len(coalitions),) or not np.isfinite(values).all():
         message = "Uniform-coalition payoff validation failed."
         raise ValueError(message)
-    # Tables above twelve players reconstruct the game for each canonical chunk.
-    constructions = 1 if n <= 12 else 1 + math.ceil(2**n / CHUNK_SIZE)
+    # Compact enumeration constructs each game once.
+    constructions = 1
     projected = PILOT_PROTOCOL["safety_factor"] * (
         setup_seconds * constructions + oracle_seconds / len(coalitions) * 2**n
     )
@@ -132,7 +114,6 @@ def _pilot(spec: dict, seed: int, model_cache: str) -> dict:
         "model_key": metadata.get("model_key"),
         "data_sha256": metadata.get("data_sha256"),
         "model_validation_gate": metadata.get("model_validation_gate"),
-        "imputation_stability": stability,
     }
 
 
@@ -180,10 +161,7 @@ def _run_pilot(
     result_path = directory / f"{key}.json"
     # Pretrained assets can change outside the source tree. Re-probe these rather
     # than authenticate an old pilot only by a model name or package version.
-    reusable = (
-        identity["spec"].get("family") not in {*EXTRA_CATALOG, "_dataset_identity"}
-        and identity["spec"].get("model_profile") != "tabpfn_prediction"
-    )
+    reusable = identity["spec"].get("family") != "_dataset_identity"
     if reusable and result_path.exists():
         cached = json.loads(result_path.read_text())
         if cached.get("identity") == identity:
@@ -283,8 +261,7 @@ def qualify_suite(
     """Keep all four instances together and retain every exclusion with its measured reason.
 
     ``path`` is a checkpoint directory. Structured references execute their actual
-    requested solver in time- and memory-bounded processes. Pretrained media
-    pilots deliberately rerun on resume because their external assets may change.
+    requested solver in time- and memory-bounded processes. Dataset identities are rechecked before resuming.
     """
     if (
         max_seconds <= 0
@@ -307,9 +284,8 @@ def qualify_suite(
     source = provenance()
     observed = hardware()
     cpu_ids = observed["affinity"] or [None]
-    has_cuda = any(spec.get("device") == "cuda" for spec in suite.get("families", []))
-    if has_cuda and workers != 1:
-        message = "CUDA pilots require one worker per allocated GPU."
+    if any(spec.get("device", "cpu") != "cpu" for spec in suite.get("families", [])):
+        message = "Compact preparation requires CPU execution."
         raise ValueError(message)
     worker_count = min(workers, len(cpu_ids))
     cpus = queue.Queue()
@@ -331,18 +307,7 @@ def qualify_suite(
                 ).write_text(traceback.format_exc())
         if dataset and "error_type" in datasets[dataset]:
             input_errors[spec["id"]] = datasets[dataset]
-        try:
-            backend = (
-                preparation_backend("cuda")
-                if spec.get("device") == "cuda"
-                else {"cpu_model": observed["cpu_model"]}
-            )
-        except Exception as error:  # noqa: BLE001 -- preserve unavailable backend as inventory
-            backend = {"error_type": type(error).__name__}
-            input_errors[spec["id"]] = {"reason": "backend_unavailable", **backend}
-            (
-                private / (hashlib.sha256(spec["id"].encode()).hexdigest() + "-backend.log")
-            ).write_text(traceback.format_exc())
+        backend = {"cpu_model": observed["cpu_model"]}
         identities.extend(
             {
                 "spec": spec,

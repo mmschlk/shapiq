@@ -9,10 +9,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from shapiq_benchmark import execution, runner
+from shapiq_benchmark import (
+    campaign_runner as runner,
+    execution,
+)
+from shapiq_benchmark.campaign_runner import builtin_factory, digest, identity, method_catalog, run
 from shapiq_benchmark.execution import PROFILE, THREAD_VARIABLES, verify_profile
 from shapiq_benchmark.results_io import read_results
-from shapiq_benchmark.runner import builtin_factory, digest, identity, method_catalog, run
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -264,7 +267,9 @@ def test_missing_optional_backend_has_useful_error(monkeypatch: pytest.MonkeyPat
         _import_error = ImportError("Install the optional backend")
 
     monkeypatch.setitem(
-        __import__("shapiq_benchmark.runner", fromlist=["METHODS"]).METHODS, "SPEX", Missing
+        __import__("shapiq_benchmark.campaign_runner", fromlist=["METHODS"]).METHODS,
+        "SPEX",
+        Missing,
     )
     with pytest.raises(ImportError, match="optional backend"):
         builtin_factory("SPEX", {"n_players": 3, "index": "SV", "order": 1}, 0)

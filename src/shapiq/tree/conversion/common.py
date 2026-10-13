@@ -52,6 +52,22 @@ def register(cls: LazyType, func: Callable) -> None:
     conversion_generator.register(cls=cls, func=func)
 
 
+def check_class_label(class_label: int, n_classes: int) -> None:
+    """Raise unless ``0 <= class_label < n_classes``.
+
+    Mirrors ``check_class_label`` of the C parsers (``cext/converter.hpp``), message included.
+
+    Raises:
+        ValueError: If ``class_label`` is out of range.
+    """
+    if not 0 <= class_label < n_classes:
+        msg = (
+            f"class_label={class_label} is out of range for a model with {n_classes} classes; "
+            f"use 0 to {n_classes - 1}."
+        )
+        raise ValueError(msg)
+
+
 def convert_tree_model(model: object, class_label: int | None = None) -> list[TreeModel]:
     """Convert a tree-based model to the unified internal tree format used by shapiq.
 
@@ -70,5 +86,11 @@ def convert_tree_model(model: object, class_label: int | None = None) -> list[Tr
 
     Raises:
         NotImplementedError: If no conversion handler has been registered for ``type(model)``.
+        ValueError: If ``class_label`` is negative or out of range for the model's classes.
     """
+    if class_label is not None and class_label < 0:
+        # rejected up front: the C parsers use -1 for "unspecified" and numpy would read a
+        # negative label as counting from the last class
+        msg = f"class_label={class_label} must be non-negative (or None for class 1)."
+        raise ValueError(msg)
     return conversion_generator(model, class_label=class_label)

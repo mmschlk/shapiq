@@ -8,19 +8,32 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
+from shapiq_benchmark.campaign_runner import identity, load_snapshot
 from shapiq_benchmark.materialize import prepare_families
 from shapiq_benchmark.prepare import prepare, write_snapshot
-from shapiq_benchmark.runner import identity, load_snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_relative_family_snapshot_keeps_real_and_diagnostic_metadata(tmp_path: Path) -> None:
+@pytest.fixture(autouse=True)
+def compact_linear_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise exact table serialization cheaply with the compact linear profile."""
+    from shapiq_benchmark import materialize
+
+    original = materialize.make_family
+
+    def make(name: str, **kwargs: object) -> tuple:
+        return original(name, **{"model_profile": "linear", **kwargs})
+
+    monkeypatch.setattr(materialize, "make_family", make)
+
+
+def test_relative_family_snapshot_keeps_real_metadata(tmp_path: Path) -> None:
     """Frozen values, exact truths, and per-game grids are authenticated together."""
     suite = {
         "name": "test",
-        "families": ["local_marginal", "dummy"],
+        "families": ["feature_selection", "local_baseline"],
         "targets": [{"index": "SV", "order": 1}],
         "methods": ["KernelSHAP"],
         "relative_budgets": [2, 8],
@@ -32,7 +45,7 @@ def test_relative_family_snapshot_keeps_real_and_diagnostic_metadata(tmp_path: P
     assert len(snapshot["games"]) == 2
     assert snapshot["suite"]["budgets"] == [16, 64]
     assert all(grid == [16, 64] for grid in snapshot["suite"]["budgets_by_game"].values())
-    assert {g["metadata"]["synthetic"] for g in snapshot["games"]} == {False, True}
+    assert {g["metadata"]["synthetic"] for g in snapshot["games"]} == {False}
     assert load_snapshot(tmp_path / "snapshot")[0] == snapshot
 
 
@@ -45,14 +58,14 @@ def test_preparation_failure_preserves_other_families(
     original = materialize.make_family
 
     def factory(name: str) -> tuple:
-        if name == "local_marginal":
+        if name == "feature_selection":
             message = "/private/model is unavailable"
             raise ImportError(message)
         return original(name)
 
     monkeypatch.setattr(materialize, "make_family", factory)
     games, coverage = prepare_families(
-        ["local_marginal", "dummy"], [{"index": "SV", "order": 1}], tmp_path
+        ["feature_selection", "local_baseline"], [{"index": "SV", "order": 1}], tmp_path
     )
     assert len(games) == 1
     assert [row["status"] for row in coverage] == ["unavailable", "measured"]
@@ -62,28 +75,14 @@ def test_preparation_failure_preserves_other_families(
 def test_bad_targets_rejected_before_constructing_games(tmp_path: Path) -> None:
     """A target typo cannot silently turn the whole library into unavailable games."""
     with pytest.raises(ValueError, match="Targets"):
-        prepare_families(["dummy"], [{"index": "SV", "order": 2}], tmp_path)
+        prepare_families(["local_baseline"], [{"index": "SV", "order": 2}], tmp_path)
     assert not list(tmp_path.iterdir())
-
-
-def test_image_adapter_preserves_the_active_game() -> None:
-    """Removing legacy reported dummy players leaves all genuine coalition utilities intact."""
-    from shapiq_benchmark.media import ActiveImage
-
-    class Original:
-        n_players = 3
-
-        def __call__(self, rows: np.ndarray) -> np.ndarray:
-            return rows[:, 0] + 2 * rows[:, 2]
-
-    active = ActiveImage(Original(), [0, 2])
-    np.testing.assert_equal(active(np.array([[0, 0], [1, 0], [0, 1], [1, 1]])), [0, 1, 2, 3])
 
 
 def test_four_constructions_have_shared_strata_and_one_estimator_seed(tmp_path: Path) -> None:
     """Instances share panel strata but have distinct artifacts and independent cluster IDs."""
     suite = {
-        "families": ["local_baseline_forest", "dummy"],
+        "families": ["feature_selection", "local_baseline"],
         "targets": [{"index": "SV", "order": 1}, {"index": "k-SII", "order": 2}],
         "methods": ["KernelSHAP"],
         "relative_budgets": [1, 2],
@@ -109,14 +108,14 @@ def test_four_constructions_have_shared_strata_and_one_estimator_seed(tmp_path: 
 def test_explicit_variants_keep_kind_but_have_independent_panel_settings(tmp_path: Path) -> None:
     """Native and subset dimensions have separate identities without losing family grouping."""
     specs = [
-        "uncertainty",
-        {"id": "uncertainty-wine-6", "family": "uncertainty", "dataset": "wine", "n_players": 6},
+        {"id": "local_baseline", "family": "local_baseline", "n_players": 4},
+        {"id": "baseline-wine-6", "family": "local_baseline", "dataset": "wine", "n_players": 6},
     ]
     targets = [{"index": "SV", "order": 1}, {"index": "SII", "order": 2}]
     games, coverage = prepare_families(specs, targets, tmp_path, instance_seed=1)
     assert len(games) == 4 and all(entry["status"] == "measured" for entry in coverage)
-    assert {g["metadata"]["game_kind"] for g in games} == {"uncertainty"}
-    assert {g["metadata"]["case_id"] for g in games} == {"uncertainty", "uncertainty-wine-6"}
+    assert {g["metadata"]["game_kind"] for g in games} == {"local_baseline"}
+    assert {g["metadata"]["case_id"] for g in games} == {"local_baseline", "baseline-wine-6"}
     assert {g["n_players"] for g in games} == {4, 6}
     assert len({g["stratum"] for g in games}) == len({g["artifact"] for g in games}) == 2
     for game in games:
@@ -128,10 +127,10 @@ def test_explicit_variants_keep_kind_but_have_independent_panel_settings(tmp_pat
 @pytest.mark.parametrize(
     "specs",
     [
-        ["dummy", {"id": "dummy", "family": "dummy"}],
-        [{"id": "../escape", "family": "dummy"}],
-        [{"id": "typo", "family": "dummy", "players": 4}],
-        [{"id": "too-large", "family": "dummy", "n_players": 21}],
+        ["local_baseline", {"id": "local_baseline", "family": "local_baseline"}],
+        [{"id": "../escape", "family": "local_baseline"}],
+        [{"id": "typo", "family": "local_baseline", "players": 4}],
+        [{"id": "too-large", "family": "local_baseline", "n_players": 21}],
     ],
 )
 def test_invalid_family_specs_fail_before_creating_artifacts(tmp_path: Path, specs: list) -> None:
@@ -148,7 +147,7 @@ def test_invalid_game_seeds_rejected(tmp_path: Path, seeds: object) -> None:
     path.write_text(
         json.dumps(
             {
-                "families": ["dummy"],
+                "families": ["local_baseline"],
                 "targets": [{"index": "SV", "order": 1}],
                 "methods": ["KernelSHAP"],
                 "relative_budgets": [1],
@@ -166,7 +165,7 @@ def test_invalid_game_seeds_rejected(tmp_path: Path, seeds: object) -> None:
 def test_invalid_minimum_players_fails_before_preparation(tmp_path: Path, minimum: object) -> None:
     """A requested dimensionality floor must be an unambiguous positive integer."""
     suite = {
-        "families": ["dummy"],
+        "families": ["local_baseline"],
         "targets": [{"index": "SV", "order": 1}],
         "methods": ["KernelSHAP"],
         "relative_budgets": [1],
@@ -183,7 +182,7 @@ def test_invalid_minimum_players_fails_before_preparation(tmp_path: Path, minimu
 def test_minimum_players_rejects_explicit_and_actual_small_games(tmp_path: Path) -> None:
     """Neither a bad config nor a smaller-than-requested factory output may become a snapshot."""
     suite = {
-        "families": [{"id": "small", "family": "dummy", "n_players": 8}],
+        "families": [{"id": "small", "family": "local_baseline", "n_players": 8}],
         "targets": [{"index": "SV", "order": 1}],
         "methods": ["KernelSHAP"],
         "relative_budgets": [1],
@@ -203,7 +202,7 @@ def test_minimum_players_rejects_explicit_and_actual_small_games(tmp_path: Path)
 def test_eleven_player_snapshot_retains_exact_truth_and_relative_grid(tmp_path: Path) -> None:
     """The new dimensionality floor accepts genuine higher-dimensional game construction."""
     suite = {
-        "families": [{"id": "dummy-11", "family": "dummy", "n_players": 11}],
+        "families": [{"id": "dummy-11", "family": "local_baseline", "n_players": 11}],
         "targets": [{"index": "SV", "order": 1}],
         "methods": ["KernelSHAP"],
         "relative_budgets": [0.5, 128],
@@ -225,54 +224,3 @@ def test_eleven_player_snapshot_retains_exact_truth_and_relative_grid(tmp_path: 
     (tmp_path / "snapshot" / "snapshot.json").write_text(json.dumps(snapshot))
     with pytest.raises(ValueError, match="min_players"):
         load_snapshot(tmp_path / "snapshot")
-
-
-@pytest.mark.parametrize("difference,qualified", [(1e-7, True), (1e-2, False)])
-def test_tabpfn_float32_realization_is_bounded_and_recorded(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, difference: float, *, qualified: bool
-) -> None:
-    """Float32 tolerance is explicit; a genuinely batch-sensitive payoff still fails."""
-    from shapiq_benchmark import materialize
-
-    class Game:
-        n_players = 3
-
-        def __call__(self, coalitions: np.ndarray) -> np.ndarray:
-            result = coalitions @ np.arange(1.0, 4.0)
-            return np.asarray(
-                result + (difference if len(coalitions) == 1 else 0), dtype=np.float32
-            )
-
-    monkeypatch.setattr(
-        materialize,
-        "make_family",
-        lambda *a, **k: (Game(), {"model_profile": "tabpfn_prediction"}),
-    )
-    games, coverage = prepare_families(
-        [{"id": "float32", "family": "local_baseline", "model_profile": "tabpfn_prediction"}],
-        [{"index": "SV", "order": 1}],
-        tmp_path,
-    )
-    assert bool(games) == qualified
-    if qualified:
-        validation = games[0]["metadata"]["oracle_validation"]
-        assert validation["observed_differences"]["singletons"] > 0
-        assert validation["observed_differences"]["singletons"] < validation["absolute_tolerance"]
-        np.testing.assert_allclose(games[0]["truth"]["values"], [1, 2, 3])
-        suite = {
-            "methods": ["KernelSHAP"],
-            "targets": [{"index": "SV", "order": 1}],
-            "budgets": [8],
-            "seeds": [0],
-        }
-        snapshot = write_snapshot(suite, games, tmp_path, coverage=coverage)
-        assert load_snapshot(tmp_path)[0] == snapshot
-        with np.load(tmp_path / games[0]["artifact"]) as artifact:
-            values = artifact["values"]
-        original_bound = 64 * np.finfo(np.float32).eps * max(1.0, float(np.max(np.abs(values))))
-        saved = snapshot["games"][0]["metadata"]["oracle_validation"]
-        assert type(saved["absolute_tolerance"]) is float
-        assert saved["absolute_tolerance"].hex() == float(original_bound).hex()
-        assert saved["observed_differences"] == validation["observed_differences"]
-    else:
-        assert coverage[0]["status"] == "unavailable"

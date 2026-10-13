@@ -578,6 +578,37 @@ def test_catboost_json_multiclass_defaults_to_class_one():
     assert tree_model.predict_one(np.asarray([2.0])) == 120.0
 
 
+def test_catboost_json_binary_loss_class_zero_negates_class_one():
+    """Test that class_label=0 of a binary (Logloss) CatBoost model negates leaves and bias."""
+    model_json = {
+        "model_info": {"params": {"loss_function": {"params": {}, "type": "Logloss"}}},
+        "features_info": {"float_features": [{"feature_index": 0, "nan_value_treatment": "AsIs"}]},
+        "oblivious_trees": [
+            {
+                "splits": [
+                    {"split_type": "FloatFeature", "float_feature_index": 0, "border": 1.0},
+                ],
+                "leaf_values": [1.0, 2.0],
+                "leaf_weights": [3.0, 4.0],
+            },
+        ],
+        "scale_and_bias": [2.0, [100.0]],
+    }
+
+    for class_label in (None, 1):
+        tree_model = parse_catboost_json_model(model_json, class_label=class_label)[0]
+        assert not tree_model.negated_class_one
+        assert tree_model.predict_one(np.asarray([0.0])) == 102.0
+
+    tree_model = parse_catboost_json_model(model_json, class_label=0)[0]
+    assert tree_model.negated_class_one
+    assert tree_model.predict_one(np.asarray([0.0])) == -102.0
+    assert tree_model.predict_one(np.asarray([2.0])) == -104.0
+
+    with pytest.raises(ValueError, match="out of range for a model with 2 classes"):
+        parse_catboost_json_model(model_json, class_label=2)
+
+
 def test_catboost_json_missing_value_routing():
     """Test CatBoost's exported NaN treatment is translated to children_missing."""
     model_json = {

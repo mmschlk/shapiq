@@ -6,12 +6,11 @@ The historical comparisons below concern the **September 29, 2026 sweep with bud
 inputs and raw measurements are in the
 [original reproduction release](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-families-2026-09-29).
 
-The current website instead shows the completed nine-budget, four-instance rerun
-at execution commit `d4ac18e6`, with the restored LeverageSHAP safeguard.
-LeverageSHAP succeeded on all 1,332 SV cells (148 games × nine budgets), with
-no failed SV evaluations. Its unsupported interaction targets are separate.
-The historical results below are retained to explain the investigation, not as
-current leaderboard measurements.
+The current website shows the [completed compact benchmark](COMPREHENSIVE.md).
+The historical results below explain earlier investigations; they are not current
+leaderboard measurements. Estimator changes are reviewed separately in
+[regression PR #611](https://github.com/mmschlk/shapiq/pull/611) and
+[Monte Carlo PR #612](https://github.com/mmschlk/shapiq/pull/612).
 
 ## LeverageSHAP: an instability near 2d
 

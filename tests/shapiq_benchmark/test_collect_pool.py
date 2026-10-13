@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from shapiq import InteractionValues
-from shapiq_benchmark import runner
+from shapiq_benchmark import campaign_runner as runner
 from shapiq_benchmark.execution import THREAD_VARIABLES
 from shapiq_benchmark.record_store import RecordStore
 from shapiq_benchmark.results_io import Checkpoint

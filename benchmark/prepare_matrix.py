@@ -1,4 +1,4 @@
-"""Prepare a dataset matrix on fixed CPU cores, resuming completed tables and chunks.
+"""Prepare compact recipes on fixed CPU cores, resuming completed snapshots.
 
 Run from an immutable source checkout. Each task writes to its own directory;
 only the parent combines qualified fragments into the final authenticated snapshot.
@@ -53,9 +53,8 @@ def cases(suite: dict) -> list[dict]:
 
 def execute(task: dict, suite: dict, stage: Path, expected: dict) -> None:
     """Reuse only complete authenticated fragments from this exact source and recipe."""
-    from shapiq_benchmark.materialize import prepare_family_chunk
+    from shapiq_benchmark.campaign_runner import load_snapshot, provenance
     from shapiq_benchmark.prepare import prepare
-    from shapiq_benchmark.runner import load_snapshot, provenance
 
     if provenance() != expected:
         message = "Source/environment changed since preparation was planned"
@@ -79,9 +78,6 @@ def execute(task: dict, suite: dict, stage: Path, expected: dict) -> None:
             message = "A cached fragment did not qualify"
             raise ValueError(message)
         return
-    if "start" in task:
-        prepare_family_chunk(task["spec"], task["seed"], task["start"], output)
-        return
     path = output / "suite.json"
     path.write_text(json.dumps(fragment, indent=2) + "\n")
     result = prepare(path, output)
@@ -93,9 +89,9 @@ def execute(task: dict, suite: dict, stage: Path, expected: dict) -> None:
 def assemble(
     suite: dict, tasks: list[dict], stage: Path, destination: Path, expected: dict
 ) -> None:
-    """Publish only a complete canonical snapshot; unfinished chunks remain private."""
+    """Publish only a complete canonical snapshot; unfinished cases remain private."""
+    from shapiq_benchmark.campaign_runner import load_snapshot, provenance
     from shapiq_benchmark.prepare import write_snapshot
-    from shapiq_benchmark.runner import load_snapshot, provenance
 
     assembling = destination.with_name(destination.name + ".assembling")
     assembling.mkdir(parents=True, exist_ok=True)
@@ -146,25 +142,6 @@ def assemble(
     )
 
 
-def plan_tasks(suite: dict) -> tuple[list[dict], list[dict], int]:
-    """Order reusable evaluation tasks before large-table qualification and assembly."""
-    from shapiq_benchmark.materialize import CHUNK_SIZE
-
-    specs: list[dict] = [{**task, "case": index} for index, task in enumerate(cases(suite))]
-    evaluation, qualification = [], []
-    for task in specs:
-        if task["kind"] == "family" and task["spec"]["n_players"] > 12:
-            evaluation.extend(
-                {**task, "start": start}
-                for start in range(0, 2 ** task["spec"]["n_players"], CHUNK_SIZE)
-            )
-            qualification.append(task)
-        else:
-            evaluation.append(task)
-    random.Random(0).shuffle(evaluation)  # noqa: S311 -- reproducible task ordering
-    return specs, evaluation + qualification, len(evaluation)
-
-
 def run_tasks(indices: range, cpus: list[int], args: argparse.Namespace, deadline: float) -> None:
     """Run one phase on pinned cores, retaining completed tasks after a deadline or failure."""
 
@@ -212,8 +189,8 @@ def main() -> None:
     parser.add_argument("suite", type=Path)
     parser.add_argument("stage", type=Path)
     parser.add_argument("destination", type=Path)
-    parser.add_argument("--workers", type=int, default=64)
-    parser.add_argument("--seconds", type=float, default=250000)
+    parser.add_argument("--workers", type=int, default=16)
+    parser.add_argument("--seconds", type=float, default=86000)
     parser.add_argument("--task", type=int)
     parser.add_argument("--cpu", type=int)
     args = parser.parse_args()
@@ -221,23 +198,14 @@ def main() -> None:
         os.sched_setaffinity(0, {args.cpu})
         plan = json.loads((args.stage / "plan.json").read_text())
         task = plan["tasks"][args.task]
-        if task["spec"].get("device") != "cuda":
-            resource.setrlimit(resource.RLIMIT_AS, (12 * 1024**3, 12 * 1024**3))
-        else:
-            # CUDA reserves virtual address space far beyond physical GPU/RAM usage.
-            # Slurm's memory allocation, not a CPU address-space cap, bounds this worker.
-            from shapiq_benchmark.media import preparation_backend
-
-            if preparation_backend("cuda") != plan.get("preparation_hardware"):
-                message = "CUDA preparation hardware changed since planning"
-                raise ValueError(message)
+        resource.setrlimit(resource.RLIMIT_AS, (12 * 1024**3, 12 * 1024**3))
         if plan["driver_sha256"] != hashlib.sha256(Path(__file__).read_bytes()).hexdigest():
             message = "Preparation driver changed after planning"
             raise ValueError(message)
         execute(task, plan["suite"], args.stage, plan["provenance"])
         return
 
-    from shapiq_benchmark.runner import provenance, validate_suite
+    from shapiq_benchmark.campaign_runner import provenance, validate_suite
 
     suite = json.loads(args.suite.read_text())
     validate_suite(suite)
@@ -252,20 +220,15 @@ def main() -> None:
     if args.workers <= 0 or len(cpus) != args.workers or args.seconds <= 0:
         message = "Insufficient allocated cores or invalid preparation limits"
         raise ValueError(message)
-    specs, tasks, evaluation_count = plan_tasks(suite)
+    specs = [{**task, "case": index} for index, task in enumerate(cases(suite))]
+    tasks = list(specs)
+    random.Random(0).shuffle(tasks)  # noqa: S311 -- deterministic scheduling
     plan = {
         "suite": suite,
         "provenance": expected,
         "tasks": tasks,
         "driver_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
-    if any(spec["spec"].get("device") == "cuda" for spec in specs):
-        from shapiq_benchmark.media import preparation_backend
-
-        if args.workers != 1:
-            message = "CUDA preparation uses one worker per allocated GPU; launch separate stages."
-            raise ValueError(message)
-        plan["preparation_hardware"] = preparation_backend("cuda")
     args.stage.mkdir(parents=True, exist_ok=True)
     # Retain this descriptor until the process exits; children never acquire it.
     lock = (args.stage / "prepare.lock").open("a")
@@ -280,11 +243,10 @@ def main() -> None:
     temporary.replace(plan_path)
     deadline = time.monotonic() + args.seconds
 
-    from shapiq_benchmark.datasets import warm_dataset_caches
+    from shapiq_benchmark.campaign_datasets import warm_dataset_caches
 
     warm_dataset_caches(suite)
-    run_tasks(range(evaluation_count), cpus, args, deadline)
-    run_tasks(range(evaluation_count, len(tasks)), cpus, args, deadline)
+    run_tasks(range(len(tasks)), cpus, args, deadline)
     assemble(suite, specs, args.stage, args.destination, expected)
 
 

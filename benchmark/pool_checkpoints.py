@@ -21,8 +21,8 @@ from pathlib import Path
 import collect_pool as collector
 from collect_pool import Inputs, digest, require
 
+from shapiq_benchmark.campaign_runner import identity
 from shapiq_benchmark.record_store import RecordStore
-from shapiq_benchmark.runner import identity
 
 
 class _DurableStore(RecordStore):
