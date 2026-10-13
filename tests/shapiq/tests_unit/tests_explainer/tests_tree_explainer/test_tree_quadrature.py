@@ -194,6 +194,8 @@ def _coalition_weight(index, n_features, order, size):
     """Weight of a coalition of ``size`` players outside an ``order``-sized subset."""
     if index == "BII":
         return 1.0 / 2 ** (n_features - order)
+    if index == "Fourier":  # (-1/2)^|S| times the Banzhaf weight
+        return (-0.5) ** order / 2 ** (n_features - order)
     if index == "Moebius":  # the Moebius coefficient is the discrete derivative at {}
         return 1.0 if size == 0 else 0.0
     return (
@@ -221,9 +223,9 @@ def _brute_interaction(paths, n_features, subset, *, index):
 
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
-@pytest.mark.parametrize("index", ["SII", "BII", "Moebius"])
+@pytest.mark.parametrize("index", ["SII", "BII", "Moebius", "Fourier"])
 def test_matches_brute_force_interactions(index, implementation):
-    """SII, BII and Moebius up to order 3 equal the discrete derivatives of the enumerated game."""
+    """SII, BII, Moebius and Fourier up to order 3 equal the discrete derivatives of the enumerated game."""
     rng = np.random.default_rng(0)
     X = rng.random((400, 5))
     y = X @ rng.normal(size=5) + np.sin(9 * X[:, 0]) * X[:, 1]
