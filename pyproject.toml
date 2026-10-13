@@ -46,6 +46,7 @@ classifiers = [
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: 3.15',
 ]
 keywords = [
     "python",
@@ -74,26 +75,28 @@ proxy = [
     # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
     "xgboost",   # default proxy model in ProxySHAP
     "lightgbm",  # required by ProxySPEX
-    "catboost",
+    "catboost; python_version < '3.15'",  # no Python 3.15 wheels yet
     "smac", # SMAC HPO for proxy models
 ]
 shapleig = [
     # required by shapiq.approximator.shapleig (ShaplEIG)
     # NOTE: lower bounds are the versions the reference implementation was
     # developed and validated against.
-    "torch>=2.9.1",
-    "gpytorch>=1.14",
-    "botorch>=0.14.0",
-    "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
+    # torch has no Python 3.15 wheels yet, so the whole group is skipped there.
+    "torch>=2.9.1; python_version < '3.15'",
+    "gpytorch>=1.14; python_version < '3.15'",
+    "botorch>=0.14.0; python_version < '3.15'",
+    "linear_operator>=0.6; python_version < '3.15'",  # also a transitive gpytorch dependency, but imported directly
 ]
 games = [
     # optional dependencies of shapiq_games, imported lazily by the games that need them
+    # scikit-image, sentencepiece, tabpfn, and torch(vision) have no Python 3.15 wheels yet
     "protobuf",      # with sentencepiece: the SigLIP tokenizer
-    "scikit-image",  # superpixels of the image games
-    "sentencepiece", # the SigLIP tokenizer
-    "tabpfn>=6.0",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
-    "torch",         # image games
-    "torchvision",   # ResNet image games
+    "scikit-image; python_version < '3.15'",  # superpixels of the image games
+    "sentencepiece; python_version < '3.15'", # the SigLIP tokenizer
+    "tabpfn>=6.0; python_version < '3.15'",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
+    "torch; python_version < '3.15'",         # image games
+    "torchvision; python_version < '3.15'",   # ResNet image games
     "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
     "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
@@ -105,7 +108,7 @@ benchmark = [
     "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
     "xgboost",       # models of the registry
     "lightgbm",
-    "catboost",
+    "catboost; python_version < '3.15'",  # no Python 3.15 wheels yet
     "optuna",        # tunes the model presets
 ]
 
@@ -279,7 +282,7 @@ python = "./.venv"
 python-platform = "linux"
 
 [tool.cibuildwheel]
-build = ["cp312-*", "cp313-*", "cp314-*"]
+build = ["cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 build-frontend = "uv"
 test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; from shapiq.tree.linear import cext; from shapiq.tree.quadrature import cext; print('C extensions OK')\""
@@ -306,14 +309,15 @@ required-imports = ["from __future__ import annotations"]
 
 [dependency-groups]
 all_ml = [
-    "tabpfn>=2.1.3",
-    "torchvision",
-    "torch",
+    # torch(vision), tabpfn, catboost, and scikit-image have no Python 3.15 wheels yet
+    "tabpfn>=2.1.3; python_version < '3.15'",
+    "torchvision; python_version < '3.15'",
+    "torch; python_version < '3.15'",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
-    "catboost",
+    "catboost; python_version < '3.15'",
     "transformers",
-    "scikit-image",
+    "scikit-image; python_version < '3.15'",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
