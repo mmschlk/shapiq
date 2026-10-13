@@ -7,7 +7,9 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from sklearn.base import clone
 from sklearn.linear_model import RidgeCV
+from sklearn.model_selection import GridSearchCV
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.proxy._models import (
@@ -94,7 +96,10 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
             hpo: If ``True`` (default), wrap a string-resolved gradient-boosting proxy in its
                 default grid search (the HPO-informed proxy of :cite:t:`Butler.2025`). If
                 ``False``, use the bare resolved estimator. Has no effect when ``proxy_model`` is
-                a passed-in estimator/wrapper.
+                a passed-in estimator/wrapper. With fewer than ten sampled coalitions, the
+                automatic grid search is skipped for that call and its base estimator is fitted
+                directly. Five-fold R-squared scoring needs at least two observations per
+                validation fold; later calls with enough samples still use the configured search.
 
             random_state: Seed for random number generator. Defaults to ``None``.
 
@@ -102,6 +107,7 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         """
         if sampling_weights is None:
             sampling_weights = np.array([math.comb(n, i) for i in range(n + 1)], dtype=float)
+        self._default_hpo = False
         if isinstance(proxy_model, ProxyModel):
             self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
         else:
@@ -112,6 +118,7 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
             # ``hpo`` wraps a resolved boosting backend in its default grid search (the reference
             # HPO-informed proxy); a DecisionTree fallback is left unwrapped by the helper.
             self.proxy_model = _wrap_in_default_hpo(resolved) if hpo else resolved
+            self._default_hpo = self.proxy_model is not resolved
         super().__init__(
             n=n,
             max_order=max_order,
@@ -145,13 +152,21 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         coalitions_matrix = self._sampler.coalitions_matrix
         coalition_values = game(coalitions_matrix)
 
-        # Fit the model on the training data
-        self.proxy_model.fit(coalitions_matrix, coalition_values)
+        # Five-fold R-squared scoring needs two observations per validation fold. Keep the search
+        # intact so a later call with a larger budget can still tune the proxy.
+        fit_model = self.proxy_model
+        if (
+            self._default_hpo
+            and len(coalitions_matrix) < 10
+            and isinstance(fit_model, GridSearchCV)
+        ):
+            fit_model = clone(fit_model.estimator)
+        fit_model.fit(coalitions_matrix, coalition_values)
 
-        if isinstance(self.proxy_model, ProxyModelWithHPO):
-            final_model = self.proxy_model.best_estimator_
+        if isinstance(fit_model, ProxyModelWithHPO):
+            final_model = fit_model.best_estimator_
         else:
-            final_model = self.proxy_model
+            final_model = fit_model
         # Obtain TreeModel(s). convert_tree_model returns a single TreeModel for single-tree
         # proxies (e.g. a DecisionTreeRegressor) and a list for ensembles; normalize to a list.
         tree_models = convert_tree_model(final_model)
