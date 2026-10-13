@@ -575,8 +575,8 @@ class TreeExplainer(Explainer):
         """Compute the explanation via the path-dependent quadrature explainer.
 
         The :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` built in ``_init_explainers``
-        validates the model and aggregates over ensembles itself; this method only enforces
-        the requested ``min_order`` on the result.
+        validates the model and aggregates over ensembles itself; the requested ``min_order``
+        is applied by :meth:`explain_function`.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
@@ -591,20 +591,7 @@ class TreeExplainer(Explainer):
         if self._pathdependent_explainer is None:
             msg = "Path-dependent explainer is not initialized; mode must be 'pathdependent'."
             raise RuntimeError(msg)
-
-        final_explanation = self._pathdependent_explainer.explain(x)
-
-        if self._min_order == 0 and final_explanation.min_order == 1:
-            final_explanation.min_order = 0
-            final_explanation.interactions[()] = float(final_explanation.baseline_value)
-
-        if self._min_order > final_explanation.min_order:
-            final_explanation = final_explanation.get_n_order(
-                min_order=self._min_order,
-                max_order=self._max_order,
-            )
-
-        return final_explanation
+        return self._pathdependent_explainer.explain(x)
 
     def _explain_function_interventionaltreeshapiq(
         self,
@@ -624,6 +611,31 @@ class TreeExplainer(Explainer):
             msg = "Interventional explainer is not initialized; mode must be 'interventional'."
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
+
+    def _enforce_min_order(self, explanation: InteractionValues) -> InteractionValues:
+        """Apply the requested ``min_order`` to the explanation of either mode's computer.
+
+        ``min_order=0`` adds the empty interaction with the baseline value; a larger
+        ``min_order`` drops every interaction below it. The k-SII aggregation reports
+        ``min_order=0`` with the empty interaction, so it is filtered like any other result.
+
+        Args:
+            explanation: The explanation as the mode's computer returned it.
+
+        Returns:
+            The explanation restricted to ``min_order .. max_order``.
+        """
+        if self._min_order == 0 and explanation.min_order >= 1:
+            explanation.min_order = 0
+            explanation.interactions[()] = float(explanation.baseline_value)
+        elif self._min_order > explanation.min_order or (
+            self._min_order >= 1 and () in explanation.interactions
+        ):
+            explanation = explanation.get_n_order(
+                min_order=self._min_order,
+                max_order=self._max_order,
+            )
+        return explanation
 
     def explain_function(  # type: ignore[override]
         self,
@@ -653,8 +665,10 @@ class TreeExplainer(Explainer):
         if not self._explainers_initialized:
             self._init_explainers()
         if self.mode == "pathdependent":
-            return self._explain_function_pathdependent(x, **kwargs)
-        return self._explain_function_interventionaltreeshapiq(x, **kwargs)
+            explanation = self._explain_function_pathdependent(x, **kwargs)
+        else:
+            explanation = self._explain_function_interventionaltreeshapiq(x, **kwargs)
+        return self._enforce_min_order(explanation)
 
     def explain_X(
         self,

@@ -95,7 +95,8 @@ def create_edge_tree_python(
         feature_id = features[parents[node_id]]
         last_feature_node_in_path[node_id] = True
 
-        weight = node_sample_weight[node_id] / node_sample_weight[parents[node_id]]
+        parent_weight = node_sample_weight[parents[node_id]]
+        weight = node_sample_weight[node_id] / parent_weight if parent_weight > 0 else 0.5
         split_weights[node_id] = weight
         prod_weight *= weight
         p_e = 1 / weight

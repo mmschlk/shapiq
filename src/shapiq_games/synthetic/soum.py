@@ -1,9 +1,7 @@
-"""Synthetic benchmark games based on unanimity games.
+"""Unanimity games and sums of unanimity games (SOUM).
 
-This module implements synthetic cooperative games for benchmarking interaction value methods.
-It includes the Unanimity game -- a fundamental building block in cooperative game theory --
-and the Sum of Unanimity Games (SOUM), a more complex game constructed as a linear
-combination of multiple Unanimity games.
+Both games have a known Möbius representation, which makes them the analytic ground truth for
+interaction indices: every index can be computed from the Möbius coefficients exactly.
 """
 
 from __future__ import annotations
@@ -13,119 +11,83 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.interaction_values import InteractionValues
+from shapiq_games._base import as_bool_coalitions
+
+from ._moebius import moebius_values
 
 if TYPE_CHECKING:
-    from shapiq.game_theory.moebius_converter import MoebiusConverter
+    from numpy.typing import ArrayLike
+
+    from shapiq.interaction_values import InteractionValues
+    from shapiq.typing import BoolVector, CoalitionMatrix, GameValues
+
+__all__ = ["SOUM", "UnanimityGame"]
 
 
 class UnanimityGame(Game):
-    r"""The Unanimity basis game.
+    r"""The unanimity game of an interaction :math:`T`.
 
-    Unanimity games are basis games from cooperative game theory. They are based on a single
-    interaction and return 1 if the coalition contains the interaction and 0 otherwise.
-
-    More formally the Unanimity game is defined based on an interaction :math:`T`, which is a tuple of player indices.
-    The cooperative game is defined as follows:
     .. math::
-        :nowrap:
+        v(S) = \mathbb{1}[T \subseteq S]
 
-        \begin{eqnarray}
-        v(S)    & = & 1 if T \\subseteq S \\
-                & = & 0 otherwise
-        \\end{eqnarray}
+    Its only non-zero Möbius coefficient is :math:`m(T) = 1`, and its Shapley value is
+    :math:`1/|T|` for every player in :math:`T` and zero otherwise.
 
     Attributes:
-        interaction_binary: The interaction $T$ encoded in a binary vector of length ``n``.
-        interaction: The interaction encoded as a tuple.
+        interaction_binary: The interaction :math:`T` as a binary vector of length ``n``.
+        interaction: The interaction as a tuple of player indices.
 
     Examples:
         >>> game = UnanimityGame(np.array([0, 1, 0, 1]))
-        >>> game.n_players
-        4
-        >>> coalitions = [[0, 0, 0, 0], [1, 0, 0, 0], [1, 1, 0, 1], [1, 1, 1, 1]]
-        >>> coalitions = np.array(coalitions).astype(bool)
-        >>> game(coalitions)
-        array([0., 0., 1., 1.])
-
+        >>> game(np.array([[0, 0, 0, 0], [1, 1, 0, 1], [1, 1, 1, 1]], dtype=bool))
+        array([0., 1., 1.])
     """
 
-    def __init__(self, interaction_binary: np.ndarray) -> None:
-        """Initializes the Unanimity game.
+    def __init__(self, interaction_binary: ArrayLike) -> None:
+        """Initialize the unanimity game.
 
         Args:
-            interaction_binary: The interaction encoded as a one-hot vector of shape ``(n,)``.
+            interaction_binary: The interaction encoded as a binary vector of shape ``(n,)``.
         """
-        n = len(interaction_binary)
-        self.interaction_binary: np.ndarray = interaction_binary
-        self.interaction: tuple[int, ...] = tuple(np.where(self.interaction_binary == 1)[0])
-        super().__init__(n_players=n, normalize=False)  # call super class which handles calls
+        self.interaction_binary: BoolVector = np.asarray(interaction_binary).astype(bool)
+        self.interaction: tuple[int, ...] = tuple(
+            int(i) for i in np.flatnonzero(self.interaction_binary)
+        )
+        super().__init__(n_players=len(self.interaction_binary), normalize=False)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray[float]:
-        """Returns 1, if the coalition contains the UnanimityGame's interaction, and zero otherwise.
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return one if the coalition contains the interaction, zero otherwise."""
+        coalitions = as_bool_coalitions(coalitions)
+        return np.all(coalitions[:, self.interaction_binary], axis=1).astype(float)
 
-        Args:
-            coalitions: The coalition as a binary vector of shape (coalition_size, n_players).
-
-        Returns:
-            The worth of the coalition.
-        """
-        return np.prod(coalitions >= self.interaction_binary, 1)
+    @property
+    def moebius_coefficients(self) -> InteractionValues:
+        """The Möbius transform: one for the interaction, zero for every other coalition."""
+        return moebius_values({self.interaction: 1.0}, self.n_players)
 
 
 class SOUM(Game):
-    r"""The Sum of Unanimity Game (SOUM) game class.
+    r"""A sum of unanimity games (SOUM) with random coefficients.
 
-    A Sum of Unanimity Game (SOUM) constructs a game based on linear combinations of so-called
-    unanimity games (:class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame`).
-
-    Based on a sequence of Unanimity games :math:`U_1, U_2, \\ldots, U_n` with linear coefficients :math:`c_1, c_2, \\ldots, c_n`
-    the SOUM is defined as follows:
     .. math::
-        :nowrap:
-        \begin{eqnarray}
-        v(S) & = & \\sum_{i=1}^{n} c_i \\cdot v_{U_i}(S) \\
-        v_{U_i}(S) & = & \begin{cases}
-            1 & \text{if } T_i \\subseteq S \\
-            0 & \text{otherwise}
-        \\end{cases}
-        \\end{eqnarray}
+        v(S) = \sum_{k=1}^{K} c_k \cdot \mathbb{1}[T_k \subseteq S]
 
-    where :math:`T_i` is the interaction of the :class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame` :math:`U_i`.
-    The linear coefficients :math:`c_i` are randomly sampled from the interval :math:`[-1, 1]`.
+    The coefficients :math:`c_k` are drawn uniformly from :math:`[-1, 1]` and the interactions
+    :math:`T_k` uniformly with sizes between ``min_interaction_size`` and
+    ``max_interaction_size``. The Möbius representation of the game is available as
+    :attr:`moebius_coefficients`, from which every interaction index follows exactly.
 
     Attributes:
-        n_players: The number of players.
-
-        n_basis_games: The number of Unanimity games.
-
-        unanimity_games: A dictionary containing instances of :class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame`.
-
-        linear_coefficients: A numpy array with coefficients between -1 and 1 for the unanimity
-            games.
-
-        min_interaction_size: The smallest interaction size.
-
-        max_interaction_size: The highest interaction size.
-
-        converter: The MoebiusConverter object to convert the SOUM to a Möbius transform. If no
-            moebius transform is computed, this the convert is ``None``.
-
-    Properties:
-        moebius_coefficients: The (sparse) Möbius transform of the SOUM.
+        n_basis_games: The number of unanimity games :math:`K`.
+        unanimity_games: The unanimity games, keyed by their position.
+        linear_coefficients: The coefficients :math:`c_k`.
+        min_interaction_size: The smallest interaction size that can be drawn.
+        max_interaction_size: The largest interaction size that can be drawn.
 
     Examples:
-        >>> game = SOUM(4, 3)
-        >>> game.n_players
-        4
-        >>> game.n_basis_games
-        3
-        coalitions = [[0, 0, 0, 0], [1, 0, 0, 0], [1, 1, 0, 1], [1, 1, 1, 1]]
-        >>> coalitions = np.array(coalitions).astype(bool)
-        >>> game(coalitions)
-        array([0., 0.25, 1.5, 2.])  # depending on the random linear coefficients this can vary
-        >>> game.moebius_coefficients
-        InteractionValues(values=array([0.25, 0.25, 0.25]), index='Moebius', max_order=4, min_order=0, ...)
+        >>> game = SOUM(n=6, n_basis_games=10, max_interaction_size=3, random_state=0)
+        >>> game.moebius_coefficients.index
+        'Moebius'
     """
 
     def __init__(
@@ -135,143 +97,75 @@ class SOUM(Game):
         *,
         min_interaction_size: int | None = None,
         max_interaction_size: int | None = None,
-        random_state: int | None = None,
+        random_state: int | None = 42,
         normalize: bool = False,
         verbose: bool = False,
     ) -> None:
-        """Initializes the SOUM game.
+        """Initialize the SOUM.
 
         Args:
-            n: The number of players in the game.
-
-            n_basis_games: The number of :class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame`
-                basis games to use. The higher the number, the more complex the SOUM becomes.
-
-            min_interaction_size: The minimum size of the interactions in the SOUM. If ``None``,
-                then the default value is used. The default value is ``0``. Defaults to ``None``.
-
-            max_interaction_size: The maximum size of the interactions in the SOUM. If ``None``,
-                then the default value is used. The default value is ``n``. Defaults to ``None``.
-
-            random_state: The random state to use for the game. If ``None``, then the default value
-                is used. The default value is ``42``. Defaults to ``None``.
-
-            normalize: A boolean flag to normalize/center the game values. Defaults to ``False``.
-
-            verbose: A flag to print information from the game. Defaults to ``False``.
+            n: The number of players.
+            n_basis_games: The number of unanimity games.
+            min_interaction_size: The smallest interaction size. Defaults to ``0``, which allows
+                a constant term (an interaction with the empty set).
+            max_interaction_size: The largest interaction size. Defaults to ``n``.
+            random_state: The seed of the coefficients and interactions. Defaults to ``42``.
+            normalize: Whether to center the game such that the value of the empty coalition is zero. Defaults
+                to ``False``.
+            verbose: Whether to show a progress bar when evaluating the game.
         """
-        self._rng = np.random.default_rng(random_state)
-
-        # set min_interaction_size and max_interaction_size to 0 and n if not specified
-        self.min_interaction_size = min_interaction_size if min_interaction_size is not None else 0
-        self.max_interaction_size = max_interaction_size if max_interaction_size is not None else n
-
-        # setup basis games
+        rng = np.random.default_rng(random_state)
+        self.min_interaction_size = 0 if min_interaction_size is None else min_interaction_size
+        self.max_interaction_size = n if max_interaction_size is None else max_interaction_size
         self.n_basis_games: int = n_basis_games
-        self.unanimity_games = {}
-        self.linear_coefficients = self._rng.random(size=self.n_basis_games) * 2 - 1
-        # Compute interaction sizes (exclude size 0)
-        interaction_sizes = self._rng.integers(
+        self.linear_coefficients = rng.random(size=n_basis_games) * 2 - 1
+        sizes = rng.integers(
             low=self.min_interaction_size,
             high=self.max_interaction_size,
-            size=self.n_basis_games,
+            size=n_basis_games,
             endpoint=True,
         )
-        for i, size in enumerate(interaction_sizes):
-            interaction = self._rng.choice(tuple(range(n)), size, replace=False)
-            interaction_binary = np.zeros(n, dtype=int)
-            interaction_binary[interaction] = 1
-            self.unanimity_games[i] = UnanimityGame(interaction_binary)
-
-        # will store the Möbius transform
+        self.unanimity_games: dict[int, UnanimityGame] = {}
+        for k, size in enumerate(sizes):
+            interaction = rng.choice(n, size, replace=False)
+            interaction_binary = np.zeros(n, dtype=bool)
+            interaction_binary[interaction] = True
+            self.unanimity_games[k] = UnanimityGame(interaction_binary)
         self._moebius_coefficients: InteractionValues | None = None
-        self.converter: MoebiusConverter | None = None
 
-        # init base game
-        empty_value = float(self.value_function(np.zeros((1, n)))[0])
+        empty_value = float(self.value_function(np.zeros((1, n), dtype=bool))[0])
         super().__init__(
             n_players=n,
             normalize=normalize,
-            verbose=verbose,
             normalization_value=empty_value,
+            verbose=verbose,
         )
+
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Sum the coefficients of the unanimity games whose interaction is in the coalition."""
+        coalitions = as_bool_coalitions(coalitions)
+        worth = np.zeros(coalitions.shape[0])
+        for k, game in self.unanimity_games.items():
+            worth += self.linear_coefficients[k] * game.value_function(coalitions)
+        return worth
 
     @property
     def moebius_coefficients(self) -> InteractionValues:
-        """Return the (sparse) Möbius transform of the SOUM."""
+        """The (sparse) Möbius transform of the unnormalized game."""
         if self._moebius_coefficients is None:
             self._moebius_coefficients = self.moebius_transform()
         return self._moebius_coefficients
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Computes the worth of the coalition for the SOUM.
-
-        The worth of a coalition for the SOUM sums up all linear coefficients, if a coalition
-        contains the interaction of a corresponding unanimity game.
-
-        Args:
-            coalitions: The coalition as a binary vector of shape ``(coalition_size, n)``.
-
-        Returns:
-            The worth of the coalition.
-        """
-        worth = np.zeros(coalitions.shape[0])
-        for i, game in self.unanimity_games.items():
-            worth += self.linear_coefficients[i] * game(coalitions)
-        return worth
-
-    def exact_values(self, index: str, order: int) -> InteractionValues:
-        """Computes the exact values for the given index and order.
-
-        Args:
-            index: The index to compute the values for.
-            order: The order to compute the values for.
-
-        Returns:
-            The exact values for the given index and order.
-
-        """
-        from shapiq.game_theory.moebius_converter import MoebiusConverter
-
-        if self.converter is None:
-            self.converter = MoebiusConverter(self.moebius_coefficients)
-        return self.converter(index, order)
-
     def moebius_transform(self) -> InteractionValues:
-        """Computes the (sparse) Möbius transform of the SOUM.
-
-        The Möbius transform is computed for the SOUM via its UnanimityGames. This is helpful for
-        ground truth calculations of interaction indices.
+        """Compute the Möbius transform of the unnormalized game from its unanimity games.
 
         Returns:
-            An InteractionValues object containing all non-zero Möbius coefficients of the SOUM.
-
+            The non-zero Möbius coefficients. The coefficient of the empty set, if any, is also
+            the baseline value.
         """
-        # fill the moebius coefficients dict from the game
-        moebius_coefficients_dict = {}
-        for i, game in self.unanimity_games.items():
-            if game.interaction in moebius_coefficients_dict:
-                moebius_coefficients_dict[game.interaction] += self.linear_coefficients[i]
-            else:
-                moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
-
-        # generate the lookup for the moebius values
-        moebius_coefficients_values = np.zeros(len(moebius_coefficients_dict))
-        moebius_coefficients_lookup = {}
-        for i, (key, val) in enumerate(moebius_coefficients_dict.items()):
-            moebius_coefficients_values[i] = val
-            moebius_coefficients_lookup[key] = i
-
-        # handle baseline value and set to 0 if no empty set is present
-        baseline_value = moebius_coefficients_dict.get((), 0.0)
-
-        return InteractionValues(
-            values=moebius_coefficients_values,
-            index="Moebius",
-            max_order=self.n_players,
-            min_order=0,
-            n_players=self.n_players,
-            interaction_lookup=moebius_coefficients_lookup,
-            estimated=False,
-            baseline_value=baseline_value,
-        )
+        coefficients: dict[tuple[int, ...], float] = {}
+        for k, game in self.unanimity_games.items():
+            coefficients[game.interaction] = (
+                coefficients.get(game.interaction, 0.0) + self.linear_coefficients[k]
+            )
+        return moebius_values(coefficients, self.n_players)

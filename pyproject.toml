@@ -86,12 +86,27 @@ shapleig = [
     "botorch>=0.14.0",
     "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
+games = [
+    # optional dependencies of shapiq_games, imported lazily by the games that need them
+    "protobuf",      # with sentencepiece: the SigLIP tokenizer
+    "scikit-image",  # superpixels of the image games
+    "sentencepiece", # the SigLIP tokenizer
+    "tabpfn>=6.0",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
+    "torch",         # image games
+    "torchvision",   # ResNet image games
+    "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
+    "xgboost",       # the conditional imputer of the local and uncertainty explanation games
+]
 benchmark = [
-    # optional model backends for shapiq_benchmark, imported lazily
-    "optuna",
-    "tabpfn",
+    # shapiq_benchmark builds the games from datasets and models by name
+    "shapiq[games]",
+    "openml",        # OpenML datasets, TabArena included
+    "openpyxl",      # the real_estate dataset (xlsx)
+    "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
+    "xgboost",       # models of the registry
     "lightgbm",
-    "xgboost",
+    "catboost",
+    "optuna",        # tunes the model presets
 ]
 
 [tool.coverage.report]
@@ -198,6 +213,9 @@ exclude = [
     "D102",  # we don't need docstrings for protocol stubs
     "ANN401",  # any return type is okay in typing.py for protocol subts
 ]
+"src/shapiq_games/typing.py" = [
+    "A005",  # mirrors shapiq.typing
+]
 "tests/*.py" = [
     # "ALL",
     "S101", # we need asserts in tests
@@ -252,8 +270,8 @@ exclude = [
 convention = "google"
 
 [tool.ty.src]
-include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
+include = ["src/shapiq", "src/shapiq_games", "src/shapiq_benchmark"]
+exclude = ["tests", "docs", "benchmark", "scripts"]
 
 [tool.ty.environment]
 python-version = "3.12"
