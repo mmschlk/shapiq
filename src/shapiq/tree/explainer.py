@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import numpy as np
 
 from shapiq.explainer.base import Explainer
+from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.utils.modules import safe_isinstance
@@ -24,14 +25,11 @@ from .quadrature import QuadratureTreeSHAP, QuadratureTreeSHAPIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
-    from shapiq.explainer.custom_types import ExplainerIndices
     from shapiq.typing import Model
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal[
-    "SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII", "Moebius", "Fourier"
-]
+TreeExplainerIndices = ExplainerIndices
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -204,9 +202,7 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        # "Moebius" and "Fourier" are only computed by TreeExplainer, so they are not part of the
-        # shared ``ExplainerIndices`` the base class (and the approximators) are typed with.
-        super().__init__(model, index=cast("ExplainerIndices", index), max_order=max_order)
+        super().__init__(model, index=index, max_order=max_order)
 
         if min_order < 0 or min_order > self._max_order:
             msg = (
