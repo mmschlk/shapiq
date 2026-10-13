@@ -19,7 +19,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
     chart(
       "budgetChart",
       decorate(computed.budget_series),
-      "Queries / player",
+      "Budget / player",
       false,
       "median",
     );
@@ -110,7 +110,7 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
   chart(
     "budgetChart",
     budgetSeries,
-    "Queries / player",
+    "Budget / player",
     false,
     "median",
   );
