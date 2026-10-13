@@ -1,12 +1,9 @@
 r"""Causal games: which covariates explain the confounding bias of a treatment effect estimate.
 
-Implements the ConfoundingSHAP value functions :footcite:p:`Brockschmidt.2026`. For a coalition
+Implements the ConfoundingSHAP value functions :cite:p:`Brockschmidt.2026`. For a coalition
 :math:`S`, an S-learner fitted on :math:`(X_S, A) \to Y` gives the treatment effect estimate when
 adjusting only for :math:`S`; its deviation from the reference effect estimate :math:`\hat\tau`
 (adjusting for all covariates) is the confounding bias left by omitting the other covariates.
-
-References:
-    .. footbibliography::
 """
 
 from __future__ import annotations
@@ -40,7 +37,7 @@ def tabpfn_regressor(
 ) -> Any:  # noqa: ANN401
     """Return a TabPFN regressor configured as in the ConfoundingSHAP paper (requires ``tabpfn``).
 
-    The configuration follows :footcite:t:`Brockschmidt.2026`.
+    The configuration follows :cite:t:`Brockschmidt.2026`.
 
     Args:
         device: The torch device. Defaults to ``"cpu"``.
@@ -61,9 +58,6 @@ def tabpfn_regressor(
         >>> from functools import partial
         >>> regressor = partial(tabpfn_regressor, version="v3")  # doctest: +SKIP
         >>> GlobalConfoundingXAI(X, treatment, outcome, regressor=regressor)  # doctest: +SKIP
-
-    References:
-        .. footbibliography::
     """
     config = {"REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,), **params.pop("inference_config", {})}
     return build_tabpfn(
@@ -172,7 +166,7 @@ class _ConfoundingGame(Game):
 class GlobalConfoundingXAI(_ConfoundingGame):
     r"""The global confounding game: the bias of the average treatment effect adjusting for S.
 
-    The game is the global value function of ConfoundingSHAP :footcite:p:`Brockschmidt.2026`.
+    The game is the global value function of ConfoundingSHAP :cite:p:`Brockschmidt.2026`.
     With ``mode="signed"``, the value is :math:`\bar\tau - \overline{\hat\mu_1(X_S) - \hat\mu_0(X_S)}`;
     with ``"abs"`` or ``"sq"`` it is the mean absolute or squared conditional bias against the
     projection of :math:`\hat\tau` onto :math:`X_S`. The empty coalition is the naive difference
@@ -187,9 +181,6 @@ class GlobalConfoundingXAI(_ConfoundingGame):
         >>> game = GlobalConfoundingXAI(X, treatment, outcome, regressor=LinearRegression)
         >>> game.n_players
         4
-
-    References:
-        .. footbibliography::
     """
 
     def __init__(
@@ -231,7 +222,7 @@ class GlobalConfoundingXAI(_ConfoundingGame):
 class LocalConfoundingXAI(_ConfoundingGame):
     """The local confounding game: the bias of the conditional effect at one unit adjusting for S.
 
-    The game is the local value function of ConfoundingSHAP :footcite:p:`Brockschmidt.2026`.
+    The game is the local value function of ConfoundingSHAP :cite:p:`Brockschmidt.2026`.
 
     Examples:
         >>> from sklearn.linear_model import LinearRegression
@@ -242,9 +233,6 @@ class LocalConfoundingXAI(_ConfoundingGame):
         >>> game = LocalConfoundingXAI(X, treatment, outcome, unit=3, regressor=LinearRegression)
         >>> game.n_players
         4
-
-    References:
-        .. footbibliography::
     """
 
     def __init__(

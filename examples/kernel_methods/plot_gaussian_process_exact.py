@@ -9,7 +9,7 @@ features.
 The posterior mean of a Gaussian process (GP) regression is a weighted sum of kernels,
 :math:`f(x) = \\sum_i \\alpha_i k(x^i, x)`, over the training points :math:`x^i`. With an RBF
 kernel, :math:`k` is a *product* of one-dimensional kernels, one per feature.
-:footcite:t:`Mohammadi.2025a` showed how to compute the Shapley values of such product-kernel
+:cite:t:`Mohammadi.2025a` showed how to compute the Shapley values of such product-kernel
 models exactly, without evaluating any of the :math:`2^d` coalitions of the :math:`d` features.
 :class:`~shapiq.explainer.ProductKernelExplainer` implements their algorithm for
 Gaussian processes and support vector machines.
@@ -163,8 +163,3 @@ print(f"v(empty set): {shapley_values.baseline_value:.3f}")
 print(f"Average prediction: {gp.predict(X_test).mean():.3f}")
 for name, value in zip(feature_names, mean_shapley_values, strict=True):
     print(f"Average Shapley value of {name}: {value:+.3f}")
-
-# %%
-# References
-# ----------
-# .. footbibliography::

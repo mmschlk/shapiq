@@ -5,7 +5,7 @@ LeverageSHAP
 Estimate Shapley values by weighted least squares, like KernelSHAP, but sample the coalitions
 by their leverage scores, which makes the regression accurate with fewer evaluations.
 
-:class:`~shapiq.approximator.LeverageSHAP` :footcite:p:`Musco.2025` solves the regression of
+:class:`~shapiq.approximator.LeverageSHAP` :cite:p:`Musco.2025` solves the regression of
 KernelSHAP on coalitions drawn by leverage score sampling.
 """
 
@@ -67,11 +67,11 @@ iv.plot_force(feature_names=feature_names, abbreviate=False)
 #   its complement.
 #
 # With this sampling, the estimates are provably accurate with high probability from
-# :math:`O(n \log n)` evaluations of the game :footcite:p:`Musco.2025`.
+# :math:`O(n \log n)` evaluations of the game :cite:p:`Musco.2025`.
 #
 # The estimate above is exact up to rounding. The Shapley value only depends on the *odd* part
 # of a game, and paired samples remove the even part from the regression
-# :footcite:p:`Fumagalli.2026a`; a game whose interactions involve at most two players, such as
+# :cite:p:`Fumagalli.2026a`; a game whose interactions involve at most two players, such as
 # ours, has a linear odd part, which the regression recovers exactly. To see the difference in
 # the sampling, we add an interaction of three players and compare the mean squared error of
 # LeverageSHAP and KernelSHAP, each with and without paired sampling, over 20 random seeds.
@@ -129,8 +129,3 @@ plt.show()
 # On this game, the pairing reduces the error the most, for both methods. With paired sampling
 # on both sides, the leverage scores still make LeverageSHAP more accurate than KernelSHAP from a
 # budget of 100 on.
-
-# %%
-# References
-# ----------
-# .. footbibliography::

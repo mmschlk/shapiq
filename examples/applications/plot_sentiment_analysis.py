@@ -106,8 +106,3 @@ sv.plot_sentence(words=token_names)
 # %%
 
 sv_neg.plot_sentence(words=token_names_neg)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

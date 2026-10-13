@@ -59,11 +59,11 @@ print(f"Prediction f(x) = {model(x[None])[0]:.2f}, average prediction {model(dat
 # - :class:`~shapiq.imputer.BaselineImputer` replaces them by a single reference point, the mean of
 #   the data.
 # - :class:`~shapiq.imputer.GaussianImputer` samples them from their distribution *conditional* on
-#   the present features, assuming that the features are jointly Gaussian :footcite:p:`Aas.2021`
+#   the present features, assuming that the features are jointly Gaussian :cite:p:`Aas.2021`
 #   (the *observational* approach).
 # - :class:`~shapiq.imputer.GaussianCopulaImputer` also samples them conditionally, but models only
 #   the dependence as Gaussian and keeps the marginal distributions of the data
-#   :footcite:p:`Aas.2021`.
+#   :cite:p:`Aas.2021`.
 #
 # Since the game has only four players, :class:`~shapiq.game_theory.ExactComputer` computes its
 # exact Shapley values from all 16 coalitions.
@@ -161,7 +161,7 @@ plt.show()
 # %%
 # - The **marginal imputer** reproduces the interventional game (up to sampling error): ``x1``
 #   and ``x3`` get 0, because the model does not use them. Its explanation is *true to the model*
-#   :footcite:p:`Chen.2020`.
+#   :cite:p:`Chen.2020`.
 # - The **baseline imputer** agrees on ``x0``, ``x1``, and ``x3`` but gives ``x2`` the value 4
 #   instead of 3: it compares with the prediction at the mean point (:math:`x_2 = 0`, so
 #   :math:`x_2^2 = 0`), not with the average prediction (:math:`\mathbb{E}[x_2^2] = 1`). For models
@@ -218,12 +218,12 @@ plt.show()
 # %%
 # Which Imputer Should You Use?
 # -----------------------------
-# Neither approach is wrong; they answer different questions :footcite:p:`Chen.2020`.
+# Neither approach is wrong; they answer different questions :cite:p:`Chen.2020`.
 #
 # - Use an **interventional** imputer (marginal, or baseline for a single reference point) to
 #   explain how the *model* computes its prediction. A feature the model does not use gets 0, and
 #   the explanation follows the effect of setting a feature, as argued by
-#   :footcite:t:`Janzing.2020`. The price: the imputed points can be unrealistic (here, a small
+#   :cite:t:`Janzing.2020`. The price: the imputed points can be unrealistic (here, a small
 #   ``x0`` next to a large ``x1``), and the model is evaluated where it has seen no data.
 # - Use an **observational** imputer to explain how much each feature *tells* about the
 #   prediction, given the dependencies in the data. Correlated features share the credit, and the
@@ -232,8 +232,3 @@ plt.show()
 #
 # Since every imputer is a game, it works with :class:`~shapiq.game_theory.ExactComputer` as above
 # and with every approximator, e.g. ``shapiq.KernelSHAP(n=4).approximate(budget=16, game=imputer)``.
-
-# %%
-# References
-# ----------
-# .. footbibliography::

@@ -35,7 +35,7 @@ from shapiq_games.causal import tabpfn_regressor
 # Load Data
 # ---------
 # The Curth-VDS dataset is a synthetic observational study with four covariates,
-# following the simulation design of :footcite:t:`Curth.2021`.
+# following the simulation design of :cite:t:`Curth.2021`.
 # Treatment assignment is confounded by the Confounder variable.
 
 curthvds_data = load_curthvds_synthetic(n=200, d=4, random_state=42)
@@ -55,7 +55,7 @@ Y = curthvds_data["Outcome"].to_numpy()
 # A appended as a feature.  Predicting twice — once with A set to 1 and once
 # with A set to 0 — gives the individual treatment effect estimate tau_hat.
 # The regressor is configured as in the ConfoundingSHAP paper
-# :footcite:p:`Brockschmidt.2026`; it is the default regressor of
+# :cite:p:`Brockschmidt.2026`; it is the default regressor of
 # :class:`~shapiq_games.GlobalConfoundingXAI`. It runs TabPFN v2, which
 # downloads without a license; ``tabpfn_regressor(version="v2.5")`` is the
 # paper's model (its download needs a Prior Labs license token).
@@ -97,8 +97,3 @@ print(sv)
 # The Confounder is expected to receive the largest attribution.
 
 sv.plot_stacked_bar(feature_names=feature_cols, ylabel="Confounding bias attribution")
-
-# %%
-# References
-# ----------
-# .. footbibliography::

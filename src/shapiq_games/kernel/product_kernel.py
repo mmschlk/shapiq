@@ -30,7 +30,7 @@ class ProductKernelGame(Game):
         v(S) = \sum_i \alpha_i K(x^i_S, x_S) + b
 
     The empty coalition has :math:`K = 1`, i.e. :math:`v(\emptyset) = \sum_i \alpha_i + b`
-    :footcite:p:`Mohammadi.2025a`. Its exact Shapley values are computed by
+    :cite:p:`Mohammadi.2025a`. Its exact Shapley values are computed by
     :class:`~shapiq.explainer.ProductKernelExplainer`. Only the RBF kernel is
     supported.
 
@@ -48,9 +48,6 @@ class ProductKernelGame(Game):
         >>> game = ProductKernelGame(model, x=X[0])
         >>> bool(np.isclose(game(game.grand_coalition)[0], model.predict(X[:1])[0]))
         True
-
-    References:
-        .. footbibliography::
     """
 
     def __init__(

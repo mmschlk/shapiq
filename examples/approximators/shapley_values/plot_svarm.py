@@ -5,7 +5,7 @@ SVARM
 Estimate Shapley values by stratified sampling without marginal contributions: SVARM samples
 coalitions by size and updates the estimates of all players with every sample.
 
-:class:`~shapiq.approximator.SVARM` :footcite:p:`Kolpaczki.2024a` also estimates the Banzhaf value
+:class:`~shapiq.approximator.SVARM` :cite:p:`Kolpaczki.2024a` also estimates the Banzhaf value
 (``index="BV"``).
 """
 
@@ -42,8 +42,3 @@ print(iv)
 # --------------------
 
 iv.plot_force(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

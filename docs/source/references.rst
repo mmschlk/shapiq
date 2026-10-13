@@ -1,8 +1,9 @@
 Bibliography
 ============
 
-The works cited in this documentation: the papers behind the methods of ``shapiq`` and the
-related software. The examples and some API pages list their references at their end, too.
+Every work cited in this documentation, from the API reference, the examples, and the timeline:
+the papers behind the methods of ``shapiq`` and the related software. The links after an entry lead
+back to where it is cited.
 
 .. bibliography::
    :cited:

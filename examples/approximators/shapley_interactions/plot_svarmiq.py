@@ -5,7 +5,7 @@ SVARMIQ
 Estimate interactions of any order with SVARM-IQ, a Monte Carlo estimator stratified by the size of
 the sampled coalition and by its intersection with each interaction.
 
-:class:`~shapiq.approximator.SVARMIQ` :footcite:p:`Kolpaczki.2024b` extends SVARM to Shapley
+:class:`~shapiq.approximator.SVARMIQ` :cite:p:`Kolpaczki.2024b` extends SVARM to Shapley
 interactions.
 """
 
@@ -48,8 +48,3 @@ iv.plot_force(feature_names=feature_names)
 # ------------
 
 iv.plot_network(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

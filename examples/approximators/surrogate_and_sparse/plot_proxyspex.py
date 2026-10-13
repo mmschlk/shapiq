@@ -5,7 +5,7 @@ ProxySPEX
 Estimate interactions among many players with ProxySPEX: fit a tree ensemble (LightGBM by default)
 to the sampled coalition values and read its sparse interactions off the trees.
 
-:class:`~shapiq.approximator.ProxySPEX` was introduced by :footcite:t:`Butler.2025`.
+:class:`~shapiq.approximator.ProxySPEX` was introduced by :cite:t:`Butler.2025`.
 """
 
 # sphinx_gallery_thumbnail_path = "_static/gallery/approximators_sparse.png"
@@ -47,8 +47,3 @@ iv.plot_force(feature_names=feature_names)
 # ------------
 
 iv.plot_network(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

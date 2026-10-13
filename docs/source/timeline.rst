@@ -20,7 +20,4 @@ Timeline of Shapley-Based Explanation Methods
 
 .. shapiq-timeline:: _data/timeline.toml
 
-References
-----------
-
-.. footbibliography::
+The full references of all cards are listed in the :doc:`bibliography <references>`.

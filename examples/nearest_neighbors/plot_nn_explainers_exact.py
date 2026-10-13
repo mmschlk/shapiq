@@ -7,18 +7,18 @@ the value of a coalition is how well the classifier, restricted to the coalition
 data, predicts the class of a test point.
 
 The Shapley values of this game value each training point for that prediction
-:footcite:p:`Ghorbani.2019,Jia.2019a`. For general models, they are expensive: a game with :math:`n` training points has :math:`2^n` coalitions. For nearest-neighbor
+:cite:p:`Ghorbani.2019,Jia.2019a`. For general models, they are expensive: a game with :math:`n` training points has :math:`2^n` coalitions. For nearest-neighbor
 models, the structure of the prediction yields exact algorithms that are fast enough for large
 datasets.
 
 ``shapiq`` has three of them, one per classifier of scikit-learn:
 
 - :class:`~shapiq.explainer.KNNExplainer` for :class:`~sklearn.neighbors.KNeighborsClassifier`
-  with ``weights="uniform"`` :footcite:p:`Jia.2019a`,
+  with ``weights="uniform"`` :cite:p:`Jia.2019a`,
 - :class:`~shapiq.explainer.WeightedKNNExplainer` for ``weights="distance"``
-  :footcite:p:`Wang.2024a`,
+  :cite:p:`Wang.2024a`,
 - :class:`~shapiq.explainer.ThresholdNNExplainer` for
-  :class:`~sklearn.neighbors.RadiusNeighborsClassifier` :footcite:p:`Wang.2023`.
+  :class:`~sklearn.neighbors.RadiusNeighborsClassifier` :cite:p:`Wang.2023`.
 
 This example runs all three on a training set small enough to check every result against a
 brute-force computation over all :math:`2^{14}` coalitions, with the games of
@@ -71,7 +71,7 @@ for name, model in models.items():
 #
 # The weighted explainer rounds the weights of the neighbors to multiples of
 # :math:`2^{-b}` with ``n_bits`` :math:`= b` (``3`` by default), which keeps its runtime
-# polynomial :footcite:p:`Wang.2024a`. Its values are exact for these rounded weights, so the
+# polynomial :cite:p:`Wang.2024a`. Its values are exact for these rounded weights, so the
 # game it is checked against uses the same rounding.
 
 explainers = {
@@ -192,7 +192,3 @@ plt.show()
 # thousands of points. The example
 # :ref:`sphx_glr_auto_examples_nearest_neighbors_plot_nn_noisy_labels.py` uses this to find
 # mislabeled training points.
-#
-# References
-# ----------
-# .. footbibliography::

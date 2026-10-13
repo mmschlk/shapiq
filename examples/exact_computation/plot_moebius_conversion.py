@@ -29,7 +29,7 @@ from shapiq_games import SOUM
 # %%
 # From the Game to the Möbius Transform and Back
 # ----------------------------------------------
-# The Möbius transform :footcite:p:`Rota.1964` assigns a value :math:`m(T)` to every coalition
+# The Möbius transform :cite:p:`Rota.1964` assigns a value :math:`m(T)` to every coalition
 # :math:`T` such that the value of any coalition is the sum of the Möbius values of its subsets:
 #
 # .. math::
@@ -37,7 +37,7 @@ from shapiq_games import SOUM
 #     \qquad \nu(S) = \sum_{T \subseteq S} m(T).
 #
 # The two formulas are the two directions of the same one-to-one map
-# :footcite:p:`Grabisch.2000`: the Möbius transform is not a summary but another way to write
+# :cite:p:`Grabisch.2000`: the Möbius transform is not a summary but another way to write
 # down the game. We use a sum of unanimity games (:class:`~shapiq_games.SOUM`) with eight players:
 # a game built from twelve random interactions, so its Möbius transform has (at most) twelve
 # values that are not zero.
@@ -171,9 +171,9 @@ plt.show()
 #   to more than the team is worth.
 # - STII puts the whole team value on the pairs (:math:`1/\binom{t}{2}` each) and nothing on the
 #   players.
-# - k-SII :footcite:p:`Bordt.2023` keeps the SII values of the pairs and corrects the players with
+# - k-SII :cite:p:`Bordt.2023` keeps the SII values of the pairs and corrects the players with
 #   negative values, so that the values add up to the worth of the team.
-# - FSII :footcite:p:`Tsai.2022` also gives negative values to the players, but smaller pair
+# - FSII :cite:p:`Tsai.2022` also gives negative values to the players, but smaller pair
 #   values: it is the best approximation of the game by interactions of up to two players in a
 #   weighted least-squares sense.
 #
@@ -204,7 +204,7 @@ for interaction, value in sorted(k_sii.dict_values.items(), key=lambda item: -ab
 # %%
 # From SII to k-SII
 # -----------------
-# SII measures each interaction in isolation and is not efficient. k-SII :footcite:p:`Bordt.2023`
+# SII measures each interaction in isolation and is not efficient. k-SII :cite:p:`Bordt.2023`
 # turns the SII values up to order :math:`k` into an efficient explanation: the SII values of
 # higher orders are projected onto the lower orders with weights given by the Bernoulli numbers.
 # :func:`~shapiq.game_theory.aggregate_base_interaction` performs this aggregation on any
@@ -222,8 +222,3 @@ total = game.grand_coalition_value - game.empty_coalition_value
 for name, values in (("SII", sii), ("k-SII", aggregated)):
     payout = sum(value for interaction, value in values.dict_values.items() if len(interaction) > 0)
     print(f"{name:>5}: sum = {payout:+.4f}, v(N) - v(empty) = {total:+.4f}")
-
-# %%
-# References
-# ----------
-# .. footbibliography::

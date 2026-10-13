@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class KNNExplainer(NNExplainerBase):
     r"""Explainer for unweighted KNN models.
 
-    Implements the algorithm proposed by :footcite:t:`Jia.2019a` to efficiently calculate Shapley values for unweighted KNN models.
+    Implements the algorithm proposed by :cite:t:`Jia.2019a` to efficiently calculate Shapley values for unweighted KNN models.
     The algorithm itself has a linear time complexity, but requires sorting training points by distance to the test
     point, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
 
@@ -33,9 +33,6 @@ class KNNExplainer(NNExplainerBase):
         The model must be fitted on at least ``n_neighbors`` training samples. Models fitted on
         fewer samples are rejected at construction with a ``ValueError``, since scikit-learn
         itself refuses to predict in this regime.
-
-    References:
-        .. footbibliography::
     """
 
     model: KNeighborsClassifier

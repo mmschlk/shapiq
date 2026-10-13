@@ -5,7 +5,7 @@ SPEX
 Estimate interactions among many players with SPEX, which recovers a sparse Fourier representation
 of the game from sampled coalitions.
 
-:class:`~shapiq.approximator.SPEX` :footcite:p:`Kang.2025` needs the optional ``sparse`` extra
+:class:`~shapiq.approximator.SPEX` :cite:p:`Kang.2025` needs the optional ``sparse`` extra
 (``pip install shapiq[sparse]``).
 """
 
@@ -48,8 +48,3 @@ iv.plot_force(feature_names=feature_names)
 # ------------
 
 iv.plot_network(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

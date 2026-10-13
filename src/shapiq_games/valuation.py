@@ -2,12 +2,9 @@
 
 Both games share one implementation: the players are disjoint groups of training rows, and the
 value of a coalition is the test metric of a model trained on the union of its groups. Data
-valuation :footcite:p:`Ghorbani.2019` uses one training point per player; dataset valuation uses
+valuation :cite:p:`Ghorbani.2019` uses one training point per player; dataset valuation uses
 groups such as data sources or owners. Mathematically, data valuation is the singleton-group
 special case of dataset valuation.
-
-References:
-    .. footbibliography::
 """
 
 from __future__ import annotations

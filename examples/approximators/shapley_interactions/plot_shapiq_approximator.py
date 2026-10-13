@@ -5,7 +5,7 @@ SHAPIQ Approximator
 Estimate interactions of any order and index with SHAP-IQ, a Monte Carlo estimator that uses every
 sampled coalition for all interactions at once.
 
-:class:`~shapiq.approximator.SHAPIQ` :footcite:p:`Fumagalli.2023` generalizes Unbiased KernelSHAP to
+:class:`~shapiq.approximator.SHAPIQ` :cite:p:`Fumagalli.2023` generalizes Unbiased KernelSHAP to
 interactions.
 """
 
@@ -48,8 +48,3 @@ iv.plot_force(feature_names=feature_names)
 # ------------
 
 iv.plot_network(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

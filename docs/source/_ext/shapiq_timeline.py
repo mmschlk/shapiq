@@ -3,7 +3,7 @@
 The ``shapiq-timeline`` directive reads the lanes and entries of a TOML file
 (``_data/timeline.toml``) and renders one card per entry, grouped by year. The texts of a card are
 reStructuredText parsed by Sphinx, so its API cross-references (``:py:obj:``), gallery links
-(``:doc:``) and citations (``:footcite:``) are resolved and checked like everywhere else in the
+(``:doc:``) and citations (``:cite:``) are resolved and checked like everywhere else in the
 docs. A missing API object warns even though the docs are not built in nitpicky mode, and every
 warning points to the entry in the TOML file.
 
@@ -99,7 +99,7 @@ def _details_rst(entry: dict[str, Any], names: dict[str, str]) -> str:
     fields = []
     if cite := entry.get("cite"):
         label = "Reference" if len(cite) == 1 else "References"
-        fields.append((label, "; ".join(f":footcite:t:`{key}`" for key in cite)))
+        fields.append((label, "; ".join(f":cite:t:`{key}`" for key in cite)))
     if api := entry.get("api"):
         fields.append(("In shapiq", ", ".join(_api_reference(target) for target in api)))
     if examples := entry.get("examples"):

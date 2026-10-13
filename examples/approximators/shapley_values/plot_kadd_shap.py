@@ -5,7 +5,7 @@ kADDSHAP
 Estimate Shapley values by fitting a k-additive model, a model with interactions of up to k players,
 to sampled coalitions by weighted least squares.
 
-:class:`~shapiq.approximator.kADDSHAP` :footcite:p:`Pelegrina.2023` returns the k-additive Shapley
+:class:`~shapiq.approximator.kADDSHAP` :cite:p:`Pelegrina.2023` returns the k-additive Shapley
 values up to order k.
 """
 
@@ -48,8 +48,3 @@ iv.plot_force(feature_names=feature_names)
 # ------------
 
 iv.plot_network(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

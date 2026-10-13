@@ -29,8 +29,8 @@ def network_plot(
     the interactions. The edge width is proportional to the interaction value. The color of the edge
     is red if the interaction value is positive and blue if the interaction value is negative. The
     network plot has been used to visualize local Shapley interaction values
-    :footcite:p:`Muschalik.2024a` and is a variation of the graph plots presented by
-    :footcite:t:`Inglis.2022`. Below is an example of an interaction network with an image in the
+    :cite:p:`Muschalik.2024a` and is a variation of the graph plots presented by
+    :cite:t:`Inglis.2022`. Below is an example of an interaction network with an image in the
     center.
 
     .. image:: /_static/network_example.png
@@ -53,9 +53,6 @@ def network_plot(
 
     Returns:
         The figure and the axis containing the plot if ``show=False``.
-
-    References:
-        .. footbibliography::
 
     """
     from . import si_graph_plot

@@ -235,14 +235,12 @@ Boosting converters live in separate modules such as `xgboost.py`,
   as `\_`. The docs therefore use the `shapiq_alpha` pybtex style registered in
   `docs/source/conf.py` (titles kept as written, `\_` unescaped in links); plain `alpha`
   lowercases titles ("shapley values") and breaks those DOI links.
-- The `approximator`, `tree` and `game_theory` docstrings cite with `:cite:t:`/`:cite:p:`
-  (listed on the bibliography page); the other docstrings and the gallery examples use
-  `:footcite:` with a `.. footbibliography::` after it in the same docstring (a `References:`
-  section) or example. A footbibliography lists each work once per HTML page, so when the class
-  and its methods cite the same work (as in `ExactComputer`), the methods' `References:` sections
-  render empty: use `:cite:` there. Never put a `:footcite:` in the first line of a class or
-  function docstring: autosummary copies that line into the module's table, where no
-  footbibliography follows.
+- Every citation of the docs (docstrings, gallery examples, pages, the timeline) uses
+  `:cite:t:`/`:cite:p:`, so the bibliography page (`references.rst`, `:cited:`) lists every cited
+  work with links back to where it is cited. Do not use `:footcite:` or `.. footbibliography::`
+  (observed 2026-10-13): footnote citations never reached the bibliography page, which missed 46
+  of 98 cited works. `test_the_docs_cite_with_the_cite_role` in
+  `tests/shapiq_games/test_docstring_examples.py` fails on a `:footcite:`.
 - `uv run pre-commit` in a git worktree: the `ty` hook runs `uv run ty check` without
   `--no-sync`, so with `UV_PROJECT_ENVIRONMENT` pointing at the main checkout's `.venv` it
   re-syncs that shared environment to the worktree (editable `shapiq` re-pointed, locked packages
@@ -271,7 +269,7 @@ Docs layout (observed 2026-10-12):
   last), and a new group needs `EXAMPLE_GROUPS`, a `GALLERY_HEADER.rst` and a card in
   `examples.rst`.
 - The first paragraph of an example's docstring is the text of its gallery card, and sphinx-gallery
-  strips roles badly (`:footcite:p:` became ":footciteMusco.2025", `:math:` raw LaTeX). Keep that
+  strips roles badly (a citation role became ":footciteMusco.2025", `:math:` raw LaTeX). Keep that
   paragraph plain; put citations and math into the next one.
 - `nitpicky` is off, so an unresolvable cross-reference renders as plain text without a warning.
   The core API reference documents objects under their subpackage (`shapiq.approximator.KernelSHAP`);

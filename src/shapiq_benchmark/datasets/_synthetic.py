@@ -222,7 +222,7 @@ def load_curthvds_synthetic(
 ) -> pd.DataFrame:
     """Synthetic observational study with known causal roles.
 
-    The study follows the simulation design of :footcite:t:`Curth.2021`. The covariates are split
+    The study follows the simulation design of :cite:t:`Curth.2021`. The covariates are split
     into instruments, confounders, effect modifiers and outcome-only covariates. The returned frame
     contains the covariates plus the binary ``Treatment`` and the ``Outcome`` columns.
 
@@ -234,9 +234,6 @@ def load_curthvds_synthetic(
 
     Returns:
         The study as a data frame.
-
-    References:
-        .. footbibliography::
     """
     min_covariates = 4
     if d < min_covariates:

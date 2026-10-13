@@ -5,17 +5,17 @@ Path-Dependent versus Interventional Tree Explanations
 :class:`~shapiq.explainer.TreeExplainer` computes Shapley values and Shapley interactions of
 tree ensembles exactly, in two modes that differ in what it means for a feature to be absent.
 
-Both modes go back to TreeSHAP :footcite:p:`Lundberg.2020`:
+Both modes go back to TreeSHAP :cite:p:`Lundberg.2020`:
 
 - ``mode="pathdependent"`` (the default): at a split on an absent feature, the explanation follows
   both children, weighted by the share of training samples that went each way. The distribution
   of the data is the one stored in the trees, so no data is needed. The values are computed with
-  Quadrature-TreeSHAP :footcite:p:`Wettenstein.2026a` (:class:`~shapiq.tree.QuadratureTreeSHAP`),
-  which yields any-order interactions as introduced by TreeSHAP-IQ :footcite:p:`Muschalik.2024a`.
+  Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` (:class:`~shapiq.tree.QuadratureTreeSHAP`),
+  which yields any-order interactions as introduced by TreeSHAP-IQ :cite:p:`Muschalik.2024a`.
 - ``mode="interventional"``: an absent feature takes its values from the rows of a
   ``reference_dataset``, and the prediction is averaged over them
   (:class:`~shapiq.tree.InterventionalTreeSHAPIQ`). This mode also supports the Shapley-Taylor
-  (STII) :footcite:p:`Sundararajan.2020` and Faithful Shapley (FSII) :footcite:p:`Tsai.2022`
+  (STII) :cite:p:`Sundararajan.2020` and Faithful Shapley (FSII) :cite:p:`Tsai.2022`
   interaction indices.
 
 This example computes second-order interactions in both modes, checks them against brute force,
@@ -60,7 +60,7 @@ print(f"Prediction for x: {prediction:.4f}")
 # %%
 # Path-Dependent k-SII
 # --------------------
-# We explain one prediction with the pairwise k-SII :footcite:p:`Bordt.2023`, which splits the
+# We explain one prediction with the pairwise k-SII :cite:p:`Bordt.2023`, which splits the
 # prediction into main effects and pairwise interactions. The explanation starts at the baseline,
 # the empty interaction ``()``: the average prediction under the training data in the trees. With
 # it, all values sum up to the prediction (efficiency).
@@ -147,7 +147,7 @@ plt.show()
 # it. So a present :math:`x_3` also informs the splits on :math:`x_6`, as in the data. The
 # interventional game takes :math:`x_6` from reference rows that are unrelated to the present
 # :math:`x_3`, and evaluates the model on combinations of the two copies that do not occur in the
-# data. It is "true to the model" rather than "true to the data" :footcite:p:`Chen.2020`.
+# data. It is "true to the model" rather than "true to the data" :cite:p:`Chen.2020`.
 
 batch = {
     "path-dependent": shapiq.TreeExplainer(model, index="k-SII", max_order=2),
@@ -196,9 +196,5 @@ contrastive.plot_waterfall(feature_names=feature_names, abbreviate=False)
 #   model's response to it, and the reference data chooses the comparison (a population, a group,
 #   or a single point). It supports all indices of the explainer, including STII, FSII, and
 #   FBII. Its cost grows with the size of the reference data; for large inputs, the explainer
-#   switches to the Woodelf algorithm :footcite:p:`Nadel.2026` if the optional
+#   switches to the Woodelf algorithm :cite:p:`Nadel.2026` if the optional
 #   ``woodelf-explainer`` package is installed.
-#
-# References
-# ----------
-# .. footbibliography::

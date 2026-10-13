@@ -9,8 +9,8 @@ When explaining NN models, a game is defined by first choosing an explanation po
 
 # %%
 # There is support for explaining the the ``KNeighborsClassifier`` model (with ``'uniform'`` or ``'distance'`` weights) and ``RadiusNeighborsClassifier`` model from the ``scikit-learn`` library.
-# The algorithms are based on the publications from :footcite:t:`Jia.2019a`,
-# :footcite:t:`Wang.2024a`, and :footcite:t:`Wang.2023`, respectively.
+# The algorithms are based on the publications from :cite:t:`Jia.2019a`,
+# :cite:t:`Wang.2024a`, and :cite:t:`Wang.2023`, respectively.
 #
 # Let's start by generating a synthetic classification datset and fitting a simple `KNeighborsClassifier` to it.
 
@@ -212,8 +212,3 @@ print(f"Negative Shapley values: {np.where(sv_test < 0)[0]}")
 
 # %%
 # We have identified the set corrupted samples almost exactly.
-
-# %%
-# References
-# ----------
-# .. footbibliography::

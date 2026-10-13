@@ -10,11 +10,11 @@ The decision function of a support vector machine (SVM) with an RBF kernel is a 
 kernels over its support vectors, :math:`f(x) = \\sum_i \\alpha_i k(x^i, x) + b`, and the RBF
 kernel is a product of one kernel per feature. For such product-kernel models,
 :class:`~shapiq.explainer.ProductKernelExplainer` computes the Shapley values of
-the features exactly in polynomial time :footcite:p:`Mohammadi.2025a`.
+the features exactly in polynomial time :cite:p:`Mohammadi.2025a`.
 
 This example explains an SVM classifier with 30 features, where a brute-force computation would
 evaluate :math:`2^{30} \\approx 10^9` coalitions, and compares the exact explainer with
-KernelSHAP :footcite:p:`Lundberg.2017`, a model-agnostic approximator, on the same game.
+KernelSHAP :cite:p:`Lundberg.2017`, a model-agnostic approximator, on the same game.
 """
 
 from __future__ import annotations
@@ -152,7 +152,3 @@ plt.show()
 # %%
 # For a handful of features, brute force is just as fast. From about ten features on, the
 # exponential cost dominates: at 30 features, brute force would take hours for one explanation.
-#
-# References
-# ----------
-# .. footbibliography::

@@ -1,8 +1,4 @@
-"""Setups of the causal games on the synthetic study of :footcite:t:`Curth.2021`.
-
-References:
-    .. footbibliography::
-"""
+"""Setups of the causal games on the synthetic study of :cite:t:`Curth.2021`."""
 
 from __future__ import annotations
 
@@ -71,7 +67,7 @@ class GlobalConfoundingSetup(_ConfoundingSetup, name="global_confounding"):
         setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect, default).
         mode: ``"signed"`` (default), ``"abs"``, or ``"sq"``.
         regressor: ``"tabpfn"`` (default, TabPFN configured as in ConfoundingSHAP
-            :footcite:p:`Brockschmidt.2026`) or a model name of :mod:`shapiq_benchmark.models`
+            :cite:p:`Brockschmidt.2026`) or a model name of :mod:`shapiq_benchmark.models`
             (e.g. ``"linear"``).
         regressor_params: Parameters of the regressor, e.g. ``{"version": "v2.5"}`` for the
             paper's TabPFN (the default is TabPFN v2, see
@@ -81,9 +77,6 @@ class GlobalConfoundingSetup(_ConfoundingSetup, name="global_confounding"):
     Examples:
         >>> GlobalConfoundingSetup(n=200, regressor="linear").build().n_players
         4
-
-    References:
-        .. footbibliography::
     """
 
     def build(self) -> GlobalConfoundingXAI:

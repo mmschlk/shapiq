@@ -21,7 +21,7 @@ class KNNGame(KNNGameBase):
 
     The players are the training points. The value of a coalition :math:`S` is the fraction of the
     :math:`k` nearest neighbors of :math:`x` within :math:`S` that belong to the explained class
-    :footcite:p:`Jia.2019a`. Its exact Shapley values are computed by
+    :cite:p:`Jia.2019a`. Its exact Shapley values are computed by
     :class:`~shapiq.explainer.nn.KNNExplainer`.
 
     Examples:
@@ -32,9 +32,6 @@ class KNNGame(KNNGameBase):
         >>> game = KNNGame(model, x=X[10])  # the players are the 10 training points
         >>> game.n_players
         10
-
-    References:
-        .. footbibliography::
     """
 
     model_weights = "uniform"

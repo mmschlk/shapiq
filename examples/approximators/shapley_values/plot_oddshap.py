@@ -5,7 +5,7 @@ OddSHAP
 Estimate Shapley values from the odd part of the game only: a surrogate tree model screens for
 the few odd interactions, and a small regression on them yields the Shapley values.
 
-:class:`~shapiq.approximator.OddSHAP` :footcite:p:`Fumagalli.2026a` approximates Shapley values by
+:class:`~shapiq.approximator.OddSHAP` :cite:p:`Fumagalli.2026a` approximates Shapley values by
 a sparse regression on the odd part of the game.
 """
 
@@ -59,7 +59,7 @@ iv.plot_force(feature_names=feature_names, abbreviate=False)
 # -------------------------
 # Every game can be written as a sum of parity functions (its Fourier representation), and it
 # splits into an *odd* part, the parities of an odd number of players, and an *even* part. The
-# Shapley value only depends on the odd part :footcite:p:`Fumagalli.2026a`. OddSHAP therefore
+# Shapley value only depends on the odd part :cite:p:`Fumagalli.2026a`. OddSHAP therefore
 #
 # 1. samples coalitions in pairs (every coalition with its complement), which removes the even
 #    part from the regression,
@@ -154,8 +154,3 @@ plt.show()
 
 small = shapiq.OddSHAP(n=N_PLAYERS, random_state=42).approximate(50, game_fun)
 print(np.round(small.get_n_order_values(1), 3) + 0.0)  # + 0.0 turns -0.0 into 0.0
-
-# %%
-# References
-# ----------
-# .. footbibliography::

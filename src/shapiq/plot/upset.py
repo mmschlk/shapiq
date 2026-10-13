@@ -28,10 +28,10 @@ def upset_plot(
 ) -> Figure | None:
     """Plots the upset plot.
 
-    UpSet plots :footcite:p:`Lex.2014` can be used to visualize the interactions between features.
+    UpSet plots :cite:p:`Lex.2014` can be used to visualize the interactions between features.
     The plot consists of two parts: the upper part shows the interaction values as bars, and the
     lower part shows the interactions as a matrix. Originally, the UpSet plot was introduced by
-    :footcite:t:`Lex.2014`.
+    :cite:t:`Lex.2014`.
     For a more detailed explanation about the plots, see the references or the original
     [documentation](https://upset.app/).
 
@@ -58,9 +58,6 @@ def upset_plot(
     Returns:
         If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple with
         the figure and the axis of the plot.
-
-    References:
-        .. footbibliography::
 
     """
     # prepare data ---------------------------------------------------------------------------------

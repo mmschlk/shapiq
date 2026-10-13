@@ -38,7 +38,7 @@ def stacked_bar_plot(
     for a given instance. The interaction values are plotted as stacked bars with positive and
     negative parts stacked on top of each other. The colors represent the order of the
     interaction values. For a detailed explanation of this plot, we refer to
-    :footcite:t:`Bordt.2023`.
+    :cite:t:`Bordt.2023`.
 
     An example of the plot is shown below.
 
@@ -80,9 +80,6 @@ def stacked_bar_plot(
         ...     feature_names=feature_names,
         ... )
         >>> plt.show()
-
-    References:
-        .. footbibliography::
 
     """
     # sanitize inputs

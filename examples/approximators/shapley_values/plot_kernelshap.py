@@ -5,7 +5,7 @@ KernelSHAP
 Estimate Shapley values by weighted least squares: KernelSHAP fits a linear model to sampled
 coalitions, and its coefficients are the Shapley values.
 
-:class:`~shapiq.approximator.KernelSHAP` :footcite:p:`Lundberg.2017` is what the explainers use for
+:class:`~shapiq.approximator.KernelSHAP` :cite:p:`Lundberg.2017` is what the explainers use for
 Shapley values by default.
 """
 
@@ -42,8 +42,3 @@ print(iv)
 # --------------------
 
 iv.plot_force(feature_names=feature_names)
-
-# %%
-# References
-# ----------
-# .. footbibliography::

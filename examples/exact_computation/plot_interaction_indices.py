@@ -62,15 +62,15 @@ print(f"v(N) - v(empty) = {total}")
 # -----------------------------
 # We compute nine indices of the game:
 #
-# - the Möbius transform :footcite:p:`Rota.1964`, which describes the game exactly with a value
+# - the Möbius transform :cite:p:`Rota.1964`, which describes the game exactly with a value
 #   for every coalition (see below),
-# - the Shapley value (SV) :footcite:p:`Shapley.1951` and the Banzhaf value (BV)
-#   :footcite:p:`Banzhaf.1964` attribute the game to the players,
-# - the Shapley and Banzhaf interaction indices (SII and BII) :footcite:p:`Grabisch.1999` measure
+# - the Shapley value (SV) :cite:p:`Shapley.1951` and the Banzhaf value (BV)
+#   :cite:p:`Banzhaf.1964` attribute the game to the players,
+# - the Shapley and Banzhaf interaction indices (SII and BII) :cite:p:`Grabisch.1999` measure
 #   the interaction of a group of players in the context of all other players,
-# - the k-Shapley values (k-SII) :footcite:p:`Bordt.2023`, the Shapley-Taylor interaction index
-#   (STII) :footcite:p:`Sundararajan.2020`, and the faithful Shapley and Banzhaf interaction
-#   indices (FSII and FBII) :footcite:p:`Tsai.2022` are explanations up to an order :math:`k`:
+# - the k-Shapley values (k-SII) :cite:p:`Bordt.2023`, the Shapley-Taylor interaction index
+#   (STII) :cite:p:`Sundararajan.2020`, and the faithful Shapley and Banzhaf interaction
+#   indices (FSII and FBII) :cite:p:`Tsai.2022` are explanations up to an order :math:`k`:
 #   they divide the game among all interactions of at most :math:`k` players. We use
 #   :math:`k = 2`: values for single players and for pairs.
 #
@@ -134,7 +134,7 @@ plt.show()
 # %%
 # The Möbius Transform: the Building Blocks of the Game
 # -----------------------------------------------------
-# The first row of the heatmap is the Möbius transform :footcite:p:`Rota.1964`. Every game is a
+# The first row of the heatmap is the Möbius transform :cite:p:`Rota.1964`. Every game is a
 # sum of *pure* interactions, one for every coalition :math:`T`, and the Möbius transform gives
 # their weights:
 #
@@ -231,8 +231,3 @@ plt.show()
 #   they show larger ones.
 # - Use the **Möbius transform** for the complete, exact picture, if the number of players is
 #   small or the game is sparse.
-
-# %%
-# References
-# ----------
-# .. footbibliography::

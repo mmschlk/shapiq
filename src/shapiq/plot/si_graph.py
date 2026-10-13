@@ -64,7 +64,7 @@ def si_graph_plot(
     represent interactions between the players. The size of the nodes and edges represent the
     strength of the interaction values. The color of the edges represents the sign of the
     interaction values (red for positive and blue for negative). The SI-graph plot is presented in
-    :footcite:t:`Muschalik.2024`.
+    :cite:t:`Muschalik.2024`.
 
     Args:
         interaction_values: The interaction values to plot.
@@ -147,9 +147,6 @@ def si_graph_plot(
 
     Returns:
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
-
-    References:
-        .. footbibliography::
     """
     if interaction_values is None:
         msg = "Interaction_values must be provided."

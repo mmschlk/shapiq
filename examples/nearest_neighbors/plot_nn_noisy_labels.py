@@ -7,9 +7,9 @@ such points: they get negative values, so sorting the training data by value bri
 front.
 
 The value of a training point is its Shapley value in a game whose value is the performance of
-the model trained on a coalition of training points :footcite:p:`Ghorbani.2019`.
+the model trained on a coalition of training points :cite:p:`Ghorbani.2019`.
 
-For a :math:`k`-nearest-neighbor classifier, :footcite:t:`Jia.2019a` compute these Shapley
+For a :math:`k`-nearest-neighbor classifier, :cite:t:`Jia.2019a` compute these Shapley
 values exactly in :math:`O(n \\log n)` time for :math:`n` training points ("KNN-Shapley"), which
 :class:`~shapiq.explainer.KNNExplainer` implements. This example flips 10% of the labels of a
 digits dataset, values every training point, and compares how quickly KNN-Shapley and
@@ -167,8 +167,3 @@ accuracy_true = one_nn.fit(X_train, y_train).score(X_test, y_test)
 print(f"1-NN test accuracy with the noisy labels: {accuracy_noisy:.3f}")
 print(f"1-NN test accuracy after removing the lowest 10%: {accuracy_cleaned:.3f}")
 print(f"1-NN test accuracy with the true labels: {accuracy_true:.3f}")
-
-# %%
-# References
-# ----------
-# .. footbibliography::

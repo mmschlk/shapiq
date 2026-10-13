@@ -78,7 +78,7 @@ class UnsupervisedData(Game):
 
     The players are the features, discretized into equal-width bins. The value of a coalition is
     the total correlation of its features, which is zero for the empty coalition and for single
-    features :footcite:p:`Balestra.2022`.
+    features :cite:p:`Balestra.2022`.
 
     Attributes:
         data_discrete: The discretized data.
@@ -89,9 +89,6 @@ class UnsupervisedData(Game):
         >>> game = UnsupervisedData(X)
         >>> game.n_players
         5
-
-    References:
-        .. footbibliography::
     """
 
     def __init__(

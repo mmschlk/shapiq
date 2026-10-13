@@ -6,7 +6,7 @@ Estimate Shapley values by Bayesian experimental design: a Gaussian process mode
 and each next coalition is the one with the largest expected information gain about the Shapley
 values.
 
-:class:`~shapiq.approximator.ShaplEIG` :footcite:p:`Rundel.2026` also returns the posterior
+:class:`~shapiq.approximator.ShaplEIG` :cite:p:`Rundel.2026` also returns the posterior
 variance of every estimate.
 """
 
@@ -112,8 +112,3 @@ plt.show()
 # After 12 evaluations, the intervals are wide, and they contain the exact values. After 24
 # evaluations, the estimates are close to the exact values, and the largest posterior standard
 # deviation has dropped from about 0.2 to below 0.01.
-
-# %%
-# References
-# ----------
-# .. footbibliography::

@@ -24,19 +24,16 @@ class TabPFNImputer(Imputer[SklearnLikeModel]):
     """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
     The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN
-    :footcite:p:`Hollmann.2025` model which uses in-context learning for prediction. Instead of
+    :cite:p:`Hollmann.2025` model which uses in-context learning for prediction. Instead of
     imputing missing features, the TabPFNImputer removes feature columns missing in a coalition
     from training data and re-"trains" re-contextualizes the model with the remaining features. The
     model is then used to predict the data point which is also missing the features. This paradigm
-    is described in :footcite:t:`Rundel.2024`.
+    is described in :cite:t:`Rundel.2024`.
 
     Attributes:
         x_train: The training data to contextualize the model on.
         y_train: The training labels to contextualize the model on.
         empty_prediction: The model's average prediction on an empty data point.
-
-    References:
-        .. footbibliography::
 
     """
 

@@ -260,9 +260,9 @@ class _BibStyle(AlphaStyle):
 
 
 register_plugin("pybtex.style.formatting", "shapiq_alpha", _BibStyle)
-bibtex_default_style = (
-    "shapiq_alpha"  # alpha labels so that the references of the docs differ from the footcites
-)
+# every citation of the docs (docstrings, examples, timeline) uses :cite:, so the bibliography page
+# lists every cited work; the text cites by author and year, the bibliography lists alpha labels
+bibtex_default_style = "shapiq_alpha"
 bibtex_reference_style = "author_year"
 
 source_suffix = {
