@@ -26,6 +26,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # Prepare a Small Dataset
@@ -33,12 +34,13 @@ import shapiq
 # We use the California housing dataset with a tiny split so that TabPFN
 # runs quickly on CPU.
 
-x_data, y_data = shapiq.datasets.load_california_housing()
-feature_names = list(x_data.columns)
+dataset = load_dataset("california_housing")
+x_data, y_data = dataset.x, dataset.y
+feature_names = list(dataset.feature_names)
 
 x_train, x_test, y_train, y_test = train_test_split(
-    x_data.values,
-    y_data.values,
+    x_data,
+    y_data,
     train_size=30,
     test_size=50,
     random_state=42,
