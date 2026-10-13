@@ -29,7 +29,9 @@ if TYPE_CHECKING:
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII", "Moebius"]
+TreeExplainerIndices = Literal[
+    "SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII", "Moebius", "Fourier"
+]
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -89,8 +91,8 @@ class TreeExplainer(Explainer):
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
-      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
-      ``"Moebius"`` transform is available in both modes. Large
+      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices and the
+      ``"Fourier"`` transform. The ``"Moebius"`` transform is available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
       :cite:t:`Nadel.2026` :cite:t:`Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
@@ -178,8 +180,9 @@ class TreeExplainer(Explainer):
 
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
                 indices ``["SV", "SII", "k-SII", "BV", "BII", "Moebius"]`` are supported. In
-                ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
-                ``"FBII"`` can be computed on top of those. Defaults to ``"SV"``.
+                ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``,
+                ``"FBII"``, or ``"Fourier"`` can be computed on top of those. Defaults to
+                ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -200,8 +203,8 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        # "Moebius" is only computed by TreeExplainer, so it is not part of the shared
-        # ``ExplainerIndices`` the base class (and the approximators) are typed with.
+        # "Moebius" and "Fourier" are only computed by TreeExplainer, so they are not part of the
+        # shared ``ExplainerIndices`` the base class (and the approximators) are typed with.
         super().__init__(model, index=cast("ExplainerIndices", index), max_order=max_order)
 
         if min_order < 0 or min_order > self._max_order:

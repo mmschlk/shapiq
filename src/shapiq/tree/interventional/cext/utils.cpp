@@ -16,6 +16,7 @@ enum class IndexType
     FSII,
     STII,
     MOEBIUS,
+    FOURIER,
     CUSTOM
 };
 

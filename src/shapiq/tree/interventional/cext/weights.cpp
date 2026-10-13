@@ -53,6 +53,13 @@ namespace inter_weights
         return signed_unit(s_cap_r) * std::ldexp(1.0f, -(e + r - s)); // Equivalent to 1.0f / (2^(a+b))
     }
 
+    inline double fourier_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // (-1/2)^s times the Banzhaf weight: every coalition weighs 2^-(e+r), and since
+        // s = s_cap_e + s_cap_r the sign (-1)^(s + s_cap_r) is (-1)^s_cap_e
+        return signed_unit(s_cap_e) * std::ldexp(1.0, -(e + r));
+    }
+
     inline double chaining_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Beta(x,y) = (tgamma(x)*tgamma(y))/tgamma(x+y)
@@ -174,6 +181,8 @@ namespace inter_weights
             return stii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         case IndexType::MOEBIUS:
             return moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
+        case IndexType::FOURIER:
+            return fourier_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         default:
             return general_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order, index);
         }
