@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -15,14 +14,13 @@ from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.proxy._routes import tree_to_fourier
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.conversion import convert_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.game import Game
-    from shapiq.tree.base import TreeModel
 
 
 def _resolve_surrogate_model(
@@ -67,43 +65,6 @@ def _resolve_surrogate_model(
 
 
 _FourierDict = dict[tuple[int, ...], float]
-
-
-def _tree_to_fourier(tree_model: TreeModel) -> _FourierDict:
-    """Extract exact Fourier (Walsh) coefficients from a single tree by DFS.
-
-    Equivalent to ``ProxySPEX._sklearn_tree_to_fourier`` but standalone — no
-    Approximator instantiation required.
-    """
-
-    def _combine(left: _FourierDict, right: _FourierDict, feature: int) -> _FourierDict:
-        combined: _FourierDict = {}
-        for interaction in set(left) | set(right):
-            left_val = left.get(interaction, 0.0)
-            right_val = right.get(interaction, 0.0)
-            combined[interaction] = (left_val + right_val) / 2
-            combined[tuple(sorted(set(interaction) | {feature}))] = (left_val - right_val) / 2
-        return combined
-
-    def _dfs(node: int) -> _FourierDict:
-        if tree_model.children_left[node] == -1:
-            return {(): tree_model.values[node]}
-        return _combine(
-            _dfs(tree_model.children_left[node]),
-            _dfs(tree_model.children_right[node]),
-            tree_model.features[node],
-        )
-
-    return _dfs(0)
-
-
-def _ensemble_to_fourier(tree_models: list[TreeModel]) -> dict[tuple[int, ...], float]:
-    """Aggregate Fourier coefficients across an ensemble of trees."""
-    aggregated: dict[tuple[int, ...], float] = defaultdict(float)
-    for tree_model in tree_models:
-        for interaction, value in _tree_to_fourier(tree_model).items():
-            aggregated[interaction] += value
-    return {k: v for k, v in aggregated.items() if v != 0.0}
 
 
 class OddSHAP(Approximator):
@@ -388,13 +349,9 @@ class OddSHAP(Approximator):
         self.odd_interaction_matrix_float = interaction_matrix_binary.astype(np.float64)
         self.n_active_interactions = len(active_interactions)
 
-    @staticmethod
-    def _surrogate_to_fourier(surrogate_model: object) -> _FourierDict:
-        """Convert the fitted surrogate to its exact Fourier (Walsh) spectrum."""
-        tree_models = convert_tree_model(surrogate_model)
-        if not isinstance(tree_models, list):
-            tree_models = [tree_models]
-        return _ensemble_to_fourier(tree_models)
+    def _surrogate_to_fourier(self, surrogate_model: object) -> _FourierDict:
+        """Read the fitted surrogate's exact Fourier (Walsh) spectrum with the interventional kernel."""
+        return tree_to_fourier(surrogate_model, self.n)
 
     def _select_active_terms(
         self,

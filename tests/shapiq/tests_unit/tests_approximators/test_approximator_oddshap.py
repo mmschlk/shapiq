@@ -378,7 +378,7 @@ def test_select_odd_interactions_returns_higher_order_odd_only():
         n_candidate_interactions=10,
         surrogate_model=surrogate,
     )
-    # Guard against a silent break of convert_tree_model / _sklearn_to_fourier
+    # Guard against a silent break of the surrogate -> Fourier readout (tree_to_fourier)
     # that would make screening return nothing and pass the loop vacuously.
     assert len(selected) > 0
     for t in selected:
@@ -568,7 +568,7 @@ def test_select_active_terms_computes_fourier_spectrum_once(monkeypatch):
     approx = OddSHAP(n=n, random_state=0)
     *_, surrogate = _fit_surrogate(approx, game, 2**n)
 
-    original_to_fourier = OddSHAP._surrogate_to_fourier
+    original_to_fourier = approx._surrogate_to_fourier
     call_count = 0
 
     def counting_to_fourier(model):

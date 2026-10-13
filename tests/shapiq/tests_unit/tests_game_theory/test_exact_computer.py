@@ -105,6 +105,7 @@ def test_exact_elc_computer_call(index, order):
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Fourier", 2),
         ("SGV", 2),
         ("BGV", 2),
         ("CHGV", 2),
@@ -132,6 +133,29 @@ def test_exact_computer_call(index, order):
     assert interaction_values.index == index  # index should be the same
     assert interaction_values.estimated is False  # nothing should be estimated
     assert interaction_values.values is not None  # values should be computed
+
+
+def test_fourier_is_scaled_bii_and_converts_to_moebius():
+    """Fourier is (-1/2)^|S| BII, in the convention of ``ProxySPEX.fourier_to_moebius``.
+
+    That convention expands the basis function (-1)^|S n T| = prod_{i in S} (1 - 2 [i in T]), so
+    the Moebius coefficient of R is the sum of (-2)^|R| F(S) over all S containing R.
+    """
+    n = 5
+    exact_computer = ExactComputer(game=SOUM(n, n_basis_games=10), n_players=n)
+    fourier = exact_computer("Fourier", n)
+    bii = exact_computer("BII", n)
+    moebius = exact_computer("Moebius", n)
+    for interaction in powerset(range(n), min_size=1):
+        scale = (-0.5) ** len(interaction)
+        assert fourier[interaction] == pytest.approx(scale * bii[interaction], abs=1e-12)
+    for subset in powerset(range(n)):
+        converted = sum(
+            (-2) ** len(subset) * fourier[interaction]
+            for interaction in powerset(range(n))
+            if set(subset) <= set(interaction)
+        )
+        assert converted == pytest.approx(moebius[subset], abs=1e-10)
 
 
 def test_basic_functions():
@@ -195,6 +219,7 @@ def original_game():
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Fourier", 2),
         ("SGV", 2),
         ("BGV", 2),
         ("CHGV", 2),
@@ -252,6 +277,7 @@ def test_warning_cii():
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Fourier", 2),
         ("Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
@@ -318,6 +344,7 @@ def test_player_symmetry(index, order):
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Fourier", 2),
         ("STII", 2),
         ("k-SII", 2),
         ("FSII", 2),
@@ -377,6 +404,7 @@ def test_null_player(index, order):
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Fourier", 2),
         ("STII", 2),
         ("k-SII", 2),
         ("FSII", 2),
