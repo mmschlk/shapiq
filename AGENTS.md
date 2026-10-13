@@ -1075,3 +1075,7 @@ uv run pre-commit run --all-files
   overlays through the standard-library-only runtime module, then import the
   package. Starting with `python -m shapiq_benchmark.execution` imports estimators
   too early and prevents correct historical overlay replay.
+
+- Upstream dataset migration can leave previously ignored CSV caches in
+  `src/shapiq_games/datasets/data/`. Keep that legacy path ignored; it may still
+  supply pinned historical reproduction and must not be added to the package.
