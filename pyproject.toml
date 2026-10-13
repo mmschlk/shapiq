@@ -103,6 +103,7 @@ benchmark = [
     "openml",        # OpenML datasets, TabArena included
     "openpyxl",      # the real_estate dataset (xlsx)
     "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
+    "pyarrow",       # OpenML cache support
     "xgboost",       # models of the registry
     "lightgbm",
     "catboost",

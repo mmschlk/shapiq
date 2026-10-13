@@ -1,0 +1,545 @@
+<!doctype html>
+<!-- Generated from about.md by benchmark/render_about.py; edit the Markdown source. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="The Shapley estimator benchmark: how we construct games, obtain exact references, and measure error." />
+  <title>About the benchmark · shapiq</title>
+  <link rel="icon" href="shapiq.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="about.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml-full.js"></script>
+</head>
+<body>
+  <a class="skipLink" href="#content">Skip to content</a>
+  <header><a href="index.html">← Benchmark results</a><a href="about.md">Markdown source</a></header>
+  <main id="content">
+    <article class="aboutArticle">
+<h1 id="about-the-benchmark">About the benchmark</h1>
+<p><strong>22 estimators · 24 datasets · 2,048 games.</strong>
+We compare contribution estimates for predictions, training data and feature selection.</p>
+<nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#games-shapley-values-and-estimation-error">Games, Shapley values and estimation error</a></li><li><a href="#explaining-an-individual-prediction">Explaining an individual prediction</a></li><li><a href="#valuing-training-data">Valuing training data</a></li><li><a href="#selecting-useful-features">Selecting useful features</a></li><li><a href="#comparing-and-reproducing-results">Comparing and reproducing results</a></li><li><a href="#estimator-combinations">Estimator combinations</a></li></ul></nav>
+<h2 id="games-shapley-values-and-estimation-error">Games, Shapley values and estimation error</h2>
+<ul>
+<li><strong>Game:</strong> for players <span class="math">\(N = \{1, \ldots, d\}\)</span>, a function <span class="math">\(f: 2^N \to \mathbb{R}\)</span> assigns a value
+<span class="math">\(f(S)\)</span> to each coalition <span class="math">\(S \subseteq N\)</span>. The applications below define the players and <span class="math">\(f\)</span>.</li>
+<li><strong>Shapley value:</strong> player <span class="math">\(i\)</span>'s average marginal contribution across all player orderings:</li>
+</ul>
+<div class="math">\[\phi_i = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!\,(d - |S| - 1)!}{d!}\left[f(S \cup \{i\}) - f(S)\right].\]</div>
+<ul>
+<li><strong>Estimator:</strong> an algorithm queries <span class="math">\(f\)</span> at most <span class="math">\(B\)</span> times and returns an estimated
+vector <span class="math">\(\hat{\boldsymbol{\phi}}\)</span>, to approximate the exact contribution vector <span class="math">\(\boldsymbol{\phi}\)</span>.</li>
+<li><strong>Normalized mean squared error (nMSE):</strong></li>
+</ul>
+<div class="math">\[\mathbf{nMSE} = \frac{\lVert \hat{\boldsymbol{\phi}} - \boldsymbol{\phi} \rVert_2^2}{\lVert \boldsymbol{\phi} \rVert_2^2}.\]</div>
+<p><strong>Lower is better:</strong> zero is exact; one is the error of estimating every contribution
+as zero. Zero or negligible reference vectors are excluded. For interaction targets,
+the vectors contain the requested interaction coefficients; the empty-coalition
+baseline is excluded. Main effects and pairs can also be viewed separately.</p>
+<ul>
+<li><strong>Scope:</strong> 512 recipes and 2,048 prepared instances; four seeds per recipe.</li>
+<li><strong>Coverage:</strong> all 20 required estimators have <strong>100% successful supported coverage</strong>.
+ShaplEIG and SPEX retain partial coverage. Unsupported or ineligible cells do not count.</li>
+<li><strong>Selection:</strong> 477 core recipes and 35 KNN/TNN recipes. A recipe is excluded if
+any seed fails the model-quality check. Replacements preserve all 24 datasets
+without selecting for estimator accuracy; see the
+<a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json">selection manifest</a>.</li>
+</ul>
+<h2 id="explaining-an-individual-prediction">Explaining an individual prediction</h2>
+<p><strong>Players are input features.</strong> Fit a predictor <span class="math">\(h\)</span> once and explain one held-out
+point <span class="math">\(x\)</span>. For the small games, keep <span class="math">\(x\)</span>'s selected features and replace the others
+with fixed training-background means <span class="math">\(b\)</span>:</p>
+<div class="math">\[f(S) = h(z(S)) - h(b), \qquad z_i(S) = \begin{cases}x_i &amp; i \in S,\\ b_i &amp; i \notin S.\end{cases}\]</div>
+<p>The output is a fixed class probability or a regression prediction.
+<strong>Exact reference:</strong> evaluate all <span class="math">\(2^d\)</span> coalitions.</p>
+<p><strong>Tree games</strong> extend this to larger player sets. Interventional games average
+predictions with missing features filled from fixed background rows. Path-dependent games average missing
+branches using training-path weights. Matching exact tree solvers supply the
+references. Both tree constructions use random forests only.</p>
+<p><strong>Models:</strong> linear/logistic regression and random forest for baseline games,
+with nested feature sets of at most 12 players. RF tree games use 8, 16 and 32
+features where available. A dataset's full width below 12 is also included in the
+baseline grid. Tables show selected player counts; “—” means no selected recipe.</p>
+<details class="datasetTable"><summary>Dataset coverage</summary><table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Baseline features (linear / RF)</th>
+<th>RF tree features (path / interventional)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adult Census</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Mushroom</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16 / 8, 16</td>
+</tr>
+<tr>
+<td>Ionosphere</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Bioresponse</td>
+<td>— / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Breast Cancer</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16 / 8, 16</td>
+</tr>
+<tr>
+<td>Digits</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Wine (classification)</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Amazon Employee Access</td>
+<td>8, 9 / 8, 9</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>APS Failure</td>
+<td>4, 8, 12 / 4, 12</td>
+<td>16, 32 / 16, 32</td>
+</tr>
+<tr>
+<td>Anneal</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Splice</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Credit Card Default</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16 / 8, 16</td>
+</tr>
+<tr>
+<td>Wine Quality</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Communities and Crime</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>NHANES I</td>
+<td>— / 8, 12</td>
+<td>8, 32 / 8, 32</td>
+</tr>
+<tr>
+<td>QSAR-TID11</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>Miami Housing</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Superconductivity</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8, 16, 32 / 8, 16, 32</td>
+</tr>
+<tr>
+<td>California Housing</td>
+<td>4 / 4, 8</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Diabetes</td>
+<td>4, 8, 10 / 4, 8, 10</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Bike Sharing</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Airfoil Self Noise</td>
+<td>4, 5 / 4, 5</td>
+<td>— / —</td>
+</tr>
+<tr>
+<td>Concrete Strength</td>
+<td>4, 8 / 4, 8</td>
+<td>8 / 8</td>
+</tr>
+<tr>
+<td>Protein</td>
+<td>4, 8, 9 / 4, 8, 9</td>
+<td>8 / 8</td>
+</tr>
+</tbody>
+</table></details>
+<h2 id="valuing-training-data">Valuing training data</h2>
+<p><strong>Players are groups of training rows.</strong> For a coalition <span class="math">\(S\)</span>, fit <span class="math">\(h_S\)</span> on the union
+of its groups and evaluate on a fixed held-out set <span class="math">\(T\)</span>:</p>
+<div class="math">\[f(S) = \begin{cases}\operatorname{accuracy}(h_S, T) &amp; \text{classification},\\ -\operatorname{MSE}(h_S, T) &amp; \text{regression},\end{cases} \qquad f(\varnothing) = 0.\]</div>
+<p><strong>Exact reference:</strong> refit and score every coalition of 4, 8 or 12 groups.
+Both linear/logistic regression and random forest use exactly
+<span class="math">\(\min(12, \text{dataset width})\)</span> input features. There is no input-width sweep;
+input width is separate from the number of players.</p>
+<p><strong>Neighbor games</strong> use individual training rows as players for a fixed test
+example. KNN utility counts matching labels among the coalition's nearest
+<span class="math">\(\min(k, |S|)\)</span> rows, divided by fixed <span class="math">\(k\)</span>. TNN utility is the matching-label fraction
+within a fixed radius, or <span class="math">\(1 / \text{number of classes}\)</span> when no rows are present.
+Selected classification games use 32 or 64 players, with exact native Shapley
+references. All input selections are fixed before estimator evaluation.</p>
+<details class="datasetTable"><summary>Dataset coverage</summary><table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Training-row groups (linear / RF)</th>
+<th>Neighbor players (KNN / TNN)</th>
+<th>Input features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adult Census</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>64 / 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Mushroom</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32 / 32, 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Ionosphere</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32, 64 / 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Bioresponse</td>
+<td>— / 4, 8, 12</td>
+<td>32, 64 / 32</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Breast Cancer</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>64 / 32, 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Digits</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32 / 32, 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Wine (classification)</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32, 64 / 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Amazon Employee Access</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32, 64 / 32</td>
+<td>9</td>
+</tr>
+<tr>
+<td>APS Failure</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>64 / 32, 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Anneal</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32 / 32, 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Splice</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32, 64 / 64</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Credit Card Default</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>32, 64 / 32</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Wine Quality</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Communities and Crime</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>NHANES I</td>
+<td>— / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>QSAR-TID11</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Miami Housing</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Superconductivity</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>California Housing</td>
+<td>— / 4, 8, 12</td>
+<td>— / —</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Diabetes</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Bike Sharing</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Airfoil Self Noise</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Concrete Strength</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Protein</td>
+<td>4, 8, 12 / 4, 8, 12</td>
+<td>— / —</td>
+<td>9</td>
+</tr>
+</tbody>
+</table></details>
+<h2 id="selecting-useful-features">Selecting useful features</h2>
+<p><strong>Players are input features.</strong> For every coalition <span class="math">\(S\)</span>, fit a fresh predictor <span class="math">\(h_S\)</span>
+using only those columns, keeping the training and held-out rows fixed:</p>
+<div class="math">\[f(S) = \begin{cases}\operatorname{accuracy}(h_S, T_S) &amp; \text{classification},\\ -\operatorname{MSE}(h_S, T_S) &amp; \text{regression},\end{cases} \qquad f(\varnothing) = 0.\]</div>
+<p><strong>Exact reference:</strong> fit and score all <span class="math">\(2^d\)</span> coalitions. Unlike an individual-prediction
+game, this measures how well a model can learn from the chosen features.</p>
+<p><strong>Models:</strong> linear/logistic regression and random forest, with the same nested
+feature grids of at most 12 players used by the baseline prediction games.</p>
+<details class="datasetTable"><summary>Dataset coverage</summary><table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Linear features</th>
+<th>RF features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adult Census</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Mushroom</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Ionosphere</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Bioresponse</td>
+<td>—</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Breast Cancer</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Digits</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Wine (classification)</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Amazon Employee Access</td>
+<td>8, 9</td>
+<td>8, 9</td>
+</tr>
+<tr>
+<td>APS Failure</td>
+<td>4, 8, 12</td>
+<td>4, 12</td>
+</tr>
+<tr>
+<td>Anneal</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Splice</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Credit Card Default</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Wine Quality</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Communities and Crime</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>NHANES I</td>
+<td>—</td>
+<td>8, 12</td>
+</tr>
+<tr>
+<td>QSAR-TID11</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Miami Housing</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Superconductivity</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>California Housing</td>
+<td>4</td>
+<td>4, 8</td>
+</tr>
+<tr>
+<td>Diabetes</td>
+<td>4, 8, 10</td>
+<td>4, 8, 10</td>
+</tr>
+<tr>
+<td>Bike Sharing</td>
+<td>4, 8, 12</td>
+<td>4, 8, 12</td>
+</tr>
+<tr>
+<td>Airfoil Self Noise</td>
+<td>4, 5</td>
+<td>4, 5</td>
+</tr>
+<tr>
+<td>Concrete Strength</td>
+<td>4, 8</td>
+<td>4, 8</td>
+</tr>
+<tr>
+<td>Protein</td>
+<td>4, 8, 9</td>
+<td>4, 8, 9</td>
+</tr>
+</tbody>
+</table></details>
+<h2 id="comparing-and-reproducing-results">Comparing and reproducing results</h2>
+<ul>
+<li><strong>Budgets:</strong> 0.5, 1, 2, 4, 8, 16 and 32 × <span class="math">\(d\)</span> coalition queries;
+three estimator seeds per game. Actual query use can be smaller.</li>
+<li><strong>Targets:</strong> Shapley values and order-two k-SII, SII, STII, FSII and FBII
+interactions, where supported. KNN/TNN games provide SV only.</li>
+<li><strong>Scores:</strong> weighted means and medians. Applications receive equal weight,
+followed by subtype and recipe; datasets with more recipes can have more weight.</li>
+<li><strong>Completion:</strong> 100% successful supported coverage for every estimator
+except ShaplEIG and SPEX. ProxySPEX is included. Failed and missing runs for the
+two exempt estimators remain visible and unscored.</li>
+<li><strong>Coverage:</strong> exact-reference coverage and successful estimator coverage are
+separate. Unsupported targets are not failures. Zero-signal and quality
+exclusions are reported without changing frozen games to improve coverage.</li>
+<li><strong>Ground truth:</strong> exhaustive tables for generic games of at most 12 players;
+matching exact native solvers for random-forest tree and neighbor games. References are
+subject to floating-point precision; small-game solver checks do not establish
+independent full-dimensional validation.</li>
+<li><strong>Data notes:</strong> Wine classification differs from Wine Quality regression.
+NHANES I uses its supplied survival label as a regression surrogate.</li>
+<li><strong>Timing:</strong> measured estimator time on cached games; estimated oracle costs are
+shown separately. These are diagnostic timings, not isolated end-to-end timings.</li>
+<li><strong>Reproduction:</strong> download the frozen games and results from the dashboard.
+<a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11">Historical broader results</a>
+are archived separately and excluded from this benchmark.</li>
+</ul>
+<h2 id="estimator-combinations">Estimator combinations</h2>
+<p>For each target and budget, we fit <strong>signed ridge regression</strong> with no intercept:</p>
+<div class="math">\[\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.\]</div>
+<ul>
+<li><strong>Fit:</strong> weighted mean nMSE plus <span class="math">\(\lambda\lVert\boldsymbol{\alpha}\rVert_2^2\)</span>.
+Large weights are penalized; negative weights remain allowed.</li>
+<li><strong>Validation:</strong> nested dataset-grouped cross-validation chooses <span class="math">\(\lambda\)</span>
+from <span class="math">\(10^{-6}, 10^{-5}, \ldots, 1\)</span>. Test datasets enter neither fitting nor tuning.
+Panels match games, budgets and seeds across estimators.</li>
+<li><strong>Display:</strong> coefficients use all datasets; R² and nMSE use held-out predictions.
+PCA shows shared errors. Coefficients describe combinations, not estimator importance.</li>
+</ul>
+    </article>
+  </main>
+</body>
+</html>

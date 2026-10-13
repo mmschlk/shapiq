@@ -1,0 +1,790 @@
+{
+  "version": 3,
+  "name": "compact-prepared-512-v3",
+  "selection_basis": "Original scientific recipe settings and frozen model-validation preparation outcomes only; no estimator outcomes, scores, runtime or rankings.",
+  "preparation_audit_sha256": "40ecf8e8c841c1272b9ee91bfba80400c6c17b7aea30025473aa0b52deaaba4e",
+  "construction_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "estimator_seeds": [
+    0,
+    1,
+    2
+  ],
+  "relative_budgets": [
+    0.5,
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "excluded_core": [
+    {
+      "id": "comprehensive-dataset_valuation-california_housing-linear-p12-f8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-california_housing-linear-p4-f8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-california_housing-linear-p8-f8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-nhanesi-linear-p12-f12",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-nhanesi-linear-p4-f12",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-nhanesi-linear-p8-f12",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-tabarena_bioresponse-linear-p12-f12",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-tabarena_bioresponse-linear-p4-f12",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-dataset_valuation-tabarena_bioresponse-linear-p8-f12",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-california_housing-linear-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-nhanesi-linear-p12",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-nhanesi-linear-p4",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-nhanesi-linear-p8",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-nhanesi-random_forest-p4",
+      "failed_seed": 3,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_amazon_employee_access-linear-p4",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_amazon_employee_access-random_forest-p4",
+      "failed_seed": 3,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_aps_failure-random_forest-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_bioresponse-linear-p12",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_bioresponse-linear-p4",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-feature_selection-tabarena_bioresponse-linear-p8",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-interventional_tree-nhanesi-random_forest-p16",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "8aaa236c1d90ebd67cd1627f391f041a4edbc76b3bdf00cf2a931cf59d4ab49c"
+    },
+    {
+      "id": "comprehensive-interventional_tree-tabarena_aps_failure-random_forest-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "44bddaf7807f9bd06ca246a7cc7034566c80729e775fd99e9dd1fe2d957009c0"
+    },
+    {
+      "id": "comprehensive-local_baseline-california_housing-linear-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-nhanesi-linear-p12",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-nhanesi-linear-p4",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-nhanesi-linear-p8",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-nhanesi-random_forest-p4",
+      "failed_seed": 3,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_amazon_employee_access-linear-p4",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_amazon_employee_access-random_forest-p4",
+      "failed_seed": 3,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_aps_failure-random_forest-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_bioresponse-linear-p12",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_bioresponse-linear-p4",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-local_baseline-tabarena_bioresponse-linear-p8",
+      "failed_seed": 2,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "f12aa52beea6144f6efa7047d4ea3fe7b1711fa7545ddcb2cdb3e8955e3a5455"
+    },
+    {
+      "id": "comprehensive-pathdependent_tree-nhanesi-random_forest-p16",
+      "failed_seed": 1,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "5b2144b7cd6bf747e73697961f56083dc044e9596f444e7b41ff1764d61b26b5"
+    },
+    {
+      "id": "comprehensive-pathdependent_tree-tabarena_aps_failure-random_forest-p8",
+      "failed_seed": 0,
+      "quality_reason": "model_not_better_than_validation_dummy",
+      "evidence_sha256": "868c0f53bed2f75f49916a18e7825eeff6f04c532d830f43de40d75b54b63d2c"
+    }
+  ],
+  "neighbor_recipes": [
+    {
+      "id": "comprehensive-knn-adult_census-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "adult_census",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-adult_census-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "adult_census",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-mushroom-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "mushroom",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-mushroom-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "mushroom",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-mushroom-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "mushroom",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-ionosphere-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "ionosphere",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-ionosphere-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "ionosphere",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-ionosphere-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "ionosphere",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_bioresponse-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_bioresponse",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_bioresponse-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_bioresponse",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_bioresponse-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_bioresponse",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-breast_cancer-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "breast_cancer",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-breast_cancer-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "breast_cancer",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-breast_cancer-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "breast_cancer",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-digits-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "digits",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-digits-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "digits",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-digits-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "digits",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-wine-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "wine",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-wine-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "wine",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-wine-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "wine",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_amazon_employee_access-knn-p32-f9",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_amazon_employee_access",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "9",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_amazon_employee_access-knn-p64-f9",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_amazon_employee_access",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "9",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_amazon_employee_access-tnn-p32-f9",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_amazon_employee_access",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "9",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_aps_failure-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_aps_failure",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_aps_failure-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_aps_failure",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_aps_failure-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_aps_failure",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_anneal-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_anneal",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_anneal-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_anneal",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_anneal-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_anneal",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_splice-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_splice",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_splice-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_splice",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_splice-tnn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_splice",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_credit_card_default-knn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_credit_card_default",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-knn-tabarena_credit_card_default-knn-p64-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_credit_card_default",
+      "model": "knn",
+      "construction": "knn",
+      "n_players": "64",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    },
+    {
+      "id": "comprehensive-tnn-tabarena_credit_card_default-tnn-p32-f12",
+      "application": "data",
+      "subtype": "neighbor_examples",
+      "dataset": "tabarena_credit_card_default",
+      "model": "tnn",
+      "construction": "tnn",
+      "n_players": "32",
+      "reference": "neighbor_solver",
+      "input_features": "12",
+      "feature_rule": "nested",
+      "training_rows": "5000",
+      "row_selection": "nested_stratified"
+    }
+  ],
+  "neighbor_selection": {
+    "dataset_order": [
+      "adult_census",
+      "mushroom",
+      "ionosphere",
+      "tabarena_bioresponse",
+      "breast_cancer",
+      "digits",
+      "wine",
+      "tabarena_amazon_employee_access",
+      "tabarena_aps_failure",
+      "tabarena_anneal",
+      "tabarena_splice",
+      "tabarena_credit_card_default"
+    ],
+    "stratum_order": [
+      {
+        "construction": "knn",
+        "n_players": 32
+      },
+      {
+        "construction": "knn",
+        "n_players": 64
+      },
+      {
+        "construction": "tnn",
+        "n_players": 32
+      },
+      {
+        "construction": "tnn",
+        "n_players": 64
+      }
+    ],
+    "rule": "For zero-based dataset index i, omit stratum i modulo 4, retain the other three. From these 36 recipes remove the one with minimum SHA256 of its UTF-8 recipe ID.",
+    "cyclically_omitted_recipe_ids": [
+      "comprehensive-knn-adult_census-knn-p32-f12",
+      "comprehensive-knn-mushroom-knn-p64-f12",
+      "comprehensive-tnn-ionosphere-tnn-p32-f12",
+      "comprehensive-tnn-tabarena_bioresponse-tnn-p64-f12",
+      "comprehensive-knn-breast_cancer-knn-p32-f12",
+      "comprehensive-knn-digits-knn-p64-f12",
+      "comprehensive-tnn-wine-tnn-p32-f12",
+      "comprehensive-tnn-tabarena_amazon_employee_access-tnn-p64-f9",
+      "comprehensive-knn-tabarena_aps_failure-knn-p32-f12",
+      "comprehensive-knn-tabarena_anneal-knn-p64-f12",
+      "comprehensive-tnn-tabarena_splice-tnn-p32-f12",
+      "comprehensive-tnn-tabarena_credit_card_default-tnn-p64-f12"
+    ],
+    "additional_omitted_recipe_id": "comprehensive-tnn-adult_census-tnn-p32-f12",
+    "additional_omitted_recipe_sha256": "007523c36e67d63db157da813de270b18a3eacdc8bf356f03588051ea1084b01"
+  },
+  "counts": {
+    "original_core_recipes": 512,
+    "excluded_core_recipes": 35,
+    "retained_core_recipes": 477,
+    "included_neighbor_recipes": 35,
+    "selected_recipes": 512,
+    "prepared_instances": 2048
+  },
+  "selected_recipe_rows_sha256": "5e8b5539ca82aaaee02a5cef8afb1bea8fad8f936a367f199b051d4b268e897f"
+}

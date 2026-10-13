@@ -1,0 +1,6 @@
+{
+  "approximate_seconds": 3600,
+  "startup_seconds": 600,
+  "output_seconds": 600,
+  "memory_gib": 8
+}

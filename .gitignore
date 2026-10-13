@@ -181,6 +181,7 @@ illustration_sources/
 # downloads in ~/.cache/shapiq (or $SHAPIQ_DATA_DIR); old checkouts still hold the CSVs of the
 # removed shapiq.datasets here
 src/shapiq/datasets/data/
+src/shapiq_games/datasets/data/
 
 shapiq/games/benchmark/precomputed/
 benchmark/results/*
@@ -207,3 +208,9 @@ scripts/
 
 # CatBoost training artifacts (written by catboost fits in tests)
 catboost_info/
+
+# Generated website results are published as checksummed release assets.
+/benchmark/site/data.json
+/benchmark/site/about.json
+
+/benchmark/site/records-*.json
