@@ -268,7 +268,7 @@ def _is_zero(value: float | np.ndarray) -> bool:
     ``np.all(value == 0)`` would be the one-liner, but it costs a full numpy reduction dispatch
     per scalar comparison; only array values need numpy at all.
     """
-    return not value.any() if isinstance(value, np.ndarray) else value == 0
+    return not np.any(value) if isinstance(value, np.ndarray) else value == 0
 
 
 def _project_onto_lower_orders_loop(

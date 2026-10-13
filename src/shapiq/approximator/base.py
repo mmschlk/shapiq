@@ -253,7 +253,7 @@ class Approximator(ABC, Generic[TIndices]):
             The result array.
 
         """
-        return np.zeros(len(self._interaction_lookup), dtype=dtype)
+        return np.zeros(len(self._interaction_lookup), dtype=np.dtype(dtype))
 
     @property
     def _order_iterator(self) -> range:

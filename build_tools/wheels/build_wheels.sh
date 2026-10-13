@@ -59,4 +59,4 @@ if [[ $(uname) == "Darwin" ]]; then
     export CXX=/usr/bin/clang++
 fi
 
-uvx cibuildwheel==3.4.0 --output-dir wheelhouse
+uvx cibuildwheel==4.3.1 --output-dir wheelhouse

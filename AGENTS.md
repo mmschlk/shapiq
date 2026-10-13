@@ -248,3 +248,13 @@ rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b
 ```bash
 uv run pre-commit run --all-files
 ```
+
+## Test suite gotchas
+
+- Do not run `tests/shapiq` with `pytest -n` (or next to another test run) on a small machine:
+  the LightGBM proxies of `ProxySPEX` use all cores with OpenMP spin-waiting, and with the cores
+  oversubscribed `test_approximator_proxyspex.py` goes from ~5s to many minutes and looks hung
+  inside `Booster.update`. CI runs the suite serially.
+- Python 3.15 environments have no torch, tabpfn, catboost, or scikit-image (no wheels yet; see
+  the `python_version < '3.15'` markers in `pyproject.toml`). Tests needing them must use
+  `pytest.importorskip` instead of importing them (or a module importing them) at module level.
