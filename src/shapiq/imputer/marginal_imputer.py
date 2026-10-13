@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,10 +11,8 @@ from .base import Imputer
 if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, GameValues, Model
 
-_too_large_sample_size_warning = (
-    "The sample size is larger than the number of data points in the background set. "
-    "Reducing the sample size to the number of background samples."
-)
+# maximum number of array elements (rows times features, ~8 MB as float64) per model call
+_MAX_ELEMENTS_PER_PREDICTION = 2**20
 
 
 class MarginalImputer(Imputer):
@@ -58,7 +55,7 @@ class MarginalImputer(Imputer):
         data: np.ndarray,
         *,
         x: np.ndarray | None = None,
-        sample_size: int = 100,
+        sample_size: int | None = 100,
         categorical_features: list[int] | None = None,
         joint_marginal_distribution: bool = True,
         normalize: bool = True,
@@ -77,8 +74,12 @@ class MarginalImputer(Imputer):
                 shape ``(1, n_features)`` or as a vector with shape ``(n_features,)``. If ``None``,
                 the imputer must be fitted before it can be used.
 
-            sample_size: The number of samples to draw from the background data. Increasing this
-                value will linearly increase the runtime of the explainer.
+            sample_size: The maximum number of background rows used to impute missing features.
+                The rows are drawn once without replacement whenever the background data or the
+                random state is set, and are shared by all coalitions, including the empty
+                coalition (whose value is the baseline value). If ``None`` or if the background
+                data has at most ``sample_size`` rows, all rows are used. The runtime grows
+                linearly with the number of rows used. Defaults to ``100``.
 
             categorical_features: A list of indices of the categorical features. If ``None``, all
                 features are treated as continuous.
@@ -93,7 +94,13 @@ class MarginalImputer(Imputer):
 
             random_state: The random state to use for sampling. If ``None``, the random state is not
                 fixed.
+
+        Raises:
+            ValueError: If ``sample_size`` is smaller than ``1``.
         """
+        if sample_size is not None and sample_size < 1:
+            msg = f"The sample size must be a positive integer or None, but got {sample_size}."
+            raise ValueError(msg)
         super().__init__(
             model=model,
             data=data,
@@ -105,7 +112,9 @@ class MarginalImputer(Imputer):
 
         # setup attributes
         self.joint_marginal_distribution = joint_marginal_distribution
+        self._max_sample_size = sample_size  # upper bound requested by the user (None = all rows)
         self._replacement_data: np.ndarray = np.zeros((1, self.n_features))
+        self._sampled_replacement_data: np.ndarray = np.zeros((1, self.n_features))
         self.init_background(self.data)
 
         if normalize:  # update normalization value
@@ -123,18 +132,22 @@ class MarginalImputer(Imputer):
                ``(n_subsets, n_outputs)``.
 
         """
+        x = self.x
+        replacement_data = self._sampled_replacement_data
+        n_samples, n_features = replacement_data.shape
         n_coalitions = coalitions.shape[0]
-        replacement_data = self._sample_replacement_data(self.sample_size)
-        sample_size = replacement_data.shape[0]
-        outputs = np.zeros((sample_size, n_coalitions))
-        imputed_data = np.tile(self.x, (n_coalitions, 1))
-        for i in range(self.sample_size):
-            replacements = np.tile(replacement_data[i], (n_coalitions, 1))
-            imputed_data[~coalitions] = replacements[~coalitions]
-            predictions = self.predict(imputed_data)
-            outputs[i] = predictions
-        outputs = np.mean(outputs, axis=0)  # average over the samples
-        # insert the better approximate empty prediction for the empty coalitions
+        outputs = np.empty(n_coalitions)
+        # evaluate as many coalitions per model call as fit into the element budget
+        chunk_size = max(1, _MAX_ELEMENTS_PER_PREDICTION // (n_samples * n_features))
+        for start in range(0, n_coalitions, chunk_size):
+            chunk = coalitions[start : start + chunk_size]
+            # one row per (coalition, sample): present features from x, missing from the sample
+            present = np.repeat(chunk, n_samples, axis=0)
+            imputed_data = np.where(present, x, np.tile(replacement_data, (len(chunk), 1)))
+            predictions = np.asarray(self.predict(imputed_data)).reshape(len(chunk), n_samples)
+            outputs[start : start + len(chunk)] = predictions.mean(axis=1)  # average over samples
+        # the empty prediction is computed on the same replacement samples, inserting it keeps the
+        # value of the empty coalition exactly equal to ``empty_prediction``
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs
 
@@ -158,18 +171,33 @@ class MarginalImputer(Imputer):
             >>> new_data = np.random.rand(10, 3)
             >>> imputer.init_background(data=new_data)
 
-        Raises:
-            UserWarning: If the sample size is larger than the number of data points in the
-                background data. In this case, the sample size is reduced to the number of data
-                points in the background data.
+        Note:
+            At most ``sample_size`` rows of the new background data are used (all rows if
+            ``sample_size`` is ``None``), independently of earlier background data.
 
         """
         self._replacement_data = np.copy(data)
-        if self._sample_size > self._replacement_data.shape[0]:
-            warnings.warn(UserWarning(_too_large_sample_size_warning), stacklevel=2)
-            self._sample_size = self._replacement_data.shape[0]
+        n_rows = self._replacement_data.shape[0]
+        if self._max_sample_size is None:
+            self._sample_size = n_rows
+        else:
+            self._sample_size = min(self._max_sample_size, n_rows)
+        # draw the replacement samples once, so that all coalitions use the same samples
+        self._sampled_replacement_data = self._sample_replacement_data(self._sample_size)
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
+
+    def set_random_state(self, random_state: int | None = None) -> None:
+        """Sets the random state and redraws the replacement samples with it.
+
+        Args:
+            random_state: The random state to set. Defaults to ``None``, which will set a not
+                deterministic random state.
+
+        """
+        super().set_random_state(random_state)
+        self._sampled_replacement_data = self._sample_replacement_data(self._sample_size)
+        self.calc_empty_prediction()  # reset the empty prediction to the new samples
 
     def _sample_replacement_data(self, sample_size: int | None = None) -> np.ndarray:
         """Samples replacement values from the background data.
@@ -203,8 +231,7 @@ class MarginalImputer(Imputer):
             The empty prediction of the model provided only missing features.
 
         """
-        background_data = self._sample_replacement_data()
-        empty_predictions = self.predict(background_data)
+        empty_predictions = self.predict(self._sampled_replacement_data)
         empty_prediction = float(np.mean(empty_predictions))
         self.empty_prediction = empty_prediction
         if self.normalize:  # reset the normalization value

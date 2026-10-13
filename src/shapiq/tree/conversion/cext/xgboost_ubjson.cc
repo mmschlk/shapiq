@@ -297,27 +297,22 @@ public:
         return 0.0;
     }
 
-    int64_t readNumClassOrOne()
+    // Reads learner_model_param.num_class (1 if absent) and whether objective.name is a
+    // "binary:" objective. XGBoost writes object keys sorted, so both follow the trees and the
+    // objective follows num_class: continuing from num_class keeps the second scan short.
+    int64_t readNumClassOrOne(bool &binary_objective)
     {
         ByteStream s = *this;
-        while (s.pos < s.size)
+        binary_objective = false;
+        if (!s.trySkipTo(9, "num_class"))
+            return 1;
+        int64_t num_class = s.readInt();
+        if (s.trySkipTo(9, "objective") && s.trySkipTo(4, "name") && s.pos < s.size && s.data[s.pos] == 'S')
         {
-            uint8_t marker = s.readByte();
-            if (!s.isIntMarker(marker))
-                continue;
-            uint64_t length = 0;
-            if (!s.tryReadNonNegativeIntByMarker(marker, length))
-                continue;
-            if (length != 9 || s.pos + 9 > s.size)
-                continue;
-            if (std::memcmp(s.data + s.pos, "num_class", 9) == 0)
-            {
-                s.pos += 9;
-                int64_t val = s.readInt();
-                return val;
-            }
+            s.pos++; // consume 'S'
+            binary_objective = s.readString().rfind("binary:", 0) == 0;
         }
-        return 1;
+        return num_class;
     }
 
     int64_t readNumTrees()
@@ -752,6 +747,14 @@ public:
     void skipTo(uint64_t target_length, const char *target_key,
                 bool require_object_start = false)
     {
+        if (!trySkipTo(target_length, target_key, require_object_start))
+            throw std::runtime_error(std::string("Key not found: ") + target_key);
+    }
+
+    // skipTo without the throw: returns false (pos at the end) if the key is not found.
+    bool trySkipTo(uint64_t target_length, const char *target_key,
+                   bool require_object_start = false)
+    {
         while (pos < size)
         {
             size_t marker_pos = pos;
@@ -777,9 +780,9 @@ public:
                 continue;
             }
             pos += target_length;
-            return;
+            return true;
         }
-        throw std::runtime_error(std::string("Key not found: ") + target_key);
+        return false;
     }
 
     // Skip a single UBJSON scalar integer value (marker byte + data bytes).
@@ -978,11 +981,17 @@ public:
         fillArray(out.data(), count);
     }
 
-    ParsedForest extractTreeStructure(int class_label, double margin_base_score)
+    // is_classifier: the caller knows the model is a classifier even if its objective is not
+    // a "binary:" one (e.g. XGBClassifier with objective="reg:logistic").
+    ParsedForest extractTreeStructure(int class_label, double margin_base_score, bool is_classifier)
     {
         // This methods parses the data, until it finds the "trees" key.
         // After that, it parses the tree structure into plain C++ buffers.
-        int64_t num_class = readNumClassOrOne();
+        bool binary_objective = false;
+        int64_t num_class = readNumClassOrOne(binary_objective);
+        // a binary classifier has a single raw output, the class-1 log-odds
+        bool binary_classifier = num_class <= 1 && (is_classifier || binary_objective);
+        double class_sign = binary_classifier ? binary_class_sign(class_label) : 1.0;
 
         // XGBoost stores num_class * num_rounds trees in round-robin order:
         // tree i belongs to class (i % num_class).
@@ -1002,8 +1011,12 @@ public:
         // in _xgboost_margin_base_score (xgboost.py) for the base score.
         if (!filtering)
             class_label = 0;
-        else if (class_label < 0)
-            class_label = 1;
+        else
+        {
+            if (class_label < 0)
+                class_label = 1;
+            check_class_label(class_label, num_class);
+        }
 
         // Each included tree carries base_score / num_rounds so that the sum
         // across all rounds equals base_score for the selected class.
@@ -1016,6 +1029,7 @@ public:
         ParsedForest forest;
         forest.num_class = num_class;
         forest.base_score = base_score;
+        forest.negated_class_one = class_sign < 0.0;
         forest.trees.reserve(filtering ? num_rounds : total_trees);
 
         for (uint64_t i = 0; i < total_trees; i++)
@@ -1061,6 +1075,9 @@ public:
 
             // base_weights → leaf/split values (stream already positioned at '[')
             treeStream.fillArray(tree.values.data(), num_nodes, base_score_per_tree);
+            if (forest.negated_class_one)
+                for (double &value : tree.values)
+                    value = -value;
 
             // categories group: CSR metadata of categorical splits (all arrays empty for
             // non-categorical models). categories = flat category values, categories_nodes =
@@ -1165,8 +1182,9 @@ ParsedForest parse_xgboost_ubjson_to_forest(
 	const uint8_t *data,
 	size_t size,
 	int class_label,
-	double margin_base_score)
+	double margin_base_score,
+	bool is_classifier)
 {
 	ByteStream stream(data, size);
-	return stream.extractTreeStructure(class_label, margin_base_score);
+	return stream.extractTreeStructure(class_label, margin_base_score, is_classifier);
 }

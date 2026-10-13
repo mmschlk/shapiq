@@ -6,7 +6,7 @@ This example shows how to explain a sentiment classifier using ``shapiq``.
 Each token in the input text becomes a player in a cooperative game, and
 Shapley values quantify each token's contribution to the predicted sentiment.
 
-We use the :class:`~shapiq_games.benchmark.SentimentAnalysisLocalXAI` game
+We use the :class:`~shapiq_games.SentimentAnalysis` game
 from the ``shapiq_games`` package, which wraps a pretrained DistilBERT model
 fine-tuned on IMDb reviews.
 """
@@ -20,17 +20,17 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
 import shapiq
-from shapiq_games.benchmark import SentimentAnalysisLocalXAI
+from shapiq_games import SentimentAnalysis
 
 # %%
 # Set Up the Sentiment Game
 # --------------------------
 # Each word in the input becomes a player. The game value for a coalition
-# is the model's sentiment score when only those tokens are visible (absent
-# tokens are replaced with ``[MASK]``). The score is normalized so that the
-# empty coalition maps to 0.
+# is the model's signed sentiment score ``2 P(positive) - 1`` when only those
+# tokens are visible (absent tokens are replaced with ``[MASK]``). The score is
+# normalized so that the empty coalition maps to 0.
 
-game = SentimentAnalysisLocalXAI(
+game = SentimentAnalysis(
     input_text="I really loved this amazing film",
     mask_strategy="mask",
     normalize=True,
@@ -38,7 +38,8 @@ game = SentimentAnalysisLocalXAI(
 token_names = game.input_text.split()
 print(f"Tokens (players): {token_names}")
 print(f"Number of players: {game.n_players}")
-print(f"Grand coalition (full-text sentiment): {game.grand_coalition_value:.3f}")
+print(f"Sentiment of the full text: {game.original_model_output:.3f}")
+print(f"Grand coalition value (vs. the fully masked text): {game.grand_coalition_value:.3f}")
 
 # %%
 # Compute Shapley Values
@@ -77,14 +78,14 @@ sii.plot_network(feature_names=token_names)
 # ----------------------------
 # Let's also explain a negative review.
 
-game_neg = SentimentAnalysisLocalXAI(
+game_neg = SentimentAnalysis(
     input_text="This movie was terrible and boring",
     mask_strategy="mask",
     normalize=True,
 )
 token_names_neg = game_neg.input_text.split()
 print(f"Tokens: {token_names_neg}")
-print(f"Sentiment: {game_neg.grand_coalition_value:.3f}")
+print(f"Sentiment of the full text: {game_neg.original_model_output:.3f}")
 
 sv_neg = shapiq.KernelSHAP(n=game_neg.n_players, random_state=42).approximate(
     budget=50,

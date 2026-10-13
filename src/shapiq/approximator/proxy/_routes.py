@@ -204,12 +204,13 @@ def _extract_tree(
 
     ``fitted`` is the tree model already fit (by :func:`fit_proxy`) on the raw coalitions.
     """
+    # a boolean tree is explained like any other: the empty coalition as the single reference
+    # row and the grand coalition as the explain point
     explainer = InterventionalTreeSHAPIQ(
         fitted,
-        data=np.zeros((1, n_players)),  # reference data for boolean tree
+        data=np.zeros((1, n_players)),
         index=approximation_index,
         max_order=max_order,
-        bool_tree=True,
     )
     proxy_values = explainer.explain_function(np.ones((1, n_players)))
     return InteractionValues(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 from sklearn.linear_model import LinearRegression
@@ -10,6 +12,7 @@ from xgboost import XGBRegressor
 from shapiq.approximator.proxy import ProxySHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import SOUM
 
 
 def test_initialization_defaults():
@@ -182,6 +185,68 @@ def test_msr_adjustment_exact_at_full_budget(index, max_order):
         if interaction == ():
             continue
         assert np.allclose(estimates[interaction], gt_values[interaction], atol=1e-5), interaction
+
+
+@pytest.mark.parametrize("k_folds", [2, 5])
+def test_cross_fitted_stii_lower_orders_exact_when_enumerated(k_folds):
+    """Cross-fitting keeps the STII lower orders exact once their sizes are enumerated.
+
+    STII weights its lower orders only on ``T ⊆ S``, i.e. on coalitions of size ``<= 2`` here,
+    which the sampler enumerates. A fully enumerated size gets weight 1 in every fold, so the
+    proxy cancels on it. Scaling the held-out coalitions by ``k_folds`` instead (letting them
+    stand in for the fold's training coalitions too) left an ``O(1e-1)`` error at any budget.
+    """
+    n = 10
+    game = SOUM(
+        n=n, n_basis_games=30, min_interaction_size=1, max_interaction_size=4, random_state=1
+    )
+    gt_values = ExactComputer(game=game, n_players=n)(index="STII", order=3)
+
+    proxyshap = ProxySHAP(
+        n=n, max_order=3, index="STII", adjustment=True, k_folds=k_folds, random_state=0
+    )
+    estimates = proxyshap.approximate(1000, game)
+    # the folds are non-trivial: the middle size is stochastically sampled
+    assert proxyshap._sampler.is_coalition_sampled.sum() >= k_folds
+
+    for interaction in gt_values.interaction_lookup:
+        if len(interaction) in (1, 2):
+            assert np.isclose(estimates[interaction], gt_values[interaction], atol=1e-6), (
+                interaction
+            )
+
+
+@pytest.mark.parametrize("pairing_trick", [True, False])
+@pytest.mark.parametrize(("n", "budget"), [(10, 300), (10, 1000), (200, 400)])
+def test_cross_fitting_weights_count_every_coalition_once(n, budget, pairing_trick):
+    """In every fold, the weights of each size sum to ``binom(n, s)``.
+
+    Training coalitions count for themselves and held-out ones for all coalitions of their size
+    the fold's proxy never saw, so together they cover the population exactly once. At ``n=200``
+    the population sizes reach ``1e58``; the weights stay finite (log space, exact binomials).
+    """
+    proxyshap = ProxySHAP(
+        n=n, max_order=1, index="SV", k_folds=5, pairing_trick=pairing_trick, random_state=0
+    )
+    proxyshap._sampler.sample(budget)
+    coalitions = proxyshap._sampler.coalitions_matrix
+    sizes = coalitions.sum(axis=1).astype(int)
+
+    folds = proxyshap._cross_fitting_folds(coalitions)
+    assert len(folds) == 5
+    for train_index, residual_index, log_weights in folds:
+        assert np.isfinite(log_weights).all()
+        assert np.array_equal(np.sort(residual_index), np.arange(len(sizes)))
+        assert np.all(log_weights[: len(train_index)] == 0.0)
+        for size in np.unique(sizes):
+            in_size = sizes[residual_index] == size
+            log_total = np.logaddexp.reduce(log_weights[in_size])
+            assert np.isclose(log_total, math.log(math.comb(n, int(size))), rtol=1e-12)
+        if pairing_trick:
+            # a held-out coalition's complement is never in the fold's training set
+            held_out = coalitions[residual_index[len(train_index) :]]
+            training = {row.tobytes() for row in coalitions[train_index].astype(bool)}
+            assert not any((~row).tobytes() in training for row in held_out.astype(bool))
 
 
 def test_lazy_lookup_keeps_init_cheap_in_high_dimensions():

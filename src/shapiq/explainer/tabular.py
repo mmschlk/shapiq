@@ -103,7 +103,10 @@ class TabularExplainer(Explainer):
             verbose: Whether to show a progress bar during the computation. Defaults to ``False``.
 
             **kwargs: Additional keyword-only arguments passed to the imputers implemented in
-                :mod:`~shapiq.games.imputer`.
+                :mod:`~shapiq.games.imputer`. For the default ``"marginal"`` imputer,
+                ``sample_size`` sets the maximum number of background rows used for imputation
+                and for the baseline value (defaults to ``100``, ``None`` uses all rows). If
+                ``sample_size`` is not passed and ``data`` has more rows, a warning is raised.
         """
         from shapiq.imputer import (
             BaselineImputer,
@@ -132,6 +135,15 @@ class TabularExplainer(Explainer):
                 random_state=random_state,
                 **kwargs,
             )
+            n_rows, sample_size = self._data.shape[0], self._imputer.sample_size
+            if "sample_size" not in kwargs and sample_size < n_rows:
+                warn(
+                    f"The background data has {n_rows} rows, but the marginal imputer only uses a "
+                    f"random subsample of {sample_size} rows (default ``sample_size={sample_size}``"
+                    "), also to compute the baseline value. Pass ``sample_size=None`` to use all "
+                    "rows, or set ``sample_size`` explicitly to silence this warning.",
+                    stacklevel=2,
+                )
         elif imputer == "conditional":
             self._imputer = GenerativeConditionalImputer(
                 self.predict,

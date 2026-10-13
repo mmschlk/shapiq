@@ -9,7 +9,7 @@ import pytest
 from shapiq import InteractionValues, MarginalImputer
 from shapiq.explainer.agnostic import AgnosticExplainer, AgnosticExplainerIndices
 from shapiq.explainer.base import Explainer
-from shapiq_games.synthetic import DummyGame, RandomGame
+from shapiq_games.synthetic import DummyGame, RandomTableGame
 
 if TYPE_CHECKING:
     import numpy as np
@@ -146,7 +146,7 @@ def test_compute_random_seed_in_function_call(dt_reg_model, background_reg_data)
 
 def test_with_callable():
     """Test the AgnosticExplainer with a callable game."""
-    game_one = RandomGame(n=5, random_state=42)
+    game_one = RandomTableGame(5, random_state=42)
 
     def callable_game(coalitions: np.ndarray) -> np.ndarray:
         return game_one(coalitions)
@@ -161,7 +161,7 @@ def test_with_callable():
 
     iv1 = explainer.explain(budget=2**game_one.n_players)
 
-    game_two = RandomGame(n=5, random_state=42)
+    game_two = RandomTableGame(5, random_state=42)
     explainer_game = AgnosticExplainer(
         game=game_two, index="k-SII", max_order=2, random_state=42, n_players=game_two.n_players
     )

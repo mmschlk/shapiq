@@ -1,17 +1,24 @@
-"""Tests for the quadrature-based path-dependent TreeSHAP explainer."""
+"""Does the path-dependent quadrature kernel compute the right values?
+
+The oracles are TreeSHAP-IQ (the polynomial path-dependent explainer), linear TreeSHAP at
+order 1, a brute-force enumeration of the path-dependent game on a small tree, and the numpy
+twin of the C kernel (``quadrature_numpy_reference``). Layout and index tests of the kernel
+live in ``test_interventional_subset_tables.py``; the two explainers share them.
+"""
 
 from __future__ import annotations
 
+import pickle
 import warnings
 from itertools import combinations
-from math import factorial
+from math import comb, factorial
 
 import numpy as np
 import pytest
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.tree import QuadratureTreeSHAP, TreeExplainer, TreeSHAPIQ
+from shapiq.tree import QuadratureTreeSHAP, TreeExplainer, TreeModel, TreeSHAPIQ
 from shapiq.tree.linear import LinearTreeSHAP
 from shapiq.utils.sets import powerset
 from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.quadrature_numpy_reference import (
@@ -32,25 +39,24 @@ def _all_interactions(n_features: int, min_order: int, max_order: int):
     return powerset(range(n_features), min_size=min_order, max_size=max_order)
 
 
-# ------------------------------- equivalence with TreeSHAP-IQ -------------------------------
+# ------------------------------- against TreeSHAP-IQ and linear TreeSHAP -------------------------------
 
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
 @pytest.mark.parametrize(
     ("index", "max_order"), [("SV", 1), ("SII", 1), ("SII", 2), ("SII", 3), ("k-SII", 2)]
 )
-def test_matches_treeshapiq_on_sklearn_regressor(
+def test_matches_treeshapiq_on_a_shallow_regressor(
     dt_reg_model, background_reg_data, index, max_order, implementation
 ):
-    """Quadrature values match TreeSHAP-IQ on a shallow scikit-learn regressor."""
+    """The C kernel and its numpy twin equal TreeSHAP-IQ on every interaction up to order 3."""
     x = background_reg_data[0]
     reference = TreeSHAPIQ(dt_reg_model, max_order=max_order, index=index).explain(x)
     result = _explain(
         QuadratureTreeSHAP(dt_reg_model, max_order=max_order, index=index), x, implementation
     )
     assert result.baseline_value == pytest.approx(reference.baseline_value)
-    n_features = background_reg_data.shape[1]
-    for interaction in _all_interactions(n_features, 1, max_order):
+    for interaction in _all_interactions(background_reg_data.shape[1], 1, max_order):
         assert result[interaction] == pytest.approx(reference[interaction], abs=1e-10)
 
 
@@ -63,19 +69,16 @@ def test_matches_treeshapiq_on_sklearn_regressor(
         "lightgbm_reg_model",
         "hist_gb_reg_model",
         "gb_reg_model",
-        # CatBoost oblivious trees contain unreachable zero-cover leaves (regression test
-        # for the 0/0 these produced in the quadrature factors)
-        "catboost_clf_model",
+        "catboost_clf_model",  # oblivious trees with unreachable zero-cover leaves
     ],
 )
 def test_matches_treeshapiq_across_model_families(model_fixture, request):
-    """Quadrature values match TreeSHAP-IQ across converter families and split conventions."""
+    """Every converter family (split conventions, categorical splits, zero-cover leaves) equals TreeSHAP-IQ."""
     model = request.getfixturevalue(model_fixture)
     if model_fixture == "catboost_clf_model":
-        # precondition of the zero-cover regression case: the fitted model must actually
-        # contain unreachable leaves, otherwise this stops testing the clamp
         from shapiq.tree.validation import validate_tree_model
 
+        # precondition: the model holds unreachable leaves (0/0 cover ratios in the kernel)
         assert any(
             np.any(np.asarray(tree.node_sample_weight) == 0) for tree in validate_tree_model(model)
         )
@@ -94,8 +97,8 @@ def test_matches_treeshapiq_across_model_families(model_fixture, request):
 
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
-def test_matches_lineartreeshap_shapley_values(dt_reg_model, background_reg_data, implementation):
-    """Order-1 quadrature values match LinearTreeSHAP."""
+def test_order_one_matches_lineartreeshap(dt_reg_model, background_reg_data, implementation):
+    """The order-1 values equal linear TreeSHAP's Shapley values."""
     x = background_reg_data[0]
     reference = LinearTreeSHAP(dt_reg_model).explain_function(x)
     result = _explain(QuadratureTreeSHAP(dt_reg_model, index="SV"), x, implementation)
@@ -103,22 +106,12 @@ def test_matches_lineartreeshap_shapley_values(dt_reg_model, background_reg_data
         assert result[(feature,)] == pytest.approx(reference[(feature,)], abs=1e-10)
 
 
-def test_numpy_and_cpp_agree(dt_reg_model, background_reg_data):
-    """The two implementations agree to machine precision."""
-    x = background_reg_data[0]
-    for index, order in (("SV", 1), ("SII", 3), ("BII", 2)):
-        explainer = QuadratureTreeSHAP(dt_reg_model, max_order=order, index=index)
-        a = numpy_explain(explainer, x)
-        b = explainer.explain(x)
-        assert np.allclose(a.values, b.values, atol=1e-12)
+def test_values_stay_paired_with_their_feature_ids():
+    """A tree splitting on feature ids 6 and 14 only attributes to those ids.
 
-
-def test_sparse_high_feature_ids_match_lineartreeshap():
-    """Attributions stay paired with the right features when set iteration is non-ascending.
-
-    Regression test: ``{6, 14}`` iterates ``[14, 6]`` under CPython hash-slot probing, which
-    previously permuted the packed values against the sorted interaction lookup (issue found
-    in review; LinearTreeSHAP, which packs in the original feature space, was unaffected).
+    The explainer remaps the split features to a dense range; the set ``{6, 14}`` iterates as
+    ``[14, 6]`` under CPython hashing, which once permuted the packed values against the
+    sorted interaction lookup.
     """
     rng = np.random.default_rng(5)
     X = rng.random((2000, 16))
@@ -138,7 +131,7 @@ def test_sparse_high_feature_ids_match_lineartreeshap():
 
 
 def test_matches_treeshapiq_with_missing_values(background_reg_dataset):
-    """NaN instances route through the missing-value defaults identically to TreeSHAP-IQ."""
+    """NaN inputs route through the missing-value children exactly like TreeSHAP-IQ."""
     xgboost = pytest.importorskip("xgboost")
     X, y = background_reg_dataset
     X = X.copy()
@@ -154,7 +147,7 @@ def test_matches_treeshapiq_with_missing_values(background_reg_dataset):
         assert result[interaction] == pytest.approx(reference[interaction], abs=1e-8)
 
 
-# ------------------------------- exact brute-force oracles -------------------------------
+# ------------------------------- against a brute-force enumeration -------------------------------
 
 
 def _paths_of_tree(model, x):
@@ -224,7 +217,7 @@ def _brute_interaction(paths, n_features, subset, *, banzhaf):
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
 @pytest.mark.parametrize("index", ["SII", "BII"])
 def test_matches_brute_force_interactions(index, implementation):
-    """Quadrature SII and BII match exact brute-force enumeration on a small tree."""
+    """SII and BII up to order 3 equal the discrete derivatives of the enumerated path-dependent game."""
     rng = np.random.default_rng(0)
     X = rng.random((400, 5))
     y = X @ rng.normal(size=5) + np.sin(9 * X[:, 0]) * X[:, 1]
@@ -237,12 +230,12 @@ def test_matches_brute_force_interactions(index, implementation):
         assert result[subset] == pytest.approx(expected, abs=1e-12)
 
 
-# ------------------------------- deep trees (issue #545) -------------------------------
+# ------------------------------- deep and degenerate trees -------------------------------
 
 
 @pytest.fixture(scope="module")
 def deep_sparse_tree():
-    """A tree whose decision paths use ~40 distinct features: unusable for TreeSHAP-IQ."""
+    """A depth-40 tree whose paths hold ~40 distinct features: unusable for TreeSHAP-IQ."""
     rng = np.random.default_rng(7)
     X = (rng.random((8000, 80)) < 0.02).astype(float)
     y = X @ rng.normal(scale=10.0, size=80) + rng.normal(size=8000)
@@ -252,7 +245,7 @@ def deep_sparse_tree():
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
 def test_deep_tree_efficiency(deep_sparse_tree, implementation):
-    """Shapley values satisfy efficiency on trees far beyond the polynomial explainers' limit."""
+    """On a depth-40 tree the Shapley values plus the baseline equal the prediction."""
     model, X = deep_sparse_tree
     explainer = QuadratureTreeSHAP(model, index="SV")
     for row in range(3):
@@ -263,8 +256,8 @@ def test_deep_tree_efficiency(deep_sparse_tree, implementation):
         assert total == pytest.approx(prediction, abs=1e-8)
 
 
-def test_deep_tree_quadrature_point_robustness(deep_sparse_tree):
-    """Results are stable under adding quadrature points (the default rule is exact)."""
+def test_deep_tree_quadrature_rule_is_exact(deep_sparse_tree):
+    """Adding quadrature points beyond the default rule does not change the values."""
     model, X = deep_sparse_tree
     x = X[0]
     default_explainer = QuadratureTreeSHAP(model, max_order=2, index="SII")
@@ -279,14 +272,11 @@ def test_deep_tree_quadrature_point_robustness(deep_sparse_tree):
 
 
 @pytest.mark.parametrize("implementation", IMPLEMENTATIONS)
-def test_zero_cover_internal_subtree(implementation):
-    """A dead subtree that re-splits the same feature must contribute exactly zero.
+def test_zero_cover_subtree_contributes_nothing(implementation):
+    """A subtree no training row reached (zero cover) that re-splits the same feature adds exactly zero.
 
-    Regression test: inside a zero-cover subtree every cover ratio is ``0/0`` and
-    ``p_e`` is NaN (not inf, as on the subtree's entry edge). The clamp previously mapped
-    NaN to full cover ``c = 1.0``, so the same-feature A-row ratio cancelled the entry
-    edge's damping and the unreachable region contributed as if fully covered — silently
-    wrong Shapley values on e.g. CatBoost regressors with zero-weight internal nodes.
+    Inside it every cover ratio is 0/0; the kernel must not read that as full cover.
+    TreeSHAP-IQ agrees and linear TreeSHAP refuses such trees instead of returning NaN.
     """
     dead_tree = {
         "children_left": np.asarray([1, -1, 3, -1, -1]),
@@ -306,8 +296,6 @@ def test_zero_cover_internal_subtree(implementation):
     hot = _explain(explainer, np.asarray([2.0]), implementation)
     assert hot[(0,)] == pytest.approx(8.0, abs=1e-12)
 
-    # TreeSHAPIQ computes such trees correctly; LinearTreeSHAP cannot represent the
-    # infinite p_e chain and must refuse instead of silently returning NaN
     reference = TreeSHAPIQ(dead_tree, max_order=1, index="SV")
     assert reference.explain(np.asarray([-1.0]))[(0,)] == pytest.approx(0.0, abs=1e-12)
     assert reference.explain(np.asarray([2.0]))[(0,)] == pytest.approx(8.0, abs=1e-12)
@@ -315,16 +303,8 @@ def test_zero_cover_internal_subtree(implementation):
         LinearTreeSHAP(dead_tree)
 
 
-def test_sparse_interaction_support():
-    """Higher-order output enumerates only path-co-occurring subsets (wide models stay small).
-
-    A depth-3 tree over 200 features holds at most 3 distinct features per path, so the
-    order-3 support is at most one triple per leaf path — never the dense C(F, 3)
-    enumeration. Interactions outside the support are structurally zero and simply absent.
-    """
-    from itertools import combinations as iter_combinations
-    from math import comb
-
+def test_output_holds_only_co_occurring_interactions():
+    """A depth-3 tree on 200 features reports at most one triple per path and reads absent pairs as zero."""
     rng = np.random.default_rng(0)
     X = rng.normal(size=(500, 200))
     y = X[:, :5] @ rng.normal(size=5)
@@ -338,16 +318,13 @@ def test_sparse_interaction_support():
     assert n_triples <= 8  # at most one triple per root-to-leaf path
     assert n_pairs < comb(len(used), 2)  # strictly below the dense enumeration
 
-    missing = [pair for pair in iter_combinations(used, 2) if pair not in result.interaction_lookup]
+    missing = [pair for pair in combinations(used, 2) if pair not in result.interaction_lookup]
     assert missing  # precondition: the tree has non-co-occurring feature pairs
-    assert result[missing[0]] == 0.0  # absent interactions read as exact zeros
+    assert result[missing[0]] == 0.0
 
 
-# ------------------------------- edge cases and API -------------------------------
-
-
-def test_trivial_trees():
-    """Constant and single-feature trees take the trivial path."""
+def test_trivial_trees(background_reg_data):
+    """Constant, single-feature and single-split trees are explained without a kernel call."""
     X = np.zeros((50, 3))
     X[:25, 1] = 1.0
     y = 2.0 * X[:, 1] + 1.0
@@ -361,9 +338,39 @@ def test_trivial_trees():
     result = QuadratureTreeSHAP(constant, index="SV").explain(x)
     assert result.baseline_value == pytest.approx(1.0)
 
+    # a one-split tree over a 4-feature input through the TreeExplainer front end
+    stump = TreeModel(
+        children_left=np.array([1, -1, -1]),
+        children_right=np.array([2, -1, -1]),
+        children_missing=np.array([1, -1, -1]),
+        features=np.array([0, -2, -2]),
+        thresholds=np.array([2.5, -2, -2]),
+        values=np.array([0.5, 0.0, 1]),
+        node_sample_weight=np.array([14, 5, 9]),
+    )
+    result = TreeExplainer(model=stump, index="SV", max_order=1).explain(np.array([2.0, 1, 1, 1]))
+    assert result[(0,)] == pytest.approx(0.0 - stump.empty_prediction)
+
+
+# ------------------------------- API -------------------------------
+
+
+def test_explainer_pickles_after_explaining(rf_reg_model, background_reg_data):
+    """A used explainer (cached kernel arguments, index included) pickles and the copy agrees."""
+    x = background_reg_data[0]
+    explainer = QuadratureTreeSHAP(rf_reg_model, max_order=3, index="SII")
+    before = explainer.explain(x)
+    assert explainer._kernel_args is not None
+
+    restored = pickle.loads(pickle.dumps(explainer))
+    after = restored.explain(x)
+
+    np.testing.assert_array_equal(after.values, before.values)
+    np.testing.assert_array_equal(explainer.explain(x).values, before.values)  # original intact
+
 
 def test_dict_tree_model_input():
-    """A dictionary tree representation is accepted like in TreeSHAP-IQ."""
+    """A dictionary tree is accepted and explained like TreeSHAP-IQ explains it."""
     tree_model = {
         "children_left": np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1]),
         "children_right": np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1]),
@@ -381,22 +388,28 @@ def test_dict_tree_model_input():
 
 
 def test_invalid_arguments(dt_reg_model):
-    """Invalid indices and orders are rejected."""
+    """Unsupported indices and ``max_order=0`` are rejected at construction."""
     with pytest.raises(ValueError, match="not supported"):
         QuadratureTreeSHAP(dt_reg_model, index="STII")
     with pytest.raises(ValueError, match="order"):
         QuadratureTreeSHAP(dt_reg_model, max_order=0)
 
 
-# ------------------------------- TreeExplainer integration -------------------------------
+def test_missing_cext_raises(dt_reg_model, monkeypatch):
+    """A build without the C extension fails at construction (packaging error, no fallback)."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "shapiq.tree.quadrature.cext", None)
+    with pytest.raises(ImportError, match="C extension"):
+        QuadratureTreeSHAP(dt_reg_model)
+
+
+# ------------------------------- TreeExplainer front end -------------------------------
 
 
 def test_tree_explainer_defaults_to_quadrature(background_reg_dataset):
-    """``TreeExplainer`` computes path-dependent explanations with the quadrature algorithm.
-
-    The k-SII explanation of the ``backend="shapiq"`` front end must match the per-tree
-    :class:`TreeSHAPIQ` reference on a random forest.
-    """
+    """``TreeExplainer(backend="shapiq")`` explains path-dependently with the quadrature kernel
+    and its k-SII values equal TreeSHAP-IQ's on a random forest."""
     X, y = background_reg_dataset
     model = RandomForestRegressor(n_estimators=5, max_depth=4, random_state=0).fit(X, y)
     x = X[0]
@@ -412,7 +425,7 @@ def test_tree_explainer_defaults_to_quadrature(background_reg_dataset):
 
 @pytest.mark.parametrize("index", ["BV", "BII"])
 def test_tree_explainer_banzhaf_without_woodelf(dt_reg_model, background_reg_data, index):
-    """Path-dependent Banzhaf indices work through the default backend without woodelf."""
+    """Path-dependent Banzhaf indices come from the quadrature kernel, not from Woodelf."""
     max_order = 1 if index == "BV" else 2
     explainer = TreeExplainer(
         model=dt_reg_model, index=index, max_order=max_order, backend="shapiq"
@@ -424,12 +437,3 @@ def test_tree_explainer_banzhaf_without_woodelf(dt_reg_model, background_reg_dat
     reference = QuadratureTreeSHAP(dt_reg_model, index=index, max_order=max_order).explain(x)
     for interaction in _all_interactions(background_reg_data.shape[1], 1, max_order):
         assert result[interaction] == pytest.approx(reference[interaction], abs=1e-12)
-
-
-def test_missing_cext_raises(dt_reg_model, monkeypatch):
-    """A build without the C extension fails loudly at construction (packaging error)."""
-    import sys
-
-    monkeypatch.setitem(sys.modules, "shapiq.tree.quadrature.cext", None)
-    with pytest.raises(ImportError, match="C extension"):
-        QuadratureTreeSHAP(dt_reg_model)
