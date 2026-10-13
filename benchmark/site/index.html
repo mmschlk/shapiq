@@ -357,7 +357,7 @@
               <label class="compactSelect">Budget <select id="ensembleBudget"></select></label>
             </div>
           </div>
-          <p class="chartNote">Signed coefficients combine estimates of the same game.
+          <p class="chartNote">Ridge-regularized coefficients combine estimates of the same game.
             This analysis uses the full cohort, independently of the filters above.</p>
           <div class="tableWrap ensembleWeightsWrap" tabindex="0" aria-label="Estimator coefficients; scroll horizontally">
             <table class="ensembleTable">
@@ -370,9 +370,9 @@
           <details class="ensembleDetails">
             <summary>How the coefficients are fitted</summary>
             <p class="chartNote">Displayed coefficients are fitted on all matched panels.
-              Held-out scores use dataset-grouped cross-validation: no games from the test
-              dataset enter the fit. Correlated estimators can cancel each other, so
-              coefficients are not importance scores.</p>
+              Held-out scores use nested dataset-grouped cross-validation: test datasets
+              enter neither fitting nor penalty selection. The L2 penalty discourages
+              large cancelling weights. Coefficients are not importance scores.</p>
           </details>
           <h3 class="ensemblePlotHeading">Shared error patterns</h3>
           <div id="ensemblePca"></div>

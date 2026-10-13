@@ -877,3 +877,9 @@ uv run pre-commit run --all-files
   The compact SV panel has these for 765/1,253 eligible games. Default to
   measured seconds; label the estimated-time subset rather than comparing its
   median against the full budget panel or mistaking it for failed evaluations.
+
+- Minimum-norm least squares still inverts small nonzero singular values. The
+  estimator-combination fit had rank 12 with 17 methods and weights near ±100,000
+  despite good held-out predictions. Use signed ridge with nested dataset-grouped
+  tuning; normalize training loss by block weight once per game/seed, not by
+  coordinate count. Held-out datasets must not select the penalty.

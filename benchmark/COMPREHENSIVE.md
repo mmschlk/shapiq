@@ -91,9 +91,11 @@ publication of the report and its reproducibility artifacts.
 
 ## Estimator-combination analysis
 
-Fit signed linear weights without an intercept separately for each target and
+Fit signed ridge weights without an intercept separately for each target and
 budget, using complete same-game/budget/seed panels of supported nonexempt methods.
-Dataset-grouped cross-validation keeps all games from a dataset together.
+Nested dataset-grouped cross-validation keeps all games from a dataset together.
+Minimize weighted mean per-panel nMSE plus lambda times squared coefficient norm;
+select lambda from 1e-6 through 1 in decade steps on training datasets only.
 Held-out normalized R² and nMSE compare the fitted combination with equal weights;
 PCA of normalized estimator errors describes shared error patterns. Coefficients
 are not importance scores. Publish this analysis only with its authenticated,

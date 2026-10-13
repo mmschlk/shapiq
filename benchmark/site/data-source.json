@@ -7,8 +7,8 @@
     "bytes": 419360315
   },
   "ensemble": {
-    "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-compact-2026-10-12/ensemble.json",
-    "sha256": "5c6e3c7f47febb3390ba65b1e79b25d803a32d5c0c0fbc23bde01e85326d5467",
-    "bytes": 118816
+    "url": "https://github.com/rtealwitter/shapiq/releases/download/benchmark-compact-2026-10-12/ensemble-ridge.json",
+    "sha256": "517817ffedb438087af0d0ffd0aa6494f0aad6107bd41d809a1ac562eef856b3",
+    "bytes": 132425
   }
 }

@@ -33,6 +33,8 @@
         new Set(panel.methods).size === panel.methods.length &&
         Array.isArray(panel.coefficients) && panel.coefficients.length === panel.methods.length &&
         panel.coefficients.every(Number.isFinite) && metrics(panel.train) &&
+        panel.regularization?.kind === "ridge" &&
+        Number.isFinite(panel.regularization.penalty) && panel.regularization.penalty > 0 &&
         metrics(panel.held_out) && metrics(panel.equal_weights) &&
         Number.isInteger(panel.n_panels) && panel.n_panels > 0 &&
         Number.isInteger(panel.n_datasets) && panel.n_datasets > 1 &&
@@ -134,7 +136,7 @@
     methods.append(header);
     row(weights, ["Coefficient α", ...ordered.map(({ alpha }) => `${alpha > 0 ? "+" : ""}${number(alpha)}`)]);
     scores.textContent = `Held-out normalized R²: ${number(panel.held_out.r2)} · nMSE: ${number(panel.held_out.nmse)} (equal weights: ${number(panel.equal_weights.r2)} R², ${number(panel.equal_weights.nmse)} nMSE).`;
-    note.textContent = `${panel.n_panels.toLocaleString()} matched panels · ${panel.n_datasets} datasets · ${panel.folds.length} dataset-grouped folds.`;
+    note.textContent = `${panel.n_panels.toLocaleString()} matched panels · ${panel.n_datasets} datasets · ${panel.folds.length} dataset-grouped folds · ridge λ = ${number(panel.regularization.penalty)}.`;
     scatter(panel.pca);
   }
 

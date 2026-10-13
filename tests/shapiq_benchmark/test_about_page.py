@@ -70,9 +70,10 @@ def test_all_dataset_tables_are_closed_with_prepared_compact_scope() -> None:
     assert "Neighbor players (KNN / TNN)" in source
     assert "| Adult Census | 4, 8, 12 / 4, 8, 12 | 64 / 64 | 12 |" in source
     assert "| California Housing | — / 4, 8, 12 | — / — | 8 |" in source
-    assert "signed linear weights with no intercept" in source
-    assert "Dataset-grouped cross-validation" in source
-    assert "Signed coefficients may be negative and are not importance scores" in source
+    assert "**signed ridge regression** with no intercept" in source
+    assert "dataset-grouped cross-validation" in source
+    assert "negative weights remain allowed" in source
+    assert "Coefficients describe combinations, not estimator importance" in source
     assert "Training-row groups" in source
 
 

@@ -536,13 +536,21 @@ reproduction preserves authenticated references, original result identities
 and the source overlays used by each run.</li>
 </ul>
 <h2 id="estimator-combinations">Estimator combinations</h2>
-<p>For each target and budget, we fit signed linear weights with no intercept:</p>
+<p>For each target and budget, we fit <strong>signed ridge regression</strong> with no intercept:</p>
 <div class="math">\[\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.\]</div>
-<p>Complete panels contain the same game, budget and seed for every supported
-nonexempt estimator. Dataset-grouped cross-validation keeps all games from a
-dataset together. Held-out normalized R² and nMSE compare the fitted combination
-with equal weights. PCA of normalized estimator errors describes shared error
-patterns. Signed coefficients may be negative and are not importance scores.</p>
+<ul>
+<li><strong>Fit:</strong> minimize weighted mean nMSE plus <span class="math">\(\lambda\lVert\boldsymbol{\alpha}\rVert_2^2\)</span>.
+The penalty discourages large, cancelling coefficients; negative weights remain allowed.</li>
+<li><strong>Regularization:</strong> choose <span class="math">\(\lambda\)</span> from <span class="math">\(10^{-6}, 10^{-5}, \ldots, 1\)</span> using
+dataset-grouped cross-validation. Each outer fold chooses its penalty using
+only its training datasets; held-out datasets enter neither fitting nor tuning.</li>
+<li><strong>Scores:</strong> held-out normalized R² and nMSE, compared with equal weights.
+Displayed coefficients are refitted using all datasets.</li>
+<li><strong>Matching:</strong> every panel contains the same game, budget and seed for every
+supported nonexempt estimator. All seeds and games of a dataset stay together.</li>
+<li><strong>PCA:</strong> normalized estimator errors show shared error patterns.
+Coefficients describe combinations, not estimator importance.</li>
+</ul>
     </article>
   </main>
 </body>

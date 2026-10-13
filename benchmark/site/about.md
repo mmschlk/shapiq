@@ -205,12 +205,18 @@ feature grids of at most 12 players used by the baseline prediction games.
 
 ## Estimator combinations
 
-For each target and budget, we fit signed linear weights with no intercept:
+For each target and budget, we fit **signed ridge regression** with no intercept:
 
 $$\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.$$
 
-Complete panels contain the same game, budget and seed for every supported
-nonexempt estimator. Dataset-grouped cross-validation keeps all games from a
-dataset together. Held-out normalized R² and nMSE compare the fitted combination
-with equal weights. PCA of normalized estimator errors describes shared error
-patterns. Signed coefficients may be negative and are not importance scores.
+- **Fit:** minimize weighted mean nMSE plus $\lambda\lVert\boldsymbol{\alpha}\rVert_2^2$.
+  The penalty discourages large, cancelling coefficients; negative weights remain allowed.
+- **Regularization:** choose $\lambda$ from $10^{-6}, 10^{-5}, \ldots, 1$ using
+  dataset-grouped cross-validation. Each outer fold chooses its penalty using
+  only its training datasets; held-out datasets enter neither fitting nor tuning.
+- **Scores:** held-out normalized R² and nMSE, compared with equal weights.
+  Displayed coefficients are refitted using all datasets.
+- **Matching:** every panel contains the same game, budget and seed for every
+  supported nonexempt estimator. All seeds and games of a dataset stay together.
+- **PCA:** normalized estimator errors show shared error patterns.
+  Coefficients describe combinations, not estimator importance.
