@@ -71,6 +71,13 @@ Boosting converters live in separate modules such as `xgboost.py`,
   `create_edge_tree_arrays` in `src/shapiq/tree/conversion/cext/cext.cc` (equal split,
   1/2 per child), mirrored by the Python reference
   `tests/.../tests_tree_explainer/conversion_reference.py`; keep the two in sync.
+- Path-dependent SVs of CatBoost models do NOT match CatBoost's native `ShapValues`
+  (observed 2026-10-13, gaps up to ~0.1), and that is expected: path-dependent SHAP depends
+  on the level order of an oblivious tree. shapiq puts `splits[0]` (the first split chosen in
+  training) at the root (`fill_catboost_tree_node` in `conversion/cext/catboost_json.cc`), and
+  CatBoost walks the levels in reverse. Both match a brute-force reference for their order to
+  1e-15. CatBoost also adds the explained pool's leaf counts to the model's leaf weights when a
+  zero-weight leaf has a non-zero value, so its base value can change with the batch.
 - Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
   the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
   the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:
