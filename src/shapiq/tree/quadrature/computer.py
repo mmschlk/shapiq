@@ -185,8 +185,11 @@ class QuadratureTreeSHAP:
             empty_prediction += float(tree_empty)
             max_features_per_path = max(max_features_per_path, int(edge_tree.edge_heights.max()))
             max_depth = max(max_depth, int(edge_tree.max_depth))
-            # a zero-cover subtree gets a tiny positive cover, which realizes its zero
-            # contribution without 0/0 factors (p_e is inf on its entry edge, NaN inside)
+            # an edge into a zero-cover node has cover ratio 0 (p_e = inf, and inf again down a
+            # same-feature chain through it); a tiny positive cover realizes the limit c -> 0
+            # without 0/0 factors. The edge tree splits a zero-cover node's (zero) mass equally
+            # among its children: x's routing may still enter such a node (NaN default routing,
+            # out-of-range values), and features absent below it are then weighted 1/2.
             with np.errstate(divide="ignore"):
                 c_acc = np.where(
                     np.isfinite(edge_tree.p_e_values) & (edge_tree.p_e_values > 0),
