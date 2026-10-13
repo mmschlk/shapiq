@@ -23,6 +23,7 @@
 }
 body {
   margin: 0;
+  font-size: 16px;
 }
 [hidden] {
   display: none !important;
@@ -58,7 +59,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   font-weight: 650;
   color: var(--muted);
@@ -72,7 +73,7 @@ input {
   background: #fff;
   color: var(--ink);
   padding: 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -119,24 +120,12 @@ header {
 }
 .headerActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 23px;
 }
-.preview {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.preview i {
-  width: 6px;
-  height: 6px;
-  background: #77ad99;
-  border-radius: 50%;
-}
 .localButton {
-  font-size: 12px;
+  font-size: 14px;
   padding: 10px 14px;
   border: 1px solid #d7e1ef;
   border-radius: 9px;
@@ -192,26 +181,12 @@ h1 span {
   color: #bf2355;
 }
 .heroStats span {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   white-space: nowrap;
 }
-.heroStats p {
-  grid-column: 1/-1;
-  display: flex;
-  justify-content: center;
-  gap: 7px;
-  align-items: center;
-  margin: 0;
-  font-size: 10px;
-  color: #596980;
-}
-.heroStats .miniStar {
-  color: var(--blue);
-  font-size: 17px;
-}
 #notice {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin: 0 0 14px;
 }
@@ -241,7 +216,7 @@ h1 span {
   border-radius: 0;
   padding: 2px 16px 2px 0;
   width: 100%;
-  height: 22px;
+  height: 28px;
   background: transparent;
 }
 .toolbar details > summary {
@@ -261,13 +236,13 @@ h1 span {
   gap: 7px;
 }
 .methodPicker summary > span {
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   color: var(--muted);
   font-weight: 650;
 }
 .methodPicker strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   display: flex;
   justify-content: space-between;
@@ -298,7 +273,7 @@ h1 span {
   background: transparent;
   color: var(--blue);
   padding: 4px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .methodOption {
   display: flex;
@@ -306,7 +281,7 @@ h1 span {
   align-items: center;
   gap: 8px;
   padding: 9px 5px;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0;
   color: var(--ink);
   font-weight: 500;
@@ -329,7 +304,7 @@ h1 span {
   align-items: center;
 }
 .advanced > summary {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 550;
   white-space: nowrap;
   padding: 15px 0 0 10px;
@@ -354,7 +329,7 @@ h1 span {
 }
 .advancedPanel label {
   letter-spacing: 0;
-  font-size: 11px;
+  font-size: 14px;
 }
 .advancedPanel .checkboxField {
   display: flex;
@@ -372,7 +347,7 @@ h1 span {
   gap: 12px;
 }
 .advancedPanel p {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.6;
   margin: 0;
@@ -386,21 +361,16 @@ h1 span {
   gap: 12px;
 }
 #panelSummary {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   text-align: right;
-  padding-bottom: 12px;
-}
-.viewTitle {
-  font-size: 12px;
-  font-weight: 650;
   padding-bottom: 12px;
 }
 
 /* Charts and hover states */
 .charts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 22px;
 }
 .chartCard {
@@ -415,6 +385,7 @@ h1 span {
 }
 .cardHeading {
   display: flex;
+  flex-wrap: wrap;
   align-items: start;
   justify-content: space-between;
   gap: 12px;
@@ -427,7 +398,7 @@ h1 span {
   margin: 0 0 18px;
 }
 .chartBadge {
-  font-size: 9px;
+  font-size: 14px;
   color: #386959;
   background: #edf6f1;
   padding: 6px 9px;
@@ -439,7 +410,7 @@ h1 span {
   background: #edf2ff;
 }
 .chartNote {
-  font-size: 9px;
+  font-size: 16px;
   color: #57677f;
   line-height: 1.5;
   margin: 13px 0 0;
@@ -456,7 +427,7 @@ svg {
   column-gap: 16px;
   row-gap: 9px;
   margin: 14px 0 0;
-  font-size: 9px;
+  font-size: 14px;
   color: #637087;
   min-height: 12px;
 }
@@ -469,7 +440,7 @@ svg {
 }
 .emptyNote {
   color: #57677f;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.7;
   padding: 18px 0;
 }
@@ -486,12 +457,12 @@ svg {
   margin: 0 0 18px;
 }
 .chartControls #chartPanelMeta {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   margin-right: auto;
 }
 .chartLimitLabel select {
-  font-size: 10px;
+  font-size: 14px;
   background: transparent;
 }
 .legend button {
@@ -501,7 +472,7 @@ svg {
   border: 0;
   background: transparent;
   padding: 0;
-  font-size: 9px;
+  font-size: 14px;
   color: #637087;
   font-weight: 450;
   text-align: left;
@@ -540,12 +511,12 @@ svg {
   background: #182c50;
   color: #fff;
   box-shadow: 0 8px 30px #25153826;
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .chartFamilyLabel {
   min-width: 205px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .chartFamilyLabel select {
@@ -554,10 +525,10 @@ svg {
   margin-top: 5px;
   border: 1px solid var(--line);
   background: white;
-  font-size: 12px;
+  font-size: 14px;
 }
 .scaleNote {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.5;
   margin: 6px 0;
@@ -594,7 +565,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 th,
@@ -604,7 +575,7 @@ td {
   border-bottom: 1px solid #edf1f7;
 }
 th {
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 0.025em;
   color: #57677f;
   font-weight: 550;
@@ -631,7 +602,7 @@ td:nth-child(2) {
 }
 #ranking td:nth-child(2) {
   color: #263d5b;
-  font-size: 12px;
+  font-size: 14px;
 }
 #ranking .methodDot {
   display: inline-block;
@@ -645,7 +616,7 @@ td:nth-child(2) {
   color: #34527c;
 }
 .coveragePill {
-  font-size: 10px;
+  font-size: 14px;
   padding: 4px 8px;
   border-radius: 6px;
   background: #eff4fc;
@@ -679,18 +650,18 @@ tbody tr:last-child td {
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   margin-left: auto;
   cursor: pointer;
 }
 #ranking td:nth-child(3),
 th:nth-child(3) {
   text-align: left;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 .variantToggle select {
-  font-size: 11px;
+  font-size: 14px;
   border: 1px solid var(--line);
   background: #f8faff;
   padding: 8px 10px;
@@ -746,12 +717,12 @@ th[aria-sort="descending"] .sortArrow {
   width: 100%;
 }
 .compactSelect select {
-  font-size: 11px;
+  font-size: 14px;
   padding: 8px 12px;
 }
 .sourceDetails {
   margin-top: 20px;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 .sourceDetails p {
@@ -779,12 +750,12 @@ th[aria-sort="descending"] .sortArrow {
 }
 .historyLegend .endpointValue {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .historyCard .legend button {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .historyCard .endpointLegend {
@@ -824,7 +795,7 @@ th[aria-sort="descending"] .sortArrow {
 }
 .aboutLink span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 .aboutLink:hover {
   border-color: var(--blue);
@@ -832,7 +803,7 @@ th[aria-sort="descending"] .sortArrow {
 .belowFold details {
   border-top: 1px solid #dde5f0;
   padding: 17px 0;
-  font-size: 11px;
+  font-size: 14px;
   color: #596980;
 }
 .belowFold summary {
@@ -856,7 +827,7 @@ th[aria-sort="descending"] .sortArrow {
   gap: 4px 36px;
   padding-top: 15px;
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .methodologyContent p {
@@ -864,7 +835,7 @@ th[aria-sort="descending"] .sortArrow {
 }
 .runFailures ul {
   padding-left: 18px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .downloadActions {
@@ -874,7 +845,7 @@ th[aria-sort="descending"] .sortArrow {
   padding: 16px 0 5px;
 }
 .downloadActions > span {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-right: auto;
 }
@@ -882,15 +853,9 @@ th[aria-sort="descending"] .sortArrow {
   border: 1px solid #dce4f0;
   border-radius: 7px;
   background: #fafcff;
-  font-size: 10px;
+  font-size: 14px;
   padding: 8px 12px;
   color: #596980;
-}
-.drawerIntro {
-  max-width: 760px;
-  font-size: 13px;
-  line-height: 1.8;
-  margin: 14px 0 6px;
 }
 
 /* Estimator details and disclosure arrows */
@@ -940,7 +905,7 @@ select,
   background: #f8faff;
   border-radius: 0 6px 6px 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.7;
   white-space: normal;
@@ -950,7 +915,7 @@ select,
 .methodDetails h3 {
   margin: 0 0 6px;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
 }
 .methodDetails p {
   margin: 0 0 8px;
@@ -978,7 +943,7 @@ footer {
   justify-content: space-between;
   gap: 18px;
   border-top: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 14px;
   color: #596980;
   margin-top: 20px;
   padding-top: 24px;
@@ -1042,7 +1007,7 @@ footer a {
     flex-wrap: wrap;
   }
   .chartControls #chartPanelMeta {
-    font-size: 9px;
+    font-size: 14px;
   }
   .chartLimitLabel {
     margin-left: auto;
@@ -1062,17 +1027,14 @@ footer a {
     font-size: 22px;
   }
   .brandSuffix {
-    font-size: 12px;
+    display: none;
   }
   .headerActions {
     gap: 10px;
   }
-  .preview {
-    display: none;
-  }
   .localButton {
     padding: 8px 9px;
-    font-size: 10px;
+    font-size: 14px;
   }
   .hero {
     padding: 26px 0 24px;
@@ -1094,10 +1056,7 @@ footer a {
     font-size: 26px;
   }
   .heroStats span {
-    font-size: 9px;
-  }
-  .heroStats p {
-    display: none;
+    font-size: 14px;
   }
   .toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1106,7 +1065,7 @@ footer a {
     border-radius: 13px;
   }
   .methodPicker strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .advanced {
     margin: 0;
@@ -1131,7 +1090,7 @@ footer a {
   #panelSummary {
     display: block;
     text-align: left;
-    font-size: 9px;
+    font-size: 14px;
     padding: 10px 0;
   }
   .charts {
@@ -1147,11 +1106,11 @@ footer a {
   }
   .chartBadge {
     display: block;
-    font-size: 8px;
+    font-size: 14px;
     padding: 5px 7px;
   }
   .legend {
-    font-size: 9px;
+    font-size: 14px;
     column-gap: 13px;
   }
   .tableHeading {
@@ -1188,14 +1147,14 @@ footer a {
     margin-top: 24px;
   }
   footer {
-    font-size: 9px;
+    font-size: 14px;
     align-items: center;
   }
   footer div {
     gap: 12px;
   }
   .downloadActions > span {
-    font-size: 10px;
+    font-size: 14px;
   }
   .toolbar > label {
     border-right: 0 !important;
@@ -1215,7 +1174,7 @@ footer a {
     margin-right: auto;
   }
   .legend button {
-    font-size: 9px;
+    font-size: 14px;
   }
   .historySection {
     margin-top: 18px;
@@ -1227,14 +1186,14 @@ footer a {
     width: 100%;
   }
   .historyCard .legend button {
-    font-size: 10px;
+    font-size: 14px;
   }
 }
 
 /* Provenance follows the loaded snapshot, including older local reports. */
 .protocolSummary {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.7;
   margin: 0 0 16px;
 }
@@ -1264,13 +1223,13 @@ footer a {
   overflow-wrap: anywhere;
 }
 .provenanceTable thead th {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   background: #eef3fc;
 }
 .provenanceTable tbody th {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   background: transparent;
   color: var(--ink);
@@ -1300,16 +1259,16 @@ footer a {
   padding: 16px 20px 8px;
   background: #f5f3f8;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .lowCoverage td { color: var(--muted); }
 
-.coverageDetails { font-size: 12px; }
+.coverageDetails { font-size: 14px; }
 .coverageDetails summary { cursor: pointer; color: var(--muted); }
 
 /* Compact report context; percentages stay readable without relying on color. */
-.headerAbout { font-size: 12px; text-decoration: none; }
+.headerAbout { font-size: 14px; text-decoration: none; }
 .headerAbout:hover { text-decoration: underline; }
 .reportStatus, .protocolSummary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
 .reportStatus { position: relative; margin: 0 0 16px; min-height: 28px; }
@@ -1319,7 +1278,7 @@ footer a {
   background: hsl(var(--coverage-hue, 0) 45% 94%);
 }
 .coverageDetails { position: static; display: inline-block; }
-.coverageDetails > summary { padding: 3px 10px; border-radius: 6px; font-size: 11px; }
+.coverageDetails > summary { padding: 3px 10px; border-radius: 6px; font-size: 14px; }
 .coveragePopover { position: absolute; top: calc(100% + 8px); left: 0; z-index: 12;
   width: min(380px, 100%); padding: 16px; border: 1px solid var(--line); border-radius: 10px;
   background: white; color: var(--muted); box-shadow: 0 8px 28px #182c5018; }
@@ -1328,16 +1287,16 @@ footer a {
 .ensembleSection { margin-top: 28px; }
 .ensembleSection[hidden] { display: none; }
 .ensembleSelectors { display: flex; flex-wrap: wrap; gap: 12px; }
-.ensembleSelectors label { color: var(--muted); font-size: 12px; }
+.ensembleSelectors label { color: var(--muted); font-size: 14px; }
 .ensembleWeightsWrap { margin-top: 18px; }
-.ensembleTable { width: 100%; min-width: 0; font-size: 12px; }
+.ensembleTable { width: 100%; min-width: 0; font-size: 14px; }
 .ensembleTable th, .ensembleTable td { padding: 10px 12px; white-space: nowrap; text-align: center; }
 .ensembleTable th:first-child, .ensembleTable td:first-child { text-align: left; }
 .ensembleTable td { font-variant-numeric: tabular-nums; font-weight: 400; }
-.ensembleDetails { margin-top: 12px; color: var(--muted); font-size: 11px; }
-.ensemblePlotHeading { font-size: 14px; margin: 24px 0 14px; }
+.ensembleDetails { margin-top: 12px; color: var(--muted); font-size: 14px; }
+.ensemblePlotHeading { font-size: 18px; margin: 24px 0 14px; }
 #ensemblePca { max-width: 800px; margin: 0 auto; }
-#ensemblePca text { fill: #596980; font-size: 10px; }
+#ensemblePca text { fill: #596980; font-size: 14px; }
 #ensemblePca circle.dimmed { opacity: 0.15; }
 #ensemblePca circle.emphasis { r: 6; stroke: var(--ink); }
 #ensemblePca circle:focus { outline: none; stroke: var(--ink); stroke-width: 2; }

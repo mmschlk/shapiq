@@ -29,8 +29,7 @@
       >
       <div class="headerActions">
         <a class="headerAbout" href="about.html">About</a>
-        <span class="preview"><i></i> Research preview</span
-        ><label class="localButton" for="upload">Open local ↗</label
+        <label class="localButton" for="upload">Open local ↗</label
         ><input
           id="upload"
           multiple
@@ -52,9 +51,6 @@
             <strong id="runCount">—</strong
             ><span>evaluations</span>
           </div>
-          <p>
-            Exact references · Open results
-          </p>
         </div>
       </section>
       <div class="reportStatus">
@@ -62,12 +58,12 @@
         <div id="notice" role="status">Loading…</div>
       </div>
       <section class="toolbar" aria-label="Benchmark filters">
-        <label>EXPLANATION<select id="target"></select></label>
-        <label>GAME FAMILY<select id="family"></select></label>
-        <label>BUDGET / PLAYER<select id="budget"></select></label>
+        <label>Explanation<select id="target"></select></label>
+        <label>Application<select id="family"></select></label>
+        <label>Budget / player<select id="budget"></select></label>
         <details class="methodPicker">
           <summary>
-            <span>ESTIMATORS</span
+            <span>Estimators</span
             ><strong id="methodLabel">All selected</strong>
           </summary>
           <div class="pickerPanel">
@@ -136,13 +132,12 @@
         </details>
       </section>
       <div class="viewbar">
-        <span class="viewTitle">Explore the results</span
-        ><span id="panelSummary"></span>
+        <span id="panelSummary"></span>
       </div>
       <section id="overview" class="tabPanel">
         <article class="leaderboard">
           <div class="tableHeading">
-            <h2>The leaderboard</h2>
+            <h2>Leaderboard</h2>
             <label class="compactSelect"
               ><span class="srOnly">Elo comparison panel</span>
               <select id="eloPanel">
@@ -299,7 +294,7 @@
             >
           </div>
           <p class="chartNote">
-            Current implementations by first publication · ≥80% coverage.
+            By first publication · ≥80% coverage.
           </p>
           <div id="historyChart"></div>
           <details class="sourceDetails">
@@ -330,16 +325,10 @@
         </details>
         <details class="runFailures" open>
           <summary>Under-budget runs <span>＋</span></summary>
-          <p class="drawerIntro">
-            Budgets too small for the estimator. These runs remain unscored.
-          </p>
           <ul id="underBudget"></ul>
         </details>
         <details class="runFailures" open>
-          <summary>Other failed runs <span>＋</span></summary>
-          <p class="drawerIntro">
-            Timeouts and errors. The six most common are shown.
-          </p>
+          <summary>Failed runs · top 6 <span>＋</span></summary>
           <ul id="failures"></ul>
         </details>
         <div class="downloadActions">
@@ -357,8 +346,7 @@
               <label class="compactSelect">Budget <select id="ensembleBudget"></select></label>
             </div>
           </div>
-          <p class="chartNote">Ridge-regularized coefficients combine estimates of the same game.
-            This analysis uses the full cohort, independently of the filters above.</p>
+          <p class="chartNote">Ridge regression · full benchmark</p>
           <div class="tableWrap ensembleWeightsWrap" tabindex="0" aria-label="Estimator coefficients; scroll horizontally">
             <table class="ensembleTable">
               <thead id="ensembleMethods"></thead>
@@ -366,24 +354,19 @@
             </table>
           </div>
           <p class="chartNote" id="ensembleScores"></p>
-          <p class="chartNote" id="ensembleNote"></p>
           <details class="ensembleDetails">
             <summary>How the coefficients are fitted</summary>
-            <p class="chartNote">Displayed coefficients are fitted on all matched panels.
-              Held-out scores use nested dataset-grouped cross-validation: test datasets
-              enter neither fitting nor penalty selection. The L2 penalty discourages
-              large cancelling weights. Coefficients are not importance scores.</p>
+            <p>Ridge penalizes large weights. Test datasets enter neither fitting nor tuning.
+              Weights describe combinations, not importance.</p>
+            <p id="ensembleNote"></p>
           </details>
           <h3 class="ensemblePlotHeading">Shared error patterns</h3>
           <div id="ensemblePca"></div>
-          <p class="chartNote">PCA of normalized errors. Nearby estimators have similar projected
-            error patterns, not necessarily similar accuracy. Hover or focus a point or name
-            to highlight its estimator.</p>
+          <p class="chartNote">Nearby methods have similar projected errors.</p>
         </article>
       </section>
     </main>
     <footer>
-      <span>Built for better explanations.</span>
       <div>
         <a
           href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/ESTIMATOR_NOTES.md"

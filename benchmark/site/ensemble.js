@@ -69,7 +69,8 @@
 
   function scatter(pca) {
     plot.replaceChildren();
-    const svg = svgNode("svg", { viewBox: "0 0 640 320", role: "img", "aria-label": "PCA of normalized estimator errors" });
+    const width = Math.max(280, plot.clientWidth), right = width - 25, plotWidth = right - 62;
+    const svg = svgNode("svg", { viewBox: `0 0 ${width} 320`, role: "img", "aria-label": "PCA of normalized estimator errors" });
     const bounds = (key) => {
       const values = pca.points.map((point) => point[key]);
       const min = Math.min(0, ...values), max = Math.max(0, ...values);
@@ -77,20 +78,20 @@
       return [min - pad, max + pad];
     };
     const [xmin, xmax] = bounds("x"), [ymin, ymax] = bounds("y");
-    const x = (value) => 62 + 553 * (value - xmin) / (xmax - xmin);
+    const x = (value) => 62 + plotWidth * (value - xmin) / (xmax - xmin);
     const y = (value) => 273 - 250 * (value - ymin) / (ymax - ymin);
-    svg.append(svgNode("rect", { x: 62, y: 23, width: 553, height: 250, fill: "#f8faff", rx: 6 }));
+    svg.append(svgNode("rect", { x: 62, y: 23, width: plotWidth, height: 250, fill: "#f8faff", rx: 6 }));
     for (let i = 0; i <= 4; i++) {
       const xx = xmin + (xmax - xmin) * i / 4;
       const yy = ymin + (ymax - ymin) * i / 4;
       svg.append(
-        svgNode("line", { x1: 62, x2: 615, y1: y(yy), y2: y(yy), stroke: "#dfe6f0", "stroke-dasharray": "3 4" }),
+        svgNode("line", { x1: 62, x2: right, y1: y(yy), y2: y(yy), stroke: "#dfe6f0", "stroke-dasharray": "3 4" }),
         svgNode("text", { x: 55, y: y(yy) + 4, "text-anchor": "end" }, Number(yy.toPrecision(2)).toString()),
         svgNode("text", { x: x(xx), y: 292, "text-anchor": "middle" }, Number(xx.toPrecision(2)).toString()),
       );
     }
     svg.append(
-      svgNode("text", { x: 338, y: 317, "text-anchor": "middle" }, `PC1 · ${Math.round(100 * pca.explained_variance[0])}% variance`),
+      svgNode("text", { x: 62 + plotWidth / 2, y: 317, "text-anchor": "middle" }, `PC1 · ${Math.round(100 * pca.explained_variance[0])}% variance`),
       svgNode("text", { x: 62, y: 12 }, `PC2 · ${Math.round(100 * pca.explained_variance[1])}% variance`),
     );
     const legend = document.createElement("div");
@@ -135,8 +136,8 @@
     });
     methods.append(header);
     row(weights, ["Coefficient α", ...ordered.map(({ alpha }) => `${alpha > 0 ? "+" : ""}${number(alpha)}`)]);
-    scores.textContent = `Held-out normalized R²: ${number(panel.held_out.r2)} · nMSE: ${number(panel.held_out.nmse)} (equal weights: ${number(panel.equal_weights.r2)} R², ${number(panel.equal_weights.nmse)} nMSE).`;
-    note.textContent = `${panel.n_panels.toLocaleString()} matched panels · ${panel.n_datasets} datasets · ${panel.folds.length} dataset-grouped folds · ridge λ = ${number(panel.regularization.penalty)}.`;
+    scores.textContent = `Held-out R² ${number(panel.held_out.r2)} · nMSE ${number(panel.held_out.nmse)}`;
+    note.textContent = `${panel.n_panels.toLocaleString()} matched panels · ${panel.n_datasets} datasets · ${panel.folds.length} folds · λ = ${number(panel.regularization.penalty)}. Equal weights: R² ${number(panel.equal_weights.r2)}, nMSE ${number(panel.equal_weights.nmse)}.`;
     scatter(panel.pca);
   }
 
@@ -155,6 +156,12 @@
     section.hidden = !matches();
     if (!section.hidden) render();
   }
+  let plotWidth = 0;
+  new ResizeObserver(([entry]) => {
+    if (entry.contentRect.width === plotWidth) return;
+    plotWidth = entry.contentRect.width;
+    if (artifact && !section.hidden) render();
+  }).observe(plot);
   targetSelect.addEventListener("change", budgets);
   budgetSelect.addEventListener("change", render);
   // app.js updates this provenance element whenever it installs a new report.

@@ -216,6 +216,7 @@ function legacy(data, req) {
     isUnderBudget: (r) =>
       r.status === "failed" && r.failure_reason === "insufficient_budget",
     chartNames: req.methods,
+    performanceChartStates: new Map(),
     methodLabel: (m) => m,
     colorFor: () => "",
     format: (n) => (Number.isFinite(n) ? n.toPrecision(4) : "—"),

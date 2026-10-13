@@ -54,11 +54,9 @@ def test_all_dataset_tables_are_closed_with_prepared_compact_scope() -> None:
     assert "<details open" not in rendered
     assert rendered.count("<tbody>") == 3
     assert rendered.count("<tr>") == 75  # Three headings plus 72 dataset rows.
-    assert "Scope version 2" in source
     assert "512 recipes and 2,048" in source
-    assert "selected player grids; estimator coverage counts only" in source
     assert "477 core recipes and 35 KNN/TNN recipes" in source
-    assert "All 20 required estimators" in source
+    assert "all 20 required estimators" in source
     assert "**100% successful supported coverage**" in source
     assert "ShaplEIG and SPEX retain partial" in source
     assert "Historical broader results" in source

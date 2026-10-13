@@ -75,7 +75,7 @@ table {
   border-collapse: collapse;
   width: 100%;
   margin-top: 16px;
-  font-size: 13px;
+  font-size: 14px;
 }
 th,
 td {
@@ -115,7 +115,7 @@ div.math {
     padding: 20px 16px;
   }
   header {
-    font-size: 12px;
+    font-size: 14px;
   }
   th,
   td {

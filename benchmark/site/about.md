@@ -1,8 +1,7 @@
 # About the benchmark
 
-**How well can we estimate contributions with a limited number of queries?**
-Scope version 2 compares 22 estimator configurations across individual predictions,
-training data and feature selection on all 24 datasets.
+**22 estimators · 24 datasets · 2,048 games.**
+We compare contribution estimates for predictions, training data and feature selection.
 
 [TOC]
 
@@ -25,20 +24,13 @@ as zero. Zero or negligible reference vectors are excluded. For interaction targ
 the vectors contain the requested interaction coefficients; the empty-coalition
 baseline is excluded. Main effects and pairs can also be viewed separately.
 
-**The selected cohort has 512 recipes and 2,048 prepared instances**, with four
-construction seeds per recipe: 477 core recipes and 35 KNN/TNN recipes.
-Every selected instance has a qualified reference. All 20 required estimators
-have **100% successful supported coverage**; ShaplEIG and SPEX retain partial
-coverage. The tables show selected player grids; estimator coverage counts only
-eligible, supported cells.
-
-Thirty-five core recipes were excluded in full because at least one seed failed
-the model-quality check against a dummy predictor. Neighbor replacements were
-selected for balanced coverage without using estimator accuracy; the
-[selection manifest](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json)
-records the exclusions and deterministic replacement rule. All 24 datasets
-and all three applications remain represented. Historical broader results outside
-this selection do not count toward this cohort’s coverage.
+- **Scope:** 512 recipes and 2,048 prepared instances; four seeds per recipe.
+- **Coverage:** all 20 required estimators have **100% successful supported coverage**.
+  ShaplEIG and SPEX retain partial coverage. Unsupported or ineligible cells do not count.
+- **Selection:** 477 core recipes and 35 KNN/TNN recipes. A recipe is excluded if
+  any seed fails the model-quality check. Replacements preserve all 24 datasets
+  without selecting for estimator accuracy; see the
+  [selection manifest](https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json).
 
 ## Explaining an individual prediction
 
@@ -59,8 +51,7 @@ references. Both tree constructions use random forests only.
 **Models:** linear/logistic regression and random forest for baseline games,
 with nested feature sets of at most 12 players. RF tree games use 8, 16 and 32
 features where available. A dataset's full width below 12 is also included in the
-baseline grid. There are no extra-model contrasts. Each table lists the retained
-model-specific grids; “—” means no selected recipe for that model/construction.
+baseline grid. Tables show selected player counts; “—” means no selected recipe.
 
 | Dataset | Baseline features (linear / RF) | RF tree features (path / interventional) |
 | --- | --- | --- |
@@ -197,11 +188,9 @@ feature grids of at most 12 players used by the baseline prediction games.
   NHANES I uses its supplied survival label as a regression surrogate.
 - **Timing:** measured estimator time on cached games; estimated oracle costs are
   shown separately. These are diagnostic timings, not isolated end-to-end timings.
-- **Reproduction:** the dashboard exports selected results as JSON or CSV.
-  [Historical broad-cohort artifacts](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11)
-  remain available separately and do not contribute to this cohort. Frozen-game
-  reproduction preserves authenticated references, original result identities
-  and the source overlays used by each run.
+- **Reproduction:** download the frozen games and results from the dashboard.
+  [Historical broader results](https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11)
+  are archived separately and excluded from this benchmark.
 
 ## Estimator combinations
 
@@ -209,14 +198,10 @@ For each target and budget, we fit **signed ridge regression** with no intercept
 
 $$\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.$$
 
-- **Fit:** minimize weighted mean nMSE plus $\lambda\lVert\boldsymbol{\alpha}\rVert_2^2$.
-  The penalty discourages large, cancelling coefficients; negative weights remain allowed.
-- **Regularization:** choose $\lambda$ from $10^{-6}, 10^{-5}, \ldots, 1$ using
-  dataset-grouped cross-validation. Each outer fold chooses its penalty using
-  only its training datasets; held-out datasets enter neither fitting nor tuning.
-- **Scores:** held-out normalized R² and nMSE, compared with equal weights.
-  Displayed coefficients are refitted using all datasets.
-- **Matching:** every panel contains the same game, budget and seed for every
-  supported nonexempt estimator. All seeds and games of a dataset stay together.
-- **PCA:** normalized estimator errors show shared error patterns.
-  Coefficients describe combinations, not estimator importance.
+- **Fit:** weighted mean nMSE plus $\lambda\lVert\boldsymbol{\alpha}\rVert_2^2$.
+  Large weights are penalized; negative weights remain allowed.
+- **Validation:** nested dataset-grouped cross-validation chooses $\lambda$
+  from $10^{-6}, 10^{-5}, \ldots, 1$. Test datasets enter neither fitting nor tuning.
+  Panels match games, budgets and seeds across estimators.
+- **Display:** coefficients use all datasets; R² and nMSE use held-out predictions.
+  PCA shows shared errors. Coefficients describe combinations, not estimator importance.

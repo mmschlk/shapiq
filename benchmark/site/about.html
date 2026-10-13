@@ -17,9 +17,8 @@
   <main id="content">
     <article class="aboutArticle">
 <h1 id="about-the-benchmark">About the benchmark</h1>
-<p><strong>How well can we estimate contributions with a limited number of queries?</strong>
-Scope version 2 compares 22 estimator configurations across individual predictions,
-training data and feature selection on all 24 datasets.</p>
+<p><strong>22 estimators · 24 datasets · 2,048 games.</strong>
+We compare contribution estimates for predictions, training data and feature selection.</p>
 <nav aria-label="On this page"><h2>Contents</h2><ul><li><a href="#games-shapley-values-and-estimation-error">Games, Shapley values and estimation error</a></li><li><a href="#explaining-an-individual-prediction">Explaining an individual prediction</a></li><li><a href="#valuing-training-data">Valuing training data</a></li><li><a href="#selecting-useful-features">Selecting useful features</a></li><li><a href="#comparing-and-reproducing-results">Comparing and reproducing results</a></li><li><a href="#estimator-combinations">Estimator combinations</a></li></ul></nav>
 <h2 id="games-shapley-values-and-estimation-error">Games, Shapley values and estimation error</h2>
 <ul>
@@ -38,19 +37,15 @@ vector <span class="math">\(\hat{\boldsymbol{\phi}}\)</span>, to approximate the
 as zero. Zero or negligible reference vectors are excluded. For interaction targets,
 the vectors contain the requested interaction coefficients; the empty-coalition
 baseline is excluded. Main effects and pairs can also be viewed separately.</p>
-<p><strong>The selected cohort has 512 recipes and 2,048 prepared instances</strong>, with four
-construction seeds per recipe: 477 core recipes and 35 KNN/TNN recipes.
-Every selected instance has a qualified reference. All 20 required estimators
-have <strong>100% successful supported coverage</strong>; ShaplEIG and SPEX retain partial
-coverage. The tables show selected player grids; estimator coverage counts only
-eligible, supported cells.</p>
-<p>Thirty-five core recipes were excluded in full because at least one seed failed
-the model-quality check against a dummy predictor. Neighbor replacements were
-selected for balanced coverage without using estimator accuracy; the
-<a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json">selection manifest</a>
-records the exclusions and deterministic replacement rule. All 24 datasets
-and all three applications remain represented. Historical broader results outside
-this selection do not count toward this cohort’s coverage.</p>
+<ul>
+<li><strong>Scope:</strong> 512 recipes and 2,048 prepared instances; four seeds per recipe.</li>
+<li><strong>Coverage:</strong> all 20 required estimators have <strong>100% successful supported coverage</strong>.
+ShaplEIG and SPEX retain partial coverage. Unsupported or ineligible cells do not count.</li>
+<li><strong>Selection:</strong> 477 core recipes and 35 KNN/TNN recipes. A recipe is excluded if
+any seed fails the model-quality check. Replacements preserve all 24 datasets
+without selecting for estimator accuracy; see the
+<a href="https://github.com/rtealwitter/shapiq/blob/benchmark/benchmark/suites/compact-selection.json">selection manifest</a>.</li>
+</ul>
 <h2 id="explaining-an-individual-prediction">Explaining an individual prediction</h2>
 <p><strong>Players are input features.</strong> Fit a predictor <span class="math">\(h\)</span> once and explain one held-out
 point <span class="math">\(x\)</span>. For the small games, keep <span class="math">\(x\)</span>'s selected features and replace the others
@@ -65,8 +60,7 @@ references. Both tree constructions use random forests only.</p>
 <p><strong>Models:</strong> linear/logistic regression and random forest for baseline games,
 with nested feature sets of at most 12 players. RF tree games use 8, 16 and 32
 features where available. A dataset's full width below 12 is also included in the
-baseline grid. There are no extra-model contrasts. Each table lists the retained
-model-specific grids; “—” means no selected recipe for that model/construction.</p>
+baseline grid. Tables show selected player counts; “—” means no selected recipe.</p>
 <details class="datasetTable"><summary>Dataset coverage</summary><table>
 <thead>
 <tr>
@@ -529,27 +523,21 @@ independent full-dimensional validation.</li>
 NHANES I uses its supplied survival label as a regression surrogate.</li>
 <li><strong>Timing:</strong> measured estimator time on cached games; estimated oracle costs are
 shown separately. These are diagnostic timings, not isolated end-to-end timings.</li>
-<li><strong>Reproduction:</strong> the dashboard exports selected results as JSON or CSV.
-<a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11">Historical broad-cohort artifacts</a>
-remain available separately and do not contribute to this cohort. Frozen-game
-reproduction preserves authenticated references, original result identities
-and the source overlays used by each run.</li>
+<li><strong>Reproduction:</strong> download the frozen games and results from the dashboard.
+<a href="https://github.com/rtealwitter/shapiq/releases/tag/benchmark-comprehensive-2026-10-11">Historical broader results</a>
+are archived separately and excluded from this benchmark.</li>
 </ul>
 <h2 id="estimator-combinations">Estimator combinations</h2>
 <p>For each target and budget, we fit <strong>signed ridge regression</strong> with no intercept:</p>
 <div class="math">\[\hat{\boldsymbol{\phi}}_{\alpha} = \sum_{m=1}^{M} \alpha_m \hat{\boldsymbol{\phi}}^{(m)}.\]</div>
 <ul>
-<li><strong>Fit:</strong> minimize weighted mean nMSE plus <span class="math">\(\lambda\lVert\boldsymbol{\alpha}\rVert_2^2\)</span>.
-The penalty discourages large, cancelling coefficients; negative weights remain allowed.</li>
-<li><strong>Regularization:</strong> choose <span class="math">\(\lambda\)</span> from <span class="math">\(10^{-6}, 10^{-5}, \ldots, 1\)</span> using
-dataset-grouped cross-validation. Each outer fold chooses its penalty using
-only its training datasets; held-out datasets enter neither fitting nor tuning.</li>
-<li><strong>Scores:</strong> held-out normalized R² and nMSE, compared with equal weights.
-Displayed coefficients are refitted using all datasets.</li>
-<li><strong>Matching:</strong> every panel contains the same game, budget and seed for every
-supported nonexempt estimator. All seeds and games of a dataset stay together.</li>
-<li><strong>PCA:</strong> normalized estimator errors show shared error patterns.
-Coefficients describe combinations, not estimator importance.</li>
+<li><strong>Fit:</strong> weighted mean nMSE plus <span class="math">\(\lambda\lVert\boldsymbol{\alpha}\rVert_2^2\)</span>.
+Large weights are penalized; negative weights remain allowed.</li>
+<li><strong>Validation:</strong> nested dataset-grouped cross-validation chooses <span class="math">\(\lambda\)</span>
+from <span class="math">\(10^{-6}, 10^{-5}, \ldots, 1\)</span>. Test datasets enter neither fitting nor tuning.
+Panels match games, budgets and seeds across estimators.</li>
+<li><strong>Display:</strong> coefficients use all datasets; R² and nMSE use held-out predictions.
+PCA shows shared errors. Coefficients describe combinations, not estimator importance.</li>
 </ul>
     </article>
   </main>

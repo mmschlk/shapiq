@@ -752,11 +752,9 @@ async function renderPartitioned() {
     ]
       .filter(Boolean)
       .join(" ");
-    $("budgetChartNote").textContent = all
-      ? "Median nMSE · ≥80% coverage"
-      : "Median nMSE · ≥80% coverage";
+    $("budgetChartNote").textContent = "≥80% coverage";
     $("chartPanelMeta").textContent =
-      `${result.chart_selection.game_count} ${unit} · All measured budgets`;
+      `${result.chart_selection.game_count} ${unit} · All budgets`;
     $("gameDetails").textContent =
       `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
     $("panelSummary").textContent =
@@ -930,12 +928,10 @@ function render() {
         : "Chart results pending for this selection."
       : "";
   $("notice").textContent = selectionNotice;
-  $("budgetChartNote").textContent = allCurves
-    ? "Median nMSE · ≥80% coverage"
-    : "Median nMSE · ≥80% coverage";
+  $("budgetChartNote").textContent = "≥80% coverage";
   const gameUnit = data.suite.game_seeds?.length ? "game instances" : "games";
   $("chartPanelMeta").textContent =
-    `${chartPanel.games.length} ${gameUnit} · All measured budgets`;
+    `${chartPanel.games.length} ${gameUnit} · All budgets`;
   $("gameDetails").textContent =
     `${replicationLabel()}. Frozen payoffs and exact ground truth are included in the reproduction bundle.`;
   $("panelSummary").textContent =
@@ -1004,7 +1000,7 @@ function renderLeaderboard(s, preset, visibleMethods, computed = null) {
       const section = document.createElement("tr"), label = document.createElement("th");
       section.className = "lowCoverageHeading";
       label.colSpan = 7;
-      label.textContent = "Low coverage · below 80% · excluded from figures";
+      label.textContent = "Below 80% coverage · not plotted";
       section.append(label);
       $("ranking").append(section);
       lowCoverageStarted = true;
@@ -1351,6 +1347,9 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("resize", () => {
+  performanceChartStates.forEach(({ series, xlabel, metric }, id) => {
+    chart(id, series, xlabel, false, metric);
+  });
   if (historyChartState) {
     const expanded = new Set(
       [

@@ -2,6 +2,7 @@
 // Chart series and rendering; app.js owns page state and shared scoring helpers.
 
 function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
+  performanceChartStates.clear();
   if (computed) {
     const decorate = (series) =>
       chartNames
@@ -13,12 +14,12 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
         }));
     const estimated = $("timeMetric").value === "estimated_uncached_seconds";
     $("timeChartNote").textContent = estimated
-      ? "Only games with recorded oracle costs. Estimated work + batch-amortized oracle cost; not measured runtime."
-      : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
+      ? "Estimated time; only games with recorded oracle costs."
+      : "Measured estimator runtime on shared CPUs.";
     chart(
       "budgetChart",
       decorate(computed.budget_series),
-      "Query budget per player · B / d",
+      "Queries / player",
       false,
       "median",
     );
@@ -26,8 +27,8 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
       "timeChart",
       decorate(computed.time_series),
       estimated
-        ? "Mean estimated work + oracle seconds"
-        : "Mean measured estimator seconds",
+        ? "Mean estimated seconds"
+        : "Mean runtime (seconds)",
       false,
       "median",
     );
@@ -109,15 +110,15 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
   chart(
     "budgetChart",
     budgetSeries,
-    "Query budget per player · B / d",
+    "Queries / player",
     false,
     "median",
   );
   const timeMetric = $("timeMetric").value;
   const estimatedTime = timeMetric === "estimated_uncached_seconds";
   $("timeChartNote").textContent = estimatedTime
-    ? "Only games with recorded oracle costs. Estimated work + batch-amortized oracle cost; not measured runtime."
-    : "Measured estimator runtime includes cache lookups for cached games; live oracle calls for uncached games. Diagnostic timing.";
+    ? "Estimated time; only games with recorded oracle costs."
+    : "Measured estimator runtime on shared CPUs.";
   const timeSeries = chartNames.map((method) => {
     // Reduce the raw cells together: profile medians cannot be averaged.
     const eligible = chartPanel.rows.filter((row) =>
@@ -141,8 +142,8 @@ function renderPerformanceCharts(chartPanel, chartPending, computed = null) {
     "timeChart",
     timeSeries,
     estimatedTime
-      ? "Mean estimated work + oracle seconds"
-      : "Mean measured estimator seconds",
+      ? "Mean estimated seconds"
+      : "Mean runtime (seconds)",
     false,
     "median",
   );
@@ -273,8 +274,10 @@ function endpointLabelPositions(series, y, top, bottom) {
   return new Map(ordered.map((item, i) => [item, positions[i]]));
 }
 let historyChartState;
+const performanceChartStates = new Map();
 function chart(id, series, xlabel, dates = false, metric = "mean") {
   if (dates) historyChartState = { series, xlabel, metric };
+  else performanceChartStates.set(id, { series, xlabel, metric });
   const box = $(id);
   box.replaceChildren();
   const points = series.flatMap((s) => s.points);
@@ -291,7 +294,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     svg = document.createElementNS(ns, "svg");
   const rightLabels = dates && window.innerWidth > 720,
     labelWidth = rightLabels ? 236 : 0,
-    width = dates ? Math.max(240, box.clientWidth) : 480,
+    width = Math.max(240, box.clientWidth),
     height = dates
       ? Math.max(
           Math.min(360, Math.max(275, width * 0.32)),
@@ -393,7 +396,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         x: 55,
         y: yy + 4,
         "text-anchor": "end",
-        "font-size": 10,
+        "font-size": 14,
         fill: "#596980",
       },
       hasErrorFloor && exponent === -12
@@ -409,7 +412,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     dates
       ? Math.max(2, Math.min(7, Math.floor(plotWidth / 75)))
       : queryAxis
-        ? 8
+        ? Math.max(2, Math.floor(plotWidth / 48))
         : 4,
   );
   // Keep both end labels; omit a nearby interior year on narrow screens.
@@ -431,7 +434,7 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
         x: xPosition(value),
         y: height - 29,
         "text-anchor": "middle",
-        "font-size": 10,
+        "font-size": 14,
         fill: "#596980",
       },
       label,
@@ -443,14 +446,14 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
       x: 62 + plotWidth / 2,
       y: height - 3,
       "text-anchor": "middle",
-      "font-size": 11,
+      "font-size": 14,
       fill: "#596980",
     },
     `${xlabel}${dates ? "" : " · log"}`,
   );
   element(
     "text",
-    { x: 62, y: 12, "font-size": 10, fill: "#596980" },
+    { x: 62, y: 12, "font-size": 14, fill: "#596980" },
     `${metric === "median" ? "Median" : "Mean"} nMSE · log ↓`,
   );
   const legend = document.createElement("div");
@@ -586,10 +589,10 @@ function chart(id, series, xlabel, dates = false, metric = "mean") {
     note.className = "scaleNote";
     note.textContent = [
       hasErrorFloor
-        ? "nMSE ≤1e-12, including zero, shares the bottom band. Exact values on hover."
+        ? "Errors ≤1e-12 share the bottom band."
         : "",
       hasTimeFloor
-        ? "Zero and sub-nanosecond times share the ≤1e-9 s position."
+        ? "Times ≤1e-9 s share one position."
         : "",
     ]
       .filter(Boolean)
