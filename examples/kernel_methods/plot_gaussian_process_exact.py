@@ -11,7 +11,7 @@ The posterior mean of a Gaussian process (GP) regression is a weighted sum of ke
 kernel, :math:`k` is a *product* of one-dimensional kernels, one per feature.
 :footcite:t:`Mohammadi.2025a` showed how to compute the Shapley values of such product-kernel
 models exactly, without evaluating any of the :math:`2^d` coalitions of the :math:`d` features.
-:class:`~shapiq.explainer.product_kernel.ProductKernelExplainer` implements their algorithm for
+:class:`~shapiq.explainer.ProductKernelExplainer` implements their algorithm for
 Gaussian processes and support vector machines.
 
 This example fits a GP to the diabetes dataset, explains its predictions exactly, and checks the
@@ -28,7 +28,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 import shapiq
-from shapiq.explainer.product_kernel import ProductKernelExplainer
+from shapiq.explainer import ProductKernelExplainer
 
 # %%
 # Fit a Gaussian Process
@@ -99,7 +99,7 @@ print(f"v(empty set) = {alpha.sum():.6f}")
 # %%
 # Exact Shapley Values in Polynomial Time
 # ---------------------------------------
-# :class:`~shapiq.explainer.product_kernel.ProductKernelExplainer` converts the fitted GP and
+# :class:`~shapiq.explainer.ProductKernelExplainer` converts the fitted GP and
 # computes the Shapley values from the kernel values of the training points, with the elementary
 # symmetric polynomials of the other features' kernel vectors. It never evaluates a coalition.
 # The Shapley values are efficient: together with the baseline :math:`v(\emptyset)`, they sum up

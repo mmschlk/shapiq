@@ -277,6 +277,10 @@ Docs layout (observed 2026-10-12):
   The core API reference documents objects under their subpackage (`shapiq.approximator.KernelSHAP`);
   a `missing-reference` hook in `conf.py` links the public aliases (`shapiq.KernelSHAP`) and bare
   names that match one documented object. Check new references in the built HTML.
+- The sidebar and the previous/next links name the generated API pages by the last part of their
+  dotted name (`_short_navigation_titles` in `conf.py`); the page heading keeps the full path. On
+  `api_reference_games.rst` the game sections list games only; helpers, constants and types go under
+  Utilities.
 - The timeline page reads `docs/source/_data/timeline.toml` (directive in
   `docs/source/_ext/shapiq_timeline.py`); its API, example and citation references are checked by
   Sphinx and warn at the entry's line. A new method in shapiq deserves an entry there.

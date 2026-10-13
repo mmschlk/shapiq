@@ -374,7 +374,7 @@ class NearestNeighborComputer(Computer[NNGameBase[Any]]):
 
 
 class ProductKernelComputer(Computer[ProductKernelGame]):
-    """Product kernel games via :class:`~shapiq.explainer.product_kernel.ProductKernelExplainer`."""
+    """Product kernel games via :class:`~shapiq.explainer.ProductKernelExplainer`."""
 
     name = "product_kernel"
 

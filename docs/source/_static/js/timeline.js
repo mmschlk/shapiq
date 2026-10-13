@@ -178,8 +178,7 @@
   key.setAttribute("aria-label", "Key");
   key.innerHTML =
     '<li class="tl-key-lanes-only"><span class="tl-key-swatch" aria-hidden="true"></span>In shapiq</li>' +
-    '<li class="tl-key-lanes-only"><span class="tl-key-swatch is-dashed" aria-hidden="true"></span>Not in shapiq</li>' +
-    '<li><span class="tl-key-star" aria-hidden="true">★</span>Thesis contribution</li>';
+    '<li class="tl-key-lanes-only"><span class="tl-key-swatch is-dashed" aria-hidden="true"></span>Not in shapiq</li>';
 
   const rows = [[search, implementedSwitch, views], [filters], [status, key]].map(
     (items, index) => {
@@ -274,24 +273,17 @@
           const chip = button("tl-chip");
           chip.dataset.card = card.id;
           chip.dataset.implemented = card.dataset.implemented;
-          chip.dataset.thesis = card.dataset.thesis;
           chip.setAttribute("aria-expanded", "false");
           chip.setAttribute("aria-controls", drawer.id);
           chip.title = card.querySelector(".tl-card-summary").textContent.trim();
           chip.style.setProperty("--tl-index", String(index));
           const name = card.querySelector(".tl-card-name").textContent;
           const extra = card.dataset.implemented === "true" ? ", in shapiq" : "";
-          const thesis = card.dataset.thesis === "true" ? ", thesis contribution" : "";
           chip.append(
             el("span", "tl-chip-year", card.dataset.year),
             el("span", "tl-chip-name", name),
-            el("span", "tl-sr-only", `${extra}${thesis}`),
+            el("span", "tl-sr-only", extra),
           );
-          if (thesis) {
-            const star = el("span", "tl-chip-star", "★");
-            star.setAttribute("aria-hidden", "true");
-            chip.append(star);
-          }
           chip.addEventListener("click", () => {
             if (state.open === card.id) closeDrawer();
             else showInDrawer(card.id);

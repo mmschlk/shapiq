@@ -18,11 +18,6 @@ Timeline of Shapley-Based Explanation Methods
    package. Filter by lane, search for a method or an author, or link to a card directly, e.g.
    ``timeline.html#kernelshap``.
 
-   The selection follows the literature overview of the PhD thesis *Feature-Based Explainable AI:
-   From Attribution to Interaction, From Static to Dynamic* (Maximilian Muschalik, LMU Munich,
-   2026), extended by every method implemented in ``shapiq``. Its core contributions are marked
-   with a star.
-
 .. shapiq-timeline:: _data/timeline.toml
 
 References

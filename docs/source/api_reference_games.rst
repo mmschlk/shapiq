@@ -55,12 +55,12 @@ shapiq_games
 
       Vision and text models
 
-   .. grid-item-card:: :octicon:`typography` Types
-      :link: games-types
+   .. grid-item-card:: :octicon:`tools` Utilities
+      :link: games-utilities
       :link-type: ref
       :class-card: shapiq-card
 
-      Type aliases of the arguments
+      Helpers, constants, and types
 
 .. automodule:: shapiq_games
    :no-members:
@@ -141,7 +141,6 @@ Unsupervised Games
 
    ClusterExplanation
    UnsupervisedData
-   unsupervised.total_correlation
 
 .. _games-causal:
 
@@ -154,7 +153,6 @@ Causal Games
 
    GlobalConfoundingXAI
    LocalConfoundingXAI
-   causal.tabpfn_regressor
 
 .. _games-image-language:
 
@@ -168,14 +166,31 @@ Image and Language Games
    ImageClassifier
    ImageTextSimilarity
    SentimentAnalysis
-   vision.grid_regions
-   vision.get_superpixels
+
+.. _games-utilities:
+
+Utilities
+---------
+
+The helpers and constants the games use, and the types of their arguments.
+
+Helpers
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   causal.tabpfn_regressor
    language.SENTIMENT_MODEL_ID
+   unsupervised.total_correlation
+   vision.get_superpixels
+   vision.grid_regions
 
 .. _games-types:
 
 Types
------
+~~~~~
 
 .. automodule:: shapiq_games.typing
    :no-members:

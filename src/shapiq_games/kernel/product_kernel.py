@@ -31,7 +31,7 @@ class ProductKernelGame(Game):
 
     The empty coalition has :math:`K = 1`, i.e. :math:`v(\emptyset) = \sum_i \alpha_i + b`
     :footcite:p:`Mohammadi.2025a`. Its exact Shapley values are computed by
-    :class:`~shapiq.explainer.product_kernel.ProductKernelExplainer`. Only the RBF kernel is
+    :class:`~shapiq.explainer.ProductKernelExplainer`. Only the RBF kernel is
     supported.
 
     Attributes:

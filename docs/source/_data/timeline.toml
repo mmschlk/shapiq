@@ -13,15 +13,14 @@
 #   examples     gallery documents, e.g. "auto_examples/approximators/shapley_values/plot_kernelshap"
 #   links        further links without a bibliography entry: [{ label = "...", url = "..." }]
 #   related      ids of related cards
-#   thesis       true for the core contributions of the PhD thesis the overview is based on
 # Missing API objects, gallery documents and citation keys produce Sphinx warnings.
 
 # The swimlanes of the desktop view group the years before 2017 into eras (one column each);
 # later years get a column of their own.
 eras = [[1950, 1970], [1971, 2005], [2006, 2016]]
 
-# The lanes follow the categories of the thesis' literature overview (Table 2.1). Eight lanes at
-# most: each lane takes the next color of the categorical palette in ``_static/css/timeline.css``.
+# Eight lanes at most: each lane takes the next color of the categorical palette in
+# ``_static/css/timeline.css``.
 [[lanes]]
 id = "foundations"
 name = "Foundations"
@@ -699,7 +698,6 @@ id = "shap-iq"
 name = "SHAP-IQ"
 year = 2023
 lane = "si-approx"
-thesis = true
 summary = "Unified sampling-based approximation of any-order Shapley interactions."
 description = """
 SHAP-IQ estimates any cardinal interaction index, e.g. the SII, k-SII or STII, of any order from one
@@ -910,7 +908,6 @@ id = "treeshap-iq"
 name = "TreeSHAP-IQ"
 year = 2024
 lane = "exact"
-thesis = true
 summary = "Exact any-order Shapley interactions of tree ensembles in a single traversal."
 description = """
 TreeSHAP-IQ extends Linear TreeSHAP with interaction summary polynomials and computes path-dependent
@@ -979,11 +976,11 @@ summary = "Exact Shapley values of product-kernel models in polynomial time."
 description = """
 Mohammadi et al. computed the exact Shapley values of models built on product kernels, such as
 support vector machines and Gaussian process regression with RBF kernels, in polynomial time by
-exploiting the product structure of the kernel. In shapiq, the
-``shapiq.explainer.product_kernel.ProductKernelExplainer`` computes them for scikit-learn models.
+exploiting the product structure of the kernel. In shapiq, the product-kernel explainer computes
+them for scikit-learn models.
 """
 cite = ["Mohammadi.2025a"]
-api = ["shapiq_games.ProductKernelGame"]
+api = ["shapiq.explainer.ProductKernelExplainer", "shapiq_games.ProductKernelGame"]
 examples = ["auto_examples/kernel_methods/plot_gaussian_process_exact", "auto_examples/kernel_methods/plot_kernel_svm_scaling"]
 related = ["fanova-gp", "rkhs-shap"]
 
@@ -1005,7 +1002,6 @@ id = "graphshap-iq"
 name = "GraphSHAP-IQ"
 year = 2025
 lane = "exact"
-thesis = true
 summary = "Exact any-order Shapley interactions of graph neural networks."
 description = """
 GraphSHAP-IQ exploits that a message-passing graph neural network's output depends only on the
@@ -1245,7 +1241,6 @@ id = "isage"
 name = "iSAGE"
 year = 2023
 lane = "applications"
-thesis = true
 summary = "Incremental SAGE for models that learn from data streams."
 description = """
 iSAGE updates SAGE feature importance alongside an incrementally trained model: every observation is
@@ -1425,7 +1420,6 @@ id = "shapiq"
 name = "shapiq"
 year = 2024
 lane = "software"
-thesis = true
 summary = "Shapley interactions for machine learning: estimators, exact algorithms and benchmarks."
 description = """
 shapiq computes Shapley values and interactions of any order with one interface, bundles

@@ -11,7 +11,7 @@ Gaussian Processes and Kernel Methods
 
       Models that are weighted sums of a product kernel, such as the RBF kernel, have exact
       Shapley values that are computed in polynomial time instead of over all coalitions.
-      ``shapiq.explainer.product_kernel.ProductKernelExplainer`` computes them for scikit-learn's
+      :class:`~shapiq.explainer.ProductKernelExplainer` computes them for scikit-learn's
       Gaussian-process regressors, support vector regressors, and binary support vector
       classifiers with an RBF kernel, and :class:`~shapiq.explainer.Explainer` picks it for these
       models.
@@ -22,5 +22,5 @@ Gaussian Processes and Kernel Methods
 
 .. rst-class:: shapiq-gallery-api
 
-**Key API:** ``shapiq.explainer.product_kernel.ProductKernelExplainer`` ·
+**Key API:** :class:`~shapiq.explainer.ProductKernelExplainer` ·
 :class:`~shapiq.explainer.Explainer` · :class:`~shapiq_games.ProductKernelGame`

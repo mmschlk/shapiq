@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from shapiq import InteractionValues
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory import get_computation_index
+from shapiq.interaction_values import InteractionValues
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 from .validation import validate_pk_model

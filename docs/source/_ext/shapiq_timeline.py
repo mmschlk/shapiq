@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _REQUIRED = {"id", "name", "year", "lane", "summary", "description"}
-_OPTIONAL = {"cite", "api", "examples", "links", "related", "thesis"}
+_OPTIONAL = {"cite", "api", "examples", "links", "related"}
 _ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _MAX_LANES = 8  # the colors of the categorical palette in timeline.css
 
@@ -183,7 +183,6 @@ class TimelineDirective(SphinxDirective):
             lane_name=lane["name"],
             slot=lane["slot"],
             implemented=bool(entry.get("api")),
-            thesis=bool(entry.get("thesis")),
         )
         summary = self._parse(entry["summary"], source)
         details = self._parse(_details_rst(entry, names), source)
@@ -244,7 +243,6 @@ def _visit_card(self: HTML5Translator, node: TimelineCardNode) -> None:
         "data-year": node["year"],
         "data-column": node["column"],
         "data-implemented": str(node["implemented"]).lower(),
-        "data-thesis": str(node["thesis"]).lower(),
     }
     self.body.append(self.starttag(node, "article", CLASS="tl-card", **data))
     entry_id, name = node["ids"][0], escape(node["name"])
@@ -255,14 +253,10 @@ def _visit_card(self: HTML5Translator, node: TimelineCardNode) -> None:
         f'<h3 class="tl-card-title"><span class="tl-card-name">{name}</span>',
         f'<a class="headerlink" href="#{entry_id}" title="Link to {name}">#</a></h3>',
     ]
-    badges = [
-        '<span class="tl-badge tl-badge-shapiq">In shapiq</span>' if node["implemented"] else "",
-        '<span class="tl-badge tl-badge-thesis">Thesis contribution</span>'
-        if node["thesis"]
-        else "",
-    ]
-    if any(badges):
-        header.append(f'<p class="tl-badges">{"".join(badges)}</p>')
+    if node["implemented"]:
+        header.append(
+            '<p class="tl-badges"><span class="tl-badge tl-badge-shapiq">In shapiq</span></p>'
+        )
     self.body.append("".join(header) + "</header>\n")
 
 

@@ -37,8 +37,6 @@
   --tl-grid: color-mix(in srgb, var(--shapiq-border) 65%, transparent);
   --tl-focus: var(--color-brand-primary);
   --tl-shapiq-ink: #3150c9;
-  --tl-thesis-ink: #b8124a;
-  --tl-thesis: var(--shapiq-red);
   --tl-duration: calc(var(--shapiq-duration) * 1.4);
   --tl-label-width: 11rem;
   --tl-column-width: 8.75rem;
@@ -56,7 +54,6 @@ body[data-theme="dark"] .shapiq-timeline {
   --tl-c7: #9085e9;
   --tl-c8: #e66767;
   --tl-shapiq-ink: #a9b9f7;
-  --tl-thesis-ink: #ff8fb1;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,7 +67,6 @@ body[data-theme="dark"] .shapiq-timeline {
     --tl-c7: #9085e9;
     --tl-c8: #e66767;
     --tl-shapiq-ink: #a9b9f7;
-    --tl-thesis-ink: #ff8fb1;
   }
 }
 
@@ -292,13 +288,6 @@ body[data-theme="dark"] .shapiq-timeline {
 }
 .tl-badge-shapiq::before {
   content: "\2713"; /* check mark */
-}
-.tl-badge-thesis {
-  color: var(--tl-thesis-ink);
-  background: color-mix(in srgb, var(--tl-thesis) 13%, transparent);
-}
-.tl-badge-thesis::before {
-  content: "\2605"; /* star */
 }
 .shapiq-timeline .tl-card-summary p {
   margin: 0.45rem 0 0;
@@ -624,9 +613,6 @@ body[data-theme="dark"] .shapiq-timeline {
   border-style: dashed;
   background: transparent;
 }
-.tl-key-star {
-  color: var(--tl-thesis);
-}
 .tl-view-list .tl-key .tl-key-lanes-only {
   display: none;
 }
@@ -770,18 +756,13 @@ body[data-theme="dark"] .shapiq-timeline {
   color: var(--tl-muted);
   font-variant-numeric: tabular-nums;
 }
-.tl-lane:hover,
 .tl-lane:has(.tl-chip:focus-visible),
 .tl-lane.is-active {
   --tl-row-bg: color-mix(in srgb, var(--tl-lane) 7%, var(--tl-surface));
 }
-.tl-lane:hover .tl-lane-label,
 .tl-lane:has(.tl-chip:focus-visible) .tl-lane-label,
 .tl-lane.is-active .tl-lane-label {
   background: color-mix(in srgb, var(--tl-lane) 13%, var(--tl-surface));
-}
-.tl-grid:has(.tl-chip:hover) .tl-lane:not(:has(.tl-chip:hover)) .tl-chip {
-  opacity: 0.6; /* hovering a card highlights its lane */
 }
 .tl-cell {
   display: flex;
@@ -848,16 +829,6 @@ body[data-theme="dark"] .shapiq-timeline {
 .tl-chip-name {
   font-weight: 650;
   overflow-wrap: anywhere;
-}
-.tl-chip[data-thesis="true"] {
-  padding-right: 1.2rem;
-}
-.tl-chip-star {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--tl-thesis);
 }
 .tl-lanes-bar {
   display: flex;

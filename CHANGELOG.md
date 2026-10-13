@@ -41,6 +41,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 - `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- `ProductKernelExplainer` is exported from `shapiq.explainer` (`from shapiq.explainer import ProductKernelExplainer`) and documented in the API reference.
 
 ### Maintenance
 

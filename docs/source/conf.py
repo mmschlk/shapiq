@@ -15,6 +15,7 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAliasType, override
 
+from docutils import nodes
 from pybtex.plugin import register_plugin
 from pybtex.style.formatting.alpha import Style as AlphaStyle
 from pybtex.style.template import field, href, join, sentence, words
@@ -484,10 +485,29 @@ def _link_reexported_names(app, env, node, contnode):  # noqa: ANN202
     )
 
 
+def _short_navigation_titles(app, doctree) -> None:  # noqa: ARG001
+    """Name the API pages by their last component in the sidebar and the previous/next links.
+
+    The sidebar already shows where a page sits (``shapiq`` > ``approximator`` > ``KernelSHAP``), so
+    full dotted names only repeat it and overflow the sidebar. The page itself keeps its full name
+    as its heading and browser title.
+    """
+    docname = app.env.docname
+    if not docname.startswith("generated/") or docname not in app.env.titles:
+        return
+    short = app.env.titles[docname].astext().rpartition(".")[2]
+    app.env.titles[docname] = nodes.title(short, short)  # previous/next links
+    toc = app.env.tocs.get(docname)  # the sidebar entry: the first reference of the page's toc
+    title_reference = next(toc.findall(nodes.reference), None) if toc is not None else None
+    if title_reference is not None:
+        title_reference.children = [nodes.Text(short)]
+
+
 def setup(app) -> None:
     """Connect the docstring handler (before napoleon, which formats the docstrings)."""
     app.connect("autodoc-process-docstring", _use_the_defining_module_docstring, priority=400)
     app.connect("missing-reference", _link_reexported_names)
+    app.connect("doctree-read", _short_navigation_titles, priority=900)  # after the title collector
 
 
 # -- Suppress warnings -----------------------------------------------------------------------------
