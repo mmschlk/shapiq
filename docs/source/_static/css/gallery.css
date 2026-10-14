@@ -88,16 +88,16 @@ p.shapiq-examples-lead {
   color: var(--color-foreground-secondary);
 }
 
-/* the steps of a path: pills, pushed to the bottom of the card */
+/* the groups of a path: a wrapping row of pills, pushed to the bottom of the card */
 .shapiq-path-card p.shapiq-path-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin: auto 0 0;
-  line-height: 2.1;
-  color: var(--color-foreground-muted);
 }
 
-/* inline (not inline-block), so that the no-break space after an arrow keeps it with its step */
 .shapiq-path-steps a.reference {
-  display: inline;
+  display: inline-block;
   padding: 0.1rem 0.7rem;
   border: 1px solid var(--shapiq-pill-border);
   border-radius: 999px;

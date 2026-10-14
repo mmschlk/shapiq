@@ -1,11 +1,6 @@
 Examples & Tutorials
 ====================
 
-.. |then| unicode:: U+0020 U+2192 U+00A0
-   :trim:
-.. |or| unicode:: U+0020 U+00B7 U+00A0
-   :trim:
-
 .. rst-class:: shapiq-examples-lead
 
 Runnable examples of ``shapiq``, ``shapiq_games``, and ``shapiq_benchmark``, from a first
@@ -26,8 +21,8 @@ Where to start
 
       .. rst-class:: shapiq-path-steps
 
-      :doc:`Getting Started <auto_examples/basics/index>` |then|
-      :doc:`Visualization <auto_examples/visualization/index>` |then|
+      :doc:`Getting Started <auto_examples/basics/index>`
+      :doc:`Visualization <auto_examples/visualization/index>`
       :doc:`Applications <auto_examples/applications/index>`
 
    .. grid-item-card:: :octicon:`zap;1.1em` Exact values for my model
@@ -37,8 +32,8 @@ Where to start
 
       .. rst-class:: shapiq-path-steps
 
-      :doc:`Tree Ensembles <auto_examples/trees/index>` |or|
-      :doc:`Nearest Neighbors <auto_examples/nearest_neighbors/index>` |or|
+      :doc:`Tree Ensembles <auto_examples/trees/index>`
+      :doc:`Nearest Neighbors <auto_examples/nearest_neighbors/index>`
       :doc:`Kernel Methods <auto_examples/kernel_methods/index>`
 
    .. grid-item-card:: :octicon:`mortar-board;1.1em` Learn the game theory
@@ -48,7 +43,7 @@ Where to start
 
       .. rst-class:: shapiq-path-steps
 
-      :doc:`Getting Started <auto_examples/basics/index>` |then|
+      :doc:`Getting Started <auto_examples/basics/index>`
       :doc:`Exact Computation <auto_examples/exact_computation/index>`
 
    .. grid-item-card:: :octicon:`graph;1.1em` Compare or develop approximators
@@ -58,7 +53,7 @@ Where to start
 
       .. rst-class:: shapiq-path-steps
 
-      :doc:`Approximators <auto_examples/approximators/index>` |then|
+      :doc:`Approximators <auto_examples/approximators/index>`
       :doc:`Games and Benchmarks <auto_examples/benchmarking/index>`
 
 All examples by topic
