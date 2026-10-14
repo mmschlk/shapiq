@@ -7,7 +7,7 @@
 #   lane         one of the lane ids below
 #   summary      one line, shown on the collapsed card
 #   description  two to four sentences
-#   cite         keys of ``references.bib`` (rendered with :cite:t:)
+#   cite         keys of ``references.bib`` (rendered with :cite:p:)
 #   api          objects of the API reference (fully qualified, e.g. "shapiq.approximator.KernelSHAP");
 #                an entry with API objects counts as implemented in shapiq
 #   examples     gallery documents, e.g. "auto_examples/approximators/shapley_values/plot_kernelshap"

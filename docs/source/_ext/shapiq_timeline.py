@@ -99,7 +99,7 @@ def _details_rst(entry: dict[str, Any], names: dict[str, str]) -> str:
     fields = []
     if cite := entry.get("cite"):
         label = "Reference" if len(cite) == 1 else "References"
-        fields.append((label, "; ".join(f":cite:t:`{key}`" for key in cite)))
+        fields.append((label, f":cite:p:`{','.join(cite)}`"))  # [Author et al., 2022], as elsewhere
     if api := entry.get("api"):
         fields.append(("In shapiq", ", ".join(_api_reference(target) for target in api)))
     if examples := entry.get("examples"):
