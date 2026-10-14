@@ -233,7 +233,9 @@ Boosting converters live in separate modules such as `xgboost.py`,
   from the name (`Covert.2021` is "Explaining by Removing", `Covert.2021b` "Improving KernelSHAP").
   The file is grouped by entry type, the `@inproceedings` further by venue under `#`/`%` comment
   headers, by year within a venue; copy the venue string of an existing entry (AAAI is
-  `Conference on Artificial Intelligence (AAAI)`). To verify bibliographic data (observed
+  `Conference on Artificial Intelligence (AAAI)`). Accent commands named by a letter leak into
+  pybtex's labels (`{\v{S}}trumbelj` became `[vStrumbeljK10]`); write such names in Unicode
+  (`Štrumbelj`), as `{\"{u}}`-style accents are fine. To verify bibliographic data (observed
   2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
   `curl` with a bot check; Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the publishers'
   own proceedings pages work.

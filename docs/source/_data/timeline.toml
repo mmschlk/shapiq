@@ -584,7 +584,7 @@ Pelegrina et al. approximate the game by a k-additive game in the sense of Grabi
 interactions of order at most k, by least squares on sampled coalitions, and read the Shapley values
 out of the fitted game. Modeling interactions improves on KernelSHAP, which fits an additive game.
 """
-cite = ["Pelegrina.2023", "Pelegrina.2025", "Grabisch.1997"]
+cite = ["Pelegrina.2023", "Pelegrina.2026", "Grabisch.1997"]
 api = ["shapiq.approximator.kADDSHAP"]
 examples = ["auto_examples/approximators/shapley_values/plot_kadd_shap"]
 related = ["kernelshap", "polyshap"]
