@@ -10,6 +10,7 @@ import functools
 import importlib
 import os
 import pkgutil
+import re
 import sys
 from importlib.metadata import version
 from pathlib import Path
@@ -291,7 +292,35 @@ html_css_files = [
     "css/custom.css",
     "css/gallery.css",  # the examples landing page, the group pages and their thumbnails
 ]
-html_js_files = [("js/sidebar.js", {"defer": "defer"})]  # keeps the place in the sidebar
+html_js_files = [
+    ("js/sidebar.js", {"defer": "defer"}),  # keeps the place in the sidebar
+    ("js/logo.js", {"defer": "defer"}),  # the players of the logo are springs
+]
+
+
+def _inline_logo(theme: str) -> str:
+    """Return the logo of a theme as inline SVG markup for ``_templates/sidebar/brand.html``.
+
+    An ``<img>`` cannot be animated per player, and fetching the file at runtime fails for docs
+    opened from disk, so the sidebar carries the SVG itself. Both themes' logos are on every page:
+    the ids go (only the gradient of the dark logo keeps a unique one), and CSS sizes the logo.
+    """
+    svg = (root / "docs" / "source" / "_static" / "logo" / f"logo_shapiq_{theme}.svg").read_text()
+    svg = re.sub(r"<\?xml[^>]*\?>\s*", "", svg)
+    svg = re.sub(r'\s+id="(?!hexGlow")[^"]*"', "", svg).replace("hexGlow", "shapiq-logo-glow")
+    for size in ("width", "height"):
+        svg = re.sub(rf'(<svg\b[^>]*?)\s+{size}="[^"]*"', r"\1", svg, count=1)
+    return svg.replace(
+        "<svg",
+        f'<svg class="sidebar-logo shapiq-logo only-{theme}" role="img" aria-label="shapiq"',
+        1,
+    )
+
+
+html_context = {
+    "shapiq_logo_light": _inline_logo("light"),
+    "shapiq_logo_dark": _inline_logo("dark"),
+}
 html_favicon = "_static/logo/shapiq.ico"
 pygments_style = "github-light"
 pygments_dark_style = "github-dark"

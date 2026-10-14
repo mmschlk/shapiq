@@ -282,6 +282,10 @@ Docs layout (observed 2026-10-12):
 - The timeline page reads `docs/source/_data/timeline.toml` (directive in
   `docs/source/_ext/shapiq_timeline.py`); its API, example and citation references are checked by
   Sphinx and warn at the entry's line. A new method in shapiq deserves an entry there.
+- The logo is inlined as SVG (`_inline_logo` in `conf.py`, `_templates/sidebar/brand.html`) so that
+  `_static/js/logo.js` can move its players; the landing page's `<img>` is swapped for a copy.
+  Edit `_static/logo/logo_shapiq_{light,dark}.svg` only: the script finds the players as circles
+  with `r > 15`, the caps as smaller circles and the lines as two-point paths with `fill="none"`.
 - In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
   `conf.py` puts the worktree's `src` first on `sys.path`: copy the `*.so` files from the main
   checkout before building the docs there.

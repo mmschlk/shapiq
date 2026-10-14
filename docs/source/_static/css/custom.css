@@ -74,6 +74,26 @@ table.docutils {
   max-width: 8.5rem;
 }
 
+/* the inline logo (see _static/js/logo.js): its players can be pulled, also past its edge */
+svg.sidebar-logo {
+  width: 8.5rem;
+  height: auto;
+}
+
+svg.shapiq-logo {
+  overflow: visible;
+}
+
+.shapiq-logo-player {
+  cursor: grab;
+  touch-action: none;
+}
+
+svg.shapiq-logo.is-pulling,
+svg.shapiq-logo.is-pulling .shapiq-logo-player {
+  cursor: grabbing;
+}
+
 .sidebar-tree .current-page > .reference {
   color: var(--color-brand-primary);
 }
