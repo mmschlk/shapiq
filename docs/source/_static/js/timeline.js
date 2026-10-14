@@ -4,7 +4,8 @@
  * _ext/shapiq_timeline.py renders every entry as a card in a list grouped by year: the page
  * without JavaScript and the view on phones. This script adds filters (lanes, "in shapiq only",
  * search), collapsible cards, a swimlane view for wide screens that shows the open card in a
- * drawer below its lane, deep links (timeline.html#kernelshap) and a scroll-reveal animation.
+ * drawer below its lane, a sortable table, deep links (timeline.html#kernelshap) and a
+ * scroll-reveal animation.
  */
 (() => {
   "use strict";
@@ -20,6 +21,7 @@
   const wideScreen = window.matchMedia("(min-width: 50em)");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const VIEW_KEY = "shapiq-timeline-view";
+  const VIEWS = { lanes: "Lanes", list: "List", table: "Table" };
 
   const ICONS = {
     search:
@@ -27,6 +29,9 @@
     lanes:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h7M14 6h7M3 12h4M11 12h10M3 18h11M18 18h3"/></svg>',
     list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>',
+    table:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 10v10"/></svg>',
+    sort: '<svg class="tl-sort-icon" viewBox="0 0 12 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="tl-sort-up" d="m3 7 3-3 3 3"/><path class="tl-sort-down" d="m3 11 3 3 3-3"/></svg>',
     left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>',
     right:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
@@ -40,6 +45,7 @@
     implementedOnly: false,
     view: loadView(),
     open: null, // the id of the card in a drawer of the swimlane view
+    sort: { key: "year", direction: 1 }, // the order of the table
   };
 
   // -- helpers ----------------------------------------------------------------------------------
@@ -64,7 +70,8 @@
 
   function loadView() {
     try {
-      return window.localStorage.getItem(VIEW_KEY) === "list" ? "list" : "lanes";
+      const view = window.localStorage.getItem(VIEW_KEY);
+      return view in VIEWS ? view : "lanes";
     } catch {
       return "lanes";
     }
@@ -145,11 +152,11 @@
   const views = el("div", "tl-views");
   views.setAttribute("role", "group");
   views.setAttribute("aria-label", "View");
-  const viewButtons = ["lanes", "list"].map((view) => {
+  const viewButtons = Object.entries(VIEWS).map(([view, label]) => {
     const viewButton = button("");
     viewButton.dataset.view = view;
     viewButton.innerHTML = ICONS[view];
-    viewButton.append(view === "lanes" ? "Lanes" : "List");
+    viewButton.append(label);
     views.append(viewButton);
     return viewButton;
   });
@@ -387,6 +394,203 @@
   next.addEventListener("click", () => scrollByPage(1));
   if ("ResizeObserver" in window) new ResizeObserver(updateScroll).observe(scroller);
 
+  // -- table view -------------------------------------------------------------------------------
+
+  const COLUMN_FIELDS = ["Reference", "References", "In shapiq"]; // the fields with a column
+
+  // the label of a field of a card's details ("Reference", "In shapiq", ...)
+  function fieldLabel(term) {
+    return term.textContent.replace(/:\s*$/, "").trim();
+  }
+
+  // the body of a field of a card's details, or null
+  function field(card, labels) {
+    const terms = [...card.querySelectorAll(".tl-card-fields > dt")];
+    return terms.find((term) => labels.includes(fieldLabel(term)))?.nextElementSibling ?? null;
+  }
+
+  // a copy of the links of a field (citations, API objects), without the ids of the original
+  function copyOf(body) {
+    const copy = document.createDocumentFragment();
+    for (const node of (body.querySelector("p") ?? body).childNodes) copy.append(node.cloneNode(true));
+    for (const node of copy.querySelectorAll("[id]")) node.removeAttribute("id");
+    return copy;
+  }
+
+  // let long names such as ExactComputer.probabilistic_value wrap after a dot or an underscore
+  function breakAfterDots(fragment) {
+    for (const name of fragment.querySelectorAll("code .pre")) {
+      const parts = name.textContent.split(/(?<=[._])/);
+      name.replaceChildren(...parts.flatMap((part, i) => (i ? [el("wbr"), part] : [part])));
+    }
+    return fragment;
+  }
+
+  // the details of a card below its row: the description and the fields without a column
+  function detailsForRow(card) {
+    const details = card.querySelector(".tl-card-details-inner").cloneNode(true);
+    for (const node of [details, ...details.querySelectorAll("[id]")]) node.removeAttribute("id");
+    for (const term of [...details.querySelectorAll(".tl-card-fields > dt")]) {
+      if (COLUMN_FIELDS.includes(fieldLabel(term))) {
+        term.nextElementSibling.remove();
+        term.remove();
+      }
+    }
+    const fields = details.querySelector(".tl-card-fields");
+    if (fields && !fields.children.length) fields.remove();
+    return details;
+  }
+
+  const tableView = el("div", "tl-table-view");
+  const tableBar = el("div", "tl-lanes-bar");
+  tableBar.append(
+    el("span", "tl-scroll-hint", "Click a method for details and a column heading to sort."),
+  );
+  const table = el("table", "tl-table");
+  table.append(el("caption", "tl-sr-only", "The entries of the timeline"));
+  const head = el("thead");
+  const headRow = el("tr");
+  const SORTS = { year: "Year", name: "Method", lane: "Lane", cite: "Reference", shapiq: "In shapiq" };
+  const sortHeaders = Object.entries(SORTS).map(([key, label]) => {
+    const header = el("th", `tl-col-${key}`);
+    header.scope = "col";
+    const sortButton = button("tl-sort");
+    sortButton.append(label);
+    sortButton.insertAdjacentHTML("beforeend", ICONS.sort);
+    sortButton.addEventListener("click", () => {
+      const direction = state.sort.key === key ? -state.sort.direction : 1;
+      state.sort = { key, direction };
+      sortTable({ animate: true });
+    });
+    header.dataset.sort = key;
+    header.append(sortButton);
+    headRow.append(header);
+    return header;
+  });
+  head.append(headRow);
+  table.append(head);
+
+  const rowById = new Map();
+  for (const [index, card] of cards.entries()) {
+    const lane = lanes.find((candidate) => candidate.id === card.dataset.lane);
+    const name = card.querySelector(".tl-card-name").textContent;
+    const entry = el("tbody", "tl-entry");
+    entry.dataset.slot = card.dataset.slot;
+    const row = el("tr", "tl-row");
+
+    const nameCell = el("th", "tl-col-name");
+    nameCell.scope = "row";
+    const toggle = button("tl-row-toggle");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", `${card.id}-row`);
+    toggle.append(el("span", "tl-row-name", name));
+    toggle.insertAdjacentHTML("beforeend", ICONS.right);
+    const summary = card.querySelector(".tl-card-summary").textContent.trim();
+    nameCell.append(toggle, el("span", "tl-row-summary", summary));
+
+    const laneCell = el("td", "tl-col-lane");
+    laneCell.append(el("span", "tl-row-lane", lane.name));
+    const citeCell = el("td", "tl-col-cite");
+    const references = field(card, ["Reference", "References"]);
+    if (references) citeCell.append(copyOf(references));
+    const shapiqCell = el("td", "tl-col-shapiq");
+    const api = field(card, ["In shapiq"]);
+    if (api) shapiqCell.append(breakAfterDots(copyOf(api)));
+    else shapiqCell.append(el("span", "tl-row-none", "–"), el("span", "tl-sr-only", "not in shapiq"));
+    row.append(el("td", "tl-col-year", card.dataset.year), nameCell, laneCell, citeCell, shapiqCell);
+
+    const detailsRow = el("tr", "tl-row-details");
+    const detailsCell = el("td");
+    detailsCell.colSpan = Object.keys(SORTS).length;
+    const drawer = el("div", "tl-row-drawer");
+    drawer.id = `${card.id}-row`;
+    drawer.inert = true;
+    const inner = el("div", "tl-row-drawer-inner");
+    drawer.append(inner);
+    detailsCell.append(drawer);
+    detailsRow.append(detailsCell);
+    entry.append(row, detailsRow);
+    table.append(entry);
+
+    toggle.addEventListener("click", () => setRowOpen(card.id, !entry.classList.contains("is-open")));
+    row.addEventListener("click", (event) => {
+      if (!event.target.closest("a, button") && !window.getSelection().toString()) toggle.click();
+    });
+    rowById.set(card.id, {
+      entry,
+      toggle,
+      drawer,
+      inner,
+      keys: {
+        year: Number(card.dataset.year),
+        name: normalize(name),
+        lane: lanes.indexOf(lane),
+        cite: references ? normalize(references.textContent.replace(/^\W+/, "")) : null,
+        shapiq: api ? 0 : 1,
+      },
+      index, // the order of the cards: year, lane, name
+    });
+  }
+  tableView.append(tableBar, table);
+
+  function setRowOpen(id, open) {
+    const row = rowById.get(id);
+    if (open && !row.inner.firstChild) row.inner.append(detailsForRow(cardById.get(id)));
+    row.entry.classList.toggle("is-open", open);
+    row.toggle.setAttribute("aria-expanded", String(open));
+    row.drawer.inert = !open;
+    if (open) setHash(id);
+    else if (window.location.hash === `#${id}`) setHash(null);
+  }
+
+  function compareRows(a, b) {
+    const { key, direction } = state.sort;
+    const [x, y] = [a.keys[key], b.keys[key]];
+    if (x !== y) {
+      if (x === null || y === null) return x === null ? 1 : -1; // no reference: always last
+      return (x < y ? -1 : 1) * direction;
+    }
+    return a.index - b.index;
+  }
+
+  // sort the rows; with animate, every row glides from its old place to its new one
+  function sortTable({ animate = false } = {}) {
+    const rows = [...rowById.values()];
+    const glide = animate && !reducedMotion.matches && "animate" in Element.prototype;
+    const before = new Map(glide ? rows.map((row) => [row, row.entry.getBoundingClientRect().top]) : []);
+    rows.sort(compareRows);
+    table.append(...rows.map((row) => row.entry));
+    for (const header of sortHeaders) {
+      const sorted = header.dataset.sort === state.sort.key;
+      const order = state.sort.direction > 0 ? "ascending" : "descending";
+      if (sorted) header.setAttribute("aria-sort", order);
+      else header.removeAttribute("aria-sort");
+    }
+    if (!glide) return;
+    table.classList.add("is-sorted"); // all rows are shown: no scroll reveal after a sort
+    const height = window.innerHeight;
+    const onScreen = (top) => top > -height * 0.25 && top < height;
+    for (const row of rows) {
+      if (row.entry.hidden) continue;
+      const top = row.entry.getBoundingClientRect().top;
+      const shift = before.get(row) - top;
+      if (!shift || !onScreen(top)) continue;
+      // a row from far away fades in over a short way instead of flying across the screen
+      const keyframes = onScreen(before.get(row))
+        ? [{ transform: `translateY(${shift}px)` }, { transform: "none" }]
+        : [{ transform: `translateY(${Math.sign(shift) * 24}px)`, opacity: 0 }, { transform: "none", opacity: 1 }];
+      row.entry.animate(keyframes, { duration: 420, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+    }
+  }
+
+  // the table's head sticks below furo's header, which only shows on narrower screens
+  const mobileHeader = document.querySelector(".mobile-header");
+  function updateStickyTop() {
+    const visible = mobileHeader && window.getComputedStyle(mobileHeader).display !== "none";
+    table.style.setProperty("--tl-sticky-top", `${visible ? mobileHeader.offsetHeight : 0}px`);
+  }
+  window.addEventListener("resize", updateStickyTop, { passive: true });
+
   // -- filters ----------------------------------------------------------------------------------
 
   function matches(card) {
@@ -406,6 +610,7 @@
       const visible = matches(card);
       card.hidden = !visible;
       chipById.get(card.id).hidden = !visible;
+      rowById.get(card.id).entry.hidden = !visible;
       shown += visible;
     }
     for (const year of list.querySelectorAll(".tl-year")) {
@@ -468,24 +673,24 @@
 
   function applyView() {
     const view = currentView();
-    root.classList.toggle("tl-view-lanes", view === "lanes");
-    root.classList.toggle("tl-view-list", view === "list");
+    for (const name of Object.keys(VIEWS)) root.classList.toggle(`tl-view-${name}`, view === name);
     views.hidden = !wideScreen.matches;
     for (const viewButton of viewButtons) {
       viewButton.setAttribute("aria-pressed", String(viewButton.dataset.view === state.view));
     }
     if (shownView && shownView !== view) {
       // keep the open entry open in the other view
-      const id = state.open || window.location.hash.slice(1);
-      if (view === "list") {
-        closeDrawer();
-        if (cardById.has(id)) setCardOpen(cardById.get(id), true);
-      } else if (cardById.has(id) && matches(cardById.get(id))) {
-        showInDrawer(id, { instant: true });
+      const id = state.open || decodeURIComponent(window.location.hash.slice(1));
+      if (view !== "lanes") closeDrawer();
+      if (cardById.has(id)) {
+        if (view === "list") setCardOpen(cardById.get(id), true);
+        else if (view === "table") setRowOpen(id, true);
+        else if (matches(cardById.get(id))) showInDrawer(id, { instant: true });
       }
     }
     shownView = view;
     if (view === "lanes") updateScroll();
+    if (view === "table") updateStickyTop();
   }
 
   for (const viewButton of viewButtons) {
@@ -502,6 +707,12 @@
   function scrollToEntry(id, behavior) {
     if (currentView() === "list") {
       cardById.get(id).scrollIntoView({ block: "start", behavior });
+      return;
+    }
+    if (currentView() === "table") {
+      const below = head.getBoundingClientRect().height + parseFloat(table.style.getPropertyValue("--tl-sticky-top") || "0");
+      const top = window.scrollY + rowById.get(id).entry.getBoundingClientRect().top - below - 12;
+      window.scrollTo({ top, behavior });
       return;
     }
     const chip = chipById.get(id);
@@ -523,14 +734,20 @@
     if (currentView() === "list") {
       card.classList.add("is-revealed");
       setCardOpen(card, true);
+    } else if (currentView() === "table") {
+      rowById.get(id).entry.classList.add("is-revealed");
+      setRowOpen(id, true);
     } else if (state.open !== id) {
       showInDrawer(id, { instant: initial });
     }
     if (!initial) {
       scrollToEntry(id, scrollBehavior());
-      const target =
-        currentView() === "list" ? card.querySelector(".tl-card-toggle") : chipById.get(id);
-      target.focus({ preventScroll: true });
+      const targets = {
+        list: card.querySelector(".tl-card-toggle"),
+        table: rowById.get(id).toggle,
+        lanes: chipById.get(id),
+      };
+      targets[currentView()].focus({ preventScroll: true });
     } else if (document.readyState === "complete") {
       scrollToEntry(id, "instant");
     } else {
@@ -561,14 +778,18 @@
       },
       { rootMargin: "0px 0px -6% 0px" },
     );
-    for (const node of [...cards, ...grid.querySelectorAll(".tl-lane")]) observer.observe(node);
+    const tableRows = [...rowById.values()].map((row) => row.entry);
+    for (const node of [...cards, ...grid.querySelectorAll(".tl-lane"), ...tableRows]) {
+      observer.observe(node);
+    }
   }
 
   // -- start --------------------------------------------------------------------------------------
 
-  root.prepend(toolbar, lanesView);
+  root.prepend(toolbar, lanesView, tableView);
   list.before(empty);
   root.classList.add("tl-js");
+  sortTable();
   applyFilters();
   applyView();
   if (window.location.hash) openFromHash({ initial: true });

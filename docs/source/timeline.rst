@@ -15,8 +15,8 @@ Timeline of Shapley-Based Explanation Methods
    lanes, from the game-theoretic foundations to software. Open a card for a short description,
    the reference, the classes that implement it in ``shapiq`` and a gallery example. Cards marked
    **In shapiq** are implemented; the others are important for the field but not part of the
-   package. Filter by lane, search for a method or an author, or link to a card directly, e.g.
-   ``timeline.html#kernelshap``.
+   package. Filter by lane, search for a method or an author, switch between the swimlanes, a list
+   and a sortable table, or link to a card directly, e.g. ``timeline.html#kernelshap``.
 
 .. shapiq-timeline:: _data/timeline.toml
 

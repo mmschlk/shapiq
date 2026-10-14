@@ -1,6 +1,6 @@
 /* Timeline of Shapley-based methods (timeline.rst). Only included on pages with a timeline, see
    _ext/shapiq_timeline.py. Without JavaScript the timeline is a list of cards grouped by year;
-   _static/js/timeline.js adds the class "tl-js" with the filters and a swimlane view. */
+   _static/js/timeline.js adds the class "tl-js" with the filters, a swimlane and a table view. */
 
 /* -- Page layout: the swimlanes take the width of the main column (the page has no local toc) -- */
 .main,
@@ -613,7 +613,8 @@ body[data-theme="dark"] .shapiq-timeline {
   border-style: dashed;
   background: transparent;
 }
-.tl-view-list .tl-key .tl-key-lanes-only {
+.tl-view-list .tl-key .tl-key-lanes-only,
+.tl-view-table .tl-key .tl-key-lanes-only {
   display: none;
 }
 .shapiq-timeline .tl-empty {
@@ -627,8 +628,14 @@ body[data-theme="dark"] .shapiq-timeline {
 
 /* -- Swimlane view (wide screens, with JavaScript) ------------------------------------------------ */
 .tl-view-lanes .tl-list,
-.tl-view-list .tl-lanes {
+.tl-view-table .tl-list,
+.tl-view-list .tl-lanes,
+.tl-view-table .tl-lanes,
+.tl-table-view {
   display: none;
+}
+.tl-view-table .tl-table-view {
+  display: block;
 }
 .tl-lanes {
   position: relative;
@@ -964,6 +971,239 @@ body[data-theme="dark"] .shapiq-timeline {
   }
 }
 
+/* -- Table view (wide screens, with JavaScript): one row per entry, sortable, details below ------ */
+.tl-table-view {
+  margin: 0 0 1rem;
+}
+.shapiq-timeline table.tl-table {
+  width: 100%;
+  table-layout: fixed; /* the widths of the head: the method takes the rest */
+  margin: 0;
+  border: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.88rem;
+}
+.tl-table th,
+.tl-table td {
+  border: 0;
+  text-align: left;
+  vertical-align: top;
+}
+.tl-table thead th {
+  position: sticky;
+  top: var(--tl-sticky-top, 0px);
+  z-index: 2;
+  padding: 0;
+  border-bottom: 1px solid var(--tl-border);
+  background: var(--color-background-primary);
+}
+.tl-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--tl-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--shapiq-duration) var(--shapiq-ease);
+}
+.tl-sort:hover,
+.tl-table th[aria-sort] .tl-sort {
+  color: var(--tl-ink);
+}
+.tl-sort-icon {
+  flex: none;
+  width: 0.6rem;
+  height: 0.9rem;
+}
+.tl-sort-icon path {
+  opacity: 0.35;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+.tl-table th[aria-sort="ascending"] .tl-sort-up,
+.tl-table th[aria-sort="descending"] .tl-sort-down {
+  opacity: 1;
+}
+.tl-table th[aria-sort] .tl-sort-icon path:not(.tl-sort-up):not(.tl-sort-down),
+.tl-table th[aria-sort="ascending"] .tl-sort-down,
+.tl-table th[aria-sort="descending"] .tl-sort-up {
+  opacity: 0.15;
+}
+.tl-table .tl-col-year {
+  width: 4.2rem;
+}
+.tl-table .tl-col-lane {
+  width: 10.5rem;
+}
+.tl-table .tl-col-cite {
+  width: 11.5rem;
+}
+.tl-table .tl-col-shapiq {
+  width: 12rem;
+}
+
+/* the rows: the lane's color on the left, a tint on hover and while open */
+.tl-row > * {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--tl-grid);
+  transition: background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+.tl-row {
+  cursor: pointer;
+}
+.tl-row > :first-child,
+.tl-row-details > td {
+  box-shadow: inset 3px 0 0 var(--tl-lane);
+}
+.tl-row:hover > * {
+  background: color-mix(in srgb, var(--tl-lane) 7%, transparent);
+}
+.tl-entry.is-open .tl-row > * {
+  border-bottom-color: transparent;
+  background: color-mix(in srgb, var(--tl-lane) 11%, transparent);
+}
+.tl-table td.tl-col-year {
+  padding-left: 0.85rem;
+  color: var(--tl-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tl-table th.tl-col-name {
+  font-weight: inherit;
+}
+.tl-row-toggle {
+  display: inline; /* the chevron follows the last word of a long name */
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tl-ink);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.tl-row-toggle svg {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: 0.25rem;
+  vertical-align: -0.1em;
+  color: var(--tl-muted);
+  transition: transform var(--tl-duration) var(--shapiq-ease);
+}
+.tl-entry.is-open .tl-row-toggle svg {
+  transform: rotate(90deg);
+}
+.tl-row-toggle:focus-visible {
+  outline: 2px solid var(--tl-focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.tl-row-summary {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--tl-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.tl-row-lane {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--tl-ink-soft);
+  font-size: 0.82rem;
+}
+.tl-row-lane::before {
+  content: "";
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--tl-lane);
+}
+.tl-table .tl-col-cite,
+.tl-table .tl-col-shapiq {
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.tl-table .tl-col-shapiq code.literal {
+  font-size: 0.78rem;
+  word-break: normal; /* wrap after a dot (timeline.js), or anywhere if a part is too long */
+  overflow-wrap: anywhere;
+}
+.tl-row-none {
+  color: var(--tl-muted);
+}
+
+/* the details of an open row: they unfold below it */
+.tl-table .tl-row-details > td {
+  padding: 0;
+}
+.tl-entry.is-open .tl-row-details > td {
+  border-bottom: 1px solid var(--tl-grid);
+  background: color-mix(in srgb, var(--tl-lane) 5%, transparent);
+}
+.tl-row-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--tl-duration) var(--shapiq-ease),
+    visibility 0s linear var(--tl-duration);
+}
+.tl-entry.is-open .tl-row-drawer {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows var(--tl-duration) var(--shapiq-ease),
+    visibility 0s;
+}
+.tl-row-drawer-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.tl-row-drawer-inner > .tl-card-details-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(14rem, 2fr);
+  gap: 0 2rem;
+  align-items: start;
+  padding: 0.1rem 1rem 1rem 4.8rem;
+}
+.tl-row-drawer-inner > .tl-card-details-inner > p:first-child {
+  margin-top: 0;
+}
+.shapiq-timeline .tl-row-drawer-inner dl.tl-card-fields {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  margin: 0;
+}
+@media (max-width: 70em) {
+  .tl-table .tl-col-lane {
+    width: 7.5rem;
+  }
+  .tl-table .tl-col-cite {
+    width: 9rem;
+  }
+  .tl-table .tl-col-shapiq {
+    width: 11rem;
+  }
+  .tl-row-drawer-inner > .tl-card-details-inner {
+    display: block;
+    padding-left: 1rem;
+  }
+  .shapiq-timeline .tl-row-drawer-inner dl.tl-card-fields {
+    margin-top: 0.8rem;
+  }
+}
+
 /* -- Motion: scroll reveal and transitions (off for prefers-reduced-motion, see timeline.js) ---- */
 @keyframes tl-rise {
   from {
@@ -978,12 +1218,20 @@ body[data-theme="dark"] .shapiq-timeline {
   }
 }
 .tl-animate .tl-list .tl-card:not(.is-revealed),
+.tl-animate .tl-entry:not(.is-revealed),
 .tl-animate .tl-lane:not(.is-revealed) .tl-chip,
 .tl-animate .tl-lane:not(.is-revealed) .tl-lane-label > * {
   opacity: 0;
 }
 .tl-animate .tl-list .tl-card.is-revealed {
   animation: tl-rise 0.5s var(--shapiq-ease) backwards;
+}
+.tl-animate .tl-entry.is-revealed {
+  animation: tl-rise 0.4s var(--shapiq-ease) backwards;
+}
+.tl-animate .tl-table.is-sorted .tl-entry {
+  opacity: 1;
+  animation: none;
 }
 .tl-animate .tl-lane.is-revealed .tl-chip {
   animation: tl-rise 0.45s var(--shapiq-ease) backwards;
@@ -1044,7 +1292,8 @@ body[data-theme="dark"] .shapiq-timeline {
 /* -- Print: the full list --------------------------------------------------------------------------- */
 @media print {
   .tl-toolbar,
-  .tl-lanes {
+  .tl-lanes,
+  .tl-table-view {
     display: none !important;
   }
   .shapiq-timeline .tl-list {
