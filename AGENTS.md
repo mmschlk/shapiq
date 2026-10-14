@@ -231,6 +231,12 @@ Boosting converters live in separate modules such as `xgboost.py`,
   `International Conference on Machine Learning (ICML)`, PMLR `series`/`volume`, `--` page
   ranges). Check a key's title before citing it: several keys mean another work than a guess
   from the name (`Covert.2021` is "Explaining by Removing", `Covert.2021b` "Improving KernelSHAP").
+  The file is grouped by entry type, the `@inproceedings` further by venue under `#`/`%` comment
+  headers, by year within a venue; copy the venue string of an existing entry (AAAI is
+  `Conference on Artificial Intelligence (AAAI)`). To verify bibliographic data (observed
+  2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
+  `curl` with a bot check; Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the publishers'
+  own proceedings pages work.
 - Its titles are written for LaTeX styles that print them as written, and some DOIs escape `_`
   as `\_`. The docs therefore use the `shapiq_alpha` pybtex style registered in
   `docs/source/conf.py` (titles kept as written, `\_` unescaped in links); plain `alpha`

@@ -117,6 +117,24 @@ examples = ["auto_examples/exact_computation/plot_interaction_indices"]
 related = ["weighted-banzhaf", "sii"]
 
 [[entries]]
+id = "multilinear-extension"
+name = "Multilinear extension"
+year = 1972
+lane = "foundations"
+summary = "The Shapley value as an integral over the probability with which players participate."
+description = """
+Owen extended a game from coalitions to the unit cube: its multilinear extension is the expected
+worth of a random coalition that contains each player independently with a given probability. A
+player's Shapley value is its expected marginal contribution to a coalition in which all other
+players participate with a common probability q, integrated over q from 0 to 1; at q = 1/2, the same
+expectation is the Banzhaf value. Owen sampling estimates this integral by sampling, and
+Quadrature-TreeSHAP computes it exactly for trees.
+"""
+cite = ["Owen.1972"]
+api = ["shapiq.approximator.OwenSamplingSV", "shapiq.tree.QuadratureTreeSHAP"]
+related = ["owen-sampling", "weighted-banzhaf", "quadrature-treeshap"]
+
+[[entries]]
 id = "semivalues"
 name = "Semivalues"
 year = 1981
@@ -202,12 +220,13 @@ summary = "Banzhaf values and interactions for players that join with probabilit
 description = """
 Marichal and Mathonet derived weighted Banzhaf values and interaction indices from the best
 approximation of a game by games of bounded order, where every player joins a coalition
-independently with probability p. For p = 1/2 they are the Banzhaf indices. Weighted Banzhaf
-interactions explain vision-language encoders in FIxLIP, and the quadrature algorithm for trees
-integrates them over p.
+independently with probability p. For p = 1/2 they are the Banzhaf indices; Hammer and Holzman had
+obtained the Banzhaf value from the best linear approximation in the unweighted least-squares sense.
+Weighted Banzhaf interactions explain vision-language encoders in FIxLIP, and the quadrature
+algorithm for trees integrates them over p.
 """
-cite = ["Marichal.2011"]
-related = ["banzhaf-value", "fixlip", "quadrature-treeshap"]
+cite = ["Marichal.2011", "Hammer.1992"]
+related = ["banzhaf-value", "multilinear-extension", "fixlip", "quadrature-treeshap"]
 
 [[entries]]
 id = "least-core"
@@ -419,7 +438,12 @@ still a strong baseline.
 cite = ["Castro.2009"]
 api = ["shapiq.approximator.PermutationSamplingSV"]
 examples = ["auto_examples/approximators/shapley_values/plot_permutation_sampling_sv"]
-related = ["permutation-representation", "improved-permutations", "permutation-stii"]
+related = [
+    "permutation-representation",
+    "improved-permutations",
+    "permutation-stii",
+    "top-k-identification",
+]
 
 [[entries]]
 id = "stratified-sampling"
@@ -435,7 +459,24 @@ variance when the strata differ.
 cite = ["Maleki.2013"]
 api = ["shapiq.approximator.StratifiedSamplingSV"]
 examples = ["auto_examples/approximators/shapley_values/plot_stratified_sampling_sv"]
-related = ["svarm"]
+related = ["svarm", "adaptive-stratification"]
+
+[[entries]]
+id = "adaptive-stratification"
+name = "Adaptive stratification"
+year = 2017
+lane = "sv-approx"
+summary = "Allocates the samples to the coalition sizes by their observed variances."
+description = """
+A stratified estimator is most accurate if the strata with larger variance receive more samples
+(the Neyman allocation), but the variances are unknown in advance. Castro et al. estimated them in
+a first phase and allocated the remaining budget accordingly, and Burgess and Chapman chose every
+next sample by minimizing an empirical Bernstein bound. Kolpaczki et al. derived the optimal
+allocation for SVARM's strata, showed how much it gains over a fixed one, and approached it with
+Adaptive SVARM.
+"""
+cite = ["Castro.2017", "Burgess.2021", "Kolpaczki.2024c"]
+related = ["stratified-sampling", "svarm"]
 
 [[entries]]
 id = "kernelshap"
@@ -467,7 +508,7 @@ variance compared to sampling permutations.
 cite = ["Okhrati.2020"]
 api = ["shapiq.approximator.OwenSamplingSV"]
 examples = ["auto_examples/approximators/shapley_values/plot_owen_sampling_sv"]
-related = ["permutation-sampling", "quadrature-treeshap"]
+related = ["permutation-sampling", "multilinear-extension", "quadrature-treeshap"]
 
 [[entries]]
 id = "unbiased-kernelshap"
@@ -485,6 +526,24 @@ cite = ["Covert.2021b"]
 api = ["shapiq.approximator.UnbiasedKernelSHAP"]
 examples = ["auto_examples/approximators/shapley_values/plot_unbiased_kernelshap"]
 related = ["kernelshap", "shap-iq", "msr"]
+
+[[entries]]
+id = "top-k-identification"
+name = "Top-k identification"
+year = 2021
+lane = "sv-approx"
+summary = "Finds the k players with the largest Shapley values instead of estimating all values."
+description = """
+Often only the most important players matter, e.g. to select features. Kolpaczki et al. modeled
+every player as an arm of a multi-armed bandit whose rewards are its marginal contributions, so that
+sampling concentrates on the players near the border of the top k. SHAP@k by Kariyappa et al. adds
+PAC guarantees and samples, in every round, the two players inside and outside the current top k
+whose confidence intervals overlap most. Comparable Marginal Contributions Sampling (CMCS) evaluates
+the marginal contributions of all players to the same coalition, whose correlation makes their
+ranking more reliable.
+"""
+cite = ["Kolpaczki.2021", "Kariyappa.2024", "Kolpaczki.2025"]
+related = ["permutation-sampling", "neuron-shapley", "feature-selection"]
 
 [[entries]]
 id = "improved-permutations"
@@ -521,11 +580,11 @@ year = 2023
 lane = "sv-approx"
 summary = "Fits a k-additive game to the sampled coalitions to estimate Shapley values."
 description = """
-Pelegrina et al. approximate the game by a k-additive game, which has interactions of order at most
-k, by least squares on sampled coalitions, and read the Shapley values out of the fitted game.
-Modeling interactions improves on KernelSHAP, which fits an additive game.
+Pelegrina et al. approximate the game by a k-additive game in the sense of Grabisch, which has
+interactions of order at most k, by least squares on sampled coalitions, and read the Shapley values
+out of the fitted game. Modeling interactions improves on KernelSHAP, which fits an additive game.
 """
-cite = ["Pelegrina.2023", "Pelegrina.2025"]
+cite = ["Pelegrina.2023", "Pelegrina.2025", "Grabisch.1997"]
 api = ["shapiq.approximator.kADDSHAP"]
 examples = ["auto_examples/approximators/shapley_values/plot_kadd_shap"]
 related = ["kernelshap", "polyshap"]
@@ -558,7 +617,7 @@ Its interaction counterpart is SVARM-IQ.
 cite = ["Kolpaczki.2024a"]
 api = ["shapiq.approximator.SVARM"]
 examples = ["auto_examples/approximators/shapley_values/plot_svarm"]
-related = ["coalition-representation", "svarm-iq", "stratified-sampling"]
+related = ["coalition-representation", "svarm-iq", "stratified-sampling", "adaptive-stratification"]
 
 [[entries]]
 id = "stochastic-amortization"
@@ -1044,7 +1103,7 @@ TreeExplainer.
 """
 cite = ["Wettenstein.2026a", "Li.2026"]
 api = ["shapiq.tree.QuadratureTreeSHAP", "shapiq.explainer.TreeExplainer"]
-related = ["treeshap-iq", "weighted-banzhaf", "owen-sampling"]
+related = ["treeshap-iq", "weighted-banzhaf", "owen-sampling", "multilinear-extension"]
 
 # -- Feature removal --------------------------------------------------------------------------------
 
@@ -1058,9 +1117,11 @@ description = """
 Replacing absent features by values from background data, independently of the present features,
 explains the model as a function: it is true to the model. Janzing et al. justified this
 interventional removal causally, and Chen et al. contrasted it with conditional removal, which is
-true to the data. In shapiq, it is the marginal and the baseline imputer.
+true to the data. Sundararajan and Najmi showed that conditional removal can credit features the
+model does not use, and characterized removal by a single baseline (Baseline Shapley) axiomatically.
+In shapiq, it is the marginal and the baseline imputer.
 """
-cite = ["Janzing.2020", "Chen.2020"]
+cite = ["Janzing.2020", "Chen.2020", "Sundararajan.2020a"]
 api = ["shapiq.imputer.MarginalImputer", "shapiq.imputer.BaselineImputer"]
 examples = ["auto_examples/technicalities/plot_imputers"]
 related = ["conditional-removal", "explaining-by-removing"]
@@ -1119,17 +1180,36 @@ related = ["conditional-removal"]
 # -- Value functions & tasks ------------------------------------------------------------------------
 
 [[entries]]
+id = "feature-selection"
+name = "Feature selection"
+year = 2007
+lane = "applications"
+summary = "Selects features by their Shapley values in a game of retrained models."
+description = """
+Cohen et al. defined the value of a feature subset as the performance of a model trained on it, and
+selected features by forward selection or backward elimination guided by estimates of their
+Shapley values. Every coalition requires training a model, which makes the game expensive. shapiq's
+feature selection game retrains a copy of a given model on every coalition and scores it on test
+data.
+"""
+cite = ["Cohen.2007"]
+api = ["shapiq_games.FeatureSelection"]
+examples = ["auto_examples/benchmarking/plot_games_tour"]
+related = ["sage", "top-k-identification"]
+
+[[entries]]
 id = "local-attribution"
 name = "Local feature attribution"
-year = 2014
+year = 2010
 lane = "applications"
 summary = "Explains an individual prediction by the Shapley values of its features."
 description = """
 Štrumbelj and Kononenko defined the contribution of each feature to a single prediction as its
-Shapley value in a game whose players are the features, and estimated it by sampling. This local
-explanation game is the most common use of Shapley values in machine learning.
+Shapley value in a game whose players are the features, and estimated it by sampling; later, they
+gave more samples to the features whose estimates vary more. This local explanation game is the most
+common use of Shapley values in machine learning.
 """
-cite = ["Strumbelj.2014"]
+cite = ["Strumbelj.2010", "Strumbelj.2014"]
 api = ["shapiq.explainer.TabularExplainer", "shapiq_games.TabularLocalExplanation"]
 examples = ["auto_examples/basics/plot_shapiq_scikit_learn"]
 related = ["kernelshap", "linear-models"]
@@ -1142,13 +1222,15 @@ lane = "applications"
 summary = "Values every training point by its contribution to the model's performance."
 description = """
 Ghorbani and Zou treated the training points as players and the performance of a model trained on
-a coalition as its value. The resulting data Shapley values identify valuable and harmful (e.g.
-mislabeled) training data.
+a coalition as its value, and estimated the values by truncated permutation sampling. The resulting
+data Shapley values identify valuable and harmful (e.g. mislabeled) training data. At the same time,
+Jia et al. studied the same valuation and proposed estimators that train fewer models, e.g. by group
+testing.
 """
-cite = ["Ghorbani.2019"]
+cite = ["Ghorbani.2019", "Jia.2019"]
 api = ["shapiq_games.DataValuation"]
 examples = ["auto_examples/nearest_neighbors/plot_nn_noisy_labels"]
-related = ["knn-shapley", "least-core"]
+related = ["knn-shapley", "least-core", "neuron-shapley", "ensemble-selection"]
 
 [[entries]]
 id = "sage"
@@ -1163,7 +1245,23 @@ known.
 """
 cite = ["Covert.2020"]
 api = ["shapiq_games.TabularGlobalExplanation"]
-related = ["isage", "explaining-by-removing"]
+related = ["isage", "explaining-by-removing", "feature-selection"]
+
+[[entries]]
+id = "neuron-shapley"
+name = "Neuron Shapley"
+year = 2020
+lane = "applications"
+summary = "Finds the neurons of a deep network that are responsible for its behavior."
+description = """
+Ghorbani and Zou treated the neurons or filters of a deep network as players and the network's
+performance with only a coalition of them active as the value. Removing the few filters with the
+largest values destroys the accuracy of an ImageNet model, and removing those responsible for
+biased or vulnerable predictions repairs the model. A multi-armed bandit algorithm finds the
+neurons with the largest values with far fewer evaluations than estimating all values.
+"""
+cite = ["Ghorbani.2020"]
+related = ["top-k-identification", "data-shapley", "ensemble-selection"]
 
 [[entries]]
 id = "timeshap"
@@ -1178,6 +1276,24 @@ tractable.
 """
 cite = ["Bento.2021"]
 related = ["ordshap"]
+
+[[entries]]
+id = "ensemble-selection"
+name = "Ensemble games"
+year = 2021
+lane = "applications"
+summary = "Values the members of an ensemble to select a small, accurate sub-ensemble."
+description = """
+Rozemberczki and Sarkar treated the trained models of an ensemble as players that vote on the label
+of every data point, and estimated their Shapley values with Troupe, which approximates these voting
+games and averages over the data. The values identify the members worth keeping, so that the
+ensemble can be pruned, and adversarial members receive low values. shapiq's ensemble selection
+games value the members of an ensemble, or the trees of a random forest, by the test performance of
+a sub-ensemble.
+"""
+cite = ["Rozemberczki.2021"]
+api = ["shapiq_games.EnsembleSelection", "shapiq_games.RandomForestEnsembleSelection"]
+related = ["neuron-shapley", "data-shapley"]
 
 [[entries]]
 id = "unsupervised-features"
