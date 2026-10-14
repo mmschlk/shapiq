@@ -291,6 +291,7 @@ html_css_files = [
     "css/custom.css",
     "css/gallery.css",  # the examples landing page, the group pages and their thumbnails
 ]
+html_js_files = [("js/sidebar.js", {"defer": "defer"})]  # keeps the place in the sidebar
 html_favicon = "_static/logo/shapiq.ico"
 pygments_style = "github-light"
 pygments_dark_style = "github-dark"
