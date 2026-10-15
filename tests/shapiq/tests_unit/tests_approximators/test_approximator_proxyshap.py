@@ -158,6 +158,27 @@ def test_hpo_flag_wraps_xgboost_proxy_in_default_grid():
     assert isinstance(linear.proxy_model, LinearRegression)
 
 
+def test_lightgbm_proxy_is_quiet_and_tunes_its_own_parameters():
+    """``proxy_model="lightgbm"`` resolves to a LightGBM regressor that prints no log lines.
+
+    With ``hpo=True`` its grid only names parameters of the regressor itself (``n_estimators``, not
+    LightGBM's alias ``max_iter``).
+    """
+    lightgbm = pytest.importorskip("lightgbm")
+    from sklearn.model_selection import GridSearchCV
+
+    from shapiq.approximator.proxy._models import _LIGHTGBM_DECODER_GRID
+
+    bare = ProxySHAP(n=6, max_order=2, proxy_model="lightgbm", random_state=0)
+    assert isinstance(bare.proxy_model, lightgbm.LGBMRegressor)
+    assert bare.proxy_model.get_params()["verbose"] == -1
+
+    tuned = ProxySHAP(n=6, max_order=2, proxy_model="lightgbm", hpo=True, random_state=0)
+    assert isinstance(tuned.proxy_model, GridSearchCV)
+    assert tuned.proxy_model.param_grid == _LIGHTGBM_DECODER_GRID
+    assert set(_LIGHTGBM_DECODER_GRID) <= set(tuned.proxy_model.estimator.get_params())
+
+
 @pytest.mark.parametrize(
     ("index", "max_order"), [("SV", 1), ("SII", 2), ("STII", 2), ("BII", 2), ("BV", 1)]
 )
