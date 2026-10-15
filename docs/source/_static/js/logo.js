@@ -155,7 +155,7 @@
       m.held = player;
       m.grab = { x: point.x - player.rest.x - player.x, y: point.y - player.rest.y - player.y };
       svg.setPointerCapture(event.pointerId);
-      svg.classList.add("is-pulling");
+      document.documentElement.classList.add("shapiq-logo-pulling"); // the closed hand everywhere
       animate(m);
     });
     svg.addEventListener("pointermove", (event) => {
@@ -175,11 +175,12 @@
     const release = () => {
       if (!m?.held) return;
       m.held = null;
-      svg.classList.remove("is-pulling");
+      document.documentElement.classList.remove("shapiq-logo-pulling");
       animate(m);
     };
     svg.addEventListener("pointerup", release);
     svg.addEventListener("pointercancel", release);
+    svg.addEventListener("lostpointercapture", release); // e.g. the window lost the focus
   }
 
   // replace the landing page's logo images by copies of the sidebar's inline logo

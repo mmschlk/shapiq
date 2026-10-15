@@ -90,9 +90,11 @@ svg.shapiq-logo {
   touch-action: none;
 }
 
-svg.shapiq-logo.is-pulling,
-svg.shapiq-logo.is-pulling .shapiq-logo-player {
-  cursor: grabbing;
+/* while a player is pulled, the whole page shows the closed hand and no text gets selected */
+html.shapiq-logo-pulling,
+html.shapiq-logo-pulling * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .sidebar-tree .current-page > .reference {
