@@ -1,5 +1,5 @@
-{#- furo's sidebar brand with the logo inline instead of as an <img>, so that _static/js/logo.js
-    can move its players (see _inline_logo in conf.py) -#}
+{#- furo's sidebar brand with the logo inline instead of as an <img>: _static/js/logo.js copies it
+    to the landing page and moves the players of that copy (see _inline_logo in conf.py) -#}
 <a class="sidebar-brand" href="{{ pathto(master_doc) }}">
   <div class="sidebar-logo-container">
     {{ shapiq_logo_light }}

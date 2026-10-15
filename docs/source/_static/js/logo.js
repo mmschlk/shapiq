@@ -1,7 +1,9 @@
-// The players of the logo are springs: hovering the logo makes them wiggle, and a player can be
-// pulled and let go. Each player is held in place by a spring, the lines between players are
-// springs too, and the lines and their caps follow the players they end at. The sidebar carries
-// the logo inline (_templates/sidebar/brand.html); the landing page's logo is replaced by a copy.
+// The players of the landing page's logo are springs: hovering the logo makes them wiggle, and a
+// player can be pulled and let go. Each player is held in place by a spring, the lines between
+// players are springs too, and the lines and their caps follow the players they end at. The
+// landing page shows the logo as an image; it is replaced by a copy of the sidebar's inline logo
+// (_templates/sidebar/brand.html). The sidebar's logo itself stays still: it is on every page and
+// a link home, where a wiggle on every pass of the mouse would distract.
 (() => {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -144,7 +146,6 @@
       }
       animate(m);
     });
-    let pulled = false;
     svg.addEventListener("pointerdown", (event) => {
       const point = ready() && pointerIn(m, event);
       if (!point) return;
@@ -153,7 +154,6 @@
       event.preventDefault(); // no text selection, no dragging of the link
       m.held = player;
       m.grab = { x: point.x - player.rest.x - player.x, y: point.y - player.rest.y - player.y };
-      pulled = false;
       svg.setPointerCapture(event.pointerId);
       svg.classList.add("is-pulling");
       animate(m);
@@ -170,7 +170,6 @@
         dx *= scale;
         dy *= scale;
       }
-      if (Math.hypot(dx - p.x, dy - p.y) > 0.5) pulled = true;
       Object.assign(p, { x: dx, y: dy, vx: 0, vy: 0 });
     });
     const release = () => {
@@ -181,20 +180,9 @@
     };
     svg.addEventListener("pointerup", release);
     svg.addEventListener("pointercancel", release);
-    // the sidebar logo is a link home: a pull is not a click
-    svg.closest("a")?.addEventListener(
-      "click",
-      (event) => {
-        if (pulled) {
-          event.preventDefault();
-          pulled = false;
-        }
-      },
-      true,
-    );
   }
 
-  // the landing page shows the logo as an image: replace it by a copy of the sidebar's logo
+  // replace the landing page's logo images by copies of the sidebar's inline logo
   function inlineHeroLogos() {
     for (const image of document.querySelectorAll("img.shapiq-hero-logo")) {
       const theme = image.classList.contains("only-dark") ? "dark" : "light";
@@ -216,6 +204,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     inlineHeroLogos();
-    document.querySelectorAll("svg.shapiq-logo").forEach(attach);
+    document.querySelectorAll("svg.shapiq-hero-logo").forEach(attach);
   });
 })();

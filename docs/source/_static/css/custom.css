@@ -74,7 +74,8 @@ table.docutils {
   max-width: 8.5rem;
 }
 
-/* the inline logo (see _static/js/logo.js): its players can be pulled, also past its edge */
+/* the inline logo (see _static/js/logo.js): on the landing page, its players can be pulled, also
+   past its edge */
 svg.sidebar-logo {
   width: 8.5rem;
   height: auto;
