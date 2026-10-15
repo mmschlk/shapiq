@@ -150,7 +150,7 @@ class ExactComputer:
                 result = self.compute_fii(index, order)
             case "SGV" | "BGV" | "CHGV" | "IGV" | "EGV":  # Base generalized values
                 result = self.base_generalized_value(index, order)
-            case "SII" | "BII" | "CHII":
+            case "SII" | "BII" | "CHII" | "Fourier":
                 result = self.shapley_base_interaction(index, order)
             case "BV" | "SV":  # probabilistic values
                 result = self.probabilistic_value(index)
@@ -259,7 +259,17 @@ class ExactComputer:
         coalition_size: int,
         interaction_size: int,
         index: Literal[
-            "SII", "SGV", "BII", "BGV", "CHII", "CHGV", "Moebius", "IGV", "Co-Moebius", "EGV"
+            "SII",
+            "SGV",
+            "BII",
+            "BGV",
+            "CHII",
+            "CHGV",
+            "Moebius",
+            "IGV",
+            "Co-Moebius",
+            "EGV",
+            "Fourier",
         ],
     ) -> float:
         """Computes the weight of different indices in their common representation.
@@ -300,6 +310,10 @@ class ExactComputer:
                 weight = 0
                 if coalition_size == self.n_players - interaction_size:
                     weight = 1
+            case "Fourier":
+                # (-1/2)^s times the BII weight: every coalition weighs 2^-n, and the sign turns
+                # (-1)^|S \ T| of the discrete derivative into (-1)^|S n T|
+                weight = (-1) ** interaction_size / 2**self.n_players
             case _:
                 msg = f"Index {index} not supported."
                 raise ValueError(msg)
@@ -417,7 +431,17 @@ class ExactComputer:
     def _get_base_weights(
         self,
         index: Literal[
-            "SII", "SGV", "BII", "BGV", "CHII", "CHGV", "Moebius", "IGV", "Co-Moebius", "EGV"
+            "SII",
+            "SGV",
+            "BII",
+            "BGV",
+            "CHII",
+            "CHGV",
+            "Moebius",
+            "IGV",
+            "Co-Moebius",
+            "EGV",
+            "Fourier",
         ],
         order: int,
     ) -> np.ndarray:
@@ -452,6 +476,7 @@ class ExactComputer:
             "CHII",
             "Moebius",
             "Co-Moebius",
+            "Fourier",
         ],
         order: int,
     ) -> InteractionValues:
@@ -926,7 +951,7 @@ class ExactComputer:
         return copy.copy(shapley_interaction)
 
     def shapley_base_interaction(
-        self, index: Literal["SII", "BII", "CHII", "Moebius", "Co-Moebius"], order: int
+        self, index: Literal["SII", "BII", "CHII", "Moebius", "Co-Moebius", "Fourier"], order: int
     ) -> InteractionValues:
         """Computes Shapley Base Interactions, i.e. probabilistic interaction indices not depending on the order.
 
@@ -938,6 +963,7 @@ class ExactComputer:
         - CHII: Chaining Interaction Index :cite:p:`Marichal.1999`
         - Moebius: Moebius Transform :cite:p:`Rota.1964`
         - Co-Moebius: Co-Moebius Transform :cite:p:`Marichal.2007`
+        - Fourier: Fourier (Walsh-Hadamard) transform, ``(-1/2)^|S|`` times BII
 
         Args:
             order: The highest order of interactions

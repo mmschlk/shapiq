@@ -85,6 +85,10 @@ static bool parse_index_type(const std::string &index, IndexType &index_type)
         index_type = IndexType::FSII;
     else if (index == "STII")
         index_type = IndexType::STII;
+    else if (index == "Moebius")
+        index_type = IndexType::MOEBIUS;
+    else if (index == "Fourier")
+        index_type = IndexType::FOURIER;
     else if (index == "CUSTOM")
         index_type = IndexType::CUSTOM;
     else

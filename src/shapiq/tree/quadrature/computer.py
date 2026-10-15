@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from shapiq.tree.base import DecisionType, TreeModel
     from shapiq.typing import Model
 
-QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII"]
+QuadratureTreeSHAPIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "Moebius", "Fourier"]
 
 
 def _gauss_legendre_unit(n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -48,7 +48,8 @@ class QuadratureTreeSHAP:
     which is numerically exact in float64 for any tree depth and any number of distinct
     features per decision path. Banzhaf indices (``"BV"``/``"BII"``) are obtained from the
     same computation by evaluating the polynomial at participation probability ``1/2``
-    instead of integrating.
+    instead of integrating, ``"Moebius"`` by evaluating it at ``0``, and ``"Fourier"`` by
+    scaling the Banzhaf interactions with ``(-1/2)^|S|``.
 
     The returned :class:`~shapiq.interaction_values.InteractionValues` holds exactly the
     interactions whose features all occur on at least one decision path; every other
@@ -82,8 +83,9 @@ class QuadratureTreeSHAP:
                 to ``1``.
 
             index: The interaction index to compute. ``"SV"``, ``"SII"``, and ``"k-SII"`` are
-                computed from the SII base; ``"BV"`` and ``"BII"`` from the Banzhaf base.
-                Defaults to ``"SV"``.
+                computed from the SII base; ``"BV"`` and ``"BII"`` from the Banzhaf base;
+                ``"Moebius"`` returns the Moebius coefficients and ``"Fourier"`` the Fourier
+                coefficients ``(-1/2)^|S| BII(S)``. Defaults to ``"SV"``.
 
             class_index: The class index for classification models. Defaults to ``None``.
 
@@ -91,8 +93,8 @@ class QuadratureTreeSHAP:
                 uses the exact bound ``ceil(d / 2)`` where ``d`` is the maximum number of
                 distinct features along a root-to-leaf path (over all trees). A fixed small
                 number (``8`` is the rule of :cite:t:`Wettenstein.2026a`) trades exactness for
-                speed on paths with more features than that. Ignored for Banzhaf indices, which
-                need a single evaluation point.
+                speed on paths with more features than that. Ignored for the Banzhaf indices and
+                the Moebius and Fourier transforms, which need a single evaluation point.
 
         Raises:
             ValueError: If the index or the interaction orders are invalid.
@@ -231,12 +233,13 @@ class QuadratureTreeSHAP:
         self._arrays = {key: np.concatenate(arrs) for key, arrs in parts.items()}
         self._decision_type: DecisionType = self._trees[0].decision_type
 
-        # the quadrature rule; Banzhaf indices evaluate the polynomial once at p = 1/2
+        # the quadrature rule; Banzhaf indices and the Fourier transform evaluate the polynomial
+        # once at p = 1/2, the Moebius transform once at p = 0
         if n_quadrature_points is not None and n_quadrature_points < 1:
             msg = f"n_quadrature_points={n_quadrature_points} must be a positive integer."
             raise ValueError(msg)
-        if self._base_index == "BII":
-            self._t = np.array([0.5])
+        if self._base_index in ("BII", "Moebius", "Fourier"):
+            self._t = np.array([0.0 if self._base_index == "Moebius" else 0.5])
             self._w = np.array([1.0])
         else:
             n_points = n_quadrature_points
@@ -293,6 +296,8 @@ class QuadratureTreeSHAP:
         interactions: dict[tuple[int, ...], float] = {}
         if not self._trivial_computation:
             interactions = self._read_out(self._explain_cpp(x_relevant))
+        if self._base_index == "Fourier":  # F(S) = (-1/2)^|S| BII(S)
+            interactions = {key: (-0.5) ** len(key) * value for key, value in interactions.items()}
 
         return InteractionValues(
             values=interactions,

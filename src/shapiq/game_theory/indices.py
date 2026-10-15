@@ -109,6 +109,12 @@ ALL_AVAILABLE_CONCEPTS: dict[IndexType, dict] = {
         # Making" Link: http://www.getniif.com/component/rsfiles/previsualizar?path=Set%2BFunctions%2BGames%2Band%2BCapacities%2Bin%2BDecision%2BMaking%2B-%2BMichel%2BGrabisch%2BSpringer.pdf
         "generalizes": None,
     },
+    # Fourier (Walsh-Hadamard) transform, F(S) = 2^-n sum_T (-1)^|S n T| v(T) = (-1/2)^|S| BII(S)
+    "Fourier": {
+        "name": "Fourier Transform",
+        "source": "https://doi.org/10.1017/CBO9781139814782",
+        "generalizes": None,
+    },
     # The (egalitarian) least-core
     "ELC": {
         "name": "Egalitarian Least-Core",
@@ -299,4 +305,4 @@ def is_empty_value_the_baseline(index: str) -> bool:
         True
 
     """
-    return index not in ["SII", "FBII", "BII", "BV"]
+    return index not in ["SII", "FBII", "BII", "BV", "Fourier"]

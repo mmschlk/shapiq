@@ -53,6 +53,13 @@ namespace inter_weights
         return signed_unit(s_cap_r) * std::ldexp(1.0f, -(e + r - s)); // Equivalent to 1.0f / (2^(a+b))
     }
 
+    inline double fourier_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // (-1/2)^s times the Banzhaf weight: every coalition weighs 2^-(e+r), and since
+        // s = s_cap_e + s_cap_r the sign (-1)^(s + s_cap_r) is (-1)^s_cap_e
+        return signed_unit(s_cap_e) * std::ldexp(1.0, -(e + r));
+    }
+
     inline double chaining_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Beta(x,y) = (tgamma(x)*tgamma(y))/tgamma(x+y)
@@ -86,6 +93,13 @@ namespace inter_weights
         return w;
     }
 
+    inline double moebius_transform_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // The Moebius coefficient of S is the discrete derivative at the empty coalition, so
+        // a leaf contributes to S only when S reaches it exactly: a.k.a when s_cap_e == e.
+        return (s_cap_e == e) ? signed_unit(s_cap_r) : 0.0;
+    }
+
     inline double stii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Interactions of size s < max_order are the discrete derivative at the empty
@@ -93,7 +107,7 @@ namespace inter_weights
         double w = 0.0;
         if (s < max_order)
         {
-            w = (s_cap_e == e) ? std::pow(-1.0, s_cap_r) : 0.0;
+            w = moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         }
         else if (s == max_order)
         {
@@ -134,7 +148,7 @@ namespace inter_weights
         }
         throw std::invalid_argument("Unsupported index type in discrete_derivative_weight: " + std::to_string(static_cast<int>(index)));
     }
-    inline double moebius_weight(int64_t coalition_size, int64_t interaction_size, IndexType index)
+    inline double index_from_moebius_weight(int64_t coalition_size, int64_t interaction_size, IndexType index)
     {
         return discrete_derivative_weight(coalition_size - interaction_size, interaction_size, coalition_size, index);
     }
@@ -143,7 +157,7 @@ namespace inter_weights
         double w = 0.0;
         for (int k = 0; k <= r - s_cap_r; k++)
         {
-            w += std::pow(-1, k) * binom(r - s_cap_r, k) * moebius_weight(k + s_cap_r + e, s, index);
+            w += std::pow(-1, k) * binom(r - s_cap_r, k) * index_from_moebius_weight(k + s_cap_r + e, s, index);
         }
         return signed_unit(s_cap_r) * w;
     }
@@ -165,6 +179,10 @@ namespace inter_weights
             return fsii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         case IndexType::STII:
             return stii_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
+        case IndexType::MOEBIUS:
+            return moebius_transform_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
+        case IndexType::FOURIER:
+            return fourier_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order);
         default:
             return general_weight(num_features, e, r, s_cap_e, s_cap_r, s, max_order, index);
         }

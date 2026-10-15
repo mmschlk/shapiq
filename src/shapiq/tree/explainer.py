@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import numpy as np
 
 from shapiq.explainer.base import Explainer
+from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.utils.modules import safe_isinstance
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
+TreeExplainerIndices = ExplainerIndices
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -81,13 +82,16 @@ class TreeExplainer(Explainer):
       in float64 at any tree depth. The algorithm descends from Linear TreeSHAP
       :cite:p:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
       by TreeSHAP-IQ :cite:p:`Muschalik.2024a`; Banzhaf indices fall out of the same
-      polynomials by evaluation at participation probability 1/2. Supported indices:
-      ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, and ``"BII"``.
+      polynomials by evaluation at participation probability 1/2, the Moebius
+      coefficients by evaluation at 0, and the Fourier coefficients as ``(-1/2)^|S|`` times
+      the Banzhaf interactions. Supported indices: ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``,
+      ``"BII"``, ``"Moebius"``, and ``"Fourier"``.
 
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
-      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
+      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
+      ``"Moebius"`` and ``"Fourier"`` transforms are available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
       :cite:p:`Nadel.2026,Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
@@ -174,9 +178,10 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
-                indices ``["SV", "SII", "k-SII", "BV", "BII"]`` are supported. In
-                ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
-                ``"FBII"`` can be computed. Defaults to ``"SV"``.
+                indices ``["SV", "SII", "k-SII", "BV", "BII", "Moebius", "Fourier"]`` are
+                supported. In ``"interventional"`` mode, further indices such as ``"STII"``,
+                ``"FSII"``, or ``"FBII"`` can be computed on top of those. Defaults to
+                ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -233,7 +238,15 @@ class TreeExplainer(Explainer):
             if reason is not None:
                 msg = f"backend='woodelf' cannot be used: {reason}."
                 raise ValueError(msg)
-        if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
+        if mode == "pathdependent" and self.index not in (
+            "SV",
+            "SII",
+            "k-SII",
+            "BV",
+            "BII",
+            "Moebius",
+            "Fourier",
+        ):
             msg = (
                 f"index='{self.index}' is not supported in 'pathdependent' mode; use "
                 "mode='interventional' with a reference_dataset."
@@ -358,7 +371,17 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "k-SII", "BII", "STII", "FSII", "FBII"):
+        if self.index not in (
+            "SV",
+            "BV",
+            "SII",
+            "k-SII",
+            "BII",
+            "STII",
+            "FSII",
+            "FBII",
+            "Moebius",
+        ):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -414,6 +437,7 @@ class TreeExplainer(Explainer):
                 FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                MobiusCoefficients,
                 ShapleyTaylorInteractionValues,
                 ShapleyValues,
             )
@@ -436,6 +460,7 @@ class TreeExplainer(Explainer):
             "STII": ShapleyTaylorInteractionValues,
             "FSII": FaithfulShapleyInteractionValues,
             "FBII": FaithfulBanzhafInteractionValues,
+            "Moebius": MobiusCoefficients,
         }
         if self._index == "SV":
             metric = ShapleyValues()

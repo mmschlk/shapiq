@@ -226,6 +226,33 @@ def _extract_tree(
     )
 
 
+def tree_to_fourier(model: object, n_players: int) -> dict[tuple[int, ...], float]:
+    """Read the exact Fourier (Walsh) coefficients of a tree proxy fitted on coalitions.
+
+    The proxy's Fourier transform is the interventional ``"Fourier"`` index of the grand coalition
+    against the empty coalition as single reference row (the readout of :func:`_extract_tree`).
+    The kernel only stores interactions whose features co-occur on a path, so
+    ``max_order=n_players`` costs no more than the widest path.
+
+    Args:
+        model: The fitted tree proxy (sklearn, XGBoost, LightGBM, or CatBoost).
+        n_players: Number of players (features).
+
+    Returns:
+        The non-zero Fourier coefficients, keyed by interaction tuple.
+    """
+    explainer = InterventionalTreeSHAPIQ(
+        model, data=np.zeros((1, n_players)), index="Fourier", max_order=n_players
+    )
+    coefficients = explainer.explain_function(np.ones(n_players)).interactions
+    # the kernel writes v({}) as the empty entry; since v({}) is the sum of all Fourier
+    # coefficients, the empty coefficient is what the others leave of it
+    coefficients.pop((), None)
+    fourier = {interaction: value for interaction, value in coefficients.items() if value != 0.0}
+    fourier[()] = explainer.baseline_value - sum(fourier.values())
+    return fourier
+
+
 def extract_linear_interactions(
     coefficients: np.ndarray, poly: PolynomialFeatures
 ) -> dict[tuple[int, ...], float]:
