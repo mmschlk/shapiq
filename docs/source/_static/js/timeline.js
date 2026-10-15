@@ -4,7 +4,7 @@
  * _ext/shapiq_timeline.py renders every entry as a card in a list grouped by year: the page
  * without JavaScript and the view on phones. This script adds filters (lanes, "in shapiq only",
  * search), collapsible cards, a swimlane view for wide screens that shows the open card in a
- * drawer below its lane, a sortable table, deep links (timeline.html#kernelshap) and a
+ * drawer below its lane, a table grouped by lane, deep links (timeline.html#kernelshap) and a
  * scroll-reveal animation.
  */
 (() => {
@@ -45,7 +45,7 @@
     implementedOnly: false,
     view: loadView(),
     open: null, // the id of the card in a drawer of the swimlane view
-    sort: { key: "year", direction: 1 }, // the order of the table
+    sort: { key: "year", direction: 1 }, // the order of the table within each lane
   };
 
   // -- helpers ----------------------------------------------------------------------------------
@@ -444,13 +444,13 @@
   const tableView = el("div", "tl-table-view");
   const tableBar = el("div", "tl-lanes-bar");
   tableBar.append(
-    el("span", "tl-scroll-hint", "Click a method for details and a column heading to sort."),
+    el("span", "tl-scroll-hint", "Click a method for details and a column heading to sort each lane."),
   );
   const table = el("table", "tl-table");
   table.append(el("caption", "tl-sr-only", "The entries of the timeline"));
   const head = el("thead");
   const headRow = el("tr");
-  const SORTS = { year: "Year", name: "Method", lane: "Lane", cite: "Reference", shapiq: "In shapiq" };
+  const SORTS = { year: "Year", name: "Method", cite: "Reference", shapiq: "In shapiq" };
   const sortHeaders = Object.entries(SORTS).map(([key, label]) => {
     const header = el("th", `tl-col-${key}`);
     header.scope = "col";
@@ -470,6 +470,27 @@
   head.append(headRow);
   table.append(head);
 
+  // one group per lane, as in a literature overview: a heading row, then the lane's entries
+  const groups = new Map(
+    lanes.map((lane) => {
+      const group = el("tbody", "tl-group");
+      group.dataset.slot = lane.slot;
+      const heading = el("th");
+      heading.scope = "colgroup";
+      heading.colSpan = Object.keys(SORTS).length;
+      const count = el("span", "tl-group-count");
+      heading.append(
+        el("span", "tl-group-name", lane.name),
+        count,
+        el("span", "tl-group-description", lane.description),
+      );
+      const row = el("tr");
+      row.append(heading);
+      group.append(row);
+      return [lane.id, { group, count }];
+    }),
+  );
+
   const rowById = new Map();
   for (const [index, card] of cards.entries()) {
     const lane = lanes.find((candidate) => candidate.id === card.dataset.lane);
@@ -488,8 +509,6 @@
     const summary = card.querySelector(".tl-card-summary").textContent.trim();
     nameCell.append(toggle, el("span", "tl-row-summary", summary));
 
-    const laneCell = el("td", "tl-col-lane");
-    laneCell.append(el("span", "tl-row-lane", lane.name));
     const citeCell = el("td", "tl-col-cite");
     const references = field(card, ["Reference", "References"]);
     if (references) citeCell.append(copyOf(references));
@@ -497,7 +516,7 @@
     const api = field(card, ["In shapiq"]);
     if (api) shapiqCell.append(breakAfterDots(copyOf(api)));
     else shapiqCell.append(el("span", "tl-row-none", "–"), el("span", "tl-sr-only", "not in shapiq"));
-    row.append(el("td", "tl-col-year", card.dataset.year), nameCell, laneCell, citeCell, shapiqCell);
+    row.append(el("td", "tl-col-year", card.dataset.year), nameCell, citeCell, shapiqCell);
 
     const detailsRow = el("tr", "tl-row-details");
     const detailsCell = el("td");
@@ -521,10 +540,10 @@
       toggle,
       drawer,
       inner,
+      lane: lane.id,
       keys: {
         year: Number(card.dataset.year),
         name: normalize(name),
-        lane: lanes.indexOf(lane),
         cite: references ? normalize(references.textContent.replace(/^\W+/, "")) : null,
         shapiq: api ? 0 : 1,
       },
@@ -553,13 +572,15 @@
     return a.index - b.index;
   }
 
-  // sort the rows; with animate, every row glides from its old place to its new one
+  // sort the rows of every lane; with animate, every row glides from its old place to its new one
   function sortTable({ animate = false } = {}) {
     const rows = [...rowById.values()];
     const glide = animate && !reducedMotion.matches && "animate" in Element.prototype;
     const before = new Map(glide ? rows.map((row) => [row, row.entry.getBoundingClientRect().top]) : []);
     rows.sort(compareRows);
-    table.append(...rows.map((row) => row.entry));
+    for (const [lane, { group }] of groups) {
+      table.append(group, ...rows.filter((row) => row.lane === lane).map((row) => row.entry));
+    }
     for (const header of sortHeaders) {
       const sorted = header.dataset.sort === state.sort.key;
       const order = state.sort.direction > 0 ? "ascending" : "descending";
@@ -616,10 +637,13 @@
     for (const year of list.querySelectorAll(".tl-year")) {
       year.hidden = !year.querySelector(".tl-card:not([hidden])");
     }
-    for (const laneRow of laneRows.values()) {
+    for (const [lane, laneRow] of laneRows) {
       const visible = laneRow.row.querySelectorAll(".tl-chip:not([hidden])").length;
       laneRow.row.hidden = visible === 0;
       laneRow.count.textContent = visible === 1 ? "1 entry" : `${visible} entries`;
+      const { group, count } = groups.get(lane);
+      group.hidden = visible === 0;
+      count.textContent = String(visible);
     }
     for (const filter of filterButtons) {
       filter.setAttribute("aria-pressed", String(state.lanes.has(filter.dataset.lane)));
@@ -778,7 +802,10 @@
       },
       { rootMargin: "0px 0px -6% 0px" },
     );
-    const tableRows = [...rowById.values()].map((row) => row.entry);
+    const tableRows = [
+      ...[...groups.values()].map(({ group }) => group),
+      ...[...rowById.values()].map((row) => row.entry),
+    ];
     for (const node of [...cards, ...grid.querySelectorAll(".tl-lane"), ...tableRows]) {
       observer.observe(node);
     }

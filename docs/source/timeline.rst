@@ -16,7 +16,7 @@ Timeline of Shapley-Based Explanation Methods
    the reference, the classes that implement it in ``shapiq`` and a gallery example. Cards marked
    **In shapiq** are implemented; the others are important for the field but not part of the
    package. Filter by lane, search for a method or an author, switch between the swimlanes, a list
-   and a sortable table, or link to a card directly, e.g. ``timeline.html#kernelshap``.
+   and a table grouped by lane, or link to a card directly, e.g. ``timeline.html#kernelshap``.
 
 .. shapiq-timeline:: _data/timeline.toml
 

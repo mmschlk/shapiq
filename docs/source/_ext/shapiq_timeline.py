@@ -7,7 +7,7 @@ reStructuredText parsed by Sphinx, so its API cross-references (``:py:obj:``), g
 docs. A missing API object warns even though the docs are not built in nitpicky mode, and every
 warning points to the entry in the TOML file.
 
-``_static/js/timeline.js`` adds filters and turns the list into swimlanes or a sortable table, and
+``_static/js/timeline.js`` adds filters and turns the list into swimlanes or a table by lane, and
 ``_static/css/timeline.css`` styles the views; they are only added to pages with a timeline.
 Without JavaScript, the page is a list of all cards with all their details.
 """

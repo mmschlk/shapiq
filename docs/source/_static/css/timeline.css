@@ -971,7 +971,7 @@ body[data-theme="dark"] .shapiq-timeline {
   }
 }
 
-/* -- Table view (wide screens, with JavaScript): one row per entry, sortable, details below ------ */
+/* -- Table view (wide screens, with JavaScript): grouped by lane, sortable, details below -------- */
 .tl-table-view {
   margin: 0 0 1rem;
 }
@@ -1040,14 +1040,57 @@ body[data-theme="dark"] .shapiq-timeline {
 .tl-table .tl-col-year {
   width: 4.2rem;
 }
-.tl-table .tl-col-lane {
-  width: 10.5rem;
-}
 .tl-table .tl-col-cite {
-  width: 11.5rem;
+  width: 13rem;
 }
 .tl-table .tl-col-shapiq {
-  width: 12rem;
+  width: 13rem;
+}
+
+/* the heading of a lane's group: its color, name, number of entries and description */
+.tl-group th {
+  padding: 0.55rem 0.85rem;
+  border-top: 1.4rem solid var(--color-background-primary); /* the gap above a group */
+  border-bottom: 1px solid color-mix(in srgb, var(--tl-lane) 35%, var(--tl-border));
+  background: color-mix(in srgb, var(--tl-lane) 12%, var(--color-background-primary));
+  background-clip: padding-box;
+  box-shadow: inset 3px 0 0 var(--tl-lane);
+  font-weight: normal;
+}
+.tl-table thead + .tl-group th {
+  border-top-width: 0.6rem;
+}
+.tl-group-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--tl-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.tl-group-name::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--tl-lane);
+}
+.tl-group-count {
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tl-lane) 20%, transparent);
+  color: var(--tl-ink-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 0.1em;
+}
+.tl-group-description {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--tl-muted);
+  font-size: 0.82rem;
 }
 
 /* the rows: the lane's color on the left, a tint on hover and while open */
@@ -1114,21 +1157,6 @@ body[data-theme="dark"] .shapiq-timeline {
   font-size: 0.82rem;
   line-height: 1.45;
 }
-.tl-row-lane {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  color: var(--tl-ink-soft);
-  font-size: 0.82rem;
-}
-.tl-row-lane::before {
-  content: "";
-  flex: none;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--tl-lane);
-}
 .tl-table .tl-col-cite,
 .tl-table .tl-col-shapiq {
   font-size: 0.82rem;
@@ -1186,14 +1214,11 @@ body[data-theme="dark"] .shapiq-timeline {
   margin: 0;
 }
 @media (max-width: 70em) {
-  .tl-table .tl-col-lane {
-    width: 7.5rem;
-  }
   .tl-table .tl-col-cite {
-    width: 9rem;
+    width: 10rem;
   }
   .tl-table .tl-col-shapiq {
-    width: 11rem;
+    width: 11.5rem;
   }
   .tl-row-drawer-inner > .tl-card-details-inner {
     display: block;
@@ -1219,6 +1244,7 @@ body[data-theme="dark"] .shapiq-timeline {
 }
 .tl-animate .tl-list .tl-card:not(.is-revealed),
 .tl-animate .tl-entry:not(.is-revealed),
+.tl-animate .tl-group:not(.is-revealed),
 .tl-animate .tl-lane:not(.is-revealed) .tl-chip,
 .tl-animate .tl-lane:not(.is-revealed) .tl-lane-label > * {
   opacity: 0;
@@ -1226,10 +1252,12 @@ body[data-theme="dark"] .shapiq-timeline {
 .tl-animate .tl-list .tl-card.is-revealed {
   animation: tl-rise 0.5s var(--shapiq-ease) backwards;
 }
-.tl-animate .tl-entry.is-revealed {
+.tl-animate .tl-entry.is-revealed,
+.tl-animate .tl-group.is-revealed {
   animation: tl-rise 0.4s var(--shapiq-ease) backwards;
 }
-.tl-animate .tl-table.is-sorted .tl-entry {
+.tl-animate .tl-table.is-sorted .tl-entry,
+.tl-animate .tl-table.is-sorted .tl-group {
   opacity: 1;
   animation: none;
 }
