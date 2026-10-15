@@ -42,13 +42,13 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 - `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
 - `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
-- `ProductKernelExplainer` is exported from `shapiq.explainer`.
+- `ProductKernelExplainer` is exported from `shapiq.explainer`. [#622](https://github.com/mmschlk/shapiq/pull/622)
 
 ### Maintenance
 
 - adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
-- reworks the documentation: a new landing page, the examples in illustrated groups with 15 new ones, an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a bibliography of every cited work.
-- the documentation build runs on request only (label `build docs` or the Actions tab), and the gallery examples run without warnings.
+- reworks the documentation: a new landing page, the examples in illustrated groups with 15 new ones, an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a bibliography of every cited work. [#622](https://github.com/mmschlk/shapiq/pull/622)
+- the documentation build runs on request only (label `build docs` or the Actions tab), and the gallery examples run without warnings. [#622](https://github.com/mmschlk/shapiq/pull/622)
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
 - fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
 
