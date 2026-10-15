@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from shapiq.approximator.base import Approximator
     from shapiq.typing import Model
 
-    from .custom_types import ExplainerIndices
+    from .custom_types import ValidApproximationExplainerIndices
 
 
 class TabPFNExplainer(TabularExplainer):
@@ -41,7 +41,7 @@ class TabPFNExplainer(TabularExplainer):
         data: np.ndarray,
         labels: np.ndarray,
         *,
-        index: ExplainerIndices = "SV",
+        index: ValidApproximationExplainerIndices = "SV",
         max_order: int = 1,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,

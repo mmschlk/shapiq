@@ -29,14 +29,19 @@ INDEX_ORDERS = [
     ("FBII", 2),
     ("FSII", 2),
     ("STII", 2),
+    ("Moebius", 2),
+    ("Fourier", 2),
     ("SII", 3),
     ("BII", 3),
     ("CHII", 3),
     ("FBII", 3),
     ("FSII", 3),
     ("STII", 3),
+    ("Moebius", 3),
+    ("Fourier", 3),
     ("STII", 4),
     ("FSII", 4),
+    ("Moebius", 4),
 ]
 
 # (model fixture, (X_train, X_test, ...) fixture, class_index)
@@ -52,9 +57,13 @@ MODEL_FAMILIES = [
 
 
 def _exact_interactions(model, reference, x, index, order, class_index=None) -> dict:
-    """Every interaction of the exact interventional game, by ``ExactComputer``."""
+    """Every interaction up to ``order`` of the exact interventional game, by ``ExactComputer``.
+
+    ``ExactComputer`` returns the Moebius transform at every order, hence the filter.
+    """
     game = InterventionalTreeGame(model, reference, x, class_index=class_index)
-    return ExactComputer(game)(index, order).interactions
+    interactions = ExactComputer(game)(index, order).interactions
+    return {key: value for key, value in interactions.items() if len(key) <= order}
 
 
 def _assert_equal_interactions(got: dict, expected: dict, *, atol: float) -> None:

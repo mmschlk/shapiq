@@ -8,7 +8,7 @@ from shapiq.game import Game
 
 from .base import Explainer
 from .configuration import setup_approximator
-from .custom_types import ExplainerIndices
+from .custom_types import ValidApproximationExplainerIndices
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from .tabular import TabularExplainerApproximators
 
-AgnosticExplainerIndices = ExplainerIndices
+AgnosticExplainerIndices = ValidApproximationExplainerIndices
 
 
 class AgnosticExplainer(Explainer):

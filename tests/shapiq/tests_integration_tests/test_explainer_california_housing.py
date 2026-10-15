@@ -7,12 +7,9 @@ from typing import TYPE_CHECKING, get_args
 
 import pytest
 
-from shapiq.explainer.agnostic import AgnosticExplainer
+from shapiq.explainer.agnostic import AgnosticExplainer, AgnosticExplainerIndices
 from shapiq.explainer.base import Explainer
-from shapiq.explainer.custom_types import (
-    ExplainerIndices,
-    ValidProductKernelExplainerIndices,
-)
+from shapiq.explainer.custom_types import ValidProductKernelExplainerIndices
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
 from shapiq.interaction_values import InteractionValues
@@ -210,7 +207,7 @@ class TestCaliforniaHousingExplainers:
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
 
-    @pytest.mark.parametrize("index", get_args(ExplainerIndices))
+    @pytest.mark.parametrize("index", get_args(AgnosticExplainerIndices))
     @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
     def test_agnostic_explainer(
         self,

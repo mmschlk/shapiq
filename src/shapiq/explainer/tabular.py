@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 from warnings import warn
 
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
 
 from .configuration import setup_approximator
-from .custom_types import ExplainerIndices
+from .custom_types import ValidApproximationExplainerIndices
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,7 +24,7 @@ TabularExplainerApproximators = Literal[
     "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
 ]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
-TabularExplainerIndices = ExplainerIndices
+TabularExplainerIndices = ValidApproximationExplainerIndices
 
 
 class TabularExplainer(Explainer):
@@ -175,7 +175,8 @@ class TabularExplainer(Explainer):
 
         self._approximator = setup_approximator(
             approximator,
-            self.index,
+            # the constructor only accepts TabularExplainerIndices (no Moebius or Fourier)
+            cast("TabularExplainerIndices", self.index),
             self._max_order,
             self._n_features,
             random_state,

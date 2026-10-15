@@ -30,6 +30,10 @@ def numpy_explain(explainer: QuadratureTreeSHAP, x: np.ndarray) -> InteractionVa
         interactions = np.zeros(0, dtype=float)
     else:
         interactions = _traverse(explainer, x_relevant)
+    lookup = _output_lookup(explainer)
+    if explainer._base_index == "Fourier":  # F(S) = (-1/2)^|S| BII(S)
+        for key, position in lookup.items():
+            interactions[position] *= (-0.5) ** len(key)
 
     return InteractionValues(
         values=interactions,
@@ -38,7 +42,7 @@ def numpy_explain(explainer: QuadratureTreeSHAP, x: np.ndarray) -> InteractionVa
         max_order=explainer._max_order,
         n_players=n_players,
         estimated=False,
-        interaction_lookup=_output_lookup(explainer),
+        interaction_lookup=lookup,
         baseline_value=explainer.empty_prediction,
         target_index=explainer._index,
     )
