@@ -27,6 +27,7 @@
 
 ### Bugfix
 
+- fixes path-dependent `TreeExplainer`/`QuadratureTreeSHAP` dropping the mass of a zero-cover subtree whenever the explained point's routing enters it (e.g. through NaN default routing or a value outside the training range, which is common in CatBoost's oblivious trees). Below such a node the cover ratio was `0/0` and the subtree was treated as unreachable, which gave wrong Shapley values and interactions and nonzero attributions on constant trees (violating the null-player axiom); efficiency was unaffected. A zero-cover node now splits its (zero) mass equally among its children, so its split weights still sum to one. [#617](https://github.com/mmschlk/shapiq/pull/617)
 - `InterventionalTreeSHAPIQ(weight_fn=...)` dropped the terms whose interaction size equals `|E| + |R|`, so custom weights never reproduced a built-in index.
 - `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
 - `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
@@ -45,6 +46,7 @@ Folds are now split within each coalition size (complement pairs kept together),
 
 ### Maintenance
 
+- adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
 - reworks the documentation: a new landing page, the examples in illustrated groups with 15 new ones, an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a bibliography of every cited work.
 - the documentation build runs on request only (label `build docs` or the Actions tab), and the gallery examples run without warnings.
 - vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)

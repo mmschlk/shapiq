@@ -486,6 +486,9 @@ static void fill_catboost_tree_node(
     uint64_t right_child = (level + 1 == depth)
                                ? internal_count + right_leaf_index
                                : (uint64_t{1} << (level + 1)) - 1 + right_leaf_index;
+    // splits[0] (CatBoost's first split chosen in training) becomes the root.
+    // This choice is made consistently with other tree models, but not with CatBoost's own ShapValues, which walk the levels in reverse.
+    // Both are exact for their order, but path-dependent SHAP values depend on the order of the splits. Interventional does not depend on the order of the splits, so it is consistent with CatBoost's own ShapValues.
     const CatBoostSplit &split = splits[level];
 
     fill_catboost_tree_node(splits, leaf_values, leaf_weights, nan_treatments, tree, depth, internal_count, level + 1, leaf_index, scaling, bias);

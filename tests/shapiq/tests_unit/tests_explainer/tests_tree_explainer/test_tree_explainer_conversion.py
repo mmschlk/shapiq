@@ -9,7 +9,6 @@ from shapiq import TreeExplainer
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.tree.base import TreeModel
 from shapiq.tree.conversion import convert_tree_model
-from shapiq.tree.conversion.catboost import parse_catboost_json_model
 from shapiq.tree.conversion.edges import create_edge_tree
 from shapiq.tree.conversion.sklearn import (
     convert_isolation_forest_tree,
@@ -23,6 +22,15 @@ from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.conversion_ref
     create_edge_tree_python,
     parse_catboost_json_model_python,
 )
+
+
+@pytest.fixture
+def parse_catboost_json_model():
+    """The CatBoost JSON parser, skipped without catboost (its module registers the converters)."""
+    pytest.importorskip("catboost")
+    from shapiq.tree.conversion.catboost import parse_catboost_json_model
+
+    return parse_catboost_json_model
 
 
 def _predict_tree_ensemble(tree_model: list[TreeModel], data: np.ndarray) -> np.ndarray:
@@ -513,7 +521,7 @@ def test_cpp_edge_tree_matches_python_edge_tree():
         )
 
 
-def test_catboost_json_oblivious_tree_conversion():
+def test_catboost_json_oblivious_tree_conversion(parse_catboost_json_model):
     """Test expansion of a CatBoost JSON oblivious tree into a TreeModel."""
     model_json = {
         "features_info": {
@@ -553,7 +561,7 @@ def test_catboost_json_oblivious_tree_conversion():
     np.testing.assert_allclose(tree_model.node_sample_weight, python_tree_model.node_sample_weight)
 
 
-def test_catboost_json_multiclass_defaults_to_class_one():
+def test_catboost_json_multiclass_defaults_to_class_one(parse_catboost_json_model):
     """Test extraction of one class from CatBoost multiclass leaf values."""
     model_json = {
         "features_info": {"float_features": [{"feature_index": 0, "nan_value_treatment": "AsIs"}]},
@@ -578,7 +586,7 @@ def test_catboost_json_multiclass_defaults_to_class_one():
     assert tree_model.predict_one(np.asarray([2.0])) == 120.0
 
 
-def test_catboost_json_binary_loss_class_zero_negates_class_one():
+def test_catboost_json_binary_loss_class_zero_negates_class_one(parse_catboost_json_model):
     """Test that class_label=0 of a binary (Logloss) CatBoost model negates leaves and bias."""
     model_json = {
         "model_info": {"params": {"loss_function": {"params": {}, "type": "Logloss"}}},
@@ -609,7 +617,7 @@ def test_catboost_json_binary_loss_class_zero_negates_class_one():
         parse_catboost_json_model(model_json, class_label=2)
 
 
-def test_catboost_json_missing_value_routing():
+def test_catboost_json_missing_value_routing(parse_catboost_json_model):
     """Test CatBoost's exported NaN treatment is translated to children_missing."""
     model_json = {
         "features_info": {
@@ -632,7 +640,7 @@ def test_catboost_json_missing_value_routing():
     assert tree_model.predict_one(np.asarray([np.nan])) == 2.0
 
 
-def test_catboost_json_unsupported_split_type_raises_clear_error():
+def test_catboost_json_unsupported_split_type_raises_clear_error(parse_catboost_json_model):
     """Test unsupported CatBoost split formats fail loudly."""
     model_json = {
         "oblivious_trees": [

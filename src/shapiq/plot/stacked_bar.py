@@ -112,7 +112,7 @@ def stacked_bar_plot(
     x = np.arange(n_features)
 
     # get helper variables for plotting the bars
-    min_max_values = [0, 0]  # to set the y-axis limits after all bars are plotted
+    min_max_values: list[float] = [0, 0]  # to set the y-axis limits after all bars are plotted
     reference_pos = np.zeros(n_features)  # to plot the bars on top of each other
     reference_neg = deepcopy(values_neg[0])  # to plot the bars below of each other
 

@@ -64,6 +64,20 @@ Boosting converters live in separate modules such as `xgboost.py`,
   predictors live in that transformed space. Converters must map feature
   indices and category codes back (see `_convert_hist_tree_predictor` in
   `src/shapiq/tree/conversion/sklearn.py`).
+- Zero-cover nodes are NOT always unreachable: the explained point's routing can enter
+  one (NaN default routing, out-of-range values; common in CatBoost's oblivious trees),
+  often only partway down after cover-weighting an absent feature above it. The
+  path-dependent cover ratio below a zero-cover node is defined in ONE place,
+  `create_edge_tree_arrays` in `src/shapiq/tree/conversion/cext/cext.cc` (equal split,
+  1/2 per child), mirrored by the Python reference
+  `tests/.../tests_tree_explainer/conversion_reference.py`; keep the two in sync.
+- Path-dependent SVs of CatBoost models do NOT match CatBoost's native `ShapValues`
+  (observed 2026-10-13, gaps up to ~0.1), and that is expected: path-dependent SHAP depends
+  on the level order of an oblivious tree. shapiq puts `splits[0]` (the first split chosen in
+  training) at the root (`fill_catboost_tree_node` in `conversion/cext/catboost_json.cc`), and
+  CatBoost walks the levels in reverse. Both match a brute-force reference for their order to
+  1e-15. CatBoost also adds the explained pool's leaf counts to the model's leaf weights when a
+  zero-weight leaf has a non-zero value, so its base value can change with the batch.
 - Binary boosters (sklearn GB/HistGB, XGBoost, LightGBM, CatBoost) have ONE raw output,
   the class-1 log-odds. `class_label=0` must negate it (leaves incl. base score / bias);
   the parsers do this via `binary_class_sign` in `conversion/cext/converter.hpp` (sklearn:
@@ -304,3 +318,13 @@ Docs layout (observed 2026-10-12):
 ```bash
 uv run pre-commit run --all-files
 ```
+
+## Test suite gotchas
+
+- Do not run `tests/shapiq` with `pytest -n` (or next to another test run) on a small machine:
+  the LightGBM proxies of `ProxySPEX` use all cores with OpenMP spin-waiting, and with the cores
+  oversubscribed `test_approximator_proxyspex.py` goes from ~5s to many minutes and looks hung
+  inside `Booster.update`. CI runs the suite serially.
+- Python 3.15 environments have no torch, tabpfn, catboost, or scikit-image (no wheels yet; see
+  the `python_version < '3.15'` markers in `pyproject.toml`). Tests needing them must use
+  `pytest.importorskip` instead of importing them (or a module importing them) at module level.
