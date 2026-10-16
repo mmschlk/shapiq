@@ -98,9 +98,6 @@ body[data-theme="dark"] .shapiq-timeline {
 .shapiq-timeline [hidden] {
   display: none !important;
 }
-.shapiq-timeline p {
-  text-align: left; /* custom.css justifies paragraphs */
-}
 .tl-sr-only {
   position: absolute;
   width: 1px;
@@ -613,10 +610,6 @@ body[data-theme="dark"] .shapiq-timeline {
   border-style: dashed;
   background: transparent;
 }
-.tl-view-list .tl-key .tl-key-lanes-only,
-.tl-view-table .tl-key .tl-key-lanes-only {
-  display: none;
-}
 .shapiq-timeline .tl-empty {
   margin: 1rem 0;
   padding: 1.5rem;
@@ -830,7 +823,7 @@ body[data-theme="dark"] .shapiq-timeline {
 .tl-chip-year {
   font-size: 0.66rem;
   font-weight: 600;
-  color: var(--tl-muted);
+  color: var(--tl-ink-soft); /* small text: the muted color is too faint on the chips */
   font-variant-numeric: tabular-nums;
 }
 .tl-chip-name {
@@ -1080,7 +1073,7 @@ body[data-theme="dark"] .shapiq-timeline {
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--tl-lane) 20%, transparent);
-  color: var(--tl-ink-soft);
+  color: var(--tl-ink);
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1279,9 +1272,6 @@ body[data-theme="dark"] .shapiq-timeline {
 
 /* -- Phones: a compact vertical timeline ---------------------------------------------------------- */
 @media (max-width: 40em) {
-  .tl-intro p {
-    text-align: left; /* justified text leaves wide gaps on narrow screens */
-  }
   .tl-filters {
     flex-wrap: nowrap;
     margin: 0 -0.85rem;

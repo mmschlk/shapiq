@@ -94,6 +94,15 @@
     return wideScreen.matches ? state.view : "list";
   }
 
+  // the id in the address (timeline.html#kernelshap), or "" if there is none or it is malformed
+  function hashId() {
+    try {
+      return decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      return "";
+    }
+  }
+
   function setHash(id) {
     const url = id ? `#${id}` : window.location.pathname + window.location.search;
     window.history.replaceState(null, "", url);
@@ -184,8 +193,8 @@
   const key = el("ul", "tl-key");
   key.setAttribute("aria-label", "Key");
   key.innerHTML =
-    '<li class="tl-key-lanes-only"><span class="tl-key-swatch" aria-hidden="true"></span>In shapiq</li>' +
-    '<li class="tl-key-lanes-only"><span class="tl-key-swatch is-dashed" aria-hidden="true"></span>Not in shapiq</li>';
+    '<li><span class="tl-key-swatch" aria-hidden="true"></span>In shapiq</li>' +
+    '<li><span class="tl-key-swatch is-dashed" aria-hidden="true"></span>Not in shapiq</li>';
 
   const rows = [[search, implementedSwitch, views], [filters], [status, key]].map(
     (items, index) => {
@@ -267,6 +276,7 @@
     drawer.setAttribute("aria-label", `${lane.name}: details`);
     drawer.inert = true;
     const panel = el("div", "tl-drawer-panel");
+    panel.tabIndex = -1; // focused when a card is opened from the keyboard
     const inner = el("div", "tl-drawer-inner");
     inner.append(panel);
     drawer.append(inner);
@@ -291,9 +301,14 @@
             el("span", "tl-chip-name", name),
             el("span", "tl-sr-only", extra),
           );
-          chip.addEventListener("click", () => {
-            if (state.open === card.id) closeDrawer();
-            else showInDrawer(card.id);
+          chip.addEventListener("click", (event) => {
+            if (state.open === card.id) {
+              closeDrawer();
+              return;
+            }
+            showInDrawer(card.id);
+            // from the keyboard (no pointer: detail 0), go on reading in the details
+            if (event.detail === 0) laneRows.get(lane.id).panel.focus({ preventScroll: true });
           });
           chipById.set(card.id, chip);
           cell.append(chip);
@@ -476,7 +491,7 @@
       const group = el("tbody", "tl-group");
       group.dataset.slot = lane.slot;
       const heading = el("th");
-      heading.scope = "colgroup";
+      heading.scope = "rowgroup";
       heading.colSpan = Object.keys(SORTS).length;
       const count = el("span", "tl-group-count");
       heading.append(
@@ -699,12 +714,13 @@
     const view = currentView();
     for (const name of Object.keys(VIEWS)) root.classList.toggle(`tl-view-${name}`, view === name);
     views.hidden = !wideScreen.matches;
+    key.hidden = view !== "lanes"; // the key explains the swimlanes' cards only
     for (const viewButton of viewButtons) {
       viewButton.setAttribute("aria-pressed", String(viewButton.dataset.view === state.view));
     }
     if (shownView && shownView !== view) {
       // keep the open entry open in the other view
-      const id = state.open || decodeURIComponent(window.location.hash.slice(1));
+      const id = state.open || hashId();
       if (view !== "lanes") closeDrawer();
       if (cardById.has(id)) {
         if (view === "list") setCardOpen(cardById.get(id), true);
@@ -751,7 +767,7 @@
   }
 
   function openFromHash({ initial = false } = {}) {
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    const id = hashId();
     const card = cardById.get(id);
     if (!card) return;
     if (!matches(card)) resetFilters();

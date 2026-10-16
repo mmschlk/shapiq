@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import functools
 import importlib
+import inspect
 import os
 import pkgutil
 import re
@@ -286,7 +287,6 @@ intersphinx_mapping = {
 html_theme = "furo"
 html_title = "shapiq documentation"
 html_static_path = ["_static"]
-html_extra_path = ["_extra"]  # redirects from moved pages
 html_css_files = [
     "css/tokens.css",  # colors, radii, shadows and motion shared by the custom pages
     "css/custom.css",
@@ -346,9 +346,7 @@ _PYPI_ICON = (
     ' 4.625-2.683a.25.25 0 0 0 .125-.216V5.677L8.75 8.432Z"></path></svg>'
 )
 html_theme_options = {
-    "sidebar_hide_name": True,
-    "light_logo": "logo/logo_shapiq_light.svg",
-    "dark_logo": "logo/logo_shapiq_dark.svg",
+    "sidebar_hide_name": True,  # the logo (inline, see _inline_logo) carries the name
     # "view" and "edit" buttons; _templates/components maps the gallery pages to their scripts
     # and leaves them out on the generated API pages, which have no source file in the repository
     "source_repository": "https://github.com/mmschlk/shapiq/",
@@ -462,6 +460,11 @@ def _use_the_defining_module_docstring(app, what, name, obj, options, lines) -> 
 def _format_type_alias(annotation: object, config: object) -> str | None:  # noqa: ARG001
     if not isinstance(annotation, TypeAliasType):
         return None  # the default formatting
+    package = annotation.__module__.split(".")[0]
+    if package == "numpy":  # e.g. ArrayLike, documented by numpy under numpy.typing
+        return f":py:obj:`~numpy.typing.{annotation.__name__}`"
+    if package not in _PACKAGES:
+        return None
     module = ".".join(part for part in annotation.__module__.split(".") if not part.startswith("_"))
     return f":py:type:`~{module}.{annotation.__name__}`"
 
@@ -472,9 +475,12 @@ typehints_formatter = _format_type_alias
 _PACKAGES = ("shapiq", "shapiq_games", "shapiq_benchmark")
 
 
+_MISSING = object()
+
+
 @functools.cache
-def _import_path(path: str) -> object | None:
-    """Return the object at a dotted path such as ``shapiq.KernelSHAP``, or ``None``."""
+def _import_path(path: str) -> object:
+    """Return the object at a dotted path such as ``shapiq.KernelSHAP``, or ``_MISSING``."""
     parts = path.split(".")
     for split in range(len(parts), 0, -1):
         try:
@@ -482,9 +488,19 @@ def _import_path(path: str) -> object | None:
         except ImportError:
             continue
         for attribute in parts[split:]:
-            obj = getattr(obj, attribute, None)
-        return obj
-    return None
+            obj = getattr(obj, attribute, _MISSING)
+            if obj is _MISSING:
+                return _MISSING
+        return getattr(obj, "__func__", obj)  # a classmethod is a new bound method on every access
+    return _MISSING
+
+
+def _identifies(obj: object) -> bool:
+    """Whether an object stands for one documented object: a module, class, function, or property.
+
+    A value such as ``None`` or ``0`` is shared by unrelated attributes, so it identifies nothing.
+    """
+    return inspect.ismodule(obj) or callable(obj) or isinstance(obj, property)
 
 
 def _link_reexported_names(app, env, node, contnode):  # noqa: ANN202
@@ -498,17 +514,23 @@ def _link_reexported_names(app, env, node, contnode):  # noqa: ANN202
     if node.get("refdomain") != "py":
         return None
     domain = env.domains.python_domain
-    name = target.rpartition(".")[2]
-    candidates = [
-        documented
-        for documented in domain.objects
-        if documented.split(".")[0] in _PACKAGES and documented.rpartition(".")[2] == name
-    ]
-    obj = _import_path(target) if target.split(".")[0] in _PACKAGES else None
-    if obj is not None:  # a public alias of a documented object
-        candidates = [c for c in candidates if _import_path(c) is obj]
-    elif len({id(_import_path(c)) for c in candidates}) != 1:
-        return None  # otherwise the name links only if it names one documented object
+    documented = [d for d in domain.objects if d.split(".")[0] in _PACKAGES]
+    package = target.split(".")[0]
+    if package in _PACKAGES:  # a public alias: the same name for the same object
+        name = target.rpartition(".")[2]
+        candidates = [d for d in documented if d.rpartition(".")[2] == name]
+        obj = _import_path(target)
+        if _identifies(obj):
+            candidates = [c for c in candidates if _import_path(c) is obj]
+        else:  # a value (e.g. a constant) links only to its one namesake in the same package
+            candidates = [c for c in candidates if c.split(".")[0] == package]
+            candidates = candidates if obj is not _MISSING and len(candidates) == 1 else []
+    else:  # a bare or partial name such as MoebiusConverter or ExactComputer.moebius_transform
+        candidates = [d for d in documented if d.endswith(f".{target}")]
+        if len(candidates) > 1:  # several documented names: all of them must be this one object
+            obj = _import_path(candidates[0])
+            if not _identifies(obj) or any(_import_path(c) is not obj for c in candidates):
+                return None
     if not candidates:
         return None
     return domain.resolve_xref(
@@ -534,10 +556,106 @@ def _short_navigation_titles(app, doctree) -> None:  # noqa: ARG001
         title_reference.children = [nodes.Text(short)]
 
 
+# -- Redirects from moved pages ---------------------------------------------------------------------
+# The examples moved into one gallery per group. Their old addresses (and those of the old groups)
+# keep working: after the build, every old page that no new page replaces gets a small page that
+# redirects to the new one. Add an entry here when a page moves.
+
+_REDIRECTS = {
+    "auto_examples/index": "examples",
+    "auto_examples/causal/index": "auto_examples/applications/index",
+    "auto_examples/game_theory/index": "auto_examples/exact_computation/index",
+    "auto_examples/language/index": "auto_examples/applications/index",
+    "auto_examples/nearest_neighbor/index": "auto_examples/nearest_neighbors/index",
+    "auto_examples/tabular/index": "examples",
+    "auto_examples/vision/index": "auto_examples/applications/index",
+    "auto_examples/causal/plot_confounding_xai": "auto_examples/applications/plot_confounding_xai",
+    "auto_examples/tabular/plot_explaining_tabpfn": "auto_examples/applications/plot_explaining_tabpfn",
+    "auto_examples/language/plot_sentiment_analysis": (
+        "auto_examples/applications/plot_sentiment_analysis"
+    ),
+    "auto_examples/vision/plot_vision_transformer": (
+        "auto_examples/applications/plot_vision_transformer"
+    ),
+    "auto_examples/tabular/plot_shapiq_scikit_learn": "auto_examples/basics/plot_shapiq_scikit_learn",
+    "auto_examples/game_theory/plot_core": "auto_examples/exact_computation/plot_core",
+    "auto_examples/approximators/plot_exact_computer": (
+        "auto_examples/exact_computation/plot_exact_computer"
+    ),
+    "auto_examples/nearest_neighbor/plot_nn_data_valuation": (
+        "auto_examples/nearest_neighbors/plot_nn_data_valuation"
+    ),
+    "auto_examples/tabular/plot_conditional_imputer": (
+        "auto_examples/technicalities/plot_conditional_imputer"
+    ),
+    "auto_examples/basics/plot_parallel_computation": (
+        "auto_examples/technicalities/plot_parallel_computation"
+    ),
+    **{
+        f"auto_examples/approximators/{name}": f"auto_examples/approximators/{group}/{name}"
+        for group, names in {
+            "shapley_values": [
+                "plot_kadd_shap",
+                "plot_kernelshap",
+                "plot_owen_sampling_sv",
+                "plot_permutation_sampling_sv",
+                "plot_stratified_sampling_sv",
+                "plot_svarm",
+                "plot_unbiased_kernelshap",
+            ],
+            "shapley_interactions": [
+                "plot_inconsistent_kernelshapiq",
+                "plot_kernelshapiq",
+                "plot_permutation_sampling_sii",
+                "plot_permutation_sampling_stii",
+                "plot_regression_fbii",
+                "plot_regression_fsii",
+                "plot_shapiq_approximator",
+                "plot_svarmiq",
+            ],
+            "surrogate_and_sparse": [
+                "plot_proxyshap",
+                "plot_proxyspex",
+                "plot_regression_msr",
+                "plot_spex",
+            ],
+        }.items()
+        for name in names
+    },
+}
+
+_REDIRECT_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Moved</title>
+  <meta http-equiv="refresh" content="0; url={target}">
+  <link rel="canonical" href="{target}">
+</head>
+<body><p>This page moved to <a href="{target}">{target}</a>.</p></body>
+</html>
+"""
+
+
+def _write_redirects(app, exception) -> None:
+    """Write a redirect page for every moved page of ``_REDIRECTS`` that no new page replaces."""
+    if exception is not None or app.builder.format != "html":
+        return
+    outdir = Path(app.outdir)
+    for old, new in _REDIRECTS.items():
+        page = outdir / f"{old}.html"
+        if page.exists():
+            continue
+        page.parent.mkdir(parents=True, exist_ok=True)
+        target = Path(os.path.relpath(outdir / f"{new}.html", page.parent)).as_posix()
+        page.write_text(_REDIRECT_PAGE.format(target=target), encoding="utf-8")
+
+
 def setup(app) -> None:
     """Connect the docstring handler (before napoleon, which formats the docstrings)."""
     app.connect("autodoc-process-docstring", _use_the_defining_module_docstring, priority=400)
     app.connect("missing-reference", _link_reexported_names)
+    app.connect("build-finished", _write_redirects)
     app.connect("doctree-read", _short_navigation_titles, priority=900)  # after the title collector
 
 

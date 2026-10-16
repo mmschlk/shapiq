@@ -44,6 +44,17 @@ article img:not(.shapiq-hero-logo) {
   border-radius: var(--shapiq-radius-small);
 }
 
+/* github-light's comment gray is too faint on the code background: a darker gray in light mode */
+body[data-theme="light"] .highlight :is(.c, .ch, .cm, .cp, .cpf, .c1, .cs) {
+  color: #57606a;
+}
+
+@media (prefers-color-scheme: light) {
+  body:not([data-theme="dark"]) .highlight :is(.c, .ch, .cm, .cp, .cpf, .c1, .cs) {
+    color: #57606a;
+  }
+}
+
 div[class*="highlight-"] {
   border: 1px solid var(--color-background-border);
   border-radius: var(--shapiq-radius-small);
@@ -285,16 +296,18 @@ section:has(> .shapiq-hero) > h1::after {
   box-shadow: var(--shapiq-shadow);
 }
 
+/* sphinx-design colors its outline buttons with !important: override it for the hero's buttons */
 .shapiq-button.sd-btn-outline-secondary {
-  color: var(--color-foreground-primary);
-  border-color: var(--shapiq-border);
+  color: var(--color-foreground-primary) !important;
+  border-color: var(--shapiq-border) !important;
   background: var(--shapiq-surface);
 }
 
-.shapiq-button.sd-btn-outline-secondary:hover {
-  color: var(--color-foreground-primary);
-  border-color: var(--color-brand-primary);
-  background: var(--shapiq-surface-raised);
+.shapiq-button.sd-btn-outline-secondary:hover,
+.shapiq-button.sd-btn-outline-secondary:focus {
+  color: var(--color-foreground-primary) !important;
+  border-color: var(--color-brand-primary) !important;
+  background-color: var(--shapiq-surface-raised) !important;
 }
 
 .shapiq-button .sd-octicon {

@@ -84,6 +84,13 @@ def _problems(entry: dict[str, Any], lanes: dict[str, Any], seen: set[str]) -> l
         problems.append(f"duplicate id {entry['id']!r}")
     if "lane" in entry and entry["lane"] not in lanes:
         problems.append(f"unknown lane {entry['lane']!r}")
+    if "year" in entry and not isinstance(entry["year"], int):
+        problems.append(f"year {entry['year']!r} is not a number")
+    for key in ("cite", "api", "examples", "related"):
+        if key in entry and not (
+            isinstance(entry[key], list) and all(isinstance(item, str) for item in entry[key])
+        ):
+            problems.append(f"{key!r} is not a list of strings")
     return problems
 
 
@@ -109,8 +116,11 @@ def _details_rst(entry: dict[str, Any], names: dict[str, str]) -> str:
         fields.append(("Links", ", ".join(f"`{x['label']} <{x['url']}>`__" for x in links)))
     if related := [key for key in entry.get("related", []) if key in names]:
         fields.append(("Related", ", ".join(f"`{names[key]} <#{key}>`__" for key in related)))
+    description = entry["description"].strip()
+    if not fields:  # an empty rst-class would pass its class on to the next card
+        return f"{description}\n"
     field_list = "\n".join(f":{label}: {body}" for label, body in fields)
-    return f"{entry['description'].strip()}\n\n.. rst-class:: tl-card-fields\n\n{field_list}\n"
+    return f"{description}\n\n.. rst-class:: tl-card-fields\n\n{field_list}\n"
 
 
 class TimelineDirective(SphinxDirective):
@@ -131,7 +141,7 @@ class TimelineDirective(SphinxDirective):
 
         lanes = {lane["id"]: {**lane, "slot": slot} for slot, lane in enumerate(data["lanes"], 1)}
         if len(lanes) > _MAX_LANES:
-            logger.warning("the timeline has more than %d lanes", _MAX_LANES, location=path)
+            logger.warning("the timeline has more than %d lanes", _MAX_LANES, location=f"{path}:1")
         lines, entries, seen = _entry_lines(text), [], set()
         for entry in data["entries"]:
             problems = _problems(entry, lanes, seen)

@@ -16,6 +16,9 @@ jobs:
             || (github.event.action != 'labeled'
                 && contains(github.event.pull_request.labels.*.name, 'build docs'))
         runs-on: ubuntu-latest
+        timeout-minutes: 60
+        permissions:
+            contents: read
         concurrency:
             group: docs-${{ github.event.pull_request.number || github.ref }}
             cancel-in-progress: true
