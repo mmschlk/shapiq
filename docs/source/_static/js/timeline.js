@@ -68,10 +68,12 @@
     return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   }
 
+  // the swimlanes are the default: a chosen view is kept while browsing in the tab (e.g. to an API
+  // page and back), not across visits
   function loadView() {
     try {
-      const view = window.localStorage.getItem(VIEW_KEY);
-      return view in VIEWS ? view : "lanes";
+      const view = window.sessionStorage.getItem(VIEW_KEY);
+      return Object.hasOwn(VIEWS, view ?? "") ? view : "lanes";
     } catch {
       return "lanes";
     }
@@ -79,7 +81,7 @@
 
   function saveView(view) {
     try {
-      window.localStorage.setItem(VIEW_KEY, view);
+      window.sessionStorage.setItem(VIEW_KEY, view);
     } catch {
       // the view is a convenience; without storage it is not remembered
     }
