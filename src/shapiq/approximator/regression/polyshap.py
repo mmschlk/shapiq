@@ -50,7 +50,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         sizes_to_exclude: Higher-order coalition sizes to omit from the frontier.
             Singletons are always kept.  Defaults to ``None``.
         prior_frontier: An iterable of coalition tuples defining the frontier and its
-            column ordering (*prior* mode).  Must include every singleton ``(i,)``.  It
+            column ordering (*prior* mode).  Must include every singleton ``(i,)``; the
+            empty set is always the first term, wherever it is listed.  It
             is mutually exclusive with ``max_order``, ``max_terms`` and
             ``sizes_to_exclude``; passing any of them alongside it raises ``ValueError``.
         pairing_trick: If ``True``, the pairing trick is applied to the sampling
@@ -155,7 +156,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 ``max_terms`` or ``sizes_to_exclude``, or if ``max_terms`` is smaller
                 than ``n + 1``.
         """
-        # Prior mode: use the caller-supplied frontier verbatim; it admits no other knobs.
+        # Prior mode: the empty set first, then the caller's terms in their order.
         if prior_frontier is not None:
             if max_order is not None or max_terms is not None or sizes_to_exclude is not None:
                 msg = (
@@ -163,7 +164,10 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                     "'max_terms' and 'sizes_to_exclude'."
                 )
                 raise ValueError(msg)
-            return {S: pos for pos, S in enumerate(prior_frontier)}
+            prior: dict[tuple[int, ...], int] = {(): 0}
+            for S in prior_frontier:
+                prior.setdefault(tuple(S), len(prior))
+            return prior
 
         if max_order is None:
             max_order = 2

@@ -275,6 +275,23 @@ def test_prior_frontier_matches_supplied_ordering(n):
         assert approx.explanation_frontier[coalition] == pos
 
 
+@pytest.mark.parametrize(
+    "prior",
+    [
+        [(0,), (1,), (2,), (3,), (4,), (1, 2)],  # no empty set
+        [(0,), (1,), (2,), (3,), (4,), (1, 2), ()],  # empty set last
+        [(), (0,), (1,), (1, 2), (2,), (3,), (4,), (1, 2)],  # duplicate term
+    ],
+)
+def test_prior_frontier_puts_empty_set_first(prior):
+    """The empty set is the first term however the prior lists it, so the SVs stay exact."""
+    n, interaction = 5, (1, 2)
+    approx = PolySHAP(n, prior_frontier=prior)
+    assert approx.explanation_frontier[()] == 0
+    est = _estimate_vector(approx, 2**n, DummyGame(n, interaction))
+    np.testing.assert_allclose(est, _exact_sv(n, interaction), atol=1e-10)
+
+
 def test_informed_prior_recovers_exact_interaction_game():
     """A prior carrying the game's true interaction recovers the exact Shapley values.
 
