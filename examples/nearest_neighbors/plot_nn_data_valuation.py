@@ -8,7 +8,7 @@ When explaining NN models, a game is defined by first choosing an explanation po
 """
 
 # %%
-# There is support for explaining the the ``KNeighborsClassifier`` model (with ``'uniform'`` or ``'distance'`` weights) and ``RadiusNeighborsClassifier`` model from the ``scikit-learn`` library.
+# There is support for explaining the ``KNeighborsClassifier`` model (with ``'uniform'`` or ``'distance'`` weights) and ``RadiusNeighborsClassifier`` model from the ``scikit-learn`` library.
 # The algorithms are based on the publications from :cite:t:`Jia.2019a`,
 # :cite:t:`Wang.2024a`, and :cite:t:`Wang.2023`, respectively.
 #

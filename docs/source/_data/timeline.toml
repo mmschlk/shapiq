@@ -139,11 +139,12 @@ id = "semivalues"
 name = "Semivalues"
 year = 1981
 lane = "foundations"
-summary = "All values that satisfy Shapley's axioms except efficiency."
+summary = "The positive values that satisfy Shapley's axioms except efficiency."
 description = """
-Dropping efficiency from Shapley's axioms leaves the semivalues: weighted averages of marginal
-contributions whose weights depend only on the size of the coalition. The Shapley and the Banzhaf
-value are the best-known members, and many estimators work for every semivalue at once.
+Dropping efficiency from Shapley's axioms and asking for positivity leaves the semivalues: weighted
+averages of marginal contributions whose weights depend only on the size of the coalition. The
+Shapley and the Banzhaf value are the best-known members, and many estimators work for every
+semivalue at once.
 """
 cite = ["Dubey.1981"]
 api = ["shapiq.game_theory.ExactComputer.probabilistic_value"]
@@ -199,15 +200,15 @@ related = ["moebius-transform", "spex"]
 [[entries]]
 id = "permutation-representation"
 name = "Permutation representation"
-year = 2009
+year = 1953
 lane = "foundations"
 summary = "The Shapley value as an expectation over random orderings of the players."
 description = """
 A player's Shapley value equals its expected marginal contribution when the players join in a
-uniformly random order. Castro et al. turned this view into a polynomial-time sampling algorithm,
-and it remains the basis of all permutation-based estimators.
+uniformly random order, as Shapley's formula already states. Castro et al. turned this view into a
+polynomial-time sampling algorithm, and it remains the basis of all permutation-based estimators.
 """
-cite = ["Castro.2009"]
+cite = ["Shapley.1951", "Castro.2009"]
 api = ["shapiq.approximator.PermutationSamplingSV"]
 related = ["permutation-sampling"]
 
@@ -236,8 +237,9 @@ lane = "foundations"
 summary = "A stability-based alternative to the Shapley value for explanation and data valuation."
 description = """
 The core contains the divisions of the payoff that no coalition would want to leave. Yan and
-Procaccia proposed the least core, which always exists, as an alternative to the Shapley value for
-data valuation that favors stability over fairness. shapiq computes its egalitarian solution
+Procaccia made the case for the least core, which always exists, as an alternative to the Shapley
+value for feature and data valuation that favors stability over fairness, and approximated it
+efficiently. shapiq computes its egalitarian solution
 exactly for small games.
 """
 cite = ["Yan.2021"]
@@ -492,7 +494,14 @@ it made Shapley values the most widely used local feature attribution.
 cite = ["Lundberg.2017"]
 api = ["shapiq.approximator.KernelSHAP"]
 examples = ["auto_examples/approximators/shapley_values/plot_kernelshap"]
-related = ["wls-representation", "unbiased-kernelshap", "leverageshap", "kernelshap-iq"]
+related = [
+    "wls-representation",
+    "unbiased-kernelshap",
+    "leverageshap",
+    "polyshap",
+    "kernelshap-iq",
+    "shap",
+]
 
 [[entries]]
 id = "owen-sampling"
@@ -642,7 +651,7 @@ summary = "Samples the coalitions of KernelSHAP's regression by their leverage s
 description = """
 Musco and Witter sample the coalitions of KernelSHAP's regression in proportion to their
 statistical leverage, in pairs and without replacement, and prove that the resulting estimates are
-accurate. In shapiq it is the recommended drop-in replacement for KernelSHAP.
+accurate. The gallery compares it with KernelSHAP on the same budgets.
 """
 cite = ["Musco.2025"]
 api = ["shapiq.approximator.LeverageSHAP"]
@@ -849,7 +858,7 @@ of large models with far fewer queries than SPEX.
 cite = ["Butler.2025"]
 api = ["shapiq.approximator.ProxySPEX"]
 examples = ["auto_examples/approximators/surrogate_and_sparse/plot_proxyspex"]
-related = ["spex", "proxyshap"]
+related = ["spex", "proxyshap", "oddshap"]
 
 [[entries]]
 id = "instashap"
@@ -948,14 +957,15 @@ related = ["treeshap", "treeshap-iq"]
 
 [[entries]]
 id = "interventional-treeshap"
-name = "Interventional TreeSHAP"
+name = "Interventional tree interactions"
 year = 2023
 lane = "exact"
-summary = "Exact interventional Shapley values and interactions of tree ensembles."
+summary = "Exact interventional Shapley values and interactions of (piecewise linear) trees."
 description = """
-Zern et al. computed interventional Shapley values and interaction values of (piecewise linear)
-regression trees exactly against a background dataset. shapiq's TreeExplainer with
-``mode="interventional"`` computes interactions of any order and of every index this way.
+Zern et al. extended interventional TreeSHAP to interaction values and to piecewise linear
+regression trees, computed exactly against a background dataset. shapiq's TreeExplainer with
+``mode="interventional"`` computes interactions of any order for SII, k-SII, BII, CHII, STII, FSII,
+and FBII, and the Möbius and Fourier transforms.
 """
 cite = ["Zern.2023"]
 api = ["shapiq.tree.InterventionalTreeSHAPIQ", "shapiq_games.InterventionalTreeGame"]
@@ -970,17 +980,12 @@ lane = "exact"
 summary = "Exact any-order Shapley interactions of tree ensembles in a single traversal."
 description = """
 TreeSHAP-IQ extends Linear TreeSHAP with interaction summary polynomials and computes path-dependent
-Shapley interactions (SII and k-SII) of any order in one recursive pass through each tree, at a cost
-that grows linearly with the number of features. It made exact interactions of gradient-boosted
-models practical.
+Shapley interactions (SII and k-SII) of any order in one recursive pass through each tree. It made
+exact interactions of gradient-boosted models practical.
 """
 cite = ["Muschalik.2024a"]
-api = ["shapiq.tree.TreeSHAPIQ", "shapiq.explainer.TreeExplainer"]
-examples = [
-    "auto_examples/trees/plot_treeshapiq_lightgbm",
-    "auto_examples/trees/plot_treeshapiq_custom_tree",
-]
-related = ["linear-treeshap", "quadrature-treeshap", "shap-interaction-values"]
+api = ["shapiq.tree.TreeSHAPIQ"]
+related = ["treeshap", "linear-treeshap", "quadrature-treeshap", "shap-interaction-values"]
 
 [[entries]]
 id = "tknn-shapley"
@@ -1063,10 +1068,10 @@ year = 2025
 lane = "exact"
 summary = "Exact any-order Shapley interactions of graph neural networks."
 description = """
-GraphSHAP-IQ exploits that a message-passing graph neural network's output depends only on the
-receptive fields of its nodes, so that the graph game has nonzero Möbius coefficients only on small
-connected sets of nodes. Its cost depends on the receptive fields instead of the size of the graph,
-which makes exact interactions of molecules and other graphs feasible.
+GraphSHAP-IQ exploits that a message-passing graph neural network with a linear readout depends on
+each node only through its receptive field, so that the graph game has nonzero Möbius coefficients
+only on subsets of the receptive fields. Its cost depends on the receptive fields instead of the
+size of the graph, which makes exact interactions of molecules and other graphs feasible.
 """
 cite = ["Muschalik.2025"]
 related = ["moebius-transform", "treeshap-iq"]
@@ -1103,6 +1108,10 @@ TreeExplainer.
 """
 cite = ["Wettenstein.2026a", "Li.2026"]
 api = ["shapiq.tree.QuadratureTreeSHAP", "shapiq.explainer.TreeExplainer"]
+examples = [
+    "auto_examples/trees/plot_treeshapiq_lightgbm",
+    "auto_examples/trees/plot_treeshapiq_custom_tree",
+]
 related = ["treeshap-iq", "weighted-banzhaf", "owen-sampling", "multilinear-extension"]
 
 # -- Feature removal --------------------------------------------------------------------------------
@@ -1508,8 +1517,9 @@ year = 2022
 lane = "software"
 summary = "Features as nodes and pairwise interactions as edges."
 description = """
-Inglis et al. visualized variable importance and pairwise interactions as a network: nodes for the
-features, edges whose width and color show the strength and sign of their interaction.
+Inglis et al. visualized variable importance and pairwise interaction strength as a network: nodes
+for the features, edges whose width and color show the strength of their interaction. shapiq's
+network plot also shows the sign of the interactions.
 """
 cite = ["Inglis.2022"]
 api = ["shapiq.plot.network_plot"]

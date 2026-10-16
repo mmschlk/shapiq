@@ -13,17 +13,24 @@ import os
 import pkgutil
 import re
 import sys
+import unicodedata
+from collections import defaultdict
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeAliasType, override
 
 from docutils import nodes
+from pybtex.database import Person, parse_file
 from pybtex.plugin import register_plugin
+from pybtex.richtext import Text
 from pybtex.style.formatting.alpha import Style as AlphaStyle
-from pybtex.style.template import field, href, join, sentence, words
+from pybtex.style.labels.alpha import LabelStyle as AlphaLabelStyle
+from pybtex.style.sorting.author_year_title import SortingStyle as AuthorYearTitleSortingStyle
+from pybtex.style.template import field, first_of, href, join, node, optional, sentence, words
 from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.errors import PycodeError
 from sphinx.pycode import ModuleAnalyzer
+from sphinxcontrib.bibtex.style.referencing import basic_author_year, extra_year
 
 if TYPE_CHECKING:
     from pybtex.database import Entry
@@ -237,13 +244,60 @@ def _unescape_latex(text: str) -> str:
     return text.replace("\\_", "_")
 
 
+_GENERATIONS = {"Jr", "Jr.", "Sr", "Sr.", "II", "III", "IV"}
+
+
+def _plain_person(person: Person) -> Person:
+    r"""Return a person whose names are plain text without accents and generations.
+
+    ``alpha`` keeps a name part whole unless it consists of letters only, so LaTeX accents and
+    braces (``H{\"{u}}llermeier``, ``{Banzhaf III}``) put whole names into the labels, and they
+    sort after "Z".
+    """
+
+    def plain(parts: list[str]) -> list[str]:
+        words_ = []
+        for part in parts:
+            text = unicodedata.normalize("NFD", Text.from_latex(part).render_as("text"))
+            text = "".join(char for char in text if not unicodedata.combining(char))
+            words_ += [word for word in text.split() if word not in _GENERATIONS]
+        return words_
+
+    result = Person()
+    result.first_names = plain(person.first_names)
+    result.middle_names = plain(person.middle_names)
+    result.prelast_names = plain(person.prelast_names)
+    result.last_names = plain(person.last_names)
+    return result
+
+
+class _LabelStyle(AlphaLabelStyle):
+    """The ``alpha`` labels from the plain names: ``[PKH26]``, not ``[PKHullermeier26]``."""
+
+    @override
+    def format_lab_names(self, persons: list[Person]) -> str:
+        return super().format_lab_names([_plain_person(person) for person in persons])
+
+
+class _SortingStyle(AuthorYearTitleSortingStyle):
+    """Sort by the plain names, so that ``Štrumbelj`` sorts with S and ``{Banzhaf III}`` with B."""
+
+    @override
+    def person_key(self, person: Person) -> str:
+        return super().person_key(_plain_person(person))
+
+
 class _BibStyle(AlphaStyle):
     r"""The ``alpha`` style, but titles keep the capitalization of ``references.bib``.
 
     ``references.bib`` is written for LaTeX styles that print titles as written, so its titles are
     not all brace-protected; ``alpha`` would lowercase them (e.g. "Shapley" -> "shapley"). Links
     from the ``doi`` and ``url`` fields are unescaped (``\_`` -> ``_``) so that they resolve.
+    Labels and order come from the plain names (see ``_plain_person``).
     """
+
+    default_label_style = "shapiq_alpha"
+    default_sorting_style = "shapiq_author_year_title"
 
     @override
     def format_title(self, e: Entry, which_field: str, *, as_sentence: bool = True) -> Node:
@@ -261,7 +315,47 @@ class _BibStyle(AlphaStyle):
         return href(join["https://doi.org/", doi])[join["doi:", doi]]
 
 
+register_plugin("pybtex.style.labels", "shapiq_alpha", _LabelStyle)
+register_plugin("pybtex.style.sorting", "shapiq_author_year_title", _SortingStyle)
 register_plugin("pybtex.style.formatting", "shapiq_alpha", _BibStyle)
+
+
+def _year_letters(bibfile: Path) -> dict[str, str]:
+    """Return the letter after the year of works that the text would cite alike.
+
+    The text cites by author and year ("Kolpaczki et al., 2024"); works with the same first author,
+    the same second author or "et al.", and the same year get "a", "b", ... in the order of their
+    keys, so that ``Kolpaczki.2024a`` to ``Kolpaczki.2024c`` read as 2024a to 2024c.
+    """
+    works = defaultdict(list)
+    for entry in parse_file(bibfile).entries.values():
+        persons = entry.persons.get("author") or entry.persons.get("editor") or []
+        surnames = [" ".join(_plain_person(person).last_names) for person in persons[:2]]
+        cited_as = (*surnames[:1], surnames[1] if len(persons) == 2 else len(persons) > 2)
+        works[cited_as, entry.fields.get("year", "")].append(entry)
+    return {
+        entry.key: letter
+        for group in works.values()
+        if len(group) > 1
+        for letter, entry in zip(
+            "abcdefghijklmnopqrstuvwxyz", sorted(group, key=lambda e: e.key), strict=False
+        )
+    }
+
+
+_YEAR_LETTERS = _year_letters(root / "docs" / "source" / "references.bib")
+
+
+@node
+def _year(children, data):  # noqa: ANN202
+    """The year of a citation, with a letter if other works would be cited alike (2024a, 2024b)."""
+    assert not children  # noqa: S101
+    letter = _YEAR_LETTERS.get(data["entry"].key, "")
+    return join[first_of[optional[field("year")], "n.d."], letter].format_data(data)
+
+
+# the author-year templates of sphinxcontrib-bibtex look up ``year`` when they format a citation
+basic_author_year.year = extra_year.year = _year
 # every citation of the docs (docstrings, examples, timeline) uses :cite:, so the bibliography page
 # lists every cited work; the text cites by author and year, the bibliography lists alpha labels
 bibtex_default_style = "shapiq_alpha"

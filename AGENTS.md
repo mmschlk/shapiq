@@ -247,10 +247,12 @@ Boosting converters live in separate modules such as `xgboost.py`,
   from the name (`Covert.2021` is "Explaining by Removing", `Covert.2021b` "Improving KernelSHAP").
   The file is grouped by entry type, the `@inproceedings` further by venue under `#`/`%` comment
   headers, by year within a venue; copy the venue string of an existing entry (AAAI is
-  `Conference on Artificial Intelligence (AAAI)`). Accent commands named by a letter leak into
-  pybtex's labels (`{\v{S}}trumbelj` became `[vStrumbeljK10]`); write such names in Unicode
-  (`Štrumbelj`), as `{\"{u}}`-style accents are fine. To verify bibliographic data (observed
-  2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
+  `Conference on Artificial Intelligence (AAAI)`). pybtex's `alpha` labels and its sorting keep
+  LaTeX accents and braced names whole (`[PKHullermeier26]`, `{Banzhaf III}` after "Z", observed
+  2026-10-16); `conf.py` builds both from plain names (`_plain_person`), so LaTeX accents and
+  Unicode both work. The text cites by author and year; works cited alike get a letter in the
+  order of their keys (`Kolpaczki.2024a` to `2024c`, `_year_letters`). To verify bibliographic
+  data (observed 2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
   `curl` with a bot check; Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the publishers'
   own proceedings pages work.
 - Its titles are written for LaTeX styles that print them as written, and some DOIs escape `_`
@@ -309,6 +311,8 @@ Docs layout (observed 2026-10-12):
   there: the sidebar's logo is a link home on every page and stays still).
   Edit `_static/logo/logo_shapiq_{light,dark}.svg` only: the script finds the players as circles
   with `r > 15`, the caps as smaller circles and the lines as two-point paths with `fill="none"`.
+- Moved pages keep their old addresses: `_REDIRECTS` in `conf.py` writes a redirect page for each
+  after the build. Add an entry when a page (e.g. a gallery example) moves.
 - In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
   `conf.py` puts the worktree's `src` first on `sys.path`: copy the `*.so` files from the main
   checkout before building the docs there.

@@ -962,7 +962,7 @@ class ExactComputer:
         - BII: Banzhaf Interaction Index :cite:p:`Grabisch.1999`
         - CHII: Chaining Interaction Index :cite:p:`Marichal.1999`
         - Moebius: Moebius Transform :cite:p:`Rota.1964`
-        - Co-Moebius: Co-Moebius Transform :cite:p:`Marichal.2007`
+        - Co-Moebius: Co-Moebius Transform :cite:p:`Fujimoto.2006`
         - Fourier: Fourier (Walsh-Hadamard) transform, ``(-1/2)^|S|`` times BII
 
         Args:
