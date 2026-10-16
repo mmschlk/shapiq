@@ -328,19 +328,6 @@ Docs layout (observed 2026-10-12):
 uv run pre-commit run --all-files
 ```
 
-## Approximator gotchas (observed 2026-10-16)
-
-- `binom(n, k)` overflows float64 from `n` of about 1030 on. A regression kernel weight
-  (`~1 / binom(n, k)`) then underflows to `0` and the sampler's `sampling_adjustment_weights`
-  (`~binom(n, k)`) overflow to `inf`, so their product is `0 * inf = nan` and `lstsq` fails with
-  "SVD did not converge" (issue #621, `OddSHAP`).
-- Add the two weights in log space and exponentiate once, as `regression/base.py` does
-  (`log_binom` from `shapiq.utils.sets`, `CoalitionSampler.log_sampling_adjustment_weights`).
-  A log-space kernel weight alone does not help: exponentiated on its own it is still `0`
-  (`OddSHAP`'s central weight at `n=2136` is `exp(-1490)`).
-- Approximators that do not derive from `Regression` or `MonteCarlo` (e.g. `OddSHAP`) do not
-  inherit this and must combine the weights in log space themselves.
-
 ## Test suite gotchas
 
 - Do not run `tests/shapiq` with `pytest -n` (or next to another test run) on a small machine:
