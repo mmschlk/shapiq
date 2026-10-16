@@ -17,7 +17,7 @@ Approximators
       :class:`~shapiq.interaction_values.InteractionValues` object.
 
       Every example runs one approximator on the same synthetic game of eight players with a
-      budget of 200 evaluations, so it runs in about a second and the results are comparable.
+      budget of 200 evaluations, so it runs in seconds and the results are comparable.
       The thumbnails show the family of each method.
 
 .. rst-class:: shapiq-gallery-api
@@ -77,9 +77,9 @@ Which approximator?
 
 .. container:: shapiq-gallery-notes
 
-   :class:`~shapiq.approximator.ProxySHAP`, :class:`~shapiq.approximator.SPEX`, and
-   :class:`~shapiq.approximator.ProxySPEX` support every index of the table but ``CHII``. A few
-   rules of thumb about the budget:
+   :class:`~shapiq.approximator.ProxySHAP` supports every index of the table;
+   :class:`~shapiq.approximator.SPEX` and :class:`~shapiq.approximator.ProxySPEX` all but ``CHII``.
+   A few rules of thumb about the budget:
 
    - With a budget of :math:`2^n` or more, the regression approximators, SHAP-IQ, SVARM, SVARM-IQ,
      Unbiased KernelSHAP, and the surrogates with their residual correction evaluate every

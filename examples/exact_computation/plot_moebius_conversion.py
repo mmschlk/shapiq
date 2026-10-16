@@ -162,8 +162,9 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# For teams of one or two players, all indices of order 2 agree: they show the interaction as it
-# is. Larger teams are interactions that order 2 cannot show, and the indices summarize them
+# For a team of one player, all indices agree. For a team of two, all put the full value on the
+# pair; k-SII, STII, and FSII give the players nothing, while SII adds each player's Shapley value.
+# Larger teams are interactions that order 2 cannot show, and the indices summarize them
 # differently:
 #
 # - The Shapley value gives :math:`1/t` to each player.

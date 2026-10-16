@@ -155,9 +155,10 @@ plt.show()
 # %%
 # Cleaning the Training Data
 # --------------------------
-# Removing the 10% least valuable points helps any model trained on the data. A 1-nearest-neighbor
-# classifier copies every wrong label to its neighborhood, so it suffers most from the noise. Its
-# test accuracy after the cleaning is close to the one with the true labels.
+# Removing the 10% least valuable points helps the models trained on the data, here a
+# 1-nearest-neighbor classifier. It copies every wrong label to its neighborhood, so it suffers
+# most from the noise, and its test accuracy after the cleaning is close to the one with the true
+# labels.
 
 keep = np.argsort(shapley_values)[n_train // 10 :]
 one_nn = KNeighborsClassifier(n_neighbors=1)

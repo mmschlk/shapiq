@@ -191,7 +191,8 @@ contrastive.plot_waterfall(feature_names=feature_names, abbreviate=False)
 # -----------------
 # - **Path-dependent** needs no data and its cost does not depend on a reference set. It follows
 #   the training distribution stored in the trees, so correlated features share credit as they
-#   occur together in the data. It supports the SV, SII, k-SII, BV, and BII indices.
+#   occur together in the data. It supports the SV, SII, k-SII, BV, and BII indices and the
+#   Moebius and Fourier transforms.
 # - **Interventional** explains the model's function: a feature receives credit only through the
 #   model's response to it, and the reference data chooses the comparison (a population, a group,
 #   or a single point). It supports all indices of the explainer, including STII, FSII, and

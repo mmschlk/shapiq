@@ -18,8 +18,9 @@ Tree Ensembles
 
       Two modes define what an absent feature means. In the default path-dependent mode, it
       follows both children of a split, weighted by the training data stored in the tree (indices
-      ``SV``, ``SII``, ``k-SII``, ``BV``, ``BII``). In the interventional mode, it takes its values
-      from a reference dataset (additionally ``STII``, ``FSII``, ``FBII``).
+      ``SV``, ``SII``, ``k-SII``, ``BV``, ``BII``, ``Moebius``, ``Fourier``). In the interventional
+      mode, it takes its values from a reference dataset (additionally ``STII``, ``FSII``,
+      ``FBII``).
 
 .. rst-class:: shapiq-gallery-api
 

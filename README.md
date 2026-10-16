@@ -121,7 +121,7 @@ interaction_values.plot_force(feature_names=...)
 </p>
 
 ### Use ProxySPEX (Proxy SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.png" alt="spex_logo" align="right" height="75px"/>
-For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/generated/shapiq.approximator.ProxySPEX.html) approximator.
 
 ```python
 # load your data and model with large number of features
