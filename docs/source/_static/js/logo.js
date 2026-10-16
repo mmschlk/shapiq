@@ -14,17 +14,17 @@
 (() => {
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  const ANCHOR = 140; // stiffness of the spring that holds a player in place (1/s²)
+  const ANCHOR = 200; // stiffness of the spring that holds a player in place (1/s²)
   const LINK = 2.5; // stiffness of a line per squared logo unit of its width (1/s²): 39 to 1180
   const LINK_DAMPING = 0.08; // damping of a line per unit of its stiffness (s): no buzz in stiff pairs
-  const DAMPING = 6; // a few visible swings, at rest after about a second (1/s)
+  const DAMPING = 10; // a swing or two, at rest within a second (1/s)
   const GLIDE = 0.25; // time constant of the return to rest with reduced motion (s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
-  const RIPPLE = 220; // speed of the wiggle that starts the ripple (logo units/s), halved per hop
+  const RIPPLE = 250; // speed of the wiggle that starts the ripple (logo units/s), halved per hop
   const RIPPLE_HOP = 80; // time the ripple takes along a line (ms)
-  const BUMP = 100; // speed of the bump when the logo is scrolled into view (logo units/s)
+  const BUMP = 130; // speed of the bump when the logo is scrolled into view (logo units/s)
   const FAST_SCROLL = 1000; // scrolling faster than this bumps the logo (px/s)
-  const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
+  const MAX_PULL = 55; // beyond this distance, a pulled player follows the pointer reluctantly
   const PLAYER_RADIUS = 15; // larger circles are players, smaller ones are the caps of lines
 
   const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
