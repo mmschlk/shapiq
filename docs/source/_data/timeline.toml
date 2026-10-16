@@ -1043,7 +1043,7 @@ support vector machines and Gaussian process regression with RBF kernels, in pol
 exploiting the product structure of the kernel. In shapiq, the product-kernel explainer computes
 them for scikit-learn models.
 """
-cite = ["Mohammadi.2025a"]
+cite = ["Mohammadi.2025"]
 api = ["shapiq.explainer.ProductKernelExplainer", "shapiq_games.ProductKernelGame"]
 examples = ["auto_examples/kernel_methods/plot_gaussian_process_exact", "auto_examples/kernel_methods/plot_kernel_svm_scaling"]
 related = ["fanova-gp", "rkhs-shap"]
@@ -1051,14 +1051,14 @@ related = ["fanova-gp", "rkhs-shap"]
 [[entries]]
 id = "fanova-gp"
 name = "fANOVA Gaussian processes"
-year = 2025
+year = 2026
 lane = "exact"
 summary = "Exact Shapley values of fANOVA Gaussian processes in quadratic time."
 description = """
 Mohammadi et al. computed exact Shapley values, together with their uncertainty, for Gaussian
 processes with functional ANOVA kernels in time quadratic in the number of features.
 """
-cite = ["Mohammadi.2025b"]
+cite = ["Mohammadi.2026"]
 related = ["product-kernel", "gp-shap"]
 
 [[entries]]
@@ -1430,7 +1430,7 @@ related = ["weighted-banzhaf"]
 [[entries]]
 id = "hypershap"
 name = "HyperSHAP"
-year = 2025
+year = 2026
 lane = "applications"
 summary = "Shapley values and interactions of hyperparameters."
 description = """
@@ -1438,7 +1438,7 @@ Wever et al. defined games over the hyperparameters of a learning algorithm, e.g
 reached by tuning a subset of them, and explained hyperparameter importance and interactions with
 Shapley values and interactions.
 """
-cite = ["Wever.2025"]
+cite = ["Wever.2026"]
 
 [[entries]]
 id = "confoundingshap"

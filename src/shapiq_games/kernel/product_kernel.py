@@ -30,7 +30,7 @@ class ProductKernelGame(Game):
         v(S) = \sum_i \alpha_i K(x^i_S, x_S) + b
 
     The empty coalition has :math:`K = 1`, i.e. :math:`v(\emptyset) = \sum_i \alpha_i + b`
-    :cite:p:`Mohammadi.2025a`. Its exact Shapley values are computed by
+    :cite:p:`Mohammadi.2025`. Its exact Shapley values are computed by
     :class:`~shapiq.explainer.ProductKernelExplainer`. Only the RBF kernel is
     supported.
 

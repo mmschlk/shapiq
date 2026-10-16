@@ -25,7 +25,7 @@ class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
     The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
-    classification models. See :cite:t:`Mohammadi.2025a` for details.
+    classification models. See :cite:t:`Mohammadi.2025` for details.
 
 
     Attributes:

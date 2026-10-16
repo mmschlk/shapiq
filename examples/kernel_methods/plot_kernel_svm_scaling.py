@@ -10,7 +10,7 @@ The decision function of a support vector machine (SVM) with an RBF kernel is a 
 kernels over its support vectors, :math:`f(x) = \\sum_i \\alpha_i k(x^i, x) + b`, and the RBF
 kernel is a product of one kernel per feature. For such product-kernel models,
 :class:`~shapiq.explainer.ProductKernelExplainer` computes the Shapley values of
-the features exactly in polynomial time :cite:p:`Mohammadi.2025a`.
+the features exactly in polynomial time :cite:p:`Mohammadi.2025`.
 
 This example explains an SVM classifier with 30 features, where a brute-force computation would
 evaluate :math:`2^{30} \\approx 10^9` coalitions, and compares the exact explainer with

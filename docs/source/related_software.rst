@@ -51,12 +51,3 @@ too:
    * - `XAI-bench <https://github.com/abacusai/xai-bench>`_
      - Synthetic benchmarks for scientific research in explainable machine learning.
      - :cite:p:`Liu.2021`
-   * - ``M4``
-     - A unified XAI benchmark for the faithfulness of feature attribution methods across
-       metrics, modalities, and models.
-     - :cite:p:`Li.2023a`
-   * - |nbsp|
-     - A comparative study of methods for estimating model-agnostic Shapley value explanations.
-     - :cite:p:`Olsen.2024`
-
-.. |nbsp| unicode:: U+00A0

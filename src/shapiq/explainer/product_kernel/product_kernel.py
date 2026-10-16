@@ -18,7 +18,7 @@ class ProductKernelComputer:
     """The Product Kernel Computer for product kernel-based models.
 
     This class computes the Shapley values for product kernel-based models as described by
-    :cite:t:`Mohammadi.2025a`.
+    :cite:t:`Mohammadi.2025`.
     The functions are obtained from the PKeX-Shapley LocalExplainer. https://github.com/Majeed7/RKHS-ExactSHAP/blob/main/explainer/LocalExplainer.py#L3
 
     Attributes:

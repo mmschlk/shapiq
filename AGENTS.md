@@ -253,8 +253,13 @@ Boosting converters live in separate modules such as `xgboost.py`,
   Unicode both work. The text cites by author and year; works cited alike get a letter in the
   order of their keys (`Kolpaczki.2024a` to `2024c`, `_year_letters`). To verify bibliographic
   data (observed 2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
-  `curl` with a bot check; Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the publishers'
-  own proceedings pages work.
+  `curl` with a bot check (dblp denies a headless browser too); dblp's SPARQL endpoint
+  (`sparql.dblp.org/sparql`), Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the
+  publishers' own proceedings pages work. A preprint that gets published becomes the published
+  entry, its key following the publication year (`Wever.2025` became `Wever.2026`, AAAI-26), with
+  dblp's title. dblp has no pages for NeurIPS, and for NeurIPS 2025 the proceedings site's BibTeX
+  numbers the main track alone (observed 2026-10-16); the bib takes the pages of the DOI's
+  Crossref record, which continue the numbering of NeurIPS 2024 used by the thesis.
 - Its titles are written for LaTeX styles that print them as written, and some DOIs escape `_`
   as `\_`. The docs therefore use the `shapiq_alpha` pybtex style registered in
   `docs/source/conf.py` (titles kept as written, `\_` unescaped in links); plain `alpha`
