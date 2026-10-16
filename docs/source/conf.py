@@ -165,7 +165,6 @@ EXAMPLE_ORDER = {
     ),
     "applications": (
         "plot_explaining_tabpfn.py",
-        "plot_vision_transformer.py",
         "plot_sentiment_analysis.py",
         "plot_confounding_xai.py",
     ),
@@ -675,9 +674,9 @@ _REDIRECTS = {
     "auto_examples/language/plot_sentiment_analysis": (
         "auto_examples/applications/plot_sentiment_analysis"
     ),
-    "auto_examples/vision/plot_vision_transformer": (
-        "auto_examples/applications/plot_vision_transformer"
-    ),
+    # the vision transformer example was removed (it is to be reworked)
+    "auto_examples/vision/plot_vision_transformer": "auto_examples/applications/index",
+    "auto_examples/applications/plot_vision_transformer": "auto_examples/applications/index",
     "auto_examples/tabular/plot_shapiq_scikit_learn": "auto_examples/basics/plot_shapiq_scikit_learn",
     "auto_examples/game_theory/plot_core": "auto_examples/exact_computation/plot_core",
     "auto_examples/approximators/plot_exact_computer": (

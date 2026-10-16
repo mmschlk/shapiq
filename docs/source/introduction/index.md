@@ -85,7 +85,7 @@ Start with pairs (`max_order=2`), and look at higher orders where pairs do not e
 `shapiq` computes Shapley values and interactions for any model: exactly for tree ensembles,
 nearest neighbors, and kernel methods, and with approximators for all other models. The
 {doc}`start` shows the first steps, and the {doc}`examples </examples>` show `shapiq` at work,
-from scikit-learn models to vision transformers.
+from scikit-learn models to language models.
 
 ```{admonition} How shapiq started
 :class: note
