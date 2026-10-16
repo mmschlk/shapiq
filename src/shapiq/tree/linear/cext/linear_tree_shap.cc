@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -25,17 +28,29 @@ struct Tree
     int *features;
     int *children_left;
     int *children_right;
+    // categorical splits in CSR layout (cat_size[node] == 0 marks a numeric node) and
+    // per-node missing-value routing; mirror TreeModel's arrays
+    const int64_t *cat_values;
+    const int64_t *cat_start;
+    const int64_t *cat_size;
+    const unsigned char *children_left_default;
     int max_depth;
     int num_nodes;
     DecisionType decision_type;
 
     Tree(double *weights, double *leaf_predictions, double *thresholds,
          int *parents, int *edge_heights,
-         int *features, int *children_left, int *children_right, int max_depth, int num_nodes,
+         int *features, int *children_left, int *children_right,
+         const int64_t *cat_values, const int64_t *cat_start, const int64_t *cat_size,
+         const unsigned char *children_left_default,
+         int max_depth, int num_nodes,
          const std::string &decision_type) : weights(weights), leaf_predictions(leaf_predictions), thresholds(thresholds),
                                              parents(parents), edge_heights(edge_heights),
                                              features(features), children_left(children_left),
-                                             children_right(children_right), max_depth(max_depth), num_nodes(num_nodes),
+                                             children_right(children_right),
+                                             cat_values(cat_values), cat_start(cat_start), cat_size(cat_size),
+                                             children_left_default(children_left_default),
+                                             max_depth(max_depth), num_nodes(num_nodes),
                                              decision_type(decision_type == "<=" ? LESS_EQUAL : LESS_THAN) {};
 
     bool is_internal(int pos) const
@@ -44,10 +59,20 @@ struct Tree
     }
 
     // Route ``feature_value`` at ``node`` honouring the model's split convention.
-    // Must match ``TreeModel.predict_one``; otherwise instances lying exactly on a
+    // Must match ``TreeModel.goes_left``; otherwise instances lying exactly on a
     // split threshold are sent to the wrong leaf and Shapley efficiency breaks.
     bool goes_left(double feature_value, int node) const
     {
+        if (std::isnan(feature_value))
+        {
+            return children_left_default[node] != 0;
+        }
+        if (cat_size[node] > 0)
+        {
+            const int64_t category = static_cast<int64_t>(feature_value);
+            const int64_t *begin = cat_values + cat_start[node];
+            return std::binary_search(begin, begin + cat_size[node], category);
+        }
         if (decision_type == LESS_THAN)
         {
             return feature_value < thresholds[node];

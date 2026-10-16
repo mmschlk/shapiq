@@ -15,7 +15,7 @@ from .utils import (
 from .validation import validate_data_predict_function, validate_index_and_max_order
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from typing import Any
 
     import numpy as np
@@ -260,7 +260,7 @@ class Explainer:
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
-    ) -> list[InteractionValues]:
+    ) -> Sequence[InteractionValues]:
         """Explain multiple predictions at once.
 
         This method is a wrapper around the ``explain`` method. It allows to explain multiple
@@ -282,7 +282,9 @@ class Explainer:
                 ``explain_function`` method.
 
         Returns:
-            A list of interaction values for each prediction in the input matrix ``X``.
+            A sequence of interaction values, one for each prediction in the input matrix
+            ``X``. The base implementation returns a list; subclasses may return other
+            sequence types (e.g. a lazy :class:`~shapiq.interaction_values.InteractionValuesBatch`).
 
         """
         if len(X.shape) != 2:

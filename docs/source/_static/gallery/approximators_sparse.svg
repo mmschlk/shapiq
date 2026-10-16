@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>A sparse spectrum with a few large coefficients</title>
+  <path d="M44 120 H372" stroke="#8b93a7" stroke-width="2" stroke-dasharray="6 8" stroke-opacity="0.7"/>
+  <rect x="57" y="227.8" width="10" height="10.2" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="73.9" y="227.7" width="10" height="10.3" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="90.9" y="230.4" width="10" height="7.6" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="105.8" y="88" width="14" height="150" rx="4" fill="#e3326a"/>
+  <rect x="124.8" y="234.5" width="10" height="3.5" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="141.7" y="231.5" width="10" height="6.5" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="158.6" y="231.3" width="10" height="6.7" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="175.6" y="234.6" width="10" height="3.4" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="190.5" y="134" width="14" height="104" rx="4" fill="#5773e5"/>
+  <rect x="209.5" y="226" width="10" height="12" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="226.4" y="229.1" width="10" height="8.9" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="243.4" y="232.9" width="10" height="5.1" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="260.3" y="231.1" width="10" height="6.9" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="275.2" y="176" width="14" height="62" rx="4" fill="#79ace5"/>
+  <rect x="294.2" y="226.9" width="10" height="11.1" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="311.1" y="227.4" width="10" height="10.6" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="328.1" y="231.5" width="10" height="6.5" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <rect x="345" y="230.6" width="10" height="7.4" rx="3" fill="#8b93a7" fill-opacity="0.6"/>
+  <path d="M44 30 V244 H372" stroke="#8b93a7" stroke-width="3"/>
+</svg>

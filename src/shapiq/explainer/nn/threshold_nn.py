@@ -25,11 +25,8 @@ from .base import NNExplainerBase
 class ThresholdNNExplainer(NNExplainerBase):
     """Explainer for threshold nearest neighbor models.
 
-    Implements the algorithm for efficiently computing exact Shapley values for threshold nearest neighbor models proposed by :footcite:t:`Wang.2023`.
+    Implements the algorithm for efficiently computing exact Shapley values for threshold nearest neighbor models proposed by :cite:t:`Wang.2023`.
     The algorithm has a runtime complexity of :math:`O(N)` (when explaining a single data point), where :math:`N` is the number of training samples.
-
-    References:
-        .. footbibliography::
     """
 
     model: RadiusNeighborsClassifier

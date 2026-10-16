@@ -10,6 +10,7 @@ from shapiq.explainer.nn.base import NNExplainerBase
 from shapiq.interaction_values import InteractionValues
 
 from ._util import (
+    assert_enough_training_samples,
     assert_valid_index_and_order,
     warn_ignored_parameters,
 )
@@ -24,12 +25,14 @@ if TYPE_CHECKING:
 class KNNExplainer(NNExplainerBase):
     r"""Explainer for unweighted KNN models.
 
-    Implements the algorithm proposed by :footcite:t:`Jia.2019` to efficiently calculate Shapley values for unweighted KNN models.
+    Implements the algorithm proposed by :cite:t:`Jia.2019a` to efficiently calculate Shapley values for unweighted KNN models.
     The algorithm itself has a linear time complexity, but requires sorting training points by distance to the test
     point, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
 
-    References:
-        .. footbibliography::
+    Note:
+        The model must be fitted on at least ``n_neighbors`` training samples. Models fitted on
+        fewer samples are rejected at construction with a ``ValueError``, since scikit-learn
+        itself refuses to predict in this regime.
     """
 
     model: KNeighborsClassifier
@@ -53,6 +56,7 @@ class KNNExplainer(NNExplainerBase):
             raise TypeError(msg)
 
         super().__init__(model, class_index=class_index)
+        assert_enough_training_samples(model.n_neighbors, self.X_train.shape[0])
         self.k = model.n_neighbors
 
     @override

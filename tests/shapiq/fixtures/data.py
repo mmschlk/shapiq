@@ -39,6 +39,30 @@ DATASETS_RANDOM_STATE = 42
 
 
 @pytest.fixture
+def background_cat_dataset() -> tuple[np.ndarray, np.ndarray]:
+    """Return a regression dataset with integer-coded categorical columns 0 and 2.
+
+    Column 0 uses non-contiguous raw category codes (to exercise ordinal-encoder
+    translation in converters) and columns 0 and 1 contain NaN values (to exercise
+    missing-value routing).
+    """
+    rng = np.random.default_rng(DATASETS_RANDOM_STATE)
+    n_samples = 300
+    X = np.column_stack(
+        [
+            rng.choice([2.0, 7.0, 11.0, 30.0, 41.0, 99.0], n_samples),
+            rng.normal(size=n_samples),
+            rng.integers(0, 4, n_samples).astype(float),
+            rng.normal(size=n_samples),
+        ]
+    )
+    y = (X[:, 0] % 2) * 3 + X[:, 1] + (X[:, 2] == 1) * 2 + 0.5 * X[:, 3]
+    X[rng.choice(n_samples, 30, replace=False), 0] = np.nan
+    X[rng.choice(n_samples, 30, replace=False), 1] = np.nan
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
 def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple dataset for the isolation forest model."""
     n_samples, n_outliers = 120, 40
@@ -232,13 +256,15 @@ def get_california_housing_train_test_explain() -> tuple[
             _california_loaded_data["x_explain"],
         )
 
-    from sklearn.model_selection import train_test_split
-
-    from shapiq.datasets import load_california_housing
+    from sklearn.datasets import fetch_california_housing, get_data_home
 
     x_explain_id = 2  # index of the data point to explain (third data point of the test set)
 
-    x_data, y_data = load_california_housing(to_numpy=True)
+    # one scikit-learn data folder per pytest-xdist worker: workers fetching into the same folder
+    # race (one deletes the downloaded archive while another opens it)
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    data_home = os.path.join(get_data_home(), "shapiq_tests", worker)
+    x_data, y_data = fetch_california_housing(data_home=data_home, return_X_y=True)
     x_train, x_test, y_train, y_test = train_test_split(
         x_data, y_data, test_size=0.2, random_state=DATASETS_RANDOM_STATE
     )

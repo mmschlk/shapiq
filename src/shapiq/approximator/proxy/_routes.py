@@ -9,7 +9,6 @@ kept separate from the approximator class itself:
   transform its base estimator type selects.
 * :func:`_extract_proxy_interactions`: read interaction values out of an *already-fitted* proxy
   (linear coefficient read-out vs. exact tree read-out), dispatching on the fitted model's type.
-* :class:`ResidualGame`: the game wrapping a proxy's residuals for the adjustment approximator.
 """
 
 from __future__ import annotations
@@ -21,17 +20,17 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
-from shapiq.game import Game
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
+    from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
 
-ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
+ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV"]
 
 
 def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
@@ -110,7 +109,7 @@ def _extract_proxy_interactions(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -149,7 +148,7 @@ def _extract_linear(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -196,7 +195,7 @@ def _extract_tree(
     *,
     baseline_value: float,
     max_order: int,
-    approximation_index: str,
+    approximation_index: InterventionalTreeSHAPIQIndices,
     target_index: ValidProxySHAPIndices,
     budget: int,
     n_players: int,
@@ -205,12 +204,13 @@ def _extract_tree(
 
     ``fitted`` is the tree model already fit (by :func:`fit_proxy`) on the raw coalitions.
     """
-    explainer = InterventionalTreeExplainer(
+    # a boolean tree is explained like any other: the empty coalition as the single reference
+    # row and the grand coalition as the explain point
+    explainer = InterventionalTreeSHAPIQ(
         fitted,
-        data=np.zeros((1, n_players)),  # reference data for boolean tree
+        data=np.zeros((1, n_players)),
         index=approximation_index,
         max_order=max_order,
-        bool_tree=True,
     )
     proxy_values = explainer.explain_function(np.ones((1, n_players)))
     return InteractionValues(
@@ -224,6 +224,33 @@ def _extract_tree(
         baseline_value=float(baseline_value),
         target_index=target_index,
     )
+
+
+def tree_to_fourier(model: object, n_players: int) -> dict[tuple[int, ...], float]:
+    """Read the exact Fourier (Walsh) coefficients of a tree proxy fitted on coalitions.
+
+    The proxy's Fourier transform is the interventional ``"Fourier"`` index of the grand coalition
+    against the empty coalition as single reference row (the readout of :func:`_extract_tree`).
+    The kernel only stores interactions whose features co-occur on a path, so
+    ``max_order=n_players`` costs no more than the widest path.
+
+    Args:
+        model: The fitted tree proxy (sklearn, XGBoost, LightGBM, or CatBoost).
+        n_players: Number of players (features).
+
+    Returns:
+        The non-zero Fourier coefficients, keyed by interaction tuple.
+    """
+    explainer = InterventionalTreeSHAPIQ(
+        model, data=np.zeros((1, n_players)), index="Fourier", max_order=n_players
+    )
+    coefficients = explainer.explain_function(np.ones(n_players)).interactions
+    # the kernel writes v({}) as the empty entry; since v({}) is the sum of all Fourier
+    # coefficients, the empty coefficient is what the others leave of it
+    coefficients.pop((), None)
+    fourier = {interaction: value for interaction, value in coefficients.items() if value != 0.0}
+    fourier[()] = explainer.baseline_value - sum(fourier.values())
+    return fourier
 
 
 def extract_linear_interactions(
@@ -251,32 +278,3 @@ def extract_linear_interactions(
 
     # Now build your coefficient dict safely
     return {idx: float(coefficients[col]) for idx, col in interaction_to_col.items()}
-
-
-class ResidualGame(Game):
-    """Residual game class for adjusting the proxy model's predictions.
-
-    The residual values are precomputed on the coalitions that :class:`ProxySHAP` sampled
-    and returned for every query. This is correct only because :class:`ProxySHAP` forces a
-    fixed ``random_state`` (see its constructor) so that the adjustment approximator's
-    coalition sampler reproduces the *identical* coalitions in the identical order; the
-    ``i``-th row of any queried coalition matrix then matches the ``i``-th precomputed
-    residual.
-    """
-
-    def __init__(self, n_players: int, game_values: np.ndarray) -> None:
-        """Initialize the residual game with the given values for each coalition."""
-        super().__init__(n_players=n_players, normalize=False)
-        self.vals = game_values
-
-    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:  # noqa: ARG002
-        """Return the values of the given coalitions in the residual game.
-
-        Args:
-            coalitions: A binary matrix of shape (n_samples, n_features) where each row represents a coalition and each column represents a feature. A value of 1 indicates that the feature is included in the coalition, while a value of 0 indicates that it is not.
-            Note: The coalitions are expected to be ordered in the same way as the values in self.vals, i.e., the i-th row of coalitions corresponds to the i-th entry in self.vals. ProxySHAP guarantees this by fixing the random_state shared with the adjustment approximator.
-
-        Returns:
-            A vector of shape (n_samples,) where each entry is the value of the corresponding coalition in the residual game.
-        """
-        return self.vals

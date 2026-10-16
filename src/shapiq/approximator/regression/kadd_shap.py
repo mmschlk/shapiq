@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from .base import Regression
 
 if TYPE_CHECKING:
     import numpy as np
 
-ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP"]
+ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP", "SV"]
 
 
 class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
     """The kADD-SHAP regression approximator for estimating the kADD-SHAP values.
 
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
-    described in Pelegrina et al. (2023) :cite:t:`Pelegrina.2023` and is related to
-    Inconsistent KernelSHAP-IQ :cite:t:`Fumagalli.2024`.
+    described in :cite:t:`Pelegrina.2023` and is related to Inconsistent KernelSHAP-IQ
+    :cite:p:`Fumagalli.2024`.
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
@@ -31,7 +31,9 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
 
     """
 
-    valid_indices = ("kADD-SHAP",)
+    valid_indices: tuple[ValidRegressionkADDSHAPIndices, ...] = tuple(
+        get_args(ValidRegressionkADDSHAPIndices)
+    )
     """The valid indices for this approximator."""
 
     def __init__(

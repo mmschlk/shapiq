@@ -23,20 +23,23 @@ if TYPE_CHECKING:
 _LOGIT_OBJECTIVES = frozenset({"binary:logistic", "reg:logistic"})
 
 
-def _xgboost_margin_base_score(booster: Booster, class_label: int | None) -> float:
+def _xgboost_margin_base_score(cfg: dict, class_label: int) -> float:
     """Return the XGBoost base score in margin (raw) space.
 
     Reads ``base_score`` and ``objective`` from the booster config and applies
     the link function for objectives that store ``base_score`` in probability
-    space.
+    space.  A negative ``class_label`` means "unspecified" and resolves to class ``1``
+    for multiclass models and ``0`` otherwise — the same default the C parser applies
+    when filtering trees, so the base score always matches the selected class.
     """
-    cfg = json.loads(booster.save_config())
     learner = cfg["learner"]
     objective = learner["learner_train_param"]["objective"]
     raw_field = learner["learner_model_param"]["base_score"].strip("[]")
     tokens = [tok for tok in raw_field.split(",") if tok]
-    idx = 0 if class_label is None or class_label < 0 else min(class_label, len(tokens) - 1)
-    base = float(tokens[idx])
+    if class_label < 0:
+        num_class = int(learner["learner_model_param"].get("num_class", "0") or 0)
+        class_label = 1 if num_class > 1 else 0
+    base = float(tokens[min(class_label, len(tokens) - 1)])
 
     if objective in _LOGIT_OBJECTIVES:
         eps = 1e-15
@@ -51,24 +54,35 @@ def convert_xgboost_model(
     """Convert an XGBoost model to the unified internal tree format used by shapiq.
 
     For multiclass models, only the trees for ``class_label`` are returned (round-robin
-    index ``i % num_class == class_label``). For binary/regression models all trees are
-    returned unchanged.
+    index ``i % num_class == class_label``); ``class_label=None`` defaults to class ``1``,
+    consistent with the other converters. For binary classifiers, which model the class-``1``
+    log-odds, ``class_label=0`` negates the trees to model the class-``0`` log-odds.
+    Regression models are returned unchanged.
 
     Args:
         model: The XGBoost regressor or classifier to convert.
-        class_label: For multiclass classifiers, the class index to extract trees for.
-            Pass ``None`` to return all trees (regression / binary).
+        class_label: For classifiers, the class index to explain. Defaults to ``None``,
+            which selects class ``1``. Ignored for regression models.
 
     Returns:
         A list of ``TreeModel`` instances, one per boosting round for the selected class.
     """
     booster = model if isinstance(model, Booster) else model.get_booster()
-    margin_base_score = _xgboost_margin_base_score(booster, class_label)
-    return parse_xgboost_ubjson_treemodels(
+    cfg = json.loads(booster.save_config())
+    if class_label is None:
+        class_label = -1  # sentinel: the parser defaults to class 1
+    margin_base_score = _xgboost_margin_base_score(cfg, class_label)
+    trees = parse_xgboost_ubjson_treemodels(
         booster.save_raw(),
-        -1 if class_label is None else class_label,
+        class_label,
         margin_base_score,
+        isinstance(model, XGBClassifier),
     )
+    for tree in trees:
+        # XGBoost casts prediction inputs to float32 before comparing against its float32
+        # thresholds; the explainers must route the same way (see TreeModel.cast_input)
+        tree.input_precision = "float32"
+    return trees
 
 
 register(XGBRegressor, convert_xgboost_model)

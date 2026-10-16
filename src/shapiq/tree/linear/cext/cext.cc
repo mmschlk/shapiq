@@ -86,10 +86,14 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     PyObject *X_obj;
     PyObject *out_contribs_obj;
     const char *decision_type_cptr;
+    PyObject *cat_values_obj;
+    PyObject *cat_start_obj;
+    PyObject *cat_size_obj;
+    PyObject *children_left_default_obj;
 
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(
-            args, "OOOOOOOOiiOOOOOs",
+            args, "OOOOOOOOiiOOOOOsOOOO",
             &weights_obj,
             &leaf_predictions_obj,
             &thresholds_obj,
@@ -105,7 +109,11 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
             &norm_obj,
             &X_obj,
             &out_contribs_obj,
-            &decision_type_cptr))
+            &decision_type_cptr,
+            &cat_values_obj,
+            &cat_start_obj,
+            &cat_size_obj,
+            &children_left_default_obj))
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
@@ -123,11 +131,16 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     PyArrayObject *norm_array = (PyArrayObject *)PyArray_FROM_OTF(norm_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *out_contribs_array = (PyArrayObject *)PyArray_FROM_OTF(out_contribs_obj, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY2);
+    PyArrayObject *cat_values_array = (PyArrayObject *)PyArray_FROM_OTF(cat_values_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *cat_start_array = (PyArrayObject *)PyArray_FROM_OTF(cat_start_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *cat_size_array = (PyArrayObject *)PyArray_FROM_OTF(cat_size_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *children_left_default_array = (PyArrayObject *)PyArray_FROM_OTF(children_left_default_obj, NPY_BOOL, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (!children_left_array || !children_right_array || !features_array || !leaf_predictions_array ||
         !edge_heights_array || !parents_array || !weights_array || !base_array || !thresholds_array ||
-        !offset_array || !norm_array || !X_array || !out_contribs_array)
+        !offset_array || !norm_array || !X_array || !out_contribs_array ||
+        !cat_values_array || !cat_start_array || !cat_size_array || !children_left_default_array)
     {
         Py_XDECREF(children_left_array);
         Py_XDECREF(children_right_array);
@@ -141,6 +154,10 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
         Py_XDECREF(offset_array);
         Py_XDECREF(norm_array);
         Py_XDECREF(X_array);
+        Py_XDECREF(cat_values_array);
+        Py_XDECREF(cat_start_array);
+        Py_XDECREF(cat_size_array);
+        Py_XDECREF(children_left_default_array);
         PyArray_ResolveWritebackIfCopy(out_contribs_array);
         Py_XDECREF(out_contribs_array);
         return NULL;
@@ -160,6 +177,10 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     double *norm = (double *)PyArray_DATA(norm_array);
     double *X = (double *)PyArray_DATA(X_array);
     double *out_contribs = (double *)PyArray_DATA(out_contribs_array);
+    const int64_t *cat_values = (const int64_t *)PyArray_DATA(cat_values_array);
+    const int64_t *cat_start = (const int64_t *)PyArray_DATA(cat_start_array);
+    const int64_t *cat_size = (const int64_t *)PyArray_DATA(cat_size_array);
+    const unsigned char *children_left_default = (const unsigned char *)PyArray_DATA(children_left_default_array);
 
     // Create tree structure
     Tree tree = Tree(
@@ -168,6 +189,8 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
         parents, edge_heights,
         features,
         children_left, children_right,
+        cat_values, cat_start, cat_size,
+        children_left_default,
         max_depth, num_nodes,
         std::string(decision_type_cptr));
 
@@ -194,6 +217,10 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     Py_XDECREF(offset_array);
     Py_XDECREF(norm_array);
     Py_XDECREF(X_array);
+    Py_XDECREF(cat_values_array);
+    Py_XDECREF(cat_start_array);
+    Py_XDECREF(cat_size_array);
+    Py_XDECREF(children_left_default_array);
     PyArray_ResolveWritebackIfCopy(out_contribs_array);
     Py_XDECREF(out_contribs_array);
 

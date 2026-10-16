@@ -5,15 +5,14 @@ from typing import TYPE_CHECKING, Any
 from shapiq.explainer.base import Explainer
 
 if TYPE_CHECKING:
-    from shapiq.explainer.nn.games.base import NNExplainerGameBase
+    from shapiq_games.nn._base import NNGameBase
 
 import numpy as np
 import pytest
+from sklearn.neighbors import KNeighborsClassifier
 
 from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNExplainer
-from shapiq.explainer.nn.games.knn import KNNExplainerGame
-from shapiq.explainer.nn.games.tnn import TNNExplainerGame
-from shapiq.explainer.nn.games.wknn import WeightedKNNExplainerGame
+from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 
 
 @pytest.mark.parametrize(
@@ -38,14 +37,14 @@ def test_select_explainer(
 @pytest.mark.parametrize(
     "model_fixture, game_cls, explainer_cls, extra_kwargs",
     [
-        ("sklearn_knn_model", KNNExplainerGame, KNNExplainer, {}),
-        ("sklearn_wknn_model", WeightedKNNExplainerGame, WeightedKNNExplainer, {"n_bits": 3}),
-        ("sklearn_tnn_model", TNNExplainerGame, ThresholdNNExplainer, {}),
+        ("sklearn_knn_model", KNNGame, KNNExplainer, {}),
+        ("sklearn_wknn_model", WeightedKNNGame, WeightedKNNExplainer, {"n_bits": 3}),
+        ("sklearn_tnn_model", ThresholdNNGame, ThresholdNNExplainer, {}),
     ],
 )
 def test_sv_values_agree_with_ground_truth_game(
     model_fixture: str,
-    game_cls: type[NNExplainerGameBase],
+    game_cls: type[NNGameBase],
     explainer_cls: type[Explainer],
     extra_kwargs: dict[str, Any],
     request: pytest.FixtureRequest,
@@ -60,7 +59,7 @@ def test_sv_values_agree_with_ground_truth_game(
 
     for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = game_cls(model, x_test, class_index, **extra_kwargs)
+            ground_truth_game = game_cls(model, x_test, class_index=class_index, **extra_kwargs)
             iv_expected = ground_truth_game.exact_values(index="SV", order=1)
 
             explainer = explainer_cls(model, class_index=class_index, **extra_kwargs)
@@ -73,22 +72,30 @@ def test_sv_values_agree_with_ground_truth_game(
             assert np.allclose(iv_expected_array, iv_array)
 
 
-def test_knn_small_n(sklearn_knn_model, background_clf_dataset_small):
-    """Test the KNNExplainer in the case where N < k."""
+@pytest.mark.parametrize(
+    "weights, explainer_cls, game_cls",
+    [
+        ("uniform", KNNExplainer, KNNGame),
+        ("distance", WeightedKNNExplainer, WeightedKNNGame),
+    ],
+)
+def test_knn_small_training_set_rejected(
+    weights: str,
+    explainer_cls: type[Explainer],
+    game_cls: type[NNGameBase],
+    background_clf_dataset_small,
+):
+    """Models fitted on fewer training samples than ``n_neighbors`` are rejected at construction.
+
+    scikit-learn itself refuses to predict with such models ("Expected n_neighbors <=
+    n_samples_fit"), so there is no model behavior to explain.
+    """
     X, y = background_clf_dataset_small
-    X = X[:2]
-    y = y[:2]
-    n_classes = np.max(y) + 1
+    model = KNeighborsClassifier(n_neighbors=3, weights=weights)
+    model.fit(X[:2], y[:2])
 
-    for x_test in X:
-        for class_index in range(n_classes):
-            ground_truth_game = KNNExplainerGame(sklearn_knn_model, x_test, class_index)
-            iv_expected = ground_truth_game.exact_values("SV", 1)
-            knn_explainer = KNNExplainer(sklearn_knn_model, class_index=class_index)
-            iv = knn_explainer.explain(x_test)
+    with pytest.raises(ValueError, match="n_neighbors <= n_samples_fit"):
+        explainer_cls(model, class_index=0)
 
-            interactions = iv.interactions.keys()
-            iv_expected_array = np.array([iv_expected.interactions[ia] for ia in interactions])
-            iv_array = np.array([iv.interactions[ia] for ia in interactions])
-
-            assert np.allclose(iv_expected_array, iv_array)
+    with pytest.raises(ValueError, match="n_neighbors <= n_samples_fit"):
+        game_cls(model, X[0], class_index=0)

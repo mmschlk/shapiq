@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, cast, overload, override
 
 from shapiq.explainer.nn.base import NNExplainerBase
 
-from ._util import assert_valid_index_and_order, warn_ignored_parameters
+from ._util import (
+    assert_enough_training_samples,
+    assert_valid_index_and_order,
+    warn_ignored_parameters,
+)
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -23,7 +27,7 @@ class WeightedKNNExplainer(NNExplainerBase):
     r"""Explainer for weighted KNN models.
 
     Implements the algorithm for efficiently computing exact Shapley values for weighted KNN models proposed by
-    :footcite:t:`Wang.2024`.
+    :cite:t:`Wang.2024a`.
     The algorithm achieves a runtime complexity of :math:`O\bigl(\frac{k^2 N^2 W}{C}\bigr)`, where
 
     * :math:`k` is the defining hyperparameter of the :math:`k`-nearest neighbors model,
@@ -33,9 +37,6 @@ class WeightedKNNExplainer(NNExplainerBase):
     * :math:`C` is the number of classes of the training dataset.
 
     Since the parameters :math:`k`, :math:`W` and :math:`C` can be considered constants for most purposes, the effective complexity is :math:`O(N^2)`.
-
-    References:
-        .. footbibliography::
     """
 
     @override
@@ -64,6 +65,7 @@ class WeightedKNNExplainer(NNExplainerBase):
             raise ValueError(msg)
 
         super().__init__(model, class_index=class_index)
+        assert_enough_training_samples(model.n_neighbors, self.X_train.shape[0])
 
         self.knn_model = model
         self.k = model.n_neighbors

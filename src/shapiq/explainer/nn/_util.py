@@ -25,6 +25,29 @@ def warn_ignored_parameters(
             )
 
 
+def assert_enough_training_samples(n_neighbors: int, n_samples_fit: int) -> None:
+    """Check that the model was fitted on at least ``n_neighbors`` training samples, raise otherwise.
+
+    A k-nearest neighbor model fitted on fewer training samples than ``n_neighbors`` cannot
+    predict (scikit-learn raises the same error on ``predict``), so there is no model behavior
+    to explain.
+
+    Args:
+        n_neighbors: The model's ``n_neighbors``.
+        n_samples_fit: The number of training samples the model was fitted on.
+
+    Raises:
+        ValueError: If ``n_neighbors > n_samples_fit``.
+    """
+    if n_neighbors > n_samples_fit:
+        msg = (
+            f"Expected n_neighbors <= n_samples_fit, but got n_neighbors={n_neighbors} and "
+            f"n_samples_fit={n_samples_fit}. A model fitted on fewer training samples than "
+            "n_neighbors cannot predict; refit the model with n_neighbors <= n_samples_fit."
+        )
+        raise ValueError(msg)
+
+
 def assert_valid_index_and_order(index: ValidNNExplainerIndices, max_order: int) -> None:
     """Check that the explainer index and max_order are valid for NN models, raise otherwise.
 

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import copy
-from math import factorial
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 import scipy as sp
@@ -14,6 +13,7 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
 from .conversion.edges import create_edge_tree
+from .precision import check_features_per_path
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
@@ -28,20 +28,18 @@ TreeSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 class TreeSHAPIQ:
     """The TreeSHAP-IQ computation class.
 
-    This class implements the TreeSHAP-IQ algorithm for computing Shapley Interaction values for
-    tree-based models. It is used internally by the
-    :class:`~shapiq.tree.explainer.TreeExplainer`. The TreeSHAP-IQ algorithm is presented
-    in `Muschalik et al. (2024)` [Mus24]_.
-
-    TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022)` [Yu22]_, but extended to
-    compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to visit each node
-    only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
-    efficiently.
+    This class implements the TreeSHAP-IQ algorithm :cite:p:`Muschalik.2024a` for computing
+    Shapley Interaction values on tree-based models. TreeSHAP-IQ extends the Linear TreeSHAP
+    algorithm :cite:p:`Yu.2022` from Shapley values to Shapley Interaction values up to a
+    given order; it visits each node only once and uses polynomial arithmetic to compute the
+    interactions efficiently.
 
     Note:
-        This class is not intended to be used directly. Instead, use the ``TreeExplainer`` class to
-        explain tree-based models which internally uses then the TreeSHAP-IQ algorithm.
+        :class:`~shapiq.tree.explainer.TreeExplainer` computes path-dependent explanations
+        with :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` by default, which stays
+        numerically exact at any tree depth. This class remains available as the standalone
+        reference implementation of TreeSHAP-IQ; it validates its own models and accepts
+        single trees and ensembles alike.
 
     """
 
@@ -52,17 +50,18 @@ class TreeSHAPIQ:
         max_order: int = 2,
         min_order: int = 1,
         index: TreeSHAPIQIndices = "k-SII",
+        class_index: int | None = None,
         verbose: bool = False,
     ) -> None:
         """Initializes the TreeSHAP-IQ explainer.
 
         Args:
-            model: A single tree model to explain. Note that unlike the
-                :class:`~shapiq.tree.explainer.TreeExplainer` class, TreeSHAP-IQ only
-                supports a single tree. It can be a dictionary representation of the tree, a
-                :class:`~shapiq.tree.base.TreeModel` object, or any other single tree
-                model supported by the :meth:`~shapiq.tree.validation.validate_tree_model`
-                function.
+            model: A tree model or ensemble to explain: a dictionary representation of a tree,
+                a :class:`~shapiq.tree.base.TreeModel` (or list thereof), or any model
+                supported by :meth:`~shapiq.tree.validation.validate_tree_model`. Ensembles
+                are explained tree by tree and aggregated.
+
+            class_index: The class index for classification models. Defaults to ``None``.
 
             max_order: The maximum interaction order to be computed. An interaction order of ``1``
                 corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
@@ -71,15 +70,27 @@ class TreeSHAPIQ:
             min_order: The minimum interaction order to be computed. Must be ``>= 1``. Defaults
                 to ``1``.
 
-            index: The type of interaction to be computed.
+            index: The type of interaction to be computed. Must be one of ``"SV"``, ``"SII"``,
+                or ``"k-SII"``.
 
             verbose: Whether to print information about the tree during initialization. Defaults to
                 ``False``.
+
+        Raises:
+            ValueError: If the index is not one of the supported indices or if the interaction
+                orders are invalid.
 
         """
         # set parameters
         self._root_node_id = 0
         self.verbose = verbose
+        if index not in get_args(TreeSHAPIQIndices):
+            msg = (
+                f"Index '{index}' is not supported by TreeSHAP-IQ. Supported indices are "
+                f"{get_args(TreeSHAPIQIndices)}. For other indices such as 'STII', 'FSII', or "
+                "'FBII', use the TreeExplainer in 'interventional' mode."
+            )
+            raise ValueError(msg)
         if max_order < min_order or max_order < 1 or min_order < 1:
             msg = (
                 "The maximum order must be greater than the minimum order and both must be greater "
@@ -88,19 +99,26 @@ class TreeSHAPIQ:
             raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
-        self._index: str = index
+        self._index: TreeSHAPIQIndices = index
         self._base_index: str = get_computation_index(self._index)
 
-        # validate and parse model
-        validated_model = validate_tree_model(model)  # the parsed and validated model
+        # validate and parse model; ensembles are handled by one child explainer per tree
+        validated_model = validate_tree_model(model, class_label=class_index)
+        self._tree_explainers: list[TreeSHAPIQ] = []
+        if len(validated_model) > 1:
+            self._tree_explainers = [
+                TreeSHAPIQ(
+                    tree, max_order=max_order, min_order=min_order, index=index, verbose=verbose
+                )
+                for tree in validated_model
+            ]
+            self.empty_prediction = float(
+                sum(child.empty_prediction for child in self._tree_explainers)
+            )
+            return
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
-        self._tree: TreeModel = copy.deepcopy(validated_model)[0]
-        # Routing convention of the converted model. XGBoost trees split with ``x < thr``
-        # (decision_type "<"); LightGBM/CatBoost/sklearn use ``x <= thr``. ``predict_one``
-        # honours this, so the explainer must too — otherwise instances that sit exactly
-        # on a split threshold are routed to the wrong leaf and efficiency breaks.
-        self._strict_lt: bool = self._tree.decision_type == "<"
-        self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
+        self._tree: TreeModel = validated_model[0]
+        self._relevant_features: np.ndarray = np.array(sorted(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
         self._n_features_in_tree: int = self._tree.n_features_in_tree
@@ -147,9 +165,12 @@ class TreeSHAPIQ:
         self.D_powers_store: dict = {}
         self.Ns_id_store: dict = {}
         self.Ns_store: dict = {}
-        self.n_interpolation_size = self._n_features_in_tree
-        if self._index in ("SV", "SII", "k-SII"):  # SP is of order at most d_max
-            self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
+        # SP is of order at most d_max: the summary polynomials have degree at most the number
+        # of distinct features along a single root-to-leaf path (the maximum edge height), which
+        # can be smaller than both the tree depth and the number of features in the tree.
+        max_features_per_path = int(self._edge_tree.edge_heights.max())
+        check_features_per_path(max_features_per_path, algorithm="TreeSHAP-IQ")
+        self.n_interpolation_size = max_features_per_path
         if self._n_features_in_tree > 0:
             try:
                 self._init_summary_polynomials()
@@ -179,6 +200,12 @@ class TreeSHAPIQ:
             InteractionValues: The computed Shapley Interaction values.
 
         """
+        if self._tree_explainers:  # ensemble: aggregate the per-tree explanations
+            explanation = self._tree_explainers[0].explain(x)
+            for child in self._tree_explainers[1:]:
+                explanation += child.explain(x)
+            return explanation
+        x = self._tree.cast_input(np.asarray(x, dtype=float))
         x_relevant = x[self._relevant_features]
         n_players = max(x.shape[0], self._n_features_in_tree)
 
@@ -296,7 +323,6 @@ class TreeSHAPIQ:
 
         # get feature information
         feature_id = int(self._tree.features[parent_id])
-        feature_threshold = self._tree.thresholds[node_id]
         child_edge_feature = self._tree.features[node_id]
 
         # get height of related nodes
@@ -317,11 +343,8 @@ class TreeSHAPIQ:
 
         # if node is not a leaf -> set activations for children nodes accordingly
         if not is_leaf:
-            go_left = (
-                x[child_edge_feature] < feature_threshold
-                if self._strict_lt
-                else x[child_edge_feature] <= feature_threshold
-            )
+            feature_value = x[child_edge_feature]
+            go_left = self._tree.goes_left(node_id, feature_value)
             if go_left:
                 activations[left_child], activations[right_child] = True, False
             else:
@@ -393,12 +416,8 @@ class TreeSHAPIQ:
                 self._int_height[node_id][interaction_sets] == order
             ]
             if len(interactions_seen) > 0:
-                if self._index not in ("SV", "SII", "k-SII"):  # for CII
-                    D_power = self.D_powers[self._n_features_in_tree - current_height]
-                    index_quotient = self._n_features_in_tree - order
-                else:  # for SII and k-SII
-                    D_power = self.D_powers[0]
-                    index_quotient = current_height - order
+                D_power = self.D_powers[0]
+                index_quotient = current_height - order
                 interaction_update = np.dot(
                     interaction_poly_down[depth, interactions_seen],
                     self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -428,12 +447,8 @@ class TreeSHAPIQ:
                     ancestor_heights = self._edge_tree.edge_heights[
                         interactions_ancestors[cond_interaction_seen]
                     ]
-                    if self._index not in ("SV", "SII", "k-SII"):  # for CII
-                        D_power = self.D_powers[self._n_features_in_tree - current_height]
-                        index_quotient = self._n_features_in_tree - order
-                    else:  # for SII and k-SII
-                        D_power = self.D_powers[ancestor_heights - current_height]
-                        index_quotient = (ancestor_heights - order)
+                    D_power = self.D_powers[ancestor_heights - current_height]
+                    index_quotient = (ancestor_heights - order)
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -448,7 +463,7 @@ class TreeSHAPIQ:
                     if to_update.shape == (1, 1):
                         update *= to_update[0]  # cast out shape of (1, 1) to float
                     else:
-                        update *= to_update  # something errors here for CII
+                        update *= to_update
                     # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
@@ -476,7 +491,7 @@ class TreeSHAPIQ:
         """Computes the psi function for the TreeSHAP-IQ algorithm.
 
         It scales the interaction polynomials with the summary polynomial and the quotient
-        polynomial. For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
+        polynomial. For details, refer to :cite:t:`Muschalik.2024a`.
 
         Args:
             E: The summary polynomial.
@@ -510,10 +525,7 @@ class TreeSHAPIQ:
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
 
             self.D_powers_store[order] = self._cache(self.D_store[order])
-            if self._index in ("SV", "SII", "k-SII"):
-                self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
-            else:
-                self.Ns_store[order] = self._get_n_cii_matrix(self.D_store[order], order)
+            self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
             self.Ns_id_store[order] = self._get_n_id_matrix(self.D_store[order])
 
     def _get_polynomials(
@@ -716,42 +728,6 @@ class TreeSHAPIQ:
                 1.0 / np.array([sp.special.binom(i - 1, k) for k in range(i)])
             )
         return Ns
-
-    def _get_n_cii_matrix(self, interpolated_poly: np.ndarray, order: int) -> np.ndarray:
-        """Computes the N matrix for the CII index."""
-        depth = interpolated_poly.shape[0]
-        Ns = np.zeros((depth + 1, depth))
-        for i in range(1, depth + 1):
-            Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)]),
-            )
-        return Ns
-
-    def _get_subset_weight_cii(self, t: int, order: int) -> float | None:
-        """Computes the weight for a given subset size and interaction order.
-
-        Args:
-            t: The size of the subset.
-            order: The interaction order.
-
-        Returns:
-            float | None: The weight for the subset, or None if the index is not supported.
-        """
-        if self._index == "STII":
-            return self._max_order / (
-                self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
-            )
-        if self._index == "FSII":
-            return (
-                factorial(2 * self._max_order - 1)
-                / factorial(self._max_order - 1) ** 2
-                * factorial(self._max_order + t - 1)
-                * factorial(self._n_features_in_tree - t - 1)
-                / factorial(self._n_features_in_tree + self._max_order - 1)
-            )
-        if self._index == "BII":
-            return 1 / (2 ** (self._n_features_in_tree - order))
-        return None
 
     @staticmethod
     def _get_n_id_matrix(D: np.ndarray) -> np.ndarray:

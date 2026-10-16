@@ -37,9 +37,6 @@ from .approximator import (
     kADDSHAP,
 )
 
-# dataset functions
-from .datasets import load_adult_census, load_bike_sharing, load_california_housing
-
 # explainer classes
 from .explainer import (
     AgnosticExplainer,
@@ -65,7 +62,7 @@ from .imputer import (
 )
 
 # base classes
-from .interaction_values import InteractionValues
+from .interaction_values import InteractionValues, InteractionValuesBatch
 
 # plotting functions
 from .plot import (
@@ -95,6 +92,7 @@ __all__ = [
     "__version__",
     # base
     "InteractionValues",
+    "InteractionValuesBatch",
     "ExactComputer",
     "Game",
     # approximators
@@ -149,8 +147,4 @@ __all__ = [
     "get_explicit_subsets",
     "split_subsets_budget",
     "safe_isinstance",
-    # datasets
-    "load_bike_sharing",
-    "load_adult_census",
-    "load_california_housing",
 ]

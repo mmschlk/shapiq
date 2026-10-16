@@ -39,3 +39,21 @@ def test_approximate(budget, order):
 
     assert sii_estimates[(1,)] == pytest.approx(0.6429, abs=0.1)
     assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)
+
+
+def test_approximate_sv():
+    """Tests that kADDSHAP with max_order=1 estimates Shapley values."""
+    n = 7
+    interaction = (1, 2)
+    game = DummyGame(n, interaction)
+
+    approximator = kADDSHAP(n, max_order=1)
+    assert "SV" in approximator.valid_indices
+    sv_estimates = approximator.approximate(100, game)
+    assert isinstance(sv_estimates, InteractionValues)
+    assert sv_estimates.index == "SV"
+    assert sv_estimates.max_order == 1
+
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.1)
+    assert sv_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)
+    assert sv_estimates[(0,)] == pytest.approx(0.1429, abs=0.1)

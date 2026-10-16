@@ -1,28 +1,26 @@
 """This module contains the OddSHAP approximator for estimating Shapley values.
 
-OddSHAP is a value estimator based on paired sampling, odd-only Fourier regression, and sparse odd interaction detection as introduced in Fumagalli et al. (2026) :cite:t:`Fumagalli.2026`
+OddSHAP is a value estimator based on paired sampling, odd-only Fourier regression, and sparse odd interaction detection as introduced by :cite:t:`Fumagalli.2026a`.
 """
 
 from __future__ import annotations
 
 import math
 import warnings
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.proxy._routes import tree_to_fourier
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.conversion import convert_tree_model
+from shapiq.utils.sets import log_binom
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.game import Game
-    from shapiq.tree.base import TreeModel
 
 
 def _resolve_surrogate_model(
@@ -69,45 +67,10 @@ def _resolve_surrogate_model(
 _FourierDict = dict[tuple[int, ...], float]
 
 
-def _tree_to_fourier(tree_model: TreeModel) -> _FourierDict:
-    """Extract exact Fourier (Walsh) coefficients from a single tree by DFS.
-
-    Equivalent to ``ProxySPEX._sklearn_tree_to_fourier`` but standalone — no
-    Approximator instantiation required.
-    """
-
-    def _combine(left: _FourierDict, right: _FourierDict, feature: int) -> _FourierDict:
-        combined: _FourierDict = {}
-        for interaction in set(left) | set(right):
-            left_val = left.get(interaction, 0.0)
-            right_val = right.get(interaction, 0.0)
-            combined[interaction] = (left_val + right_val) / 2
-            combined[tuple(sorted(set(interaction) | {feature}))] = (left_val - right_val) / 2
-        return combined
-
-    def _dfs(node: int) -> _FourierDict:
-        if tree_model.children_left[node] == -1:
-            return {(): tree_model.values[node]}
-        return _combine(
-            _dfs(tree_model.children_left[node]),
-            _dfs(tree_model.children_right[node]),
-            tree_model.features[node],
-        )
-
-    return _dfs(0)
-
-
-def _ensemble_to_fourier(tree_models: list[TreeModel]) -> dict[tuple[int, ...], float]:
-    """Aggregate Fourier coefficients across an ensemble of trees."""
-    aggregated: dict[tuple[int, ...], float] = defaultdict(float)
-    for tree_model in tree_models:
-        for interaction, value in _tree_to_fourier(tree_model).items():
-            aggregated[interaction] += value
-    return {k: v for k, v in aggregated.items() if v != 0.0}
-
-
 class OddSHAP(Approximator):
-    """OddSHAP approximator for first-order Shapley values (Fumagalli et al., 2026).
+    """OddSHAP approximator for first-order Shapley values.
+
+    OddSHAP was introduced by :cite:t:`Fumagalli.2026a`.
 
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
@@ -145,18 +108,24 @@ class OddSHAP(Approximator):
         return weight_vector / np.sum(weight_vector)
 
     @staticmethod
-    def _init_regression_kernel_weights_static(n: int) -> np.ndarray:
-        """Initialize OddSHAP weighted least-squares kernel weights."""
+    def _init_log_regression_kernel_weights_static(n: int) -> np.ndarray:
+        """Initialize OddSHAP weighted least-squares kernel weights in log space.
+
+        The kernel weight of coalition size ``k`` is ``1 / (k * (n - k) * binom(n, k))``, and
+        ``-inf`` (a weight of ``0``) for the empty and full coalitions. ``binom(n, k)`` overflows
+        float64 from ``n`` of roughly ``1030`` on, so the weight is kept in log space and only
+        exponentiated after adding the sampler's log adjustment weight, whose binomial cancels it.
+        """
         if n <= 1:
             msg = "OddSHAP regression weights are undefined for n <= 1."
             raise ValueError(msg)
 
-        weight_vector = np.zeros(n + 1, dtype=float)
-        for coalition_size in range(1, n):
-            weight_vector[coalition_size] = 1.0 / (
-                coalition_size * (n - coalition_size) * binom(n, coalition_size)
-            )
-        return weight_vector
+        log_weight_vector = np.full(n + 1, -np.inf)
+        coalition_sizes = np.arange(1, n)
+        log_weight_vector[1:n] = -(
+            np.log(coalition_sizes) + np.log(n - coalition_sizes) + log_binom(n, coalition_sizes)
+        )
+        return log_weight_vector
 
     def __init__(
         self,
@@ -173,6 +142,20 @@ class OddSHAP(Approximator):
         ``tree_params`` entries override the surrogate defaults — including
         ``random_state``, ``n_jobs``, and ``verbose``; ``max_depth`` defaults to 10
         (the paper's configuration) unless overridden.
+
+        Args:
+            n: The number of players.
+            sampling_weights: The sampling weights of the coalition sizes. Defaults to ``None``,
+                which samples the sizes ``1`` to ``n - 1`` uniformly.
+            random_state: The random state of the sampler and the surrogate. Defaults to ``None``.
+            interaction_factor: The number of samples per active term (``eta``), at least ``1``.
+                Defaults to ``10``, the paper's choice.
+            tree_params: Parameters of the gradient-boosted tree surrogate. Defaults to ``None``.
+            **kwargs: Ignored, for compatibility with the other approximators.
+
+        Raises:
+            ValueError: If ``n`` is smaller than ``2`` or ``interaction_factor`` is smaller than
+                ``1``.
         """
         del kwargs
 
@@ -199,7 +182,7 @@ class OddSHAP(Approximator):
         self.tree_params = tree_params
         self._surrogate_template = _resolve_surrogate_model(self._random_state, tree_params)
         # The WLS kernel weights depend only on n; compute them once.
-        self._kernel_weights = self._init_regression_kernel_weights_static(n)
+        self._log_kernel_weights = self._init_log_regression_kernel_weights_static(n)
 
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
@@ -361,7 +344,7 @@ class OddSHAP(Approximator):
         """Build the active OddSHAP support from a list of selected terms.
 
         The support always contains the empty interaction ``()`` plus the given
-        terms (deduplicated and sorted by size then value). Unlike in Fumagalli et al. (2026),
+        terms (deduplicated and sorted by size then value). Unlike in :cite:t:`Fumagalli.2026a`,
         singletons are *not* auto-injected here: relevance-based
         individual selection now happens upstream in ``_select_active_terms``, so
         only individuals that were actually selected end up in the support.
@@ -388,13 +371,9 @@ class OddSHAP(Approximator):
         self.odd_interaction_matrix_float = interaction_matrix_binary.astype(np.float64)
         self.n_active_interactions = len(active_interactions)
 
-    @staticmethod
-    def _surrogate_to_fourier(surrogate_model: object) -> _FourierDict:
-        """Convert the fitted surrogate to its exact Fourier (Walsh) spectrum."""
-        tree_models = convert_tree_model(surrogate_model)
-        if not isinstance(tree_models, list):
-            tree_models = [tree_models]
-        return _ensemble_to_fourier(tree_models)
+    def _surrogate_to_fourier(self, surrogate_model: object) -> _FourierDict:
+        """Read the fitted surrogate's exact Fourier (Walsh) spectrum with the interventional kernel."""
+        return tree_to_fourier(surrogate_model, self.n)
 
     def _select_active_terms(
         self,
@@ -404,8 +383,8 @@ class OddSHAP(Approximator):
     ) -> tuple[list[tuple[int, ...]], list[tuple[int, ...]]]:
         """Split the shared candidate budget between individuals and interactions.
 
-        Implements the paper's "Controlling Higher-Order Terms" priority
-        (Fumagalli et al. 2026, Algorithm 1): the most relevant individuals are
+        Implements the "Controlling Higher-Order Terms" priority of Algorithm 1 of
+        :cite:t:`Fumagalli.2026a`: the most relevant individuals are
         screened first from the surrogate's Fourier spectrum (all ``n`` of them
         are always ranked, whether or not the surrogate happened to split on
         them), and only the remaining candidate budget is spent screening
@@ -476,8 +455,8 @@ class OddSHAP(Approximator):
     ) -> list[tuple[int, ...]]:
         """Screen higher-order odd interactions from the surrogate's Fourier spectrum.
 
-        Implements the paper's ``OddInteractionExtract`` (Fumagalli et al. 2026,
-        Algorithm 1 / "Controlling Higher-Order Terms"): the fitted GBT is
+        Implements ``OddInteractionExtract`` of :cite:t:`Fumagalli.2026a` (Algorithm 1 /
+        "Controlling Higher-Order Terms"): the fitted GBT is
         converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
         frequencies with the largest coefficient magnitudes are kept.
 
@@ -514,12 +493,14 @@ class OddSHAP(Approximator):
         Kept un-square-rooted because ``_pair_interior_rows`` combines pairs of
         rows by doubling their raw weight; the square root is taken once, after
         pairing, in ``_build_weighted_system``.
-        """
-        kernel_weights = self._kernel_weights
-        coalition_sizes = self._sampler.coalitions_size
-        sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
-        return kernel_weights[coalition_sizes] * sampling_adjustment_weights
+        The two weights are added in log space and exponentiated once: for more
+        than roughly 1,030 players the kernel weight (``~1 / binom(n, k)``)
+        underflows to ``0`` and the adjustment weight (``~binom(n, k)``)
+        overflows to ``inf``, so their product is ``0 * inf = nan`` (issue #621).
+        """
+        log_kernel_weights = self._log_kernel_weights[self._sampler.coalitions_size]
+        return np.exp(log_kernel_weights + self._sampler.log_sampling_adjustment_weights)
 
     def _build_weighted_system(
         self,

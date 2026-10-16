@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -11,13 +11,16 @@ from .utils import compute_empty_prediction
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+DecisionType = Literal["<=", "<"]
+InputPrecision = Literal["float64", "float32"]
+
 
 class TreeModel:
     """Internal representation of a single tree used by the shapiq tree explainers.
 
     Each library-specific converter (scikit-learn, XGBoost, LightGBM, CatBoost) targets this
-    common format so that the downstream algorithms (TreeSHAP-IQ, LinearTreeSHAP,
-    InterventionalTreeSHAP) only need to understand one node-array layout.
+    common format so that the downstream algorithms (QuadratureTreeSHAP, TreeSHAP-IQ,
+    LinearTreeSHAP, InterventionalTreeSHAPIQ) only need to understand one node-array layout.
 
     Constructor arguments that fall back to a computed default when ``None`` is passed are
     documented on :meth:`__init__`. The attributes below describe what is available on a fully
@@ -34,6 +37,15 @@ class TreeModel:
         thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are ``np.nan``.
         values: The leaf-node values, flattened to a 1-D array. Non-leaf nodes are set to ``0``.
         node_sample_weight: The sample weights of the nodes in a tree.
+        cat_values: Concatenated (per-node sorted) category sets of all categorical decision
+            nodes in CSR layout. A categorical node routes ``int(x[feature]) in set`` to the
+            left child and everything else to the right child (NaN goes to the missing child).
+            Empty for trees without categorical splits.
+        cat_start: Per-node offset of the node's category set inside ``cat_values``.
+        cat_size: Per-node length of the node's category set. ``0`` marks a numeric or leaf
+            node.
+        is_categorical: Boolean mask of categorical decision nodes (``cat_size > 0``).
+        has_categorical: Whether the tree contains any categorical decision node.
         empty_prediction: The empty prediction of the tree model (weighted mean of leaf values).
         leaf_mask: The boolean mask of the leaf nodes in a tree.
         n_features_in_tree: The number of distinct features actually used by decision nodes.
@@ -41,7 +53,7 @@ class TreeModel:
         feature_ids: The set of feature indices used by decision nodes.
         root_node_id: The root node id of the tree model. Defaults to ``0``.
         n_nodes: The number of nodes in the tree model.
-        decision_type: The split comparison used by :meth:`decision_function`. Either ``"<="``
+        decision_type: The split comparison used by :meth:`goes_left`. Either ``"<="``
             (default) or ``"<"``.
         nodes: The node ids of the tree model as ``np.arange(n_nodes)``.
         feature_map_original_internal: Mapping of feature indices from the original feature
@@ -52,6 +64,8 @@ class TreeModel:
             Currently not used by downstream algorithms.
         intercepts: Per-leaf intercept terms for linear-leaf tree models. Currently unused.
         coeffs: Per-leaf coefficient vectors for linear-leaf tree models. Currently unused.
+        negated_class_one: Whether the tree models the class-0 log-odds of a binary classifier
+            as the negated class-1 log-odds (the single raw output of binary boosters).
 
     """
 
@@ -63,6 +77,11 @@ class TreeModel:
     values: NDArray[np.floating]
     node_sample_weight: NDArray[np.floating]
     children_left_default: NDArray[np.bool_]
+    cat_values: NDArray[np.int_]
+    cat_start: NDArray[np.int_]
+    cat_size: NDArray[np.int_]
+    is_categorical: NDArray[np.bool_]
+    has_categorical: bool
     empty_prediction: float
     leaf_mask: NDArray[np.bool_]
     n_features_in_tree: int
@@ -70,13 +89,15 @@ class TreeModel:
     feature_ids: set[int]
     root_node_id: int
     n_nodes: int
-    decision_type: str
+    decision_type: DecisionType
     nodes: NDArray[np.int_]
     feature_map_original_internal: dict[int, int]
     feature_map_internal_original: dict[int, int]
-    original_output_type: str = "raw"  # not used at the moment
+    original_output_type: Literal["raw", "probability"] = "raw"  # not used at the moment
     intercepts: NDArray[np.floating]
     coeffs: NDArray[np.floating]
+    input_precision: InputPrecision = "float64"
+    negated_class_one: bool = False
 
     def __init__(
         self,
@@ -95,12 +116,17 @@ class TreeModel:
         root_node_id: int | None = None,
         n_nodes: int | None = None,
         nodes: NDArray[np.int_] | None = None,
-        decision_type: str | None = None,
+        decision_type: DecisionType | None = None,
         feature_map_original_internal: dict[int, int] | None = None,
         feature_map_internal_original: dict[int, int] | None = None,
-        original_output_type: str = "raw",  # noqa: ARG002
+        original_output_type: Literal["raw", "probability"] = "raw",  # noqa: ARG002
         intercepts: NDArray[np.floating] | None = None,  # noqa: ARG002
         coeffs: NDArray[np.floating] | None = None,  # noqa: ARG002
+        cat_values: NDArray[np.int_] | None = None,
+        cat_start: NDArray[np.int_] | None = None,
+        cat_size: NDArray[np.int_] | None = None,
+        input_precision: InputPrecision = "float64",
+        negated_class_one: bool = False,  # noqa: FBT001, FBT002
     ) -> None:
         """Initialize the :class:`TreeModel`.
 
@@ -127,7 +153,7 @@ class TreeModel:
             root_node_id: Root node id. ``None`` defaults to ``0``.
             n_nodes: Number of nodes. ``None`` derives it from ``len(children_left)``.
             nodes: Node-id array. ``None`` defaults to ``np.arange(n_nodes)``.
-            decision_type: Split comparison used by :meth:`decision_function` (``"<="`` or ``"<"``).
+            decision_type: Split comparison used by :meth:`goes_left` (``"<="`` or ``"<"``).
                 ``None`` defaults to ``"<="``.
             feature_map_original_internal: Mapping from original to internal feature indices.
                 ``None`` defaults to the identity mapping on ``feature_ids``.
@@ -137,6 +163,18 @@ class TreeModel:
             intercepts: Currently unused; accepted for forward compatibility with linear-leaf
                 trees.
             coeffs: Currently unused; accepted for forward compatibility with linear-leaf trees.
+            cat_values: Concatenated category sets of categorical decision nodes (CSR layout,
+                see the class docstring). Must be provided together with ``cat_start`` and
+                ``cat_size``. ``None`` (default) marks a tree without categorical splits.
+            cat_start: Per-node offsets into ``cat_values``.
+            cat_size: Per-node category-set lengths (``0`` = numeric node).
+            input_precision: Precision in which the source library compares inputs against
+                thresholds at prediction time: ``"float32"`` for XGBoost and CatBoost (inputs
+                are cast before routing, see :meth:`cast_input`), ``"float64"`` otherwise.
+                Defaults to ``"float64"``.
+            negated_class_one: Whether the tree models the class-0 log-odds of a binary
+                classifier as the negated class-1 log-odds. Set by the converters for
+                ``class_label=0``; the leaf values are already negated. Defaults to ``False``.
         """
         self.children_left = children_left
         self.children_right = children_right
@@ -163,6 +201,42 @@ class TreeModel:
             1.0,
             self.node_sample_weight[self.leaf_mask],
         )
+        # setup categorical splits (optional CSR triple over nodes)
+        if (cat_values is None) != (cat_start is None) or (cat_start is None) != (cat_size is None):
+            msg = "cat_values, cat_start, and cat_size must be provided together."
+            raise ValueError(msg)
+        if cat_size is None:
+            self.cat_values = np.zeros(0, dtype=np.int64)
+            self.cat_start = np.zeros(len(self.children_left), dtype=np.int64)
+            self.cat_size = np.zeros(len(self.children_left), dtype=np.int64)
+        else:
+            self.cat_values = np.asarray(cat_values, dtype=np.int64).copy()
+            self.cat_start = np.asarray(cat_start, dtype=np.int64).copy()
+            self.cat_size = np.asarray(cat_size, dtype=np.int64).copy()
+            if len(self.cat_start) != len(self.children_left) or len(self.cat_size) != len(
+                self.children_left
+            ):
+                msg = "cat_start and cat_size must have one entry per node."
+                raise ValueError(msg)
+            self.cat_size[self.leaf_mask] = 0  # sanitize leaves like features/thresholds
+            for node in np.flatnonzero(self.cat_size > 0):
+                start, end = self.cat_start[node], self.cat_start[node] + self.cat_size[node]
+                if start < 0 or end > len(self.cat_values):
+                    msg = f"cat_start/cat_size slice of node {node} exceeds cat_values."
+                    raise ValueError(msg)
+                # membership tests rely on sorted per-node category sets
+                self.cat_values[start:end] = np.sort(self.cat_values[start:end])
+        self.is_categorical = self.cat_size > 0
+        self.has_categorical = bool(self.is_categorical.any())
+        # categorical nodes have no numeric threshold; sanitize to NaN like leaves so any
+        # code path that forgets them compares against NaN instead of a stale number
+        if self.has_categorical:
+            self.thresholds = np.where(self.is_categorical, np.nan, self.thresholds)
+        if input_precision not in ("float64", "float32"):
+            msg = f"input_precision must be 'float64' or 'float32', got {input_precision!r}."
+            raise ValueError(msg)
+        self.input_precision = input_precision
+        self.negated_class_one = negated_class_one
         # setup empty prediction
         if empty_prediction is None:
             self.compute_empty_prediction()
@@ -222,26 +296,41 @@ class TreeModel:
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
 
-        # Set decision function
+        # untyped dict conversions reach this at runtime; unknown comparisons would
+        # otherwise silently route like "<="
+        if decision_type is not None and decision_type not in ("<=", "<"):
+            msg = f"decision_type must be '<=' or '<', got {decision_type!r}."
+            raise ValueError(msg)
         self.decision_type = decision_type if decision_type is not None else "<="
 
-    def decision_function(self, value: float, threshold: float, *, left_default: bool) -> bool:
-        """Decision function for split nodes.
+    def goes_left(self, node_id: int, value: float) -> bool:
+        """Route a feature value through the split at ``node_id``.
 
-        The function compares the input value to the threshold using the specified decision type.
-        If the value is NaN, the function returns the left_default.
+        Handles both node kinds: numeric nodes compare against ``thresholds[node_id]`` using
+        ``decision_type``; categorical nodes route ``int(value)`` in the node's category set
+        to the left child and everything else (including unknown categories) to the right
+        child. NaN values route to the missing child for both node kinds.
 
         Args:
-            value: The feature value to compare.
-            threshold: The threshold to compare the feature value against.
-            left_default: The default direction to take if the value is NaN. True for left, False for right.
+            node_id: The decision node to route through.
+            value: The feature value of the instance at this node's split feature.
 
         Returns:
-            A boolean indicating whether to go left (True) or right (False) at the split node.
+            ``True`` to go to ``children_left[node_id]``, ``False`` for the right child.
         """
+        if np.isnan(value):
+            return bool(self.children_left_default[node_id])
+        if self.is_categorical[node_id]:
+            start = self.cat_start[node_id]
+            end = start + self.cat_size[node_id]
+            category = int(value)  # truncation towards zero, matching the C kernels
+            # Find the position in which the category would be inserted to maintain order
+            position = int(np.searchsorted(self.cat_values[start:end], category))
+            # Check that position is within bounds and that the category at that position matches the input category
+            return position < end - start and int(self.cat_values[start + position]) == category
         if self.decision_type == "<":
-            return (value < threshold) if not np.isnan(value) else left_default
-        return (value <= threshold) if not np.isnan(value) else left_default
+            return bool(value < self.thresholds[node_id])
+        return bool(value <= self.thresholds[node_id])
 
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
@@ -287,8 +376,11 @@ class TreeModel:
         """
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
-            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = dict(enumerate(self.feature_ids))
+            # sorted: raw set iteration can be non-ascending, which would permute the
+            # reduced ids against the sorted interaction lookups
+            ordered_feature_ids = sorted(self.feature_ids)
+            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(ordered_feature_ids)}
+            mapping_new_old = dict(enumerate(ordered_feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
@@ -300,6 +392,28 @@ class TreeModel:
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
+    def cast_input(self, x: NDArray[np.floating]) -> NDArray[np.floating]:
+        """Round ``x`` the way the source library rounds prediction inputs.
+
+        XGBoost and CatBoost cast inputs to float32 before comparing them against their
+        (float32) split thresholds; routing the original float64 values can reach a different
+        leaf than the model's own prediction. The float32 embedding into float64 is exact and
+        order-preserving, so the round trip below makes every downstream float64 comparison
+        bit-identical to the source library's float32 comparison. LightGBM compares in float64
+        (no cast), and sklearn's thresholds are exact midpoints of adjacent float32 values,
+        which makes its internal float32 input cast unobservable — both keep ``"float64"``.
+
+        Args:
+            x: Instance(s) in the original feature space.
+
+        Returns:
+            ``x`` unchanged for ``input_precision == "float64"``, otherwise ``x`` rounded
+            through float32 (returned as float64).
+        """
+        if self.input_precision == "float32":
+            return x.astype(np.float32).astype(np.float64)
+        return x
+
     def predict_one(self, x: NDArray[np.floating]) -> float:
         """Predicts the output of a single instance.
 
@@ -310,21 +424,49 @@ class TreeModel:
             The prediction of the instance with the tree model.
 
         """
+        x = self.cast_input(np.asarray(x, dtype=np.float64))
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]
         while not is_leaf:
             feature_id_internal = self.features[node]
             feature_id_original = self.feature_map_internal_original[feature_id_internal]
-            if self.decision_function(
-                x[feature_id_original],
-                self.thresholds[node],
-                left_default=self.children_left_default[node],
-            ):
+            if self.goes_left(node, x[feature_id_original]):
                 node = self.children_left[node]
             else:
                 node = self.children_right[node]
             is_leaf = self.leaf_mask[node]
         return float(self.values[node])
+
+    def predict(self, X: NDArray[np.floating]) -> NDArray[np.floating]:
+        """Predicts the output of multiple instances.
+
+        Args:
+            X: The instances to predict as a 2-dimensional array of shape
+                ``(n_instances, n_features)``.
+
+        Returns:
+            The predictions of the instances with the tree model as a 1-dimensional array of
+            shape ``(n_instances,)``.
+        """
+        return np.asarray([self.predict_one(x) for x in X], dtype=np.float64)
+
+
+def predict_ensemble(trees: list[TreeModel], X: NDArray[np.floating]) -> NDArray[np.floating]:
+    """Predicts the output of a tree ensemble for multiple instances.
+
+    The ensemble prediction is the sum of the per-tree predictions (validated trees already
+    carry any ensemble scaling, e.g. the ``1/n_estimators`` averaging of sklearn forests).
+
+    Args:
+        trees: The validated trees of the ensemble (see
+            :func:`shapiq.tree.validation.validate_tree_model`).
+        X: The instances to predict as a 2-dimensional array of shape
+            ``(n_instances, n_features)``.
+
+    Returns:
+        The ensemble predictions as a 1-dimensional array of shape ``(n_instances,)``.
+    """
+    return np.sum([tree.predict(X) for tree in trees], axis=0)
 
 
 class EdgeTree:

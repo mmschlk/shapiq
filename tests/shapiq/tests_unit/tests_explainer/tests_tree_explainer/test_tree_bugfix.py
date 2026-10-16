@@ -16,6 +16,69 @@ _LIGHTGBM_UBUNTU_BYTES_FILE = (
 )
 
 
+def test_linear_tree_shap_does_not_mutate_caller_tree_model():
+    """Test that constructing LinearTreeSHAP leaves the caller-owned TreeModel untouched."""
+    from sklearn.tree import DecisionTreeRegressor
+
+    from shapiq.tree.linear.computer import LinearTreeSHAP
+    from shapiq.tree.validation import validate_tree_model
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 8))
+    y = 10 * X[:, 5] - 7 * X[:, 7]
+    model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(X, y)
+
+    tree = validate_tree_model(model)[0]
+    features_before = tree.features.copy()
+    feature_ids_before = set(tree.feature_ids)
+
+    explainer = LinearTreeSHAP(tree)
+
+    assert np.array_equal(tree.features, features_before)
+    assert set(tree.feature_ids) == feature_ids_before
+    explanation = explainer.explain_function(X[0])
+    assert np.all(np.isfinite(explanation.values))
+
+
+def test_tree_explainer_does_not_mutate_caller_tree_model():
+    """Test that TreeExplainer's LinearTreeSHAP fast path does not corrupt the input tree.
+
+    Regression test for https://github.com/mmschlk/shapiq/issues/544: the mutated tree
+    silently produced wrong interventional attributions afterwards.
+    """
+    from sklearn.tree import DecisionTreeRegressor
+
+    from shapiq.tree.validation import validate_tree_model
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 8))
+    y = 10 * X[:, 5] - 7 * X[:, 7]
+    model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(X, y)
+
+    tree = validate_tree_model(model)[0]
+    features_before = tree.features.copy()
+
+    # index="SV", max_order=1 routes to the quadrature path-dependent explainer
+    explainer = TreeExplainer(model=tree, index="SV", max_order=1, backend="shapiq")
+    explainer.explain(X[0])
+    assert np.array_equal(tree.features, features_before)
+
+    # the same tree must still yield correct interventional attributions afterwards
+    clean_tree = validate_tree_model(model)[0]
+    reference = X[:30]
+    iv_clean = TreeExplainer(
+        model=clean_tree,
+        index="SV",
+        max_order=1,
+        mode="interventional",
+        reference_dataset=reference,
+    ).explain(X[0])
+    iv_after = TreeExplainer(
+        model=tree, index="SV", max_order=1, mode="interventional", reference_dataset=reference
+    ).explain(X[0])
+    assert np.allclose(iv_clean.values, iv_after.values)
+
+
 def test_constant_tree_model_initializes_and_explains():
     """Test that a single-node constant tree contributes only to the baseline."""
     tree = TreeModel(
@@ -423,7 +486,7 @@ def test_xgb_predicts_with_wrong_leaf_node():
 
     # get our tree model representation
     tree_explainer = TreeExplainer(model=model, index="SV")
-    tree_model = tree_explainer._treeshapiq_explainers[0]._tree
+    tree_model = tree_explainer._trees[0]
     prediction_tree_model = tree_model.predict_one(x_explain)
     prediction_tree_model_left = tree_model.predict_one(x_explain_left)
     # predictions of og xgb is different from our tree model
@@ -812,6 +875,11 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     check was performed and ``pos`` silently walked past the buffer end.
     The fix replaces each bare ``pos += N`` with ``N`` calls to ``readByte()``,
     each of which checks bounds.
+
+    Since the categories arrays are parsed (categorical-split support) instead of
+    skipped, the float64-typed corruption is rejected even earlier as an unsupported
+    element type for an integer array — still a loud RuntimeError before any
+    out-of-bounds access.
     """
     from shapiq.tree.conversion.cext import parse_xgboost_ubjson
 
@@ -820,5 +888,364 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     # ([#i\x01) containing one float64 element whose 8 data bytes are absent.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[#i\x01D"  # count=1, type='D', no payload bytes
-    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+    with pytest.raises(
+        RuntimeError, match=r"End of stream|Unexpected end of UBJSON|Unsupported marker"
+    ):
         parse_xgboost_ubjson(truncated, -1, 0.0)
+
+
+_BINARY_BOOSTERS = ("sklearn_gb", "sklearn_histgb", "xgboost", "lightgbm", "catboost")
+
+
+def _fit_binary_booster(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a small binary gradient boosting classifier and return it with its raw margin."""
+    from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+
+    if name == "sklearn_gb":
+        model = GradientBoostingClassifier(n_estimators=5, max_depth=3, random_state=0)
+        return model.fit(x, y), model.decision_function
+    if name == "sklearn_histgb":
+        model = HistGradientBoostingClassifier(max_iter=5, max_depth=3, random_state=0)
+        return model.fit(x, y), model.decision_function
+    if name == "xgboost":
+        xgboost = pytest.importorskip("xgboost")
+        model = xgboost.XGBClassifier(n_estimators=5, max_depth=3, random_state=0)
+        return model.fit(x, y), lambda data: model.predict(data, output_margin=True)
+    if name == "lightgbm":
+        lightgbm = pytest.importorskip("lightgbm")
+        model = lightgbm.LGBMClassifier(n_estimators=5, max_depth=3, random_state=0, verbose=-1)
+        return model.fit(x, y), lambda data: model.predict(data, raw_score=True)
+    catboost = pytest.importorskip("catboost")
+    model = catboost.CatBoostClassifier(iterations=5, depth=3, random_seed=0, verbose=False)
+    return model.fit(x, y), lambda data: model.predict(data, prediction_type="RawFormulaVal")
+
+
+@pytest.mark.parametrize("mode", ["pathdependent", "interventional"])
+@pytest.mark.parametrize("name", _BINARY_BOOSTERS)
+def test_binary_booster_class_zero_is_negated_class_one(name, mode):
+    """Test that class_index=0 of a binary booster explains the class-0 log-odds.
+
+    Binary boosters model one raw output, the class-1 log-odds; class_index=0 silently
+    returned the class-1 explanation instead of its negation.
+    """
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_binary_booster(name, x, y)
+    reference = x[:50] if mode == "interventional" else None
+    explanations = {
+        class_index: TreeExplainer(
+            model=model,
+            index="SV",
+            max_order=1,
+            class_index=class_index,
+            mode=mode,
+            reference_dataset=reference,
+            backend="shapiq",
+        ).explain(x[0])
+        for class_index in (None, 0, 1)
+    }
+
+    class_zero, class_one = explanations[0], explanations[1]
+    values_zero = class_zero.get_n_order_values(1)
+    values_one = class_one.get_n_order_values(1)
+    assert not np.allclose(values_zero, values_one)
+    np.testing.assert_allclose(values_zero, -values_one)
+    assert class_zero.baseline_value == pytest.approx(-class_one.baseline_value)
+    # class_index=None stays class 1
+    np.testing.assert_allclose(explanations[None].get_n_order_values(1), values_one)
+    assert explanations[None].baseline_value == pytest.approx(class_one.baseline_value)
+
+    # efficiency: in pathdependent mode the values sum to the negated raw margin of the point;
+    # in interventional mode the baseline is the mean negated margin over the reference data
+    expected = -raw_margin(x[:1])[0]
+    assert class_zero.baseline_value + values_zero.sum() == pytest.approx(expected, abs=1e-5)
+    if mode == "interventional":
+        assert class_zero.baseline_value == pytest.approx(-raw_margin(reference).mean(), abs=1e-5)
+
+
+@pytest.mark.parametrize("mode", ["pathdependent", "interventional"])
+@pytest.mark.parametrize("name", ["sklearn_gb", "sklearn_histgb", "xgboost", "lightgbm"])
+def test_binary_booster_class_zero_woodelf_matches_shapiq(name, mode):
+    """Test that the Woodelf backend also negates the class-1 output for class_index=0."""
+    pytest.importorskip("woodelf")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_binary_booster(name, x, y)
+    reference = x[:50] if mode == "interventional" else None
+    explanations = {
+        backend: TreeExplainer(
+            model=model,
+            index="SV",
+            max_order=1,
+            class_index=0,
+            mode=mode,
+            reference_dataset=reference,
+            backend=backend,
+        ).explain(x[0])
+        for backend in ("shapiq", "woodelf")
+    }
+
+    woodelf_values = explanations["woodelf"].get_n_order_values(1)
+    np.testing.assert_allclose(
+        woodelf_values, explanations["shapiq"].get_n_order_values(1), atol=1e-6
+    )
+    baseline = explanations["woodelf"].baseline_value
+    assert baseline + woodelf_values.sum() == pytest.approx(-raw_margin(x[:1])[0], abs=1e-5)
+
+
+@pytest.mark.parametrize("name", _BINARY_BOOSTERS)
+def test_binary_booster_invalid_class_index_raises(name):
+    """Test that a class_index other than 0 or 1 fails for a binary booster."""
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, _ = _fit_binary_booster(name, x, y)
+    with pytest.raises(ValueError, match="out of range for a model with 2 classes"):
+        TreeExplainer(model=model, index="SV", max_order=1, class_index=2)
+
+
+def _fit_single_output_booster(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a native booster (or a custom-objective classifier) and return it with its raw margin."""
+    if name == "xgboost_booster":
+        xgboost = pytest.importorskip("xgboost")
+        params = {"objective": "binary:logistic", "max_depth": 3}
+        booster = xgboost.train(params, xgboost.DMatrix(x, label=y), num_boost_round=5)
+        return booster, lambda data: booster.predict(xgboost.DMatrix(data), output_margin=True)
+    if name == "lightgbm_booster":
+        lightgbm = pytest.importorskip("lightgbm")
+        params = {"objective": "binary", "max_depth": 3, "verbose": -1}
+        booster = lightgbm.train(params, lightgbm.Dataset(x, label=y), num_boost_round=5)
+        return booster, lambda data: booster.predict(data, raw_score=True)
+    if name == "lightgbm_custom_objective":
+        # a custom objective writes no objective line: the classifier type identifies it
+        lightgbm = pytest.importorskip("lightgbm")
+
+        def logloss(labels, raw):
+            p = 1 / (1 + np.exp(-raw))
+            return p - labels, p * (1 - p)
+
+        model = lightgbm.LGBMClassifier(n_estimators=5, objective=logloss, verbose=-1)
+        model.fit(x, y)
+        return model, lambda data: model.predict(data, raw_score=True)
+    catboost = pytest.importorskip("catboost")
+    params = {"iterations": 5, "depth": 3, "loss_function": "Logloss", "verbose": False}
+    model = catboost.CatBoost(params).fit(x, y)
+    return model, lambda data: model.predict(data, prediction_type="RawFormulaVal")
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["xgboost_booster", "lightgbm_booster", "lightgbm_custom_objective", "catboost_logloss"],
+)
+def test_single_output_classifier_class_zero_is_negated_class_one(name):
+    """Test class_index=0 for binary models identified by their objective or classifier type."""
+    from sklearn.datasets import make_classification
+
+    from shapiq.tree.validation import validate_tree_model
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model, raw_margin = _fit_single_output_booster(name, x, y)
+    class_zero_trees = validate_tree_model(model, class_label=0)
+    class_one_trees = validate_tree_model(model, class_label=1)
+    assert all(tree.negated_class_one for tree in class_zero_trees)
+    assert not any(tree.negated_class_one for tree in class_one_trees)
+    for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True):
+        np.testing.assert_array_equal(class_zero.values, -class_one.values)
+
+    explanation = TreeExplainer(model=model, index="SV", max_order=1, class_index=0).explain(x[0])
+    total = explanation.baseline_value + explanation.get_n_order_values(1).sum()
+    assert total == pytest.approx(-raw_margin(x[:1])[0], abs=1e-5)
+
+
+def _fit_model_without_class_zero_negation(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a regressor or a two-class model with a multiclass objective."""
+    from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+
+    if name == "sklearn_gb_regressor":
+        return GradientBoostingRegressor(n_estimators=5, random_state=0).fit(x, y)
+    if name == "sklearn_histgb_regressor":
+        return HistGradientBoostingRegressor(max_iter=5, random_state=0).fit(x, y)
+    if name == "xgboost_regressor":
+        return pytest.importorskip("xgboost").XGBRegressor(n_estimators=5).fit(x, y)
+    if name == "lightgbm_regressor":
+        return pytest.importorskip("lightgbm").LGBMRegressor(n_estimators=5, verbose=-1).fit(x, y)
+    if name == "catboost_regressor":
+        catboost = pytest.importorskip("catboost")
+        return catboost.CatBoostRegressor(iterations=5, verbose=False).fit(x, y)
+    if name == "xgboost_multiclass_two_classes":
+        xgboost = pytest.importorskip("xgboost")
+        model = xgboost.XGBClassifier(n_estimators=5, objective="multi:softprob", num_class=2)
+        return model.fit(x, y)
+    if name == "lightgbm_multiclass_two_classes":
+        lightgbm = pytest.importorskip("lightgbm")
+        model = lightgbm.LGBMClassifier(
+            n_estimators=5, objective="multiclass", num_class=2, verbose=-1
+        )
+        return model.fit(x, y)
+    catboost = pytest.importorskip("catboost")
+    return catboost.CatBoostClassifier(iterations=5, loss_function="MultiClass", verbose=False).fit(
+        x, y
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "sklearn_gb_regressor",
+        "sklearn_histgb_regressor",
+        "xgboost_regressor",
+        "lightgbm_regressor",
+        "catboost_regressor",
+        "xgboost_multiclass_two_classes",
+        "lightgbm_multiclass_two_classes",
+        "catboost_multiclass_two_classes",
+    ],
+)
+def test_class_index_zero_does_not_negate_regressors_or_multiclass_models(name):
+    """Test that class_label=0 negates only single-output classifiers.
+
+    Regressors ignore class_label; multiclass models (also when trained on two classes) select
+    the class-0 trees, which are not the negated class-1 trees.
+    """
+    from sklearn.datasets import make_classification
+
+    from shapiq.tree.validation import validate_tree_model
+
+    x, y = make_classification(n_samples=200, n_features=5, random_state=0)
+    model = _fit_model_without_class_zero_negation(name, x, y)
+    class_zero_trees = validate_tree_model(model, class_label=0)
+    class_one_trees = validate_tree_model(model, class_label=1)
+    assert not any(tree.negated_class_one for tree in class_zero_trees)
+    if name.endswith("_regressor"):
+        for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True):
+            np.testing.assert_array_equal(class_zero.values, class_one.values)
+    else:
+        assert not all(
+            np.array_equal(class_zero.values, -class_one.values)
+            for class_zero, class_one in zip(class_zero_trees, class_one_trees, strict=True)
+        )
+
+
+_CLASSIFIERS = (
+    "sklearn_gb",
+    "sklearn_histgb",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "decision_tree",
+    "random_forest",
+    "extra_trees",
+)
+
+
+def _fit_classifier(name: str, x: np.ndarray, y: np.ndarray):
+    """Fit a small classifier of the given family (binary or multiclass, following ``y``)."""
+    from sklearn.ensemble import (
+        ExtraTreesClassifier,
+        GradientBoostingClassifier,
+        HistGradientBoostingClassifier,
+        RandomForestClassifier,
+    )
+    from sklearn.tree import DecisionTreeClassifier
+
+    if name == "sklearn_gb":
+        return GradientBoostingClassifier(n_estimators=3, max_depth=3, random_state=0).fit(x, y)
+    if name == "sklearn_histgb":
+        model = HistGradientBoostingClassifier(max_iter=3, max_depth=3, random_state=0)
+        return model.fit(x, y)
+    if name == "xgboost":
+        return pytest.importorskip("xgboost").XGBClassifier(n_estimators=3, max_depth=3).fit(x, y)
+    if name == "lightgbm":
+        lightgbm = pytest.importorskip("lightgbm")
+        return lightgbm.LGBMClassifier(n_estimators=3, max_depth=3, verbose=-1).fit(x, y)
+    if name == "catboost":
+        catboost = pytest.importorskip("catboost")
+        return catboost.CatBoostClassifier(iterations=3, depth=3, verbose=False).fit(x, y)
+    if name == "decision_tree":
+        return DecisionTreeClassifier(max_depth=3, random_state=0).fit(x, y)
+    if name == "random_forest":
+        model = RandomForestClassifier(n_estimators=3, max_depth=3, random_state=0)
+        return model.fit(x, y)
+    return ExtraTreesClassifier(n_estimators=3, max_depth=3, random_state=0).fit(x, y)
+
+
+@pytest.mark.parametrize("n_classes", [2, 3])
+@pytest.mark.parametrize("name", _CLASSIFIERS)
+def test_out_of_range_or_negative_class_index_raises(name, n_classes):
+    """Test that a class_index the model does not have raises instead of explaining another.
+
+    XGBoost and LightGBM silently converted to zero trees, scikit-learn read negative labels
+    as counting from the last class, and the parsers read -1 as "unspecified".
+    """
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=n_classes, random_state=0
+    )
+    model = _fit_classifier(name, x, y)
+    for class_index in (n_classes, n_classes + 2):
+        with pytest.raises(ValueError, match="out of range"):
+            TreeExplainer(model=model, index="SV", max_order=1, class_index=class_index)
+    with pytest.raises(ValueError, match="must be non-negative"):
+        TreeExplainer(model=model, index="SV", max_order=1, class_index=-1)
+
+
+def test_lightgbm_multiclass_default_class_index_is_class_one():
+    """Test that class_index=None explains class 1 of a multiclass LightGBM model.
+
+    The LightGBM parser kept the trees of all classes for an unspecified class, so the
+    explanation summed the raw margins of every class.
+    """
+    lightgbm = pytest.importorskip("lightgbm")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=3, random_state=0
+    )
+    model = lightgbm.LGBMClassifier(n_estimators=3, verbose=-1).fit(x, y)
+    explanation = TreeExplainer(model=model, index="SV", max_order=1).explain(x[0])
+    total = explanation.baseline_value + explanation.get_n_order_values(1).sum()
+    assert total == pytest.approx(model.predict(x[:1], raw_score=True)[0, 1], abs=1e-6)
+
+
+@pytest.mark.parametrize("n_classes", [2, 3])
+@pytest.mark.parametrize("name", [n for n in _CLASSIFIERS if n != "catboost"])
+def test_woodelf_matches_shapiq_for_every_class_index(name, n_classes):
+    """Test that the Woodelf backend explains the same class as the shapiq backend.
+
+    Woodelf selects the class while loading the original model, independently of the shapiq
+    converters (and ignores class_index for single-output boosters), so every valid
+    class_index, including the default None, must agree between both backends.
+    """
+    pytest.importorskip("woodelf")
+    from sklearn.datasets import make_classification
+
+    x, y = make_classification(
+        n_samples=200, n_features=5, n_informative=3, n_classes=n_classes, random_state=0
+    )
+    model = _fit_classifier(name, x, y)
+    for class_index in (None, *range(n_classes)):
+        for mode in ("pathdependent", "interventional"):
+            reference = x[:50] if mode == "interventional" else None
+            values = {
+                backend: TreeExplainer(
+                    model=model,
+                    index="SV",
+                    max_order=1,
+                    class_index=class_index,
+                    mode=mode,
+                    reference_dataset=reference,
+                    backend=backend,
+                )
+                .explain(x[0])
+                .get_n_order_values(1)
+                for backend in ("shapiq", "woodelf")
+            }
+            np.testing.assert_allclose(
+                values["woodelf"],
+                values["shapiq"],
+                atol=1e-6,
+                err_msg=f"class_index={class_index}, mode={mode}",
+            )

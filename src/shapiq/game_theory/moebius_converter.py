@@ -11,7 +11,7 @@ from scipy.special import binom
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV"]
+ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV", "BII"]
 
 
 class MoebiusConverter:
@@ -110,7 +110,7 @@ class MoebiusConverter:
             case "SV":
                 return self._moebius_to_base_interaction(index="SV", order=1)
             case "BV":
-                return self._fii_routine(index="FBII", order=1)
+                return self._moebius_to_base_interaction(index="BV", order=1)
             case "k-SII":
                 return self._moebius_to_k_sii(order=order)
             case "STII":
@@ -121,6 +121,8 @@ class MoebiusConverter:
                 return self._fii_routine(index="FBII", order=order)
             case "FSII":
                 return self._fii_routine(index="FSII", order=order)
+            case "BII":
+                return self._moebius_to_base_interaction(index="BII", order=order)
             case _:
                 msg = (
                     f"Invalid index. Index `{index}` is not supported. "
@@ -129,7 +131,7 @@ class MoebiusConverter:
                 raise ValueError(msg)
 
     def _moebius_to_base_interaction(
-        self, index: Literal["SII", "SV"], order: int
+        self, index: Literal["SII", "SV", "BII", "BV"], order: int
     ) -> InteractionValues:
         """Computes a base interaction index, e.g. SII or BII.
 
@@ -144,6 +146,8 @@ class MoebiusConverter:
         index_to_change_back = index
         if index == "SV":
             index = "SII"
+        if index == "BV":
+            index = "BII"
         base_interaction_dict = {}
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
@@ -375,7 +379,7 @@ def _get_moebius_distribution_weight(
     moebius_size: int,
     interaction_size: int,
     order: int,
-    index: Literal["SII", "STII", "FSII", "FBII"],
+    index: Literal["SII", "STII", "FSII", "FBII", "BII"],
 ) -> float:
     """Return the distribution weights for the Möbius coefficients onto the lower-order interaction indices.
 
@@ -400,6 +404,8 @@ def _get_moebius_distribution_weight(
         return _fsii_distribution_weight(moebius_size, interaction_size, order)
     if index == "FBII":
         return _fbii_distribution_weight(moebius_size, interaction_size, order)
+    if index == "BII":
+        return _bii_distribution_weight(moebius_size, interaction_size, order)
     msg = f"Index {index} not supported."
     raise ValueError(msg)
 
@@ -418,6 +424,11 @@ def _stii_distribution_weight(moebius_size: int, interaction_size: int, order: i
     if interaction_size == order:
         return 1 / binom(moebius_size, moebius_size - interaction_size)
     return 0
+
+
+def _bii_distribution_weight(moebius_size: int, interaction_size: int, _: int) -> float:
+    """Return the distribution weight for BII: ``(1/2) ** (|T| - |S|)`` for ``S ⊆ T``."""
+    return (1 / 2) ** (moebius_size - interaction_size)
 
 
 def _fsii_distribution_weight(moebius_size: int, interaction_size: int, order: int) -> float:

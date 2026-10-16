@@ -100,8 +100,6 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
 # contains all approximators that can be used for STII
 STII_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSTII,
-    KernelSHAPIQ,
-    InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
     SPEX,
@@ -111,8 +109,6 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
 # contains all approximators that can be used for FSII
 FSII_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionFSII,
-    KernelSHAPIQ,
-    InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
     SPEX,

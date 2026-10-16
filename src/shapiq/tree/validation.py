@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 from .base import TreeModel
@@ -25,6 +26,14 @@ SUPPORTED_MODELS = {
     "sklearn.ensemble._forest.ExtraTreesRegressor",
     "sklearn.ensemble.IsolationForest",
     "sklearn.ensemble._iforest.IsolationForest",
+    "sklearn.ensemble.GradientBoostingClassifier",
+    "sklearn.ensemble._gb.GradientBoostingClassifier",
+    "sklearn.ensemble.GradientBoostingRegressor",
+    "sklearn.ensemble._gb.GradientBoostingRegressor",
+    "sklearn.ensemble.HistGradientBoostingClassifier",
+    "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingClassifier",
+    "sklearn.ensemble.HistGradientBoostingRegressor",
+    "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingRegressor",
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster",
@@ -52,22 +61,27 @@ def validate_tree_model(
 
     Returns:
         The validated trees as a list of :class:`~shapiq.tree.base.TreeModel` instances. Single-tree
-        inputs are normalized to a one-item list.
+        inputs are normalized to a one-item list. The returned trees are owned by the caller:
+        ``TreeModel`` inputs are deep-copied, so explainers may mutate them (e.g. via
+        :meth:`~shapiq.tree.base.TreeModel.reduce_feature_complexity`) without affecting the
+        original model.
 
     Raises:
         TypeError: If the model type is not supported (raised from the underlying
-            ``NotImplementedError`` of :func:`~shapiq.tree.conversion.convert_tree_model`).
+            ``NotImplementedError`` of :func:`~shapiq.tree.conversion.convert_tree_model`), or if
+            a list input contains elements that are not ``TreeModel`` instances.
     """
     tree_model = []
     # direct returns for base tree models and dict as model
-    # tree model (is already in the correct format)
+    # tree model (is already in the correct format); copied so the caller's object stays untouched
     if type(model).__name__ == "TreeModel":
-        tree_model = [model]
-    # direct return if list of tree models
+        tree_model = [copy.deepcopy(model)]
+    # list of tree models is copied element-wise for the same reason
     elif type(model).__name__ == "list":
-        # check if all elements are TreeModel
-        if all(type(tree).__name__ == "TreeModel" for tree in model):
-            tree_model = model
+        if not all(type(tree).__name__ == "TreeModel" for tree in model):
+            msg = "All elements of a list model input must be TreeModel instances."
+            raise TypeError(msg)
+        tree_model = [copy.deepcopy(tree) for tree in model]
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":
         tree_model = [TreeModel(**model)]

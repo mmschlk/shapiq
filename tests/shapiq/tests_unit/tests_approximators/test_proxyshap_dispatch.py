@@ -185,9 +185,7 @@ def test_bare_sklearn_gridsearch_matches_hpo_protocol_structurally_after_fit():
 
 def test_unsupported_proxy_raises_in_approximate():
     """A proxy with no registered route raises a clear ``NotImplementedError`` when used."""
-    approximator = ProxySHAP(
-        n=4, max_order=2, proxy_model=KNeighborsRegressor(), adjustment="none", random_state=0
-    )
+    approximator = ProxySHAP(n=4, max_order=2, proxy_model=KNeighborsRegressor(), random_state=0)
     with pytest.raises(NotImplementedError, match="No proxy approximation route registered"):
         approximator.approximate(16, _game)
 
@@ -211,8 +209,8 @@ def test_hpo_wrapper_matches_equivalent_raw_proxy(raw_model, wrapped_model):
     than silently fitting/reading the unfitted base), for both the linear and the tree route.
     """
     budget = 16  # full coalition budget for n=4 -> deterministic given the shared random_state
-    raw = ProxySHAP(n=4, max_order=2, proxy_model=raw_model, adjustment="none", random_state=0)
-    hpo = ProxySHAP(n=4, max_order=2, proxy_model=wrapped_model, adjustment="none", random_state=0)
+    raw = ProxySHAP(n=4, max_order=2, proxy_model=raw_model, random_state=0)
+    hpo = ProxySHAP(n=4, max_order=2, proxy_model=wrapped_model, random_state=0)
 
     iv_raw = raw.approximate(budget, _game)
     iv_hpo = hpo.approximate(budget, _game)

@@ -174,7 +174,7 @@ class ProxyModelWithHPO(ProxyModel, Protocol):
     The wrapper exposes two estimators with distinct roles:
 
     * ``estimator`` -- the *unfitted* base model. Its type selects the proxy route (linear vs.
-      tree, see :func:`shapiq.approximator.proxy.proxyshap._extract_proxy_interactions`) and is
+      tree, see :func:`shapiq.approximator.proxy._routes._extract_proxy_interactions`) and is
       available before fitting.
     * ``best_estimator_`` -- the *fitted* model chosen by the search, used for interaction
       extraction and residual adjustment. Only available after :meth:`fit`.

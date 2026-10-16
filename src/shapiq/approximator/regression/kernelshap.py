@@ -17,9 +17,9 @@ ValidRegressionKernelSHAIndices = Literal["SV"]
 class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
     """The KernelSHAP regression approximator for estimating the Shapley values.
 
-    The KernelSHAP approximator is described in Lundberg and Lee (2017)
-    :cite:t:`Lundberg.2017`. The method estimates the Shapley values by solving a weighted
-    regression problem, where the Shapley values are the coefficients of the regression problem.
+    The KernelSHAP approximator is described in :cite:t:`Lundberg.2017`. The method estimates the
+    Shapley values by solving a weighted regression problem, where the Shapley values are the
+    coefficients of the regression problem.
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame

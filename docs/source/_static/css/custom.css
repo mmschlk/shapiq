@@ -1,10 +1,402 @@
-p {
-    text-align: justify;
+/* The look of the shapiq documentation on top of furo. Colors, radii, shadows and motion come
+   from tokens.css; furo's --color-* variables follow the theme (light, dark, or the system's). */
+
+/* -- Typography --------------------------------------------------------------------------------- */
+
+article h1,
+article h2,
+article h3 {
+  letter-spacing: -0.015em;
 }
-img {
+
+article h2 {
+  margin-top: 2.25rem;
+}
+
+/* code in a title, e.g. "Why Use shapiq?": the monospace font is enough */
+article :is(h1, h2, h3, h4) code.literal {
+  font-size: 0.9em;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+article p,
+article li {
+  line-height: 1.6;
+}
+
+/* -- Images ------------------------------------------------------------------------------------- */
+
+article img:not(.shapiq-hero-logo) {
   display: block;
   max-width: 100%;
   height: auto;
   margin: auto;
-  float: none!important;
+  float: none !important;
+}
+
+/* -- Code -------------------------------------------------------------------------------------- */
+
+.highlight {
+  /* furo's --color-code-background (set in conf.py), not the background of the pygments style */
+  background: var(--color-code-background) !important;
+  border-radius: var(--shapiq-radius-small);
+}
+
+/* github-light's comment gray is too faint on the code background: a darker gray in light mode */
+body[data-theme="light"] .highlight :is(.c, .ch, .cm, .cp, .cpf, .c1, .cs) {
+  color: #57606a;
+}
+
+@media (prefers-color-scheme: light) {
+  body:not([data-theme="dark"]) .highlight :is(.c, .ch, .cm, .cp, .cpf, .c1, .cs) {
+    color: #57606a;
+  }
+}
+
+div[class*="highlight-"] {
+  border: 1px solid var(--color-background-border);
+  border-radius: var(--shapiq-radius-small);
+}
+
+div[class*="highlight-"] > .highlight > pre {
+  padding: 0.85rem 1rem;
+}
+
+p code.literal,
+li code.literal,
+td code.literal {
+  border-radius: 0.3em;
+}
+
+/* -- Admonitions, tables, and the sidebar ------------------------------------------------------- */
+
+.admonition {
+  border-radius: var(--shapiq-radius-small);
+  overflow: hidden;
+}
+
+table.docutils {
+  border-radius: var(--shapiq-radius-small);
+}
+
+.sidebar-logo {
+  max-width: 8.5rem;
+}
+
+/* the inline logo (see _static/js/logo.js): on the landing page, its players can be pulled, also
+   past its edge */
+svg.sidebar-logo {
+  width: 8.5rem;
+  height: auto;
+}
+
+svg.shapiq-logo {
+  overflow: visible;
+}
+
+.shapiq-logo-player {
+  cursor: grab;
+  touch-action: none;
+}
+
+/* while a player is pulled, the whole page shows the closed hand and no text gets selected */
+html.shapiq-logo-pulling,
+html.shapiq-logo-pulling * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.sidebar-tree .current-page > .reference {
+  color: var(--color-brand-primary);
+}
+
+/* -- sphinx-design ------------------------------------------------------------------------------ */
+
+.sd-card {
+  border-radius: var(--shapiq-radius);
+}
+
+.sd-btn {
+  border-radius: 999px;
+}
+
+.sd-tab-set > label {
+  font-weight: 600;
+}
+
+details.sd-dropdown {
+  border-radius: var(--shapiq-radius-small);
+}
+
+/* Cards of the custom pages (landing page, API reference): a surface that lifts on hover */
+.shapiq-cards.sd-container-fluid {
+  /* align the grid with the text: no padding of its own */
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.shapiq-card.sd-card {
+  border: 1px solid var(--shapiq-border);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  transition:
+    transform var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease),
+    border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-card.sd-card:hover,
+.shapiq-card.sd-card:focus-within {
+  transform: translateY(-2px);
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shapiq-shadow-hover);
+}
+
+.shapiq-card .sd-card-body {
+  padding: 1.1rem 1.2rem;
+}
+
+.shapiq-card .sd-card-title {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin-bottom: 0.4rem;
+}
+
+.shapiq-card .sd-card-title .sd-octicon {
+  color: var(--color-brand-primary);
+  margin-right: 0.35rem;
+  vertical-align: -0.1em;
+}
+
+.shapiq-card .sd-card-text {
+  color: var(--shapiq-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* compact cards: the overviews at the top of the API reference pages */
+.shapiq-cards-compact .shapiq-card .sd-card-body {
+  padding: 0.7rem 0.9rem;
+}
+
+.shapiq-cards-compact .shapiq-card .sd-card-title {
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+
+.shapiq-cards-compact .shapiq-card .sd-card-text {
+  font-size: 0.82rem;
+}
+
+/* the module of an API reference card */
+.shapiq-card .sd-card-footer {
+  padding: 0 1.2rem 1rem;
+  border-top: none;
+  background: transparent;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.78rem;
+  color: var(--shapiq-text-muted);
+}
+
+.shapiq-card .sd-card-footer p {
+  margin: 0;
+  font-size: inherit;
+}
+
+/* full-width tables of the custom pages */
+table.shapiq-table {
+  width: 100%;
+}
+
+table.shapiq-table th {
+  text-align: left;
+}
+
+table.shapiq-table td {
+  vertical-align: top;
+}
+
+@media (min-width: 46em) {
+  table.shapiq-software td:last-child {
+    white-space: nowrap;
+  }
+}
+
+/* -- Landing page ------------------------------------------------------------------------------- */
+
+/* the landing page has no table of contents: give its content that space */
+@media (min-width: 82em) {
+  .content:has(.shapiq-hero) {
+    width: 61em;
+  }
+}
+
+.shapiq-hero-logo {
+  float: right;
+  clear: right;
+  width: 12.5rem;
+  height: auto;
+  margin: 1.5rem 0 1rem 2.5rem;
+}
+
+section:has(> .shapiq-hero) > h1 {
+  font-size: clamp(2.1rem, 1.4rem + 2.6vw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* the gradient of the logo under the title */
+section:has(> .shapiq-hero) > h1::after {
+  content: "";
+  display: block;
+  width: 4.5rem;
+  height: 0.3rem;
+  margin-top: 1.1rem;
+  border-radius: 999px;
+  background: var(--shapiq-gradient);
+}
+
+.shapiq-hero {
+  color: var(--color-foreground-secondary);
+}
+
+.shapiq-hero-lead p {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-hero-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.75rem 0 1rem;
+}
+
+.shapiq-hero-buttons > p {
+  margin: 0;
+}
+
+.shapiq-button.sd-btn {
+  padding: 0.5rem 1.15rem;
+  font-weight: 600;
+  transition:
+    transform var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease),
+    background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-button.sd-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shapiq-shadow);
+}
+
+/* sphinx-design colors its outline buttons with !important: override it for the hero's buttons */
+.shapiq-button.sd-btn-outline-secondary {
+  color: var(--color-foreground-primary) !important;
+  border-color: var(--shapiq-border) !important;
+  background: var(--shapiq-surface);
+}
+
+.shapiq-button.sd-btn-outline-secondary:hover,
+.shapiq-button.sd-btn-outline-secondary:focus {
+  color: var(--color-foreground-primary) !important;
+  border-color: var(--color-brand-primary) !important;
+  background-color: var(--shapiq-surface-raised) !important;
+}
+
+.shapiq-button .sd-octicon {
+  margin-right: 0.3rem;
+}
+
+.shapiq-hero-meta p {
+  font-size: 0.85rem;
+  color: var(--shapiq-text-muted);
+}
+
+/* the text after the hero clears the logo */
+section:has(> .shapiq-hero) > section {
+  clear: both;
+}
+
+/* the printed output of the landing page's example */
+div.shapiq-output {
+  flex-direction: column;
+  margin-top: -0.4rem;
+}
+
+div.shapiq-output::before {
+  content: "Output";
+  padding: 0.45rem 1rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--shapiq-text-muted);
+  background: var(--color-code-background);
+  border-radius: var(--shapiq-radius-small) var(--shapiq-radius-small) 0 0;
+}
+
+div.shapiq-output pre {
+  font-size: 0.8em !important;
+}
+
+/* figures with a white background stay white, framed, in the dark theme too */
+figure.shapiq-figure img,
+img.shapiq-framed {
+  padding: 0.75rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: #ffffff;
+}
+
+figure.shapiq-figure figcaption {
+  color: var(--shapiq-text-muted);
+  font-size: 0.9rem;
+}
+
+.shapiq-cite .sd-card-body .highlight pre {
+  white-space: pre-wrap;
+}
+
+/* -- Small screens ------------------------------------------------------------------------------ */
+
+@media (max-width: 46em) {
+  .shapiq-hero-logo {
+    float: none;
+    width: 6rem;
+    margin: 1.5rem 0 0;
+  }
+
+  section:has(> .shapiq-hero) > h1 {
+    margin-top: 1rem;
+    font-size: 2rem;
+  }
+
+  .shapiq-hero-lead p {
+    font-size: 1.08rem;
+  }
+
+  .shapiq-hero-buttons {
+    gap: 0.5rem;
+  }
+}
+
+/* -- Motion ------------------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .shapiq-card.sd-card:hover,
+  .shapiq-card.sd-card:focus-within,
+  .shapiq-button.sd-btn:hover {
+    transform: none;
+  }
 }
