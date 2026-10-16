@@ -19,13 +19,8 @@ build:
     create_environment:
       - uv venv
     install:
-      # The examples run on the CPU: the locked packages without the CUDA libraries of torch
-      # (nvidia-*, triton; about 4 GB, most of the install time), and torch from its CPU index.
-      # --no-deps installs exactly that list (XGBoost would pull in NCCL, a GPU library, again).
-      - uv export --frozen --no-dev --all-extras --group docs --no-emit-project --no-hashes --no-annotate --no-header --output-file requirements-docs.txt
-      - sed -i -E '/^(nvidia-|triton==)/d' requirements-docs.txt
-      - uv pip install --torch-backend cpu --no-deps -r requirements-docs.txt
-      - uv pip install --no-deps -e .
+      # the same install as the docs workflow of CI (CPU-only torch, see the script)
+      - bash docs/install_dependencies.sh
     build:
       html:
       # Stop 20 s before Read the Docs ends the build (900 s): a build that stops by itself saves

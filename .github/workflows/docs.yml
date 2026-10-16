@@ -40,8 +40,11 @@ jobs:
                         ~/scikit_learn_data
                     key: docs-data-${{ runner.os }}-${{ hashFiles('examples/**/*.py') }}
                     restore-keys: docs-data-${{ runner.os }}-
+            # the same install as Read the Docs (CPU-only torch, see the script)
             -   name: Install dependencies
-                run: uv sync --no-dev --all-extras --group docs
+                run: |
+                    uv venv
+                    bash docs/install_dependencies.sh
             -   name: Build documentation
                 run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
             -   name: Upload the built documentation
