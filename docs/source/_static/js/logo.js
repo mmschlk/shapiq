@@ -1,14 +1,18 @@
 // The players of the landing page's logo are springs: hovering the logo makes them wiggle, and a
 // player can be pulled and let go. Each player is held in place by a spring, the lines between
-// players are springs too, and the lines and their caps follow the players they end at. The
-// landing page shows the logo as an image; it is replaced by a copy of the sidebar's inline logo
+// players are springs too, as stiff as the line is thick (a thicker line is a stronger
+// interaction), and the lines and their caps follow the players they end at. The landing page
+// shows the logo as an image; it is replaced by a copy of the sidebar's inline logo
 // (_templates/sidebar/brand.html). The sidebar's logo itself stays still: it is on every page and
 // a link home, where a wiggle on every pass of the mouse would distract.
+//
+// With reduced motion (macOS "Reduce motion", Windows with "Animation effects" off), the logo
+// does not wiggle on hover, and a pulled player glides back without swinging.
 (() => {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const ANCHOR = 140; // stiffness of the spring that holds a player in place (1/s²)
-  const LINK = 45; // stiffness of the lines between players (1/s²)
+  const LINK = 5; // stiffness of a line per logo unit of its width (1/s²): 20 to 110
   const DAMPING = 6; // a few visible swings, at rest after about a second (1/s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
   const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
@@ -58,16 +62,23 @@
       });
     const lines = [...group.querySelectorAll(":scope > path")]
       .filter((path) => path.getAttribute("fill") === "none")
-      .map((path) => ({ el: path, ends: ends(path) }))
+      .map((path) => ({ el: path, ends: ends(path), width: parseFloat(getComputedStyle(path).strokeWidth) || 1 }))
       .filter((line) => line.ends)
       .map((line) => ({ ...line, players: line.ends.map(nearest) }));
     const links = [];
-    for (const { players: [a, b] } of lines) {
-      if (a !== b && !links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) {
-        links.push({ a, b, length: distance(a.rest, b.rest) });
-      }
+    for (const { players: [a, b], width } of lines) {
+      if (a === b) continue;
+      const link = links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
+      if (link) link.stiffness += LINK * width;
+      else links.push({ a, b, length: distance(a.rest, b.rest), stiffness: LINK * width });
     }
-    return { svg, group, players, caps, lines, links, held: null, running: false };
+    // damping that lets no player swing (with reduced motion): twice the square root of the
+    // stiffest player's springs, a bound on the stiffness of the fastest swing (Gershgorin)
+    const stiffest = Math.max(
+      ...players.map((p) => ANCHOR + 2 * links.reduce((sum, l) => sum + (l.a === p || l.b === p ? l.stiffness : 0), 0)),
+    );
+    const calmDamping = 2 * Math.sqrt(stiffest);
+    return { svg, group, players, caps, lines, links, calmDamping, held: null, running: false };
   }
 
   function render(m) {
@@ -81,15 +92,16 @@
   }
 
   function step(m, dt) {
+    const damping = reducedMotion.matches ? m.calmDamping : DAMPING;
     for (const p of m.players) {
-      p.ax = -ANCHOR * p.x - DAMPING * p.vx;
-      p.ay = -ANCHOR * p.y - DAMPING * p.vy;
+      p.ax = -ANCHOR * p.x - damping * p.vx;
+      p.ay = -ANCHOR * p.y - damping * p.vy;
     }
-    for (const { a, b, length } of m.links) {
+    for (const { a, b, length, stiffness } of m.links) {
       const dx = b.rest.x + b.x - (a.rest.x + a.x);
       const dy = b.rest.y + b.y - (a.rest.y + a.y);
       const now = Math.hypot(dx, dy) || 1;
-      const force = (LINK * (now - length)) / now;
+      const force = (stiffness * (now - length)) / now;
       a.ax += force * dx;
       a.ay += force * dy;
       b.ax -= force * dx;
@@ -136,7 +148,7 @@
     const ready = () => (m ??= model(svg));
     let lastKick = 0;
     svg.addEventListener("pointerenter", () => {
-      if (!ready() || m.held || performance.now() - lastKick < 400) return;
+      if (reducedMotion.matches || !ready() || m.held || performance.now() - lastKick < 400) return;
       lastKick = performance.now();
       for (const p of m.players) {
         const angle = Math.random() * 2 * Math.PI;

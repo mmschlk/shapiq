@@ -315,7 +315,11 @@ Docs layout (observed 2026-10-12):
   `_static/js/logo.js` can swap the landing page's `<img>` for a copy and move its players (only
   there: the sidebar's logo is a link home on every page and stays still).
   Edit `_static/logo/logo_shapiq_{light,dark}.svg` only: the script finds the players as circles
-  with `r > 15`, the caps as smaller circles and the lines as two-point paths with `fill="none"`.
+  with `r > 15`, the caps as smaller circles and the lines as two-point paths with `fill="none"`;
+  a line's stroke width sets the stiffness of its spring (a thicker line, a stronger interaction).
+  Do not switch the script off for `prefers-reduced-motion` (observed 2026-10-16): Windows reports
+  it whenever "Animation effects" is off, and the landing page then kept a plain image. With
+  reduced motion the logo only skips the hover wiggle and returns a pulled player without swinging.
 - Moved pages keep their old addresses: `_REDIRECTS` in `conf.py` writes a redirect page for each
   after the build. Add an entry when a page (e.g. a gallery example) moves.
 - In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
