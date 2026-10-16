@@ -134,7 +134,7 @@ All examples by topic
       :link-type: doc
       :class-card: shapiq-group-card
 
-      Vision transformers, language models, TabPFN, and confounding in causal effects.
+      TabPFN, language models, and confounding in causal effects.
 
    .. grid-item-card:: Games and Benchmarks
       :img-top: /_static/gallery/benchmarking.svg
