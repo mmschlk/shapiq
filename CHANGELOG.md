@@ -2,6 +2,13 @@
 
 ## Development
 
+### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)
+
+Adds the `PolySHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via interaction-informed polynomial regression (Fumagalli et al., 2026).
+`PolySHAP` generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values.
+The interaction frontier can be the full *k*-additive frontier up to `max_order` (with `max_order=1` recovering `KernelSHAP`), a budget-controlled partial frontier (`max_terms`), or a user-supplied set of interaction terms (`prior_frontier`).
+It is registered as a Shapley value (`SV`) approximator.
+
 ### Harmonized `shapiq_games` and `shapiq_benchmark` [#616](https://github.com/mmschlk/shapiq/pull/616)
 
 - `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`.
