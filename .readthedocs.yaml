@@ -17,7 +17,12 @@ build:
     create_environment:
       - uv venv
     install:
-      - uv sync --no-dev --all-extras --group docs
+      # The examples run on the CPU: the locked packages without the CUDA libraries of torch
+      # (nvidia-*, triton; about 4 GB, most of the install time), and torch from its CPU index.
+      - uv export --frozen --no-dev --all-extras --group docs --no-emit-project --no-hashes --no-annotate --no-header --output-file requirements-docs.txt
+      - sed -i -E '/^(nvidia-|triton==)/d' requirements-docs.txt
+      - uv pip install --torch-backend cpu -r requirements-docs.txt
+      - uv pip install --no-deps -e .
     build:
       html:
       - uv run --no-sync sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
