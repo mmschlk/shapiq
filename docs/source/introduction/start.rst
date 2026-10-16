@@ -246,7 +246,7 @@ Next Steps
       :link-type: doc
       :class-card: shapiq-card
 
-      Tutorials for every part of ``shapiq``, from trees to vision transformers.
+      Tutorials for every part of ``shapiq``, from trees to language models.
 
    .. grid-item-card:: :octicon:`code` API Reference
       :link: /api_reference

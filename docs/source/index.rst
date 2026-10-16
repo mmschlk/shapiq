@@ -251,7 +251,7 @@ Explore the Examples
       :link-type: doc
       :class-card: shapiq-card
 
-      TabPFN, vision transformers, language models, and causal effects.
+      TabPFN, language models, and causal effects.
 
    .. grid-item-card:: :octicon:`trophy` Games and Benchmarks
       :link: auto_examples/benchmarking/index
