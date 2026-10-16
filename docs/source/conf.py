@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeAliasType, override
 
 from docutils import nodes
+from pybtex.backends.plaintext import Backend as PlainTextBackend
 from pybtex.database import Person, parse_file
 from pybtex.plugin import register_plugin
 from pybtex.richtext import Text
@@ -245,6 +246,17 @@ def _unescape_latex(text: str) -> str:
 
 
 _GENERATIONS = {"Jr", "Jr.", "Sr", "Sr.", "II", "III", "IV"}
+# rendering by the backend's name (render_as("text")) looks it up in the entry points of every
+# installed package, about 0.1 s per name part: it took over a minute of every docs build
+_PLAIN_TEXT = PlainTextBackend()
+
+
+@functools.cache
+def _plain_words(part: str) -> tuple[str, ...]:
+    """Return the words of a LaTeX name part as plain text without accents and generations."""
+    text = unicodedata.normalize("NFD", Text.from_latex(part).render(_PLAIN_TEXT))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return tuple(word for word in text.split() if word not in _GENERATIONS)
 
 
 def _plain_person(person: Person) -> Person:
@@ -256,12 +268,7 @@ def _plain_person(person: Person) -> Person:
     """
 
     def plain(parts: list[str]) -> list[str]:
-        words_ = []
-        for part in parts:
-            text = unicodedata.normalize("NFD", Text.from_latex(part).render_as("text"))
-            text = "".join(char for char in text if not unicodedata.combining(char))
-            words_ += [word for word in text.split() if word not in _GENERATIONS]
-        return words_
+        return [word for part in parts for word in _plain_words(part)]
 
     result = Person()
     result.first_names = plain(person.first_names)
