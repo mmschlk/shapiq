@@ -328,6 +328,17 @@ Docs layout (observed 2026-10-12):
 uv run pre-commit run --all-files
 ```
 
+## Approximator gotchas (observed 2026-10-16)
+
+- `binom(n, n/2)` overflows float64 from about `n = 1030` on. A regression weight is a kernel
+  weight (`~1/binom`, underflows to `0`) times the sampler's adjustment weight (`~binom`,
+  overflows to `inf`), and the direct product is `nan` (issue #621: OddSHAP failed with
+  `SVD did not converge` at 2,136 features). Add the two in log-space and exponentiate once
+  (`log_binom`, `CoalitionSampler.log_sampling_adjustment_weights`, as in
+  `regression/base.py`); a log-space kernel weight alone does not help, since it still
+  underflows when exponentiated. An approximator that does not derive from `Regression` or
+  `MonteCarlo` (OddSHAP did not) has to do this itself.
+
 ## Test suite gotchas
 
 - Do not run `tests/shapiq` with `pytest -n` (or next to another test run) on a small machine:
