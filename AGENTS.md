@@ -321,6 +321,10 @@ Docs layout (observed 2026-10-12):
   Do not switch the script off for `prefers-reduced-motion` (observed 2026-10-16): Windows reports
   it whenever "Animation effects" is off, and the landing page then kept a plain image. With
   reduced motion the logo only skips the hover wiggle and lets a pulled player glide back.
+  The ripple on first sight and the bump on a fast scroll into view come from an
+  `IntersectionObserver`. The theme sets `scroll-behavior: smooth`, so a test that scrolls by
+  script must pass `behavior: "instant"`, or each `scrollBy` restarts a smooth scroll and the
+  page barely moves.
 - Moved pages keep their old addresses: `_REDIRECTS` in `conf.py` writes a redirect page for each
   after the build. Add an entry when a page (e.g. a gallery example) moves.
 - In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
