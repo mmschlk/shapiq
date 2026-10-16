@@ -2,9 +2,9 @@
 // player can be pulled and let go. Each player is held in place by a spring, the lines between
 // players are springs too, the stiffer the thicker the line (a stronger interaction): the
 // thickest line holds its two players together almost like a rod, the thinnest barely pulls. The
-// lines and their caps follow the players they end at. A faint ripple runs through the logo when
-// it is first seen, and it gives a little bump in the direction of travel when it is scrolled
-// into view quickly. The landing page shows the logo as an image; it is replaced by a copy of the
+// lines and their caps follow the players they end at. When the logo is first seen, a random
+// player wiggles and the wiggle runs through the logo along the lines; when it is scrolled into
+// view quickly, it gives a little bump in the direction of travel. The landing page shows the logo as an image; it is replaced by a copy of the
 // sidebar's inline logo (_templates/sidebar/brand.html). The sidebar's logo itself stays still:
 // it is on every page and a link home, where a wiggle on every pass of the mouse would distract.
 //
@@ -20,11 +20,11 @@
   const DAMPING = 6; // a few visible swings, at rest after about a second (1/s)
   const GLIDE = 0.25; // time constant of the return to rest with reduced motion (s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
-  const RIPPLE = 60; // speed of the ripple when the logo is first seen (logo units/s)
-  const RIPPLE_SPEED = 600; // how fast the ripple crosses the logo (logo units/s)
+  const RIPPLE = 220; // speed of the wiggle that starts the ripple (logo units/s), halved per hop
+  const RIPPLE_HOP = 110; // time the ripple takes along a line (ms)
   const RIPPLE_DELAY = 400; // from the logo coming into view to the ripple (ms)
-  const BUMP = 35; // largest speed of the bump when the logo is scrolled into view (logo units/s)
-  const FAST_SCROLL = 1500; // scrolling faster than this bumps the logo (px/s)
+  const BUMP = 100; // speed of the bump when the logo is scrolled into view (logo units/s)
+  const FAST_SCROLL = 1000; // scrolling faster than this bumps the logo (px/s)
   const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
   const PLAYER_RADIUS = 15; // larger circles are players, smaller ones are the caps of lines
 
@@ -159,23 +159,36 @@
     requestAnimationFrame(frame);
   }
 
-  // a ripple from a random side: each player is pushed away from where it starts as it passes
+  // a ripple from a random player: it wiggles, then the players a line away from it are pushed
+  // away from it, then the ones two lines away, each half as hard as the one before
   function ripple(m) {
-    const xs = m.players.map((p) => p.rest.x);
-    const ys = m.players.map((p) => p.rest.y);
-    const middle = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    const start = m.players[Math.floor(Math.random() * m.players.length)];
+    const hops = new Map([[start, 0]]);
+    for (const queue = [start]; queue.length; ) {
+      const p = queue.shift();
+      for (const { a, b } of m.links) {
+        const next = a === p ? b : b === p ? a : null;
+        if (next && !hops.has(next)) {
+          hops.set(next, hops.get(p) + 1);
+          queue.push(next);
+        }
+      }
+    }
+    const push = (p, speed, angle) => {
+      if (m.held) return;
+      p.vx += speed * Math.cos(angle);
+      p.vy += speed * Math.sin(angle);
+      animate(m);
+    };
     const angle = Math.random() * 2 * Math.PI;
-    const reach = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2;
-    const source = { x: middle.x + reach * Math.cos(angle), y: middle.y + reach * Math.sin(angle) };
+    push(start, RIPPLE, angle);
+    setTimeout(() => push(start, 0.8 * RIPPLE, angle + Math.PI), 90); // and back: a wiggle
     for (const p of m.players) {
-      const away = distance(p.rest, source) || 1;
-      setTimeout(() => {
-        if (m.held) return;
-        const speed = RIPPLE * (0.8 + 0.4 * Math.random());
-        p.vx += (speed * (p.rest.x - source.x)) / away;
-        p.vy += (speed * (p.rest.y - source.y)) / away;
-        animate(m);
-      }, (1000 * away) / RIPPLE_SPEED);
+      const hop = hops.get(p);
+      if (!hop) continue; // the start, or a player no line reaches
+      const away = Math.atan2(p.rest.y - start.rest.y, p.rest.x - start.rest.x);
+      const speed = RIPPLE * 0.5 ** hop * (0.85 + 0.3 * Math.random());
+      setTimeout(() => push(p, speed, away), hop * RIPPLE_HOP);
     }
   }
 
@@ -194,11 +207,11 @@
   );
   const scrollSpeed = () => (performance.now() - scrolling.time < 150 ? scrolling.speed : 0);
 
-  // a bump in the direction the logo travels on the screen, as if it had been carried there
+  // a bump in the direction the logo travels on the screen, as if it had been carried there; a
+  // clear one or none, as a faint twitch looks like a glitch
   function bump(m, speed) {
     const along = -Math.sign(speed); // scrolling up carries the logo down
-    const size = BUMP * Math.min(1, Math.abs(speed) / (3 * FAST_SCROLL));
-    for (const p of m.players) p.vy += along * size * (0.8 + 0.4 * Math.random());
+    for (const p of m.players) p.vy += along * BUMP * (0.7 + 0.6 * Math.random());
     animate(m);
   }
 
