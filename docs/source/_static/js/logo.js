@@ -1,17 +1,30 @@
 // The players of the landing page's logo are springs: hovering the logo makes them wiggle, and a
 // player can be pulled and let go. Each player is held in place by a spring, the lines between
-// players are springs too, and the lines and their caps follow the players they end at. The
-// landing page shows the logo as an image; it is replaced by a copy of the sidebar's inline logo
-// (_templates/sidebar/brand.html). The sidebar's logo itself stays still: it is on every page and
-// a link home, where a wiggle on every pass of the mouse would distract.
+// players are springs too, the stiffer the thicker the line (a stronger interaction): the
+// thickest line holds its two players together almost like a rod, the thinnest barely pulls. The
+// lines and their caps follow the players they end at. When the logo is first seen, a random
+// player wiggles and the wiggle runs through the logo along the lines; when it is scrolled into
+// view quickly, it gives a little bump in the direction of travel. The landing page shows the logo as an image; it is replaced by a copy of the
+// sidebar's inline logo (_templates/sidebar/brand.html). The sidebar's logo itself stays still:
+// it is on every page and a link home, where a wiggle on every pass of the mouse would distract.
+//
+// With reduced motion (macOS "Reduce motion", Windows with "Animation effects" off), the logo
+// does not move by itself: no wiggle on hover, no ripple, no bump. The players follow a pulled
+// one without swinging, and when it is let go, all of them glide back to their places.
 (() => {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  const ANCHOR = 140; // stiffness of the spring that holds a player in place (1/s²)
-  const LINK = 45; // stiffness of the lines between players (1/s²)
-  const DAMPING = 6; // a few visible swings, at rest after about a second (1/s)
+  const ANCHOR = 200; // stiffness of the spring that holds a player in place (1/s²)
+  const LINK = 2.5; // stiffness of a line per squared logo unit of its width (1/s²): 39 to 1180
+  const LINK_DAMPING = 0.08; // damping of a line per unit of its stiffness (s): no buzz in stiff pairs
+  const DAMPING = 10; // a swing or two, at rest within a second (1/s)
+  const GLIDE = 0.25; // time constant of the return to rest with reduced motion (s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
-  const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
+  const RIPPLE = 250; // speed of the wiggle that starts the ripple (logo units/s), halved per hop
+  const RIPPLE_HOP = 80; // time the ripple takes along a line (ms)
+  const BUMP = 130; // speed of the bump when the logo is scrolled into view (logo units/s)
+  const FAST_SCROLL = 1000; // scrolling faster than this bumps the logo (px/s)
+  const MAX_PULL = 55; // beyond this distance, a pulled player follows the pointer reluctantly
   const PLAYER_RADIUS = 15; // larger circles are players, smaller ones are the caps of lines
 
   const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -58,16 +71,27 @@
       });
     const lines = [...group.querySelectorAll(":scope > path")]
       .filter((path) => path.getAttribute("fill") === "none")
-      .map((path) => ({ el: path, ends: ends(path) }))
+      .map((path) => ({ el: path, ends: ends(path), width: parseFloat(getComputedStyle(path).strokeWidth) || 1 }))
       .filter((line) => line.ends)
       .map((line) => ({ ...line, players: line.ends.map(nearest) }));
     const links = [];
-    for (const { players: [a, b] } of lines) {
-      if (a !== b && !links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) {
-        links.push({ a, b, length: distance(a.rest, b.rest) });
-      }
+    for (const { players: [a, b], width } of lines) {
+      if (a === b) continue;
+      const link = links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
+      if (link) link.stiffness += LINK * width ** 2;
+      else links.push({ a, b, length: distance(a.rest, b.rest), stiffness: LINK * width ** 2 });
     }
-    return { svg, group, players, caps, lines, links, held: null, running: false };
+    // damping that lets no player swing while one is held (with reduced motion): twice the square
+    // root of the stiffest player's springs, a bound on the stiffness of the fastest swing
+    // (Gershgorin)
+    const springs = Math.max(
+      ...players.map((p) => links.reduce((sum, l) => sum + (l.a === p || l.b === p ? l.stiffness : 0), 0)),
+    );
+    const stiffest = ANCHOR + 2 * springs;
+    const calmDamping = 2 * Math.sqrt(stiffest);
+    // a bound on how fast a player responds (1/s): shorter simulation steps than that stay stable
+    const fastest = Math.max(Math.sqrt(stiffest), calmDamping + 2 * LINK_DAMPING * springs);
+    return { svg, group, players, caps, lines, links, calmDamping, fastest, held: null, running: false };
   }
 
   function render(m) {
@@ -81,15 +105,22 @@
   }
 
   function step(m, dt) {
-    for (const p of m.players) {
-      p.ax = -ANCHOR * p.x - DAMPING * p.vx;
-      p.ay = -ANCHOR * p.y - DAMPING * p.vy;
+    if (reducedMotion.matches && !m.held) {
+      const keep = Math.exp(-dt / GLIDE);
+      for (const p of m.players) Object.assign(p, { x: p.x * keep, y: p.y * keep, vx: 0, vy: 0 });
+      return;
     }
-    for (const { a, b, length } of m.links) {
+    const damping = reducedMotion.matches ? m.calmDamping : DAMPING;
+    for (const p of m.players) {
+      p.ax = -ANCHOR * p.x - damping * p.vx;
+      p.ay = -ANCHOR * p.y - damping * p.vy;
+    }
+    for (const { a, b, length, stiffness } of m.links) {
       const dx = b.rest.x + b.x - (a.rest.x + a.x);
       const dy = b.rest.y + b.y - (a.rest.y + a.y);
       const now = Math.hypot(dx, dy) || 1;
-      const force = (LINK * (now - length)) / now;
+      const stretching = ((b.vx - a.vx) * dx + (b.vy - a.vy) * dy) / now; // speed along the line
+      const force = (stiffness * (now - length) + LINK_DAMPING * stiffness * stretching) / now;
       a.ax += force * dx;
       a.ay += force * dy;
       b.ax -= force * dx;
@@ -111,7 +142,8 @@
     const frame = (now) => {
       const dt = Math.min((now - last) / 1000, 1 / 30);
       last = now;
-      for (let i = 0; i < 4; i += 1) step(m, dt / 4);
+      const steps = Math.max(4, Math.ceil(dt * m.fastest));
+      for (let i = 0; i < steps; i += 1) step(m, dt / steps);
       // a tenth of a unit is a fraction of a pixel: stop the loop there and snap to rest
       const moving = m.players.some((p) => Math.hypot(p.x, p.y) > 0.15 || Math.hypot(p.vx, p.vy) > 1.5);
       if (!moving && !m.held) {
@@ -126,6 +158,62 @@
     requestAnimationFrame(frame);
   }
 
+  // a ripple from a random player: it wiggles, then the players a line away from it are pushed
+  // away from it, then the ones two lines away, each half as hard as the one before
+  function ripple(m) {
+    const start = m.players[Math.floor(Math.random() * m.players.length)];
+    const hops = new Map([[start, 0]]);
+    for (const queue = [start]; queue.length; ) {
+      const p = queue.shift();
+      for (const { a, b } of m.links) {
+        const next = a === p ? b : b === p ? a : null;
+        if (next && !hops.has(next)) {
+          hops.set(next, hops.get(p) + 1);
+          queue.push(next);
+        }
+      }
+    }
+    const push = (p, speed, angle) => {
+      if (m.held) return;
+      p.vx += speed * Math.cos(angle);
+      p.vy += speed * Math.sin(angle);
+      animate(m);
+    };
+    const angle = Math.random() * 2 * Math.PI;
+    push(start, RIPPLE, angle);
+    setTimeout(() => push(start, 0.8 * RIPPLE, angle + Math.PI), 70); // and back: a wiggle
+    for (const p of m.players) {
+      const hop = hops.get(p);
+      if (!hop) continue; // the start, or a player no line reaches
+      const away = Math.atan2(p.rest.y - start.rest.y, p.rest.x - start.rest.x);
+      const speed = RIPPLE * 0.5 ** hop * (0.85 + 0.3 * Math.random());
+      setTimeout(() => push(p, speed, away), hop * RIPPLE_HOP);
+    }
+  }
+
+  // the speed of the page's scrolling (px/s, positive downwards), 0 once it has stopped
+  const scrolling = { y: window.scrollY, time: performance.now(), speed: 0 };
+  window.addEventListener(
+    "scroll",
+    () => {
+      const time = performance.now();
+      const y = window.scrollY;
+      const speed = ((y - scrolling.y) / Math.max(time - scrolling.time, 1)) * 1000;
+      scrolling.speed = time - scrolling.time > 100 ? speed : 0.5 * scrolling.speed + 0.5 * speed;
+      Object.assign(scrolling, { y, time });
+    },
+    { passive: true },
+  );
+  const scrollSpeed = () => (performance.now() - scrolling.time < 150 ? scrolling.speed : 0);
+
+  // a bump in the direction the logo travels on the screen, as if it had been carried there; a
+  // clear one or none, as a faint twitch looks like a glitch
+  function bump(m, speed) {
+    const along = -Math.sign(speed); // scrolling up carries the logo down
+    for (const p of m.players) p.vy += along * BUMP * (0.7 + 0.6 * Math.random());
+    animate(m);
+  }
+
   function pointerIn(m, event) {
     const matrix = m.group.getScreenCTM();
     return matrix ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()) : null;
@@ -136,7 +224,7 @@
     const ready = () => (m ??= model(svg));
     let lastKick = 0;
     svg.addEventListener("pointerenter", () => {
-      if (!ready() || m.held || performance.now() - lastKick < 400) return;
+      if (reducedMotion.matches || !ready() || m.held || performance.now() - lastKick < 400) return;
       lastKick = performance.now();
       for (const p of m.players) {
         const angle = Math.random() * 2 * Math.PI;
@@ -181,6 +269,25 @@
     svg.addEventListener("pointerup", release);
     svg.addEventListener("pointercancel", release);
     svg.addEventListener("lostpointercapture", release); // e.g. the window lost the focus
+
+    // the ripple the first time the logo is seen, the bump when it is scrolled into view quickly
+    let seen = false;
+    let visible = false;
+    new IntersectionObserver(
+      ([entry]) => {
+        const appears = entry.isIntersecting && !visible;
+        visible = entry.isIntersecting;
+        if (!appears) return;
+        const still = reducedMotion.matches || !ready() || m.held;
+        if (!seen) {
+          seen = true;
+          if (!still) ripple(m);
+        } else if (!still && Math.abs(scrollSpeed()) > FAST_SCROLL) {
+          bump(m, scrollSpeed());
+        }
+      },
+      { threshold: 0.3 },
+    ).observe(svg);
   }
 
   // replace the landing page's logo images by copies of the sidebar's inline logo
