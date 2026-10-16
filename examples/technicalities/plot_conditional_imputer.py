@@ -51,10 +51,14 @@ print(f"Test  R2: {model.score(X_test, y_test):.4f}")
 # - ``sample_size``: samples drawn from conditional background
 # - ``conditional_budget``: coalitions per data point for training
 # - ``conditional_threshold``: quantile threshold for neighbourhood
+#
+# The imputer trains on ``conditional_budget`` coalitions of every row of the background data, so
+# a sample of the training data keeps it fast: here 2,000 of the 15,480 rows (the split shuffled
+# them).
 
 explainer = shapiq.TabularExplainer(
     model=model,
-    data=X_train,
+    data=X_train[:2000],
     index="SII",
     max_order=2,
     imputer="conditional",

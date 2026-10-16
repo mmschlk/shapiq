@@ -129,19 +129,19 @@ def print_explain_times(model, n, n_test) -> None:
 # %%
 # The cell below which uses the KNN explainer takes roughly 0.15 s to explain a single data point on a consumer-grade laptop with a 12th Gen Intel i5 processor.
 
-print_explain_times(KNeighborsClassifier(n_neighbors=5, weights="uniform"), n=100_000, n_test=50)
+print_explain_times(KNeighborsClassifier(n_neighbors=5, weights="uniform"), n=100_000, n_test=10)
 
 
 # %%
 # Since the algorithm of the WKNN explainer is less efficient, featuring a quadratic runtime complexity, the number of data points needs to be limited.
 
-print_explain_times(KNeighborsClassifier(n_neighbors=5, weights="distance"), n=200, n_test=10)
+print_explain_times(KNeighborsClassifier(n_neighbors=5, weights="distance"), n=200, n_test=3)
 
 
 # %%
 # The TNN algorithm, on the other hand, is faster:
 
-print_explain_times(RadiusNeighborsClassifier(radius=5), n=100_000, n_test=50)
+print_explain_times(RadiusNeighborsClassifier(radius=5), n=100_000, n_test=10)
 
 
 # %%
