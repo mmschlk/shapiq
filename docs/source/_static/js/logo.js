@@ -21,8 +21,7 @@
   const GLIDE = 0.25; // time constant of the return to rest with reduced motion (s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
   const RIPPLE = 220; // speed of the wiggle that starts the ripple (logo units/s), halved per hop
-  const RIPPLE_HOP = 110; // time the ripple takes along a line (ms)
-  const RIPPLE_DELAY = 400; // from the logo coming into view to the ripple (ms)
+  const RIPPLE_HOP = 80; // time the ripple takes along a line (ms)
   const BUMP = 100; // speed of the bump when the logo is scrolled into view (logo units/s)
   const FAST_SCROLL = 1000; // scrolling faster than this bumps the logo (px/s)
   const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
@@ -182,7 +181,7 @@
     };
     const angle = Math.random() * 2 * Math.PI;
     push(start, RIPPLE, angle);
-    setTimeout(() => push(start, 0.8 * RIPPLE, angle + Math.PI), 90); // and back: a wiggle
+    setTimeout(() => push(start, 0.8 * RIPPLE, angle + Math.PI), 70); // and back: a wiggle
     for (const p of m.players) {
       const hop = hops.get(p);
       if (!hop) continue; // the start, or a player no line reaches
@@ -282,7 +281,7 @@
         const still = reducedMotion.matches || !ready() || m.held;
         if (!seen) {
           seen = true;
-          if (!still) setTimeout(() => ripple(m), RIPPLE_DELAY);
+          if (!still) ripple(m);
         } else if (!still && Math.abs(scrollSpeed()) > FAST_SCROLL) {
           bump(m, scrollSpeed());
         }
