@@ -1,0 +1,11 @@
+{#- furo's "edit this page" button, linked to the page's file in the repository (if it has one) -#}
+{%- from "components/source-path.html" import source_url with context -%}
+{%- set url = source_url("edit") -%}
+{%- if url -%}
+<div class="edit-this-page">
+  <a class="muted-link" href="{{ url }}" rel="edit" title="{{ _("Edit this page") }}">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">{{ _("Edit this page") }}</span>
+  </a>
+</div>
+{%- endif -%}

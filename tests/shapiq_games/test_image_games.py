@@ -328,7 +328,7 @@ def test_dinov2_models_explain_the_crop_they_see(monkeypatch: pytest.MonkeyPatch
     game = ImageClassifier(_IMAGE, "dinov2_20_patches", revision="v1", batch_size=8)
     assert calls[0]["n_players"] == 20
     assert calls[0]["revision"] == "v1"
-    assert game.mask_strategy == "remove"  # DINOv2 drops tokens, as in the paper
+    assert game.mask_strategy == "remove"  # DINOv2 only drops tokens
     assert game.n_players == 20
     assert game.image.shape == (224, 224, 3)  # the crop, not the original image
     assert game.class_name == "English springer"

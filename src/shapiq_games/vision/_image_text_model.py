@@ -60,7 +60,7 @@ class ImageTextTokenModel:
     token left it returns the pooling's output bias, the model's embedding of no image.
     :meth:`filled_embeddings` embeds the image with the absent players' pixels filled instead,
     for removal in image space. The model sees exactly the processor's pixels: CLIP a center
-    crop, as in the paper's script, SigLIP the whole image resized to ``224 x 224``.
+    crop, SigLIP the whole image resized to ``224 x 224``.
 
     Attributes:
         image: The ``224 x 224`` image the model sees.
@@ -85,7 +85,7 @@ class ImageTextTokenModel:
             grid: The ``(rows, columns)`` of the player grid over the token grid.
             model: ``"clip_vit_b16"`` (default), ``"clip_vit_b32"``, ``"siglip_vit_b16"``, or
                 ``"siglip2_vit_b16"``.
-            mask_strategy: ``"remove"`` (default, as in the paper) or ``"mask"``.
+            mask_strategy: ``"remove"`` (default) or ``"mask"``.
             device: The torch device. Defaults to ``"cpu"``.
             batch_size: The number of coalitions per forward pass. Defaults to ``16``.
             revision: The Hugging Face revision (branch, tag, or commit) of the model. ``None``
@@ -117,7 +117,7 @@ class ImageTextTokenModel:
         image_processor = processor.image_processor
         self._mean, self._std = image_processor.image_mean, image_processor.image_std
         # the model sees exactly the processor's pixels (resized, for CLIP also cropped, in
-        # float), as in the paper's script; the game's image shows them as uint8
+        # float); the game's image shows them as uint8
         pil = Image.fromarray(np.asarray(image, dtype=np.uint8))
         self._pixels = processor(images=pil, return_tensors="pt")["pixel_values"].to(self._device)
         self.image = displayed_image(self._pixels, self._mean, self._std)

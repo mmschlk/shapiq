@@ -32,7 +32,6 @@ __all__ = [
 type ImagenetteSplit = Literal["train", "val"]
 type ImagenetteSize = Literal["160px", "320px"]
 
-# WordNet id -> (ImageNet class index, class name)
 IMAGENETTE_CLASSES: dict[str, tuple[int, str]] = {
     "n01440764": (0, "tench"),
     "n02102040": (217, "English springer"),
@@ -45,6 +44,7 @@ IMAGENETTE_CLASSES: dict[str, tuple[int, str]] = {
     "n03445777": (574, "golf ball"),
     "n03888257": (701, "parachute"),
 }
+"""The ten Imagenette classes: their WordNet id, ImageNet class index, and class name."""
 
 # The images are resized so that their shorter side is 160 or 320 pixels.
 _ARCHIVES: dict[str, RemoteFile] = {

@@ -24,16 +24,14 @@ MAX_UNIQUE_VALUES_FOR_CATEGORICAL = 2
 
 
 class GaussianImputer(Imputer):
-    r"""Implements the Gaussian-based approach for imputation according to [Aas21]_.
+    r"""Implements the Gaussian-based approach for imputation.
 
-    This approach assumes that the features of the background data form a multivariate Gaussian distribution.
+    The approach follows :cite:t:`Aas.2021`.
+    It assumes that the features of the background data form a multivariate Gaussian distribution.
     The missing values are imputed by drawing Monte Carlo samples from the conditional distribution given the values of the features present in a coalition.
 
     Note that only continuous features are supported, meaning that this imputer can't be used for datasets containing
     categorical or binary features.
-
-    References:
-        .. [Aas21] Aas, K., Jullum, M., and Løland, A. (2021). Explaining individual predictions when features are dependent: More accurate approximations to Shapley values. Artificial Intelligence 298, 103502. doi: https://doi.org/10.1016/j.artint.2021.103502
     """
 
     def __init__(

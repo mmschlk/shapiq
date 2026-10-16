@@ -220,11 +220,11 @@ def load_curthvds_synthetic(
     random_state: int = _DEFAULT_SEED,
     setting: CausalSetting = "ii",
 ) -> pd.DataFrame:
-    """Synthetic observational study with known causal roles (Curth and van der Schaar, 2021).
+    """Synthetic observational study with known causal roles.
 
-    The covariates are split into instruments, confounders, effect modifiers and outcome-only
-    covariates. The returned frame contains the covariates plus the binary ``Treatment`` and the
-    ``Outcome`` columns.
+    The study follows the simulation design of :cite:t:`Curth.2021`. The covariates are split
+    into instruments, confounders, effect modifiers and outcome-only covariates. The returned frame
+    contains the covariates plus the binary ``Treatment`` and the ``Outcome`` columns.
 
     Args:
         n: The number of samples.

@@ -2,7 +2,7 @@
 Beeswarm Plot
 =============
 
-This example demonstrates :func:`~shapiq.beeswarm_plot`, which provides a
+This example demonstrates :func:`~shapiq.plot.beeswarm_plot`, which provides a
 global perspective on feature interactions by plotting interaction values
 across multiple instances, colored by feature value.
 """
@@ -41,6 +41,7 @@ x_explain = x_test[:20]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="FSII",
     max_order=3,
     random_state=42,

@@ -76,11 +76,7 @@ class SVARM(MonteCarlo[ValidIndicesSVARM]):
     """The SVARM approximator for estimating the Shapley value (SV).
 
     SVARM is a MonteCarlo approximation algorithm that estimates the Shapley value. For details
-    about the algorithm see the original paper by Kolpaczki et al. (2024)
-    :footcite:t:`Kolpaczki.2024a`.
-
-    References:
-        .. footbibliography::
+    about the algorithm see the original paper by :cite:t:`Kolpaczki.2024a`.
 
     """
 

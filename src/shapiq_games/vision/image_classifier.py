@@ -41,7 +41,7 @@ class ImageClassifier(RegionGame):
     How absent players are removed:
 
     - **DINOv2** drops their patch tokens from the sequence (the present tokens keep their
-      position embeddings), as in the benchmarking paper, and only so.
+      position embeddings), and only so: its checkpoint has no trained mask token.
     - **The vision transformers** remove them in token space by default: their patch tokens are
       masked (``mask_strategy="mask"``, the default: the content is replaced by a zero mask token,
       the position embedding is kept) or dropped (``"remove"``). With a ``fill`` they remove them
@@ -120,7 +120,8 @@ class ImageClassifier(RegionGame):
                 classifiers when no ``regions`` are given. Defaults to ``14``.
             regions: Your own players for ``"resnet_18"`` and custom classifiers: the player of
                 every pixel, of shape ``(height, width)``, numbered ``0, ..., n - 1`` (see
-                :func:`grid_regions`). For ResNet-18 they refer to its ``224 x 224`` crop.
+                :func:`~shapiq_games.vision.grid_regions`). For ResNet-18 they refer to its
+                ``224 x 224`` crop.
             fill: Remove players in image space, replacing their pixels with ``"mean"`` (the
                 image's mean color), ``"gray"``, ``"black"``, ``"blur"``, or an image of the same
                 shape. ResNet-18 and custom classifiers always do (``"mean"`` by default); the
@@ -174,7 +175,7 @@ class ImageClassifier(RegionGame):
                     self._classifier, self._fill = vit.classify, fill_image(self.image, fill)
                 token_model: ViTTokenModel | DinoV2TokenModel = vit
             elif strategy != "remove":
-                msg = "DINOv2 removes players only by dropping their tokens, as in the paper."
+                msg = "DINOv2 removes players only by dropping their tokens."
                 raise ValueError(msg)
             else:
                 token_model = DinoV2TokenModel(

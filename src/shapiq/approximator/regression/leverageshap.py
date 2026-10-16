@@ -1,4 +1,4 @@
-"""LeverageSHAP regression approximator (Algorithm 1 of Musco and Witter, 2025)."""
+"""LeverageSHAP regression approximator (Algorithm 1 of :cite:t:`Musco.2025`)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ ValidRegressionLeverageSHAPIndices = Literal["SV"]
 class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     r"""Leverage SHAP approximator for Shapley values.
 
-    Leverage SHAP (Musco and Witter, 2025 :cite:t:`Musco.2025`) recovers Shapley
+    Leverage SHAP :cite:p:`Musco.2025` recovers Shapley
     values as the solution of a weighted least-squares problem over sampled
     coalitions, like KernelSHAP, but samples coalitions proportional to their
     statistical *leverage scores*, which have the closed form ``l_z = 1/C(n, ||z||)``
@@ -39,7 +39,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     2. Draw coalition pairs ``(z, z̄)`` without replacement (Algorithm 2). By default
        (``deterministic_counts=True``) each size's pair count is fixed to the
        expectation of the Binomial draw, largest-remainder rounded so the total is
-       exact -- stratification in the spirit of SVARM :cite:t:`Kolpaczki.2024a`; with
+       exact -- stratification in the spirit of SVARM :cite:p:`Kolpaczki.2024a`; with
        ``deterministic_counts=False`` it is drawn at random as Algorithm 2 states.
        Sizes whose layer fits within ``2c`` are enumerated exhaustively.
     3. Reweight each row by the inverse of its inclusion probability. For the
@@ -56,7 +56,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         size. The evaluation count is exactly
         ``2 + 2 * ((min(budget, 2**n) - 2) // 2)``. The paper's accuracy theorem is
         proved for the Binomial ``deterministic_counts=False`` variant only
-        (Musco and Witter, 2025, end of Sec. 4).
+        (:cite:t:`Musco.2025`, end of Sec. 4).
 
     Example:
         >>> from shapiq.approximator import LeverageSHAP
@@ -293,7 +293,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         return hi
 
     def _bernoulli_sample(self, n: int, c: float) -> tuple[np.ndarray, np.ndarray]:
-        """Algorithm 2 (BernoulliSample) of Musco and Witter (2025) :cite:t:`Musco.2025`.
+        """Algorithm 2 (BernoulliSample) of :cite:t:`Musco.2025`.
 
         Draws ``m_s ~ Binomial`` per half-size (the ``deterministic_counts=False``
         path). For the self-complementary middle layer, Algorithm 2 draws against the

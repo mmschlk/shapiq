@@ -237,11 +237,90 @@ Boosting converters live in separate modules such as `xgboost.py`,
   same at 1,000, but 1.45x slower at 4,096 (the level arrays are copied more often than per-node
   vectors). A second, node-by-node path for large batches was left out for readability.
 
+## Citation and docs gotchas (observed 2026-10-12)
+
+- `docs/source/references.bib` is the maintainer's thesis bibliography; keep its entries and keys
+  as they are and add new ones in its style (`Surname.Year` keys with an `a`/`b` suffix on
+  collisions, e.g. `Jia.2019` is the AISTATS paper and `Jia.2019a` the KNN one; venue names like
+  `International Conference on Machine Learning (ICML)`, PMLR `series`/`volume`, `--` page
+  ranges). Check a key's title before citing it: several keys mean another work than a guess
+  from the name (`Covert.2021` is "Explaining by Removing", `Covert.2021b` "Improving KernelSHAP").
+  The file is grouped by entry type, the `@inproceedings` further by venue under `#`/`%` comment
+  headers, by year within a venue; copy the venue string of an existing entry (AAAI is
+  `Conference on Artificial Intelligence (AAAI)`). pybtex's `alpha` labels and its sorting keep
+  LaTeX accents and braced names whole (`[PKHullermeier26]`, `{Banzhaf III}` after "Z", observed
+  2026-10-16); `conf.py` builds both from plain names (`_plain_person`), so LaTeX accents and
+  Unicode both work. The text cites by author and year; works cited alike get a letter in the
+  order of their keys (`Kolpaczki.2024a` to `2024c`, `_year_letters`). To verify bibliographic
+  data (observed 2026-10-14): WebFetch cannot reach jmlr.org or link.springer.com, and Springer and dblp answer
+  `curl` with a bot check (dblp denies a headless browser too); dblp's SPARQL endpoint
+  (`sparql.dblp.org/sparql`), Crossref (`api.crossref.org/works/<doi>`), OpenAlex and the
+  publishers' own proceedings pages work. A preprint that gets published becomes the published
+  entry, its key following the publication year (`Wever.2025` became `Wever.2026`, AAAI-26), with
+  dblp's title. dblp has no pages for NeurIPS, and for NeurIPS 2025 the proceedings site's BibTeX
+  numbers the main track alone (observed 2026-10-16); the bib takes the pages of the DOI's
+  Crossref record, which continue the numbering of NeurIPS 2024 used by the thesis.
+- Its titles are written for LaTeX styles that print them as written, and some DOIs escape `_`
+  as `\_`. The docs therefore use the `shapiq_alpha` pybtex style registered in
+  `docs/source/conf.py` (titles kept as written, `\_` unescaped in links); plain `alpha`
+  lowercases titles ("shapley values") and breaks those DOI links.
+- Every citation of the docs (docstrings, gallery examples, pages, the timeline) uses
+  `:cite:t:`/`:cite:p:`, so the bibliography page (`references.rst`, `:cited:`) lists every cited
+  work with links back to where it is cited. Do not use `:footcite:` or `.. footbibliography::`
+  (observed 2026-10-13): footnote citations never reached the bibliography page, which missed 46
+  of 98 cited works. `test_the_docs_cite_with_the_cite_role` in
+  `tests/shapiq_games/test_docstring_examples.py` fails on a `:footcite:`.
+- `uv run pre-commit` in a git worktree: the `ty` hook runs `uv run ty check` without
+  `--no-sync`, so with `UV_PROJECT_ENVIRONMENT` pointing at the main checkout's `.venv` it
+  re-syncs that shared environment to the worktree (editable `shapiq` re-pointed, locked packages
+  changed), and ty's `python = "./.venv"` fails where the worktree has no `.venv`. In a worktree,
+  run `SKIP=ty uv run --no-sync pre-commit run --all-files` and
+  `uv run --no-sync ty check --python <venv>` separately.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash
 rm -rf docs/source/generated docs/source/auto_examples && uv run sphinx-build -b html docs/source docs/build/html
 ```
+
+CI does not build the docs by default (observed 2026-10-12): the `Documentation` workflow runs
+only on pull requests with the label `build docs` or from the Actions tab, with warnings as errors
+(`-W`). Before pushing a docs change, build locally and check the output for `WARNING`. A new
+public name of `shapiq_games` or `shapiq_benchmark` (anything in an `__all__`) also needs a line in
+`docs/source/api_reference_games.rst` or `api_reference_benchmark.rst`; the docstring-example
+tests fail until it has one.
+
+Docs layout (observed 2026-10-12):
+
+- Every folder `examples/<group>/` is its own sphinx-gallery gallery (`EXAMPLE_GROUPS` in
+  `docs/source/conf.py`), linked from the hand-written landing page `docs/source/examples.rst`.
+  A new example goes into its group's entry of `EXAMPLE_ORDER` in `conf.py` (unlisted files come
+  last), and a new group needs `EXAMPLE_GROUPS`, a `GALLERY_HEADER.rst` and a card in
+  `examples.rst`.
+- The first paragraph of an example's docstring is the text of its gallery card, and sphinx-gallery
+  strips roles badly (a citation role became ":footciteMusco.2025", `:math:` raw LaTeX). Keep that
+  paragraph plain; put citations and math into the next one.
+- `nitpicky` is off, so an unresolvable cross-reference renders as plain text without a warning.
+  The core API reference documents objects under their subpackage (`shapiq.approximator.KernelSHAP`);
+  a `missing-reference` hook in `conf.py` links the public aliases (`shapiq.KernelSHAP`) and bare
+  names that match one documented object. Check new references in the built HTML.
+- The sidebar and the previous/next links name the generated API pages by the last part of their
+  dotted name (`_short_navigation_titles` in `conf.py`); the page heading keeps the full path. On
+  `api_reference_games.rst` the game sections list games only; helpers, constants and types go under
+  Utilities.
+- The timeline page reads `docs/source/_data/timeline.toml` (directive in
+  `docs/source/_ext/shapiq_timeline.py`); its API, example and citation references are checked by
+  Sphinx and warn at the entry's line. A new method in shapiq deserves an entry there.
+- The logo is inlined as SVG (`_inline_logo` in `conf.py`, `_templates/sidebar/brand.html`) so that
+  `_static/js/logo.js` can swap the landing page's `<img>` for a copy and move its players (only
+  there: the sidebar's logo is a link home on every page and stays still).
+  Edit `_static/logo/logo_shapiq_{light,dark}.svg` only: the script finds the players as circles
+  with `r > 15`, the caps as smaller circles and the lines as two-point paths with `fill="none"`.
+- Moved pages keep their old addresses: `_REDIRECTS` in `conf.py` writes a redirect page for each
+  after the build. Add an entry when a page (e.g. a gallery example) moves.
+- In a git worktree, `src/` has no compiled tree extensions (the `*.so` files are git-ignored), but
+  `conf.py` puts the worktree's `src` first on `sys.path`: copy the `*.so` files from the main
+  checkout before building the docs there.
 
 ### Run Pre-commit (takes only 3s)
 

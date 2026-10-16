@@ -38,9 +38,10 @@ class Benchmark:
     setup identifies the game; a new model belongs under a new name. Delete the directory, or
     pass ``cache=False``, to recompute.
 
-    Without an explicit computer, the benchmark uses :func:`default_computer` and falls back to
-    brute force (up to ``max_players`` players) for the indices and orders that computer does not
-    support; :meth:`computer_for` names the computer used.
+    Without an explicit computer, the benchmark uses
+    :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force (up to
+    ``max_players`` players) for the indices and orders that computer does not support;
+    :meth:`computer_for` names the computer used.
 
     Examples:
         >>> from shapiq_benchmark.setups import PathDependentTreeSetup
@@ -61,7 +62,7 @@ class Benchmark:
         Args:
             game: The game.
             computer: The ground-truth computer, bound to ``game``. Defaults to
-                :func:`default_computer` of the game.
+                :func:`~shapiq_benchmark.computers.default_computer` of the game.
             max_players: The player cap of brute force when no computer is given.
 
         Raises:
@@ -94,7 +95,7 @@ class Benchmark:
         Args:
             setup: The setup.
             computer: The class of the ground-truth computer. Defaults to
-                :func:`default_computer` of the game.
+                :func:`~shapiq_benchmark.computers.default_computer` of the game.
             cache: Whether to cache the exact values under the setup's key. Defaults to ``True``.
             max_players: The player cap of brute force, also passed to a computer class that
                 takes it.
@@ -145,7 +146,7 @@ class Benchmark:
             order: The highest interaction order.
 
         Returns:
-            The exact values (see :meth:`Computer.exact_values`).
+            The exact values (see :meth:`~shapiq_benchmark.computers.Computer.exact_values`).
         """
         computer = self.computer_for(index, order)
         directory = self._cache_dir()

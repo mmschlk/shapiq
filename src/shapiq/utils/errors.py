@@ -8,7 +8,13 @@ def raise_deprecation_warning(
     deprecated_in: str,
     removed_in: str,
 ) -> None:
-    """Raise a deprecation warning with the given details."""
+    """Raise a deprecation warning with the given details.
+
+    Args:
+        message: What is deprecated and what to use instead.
+        deprecated_in: The version in which the feature was deprecated.
+        removed_in: The version in which the feature will be removed.
+    """
     from warnings import warn
 
     message += (

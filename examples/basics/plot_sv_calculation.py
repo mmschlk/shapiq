@@ -50,7 +50,7 @@ cooking_game = CookingGame()
 # %%
 # Exact Shapley Values
 # ---------------------
-# The :class:`~shapiq.ExactComputer` evaluates all :math:`2^n` coalitions.
+# The :class:`~shapiq.game_theory.ExactComputer` evaluates all :math:`2^n` coalitions.
 
 exact_computer = shapiq.ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
 sv_exact = exact_computer(index="SV")
@@ -67,7 +67,7 @@ sv_exact.plot_stacked_bar(
 # -----------------------------
 # For larger games, exact computation is infeasible. Here we define a
 # 10-player restaurant game and approximate Shapley values with
-# :class:`~shapiq.KernelSHAP`.
+# :class:`~shapiq.approximator.KernelSHAP`.
 
 rng = np.random.default_rng(42)
 quality_dict = {cooks: rng.random() * len(cooks) for cooks in shapiq.powerset(range(10))}
@@ -91,7 +91,7 @@ sv_approx.plot_stacked_bar(
 # XAI with Shapley Values
 # ------------------------
 # We train a Random Forest on the California housing dataset and explain a
-# single prediction using :class:`~shapiq.TabularExplainer`.
+# single prediction using :class:`~shapiq.explainer.TabularExplainer`.
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -136,7 +136,7 @@ sv.plot_force(feature_names=feature_names)
 # %%
 # TreeExplainer for Exact Tree-based SV
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# For tree models, :class:`~shapiq.TreeExplainer` computes exact Shapley values
+# For tree models, :class:`~shapiq.explainer.TreeExplainer` computes exact Shapley values
 # in linear time.
 
 tree_explainer = shapiq.TreeExplainer(model=rf, index="SV", max_order=1)

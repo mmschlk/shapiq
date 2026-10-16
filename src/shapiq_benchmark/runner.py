@@ -43,6 +43,16 @@ def build_approximator(
     passed if the constructor accepts them; approximators that do not take ``max_order`` only
     support order 1. Whether the index is supported comes from the approximator's
     ``valid_indices``.
+
+    Args:
+        approximator: The approximator class.
+        n_players: The number of players of the game.
+        index: The interaction index.
+        order: The highest interaction order.
+        random_state: The seed of the approximator.
+
+    Returns:
+        The approximator, or ``None`` if it cannot compute ``index`` up to ``order``.
     """
     valid_indices = getattr(approximator, "valid_indices", ())
     if index not in valid_indices or (index in VALUE_INDICES and order != 1):

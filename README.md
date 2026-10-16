@@ -121,7 +121,7 @@ interaction_values.plot_force(feature_names=...)
 </p>
 
 ### Use ProxySPEX (Proxy SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.png" alt="spex_logo" align="right" height="75px"/>
-For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/generated/shapiq.approximator.ProxySPEX.html) approximator.
 
 ```python
 # load your data and model with large number of features
@@ -150,10 +150,7 @@ The nodes represent feature **attributions** and the edges represent the **inter
 The strength and size of the nodes and edges are proportional to the absolute value of attributions and interactions, respectively.
 
 ```python
-shapiq.network_plot(
-    first_order_values=interaction_values.get_n_order_values(1),
-    second_order_values=interaction_values.get_n_order_values(2)
-)
+shapiq.network_plot(interaction_values)
 # or use
 interaction_values.plot_network()
 ```
@@ -190,7 +187,7 @@ fsii_values.plot_force()               # plot the force plot
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
-If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/auto_examples/index.html).
+If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/examples.html).
 There is a lot of great resources available to get you started with Shapley values and interactions.
 
 ## 💬 Citation

@@ -1,10 +1,9 @@
 r"""Causal games: which covariates explain the confounding bias of a treatment effect estimate.
 
-Implements the ConfoundingSHAP value functions (Brockschmidt et al., 2026,
-https://arxiv.org/abs/2605.10533). For a coalition :math:`S`, an S-learner fitted on
-:math:`(X_S, A) \to Y` gives the treatment effect estimate when adjusting only for :math:`S`; its
-deviation from the reference effect estimate :math:`\hat\tau` (adjusting for all covariates) is
-the confounding bias left by omitting the other covariates.
+Implements the ConfoundingSHAP value functions :cite:p:`Brockschmidt.2026`. For a coalition
+:math:`S`, an S-learner fitted on :math:`(X_S, A) \to Y` gives the treatment effect estimate when
+adjusting only for :math:`S`; its deviation from the reference effect estimate :math:`\hat\tau`
+(adjusting for all covariates) is the confounding bias left by omitting the other covariates.
 """
 
 from __future__ import annotations
@@ -37,6 +36,8 @@ def tabpfn_regressor(
     **params: Any,
 ) -> Any:  # noqa: ANN401
     """Return a TabPFN regressor configured as in the ConfoundingSHAP paper (requires ``tabpfn``).
+
+    The configuration follows :cite:t:`Brockschmidt.2026`.
 
     Args:
         device: The torch device. Defaults to ``"cpu"``.
@@ -165,6 +166,7 @@ class _ConfoundingGame(Game):
 class GlobalConfoundingXAI(_ConfoundingGame):
     r"""The global confounding game: the bias of the average treatment effect adjusting for S.
 
+    The game is the global value function of ConfoundingSHAP :cite:p:`Brockschmidt.2026`.
     With ``mode="signed"``, the value is :math:`\bar\tau - \overline{\hat\mu_1(X_S) - \hat\mu_0(X_S)}`;
     with ``"abs"`` or ``"sq"`` it is the mean absolute or squared conditional bias against the
     projection of :math:`\hat\tau` onto :math:`X_S`. The empty coalition is the naive difference
@@ -201,8 +203,9 @@ class GlobalConfoundingXAI(_ConfoundingGame):
                 If ``None``, an S-learner with ``regressor`` on all covariates provides them.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to
-                :func:`tabpfn_regressor`: TabPFN v2 configured as in the paper (requires
-                ``tabpfn``); ``partial(tabpfn_regressor, version="v2.5")`` is the paper's model.
+                :func:`~shapiq_games.causal.tabpfn_regressor`: TabPFN v2 configured as in the
+                paper (requires ``tabpfn``); ``partial(tabpfn_regressor, version="v2.5")`` is the
+                paper's model.
         """
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)
 
@@ -218,6 +221,8 @@ class GlobalConfoundingXAI(_ConfoundingGame):
 
 class LocalConfoundingXAI(_ConfoundingGame):
     """The local confounding game: the bias of the conditional effect at one unit adjusting for S.
+
+    The game is the local value function of ConfoundingSHAP :cite:p:`Brockschmidt.2026`.
 
     Examples:
         >>> from sklearn.linear_model import LinearRegression
@@ -252,7 +257,8 @@ class LocalConfoundingXAI(_ConfoundingGame):
             unit: The explained unit as an index into ``x`` or its covariates. Defaults to ``0``.
             mode: ``"signed"``, ``"abs"``, or ``"sq"``. Defaults to ``"signed"``.
             regressor: A function returning a fresh, seeded regressor. Defaults to
-                :func:`tabpfn_regressor` (TabPFN v2 configured as in the paper).
+                :func:`~shapiq_games.causal.tabpfn_regressor` (TabPFN v2 configured as in the
+                paper).
         """
         self.unit = resolve_x(unit, np.asarray(x, dtype=float)).astype(float)
         super().__init__(x, treatment, outcome, tau_hat, mode=mode, regressor=regressor)

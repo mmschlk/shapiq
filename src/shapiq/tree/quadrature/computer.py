@@ -2,8 +2,8 @@
 
 Shapley (interaction) values are expressed as integrals of weighted Banzhaf interaction
 polynomials over the participation probability and evaluated exactly with Gauss-Legendre
-quadrature; see Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a` and, for the first-order case,
-TreeGrad-Ranker :cite:t:`Li.2026`. Every maintained quantity is a product of factors
+quadrature; see Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` and, for the first-order case,
+TreeGrad-Ranker :cite:p:`Li.2026`. Every maintained quantity is a product of factors
 ``h*t + c*(1-t)`` in ``(0, 1]``, so the computation is numerically exact in float64 at any
 tree depth. Edges carry the hot indicator ``h`` and the accumulated cover ``c`` separately
 rather than the papers' marginal multiplier ``q = h/c``, which keeps every intermediate
@@ -44,7 +44,7 @@ class QuadratureTreeSHAP:
 
     Computes the same path-dependent Shapley (interaction) values as
     :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` but through Gauss-Legendre quadrature of the
-    weighted Banzhaf interaction polynomial :cite:t:`Wettenstein.2026a` :cite:t:`Li.2026`,
+    weighted Banzhaf interaction polynomial :cite:p:`Wettenstein.2026a,Li.2026`,
     which is numerically exact in float64 for any tree depth and any number of distinct
     features per decision path. Banzhaf indices (``"BV"``/``"BII"``) are obtained from the
     same computation by evaluating the polynomial at participation probability ``1/2``
@@ -92,9 +92,9 @@ class QuadratureTreeSHAP:
             n_quadrature_points: Number of Gauss-Legendre points. Defaults to ``None``, which
                 uses the exact bound ``ceil(d / 2)`` where ``d`` is the maximum number of
                 distinct features along a root-to-leaf path (over all trees). A fixed small
-                number (``8`` is the rule of Wettenstein et al.) trades exactness for speed on
-                paths with more features than that. Ignored for the Banzhaf indices and the
-                Moebius and Fourier transforms, which need a single evaluation point.
+                number (``8`` is the rule of :cite:t:`Wettenstein.2026a`) trades exactness for
+                speed on paths with more features than that. Ignored for the Banzhaf indices and
+                the Moebius and Fourier transforms, which need a single evaluation point.
 
         Raises:
             ValueError: If the index or the interaction orders are invalid.

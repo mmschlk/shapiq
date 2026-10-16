@@ -10,6 +10,8 @@ All examples use the same XGBoost model on the California housing dataset
 for consistency with the other visualization gallery scripts.
 """
 
+# sphinx_gallery_thumbnail_number = 3
+
 from __future__ import annotations
 
 from sklearn.model_selection import train_test_split
@@ -40,6 +42,7 @@ x_explain = x_test[2]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="k-SII",
     max_order=2,
     random_state=42,

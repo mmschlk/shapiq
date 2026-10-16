@@ -180,6 +180,9 @@ def register_dataset(spec: DatasetSpec) -> DatasetSpec:
 def get_dataset_spec(name: str) -> DatasetSpec:
     """Return the registry entry of a dataset.
 
+    Args:
+        name: The registry name of the dataset (see :func:`list_datasets`).
+
     Raises:
         ValueError: If the dataset is unknown.
     """

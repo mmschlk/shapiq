@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 __all__ = ["TABARENA_DATASETS"]
 
-# name -> (OpenML dataset id, task, target column), from TabArena's official metadata.
 TABARENA_DATASETS: dict[str, tuple[int, Task, str]] = {
     "airfoil_self_noise": (46904, "regression", "scaled-sound-pressure"),
     "amazon_employee_access": (46905, "classification", "ResourceApproved"),
@@ -85,6 +84,8 @@ TABARENA_DATASETS: dict[str, tuple[int, Task, str]] = {
     "jm1": (46979, "classification", "defects"),
     "mic": (46980, "classification", "LET_IS"),
 }
+"""The 51 TabArena datasets: their OpenML dataset id, task, and target column by name, from
+TabArena's official metadata. They load as ``load_dataset("tabarena_<name>")``."""
 
 _TARGET_COLUMN = "__target__"
 

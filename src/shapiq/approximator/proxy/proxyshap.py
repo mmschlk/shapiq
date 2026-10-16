@@ -90,8 +90,8 @@ def _standard_form_log_weights(
     r"""Sign and log-magnitude of the standard form weights, stable for large ``n``.
 
     The interaction index is re-written from discrete derivatives to standard form (Theorem 1 of
-    `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_): the weight of a
-    coalition ``T`` for an interaction ``S`` is ``(-1) ** (|S| - |T ∩ S|) * w(|T \ S|, |S|)``.
+    :cite:t:`Fumagalli.2023`): the weight of a coalition ``T`` for an interaction ``S`` is
+    ``(-1) ** (|S| - |T ∩ S|) * w(|T \ S|, |S|)``.
     The non-negative magnitude is kept in log-space, with the sign tracked separately, so the
     caller can cancel it against the (log) sampling-adjustment weight before exponentiating.
 
@@ -163,7 +163,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
     The regression proxy is trained on the sampled coalitions, and interaction values are read out
     of the fitted model exactly. Optionally (``adjustment=True``), the proxy's residuals
     (true game values minus proxy predictions) are estimated with a self-contained, fully
-    vectorized MSR (maximum sample reuse) Monte Carlo routine ( unstratified SHAP-IQ :cite:t:`Fumagalli.2023`).
+    vectorized MSR (maximum sample reuse) Monte Carlo routine (unstratified SHAP-IQ :cite:p:`Fumagalli.2023`).
     Depending on ``k_folds`` the adjustment is computed in-sample (``k_folds=1``) or out-of-fold (``k_folds>1``) on the same sampled coalitions, and added to the proxy's interactions.
 
     Example:

@@ -1,4 +1,4 @@
-"""Setups of the causal games on the synthetic study of Curth and van der Schaar (2021)."""
+"""Setups of the causal games on the synthetic study of :cite:t:`Curth.2021`."""
 
 from __future__ import annotations
 
@@ -66,8 +66,9 @@ class GlobalConfoundingSetup(_ConfoundingSetup, name="global_confounding"):
         d: The number of covariates (players), at least ``4``. Defaults to ``4``.
         setting: ``"i"`` (homogeneous) or ``"ii"`` (heterogeneous effect, default).
         mode: ``"signed"`` (default), ``"abs"``, or ``"sq"``.
-        regressor: ``"tabpfn"`` (default, TabPFN configured as in the ConfoundingSHAP paper) or a
-            model name of :mod:`shapiq_benchmark.models` (e.g. ``"linear"``).
+        regressor: ``"tabpfn"`` (default, TabPFN configured as in ConfoundingSHAP
+            :cite:p:`Brockschmidt.2026`) or a model name of :mod:`shapiq_benchmark.models`
+            (e.g. ``"linear"``).
         regressor_params: Parameters of the regressor, e.g. ``{"version": "v2.5"}`` for the
             paper's TabPFN (the default is TabPFN v2, see
             :func:`~shapiq_games.causal.tabpfn_regressor`).

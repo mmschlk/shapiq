@@ -8,9 +8,13 @@ specialised explainers directly:
 - :class:`TabPFNExplainer` — fast in-context learning with TabPFN
 - :class:`AgnosticExplainer` — any callable model
 - :class:`TreeExplainer` — optimised for tree-based models
+- :class:`ProductKernelExplainer` — exact for scikit-learn's Gaussian process regressors and
+  support vector machines (SVR, binary SVC) with RBF kernels
+- :class:`KNNExplainer`, :class:`WeightedKNNExplainer`, :class:`ThresholdNNExplainer` — exact data
+  valuation of nearest-neighbor classifiers
 
 .. seealso::
-   :doc:`Examples & Tutorials </auto_examples/index>` for end-to-end examples.
+   :doc:`Examples & Tutorials </examples>` for end-to-end examples.
 """
 
 from shapiq.tree.explainer import TreeExplainer
@@ -20,6 +24,7 @@ from .base import Explainer
 from .nn.knn import KNNExplainer
 from .nn.threshold_nn import ThresholdNNExplainer
 from .nn.weighted_knn import WeightedKNNExplainer
+from .product_kernel import ProductKernelExplainer
 from .tabpfn import TabPFNExplainer
 from .tabular import TabularExplainer
 
@@ -32,4 +37,5 @@ __all__ = [
     "KNNExplainer",
     "WeightedKNNExplainer",
     "ThresholdNNExplainer",
+    "ProductKernelExplainer",
 ]

@@ -12,8 +12,8 @@ objects and evaluate coalitions:
 >>> game = sg.TabularLocalExplanation(model, data=X[:50], x=X[0])
 >>> values = game(np.array([[1, 0, 1, 0, 0], [1, 1, 1, 1, 1]], dtype=bool))
 
-All games follow the same contract (see :mod:`shapiq_games._base`): their values are
-deterministic given their arguments, and the explained point and class are explicit.
+All games follow the same contract: their values are deterministic given their arguments, and
+the explained point and class are explicit.
 
 The games are definitions: they know how to model a problem as a cooperative game, not where
 data and models come from. Benchmarks build them from names (datasets, models, seeds) with the

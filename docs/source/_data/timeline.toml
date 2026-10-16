@@ -1,0 +1,1587 @@
+# Timeline of Shapley-based explanation methods, rendered on ``timeline.rst`` by the
+# ``shapiq-timeline`` directive (``_ext/shapiq_timeline.py``).
+#
+# Each [[entries]] table is one card. The texts are reStructuredText. Fields:
+#   id           anchor of the card (``timeline.html#<id>``): lowercase letters, digits and dashes
+#   name, year   short name and year of publication (the year of the entry in ``references.bib``)
+#   lane         one of the lane ids below
+#   summary      one line, shown on the collapsed card
+#   description  two to four sentences
+#   cite         keys of ``references.bib`` (rendered with :cite:p:)
+#   api          objects of the API reference (fully qualified, e.g. "shapiq.approximator.KernelSHAP");
+#                an entry with API objects counts as implemented in shapiq
+#   examples     gallery documents, e.g. "auto_examples/approximators/shapley_values/plot_kernelshap"
+#   links        further links without a bibliography entry: [{ label = "...", url = "..." }]
+#   related      ids of related cards
+# Missing API objects, gallery documents and citation keys produce Sphinx warnings.
+
+# The swimlanes of the desktop view group the years before 2017 into eras (one column each);
+# later years get a column of their own.
+eras = [[1950, 1970], [1971, 2005], [2006, 2016]]
+
+# Eight lanes at most: each lane takes the next color of the categorical palette in
+# ``_static/css/timeline.css``.
+[[lanes]]
+id = "foundations"
+name = "Foundations"
+description = "Game-theoretic concepts and the representations of the Shapley value that all methods build on."
+
+[[lanes]]
+id = "indices"
+name = "Interaction indices"
+description = "Extensions of the Shapley and Banzhaf values from single players to groups of players."
+
+[[lanes]]
+id = "sv-approx"
+name = "Approximating Shapley values"
+description = "Model-agnostic estimators of Shapley values for games that are too large to evaluate exactly."
+
+[[lanes]]
+id = "si-approx"
+name = "Approximating interactions"
+description = "Model-agnostic estimators of Shapley interactions and sparse interaction discovery."
+
+[[lanes]]
+id = "exact"
+name = "Exact computation"
+description = "Model-specific algorithms that exploit the structure of a model class to compute exact values."
+
+[[lanes]]
+id = "removal"
+name = "Feature removal"
+description = "How a model is evaluated when features are absent: the choice that defines the explained game."
+
+[[lanes]]
+id = "applications"
+name = "Value functions & tasks"
+description = "Task- and model-specific games that bring Shapley values to new questions."
+
+[[lanes]]
+id = "software"
+name = "Software & plots"
+description = "Libraries and visualizations for Shapley values and interactions."
+
+# -- Foundations ------------------------------------------------------------------------------------
+
+[[entries]]
+id = "shapley-value"
+name = "Shapley value"
+year = 1953
+lane = "foundations"
+summary = "The unique fair division of a cooperative game's payoff among its players."
+description = """
+Shapley showed that exactly one way to distribute the value of the grand coalition satisfies
+efficiency, symmetry, dummy and linearity: averaging each player's marginal contributions over all
+orders in which the players can join. In machine learning, the players are features, data points
+or model components, and the game is a model's output or performance. In shapiq, ``index="SV"``
+selects it for every explainer and approximator.
+"""
+cite = ["Shapley.1951"]
+api = ["shapiq.game_theory.ExactComputer"]
+examples = ["auto_examples/basics/plot_sv_calculation"]
+related = ["banzhaf-value", "permutation-representation", "wls-representation"]
+
+[[entries]]
+id = "moebius-transform"
+name = "Möbius transform"
+year = 1963
+lane = "foundations"
+summary = "Decomposes a game into the pure joint contributions (dividends) of all coalitions."
+description = """
+Harsanyi's dividends, which Rota's theory of Möbius functions describes in general, split the value
+of every coalition into contributions of its subsets that no smaller subset explains. The Möbius
+coefficients are a complete interaction decomposition of a game: every Shapley-based value and
+interaction index is a weighted sum of them. shapiq computes them exactly and converts a (sparse)
+Möbius representation into any interaction index.
+"""
+cite = ["Harsanyi.1963", "Rota.1964"]
+api = ["shapiq.game_theory.ExactComputer.moebius_transform", "shapiq.game_theory.MoebiusConverter"]
+examples = ["auto_examples/exact_computation/plot_moebius_conversion"]
+related = ["moebius-representation", "k-sii", "spex"]
+
+[[entries]]
+id = "banzhaf-value"
+name = "Banzhaf value"
+year = 1964
+lane = "foundations"
+summary = "Averages a player's marginal contributions uniformly over all coalitions."
+description = """
+Introduced to measure voting power, the Banzhaf value weights every coalition equally instead of by
+its size. It gives up efficiency, so the values need not sum to the prediction, but it is often
+easier to estimate and more robust to noise. shapiq supports it as ``index="BV"`` and its
+interaction counterpart as ``index="BII"``.
+"""
+cite = ["Banzhaf.1964"]
+api = ["shapiq.game_theory.ExactComputer"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
+related = ["weighted-banzhaf", "sii"]
+
+[[entries]]
+id = "multilinear-extension"
+name = "Multilinear extension"
+year = 1972
+lane = "foundations"
+summary = "The Shapley value as an integral over the probability with which players participate."
+description = """
+Owen extended a game from coalitions to the unit cube: its multilinear extension is the expected
+worth of a random coalition that contains each player independently with a given probability. A
+player's Shapley value is its expected marginal contribution to a coalition in which all other
+players participate with a common probability q, integrated over q from 0 to 1; at q = 1/2, the same
+expectation is the Banzhaf value. Owen sampling estimates this integral by sampling, and
+Quadrature-TreeSHAP computes it exactly for trees.
+"""
+cite = ["Owen.1972"]
+api = ["shapiq.approximator.OwenSamplingSV", "shapiq.tree.QuadratureTreeSHAP"]
+related = ["owen-sampling", "weighted-banzhaf", "quadrature-treeshap"]
+
+[[entries]]
+id = "semivalues"
+name = "Semivalues"
+year = 1981
+lane = "foundations"
+summary = "The positive values that satisfy Shapley's axioms except efficiency."
+description = """
+Dropping efficiency from Shapley's axioms and asking for positivity leaves the semivalues: weighted
+averages of marginal contributions whose weights depend only on the size of the coalition. The
+Shapley and the Banzhaf value are the best-known members, and many estimators work for every
+semivalue at once.
+"""
+cite = ["Dubey.1981"]
+api = ["shapiq.game_theory.ExactComputer.probabilistic_value"]
+related = ["probabilistic-values"]
+
+[[entries]]
+id = "probabilistic-values"
+name = "Probabilistic values"
+year = 1988
+lane = "foundations"
+summary = "A player's value as its expected marginal contribution to a random coalition."
+description = """
+Weber's probabilistic values draw the coalition a player joins from a distribution of its own;
+semivalues are the symmetric case. They are the common frame of most sampling estimators, which
+differ in how they draw and reuse the coalitions.
+"""
+cite = ["Weber.1988"]
+api = ["shapiq.game_theory.ExactComputer.probabilistic_value"]
+related = ["semivalues", "regression-msr"]
+
+[[entries]]
+id = "wls-representation"
+name = "Least-squares representation"
+year = 1988
+lane = "foundations"
+summary = "The Shapley value solves a weighted least-squares problem."
+description = """
+Charnes et al. characterized the Shapley value as the solution of a weighted linear regression of
+the coalition values on the indicators of the players, subject to efficiency. This representation
+underlies KernelSHAP and its successors, which solve the regression on sampled coalitions.
+"""
+cite = ["Charnes.1988"]
+api = ["shapiq.approximator.KernelSHAP"]
+related = ["kernelshap", "fsii", "kernelshap-iq"]
+
+[[entries]]
+id = "moebius-representation"
+name = "Möbius representation"
+year = 2000
+lane = "foundations"
+summary = "The Shapley value as a sum of Möbius coefficients."
+description = """
+Grabisch et al. collected the equivalent representations of set functions and the formulas that
+convert between them, e.g. the Shapley value as the sum of the Möbius coefficients of a player's
+coalitions, each split equally among its members. Methods that recover a sparse Möbius
+representation read Shapley values and interactions out of it in closed form.
+"""
+cite = ["Grabisch.2000"]
+api = ["shapiq.game_theory.MoebiusConverter"]
+examples = ["auto_examples/exact_computation/plot_moebius_conversion"]
+related = ["moebius-transform", "spex"]
+
+[[entries]]
+id = "permutation-representation"
+name = "Permutation representation"
+year = 1953
+lane = "foundations"
+summary = "The Shapley value as an expectation over random orderings of the players."
+description = """
+A player's Shapley value equals its expected marginal contribution when the players join in a
+uniformly random order, as Shapley's formula already states. Castro et al. turned this view into a
+polynomial-time sampling algorithm, and it remains the basis of all permutation-based estimators.
+"""
+cite = ["Shapley.1951", "Castro.2009"]
+api = ["shapiq.approximator.PermutationSamplingSV"]
+related = ["permutation-sampling"]
+
+[[entries]]
+id = "weighted-banzhaf"
+name = "Weighted Banzhaf values"
+year = 2011
+lane = "foundations"
+summary = "Banzhaf values and interactions for players that join with probability p."
+description = """
+Marichal and Mathonet derived weighted Banzhaf values and interaction indices from the best
+approximation of a game by games of bounded order, where every player joins a coalition
+independently with probability p. For p = 1/2 they are the Banzhaf indices; Hammer and Holzman had
+obtained the Banzhaf value from the best linear approximation in the unweighted least-squares sense.
+Weighted Banzhaf interactions explain vision-language encoders in FIxLIP, and the quadrature
+algorithm for trees integrates them over p.
+"""
+cite = ["Marichal.2011", "Hammer.1992"]
+related = ["banzhaf-value", "multilinear-extension", "fixlip", "quadrature-treeshap"]
+
+[[entries]]
+id = "least-core"
+name = "Egalitarian least core"
+year = 2021
+lane = "foundations"
+summary = "A stability-based alternative to the Shapley value for explanation and data valuation."
+description = """
+The core contains the divisions of the payoff that no coalition would want to leave. Yan and
+Procaccia made the case for the least core, which always exists, as an alternative to the Shapley
+value for feature and data valuation that favors stability over fairness, and approximated it
+efficiently. shapiq computes its egalitarian solution
+exactly for small games.
+"""
+cite = ["Yan.2021"]
+api = ["shapiq.game_theory.egalitarian_least_core"]
+examples = ["auto_examples/exact_computation/plot_core"]
+related = ["shapley-value", "data-shapley"]
+
+[[entries]]
+id = "coalition-representation"
+name = "Representation without marginal contributions"
+year = 2024
+lane = "foundations"
+summary = "The Shapley value as an expectation over independently drawn coalitions."
+description = """
+Kolpaczki et al. wrote the Shapley value as the difference of two expectations over coalitions
+that do or do not contain the player. A single sampled coalition then informs the estimates of all
+players at once, which the SVARM estimators exploit.
+"""
+cite = ["Kolpaczki.2024a"]
+api = ["shapiq.approximator.SVARM"]
+related = ["svarm", "svarm-iq"]
+
+[[entries]]
+id = "unified-fanova"
+name = "Unified framework with fANOVA"
+year = 2025
+lane = "foundations"
+summary = "Organizes feature-based explanations with functional ANOVA and cooperative game theory."
+description = """
+Fumagalli et al. organized feature-based explanation methods along three choices: the feature
+distribution used to remove features, the functional ANOVA effects that are explained (individual,
+joint or interaction effects), and the game-theoretic summary such as the Shapley or Banzhaf value.
+The framework relates popular methods to each other and explains why their explanations of the same
+model can differ.
+"""
+cite = ["Fumagalli.2025"]
+related = ["explaining-by-removing", "interventional-removal"]
+
+# -- Interaction indices ----------------------------------------------------------------------------
+
+[[entries]]
+id = "sii"
+name = "Shapley interaction index (SII)"
+year = 1999
+lane = "indices"
+summary = "Extends the Shapley value to groups of players, and the Banzhaf value to the BII."
+description = """
+Grabisch and Roubens axiomatized the Shapley interaction index, which averages the discrete
+derivative of a group of players over all contexts, and its Banzhaf counterpart, the Banzhaf
+interaction index (BII). The SII is the classical notion of interaction, but its values do not sum
+up to the prediction; aggregated variants such as the k-SII restore efficiency.
+"""
+cite = ["Grabisch.1999"]
+api = ["shapiq.game_theory.ExactComputer.shapley_interactions"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
+related = ["k-sii", "shap-iq", "kernelshap-iq"]
+
+[[entries]]
+id = "chii"
+name = "Chaining interaction index"
+year = 1999
+lane = "indices"
+summary = "An interaction index derived from maximal chains of coalitions."
+description = """
+Marichal and Roubens introduced the chaining interaction index (CHII) as an alternative to the SII
+that is derived from maximal chains in the lattice of coalitions. shapiq computes it exactly as
+``index="CHII"``.
+"""
+cite = ["Marichal.1999"]
+api = ["shapiq.game_theory.ExactComputer"]
+related = ["sii"]
+
+[[entries]]
+id = "generalized-values"
+name = "Generalized values"
+year = 2000
+lane = "indices"
+summary = "The worth of a group of players acting as one, rather than their interaction."
+description = """
+Generalized values assign a value to every coalition that measures its joint contribution when its
+members act as a single player. Marichal and co-authors studied Shapley, Banzhaf and chaining
+variants (SGV, BGV, CHGV) as well as internal and external values (IGV, EGV), all of which shapiq
+computes exactly.
+"""
+cite = ["Marichal.2000", "Marichal.2007"]
+api = ["shapiq.game_theory.ExactComputer.shapley_generalized_value"]
+related = ["joint-shapley"]
+
+[[entries]]
+id = "cii"
+name = "Cardinal interaction indices"
+year = 2006
+lane = "indices"
+summary = "The class of interaction indices built from weighted discrete derivatives."
+description = """
+Fujimoto et al. axiomatized cardinal(-probabilistic) interaction indices: weighted averages of the
+discrete derivatives of a group of players, with weights that depend only on coalition sizes. SII,
+BII and STII belong to this class, which lets estimators such as SHAP-IQ and SVARM-IQ treat them
+uniformly.
+"""
+cite = ["Fujimoto.2006"]
+api = ["shapiq.approximator.SHAPIQ"]
+related = ["shap-iq", "svarm-iq"]
+
+[[entries]]
+id = "shap-interaction-values"
+name = "SHAP interaction values"
+year = 2019
+lane = "indices"
+summary = "Pairwise interactions (the k-SII of order two) computed exactly for trees."
+description = """
+Lundberg et al. split each Shapley value of a tree ensemble into a main effect and pairwise
+interaction effects that together sum to the prediction, and computed them exactly. The index is the
+second-order case of the k-SII, which shapiq provides for any order as ``index="k-SII"``.
+"""
+cite = ["Lundberg.2019"]
+api = ["shapiq.explainer.TreeExplainer"]
+related = ["k-sii", "treeshap", "treeshap-iq"]
+
+[[entries]]
+id = "stii"
+name = "Shapley-Taylor interaction index (STII)"
+year = 2020
+lane = "indices"
+summary = "An efficient interaction index modeled on the terms of a Taylor series."
+description = """
+The STII keeps the Möbius coefficients of the lower orders and assigns all higher-order effects to
+the interactions of the highest explained order, much like the remainder of a Taylor expansion. It
+is efficient: the interactions up to the explanation order sum to the prediction.
+"""
+cite = ["Sundararajan.2020"]
+api = ["shapiq.game_theory.ExactComputer.compute_stii"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
+related = ["permutation-stii", "moebius-transform"]
+
+[[entries]]
+id = "joint-shapley"
+name = "Joint Shapley values"
+year = 2022
+lane = "indices"
+summary = "Extends Shapley's axioms to sets of features with a joint importance."
+description = """
+Harris et al. extended Shapley's axioms to sets of players to measure the average contribution of a
+set of features acting jointly, rather than its interaction. shapiq computes the joint Shapley
+values (``index="JointSV"``) exactly.
+"""
+cite = ["Harris.2022"]
+api = ["shapiq.game_theory.ExactComputer.compute_joint_sv"]
+related = ["generalized-values"]
+
+[[entries]]
+id = "fsii"
+name = "Faithful interactions (FSII, FBII)"
+year = 2023
+lane = "indices"
+summary = "Interactions as the most faithful approximation of the game up to a given order."
+description = """
+Tsai et al. defined the Faithful Shapley interaction index (FSII) as the coefficients of the
+weighted least-squares approximation of a game by interactions up to order k, with the Shapley
+kernel as weights; the Faithful Banzhaf interaction index (FBII) weights all coalitions equally.
+The FSII is efficient and extends the regression view of KernelSHAP to interactions.
+"""
+cite = ["Tsai.2022"]
+api = ["shapiq.game_theory.ExactComputer.compute_fii"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
+related = ["faithful-estimators", "wls-representation"]
+
+[[entries]]
+id = "k-sii"
+name = "k-Shapley values (k-SII)"
+year = 2023
+lane = "indices"
+summary = "Efficient Shapley interactions of any order, aggregated from the SII."
+description = """
+Bordt and von Luxburg introduced the k-SII, which moves the SII of higher orders into the
+interactions up to order k so that these sum to the prediction. For k = 1 it is the Shapley value,
+for k equal to the number of players the Möbius transform. It is available as ``index="k-SII"``
+throughout shapiq.
+"""
+cite = ["Bordt.2023"]
+api = ["shapiq.game_theory.ExactComputer.shapley_interactions"]
+examples = ["auto_examples/exact_computation/plot_interaction_indices"]
+related = ["sii", "shap-interaction-values", "gams"]
+
+# -- Approximating Shapley values -------------------------------------------------------------------
+
+[[entries]]
+id = "permutation-sampling"
+name = "Permutation sampling"
+year = 2009
+lane = "sv-approx"
+summary = "The first Monte Carlo estimator: average marginal contributions over random permutations."
+description = """
+Castro et al. estimated the Shapley value by sampling permutations of the players and averaging the
+marginal contribution of each player to its predecessors. The estimator is simple, unbiased and
+still a strong baseline.
+"""
+cite = ["Castro.2009"]
+api = ["shapiq.approximator.PermutationSamplingSV"]
+examples = ["auto_examples/approximators/shapley_values/plot_permutation_sampling_sv"]
+related = [
+    "permutation-representation",
+    "improved-permutations",
+    "permutation-stii",
+    "top-k-identification",
+]
+
+[[entries]]
+id = "stratified-sampling"
+name = "Stratified sampling"
+year = 2013
+lane = "sv-approx"
+summary = "Samples marginal contributions stratified by coalition size."
+description = """
+Maleki et al. bounded the error of sampling-based Shapley value estimation and stratified the
+marginal contributions of each player by the size of the coalition it joins, which reduces the
+variance when the strata differ.
+"""
+cite = ["Maleki.2013"]
+api = ["shapiq.approximator.StratifiedSamplingSV"]
+examples = ["auto_examples/approximators/shapley_values/plot_stratified_sampling_sv"]
+related = ["svarm", "adaptive-stratification"]
+
+[[entries]]
+id = "adaptive-stratification"
+name = "Adaptive stratification"
+year = 2017
+lane = "sv-approx"
+summary = "Allocates the samples to the coalition sizes by their observed variances."
+description = """
+A stratified estimator is most accurate if the strata with larger variance receive more samples
+(the Neyman allocation), but the variances are unknown in advance. Castro et al. estimated them in
+a first phase and allocated the remaining budget accordingly, and Burgess and Chapman chose every
+next sample by minimizing an empirical Bernstein bound. Kolpaczki et al. derived the optimal
+allocation for SVARM's strata, showed how much it gains over a fixed one, and approached it with
+Adaptive SVARM.
+"""
+cite = ["Castro.2017", "Burgess.2021", "Kolpaczki.2024c"]
+related = ["stratified-sampling", "svarm"]
+
+[[entries]]
+id = "kernelshap"
+name = "KernelSHAP"
+year = 2017
+lane = "sv-approx"
+summary = "Estimates Shapley values by a weighted linear regression on sampled coalitions."
+description = """
+KernelSHAP samples coalitions, evaluates the model with the absent features removed, and solves the
+least-squares representation of the Shapley value on these samples. Together with the shap library,
+it made Shapley values the most widely used local feature attribution.
+"""
+cite = ["Lundberg.2017"]
+api = ["shapiq.approximator.KernelSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_kernelshap"]
+related = [
+    "wls-representation",
+    "unbiased-kernelshap",
+    "leverageshap",
+    "polyshap",
+    "kernelshap-iq",
+    "shap",
+]
+
+[[entries]]
+id = "owen-sampling"
+name = "Owen sampling"
+year = 2020
+lane = "sv-approx"
+summary = "Estimates Shapley values through the multilinear extension of the game."
+description = """
+Okhrati and Lipani sample coalitions in which every player participates with a common probability q
+and integrate the resulting multilinear extension of the game over q. The construction reduces the
+variance compared to sampling permutations.
+"""
+cite = ["Okhrati.2020"]
+api = ["shapiq.approximator.OwenSamplingSV"]
+examples = ["auto_examples/approximators/shapley_values/plot_owen_sampling_sv"]
+related = ["permutation-sampling", "multilinear-extension", "quadrature-treeshap"]
+
+[[entries]]
+id = "unbiased-kernelshap"
+name = "Unbiased KernelSHAP"
+year = 2021
+lane = "sv-approx"
+summary = "An unbiased Monte Carlo variant of KernelSHAP with paired sampling."
+description = """
+Covert and Lee analyzed KernelSHAP as a stochastic estimator, derived an unbiased variant with
+uncertainty estimates and convergence detection, and showed that paired (antithetic) sampling,
+which evaluates every coalition together with its complement, substantially reduces the variance.
+SHAP-IQ generalizes the estimator to interactions.
+"""
+cite = ["Covert.2021b"]
+api = ["shapiq.approximator.UnbiasedKernelSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_unbiased_kernelshap"]
+related = ["kernelshap", "shap-iq", "msr"]
+
+[[entries]]
+id = "top-k-identification"
+name = "Top-k identification"
+year = 2021
+lane = "sv-approx"
+summary = "Finds the k players with the largest Shapley values instead of estimating all values."
+description = """
+Often only the most important players matter, e.g. to select features. Kolpaczki et al. modeled
+every player as an arm of a multi-armed bandit whose rewards are its marginal contributions, so that
+sampling concentrates on the players near the border of the top k. SHAP@k by Kariyappa et al. adds
+PAC guarantees and samples, in every round, the two players inside and outside the current top k
+whose confidence intervals overlap most. Comparable Marginal Contributions Sampling (CMCS) evaluates
+the marginal contributions of all players to the same coalition, whose correlation makes their
+ranking more reliable.
+"""
+cite = ["Kolpaczki.2021", "Kariyappa.2024", "Kolpaczki.2025"]
+related = ["permutation-sampling", "neuron-shapley", "feature-selection"]
+
+[[entries]]
+id = "improved-permutations"
+name = "Improved permutation sampling"
+year = 2022
+lane = "sv-approx"
+summary = "Better-spread sets of permutations instead of independent random ones."
+description = """
+Mitchell et al. replaced independent random permutations by sets of permutations that cover the
+space more evenly, constructed with kernel herding, Bayesian quadrature or point sets on the sphere,
+and reduced the error of permutation sampling.
+"""
+cite = ["Mitchell.2022"]
+related = ["permutation-sampling"]
+
+[[entries]]
+id = "fastshap"
+name = "FastSHAP"
+year = 2022
+lane = "sv-approx"
+summary = "Amortized estimation: a network predicts Shapley values in one forward pass."
+description = """
+FastSHAP trains an explainer network with a weighted least-squares objective on sampled coalitions.
+After training, it predicts the Shapley values of a new input without further evaluations of the
+explained model.
+"""
+cite = ["Jethani.2022"]
+related = ["stochastic-amortization", "instashap"]
+
+[[entries]]
+id = "kaddshap"
+name = "kADD-SHAP"
+year = 2023
+lane = "sv-approx"
+summary = "Fits a k-additive game to the sampled coalitions to estimate Shapley values."
+description = """
+Pelegrina et al. approximate the game by a k-additive game in the sense of Grabisch, which has
+interactions of order at most k, by least squares on sampled coalitions, and read the Shapley values
+out of the fitted game. Modeling interactions improves on KernelSHAP, which fits an additive game.
+"""
+cite = ["Pelegrina.2023", "Pelegrina.2026", "Grabisch.1997"]
+api = ["shapiq.approximator.kADDSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_kadd_shap"]
+related = ["kernelshap", "polyshap"]
+
+[[entries]]
+id = "msr"
+name = "Maximum sample reuse (MSR)"
+year = 2023
+lane = "sv-approx"
+summary = "Reuses every sampled coalition for the estimates of all players."
+description = """
+Introduced with Data Banzhaf, the MSR estimator uses each sampled coalition for every player, as a
+sample either with or without that player. It generalizes Unbiased KernelSHAP; shapiq applies it to
+correct surrogate models in Regression MSR and ProxySHAP.
+"""
+cite = ["Wang.2023b"]
+related = ["unbiased-kernelshap", "regression-msr", "proxyshap"]
+
+[[entries]]
+id = "svarm"
+name = "SVARM"
+year = 2024
+lane = "sv-approx"
+summary = "Stratified Shapley value estimation without marginal contributions."
+description = """
+SVARM estimates the two expectations of the representation without marginal contributions from
+sampled coalitions, stratified by size, so that every sample updates the estimates of all players.
+Its interaction counterpart is SVARM-IQ.
+"""
+cite = ["Kolpaczki.2024a"]
+api = ["shapiq.approximator.SVARM"]
+examples = ["auto_examples/approximators/shapley_values/plot_svarm"]
+related = ["coalition-representation", "svarm-iq", "stratified-sampling", "adaptive-stratification"]
+
+[[entries]]
+id = "stochastic-amortization"
+name = "Stochastic amortization"
+year = 2024
+lane = "sv-approx"
+summary = "Trains amortized explainers on noisy, cheap estimates instead of exact values."
+description = """
+Covert et al. showed that amortized models such as FastSHAP can be trained on noisy labels from
+cheap unbiased estimators rather than on exact values, which accelerates feature attribution and
+data valuation alike.
+"""
+cite = ["Covert.2024"]
+related = ["fastshap"]
+
+[[entries]]
+id = "leverageshap"
+name = "Leverage SHAP"
+year = 2025
+lane = "sv-approx"
+summary = "Samples the coalitions of KernelSHAP's regression by their leverage scores."
+description = """
+Musco and Witter sample the coalitions of KernelSHAP's regression in proportion to their
+statistical leverage, in pairs and without replacement, and prove that the resulting estimates are
+accurate. The gallery compares it with KernelSHAP on the same budgets.
+"""
+cite = ["Musco.2025"]
+api = ["shapiq.approximator.LeverageSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_leverageshap"]
+related = ["kernelshap", "regression-msr", "polyshap"]
+
+[[entries]]
+id = "regression-msr"
+name = "Regression MSR"
+year = 2025
+lane = "sv-approx"
+summary = "A fitted surrogate model plus an MSR estimate of its residuals."
+description = """
+Witter et al. fit a regression model, e.g. a tree ensemble, to the sampled coalitions, compute its
+Shapley values exactly, and estimate only the remaining residual game by maximum sample reuse. The
+approach works for all probabilistic values and was the most accurate in their benchmarks.
+"""
+cite = ["Witter.2025"]
+api = ["shapiq.approximator.RegressionMSR"]
+examples = ["auto_examples/approximators/surrogate_and_sparse/plot_regression_msr"]
+related = ["msr", "proxyshap", "leverageshap"]
+
+[[entries]]
+id = "polyshap"
+name = "PolySHAP"
+year = 2026
+lane = "sv-approx"
+summary = "Extends KernelSHAP's linear regression with interaction terms."
+description = """
+PolySHAP fits a polynomial in the player indicators, with interaction terms chosen for the budget,
+instead of KernelSHAP's linear model, and reads the Shapley values out of the fitted interactions.
+It converges to the exact Shapley values and sheds light on why paired sampling improves KernelSHAP.
+"""
+cite = ["Fumagalli.2026"]
+related = ["kernelshap", "kaddshap", "oddshap"]
+
+[[entries]]
+id = "oddshap"
+name = "OddSHAP"
+year = 2026
+lane = "sv-approx"
+summary = "Regresses only on the odd part of the game, which alone determines the Shapley value."
+description = """
+Fumagalli et al. observed that the Shapley value depends only on the odd components of the game's
+Fourier representation. OddSHAP combines paired sampling, a surrogate tree model that screens for
+relevant odd interactions, and an odd Fourier regression that enforces efficiency exactly.
+"""
+cite = ["Fumagalli.2026a"]
+api = ["shapiq.approximator.OddSHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_oddshap"]
+related = ["polyshap", "proxyspex"]
+
+[[entries]]
+id = "shapleig"
+name = "ShaplEIG"
+year = 2026
+lane = "sv-approx"
+summary = "Bayesian experimental design chooses the most informative coalitions to evaluate."
+description = """
+ShaplEIG fits a Gaussian process surrogate to the evaluated coalitions and evaluates next the
+coalition with the largest expected information gain about the Shapley values, computed in closed
+form without enumerating all coalitions. It returns posterior means and variances of the values.
+"""
+cite = ["Rundel.2026"]
+api = ["shapiq.approximator.ShaplEIG"]
+examples = ["auto_examples/approximators/shapley_values/plot_shapleig"]
+related = ["kernelshap"]
+
+# -- Approximating interactions ---------------------------------------------------------------------
+
+[[entries]]
+id = "permutation-stii"
+name = "Permutation sampling for STII"
+year = 2020
+lane = "si-approx"
+summary = "Estimates the Shapley-Taylor interactions of the top order from random permutations."
+description = """
+Together with the STII, Sundararajan et al. proposed to estimate its top-order interactions by
+sampling permutations, analogous to permutation sampling for the Shapley value.
+"""
+cite = ["Sundararajan.2020"]
+api = ["shapiq.approximator.PermutationSamplingSTII"]
+examples = ["auto_examples/approximators/shapley_interactions/plot_permutation_sampling_stii"]
+related = ["stii", "permutation-sampling"]
+
+[[entries]]
+id = "faithful-estimators"
+name = "Regression and permutation estimators"
+year = 2023
+lane = "si-approx"
+summary = "A KernelSHAP-like estimator for FSII and permutation sampling for SII."
+description = """
+Tsai et al. estimated the Faithful Shapley interactions by solving their weighted least-squares
+problem on sampled coalitions, like KernelSHAP, and the SII by permutation sampling. shapiq also
+provides the regression estimator for the Faithful Banzhaf interactions.
+"""
+cite = ["Tsai.2022"]
+api = [
+    "shapiq.approximator.RegressionFSII",
+    "shapiq.approximator.RegressionFBII",
+    "shapiq.approximator.PermutationSamplingSII",
+]
+examples = [
+    "auto_examples/approximators/shapley_interactions/plot_regression_fsii",
+    "auto_examples/approximators/shapley_interactions/plot_regression_fbii",
+    "auto_examples/approximators/shapley_interactions/plot_permutation_sampling_sii",
+]
+related = ["fsii", "kernelshap-iq"]
+
+[[entries]]
+id = "shap-iq"
+name = "SHAP-IQ"
+year = 2023
+lane = "si-approx"
+summary = "Unified sampling-based approximation of any-order Shapley interactions."
+description = """
+SHAP-IQ estimates any cardinal interaction index, e.g. the SII, k-SII or STII, of any order from one
+set of sampled coalitions: every coalition updates all interactions through index-specific weights.
+The estimator is unbiased and generalizes Unbiased KernelSHAP from Shapley values to interactions;
+it was the first estimator for this whole class of indices.
+"""
+cite = ["Fumagalli.2023"]
+api = ["shapiq.approximator.SHAPIQ"]
+examples = ["auto_examples/approximators/shapley_interactions/plot_shapiq_approximator"]
+related = ["cii", "unbiased-kernelshap", "svarm-iq", "kernelshap-iq"]
+
+[[entries]]
+id = "smt"
+name = "Sparse Möbius transform"
+year = 2024
+lane = "si-approx"
+summary = "Recovers a sparse Möbius representation from few model queries."
+description = """
+Kang et al. identified the few nonzero Möbius coefficients of a game with techniques from sparse
+signal processing and group testing, using a number of model queries that grows with the sparsity
+rather than with the number of coalitions. The approach is the precursor of SPEX.
+"""
+cite = ["Kang.2024"]
+related = ["spex", "moebius-transform"]
+
+[[entries]]
+id = "kernelshap-iq"
+name = "KernelSHAP-IQ"
+year = 2024
+lane = "si-approx"
+summary = "Generalizes KernelSHAP's weighted least squares to the Shapley interaction index."
+description = """
+Fumagalli et al. derived a weighted least-squares representation of the SII and solved it order by
+order on sampled coalitions, which yields the first KernelSHAP-like estimator of the SII and k-SII.
+A variant that fits all orders at once, Inconsistent KernelSHAP-IQ, is often more accurate for small
+budgets.
+"""
+cite = ["Fumagalli.2024"]
+api = ["shapiq.approximator.KernelSHAPIQ", "shapiq.approximator.InconsistentKernelSHAPIQ"]
+examples = [
+    "auto_examples/approximators/shapley_interactions/plot_kernelshapiq",
+    "auto_examples/approximators/shapley_interactions/plot_inconsistent_kernelshapiq",
+]
+related = ["kernelshap", "sii", "shap-iq"]
+
+[[entries]]
+id = "svarm-iq"
+name = "SVARM-IQ"
+year = 2024
+lane = "si-approx"
+summary = "Stratified estimation of any-order Shapley interactions."
+description = """
+SVARM-IQ extends SVARM to cardinal interaction indices of any order: it stratifies the sampled
+coalitions by size and by their intersection with each interaction, so that every sample updates
+the estimates of all interactions.
+"""
+cite = ["Kolpaczki.2024b"]
+api = ["shapiq.approximator.SVARMIQ"]
+examples = ["auto_examples/approximators/shapley_interactions/plot_svarmiq"]
+related = ["svarm", "shap-iq", "cii"]
+
+[[entries]]
+id = "spex"
+name = "SPEX"
+year = 2025
+lane = "si-approx"
+summary = "Discovers the few relevant interactions of models with many inputs, such as LLMs."
+description = """
+SPEX assumes that few interactions matter and recovers them with a sparse Fourier transform that is
+decoded with channel codes, so the number of model queries grows with the sparsity rather than with
+the number of features. The recovered Möbius coefficients are converted to Shapley interactions.
+"""
+cite = ["Kang.2025"]
+api = ["shapiq.approximator.SPEX"]
+examples = ["auto_examples/approximators/surrogate_and_sparse/plot_spex"]
+related = ["smt", "proxyspex", "moebius-representation"]
+
+[[entries]]
+id = "proxyspex"
+name = "ProxySPEX"
+year = 2025
+lane = "si-approx"
+summary = "Finds sparse interactions with a gradient-boosted tree as a proxy of the model."
+description = """
+ProxySPEX fits gradient-boosted trees to the sampled coalitions, extracts the proxy's sparse
+Fourier coefficients and refines the most important ones. It identifies the relevant interactions
+of large models with far fewer queries than SPEX.
+"""
+cite = ["Butler.2025"]
+api = ["shapiq.approximator.ProxySPEX"]
+examples = ["auto_examples/approximators/surrogate_and_sparse/plot_proxyspex"]
+related = ["spex", "proxyshap", "oddshap"]
+
+[[entries]]
+id = "instashap"
+name = "InstaSHAP"
+year = 2025
+lane = "si-approx"
+summary = "Additive models with interactions that explain a black box instantly."
+description = """
+Enouen and Liu showed that an additive model with interactions, trained on masked inputs to imitate
+a black box, recovers the black box's Shapley values. Once trained, such a model explains new inputs
+instantly, which generalizes amortized estimation as in FastSHAP.
+"""
+cite = ["Enouen.2025"]
+related = ["fastshap", "gams"]
+
+[[entries]]
+id = "proxyshap"
+name = "ProxySHAP"
+year = 2026
+lane = "si-approx"
+summary = "Exact interactions of a proxy model, corrected by an MSR estimate of its residuals."
+description = """
+ProxySHAP fits a tree ensemble (XGBoost by default) or a linear model to the sampled coalitions,
+computes the proxy's interactions exactly with interventional TreeSHAP, and can correct the proxy's
+error with an MSR estimate of the residuals. It extends Regression MSR from Shapley values to
+interactions of any order and index.
+"""
+api = ["shapiq.approximator.ProxySHAP"]
+examples = ["auto_examples/approximators/surrogate_and_sparse/plot_proxyshap"]
+links = [{ label = "Preprint (arXiv:2605.22738)", url = "https://arxiv.org/abs/2605.22738" }]
+related = ["regression-msr", "interventional-treeshap", "proxyspex"]
+
+# -- Exact computation ------------------------------------------------------------------------------
+
+[[entries]]
+id = "linear-models"
+name = "Linear models"
+year = 2014
+lane = "exact"
+summary = "Shapley values of linear models in closed form."
+description = """
+For a linear model and interventional feature removal, a feature's Shapley value is its coefficient
+times the deviation of its value from the background mean, which Štrumbelj and Kononenko
+noted as the special case that needs no sampling.
+"""
+cite = ["Strumbelj.2014"]
+related = ["local-attribution", "interventional-removal"]
+
+[[entries]]
+id = "knn-shapley"
+name = "KNN-Shapley"
+year = 2019
+lane = "exact"
+summary = "Exact data Shapley values of nearest-neighbor models at the cost of sorting."
+description = """
+Jia et al. showed that the data Shapley values of a K-nearest-neighbor classifier follow from a
+recursion over the training points sorted by their distance to the test point. shapiq's
+KNNExplainer computes them for scikit-learn models.
+"""
+cite = ["Jia.2019a"]
+api = ["shapiq.explainer.KNNExplainer", "shapiq_games.KNNGame"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact", "auto_examples/nearest_neighbors/plot_nn_noisy_labels"]
+related = ["data-shapley", "tknn-shapley", "wknn-shapley"]
+
+[[entries]]
+id = "treeshap"
+name = "TreeSHAP"
+year = 2020
+lane = "exact"
+summary = "Exact Shapley values of tree ensembles in polynomial time."
+description = """
+Lundberg et al. computed exact Shapley values of decision trees and their ensembles with a recursion
+over the tree paths, for the path-dependent feature removal that follows the training data at the
+splits of absent features, and for interventional removal. They also built global explanations from
+many local ones. shapiq's TreeExplainer uses ``mode="pathdependent"`` by default.
+"""
+cite = ["Lundberg.2020"]
+api = ["shapiq.explainer.TreeExplainer", "shapiq_games.PathDependentTreeGame"]
+examples = ["auto_examples/trees/plot_tree_pathdependent_vs_interventional", "auto_examples/trees/plot_tree_libraries"]
+related = ["linear-treeshap", "treeshap-iq", "shap-plots"]
+
+[[entries]]
+id = "linear-treeshap"
+name = "Linear TreeSHAP"
+year = 2022
+lane = "exact"
+summary = "Path-dependent TreeSHAP in linear time with summary polynomials."
+description = """
+Yu et al. represented the contributions along the paths of a tree as polynomials and computed
+path-dependent Shapley values in time linear in the size of the tree. Their summary polynomials are
+the starting point of TreeSHAP-IQ.
+"""
+cite = ["Yu.2022"]
+api = ["shapiq.tree.LinearTreeSHAP"]
+related = ["treeshap", "treeshap-iq"]
+
+[[entries]]
+id = "interventional-treeshap"
+name = "Interventional tree interactions"
+year = 2023
+lane = "exact"
+summary = "Exact interventional Shapley values and interactions of (piecewise linear) trees."
+description = """
+Zern et al. extended interventional TreeSHAP to interaction values and to piecewise linear
+regression trees, computed exactly against a background dataset. shapiq's TreeExplainer with
+``mode="interventional"`` computes interactions of any order for SII, k-SII, BII, CHII, STII, FSII,
+and FBII, and the Möbius and Fourier transforms.
+"""
+cite = ["Zern.2023"]
+api = ["shapiq.tree.InterventionalTreeSHAPIQ", "shapiq_games.InterventionalTreeGame"]
+examples = ["auto_examples/trees/plot_tree_pathdependent_vs_interventional"]
+related = ["treeshap", "woodelf", "proxyshap"]
+
+[[entries]]
+id = "treeshap-iq"
+name = "TreeSHAP-IQ"
+year = 2024
+lane = "exact"
+summary = "Exact any-order Shapley interactions of tree ensembles in a single traversal."
+description = """
+TreeSHAP-IQ extends Linear TreeSHAP with interaction summary polynomials and computes path-dependent
+Shapley interactions (SII and k-SII) of any order in one recursive pass through each tree. It made
+exact interactions of gradient-boosted models practical.
+"""
+cite = ["Muschalik.2024a"]
+api = ["shapiq.tree.TreeSHAPIQ"]
+related = ["treeshap", "linear-treeshap", "quadrature-treeshap", "shap-interaction-values"]
+
+[[entries]]
+id = "tknn-shapley"
+name = "TKNN-Shapley"
+year = 2023
+lane = "exact"
+summary = "Closed-form data Shapley values of threshold nearest neighbors, with privacy."
+description = """
+Wang et al. replaced the K nearest neighbors by all neighbors within a distance threshold. The data
+Shapley values of this classifier have a closed form and can be computed with differential privacy.
+"""
+cite = ["Wang.2023"]
+api = ["shapiq.explainer.ThresholdNNExplainer", "shapiq_games.ThresholdNNGame"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact"]
+related = ["knn-shapley"]
+
+[[entries]]
+id = "wknn-shapley"
+name = "WKNN-Shapley"
+year = 2024
+lane = "exact"
+summary = "Exact data Shapley values of distance-weighted nearest neighbors."
+description = """
+Wang et al. computed the data Shapley values of weighted K-nearest-neighbor classifiers exactly by
+counting the coalitions that change the prediction, in quadratic time.
+"""
+cite = ["Wang.2024a"]
+api = ["shapiq.explainer.WeightedKNNExplainer", "shapiq_games.WeightedKNNGame"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact"]
+related = ["knn-shapley"]
+
+[[entries]]
+id = "gams"
+name = "Generalized additive models"
+year = 2023
+lane = "exact"
+summary = "Shapley values and interactions read out of the components of a GAM."
+description = """
+Bordt and von Luxburg connected Shapley-based explanations to generalized additive models: for a GAM
+with interactions up to order k, the k-SII recovers its components, and in turn every model has a
+GAM representation given by its Shapley interactions.
+"""
+cite = ["Bordt.2023"]
+related = ["k-sii", "instashap"]
+
+[[entries]]
+id = "product-kernel"
+name = "Product-kernel Shapley values"
+year = 2025
+lane = "exact"
+summary = "Exact Shapley values of product-kernel models in polynomial time."
+description = """
+Mohammadi et al. computed the exact Shapley values of models built on product kernels, such as
+support vector machines and Gaussian process regression with RBF kernels, in polynomial time by
+exploiting the product structure of the kernel. In shapiq, the product-kernel explainer computes
+them for scikit-learn models.
+"""
+cite = ["Mohammadi.2025"]
+api = ["shapiq.explainer.ProductKernelExplainer", "shapiq_games.ProductKernelGame"]
+examples = ["auto_examples/kernel_methods/plot_gaussian_process_exact", "auto_examples/kernel_methods/plot_kernel_svm_scaling"]
+related = ["fanova-gp", "rkhs-shap"]
+
+[[entries]]
+id = "fanova-gp"
+name = "fANOVA Gaussian processes"
+year = 2026
+lane = "exact"
+summary = "Exact Shapley values of fANOVA Gaussian processes in quadratic time."
+description = """
+Mohammadi et al. computed exact Shapley values, together with their uncertainty, for Gaussian
+processes with functional ANOVA kernels in time quadratic in the number of features.
+"""
+cite = ["Mohammadi.2026"]
+related = ["product-kernel", "gp-shap"]
+
+[[entries]]
+id = "graphshap-iq"
+name = "GraphSHAP-IQ"
+year = 2025
+lane = "exact"
+summary = "Exact any-order Shapley interactions of graph neural networks."
+description = """
+GraphSHAP-IQ exploits that a message-passing graph neural network with a linear readout depends on
+each node only through its receptive field, so that the graph game has nonzero Möbius coefficients
+only on subsets of the receptive fields. Its cost depends on the receptive fields instead of the
+size of the graph, which makes exact interactions of molecules and other graphs feasible.
+"""
+cite = ["Muschalik.2025"]
+related = ["moebius-transform", "treeshap-iq"]
+
+[[entries]]
+id = "woodelf"
+name = "WOODELF and WOODELF-HD"
+year = 2026
+lane = "exact"
+summary = "Vectorized TreeSHAP for many explained points and large background data."
+description = """
+Nadel and Wettenstein expressed the decision patterns of trees as Boolean formulas and computed
+path-dependent and background SHAP values and interactions for all explained points at once with
+vectorized operations. WOODELF-HD extends the approach to deep trees. shapiq's TreeExplainer routes
+large interventional explanations to it when ``woodelf-explainer`` is installed
+(``pip install shapiq[tree]``).
+"""
+cite = ["Nadel.2026", "Wettenstein.2026b"]
+api = ["shapiq.explainer.TreeExplainer"]
+related = ["interventional-treeshap", "quadrature-treeshap"]
+
+[[entries]]
+id = "quadrature-treeshap"
+name = "Quadrature-TreeSHAP"
+year = 2026
+lane = "exact"
+summary = "Depth-independent TreeSHAP and Shapley interactions by Gauss-Legendre quadrature."
+description = """
+Shapley values and interactions of a tree are integrals of weighted Banzhaf interaction polynomials
+over the participation probability. Wettenstein et al. evaluate these integrals by Gaussian
+quadrature, which is exact and numerically stable at any tree depth; TreeGrad-Ranker by Li et al.
+derived the first-order case independently. It is the default path-dependent algorithm of shapiq's
+TreeExplainer.
+"""
+cite = ["Wettenstein.2026a", "Li.2026"]
+api = ["shapiq.tree.QuadratureTreeSHAP", "shapiq.explainer.TreeExplainer"]
+examples = [
+    "auto_examples/trees/plot_treeshapiq_lightgbm",
+    "auto_examples/trees/plot_treeshapiq_custom_tree",
+]
+related = ["treeshap-iq", "weighted-banzhaf", "owen-sampling", "multilinear-extension"]
+
+# -- Feature removal --------------------------------------------------------------------------------
+
+[[entries]]
+id = "interventional-removal"
+name = "Interventional removal"
+year = 2020
+lane = "removal"
+summary = "Absent features take background values, independently of the present ones."
+description = """
+Replacing absent features by values from background data, independently of the present features,
+explains the model as a function: it is true to the model. Janzing et al. justified this
+interventional removal causally, and Chen et al. contrasted it with conditional removal, which is
+true to the data. Sundararajan and Najmi showed that conditional removal can credit features the
+model does not use, and characterized removal by a single baseline (Baseline Shapley) axiomatically.
+In shapiq, it is the marginal and the baseline imputer.
+"""
+cite = ["Janzing.2020", "Chen.2020", "Sundararajan.2020a"]
+api = ["shapiq.imputer.MarginalImputer", "shapiq.imputer.BaselineImputer"]
+examples = ["auto_examples/technicalities/plot_imputers"]
+related = ["conditional-removal", "explaining-by-removing"]
+
+[[entries]]
+id = "explaining-by-removing"
+name = "Explaining by removing"
+year = 2021
+lane = "removal"
+summary = "A unified framework of removal-based explanation methods."
+description = """
+Covert et al. described removal-based explanations by three choices: how features are removed,
+which model behavior is explained, and how the influence of the features is summarized. SHAP, LIME,
+permutation feature importance and SAGE are instances of this framework.
+"""
+cite = ["Covert.2021"]
+related = ["interventional-removal", "unified-fanova", "sage"]
+
+[[entries]]
+id = "conditional-removal"
+name = "Conditional imputation"
+year = 2021
+lane = "removal"
+summary = "Absent features are sampled conditionally on the present ones."
+description = """
+Aas et al. showed that ignoring feature dependence misleads KernelSHAP and estimated the conditional
+distribution of the absent features with Gaussian or copula models. Frye et al. learned it with
+generative and supervised models instead. shapiq offers Gaussian, Gaussian copula and generative
+(tree-embedding) conditional imputers.
+"""
+cite = ["Aas.2021", "Frye.2021"]
+api = [
+    "shapiq.imputer.GaussianImputer",
+    "shapiq.imputer.GaussianCopulaImputer",
+    "shapiq.imputer.GenerativeConditionalImputer",
+]
+examples = ["auto_examples/technicalities/plot_conditional_imputer", "auto_examples/technicalities/plot_imputers"]
+related = ["interventional-removal", "shapr"]
+
+[[entries]]
+id = "tabpfn"
+name = "Remove and recontextualize"
+year = 2024
+lane = "removal"
+summary = "In-context learners such as TabPFN drop absent features from their context."
+description = """
+Tabular foundation models such as TabPFN learn in context, so absent features can be removed by
+dropping them from the training context and predicting again, without any imputation. Rundel et al.
+explained TabPFN this way, and shapiq's TabPFNExplainer implements it.
+"""
+cite = ["Rundel.2024", "Hollmann.2025"]
+api = ["shapiq.explainer.TabPFNExplainer", "shapiq.imputer.TabPFNImputer"]
+examples = ["auto_examples/applications/plot_explaining_tabpfn"]
+related = ["conditional-removal"]
+
+# -- Value functions & tasks ------------------------------------------------------------------------
+
+[[entries]]
+id = "feature-selection"
+name = "Feature selection"
+year = 2007
+lane = "applications"
+summary = "Selects features by their Shapley values in a game of retrained models."
+description = """
+Cohen et al. defined the value of a feature subset as the performance of a model trained on it, and
+selected features by forward selection or backward elimination guided by estimates of their
+Shapley values. Every coalition requires training a model, which makes the game expensive. shapiq's
+feature selection game retrains a copy of a given model on every coalition and scores it on test
+data.
+"""
+cite = ["Cohen.2007"]
+api = ["shapiq_games.FeatureSelection"]
+examples = ["auto_examples/benchmarking/plot_games_tour"]
+related = ["sage", "top-k-identification"]
+
+[[entries]]
+id = "local-attribution"
+name = "Local feature attribution"
+year = 2010
+lane = "applications"
+summary = "Explains an individual prediction by the Shapley values of its features."
+description = """
+Štrumbelj and Kononenko defined the contribution of each feature to a single prediction as its
+Shapley value in a game whose players are the features, and estimated it by sampling; later, they
+gave more samples to the features whose estimates vary more. This local explanation game is the most
+common use of Shapley values in machine learning.
+"""
+cite = ["Strumbelj.2010", "Strumbelj.2014"]
+api = ["shapiq.explainer.TabularExplainer", "shapiq_games.TabularLocalExplanation"]
+examples = ["auto_examples/basics/plot_shapiq_scikit_learn"]
+related = ["kernelshap", "linear-models"]
+
+[[entries]]
+id = "data-shapley"
+name = "Data Shapley"
+year = 2019
+lane = "applications"
+summary = "Values every training point by its contribution to the model's performance."
+description = """
+Ghorbani and Zou treated the training points as players and the performance of a model trained on
+a coalition as its value, and estimated the values by truncated permutation sampling. The resulting
+data Shapley values identify valuable and harmful (e.g. mislabeled) training data. At the same time,
+Jia et al. studied the same valuation and proposed estimators that train fewer models, e.g. by group
+testing.
+"""
+cite = ["Ghorbani.2019", "Jia.2019"]
+api = ["shapiq_games.DataValuation"]
+examples = ["auto_examples/nearest_neighbors/plot_nn_noisy_labels"]
+related = ["knn-shapley", "least-core", "neuron-shapley", "ensemble-selection"]
+
+[[entries]]
+id = "sage"
+name = "SAGE"
+year = 2020
+lane = "applications"
+summary = "Global feature importance: the Shapley values of the explained loss."
+description = """
+SAGE measures how much each feature contributes to a model's performance on a whole dataset, as the
+Shapley values of a game whose value is the reduction in loss when the features of a coalition are
+known.
+"""
+cite = ["Covert.2020"]
+api = ["shapiq_games.TabularGlobalExplanation"]
+related = ["isage", "explaining-by-removing", "feature-selection"]
+
+[[entries]]
+id = "neuron-shapley"
+name = "Neuron Shapley"
+year = 2020
+lane = "applications"
+summary = "Finds the neurons of a deep network that are responsible for its behavior."
+description = """
+Ghorbani and Zou treated the neurons or filters of a deep network as players and the network's
+performance with only a coalition of them active as the value. Removing the few filters with the
+largest values destroys the accuracy of an ImageNet model, and removing those responsible for
+biased or vulnerable predictions repairs the model. A multi-armed bandit algorithm finds the
+neurons with the largest values with far fewer evaluations than estimating all values.
+"""
+cite = ["Ghorbani.2020"]
+related = ["top-k-identification", "data-shapley", "ensemble-selection"]
+
+[[entries]]
+id = "timeshap"
+name = "TimeSHAP"
+year = 2021
+lane = "applications"
+summary = "Shapley values for recurrent models over events, features and cells of a sequence."
+description = """
+TimeSHAP extends KernelSHAP to sequences: it attributes a recurrent model's prediction to past
+events, to features and to individual cells, and prunes older events to keep the computation
+tractable.
+"""
+cite = ["Bento.2021"]
+related = ["ordshap"]
+
+[[entries]]
+id = "ensemble-selection"
+name = "Ensemble games"
+year = 2021
+lane = "applications"
+summary = "Values the members of an ensemble to select a small, accurate sub-ensemble."
+description = """
+Rozemberczki and Sarkar treated the trained models of an ensemble as players that vote on the label
+of every data point, and estimated their Shapley values with Troupe, which approximates these voting
+games and averages over the data. The values identify the members worth keeping, so that the
+ensemble can be pruned, and adversarial members receive low values. shapiq's ensemble selection
+games value the members of an ensemble, or the trees of a random forest, by the test performance of
+a sub-ensemble.
+"""
+cite = ["Rozemberczki.2021"]
+api = ["shapiq_games.EnsembleSelection", "shapiq_games.RandomForestEnsembleSelection"]
+related = ["neuron-shapley", "data-shapley"]
+
+[[entries]]
+id = "unsupervised-features"
+name = "Unsupervised feature ranking"
+year = 2022
+lane = "applications"
+summary = "Ranks features without a model by the information they share."
+description = """
+Balestra et al. defined a game on the features whose value is their total correlation, the
+information shared by a coalition, and ranked features by their Shapley values without training any
+model.
+"""
+cite = ["Balestra.2022"]
+api = ["shapiq_games.UnsupervisedData"]
+related = ["sage"]
+
+[[entries]]
+id = "prefshap"
+name = "PrefSHAP"
+year = 2022
+lane = "applications"
+summary = "Shapley values for preference learning models."
+description = """
+Hu et al. explained models that predict preferences between pairs of items, with Shapley values
+computed from kernel representations of the preference model.
+"""
+cite = ["Hu.2022"]
+related = ["rkhs-shap"]
+
+[[entries]]
+id = "rkhs-shap"
+name = "RKHS-SHAP"
+year = 2022
+lane = "applications"
+summary = "Shapley values of kernel methods via kernel mean embeddings."
+description = """
+Chau et al. estimated the interventional and observational value functions of kernel methods
+non-parametrically with kernel mean embeddings, without sampling background data for every
+coalition.
+"""
+cite = ["Chau.2022b"]
+related = ["product-kernel", "gp-shap"]
+
+[[entries]]
+id = "uncertainty"
+name = "Explaining uncertainty"
+year = 2023
+lane = "applications"
+summary = "Shapley values of a model's predictive uncertainty instead of its prediction."
+description = """
+Watson et al. explained the entropy of the predictive distribution, and with it the model's
+uncertainty, with information-theoretic Shapley values. shapiq's uncertainty game explains the
+total, aleatoric or epistemic uncertainty of a random forest.
+"""
+cite = ["Watson.2023"]
+api = ["shapiq_games.TabularUncertaintyExplanation"]
+related = ["gp-shap"]
+
+[[entries]]
+id = "isage"
+name = "iSAGE"
+year = 2023
+lane = "applications"
+summary = "Incremental SAGE for models that learn from data streams."
+description = """
+iSAGE updates SAGE feature importance alongside an incrementally trained model: every observation is
+used once, and the explanation is smoothed over time, with interventional or conditional feature
+removal. It keeps global explanations faithful under concept drift without storing past data.
+"""
+cite = ["Muschalik.2023a"]
+related = ["sage"]
+
+[[entries]]
+id = "gp-shap"
+name = "GP-SHAP"
+year = 2023
+lane = "applications"
+summary = "Stochastic Shapley values that carry the uncertainty of Gaussian processes."
+description = """
+Chau et al. explained Gaussian process models with Shapley values that are random variables
+themselves, so the explanation reflects the uncertainty of the model's predictions.
+"""
+cite = ["Chau.2023"]
+related = ["fanova-gp", "uncertainty"]
+
+[[entries]]
+id = "survshap"
+name = "SurvSHAP(t)"
+year = 2023
+lane = "applications"
+summary = "Time-dependent Shapley values for survival models."
+description = """
+Krzyziński et al. explained the predicted survival function of a model at every point in time,
+which shows how the influence of a feature changes over the time horizon.
+"""
+cite = ["Krzyzinski.2023"]
+
+[[entries]]
+id = "ordshap"
+name = "OrdShap"
+year = 2025
+lane = "applications"
+summary = "Separates the effect of a feature's value from that of its position in a sequence."
+description = """
+Hill et al. attributed the predictions of sequential models both to the values of the features and
+to their positions, so that order effects become visible.
+"""
+cite = ["Hill.2025"]
+related = ["timeshap"]
+
+[[entries]]
+id = "fixlip"
+name = "FIxLIP"
+year = 2025
+lane = "applications"
+summary = "Weighted Banzhaf interactions explain the similarity of vision-language encoders."
+description = """
+Baniecki et al. explained the similarity scores of encoders such as CLIP and SigLIP by interactions
+between image patches and text tokens, quantified with weighted Banzhaf interactions, which capture
+the cross-modal effects that single attributions miss.
+"""
+cite = ["Baniecki.2025"]
+related = ["weighted-banzhaf"]
+
+[[entries]]
+id = "hypershap"
+name = "HyperSHAP"
+year = 2026
+lane = "applications"
+summary = "Shapley values and interactions of hyperparameters."
+description = """
+Wever et al. defined games over the hyperparameters of a learning algorithm, e.g. the performance
+reached by tuning a subset of them, and explained hyperparameter importance and interactions with
+Shapley values and interactions.
+"""
+cite = ["Wever.2026"]
+
+[[entries]]
+id = "confoundingshap"
+name = "ConfoundingSHAP"
+year = 2026
+lane = "applications"
+summary = "Attributes the confounding bias of a treatment effect estimate to covariates."
+description = """
+ConfoundingSHAP defines games whose value is the bias of a treatment effect estimate that adjusts
+only for a coalition of covariates, for one unit or on average. Its Shapley values quantify how much
+each covariate confounds the effect.
+"""
+cite = ["Brockschmidt.2026"]
+api = ["shapiq_games.LocalConfoundingXAI", "shapiq_games.GlobalConfoundingXAI"]
+examples = ["auto_examples/applications/plot_confounding_xai"]
+
+# -- Software & plots -------------------------------------------------------------------------------
+
+[[entries]]
+id = "upset-plot"
+name = "UpSet plot"
+year = 2014
+lane = "software"
+summary = "Shows interactions as sets: which features act together, and how strongly."
+description = """
+UpSet plots, proposed by Lex et al. for intersecting sets, show each interaction as a column of
+marked features with a bar for its value. shapiq uses them to display interactions of any order.
+"""
+cite = ["Lex.2014"]
+api = ["shapiq.plot.upset_plot"]
+examples = ["auto_examples/visualization/plot_upset"]
+related = ["si-graph"]
+
+[[entries]]
+id = "shap"
+name = "shap"
+year = 2017
+lane = "software"
+summary = "The widely used library that popularized Shapley-based explanations."
+description = """
+The shap library accompanied KernelSHAP and later TreeSHAP and became the standard tool for Shapley
+values in practice, with model-specific explainers and the plots that are now common.
+"""
+cite = ["Lundberg.2017"]
+related = ["kernelshap", "treeshap", "shapiq"]
+
+[[entries]]
+id = "shap-plots"
+name = "Force, waterfall and summary plots"
+year = 2020
+lane = "software"
+summary = "Plots that show how attributions add up, locally and across a dataset."
+description = """
+Force and waterfall plots show how the attributions of one prediction add up; summary (beeswarm)
+and dependence (scatter) plots, introduced by Lundberg et al., aggregate many local explanations
+into a global view. shapiq draws them for Shapley values and interactions.
+"""
+cite = ["Lundberg.2020"]
+api = [
+    "shapiq.plot.force_plot",
+    "shapiq.plot.waterfall_plot",
+    "shapiq.plot.beeswarm_plot",
+    "shapiq.plot.scatter_plot",
+]
+examples = [
+    "auto_examples/visualization/plot_visualizing_interactions",
+    "auto_examples/visualization/plot_beeswarm",
+    "auto_examples/visualization/plot_scatter",
+]
+related = ["treeshap"]
+
+[[entries]]
+id = "network-plot"
+name = "Interaction network plot"
+year = 2022
+lane = "software"
+summary = "Features as nodes and pairwise interactions as edges."
+description = """
+Inglis et al. visualized variable importance and pairwise interaction strength as a network: nodes
+for the features, edges whose width and color show the strength of their interaction. shapiq's
+network plot also shows the sign of the interactions.
+"""
+cite = ["Inglis.2022"]
+api = ["shapiq.plot.network_plot"]
+examples = ["auto_examples/visualization/plot_visualizing_interactions"]
+related = ["si-graph"]
+
+[[entries]]
+id = "stacked-bar"
+name = "Stacked bar plot"
+year = 2023
+lane = "software"
+summary = "Splits the attribution of every feature into its main and interaction effects."
+description = """
+Following Bordt and von Luxburg, stacked bars show how much of a feature's Shapley value stems from
+its main effect and from interactions of each order with other features.
+"""
+cite = ["Bordt.2023"]
+api = ["shapiq.plot.stacked_bar_plot"]
+examples = ["auto_examples/visualization/plot_visualizing_interactions"]
+related = ["k-sii"]
+
+[[entries]]
+id = "shapiq"
+name = "shapiq"
+year = 2024
+lane = "software"
+summary = "Shapley interactions for machine learning: estimators, exact algorithms and benchmarks."
+description = """
+shapiq computes Shapley values and interactions of any order with one interface, bundles
+model-agnostic estimators with model-specific exact algorithms, and ships benchmark games with
+ground-truth values (``shapiq_games`` and ``shapiq_benchmark``). It also covers related concepts
+such as Banzhaf values and Möbius coefficients.
+"""
+cite = ["Muschalik.2024"]
+api = ["shapiq.explainer.Explainer", "shapiq.interaction_values.InteractionValues", "shapiq.game.Game"]
+examples = ["auto_examples/basics/plot_custom_games"]
+related = ["shap", "si-graph"]
+
+[[entries]]
+id = "si-graph"
+name = "SI graph plot"
+year = 2024
+lane = "software"
+summary = "Draws interactions of any order as hyperedges between the features."
+description = """
+Introduced with shapiq, the SI graph plot shows features as nodes and interactions of any order as
+hyperedges whose size and color show their strength and sign.
+"""
+cite = ["Muschalik.2024"]
+api = ["shapiq.plot.si_graph_plot"]
+examples = ["auto_examples/visualization/plot_si_graph"]
+related = ["network-plot", "upset-plot"]
+
+[[entries]]
+id = "shapr"
+name = "shapr"
+year = 2025
+lane = "software"
+summary = "R and Python library for conditional Shapley values."
+description = """
+shapr explains predictions with Shapley values under many conditional and interventional feature
+removal approaches, including the Gaussian, copula and empirical methods of Aas et al.
+"""
+cite = ["Jullum.2025"]
+related = ["conditional-removal"]

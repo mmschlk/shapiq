@@ -7,6 +7,8 @@ interactions as a network. Players are nodes; interactions are edges whose
 color, thickness, and opacity encode strength and direction.
 """
 
+# sphinx_gallery_thumbnail_number = 7
+
 from __future__ import annotations
 
 from sklearn.model_selection import train_test_split
@@ -40,6 +42,7 @@ x_explain = x_test[2]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="FSII",
     max_order=3,
     random_state=42,

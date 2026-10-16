@@ -27,7 +27,7 @@ class WeightedKNNExplainer(NNExplainerBase):
     r"""Explainer for weighted KNN models.
 
     Implements the algorithm for efficiently computing exact Shapley values for weighted KNN models proposed by
-    :footcite:t:`Wang.2024`.
+    :cite:t:`Wang.2024a`.
     The algorithm achieves a runtime complexity of :math:`O\bigl(\frac{k^2 N^2 W}{C}\bigr)`, where
 
     * :math:`k` is the defining hyperparameter of the :math:`k`-nearest neighbors model,
@@ -37,9 +37,6 @@ class WeightedKNNExplainer(NNExplainerBase):
     * :math:`C` is the number of classes of the training dataset.
 
     Since the parameters :math:`k`, :math:`W` and :math:`C` can be considered constants for most purposes, the effective complexity is :math:`O(N^2)`.
-
-    References:
-        .. footbibliography::
     """
 
     @override

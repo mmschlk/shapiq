@@ -34,11 +34,11 @@ class WeightedKNNGame(KNNGameBase):
     """The utility game of a distance-weighted k-nearest-neighbor classifier.
 
     The players are the training points. The game averages the binary games of the explained
-    class against every other class (Wang et al., 2024): the value of a coalition in a binary game
-    is one if, among the coalition's ``k`` nearest neighbors of the two classes, the summed weight
-    of the explained class is at least the summed weight of the other class, and zero otherwise
-    (equation 15, with zero for the empty coalition). Its exact Shapley values are computed by
-    :class:`~shapiq.explainer.nn.WeightedKNNExplainer`.
+    class against every other class :cite:p:`Wang.2024a`: the value of a coalition in a
+    binary game is one if, among the coalition's ``k`` nearest neighbors of the two classes, the
+    summed weight of the explained class is at least the summed weight of the other class, and
+    zero otherwise (equation 15, with zero for the empty coalition). Its exact Shapley values are
+    computed by :class:`~shapiq.explainer.nn.WeightedKNNExplainer`.
 
     Attributes:
         n_bits: The number of bits of the weight discretization, or ``None`` for exact weights.

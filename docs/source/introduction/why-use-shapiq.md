@@ -1,29 +1,68 @@
-# Why Use ``shapiq``?
+# Why Use `shapiq`?
 
-There are a couple of reasons why you might want to use ``shapiq``:
+`shapiq` is a library for both the people who explain models and the people who research
+game-theoretic explanations. Here is what it offers.
 
-## Explanations with Shapley Interactions
+````{grid} 1 1 2 2
+:gutter: 3
+:class-container: shapiq-cards
 
-``shapiq`` directly extends on ``shap`` but also allows for computation of Shapley interactions.
-These interactions can be used to explain models in more detail.
-To facilitate any-order interactions, ``shapiq`` requires specific data structure and sets of algorithms.
+~~~{grid-item-card} {octicon}`git-merge` Shapley Interactions of Any Order
+:class-card: shapiq-card
+:link: index
+:link-type: doc
 
-## Explanations with Shapley values
+`shapiq` extends `shap` by Shapley interactions: k-SII, the Shapley-Taylor and the faithful
+interaction indices, and more. Its data structure and algorithms handle interactions of any
+order.
+~~~
 
-Similar to ``shap``, ``shapiq`` can also be used to explain models with the well-established Shapley values.
-Many algorithms that are available in ``shap`` are also available in ``shapiq``.
-Often, this is beneficial when you are looking into a higher-number of features.
+~~~{grid-item-card} {octicon}`person` Shapley Values, Too
+:class-card: shapiq-card
+:link: start
+:link-type: doc
 
-## Two Independent Perspectives: Explanation and Game Theory
+Explain models with Shapley values as in `shap`, with established and recent approximators
+such as KernelSHAP, Leverage SHAP, permutation sampling, and SVARM, which also scale to many
+features.
+~~~
 
-``shapiq`` offers two independent perspectives on the same problem: explanation and game theory.
-We introduce the notion of a general ``game``, which maps any machine learning problem (also outside the scope of machine learning) to a cooperative game without design decisions of explanation methods.
-This allows for easy computation of many game-theoretic concepts, such as the Shapley value, Shapley interactions, or the Banzhaf value.
-The explanation perspective is similar to ``shap`` and includes established mechanisms to transform any machine learning model into a cooperative game.
-``shapiq`` offers a unified interface to both perspectives.
+~~~{grid-item-card} {octicon}`workflow` Exact Algorithms
+:class-card: shapiq-card
+:link: /auto_examples/trees/index
+:link-type: doc
 
-## Benchmarking of Novel Approaches
+Exact Shapley values and interactions of tree ensembles, and exact Shapley values of
+nearest-neighbor models, Gaussian processes, and other product-kernel models, without sampling.
+~~~
 
-``shapiq`` is a platform for benchmarking novel approaches in the field of Shapley values and Shapley interactions.
-We implement many state-of-the-art algorithms and provide a unified interface to compare them.
-Further, we provide a set of tools to evaluate the performance of these algorithms on pre-computed benchmarks tasks.
+~~~{grid-item-card} {octicon}`apps` Explanation and Game Theory
+:class-card: shapiq-card
+:link: /auto_examples/exact_computation/index
+:link-type: doc
+
+A `Game` maps any problem to a cooperative game, without the design
+decisions of an explanation method. The `ExactComputer` computes
+the Shapley value, the Banzhaf value, interactions, the Möbius transform, the core, and more;
+the explainers turn models into games.
+~~~
+
+~~~{grid-item-card} {octicon}`trophy` Benchmarks
+:class-card: shapiq-card
+:link: /api_reference_benchmark
+:link-type: doc
+
+A platform for new methods: `shapiq_games` defines games from data valuation to vision
+transformers, and `shapiq_benchmark` scores approximators against their exact values with
+error, ranking, and faithfulness metrics.
+~~~
+
+~~~{grid-item-card} {octicon}`eye` Visualization
+:class-card: shapiq-card
+:link: /auto_examples/visualization/index
+:link-type: doc
+
+Force, waterfall, bar, beeswarm, and scatter plots as known from `shap`, and plots made for
+interactions: network, SI graph, and UpSet plots.
+~~~
+````
