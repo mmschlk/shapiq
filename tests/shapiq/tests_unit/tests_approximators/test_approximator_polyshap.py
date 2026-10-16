@@ -477,6 +477,15 @@ def test_tiny_games(n):
     assert np.sum(sv.values) == pytest.approx(2.0, abs=1e-6)
 
 
+@pytest.mark.parametrize("kwargs", [{"max_order": 1}, {"max_terms": 1150}])
+def test_many_players_do_not_overflow_the_regression_weights(kwargs):
+    """``binom`` overflows from about 1,030 players on; the weights stay finite in log space."""
+    n = 1100
+    weights = np.linspace(-1, 1, n)
+    sv = PolySHAP(n, random_state=0, **kwargs).approximate(2000, lambda c: c @ weights)
+    np.testing.assert_allclose(sv.get_n_order_values(1), weights, atol=1e-4)
+
+
 def test_budget_smaller_than_frontier_still_runs():
     """A budget far below the frontier size runs and returns a full SV vector."""
     n = 8

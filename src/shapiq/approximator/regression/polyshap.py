@@ -6,11 +6,10 @@ import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from scipy.special import binom
 
 from shapiq.approximator.regression.base import Regression
 from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from shapiq.utils.sets import log_binom, powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -238,24 +237,22 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
                 stacklevel=3,
             )
 
-    def _init_sv_kernel_weights(self) -> np.ndarray:
-        """Initialise the order-1 (Shapley-value) regression kernel weights by coalition size.
+    def _init_log_sv_kernel_weights(self) -> np.ndarray:
+        """Initialise the order-1 (Shapley-value) regression kernel weights in log space.
 
-        Weights are zero for the empty and grand coalitions (handled as hard
-        constraints) and follow the KernelSHAP formula otherwise.
+        Weights are zero (``-inf``) for the empty and grand coalitions (handled as hard
+        constraints) and follow the KernelSHAP formula otherwise. They are kept in log
+        space because ``binom`` overflows from about 1,030 players on.
 
         Returns:
-            Weight vector of shape ``(n + 1,)``.
+            Log weight vector of shape ``(n + 1,)``.
         """
-        weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(self.n + 1):
-            if coalition_size < 1 or coalition_size > self.n - 1:
-                weight_vector[coalition_size] = 0
-            else:
-                weight_vector[coalition_size] = 1 / (
-                    (self.n - 1) * binom(self.n - 2, coalition_size - 1)
-                )
-        return weight_vector
+        log_weight_vector = np.full(self.n + 1, -np.inf)
+        for coalition_size in range(1, self.n):
+            log_weight_vector[coalition_size] = -(
+                np.log(self.n - 1) + log_binom(self.n - 2, coalition_size - 1)
+            )
+        return log_weight_vector
 
     def _transform_to_shapley(
         self, input_values: np.ndarray
@@ -311,7 +308,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
             :class:`~shapiq.interaction_values.InteractionValues` containing the
             estimated Shapley values.
         """
-        kernel_weights = self._init_sv_kernel_weights()
+        log_kernel_weights = self._init_log_sv_kernel_weights()
         self.projection_matrix = np.identity(self.n_variables) - 1 / self.n_variables
 
         # Sample coalitions and query the game.
@@ -323,9 +320,13 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         game_values -= empty_set_value
         full_set_value = game_values[1]
 
+        # Combined in log space: for many players the kernel weight underflows to 0 and the
+        # adjustment weight overflows to inf.
         sampling_normalization = np.sqrt(
-            kernel_weights[self._sampler.coalitions_size[2:]]
-            * self._sampler.sampling_adjustment_weights[2:]
+            np.exp(
+                log_kernel_weights[self._sampler.coalitions_size[2:]]
+                + self._sampler.log_sampling_adjustment_weights[2:]
+            )
         )
 
         # Build the weighted design matrix.
