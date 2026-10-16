@@ -10,12 +10,12 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.proxy._routes import tree_to_fourier
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import log_binom
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -108,18 +108,24 @@ class OddSHAP(Approximator):
         return weight_vector / np.sum(weight_vector)
 
     @staticmethod
-    def _init_regression_kernel_weights_static(n: int) -> np.ndarray:
-        """Initialize OddSHAP weighted least-squares kernel weights."""
+    def _init_log_regression_kernel_weights_static(n: int) -> np.ndarray:
+        """Initialize OddSHAP weighted least-squares kernel weights in log space.
+
+        The kernel weight of coalition size ``k`` is ``1 / (k * (n - k) * binom(n, k))``, and
+        ``-inf`` (a weight of ``0``) for the empty and full coalitions. ``binom(n, k)`` overflows
+        float64 from ``n`` of roughly ``1030`` on, so the weight is kept in log space and only
+        exponentiated after adding the sampler's log adjustment weight, whose binomial cancels it.
+        """
         if n <= 1:
             msg = "OddSHAP regression weights are undefined for n <= 1."
             raise ValueError(msg)
 
-        weight_vector = np.zeros(n + 1, dtype=float)
-        for coalition_size in range(1, n):
-            weight_vector[coalition_size] = 1.0 / (
-                coalition_size * (n - coalition_size) * binom(n, coalition_size)
-            )
-        return weight_vector
+        log_weight_vector = np.full(n + 1, -np.inf)
+        coalition_sizes = np.arange(1, n)
+        log_weight_vector[1:n] = -(
+            np.log(coalition_sizes) + np.log(n - coalition_sizes) + log_binom(n, coalition_sizes)
+        )
+        return log_weight_vector
 
     def __init__(
         self,
@@ -176,7 +182,7 @@ class OddSHAP(Approximator):
         self.tree_params = tree_params
         self._surrogate_template = _resolve_surrogate_model(self._random_state, tree_params)
         # The WLS kernel weights depend only on n; compute them once.
-        self._kernel_weights = self._init_regression_kernel_weights_static(n)
+        self._log_kernel_weights = self._init_log_regression_kernel_weights_static(n)
 
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
@@ -487,12 +493,14 @@ class OddSHAP(Approximator):
         Kept un-square-rooted because ``_pair_interior_rows`` combines pairs of
         rows by doubling their raw weight; the square root is taken once, after
         pairing, in ``_build_weighted_system``.
-        """
-        kernel_weights = self._kernel_weights
-        coalition_sizes = self._sampler.coalitions_size
-        sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
-        return kernel_weights[coalition_sizes] * sampling_adjustment_weights
+        The two weights are added in log space and exponentiated once: for more
+        than roughly 1,030 players the kernel weight (``~1 / binom(n, k)``)
+        underflows to ``0`` and the adjustment weight (``~binom(n, k)``)
+        overflows to ``inf``, so their product is ``0 * inf = nan`` (issue #621).
+        """
+        log_kernel_weights = self._log_kernel_weights[self._sampler.coalitions_size]
+        return np.exp(log_kernel_weights + self._sampler.log_sampling_adjustment_weights)
 
     def _build_weighted_system(
         self,

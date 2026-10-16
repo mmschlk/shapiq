@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import math
 import sys
+import warnings
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -134,7 +135,7 @@ def test_sampling_weights_uniform_over_non_boundary_sizes(n):
     """Sampling weights are uniform over non-boundary coalition sizes.
 
     The paper's `1/((n-1)·C(n-2,k-1))` formula is the *regression kernel*
-    weight (now in `_init_regression_kernel_weights_static`), not the
+    weight (now in `_init_log_regression_kernel_weights_static`), not the
     sampling distribution. The coalition sampler uses uniform sampling.
     """
     w = OddSHAP._init_sampling_weights_static(n)
@@ -149,7 +150,7 @@ def test_regression_kernel_weights_match_paper_formula(n):
     """Regression LSQ kernel weights follow the paper's `1/((n-1)·C(n-2,k-1))` up
     to a global scale — equivalent to the KernelSHAP weighting scheme.
     """
-    w = OddSHAP._init_regression_kernel_weights_static(n)
+    w = np.exp(OddSHAP._init_log_regression_kernel_weights_static(n))
     expected = np.zeros(n + 1, dtype=float)
     for k in range(1, n):
         expected[k] = 1.0 / ((n - 1) * binom(n - 2, k - 1))
@@ -698,7 +699,7 @@ def test_sampling_weights_reject_degenerate_n(n):
 @pytest.mark.parametrize("n", [0, 1])
 def test_regression_kernel_weights_reject_degenerate_n(n):
     with pytest.raises(ValueError, match="undefined for n <= 1"):
-        OddSHAP._init_regression_kernel_weights_static(n)
+        OddSHAP._init_log_regression_kernel_weights_static(n)
 
 
 @skip_if_no_lightgbm
@@ -890,6 +891,51 @@ def test_build_weighted_system_pairing_matches_unpaired_lstsq_at_sub_budget(n, b
 
     assert X_paired.shape[0] == len(interior) // 2
     np.testing.assert_allclose(beta_paired, beta_ref, atol=1e-8)
+
+
+# -----------------------------------------------------------------------------
+# Regression row weights for many players (issue #621)
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("n", "budget"), [(6, 64), (10, 300), (12, 500)])
+def test_regression_row_weights_match_direct_product_for_few_players(n, budget):
+    """Combining the weights in log space leaves them unchanged where nothing overflows."""
+    approx = OddSHAP(n=n, random_state=0)
+    approx._sampler.sample(budget)
+
+    sizes = np.arange(1, n)
+    kernel_weights = np.zeros(n + 1)
+    kernel_weights[1:n] = 1.0 / (sizes * (n - sizes) * binom(n, sizes))
+    expected = (
+        kernel_weights[approx._sampler.coalitions_size]
+        * approx._sampler.sampling_adjustment_weights
+    )
+
+    np.testing.assert_allclose(approx._get_regression_row_weights(), expected, rtol=1e-12, atol=0)
+
+
+def test_many_players_do_not_overflow_the_regression_weights():
+    """``binom(n, k)`` overflows float64 from n ~ 1030 on.
+
+    The kernel weight then underflowed to ``0``, the sampling adjustment weight
+    overflowed to ``inf``, and their product turned the rows into ``nan``, so the
+    least squares failed with "SVD did not converge".
+    """
+    n, budget = 1100, 200
+    weights = np.zeros(n)
+    weights[[3, 500, 1099]] = [2.0, -1.0, 0.5]
+    approx = OddSHAP(n=n, random_state=0)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        iv = approx.approximate(budget, lambda coalitions: coalitions.astype(float) @ weights)
+
+    row_weights = approx._get_regression_row_weights()
+    sizes = approx._sampler.coalitions_size
+    assert np.all(np.isfinite(row_weights))
+    assert np.all(row_weights[(sizes > 0) & (sizes < n)] > 0)
+    np.testing.assert_allclose(iv.get_n_order_values(1), weights, atol=1e-10)
 
 
 # -----------------------------------------------------------------------------
