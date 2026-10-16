@@ -686,6 +686,8 @@ instead of KernelSHAP's linear model, and reads the Shapley values out of the fi
 It converges to the exact Shapley values and sheds light on why paired sampling improves KernelSHAP.
 """
 cite = ["Fumagalli.2026"]
+api = ["shapiq.approximator.PolySHAP"]
+examples = ["auto_examples/approximators/shapley_values/plot_polyshap"]
 related = ["kernelshap", "kaddshap", "oddshap"]
 
 [[entries]]

@@ -2,22 +2,24 @@
 PolySHAP
 ========
 
-Shapley value approximation with interaction-informed polynomial regression
-using :class:`~shapiq.approximator.PolySHAP` :footcite:t:`Fumagalli.2026a`.
+Estimate Shapley values by fitting a polynomial surrogate of the game that includes
+interactions, instead of KernelSHAP's linear model.
 
-PolySHAP extends KernelSHAP by fitting a *k-additive* surrogate of the game -- a
-polynomial of degree ``max_order`` over the players -- and reading the Shapley
-values off that surrogate. ``max_order=1`` reduces to plain KernelSHAP, while
-higher orders capture interactions explicitly. When the game's interactions do
-not exceed ``max_order``, PolySHAP recovers the exact Shapley values.
+:class:`~shapiq.approximator.PolySHAP` :cite:p:`Fumagalli.2026` extends KernelSHAP by fitting
+a *k-additive* surrogate of the game -- a polynomial of degree ``max_order`` over the players --
+and reading the Shapley values off that surrogate. ``max_order=1`` reduces to plain KernelSHAP,
+while higher orders capture interactions explicitly. When the game's interactions do not exceed
+``max_order``, PolySHAP recovers the exact Shapley values.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/approximators_regression.png"
 
 from __future__ import annotations
 
 import numpy as np
 
 import shapiq
-from shapiq.approximator import PolySHAP
+from shapiq import PolySHAP
 
 N_PLAYERS = 8
 BUDGET = 200
@@ -55,7 +57,7 @@ iv.plot_force(feature_names=feature_names)
 # Because the game is exactly 2-additive, raising ``max_order`` to match its
 # interaction order recovers the exact Shapley values, whereas ``max_order=1``
 # (equivalent to KernelSHAP) leaves a visible approximation error. We compare
-# both against the exact Shapley values from :class:`~shapiq.ExactComputer`.
+# both against the exact Shapley values from :class:`~shapiq.game_theory.ExactComputer`.
 
 exact = np.asarray(
     shapiq.ExactComputer(game_fun, n_players=N_PLAYERS)(index="SV", order=1).get_n_order_values(1)
@@ -69,8 +71,3 @@ for max_order in (1, 2):
     )
     mse = float(np.mean((est - exact) ** 2))
     print(f"max_order={max_order}: MSE vs. exact Shapley = {mse:.2e}")
-
-# %%
-# References
-# ----------
-# .. footbibliography::

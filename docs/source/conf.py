@@ -122,6 +122,7 @@ EXAMPLE_ORDER = {
         "plot_owen_sampling_sv.py",
         "plot_unbiased_kernelshap.py",
         "plot_kadd_shap.py",
+        "plot_polyshap.py",
         "plot_oddshap.py",
         "plot_shapleig.py",
     ),

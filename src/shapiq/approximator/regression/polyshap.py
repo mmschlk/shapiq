@@ -23,8 +23,8 @@ ValidRegressionPolySHAPIndices = Literal["SV"]
 class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     """Estimate Shapley values using the PolySHAP regression algorithm.
 
-    Generalises KernelSHAP :cite:t:`Lundberg.2017`; the algorithm is described in
-    Fumagalli et al. (2026) :cite:t:`Fumagalli.2026a`.
+    Generalises KernelSHAP :cite:p:`Lundberg.2017`; the algorithm is described by
+    :cite:t:`Fumagalli.2026`.
 
     PolySHAP fits an interaction-informed polynomial surrogate of the game over an
     *explanation frontier* (the interactions used as basis functions) and reads the
@@ -293,8 +293,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         Draws random coalitions, queries the game, then solves a weighted
         least-squares problem whose basis functions are the terms in the explanation
         frontier.  When the frontier contains only singletons the method reduces exactly
-        to KernelSHAP :cite:t:`Lundberg.2017`.  For details see Fumagalli et al. (2026)
-        :cite:t:`Fumagalli.2026a`.
+        to KernelSHAP :cite:p:`Lundberg.2017`.  For details see :cite:t:`Fumagalli.2026`.
 
         Args:
             budget: Total number of coalition evaluations (including the empty and

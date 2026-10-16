@@ -26,6 +26,7 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    PolySHAP,
     ProxySHAP,
     ProxySPEX,
     RegressionFBII,
@@ -118,6 +119,7 @@ __all__ = [
     "ProxySPEX",
     "RegressionMSR",
     "OddSHAP",
+    "PolySHAP",
     # explainers
     "Explainer",
     "TabularExplainer",
