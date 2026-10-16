@@ -1,19 +1,23 @@
 // The players of the landing page's logo are springs: hovering the logo makes them wiggle, and a
 // player can be pulled and let go. Each player is held in place by a spring, the lines between
-// players are springs too, as stiff as the line is thick (a thicker line is a stronger
-// interaction), and the lines and their caps follow the players they end at. The landing page
+// players are springs too, the stiffer the thicker the line (a stronger interaction): the
+// thickest line holds its two players together almost like a rod, the thinnest barely pulls. The
+// lines and their caps follow the players they end at. The landing page
 // shows the logo as an image; it is replaced by a copy of the sidebar's inline logo
 // (_templates/sidebar/brand.html). The sidebar's logo itself stays still: it is on every page and
 // a link home, where a wiggle on every pass of the mouse would distract.
 //
 // With reduced motion (macOS "Reduce motion", Windows with "Animation effects" off), the logo
-// does not wiggle on hover, and a pulled player glides back without swinging.
+// does not wiggle on hover, the players follow a pulled one without swinging, and when it is let
+// go, all of them glide back to their places.
 (() => {
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const ANCHOR = 140; // stiffness of the spring that holds a player in place (1/s²)
-  const LINK = 5; // stiffness of a line per logo unit of its width (1/s²): 20 to 110
+  const LINK = 1.5; // stiffness of a line per squared logo unit of its width (1/s²): 23 to 710
+  const LINK_DAMPING = 0.02; // damping of a line per unit of its stiffness (s): no buzz in stiff pairs
   const DAMPING = 6; // a few visible swings, at rest after about a second (1/s)
+  const GLIDE = 0.25; // time constant of the return to rest with reduced motion (s)
   const KICK = 95; // speed of the wiggle on hover (logo units/s; the logo is 280 units wide)
   const MAX_PULL = 70; // beyond this distance, a pulled player follows the pointer reluctantly
   const PLAYER_RADIUS = 15; // larger circles are players, smaller ones are the caps of lines
@@ -69,11 +73,12 @@
     for (const { players: [a, b], width } of lines) {
       if (a === b) continue;
       const link = links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
-      if (link) link.stiffness += LINK * width;
-      else links.push({ a, b, length: distance(a.rest, b.rest), stiffness: LINK * width });
+      if (link) link.stiffness += LINK * width ** 2;
+      else links.push({ a, b, length: distance(a.rest, b.rest), stiffness: LINK * width ** 2 });
     }
-    // damping that lets no player swing (with reduced motion): twice the square root of the
-    // stiffest player's springs, a bound on the stiffness of the fastest swing (Gershgorin)
+    // damping that lets no player swing while one is held (with reduced motion): twice the square
+    // root of the stiffest player's springs, a bound on the stiffness of the fastest swing
+    // (Gershgorin)
     const stiffest = Math.max(
       ...players.map((p) => ANCHOR + 2 * links.reduce((sum, l) => sum + (l.a === p || l.b === p ? l.stiffness : 0), 0)),
     );
@@ -92,6 +97,11 @@
   }
 
   function step(m, dt) {
+    if (reducedMotion.matches && !m.held) {
+      const keep = Math.exp(-dt / GLIDE);
+      for (const p of m.players) Object.assign(p, { x: p.x * keep, y: p.y * keep, vx: 0, vy: 0 });
+      return;
+    }
     const damping = reducedMotion.matches ? m.calmDamping : DAMPING;
     for (const p of m.players) {
       p.ax = -ANCHOR * p.x - damping * p.vx;
@@ -101,7 +111,8 @@
       const dx = b.rest.x + b.x - (a.rest.x + a.x);
       const dy = b.rest.y + b.y - (a.rest.y + a.y);
       const now = Math.hypot(dx, dy) || 1;
-      const force = (stiffness * (now - length)) / now;
+      const stretching = ((b.vx - a.vx) * dx + (b.vy - a.vy) * dy) / now; // speed along the line
+      const force = (stiffness * (now - length) + LINK_DAMPING * stiffness * stretching) / now;
       a.ax += force * dx;
       a.ay += force * dy;
       b.ax -= force * dx;
