@@ -12,9 +12,16 @@ to the sampled coalition values and read its sparse interactions off the trees.
 
 from __future__ import annotations
 
+import logging
+
+import lightgbm
 import numpy as np
 
 import shapiq
+
+# LightGBM logs every tree it grows while ProxySPEX tunes it: keep only its errors
+lightgbm.register_logger(logging.getLogger("lightgbm"))
+logging.getLogger("lightgbm").setLevel(logging.ERROR)
 
 N_PLAYERS = 8
 BUDGET = 200

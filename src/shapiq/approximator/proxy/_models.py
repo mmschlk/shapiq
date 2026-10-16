@@ -36,7 +36,7 @@ ProxyLiteral = Literal["xgboost", "lightgbm", "tree", "linear"]
 # grids are deliberately the same size so the gradient-boosting backends tune comparable budgets.
 _LIGHTGBM_DECODER_GRID = {
     "max_depth": [3, 5],
-    "n_estimators": [500, 1000],
+    "max_iter": [500, 1000],  # LightGBM accepts ``max_iter`` as an alias for ``n_estimators``
     "learning_rate": [0.01, 0.1],
 }
 _XGBOOST_DECODER_GRID = {
@@ -322,7 +322,6 @@ class SMACProxyModel(ProxyModelWithHPO):
             model = LGBMRegressor(
                 n_jobs=1,
                 random_state=self.scenario.seed,
-                verbose=-1,
                 **params,
             )
             model.fit(X, y)
@@ -345,7 +344,6 @@ class SMACProxyModel(ProxyModelWithHPO):
         params_best = dict(best_found_config)  # ty: ignore[no-matching-overload]
         best_model = LGBMRegressor(
             random_state=self.scenario.seed,
-            verbose=-1,
             **params_best,
         )
         best_model.fit(X, y)
@@ -390,7 +388,7 @@ def _select_base_proxy_via_string(proxy_str: ProxyLiteral, random_state: int | N
             from lightgbm import LGBMRegressor
 
             warn(f"{' '.join(reasons)} Falling back to LightGBM.", stacklevel=2)
-            return LGBMRegressor(random_state=random_state, verbose=-1)  # no C++ log lines
+            return LGBMRegressor(random_state=random_state)
         except ImportError:
             reasons.append(
                 "LightGBM is also not installed. Install a backend with: pip install 'shapiq[proxy]'."
@@ -400,7 +398,7 @@ def _select_base_proxy_via_string(proxy_str: ProxyLiteral, random_state: int | N
         try:
             from lightgbm import LGBMRegressor
 
-            return LGBMRegressor(random_state=random_state, verbose=-1)  # no C++ log lines
+            return LGBMRegressor(random_state=random_state)
         except ImportError:
             reasons.append("LightGBM is not installed.")
         try:

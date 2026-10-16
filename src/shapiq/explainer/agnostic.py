@@ -80,7 +80,7 @@ class AgnosticExplainer(Explainer):
             if not isinstance(game, Game):
                 msg = (
                     f"The number of players must be specified with the `n_players` argument if no "
-                    f"`shapiq.Game` instance is provided. Got {type(game)}."
+                    f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
                 )
                 raise ValueError(msg)
             n_players = game.n_players

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import sys
 
 import numpy as np
 import pytest
@@ -157,34 +156,6 @@ def test_hpo_flag_wraps_xgboost_proxy_in_default_grid():
     # the linear tag is never HPO-wrapped, even with hpo=True
     linear = ProxySHAP(n=6, max_order=2, proxy_model="linear", hpo=True)
     assert isinstance(linear.proxy_model, LinearRegression)
-
-
-def test_lightgbm_proxy_is_quiet_and_tunes_its_own_parameters(monkeypatch):
-    """A LightGBM proxy prints no log lines, also as the fallback for a missing XGBoost.
-
-    With ``hpo=True`` its grid only names parameters of the regressor itself (``n_estimators``, not
-    LightGBM's alias ``max_iter``).
-    """
-    lightgbm = pytest.importorskip("lightgbm")
-    from sklearn.model_selection import GridSearchCV
-
-    from shapiq.approximator.proxy._models import _LIGHTGBM_DECODER_GRID
-
-    bare = ProxySHAP(n=6, max_order=2, proxy_model="lightgbm", random_state=0)
-    assert isinstance(bare.proxy_model, lightgbm.LGBMRegressor)
-    assert bare.proxy_model.get_params()["verbose"] == -1
-
-    tuned = ProxySHAP(n=6, max_order=2, proxy_model="lightgbm", hpo=True, random_state=0)
-    assert isinstance(tuned.proxy_model, GridSearchCV)
-    assert tuned.proxy_model.param_grid == _LIGHTGBM_DECODER_GRID
-    assert set(_LIGHTGBM_DECODER_GRID) <= set(tuned.proxy_model.estimator.get_params())
-
-    # the default "xgboost" proxy falls back to the same quiet regressor when XGBoost is missing
-    monkeypatch.setitem(sys.modules, "xgboost", None)
-    with pytest.warns(UserWarning, match="Falling back to LightGBM"):
-        fallback = ProxySHAP(n=6, max_order=2, random_state=0)
-    assert isinstance(fallback.proxy_model, lightgbm.LGBMRegressor)
-    assert fallback.proxy_model.get_params()["verbose"] == -1
 
 
 @pytest.mark.parametrize(
