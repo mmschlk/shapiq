@@ -148,7 +148,8 @@ class OddSHAP(Approximator):
             **kwargs: Ignored, for compatibility with the other approximators.
 
         Raises:
-            ValueError: If ``interaction_factor`` is smaller than ``1``.
+            ValueError: If ``n`` is smaller than ``2`` or ``interaction_factor`` is smaller than
+                ``1``.
         """
         del kwargs
 

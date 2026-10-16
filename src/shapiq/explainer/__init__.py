@@ -8,7 +8,8 @@ specialised explainers directly:
 - :class:`TabPFNExplainer` — fast in-context learning with TabPFN
 - :class:`AgnosticExplainer` — any callable model
 - :class:`TreeExplainer` — optimised for tree-based models
-- :class:`ProductKernelExplainer` — exact for Gaussian processes and support vector machines
+- :class:`ProductKernelExplainer` — exact for scikit-learn's Gaussian process regressors and
+  support vector machines (SVR, binary SVC) with RBF kernels
 - :class:`KNNExplainer`, :class:`WeightedKNNExplainer`, :class:`ThresholdNNExplainer` — exact data
   valuation of nearest-neighbor classifiers
 
