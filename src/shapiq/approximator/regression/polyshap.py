@@ -72,6 +72,8 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         explanation_frontier: The active explanation frontier dictionary.
     """
 
+    valid_indices: tuple[ValidRegressionPolySHAPIndices, ...] = ("SV",)
+
     def __init__(
         self,
         n: int,

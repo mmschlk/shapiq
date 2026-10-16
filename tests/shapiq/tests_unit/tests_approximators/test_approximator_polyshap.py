@@ -96,6 +96,7 @@ def test_polyshap_is_exported_and_registered():
     """PolySHAP must be publicly exported and registered as an SV approximator."""
     assert "PolySHAP" in approximator_module.__all__
     assert PolySHAP in approximator_module.SV_APPROXIMATORS
+    assert PolySHAP.valid_indices == ("SV",)
 
 
 # ---------------------------------------------------------------------------
