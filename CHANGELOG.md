@@ -1,5 +1,12 @@
 # Changelog
 
+## Development
+
+### Linear-Gaussian SCM Games [#600](https://github.com/mmschlk/shapiq/pull/600)
+
+Adds the `LinearGaussianSCM` and `ConfoundedChainSCM` synthetic games in `shapiq_games.synthetic`, which evaluate the marginal, the conditional, and the causal (Heskes et al., 2020) value function in closed form on one and the same linear-Gaussian data-generating process.
+The model is linear and the features are Gaussian, so every conditional expectation involved is itself linear: the games are exact references for benchmarking approximators and for comparing the three semantics against each other, with no sampling and no random seed.
+
 ## v1.8.0 (2026-10-20)
 
 ### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)
