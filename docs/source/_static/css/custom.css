@@ -369,8 +369,8 @@ figure.shapiq-figure figcaption {
 @media (max-width: 46em) {
   .shapiq-hero-logo {
     float: none;
-    width: 6rem;
-    margin: 1.5rem 0 0;
+    width: 12rem;
+    margin: 1.5rem auto 0;
   }
 
   section:has(> .shapiq-hero) > h1 {
