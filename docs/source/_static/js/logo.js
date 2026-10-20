@@ -11,6 +11,8 @@
 // With reduced motion (macOS "Reduce motion", Windows with "Animation effects" off), the logo
 // does not move by itself: no wiggle on hover, no ripple, no bump. The players follow a pulled
 // one without swinging, and when it is let go, all of them glide back to their places.
+//
+// On a touch screen, a finger on a player pulls it; anywhere else on the logo, it scrolls the page.
 (() => {
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -25,6 +27,7 @@
   const BUMP = 130; // speed of the bump when the logo is scrolled into view (logo units/s)
   const FAST_SCROLL = 1000; // scrolling faster than this bumps the logo (px/s)
   const MAX_PULL = 55; // beyond this distance, a pulled player follows the pointer reluctantly
+  const FINGER = 22; // a finger reaches this far from a player's center at least (px): 44 px targets
   const PLAYER_RADIUS = 15; // larger circles are players, smaller ones are the caps of lines
 
   const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -219,6 +222,18 @@
     return matrix ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()) : null;
   }
 
+  // the player within reach of a point, the one with the nearest edge: a pointer reaches 6 units
+  // past a player's edge, a finger at least FINGER px from its center
+  function playerAt(m, point, finger) {
+    const least = finger ? FINGER / (m.group.getScreenCTM()?.a || 1) : 0;
+    let hit = null;
+    for (const p of m.players) {
+      const off = distance(point, { x: p.rest.x + p.x, y: p.rest.y + p.y }) - p.r;
+      if (off < Math.max(6, least - p.r) && (!hit || off < hit.off)) hit = { p, off };
+    }
+    return hit?.p ?? null;
+  }
+
   function attach(svg) {
     let m = null;
     const ready = () => (m ??= model(svg));
@@ -236,8 +251,7 @@
     });
     svg.addEventListener("pointerdown", (event) => {
       const point = ready() && pointerIn(m, event);
-      if (!point) return;
-      const player = m.players.find((p) => distance(point, { x: p.rest.x + p.x, y: p.rest.y + p.y }) < p.r + 6);
+      const player = point && playerAt(m, point, event.pointerType === "touch");
       if (!player) return;
       event.preventDefault(); // no text selection, no dragging of the link
       m.held = player;
@@ -269,6 +283,18 @@
     svg.addEventListener("pointerup", release);
     svg.addEventListener("pointercancel", release);
     svg.addEventListener("lostpointercapture", release); // e.g. the window lost the focus
+
+    // a finger on a player pulls it and does not scroll the page; elsewhere it scrolls. The browser
+    // decides that at the touch's start, from the element under the finger, but lines and caps lie
+    // over the players' edges and a finger reaches past them, so the decision is taken here
+    svg.addEventListener(
+      "touchstart",
+      (event) => {
+        const point = ready() && pointerIn(m, event.changedTouches[0]);
+        if (point && playerAt(m, point, true)) event.preventDefault();
+      },
+      { passive: false },
+    );
 
     // the ripple the first time the logo is seen, the bump when it is scrolled into view quickly
     let seen = false;
