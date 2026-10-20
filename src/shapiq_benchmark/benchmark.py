@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 import tempfile
 from pathlib import Path
@@ -11,12 +10,7 @@ from typing import TYPE_CHECKING
 from shapiq import InteractionValues
 from shapiq_benchmark.datasets import get_data_dir
 
-from .computers import (
-    DEFAULT_MAX_PLAYERS,
-    BruteForceComputer,
-    UnsupportedComputationError,
-    default_computer,
-)
+from .computers import BruteForceComputer, default_computer
 
 if TYPE_CHECKING:
     from shapiq import Game
@@ -39,9 +33,11 @@ class Benchmark:
     pass ``cache=False``, to recompute.
 
     Without an explicit computer, the benchmark uses
-    :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force (up to
-    ``max_players`` players) for the indices and orders that computer does not support;
-    :meth:`computer_for` names the computer used.
+    :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force for the
+    indices and orders that computer does not support; :meth:`computer_for` names the computer
+    used. Brute force evaluates all ``2**n`` coalitions, so computing it for a game of more than
+    ``BruteForceComputer.max_players`` players warns (see
+    :attr:`~shapiq_benchmark.computers.BruteForceComputer.max_players`).
 
     Examples:
         >>> from shapiq_benchmark.setups import PathDependentTreeSetup
@@ -50,31 +46,21 @@ class Benchmark:
         >>> ground_truth = benchmark.exact_values(index="k-SII", order=2)
     """
 
-    def __init__(
-        self,
-        game: Game,
-        computer: Computer | None = None,
-        *,
-        max_players: int = DEFAULT_MAX_PLAYERS,
-    ) -> None:
+    def __init__(self, game: Game, computer: Computer | None = None) -> None:
         """Create a benchmark of a game. Its exact values are not cached.
 
         Args:
             game: The game.
             computer: The ground-truth computer, bound to ``game``. Defaults to
                 :func:`~shapiq_benchmark.computers.default_computer` of the game.
-            max_players: The player cap of brute force when no computer is given.
 
         Raises:
             ValueError: If the computer is bound to another game.
         """
         self.game = game
-        self.max_players = max_players
         self._fallback = computer is None  # brute force where the default computer cannot
         self._brute_force: Computer | None = None
-        self.computer = (
-            computer if computer is not None else default_computer(game, max_players=max_players)
-        )
+        self.computer = computer if computer is not None else default_computer(game)
         if self.computer.game is not game:
             msg = "The computer must be bound to the benchmark's game."
             raise ValueError(msg)
@@ -88,7 +74,6 @@ class Benchmark:
         computer: type[Computer] | None = None,
         *,
         cache: bool = True,
-        max_players: int = DEFAULT_MAX_PLAYERS,
     ) -> Benchmark:
         """Build the game of a setup and benchmark it, caching its exact values.
 
@@ -97,18 +82,12 @@ class Benchmark:
             computer: The class of the ground-truth computer. Defaults to
                 :func:`~shapiq_benchmark.computers.default_computer` of the game.
             cache: Whether to cache the exact values under the setup's key. Defaults to ``True``.
-            max_players: The player cap of brute force, also passed to a computer class that
-                takes it.
 
         Returns:
             The benchmark.
         """
         game = setup.build()
-        bound = None
-        if computer is not None:
-            takes_cap = "max_players" in inspect.signature(computer).parameters
-            bound = computer(game, max_players=max_players) if takes_cap else computer(game)  # type: ignore[call-arg]
-        benchmark = cls(game, bound, max_players=max_players)
+        benchmark = cls(game, computer(game) if computer is not None else None)
         benchmark.setup = setup
         benchmark.cache = cache
         return benchmark
@@ -128,10 +107,7 @@ class Benchmark:
         if not self._fallback or self.computer.supports(index, order):
             return self.computer
         if self._brute_force is None:
-            try:
-                self._brute_force = BruteForceComputer(self.game, max_players=self.max_players)
-            except UnsupportedComputationError:  # too many players
-                return self.computer
+            self._brute_force = BruteForceComputer(self.game)
         return self._brute_force if self._brute_force.supports(index, order) else self.computer
 
     def supports(self, index: IndexType, order: int) -> bool:

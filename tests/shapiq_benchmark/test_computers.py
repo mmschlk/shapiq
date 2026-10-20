@@ -9,6 +9,7 @@ other values.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, get_args
 
 import numpy as np
@@ -16,10 +17,10 @@ import pytest
 from sklearn.ensemble import HistGradientBoostingRegressor, IsolationForest, RandomForestRegressor
 from sklearn.neighbors import KNeighborsClassifier
 
+from shapiq import ExactComputer
 from shapiq.tree.base import TreeModel
 from shapiq.typing import IndexType
 from shapiq_benchmark.computers import (
-    DEFAULT_MAX_PLAYERS,
     BruteForceComputer,
     Computer,
     InterventionalTreeComputer,
@@ -192,15 +193,26 @@ def test_structured_ground_truth_stays_sparse_for_many_players() -> None:
     assert len(values.dict_values) < 1000  # of C(100, 1) + ... + C(100, 4) = 4087975
 
 
-def test_brute_force_player_cap() -> None:
-    with pytest.raises(UnsupportedComputationError, match="capped at 4"):
-        BruteForceComputer(RandomTableGame(5), max_players=4)
-    assert DEFAULT_MAX_PLAYERS == 25
-    BruteForceComputer(SOUM(25, 5, random_state=0))  # 25 players: the cap is inclusive
+def test_brute_force_warns_above_its_player_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brute force above ``BruteForceComputer.max_players`` warns once but still computes."""
+    assert BruteForceComputer.max_players == 25
     big = SOUM(26, 5, random_state=0)
-    assert isinstance(default_computer(big), MoebiusComputer)  # structured games have no cap
-    with pytest.raises(UnsupportedComputationError, match="capped at 25"):
-        BruteForceComputer(big)
+    assert isinstance(default_computer(big), MoebiusComputer)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert BruteForceComputer(big).supports("SV", 1)  # binding computes nothing
+
+    monkeypatch.setattr(BruteForceComputer, "max_players", 3)
+    game = DummyGame(4)
+    computer = BruteForceComputer(game)
+    with pytest.warns(UserWarning, match=r"2\*\*4 coalitions.*max_players=3"):
+        values = computer.exact_values("SV", 1)
+    expected = ExactComputer(game)(index="SV", order=1).get_n_order_values(1)
+    assert values.get_n_order_values(1) == pytest.approx(expected)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        computer.exact_values("k-SII", 2)  # the game values are evaluated once
+        BruteForceComputer(DummyGame(3)).exact_values("SV", 1)
 
 
 def test_computers_reject_foreign_games() -> None:
