@@ -13,11 +13,6 @@ Shapley Interactions for Machine Learning
 
 .. container:: shapiq-hero
 
-   .. container:: shapiq-star-note
-
-      Enjoying shapiq? Help us out and `⭐ star us on GitHub!
-      <https://github.com/mmschlk/shapiq>`__
-
    .. container:: shapiq-hero-lead
 
       ``shapiq`` explains machine learning models with **Shapley values** and **Shapley
@@ -54,12 +49,19 @@ Shapley Interactions for Machine Learning
 
          API reference
 
-      .. button-link:: https://github.com/mmschlk/shapiq
-         :color: secondary
-         :outline:
-         :class: shapiq-button
+      .. container:: shapiq-github-star
 
-         :octicon:`mark-github` GitHub
+         .. button-link:: https://github.com/mmschlk/shapiq
+            :color: secondary
+            :outline:
+            :class: shapiq-button
+
+            :octicon:`mark-github` GitHub
+
+         .. container:: shapiq-star-note
+
+            Enjoying shapiq? Help us out and `⭐ star us on GitHub!
+            <https://github.com/mmschlk/shapiq>`__
 
    .. container:: shapiq-hero-meta
 

@@ -291,30 +291,51 @@ body[data-theme="dark"] .shapiq-star-note {
   }
 }
 
+/* the note follows the GitHub button, with a hand-drawn arrow that points at it; the two wrap
+   together, so that the arrow points at the button at every width */
+.shapiq-github-star {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.shapiq-github-star > p {
+  margin: 0;
+}
+
+.shapiq-star-note {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.shapiq-star-note::before {
+  content: "";
+  flex: none;
+  width: 3rem;
+  height: 1.9rem;
+  background-color: var(--shapiq-star);
+  -webkit-mask: url("../images/star-arrow.svg") no-repeat center / contain;
+  mask: url("../images/star-arrow.svg") no-repeat center / contain;
+}
+
 .shapiq-star-note p {
-  margin: -2.33rem 0 1.4rem 6rem;
+  max-width: 14rem;
+  margin: 0;
   font-family: "Caveat", "Comic Sans MS", "Chalkboard SE", cursive;
-  font-size: 1.55rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
   color: var(--shapiq-star);
   transform: rotate(-1deg);
-  transform-origin: left center;
 }
 
 .shapiq-star-note a {
-  padding: 0 0.15em;
-  border-radius: 0.2em;
   color: inherit;
   white-space: nowrap;
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 0.2em;
-  background: linear-gradient(transparent 52%, var(--shapiq-star-marker) 52% 92%, transparent 92%);
-}
-
-.shapiq-star-note a::after {
-  content: "\00a0→";
 }
 
 .shapiq-star-note a:hover {
@@ -330,6 +351,7 @@ body[data-theme="dark"] .shapiq-star-note {
 .shapiq-hero-buttons {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.6rem;
   margin: 1.75rem 0 1rem;
 }
@@ -439,18 +461,26 @@ figure.shapiq-figure figcaption {
     font-size: 2rem;
   }
 
-  /* the note goes under the gradient: next to it, it would wrap into a narrow column */
-  .shapiq-star-note p {
-    margin: -0.6rem 0 1.1rem;
-    font-size: 1.4rem;
-  }
-
   .shapiq-hero-lead p {
     font-size: 1.08rem;
   }
 
   .shapiq-hero-buttons {
     gap: 0.5rem;
+  }
+
+  /* the note goes under the GitHub button, with the arrow pointing up at it */
+  .shapiq-github-star {
+    flex-wrap: wrap;
+  }
+
+  .shapiq-star-note {
+    flex-basis: 100%;
+    margin-left: 0.6rem;
+  }
+
+  .shapiq-star-note::before {
+    transform: rotate(35deg);
   }
 }
 
