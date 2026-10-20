@@ -55,6 +55,10 @@ if TYPE_CHECKING:
 PHOTO_URL = "http://images.cocodataset.org/train2017/000000304605.jpg"
 PHOTO_SHA256 = "c959b7a12365d66b8274a3471e61bb3b699f16090b1284fbc5a75b07d09479d1"
 PHOTO_CROP = (0, 100, 426, 526)  # left, top, right, bottom: the giraffe and its reflection
+PHOTO_CREDIT = (
+    "Photo: \u201cDrinking Giraffe\u201d by Jean & Nathalie "
+    "(flickr.com/photos/60374292@N00/6721303357), CC BY 2.0, cropped"
+)
 TEXT = "a giraffe drinking water from a river"
 MODEL = "siglip2_vit_b16"
 GRID = (7, 7)
@@ -308,6 +312,8 @@ def draw(explanation: dict, photo: Image.Image, path: Path) -> None:
     for k, (color, label) in enumerate(((RED, "raises similarity"), (BLUE, "lowers similarity"))):
         ax.plot([20.45, 21.05], [8.75 - 0.5 * k] * 2, color=color.hex, lw=9, solid_capstyle="round")
         ax.text(21.4, 8.75 - 0.5 * k, label, ha="left", va="center", fontsize=20, color=MUTED)
+    # the attribution the license of the photo asks for, small in the bottom right corner
+    ax.text(23.6, 0.4, PHOTO_CREDIT, ha="right", va="center", fontsize=14, color=MUTED)
 
     buffer = io.BytesIO()
     fig.savefig(buffer, dpi=fig.dpi, facecolor="white")
@@ -339,7 +345,7 @@ def save_with_palette(image: Image.Image, path: Path) -> None:
     # the background becomes 253, 254, 254): snap the colors next to the drawing's onto them
     entries = np.array(quantized.getpalette(), dtype=float).reshape(-1, 3)
     for color in drawing:
-        entries[np.abs(entries - color).max(axis=1) <= 3] = color
+        entries[np.abs(entries - color).max(axis=1) <= 6] = color
     quantized.putpalette(entries.round().astype(int).flatten().tolist())
     quantized.save(path, optimize=True)
 
