@@ -264,6 +264,48 @@ section:has(> .shapiq-hero) > h1::after {
   color: var(--color-foreground-secondary);
 }
 
+/* a handwritten note on the line of the gradient: please star the repository. Caveat (SIL Open
+   Font License, _static/fonts/caveat-OFL.txt) is served with the docs, not from a font service */
+@font-face {
+  font-family: "Caveat";
+  src: url("../fonts/caveat-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.shapiq-star-note p {
+  margin: -2.33rem 0 1.4rem 6rem;
+  font-family: "Caveat", "Comic Sans MS", "Chalkboard SE", cursive;
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--shapiq-red);
+  transform: rotate(-2deg);
+  transform-origin: left center;
+}
+
+.shapiq-star-note a {
+  color: inherit;
+  white-space: nowrap;
+  text-decoration: underline wavy;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.3em;
+}
+
+.shapiq-star-note a:hover {
+  color: var(--shapiq-red-strong);
+}
+
+body[data-theme="dark"] .shapiq-star-note p {
+  color: #ff6b93;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .shapiq-star-note p {
+    color: #ff6b93;
+  }
+}
+
 .shapiq-hero-lead p {
   font-size: 1.2rem;
   line-height: 1.6;
@@ -380,6 +422,12 @@ figure.shapiq-figure figcaption {
   section:has(> .shapiq-hero) > h1 {
     margin-top: 1rem;
     font-size: 2rem;
+  }
+
+  /* the note goes under the gradient: next to it, it would wrap into a narrow column */
+  .shapiq-star-note p {
+    margin: -0.6rem 0 1.1rem;
+    font-size: 1.4rem;
   }
 
   .shapiq-hero-lead p {
