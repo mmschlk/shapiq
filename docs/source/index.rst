@@ -15,7 +15,7 @@ Shapley Interactions for Machine Learning
 
    .. container:: shapiq-star-note
 
-      psst… enjoying shapiq? Help us out and `⭐ star us on GitHub!
+      Enjoying shapiq? Help us out and `⭐ star us on GitHub!
       <https://github.com/mmschlk/shapiq>`__
 
    .. container:: shapiq-hero-lead
