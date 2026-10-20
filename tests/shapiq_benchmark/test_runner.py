@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -100,14 +101,36 @@ def test_benchmark_falls_back_to_brute_force(
     assert knn.computer.name == "brute_force"
 
 
-def test_from_setup_passes_the_player_cap_to_the_computer(
+def test_brute_force_warns_above_the_player_limit(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Brute force above ``Benchmark.max_brute_force_players`` warns but still computes."""
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
+    assert Benchmark.max_brute_force_players == 25
     setup = DataValuationSetup(dataset="xor", n_players=26)
-    with pytest.raises(UnsupportedComputationError, match="capped at 25"):
-        Benchmark.from_setup(setup, BruteForceComputer)
-    assert Benchmark.from_setup(setup, BruteForceComputer, max_players=26).game.n_players == 26
+    assert Benchmark.from_setup(setup, BruteForceComputer).game.n_players == 26  # no error
+
+    monkeypatch.setattr(Benchmark, "max_brute_force_players", 4)
+    game, small_game = DummyGame(5), DummyGame(4)
+    with pytest.warns(UserWarning, match=r"2\*\*5 coalitions"):
+        values = Benchmark(game, BruteForceComputer(game)).exact_values("SV", 1)
+    expected = shapiq.ExactComputer(game)(index="SV", order=1).get_n_order_values(1)
+    assert values.get_n_order_values(1) == pytest.approx(expected)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        Benchmark(small_game, BruteForceComputer(small_game)).exact_values("SV", 1)
+        Benchmark(SOUM(5, 3, random_state=0)).exact_values("SV", 1)  # Möbius, not brute force
+    small = DataValuationSetup(dataset="xor", n_players=5)
+    benchmark = Benchmark.from_setup(small)  # brute force, cached after the first computation
+    with pytest.warns(UserWarning, match="max_brute_force_players=4"):
+        benchmark.exact_values("SV", 1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        Benchmark.from_setup(small).exact_values("SV", 1)
+    tree = Benchmark.from_setup(PathDependentTreeSetup(dataset="xor"))  # brute force fills in
+    assert tree.game.n_players > 4
+    with pytest.warns(UserWarning, match="Brute force"):
+        tree.exact_values("FSII", 2)
 
 
 def test_top_order_estimates_are_scored_on_their_order() -> None:

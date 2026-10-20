@@ -57,11 +57,6 @@ __all__ = [
     "default_computer",
 ]
 
-DEFAULT_MAX_PLAYERS = 25
-"""The default player cap of brute-force computation (``2**25`` game evaluations). Brute force
-more than doubles its time and memory with every player: at 22 players, the Shapley values of a
-cheap game take about 2.5 minutes and 2.6 GB."""
-
 VALUE_INDICES: frozenset[IndexType] = frozenset({"SV", "BV", "ELC"})
 """Values (one number per player), not interactions: only defined for order 1."""
 
@@ -178,34 +173,26 @@ class Computer[G: Game](ABC):
 class BruteForceComputer(Computer[Game]):
     """Brute force: evaluates all ``2**n`` coalitions with :class:`~shapiq.ExactComputer`.
 
-    Works for every game up to ``max_players`` players (default 25). The game values are evaluated
+    Works for every game, at a cost exponential in the number of players (a
+    :class:`~shapiq_benchmark.Benchmark` warns above
+    :attr:`~shapiq_benchmark.Benchmark.max_brute_force_players`). The game values are evaluated
     once and reused for every index and order.
     """
 
     name = "brute_force"
 
-    def __init__(self, game: Game, *, max_players: int = DEFAULT_MAX_PLAYERS) -> None:
+    def __init__(self, game: Game) -> None:
         """Bind the computer to a game.
 
         Args:
             game: The game.
-            max_players: The player cap. Defaults to ``25``.
-
-        Raises:
-            UnsupportedComputationError: If the game has more than ``max_players`` players.
         """
-        if game.n_players > max_players:
-            msg = (
-                f"Brute force is capped at {max_players} players, but the game has "
-                f"{game.n_players}. Raise max_players explicitly to compute it anyway."
-            )
-            raise UnsupportedComputationError(msg)
         super().__init__(game)
         self._exact: ExactComputer | None = None
 
     @classmethod
     def supports_game(cls, game: Game) -> bool:  # noqa: ARG003
-        """Brute force supports every game (the player cap is checked separately)."""
+        """Brute force supports every game."""
         return True
 
     @classmethod
@@ -419,24 +406,18 @@ _STRUCTURED_COMPUTERS: tuple[type[Computer[Any]], ...] = (
 )
 
 
-def default_computer(game: Game, *, max_players: int = DEFAULT_MAX_PLAYERS) -> Computer[Any]:
+def default_computer(game: Game) -> Computer[Any]:
     """Return the best available computer for a game.
 
-    A structured computer for the game's type is preferred; otherwise brute force is used up to
-    ``max_players`` players.
+    A structured computer for the game's type is preferred; otherwise brute force is used.
 
     Args:
         game: The game.
-        max_players: The player cap of brute force. Defaults to ``25``.
 
     Returns:
         The computer bound to the game.
-
-    Raises:
-        UnsupportedComputationError: If no structured computer applies and the game is too large
-            for brute force.
     """
     for computer_class in _STRUCTURED_COMPUTERS:
         if computer_class.supports_game(game):
             return computer_class(game)
-    return BruteForceComputer(game, max_players=max_players)
+    return BruteForceComputer(game)

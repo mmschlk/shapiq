@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 import tempfile
+import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from shapiq import InteractionValues
 from shapiq_benchmark.datasets import get_data_dir
 
-from .computers import (
-    DEFAULT_MAX_PLAYERS,
-    BruteForceComputer,
-    UnsupportedComputationError,
-    default_computer,
-)
+from .computers import BruteForceComputer, default_computer
 
 if TYPE_CHECKING:
     from shapiq import Game
@@ -39,9 +34,10 @@ class Benchmark:
     pass ``cache=False``, to recompute.
 
     Without an explicit computer, the benchmark uses
-    :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force (up to
-    ``max_players`` players) for the indices and orders that computer does not support;
-    :meth:`computer_for` names the computer used.
+    :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force for the
+    indices and orders that computer does not support; :meth:`computer_for` names the computer
+    used. Brute force evaluates all ``2**n`` coalitions, so computing it for a game of more than
+    :attr:`max_brute_force_players` players warns.
 
     Examples:
         >>> from shapiq_benchmark.setups import PathDependentTreeSetup
@@ -50,31 +46,27 @@ class Benchmark:
         >>> ground_truth = benchmark.exact_values(index="k-SII", order=2)
     """
 
-    def __init__(
-        self,
-        game: Game,
-        computer: Computer | None = None,
-        *,
-        max_players: int = DEFAULT_MAX_PLAYERS,
-    ) -> None:
+    max_brute_force_players: ClassVar[int] = 25
+    """The number of players above which computing with brute force warns (``2**25`` game
+    evaluations). Brute force more than doubles its time and memory with every player: at 22
+    players, the Shapley values of a cheap game take about 2.5 minutes and 2.6 GB. Set
+    ``Benchmark.max_brute_force_players`` to change the limit."""
+
+    def __init__(self, game: Game, computer: Computer | None = None) -> None:
         """Create a benchmark of a game. Its exact values are not cached.
 
         Args:
             game: The game.
             computer: The ground-truth computer, bound to ``game``. Defaults to
                 :func:`~shapiq_benchmark.computers.default_computer` of the game.
-            max_players: The player cap of brute force when no computer is given.
 
         Raises:
             ValueError: If the computer is bound to another game.
         """
         self.game = game
-        self.max_players = max_players
         self._fallback = computer is None  # brute force where the default computer cannot
         self._brute_force: Computer | None = None
-        self.computer = (
-            computer if computer is not None else default_computer(game, max_players=max_players)
-        )
+        self.computer = computer if computer is not None else default_computer(game)
         if self.computer.game is not game:
             msg = "The computer must be bound to the benchmark's game."
             raise ValueError(msg)
@@ -88,7 +80,6 @@ class Benchmark:
         computer: type[Computer] | None = None,
         *,
         cache: bool = True,
-        max_players: int = DEFAULT_MAX_PLAYERS,
     ) -> Benchmark:
         """Build the game of a setup and benchmark it, caching its exact values.
 
@@ -97,18 +88,12 @@ class Benchmark:
             computer: The class of the ground-truth computer. Defaults to
                 :func:`~shapiq_benchmark.computers.default_computer` of the game.
             cache: Whether to cache the exact values under the setup's key. Defaults to ``True``.
-            max_players: The player cap of brute force, also passed to a computer class that
-                takes it.
 
         Returns:
             The benchmark.
         """
         game = setup.build()
-        bound = None
-        if computer is not None:
-            takes_cap = "max_players" in inspect.signature(computer).parameters
-            bound = computer(game, max_players=max_players) if takes_cap else computer(game)  # type: ignore[call-arg]
-        benchmark = cls(game, bound, max_players=max_players)
+        benchmark = cls(game, computer(game) if computer is not None else None)
         benchmark.setup = setup
         benchmark.cache = cache
         return benchmark
@@ -128,10 +113,7 @@ class Benchmark:
         if not self._fallback or self.computer.supports(index, order):
             return self.computer
         if self._brute_force is None:
-            try:
-                self._brute_force = BruteForceComputer(self.game, max_players=self.max_players)
-            except UnsupportedComputationError:  # too many players
-                return self.computer
+            self._brute_force = BruteForceComputer(self.game)
         return self._brute_force if self._brute_force.supports(index, order) else self.computer
 
     def supports(self, index: IndexType, order: int) -> bool:
@@ -147,12 +129,24 @@ class Benchmark:
 
         Returns:
             The exact values (see :meth:`~shapiq_benchmark.computers.Computer.exact_values`).
+
+        Warns:
+            UserWarning: If brute force computes the values of a game of more than
+                :attr:`max_brute_force_players` players.
         """
         computer = self.computer_for(index, order)
         directory = self._cache_dir()
         path = None if directory is None else directory / f"{computer.name}_{index}_{order}.json"
         if path is not None and path.exists():
             return InteractionValues.from_json_file(path)
+        n_players = self.game.n_players
+        if isinstance(computer, BruteForceComputer) and n_players > self.max_brute_force_players:
+            msg = (
+                f"Brute force evaluates all 2**{n_players} coalitions of the {n_players}-player "
+                f"game, more than Benchmark.max_brute_force_players={self.max_brute_force_players}"
+                " allows. This can take very long and need a lot of memory."
+            )
+            warnings.warn(msg, stacklevel=2)
         values = computer.exact_values(index, order)
         if directory is not None and path is not None and self.setup is not None:
             directory.mkdir(parents=True, exist_ok=True)
