@@ -101,32 +101,24 @@ def test_benchmark_falls_back_to_brute_force(
     assert knn.computer.name == "brute_force"
 
 
-def test_brute_force_warns_above_the_player_limit(
+def test_benchmark_warns_when_brute_force_computes_above_the_limit(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Brute force above ``Benchmark.max_brute_force_players`` warns but still computes."""
+    """Brute force warns when it computes: not for cached values or for other computers."""
     monkeypatch.setenv("SHAPIQ_DATA_DIR", str(tmp_path))
-    assert Benchmark.max_brute_force_players == 25
     setup = DataValuationSetup(dataset="xor", n_players=26)
     assert Benchmark.from_setup(setup, BruteForceComputer).game.n_players == 26  # no error
 
-    monkeypatch.setattr(Benchmark, "max_brute_force_players", 3)
-    game, small_game = DummyGame(4), DummyGame(3)
-    with pytest.warns(UserWarning, match=r"2\*\*4 coalitions"):
-        values = Benchmark(game, BruteForceComputer(game)).exact_values("SV", 1)
-    expected = shapiq.ExactComputer(game)(index="SV", order=1).get_n_order_values(1)
-    assert values.get_n_order_values(1) == pytest.approx(expected)
+    monkeypatch.setattr(BruteForceComputer, "max_players", 3)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        Benchmark(small_game, BruteForceComputer(small_game)).exact_values("SV", 1)
         Benchmark(SOUM(4, 3, random_state=0)).exact_values("SV", 1)  # Möbius, not brute force
-    small = DataValuationSetup(dataset="xor", n_players=4)
-    benchmark = Benchmark.from_setup(small)  # brute force, cached after the first computation
-    with pytest.warns(UserWarning, match="max_brute_force_players=3"):
-        benchmark.exact_values("SV", 1)
+    small = DataValuationSetup(dataset="xor", n_players=4)  # brute force
+    with pytest.warns(UserWarning, match="BruteForceComputer.max_players=3"):
+        Benchmark.from_setup(small).exact_values("SV", 1)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        Benchmark.from_setup(small).exact_values("SV", 1)
+        Benchmark.from_setup(small).exact_values("SV", 1)  # cached
     tree = Benchmark.from_setup(PathDependentTreeSetup(dataset="xor"))  # brute force fills in
     assert tree.game.n_players > 3
     with pytest.warns(UserWarning, match="Brute force"):

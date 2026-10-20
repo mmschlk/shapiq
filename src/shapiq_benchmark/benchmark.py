@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import tempfile
-import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from shapiq import InteractionValues
 from shapiq_benchmark.datasets import get_data_dir
@@ -37,7 +36,8 @@ class Benchmark:
     :func:`~shapiq_benchmark.computers.default_computer` and falls back to brute force for the
     indices and orders that computer does not support; :meth:`computer_for` names the computer
     used. Brute force evaluates all ``2**n`` coalitions, so computing it for a game of more than
-    :attr:`max_brute_force_players` players warns.
+    ``BruteForceComputer.max_players`` players warns (see
+    :attr:`~shapiq_benchmark.computers.BruteForceComputer.max_players`).
 
     Examples:
         >>> from shapiq_benchmark.setups import PathDependentTreeSetup
@@ -45,12 +45,6 @@ class Benchmark:
         >>> benchmark = Benchmark.from_setup(setup)  # uses the path-dependent tree computer
         >>> ground_truth = benchmark.exact_values(index="k-SII", order=2)
     """
-
-    max_brute_force_players: ClassVar[int] = 25
-    """The number of players above which computing with brute force warns (``2**25`` game
-    evaluations). Brute force more than doubles its time and memory with every player: at 22
-    players, the Shapley values of a cheap game take about 2.5 minutes and 2.6 GB. Set
-    ``Benchmark.max_brute_force_players`` to change the limit."""
 
     def __init__(self, game: Game, computer: Computer | None = None) -> None:
         """Create a benchmark of a game. Its exact values are not cached.
@@ -129,24 +123,12 @@ class Benchmark:
 
         Returns:
             The exact values (see :meth:`~shapiq_benchmark.computers.Computer.exact_values`).
-
-        Warns:
-            UserWarning: If brute force computes the values of a game of more than
-                :attr:`max_brute_force_players` players.
         """
         computer = self.computer_for(index, order)
         directory = self._cache_dir()
         path = None if directory is None else directory / f"{computer.name}_{index}_{order}.json"
         if path is not None and path.exists():
             return InteractionValues.from_json_file(path)
-        n_players = self.game.n_players
-        if isinstance(computer, BruteForceComputer) and n_players > self.max_brute_force_players:
-            msg = (
-                f"Brute force evaluates all 2**{n_players} coalitions of the {n_players}-player "
-                f"game, more than Benchmark.max_brute_force_players={self.max_brute_force_players}"
-                " allows. This can take very long and need a lot of memory."
-            )
-            warnings.warn(msg, stacklevel=2)
         values = computer.exact_values(index, order)
         if directory is not None and path is not None and self.setup is not None:
             directory.mkdir(parents=True, exist_ok=True)

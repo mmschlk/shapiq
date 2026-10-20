@@ -18,6 +18,7 @@ structured computers used as ground truth for large games.
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, cast, get_args
 
@@ -173,13 +174,18 @@ class Computer[G: Game](ABC):
 class BruteForceComputer(Computer[Game]):
     """Brute force: evaluates all ``2**n`` coalitions with :class:`~shapiq.ExactComputer`.
 
-    Works for every game, at a cost exponential in the number of players (a
-    :class:`~shapiq_benchmark.Benchmark` warns above
-    :attr:`~shapiq_benchmark.Benchmark.max_brute_force_players`). The game values are evaluated
-    once and reused for every index and order.
+    Works for every game, at a cost exponential in the number of players: computing the values of
+    a game of more than :attr:`max_players` players warns. The game values are evaluated once and
+    reused for every index and order.
     """
 
     name = "brute_force"
+
+    max_players: ClassVar[int] = 25
+    """The number of players above which computing warns (``2**25`` game evaluations). Brute force
+    more than doubles its time and memory with every player: at 22 players, the Shapley values of
+    a cheap game take about 2.5 minutes and 2.6 GB. Set ``BruteForceComputer.max_players`` to
+    change the limit."""
 
     def __init__(self, game: Game) -> None:
         """Bind the computer to a game.
@@ -202,7 +208,15 @@ class BruteForceComputer(Computer[Game]):
 
     def _compute(self, index: IndexType, order: int) -> InteractionValues:
         if self._exact is None:
-            self._exact = ExactComputer(game=self.game, n_players=self.game.n_players)
+            n_players = self.game.n_players
+            if n_players > self.max_players:
+                msg = (
+                    f"Brute force evaluates all 2**{n_players} coalitions of the "
+                    f"{n_players}-player game, more than BruteForceComputer.max_players="
+                    f"{self.max_players} allows. This can take very long and need a lot of memory."
+                )
+                warnings.warn(msg, stacklevel=3)  # the caller of exact_values
+            self._exact = ExactComputer(game=self.game, n_players=n_players)
         return self._exact(index=index, order=order)
 
 
