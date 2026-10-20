@@ -17,6 +17,13 @@
 
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
+<p align="center">
+  <img width="900px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/hero_siglip2.png" alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them">
+</p>
+<p align="center">
+Which words go with which parts of the image? <code>shapiq</code> explains how well SigLIP 2 matches a photo and its caption by the interactions of image regions and words, as in <a href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/4e7686b7b147fac3352b24ab86ff78fb-Abstract-Conference.html">FIxLIP</a> (NeurIPS 2025).
+</p>
+
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above** and is tested on Python 3.12 to 3.15.
 On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models, and the image and SigLIP games of `shapiq_games`) are only available on Python 3.12 to 3.14 for now.

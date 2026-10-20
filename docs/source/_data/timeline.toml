@@ -226,7 +226,7 @@ obtained the Banzhaf value from the best linear approximation in the unweighted 
 Weighted Banzhaf interactions explain vision-language encoders in FIxLIP, and the quadrature
 algorithm for trees integrates them over p.
 """
-cite = ["Marichal.2011", "Hammer.1992"]
+cite = ["Marichal.2011", "Hammer.1992", "Baniecki.2025"]
 related = ["banzhaf-value", "multilinear-extension", "fixlip", "quadrature-treeshap"]
 
 [[entries]]
@@ -1424,9 +1424,11 @@ summary = "Weighted Banzhaf interactions explain the similarity of vision-langua
 description = """
 Baniecki et al. explained the similarity scores of encoders such as CLIP and SigLIP by interactions
 between image patches and text tokens, quantified with weighted Banzhaf interactions, which capture
-the cross-modal effects that single attributions miss.
+the cross-modal effects that single attributions miss. The figure on the :doc:`landing page
+<index>` explains SigLIP 2 this way.
 """
 cite = ["Baniecki.2025"]
+links = [{ label = "Code (hbaniecki/fixlip)", url = "https://github.com/hbaniecki/fixlip" }]
 related = ["weighted-banzhaf"]
 
 [[entries]]

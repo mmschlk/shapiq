@@ -319,8 +319,13 @@ section:has(> .shapiq-hero) > h1::after {
 }
 
 /* the text after the hero clears the logo */
-section:has(> .shapiq-hero) > section {
+section:has(> .shapiq-hero) > section,
+figure.shapiq-hero-figure {
   clear: both;
+}
+
+figure.shapiq-hero-figure {
+  margin: 2rem 0 0.5rem;
 }
 
 /* the printed output of the landing page's example */
