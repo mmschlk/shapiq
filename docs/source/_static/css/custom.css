@@ -98,7 +98,6 @@ svg.shapiq-logo {
 
 .shapiq-logo-player {
   cursor: grab;
-  touch-action: none;
 }
 
 /* while a player is pulled, the whole page shows the closed hand and no text gets selected */
