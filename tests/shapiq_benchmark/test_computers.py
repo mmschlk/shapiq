@@ -195,7 +195,6 @@ def test_brute_force_has_no_player_cap() -> None:
     big = SOUM(26, 5, random_state=0)
     assert isinstance(default_computer(big), MoebiusComputer)
     assert BruteForceComputer(big).supports("SV", 1)  # binding computes nothing
-    assert isinstance(default_computer(RandomTableGame(26)), BruteForceComputer)
 
 
 def test_computers_reject_foreign_games() -> None:

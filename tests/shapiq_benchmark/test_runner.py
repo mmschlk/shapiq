@@ -110,25 +110,25 @@ def test_brute_force_warns_above_the_player_limit(
     setup = DataValuationSetup(dataset="xor", n_players=26)
     assert Benchmark.from_setup(setup, BruteForceComputer).game.n_players == 26  # no error
 
-    monkeypatch.setattr(Benchmark, "max_brute_force_players", 4)
-    game, small_game = DummyGame(5), DummyGame(4)
-    with pytest.warns(UserWarning, match=r"2\*\*5 coalitions"):
+    monkeypatch.setattr(Benchmark, "max_brute_force_players", 3)
+    game, small_game = DummyGame(4), DummyGame(3)
+    with pytest.warns(UserWarning, match=r"2\*\*4 coalitions"):
         values = Benchmark(game, BruteForceComputer(game)).exact_values("SV", 1)
     expected = shapiq.ExactComputer(game)(index="SV", order=1).get_n_order_values(1)
     assert values.get_n_order_values(1) == pytest.approx(expected)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         Benchmark(small_game, BruteForceComputer(small_game)).exact_values("SV", 1)
-        Benchmark(SOUM(5, 3, random_state=0)).exact_values("SV", 1)  # Möbius, not brute force
-    small = DataValuationSetup(dataset="xor", n_players=5)
+        Benchmark(SOUM(4, 3, random_state=0)).exact_values("SV", 1)  # Möbius, not brute force
+    small = DataValuationSetup(dataset="xor", n_players=4)
     benchmark = Benchmark.from_setup(small)  # brute force, cached after the first computation
-    with pytest.warns(UserWarning, match="max_brute_force_players=4"):
+    with pytest.warns(UserWarning, match="max_brute_force_players=3"):
         benchmark.exact_values("SV", 1)
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         Benchmark.from_setup(small).exact_values("SV", 1)
     tree = Benchmark.from_setup(PathDependentTreeSetup(dataset="xor"))  # brute force fills in
-    assert tree.game.n_players > 4
+    assert tree.game.n_players > 3
     with pytest.warns(UserWarning, match="Brute force"):
         tree.exact_values("FSII", 2)
 
