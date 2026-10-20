@@ -1,68 +1,53 @@
 # Changelog
 
-## Development
+## v1.8.0 (2026-10-20)
 
 ### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)
 
-Adds the `PolySHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via interaction-informed polynomial regression (Fumagalli et al., 2026).
-`PolySHAP` generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values.
-The interaction frontier can be the full *k*-additive frontier up to `max_order` (with `max_order=1` recovering `KernelSHAP`), a budget-controlled partial frontier (`max_terms`), or a user-supplied set of interaction terms (`prior_frontier`).
-It is registered as a Shapley value (`SV`) approximator.
+Adds the `PolySHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via interaction-informed polynomial regression (Fumagalli et al., 2026). `PolySHAP` generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values. The estimator can be used with a pre-defined set of interactions to estimate on. This interaction frontier can be the full *k*-additive frontier up to `max_order` (with `max_order=1` recovering `KernelSHAP`), a budget-controlled partial frontier (`max_terms`), or a user-supplied set of interaction terms (`prior_frontier`). It is registered as a Shapley value (`SV`) approximator.
 
 ### Harmonized `shapiq_games` and `shapiq_benchmark` [#616](https://github.com/mmschlk/shapiq/pull/616)
 
-- `shapiq_games` is a tested collection of game definitions: one class per game family, built from plain objects (a model, data, a point, an image, a text), with deterministic values and tested examples. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`.
-- `shapiq_benchmark` builds games from names (`shapiq_benchmark.setups`), downloads and caches its 83 datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`).
-- new games: DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
-- no data files ship in the wheel anymore (previously ~89 MB).
+We made both `shapiq_games` and `shapiq_benchmark` into sub-packages and improved its usability for evaluating. Note, this is still under development and might change in the near future. The games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
 
-### Breaking Changes
+1. `shapiq_games` is a tested collection of game definitions we encountered in the wild. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`. We made the existing infrastructure for creating games more stable and added new ones, such as DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
+
+2. `shapiq_benchmark` is a package for evaluating estimators. It builds games from names (`shapiq_benchmark.setups`), downloads and caches datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`). Importanlty, no data files ship in the wheel anymore (previously ~89 MB).
+
+**Note**, that moving games and datasets into separate packages also added some breaking changes in obscure places:
 
 - the ground-truth games move out of core: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame`, `shapiq.explainer.nn.games` is now `shapiq_games.nn`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame`.
-- the moved games take the model first and the class as a keyword: `InterventionalTreeGame(model, reference_data, x, class_index=...)` (was `target_instance`), `ProductKernelGame(model, x)` (was `ProductKernelGame(n_players, explain_point, model)`), and `KNNGame`, `WeightedKNNGame` and `ThresholdNNGame` (were `KNNExplainerGame`, `WeightedKNNExplainerGame` and `TNNExplainerGame`) take `class_index=None` (class 1) instead of a required positional class; `BinaryWeightedKNNExplainerGame` is removed (`WeightedKNNGame` averages the binary games itself).
-- `RandomGame` is now `RandomTableGame`, `SOUM` is seeded with `random_state=42` by default (was unseeded), and `DummyGame.N` is removed (use `range(game.n_players)`).
-- removes `shapiq_games.benchmark`, `shapiq_games.tabular`, and the `*Bench` classes; `LocalExplanation`, `GlobalExplanation` and `UncertaintyExplanation` are now `TabularLocalExplanation`, `TabularGlobalExplanation` and `TabularUncertaintyExplanation`.
-- some game values change, e.g. the interventional tree game uses raw margins for boosted classifiers, and `SentimentAnalysis` returns `2 P(positive) - 1`.
 - removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (`california_housing` comes from scikit-learn; `bike_sharing` and `adult_census` come from OpenML and need `shapiq[benchmark]`) or scikit-learn's fetchers.
-- the games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
 
-### Improvement
-- `TreeExplainer(mode="interventional")` applies `min_order` like the path-dependent mode (`min_order=0` adds the empty interaction with the baseline value; larger values drop the lower orders).
-- speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`) by up to two orders of magnitude for orders above 3 and wide feature spaces. The C++ extension is restructured into one output layout over the interactions that can be non-zero, a cohort fill over the background data and a single-reference fill for one background row, and one leaf update; there is no limit on depth, order or feature count. Refactoring removed unused `bool_tree`, `debug`, and `index_func` constructor arguments.
-- `QuadratureTreeSHAP` and `InterventionalTreeSHAPIQ` share the C++ preprocessing of that layout and the readout of the result; the Python collector of the quadrature explainer is removed.
-- `TreeExplainer` computes the `"Moebius"` transform in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ` and Woodelf). [#596](https://github.com/mmschlk/shapiq/pull/596)
-- adds the `"Fourier"` (Walsh-Hadamard) transform as an index, `F(S) = (-1/2)^|S| BII(S)` in the convention of `ProxySPEX`: computed exactly by `ExactComputer` and by `TreeExplainer` in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ`). [#596](https://github.com/mmschlk/shapiq/pull/596)
-- `ProxySPEX` and `OddSHAP` read the Fourier coefficients of their tree proxies with the interventional C++ kernel (`tree_to_fourier`) instead of Python recursions: identical coefficients, the readout 1.4-5x faster, `OddSHAP` 1.25-1.8x faster end to end. [#596](https://github.com/mmschlk/shapiq/pull/596)
-- Constructing an `InteractionValues` from an array and an `interaction_lookup` is several times faster (one vectorised gather instead of a numpy scalar lookup per interaction).
+### Better Documentation
 
-### Bugfix
+We started reworking the documentation wich makes it easier to get into the core of the library. The rework adds a new landing page, adds more examples and groups them, adds an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a consistent bibliography of every cited work. [#622](https://github.com/mmschlk/shapiq/pull/622)
 
-- fixes `ProxySPEX` aggregating aggregated indices twice: with `index="k-SII"` the converted k-SII values were aggregated from SII again (e.g. 0.5 instead of 1.0 for a main effect). [#596](https://github.com/mmschlk/shapiq/pull/596)
-- fixes path-dependent `TreeExplainer`/`QuadratureTreeSHAP` dropping the mass of a zero-cover subtree whenever the explained point's routing enters it (e.g. through NaN default routing or a value outside the training range, which is common in CatBoost's oblivious trees). Below such a node the cover ratio was `0/0` and the subtree was treated as unreachable, which gave wrong Shapley values and interactions and nonzero attributions on constant trees (violating the null-player axiom); efficiency was unaffected. A zero-cover node now splits its (zero) mass equally among its children, so its split weights still sum to one. [#617](https://github.com/mmschlk/shapiq/pull/617)
-- `InterventionalTreeSHAPIQ(weight_fn=...)` dropped the terms whose interaction size equals `|E| + |R|`, so custom weights never reproduced a built-in index.
-- `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returned the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`, including the Woodelf fast path. It now explains the class-0 log-odds, which are the negated class-1 log-odds: the values and the `baseline_value` are the negation of the `class_index=1` explanation. `class_index=None` still explains class 1.
-- `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explained the sum of the raw margins of all classes; it now explains class 1, like for the other libraries.
-- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) silently computed wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`.
-- fixes a bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), so the estimates did not converge. Held-out residuals were scaled by `k_folds` and thus also stood in for the coalitions the fold's proxy was trained on.
-Folds are now split within each coalition size (complement pairs kept together), with training coalitions getting a weight of `1` and held-out coalitions a weight depending on how many unseen coalitions of their size exist.
-- fixes `MarginalImputer` mixing two level of qualities in estimating the marginalized model output. While, the empty prediction was computed over the whole dataset, each individual coalition was subsampled by default. Each `v(S) - v(∅)` contained the gap between the two estimates. The replacement samples are now drawn once when the background data (or the random state) is set and are shared by all coalitions, including the empty one, so `empty_prediction`, the normalization value, and the explainers' `baseline_value` are now the mean prediction over these samples (use `sample_size=None` to compute them over the full background data). This also makes repeated evaluations of the same coalition identical with `random_state=None`, which previously drew a new subsample on every call. [#615](https://github.com/mmschlk/shapiq/pull/615)
-- fixes `MarginalImputer.init_background` keeping the row limit of an earlier, smaller background data set, which would silently use fewer rows of a larger new background than `sample_size` allows. [#615](https://github.com/mmschlk/shapiq/pull/615)
-- fixes the benchmark's ground truth of path-dependent tree games, which ignored the requested index and order, and its Kendall's tau, which correlated `argsort` positions instead of values. [#616](https://github.com/mmschlk/shapiq/pull/616)
-- fixes `OddSHAP` failing with "SVD did not converge" for more than about 1,030 players. Its regression kernel weights and the sampler's adjustment weights are now combined in log space, like in the other regression approximators. [#621](https://github.com/mmschlk/shapiq/issues/621)
+### `"Fourier"` and `"Moebius"` Support
+- adds the `"Fourier"` (Walsh-Hadamard) transform as an index `F(S) = (-1/2)^|S| BII(S)`. The index is computable by `ExactComputer` and by `TreeExplainer` in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ`). [#596](https://github.com/mmschlk/shapiq/pull/596)
+- adds `"Moebius"` index computation to `TreeExplainer` in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ` and Woodelf). [#596](https://github.com/mmschlk/shapiq/pull/596)
 
-### Improved API Behavior
-
-- `MarginalImputer`'s `sample_size` is now the maximum number of background rows used: `sample_size=None` uses all rows (previously raised a `TypeError`), and a background with fewer rows than `sample_size` is used completely without a warning (previously a `UserWarning`, also with the default `sample_size=100`). A `sample_size` smaller than `1` raises a `ValueError`. [#615](https://github.com/mmschlk/shapiq/pull/615)
-- `TabularExplainer` warns when the default marginal imputer only uses a subsample of the background data, i.e. when `sample_size` is not passed and `data` has more than 100 rows, and points to `sample_size=None`. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
-- `ProductKernelExplainer` is exported from `shapiq.explainer`. [#622](https://github.com/mmschlk/shapiq/pull/622)
+### Bugfixes
+- fixes `ProxySPEX` aggregating `index="k-SII"` twice. [#596](https://github.com/mmschlk/shapiq/pull/596)
+- fixes path-dependent `TreeExplainer`/`QuadratureTreeSHAP` dropping zero-cover subtree whenever the explained point's routing enters it, which could occur via the default paths routing. A zero-cover node now splits its (zero) mass equally among its children. [#617](https://github.com/mmschlk/shapiq/pull/617)
+- fixes `InterventionalTreeSHAPIQ(weight_fn=...)` dropping interactions sizes equal to `|E| + |R|`. [#619](https://github.com/mmschlk/shapiq/pull/619)
+- fixes `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returning the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`. [#618](https://github.com/mmschlk/shapiq/pull/618)
+- fixes `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explaining raw marginals, it now explains class 1, consistent with all other libraries. [#618](https://github.com/mmschlk/shapiq/pull/618)
+- fixes bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), now applying the correct size-conditional scaling of held-out residuals. [#606](https://github.com/mmschlk/shapiq/pull/606)
+- fixes `MarginalImputer` having wrong `baseline_value` (computed over the whole dataset) and `v(S)` (computed on a subsample of data). Now both are based on the subsample of background rows created by `init_background` and controlled via `sample_size` (using all when `sample_size=None`). [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `OddSHAP` scaling not beyond 1,030 players, by switching to log space adjustment weights, as in the other regression approximators. [#621](https://github.com/mmschlk/shapiq/issues/621)
 
 ### Maintenance
-
-- adds support for Python 3.15: wheels are built for CPython 3.15 (cibuildwheel 4.3.1) and the CI tests Python 3.15. `torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece` do not ship Python 3.15 wheels yet, so the optional dependencies and dependency groups only install them on Python < 3.15; the features relying on them remain available on Python 3.12 to 3.14.
-- reworks the documentation: a new landing page, the examples in illustrated groups with 15 new ones, an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a bibliography of every cited work. [#622](https://github.com/mmschlk/shapiq/pull/622)
-- the documentation build runs on request only (label `build docs` or the Actions tab), and the gallery examples run without warnings. [#622](https://github.com/mmschlk/shapiq/pull/622)
-- vectorizes `MarginalImputer.value_function`: instead of one model call per background row, the imputed rows of many coalitions are passed to the model in a single call (chunked to at most 2^20 array elements). [#615](https://github.com/mmschlk/shapiq/pull/615)
-- fixes `Game` passing integer or float 0/1 coalition arrays unchanged to `value_function`: games that use the coalitions as masks (e.g. `x[coalition]`, `~coalition`) would silently compute wrong values, since integer arrays index positions `0`/`1` and `~` acts bitwise. `Game.__call__` (incl. `verbose=True`), `precompute`, and `compute` now always hand a boolean coalition matrix to `value_function`. This affected the behavior of some of the legacy games defined within `shapiq_games`.
+- adds support for Python 3.15 (wheels built with CPython 3.15).
+- more control over the number of background datasets in `MarginalImputer` via `sample_size`. All rows of the dataset are used with `sample_size=None`, and a background with fewer rows than `sample_size` is used in full( default `sample_size=100`). The sample size must be bigger than `1`, indicated by a `ValueError` otherwise. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- vectorizes `MarginalImputer.value_function`. Imputed rows are now passed ot the model in a single call (or chunked to at most 2^20 elements), instead of one model call per background row. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- adding a warning in  `TabularExplainer` that the marginal imputer only uses a subsample of background data. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- exposing `ProductKernelExplainer` to be used from `shapiq.explainer`. [#622](https://github.com/mmschlk/shapiq/pull/622)
+- the documentation build runs on request only (label `build docs` or the Actions tab) [#622](https://github.com/mmschlk/shapiq/pull/622)
+- speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`) for higher-order interactions [#619](https://github.com/mmschlk/shapiq/pull/619)
+- unifies `QuadratureTreeSHAP` and `InterventionalTreeSHAPIQ` to share the C++ preprocessing. [#619](https://github.com/mmschlk/shapiq/pull/619)
+- `ProxySPEX` and `OddSHAP` read the Fourier coefficients of their tree proxies with the new interventional C++ kernel (`tree_to_fourier`) instead of Python recursions. [#596](https://github.com/mmschlk/shapiq/pull/596)
+- constructing an `InteractionValues` from an array and an `interaction_lookup` is several times faster (one vectorised gather instead of a numpy scalar lookup per interaction). [#619](https://github.com/mmschlk/shapiq/pull/619)
 
 ## v1.7.0 (2026-08-27)
 
