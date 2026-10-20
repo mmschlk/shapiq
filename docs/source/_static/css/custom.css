@@ -273,37 +273,52 @@ section:has(> .shapiq-hero) > h1::after {
   font-display: swap;
 }
 
+/* the orange of a star, and a yellow marker stroke behind the link; a lighter orange in the dark */
+.shapiq-star-note {
+  --shapiq-star: #ea580c;
+  --shapiq-star-marker: rgba(251, 191, 36, 0.5);
+}
+
+body[data-theme="dark"] .shapiq-star-note {
+  --shapiq-star: #fbbf24;
+  --shapiq-star-marker: rgba(251, 191, 36, 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .shapiq-star-note {
+    --shapiq-star: #fbbf24;
+    --shapiq-star-marker: rgba(251, 191, 36, 0.22);
+  }
+}
+
 .shapiq-star-note p {
   margin: -2.33rem 0 1.4rem 6rem;
   font-family: "Caveat", "Comic Sans MS", "Chalkboard SE", cursive;
   font-size: 1.55rem;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--shapiq-red);
-  transform: rotate(-2deg);
+  color: var(--shapiq-star);
+  transform: rotate(-1deg);
   transform-origin: left center;
 }
 
 .shapiq-star-note a {
+  padding: 0 0.15em;
+  border-radius: 0.2em;
   color: inherit;
   white-space: nowrap;
-  text-decoration: underline wavy;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 0.3em;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  background: linear-gradient(transparent 52%, var(--shapiq-star-marker) 52% 92%, transparent 92%);
+}
+
+.shapiq-star-note a::after {
+  content: "\00a0→";
 }
 
 .shapiq-star-note a:hover {
-  color: var(--shapiq-red-strong);
-}
-
-body[data-theme="dark"] .shapiq-star-note p {
-  color: #ff6b93;
-}
-
-@media (prefers-color-scheme: dark) {
-  body:not([data-theme="light"]) .shapiq-star-note p {
-    color: #ff6b93;
-  }
+  background-color: var(--shapiq-star-marker);
 }
 
 .shapiq-hero-lead p {
