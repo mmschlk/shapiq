@@ -17,6 +17,15 @@
 
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
+<p align="center">
+  <img width="900px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/hero_siglip2.png" alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them">
+</p>
+<p align="center"><sub>
+Which words go with which parts of the image? The similarity of a photo and its caption in SigLIP 2, explained by weighted Banzhaf interactions between image regions and words, as in <a href="https://arxiv.org/abs/2508.05430">FIxLIP</a> (NeurIPS 2025).
+Red interactions raise the similarity, blue ones lower it.
+Photo: <a href="https://www.flickr.com/photos/60374292@N00/6721303357">"Drinking Giraffe"</a> by Jean &amp; Nathalie, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, cropped.
+</sub></p>
+
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above** and is tested on Python 3.12 to 3.15.
 On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models, and the image and SigLIP games of `shapiq_games`) are only available on Python 3.12 to 3.14 for now.

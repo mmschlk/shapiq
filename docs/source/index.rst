@@ -60,6 +60,20 @@ Shapley Interactions for Machine Learning
 
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
+.. figure:: _static/images/hero_siglip2.png
+   :figclass: shapiq-figure shapiq-hero-figure
+   :alt: A photo of a giraffe drinking at a river and the text "a giraffe drinking water from a
+         river", explained by a network of image regions and words, linked by the interactions
+         that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
+
+   Which words go with which parts of the image? The similarity of a photo and its caption in
+   SigLIP 2, explained by weighted Banzhaf interactions between the 49 regions of the image and the
+   7 words of the text, as in FIxLIP :cite:p:`Baniecki.2025`. Shown are the strongest
+   interactions of eight regions with the words: red ones raise the similarity, blue ones lower
+   it. Photo: "Drinking Giraffe" by `Jean & Nathalie
+   <https://www.flickr.com/photos/60374292@N00/6721303357>`_, `CC BY 2.0
+   <https://creativecommons.org/licenses/by/2.0/>`_, cropped.
+
 
 Install
 -------
