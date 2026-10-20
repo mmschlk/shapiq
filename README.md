@@ -21,7 +21,7 @@ Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approx
   <img width="900px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/hero_siglip2.png" alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them">
 </p>
 <p align="center"><sub>
-Which words go with which parts of the image? The similarity of a photo and its caption in SigLIP 2, explained by weighted Banzhaf interactions between image regions and words, as in <a href="https://arxiv.org/abs/2508.05430">FIxLIP</a> (NeurIPS 2025).
+Which words go with which parts of the image? The similarity of a photo and its caption in SigLIP 2, explained by weighted Banzhaf interactions between image regions and words, as in <a href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/4e7686b7b147fac3352b24ab86ff78fb-Abstract-Conference.html">FIxLIP</a> (NeurIPS 2025).
 Red interactions raise the similarity, blue ones lower it.
 Photo: <a href="https://www.flickr.com/photos/60374292@N00/6721303357">"Drinking Giraffe"</a> by Jean &amp; Nathalie, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, cropped.
 </sub></p>

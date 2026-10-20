@@ -66,11 +66,13 @@ Shapley Interactions for Machine Learning
          river", explained by a network of image regions and words, linked by the interactions
          that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
 
-   Which words go with which parts of the image? The similarity of a photo and its caption in
-   SigLIP 2, explained by weighted Banzhaf interactions between the 49 regions of the image and the
-   7 words of the text, as in FIxLIP :cite:p:`Baniecki.2025`. Shown are the strongest
-   interactions of eight regions with the words: red ones raise the similarity, blue ones lower
-   it. Photo: "Drinking Giraffe" by `Jean & Nathalie
+   Which words go with which parts of the image? The vision-language model SigLIP 2 scores how
+   well a photo and a text match. ``shapiq`` explains the score by the interactions of its players,
+   the 49 regions of the image and the 7 words of the text, with weighted Banzhaf interactions as in
+   FIxLIP :cite:p:`Baniecki.2025`. A red edge joins a word and a region that raise the score
+   together, by more than each does alone; a blue edge joins a word and a region that lower it
+   together. "giraffe" goes with the giraffe's body, "drinking" with its bent neck, "water" with
+   its head at the water, and "river" with the bank. Photo: "Drinking Giraffe" by `Jean & Nathalie
    <https://www.flickr.com/photos/60374292@N00/6721303357>`_, `CC BY 2.0
    <https://creativecommons.org/licenses/by/2.0/>`_, cropped.
 
