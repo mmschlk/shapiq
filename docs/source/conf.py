@@ -107,6 +107,7 @@ EXAMPLE_ORDER = {
         "plot_sv_calculation.py",
         "plot_shapiq_scikit_learn.py",
         "plot_custom_games.py",
+        "plot_ml_games.py",
     ),
     "exact_computation": (
         "plot_exact_computer.py",

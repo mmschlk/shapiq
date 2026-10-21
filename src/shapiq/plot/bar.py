@@ -249,10 +249,12 @@ def bar_plot(
             for i, iv in enumerate(list_of_interaction_values):
                 values[i, j] = iv[interaction]
 
-    # Include the base value in the plot
-    if not plot_base_value:
-        values = values[:, 1:]
-        interaction_list = list(interaction_list)[1:]
+    # remove the base value (the empty interaction) from the plot, if the values contain it
+    interaction_list = list(interaction_list)
+    if not plot_base_value and () in interaction_list:
+        base_value_index = interaction_list.index(())
+        values = np.delete(values, base_value_index, axis=1)
+        del interaction_list[base_value_index]
 
     # format the labels
     labels = [format_labels(feature_mapping, interaction) for interaction in interaction_list]

@@ -157,8 +157,8 @@ plt.show()
 # The explanations of all libraries are :class:`~shapiq.interaction_values.InteractionValues`,
 # so every plot of ``shapiq`` works for them. The beeswarm plot of the XGBoost model shows how the
 # values depend on the feature values: large tumors push the log-odds towards malignant (class
-# ``0``). ``explain_X`` returns a batch of explanations, which the beeswarm plot takes as a list.
+# ``0``). ``explain_X`` returns a batch of explanations, which the beeswarm plot takes directly.
 
 shapiq.beeswarm_plot(
-    list(explanations["XGBoost"]), X_explain, feature_names=feature_names, abbreviate=False
+    explanations["XGBoost"], X_explain, feature_names=feature_names, abbreviate=False
 )
