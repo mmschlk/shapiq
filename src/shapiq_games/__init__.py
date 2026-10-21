@@ -23,7 +23,8 @@ setups of :mod:`shapiq_benchmark.setups`, e.g.
 Game families:
 
 - synthetic games with analytic values: :class:`DummyGame`, :class:`UnanimityGame`,
-  :class:`SOUM`, :class:`RandomTableGame`
+  :class:`SOUM`, :class:`RandomTableGame`, :class:`LinearGaussianSCM`,
+  :class:`ConfoundedChainSCM`
 - model-specific games with exact explainers: :class:`PathDependentTreeGame`,
   :class:`InterventionalTreeGame`, :class:`KNNGame`, :class:`WeightedKNNGame`,
   :class:`ThresholdNNGame`, :class:`ProductKernelGame`
@@ -44,7 +45,14 @@ from .kernel import ProductKernelGame
 from .language import SentimentAnalysis
 from .local_xai import TabularLocalExplanation
 from .nn import KNNGame, ThresholdNNGame, WeightedKNNGame
-from .synthetic import SOUM, DummyGame, RandomTableGame, UnanimityGame
+from .synthetic import (
+    SOUM,
+    ConfoundedChainSCM,
+    DummyGame,
+    LinearGaussianSCM,
+    RandomTableGame,
+    UnanimityGame,
+)
 from .tree import InterventionalTreeGame, PathDependentTreeGame
 from .uncertainty import TabularUncertaintyExplanation
 from .unsupervised import UnsupervisedData
@@ -53,7 +61,9 @@ from .vision import ImageClassifier, ImageTextSimilarity
 
 __all__ = [
     # synthetic
+    "ConfoundedChainSCM",
     "DummyGame",
+    "LinearGaussianSCM",
     "RandomTableGame",
     "SOUM",
     "UnanimityGame",
