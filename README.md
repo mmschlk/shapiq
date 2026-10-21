@@ -26,7 +26,7 @@ Which words go with which parts of the image? <code>shapiq</code> explains how w
 
 ## 🛠️ Install
 `shapiq` is intended to work with **Python 3.12 and above** and is tested on Python 3.12 to 3.15.
-On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models, and the image and SigLIP games of `shapiq_games`) are only available on Python 3.12 to 3.14 for now.
+On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models) are only available on Python 3.12 to 3.14 for now.
 Installation can be done via `uv` :
 ```sh
 uv add shapiq
