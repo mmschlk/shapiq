@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import functools
 import math
 import re
+import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -21,6 +23,8 @@ if TYPE_CHECKING:
     from PIL.Image import Image
 
 __all__ = ["abbreviate_feature_names", "add_image_in_center", "format_labels", "format_value"]
+
+_F = TypeVar("_F", bound="Callable[..., Any]")
 
 
 def format_value(
@@ -171,7 +175,7 @@ def _as_batch(
         ValueError: If ``interaction_values`` is empty.
     """
     if isinstance(interaction_values, Sequence) and len(interaction_values) == 0:
-        error_message = "interaction_values_list must not be empty."
+        error_message = "interaction_values must not be empty."
         raise ValueError(error_message)
     if isinstance(interaction_values, InteractionValuesBatch):
         return interaction_values
@@ -179,8 +183,29 @@ def _as_batch(
         isinstance(iv, InteractionValues) for iv in interaction_values
     ):
         error_message = (
-            "interaction_values_list must be an InteractionValuesBatch or a list of "
+            "interaction_values must be an InteractionValuesBatch or a list of "
             f"InteractionValues. Got: {type(interaction_values).__name__}."
         )
         raise TypeError(error_message)
     return InteractionValuesBatch.from_interaction_values(interaction_values)
+
+
+def _renamed_keyword(old: str, new: str) -> Callable[[_F], _F]:
+    """Lets a function still accept its argument ``new`` under the deprecated keyword ``old``."""
+
+    def decorator(func: _F) -> _F:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+            if old in kwargs:
+                warnings.warn(
+                    f"`{old}` is renamed to `{new}`. This feature is deprecated in version "
+                    "1.9.0 and will be removed in version 1.10.0.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                kwargs[new] = kwargs.pop(old)
+            return func(*args, **kwargs)
+
+        return cast("_F", wrapper)
+
+    return decorator

@@ -66,7 +66,7 @@ def _resolve_pair(
 
 
 def scatter_2d_plot(
-    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
+    interaction_values: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     interaction: tuple[int, int] | tuple[str, str] | None = None,
     *,
@@ -92,12 +92,12 @@ def scatter_2d_plot(
     pairwise interaction, so the color shows the joint contribution of the pair.
 
     Args:
-        interaction_values_list: The explanations of the samples in ``data``, as an
+        interaction_values: The explanations of the samples in ``data``, as an
             :class:`~shapiq.InteractionValuesBatch` (for example from
             :meth:`~shapiq.Explainer.explain_X`) or a list of
             :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
         data: The feature values for the samples, as a ``pandas.DataFrame`` or 2D ``numpy`` array.
-            Must have the same number of rows as ``interaction_values_list``. Only the two
+            Must have the same number of rows as ``interaction_values``. Only the two
             plotted columns need to be numeric.
         interaction: The pair of features to plot, as a tuple of feature indices like ``(0, 2)``
             or of feature names like ``("MedInc", "Latitude")``. The first feature goes on the
@@ -125,16 +125,16 @@ def scatter_2d_plot(
         ValueError: If inputs are inconsistent (no explanations, length mismatch, unknown feature
             names or indices, an interaction that is not a pair or is absent from the
             explanations, or invalid numeric parameters).
-        TypeError: If ``interaction_values_list`` or ``data`` has an unsupported type, or if
+        TypeError: If ``interaction_values`` or ``data`` has an unsupported type, or if
             ``interaction`` or a feature identifier has an unsupported type.
 
     """
-    batch = _as_batch(interaction_values_list)
+    batch = _as_batch(interaction_values)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
     if len(batch) != len(data):
-        error_message = "Length of interaction_values_list must match number of rows in data."
+        error_message = "Length of interaction_values must match number of rows in data."
         raise ValueError(error_message)
     if alpha <= 0 or alpha > 1:
         error_message = "alpha must be between 0 and 1."

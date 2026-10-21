@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .beeswarm import _get_red_blue_cmap
-from .utils import _as_batch, abbreviate_feature_names
+from .utils import _as_batch, _renamed_keyword, abbreviate_feature_names
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -80,8 +80,9 @@ def _resolve_interaction(
     raise TypeError(error_message)
 
 
+@_renamed_keyword("interaction_values_list", "interaction_values")
 def scatter_plot(
-    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
+    interaction_values: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     interaction: tuple[int, ...] | tuple[str, ...] | int | str | None = None,
     *,
@@ -106,12 +107,12 @@ def scatter_plot(
     higher-order interaction value.
 
     Args:
-        interaction_values_list: The explanations of the samples in ``data``, as an
+        interaction_values: The explanations of the samples in ``data``, as an
             :class:`~shapiq.InteractionValuesBatch` (for example from
             :meth:`~shapiq.Explainer.explain_X`) or a list of
             :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
         data: The feature values for the samples, as a ``pandas.DataFrame`` or 2D ``numpy`` array.
-            Must have the same number of rows as ``interaction_values_list``. Only the plotted
+            Must have the same number of rows as ``interaction_values``. Only the plotted
             columns need to be numeric.
         interaction: Identifies the interaction to plot. Accepts an ``int`` or ``str`` (treated
             as a main effect single-element tuple), a tuple of feature indices like ``(0, 2)``,
@@ -146,16 +147,16 @@ def scatter_plot(
         ValueError: If inputs are inconsistent (no explanations, length mismatch, unknown
             feature names or indices, an interaction tuple absent from the explanations, an
             out-of-tuple ``x_feature``, or invalid numeric parameters).
-        TypeError: If ``interaction_values_list`` or ``data`` has an unsupported type, or if a
+        TypeError: If ``interaction_values`` or ``data`` has an unsupported type, or if a
             feature identifier has an unsupported type.
 
     """
-    batch = _as_batch(interaction_values_list)
+    batch = _as_batch(interaction_values)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
     if len(batch) != len(data):
-        error_message = "Length of interaction_values_list must match number of rows in data."
+        error_message = "Length of interaction_values must match number of rows in data."
         raise ValueError(error_message)
     if alpha <= 0 or alpha > 1:
         error_message = "alpha must be between 0 and 1."

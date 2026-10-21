@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 
-from .utils import _as_batch, abbreviate_feature_names
+from .utils import _as_batch, _renamed_keyword, abbreviate_feature_names
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -147,8 +147,9 @@ def _calculate_range(num_sub_features: int, i: int, margin: float) -> tuple[floa
     return y_min, y_max
 
 
+@_renamed_keyword("interaction_values_list", "interaction_values")
 def beeswarm_plot(
-    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
+    interaction_values: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     *,
     max_display: int | None = 10,
@@ -166,7 +167,7 @@ def beeswarm_plot(
     revealing dependencies between the feature's value and the strength of the interaction.
 
     Args:
-        interaction_values_list: The explanations of the samples in ``data``, as an
+        interaction_values: The explanations of the samples in ``data``, as an
             :class:`~shapiq.InteractionValuesBatch` (for example from
             :meth:`~shapiq.Explainer.explain_X`) or a list of
             :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
@@ -186,12 +187,12 @@ def beeswarm_plot(
         ``None``.
 
     """
-    batch = _as_batch(interaction_values_list)
+    batch = _as_batch(interaction_values)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
     if len(batch) != len(data):
-        error_message = "Length of shap_interaction_values must match number of rows in data."
+        error_message = "Length of interaction_values must match number of rows in data."
         raise ValueError(error_message)
     if row_height <= 0:
         error_message = "row_height must be a positive value."
