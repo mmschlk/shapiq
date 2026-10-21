@@ -13,58 +13,81 @@
 #   examples     gallery documents, e.g. "auto_examples/approximators/shapley_values/plot_kernelshap"
 #   links        further links without a bibliography entry: [{ label = "...", url = "..." }]
 #   related      ids of related cards
+#
+# Every lane has a color: a slot of the categorical palette in ``_static/css/timeline.css`` ("1" to
+# "8"), the second shade of a slot that a related lane already uses ("3-alt": drawn in a darker
+# shade, with diamonds instead of circles), or "neutral" for a lane outside the palette.
 # Missing API objects, gallery documents and citation keys produce Sphinx warnings.
 
 # The swimlanes of the desktop view group the years before 2017 into eras (one column each);
 # later years get a column of their own.
-eras = [[1950, 1970], [1971, 2005], [2006, 2016]]
+eras = [[1940, 1970], [1971, 2005], [2006, 2016]]
 
-# Nine lanes at most: the first eight take the colors of the categorical palette in
-# ``_static/css/timeline.css``, a ninth is neutral.
 [[lanes]]
 id = "foundations"
 name = "Foundations"
 description = "Game-theoretic concepts and the representations of the Shapley value that all methods build on."
+color = "1"
 
 [[lanes]]
 id = "indices"
 name = "Interaction indices"
 description = "Extensions of the Shapley and Banzhaf values from single players to groups of players."
+color = "2"
 
 [[lanes]]
 id = "sv-approx"
 name = "Approximating Shapley values"
 description = "Model-agnostic estimators of Shapley values for games that are too large to evaluate exactly."
+color = "3"
 
 [[lanes]]
 id = "si-approx"
 name = "Approximating interactions"
 description = "Model-agnostic estimators of Shapley interactions and sparse interaction discovery."
+color = "3-alt"
 
 [[lanes]]
 id = "exact"
 name = "Exact computation"
 description = "Model-specific algorithms that exploit the structure of a model class to compute exact values."
+color = "5"
+
+[[lanes]]
+id = "gradients"
+name = "Gradient-based attribution"
+description = "Attributions of differentiable models from their gradients, many of them related to the Shapley value."
+color = "5-alt"
 
 [[lanes]]
 id = "removal"
 name = "Feature removal"
 description = "How a model is evaluated when features are absent: the choice that defines the explained game."
+color = "6"
+
+[[lanes]]
+id = "fanova"
+name = "Functional ANOVA"
+description = "Decompositions of a model into main and interaction effects, and the effect and importance measures read from them."
+color = "4"
 
 [[lanes]]
 id = "tasks"
 name = "Value functions & tasks"
 description = "Task- and model-specific games that bring Shapley values to new questions."
+color = "7"
 
 [[lanes]]
 id = "software"
 name = "Software & plots"
 description = "Libraries and visualizations for Shapley values and interactions."
+color = "8"
 
 [[lanes]]
 id = "applications"
 name = "Applications"
 description = "Studies in science and engineering that explain their models with Shapley values and interactions."
+color = "neutral"
 
 # -- Foundations ------------------------------------------------------------------------------------
 
@@ -171,6 +194,22 @@ api = ["shapiq.game_theory.ExactComputer.probabilistic_value"]
 related = ["semivalues", "regression-msr"]
 
 [[entries]]
+id = "aumann-shapley"
+name = "Aumann–Shapley value"
+year = 1974
+lane = "foundations"
+summary = "The Shapley value of games with a continuum of players, integrated along a path."
+description = """
+Aumann and Shapley extended the Shapley value to non-atomic games, in which every player is
+infinitesimally small. For a differentiable function, the value of an input is the integral of its
+partial derivative along the straight path from a baseline, scaled by the input's distance to the
+baseline; Friedman studied such path methods in additive cost sharing. Integrated Gradients applies
+this value to neural networks.
+"""
+cite = ["Aumann.1974", "Friedman.2004"]
+related = ["integrated-gradients", "shapley-value"]
+
+[[entries]]
 id = "wls-representation"
 name = "Least-squares representation"
 year = 1988
@@ -266,22 +305,6 @@ players at once, which the SVARM estimators exploit.
 cite = ["Kolpaczki.2024a"]
 api = ["shapiq.approximator.SVARM"]
 related = ["svarm", "svarm-iq"]
-
-[[entries]]
-id = "unified-fanova"
-name = "Unified framework with fANOVA"
-year = 2025
-lane = "foundations"
-summary = "Organizes feature-based explanations with functional ANOVA and cooperative game theory."
-description = """
-Fumagalli et al. organized feature-based explanation methods along three choices: the feature
-distribution used to remove features, the functional ANOVA effects that are explained (individual,
-joint or interaction effects), and the game-theoretic summary such as the Shapley or Banzhaf value.
-The framework relates popular methods to each other and explains why their explanations of the same
-model can differ.
-"""
-cite = ["Fumagalli.2025"]
-related = ["explaining-by-removing", "interventional-removal"]
 
 [[entries]]
 id = "metagame"
@@ -1139,7 +1162,174 @@ examples = [
 ]
 related = ["treeshap-iq", "weighted-banzhaf", "owen-sampling", "multilinear-extension"]
 
+# -- Gradient-based attribution ---------------------------------------------------------------------
+
+[[entries]]
+id = "lrp"
+name = "Layer-wise relevance propagation"
+year = 2015
+lane = "gradients"
+summary = "Propagates the prediction backward through the layers of a network to its inputs."
+description = """
+Bach et al. redistributed a network's prediction from the output back to the input pixels, layer by
+layer, so that the relevance of every layer sums to the prediction. For ReLU networks, its ε-rule
+coincides with Gradient × Input.
+"""
+cite = ["Bach.2015"]
+related = ["deeplift", "gradient-unification"]
+
+[[entries]]
+id = "integrated-gradients"
+name = "Integrated Gradients"
+year = 2017
+lane = "gradients"
+summary = "Integrates the gradients along the path from a baseline to the input."
+description = """
+Sundararajan et al. attributed a prediction to the input features by integrating the model's
+gradients along the straight line from a baseline, e.g. a black image, to the input, which is the
+Aumann–Shapley value of the model. Integrated Gradients is sensitive and implementation invariant,
+and its attributions sum to the difference between the prediction and that of the baseline.
+"""
+cite = ["Sundararajan.2017"]
+related = ["aumann-shapley", "expected-gradients", "integrated-hessians"]
+
+[[entries]]
+id = "deeplift"
+name = "DeepLIFT and Gradient × Input"
+year = 2017
+lane = "gradients"
+summary = "Backpropagates differences to a reference input instead of gradients."
+description = """
+Shrikumar et al. attributed the difference between a network's output and its output on a reference
+input by backpropagating multipliers that replace the gradients with ratios of differences, which
+avoids the saturation of gradients. They also discussed Gradient × Input, the gradient multiplied by
+the input, a first-order Taylor approximation of the prediction.
+"""
+cite = ["Shrikumar.2017"]
+related = ["deepshap", "lrp", "gradient-unification"]
+
+[[entries]]
+id = "deepshap"
+name = "DeepSHAP"
+year = 2017
+lane = "gradients"
+summary = "Combines the Shapley values of a network's layers with DeepLIFT's multipliers."
+description = """
+Lundberg and Lee combined DeepLIFT with Shapley values: DeepSHAP computes Shapley values for the
+components of a network with respect to a baseline and composes them with DeepLIFT's multipliers,
+which approximates the SHAP values of the whole network quickly. With many baselines from the data,
+as in the shap library, it approximates interventional SHAP values.
+"""
+cite = ["Lundberg.2017"]
+related = ["deeplift", "kernelshap", "expected-gradients"]
+
+[[entries]]
+id = "smoothgrad"
+name = "SmoothGrad"
+year = 2017
+lane = "gradients"
+summary = "Averages the gradients of noisy copies of the input to sharpen saliency maps."
+description = """
+Smilkov et al. reduced the visual noise of gradient saliency maps by averaging the gradients of many
+copies of the input with added Gaussian noise, which smooths the rapidly fluctuating gradients of
+deep networks without changing the model.
+"""
+cite = ["Smilkov.2017"]
+related = ["integrated-gradients"]
+
+[[entries]]
+id = "gradient-unification"
+name = "Unifying gradient-based attributions"
+year = 2018
+lane = "gradients"
+summary = "Shows when gradient-based attribution methods coincide or approximate each other."
+description = """
+Ancona et al. analyzed Gradient × Input, Integrated Gradients, ε-LRP and DeepLIFT and proved under
+which conditions they coincide, e.g. ε-LRP and Gradient × Input for ReLU networks, or approximate
+one another. Reformulated as gradients with modified backpropagation, the methods can be compared
+and implemented in one framework, and their Sensitivity-n metric evaluates them.
+"""
+cite = ["Ancona.2018"]
+related = ["lrp", "deeplift", "integrated-gradients", "taylor-interactions"]
+
+[[entries]]
+id = "expected-gradients"
+name = "Expected Gradients"
+year = 2021
+lane = "gradients"
+summary = "Integrated Gradients averaged over baselines drawn from the data."
+description = """
+Erion et al. replaced the single baseline of Integrated Gradients by an expectation over baselines
+from the data, estimated by sampling a baseline and a point on the path, and used the attributions
+as priors when training models. In the unified framework, Expected Gradients measures partial
+effects with marginal removal, like interventional SHAP.
+"""
+cite = ["Erion.2021"]
+related = ["integrated-gradients", "deepshap", "interventional-removal"]
+
+[[entries]]
+id = "integrated-hessians"
+name = "Integrated Hessians"
+year = 2021
+lane = "gradients"
+summary = "Integrated Gradients of Integrated Gradients: pairwise interactions of neural networks."
+description = """
+Janizek et al. explained pairwise feature interactions of neural networks by applying Integrated
+Gradients to the attributions of Integrated Gradients, which integrates the Hessian along the path.
+The interactions and main effects sum to the Integrated Gradients attributions, and smooth
+activations such as SoftPlus make them well defined for ReLU networks.
+"""
+cite = ["Janizek.2021"]
+related = ["integrated-gradients", "stii", "synergy-functions"]
+
+[[entries]]
+id = "synergy-functions"
+name = "Synergy functions"
+year = 2023
+lane = "gradients"
+summary = "Characterizes attribution and interaction methods by how they distribute synergies."
+description = """
+Lundstrom and Razaviyayn showed that a function of continuous inputs has a unique full account of
+the interactions of its features, its synergies, and characterized game-theoretic attribution and
+interaction methods by their policy of distributing them. Gradient-based methods are determined by
+their action on monomials, and combinations of axioms define each method uniquely.
+"""
+cite = ["Lundstrom.2023"]
+related = ["integrated-hessians", "stii", "taylor-interactions"]
+
+[[entries]]
+id = "taylor-interactions"
+name = "Taylor interactions"
+year = 2024
+lane = "gradients"
+summary = "Unifies fourteen attribution methods as distributions of Taylor expansion terms."
+description = """
+Deng et al. expanded the model in a Taylor series around a baseline and grouped its terms into
+independent effects of single features and interaction effects of sets of features. Fourteen
+attribution methods, among them Integrated Gradients, DeepLIFT, LRP and the Shapley value, differ in
+how they distribute these effects. The Taylor interactions of a set sum to its effect in the
+baseline fANOVA.
+"""
+cite = ["Deng.2024"]
+related = ["synergy-functions", "gradient-unification", "unified-fanova"]
+
 # -- Feature removal --------------------------------------------------------------------------------
+
+[[entries]]
+id = "retraining"
+name = "Removal by retraining"
+year = 2009
+lane = "removal"
+summary = "Removes features by training the model again without them."
+description = """
+Instead of imputing absent features, Štrumbelj et al. trained a model for every subset of features
+and explained an instance by the predictions of these models, including the interactions of subsets
+of feature values. The value of a coalition then reflects the learning algorithm rather than one
+trained model. shapiq's feature selection game retrains a copy of a model on every coalition.
+"""
+cite = ["Strumbelj.2009"]
+api = ["shapiq_games.FeatureSelection"]
+related = ["feature-selection", "interventional-removal"]
 
 [[entries]]
 id = "interventional-removal"
@@ -1152,10 +1342,11 @@ Replacing absent features by values from background data, independently of the p
 explains the model as a function: it is true to the model. Janzing et al. justified this
 interventional removal causally, and Chen et al. contrasted it with conditional removal, which is
 true to the data. Sundararajan and Najmi showed that conditional removal can credit features the
-model does not use, and characterized removal by a single baseline (Baseline Shapley) axiomatically.
-In shapiq, it is the marginal and the baseline imputer.
+model does not use, and characterized removal by a single baseline (Baseline Shapley) axiomatically;
+Sturmfels et al. showed how much the choice of the baseline changes attributions. In shapiq, it is
+the marginal and the baseline imputer.
 """
-cite = ["Janzing.2020", "Chen.2020", "Sundararajan.2020a"]
+cite = ["Janzing.2020", "Chen.2020", "Sundararajan.2020a", "Sturmfels.2020"]
 api = ["shapiq.imputer.MarginalImputer", "shapiq.imputer.BaselineImputer"]
 examples = ["auto_examples/technicalities/plot_imputers"]
 related = ["conditional-removal", "explaining-by-removing"]
@@ -1183,10 +1374,10 @@ summary = "Absent features are sampled conditionally on the present ones."
 description = """
 Aas et al. showed that ignoring feature dependence misleads KernelSHAP and estimated the conditional
 distribution of the absent features with Gaussian or copula models. Frye et al. learned it with
-generative and supervised models instead. shapiq offers Gaussian, Gaussian copula and generative
-(tree-embedding) conditional imputers.
+generative and supervised models instead, and Olsen et al. compared the estimators in a large study.
+shapiq offers Gaussian, Gaussian copula and generative (tree-embedding) conditional imputers.
 """
-cite = ["Aas.2021", "Frye.2021"]
+cite = ["Aas.2021", "Frye.2021", "Olsen.2024"]
 api = [
     "shapiq.imputer.GaussianImputer",
     "shapiq.imputer.GaussianCopulaImputer",
@@ -1246,6 +1437,271 @@ links = [
 ]
 related = ["interventional-removal", "sage"]
 
+# -- Functional ANOVA -------------------------------------------------------------------------------
+
+[[entries]]
+id = "hoeffding-decomposition"
+name = "Hoeffding decomposition"
+year = 1948
+lane = "fanova"
+summary = "Splits a function of independent variables into orthogonal main and interaction effects."
+description = """
+Hoeffding decomposed a function of independent random variables into a constant, main effects and
+interaction effects of all orders, each the expectation given its variables minus the effects of
+their subsets. The effects are orthogonal, so the variance of the function splits into their
+variances. This functional ANOVA (fANOVA) underlies sensitivity analysis and the unified view of
+feature-based explanations.
+"""
+cite = ["Hoeffding.1948"]
+related = ["sobol-indices", "functional-anova", "unified-fanova"]
+
+[[entries]]
+id = "functional-anova"
+name = "Functional ANOVA models"
+year = 1994
+lane = "fanova"
+summary = "Fits a function as a sum of low-order effects with splines and their tensor products."
+description = """
+Stone estimated functional ANOVA models, in which a function of several variables is a sum of main
+effects and interactions of low order, with polynomial splines and their tensor products, and
+derived their rates of convergence. Restricting the order of the effects makes high-dimensional
+functions tractable and the fitted model interpretable.
+"""
+cite = ["Stone.1994"]
+related = ["hoeffding-decomposition", "gams"]
+
+[[entries]]
+id = "sobol-indices"
+name = "Sobol' indices"
+year = 2001
+lane = "fanova"
+summary = "Global sensitivity: the share of the output variance that a set of inputs explains."
+description = """
+Sobol' measured the importance of a set of inputs by the variances of its fANOVA effects: the closed
+index sums the effects within the set, the total index all effects that involve one of its inputs,
+and both are estimated by Monte Carlo. Owen generalized the indices with variance components. In
+the unified framework, they are the pure and the full effects of the sensitivity game.
+"""
+cite = ["Sobol.2001", "Owen.2013"]
+related = ["hoeffding-decomposition", "shapley-effects", "superset-measure", "h-statistic"]
+
+[[entries]]
+id = "pdp"
+name = "Partial dependence plot"
+year = 2001
+lane = "fanova"
+summary = "Shows the average prediction as a function of one or two features."
+description = """
+Friedman visualized the effect of features on a model by their partial dependence: the prediction
+averaged over the data with the features set to given values. Centered, it is the pure effect of the
+features with marginal removal, so the partial dependence of a pair of features contains both main
+effects and their interaction.
+"""
+cite = ["Friedman.2001"]
+related = ["ice", "ale", "h-statistic", "functional-decomposition"]
+
+[[entries]]
+id = "pfi"
+name = "Permutation feature importance"
+year = 2001
+lane = "fanova"
+summary = "The loss of performance when the values of a feature are permuted."
+description = """
+Breiman measured the importance of a feature for a random forest by the increase of its error when
+the feature's values are permuted, which breaks the feature's relation to the target and to the
+other features. Fisher et al. defined this model reliance for any model, and Au et al. permuted
+groups of features. In the unified framework, it is the full effect of the risk game with marginal
+removal.
+"""
+cite = ["Breiman.2001a", "Fisher.2019", "Au.2022"]
+related = ["cfi", "sage"]
+
+[[entries]]
+id = "superset-measure"
+name = "Additive structure and superset measure"
+year = 2004
+lane = "fanova"
+summary = "Finds the interactions a model needs from the variances of its fANOVA effects."
+description = """
+Hooker recovered the additive structure of black-box functions from their fANOVA decomposition: the
+superset measure of a set of features is the variance of all effects that contain the set, and a set
+whose measure vanishes does not interact. In the unified framework, it is the full interaction of
+the sensitivity game, the variance counterpart of the co-Möbius transform.
+"""
+cite = ["Hooker.2004"]
+related = ["sobol-indices", "h-statistic", "moebius-representation"]
+
+[[entries]]
+id = "fanova-dependent"
+name = "fANOVA for dependent features"
+year = 2007
+lane = "fanova"
+summary = "Generalizes the functional ANOVA to correlated inputs without extrapolation."
+description = """
+With dependent features, fANOVA effects defined by marginal integration evaluate the model where
+there are no data and lose their orthogonality. Hooker defined effects that are hierarchically
+orthogonal under the joint distribution, which avoids this extrapolation, and Chastaing et al.
+characterized when such a generalized Hoeffding-Sobol decomposition exists and used it for
+sensitivity analysis.
+"""
+cite = ["Hooker.2007", "Chastaing.2012"]
+related = ["hoeffding-decomposition", "conditional-removal"]
+
+[[entries]]
+id = "h-statistic"
+name = "H-statistic"
+year = 2008
+lane = "fanova"
+summary = "Measures the strength of an interaction with partial dependence functions."
+description = """
+Friedman and Popescu quantified how strongly two features interact by the share of the variance of
+their joint partial dependence that the sum of their individual partial dependences does not
+explain. In the unified framework, it is a scaled pure interaction of the sensitivity game with
+marginal removal.
+"""
+cite = ["Friedman.2008"]
+related = ["pdp", "superset-measure"]
+
+[[entries]]
+id = "preddiff"
+name = "Prediction difference (PredDiff)"
+year = 2008
+lane = "fanova"
+summary = "Explains a prediction by how it changes when features are marginalized out."
+description = """
+Robnik-Šikonja and Kononenko explained a prediction by its difference to the prediction with a
+feature marginalized out. Zintgraf et al. sampled removed image patches conditionally on their
+surroundings, and Blücher et al. extended the approach to interactions. In the unified framework,
+PredDiff measures full effects with conditional removal.
+"""
+cite = ["Robnik-Sikonja.2008", "Zintgraf.2017", "Blucher.2022"]
+related = ["occlusion", "cfi", "conditional-removal"]
+
+[[entries]]
+id = "cfi"
+name = "Conditional feature importance"
+year = 2008
+lane = "fanova"
+summary = "Permutation importance that permutes a feature only among similar instances."
+description = """
+Strobl et al. showed that permutation importance overrates correlated features and permuted a
+feature conditionally on the others, within a partition of the data, to measure its own
+contribution. Molnar et al. made conditional importance and effects model-agnostic with conditional
+subgroups. In the unified framework, it is the full effect of the risk game with conditional
+removal.
+"""
+cite = ["Strobl.2008", "Molnar.2023a"]
+related = ["pfi", "conditional-removal"]
+
+[[entries]]
+id = "occlusion"
+name = "Occlusion"
+year = 2014
+lane = "fanova"
+summary = "Masks a patch of the input with a baseline and measures the change of the prediction."
+description = """
+Zeiler and Fergus occluded parts of images with a gray square and recorded how the prediction of a
+convolutional network changes, which reveals the regions it relies on. In the unified framework,
+occluding a feature or a patch is its full effect with baseline removal.
+"""
+cite = ["Zeiler.2014"]
+related = ["preddiff", "ice"]
+
+[[entries]]
+id = "ice"
+name = "Individual conditional expectation"
+year = 2015
+lane = "fanova"
+summary = "One curve per instance: the prediction as one feature varies and the others stay fixed."
+description = """
+Goldstein et al. disaggregated the partial dependence plot into one curve per instance, which shows
+how the prediction changes with one feature while the instance's other features stay fixed;
+diverging curves reveal interactions. Centered at the instance's prediction, a point of the curve is
+the full effect of the feature with baseline removal, the point being the baseline.
+"""
+cite = ["Goldstein.2015"]
+related = ["pdp", "occlusion"]
+
+[[entries]]
+id = "ale"
+name = "ALE and M-plots"
+year = 2020
+lane = "fanova"
+summary = "Feature effects from conditional distributions, without extrapolating the model."
+description = """
+Apley and Zhu showed that partial dependence extrapolates when features are correlated and proposed
+accumulated local effects (ALE), which accumulate the conditional expectation of the model's partial
+derivative. They contrasted ALE with marginal (M) plots, the conditional expectation of the
+prediction, which mix in the effects of correlated features. Centered, an M-plot is the pure effect
+of a feature with conditional removal.
+"""
+cite = ["Apley.2020"]
+related = ["pdp", "conditional-removal"]
+
+[[entries]]
+id = "archattribute"
+name = "ArchAttribute"
+year = 2020
+lane = "fanova"
+summary = "Attributes a prediction to a group of features against a baseline context."
+description = """
+Tsang et al. attributed a prediction to a group of interacting features by the change of the
+prediction when the group takes its values while all other features stay at a baseline, and detected
+the interacting groups with ArchDetect. In the unified framework, ArchAttribute is the pure joint
+effect with baseline removal.
+"""
+cite = ["Tsang.2020"]
+related = ["occlusion", "sii"]
+
+[[entries]]
+id = "functional-decomposition"
+name = "Functional decomposition of SHAP"
+year = 2023
+lane = "fanova"
+summary = "Interventional SHAP values and partial dependence plots from one decomposition."
+description = """
+Hiabu et al. identified the components of a functional decomposition so that a feature's partial
+dependence plot is its main effect plus the intercept, and its interventional SHAP value is the sum
+of its main effect and all interactions that involve it, each divided by its order. The
+decomposition unifies local and global explanations, can remove the influence of protected features,
+and is computed exactly for gradient-boosted trees and random planted forests.
+"""
+cite = ["Hiabu.2023"]
+links = [{ label = "Code (PlantedML/glex)", url = "https://github.com/PlantedML/glex" }]
+related = ["pdp", "interventional-removal", "unified-fanova", "gams"]
+
+[[entries]]
+id = "additive-explanations"
+name = "Global additive explanations"
+year = 2023
+lane = "fanova"
+summary = "Compares how additive explanations represent the interactions of non-additive models."
+description = """
+Tan et al. studied global additive explanations of non-additive models, namely partial dependence,
+global Shapley explanations, additive models distilled from the model and gradient-based
+explanations, and showed that each represents the non-additive components differently. Distilled
+additive explanations were the most accurate, and practitioners worked best with additive
+explanations, although explanations that model interactions were more accurate still.
+"""
+cite = ["Tan.2023"]
+related = ["pdp", "functional-decomposition", "instashap"]
+
+[[entries]]
+id = "unified-fanova"
+name = "Unified framework with fANOVA"
+year = 2025
+lane = "fanova"
+summary = "Organizes feature-based explanations with functional ANOVA and cooperative game theory."
+description = """
+Fumagalli et al. organized feature-based explanation methods along three choices: the feature
+distribution used to remove features, the functional ANOVA effects that are explained (individual,
+joint or interaction effects), and the game-theoretic summary such as the Shapley or Banzhaf value.
+The framework relates popular methods to each other and explains why their explanations of the same
+model can differ.
+"""
+cite = ["Fumagalli.2025"]
+related = ["hoeffding-decomposition", "explaining-by-removing", "functional-decomposition", "taylor-interactions"]
+
 # -- Value functions & tasks ------------------------------------------------------------------------
 
 [[entries]]
@@ -1282,6 +1738,21 @@ cite = ["Strumbelj.2010", "Strumbelj.2014"]
 api = ["shapiq.explainer.TabularExplainer", "shapiq_games.TabularLocalExplanation"]
 examples = ["auto_examples/basics/plot_shapiq_scikit_learn"]
 related = ["kernelshap", "linear-models"]
+
+[[entries]]
+id = "shapley-effects"
+name = "Shapley effects"
+year = 2014
+lane = "tasks"
+summary = "Global sensitivity analysis: the Shapley values of the explained variance."
+description = """
+Owen valued the inputs of a model by the Shapley values of a game whose value is the closed Sobol'
+index of a coalition, the variance its inputs explain. Unlike Sobol' indices, these Shapley effects
+sum to the total variance and share interactions equally among the involved inputs. Owen and Prieur
+showed that with conditional expectations they remain sensible for dependent inputs.
+"""
+cite = ["Owen.2014", "Owen.2017"]
+related = ["sobol-indices", "sage", "local-attribution"]
 
 [[entries]]
 id = "data-shapley"
