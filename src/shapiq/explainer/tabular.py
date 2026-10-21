@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-TabularExplainerApproximators = ValidApproximatorTypes
+TabularExplainerApproximators = Literal[ValidApproximatorTypes, "exact"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
 TabularExplainerIndices = ValidApproximationExplainerIndices
 

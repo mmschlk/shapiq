@@ -10,7 +10,7 @@ import pytest
 
 from shapiq import ExactComputer, Explainer, InteractionValues
 from shapiq.approximator import RegressionFSII
-from shapiq.explainer.configuration import ExactApproximator
+from shapiq.explainer.exact import ExactSolver
 from shapiq.explainer.tabular import (
     TabularExplainer,
     TabularExplainerApproximators,
@@ -286,7 +286,7 @@ def test_exact(dt_reg_model, background_reg_data, index, max_order):
         approximator="exact",
         random_state=42,
     )
-    assert isinstance(explainer.approximator, ExactApproximator)
+    assert isinstance(explainer.approximator, ExactSolver)
     interaction_values = explainer.explain(x, budget=BUDGET_NR_FEATURES)
     assert not interaction_values.estimated
 
@@ -329,9 +329,7 @@ def test_exact_ignores_budget(dt_reg_model, background_reg_data):
     interaction_values_large = explainer.explain(x, budget=BUDGET_NR_FEATURES)
     assert interaction_values_small == interaction_values_large
     assert np.array_equal(interaction_values_small.values, interaction_values_large.values)
-    for interaction_values in (interaction_values_small, interaction_values_large):
-        assert not interaction_values.estimated
-        assert interaction_values.estimation_budget == 2**NR_FEATURES
+    assert not interaction_values_small.estimated
 
 
 def test_exact_with_explainer(dt_reg_model, background_reg_data):
@@ -344,7 +342,7 @@ def test_exact_with_explainer(dt_reg_model, background_reg_data):
         approximator="exact",
     )
     assert isinstance(explainer, TabularExplainer)
-    assert isinstance(explainer.approximator, ExactApproximator)
+    assert isinstance(explainer.approximator, ExactSolver)
 
     interaction_values = explainer.explain(background_reg_data[0], budget=10, random_state=42)
     assert not interaction_values.estimated

@@ -133,4 +133,4 @@ class AgnosticExplainer(Explainer):
                 self.game.set_random_state(random_state=random_state)
         if random_state is not None:
             self.approximator.set_random_state(random_state=random_state)
-        return self.approximator.approximate(game=self.game, budget=budget)
+        return self.approximator(budget=budget, game=self.game)
