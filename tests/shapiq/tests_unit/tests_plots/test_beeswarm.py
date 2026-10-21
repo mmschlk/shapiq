@@ -67,7 +67,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
 
     # numpy data + explicit feature names
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_np,
         feature_names=feature_names,
         show=False,
@@ -77,7 +77,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
 
     # pandas data + explicit feature names
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         feature_names=feature_names,
         show=False,
@@ -87,7 +87,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
 
     # numpy data + default feature names
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_np,
         show=False,
     )
@@ -100,7 +100,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
     data_with_nan.iloc[0, 0] = np.nan
     test_alpha = 0.8
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=data_with_nan,
         alpha=test_alpha,
         show=False,
@@ -131,7 +131,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
     data_with_nan.iloc[:, :] = np.nan
     test_alpha = 0.8
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=data_with_nan,
         alpha=test_alpha,
         show=False,
@@ -143,7 +143,7 @@ def test_beeswarm_plot_basic(mock_interaction_data):
     data_with_same_value = feature_data_pd.copy()
     data_with_same_value.iloc[:, 0] = 0.5
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=data_with_same_value,
         alpha=test_alpha,
         show=False,
@@ -159,7 +159,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
     # max display
     max_disp = 5
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         max_display=max_disp,
         show=False,
@@ -176,7 +176,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
 
     max_disp = None
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         max_display=max_disp,
         show=False,
@@ -187,7 +187,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
     # existing axes
     _, ax_existing = plt.subplots()
     ax_returned = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         ax=ax_existing,
         show=False,
@@ -198,7 +198,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
     # no abbreviation
     long_names = [f"a_very_long_feature_name_{i}" for i in range(N_PLAYERS)]
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         feature_names=long_names,
         abbreviate=False,
@@ -210,7 +210,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
     # row_height
     plt.figure()
     ax_large_row = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         row_height=0.8,  # larger height
         show=False,
@@ -220,7 +220,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
 
     plt.figure()
     ax_small_row = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         row_height=0.2,  # smaller height
         show=False,
@@ -232,7 +232,7 @@ def test_beeswarm_plot_options(mock_interaction_data):
     # alpha
     test_alpha = 0.7
     ax = beeswarm_plot(
-        interaction_values=interaction_values_list,
+        interaction_values_list=interaction_values_list,
         data=feature_data_pd,
         alpha=test_alpha,
         show=False,
@@ -250,7 +250,7 @@ def test_beeswarm_plot_errors(mock_interaction_data):
     interaction_values_list, feature_data_np, _, feature_names = mock_interaction_data
 
     # wrong lengths
-    with pytest.raises(ValueError, match="Length of interaction_values must match"):
+    with pytest.raises(ValueError, match="Length of shap_interaction_values must match"):
         beeswarm_plot(interaction_values_list, feature_data_np[1:], show=False)
 
     # empty interactions
@@ -296,17 +296,4 @@ def test_beeswarm_plot_batch(mock_interaction_data):
     assert labels_batch == labels_list
     for points_batch, points_list in zip(ax_batch.collections, ax_list.collections, strict=True):
         np.testing.assert_allclose(points_batch.get_offsets(), points_list.get_offsets())
-    plt.close("all")
-
-
-def test_beeswarm_plot_deprecated_keyword(mock_interaction_data):
-    """Test that the deprecated keyword interaction_values_list still works."""
-    interaction_values_list, feature_data_np, _, _ = mock_interaction_data
-
-    with pytest.warns(DeprecationWarning, match="renamed to `interaction_values`"):
-        ax = beeswarm_plot(
-            interaction_values_list=interaction_values_list, data=feature_data_np, show=False
-        )
-
-    assert isinstance(ax, plt.Axes)
     plt.close("all")

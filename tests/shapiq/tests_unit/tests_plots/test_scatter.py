@@ -538,19 +538,3 @@ def test_scatter_plot_non_numeric_column(mock_interaction_data):
         ax.collections[0].get_offsets()[:, 0], feature_data_pd["feature_0"].to_numpy()
     )
     plt.close("all")
-
-
-def test_scatter_plot_deprecated_keyword(mock_interaction_data):
-    """Tests that the deprecated keyword interaction_values_list still works."""
-    interaction_values_list, feature_data_np, _, _ = mock_interaction_data
-
-    with pytest.warns(DeprecationWarning, match="renamed to `interaction_values`"):
-        ax = scatter_plot(
-            interaction_values_list=interaction_values_list,
-            data=feature_data_np,
-            interaction=(0,),
-            show=False,
-        )
-
-    assert ax.get_ylabel() == "k-SII(F0.)"
-    plt.close("all")

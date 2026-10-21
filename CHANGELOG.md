@@ -2,7 +2,7 @@
 
 ## Development
 
-- adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly as `interaction_values` (`interaction_values_list` is deprecated). [#613](https://github.com/mmschlk/shapiq/pull/613)
+- adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly. [#613](https://github.com/mmschlk/shapiq/pull/613)
 
 ## v1.8.0 (2026-10-20)
 
