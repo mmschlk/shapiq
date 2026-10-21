@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import numpy as np
 from sklearn.linear_model import RidgeCV
@@ -38,6 +38,9 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
     compute sparse higher-order interactions. ProxySPEX is presented in :cite:t:`Butler.2025`.
     """
+
+    valid_indices: tuple[ValidProxySPEXIndices, ...] = tuple(get_args(ValidProxySPEXIndices))
+    """The valid indices for the ProxySPEX approximator."""
 
     def __init__(
         self,

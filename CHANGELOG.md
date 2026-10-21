@@ -1,5 +1,10 @@
 # Changelog
 
+## Development
+
+### Bugfixes
+- fixes `ProxySHAP` and `ProxySPEX` accepting indices they cannot compute (`"kADD-SHAP"` for both, `"CHII"` for `ProxySPEX`) and failing only in `approximate()`. Both now declare their `valid_indices` and reject other indices at construction. `ProxySHAP(index="CHII")` is read out of tree proxies only and is now also rejected at construction for a linear proxy or with `adjustment=True`.
+
 ## v1.8.0 (2026-10-20)
 
 ### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)

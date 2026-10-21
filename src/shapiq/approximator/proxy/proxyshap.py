@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from functools import cached_property, reduce
 from operator import add
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import numpy as np
 from scipy.special import gammaln
@@ -22,6 +22,7 @@ from shapiq.approximator.proxy._routes import (
     ValidProxySHAPIndices,
     _extract_proxy_interactions,
     fit_proxy,
+    is_linear_proxy,
     predict_proxy,
 )
 from shapiq.interaction_values import InteractionValues
@@ -178,6 +179,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         )
     """
 
+    valid_indices: tuple[ValidProxySHAPIndices, ...] = tuple(get_args(ValidProxySHAPIndices))
+    """The valid indices for the ProxySHAP approximator."""
+
     def __init__(
         self,
         n: int,
@@ -197,7 +201,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         Args:
             n: Number of features (players).
             max_order: Maximum order of interactions to consider.
-            index: Index of the instance to explain.
+            index: The interaction index to approximate, one of :attr:`valid_indices`. ``"CHII"``
+                is read out of tree proxies only, so it is rejected for a linear proxy and with
+                ``adjustment=True``. Defaults to ``"k-SII"``.
             proxy_model: Optional proxy model to use for approximating the value function. If None, a default XGBoost regressor will be used.
                 We support HPO of tree-models, via sklearn's GridSearchCV, RandomizedSearchCV, and HalvingGridSearchCV. In this case, the ``.best_estimator_`` will be used as the proxy model for interaction extraction and residual adjustment.
             hpo: If ``True``, wrap a string-resolved gradient-boosting proxy (``"xgboost"`` /
@@ -251,6 +257,13 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             # ``hpo`` wraps a resolved boosting backend in its default grid search (the
             # HPO-informed proxy); a DecisionTree fallback is left unwrapped by the helper.
             self.proxy_model = _wrap_in_default_hpo(resolved) if hpo else resolved
+        # CHII has no Moebius conversion (the linear route) and no MSR weights (the adjustment)
+        if index == "CHII" and adjustment:
+            msg = "Index CHII is not supported with the MSR residual adjustment (adjustment=True)."
+            raise ValueError(msg)
+        if index == "CHII" and is_linear_proxy(self.proxy_model):
+            msg = "Index CHII is not supported for linear proxy models; use a tree proxy instead."
+            raise ValueError(msg)
 
     @cached_property
     def _msr_weight_tables(self) -> tuple[np.ndarray, np.ndarray]:

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 
+from lazy_dispatch import lazy_isinstance
 from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
 from shapiq.game_theory.moebius_converter import MoebiusConverter
@@ -27,10 +28,12 @@ from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
     from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
 
-ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV"]
+# The MoebiusConverter indices (the linear route) plus CHII, which only the tree route reads out
+ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV", "CHII"]
 
 
 def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
@@ -40,6 +43,15 @@ def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
     the (possibly wrapping) model is fit.
     """
     return getattr(proxy_model, "estimator", proxy_model)
+
+
+def is_linear_proxy(proxy_model: ProxyModel | ProxyModelWithHPO) -> bool:
+    """Return whether a proxy takes the linear route (see :func:`_extract_linear`).
+
+    Decided on the *base* estimator, so it is known before fitting, e.g. to reject an index the
+    linear route cannot read out at construction.
+    """
+    return lazy_isinstance(_base_estimator(proxy_model), "sklearn.linear_model._base.LinearModel")
 
 
 def _polynomial_features(max_order: int) -> PolynomialFeatures:
@@ -149,7 +161,7 @@ def _extract_linear(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
@@ -159,7 +171,9 @@ def _extract_linear(
     polynomial expansion of the coalitions. The same (deterministic) expansion is rebuilt here --
     on a dummy of ``n_players`` columns, since its columns depend only on the feature count -- to
     map coefficients back to interaction tuples. ``max_order == 1`` is handled uniformly: a degree-1
-    interaction-only expansion is exactly the singleton features.
+    interaction-only expansion is exactly the singleton features. The Moebius coefficients are
+    converted by the :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`, so ``CHII``
+    is not available here (ProxySHAP rejects it for linear proxies at construction).
     """
     poly = _polynomial_features(max_order).fit(np.zeros((1, n_players)))
     linear_interactions = extract_linear_interactions(
