@@ -1,15 +1,18 @@
 % Bibliography of the shapiq documentation: docs/source/conf.py renders the cited works on the page
 % references.html, which also offers this file for download.
 %
-% Format of the entries, so that the file stays clean:
+% Format of the entries, which the pre-commit hook format-bib (docs/format_bib.py) applies to
+% every change of this file:
 % - sections by type and venue; articles, books, chapters and theses sorted by key, conferences and
 %   preprints by year and key; keys are "Surname.Year" with a letter for further works of a year
 % - fields indented by a tab, as "name = {value}", in the order title, author, editor, year,
-%   journal, booktitle, school, publisher, address, series, volume, number, pages, archiveprefix,
-%   eprint, primaryclass, isbn, doi, url, shorthand
+%   journal, booktitle, edition, chapter, school, institution, publisher, address, series, volume,
+%   number, pages, archiveprefix, eprint, primaryclass, isbn, doi, url, note, shorthand
 % - titles in double braces; names as "First Last"; accents as LaTeX commands ({\"u}, {\'e}, {\l}),
 %   so that the file is ASCII; page ranges with "--"; a doi (lowercase, without "https://doi.org/")
 %   or a url for every entry that has one
+% A conference paper or preprint goes below the header of its venue, e.g. "% -- Conference: ICML",
+% or of a new one; articles, books, chapters and theses find their sections by themselves.
 
 % -- Journal articles ------------------------------------------------------------------------------
 

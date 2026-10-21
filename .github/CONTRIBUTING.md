@@ -123,6 +123,16 @@ uv run sphinx-build -b html docs/source docs/build/html
 This will render the documentation in the `docs/build` directory. You can open the `index.html` file
 in your browser to see the rendered documentation.
 
+#### Citing Papers
+Cite papers in docstrings and documentation pages with `:cite:` and their key, and add their BibTeX
+entries to `docs/source/references.bib`, preferably with a doi or a url. The pre-commit hook
+`format-bib` formats the file whenever it changes (`docs/format_bib.py`, described at the top of
+the file): it sorts the entries and writes their fields in one style. You can run it on its own:
+
+```sh
+uv run pre-commit run format-bib --all-files
+```
+
 ### 🎯 Testing Changes
 
 We use `pytest` for running unit tests and coverage.
