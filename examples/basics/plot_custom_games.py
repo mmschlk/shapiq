@@ -5,6 +5,9 @@ Defining Custom Games
 This example demonstrates how to define custom cooperative games and use them
 with :mod:`shapiq`. We model a simple cooking game and show how to query the
 value function, precompute all coalition values, and save/load them.
+
+To build a game around a machine learning model instead, see
+:doc:`/auto_examples/basics/plot_ml_games`.
 """
 
 # sphinx_gallery_thumbnail_path = "_static/gallery/basics.png"

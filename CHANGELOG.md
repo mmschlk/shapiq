@@ -1,5 +1,9 @@
 # Changelog
 
+## Development
+
+- adds the example "Games from Machine Learning Models": a `shapiq.Game` around any model's `predict`, with SV, SII, k-SII, and FSII estimates compared against exact values. [#434](https://github.com/mmschlk/shapiq/issues/434)
+
 ## v1.8.0 (2026-10-20)
 
 ### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)
