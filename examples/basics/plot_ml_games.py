@@ -12,12 +12,17 @@ approximators get to these exact values for a few budgets.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import load_diabetes
 from sklearn.ensemble import RandomForestRegressor
 
 import shapiq
+
+if TYPE_CHECKING:  # only needed for the type hints
+    from numpy.typing import NDArray
 
 # %%
 # Train a Model
@@ -38,21 +43,22 @@ model = RandomForestRegressor(n_estimators=50, max_depth=6, random_state=0).fit(
 # ``normalization_value`` from every value, so we pass the mean prediction on the background: the
 # empty coalition is then worth 0.
 #
-# :meth:`~shapiq.game.Game.value_function` receives a boolean matrix with one row per coalition.
-# It imputes the rows of all coalitions at once and calls ``model.predict`` once per batch instead
-# of once per coalition, which keeps the game fast. The basics of :class:`~shapiq.game.Game` are in
+# :meth:`~shapiq.game.Game.value_function` receives a boolean matrix with one row per coalition and
+# returns one float per coalition, as its type hints say. It imputes the rows of all coalitions at
+# once and calls ``model.predict`` once per batch instead of once per coalition, which keeps the
+# game fast. The basics of :class:`~shapiq.game.Game` are in
 # :doc:`/auto_examples/basics/plot_custom_games`.
 
 
 class ModelGame(shapiq.Game):
     """Explains the prediction of ``model`` for ``x``, with absent features from ``background``."""
 
-    def __init__(self, model, x: np.ndarray, background: np.ndarray) -> None:
+    def __init__(self, model, x: NDArray[np.floating], background: NDArray[np.floating]) -> None:
         self.model, self.x, self.background = model, x, background
         baseline = float(model.predict(background).mean())
         super().__init__(n_players=len(x), normalization_value=baseline)
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: NDArray[np.bool_]) -> NDArray[np.floating]:
         n_coalitions, n_rows = len(coalitions), len(self.background)
         # one row per coalition and background row: present features from x, absent from the row
         present = np.repeat(coalitions, n_rows, axis=0)
