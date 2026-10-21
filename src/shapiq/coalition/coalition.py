@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Data structure for representing a coalition in a game."""
 
 from __future__ import annotations

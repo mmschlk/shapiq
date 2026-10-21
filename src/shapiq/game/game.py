@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Base game class for shapiq."""
 
 from __future__ import annotations

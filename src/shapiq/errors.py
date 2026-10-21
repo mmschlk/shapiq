@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Domain errors for shapiq."""
 
 from __future__ import annotations

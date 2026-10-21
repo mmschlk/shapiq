@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Shapley interaction explanations for machine learning models."""
 
 try:

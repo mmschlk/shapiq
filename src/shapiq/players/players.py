@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Base abstraction for batched sets of players."""
 
 from __future__ import annotations

@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Small executable sketch of staged computation and game projections."""
 
 from __future__ import annotations

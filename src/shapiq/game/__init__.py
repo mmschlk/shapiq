@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Definitions of games and related data structures."""
 
 from .game import Game

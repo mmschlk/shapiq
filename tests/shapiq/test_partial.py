@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Behavioral checks for the staged lifting sketch."""
 
 from __future__ import annotations

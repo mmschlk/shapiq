@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Semantic game capabilities, independent of backing representations."""
 
 from __future__ import annotations

@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Target-directed lifting by mapping over surrounding partial stages."""
 
 from __future__ import annotations

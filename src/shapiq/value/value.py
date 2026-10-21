@@ -1,4 +1,3 @@
-# Copyright (c) 2026 shapiq contributors
 """Datatypes for representing values in a game."""
 
 from __future__ import annotations
