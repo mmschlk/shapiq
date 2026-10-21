@@ -12,10 +12,12 @@ dependencies = [
     "numpy",
     "array-api-compat>=1.14.0",
     "jax>=0.10.1",
+    "jaxtyping>=0.3.11",
     # plotting
     "matplotlib",
     "colour",
-
+    "flextype>=0.3.0",
+    "ndlike>=0.1.2",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -103,6 +105,7 @@ ignore = [
     "C901",  # Too complex functions
     "PLR0911",  # too many return statements in function
     "N802",  # Function name should be lowercase
+    "F722",  # ignore string dimensions in jaxtyping which are not (yet) recognized by ruff
 ]
 exclude = [
     ".bzr",
@@ -166,6 +169,14 @@ exclude = [
     "SLF001",  # private members are okay in examples
     "ANN001",  # type annotations are not required in examples
     "INP",  # examples are an implicit namespace package
+]
+"examples/**/*.ipynb" = [
+    "ANN",  # notebook sketches keep signatures concise
+    "D",  # markdown cells provide the example's documentation
+    "PT018",  # compact inline checks accompany the demonstrated output
+    "S101",  # assertions verify notebook examples
+    "T20",  # notebook examples display results
+    "TC003",  # keep illustrative imports together
 ]
 "docs/source/*.py" = [
     "A001",  # some conf.py variables shadow builtins which is okay here

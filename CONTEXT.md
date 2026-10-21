@@ -1,153 +1,87 @@
 # shapiq Context
 
-`shapiq` is a Python library for explainable AI, focused on Shapley-based interaction explanations for machine learning models.
-
 ## Language
 
-**Explainer**:
-A strategy that takes a **Game** and configuration and produces an **ExplanationArray** when asked to explain.
-_Avoid_: Computer, calculator, engine
-
-**Approximator**:
-An **Explainer** that estimates an **InteractionIndex** from sampled **Game** evaluations.
-_Avoid_: approximate computer, estimator
-
-**ExactExplainer**:
-An **Explainer** that explains an **InteractionIndex** without sampling approximation.
-_Avoid_: ExactComputer, exact calculator
-
-**ApproximationState**:
-The algorithm-specific accumulated evidence an **Approximator** uses to estimate an **InteractionIndex**, such as sampled **Coalitions**, **Values**, weights, duplicate-tracking data, or sufficient statistics. Only states that track evaluated game results need to carry value data.
-_Avoid_: sample history, cache
-
-**Approximation History**:
-Optional bookkeeping that lets an **ApproximationState** restore or list value-equivalent earlier states after functional state transitions. It is mainly intended for post-hoc analysis of how approximations change with increasing budget; efficient history may retain shared backing storage from later states.
-_Avoid_: previous-state pointer, undo stack
-
-**SamplingState**:
-An **ApproximationState** that records sampled **Coalitions** together with their evaluated **Values**.
-_Avoid_: default state, raw sample cache
-
-**Sampler**:
-A component used by an **Approximator** to propose a **CoalitionArray** from an **ApproximationState** and sample budget. Samplers may evolve during sampling by returning a next sampler together with sampled coalitions; mutable samplers must not be used with **Approximation History**. Shape policy is sampler-owned and normally trusted by approximators rather than revalidated on every sample.
-_Avoid_: generator, coalition generator
-
-**InsufficientSamplesError**:
-An error raised when an **Approximator** cannot produce an **ExplanationArray** from its current **ApproximationState**.
-_Avoid_: empty state error
-
-**UnsupportedGameError**:
-An error raised when an **Explainer** cannot work with the supplied **Game**.
-_Avoid_: invalid game error
-
-**SamplingError**:
-An error raised when a **Sampler** cannot produce the requested **CoalitionArray**.
-_Avoid_: sampler failure
-
-**HistoryError**:
-An index-style error raised when **Approximation History** is unavailable or cannot satisfy a requested history operation.
-_Avoid_: rollback error, undo error
-
 **Game**:
-A cooperative-game base abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns **Values** for those coalitions. Its **ValueArray** shape follows the broadcasted shape of the targets and the **CoalitionArray**. Games validate player-count compatibility at the boundary where they receive coalitions.
-_Avoid_: value function, model wrapper
-
-**CallableGame**:
-A **Game** adapter for a callable that already maps **CoalitionArrays** to **Values**, adding game metadata and backend conversion at the boundary.
-_Avoid_: FunctionGame, WrappedGame
-
-**MaskedGame**:
-A **Game** composed from a **MaskedPredictor** and a **LinkFunction**.
-_Avoid_: linked predictor game
-
-**Value**:
-The output assigned by a **Game** to a **Coalition**; it may be scalar-valued, vector-valued, or a structured array-like element of a supported value space. Model predictions are not automatically **Values**; they become **Values** only after the game maps them into the cooperative-game value space.
-_Avoid_: payoff, prediction
-
-**ValueArray**:
-A scalar, array-like object, or specialized value container representing **Values** aligned with the relevant **CoalitionArray** shape, or with the broadcasted shape of explanation targets and coalitions. Its logical shape describes the array of value elements and excludes each value's internal shape; where possible, the value representation is tracked through **Game** and **Explainer** type parameters.
-_Avoid_: output batch, predictions
-
-**Array-Like Data Type**:
-A shapiq-owned data container that exposes logical shape, dimensionality, and size while hiding internal representation axes.
-_Avoid_: array API implementation
-
-**Masker**:
-A component that turns a **CoalitionArray** into model-native masked inputs by representing absent **Players**.
-_Avoid_: imputer, perturbation function
-
-**MaskedPredictor**:
-A metadata-carrying abstraction with a fixed number of **Players** and **Explanation Target** shape that accepts a **CoalitionArray** and returns model-native predictions for those coalitions.
-_Avoid_: masked model, prediction game
-
-**ModelMaskedPredictor**:
-A **MaskedPredictor** formed by composing a **Masker** with a model.
-_Avoid_: masked model wrapper
-
-**PredictionArray**:
-A loose term for the model-native prediction structure returned by a **MaskedPredictor** and consumed by a **LinkFunction**. A **PredictionArray** is not a concrete type or protocol and does not become a **ValueArray** until a **LinkFunction** maps and normalizes it.
-_Avoid_: ValueArray, model output when discussing the composed game contract
-
-**LinkFunction**:
-A component that maps model-native predictions into **Values** and normalizes them into the representation expected by a **Game**. A **LinkFunction** receives only model predictions when called; additional information is supplied when the link is constructed.
-_Avoid_: ValueMapper, value processor, output processor
-
-**Explanation Target**:
-An input case or other subject for which an **Explanation** is produced.
-_Avoid_: target, instance when used generically
-
-**Sample Sharing**:
-The sampler policy for sharing sampled **Coalitions** across **Explanation Target** axes by replacing selected target dimensions with size one before appending the sample budget axis. The default policy does not share samples and preserves the target shape.
-_Avoid_: batch broadcast, broadcast flag
-
-**CoalitionArray**:
-An **Array-Like Data Type** whose elements are **Coalitions** for a fixed set of **Players**. Each **Coalition** records whether each **Player** is present or absent, and a **CoalitionArray** may have arbitrary array shape. Every **CoalitionArray** exposes its number of players independently of its storage representation; its logical shape describes the array of coalition elements and excludes the player dimension.
-_Avoid_: coalition batch, mask array
-
-**DenseCoalitionArray**:
-A **CoalitionArray** backed by a dense boolean array whose final storage dimension represents player membership.
-_Avoid_: dense mask array
-
-**Coalition**:
-A scalar element of a **CoalitionArray** representing one subset of **Players**.
-_Avoid_: player mask, sample
+A JAX-like batch of cooperative games, mapping admissible **Coalitions** to **Values**. Games are always batched objects, including the zero-dimensional batch shape `()`. Their logical shape describes the game batch. The **Players** shape broadcasts to that shape without enlarging it. Indexing selects games; calling evaluates coalitions with logical batch broadcasting. Explanation results are also games.
+_Avoid_: explanation container, model wrapper as the general abstraction
 
 **Player**:
-An explainable unit whose presence or absence is represented in a **Coalition**.
-_Avoid_: feature, variable, participant
+An explainable unit whose participation is represented in a **Coalition**.
+_Avoid_: feature when the player need not be a model feature
 
-**Interaction**:
-A subset or ordered tuple of distinct **Players**, depending on the **Interaction Orientation**, that receives an **Attribution** in an **Explanation**. The empty interaction is allowed; fixed-size multi-interaction access may use an array-api-compatible integer array whose final axis stores player indices.
-_Avoid_: explanation coalition, tuple key
+**Players**:
+A JAX-like batch of player sets. Its logical shape excludes each set's internal structure. `Players[C]` declares compatible coalition representations and checks whole-batch admissibility as one boolean, normally using type, dtype, internal shape, and logical batch broadcasting metadata. A **Game** delegates this check with its own batch shape.
+_Avoid_: player axis when referring to the player-set batch
 
-**Interaction Orientation**:
-Whether an **Interaction** treats player order as meaningful. Undirected interactions ignore player order; directed interactions preserve player order.
-_Avoid_: direction flag, orderedness
+**Coalition**:
+A selection of players from a player set. Coalition representations and their internal axes are defined by the compatible **Players** type. Representations may be batched; for example, a boolean JAX array can use its final axis for player membership and its leading axes for the coalition batch.
+_Avoid_: mandatory CoalitionArray container, sample when referring to arbitrary coalitions
+
+**Value**:
+The output assigned by a **Game** to a **Coalition**, represented by an ordinary supported array or structured value. A value has a **Zero-Player Game** interpretation without needing to be stored as a game object.
+_Avoid_: prediction when the game's value space differs from model output
+
+**Zero-Player Game**:
+A **Game** whose sole coalition is the empty coalition, assigned a specified **Value**. The value need not be zero.
+_Avoid_: zero-valued game
+
+**Game Transformation**:
+A function producing a **Game** or **Partial Game**, potentially changing player sets or coalition values. Its inputs can be adapted through game-preserving **Casts**, and it applies to partial games through **Lifting**.
+_Avoid_: explainer as a separate core object
+
+**Game Family**:
+A semantic or representation-based category of games. Mathematical capability protocols describe semantic guarantees; concrete game types specify storage and available operations. A parameterized family with missing inputs is a **Partial Game**.
+_Avoid_: assuming that mathematical capability determines memory layout
+
+**K-Additivity**:
+For a finite game with suitable additive values, the guarantee that all Möbius coefficients above order `k` vanish. The `KAdditive` capability declares a nonnegative upper bound through `additivity`; the bound need not be tight. An empty-coalition coefficient is allowed.
+_Avoid_: maximum coalition size, storage layout
+
+**Additive Game**:
+A zero-empty game whose value for any coalition is the sum of its singleton values. The `Additive` capability is a normalized special case of **K-Additivity** with bound one.
+_Avoid_: assuming every additive game is a Shapley game of a particular source
+
+**Shapley Game**:
+The **Additive Game** produced by a Shapley **Game Transformation**: each singleton value is that player's Shapley value in the source game. It preserves the source player set and has empty-coalition value zero. Its grand-coalition value equals the source's grand-coalition value minus its empty-coalition value.
+_Avoid_: Shapley value array as the core result type
+
+**Game Cast**:
+A change of representation or interpretation that preserves the mathematical **Game**, including its players and coalition values. A basis conversion may require substantial computation; a value can be interpreted as a **Zero-Player Game**.
+_Avoid_: cast for player removal, estimation, or value-changing transformations
+
+**Game View**:
+A constant-time, storage-sharing **Game Cast** exposing another interface to the same mathematical game.
+_Avoid_: assuming every game cast is a view
+
+**Game Basis**:
+A collection of linearly independent coalition functions in which a finite numeric **Game** can be represented by coefficients. Coalition, Möbius, and Fourier bases represent the same game with different coefficients.
+_Avoid_: confusing a basis element with its coefficient
+
+**Reduction**:
+Supplying the missing input appropriate to an object: family parameters for a **Partial Game**, or a **Coalition** for a **Game**, to obtain the next result. Calling an object denotes its default reduction.
+_Avoid_: assuming all reductions take the same argument types
+
+**Partial Game / PGame**:
+A parameterized or deferred family of related game batches, supporting game operations through **Lifting**. Binding executes one declared **Reduction** stage and removes its pending-input requirement, possibly returning another partial with its own signature; a zero-parameter partial defers work until explicitly reduced.
+_Avoid_: game with missing coalition evaluations, explanation state
+
+**Partial Shape**:
+Metadata describing an eventual game batch before all inputs are bound. `PartialShape` is a tuple of known sizes and `None` for unresolved dimensions, or `None` for unresolved rank. Shape `()` is a known zero-dimensional batch. Binding inputs refines this metadata; transformations propagate it through metadata-only output-shape rules.
+_Avoid_: treating unknown shape as unbatched, counting family nesting as batch dimensions
+
+**Lifting**:
+Extending a **Game Transformation** through surrounding **Partial Game** stages until its declared input type is reached, which can itself be a partial. Surrounding stages are preserved and the transformation's result is inserted intact, including any new partial stages.
+_Avoid_: forcing or flattening the partial stack, guessing arguments shared by different stages
+
+**Protected Axis**:
+A representation-internal axis hidden from a game's or player set's logical batch shape by ndlike. Concrete representations may protect player, interaction, and value axes while exposing array operations over batch axes.
+_Avoid_: treating representation axes as game batch axes
 
 **Explanation**:
-A scalar element of an **ExplanationArray** for one **Explanation Target**, assigning **Attributions** to selected **Interactions** under a specified **InteractionIndex** and order.
-_Avoid_: explanation map, result dict
+An interpretation of a transformed **Game**, such as reading singleton values from a **Shapley Game**. Convenience accessors or visualization may expose those values without defining a separate core result type.
+_Avoid_: ExplanationArray as the universal transformation result
 
-**ExplanationArray**:
-An **Array-Like Data Type** whose elements are **Explanations** for the same fixed set of **Players**, represented by batched internal data rather than as a Python array of explanation objects. Its logical shape describes the array of explanation elements and excludes interactions and value dimensions. An **ExplanationArray** records the number of players, **InteractionIndex**, **Order**, and **Interaction Orientation** of the represented attributions, inherits player metadata from the explained **Game** when available, can be called with an **Interaction** to return its **Attribution**, and can report for which explanation elements an attribution is available.
-_Avoid_: explanation batch, list of explanations
-
-**DenseExplanationArray**:
-An **ExplanationArray** whose represented **Interactions** are shared across every **Explanation Target**.
-_Avoid_: dense explanation
-
-**SparseExplanationArray**:
-An **ExplanationArray** whose stored **Interactions** may differ across **Explanation Targets**. Missing stored entries are not represented unless the sparse explanation defines an object-level default attribution.
-_Avoid_: sparse explanation
-
-**Attribution**:
-A **Value**-shaped contribution assigned to an **Interaction** within an **Explanation**.
-_Avoid_: score, importance
-
-**InteractionIndex**:
-A uniquely named rule, referred to by a string name, that defines which **Attributions** an **Explanation** assigns to **Interactions** and how those attributions relate to a **Game**. Initial names include SV, SII, k-SII, STII, and FSII.
-_Avoid_: index, metric, method
-
-**Order**:
-The maximum size of **Interactions** included in an **Explanation**. Order may be zero, in which case only the empty interaction may be represented. A second-order explanation may include singleton and pairwise interactions.
-_Avoid_: degree, exact order
+**Interaction Index**:
+A mathematical rule for attributing effects to interactions among players. In the game-centered API, the rule determines a **Game Transformation** and the interpretation of its resulting game; algorithm choice determines how that result is computed or estimated.
+_Avoid_: coupling an index to one algorithm or storage representation

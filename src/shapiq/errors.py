@@ -1,14 +1,15 @@
+# Copyright (c) 2026 shapiq contributors
 """Domain errors for shapiq."""
 
 from __future__ import annotations
 
 
 class InsufficientSamplesError(RuntimeError):
-    """Raised when an approximator cannot explain from its current state."""
+    """Raised when an approximation lacks enough evidence to produce a game."""
 
 
 class UnsupportedGameError(TypeError):
-    """Raised when an explainer cannot work with a supplied game."""
+    """Raised when a transformation has no applicable implementation for a game."""
 
 
 class SamplingError(RuntimeError):
