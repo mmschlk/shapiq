@@ -11,7 +11,8 @@ Getting Started
 
       New to Shapley values or to ``shapiq``? Start here. The examples introduce cooperative games
       and the Shapley value with a small cooking game, explain a scikit-learn model with Shapley
-      values and pairwise Shapley interactions, and show how to write a game of your own.
+      values and pairwise Shapley interactions, and show how to write a game of your own, from a
+      toy game to a game around any machine learning model.
 
       :class:`~shapiq.explainer.Explainer` picks a method for your model: an exact algorithm for
       trees, nearest neighbors, and kernel methods, and an approximator for any other model. Every
