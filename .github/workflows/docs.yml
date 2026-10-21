@@ -1,17 +1,31 @@
-# Builds the documentation with every gallery example, but only on request: a reviewer adds the
-# label "build docs" to a pull request (the build then reruns on every push while the label is on),
-# or someone runs the workflow from the Actions tab. Any Sphinx warning fails the build.
+# Builds the documentation with every gallery example. On a pull request it builds only on request:
+# a reviewer adds the label "build docs" (the build then reruns on every push while the label is
+# on), or someone runs the workflow from the Actions tab. It also builds on main, after a push that
+# changes the docs, examples, code or dependencies and twice a week, which keeps a cache of the
+# examples' data on main for pull requests (see below). Any Sphinx warning fails the build.
 name: Documentation
 on:
     pull_request:
         types: [labeled, synchronize, reopened]
+    push:
+        branches: [main]
+        paths:
+            - "docs/**"
+            - "examples/**"
+            - "src/**"
+            - "pyproject.toml"
+            - "uv.lock"
+            - ".github/workflows/docs.yml"
+    # twice a week, since GitHub deletes a cache that no run has restored for 7 days
+    schedule:
+        - cron: "37 3 * * 1,4"
     workflow_dispatch:
 jobs:
     build_docs:
         name: Build Documentation
         # a "labeled" event builds only for the docs label itself, not when other labels are added
         if: >-
-            github.event_name == 'workflow_dispatch'
+            github.event_name != 'pull_request'
             || (github.event.action == 'labeled' && github.event.label.name == 'build docs')
             || (github.event.action != 'labeled'
                 && contains(github.event.pull_request.labels.*.name, 'build docs'))
@@ -29,16 +43,21 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
-            # the examples download datasets, Imagenette and pretrained models: keep them
-            -   name: Cache the examples' data and models
-                uses: actions/cache@v6
+            # The examples download datasets, Imagenette and pretrained models. A pull request can
+            # restore only the caches of its own branch and of main, so the runs on main keep one
+            # there. The newest cache is restored (a pull request's own before main's), and a run
+            # saves a new one when it downloaded something, even if the build fails. To start from
+            # scratch, delete the docs-data caches (Actions > Caches).
+            -   name: Restore the examples' data and models
+                uses: actions/cache/restore@v6
                 with:
-                    path: |
+                    path: &docs-data |
                         ~/.cache/shapiq
                         ~/.cache/huggingface
+                        ~/.cache/tabpfn
                         ~/.cache/torch
                         ~/scikit_learn_data
-                    key: docs-data-${{ runner.os }}-${{ hashFiles('examples/**/*.py') }}
+                    key: docs-data-${{ runner.os }}-${{ github.run_id }}
                     restore-keys: docs-data-${{ runner.os }}-
             # the same install as Read the Docs (CPU-only torch, see the script)
             -   name: Install dependencies
@@ -46,7 +65,9 @@ jobs:
                     uv venv
                     bash docs/install_dependencies.sh
             -   name: Build documentation
-                run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
+                run: |
+                    touch "$RUNNER_TEMP/docs-build-start"
+                    uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
             -   name: Upload the built documentation
                 if: ${{ !cancelled() }}
                 uses: actions/upload-artifact@v7
@@ -55,3 +76,20 @@ jobs:
                     path: docs/build/html
                     retention-days: 7
                     if-no-files-found: ignore
+            # new data is a file created during the build (by its ctime: the files extracted from an
+            # archive keep the archive's mtimes)
+            -   name: Look for new data and models
+                id: new-data
+                if: always()
+                run: |
+                    new="$(find ~/.cache/shapiq ~/.cache/huggingface ~/.cache/tabpfn \
+                        ~/.cache/torch ~/scikit_learn_data -type f \
+                        -cnewer "$RUNNER_TEMP/docs-build-start" -print -quit 2>/dev/null || true)"
+                    echo "found=${new:+true}" >> "$GITHUB_OUTPUT"
+                    echo "First new file: ${new:-none}"
+            -   name: Save the examples' data and models
+                if: always() && steps.new-data.outputs.found == 'true'
+                uses: actions/cache/save@v6
+                with:
+                    path: *docs-data
+                    key: docs-data-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
