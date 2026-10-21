@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -12,6 +13,8 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -148,3 +151,36 @@ def add_image_in_center(
     axis.hlines(
         y=y, xmin=-size, xmax=size, colors="white", linewidths=2, linestyles="solid", zorder=2e10
     )
+
+
+def _as_batch(
+    interaction_values: InteractionValuesBatch | Sequence[InteractionValues],
+) -> InteractionValuesBatch:
+    """Returns the explanations of multiple samples as an ``InteractionValuesBatch``.
+
+    Args:
+        interaction_values: An :class:`~shapiq.InteractionValuesBatch` (returned as is) or a
+            sequence of :class:`~shapiq.InteractionValues`, one per sample.
+
+    Returns:
+        The explanations as a batch.
+
+    Raises:
+        TypeError: If ``interaction_values`` is neither a batch nor a sequence of
+            ``InteractionValues``.
+        ValueError: If ``interaction_values`` is empty.
+    """
+    if isinstance(interaction_values, Sequence) and len(interaction_values) == 0:
+        error_message = "interaction_values_list must not be empty."
+        raise ValueError(error_message)
+    if isinstance(interaction_values, InteractionValuesBatch):
+        return interaction_values
+    if not isinstance(interaction_values, Sequence) or not all(
+        isinstance(iv, InteractionValues) for iv in interaction_values
+    ):
+        error_message = (
+            "interaction_values_list must be an InteractionValuesBatch or a list of "
+            f"InteractionValues. Got: {type(interaction_values).__name__}."
+        )
+        raise TypeError(error_message)
+    return InteractionValuesBatch.from_interaction_values(interaction_values)
