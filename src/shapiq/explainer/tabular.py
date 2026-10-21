@@ -8,7 +8,7 @@ from warnings import warn
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
 
-from .configuration import setup_approximator
+from .configuration import ValidApproximatorTypes, setup_approximator
 from .custom_types import ValidApproximationExplainerIndices
 
 if TYPE_CHECKING:
@@ -20,9 +20,7 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-TabularExplainerApproximators = Literal[
-    "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
-]
+TabularExplainerApproximators = ValidApproximatorTypes
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
 TabularExplainerIndices = ValidApproximationExplainerIndices
 
@@ -80,12 +78,16 @@ class TabularExplainer(Explainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation", "proxyshap", "proxyspex"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "regression",
+                "proxyshap", "proxyspex", "exact"]``. Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,
                 :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
-                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
+                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``. ``"exact"`` computes the
+                exact values with :class:`~shapiq.game_theory.exact.ExactComputer` and ignores the
+                ``budget``. It costs ``2**n_features`` coalition evaluations per explanation, so it
+                is only feasible for a small number of features.
 
             index: The index to explain the model with. Defaults to ``"SV"`` which computes the
                 Shapley value. Options: ``"SV"`` (Shapley value), ``"k-SII"``
@@ -197,7 +199,7 @@ class TabularExplainer(Explainer):
 
             budget: The budget to use for the approximation. It indicates how many coalitions are
                 sampled, thus high values indicate more accurate approximations, but induce higher
-                computational costs.
+                computational costs. Ignored for ``approximator="exact"``.
 
             random_state: The random state to re-initialize Imputer and Approximator with.
                 Defaults to ``None``, which will not set a random state.

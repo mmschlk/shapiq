@@ -65,9 +65,12 @@ class AgnosticExplainer(Explainer):
 
             approximator: The approximator to use for the game-based approach. Defaults to "auto",
                 which will automatically select the appropriate approximator based on the index and
-                max_order. Other options include "regression", "spex", "svarm", "montecarlo", and
-                "permutation". Can also be an instance of
-                :class:`~shapiq.approximator.Approximator`.
+                max_order. Other options include "regression", "spex", "svarm", "montecarlo",
+                "permutation", "proxyshap", "proxyspex", and "exact". Can also be an instance of
+                :class:`~shapiq.approximator.Approximator`. "exact" computes the exact values with
+                :class:`~shapiq.game_theory.exact.ExactComputer` and ignores the ``budget``. It
+                costs ``2**n_players`` coalition evaluations per explanation, so it is only
+                feasible for a small number of players.
 
             random_state: The random state to use for reproducibility. Defaults to None.
 
@@ -108,6 +111,7 @@ class AgnosticExplainer(Explainer):
 
         Args:
             budget: The budget used for the approximation / computation of interaction values.
+                Ignored for ``approximator="exact"``.
 
             x: An optional data point to explain. This is only usable if the game is a
                 :class:`~shapiq.games.imputer.base.Imputer`. If provided, the imputer will be fitted
