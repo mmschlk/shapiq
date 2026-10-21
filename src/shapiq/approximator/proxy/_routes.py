@@ -20,19 +20,16 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
-from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
+from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
     from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
-
-# The indices every proxy route supports: the linear route converts with the MoebiusConverter.
-# Like ProxySPEX, ProxySHAP is restricted to these even where a tree proxy could read out more.
-ValidProxySHAPIndices = ValidMoebiusConverterIndices
 
 
 def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
@@ -112,7 +109,7 @@ def _extract_proxy_interactions(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
@@ -151,7 +148,7 @@ def _extract_linear(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
@@ -198,7 +195,7 @@ def _extract_tree(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:

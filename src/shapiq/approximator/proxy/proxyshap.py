@@ -19,11 +19,11 @@ from shapiq.approximator.proxy._models import (
     _wrap_in_default_hpo,
 )
 from shapiq.approximator.proxy._routes import (
-    ValidProxySHAPIndices,
     _extract_proxy_interactions,
     fit_proxy,
     predict_proxy,
 )
+from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, log_binom
 
@@ -157,7 +157,7 @@ def _interaction_members(
     return sizes, binary
 
 
-class ProxySHAP(Approximator[ValidProxySHAPIndices]):
+class ProxySHAP(Approximator[ValidMoebiusConverterIndices]):
     """ProxySHAP is a proxy-based approximator that uses a regression model to approximate the value function and can correct the proxy's error with an MSR residual adjustment.
 
     The regression proxy is trained on the sampled coalitions, and interaction values are read out
@@ -178,7 +178,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         )
     """
 
-    valid_indices: tuple[ValidProxySHAPIndices, ...] = tuple(get_args(ValidProxySHAPIndices))
+    valid_indices: tuple[ValidMoebiusConverterIndices, ...] = tuple(
+        get_args(ValidMoebiusConverterIndices)
+    )
     """The valid indices for the ProxySHAP approximator."""
 
     def __init__(
@@ -186,7 +188,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         n: int,
         *,
         max_order: int = 2,
-        index: ValidProxySHAPIndices = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
         proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         hpo: bool = False,
         adjustment: bool = False,
