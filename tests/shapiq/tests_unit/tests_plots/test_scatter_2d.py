@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.plot import scatter_2d_plot
 
 N_SAMPLES = 10
@@ -59,17 +59,62 @@ def test_scatter_2d_plot_basic(mock_interaction_data):
     )
 
     assert isinstance(ax, plt.Axes)
-    assert ax.get_xlabel() == "F0"
-    assert ax.get_ylabel() == "F2"
+    # the axes follow the order of the given pair
+    assert ax.get_xlabel() == "F2"
+    assert ax.get_ylabel() == "F0"
     points = ax.collections[0]
-    np.testing.assert_allclose(points.get_offsets(), feature_data[:, [0, 2]])
-    expected = [iv[(0, 2)] for iv in interaction_values_list]
-    np.testing.assert_allclose(points.get_array(), expected)
+    expected = np.array([iv[(0, 2)] for iv in interaction_values_list])
+    # the points with the largest absolute values are drawn last
+    order = np.argsort(np.abs(expected))
+    np.testing.assert_allclose(points.get_offsets(), feature_data[order][:, [2, 0]])
+    np.testing.assert_allclose(points.get_array(), expected[order])
     # the colormap is centered at zero
     assert points.norm.vmin == pytest.approx(-points.norm.vmax)
     assert points.norm.vmax == pytest.approx(np.max(np.abs(expected)))
     colorbar_ax = ax.figure.axes[-1]
-    assert colorbar_ax.get_ylabel() == "k-SII(F0, F2)"
+    assert colorbar_ax.get_ylabel() == "k-SII(F2, F0)"
+    plt.close("all")
+
+
+def test_scatter_2d_plot_batch(mock_interaction_data):
+    """Tests that an InteractionValuesBatch is plotted like the list of its explanations."""
+    interaction_values_list, feature_data, _ = mock_interaction_data
+    values = {
+        interaction: np.array([iv[interaction] for iv in interaction_values_list])
+        for interaction in LOOKUP
+        if len(interaction) > 0
+    }
+    batch = InteractionValuesBatch(
+        values,
+        n_instances=N_SAMPLES,
+        n_players=N_PLAYERS,
+        index="k-SII",
+        max_order=2,
+        min_order=1,
+        baseline_value=0.0,
+    )
+
+    ax_batch = scatter_2d_plot(batch, feature_data, show=False)
+    ax_list = scatter_2d_plot(list(batch), feature_data, show=False)
+
+    assert ax_batch.get_xlabel() == ax_list.get_xlabel()
+    assert ax_batch.get_ylabel() == ax_list.get_ylabel()
+    points_batch, points_list = ax_batch.collections[0], ax_list.collections[0]
+    np.testing.assert_allclose(points_batch.get_offsets(), points_list.get_offsets())
+    np.testing.assert_allclose(points_batch.get_array(), points_list.get_array())
+    plt.close("all")
+
+
+def test_scatter_2d_plot_non_numeric_column(mock_interaction_data):
+    """Tests that only the two plotted columns of a DataFrame need to be numeric."""
+    interaction_values_list, feature_data, feature_names = mock_interaction_data
+    data = pd.DataFrame(feature_data, columns=feature_names)
+    data["feature_4"] = "text"
+
+    ax = scatter_2d_plot(interaction_values_list, data, (0, 2), show=False)
+
+    order = np.argsort(np.abs([iv[(0, 2)] for iv in interaction_values_list]))
+    np.testing.assert_allclose(ax.collections[0].get_offsets(), feature_data[order][:, [0, 2]])
     plt.close("all")
 
 
@@ -108,9 +153,13 @@ def test_scatter_2d_plot_existing_axes_and_show(mock_interaction_data, monkeypat
     monkeypatch.setattr(plt, "show", lambda: None)
 
     _fig, ax = plt.subplots()
+    # another figure is the current one and must not be changed by the layout
+    _other_fig, other_ax = plt.subplots()
+    other_position = other_ax.get_position().bounds
     result = scatter_2d_plot(interaction_values_list, feature_data, (0, 1), abbreviate=False, ax=ax)
     assert result is None
     assert ax.get_xlabel() == "F0"
+    assert other_ax.get_position().bounds == other_position
     plt.close("all")
 
 
@@ -118,8 +167,10 @@ def test_scatter_2d_plot_errors(mock_interaction_data):
     """Tests the input validation."""
     interaction_values_list, feature_data, _ = mock_interaction_data
 
-    with pytest.raises(ValueError, match="non-empty list"):
+    with pytest.raises(ValueError, match="must not be empty"):
         scatter_2d_plot([], feature_data, show=False)
+    with pytest.raises(TypeError, match="InteractionValuesBatch or a list of InteractionValues"):
+        scatter_2d_plot([1.0] * N_SAMPLES, feature_data, show=False)
     with pytest.raises(ValueError, match="must match number of rows"):
         scatter_2d_plot(interaction_values_list, feature_data[:-1], show=False)
     with pytest.raises(TypeError, match="must be a pandas DataFrame or a numpy array"):
@@ -172,10 +223,42 @@ def test_scatter_2d_plot_include_main_effects(mock_interaction_data):
     )
 
     points = ax.collections[0]
-    expected = [iv[(0,)] + iv[(2,)] + iv[(0, 2)] for iv in interaction_values_list]
-    np.testing.assert_allclose(points.get_array(), expected)
+    expected = np.array([iv[(0,)] + iv[(2,)] + iv[(0, 2)] for iv in interaction_values_list])
+    np.testing.assert_allclose(points.get_array(), expected[np.argsort(np.abs(expected))])
     colorbar_ax = ax.figure.axes[-1]
     assert colorbar_ax.get_ylabel() == "k-SII(F0) + k-SII(F2) + k-SII(F0, F2)"
+    plt.close("all")
+
+
+def test_scatter_2d_plot_include_main_effects_without_first_order():
+    """Tests that include_main_effects warns and is ignored without first-order values."""
+    rng = np.random.default_rng(0)
+    lookup = {(0, 1): 0, (0, 2): 1, (1, 2): 2}
+    interaction_values_list = [
+        InteractionValues(
+            values=rng.random(len(lookup)),
+            interaction_lookup=lookup,
+            index="k-SII",
+            min_order=2,
+            max_order=2,
+            n_players=3,
+            baseline_value=0.0,
+        )
+        for _ in range(N_SAMPLES)
+    ]
+    feature_data = rng.random((N_SAMPLES, 3))
+
+    with pytest.warns(UserWarning, match="include_main_effects=True has no effect"):
+        ax = scatter_2d_plot(
+            interaction_values_list,
+            feature_data,
+            interaction=(0, 1),
+            include_main_effects=True,
+            abbreviate=False,
+            show=False,
+        )
+
+    assert ax.figure.axes[-1].get_ylabel() == "k-SII(F0, F1)"
     plt.close("all")
 
 
@@ -205,9 +288,10 @@ def test_scatter_2d_plot_first_order():
     ax = scatter_2d_plot(interaction_values_list, feature_data, abbreviate=False, show=False)
 
     points = ax.collections[0]
-    np.testing.assert_allclose(points.get_offsets(), feature_data[:, [0, 2]])
-    expected = [iv[(0,)] + iv[(2,)] for iv in interaction_values_list]
-    np.testing.assert_allclose(points.get_array(), expected)
+    expected = np.array([iv[(0,)] + iv[(2,)] for iv in interaction_values_list])
+    order = np.argsort(np.abs(expected))
+    np.testing.assert_allclose(points.get_offsets(), feature_data[order][:, [0, 2]])
+    np.testing.assert_allclose(points.get_array(), expected[order])
     colorbar_ax = ax.figure.axes[-1]
     assert colorbar_ax.get_ylabel() == "SV(F0) + SV(F2)"
     plt.close("all")

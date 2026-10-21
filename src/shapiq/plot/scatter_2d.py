@@ -6,23 +6,24 @@ the value of their pairwise interaction.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from shapiq.interaction_values import aggregate_interaction_values
-
 from .beeswarm import _get_red_blue_cmap
 from .scatter import _resolve_feature
-from .utils import abbreviate_feature_names
+from .utils import _as_batch, abbreviate_feature_names
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
-    from shapiq.interaction_values import InteractionValues
+    from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 
 
 __all__ = ["scatter_2d_plot"]
@@ -30,34 +31,32 @@ __all__ = ["scatter_2d_plot"]
 
 def _resolve_pair(
     interaction: tuple[int, int] | tuple[str, str] | None,
-    interaction_values_list: list[InteractionValues],
+    batch: InteractionValuesBatch,
     name_to_idx: dict[str, int],
-    n_players: int,
 ) -> tuple[int, int]:
-    """Resolves an ``interaction`` argument to a sorted pair of feature indices."""
+    """Resolves an ``interaction`` argument to the feature indices on the x- and y-axis."""
     if interaction is None:
-        agg = aggregate_interaction_values(
-            [abs(iv) for iv in interaction_values_list], aggregation="mean"
-        )
-        candidates = [(k, v) for k, v in agg.interactions.items() if len(k) == 2]
-        if candidates:
-            candidates.sort(key=lambda kv: kv[1], reverse=True)
-            first, second = candidates[0][0]
+        values = batch.values  # noqa: PD011
+        importance = {k: float(np.mean(np.abs(v))) for k, v in values.items()}
+        candidates = [k for k in importance if len(k) == 2]
+        if not candidates:
+            # first-order explanations: use the two features with the largest mean absolute value
+            candidates = sorted(
+                [k for k in importance if len(k) == 1], key=importance.__getitem__, reverse=True
+            )
+            if len(candidates) < 2:
+                error_message = "No pairwise interactions or first-order values available to plot."
+                raise ValueError(error_message)
+            first, second = sorted((candidates[0][0], candidates[1][0]))
             return first, second
-        # first-order explanations: use the two features with the largest mean absolute value
-        singletons = [(k[0], v) for k, v in agg.interactions.items() if len(k) == 1]
-        if len(singletons) < 2:
-            error_message = "No pairwise interactions or first-order values available to plot."
-            raise ValueError(error_message)
-        singletons.sort(key=lambda kv: kv[1], reverse=True)
-        first, second = sorted((singletons[0][0], singletons[1][0]))
+        first, second = max(candidates, key=importance.__getitem__)
         return first, second
 
     if not isinstance(interaction, tuple):
         error_message = f"interaction must be a tuple of two features or None. Got {type(interaction).__name__}."
         raise TypeError(error_message)
-    resolved = tuple(sorted({_resolve_feature(f, name_to_idx, n_players) for f in interaction}))
-    if len(resolved) != 2:
+    resolved = [_resolve_feature(f, name_to_idx, batch.n_players) for f in interaction]
+    if len(resolved) != 2 or resolved[0] == resolved[1]:
         error_message = (
             f"interaction must contain exactly two different features. Got {interaction}."
         )
@@ -67,7 +66,7 @@ def _resolve_pair(
 
 
 def scatter_2d_plot(
-    interaction_values_list: list[InteractionValues],
+    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     interaction: tuple[int, int] | tuple[str, str] | None = None,
     *,
@@ -84,7 +83,8 @@ def scatter_2d_plot(
     Each point is one sample of ``data``: its x-coordinate is the value of the first feature
     of ``interaction``, its y-coordinate is the value of the second feature and its color is
     the sample's interaction value for the pair. The colormap is centered at zero, so positive
-    values are red and negative values are blue.
+    values are red and negative values are blue. Points with larger absolute values are drawn on
+    top.
 
     For first-order explanations (for example Shapley values), which have no pairwise
     interactions, the color is the sum of the two features' values. For second-order
@@ -92,15 +92,19 @@ def scatter_2d_plot(
     pairwise interaction, so the color shows the joint contribution of the pair.
 
     Args:
-        interaction_values_list: A non-empty list of :class:`~shapiq.InteractionValues` objects,
-            one per sample row of ``data``.
+        interaction_values_list: The explanations of the samples in ``data``, as an
+            :class:`~shapiq.InteractionValuesBatch` (for example from
+            :meth:`~shapiq.Explainer.explain_X`) or a list of
+            :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
         data: The feature values for the samples, as a ``pandas.DataFrame`` or 2D ``numpy`` array.
-            Must have the same number of rows as ``interaction_values_list``.
+            Must have the same number of rows as ``interaction_values_list``. Only the two
+            plotted columns need to be numeric.
         interaction: The pair of features to plot, as a tuple of feature indices like ``(0, 2)``
-            or of feature names like ``("MedInc", "Latitude")``. The lower feature index goes on
-            the x-axis. If ``None``, the pairwise interaction with the highest mean absolute value
-            is selected (for first-order explanations, the two features with the highest mean
-            absolute value). Defaults to ``None``.
+            or of feature names like ``("MedInc", "Latitude")``. The first feature goes on the
+            x-axis and the second on the y-axis. If ``None``, the pairwise interaction with the
+            highest mean absolute value is selected (for first-order explanations, the two
+            features with the highest mean absolute value), with the lower feature index on the
+            x-axis. Defaults to ``None``.
         include_main_effects: For second-order explanations, whether to add the first-order
             values of both features to the pairwise interaction. Has no effect for first-order
             explanations, which are always shown as the sum of the two first-order values.
@@ -118,20 +122,18 @@ def scatter_2d_plot(
         The ``Axes`` object if ``show=False``, otherwise ``None``.
 
     Raises:
-        ValueError: If inputs are inconsistent (empty list, length mismatch, unknown feature
-            names or indices, an interaction that is not a pair or is absent from every
-            sample's lookup, or invalid numeric parameters).
-        TypeError: If ``data`` is not a DataFrame or ndarray, or if ``interaction`` or a feature
-            identifier has an unsupported type.
+        ValueError: If inputs are inconsistent (no explanations, length mismatch, unknown feature
+            names or indices, an interaction that is not a pair or is absent from the
+            explanations, or invalid numeric parameters).
+        TypeError: If ``interaction_values_list`` or ``data`` has an unsupported type, or if
+            ``interaction`` or a feature identifier has an unsupported type.
 
     """
-    if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
-        error_message = "interaction_values_list must be a non-empty list."
-        raise ValueError(error_message)
+    batch = _as_batch(interaction_values_list)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
-    if len(interaction_values_list) != len(data):
+    if len(batch) != len(data):
         error_message = "Length of interaction_values_list must match number of rows in data."
         raise ValueError(error_message)
     if alpha <= 0 or alpha > 1:
@@ -141,7 +143,7 @@ def scatter_2d_plot(
         error_message = "dot_size must be a positive value."
         raise ValueError(error_message)
 
-    n_players = interaction_values_list[0].n_players
+    n_players = batch.n_players
 
     if feature_names is None:
         feature_names_full = [f"F{i}" for i in range(n_players)]
@@ -156,31 +158,39 @@ def scatter_2d_plot(
     )
     name_to_idx = {n: i for i, n in enumerate(feature_names_full)}
 
-    x_idx, y_idx = _resolve_pair(interaction, interaction_values_list, name_to_idx, n_players)
-    first_order = all(iv.max_order < 2 for iv in interaction_values_list)
+    x_idx, y_idx = _resolve_pair(interaction, batch, name_to_idx)
+    values = batch.values  # noqa: PD011
+    pair = (min(x_idx, y_idx), max(x_idx, y_idx))
+    first_order = batch.max_order < 2
     if first_order:
-        for feature in (x_idx, y_idx):
-            if not any((feature,) in iv.interaction_lookup for iv in interaction_values_list):
+        for feature in pair:
+            if (feature,) not in values:
                 error_message = f"Feature {feature} not found in InteractionValues lookup."
                 raise ValueError(error_message)
-    elif not any((x_idx, y_idx) in iv.interaction_lookup for iv in interaction_values_list):
-        error_message = f"Interaction {(x_idx, y_idx)} not found in InteractionValues lookup."
+    elif pair not in values:
+        error_message = f"Interaction {pair} not found in InteractionValues lookup."
         raise ValueError(error_message)
+    if include_main_effects and not first_order and batch.min_order > 1:
+        warnings.warn(
+            "include_main_effects=True has no effect, since the explanations contain no "
+            "first-order values (min_order > 1).",
+            stacklevel=2,
+        )
+        include_main_effects = False
 
-    x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
-    x_vals = x_numpy[:, x_idx]
-    y_vals = x_numpy[:, y_idx]
+    zeros = np.zeros(len(batch))
+    main_effects = values.get((x_idx,), zeros) + values.get((y_idx,), zeros)
     if first_order:
-        c_vals = np.array(
-            [iv[(x_idx,)] + iv[(y_idx,)] for iv in interaction_values_list], dtype=float
-        )
+        c_vals = main_effects
     elif include_main_effects:
-        c_vals = np.array(
-            [iv[(x_idx,)] + iv[(y_idx,)] + iv[(x_idx, y_idx)] for iv in interaction_values_list],
-            dtype=float,
-        )
+        c_vals = main_effects + values[pair]
     else:
-        c_vals = np.array([iv[(x_idx, y_idx)] for iv in interaction_values_list], dtype=float)
+        c_vals = values[pair]
+    c_vals = np.asarray(c_vals, dtype=float)
+
+    columns = data.to_numpy() if isinstance(data, pd.DataFrame) else data
+    x_vals = columns[:, x_idx].astype(float)
+    y_vals = columns[:, y_idx].astype(float)
 
     if ax is None:
         _fig, ax = plt.subplots(figsize=(7, 5))
@@ -189,10 +199,12 @@ def scatter_2d_plot(
     limit = float(np.nanmax(np.abs(c_vals))) if np.isfinite(c_vals).any() else 0.0
     if limit == 0:
         limit = 1e-9
+    # draw the points with the largest absolute values last, so they are not hidden
+    order = np.argsort(np.abs(c_vals))
     sc = ax.scatter(
-        x_vals,
-        y_vals,
-        c=c_vals,
+        x_vals[order],
+        y_vals[order],
+        c=c_vals[order],
         cmap=_get_red_blue_cmap(),
         vmin=-limit,
         vmax=limit,
@@ -202,7 +214,7 @@ def scatter_2d_plot(
         rasterized=len(x_vals) > 500,
     )
 
-    index_name = interaction_values_list[0].index
+    index_name = batch.index
     x_name, y_name = feature_names_display[x_idx], feature_names_display[y_idx]
     main_effects_label = f"{index_name}({x_name}) + {index_name}({y_name})"
     pair_label = f"{index_name}({x_name}, {y_name})"
@@ -217,12 +229,12 @@ def scatter_2d_plot(
     cb.ax.tick_params(labelsize=10, length=0)
     cb.outline.set_visible(False)  # type: ignore[union-attr]
 
-    ax.set_xlabel(feature_names_display[x_idx], fontsize=12)
-    ax.set_ylabel(feature_names_display[y_idx], fontsize=12)
+    ax.set_xlabel(x_name, fontsize=12)
+    ax.set_ylabel(y_name, fontsize=12)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     if not show:
         return ax
