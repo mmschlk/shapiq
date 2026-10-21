@@ -46,6 +46,7 @@ classifiers = [
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: 3.15',
 ]
 keywords = [
     "python",
@@ -74,24 +75,41 @@ proxy = [
     # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
     "xgboost",   # default proxy model in ProxySHAP
     "lightgbm",  # required by ProxySPEX
-    "catboost",
+    "catboost; python_version < '3.15'",  # no Python 3.15 wheels yet
     "smac", # SMAC HPO for proxy models
 ]
 shapleig = [
     # required by shapiq.approximator.shapleig (ShaplEIG)
     # NOTE: lower bounds are the versions the reference implementation was
     # developed and validated against.
-    "torch>=2.9.1",
-    "gpytorch>=1.14",
-    "botorch>=0.14.0",
-    "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
+    # torch has no Python 3.15 wheels yet, so the whole group is skipped there.
+    "torch>=2.9.1; python_version < '3.15'",
+    "gpytorch>=1.14; python_version < '3.15'",
+    "botorch>=0.14.0; python_version < '3.15'",
+    "linear_operator>=0.6; python_version < '3.15'",  # also a transitive gpytorch dependency, but imported directly
+]
+games = [
+    # optional dependencies of shapiq_games, imported lazily by the games that need them
+    # scikit-image, sentencepiece, tabpfn, and torch(vision) have no Python 3.15 wheels yet
+    "protobuf",      # with sentencepiece: the SigLIP tokenizer
+    "scikit-image; python_version < '3.15'",  # superpixels of the image games
+    "sentencepiece; python_version < '3.15'", # the SigLIP tokenizer
+    "tabpfn>=6.0; python_version < '3.15'",   # TabPFN by version (the causal games' default regressor); +inf needs 8.1
+    "torch; python_version < '3.15'",         # image games
+    "torchvision; python_version < '3.15'",   # ResNet image games
+    "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
+    "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [
-    # optional model backends for shapiq_benchmark, imported lazily
-    "optuna",
-    "tabpfn",
+    # shapiq_benchmark builds the games from datasets and models by name
+    "shapiq[games]",
+    "openml",        # OpenML datasets, TabArena included
+    "openpyxl",      # the real_estate dataset (xlsx)
+    "ucimlrepo",     # UCI datasets (annealing, mushroom, zoo, ...)
+    "xgboost",       # models of the registry
     "lightgbm",
-    "xgboost",
+    "catboost; python_version < '3.15'",  # no Python 3.15 wheels yet
+    "optuna",        # tunes the model presets
 ]
 
 [tool.coverage.report]
@@ -198,6 +216,9 @@ exclude = [
     "D102",  # we don't need docstrings for protocol stubs
     "ANN401",  # any return type is okay in typing.py for protocol subts
 ]
+"src/shapiq_games/typing.py" = [
+    "A005",  # mirrors shapiq.typing
+]
 "tests/*.py" = [
     # "ALL",
     "S101", # we need asserts in tests
@@ -221,6 +242,7 @@ exclude = [
     "D",  # docstrings are not required in examples
     "SLF001",  # private members are okay in examples
     "ANN001",  # type annotations are not required in examples
+    "ERA001",  # sphinx-gallery reads settings from comments such as `# sphinx_gallery_thumbnail_number = 2`
     "INP",  # examples are an implicit namespace package
 ]
 "docs/source/*.py" = [
@@ -252,8 +274,8 @@ exclude = [
 convention = "google"
 
 [tool.ty.src]
-include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
+include = ["src/shapiq", "src/shapiq_games", "src/shapiq_benchmark"]
+exclude = ["tests", "docs", "benchmark", "scripts"]
 
 [tool.ty.environment]
 python-version = "3.12"
@@ -261,7 +283,7 @@ python = "./.venv"
 python-platform = "linux"
 
 [tool.cibuildwheel]
-build = ["cp312-*", "cp313-*", "cp314-*"]
+build = ["cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 build-frontend = "uv"
 test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; from shapiq.tree.linear import cext; from shapiq.tree.quadrature import cext; print('C extensions OK')\""
@@ -287,15 +309,21 @@ required-imports = ["from __future__ import annotations"]
 
 
 [dependency-groups]
-all_ml = [
-    "tabpfn>=2.1.3",
-    "torchvision",
-    "torch",
+ml = [
+    # the model libraries of the tests and the docs' examples
+    # torch(vision), tabpfn, catboost, and scikit-image have no Python 3.15 wheels yet
+    "tabpfn>=2.1.3; python_version < '3.15'",
+    "torchvision; python_version < '3.15'",
+    "torch; python_version < '3.15'",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
-    "catboost",
+    "catboost; python_version < '3.15'",
     "transformers",
-    "scikit-image",
+    "scikit-image; python_version < '3.15'",
+]
+all_ml = [
+    {include-group = "ml"},
+    # for the tests only, not the docs (about 2 GB installed)
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
@@ -320,7 +348,8 @@ docs = [
     "ipython>=9.0.0",           # for code execution in sphinx-gallery
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
-    {include-group = "all_ml"}
+    "sphinx-design>=0.7.0",     # cards and grids on the landing and gallery pages
+    {include-group = "ml"}
 ]
 dev = [
     "notebook>=7.3.3",

@@ -37,8 +37,8 @@ def stacked_bar_plot(
     This stacked bar plot can be used to visualize the amount of interaction between the features
     for a given instance. The interaction values are plotted as stacked bars with positive and
     negative parts stacked on top of each other. The colors represent the order of the
-    interaction values. For a detailed explanation of this plot, we refer to Bordt and von Luxburg
-    (2023) [Bor23stk]_.
+    interaction values. For a detailed explanation of this plot, we refer to
+    :cite:t:`Bordt.2023`.
 
     An example of the plot is shown below.
 
@@ -81,9 +81,6 @@ def stacked_bar_plot(
         ... )
         >>> plt.show()
 
-    References:
-        .. [Bor23stk] Bordt, M., and von Luxburg, U. (2023). From Shapley Values to Generalized Additive Models and back. Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. url: https://proceedings.mlr.press/v206/bordt23a.html
-
     """
     # sanitize inputs
     if max_order is None:
@@ -115,7 +112,7 @@ def stacked_bar_plot(
     x = np.arange(n_features)
 
     # get helper variables for plotting the bars
-    min_max_values = [0, 0]  # to set the y-axis limits after all bars are plotted
+    min_max_values: list[float] = [0, 0]  # to set the y-axis limits after all bars are plotted
     reference_pos = np.zeros(n_features)  # to plot the bars on top of each other
     reference_neg = deepcopy(values_neg[0])  # to plot the bars below of each other
 

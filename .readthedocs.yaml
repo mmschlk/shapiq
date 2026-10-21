@@ -11,13 +11,18 @@ build:
     # Use uv to speed up the build
     # https://docs.readthedocs.io/en/stable/build-customization.html#install-dependencies-with-uv
     pre_create_environment:
+      # the start of the build, for the timeout of sphinx-build below, and the machine it runs on
+      - date +%s > /tmp/build-start && nproc && free -g
       - asdf plugin add uv
       - asdf install uv latest
       - asdf global uv latest
     create_environment:
       - uv venv
     install:
-      - uv sync --no-dev --all-extras --group docs
+      # the same install as the docs workflow of CI (CPU-only torch, see the script)
+      - bash docs/install_dependencies.sh
     build:
       html:
-      - uv run --no-sync sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
+      # Stop 20 s before Read the Docs ends the build (900 s): a build that stops by itself saves
+      # its log, which then shows where it spent its time.
+      - timeout $(( 880 - $(date +%s) + $(cat /tmp/build-start) )) uv run --no-sync sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html

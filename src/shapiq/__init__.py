@@ -26,6 +26,7 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    PolySHAP,
     ProxySHAP,
     ProxySPEX,
     RegressionFBII,
@@ -36,9 +37,6 @@ from .approximator import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-
-# dataset functions
-from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
 # explainer classes
 from .explainer import (
@@ -122,6 +120,7 @@ __all__ = [
     "ProxySPEX",
     "RegressionMSR",
     "OddSHAP",
+    "PolySHAP",
     # explainers
     "Explainer",
     "TabularExplainer",
@@ -152,8 +151,4 @@ __all__ = [
     "get_explicit_subsets",
     "split_subsets_budget",
     "safe_isinstance",
-    # datasets
-    "load_bike_sharing",
-    "load_adult_census",
-    "load_california_housing",
 ]

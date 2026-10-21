@@ -1,0 +1,11 @@
+{#- furo's "view this page" button, linked to the page's file in the repository (if it has one) -#}
+{%- from "components/source-path.html" import source_url with context -%}
+{%- set url = source_url("blob") -%}
+{%- if url -%}
+<div class="view-this-page">
+  <a class="muted-link" href="{{ url }}" title="{{ _("View this page") }}">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">{{ _("View this page") }}</span>
+  </a>
+</div>
+{%- endif -%}

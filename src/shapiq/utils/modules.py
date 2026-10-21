@@ -66,7 +66,16 @@ def safe_isinstance(
 
 
 def check_import_module(name: str, functionality: str | None = None) -> None:
-    """Check if the optional dependency is available."""
+    """Check if the optional dependency is available.
+
+    Args:
+        name: The name of the module to import.
+        functionality: What the module is needed for, shown in the error message. Defaults to
+            ``None``.
+
+    Raises:
+        ImportError: If the module cannot be imported.
+    """
     try:
         import_module(name)
     except ImportError as error:

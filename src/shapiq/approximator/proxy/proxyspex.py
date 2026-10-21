@@ -17,16 +17,15 @@ from shapiq.approximator.proxy._models import (
     _select_base_proxy_via_string,
     _wrap_in_default_hpo,
 )
+from shapiq.approximator.proxy._routes import tree_to_fourier
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.conversion import convert_tree_model
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.game import Game
-    from shapiq.tree.base import TreeModel
     from shapiq.typing import Model
 
 
@@ -152,13 +151,8 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
             final_model = self.proxy_model.best_estimator_
         else:
             final_model = self.proxy_model
-        # Obtain TreeModel(s). convert_tree_model returns a single TreeModel for single-tree
-        # proxies (e.g. a DecisionTreeRegressor) and a list for ensembles; normalize to a list.
-        tree_models = convert_tree_model(final_model)
-        if not isinstance(tree_models, list):
-            tree_models = [tree_models]
         # Obtain fourier coefficients
-        unrefined_fourier = self._sklearn_to_fourier(tree_models=tree_models)
+        unrefined_fourier = tree_to_fourier(final_model, self.n)
         # Refine the Fourier coefficients using the training data
         refined_fourier = self._refine(
             unrefined_fourier,
@@ -172,10 +166,11 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         # Filter the output as needed
         if self.top_order:
             result = self._filter_order(result)
-        # finalize the interactions
+        # finalize the interactions; the MoebiusConverter already returned ``self.index`` (e.g.
+        # k-SII), which must not be aggregated from SII a second time
         return InteractionValues(
             values=result,
-            index=self.approximation_index,
+            index=self.index,
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
@@ -197,73 +192,6 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
             for moebius_interaction in powerset(four_interaction):
                 moebius_dict[moebius_interaction] += four_coef * (-2) ** (len(moebius_interaction))
         return dict(moebius_dict)
-
-    def _sklearn_to_fourier(self, tree_models: list[TreeModel]) -> dict[tuple[int, ...], float]:
-        """Extracts the aggregated Fourier coefficients from a list of sklearn tree models.
-
-        This method iterates over all trees in the ensemble, computes the Fourier coefficients
-        for each individual tree using the `_sklearn_tree_to_fourier` helper method, and then
-        sums these coefficients to get the final Fourier representation of the complete model.
-
-        Args:
-            tree_models: A list of `TreeModel` instances representing the tree using the sklearn.tree structure.
-
-        Returns:
-            A dictionary that maps interaction tuples (representing Fourier frequencies) to their aggregated Fourier coefficients.
-        """
-        aggregated_coeffs = defaultdict(float)
-
-        for tree_model in tree_models:
-            tree_coeffs = self._sklearn_tree_to_fourier(tree_model)
-            for interaction, value in tree_coeffs.items():
-                aggregated_coeffs[interaction] += value
-
-        # Convert defaultdict to a standard dict, removing zero-valued coefficients
-        return {k: v for k, v in aggregated_coeffs.items() if v != 0.0}
-
-    def _sklearn_tree_to_fourier(self, tree_model: TreeModel) -> dict[tuple[int, ...], float]:
-        """Recursively extracts Fourier coefficients from a single sklearn decision tree.
-
-        This method traverses the sklearn decision tree structure defined in `shapiq.tree.base`.
-        It computes the Fourier representation of the piecewise-constant function that the tree defines.
-
-        Args:
-            tree_model: A fitted sklearn decision tree model.
-        """
-
-        def _combine_coeffs(
-            left_coeffs: dict[tuple[int, ...], float],
-            right_coeffs: dict[tuple[int, ...], float],
-            feature_idx: int,
-        ) -> dict[tuple[int, ...], float]:
-            """Combines Fourier coefficients from the left and right children of a split node."""
-            combined_coeffs = {}
-            all_interactions = set(left_coeffs.keys()) | set(right_coeffs.keys())
-
-            for interaction in all_interactions:
-                left_val = left_coeffs.get(interaction, 0.0)
-                right_val = right_coeffs.get(interaction, 0.0)
-                combined_coeffs[interaction] = (left_val + right_val) / 2
-
-                new_interaction = tuple(sorted(set(interaction) | {feature_idx}))
-                combined_coeffs[new_interaction] = (left_val - right_val) / 2
-            return combined_coeffs
-
-        def _dfs_traverse(node_id: int) -> dict[tuple[int, ...], float]:
-            """Performs a depth-first traversal of the tree to compute coefficients."""
-            # Base case: if the node is a leaf, its function is a constant.
-            if tree_model.children_left[node_id] == -1 and tree_model.children_right[node_id] == -1:
-                # The only non-zero coefficient is for the empty interaction (the bias term).
-                return {(): tree_model.values[node_id]}
-            # Recursive step: if the node is a split node.
-            left_child_id = tree_model.children_left[node_id]
-            right_child_id = tree_model.children_right[node_id]
-            left_coeffs = _dfs_traverse(left_child_id)
-            right_coeffs = _dfs_traverse(right_child_id)
-            feature_idx = tree_model.features[node_id]
-            return _combine_coeffs(left_coeffs, right_coeffs, feature_idx)
-
-        return _dfs_traverse(0)  # Start traversal from the root node (id=0)
 
     def _refine(
         self,

@@ -40,7 +40,7 @@ class RegressionMSR(ProxySHAP):
 
     The regression model is trained on the sampled coalitions, and its predictions are adjusted
     using the MSR method to better match the true value function. The method was proposed by
-    Witter et al. (2025) :cite:t:`Witter.2025` and is designed to provide more accurate
+    :cite:t:`Witter.2025` and is designed to provide more accurate
     approximations of the Shapley values, especially in cases where the value function is complex
     and non-linear.
 
@@ -78,12 +78,12 @@ class RegressionMSR(ProxySHAP):
                 see :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP` for details.
             sampling_weights: The sampling weights for the coalitions, as a per-size mass of
                 shape ``(n + 1,)``. If None, the sampling scheme of
-                Witter et al. (2025) is used: ``binom(n, s)`` for ``"BV"``, uniform
+                :cite:t:`Witter.2025` is used: ``binom(n, s)`` for ``"BV"``, uniform
                 (Leverage SHAP) for ``"SV"`` with a linear proxy, and ``1 / sqrt(s * (n - s))``
                 for ``"SV"`` otherwise.
             pairing_trick: Whether to use the pairing trick for sampling coalitions. Default is True.
             k_folds: Number of folds for the out-of-fold proxy residuals; see
-                :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP`. Default is 1, which is the recommended value by Witter et al. (2025) :cite:t:`Witter.2025`.
+                :class:`~shapiq.approximator.proxy.proxyshap.ProxySHAP`. Default is 1, which is the recommended value by :cite:t:`Witter.2025`.
             random_state: The random state for reproducibility. Default is None.
 
         """

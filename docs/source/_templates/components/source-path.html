@@ -1,0 +1,25 @@
+{#- The repository file of the current page, for furo's "view" and "edit" buttons.
+
+    A gallery page comes from a script in examples/ (its index from the GALLERY_HEADER.rst of the
+    group); the generated API pages and the gallery's execution times have no file in the
+    repository, so they get no buttons. -#}
+{%- macro source_path() -%}
+  {%- set parts = pagename.split("/") -%}
+  {%- if not page_source_suffix or parts[0] == "generated" or parts[-1] == "sg_execution_times" -%}
+  {%- elif parts[0] == "auto_examples" and parts | length > 2 -%}
+    {%- if parts[-1] == "index" -%}
+      examples/{{ parts[1:-1] | join("/") }}/GALLERY_HEADER.rst
+    {%- else -%}
+      examples/{{ parts[1:] | join("/") }}.py
+    {%- endif -%}
+  {%- elif parts[0] != "auto_examples" -%}
+    {{ theme_source_directory.strip("/") }}/{{ pagename }}{{ page_source_suffix }}
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- macro source_url(kind) -%}
+  {%- set path = source_path() -%}
+  {%- if path and theme_source_repository -%}
+    {{ theme_source_repository.rstrip("/") }}/{{ kind }}/{{ theme_source_branch }}/{{ path }}
+  {%- endif -%}
+{%- endmacro -%}

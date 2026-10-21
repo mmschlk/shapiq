@@ -256,13 +256,15 @@ def get_california_housing_train_test_explain() -> tuple[
             _california_loaded_data["x_explain"],
         )
 
-    from sklearn.model_selection import train_test_split
-
-    from shapiq.datasets import load_california_housing
+    from sklearn.datasets import fetch_california_housing, get_data_home
 
     x_explain_id = 2  # index of the data point to explain (third data point of the test set)
 
-    x_data, y_data = load_california_housing(to_numpy=True)
+    # one scikit-learn data folder per pytest-xdist worker: workers fetching into the same folder
+    # race (one deletes the downloaded archive while another opens it)
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    data_home = os.path.join(get_data_home(), "shapiq_tests", worker)
+    x_data, y_data = fetch_california_housing(data_home=data_home, return_X_y=True)
     x_train, x_test, y_train, y_test = train_test_split(
         x_data, y_data, test_size=0.2, random_state=DATASETS_RANDOM_STATE
     )

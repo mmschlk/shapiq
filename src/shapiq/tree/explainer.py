@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import numpy as np
 
 from shapiq.explainer.base import Explainer
+from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 from shapiq.utils.modules import safe_isinstance
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 
 TREE_MODES = Literal["pathdependent", "interventional"]
 TREE_BACKENDS = Literal["auto", "woodelf", "shapiq"]
-TreeExplainerIndices = Literal["SV", "SII", "k-SII", "BV", "BII", "STII", "FSII", "FBII"]
+TreeExplainerIndices = ExplainerIndices
 
 _WOODELF_INSTALL_HINT = "Install it with: pip install shapiq[tree]"
 _WOODELF_REQUIRED = f"requires the optional 'woodelf-explainer' package. {_WOODELF_INSTALL_HINT}"
@@ -68,28 +69,31 @@ class TreeExplainer(Explainer):
 
     :meth:`explain_X` explains a whole data matrix at once, where we return a :class:`~shapiq.interaction_values.InteractionValuesBatch` object, for which ``values[(1,)]`` is a 1D array of the attributions of feature 1 for all explained instances, and ``values[(1, 2)]`` is a 1D array of the interactions of features 1 and 2 for all explained instances.
 
-    Two established tree-explanation modes :cite:t:`Lundberg.2020` differ in what "feature
+    Two established tree-explanation modes :cite:p:`Lundberg.2020` differ in what "feature
     :math:`i` is absent" means:
 
     - In ``"pathdependent"`` mode (the default) an absent feature follows *both* children of
       its split nodes, weighted by the share of training samples that went each way — the
       background distribution is the one already stored in the tree, so no data is needed.
-      The computation uses Quadrature-TreeSHAP :cite:t:`Wettenstein.2026a` (whose first-order
-      case was independently derived in TreeGrad-Ranker :cite:t:`Li.2026`), implemented in
+      The computation uses Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` (whose first-order
+      case was independently derived in TreeGrad-Ranker by :cite:t:`Li.2026`), implemented in
       :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP`: values and interactions are
       Gauss-Legendre integrals of weighted Banzhaf interaction polynomials, numerically exact
       in float64 at any tree depth. The algorithm descends from Linear TreeSHAP
-      :cite:t:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
-      by TreeSHAP-IQ :cite:t:`Muschalik.2024a`; Banzhaf indices fall out of the same
-      polynomials by evaluation at participation probability 1/2. Supported indices:
-      ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``, and ``"BII"``.
+      :cite:p:`Yu.2022` and computes any-order Shapley interactions as introduced for trees
+      by TreeSHAP-IQ :cite:p:`Muschalik.2024a`; Banzhaf indices fall out of the same
+      polynomials by evaluation at participation probability 1/2, the Moebius
+      coefficients by evaluation at 0, and the Fourier coefficients as ``(-1/2)^|S|`` times
+      the Banzhaf interactions. Supported indices: ``"SV"``, ``"SII"``, ``"k-SII"``, ``"BV"``,
+      ``"BII"``, ``"Moebius"``, and ``"Fourier"``.
 
     - In ``"interventional"`` mode an absent feature takes the values it has in a
       ``reference_dataset`` (background SHAP), computed by
       :class:`~shapiq.tree.interventional.computer.InterventionalTreeSHAPIQ`, which
-      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. Large
+      additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
+      ``"Moebius"`` and ``"Fourier"`` transforms are available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
-      :cite:t:`Nadel.2026` :cite:t:`Wettenstein.2026b` when the optional
+      :cite:p:`Nadel.2026,Wettenstein.2026b` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
       ``backend`` parameter overrides this routing.
 
@@ -174,9 +178,10 @@ class TreeExplainer(Explainer):
                 indices such as ``"k-SII"``. Defaults to ``0``.
 
             index: The type of interaction to be computed. In ``"pathdependent"`` mode, the
-                indices ``["SV", "SII", "k-SII", "BV", "BII"]`` are supported. In
-                ``"interventional"`` mode, further indices such as ``"STII"``, ``"FSII"``, or
-                ``"FBII"`` can be computed. Defaults to ``"SV"``.
+                indices ``["SV", "SII", "k-SII", "BV", "BII", "Moebius", "Fourier"]`` are
+                supported. In ``"interventional"`` mode, further indices such as ``"STII"``,
+                ``"FSII"``, or ``"FBII"`` can be computed on top of those. Defaults to
+                ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -233,7 +238,15 @@ class TreeExplainer(Explainer):
             if reason is not None:
                 msg = f"backend='woodelf' cannot be used: {reason}."
                 raise ValueError(msg)
-        if mode == "pathdependent" and self.index not in ("SV", "SII", "k-SII", "BV", "BII"):
+        if mode == "pathdependent" and self.index not in (
+            "SV",
+            "SII",
+            "k-SII",
+            "BV",
+            "BII",
+            "Moebius",
+            "Fourier",
+        ):
             msg = (
                 f"index='{self.index}' is not supported in 'pathdependent' mode; use "
                 "mode='interventional' with a reference_dataset."
@@ -358,7 +371,17 @@ class TreeExplainer(Explainer):
         Returns:
             A human-readable reason, or ``None`` when Woodelf supports the configuration.
         """
-        if self.index not in ("SV", "BV", "SII", "k-SII", "BII", "STII", "FSII", "FBII"):
+        if self.index not in (
+            "SV",
+            "BV",
+            "SII",
+            "k-SII",
+            "BII",
+            "STII",
+            "FSII",
+            "FBII",
+            "Moebius",
+        ):
             return f"index='{self.index}' is not supported by Woodelf"
 
         cat_boost_classes = [
@@ -414,6 +437,7 @@ class TreeExplainer(Explainer):
                 FaithfulShapleyInteractionValues,
                 GeneralBanzhafInteractionValues,
                 GeneralShapleyInteractionValues,
+                MobiusCoefficients,
                 ShapleyTaylorInteractionValues,
                 ShapleyValues,
             )
@@ -436,6 +460,7 @@ class TreeExplainer(Explainer):
             "STII": ShapleyTaylorInteractionValues,
             "FSII": FaithfulShapleyInteractionValues,
             "FBII": FaithfulBanzhafInteractionValues,
+            "Moebius": MobiusCoefficients,
         }
         if self._index == "SV":
             metric = ShapleyValues()
@@ -448,7 +473,12 @@ class TreeExplainer(Explainer):
             msg = f"index='{self._index}' is not supported by Woodelf."
             raise ValueError(msg)
 
-        class_index = self._class_label if self._class_label is not None else 1
+        # class_index=0 of a binary booster: the converters negate the class-1 log-odds, but
+        # Woodelf ignores class_index for single-output models. Request the class-1 log-odds
+        # explicitly and negate them below, which stays correct if Woodelf starts negating
+        # class 0 itself; the values are linear in the model output.
+        negated_class_one = any(tree.negated_class_one for tree in self._trees)
+        class_index = 1 if negated_class_one or self._class_label is None else self._class_label
         loaded_model = load_decision_tree_ensemble_model(
             self.model, range(X.shape[1]), class_index=class_index
         )
@@ -470,6 +500,8 @@ class TreeExplainer(Explainer):
             metric=metric,
             model_was_loaded=True,
         )
+        if negated_class_one:
+            woodelf_result = {key: -value for key, value in woodelf_result.items()}
         if self._index in ("SV", "BV"):
             return {(k,): v for k, v in woodelf_result.items()}
         if self._index == "k-SII":
@@ -544,8 +576,8 @@ class TreeExplainer(Explainer):
         """Compute the explanation via the path-dependent quadrature explainer.
 
         The :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP` built in ``_init_explainers``
-        validates the model and aggregates over ensembles itself; this method only enforces
-        the requested ``min_order`` on the result.
+        validates the model and aggregates over ensembles itself; the requested ``min_order``
+        is applied by :meth:`explain_function`.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
@@ -560,20 +592,7 @@ class TreeExplainer(Explainer):
         if self._pathdependent_explainer is None:
             msg = "Path-dependent explainer is not initialized; mode must be 'pathdependent'."
             raise RuntimeError(msg)
-
-        final_explanation = self._pathdependent_explainer.explain(x)
-
-        if self._min_order == 0 and final_explanation.min_order == 1:
-            final_explanation.min_order = 0
-            final_explanation.interactions[()] = float(final_explanation.baseline_value)
-
-        if self._min_order > final_explanation.min_order:
-            final_explanation = final_explanation.get_n_order(
-                min_order=self._min_order,
-                max_order=self._max_order,
-            )
-
-        return final_explanation
+        return self._pathdependent_explainer.explain(x)
 
     def _explain_function_interventionaltreeshapiq(
         self,
@@ -593,6 +612,31 @@ class TreeExplainer(Explainer):
             msg = "Interventional explainer is not initialized; mode must be 'interventional'."
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
+
+    def _enforce_min_order(self, explanation: InteractionValues) -> InteractionValues:
+        """Apply the requested ``min_order`` to the explanation of either mode's computer.
+
+        ``min_order=0`` adds the empty interaction with the baseline value; a larger
+        ``min_order`` drops every interaction below it. The k-SII aggregation reports
+        ``min_order=0`` with the empty interaction, so it is filtered like any other result.
+
+        Args:
+            explanation: The explanation as the mode's computer returned it.
+
+        Returns:
+            The explanation restricted to ``min_order .. max_order``.
+        """
+        if self._min_order == 0 and explanation.min_order >= 1:
+            explanation.min_order = 0
+            explanation.interactions[()] = float(explanation.baseline_value)
+        elif self._min_order > explanation.min_order or (
+            self._min_order >= 1 and () in explanation.interactions
+        ):
+            explanation = explanation.get_n_order(
+                min_order=self._min_order,
+                max_order=self._max_order,
+            )
+        return explanation
 
     def explain_function(  # type: ignore[override]
         self,
@@ -622,8 +666,10 @@ class TreeExplainer(Explainer):
         if not self._explainers_initialized:
             self._init_explainers()
         if self.mode == "pathdependent":
-            return self._explain_function_pathdependent(x, **kwargs)
-        return self._explain_function_interventionaltreeshapiq(x, **kwargs)
+            explanation = self._explain_function_pathdependent(x, **kwargs)
+        else:
+            explanation = self._explain_function_interventionaltreeshapiq(x, **kwargs)
+        return self._enforce_min_order(explanation)
 
     def explain_X(
         self,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from shapiq import InteractionValues
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory import get_computation_index
+from shapiq.interaction_values import InteractionValues
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 from .validation import validate_pk_model
@@ -25,11 +25,8 @@ class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
     The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
-    classification models. See [pkex-shapley]_ for details.
+    classification models. See :cite:t:`Mohammadi.2025` for details.
 
-
-    References:
-        .. [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
 
     Attributes:
         model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.

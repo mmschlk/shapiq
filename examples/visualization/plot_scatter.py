@@ -2,7 +2,7 @@
 Scatter Plot
 ============
 
-This example demonstrates :func:`~shapiq.scatter_plot`, which plots the
+This example demonstrates :func:`~shapiq.plot.scatter_plot`, which plots the
 per-sample value of an interaction against the value of one feature. For
 first-order interactions this matches SHAP's ``shap.plots.scatter``; for
 higher-order interactions the x-axis is restricted to a single feature in
@@ -16,14 +16,15 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # Train a Model
 # -------------
 
-x_data, y_data = shapiq.datasets.load_california_housing(to_numpy=False)
-feature_names = list(x_data.columns)
-x_data, y_data = x_data.values, y_data.values
+dataset = load_dataset("california_housing")
+x_data, y_data = dataset.x, dataset.y
+feature_names = list(dataset.feature_names)
 x_train, x_test, y_train, y_test = train_test_split(
     x_data,
     y_data,
@@ -43,6 +44,7 @@ x_explain = x_test[:200]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="FSII",
     max_order=2,
     random_state=42,

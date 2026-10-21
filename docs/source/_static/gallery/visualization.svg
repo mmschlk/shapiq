@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>A force plot, a bar plot, and an interaction graph</title>
+  <polygon points="36,32 101,32 112,50 101,68 36,68 47,50" fill="#e3326a"/>
+  <polygon points="116,32 167,32 178,50 167,68 116,68 127,50" fill="#e3326a"/>
+  <polygon points="182,32 221,32 232,50 221,68 182,68 193,50" fill="#e3326a"/>
+  <polygon points="300,32 247,32 236,50 247,68 300,68 289,50" fill="#5773e5"/>
+  <polygon points="364,32 315,32 304,50 315,68 364,68 353,50" fill="#5773e5"/>
+  <path d="M234 22 V78" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M112 112 V256" stroke="#8b93a7" stroke-width="3"/>
+  <rect x="115" y="124" width="72" height="22" rx="5" fill="#e3326a"/>
+  <rect x="115" y="156" width="44" height="22" rx="5" fill="#e3326a"/>
+  <rect x="75" y="188" width="34" height="22" rx="5" fill="#5773e5"/>
+  <rect x="47" y="220" width="62" height="22" rx="5" fill="#5773e5"/>
+  <line x1="303.6" y1="132.4" x2="342.5" y2="174" stroke="#e3326a" stroke-width="7" stroke-opacity="0.7"/>
+  <line x1="342.5" y1="190" x2="301.6" y2="233.8" stroke="#5773e5" stroke-width="4" stroke-opacity="0.7"/>
+  <line x1="282.4" y1="233.8" x2="240.8" y2="189.3" stroke="#e3326a" stroke-width="3" stroke-opacity="0.7"/>
+  <line x1="240.8" y1="174.7" x2="280.4" y2="132.4" stroke="#e3326a" stroke-width="5" stroke-opacity="0.7"/>
+  <line x1="244" y1="182" x2="339" y2="182" stroke="#5773e5" stroke-width="6" stroke-opacity="0.7"/>
+  <circle cx="292" cy="120" r="17" fill="#e3326a"/>
+  <circle cx="350" cy="182" r="11" fill="#5773e5"/>
+  <circle cx="292" cy="244" r="14" fill="#e3326a"/>
+  <circle cx="234" cy="182" r="10" fill="#5773e5"/>
+</svg>

@@ -1,0 +1,527 @@
+/* The examples: the landing page (examples.rst), the group pages (the GALLERY_HEADER.rst of every
+   folder of examples), and the thumbnail cards of sphinx-gallery. Colors, radii, shadows and
+   motion come from tokens.css, text colors from furo. The illustrations in _static/gallery have
+   transparent backgrounds and sit on a "stage" that follows the theme. */
+
+body {
+  --shapiq-stage: linear-gradient(160deg, #f8f9fd 0%, #eef1fa 100%);
+  --shapiq-stage-border: var(--shapiq-border);
+  /* thumbnails are mostly white matplotlib figures, so their stage stays light in both themes */
+  --shapiq-thumb-stage: #ffffff;
+  --shapiq-accent-border: color-mix(in srgb, var(--shapiq-blue) 45%, var(--shapiq-border));
+  --shapiq-pill: color-mix(in srgb, var(--shapiq-blue) 10%, transparent);
+  --shapiq-pill-hover: color-mix(in srgb, var(--shapiq-blue) 20%, transparent);
+  --shapiq-pill-border: color-mix(in srgb, var(--shapiq-blue) 28%, transparent);
+}
+
+body[data-theme="dark"] {
+  --shapiq-stage: linear-gradient(160deg, #20232e 0%, #1a1c24 100%);
+  --shapiq-thumb-stage: #f3f5fa;
+  --shapiq-pill: color-mix(in srgb, var(--shapiq-blue-light) 14%, transparent);
+  --shapiq-pill-hover: color-mix(in srgb, var(--shapiq-blue-light) 24%, transparent);
+  --shapiq-pill-border: color-mix(in srgb, var(--shapiq-blue-light) 32%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --shapiq-stage: linear-gradient(160deg, #20232e 0%, #1a1c24 100%);
+    --shapiq-thumb-stage: #f3f5fa;
+    --shapiq-pill: color-mix(in srgb, var(--shapiq-blue-light) 14%, transparent);
+    --shapiq-pill-hover: color-mix(in srgb, var(--shapiq-blue-light) 24%, transparent);
+    --shapiq-pill-border: color-mix(in srgb, var(--shapiq-blue-light) 32%, transparent);
+  }
+}
+
+/* -- Landing page --------------------------------------------------------------------------- */
+
+p.shapiq-examples-lead {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-foreground-secondary);
+  text-align: left;
+  max-width: 42em;
+}
+
+/* learning paths */
+.shapiq-paths .sd-card.shapiq-path-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+  box-shadow: none;
+}
+
+.shapiq-paths .sd-card.shapiq-path-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--shapiq-gradient);
+}
+
+.shapiq-path-card .sd-card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.15rem 1.05rem 1.35rem;
+}
+
+.shapiq-path-card .sd-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 1rem;
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-path-card .sd-card-title .sd-octicon {
+  flex: none;
+  color: var(--shapiq-red);
+}
+
+.shapiq-path-card p.sd-card-text {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--color-foreground-secondary);
+}
+
+/* the groups of a path: a wrapping row of pills, pushed to the bottom of the card */
+.shapiq-path-card p.shapiq-path-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: auto 0 0;
+}
+
+.shapiq-path-steps a.reference {
+  display: inline-block;
+  padding: 0.1rem 0.7rem;
+  border: 1px solid var(--shapiq-pill-border);
+  border-radius: 999px;
+  background: var(--shapiq-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.75;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--color-brand-content);
+  transition: background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-path-steps a.reference:hover,
+.shapiq-path-steps a.reference:focus-visible {
+  background: var(--shapiq-pill-hover);
+}
+
+.shapiq-path-steps a.reference .std,
+.shapiq-path-steps a.reference span {
+  font: inherit;
+}
+
+/* one card per group of examples; the last row is centered */
+.shapiq-groups > .sd-row {
+  justify-content: center;
+}
+
+.shapiq-groups .sd-card.shapiq-group-card {
+  overflow: hidden;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  transition:
+    transform var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease),
+    border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-groups .sd-card.shapiq-group-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--shapiq-accent-border);
+  box-shadow: var(--shapiq-shadow-hover);
+}
+
+.shapiq-groups .sd-card.shapiq-group-card:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.shapiq-group-card img.sd-card-img-top {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 10 / 7;
+  margin: 0;
+  padding: 0.85rem 1rem 0.65rem;
+  object-fit: contain;
+  border-bottom: 1px solid var(--shapiq-stage-border);
+  border-radius: 0;
+  background: var(--shapiq-stage);
+  transition: transform var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-group-card:hover img.sd-card-img-top {
+  transform: scale(1.03);
+}
+
+.shapiq-group-card .sd-card-body {
+  position: relative; /* above the zoomed image */
+  padding: 0.85rem 1rem 1rem;
+  background: var(--shapiq-surface);
+}
+
+.shapiq-group-card .sd-card-title {
+  margin-bottom: 0.3rem;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-group-card p.sd-card-text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--color-foreground-secondary);
+}
+
+/* one column on phones: a compact list with the illustration on the left */
+@media (max-width: 35.99em) {
+  .shapiq-groups .sd-card.shapiq-group-card {
+    flex-direction: row;
+  }
+
+  .shapiq-group-card img.sd-card-img-top {
+    flex: none;
+    width: 38%;
+    height: auto;
+    aspect-ratio: auto;
+    padding: 0.6rem;
+    border-right: 1px solid var(--shapiq-stage-border);
+    border-bottom: 0;
+  }
+
+  .shapiq-group-card .sd-card-body {
+    align-self: center;
+    padding: 0.75rem 0.9rem;
+  }
+}
+
+/* -- Group pages ---------------------------------------------------------------------------- */
+
+.shapiq-gallery-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  gap: 1rem 2rem;
+  align-items: center;
+  margin: 0.25rem 0 1.25rem;
+}
+
+.shapiq-gallery-hero > img.shapiq-gallery-hero-image {
+  grid-row: 1;
+  grid-column: 2;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 10 / 7;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--shapiq-stage-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-stage);
+  box-shadow: var(--shapiq-shadow);
+}
+
+.shapiq-gallery-hero > .shapiq-gallery-hero-text {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.shapiq-gallery-hero-text p {
+  text-align: left;
+}
+
+.shapiq-gallery-hero-text > p:first-child {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-gallery-hero-text > p:last-child {
+  margin-bottom: 0;
+}
+
+p.shapiq-gallery-api,
+p.shapiq-gallery-next {
+  margin: 0.6rem 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  text-align: left;
+  color: var(--color-foreground-secondary);
+}
+
+p.shapiq-gallery-api {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+}
+
+p.shapiq-gallery-api strong,
+p.shapiq-gallery-next strong {
+  color: var(--color-foreground-primary);
+}
+
+/* the approximator guide: index names stay on one line */
+table.shapiq-approximator-guide td:first-child {
+  font-weight: 600;
+}
+
+table.shapiq-approximator-guide td,
+table.shapiq-approximator-guide th {
+  text-align: left;
+  vertical-align: top;
+}
+
+table.shapiq-approximator-guide p {
+  text-align: left;
+}
+
+/* on phones, every row of the guide becomes a small card */
+@media (max-width: 40em) {
+  table.shapiq-approximator-guide,
+  table.shapiq-approximator-guide tbody,
+  table.shapiq-approximator-guide tr,
+  table.shapiq-approximator-guide td {
+    display: block;
+    width: auto;
+  }
+
+  table.shapiq-approximator-guide {
+    border: 0;
+    box-shadow: none;
+  }
+
+  table.shapiq-approximator-guide thead,
+  table.shapiq-approximator-guide colgroup {
+    display: none;
+  }
+
+  table.shapiq-approximator-guide tr {
+    margin-bottom: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--shapiq-border);
+    border-radius: var(--shapiq-radius-small);
+    background: var(--shapiq-surface-raised);
+  }
+
+  table.shapiq-approximator-guide td {
+    padding: 0.1rem 0;
+    border: 0;
+  }
+
+  table.shapiq-approximator-guide td:nth-child(2)::before,
+  table.shapiq-approximator-guide td:nth-child(3)::before {
+    display: inline-block;
+    min-width: 2.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-foreground-muted);
+  }
+
+  table.shapiq-approximator-guide td:nth-child(2)::before {
+    content: "auto";
+  }
+
+  table.shapiq-approximator-guide td:nth-child(3)::before {
+    content: "also";
+  }
+
+  table.shapiq-approximator-guide td > p {
+    display: inline;
+  }
+}
+
+.shapiq-gallery-notes p,
+.shapiq-gallery-notes li {
+  text-align: left;
+}
+
+/* the legend of the approximator families; the last row is centered */
+.shapiq-family-grid > .sd-row {
+  justify-content: center;
+}
+
+.shapiq-family-grid .sd-card.shapiq-family-card {
+  overflow: hidden;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface);
+  box-shadow: none;
+}
+
+.shapiq-family-card img.sd-card-img-top {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 10 / 7;
+  margin: 0;
+  padding: 0.5rem 0.6rem 0.35rem;
+  border-bottom: 1px solid var(--shapiq-stage-border);
+  border-radius: 0;
+  background: var(--shapiq-stage);
+}
+
+.shapiq-family-card .sd-card-body {
+  padding: 0.55rem 0.7rem 0.7rem;
+}
+
+.shapiq-family-card .sd-card-title {
+  margin-bottom: 0.15rem;
+  font-size: 0.875rem;
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-family-card p.sd-card-text {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--color-foreground-secondary);
+}
+
+@media (max-width: 40em) {
+  .shapiq-gallery-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shapiq-gallery-hero > img.shapiq-gallery-hero-image {
+    grid-column: 1;
+    width: min(100%, 18rem);
+  }
+
+  .shapiq-gallery-hero > .shapiq-gallery-hero-text {
+    grid-row: 2;
+  }
+}
+
+/* -- sphinx-gallery thumbnails -------------------------------------------------------------- */
+
+.sphx-glr-thumbnails {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer {
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  transition:
+    transform var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease),
+    border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer:hover {
+  transform: translateY(-3px);
+  border-color: var(--shapiq-accent-border);
+  box-shadow: var(--shapiq-shadow-hover);
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer img {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 10 / 7;
+  margin: 0;
+  padding: 0.4rem;
+  object-fit: contain;
+  border-bottom: 1px solid var(--shapiq-border);
+  background: var(--shapiq-thumb-stage);
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbnail-title {
+  padding: 0.7rem 0.9rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--color-foreground-primary);
+}
+
+/* the first paragraph of an example (sphinx-gallery's tooltip) is shown under the title */
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer[tooltip]::before,
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer[tooltip]:hover::before {
+  display: none;
+}
+
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer[tooltip]::after,
+.sphx-glr-thumbnails .sphx-glr-thumbcontainer[tooltip]:hover::after {
+  content: attr(tooltip);
+  position: static;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  box-sizing: content-box;
+  width: auto;
+  max-height: calc(3 * 1.45em); /* the clamp alone does not cut a flex item in every browser */
+  margin: 0 0 0.85rem; /* not padding, which would show a fourth line */
+  padding: 0.3rem 0.9rem 0;
+  border-radius: 0;
+  background: none;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--color-foreground-secondary);
+  pointer-events: none;
+  z-index: auto;
+}
+
+/* -- Example pages -------------------------------------------------------------------------- */
+
+/* the printed output of a code block, in the colors of the theme instead of yellow */
+.sphx-glr-script-out .highlight pre {
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background-color: var(--shapiq-surface-raised);
+}
+
+div.sphx-glr-download a {
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  background-image: none;
+  font-weight: 600;
+  color: var(--color-foreground-primary);
+  transition: border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+div.sphx-glr-download a:hover {
+  border-color: var(--shapiq-accent-border);
+  background: var(--shapiq-surface-raised);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapiq-groups .sd-card.shapiq-group-card:hover,
+  .shapiq-group-card:hover img.sd-card-img-top,
+  .sphx-glr-thumbnails .sphx-glr-thumbcontainer:hover {
+    transform: none;
+  }
+}

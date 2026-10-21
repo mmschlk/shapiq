@@ -1,64 +1,99 @@
-# What Are Shapley Interactions, and Why Should You Care?
-Shapley values are the go-to method for explainable AI because they are easy to interpret and theoretically well-founded.
-However, they struggle to capture the interplay between features.
-About two years ago, we attended a talk that introduced the concept of **Shapley interactions**, and we quickly realized that Shapley interactions were exactly the solution to our problem!
-Unfortunately, the presenter also mentioned that calculating Shapley interaction values is extremely difficult, if not impossible.
-We started experimenting a bit and soon came up with a preliminary approach to compute Shapley interactions for any machine learning model.
-After receiving positive feedback and growing interest from the community, we realized that this research gap was a perfect opportunity to pursue our own interests and create impact for others.
-That’s when our shapiq project was born. Here, we want to tell you what Shapley interactions are and why you should care.
+# What Are Shapley Interactions?
+
+Shapley values are the go-to method of explainable AI: they are easy to interpret and
+theoretically well-founded. They do not show, however, how features work *together*. Shapley
+interactions do. This page explains what interactions are, what Shapley values miss, and how
+Shapley interactions fill the gap.
 
 ## What Are Interactions?
 
-Imagine you're working with the California housing dataset and we want to predict house prices. Features like location, median income, and year built all play a role.
-Location, for example, is represented by longitude (west-east) and latitude (north-south).
-But here’s the twist: looking at longitude or latitude individually doesn’t tell the whole story. It’s their combination—pinpointing the exact location—that influences house prices.
-Take two houses (with otherwise similar properties) near the ocean:
-* Close to San Francisco: $454,000.
-* Far from major hotspots: $210,000.
+Imagine predicting house prices with the California housing dataset. Features such as the
+location, the median income, and the age of a house all play a role. The location is described by
+two features: the longitude (west to east) and the latitude (north to south).
 
-This difference isn’t explained by longitude or latitude alone but by their interaction. Interactions capture the idea that one feature's influence (longitude) depends on the value of another (latitude).
+Neither of them alone tells the whole story: it is their *combination*, the exact location, that
+drives the price. Take two otherwise similar houses near the ocean:
 
-## Limitations of Shapley Values
-Shapley values are popular because they distribute the effects of features fairly.
-For example, if you explain the above-mentioned house in San Francisco with a predicted house price of 454,000$, Shapley values show that both longitude and latitude positively contribute (see image below).
-But there's a problem: Shapley values merge individual effects and interaction effects into a single number. This means:
-* We can’t tell how much of a feature’s influence is individual versus interactive.
-* We don’t know which other features it interacts with.
+- close to San Francisco: \$454,000,
+- far from the cities: \$210,000.
 
-<div style="text-align:center">
-<img src="../_static/images/motivation_sv.png" width="800">
-</div>
+The difference is explained neither by the longitude nor by the latitude alone, but by their
+**interaction**: the effect of one feature (the longitude) depends on the value of another (the
+latitude).
 
-## Enter Shapley Interactions
-Shapley interactions enhance the traditional Shapley value approach by breaking down the effects of features into **individual contributions** and **interactions between features**.
-Instead of providing a single value per feature, Shapley interactions distribute the prediction's influence across both individual features and groups of interacting features.
-So for each combination of features we, potentially, can get a value of an interaction.
-Let’s return to our **California housing** example, the decomposition up to order 2 compared to order 1 (Shapley value) shows that:
-* Longitude has a high individual contribution, showing the importance of proximity to the ocean.
-* Latitude, however, has little individual impact, with its contribution coming entirely from its interaction with longitude (in the image below latitude’s contribution vanishes but the interaction between longitude and latitude appears). This interaction captures how the combination of longitude and latitude identifies high-value locations, like San Francisco.
+## What Shapley Values Miss
 
-By predefining a **maximum interaction order**, you can control how detailed the analysis gets.
-Setting it to second-order interactions, for instance, allows you to explore how pairs of features interact (like longitude and latitude) while still capturing individual effects.
-This provides a richer understanding of how features influence predictions—whether independently or through their interplay.
+Shapley values {cite:p}`Shapley.1951` distribute a prediction fairly among the features. Explain
+the house in San Francisco, with a predicted price of \$454,000, and both the longitude and the
+latitude contribute positively:
 
-<div style="text-align:center">
-<img src="../_static/images/motivation_sv_and_si.png" width="800">
-</div>
+```{figure} ../_static/images/motivation_sv.png
+---
+figclass: shapiq-figure
+alt: >-
+  A force plot of the Shapley values of a house in San Francisco: the longitude and the latitude
+  both raise the predicted price.
+---
+The Shapley values of the house in San Francisco.
+```
 
-Hence, Shapley interactions give you more granular insights into the relationships driving model predictions, helping **uncover synergies or redundancies that traditional Shapley values can’t**.
-One of the main takeaways here is that we can interpret Shapley interactions like you are used to with SHAP, while providing more information. This level of detail, however, can come with a cost.
+But a Shapley value merges the feature's own effect and its interactions with other features into
+one number. So we cannot tell
 
-## Balancing Insights and Complexity
-The more interactions we analyze (higher-order decompositions), the more insights we uncover.
-**But there’s a tradeoff:** explanations become more complex and harder to interpret (because we have way more values/interactions to analyze).
-Striking the right balance between depth and simplicity depends on your goals.
+- how much of a feature's influence is its own and how much it shares with other features, and
+- which features it interacts with.
 
-## Computing Shapley Interactions in Python with shapiq
+## Shapley Interactions
 
-If you're curious about how to compute these decompositions or visualize them, check out our shapiq package for an easy way to explore Shapley interactions and uncover new insights!
-Currently, we offer a range of model-agnostic and model-specific explainers and computation methods, which you can use to calculate Shapley interactions and Shapley values for all data types and model kinds.
-Check out the examples and tutorials on how to use it for your task.
+Shapley interactions {cite:p}`Grabisch.1999,Bordt.2023` split the effects into the
+**contributions of single features** and the **interactions of groups of features**: instead of
+one value per feature, every group of features can get a value. Back to the house: its
+explanation with Shapley interactions up to order 2 shows that
 
-<div style="text-align:center">
-<img src="../_static/images/package_overview_paper.png" width="800">
-</div>
+- the longitude has a large effect of its own: the house is close to the ocean,
+- the latitude has little effect of its own: its contribution comes from its interaction with the
+  longitude. In the figure below, the latitude vanishes and the interaction of the latitude and
+  the longitude appears; together, they locate the expensive area around San Francisco.
+
+```{figure} ../_static/images/motivation_sv_and_si.png
+---
+figclass: shapiq-figure
+alt: >-
+  Force plots of the Shapley values and of the Shapley interactions of order 2 of the same house:
+  the interactions credit the latitude and the longitude jointly.
+---
+The same house explained with Shapley values (top) and with Shapley interactions of order 2
+(bottom).
+```
+
+Shapley interactions read like the Shapley values you know from SHAP, but they tell more: they
+**uncover the synergies and redundancies** that Shapley values average away.
+
+## Balancing Insight and Complexity
+
+The **maximum interaction order** sets how detailed an explanation is. Order 2 explains pairs of
+features (like the longitude and the latitude) besides the single features; higher orders explain
+larger groups. Each order adds insight, but also many more values to read, so the right order
+depends on your question.
+
+```{tip}
+Start with pairs (`max_order=2`), and look at higher orders where pairs do not explain enough.
+```
+
+## Shapley Interactions with shapiq
+
+`shapiq` computes Shapley values and interactions for any model: exactly for tree ensembles,
+nearest neighbors, and kernel methods, and with approximators for all other models. The
+{doc}`start` shows the first steps, and the {doc}`examples </examples>` show `shapiq` at work,
+from scikit-learn models to language models.
+
+```{admonition} How shapiq started
+:class: note
+
+A few years ago, we attended a talk that introduced Shapley interactions, and we quickly realized
+that they were exactly what we needed. The presenter also mentioned that computing them is
+extremely hard, if not impossible. We started experimenting and soon had a first approach to
+compute Shapley interactions for any machine learning model {cite:p}`Fumagalli.2023`. The interest
+of the community showed us that this research gap was a chance to pursue our own interests and to
+create impact for others: `shapiq` was born {cite:p}`Muschalik.2024`.
+```

@@ -49,14 +49,16 @@ def parse_catboost_json_model(
 
     Args:
         model_json: CatBoost JSON model as a dictionary.
-        class_label: For multiclass classifiers, the class index to extract. ``None`` is passed
-            to the C++ parser as ``-1`` and defaults to class ``1`` for multiclass CatBoost
-            models. It is ignored for regression/binary trees.
+        class_label: For classifiers, the class index to explain. ``None`` is passed to the
+            C++ parser as ``-1`` and defaults to class ``1``. For binary classifiers
+            (``Logloss``/``CrossEntropy``), ``0`` negates the class-``1`` log-odds. It is
+            ignored for regression trees.
 
     Returns:
         A list of ``TreeModel`` instances, one per CatBoost tree.
     """
     byte_array = json.dumps(model_json, separators=(",", ":")).encode("utf-8")
+    # without a model object, binary classifiers are identified by their loss
     return _mark_float32_input(
         parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
     )
@@ -69,13 +71,17 @@ def convert_catboost_model(
     """Convert a CatBoost model to the unified internal tree format used by shapiq.
 
     The converter uses CatBoost's JSON export and currently supports numeric
-    ``FloatFeature`` splits. For multiclass CatBoost models, pass ``class_label`` to
-    select the raw margin for one class. If ``class_label`` is ``None``, the C++ parser
-    defaults to class ``1`` for multiclass models.
+    ``FloatFeature`` splits. For CatBoost classifiers, pass ``class_label`` to select the
+    raw margin for one class; ``None`` defaults to class ``1``. Binary classifiers model the
+    class-``1`` log-odds, so ``class_label=0`` negates the trees.
     """
     byte_array = _catboost_model_to_json_bytes(model)
     return _mark_float32_input(
-        parse_catboost_json_treemodels(byte_array, -1 if class_label is None else class_label)
+        parse_catboost_json_treemodels(
+            byte_array,
+            -1 if class_label is None else class_label,
+            isinstance(model, CatBoostClassifier),
+        )
     )
 
 

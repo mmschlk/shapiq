@@ -28,9 +28,9 @@ TreeSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 class TreeSHAPIQ:
     """The TreeSHAP-IQ computation class.
 
-    This class implements the TreeSHAP-IQ algorithm :cite:t:`Muschalik.2024a` for computing
+    This class implements the TreeSHAP-IQ algorithm :cite:p:`Muschalik.2024a` for computing
     Shapley Interaction values on tree-based models. TreeSHAP-IQ extends the Linear TreeSHAP
-    algorithm :cite:t:`Yu.2022` from Shapley values to Shapley Interaction values up to a
+    algorithm :cite:p:`Yu.2022` from Shapley values to Shapley Interaction values up to a
     given order; it visits each node only once and uses polynomial arithmetic to compute the
     interactions efficiently.
 
@@ -491,7 +491,7 @@ class TreeSHAPIQ:
         """Computes the psi function for the TreeSHAP-IQ algorithm.
 
         It scales the interaction polynomials with the summary polynomial and the quotient
-        polynomial. For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
+        polynomial. For details, refer to :cite:t:`Muschalik.2024a`.
 
         Args:
             E: The summary polynomial.

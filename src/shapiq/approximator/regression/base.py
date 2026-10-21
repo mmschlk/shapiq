@@ -144,8 +144,7 @@ class Regression(Approximator[TIndices]):
         objective of the WLSQ problem by Monte Carlo sampling and then computes an exact WLSQ
         solution based on the approximated objective. This approximation is an extension of
         KernelSHAP with different variants of kernel weights and regression settings.
-        For details on KernelSHAP, refer to
-        `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
+        For details on KernelSHAP, refer to :cite:t:`Lundberg.2017`.
 
         Args:
             budget: The budget of the approximation.
@@ -208,7 +207,7 @@ class Regression(Approximator[TIndices]):
         This method solves for each interaction_size up to self.max_order separate regression
         problems iteratively. The following regression is thereby fit on the residuals of the
         previous regression problem.
-        For details, refer to `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
+        For details, refer to :cite:t:`Fumagalli.2024`.
 
         Args:
             kernel_weights_dict: The weights of the regression problem as a dictionary per
