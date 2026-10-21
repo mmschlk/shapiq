@@ -2,8 +2,11 @@
 
 ## Development
 
+### Breaking Changes
+- removes `"CHII"` from `ProxySHAP` (and from `approximator="proxyshap"` of the explainers), so `ProxySHAP` and `ProxySPEX` support the same indices: those of the `MoebiusConverter`. Only tree proxies could compute it, not the linear proxy or the MSR residual adjustment.
+
 ### Bugfixes
-- fixes `ProxySHAP` and `ProxySPEX` accepting indices they cannot compute (`"kADD-SHAP"` for both, `"CHII"` for `ProxySPEX`) and failing only in `approximate()`. Both now declare their `valid_indices` and reject other indices at construction. `ProxySHAP(index="CHII")` is read out of tree proxies only and is now also rejected at construction for a linear proxy or with `adjustment=True`.
+- fixes `ProxySHAP` and `ProxySPEX` accepting indices they cannot compute (e.g. `"kADD-SHAP"`) and failing only in `approximate()`. Both now declare their `valid_indices` and reject other indices at construction.
 
 ## v1.8.0 (2026-10-20)
 

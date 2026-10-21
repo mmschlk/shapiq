@@ -59,27 +59,9 @@ def test_unsupported_index_raises_at_construction(index):
         ProxySHAP(n=6, max_order=2, index=index)
 
 
-@pytest.mark.parametrize(
-    ("proxy_model", "adjustment"),
-    [("linear", False), (LinearRegression(), False), ("xgboost", True)],
-)
-def test_chii_rejected_without_tree_readout(proxy_model, adjustment):
-    """CHII is read out of tree proxies only: neither a linear proxy nor the adjustment has it."""
-    with pytest.raises(ValueError, match="CHII is not supported"):
-        ProxySHAP(n=6, max_order=2, index="CHII", proxy_model=proxy_model, adjustment=adjustment)
-
-
-@pytest.mark.parametrize(
-    ("index", "proxy_model", "adjustment"),
-    [
-        (index, proxy_model, adjustment)
-        for index in ProxySHAP.valid_indices
-        for proxy_model in ("xgboost", "linear")
-        for adjustment in (False, True)
-        # rejected at construction, see test_chii_rejected_without_tree_readout
-        if index != "CHII" or (proxy_model != "linear" and not adjustment)
-    ],
-)
+@pytest.mark.parametrize("adjustment", [False, True])
+@pytest.mark.parametrize("proxy_model", ["xgboost", "linear"])
+@pytest.mark.parametrize("index", ProxySHAP.valid_indices)
 def test_approximate_runs_for_every_valid_index(index, proxy_model, adjustment):
     """Every index in ``valid_indices`` is approximated on a small game."""
     n, max_order = 6, 1 if index in ("SV", "BV") else 2

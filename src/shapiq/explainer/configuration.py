@@ -78,7 +78,6 @@ APPROXIMATOR_CONFIGURATIONS: dict[
         "SV": ProxySHAP,
         "BV": ProxySHAP,
         "BII": ProxySHAP,
-        "CHII": ProxySHAP,
     },
     "proxyspex": {
         "SII": ProxySPEX,
