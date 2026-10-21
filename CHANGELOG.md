@@ -3,6 +3,7 @@
 ## Development
 
 - adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly. [#613](https://github.com/mmschlk/shapiq/pull/613)
+- fixes `bar_plot` dropping the first feature for explanations without a base value (e.g. `min_order=1`). [#636](https://github.com/mmschlk/shapiq/pull/636)
 
 ## v1.8.0 (2026-10-20)
 
