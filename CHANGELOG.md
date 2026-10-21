@@ -3,7 +3,7 @@
 ## Development
 
 ### New Features
-- adds `approximator="exact"` to `TabularExplainer`, `AgnosticExplainer`, `TabPFNExplainer`, and `shapiq.Explainer`, which computes the exact values with `ExactComputer` for all indices. It evaluates all `2**n_features` coalitions per explanation and ignores the `budget`, so it is meant for a small number of features. `"auto"` is unchanged. [#320](https://github.com/mmschlk/shapiq/issues/320)
+- adds `approximator="exact"` to `TabularExplainer`, `AgnosticExplainer`, `TabPFNExplainer`, and `shapiq.Explainer`, which computes the exact values with `ExactComputer` for all indices. It evaluates all `2**n_features` coalitions per explanation and ignores the `budget`, so it is meant for a small number of features. `"auto"` is unchanged. [#634](https://github.com/mmschlk/shapiq/pull/634), [#320](https://github.com/mmschlk/shapiq/issues/320)
 
 ## v1.8.0 (2026-10-20)
 
