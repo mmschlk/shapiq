@@ -19,8 +19,8 @@
 # later years get a column of their own.
 eras = [[1950, 1970], [1971, 2005], [2006, 2016]]
 
-# Eight lanes at most: each lane takes the next color of the categorical palette in
-# ``_static/css/timeline.css``.
+# Nine lanes at most: the first eight take the colors of the categorical palette in
+# ``_static/css/timeline.css``, a ninth is neutral.
 [[lanes]]
 id = "foundations"
 name = "Foundations"
@@ -52,7 +52,7 @@ name = "Feature removal"
 description = "How a model is evaluated when features are absent: the choice that defines the explained game."
 
 [[lanes]]
-id = "applications"
+id = "tasks"
 name = "Value functions & tasks"
 description = "Task- and model-specific games that bring Shapley values to new questions."
 
@@ -60,6 +60,11 @@ description = "Task- and model-specific games that bring Shapley values to new q
 id = "software"
 name = "Software & plots"
 description = "Libraries and visualizations for Shapley values and interactions."
+
+[[lanes]]
+id = "applications"
+name = "Applications"
+description = "Studies in science and engineering that explain their models with Shapley values and interactions."
 
 # -- Foundations ------------------------------------------------------------------------------------
 
@@ -277,6 +282,24 @@ model can differ.
 """
 cite = ["Fumagalli.2025"]
 related = ["explaining-by-removing", "interventional-removal"]
+
+[[entries]]
+id = "metagame"
+name = "Metagame and meta-attributions"
+year = 2026
+lane = "foundations"
+summary = "The Shapley values of an attribution: how each feature shapes the attribution of another."
+description = """
+Baniecki et al. treated the attribution of a feature as a cooperative game among the other
+features, the metagame, and called its Shapley values meta-attributions: how much each feature
+influences the attribution of another. Meta-attributions sum to the attribution they explain, a
+hierarchical efficiency that Shapley interactions and integrated Hessians satisfy implicitly. They
+extend any attribution method, e.g. gradient- or attention-based ones, to interactions, which the
+authors used to explain language models, vision-language encoders and diffusion transformers.
+"""
+cite = ["Baniecki.2026"]
+links = [{ label = "Code (credibleai/metagame)", url = "https://github.com/credibleai/metagame" }]
+related = ["sii", "fixlip"]
 
 # -- Interaction indices ----------------------------------------------------------------------------
 
@@ -1170,7 +1193,23 @@ api = [
     "shapiq.imputer.GenerativeConditionalImputer",
 ]
 examples = ["auto_examples/technicalities/plot_conditional_imputer", "auto_examples/technicalities/plot_imputers"]
-related = ["interventional-removal", "shapr"]
+related = ["interventional-removal", "vaeac", "shapr"]
+
+[[entries]]
+id = "vaeac"
+name = "VAEAC"
+year = 2022
+lane = "removal"
+summary = "One variational autoencoder samples the absent features given any set of present ones."
+description = """
+Conditional feature removal needs the distribution of the absent features given every coalition of
+present ones. Olsen et al. learned all of them with a single variational autoencoder with arbitrary
+conditioning (VAEAC) instead of one model per coalition, and trained it with a non-uniform masking
+scheme that makes it accurate in high dimensions. It handles continuous and mixed (categorical)
+features and is one of the approaches of shapr.
+"""
+cite = ["Olsen.2022"]
+related = ["conditional-removal", "shapr"]
 
 [[entries]]
 id = "tabpfn"
@@ -1188,13 +1227,32 @@ api = ["shapiq.explainer.TabPFNExplainer", "shapiq.imputer.TabPFNImputer"]
 examples = ["auto_examples/applications/plot_explaining_tabpfn"]
 related = ["conditional-removal"]
 
+[[entries]]
+id = "compress-then-explain"
+name = "Compress Then Explain"
+year = 2025
+lane = "removal"
+summary = "Kernel thinning selects background data that represent the data distribution better."
+description = """
+Removal-based explanations average the model over background data, usually an i.i.d. sample of
+the dataset. Baniecki et al. compressed the dataset with kernel thinning instead, which selects a
+sample whose distribution is closer to that of the full data. The estimates of SHAP, SAGE, expected
+gradients and feature effects become more accurate and stable at negligible cost, and often reach
+the same accuracy with two to three times fewer samples, and thus model evaluations.
+"""
+cite = ["Baniecki.2025a"]
+links = [
+    { label = "Code (hbaniecki/compress-then-explain)", url = "https://github.com/hbaniecki/compress-then-explain" },
+]
+related = ["interventional-removal", "sage"]
+
 # -- Value functions & tasks ------------------------------------------------------------------------
 
 [[entries]]
 id = "feature-selection"
 name = "Feature selection"
 year = 2007
-lane = "applications"
+lane = "tasks"
 summary = "Selects features by their Shapley values in a game of retrained models."
 description = """
 Cohen et al. defined the value of a feature subset as the performance of a model trained on it, and
@@ -1212,7 +1270,7 @@ related = ["sage", "top-k-identification"]
 id = "local-attribution"
 name = "Local feature attribution"
 year = 2010
-lane = "applications"
+lane = "tasks"
 summary = "Explains an individual prediction by the Shapley values of its features."
 description = """
 Štrumbelj and Kononenko defined the contribution of each feature to a single prediction as its
@@ -1229,7 +1287,7 @@ related = ["kernelshap", "linear-models"]
 id = "data-shapley"
 name = "Data Shapley"
 year = 2019
-lane = "applications"
+lane = "tasks"
 summary = "Values every training point by its contribution to the model's performance."
 description = """
 Ghorbani and Zou treated the training points as players and the performance of a model trained on
@@ -1247,7 +1305,7 @@ related = ["knn-shapley", "least-core", "neuron-shapley", "ensemble-selection"]
 id = "sage"
 name = "SAGE"
 year = 2020
-lane = "applications"
+lane = "tasks"
 summary = "Global feature importance: the Shapley values of the explained loss."
 description = """
 SAGE measures how much each feature contributes to a model's performance on a whole dataset, as the
@@ -1262,7 +1320,7 @@ related = ["isage", "explaining-by-removing", "feature-selection"]
 id = "neuron-shapley"
 name = "Neuron Shapley"
 year = 2020
-lane = "applications"
+lane = "tasks"
 summary = "Finds the neurons of a deep network that are responsible for its behavior."
 description = """
 Ghorbani and Zou treated the neurons or filters of a deep network as players and the network's
@@ -1278,7 +1336,7 @@ related = ["top-k-identification", "data-shapley", "ensemble-selection"]
 id = "timeshap"
 name = "TimeSHAP"
 year = 2021
-lane = "applications"
+lane = "tasks"
 summary = "Shapley values for recurrent models over events, features and cells of a sequence."
 description = """
 TimeSHAP extends KernelSHAP to sequences: it attributes a recurrent model's prediction to past
@@ -1292,7 +1350,7 @@ related = ["ordshap"]
 id = "ensemble-selection"
 name = "Ensemble games"
 year = 2021
-lane = "applications"
+lane = "tasks"
 summary = "Values the members of an ensemble to select a small, accurate sub-ensemble."
 description = """
 Rozemberczki and Sarkar treated the trained models of an ensemble as players that vote on the label
@@ -1310,7 +1368,7 @@ related = ["neuron-shapley", "data-shapley"]
 id = "unsupervised-features"
 name = "Unsupervised feature ranking"
 year = 2022
-lane = "applications"
+lane = "tasks"
 summary = "Ranks features without a model by the information they share."
 description = """
 Balestra et al. defined a game on the features whose value is their total correlation, the
@@ -1325,7 +1383,7 @@ related = ["sage"]
 id = "prefshap"
 name = "PrefSHAP"
 year = 2022
-lane = "applications"
+lane = "tasks"
 summary = "Shapley values for preference learning models."
 description = """
 Hu et al. explained models that predict preferences between pairs of items, with Shapley values
@@ -1338,7 +1396,7 @@ related = ["rkhs-shap"]
 id = "rkhs-shap"
 name = "RKHS-SHAP"
 year = 2022
-lane = "applications"
+lane = "tasks"
 summary = "Shapley values of kernel methods via kernel mean embeddings."
 description = """
 Chau et al. estimated the interventional and observational value functions of kernel methods
@@ -1352,7 +1410,7 @@ related = ["product-kernel", "gp-shap"]
 id = "uncertainty"
 name = "Explaining uncertainty"
 year = 2023
-lane = "applications"
+lane = "tasks"
 summary = "Shapley values of a model's predictive uncertainty instead of its prediction."
 description = """
 Watson et al. explained the entropy of the predictive distribution, and with it the model's
@@ -1367,7 +1425,7 @@ related = ["gp-shap"]
 id = "isage"
 name = "iSAGE"
 year = 2023
-lane = "applications"
+lane = "tasks"
 summary = "Incremental SAGE for models that learn from data streams."
 description = """
 iSAGE updates SAGE feature importance alongside an incrementally trained model: every observation is
@@ -1381,7 +1439,7 @@ related = ["sage"]
 id = "gp-shap"
 name = "GP-SHAP"
 year = 2023
-lane = "applications"
+lane = "tasks"
 summary = "Stochastic Shapley values that carry the uncertainty of Gaussian processes."
 description = """
 Chau et al. explained Gaussian process models with Shapley values that are random variables
@@ -1394,19 +1452,20 @@ related = ["fanova-gp", "uncertainty"]
 id = "survshap"
 name = "SurvSHAP(t)"
 year = 2023
-lane = "applications"
+lane = "tasks"
 summary = "Time-dependent Shapley values for survival models."
 description = """
 Krzyziński et al. explained the predicted survival function of a model at every point in time,
 which shows how the influence of a feature changes over the time horizon.
 """
 cite = ["Krzyzinski.2023"]
+related = ["survshap-iq"]
 
 [[entries]]
 id = "ordshap"
 name = "OrdShap"
 year = 2025
-lane = "applications"
+lane = "tasks"
 summary = "Separates the effect of a feature's value from that of its position in a sequence."
 description = """
 Hill et al. attributed the predictions of sequential models both to the values of the features and
@@ -1419,7 +1478,7 @@ related = ["timeshap"]
 id = "fixlip"
 name = "FIxLIP"
 year = 2025
-lane = "applications"
+lane = "tasks"
 summary = "Weighted Banzhaf interactions explain the similarity of vision-language encoders."
 description = """
 Baniecki et al. explained the similarity scores of encoders such as CLIP and SigLIP by interactions
@@ -1435,7 +1494,7 @@ related = ["weighted-banzhaf"]
 id = "hypershap"
 name = "HyperSHAP"
 year = 2026
-lane = "applications"
+lane = "tasks"
 summary = "Shapley values and interactions of hyperparameters."
 description = """
 Wever et al. defined games over the hyperparameters of a learning algorithm, e.g. the performance
@@ -1448,7 +1507,7 @@ cite = ["Wever.2026"]
 id = "confoundingshap"
 name = "ConfoundingSHAP"
 year = 2026
-lane = "applications"
+lane = "tasks"
 summary = "Attributes the confounding bias of a treatment effect estimate to covariates."
 description = """
 ConfoundingSHAP defines games whose value is the bias of a treatment effect estimate that adjusts
@@ -1458,6 +1517,43 @@ each covariate confounds the effect.
 cite = ["Brockschmidt.2026"]
 api = ["shapiq_games.LocalConfoundingXAI", "shapiq_games.GlobalConfoundingXAI"]
 examples = ["auto_examples/applications/plot_confounding_xai"]
+
+[[entries]]
+id = "survshap-iq"
+name = "SurvSHAP-IQ"
+year = 2026
+lane = "tasks"
+summary = "Time-dependent Shapley interactions of survival models."
+description = """
+Hazard and survival functions are not additive, which limits additive explanations of survival
+models. Langbein et al. decomposed them into time-dependent and time-independent effects (SurvFD),
+which characterizes when and why additive explanations fail, and extended Shapley interactions to
+functions of time: SurvSHAP-IQ explains the predicted hazard or survival at every point in time. It
+builds on shapiq's exact computation and approximators.
+"""
+cite = ["Langbein.2026"]
+links = [{ label = "Code (bips-hb/survshapiq)", url = "https://github.com/bips-hb/survshapiq" }]
+related = ["survshap", "k-sii"]
+
+[[entries]]
+id = "shnap"
+name = "S(H)NAP"
+year = 2026
+lane = "tasks"
+summary = "Shapley interactions of lung nodules that a diffusion model removes from CT scans."
+description = """
+Sobieski et al. audited Sybil, a deep model that predicts lung cancer risk from a CT scan, in a game
+whose players are the pulmonary nodules: a diffusion bridge replaces absent nodules with healthy
+tissue, and the value of a coalition is the predicted risk. SHNAP decomposes the risk into the
+contributions of the nodules and their pairwise interactions with shapiq, and SNAP inserts nodules
+elsewhere to probe the model. The audit revealed a sensitivity to clinically unjustified artifacts
+and a radial bias.
+"""
+cite = ["Sobieski.2026"]
+links = [
+    { label = "Code (sobieskibj/auditing_sybil)", url = "https://github.com/sobieskibj/auditing_sybil" },
+]
+related = ["k-sii"]
 
 # -- Software & plots -------------------------------------------------------------------------------
 
@@ -1513,6 +1609,21 @@ examples = [
     "auto_examples/visualization/plot_scatter",
 ]
 related = ["treeshap"]
+
+[[entries]]
+id = "dalex"
+name = "dalex"
+year = 2021
+lane = "software"
+summary = "Python library with one Explainer interface for explanations and fairness checks."
+description = """
+dalex, the Python counterpart of the R package DALEX, wraps a model of any framework in an
+Explainer with one interface for local and global explanations, among them Shapley values and
+break-down attributions of single predictions, permutation importance and partial dependence. It
+adds fairness checks and Arena, an interactive dashboard to compare models.
+"""
+cite = ["Baniecki.2021"]
+related = ["shap", "shapr"]
 
 [[entries]]
 id = "network-plot"
@@ -1589,3 +1700,52 @@ removal approaches, including the Gaussian, copula and empirical methods of Aas 
 """
 cite = ["Jullum.2025"]
 related = ["conditional-removal"]
+
+# -- Applications -----------------------------------------------------------------------------------
+
+[[entries]]
+id = "soil-contamination"
+name = "Soil contamination"
+year = 2025
+lane = "applications"
+summary = "Interactions of soil, land use and molecular properties explain how pollutants spread."
+description = """
+Cai et al. predicted the vertical distribution of volatile organic compounds (VOCs) in the soil of a
+pesticide factory with a stacking ensemble, trained on the merged data of several VOCs described by
+molecular descriptors. Shapley interactions (SHAP-IQ) between soil properties, land use and the
+molecular descriptors revealed how the contaminants are distributed and migrate in the soil.
+"""
+cite = ["Cai.2025"]
+related = ["shap-iq", "shapiq"]
+
+[[entries]]
+id = "perovskite-solar-cells"
+name = "Perovskite solar cells"
+year = 2026
+lane = "applications"
+summary = "Shapley interactions disentangle how humidity, solvent and temperature affect efficiency."
+description = """
+Liu et al. controlled the humidity, solvent partial pressure and temperature while fabricating
+perovskite solar cells and explored these conditions with Bayesian optimization. Because SHAP could
+not disentangle the strongly coupled variables, they distilled a Gaussian process into student
+models and explained them with Shapley interactions, which showed how the interactions, e.g. of
+humidity and solvent, change across processing conditions.
+"""
+cite = ["Liu.2026"]
+related = ["shapiq"]
+
+[[entries]]
+id = "steel-design"
+name = "Alloy design of steel"
+year = 2026
+lane = "applications"
+summary = "Explanations of a deep network guide the design of steels that crack less in casting."
+description = """
+Kim et al. predicted the hot ductility of steels from 16 alloying elements and 6 thermal-history
+variables with a deep neural network and explained its predictions with Shapley values and
+interactions. The explanations revealed interactions among niobium, titanium and nitrogen and
+guided the design of a new alloy for automotive applications that reduces surface cracks in
+continuous casting.
+"""
+cite = ["Kim.2026"]
+related = ["shapiq"]

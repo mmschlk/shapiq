@@ -94,6 +94,9 @@ body[data-theme="dark"] .shapiq-timeline {
 .shapiq-timeline [data-slot="8"] {
   --tl-lane: var(--tl-c8);
 }
+.shapiq-timeline [data-slot="9"] {
+  --tl-lane: var(--tl-muted); /* the palette has eight colors: a ninth lane is neutral ("Other") */
+}
 
 .shapiq-timeline [hidden] {
   display: none !important;
@@ -792,13 +795,14 @@ body[data-theme="dark"] .shapiq-timeline {
   cursor: pointer;
   scroll-margin: 4rem 1rem;
   transition:
-    transform var(--shapiq-duration) var(--shapiq-ease),
     box-shadow var(--shapiq-duration) var(--shapiq-ease),
     background-color var(--shapiq-duration) var(--shapiq-ease),
     opacity var(--shapiq-duration) var(--shapiq-ease);
 }
 .tl-chip:hover {
-  transform: translateY(-1px);
+  /* no lift (transform): while a transform animates, Chromium moves every chip painted after
+     this one to a layer of its own, and their text shifts by a fraction of a pixel at the start
+     and at the end of the transition */
   background: color-mix(in srgb, var(--tl-lane) 18%, var(--tl-surface));
   box-shadow:
     inset 3px 0 0 var(--tl-lane),

@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _REQUIRED = {"id", "name", "year", "lane", "summary", "description"}
 _OPTIONAL = {"cite", "api", "examples", "links", "related"}
 _ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-_MAX_LANES = 8  # the colors of the categorical palette in timeline.css
+_MAX_LANES = 9  # the eight colors of the categorical palette in timeline.css and a neutral one
 
 
 class TimelineNode(nodes.General, nodes.Element):
