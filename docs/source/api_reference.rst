@@ -88,7 +88,8 @@ below. The games of :mod:`shapiq_games` and the benchmark :mod:`shapiq_benchmark
       :link-type: doc
       :class-card: shapiq-card
 
-      Force, waterfall, bar, beeswarm, scatter, network, SI graph, and UpSet plots.
+      Force, waterfall, bar, beeswarm, scatter, 2-D scatter, network, SI graph, and UpSet
+      plots.
 
       +++
       shapiq.plot

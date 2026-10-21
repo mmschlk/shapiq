@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from matplotlib import collections
 
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.plot import scatter_plot
 
 N_SAMPLES = 10
@@ -347,8 +347,11 @@ def test_scatter_plot_errors(mock_interaction_data):
     """Tests that scatter_plot raises informative errors for bad inputs."""
     interaction_values_list, feature_data_np, feature_data_pd, feature_names = mock_interaction_data
 
-    with pytest.raises(ValueError, match="non-empty list"):
+    with pytest.raises(ValueError, match="must not be empty"):
         scatter_plot([], feature_data_np, interaction=(0,), show=False)
+
+    with pytest.raises(TypeError, match="InteractionValuesBatch or a list of InteractionValues"):
+        scatter_plot("not_valid", feature_data_np, interaction=(0,), show=False)
 
     with pytest.raises(ValueError, match="must match number of rows"):
         scatter_plot(
@@ -505,3 +508,33 @@ def test_scatter_plot_no_non_empty_interactions():
     data = rng.random((n_samples, n_players))
     with pytest.raises(ValueError, match="No non-empty interactions"):
         scatter_plot(ivs, data, interaction=None, show=False)
+
+
+def test_scatter_plot_batch(mock_interaction_data):
+    """Tests that an InteractionValuesBatch is plotted like the list of its explanations."""
+    interaction_values_list, feature_data_np, _, _ = mock_interaction_data
+    batch = InteractionValuesBatch.from_interaction_values(interaction_values_list)
+
+    ax = scatter_plot(batch, feature_data_np, interaction=(0, 2), color=1, show=False)
+
+    points = ax.collections[0]
+    expected = np.column_stack(
+        [feature_data_np[:, 0], [iv[(0, 2)] for iv in interaction_values_list]]
+    )
+    np.testing.assert_allclose(points.get_offsets(), expected)
+    np.testing.assert_allclose(points.get_array(), feature_data_np[:, 1])
+    plt.close("all")
+
+
+def test_scatter_plot_non_numeric_column(mock_interaction_data):
+    """Tests that only the plotted columns of a DataFrame need to be numeric."""
+    interaction_values_list, _, feature_data_pd, _ = mock_interaction_data
+    data = feature_data_pd.copy()
+    data["feature_4"] = "text"
+
+    ax = scatter_plot(interaction_values_list, data, interaction=(0,), color=1, show=False)
+
+    np.testing.assert_allclose(
+        ax.collections[0].get_offsets()[:, 0], feature_data_pd["feature_0"].to_numpy()
+    )
+    plt.close("all")

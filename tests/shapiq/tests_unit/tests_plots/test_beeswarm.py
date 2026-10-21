@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from matplotlib import collections
 
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 from shapiq.plot import beeswarm_plot
 
 N_SAMPLES = 10
@@ -254,8 +254,12 @@ def test_beeswarm_plot_errors(mock_interaction_data):
         beeswarm_plot(interaction_values_list, feature_data_np[1:], show=False)
 
     # empty interactions
-    with pytest.raises(ValueError, match="must be a non-empty list"):
+    with pytest.raises(ValueError, match="must not be empty"):
         beeswarm_plot([], feature_data_np, show=False)
+
+    # wrong explanation type
+    with pytest.raises(TypeError, match="InteractionValuesBatch or a list of InteractionValues"):
+        beeswarm_plot(feature_data_np, feature_data_np, show=False)
 
     # wrong data type
     with pytest.raises(TypeError, match="must be a pandas DataFrame or a numpy array"):
@@ -277,3 +281,19 @@ def test_beeswarm_plot_errors(mock_interaction_data):
     # invalid alpha
     with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         beeswarm_plot(interaction_values_list, feature_data_np, alpha=-0.1, show=False)
+
+
+def test_beeswarm_plot_batch(mock_interaction_data):
+    """Test that an InteractionValuesBatch is plotted like the list of its explanations."""
+    interaction_values_list, feature_data_np, _, _ = mock_interaction_data
+    batch = InteractionValuesBatch.from_interaction_values(interaction_values_list)
+
+    ax_batch = beeswarm_plot(batch, feature_data_np, show=False)
+    ax_list = beeswarm_plot(interaction_values_list, feature_data_np, show=False)
+
+    labels_batch = [label.get_text() for label in ax_batch.get_yticklabels()]
+    labels_list = [label.get_text() for label in ax_list.get_yticklabels()]
+    assert labels_batch == labels_list
+    for points_batch, points_list in zip(ax_batch.collections, ax_list.collections, strict=True):
+        np.testing.assert_allclose(points_batch.get_offsets(), points_list.get_offsets())
+    plt.close("all")
