@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from math import prod
 from typing import TYPE_CHECKING, Any
 
 from ndlike.jax_like import JaxLikeImplementation
@@ -38,16 +37,6 @@ class Game[C: Coalition, V: Value](JaxLikeImplementation[Any], ABC):
     @abstractmethod
     def players(self) -> Players[C]:
         """Return player sets whose logical shape broadcasts to ``shape``."""
-
-    @property
-    def ndim(self) -> int:
-        """Return the number of game batch dimensions."""
-        return len(self.shape)
-
-    @property
-    def size(self) -> int:
-        """Return the number of games in the batch."""
-        return prod(self.shape)
 
     def is_valid(self, coalition: object) -> bool:
         """Check coalition admissibility with the players and game batch shape."""
