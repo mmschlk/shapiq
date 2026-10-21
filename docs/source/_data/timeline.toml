@@ -911,9 +911,9 @@ computes the proxy's interactions exactly with interventional TreeSHAP, and can 
 error with an MSR estimate of the residuals. It extends Regression MSR from Shapley values to
 interactions of any order and index.
 """
+cite = ["Thies.2026"]
 api = ["shapiq.approximator.ProxySHAP"]
 examples = ["auto_examples/approximators/surrogate_and_sparse/plot_proxyshap"]
-links = [{ label = "Preprint (arXiv:2605.22738)", url = "https://arxiv.org/abs/2605.22738" }]
 related = ["regression-msr", "interventional-treeshap", "proxyspex"]
 
 # -- Exact computation ------------------------------------------------------------------------------
