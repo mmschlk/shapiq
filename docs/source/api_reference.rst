@@ -33,6 +33,16 @@ below. The games of :mod:`shapiq_games` and the benchmark :mod:`shapiq_benchmark
       +++
       shapiq.tree
 
+   .. grid-item-card:: :octicon:`share-android` Graph Neural Networks
+      :link: generated/shapiq.graph
+      :link-type: doc
+      :class-card: shapiq-card
+
+      Exact values and interactions of the nodes of graph neural networks with GraphSHAP-IQ.
+
+      +++
+      shapiq.graph
+
    .. grid-item-card:: :octicon:`zap` Approximators
       :link: generated/shapiq.approximator
       :link-type: doc
@@ -119,6 +129,8 @@ Where to Start
      - :class:`~shapiq.explainer.Explainer`, which picks one of the explainers below
    * - explain a tree ensemble exactly
      - :class:`~shapiq.explainer.TreeExplainer`
+   * - explain a graph neural network exactly
+     - :class:`~shapiq.graph.GraphExplainer`
    * - explain any model on tabular data
      - :class:`~shapiq.explainer.TabularExplainer`, with an imputer such as
        :class:`~shapiq.imputer.MarginalImputer`

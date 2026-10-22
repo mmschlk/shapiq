@@ -1,307 +1,179 @@
-"""The GraphExplainer class for the shapiq package."""
+"""The GraphExplainer: exact Shapley interactions of the nodes of graph neural networks."""
 
 from __future__ import annotations
 
-import warnings
-from typing import TYPE_CHECKING, Any, Literal, cast, override
+from typing import TYPE_CHECKING, Any, get_args
 
-import joblib
-import numpy as np
 from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues
 
-from .base import GraphGame
-from .graphshapiq import GraphSHAPIQ
+from .game import GraphGame, require_torch_geometric
+from .graphshapiq import GraphSHAPIQ, GraphSHAPIQIndices
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import torch
-    from torch import nn
+    from numpy.typing import ArrayLike
     from torch_geometric.data import Data
 
-    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
-else:
-    Data = Any
+    from shapiq.interaction_values import InteractionValues
 
+    from .game import GraphBaseline
 
-def _check_import_torch_geometric() -> "type[Data]":  # noqa: UP037
-    """Import torch_geometric Data or raise a helpful optional-dependency error."""
-    try:
-        from torch_geometric.data import Data
-    except ImportError as error:
-        msg = (
-            "GraphExplainer requires the optional graph dependencies. "
-            "Install them with `pip install shapiq[graph]`."
-        )
-        raise ImportError(msg) from error
-
-    return Data
+__all__ = ["GraphExplainer"]
 
 
 class GraphExplainer(Explainer):
-    """The GraphExplainer class for graph-based models.
+    """The GraphExplainer explains graph neural networks with GraphSHAP-IQ.
 
-    The explainer for graph-based models using the
-    :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` algorithm.
-    The algorithm is described in:footcite:t:`muschalik2025exactcomputationanyordershapley`.
+    The players are the nodes of the explained graph. For every graph, the explainer builds a
+    :class:`~shapiq.graph.GraphGame`, which masks the features of absent nodes with a baseline,
+    and computes its interactions with :class:`~shapiq.graph.GraphSHAPIQ`
+    :cite:p:`Muschalik.2025`. GraphSHAP-IQ evaluates the model only on the subsets of the
+    receptive fields of the nodes, which makes the computation feasible for graphs far beyond the
+    reach of evaluating all coalitions.
 
-    GraphSHAP-IQ is an algorithm for computing Shapley Interaction values for graph-based models.
-    It is based on the GraphSHAPIQ algorithm by :footcite:t:`muschalik2025exactcomputationanyordershapley`., which efficiently
-    calculates any order Shapley Interactions for GNN-based predictions, by utilizing the unique
-    characteristics of GNNs, where only nodes in node i's l-hop neighborhood are considered for coalitions,
-    thus drastically reducing the total amount of coalitions to evaluate.
+    The values are exact for models of message passing layers followed by a linear global pooling
+    (e.g. a sum or mean over the nodes) and a linear readout, explained on their logits. With
+    ``max_interaction_size``, GraphSHAP-IQ evaluates fewer coalitions and approximates the values;
+    the returned values are then flagged as ``estimated``.
 
-    Assumption: Linear global pooling & Linear readout.
-
-    The GraphExplainer can be used with a variety of graph-based models, including
-    GCNs, GATs and GINs.
+    Examples:
+        >>> import torch
+        >>> from torch_geometric.data import Data
+        >>> from torch_geometric.nn import GCNConv, global_mean_pool
+        >>> class GCN(torch.nn.Module):
+        ...     num_layers = 1
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.conv, self.readout = GCNConv(3, 8), torch.nn.Linear(8, 1)
+        ...     def forward(self, x, edge_index, batch):
+        ...         return self.readout(global_mean_pool(self.conv(x, edge_index).relu(), batch))
+        >>> graph = Data(x=torch.rand(4, 3), edge_index=torch.tensor([[0, 1, 2], [1, 2, 3]]))
+        >>> explainer = GraphExplainer(GCN(), index="k-SII", max_order=2)
+        >>> interaction_values = explainer.explain(graph)
+        >>> interaction_values.estimated
+        False
     """
 
     def __init__(
         self,
-        model: nn.Module,
-        index: ValidMoebiusConverterIndices = "k-SII",
-        baseline_strategy: Literal["zeros", "average", "min", "max"] = "zeros",
-        baseline_value: float | torch.Tensor | None = None,
-        max_order: int = 2,
-        class_index: int | None = None,
+        model: torch.nn.Module,
         *,
+        index: GraphSHAPIQIndices = "SV",
+        max_order: int = 1,
+        class_index: int | None = None,
+        n_hops: int | None = None,
+        baseline: GraphBaseline | float | ArrayLike = "zeros",
+        max_interaction_size: int | None = None,
         efficiency_routine: bool = True,
-        sparsify_threshold: float = 1e-8,
-        normalize: bool = True,
+        batch_size: int = 128,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
-        """Initializes the GraphExplainer.
+        """Initialize the GraphExplainer.
 
         Args:
-            model: A Graph-based model to explain.
-            index: The type of Shapley interaction index to use. Defaults to "k-SII",
-                which computes the k-Shapley Interaction Index. If max_order is set
-                to 1, this corresponds to the Shapley value (index="SV"). Options are:
-                "SV": Shapley value
-                "k-SII": k-Shapley Interaction Index
-                "FSII": Faithful Shapley Interaction Index
-                "FBII": Faithful Banzhaf Interaction Index (becomes BV for order 1)
-                "STII": Shapley Taylor Interaction Index
-                "SII": Shapley Interaction Index
-            class_index: Output index to explain for multi-output models. If ``None``, the model
-                output is expected to be scalar and is used directly.
-            max_order: The maximum interaction order to be computed.
-                Defaults to 2. Set to 1 for no interactions (single feature attribution).
-            normalize: Whether to normalize the game by subtracting the empty
-                coalition value.
-            baseline_strategy: The node masking strategy.
-            baseline_value: Explicit baseline. If provided, this overrides ``strategy``.
-                A float creates a constant baseline vector. A tensor is interpreted
-                as a fixed feature-wise baseline.
-            efficiency_routine: Whether to enforce the efficiency axiom during the
-                GraphSHAP-IQ computation. Defaults to True.
-            sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
+            model: A graph neural network with a graph-level output, called as
+                ``model(x=x, edge_index=edge_index, batch=batch)`` (see
+                :class:`~shapiq.graph.GraphGame`).
+            index: The interaction index, ``"Moebius"`` or an index of
+                :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`. Defaults to
+                ``"SV"``.
+            max_order: The highest interaction order. Defaults to ``1``.
+            class_index: The explained output of a model with several outputs. Defaults to
+                ``None``, which means output ``1`` for models with several outputs and the output
+                of models with one output.
+            n_hops: The number of message passing layers of the model. Defaults to ``None``,
+                which takes ``model.num_layers``.
+            baseline: The node features of absent nodes: ``"zeros"`` (default), ``"mean"``,
+                ``"min"``, or ``"max"`` over the nodes of the explained graph, a value for every
+                feature, or one value per feature.
+            max_interaction_size: The largest coalitions whose Möbius coefficients GraphSHAP-IQ
+                computes. Defaults to ``None``, the largest receptive field, which computes exact
+                values.
+            efficiency_routine: Whether GraphSHAP-IQ keeps approximated values efficient. Defaults
+                to ``True``.
+            batch_size: The number of masked graphs per forward pass. Defaults to ``128``.
             **kwargs: Additional keyword arguments are ignored.
-        """
-        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
-        self._model: nn.Module = model
-        self._class_index = class_index
-        self._sparsify_threshold = sparsify_threshold
-        self._baseline_strategy = baseline_strategy
-        self._baseline_value = baseline_value
-        self._normalize = normalize
-        self._efficiency_routine = efficiency_routine
 
-    @override
-    def explain_X(
+        Raises:
+            ImportError: If torch or torch_geometric is not installed.
+            ValueError: If the index is not supported by GraphSHAP-IQ.
+        """
+        require_torch_geometric()
+        if index not in get_args(GraphSHAPIQIndices):
+            msg = f"GraphExplainer supports the indices {get_args(GraphSHAPIQIndices)}, got {index!r}."
+            raise ValueError(msg)
+        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
+        self.class_index = class_index
+        self.n_hops = n_hops
+        self.baseline = baseline
+        self.max_interaction_size = max_interaction_size
+        self.efficiency_routine = efficiency_routine
+        self.batch_size = batch_size
+
+    def explain_function(  # type: ignore[override]
         self,
-        X: np.ndarray | list[Data],
+        x: Data,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> InteractionValues:
+        """Compute the interaction values of the nodes of a graph.
+
+        Args:
+            x: The explained graph as a :class:`torch_geometric.data.Data` object.
+            **kwargs: Additional keyword arguments are ignored.
+
+        Returns:
+            The interaction values, with the output for the graph without nodes as baseline.
+        """
+        game = GraphGame(
+            self.model,  # ty: ignore[invalid-argument-type]
+            x,
+            class_index=self.class_index,
+            n_hops=self.n_hops,
+            baseline=self.baseline,
+            batch_size=self.batch_size,
+            normalize=False,
+        )
+        graphshapiq = GraphSHAPIQ(
+            game,
+            game.edge_index,
+            game.n_hops,
+            max_interaction_size=self.max_interaction_size,
+            efficiency_routine=self.efficiency_routine,
+        )
+        return graphshapiq(self._index, self._max_order)  # ty: ignore[invalid-argument-type]
+
+    def explain_X(  # type: ignore[override]
+        self,
+        X: Sequence[Data],
         *,
         n_jobs: int | None = None,
-        random_state: int | None = None,
+        random_state: int | None = None,  # noqa: ARG002
         verbose: bool = False,
         **kwargs: Any,
     ) -> list[InteractionValues]:
-        """Explain multiple graph predictions at once.
+        """Explain several graphs.
 
         Args:
-            X: A list of :class:`~torch_geometric.data.Data` objects to be explained.
-                Passing a NumPy array (as accepted by the base class) is not supported
-                and will raise a ``TypeError``.
-            n_jobs: Number of jobs for ``joblib.Parallel``. Defaults to ``None`` (no
-                parallelization). Set to ``-1`` to use all available cores.
-            random_state: Unused; kept for API compatibility with the base class.
+            X: The explained graphs.
+            n_jobs: Number of jobs for ``joblib.Parallel``. Defaults to ``None``, which will use no
+                parallelization. If set to ``-1``, all available cores will be used.
+            random_state: Ignored, as the explanations are deterministic.
             verbose: Whether to show a progress bar. Defaults to ``False``.
-            **kwargs: Additional keyword-only arguments forwarded to ``explain_function``.
+            **kwargs: Additional keyword arguments passed to :meth:`explain_function`.
 
         Returns:
-            A list of interaction values, one per graph in ``X``.
-
-        Raises:
-            TypeError: If ``X`` is a NumPy array instead of a list of ``Data`` objects.
+            The interaction values of every graph.
         """
-        Data = _check_import_torch_geometric()
-
-        if isinstance(X, np.ndarray):
-            msg = (
-                "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects, "
-                "not a NumPy array."
-            )
-            raise TypeError(msg)
-
-        X = list(X)
-
-        if not all(isinstance(x, Data) for x in X):
-            msg = "GraphExplainer.explain_X expects a list of torch_geometric.data.Data objects."
-            raise TypeError(msg)
-
-        if n_jobs == 0:
-            msg = "n_jobs must be a positive int or -1 (all cores); got 0. Use None for sequential execution."
-            raise ValueError(msg)
-
         if n_jobs:
+            import joblib
+
             parallel = joblib.Parallel(n_jobs=n_jobs)
-            return cast(
-                "list[InteractionValues]",
-                parallel(joblib.delayed(self.explain)(x_graph, **kwargs) for x_graph in X),
+            return list(
+                parallel(joblib.delayed(self.explain_function)(graph, **kwargs) for graph in X)
             )
-
-        pbar = tqdm(total=len(X), desc="Explaining") if verbose else None
-        ivs: list[InteractionValues] = []
-
-        try:
-            for x_graph in X:
-                ivs.append(self.explain(x_graph, **kwargs))
-                if pbar is not None:
-                    pbar.update(1)
-        finally:
-            if pbar is not None:
-                pbar.close()
-        return ivs
-
-    @override
-    def explain_function(
-        self,
-        x: np.ndarray | Data | None,
-        *args: Any,
-        verbose: bool = False,
-        **kwargs: Any,
-    ) -> InteractionValues:
-        """Computes the Shapley Interaction values for a single instance.
-
-        Args:
-            x: The input graph to explain.
-            *args: Unused; present only to match the base class signature.
-            verbose: Whether to print debug information for the underlying game and
-                GraphSHAP-IQ explainer. Defaults to ``False``.
-            **kwargs: Allows for passing and overriding ``index``, ``efficiency_routine``,
-                and ``max_subset_size`` arguments.
-
-        Returns:
-            The interaction values for the instance.
-        """
-        Data = _check_import_torch_geometric()
-
-        if not isinstance(x, Data):
-            msg = (
-                "GraphExplainer requires a torch_geometric.data.Data object, "
-                f"got {type(x).__name__!r}."
-            )
-            raise TypeError(msg)
-
-        allowed_kwargs = {"index", "efficiency_routine", "max_subset_size"}
-
-        # Allow per-call overrides of explainer-level settings via kwargs.
-        index: ValidMoebiusConverterIndices = kwargs.get("index", self._index)
-        efficiency_routine: bool = kwargs.get("efficiency_routine", self._efficiency_routine)
-        max_subset_size: int | None = kwargs.get("max_subset_size")
-
-        if max_subset_size is not None and max_subset_size < 1:
-            msg = f"max_subset_size must be a positive integer or None, got {max_subset_size}."
-            raise ValueError(msg)
-
-        if not set(kwargs).issubset(allowed_kwargs):
-            warnings.warn("Your provided keyword argument is not accepted.", stacklevel=2)
-
-        game = GraphGame(
-            model=self._model,
-            x_graph=x,
-            class_index=self._class_index,
-            baseline_strategy=self._baseline_strategy,
-            baseline_value=self._baseline_value,
-            normalize=self._normalize,
-            verbose=verbose,
-        )
-        explainer = GraphSHAPIQ(
-            game=game, verbose=verbose, sparsify_threshold=self._sparsify_threshold
-        )
-
-        return self._run_graph_shapiq_approximation(
-            explainer,
-            index,
-            efficiency_routine=efficiency_routine,
-            max_subset_size=max_subset_size,
-        )
-
-    @override
-    def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
-        """Explain a single graph prediction.
-
-        Args:
-            x: The input graph to explain as a
-                :class:`~torch_geometric.data.Data` object.
-            **kwargs: Additional keyword-only arguments forwarded to ``explain_function``.
-                It allows for passing the following arguments: ``index``, ``efficiency_routine`` and ``max_subset_size``
-
-        Returns:
-            The interaction values for the graph.
-        """
-        Data = _check_import_torch_geometric()
-
-        if not isinstance(x, Data):
-            msg = (
-                "GraphExplainer requires a torch_geometric.data.Data object, "
-                f"got {type(x).__name__!r}."
-            )
-            raise TypeError(msg)
-        return self.explain_function(x=x, **kwargs)
-
-    def _run_graph_shapiq_approximation(
-        self,
-        explainer: GraphSHAPIQ,
-        index: ValidMoebiusConverterIndices = "k-SII",
-        *,
-        efficiency_routine: bool = True,
-        max_subset_size: int | None = None,
-    ) -> InteractionValues:
-        """Approximate Shapley Interactions using GraphSHAP-IQ.
-
-        Args:
-            explainer: The GraphSHAPIQ explainer initialised from the game.
-            index: The type of Shapley interaction index to compute.
-            efficiency_routine: Whether to enforce the efficiency axiom. Defaults to ``True``.
-            max_subset_size: Maximum subset size for the Möbius transform. When
-                ``None``, the full neighbourhood size is used and the result is
-                exact. When set below the largest neighbourhood size, the result
-                is an approximation and the returned ``InteractionValues`` are
-                flagged with ``estimated=True`` (exact again at
-                ``max_size_neighbors - 1`` if the efficiency routine is enabled).
-
-        Returns:
-            Shapley Interaction Indices.
-        """
-        _, interactions = explainer.explain(
-            max_subset_size=max_subset_size,
-            order=self._max_order,
-            efficiency_routine=efficiency_routine,
-            index=index,
-        )
-
-        if not isinstance(interactions, InteractionValues):
-            err_msg = f"Expected InteractionValues, got {type(interactions)}"
-            raise TypeError(err_msg)
-
-        is_estimated = not explainer.last_computation_exact
-
-        interactions.estimation_budget = explainer.last_n_model_calls
-        interactions.estimated = is_estimated
-        interactions.sparsify(threshold=self._sparsify_threshold)
-
-        return interactions
+        graphs = tqdm(X, desc="Explaining") if verbose else X
+        return [self.explain_function(graph, **kwargs) for graph in graphs]

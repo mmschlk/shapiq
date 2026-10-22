@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
+from shapiq.utils.modules import safe_isinstance
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
@@ -34,15 +36,21 @@ KNN_WEIGHTS_TO_EXPLAINER = {
 
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
-    """Return a dictionary of all available explainer classes."""
+    """Return a dictionary of all available explainer classes.
+
+    Returns:
+        A dictionary of all available explainer classes.
+
+    """
     import shapiq.explainer.agnostic as ag
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
+    import shapiq.graph.explainer as gr
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
 
-    explainers: dict[ExplainerTypes, type[Explainer]] = {
+    return {
         "tabular": tb.TabularExplainer,
         "tree": tr.TreeExplainer,
         "tabpfn": tp.TabPFNExplainer,
@@ -51,16 +59,8 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "knn": nn.KNNExplainer,
         "wknn": nn.WeightedKNNExplainer,
         "tnn": nn.ThresholdNNExplainer,
+        "graph": gr.GraphExplainer,
     }
-
-    try:
-        import shapiq.graph.explainer as gr
-    except ImportError:
-        pass
-    else:
-        explainers["graph"] = gr.GraphExplainer
-
-    return explainers
 
 
 def get_predict_function_and_model_type(
@@ -107,12 +107,10 @@ def get_predict_function_and_model_type(
     if callable(model):
         _predict_function = predict_callable
 
-    # torch_geometric
-    if is_torch_geometric_model(model):
-        _model_type = "graph"
+    if is_graph_neural_network(model):
         _predict_function = RuntimeError(
-            "Graph models do not use a generic NumPy predict function. "
-            "Use GraphExplainer.explain with a torch_geometric.data.Data object."
+            "Graph neural networks are explained on torch_geometric.data.Data graphs with "
+            "GraphExplainer.explain."
         )
         return _predict_function, "graph"
 
@@ -375,15 +373,12 @@ def print_class(obj: object) -> str:
     return search[0]
 
 
-def is_torch_geometric_model(model: object) -> bool:
-    """Return whether the model contains torch_geometric message-passing layers."""
-    try:
-        import torch
-        from torch_geometric.nn import MessagePassing
-    except ImportError:
-        return False
+def is_graph_neural_network(model: object) -> bool:
+    """Return whether the model is a torch module with message passing layers of torch_geometric.
 
-    if not isinstance(model, torch.nn.Module):
+    Does not import torch: a model of a library that was never imported is none of its types.
+    """
+    if not safe_isinstance(model, "torch.nn.Module"):
         return False
-
-    return any(isinstance(module, MessagePassing) for module in model.modules())
+    modules = cast("Any", model).modules()
+    return any(safe_isinstance(module, "torch_geometric.nn.MessagePassing") for module in modules)

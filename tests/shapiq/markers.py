@@ -12,6 +12,7 @@ __all__ = [
     "skip_if_no_lightgbm",
     "skip_if_no_tabpfn",
     "skip_if_no_tensorflow",
+    "skip_if_no_torch_geometric",
     "skip_if_no_xgboost",
 ]
 
@@ -29,6 +30,11 @@ skip_if_no_tabpfn = pytest.mark.skipif(
 skip_if_no_tensorflow = pytest.mark.skipif(
     not is_installed("tensorflow"),
     reason="tensorflow is not installed",
+)
+
+skip_if_no_torch_geometric = pytest.mark.skipif(
+    not (is_installed("torch") and is_installed("torch_geometric")),
+    reason="torch or torch_geometric is not installed",
 )
 
 skip_if_no_xgboost = pytest.mark.skipif(

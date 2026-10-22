@@ -30,4 +30,5 @@ Exact Computation
 
 **Next:** estimate the same values for larger games in :doc:`/auto_examples/approximators/index`,
 or get them exactly for a model class in :doc:`/auto_examples/trees/index`,
-:doc:`/auto_examples/nearest_neighbors/index`, and :doc:`/auto_examples/kernel_methods/index`.
+:doc:`/auto_examples/graph_neural_networks/index`, :doc:`/auto_examples/nearest_neighbors/index`,
+and :doc:`/auto_examples/kernel_methods/index`.

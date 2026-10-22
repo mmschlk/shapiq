@@ -1,572 +1,431 @@
-"""This module contains the GraphSHAP-IQ class."""
+"""GraphSHAP-IQ: the exact Shapley interactions of games that are local on a graph."""
 
 from __future__ import annotations
 
-import copy
 import itertools
-import logging
-from typing import TYPE_CHECKING, cast
+from functools import cached_property
+from typing import TYPE_CHECKING, Literal, NamedTuple, get_args
 
-import networkx as nx
 import numpy as np
+from scipy import sparse
 
-from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from numpy.typing import ArrayLike
 
-    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
+    from shapiq.game import Game
 
-    from .base import GraphGame
+__all__ = ["GraphSHAPIQ", "GraphSHAPIQIndices", "receptive_fields"]
 
-logger = logging.getLogger(__name__)
+GraphSHAPIQIndices = Literal["Moebius", ValidMoebiusConverterIndices]
+"""The indices GraphSHAP-IQ computes: the Möbius transform and the indices of
+:class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`."""
+
+MAX_RECEPTIVE_FIELD_SIZE = 62
+"""The largest receptive field GraphSHAP-IQ enumerates (its subsets are 64-bit masks)."""
+
+_CHUNK_SIZE = 2**16
+
+
+class _Block(NamedTuple):
+    """The evaluated subsets of a maximal receptive field."""
+
+    nodes: np.ndarray
+    """The nodes of the receptive field, sorted."""
+    masks: np.ndarray
+    """The evaluated subsets as sorted bitmasks over ``nodes``."""
+    rows: np.ndarray
+    """The rows of the subsets in the coalition matrix."""
+
+
+class _Gap(NamedTuple):
+    """A coalition of the efficiency routine: a receptive field or an intersection of them."""
+
+    row: int
+    """The row of the coalition in the coalition matrix."""
+    block: int
+    """A block containing the coalition."""
+    mask: int
+    """The coalition as a bitmask over the nodes of the block."""
+    smaller: list[int]
+    """The positions of the smaller gaps contained in the coalition."""
+
+
+def receptive_fields(edge_index: ArrayLike, n_nodes: int, n_hops: int) -> tuple[np.ndarray, ...]:
+    """Return the ``n_hops``-hop neighborhood of every node of a graph.
+
+    The edges are treated as undirected, which contains the receptive field of a message passing
+    layer for either direction of message flow.
+
+    Args:
+        edge_index: The edges as an integer array of shape ``(2, n_edges)``.
+        n_nodes: The number of nodes.
+        n_hops: The radius of the neighborhoods, e.g. the number of message passing layers.
+
+    Returns:
+        For every node, the sorted nodes within ``n_hops`` hops, including the node itself.
+
+    Raises:
+        ValueError: If ``edge_index`` is not of shape ``(2, n_edges)`` or refers to other nodes.
+    """
+    edges = np.asarray(edge_index)
+    if edges.ndim != 2 or edges.shape[0] != 2:
+        msg = f"edge_index must be of shape (2, n_edges), got {edges.shape}."
+        raise ValueError(msg)
+    edges = edges.astype(np.int64)
+    if edges.size and (edges.min() < 0 or edges.max() >= n_nodes):
+        msg = f"edge_index refers to nodes outside of 0, ..., {n_nodes - 1}."
+        raise ValueError(msg)
+    identity = sparse.eye_array(n_nodes, dtype=bool, format="csr")
+    adjacency = sparse.csr_array(
+        (np.ones(edges.shape[1], dtype=bool), (edges[0], edges[1])), shape=(n_nodes, n_nodes)
+    )
+    adjacency = adjacency + adjacency.T + identity
+    reach = identity
+    for _ in range(n_hops):
+        reach = reach @ adjacency
+    reach = sparse.csr_array(reach)
+    reach.sort_indices()
+    return tuple(
+        reach.indices[reach.indptr[node] : reach.indptr[node + 1]].astype(np.int64)
+        for node in range(n_nodes)
+    )
+
+
+def _subset_masks(n_bits: int, max_size: int) -> np.ndarray:
+    """Return the sorted bitmasks of all subsets of ``n_bits`` bits with at most ``max_size``."""
+    if max_size >= n_bits:
+        return np.arange(1 << n_bits, dtype=np.int64)
+    masks = [
+        np.fromiter(
+            (
+                sum(1 << bit for bit in subset)
+                for subset in itertools.combinations(range(n_bits), s)
+            ),
+            dtype=np.int64,
+        )
+        for s in range(max_size + 1)
+    ]
+    return np.sort(np.concatenate(masks))
+
+
+def _pack(nodes: np.ndarray, masks: np.ndarray, n_players: int) -> np.ndarray:
+    """Return the subsets ``masks`` of ``nodes`` as rows of bits over all players."""
+    packed = np.empty((len(masks), (n_players + 7) // 8), dtype=np.uint8)
+    shifts = np.arange(len(nodes))
+    for start in range(0, len(masks), _CHUNK_SIZE):
+        chunk = masks[start : start + _CHUNK_SIZE]
+        rows = np.zeros((len(chunk), n_players), dtype=bool)
+        rows[:, nodes] = (chunk[:, None] >> shifts) & 1
+        packed[start : start + _CHUNK_SIZE] = np.packbits(rows, axis=1)
+    return packed
+
+
+def _membership(sets: list[tuple[int, ...]], n_players: int) -> sparse.csr_array:
+    """Return the sets as rows of a sparse 0/1 matrix over the players."""
+    lengths = [len(s) for s in sets]
+    return sparse.csr_array(
+        (
+            np.ones(sum(lengths), dtype=np.int64),
+            np.fromiter((node for s in sets for node in s), dtype=np.int64, count=sum(lengths)),
+            np.concatenate([[0], np.cumsum(lengths)]),
+        ),
+        shape=(len(sets), n_players),
+    )
+
+
+def _subset_pairs(sets: list[tuple[int, ...]], n_players: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return the positions ``(i, j)``, ``i != j``, of all pairs with ``sets[i]`` in ``sets[j]``."""
+    membership = _membership(sets, n_players)
+    overlap = sparse.coo_array(membership @ membership.T)
+    lengths = np.array([len(s) for s in sets])
+    is_subset = (overlap.row != overlap.col) & (overlap.data == lengths[overlap.row])
+    return overlap.row[is_subset], overlap.col[is_subset]
+
+
+def _intersection_closure(
+    sets: list[tuple[int, ...]], size: int, n_players: int
+) -> list[tuple[int, ...]]:
+    """Add the intersections of more than ``size`` nodes of the sets until none is new.
+
+    Returns:
+        The sets and their intersections, sorted, smallest first.
+    """
+    closed = list(dict.fromkeys(sets))
+    known = set(closed)
+    new = closed
+    while new:
+        overlap = sparse.coo_array(_membership(new, n_players) @ _membership(closed, n_players).T)
+        large = overlap.data > size  # the number of common nodes
+        found = []
+        for a, b in zip(overlap.row[large], overlap.col[large], strict=True):
+            common = tuple(sorted(set(new[a]).intersection(closed[b])))
+            if common not in known:
+                known.add(common)
+                found.append(common)
+        closed += found
+        new = found
+    return sorted(closed, key=lambda s: (len(s), s))
+
+
+def _moebius_transform(values: np.ndarray, masks: np.ndarray, n_bits: int) -> None:
+    """Replace the values of the subsets ``masks`` by their Möbius transform, in place.
+
+    ``masks`` is sorted and closed under taking subsets. Yates' algorithm subtracts, bit after bit,
+    the value of every subset without the bit: ``n_bits * len(masks)`` operations instead of the
+    ``3**n_bits`` of summing over all subsets of every subset.
+    """
+    if len(masks) == 1 << n_bits:  # all subsets, masks[i] == i
+        for bit in range(n_bits):
+            pairs = values.reshape(-1, 2, 1 << bit)
+            pairs[:, 1] -= pairs[:, 0]
+        return
+    for bit in range(n_bits):
+        has_bit = ((masks >> bit) & 1).astype(bool)
+        values[has_bit] -= values[np.searchsorted(masks, masks[has_bit] ^ (1 << bit))]
 
 
 class GraphSHAPIQ:
-    """A class for computing Shapley interactions on graph-structured data using the Möbius transform.
+    r"""GraphSHAP-IQ computes the exact Shapley interactions of games that are local on a graph.
+
+    The players of the game are the nodes of a graph. The game is local if its Möbius transform
+    vanishes on every coalition that is not contained in the receptive field of a single node, the
+    nodes within ``n_hops`` hops. The output of a graph neural network with ``n_hops`` message
+    passing layers, a linear global pooling, and a linear readout is local
+    :cite:p:`Muschalik.2025`: the embedding of a node depends only on its receptive field.
+
+    GraphSHAP-IQ evaluates the game on the subsets of the receptive fields only, computes their
+    Möbius coefficients with Yates' algorithm, and converts them with
+    :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter` into any of its indices. This
+    takes at most :math:`\sum_{i} 2^{|\mathcal{N}(i)|}` evaluations instead of :math:`2^n`.
+
+    With ``max_interaction_size`` :math:`\lambda`, only the subsets of at most :math:`\lambda`
+    nodes are evaluated, and the Möbius coefficients of larger coalitions are taken as zero. The
+    efficiency routine also evaluates the receptive fields of more than :math:`\lambda` nodes and
+    their intersections of more than :math:`\lambda` nodes. Each of them, in increasing size, gets
+    as Möbius coefficient the part of its value that its subsets do not explain. Every larger
+    coalition's coefficient is so assigned to exactly one of them, the smallest containing it,
+    which keeps the values of a local game efficient. With the efficiency routine, the values are
+    still exact for :math:`\lambda` one less than the largest receptive field (:attr:`exact`).
 
     Attributes:
-        edge_index: The edge index of the graph.
-        game: The game object representing the graph and prediction function.
-        sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
-        verbose: If True, additional logs are shown.
-        last_n_model_calls: The amount of times the value function was applied.
-        n_players: Number of players (nodes) in the graph.
-        l_hop_distance: Maximum size of neighborhoods to consider.
-        neighbors: Dictionary mapping each node to its neighborhood.
-        max_size_neighbors: Maximum size of any neighborhood in the graph.
-        total_budget: Total number of coalitions to evaluate (or upper bound).
-        budget_estimated: Whether the budget was estimated or computed exactly.
-        last_computation_exact: last_computation_exact: Whether the most recent :meth:`explain` call
-            produced exact Shapley interactions. ``True`` if no truncation
-            occurred (``max_subset_size >= max_size_neighbors``) or if
-            ``max_subset_size >= max_size_neighbors - 1`` with the efficiency
-            routine enabled.
+        game: The game, whose players are the nodes.
+        n_hops: The radius of the receptive fields.
+        receptive_fields: The receptive field of every node.
+        max_interaction_size: The largest coalitions whose Möbius coefficients are computed.
+        efficiency_routine: Whether the receptive fields beyond ``max_interaction_size`` are
+            evaluated to keep the values efficient.
+
+    Examples:
+        >>> import numpy as np
+        >>> from shapiq import Game
+        >>> class EdgeGame(Game):  # the number of edges with both of their nodes present
+        ...     def value_function(self, coalitions):
+        ...         return (coalitions[:, :-1] & coalitions[:, 1:]).sum(axis=1).astype(float)
+        >>> edge_index = np.array([[0, 1, 2], [1, 2, 3]])  # the path 0 - 1 - 2 - 3
+        >>> graphshapiq = GraphSHAPIQ(EdgeGame(n_players=4, normalize=False), edge_index, n_hops=1)
+        >>> graphshapiq.budget  # the subsets of {0, 1, 2} and {1, 2, 3}, instead of 2**4
+        12
+        >>> shapley_values = graphshapiq("SV", order=1)
+        >>> float(shapley_values[(0,)]), float(shapley_values[(1,)])
+        (0.5, 1.0)
     """
 
     def __init__(
-        self, game: GraphGame, *, verbose: bool = False, sparsify_threshold: float = 1e-10
-    ) -> None:
-        """Initialize the GraphSHAPIQ class.
-
-        Args:
-            game: The game object representing the graph and prediction function.
-            verbose: If True, additional logs are shown.
-            sparsify_threshold: Removes very small interaction values that are likely just floating-point noise.
-        """
-        self.last_n_model_calls: int | None = None
-        self.edge_index = game.edge_index
-        self.n_players = game.n_players
-        self._graph: nx.Graph = self._build_graph()
-        self.sparsify_threshold = sparsify_threshold
-        self.l_hop_distance = int(game.l_hop_distance)
-        self._grand_coalition_set = game.grand_coalition_set
-        self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
-        self.game = game
-        self._grand_coalition_prediction = game(np.ones(self.n_players, dtype=float))
-        self.last_computation_exact: bool | None = None
-        self.verbose = verbose
-
-        # Compute or estimate total budget
-        if self.max_size_neighbors <= 22:
-            moebius_interactions, _ = self._get_all_coalitions(
-                max_subset_size=self.max_size_neighbors,
-                efficiency_routine=False,
-            )
-            self.total_budget = len(moebius_interactions)
-            self.budget_estimated = False
-        else:
-            self.total_budget = 0
-            for node in self.neighbors:
-                self.total_budget += 2 ** len(self.neighbors[node])
-            self.total_budget = min(2**self.n_players, self.total_budget)
-            self.budget_estimated = True
-
-        if verbose:
-            logger.info("Max size neighbors: %d", self.max_size_neighbors)
-            logger.info("Total budget: %d", self.total_budget)
-
-    def _build_graph(self) -> nx.Graph:
-        """Convert edge_index and nodes to an nx.Graph."""
-        G: nx.Graph = nx.Graph()
-        G.add_nodes_from(range(self.n_players))
-        G.add_edges_from(self.edge_index.T.tolist())
-        return G
-
-    def _get_neighborhoods(self) -> tuple[dict, int]:
-        """Compute the l-hop neighborhoods of every node.
-
-        Returns:
-            neighbors: Mapping from node id to a sorted tuple of neighbor ids (including the
-                       node itself).
-            max_size_neighbors: Size of the largest neighborhood found.
-        """
-        neighbors: dict = {}
-        max_size_neighbors: int = 0
-        for neighbor_id in self._grand_coalition_set:
-            neighbor_list = self._get_k_neighborhood(neighbor_id)
-            max_size_neighbors = max(max_size_neighbors, len(neighbor_list))
-            neighbors[neighbor_id] = neighbor_list
-        return neighbors, max_size_neighbors
-
-    def _get_k_neighborhood(self, node: int) -> tuple:
-        """Get the k-hop neighborhood of a node."""
-        reachable = nx.single_source_shortest_path_length(
-            self._graph, node, cutoff=self.l_hop_distance
-        )
-        return tuple(sorted(reachable.keys()))
-
-    def compute_moebius_transform(
         self,
-        coalitions: set[tuple[int, ...]],
-        coalition_predictions: NDArray[np.floating],
-        coalition_lookup: dict[tuple[int, ...], int],
-    ) -> InteractionValues:
-        """Compute the Möbius transform for the given coalitions.
-
-        Args:
-            coalitions: Set of coalitions (tuples of player indices) to compute
-                Möbius coefficients for. Must contain the empty coalition ``()``.
-            coalition_predictions: Predictions for each coalition; indexed via
-                ``coalition_lookup``.
-            coalition_lookup: Mapping from coalition tuples to row indices in
-                ``coalition_predictions``. May be a superset of ``coalitions``,
-                but must contain every subset of every coalition in
-                ``coalitions`` (subset-closed over the input).
-
-        Returns:
-            InteractionValues object containing one Möbius value per coalition
-            in ``coalitions``.
-        """
-        if () not in coalitions or () not in coalition_lookup:
-            msg = (
-                "compute_moebius_transform requires the empty coalition () in both "
-                "`coalitions` and `coalition_lookup`; it anchors the baseline_value "
-                "and every subset expansion."
-            )
-            raise ValueError(msg)
-
-        moebius_values = np.zeros(len(coalitions), dtype=float)
-        moebius_lookup: dict[tuple[int, ...], int] = {}
-
-        for i, coalition in enumerate(coalitions):
-            moebius_lookup[coalition] = i
-            for subset in powerset(coalition):
-                sign = (-1) ** (len(coalition) - len(subset))
-                try:
-                    idx = coalition_lookup[subset]
-                except KeyError as err:
-                    msg = (
-                        f"coalition_lookup is missing subset {subset!r}, required to "
-                        f"compute the Möbius coefficient of {coalition!r}."
-                    )
-                    raise ValueError(msg) from err
-                moebius_values[i] += sign * coalition_predictions[idx]
-
-        return InteractionValues(
-            values=moebius_values,
-            interaction_lookup=moebius_lookup,
-            min_order=0,
-            max_order=self.n_players,
-            n_players=self.n_players,
-            index="Moebius",
-            baseline_value=float(moebius_values[moebius_lookup[()]]),
-        )
-
-    def compute_moebius_transform_cpp(
-        self,
-        coalitions: set[tuple[int, ...]],
-        coalition_predictions: NDArray[np.floating],
-        coalition_lookup: dict[tuple[int, ...], int],
-    ) -> InteractionValues:
-        """C++-accelerated drop-in replacement for :meth:`compute_moebius_transform`.
-
-        Computes the exact same Möbius coefficients as the pure-Python
-        :meth:`compute_moebius_transform`, but delegates the hot double loop over
-        coalitions and their subsets to the ``shapiq.graph.cext`` extension.
-
-        Requires the ``shapiq.graph.cext`` extension to be compiled (e.g. via
-        `uv pip install -e .`); otherwise an ``ImportError`` is raised.
-
-        Args:
-            coalitions: Set of coalitions (tuples of player indices).
-            coalition_predictions: Predictions for each coalition.
-            coalition_lookup: Mapping from coalition tuples to their indices.
-
-        Returns:
-            InteractionValues object containing the Möbius values.
-        """
-        from .cext import (
-            compute_moebius_transform as _moebius_cpp,  # ty: ignore[unresolved-import]
-        )
-
-        # Fix a stable iteration order for the coalitions; this defines both the
-        # output index i and the moebius_lookup, matching the Python reference.
-        coalition_list = list(coalitions)
-
-        # Build CSR arrays for the coalitions to evaluate. Sizes/offsets are
-        # computed vectorized via cumsum, and the flat member array is filled in
-        # one pass via fromiter — avoiding a Python-level list.extend() per
-        # coalition (see shapiq.tree.interventional.explainer for the same
-        # flatten-via-cumsum pattern).
-        sizes = np.fromiter(
-            (len(c) for c in coalition_list), dtype=np.int32, count=len(coalition_list)
-        )
-        offsets = np.empty(len(coalition_list) + 1, dtype=np.int32)
-        offsets[0] = 0
-        np.cumsum(sizes, out=offsets[1:])
-        members_flat = np.fromiter(
-            itertools.chain.from_iterable(coalition_list), dtype=np.int32, count=int(offsets[-1])
-        )
-
-        # Build CSR arrays for coalition_lookup (keys + prediction row index).
-        lookup_keys = list(coalition_lookup.keys())
-        lookup_sizes = np.fromiter(
-            (len(k) for k in lookup_keys), dtype=np.int32, count=len(lookup_keys)
-        )
-        lookup_offsets = np.empty(len(lookup_keys) + 1, dtype=np.int32)
-        lookup_offsets[0] = 0
-        np.cumsum(lookup_sizes, out=lookup_offsets[1:])
-        lookup_members_flat = np.fromiter(
-            itertools.chain.from_iterable(lookup_keys),
-            dtype=np.int32,
-            count=int(lookup_offsets[-1]),
-        )
-        lookup_indices = np.fromiter(
-            coalition_lookup.values(), dtype=np.int32, count=len(coalition_lookup)
-        )
-
-        moebius_values = _moebius_cpp(
-            members_flat,
-            offsets,
-            lookup_members_flat,
-            lookup_offsets,
-            lookup_indices,
-            np.ascontiguousarray(coalition_predictions, dtype=np.float64),
-        )
-
-        moebius_lookup = {coalition: i for i, coalition in enumerate(coalition_list)}
-
-        return InteractionValues(
-            values=moebius_values,
-            interaction_lookup=moebius_lookup,
-            min_order=0,
-            max_order=self.n_players,
-            n_players=self.n_players,
-            index="Moebius",
-            baseline_value=float(moebius_values[moebius_lookup[()]]),
-        )
-
-    def _convert_to_coalition_matrix(
-        self,
-        coalitions: set[tuple[int, ...]],
-        lookup_shift: int = 0,
-    ) -> tuple[NDArray[np.floating], dict[tuple[int, ...], int]]:
-        """Convert a set or dict of coalitions to a binary matrix and lookup dict.
-
-        Args:
-            coalitions: Set or dict of coalitions.
-            lookup_shift: Offset to add to the lookup indices.
-
-        Returns:
-            Tuple of (coalition_matrix, coalition_lookup), where:
-                - coalition_matrix: Binary matrix of shape (n_coalitions, n_players).
-                - coalition_lookup: Mapping from coalition tuples to row indices.
-        """
-        coalition_matrix = np.zeros((len(coalitions), self.n_players), dtype=float)
-        coalition_lookup: dict[tuple[int, ...], int] = {}
-
-        for i, coalition in enumerate(coalitions):
-            coalition_matrix[i, list(coalition)] = 1
-            coalition_lookup[coalition] = lookup_shift + i
-
-        return coalition_matrix, coalition_lookup
-
-    def _efficiency_routine(
-        self,
-        masked_predictions: NDArray[np.floating],
-        moebius_coefficients: InteractionValues,
-        incomplete_neighborhoods: set[tuple[int, ...]],
-        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
-        max_subset_size: int,
-        grand_coalition_prediction_node: NDArray[np.floating],
-    ) -> InteractionValues:
-        r"""Adjust Möbius coefficients to ensure efficiency.
-
-        The efficiency axiom states that the sum of all Möbius coefficients must equal
-        the grand coalition prediction, i.e.,
-        :math:`\sum_{S \subseteq N} m(S) = v(N)`.
-
-        When neighborhoods are incomplete, that is, when their size exceeds
-        ``max_subset_size``, the Möbius transform is truncated and the efficiency axiom
-        is violated. This routine corrects for this by computing a gap term for each
-        incomplete neighborhood:
-
-        :math:`gap(S) = v(S) - \sum_{T \subseteq S, |T| \leq k} m(T)
-        - \sum_{S' \subset S, S' \text{ incomplete}} gap(S')`
-
-        where :math:`k` is ``max_subset_size``.
-
-        Here, :math:`v(S)` is the game value of the incomplete neighborhood :math:`S`,
-        :math:`m(T)` are the already-computed Möbius coefficients for subsets
-        :math:`T \subseteq S`, and :math:`gap(S')` are correction terms for smaller
-        incomplete neighborhoods :math:`S' \subset S`.
-
-        Note:
-            This method should only be called when ``incomplete_neighborhoods`` is non-empty.
-            The returned ``InteractionValues`` has ``baseline_value=0.0`` since the
-            corrections are gap terms only; the empty coalition contribution is already
-            captured in the original ``moebius_coefficients``.
-
-        Args:
-            masked_predictions: Predictions for all coalitions, including incomplete
-                neighborhoods. Indices are given by ``incomplete_neighborhoods_lookup``.
-            moebius_coefficients: Current Möbius coefficients computed from the
-                truncated powerset via ``compute_moebius_transform``.
-            incomplete_neighborhoods: Set of neighborhood tuples whose size exceeds
-                ``max_subset_size`` and therefore were not fully covered by the Möbius
-                transform.
-            incomplete_neighborhoods_lookup: Mapping from incomplete neighborhood tuples
-                to their row indices in ``masked_predictions``.
-            max_subset_size: Maximum subset size used in the Möbius transform. Subsets
-                larger than this were not evaluated.
-            grand_coalition_prediction_node: The model prediction for the grand coalition,
-                that is, all nodes present, used to enforce the global efficiency constraint.
-
-        Returns:
-            InteractionValues containing the gap correction terms for each incomplete
-            neighborhood, with ``baseline_value=0.0`` and ``index="Moebius"``.
-        """
-        incomplete_neighborhoods_sorted = cast(
-            "list[tuple[int, ...]]", sorted(incomplete_neighborhoods, key=len)
-        )
-        n_incomplete_neighborhoods = len(incomplete_neighborhoods_lookup)
-        additional_values = np.zeros(n_incomplete_neighborhoods, dtype=float)
-        additional_lookup: dict[tuple[int, ...], int] = {}
-
-        for i, neighborhood in enumerate(incomplete_neighborhoods_sorted):
-            # Compute sum of Möbius coefficients for subsets of the neighborhood
-            sum_coefficients = 0.0
-            for interaction in powerset(neighborhood, max_size=max_subset_size):
-                sum_coefficients += moebius_coefficients[interaction]
-
-            # Add contributions from smaller incomplete neighborhoods
-            for other_neighborhood in incomplete_neighborhoods_sorted:
-                if set(other_neighborhood).issubset(neighborhood) and len(other_neighborhood) < len(
-                    neighborhood
-                ):
-                    sum_coefficients += additional_values[additional_lookup[other_neighborhood]]
-
-            # Compute and assign the efficiency gap
-            gap = (
-                masked_predictions[incomplete_neighborhoods_lookup[neighborhood]] - sum_coefficients
-            )
-            additional_values[i] = gap
-            additional_lookup[neighborhood] = i
-
-        # Maintain global efficiency only if an incomplete neighborhood is the grand coalition.
-        if additional_lookup:
-            grand_coalition = tuple(sorted(self._grand_coalition_set))
-
-            if grand_coalition in additional_lookup:
-                grand_idx = additional_lookup[grand_coalition]
-                additional_values[grand_idx] = (
-                    grand_coalition_prediction_node
-                    - np.sum(moebius_coefficients.values)
-                    - (np.sum(additional_values) - additional_values[grand_idx])
-                )
-
-        return InteractionValues(
-            values=additional_values,
-            index="Moebius",
-            max_order=self.n_players,
-            min_order=0,
-            n_players=self.n_players,
-            interaction_lookup=additional_lookup,
-            baseline_value=0.0,
-        )
-
-    def explain(
-        self,
-        max_subset_size: int | None = None,
-        order: int | None = None,
+        game: Game,
+        edge_index: ArrayLike,
+        n_hops: int,
         *,
+        max_interaction_size: int | None = None,
         efficiency_routine: bool = True,
-        index: ValidMoebiusConverterIndices = "k-SII",
-        use_cpp: bool = True,
-    ) -> tuple[InteractionValues, InteractionValues]:
-        """Compute Shapley interactions for the graph.
+    ) -> None:
+        """Initialize GraphSHAP-IQ.
 
         Args:
-            max_subset_size: Maximum size of interactions to consider.
-                If None, uses the maximum neighborhood size.
-            order: Maximum order of interactions to return. If None, uses n_players.
-            efficiency_routine: If True, ensures efficiency by adjusting neighborhood interactions.
-            index: The type of the interaction values.
-            use_cpp: If True, use the C++-accelerated Möbius transform
-                (:meth:`compute_moebius_transform_cpp`). Requires the
-                ``shapiq.graph.cext`` extension to be compiled. Defaults to ``True``.
+            game: A game whose players are the nodes of the graph.
+            edge_index: The edges of the graph as an integer array of shape ``(2, n_edges)``.
+            n_hops: The radius of the receptive fields, e.g. the number of message passing layers
+                of a graph neural network.
+            max_interaction_size: The largest coalitions whose Möbius coefficients are computed.
+                Defaults to ``None``, the largest receptive field, which computes exact values.
+            efficiency_routine: Whether to evaluate the receptive fields larger than
+                ``max_interaction_size`` to keep the values efficient. Defaults to ``True``.
 
-        Returns:
-            Tuple of (moebius_coefficients, shapley_interactions).
+        Raises:
+            ValueError: If ``n_hops`` is negative or ``max_interaction_size`` is not positive.
         """
-        if max_subset_size is not None and max_subset_size < 1:
-            msg = f"max_subset_size must be a positive integer or None, got {max_subset_size}."
+        if isinstance(n_hops, bool) or not isinstance(n_hops, int | np.integer) or n_hops < 0:
+            msg = f"n_hops must be a non-negative integer, got {n_hops!r}."
             raise ValueError(msg)
-        if order is not None and order < 1:
-            msg = f"order must be a positive integer or None, got {order}."
+        if max_interaction_size is not None and max_interaction_size < 1:
+            msg = f"max_interaction_size must be positive or None, got {max_interaction_size}."
             raise ValueError(msg)
-        if order is None:
-            order = self.n_players
+        self.game = game
+        self.n_hops = int(n_hops)
+        self.receptive_fields = receptive_fields(edge_index, game.n_players, self.n_hops)
+        self.max_interaction_size = max_interaction_size
+        self.efficiency_routine = efficiency_routine
 
-        capped_interaction_size = min(
-            self.max_size_neighbors,
-            max_subset_size if max_subset_size is not None else self.max_size_neighbors,
-        )
+    @property
+    def n_players(self) -> int:
+        """The number of players (nodes)."""
+        return self.game.n_players
 
-        # Exactness bookkeeping (Corollary D.1): the result is exact if no
-        # truncation occurred (lambda >= n_max), or if lambda >= n_max - 1
-        # AND the efficiency routine runs -- each maximal neighborhood then
-        # misses exactly one top-order MI, which its gap term recovers.
-        self.last_computation_exact = capped_interaction_size >= self.max_size_neighbors or (
-            efficiency_routine and capped_interaction_size >= self.max_size_neighbors - 1
-        )
+    @property
+    def max_receptive_field_size(self) -> int:
+        """The number of nodes of the largest receptive field."""
+        return max((len(field) for field in self.receptive_fields), default=0)
 
-        # Get coalitions and incomplete neighborhoods
-        moebius_interactions, incomplete_neighborhoods = self._get_all_coalitions(
-            max_subset_size=capped_interaction_size,
-            efficiency_routine=efficiency_routine,
-        )
+    @property
+    def interaction_size(self) -> int:
+        """The size of the largest coalitions whose Möbius coefficients are computed."""
+        if self.max_interaction_size is None:
+            return self.max_receptive_field_size
+        return min(self.max_interaction_size, self.max_receptive_field_size)
 
-        # Convert to matrices
-        (
-            incomplete_neighborhoods_matrix,
-            incomplete_neighborhoods_lookup,
-        ) = self._convert_to_coalition_matrix(
-            incomplete_neighborhoods,
-            lookup_shift=len(moebius_interactions),
-        )
-        moebius_coalition_matrix, moebius_coalition_lookup = self._convert_to_coalition_matrix(
-            moebius_interactions
-        )
+    @property
+    def exact(self) -> bool:
+        """Whether the computed values are exact (for a game that is local on the graph)."""
+        largest = self.max_receptive_field_size
+        size = self.interaction_size
+        return size >= largest or (self.efficiency_routine and size >= largest - 1)
 
-        # Evaluate all coalitions
-        all_coalitions = np.vstack((moebius_coalition_matrix, incomplete_neighborhoods_matrix))
-        masked_predictions = self.game(all_coalitions.astype(bool))
-        self.last_n_model_calls = int(all_coalitions.shape[0])
+    @property
+    def budget(self) -> int:
+        """The number of coalitions GraphSHAP-IQ evaluates."""
+        return len(self._coalitions)
 
-        moebius_coefficients, shapley_interactions = self._graphshapiq_routine(
-            moebius_interactions,
-            masked_predictions,
-            moebius_coalition_lookup,
-            incomplete_neighborhoods,
-            incomplete_neighborhoods_lookup,
-            capped_interaction_size,
-            order,
-            self._grand_coalition_prediction[0],
-            index,
-            efficiency_routine=efficiency_routine,
-            use_cpp=use_cpp,
-        )
-        return moebius_coefficients, shapley_interactions
-
-    def _graphshapiq_routine(
-        self,
-        moebius_interactions: set[tuple[int, ...]],
-        masked_predictions: NDArray[np.floating],
-        moebius_coalition_lookup: dict[tuple[int, ...], int],
-        incomplete_neighborhoods: set[tuple[int, ...]],
-        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
-        max_subset_size: int,
-        order: int,
-        grand_coalition_prediction_node: NDArray[np.floating],
-        index: ValidMoebiusConverterIndices = "k-SII",
-        *,
-        efficiency_routine: bool,
-        use_cpp: bool = False,
-    ) -> tuple[InteractionValues, InteractionValues]:
-        """Core routine for computing GraphSHAPIQ values.
-
-        Args:
-            moebius_interactions: Set of coalitions to compute Möbius values for.
-            masked_predictions: Predictions for all coalitions.
-            moebius_coalition_lookup: Lookup for Möbius coalitions.
-            efficiency_routine: Whether to enforce efficiency.
-            index: The type of shapley interaction.
-            incomplete_neighborhoods: Neighborhoods not fully covered.
-            incomplete_neighborhoods_lookup: Lookup for incomplete neighborhoods.
-            max_subset_size: Maximum interaction size.
-            order: Maximum order of interactions.
-            grand_coalition_prediction_node: Prediction for the grand coalition.
-            use_cpp: If True, use the C++-accelerated Möbius transform.
+    @cached_property
+    def _plan(self) -> tuple[np.ndarray, list[_Block], list[_Gap]]:
+        """Enumerate the coalitions to evaluate, without evaluating the game.
 
         Returns:
-            Tuple of (final Möbius coefficients, Shapley interactions).
+            The distinct coalitions as a matrix, the blocks of the maximal receptive fields, and
+            the gaps of the efficiency routine, smallest first.
         """
-        if use_cpp:
-            moebius_coefficients = self.compute_moebius_transform_cpp(
-                coalitions=moebius_interactions,
-                coalition_predictions=masked_predictions,
-                coalition_lookup=moebius_coalition_lookup,
+        n_players, size = self.n_players, self.interaction_size
+        distinct = {tuple(field.tolist()) for field in self.receptive_fields}
+        fields = sorted(distinct, key=lambda field: (len(field), field))
+        contained, _ = _subset_pairs(fields, n_players)
+        maximal = [fields[i] for i in sorted(set(range(len(fields))) - set(contained.tolist()))]
+        if (largest := max(len(field) for field in maximal)) > MAX_RECEPTIVE_FIELD_SIZE:
+            msg = (
+                f"GraphSHAPIQ supports receptive fields of up to {MAX_RECEPTIVE_FIELD_SIZE} "
+                f"nodes, the graph has one of {largest} nodes."
             )
-        else:
-            moebius_coefficients = self.compute_moebius_transform(
-                coalitions=moebius_interactions,
-                coalition_predictions=masked_predictions,
-                coalition_lookup=moebius_coalition_lookup,
+            raise ValueError(msg)
+        gap_sets = []
+        if self.efficiency_routine:
+            gap_sets = _intersection_closure([f for f in fields if len(f) > size], size, n_players)
+
+        nodes = [np.asarray(field, dtype=np.int64) for field in maximal]
+        masks = [_subset_masks(len(block_nodes), size) for block_nodes in nodes]
+        packed = [_pack(n, m, n_players) for n, m in zip(nodes, masks, strict=True)]
+        packed += [_pack(np.asarray(g), np.array([(1 << len(g)) - 1]), n_players) for g in gap_sets]
+        rows = np.concatenate(packed)
+        keys = np.ascontiguousarray(rows).view(np.dtype((np.void, rows.shape[1]))).ravel()
+        _, first, inverse = np.unique(keys, return_index=True, return_inverse=True)
+        coalitions = np.unpackbits(rows[first], axis=1, count=n_players).astype(bool)
+
+        offsets = np.cumsum([0, *(len(m) for m in masks)])
+        blocks = [
+            _Block(n, m, inverse[offsets[b] : offsets[b + 1]])
+            for b, (n, m) in enumerate(zip(nodes, masks, strict=True))
+        ]
+        n_blocks = len(blocks)
+        container: dict[int, int] = {}
+        smaller: list[list[int]] = [[] for _ in gap_sets]
+        for small, large in zip(*_subset_pairs(maximal + gap_sets, n_players), strict=True):
+            if small >= n_blocks and large < n_blocks:
+                container.setdefault(int(small) - n_blocks, int(large))
+            elif small >= n_blocks:
+                smaller[int(large) - n_blocks].append(int(small) - n_blocks)
+        gaps = []
+        for position, gap_set in enumerate(gap_sets):
+            block = container[position]
+            local = np.searchsorted(blocks[block].nodes, np.asarray(gap_set))
+            gaps.append(
+                _Gap(
+                    row=int(inverse[offsets[-1] + position]),
+                    block=block,
+                    mask=sum(1 << int(bit) for bit in local),
+                    smaller=smaller[position],
+                )
             )
+        return coalitions, blocks, gaps
 
-        if efficiency_routine and incomplete_neighborhoods:
-            additional_coefficients = self._efficiency_routine(
-                masked_predictions,
-                moebius_coefficients,
-                incomplete_neighborhoods,
-                incomplete_neighborhoods_lookup,
-                max_subset_size,
-                grand_coalition_prediction_node,
-            )
-            final_moebius = moebius_coefficients + additional_coefficients
-        else:
-            final_moebius = moebius_coefficients
+    @property
+    def _coalitions(self) -> np.ndarray:
+        return self._plan[0]
 
-        final_moebius.sparsify(self.sparsify_threshold)
+    @cached_property
+    def moebius(self) -> InteractionValues:
+        """The Möbius transform of the game on all evaluated coalitions.
 
-        converter = MoebiusConverter(moebius_coefficients=final_moebius)
-        interactions = converter.compute(index=index, order=order)
-        interactions.sparsify(self.sparsify_threshold)
+        The game is evaluated on first access.
+        """
+        coalitions, blocks, gaps = self._plan
+        values = np.asarray(self.game(coalitions), dtype=float).reshape(-1)
+        moebius = np.zeros(len(coalitions))
+        for block in blocks:
+            coefficients = values[block.rows]
+            _moebius_transform(coefficients, block.masks, len(block.nodes))
+            moebius[block.rows] = coefficients
+        gap_values = np.zeros(len(gaps))
+        for position, gap in enumerate(gaps):
+            block = blocks[gap.block]
+            inside = (block.masks & ~gap.mask) == 0
+            explained = moebius[block.rows[inside]].sum() + gap_values[gap.smaller].sum()
+            gap_values[position] = values[gap.row] - explained
+            moebius[gap.row] = gap_values[position]
+        sizes = coalitions.sum(axis=1)
+        members = np.nonzero(coalitions)[1].tolist()  # row by row, sorted within a row
+        starts = (np.cumsum(sizes) - sizes).tolist()
+        lookup = {
+            tuple(members[start : start + size]): i
+            for i, (start, size) in enumerate(zip(starts, sizes.tolist(), strict=True))
+        }
+        return InteractionValues(
+            values=moebius,
+            index="Moebius",
+            max_order=self.n_players,
+            min_order=0,
+            n_players=self.n_players,
+            interaction_lookup=lookup,
+            estimated=not self.exact,
+            estimation_budget=len(coalitions),
+            baseline_value=float(moebius[lookup[()]]),
+        )
 
-        return copy.deepcopy(final_moebius), copy.deepcopy(interactions)
-
-    def _get_all_coalitions(
-        self,
-        max_subset_size: int,
-        *,
-        efficiency_routine: bool,
-    ) -> tuple[set[tuple[int, ...]], set[tuple[int, ...]]]:
-        """Collect all coalitions for Möbius transform and efficiency adjustment.
+    def __call__(self, index: GraphSHAPIQIndices = "k-SII", order: int = 2) -> InteractionValues:
+        """Compute the interaction values of the game.
 
         Args:
-            max_subset_size: Maximum size of interactions to consider.
-            efficiency_routine: If True, includes incomplete neighborhoods.
+            index: The interaction index, ``"Moebius"`` or an index of
+                :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`. Defaults to
+                ``"k-SII"``.
+            order: The highest interaction order. Defaults to ``2``.
 
         Returns:
-            Tuple of (moebius_interactions, incomplete_neighborhoods).
+            The interaction values, flagged as estimated unless they are :attr:`exact`.
+
+        Raises:
+            ValueError: If the index is not supported or the order is not positive.
         """
-        moebius_interactions: set[tuple[int, ...]] = set()
-        incomplete_neighborhoods: set[tuple[int, ...]] = set()
-
-        for node in self.neighbors:
-            # Add all subsets of the neighborhood up to max_subset_size
-            for interaction in powerset(
-                self.neighbors[node],
-                max_size=max_subset_size,
-            ):
-                moebius_interactions.add(interaction)
-
-            # Add incomplete neighborhoods if efficiency_routine is enabled
-            if efficiency_routine and len(self.neighbors[node]) > max_subset_size:
-                incomplete_neighborhoods.add(tuple(self.neighbors[node]))
-
-        return moebius_interactions, incomplete_neighborhoods
+        if index not in get_args(GraphSHAPIQIndices):
+            msg = f"GraphSHAPIQ supports the indices {get_args(GraphSHAPIQIndices)}, got {index!r}."
+            raise ValueError(msg)
+        if order < 1:
+            msg = f"order must be positive, got {order}."
+            raise ValueError(msg)
+        if index == "Moebius":
+            moebius = self.moebius
+            values = moebius.get_n_order(min_order=0, max_order=order)
+        else:
+            values = MoebiusConverter(self.moebius)(index, order)
+        values.estimated = not self.exact
+        values.estimation_budget = self.budget
+        return values
