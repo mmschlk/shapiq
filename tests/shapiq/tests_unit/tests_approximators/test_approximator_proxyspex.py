@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import sys
+from typing import get_args
 
 import numpy as np
 import pytest
 
+from shapiq.approximator.base import ValidApproximationIndices
 from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import SOUM
 from tests.shapiq.markers import skip_if_no_lightgbm, skip_if_no_xgboost
 
 
@@ -47,6 +50,28 @@ def test_initialization_custom(n, index, max_order, top_order):
     assert proxyspex.max_order == max_order
     assert proxyspex.index == index
     assert proxyspex.top_order is top_order
+
+
+@pytest.mark.parametrize(
+    "index", sorted(set(get_args(ValidApproximationIndices)) - set(ProxySPEX.valid_indices))
+)
+def test_unsupported_index_raises_at_construction(index):
+    """An index ProxySPEX cannot compute is rejected at construction, not in ``approximate``."""
+    with pytest.raises(ValueError, match="Invalid index"):
+        ProxySPEX(n=6, max_order=2, index=index, proxy_model="tree")
+
+
+@pytest.mark.parametrize("index", ProxySPEX.valid_indices)
+def test_approximate_runs_for_every_valid_index(index):
+    """Every index in ``valid_indices`` is approximated on a small game."""
+    n, max_order = 6, 1 if index in ("SV", "BV") else 2
+    game = SOUM(n=n, n_basis_games=10, max_interaction_size=3, random_state=0)
+    proxyspex = ProxySPEX(n=n, max_order=max_order, index=index, proxy_model="tree", random_state=0)
+    estimates = proxyspex.approximate(32, game)
+
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.index == index
+    assert estimates.max_order == max_order
 
 
 @pytest.mark.parametrize(

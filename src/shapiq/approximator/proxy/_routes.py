@@ -13,7 +13,7 @@ kept separate from the approximator class itself:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
@@ -27,10 +27,9 @@ from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQ
 if TYPE_CHECKING:
     from sklearn.linear_model._base import LinearModel
 
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
     from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
     from shapiq.typing import CoalitionMatrix, GameValues
-
-ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "STII", "SII", "SV", "BII", "BV"]
 
 
 def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
@@ -110,7 +109,7 @@ def _extract_proxy_interactions(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
@@ -149,7 +148,7 @@ def _extract_linear(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
@@ -196,7 +195,7 @@ def _extract_tree(
     baseline_value: float,
     max_order: int,
     approximation_index: InterventionalTreeSHAPIQIndices,
-    target_index: ValidProxySHAPIndices,
+    target_index: ValidMoebiusConverterIndices,
     budget: int,
     n_players: int,
 ) -> InteractionValues:
