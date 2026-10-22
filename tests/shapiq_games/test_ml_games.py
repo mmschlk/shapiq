@@ -193,7 +193,7 @@ def test_tabpfn_reads_inf_as_missing_only_with_passthrough(
     assert game(np.array([[True, False, True, False]]))[0] == pytest.approx(point[[0, 2]].sum())
     assert game(game.empty_coalition)[0] == 0.0
     monkeypatch.setattr(importlib.metadata, "version", lambda _: "6.4.1")
-    with pytest.raises(ValueError, match="tabpfn 8.1"):
+    with pytest.raises(ValueError, match=r"tabpfn 8\.1"):
         TabularLocalExplanation(model, x, x=point, imputer="baseline", baseline=np.inf)
 
 
@@ -649,5 +649,5 @@ def test_tabpfn_regressor_is_v2_unless_a_version_is_chosen() -> None:
         "REGRESSION_Y_PREPROCESS_TRANSFORMS": (None,),
         "PASSTHROUGH_INF": True,
     }
-    with pytest.raises(ValueError, match="has no TabPFN 'v0.9'"):
+    with pytest.raises(ValueError, match=r"has no TabPFN 'v0\.9'"):
         tabpfn_regressor(version="v0.9")

@@ -52,7 +52,7 @@ def test_tabpfn_is_v2_unless_a_version_is_chosen() -> None:
     classifier = build_model("tabpfn", "classification", version="v2.5", n_estimators=2)
     assert "v2.5" in classifier.model_path
     assert classifier.n_estimators == 2
-    with pytest.raises(ValueError, match="has no TabPFN 'v0.9'"):
+    with pytest.raises(ValueError, match=r"has no TabPFN 'v0\.9'"):
         build_model("tabpfn", "regression", version="v0.9")
 
 
