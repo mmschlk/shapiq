@@ -81,11 +81,10 @@
     stage.append(frame, caption, edges);
 
     const panel = el("div", "fixlip-demo-panel");
-    const head = el("div", "fixlip-demo-head");
     const title = el("p", "fixlip-demo-title");
     const detail = el("p", "fixlip-demo-detail");
-    // one slot of a fixed height for both views, so that the panel keeps its size: the graph of
-    // the clique at rest, the strongest interactions of a player when pointed at
+    // one slot of a fixed height for both views, so that the panel keeps its size: the clique's
+    // size and graph at rest, the strongest interactions of a player when pointed at
     const slot = el("div", "fixlip-demo-slot");
     const list = el("ol", "fixlip-demo-list");
     const graph = el("div", "fixlip-demo-graph");
@@ -107,9 +106,8 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
-    head.append(title, sizer);
-    slot.append(graph, list);
-    panel.append(head, detail, slot, legend, meta, live);
+    slot.append(sizer, graph, list);
+    panel.append(title, detail, slot, legend, meta, live);
     body.append(stage, panel);
     root.append(bar, body);
 
@@ -250,16 +248,15 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.textContent = `The ${clique.length} players that raise the similarity the most together`;
+      title.textContent = "The players that raise the similarity the most together";
       const tokens = clique.length - regions;
       detail.textContent =
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
-        `(FIxLIP's greedy search) that add ${signed(value)} together, linked by their interactions. ` +
-        `Point at a region or a word to see all of its interactions.`;
+        `(FIxLIP's greedy search) that add ${signed(value)} together, linked by their interactions.`;
       sizer.hidden = false;
       graph.hidden = false;
       list.hidden = true;
-      sizeLabel.textContent = String(state.size);
+      sizeLabel.textContent = `${state.size} players`;
       smaller.disabled = state.size <= 2;
       larger.disabled = state.size >= 10;
       live.textContent = `Clique of ${clique.length} players`;
