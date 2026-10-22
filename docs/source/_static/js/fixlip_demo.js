@@ -444,7 +444,7 @@
         if (strength < 0.08) continue;
         const [x1, y1] = anchor(i);
         const [x2, y2] = anchor(j);
-        const bulge = i >= regionCount && j >= regionCount ? 10 + 0.25 * Math.abs(x2 - x1) : 0;
+        const bulge = i >= regionCount && j >= regionCount ? 6 + 0.1 * Math.abs(x2 - x1) : 0;
         edges.append(line(x1, y1, x2, y2, value, strength, [1.5, 7], [0.3, 0.6], bulge));
       }
     }
