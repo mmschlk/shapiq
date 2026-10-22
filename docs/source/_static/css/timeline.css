@@ -28,6 +28,7 @@
   --tl-c3: #1baf7a;
   --tl-c3-alt: #01724d;
   --tl-c4: #eda100;
+  --tl-c4-alt: #9d6a06;
   --tl-c5: #e87ba4;
   --tl-c5-alt: #ab446e;
   --tl-c6: #008300;
@@ -55,6 +56,7 @@ body[data-theme="dark"] .shapiq-timeline {
   --tl-c3: #30ac7d;
   --tl-c3-alt: #05724f;
   --tl-c4: #c98500;
+  --tl-c4-alt: #885800;
   --tl-c5: #e45f8e;
   --tl-c5-alt: #a7245b;
   --tl-c6: #008300;
@@ -70,6 +72,7 @@ body[data-theme="dark"] .shapiq-timeline {
     --tl-c3: #30ac7d;
     --tl-c3-alt: #05724f;
     --tl-c4: #c98500;
+    --tl-c4-alt: #885800;
     --tl-c5: #e45f8e;
     --tl-c5-alt: #a7245b;
     --tl-c6: #008300;
@@ -93,6 +96,9 @@ body[data-theme="dark"] .shapiq-timeline {
 }
 .shapiq-timeline [data-slot="4"] {
   --tl-lane: var(--tl-c4);
+}
+.shapiq-timeline [data-slot="4-alt"] {
+  --tl-lane: var(--tl-c4-alt);
 }
 .shapiq-timeline [data-slot="5"] {
   --tl-lane: var(--tl-c5);

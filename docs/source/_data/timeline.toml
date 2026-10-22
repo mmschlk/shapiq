@@ -72,6 +72,12 @@ description = "Decompositions of a model into main and interaction effects, and 
 color = "4"
 
 [[lanes]]
+id = "regional"
+name = "Regional explanations"
+description = "Regions of the feature space with weak interactions or dependencies, in which explanations agree."
+color = "4-alt"
+
+[[lanes]]
 id = "tasks"
 name = "Value functions & tasks"
 description = "Task- and model-specific games that bring Shapley values to new questions."
@@ -939,6 +945,21 @@ api = ["shapiq.approximator.ProxySHAP"]
 examples = ["auto_examples/approximators/surrogate_and_sparse/plot_proxyshap"]
 related = ["regression-msr", "interventional-treeshap", "proxyspex"]
 
+[[entries]]
+id = "tn-shap"
+name = "TN-SHAP"
+year = 2026
+lane = "si-approx"
+summary = "Shapley values and interactions from a tensor-network surrogate with few evaluations."
+description = """
+Heidari et al. fit a tensor network, a factorized multilinear map, to the model's behavior around
+an instance, so that Shapley values and interactions become linear probes of its coefficient
+tensor. Instead of enumerating all coalitions, a few targeted evaluations recover interactions of
+order k, and a network trained once serves a whole cohort of instances.
+"""
+cite = ["Heidari.2026"]
+related = ["multilinear-extension", "kernelshap-iq", "proxyspex"]
+
 # -- Exact computation ------------------------------------------------------------------------------
 
 [[entries]]
@@ -1591,7 +1612,7 @@ subgroups. In the unified framework, it is the full effect of the risk game with
 removal.
 """
 cite = ["Strobl.2008", "Molnar.2023a"]
-related = ["pfi", "conditional-removal"]
+related = ["pfi", "conditional-removal", "conditional-subgroups"]
 
 [[entries]]
 id = "occlusion"
@@ -1700,7 +1721,131 @@ The framework relates popular methods to each other and explains why their expla
 model can differ.
 """
 cite = ["Fumagalli.2025"]
-related = ["hoeffding-decomposition", "explaining-by-removing", "functional-decomposition", "taylor-interactions"]
+related = ["hoeffding-decomposition", "explaining-by-removing", "functional-decomposition", "taylor-interactions", "granite"]
+
+# -- Regional explanations --------------------------------------------------------------------------
+
+[[entries]]
+id = "vine"
+name = "VINE"
+year = 2019
+lane = "regional"
+summary = "Clusters the ICE curves of a feature to show its interaction effects."
+description = """
+Britton clustered the derivatives of a feature's ICE curves and drew one partial dependence curve
+per cluster. Each cluster is a region of similar instances in which the feature's effect hardly
+varies, so the clusters show where and how the feature interacts with the others.
+"""
+cite = ["Britton.2019"]
+related = ["ice", "pdp", "repid", "cohex"]
+
+[[entries]]
+id = "repid"
+name = "REPID"
+year = 2022
+lane = "regional"
+summary = "Regional effect plots from a tree that splits where the ICE curves of a feature diverge."
+description = """
+REPID partitions the feature space recursively so that, within each region, the mean-centered ICE
+curves of a feature are close to their regional partial dependence curve. The splits reveal the
+features that interact with the feature of interest, and the regional PDPs describe its effect
+without averaging out heterogeneous effects.
+"""
+cite = ["Herbinger.2022"]
+related = ["ice", "pdp", "vine", "gadget"]
+
+[[entries]]
+id = "disagreement-problem"
+name = "The disagreement problem"
+year = 2024
+lane = "regional"
+summary = "Popular explanation methods often contradict each other on the same prediction."
+description = """
+Krishna et al. compared six post-hoc explanation methods, among them KernelSHAP, LIME and
+gradient-based attributions, and found that they often disagree on the most important features,
+their ranking and their signs, and that practitioners resolve this with ad hoc heuristics. Much of
+the disagreement comes from how the methods treat interactions and feature dependencies, which
+regional explanations reduce.
+"""
+cite = ["Krishna.2024"]
+related = ["unified-fanova", "fd-trees", "granite"]
+
+[[entries]]
+id = "conditional-subgroups"
+name = "Conditional subgroups"
+year = 2024
+lane = "regional"
+summary = "Splits the data into subgroups in which a feature is nearly independent of the others."
+description = """
+Molnar et al. partitioned the data with transformation trees into subgroups in which the
+distribution of a feature hardly depends on the other features. Permuting the feature within a
+subgroup keeps the data realistic, so that permutation importance and partial dependence in the
+subgroups approximate conditional importance and effects, while the subgroups stay interpretable.
+"""
+cite = ["Molnar.2023a"]
+related = ["cfi", "pfi", "pdp", "granite"]
+
+[[entries]]
+id = "gadget"
+name = "GADGET"
+year = 2024
+lane = "regional"
+summary = "Splits the feature space into regions in which the interactions of all features vanish."
+description = """
+GADGET generalizes REPID from one feature to all features and to any local effect method that
+decomposes into main and interaction effects: ICE curves and partial dependence, SHAP values and
+SHAP dependence, or local derivatives and ALE. A tree partitions the feature space so that the
+interactions vanish within the regions, and a permutation test selects the interacting features.
+"""
+cite = ["Herbinger.2024"]
+related = ["repid", "fd-trees", "ale", "pdp"]
+
+[[entries]]
+id = "fd-trees"
+name = "FD-Trees"
+year = 2024
+lane = "regional"
+summary = "Trees that align partial dependence, SHAP and permutation importance within regions."
+description = """
+Laberge et al. traced the disagreement between partial dependence, SHAP values and permutation
+importance to the interactions in the functional decomposition of the model. Their functional
+decomposition trees split the feature space into regions with weak interactions, in which the three
+methods agree.
+"""
+cite = ["Laberge.2024"]
+related = ["disagreement-problem", "gadget", "granite", "interventional-removal"]
+
+[[entries]]
+id = "cohex"
+name = "CohEx"
+year = 2025
+lane = "regional"
+summary = "Explains cohorts: clusters of instances with similar local explanations."
+description = """
+Meng et al. defined cohort explanations between local and global ones and generated them by
+supervised clustering: CohEx groups the instances into cohorts whose local explanations, such as
+SHAP values, are close to the cohort's average, and reports that average for each cohort.
+"""
+cite = ["Meng.2025"]
+related = ["vine", "gadget", "kernelshap"]
+
+[[entries]]
+id = "granite"
+name = "GRANITE"
+year = 2026
+lane = "regional"
+summary = "Regions in which explanations agree, unifying the regional explanation methods."
+description = """
+Herbinger et al. traced the disagreement between feature-based explanations to two sources: how
+they account for interactions and how they remove features (baseline, marginal or conditional).
+GRANITE partitions the feature space recursively into regions where interactions, feature
+dependencies or both have little influence, so that the explanations align. VINE, CohEx, REPID,
+GADGET, FD-Trees and conditional subgroups are special cases, and GRANITE extends them to feature
+groups.
+"""
+cite = ["Herbinger.2026"]
+links = [{ label = "Code (gablabc/GRANITE)", url = "https://github.com/gablabc/GRANITE" }]
+related = ["unified-fanova", "disagreement-problem", "fd-trees", "gadget"]
 
 # -- Value functions & tasks ------------------------------------------------------------------------
 
@@ -2158,6 +2303,21 @@ cite = ["Muschalik.2024"]
 api = ["shapiq.plot.si_graph_plot"]
 examples = ["auto_examples/visualization/plot_si_graph"]
 related = ["network-plot", "upset-plot"]
+
+[[entries]]
+id = "effector"
+name = "Effector"
+year = 2024
+lane = "software"
+summary = "Python library for global and regional feature effect plots."
+description = """
+Effector computes global effects such as partial dependence, ALE, RHALE and SHAP dependence, and
+their regional versions: it partitions the feature space into regions with weak interactions and
+draws one effect plot per region. It works with scikit-learn, PyTorch and any other model.
+"""
+cite = ["Gkolemis.2024"]
+links = [{ label = "Code (givasile/effector)", url = "https://github.com/givasile/effector" }]
+related = ["gadget", "repid", "ale", "pdp"]
 
 [[entries]]
 id = "shapr"

@@ -9,11 +9,12 @@ Timeline of Shapley-Based Explanation Methods
 
    Seventy years separate the Shapley value from today's explanations of tree ensembles, language
    models and foundation models. This timeline shows when the central concepts and methods of
-   Shapley-based explainable AI were proposed, together with the functional ANOVA and the
-   gradient-based attributions that relate to them, and which of them you can use in ``shapiq``.
+   Shapley-based explainable AI were proposed, together with the functional ANOVA, the regional
+   explanations and the gradient-based attributions that relate to them, and which of them you can
+   use in ``shapiq``.
 
    Every card is one method, concept or application, placed in the year of its publication and in
-   one of eleven lanes, from the game-theoretic foundations to software and applications in science
+   one of twelve lanes, from the game-theoretic foundations to software and applications in science
    and engineering. Related lanes can share a color: the second lane of a color is a shade darker
    and marked by diamonds instead of circles. Open a card for a short description, the reference,
    the classes that implement it in ``shapiq`` and a gallery example. Cards marked **In shapiq** are
