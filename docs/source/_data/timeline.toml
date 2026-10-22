@@ -308,7 +308,7 @@ Kolpaczki et al. wrote the Shapley value as the difference of two expectations o
 that do or do not contain the player. A single sampled coalition then informs the estimates of all
 players at once, which the SVARM estimators exploit.
 """
-cite = ["Kolpaczki.2024a"]
+cite = ["Kolpaczki.2024"]
 api = ["shapiq.approximator.SVARM"]
 related = ["svarm", "svarm-iq"]
 
@@ -529,7 +529,7 @@ next sample by minimizing an empirical Bernstein bound. Kolpaczki et al. derived
 allocation for SVARM's strata, showed how much it gains over a fixed one, and approached it with
 Adaptive SVARM.
 """
-cite = ["Castro.2017", "Burgess.2021", "Kolpaczki.2024c"]
+cite = ["Castro.2017", "Burgess.2021", "Kolpaczki.2024b"]
 related = ["stratified-sampling", "svarm"]
 
 [[entries]]
@@ -675,7 +675,7 @@ SVARM estimates the two expectations of the representation without marginal cont
 sampled coalitions, stratified by size, so that every sample updates the estimates of all players.
 Its interaction counterpart is SVARM-IQ.
 """
-cite = ["Kolpaczki.2024a"]
+cite = ["Kolpaczki.2024"]
 api = ["shapiq.approximator.SVARM"]
 examples = ["auto_examples/approximators/shapley_values/plot_svarm"]
 related = ["coalition-representation", "svarm-iq", "stratified-sampling", "adaptive-stratification"]
@@ -877,7 +877,7 @@ SVARM-IQ extends SVARM to cardinal interaction indices of any order: it stratifi
 coalitions by size and by their intersection with each interaction, so that every sample updates
 the estimates of all interactions.
 """
-cite = ["Kolpaczki.2024b"]
+cite = ["Kolpaczki.2024a"]
 api = ["shapiq.approximator.SVARMIQ"]
 examples = ["auto_examples/approximators/shapley_interactions/plot_svarmiq"]
 related = ["svarm", "shap-iq", "cii"]
@@ -1158,7 +1158,7 @@ vectorized operations. WOODELF-HD extends the approach to deep trees. shapiq's T
 large interventional explanations to it when ``woodelf-explainer`` is installed
 (``pip install shapiq[tree]``).
 """
-cite = ["Nadel.2026", "Wettenstein.2026b"]
+cite = ["Nadel.2026", "Wettenstein.2026a"]
 api = ["shapiq.explainer.TreeExplainer"]
 related = ["interventional-treeshap", "quadrature-treeshap"]
 
@@ -1175,7 +1175,7 @@ quadrature, which is exact and numerically stable at any tree depth; TreeGrad-Ra
 derived the first-order case independently. It is the default path-dependent algorithm of shapiq's
 TreeExplainer.
 """
-cite = ["Wettenstein.2026a", "Li.2026"]
+cite = ["Wettenstein.2026", "Li.2026"]
 api = ["shapiq.tree.QuadratureTreeSHAP", "shapiq.explainer.TreeExplainer"]
 examples = [
     "auto_examples/trees/plot_treeshapiq_lightgbm",

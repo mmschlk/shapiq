@@ -8,7 +8,7 @@ sampling.
 
 The explainer computes any-order Shapley interactions for tree ensembles, as introduced by
 TreeSHAP-IQ :cite:p:`Muschalik.2024a`, via the numerically exact Quadrature-TreeSHAP algorithm
-:cite:p:`Wettenstein.2026a`.
+:cite:p:`Wettenstein.2026`.
 """
 
 # sphinx_gallery_thumbnail_number = 3
