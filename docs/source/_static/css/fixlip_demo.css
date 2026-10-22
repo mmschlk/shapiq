@@ -1,0 +1,393 @@
+/* The interactive FIxLIP explanation of the landing page (_static/js/fixlip_demo.js): a photo and
+   its caption, whose regions and tokens show their interactions when pointed at. */
+
+.fixlip-demo {
+  clear: both;
+  margin: 2rem 0 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+}
+
+/* the static figure, until the demo has loaded (and without JavaScript) */
+.fixlip-demo-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--shapiq-radius-small);
+  background: #ffffff;
+}
+
+.fixlip-demo-caption-text p {
+  margin: 0 0 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--shapiq-text-muted);
+}
+
+/* -- the photos and the models ------------------------------------------------------------------ */
+
+.fixlip-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.fixlip-demo-photos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fixlip-demo-photo {
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: var(--shapiq-radius-small);
+  background: none;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration);
+}
+
+.fixlip-demo-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-demo-photo:hover,
+.fixlip-demo-photo[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.fixlip-demo-photo[aria-pressed="true"] {
+  border-color: var(--shapiq-red);
+}
+
+.fixlip-demo-models {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.fixlip-demo-model {
+  padding: 0.35rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-foreground-secondary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fixlip-demo-model[aria-pressed="true"] {
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+}
+
+/* -- the stage: the photo with its regions, the caption with its tokens, the clique's edges ---- */
+
+.fixlip-demo-body {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.fixlip-demo-stage {
+  position: relative;
+}
+
+.fixlip-demo-image {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--shapiq-radius-small);
+}
+
+.fixlip-demo-image > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.fixlip-demo-cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+}
+
+.fixlip-demo-cell {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* the tint of an interaction, and the veil over the regions outside the clique */
+.fixlip-demo-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fixlip-tint, transparent);
+  transition: background-color var(--shapiq-duration);
+}
+
+/* the grid of the regions, and the outline of a region in the clique or pointed at */
+.fixlip-demo-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
+}
+
+.fixlip-demo:not(.fixlip-demo-focused) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
+  background: color-mix(in srgb, var(--shapiq-surface) 60%, transparent);
+}
+
+.fixlip-demo-cell.fixlip-demo-in::after {
+  box-shadow: inset 0 0 0 2px #ffffff, inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+.fixlip-demo-cell.fixlip-demo-focus::after {
+  outline: 2px dashed #ffffff;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.45);
+}
+
+.fixlip-demo-cell:focus-visible {
+  outline: none;
+}
+
+.fixlip-demo-caption {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.92rem;
+  line-height: 2.2;
+}
+
+.fixlip-demo-token {
+  padding: 0.12rem 0.32rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 6px;
+  background: var(--fixlip-tint, transparent);
+  color: var(--color-foreground-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration);
+}
+
+.fixlip-demo:not(.fixlip-demo-focused) .fixlip-demo-token:not(.fixlip-demo-in) {
+  opacity: 0.45;
+}
+
+.fixlip-demo-token.fixlip-demo-in {
+  border-color: var(--color-foreground-primary);
+  font-weight: 700;
+}
+
+.fixlip-demo-token.fixlip-demo-focus,
+.fixlip-demo-token:focus-visible {
+  outline: 2px dashed var(--color-foreground-primary);
+  outline-offset: 2px;
+}
+
+.fixlip-demo-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* -- the panel: what is shown, the strongest interactions, the legend, the model and photo ----- */
+
+.fixlip-demo-panel {
+  font-size: 0.92rem;
+  color: var(--color-foreground-secondary);
+}
+
+.fixlip-demo-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-detail {
+  margin: 0 0 0.85rem;
+  line-height: 1.55;
+}
+
+.fixlip-demo-size {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.fixlip-demo-size[hidden] {
+  display: none;
+}
+
+.fixlip-demo-step {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fixlip-demo-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fixlip-demo-size-label {
+  min-width: 5.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+
+.fixlip-demo-list li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 4rem;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.fixlip-demo-swatch {
+  justify-self: start;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 5px;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-swatch-region {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.fixlip-demo-swatch-title {
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0 0.15rem;
+  vertical-align: -0.3rem;
+}
+
+.fixlip-demo-cell:focus-visible::after {
+  outline: 2px solid var(--color-foreground-primary);
+  outline-offset: -2px;
+}
+
+.fixlip-demo-bar-value {
+  height: 0.55rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--fixlip-color), var(--fixlip-color)) left / var(--fixlip-width) 100% no-repeat,
+    var(--shapiq-surface-raised);
+}
+
+.fixlip-demo-number {
+  text-align: right;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.fixlip-demo-key {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+}
+
+.fixlip-demo-key-red {
+  background: #ff0d57;
+}
+
+.fixlip-demo-key-blue {
+  margin-left: 0.6rem;
+  background: #1e88e5;
+}
+
+.fixlip-demo-meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--shapiq-text-muted);
+}
+
+.fixlip-demo-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* -- small screens: the panel goes under the photo ---------------------------------------------- */
+
+@media (max-width: 46em) {
+  .fixlip-demo {
+    padding: 0.85rem;
+  }
+
+  .fixlip-demo-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .fixlip-demo-photo {
+    width: 2.9rem;
+    height: 2.9rem;
+  }
+}

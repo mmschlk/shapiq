@@ -60,14 +60,20 @@ Shapley Interactions for Machine Learning
 
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
-.. figure:: _static/images/hero_siglip2.png
-   :figclass: shapiq-figure shapiq-hero-figure
-   :alt: A photo of a giraffe drinking at a river and the text "a giraffe drinking water from a
-         river", explained by a network of image regions and words, linked by the interactions
-         that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
+.. the interactive explanation of _static/js/fixlip_demo.js, with the data of _static/fixlip;
+   the static figure stays without JavaScript
 
-   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2 matches a
-   photo and its caption by the interactions of image regions and words, as in FIxLIP
+.. raw:: html
+
+   <div class="fixlip-demo" data-root="_static/fixlip/">
+     <img class="fixlip-demo-fallback" src="_static/images/hero_siglip2.png"
+          alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.">
+   </div>
+
+.. container:: fixlip-demo-caption-text
+
+   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2 and CLIP
+   match a photo and its caption by the interactions of image regions and words, as in FIxLIP
    :cite:p:`Baniecki.2025`.
 
 

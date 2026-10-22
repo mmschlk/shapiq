@@ -393,10 +393,12 @@ html_css_files = [
     "css/tokens.css",  # colors, radii, shadows and motion shared by the custom pages
     "css/custom.css",
     "css/gallery.css",  # the examples landing page, the group pages and their thumbnails
+    "css/fixlip_demo.css",  # the interactive explanation of the landing page
 ]
 html_js_files = [
     ("js/sidebar.js", {"defer": "defer"}),  # keeps the place in the sidebar
     ("js/logo.js", {"defer": "defer"}),  # the players of the landing page's logo are springs
+    ("js/fixlip_demo.js", {"defer": "defer"}),  # the landing page's interactive explanation
 ]
 
 
