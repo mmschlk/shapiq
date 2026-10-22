@@ -4,7 +4,8 @@
 // The players are the 7 x 7 regions of the photo and the tokens of the caption. Their main
 // effects and pairwise interactions (FBII, FIxLIP with p = 0.5) are precomputed per photo and
 // model in _static/fixlip/data.js, so the page only looks values up. At rest, the demo shows the
-// clique of FIxLIP's greedy search: the players that together raise the similarity the most.
+// clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
+// the photo and as a graph of their interactions, as in FIxLIP's figures.
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
@@ -80,13 +81,17 @@
     stage.append(frame, caption, edges);
 
     const panel = el("div", "fixlip-demo-panel");
+    const head = el("div", "fixlip-demo-head");
     const title = el("p", "fixlip-demo-title");
     const detail = el("p", "fixlip-demo-detail");
-    // one slot of a fixed height for both views, so that the panel keeps its size: the clique's
-    // size and players at rest, the strongest interactions of a player when pointed at
+    // one slot of a fixed height for both views, so that the panel keeps its size: the graph of
+    // the clique at rest, the strongest interactions of a player when pointed at
     const slot = el("div", "fixlip-demo-slot");
     const list = el("ol", "fixlip-demo-list");
-    const members = el("div", "fixlip-demo-members");
+    const graph = el("div", "fixlip-demo-graph");
+    graph.setAttribute("aria-hidden", "true"); // the panel's text and the photo say the same
+    const links = document.createElementNS(SVG, "svg");
+    links.setAttribute("class", "fixlip-demo-links");
     const sizer = el("div", "fixlip-demo-size");
     const smaller = el("button", "fixlip-demo-step", "−");
     const larger = el("button", "fixlip-demo-step", "+");
@@ -102,8 +107,9 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
-    slot.append(sizer, members, list);
-    panel.append(title, detail, slot, legend, meta, live);
+    head.append(title, sizer);
+    slot.append(graph, list);
+    panel.append(head, detail, slot, legend, meta, live);
     body.append(stage, panel);
     root.append(bar, body);
 
@@ -248,17 +254,17 @@
       const tokens = clique.length - regions;
       detail.textContent =
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
-        `(FIxLIP's greedy search) that add ${signed(value)} together. ` +
-        `Point at a region or a word to see all its interactions.`;
+        `(FIxLIP's greedy search) that add ${signed(value)} together, linked by their interactions. ` +
+        `Point at a region or a word to see all of its interactions.`;
       sizer.hidden = false;
-      members.hidden = false;
+      graph.hidden = false;
       list.hidden = true;
-      members.replaceChildren(...[...inside].sort((a, b) => a - b).map(swatchOf));
-      sizeLabel.textContent = `${state.size} players`;
+      sizeLabel.textContent = String(state.size);
       smaller.disabled = state.size <= 2;
       larger.disabled = state.size >= 10;
       live.textContent = `Clique of ${clique.length} players`;
       drawEdges(clique);
+      drawGraph(clique);
     }
 
     function showPlayer(player) {
@@ -284,7 +290,7 @@
         `On its own, it adds ${signed(ex.first[player])} to the similarity. ` +
         `With the players below, it adds more (red) or less (blue) than both alone.`;
       sizer.hidden = true;
-      members.hidden = true;
+      graph.hidden = true;
       list.hidden = false;
       const order = [...Array(n).keys()]
         .filter((k) => k !== player)
@@ -315,7 +321,28 @@
       }
       return swatch;
     }
-    // the edges of the clique: between the centers of its regions and the tops of its tokens
+    // the interactions within a clique, the weakest first (to be drawn under the strongest), each
+    // with its strength relative to the strongest
+    function cliquePairs(clique) {
+      const pairs = [];
+      for (let a = 0; a < clique.length; a += 1)
+        for (let b = a + 1; b < clique.length; b += 1) pairs.push([a, b, interaction(clique[a], clique[b])]);
+      const largest = Math.max(...pairs.map(([, , value]) => Math.abs(value)));
+      return pairs
+        .map(([a, b, value]) => ({ a, b, value, strength: largest > 0 ? Math.abs(value) / largest : 0 }))
+        .sort((x, y) => x.strength - y.strength);
+    }
+    const line = (x1, y1, x2, y2, value, strength, width, opacity) => {
+      const node = document.createElementNS(SVG, "line");
+      const attributes = { x1, y1, x2, y2, stroke: solid(value), "stroke-linecap": "round" };
+      attributes["stroke-width"] = (width[0] + width[1] * strength).toFixed(1);
+      attributes["stroke-opacity"] = (opacity[0] + opacity[1] * strength).toFixed(2);
+      for (const [key, v] of Object.entries(attributes)) node.setAttribute(key, v);
+      return node;
+    };
+
+    // the edges of the clique on the photo: between the centers of its regions and the tops of its
+    // tokens
     function drawEdges(clique) {
       edges.replaceChildren();
       if (clique.length < 2) return;
@@ -326,30 +353,64 @@
         const y = k < regionCount ? r.top + r.height / 2 : r.top;
         return [r.left + r.width / 2 - box.left, y - box.top];
       };
-      const pairs = [];
-      for (let a = 0; a < clique.length; a += 1)
-        for (let b = a + 1; b < clique.length; b += 1) pairs.push([clique[a], clique[b]]);
-      const values = pairs.map(([i, j]) => interaction(i, j));
-      const largest = Math.max(...values.map(Math.abs));
-      pairs
-        .map((pair, k) => [pair, values[k]])
-        .sort((x, y) => Math.abs(x[1]) - Math.abs(y[1]))
-        .forEach(([[i, j], value]) => {
-          const strength = largest > 0 ? Math.abs(value) / largest : 0;
-          if (strength < 0.08) return;
-          const [x1, y1] = anchor(i);
-          const [x2, y2] = anchor(j);
-          const line = document.createElementNS(SVG, "line");
-          line.setAttribute("x1", x1);
-          line.setAttribute("y1", y1);
-          line.setAttribute("x2", x2);
-          line.setAttribute("y2", y2);
-          line.setAttribute("stroke", solid(value));
-          line.setAttribute("stroke-width", (1.5 + 7 * strength).toFixed(1));
-          line.setAttribute("stroke-opacity", (0.3 + 0.6 * strength).toFixed(2));
-          line.setAttribute("stroke-linecap", "round");
-          edges.append(line);
-        });
+      for (const { a, b, value, strength } of cliquePairs(clique)) {
+        if (strength < 0.08) continue;
+        edges.append(line(...anchor(clique[a]), ...anchor(clique[b]), value, strength, [1.5, 7], [0.3, 0.6]));
+      }
+    }
+
+    // the clique as a graph in the panel: its players on an ellipse, the regions first, linked by
+    // their interactions as thick as they are strong, the strongest ones labeled
+    function drawGraph(clique) {
+      const nodes = clique.map((k) => {
+        const node = swatchOf(k);
+        node.classList.add("fixlip-demo-node");
+        node.addEventListener("pointerenter", () => players[k].classList.add("fixlip-demo-focus"));
+        node.addEventListener("pointerleave", () => players[k].classList.remove("fixlip-demo-focus"));
+        return node;
+      });
+      links.replaceChildren();
+      graph.replaceChildren(links, ...nodes);
+      const { width, height } = graph.getBoundingClientRect();
+      if (!width) return;
+      const halfWidth = Math.max(...nodes.map((node) => node.offsetWidth / 2));
+      const halfHeight = Math.max(...nodes.map((node) => node.offsetHeight / 2));
+      const ry = height / 2 - halfHeight - 2;
+      const rx = Math.min(width / 2 - halfWidth - 2, 1.9 * ry);
+      const at = clique.map((_, k) => {
+        const angle = Math.PI + (2 * Math.PI * k) / clique.length; // from the left, clockwise
+        return [width / 2 + rx * Math.cos(angle), height / 2 + ry * Math.sin(angle)];
+      });
+      nodes.forEach((node, k) => {
+        node.style.left = `${at[k][0]}px`;
+        node.style.top = `${at[k][1]}px`;
+      });
+      links.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const pairs = cliquePairs(clique);
+      for (const { a, b, value, strength } of pairs) {
+        links.append(line(...at[a], ...at[b], value, strength, [0.75, 9], [0.1, 0.8]));
+      }
+      // the labels of the strongest interactions, along their edges where they do not overlap
+      const placed = [];
+      for (const { a, b, value, strength } of pairs.slice(-4).reverse()) {
+        if (strength < 0.3) break;
+        const spot = [0.5, 0.35, 0.65]
+          .map((t) => [at[a][0] + t * (at[b][0] - at[a][0]), at[a][1] + t * (at[b][1] - at[a][1])])
+          .find(([x, y]) => placed.every(([u, v]) => Math.abs(x - u) > 46 || Math.abs(y - v) > 16));
+        if (!spot) continue;
+        placed.push(spot);
+        const label = document.createElementNS(SVG, "text");
+        label.setAttribute("x", spot[0]);
+        label.setAttribute("y", spot[1]);
+        label.setAttribute("fill", solid(value));
+        label.textContent = signed(value);
+        links.append(label);
+        const box = label.getBBox();
+        const backdrop = document.createElementNS(SVG, "rect");
+        for (const [key, v] of Object.entries({ x: box.x - 3, y: box.y - 1, width: box.width + 6, height: box.height + 2, rx: 4 }))
+          backdrop.setAttribute(key, v);
+        links.insertBefore(backdrop, label);
+      }
     }
 
     cells.addEventListener("keydown", (event) => {
@@ -383,7 +444,9 @@
         show(null);
       }
     });
-    new ResizeObserver(() => state.focus === null && ex && showClique()).observe(stage);
+    const redraw = new ResizeObserver(() => state.focus === null && ex && showClique());
+    redraw.observe(stage);
+    redraw.observe(graph);
 
     root.classList.add("fixlip-demo-ready");
     reset();

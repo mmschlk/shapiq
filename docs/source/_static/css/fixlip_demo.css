@@ -226,15 +226,25 @@
 /* -- the panel: what is shown, the strongest interactions, the legend, the model and photo ----- */
 
 .fixlip-demo-panel {
+  --fixlip-row: 2.5rem;
+  --fixlip-slot: calc(5 * var(--fixlip-row) + 4 * 0.5rem);
   font-size: 0.92rem;
   color: var(--color-foreground-secondary);
 }
 
-/* the title, the description, and the slot keep their heights in both views, so that pointing
-   at players does not move the panel */
-.fixlip-demo-title {
-  min-height: calc(2 * 1.35em);
+/* the title (with the clique's size), the description, and the slot keep their heights in both
+   views, so that pointing at players does not move the panel */
+.fixlip-demo-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin: 0 0 0.4rem;
+}
+
+.fixlip-demo-title {
+  flex: 1;
+  min-height: calc(2 * 1.35em);
+  margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.35;
@@ -248,27 +258,20 @@
 }
 
 .fixlip-demo-slot {
-  height: calc(5 * 2rem + 4 * 0.4rem);
+  height: var(--fixlip-slot);
   margin-bottom: 0.9rem;
 }
 
-.fixlip-demo-members {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 0.4rem;
-}
-
-.fixlip-demo-members[hidden],
+.fixlip-demo-graph[hidden],
 .fixlip-demo-list[hidden] {
   display: none;
 }
 
 .fixlip-demo-size {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem;
 }
 
 .fixlip-demo-size[hidden] {
@@ -293,16 +296,59 @@
 }
 
 .fixlip-demo-size-label {
-  min-width: 5.5rem;
+  min-width: 1.4rem;
   text-align: center;
   font-weight: 600;
   color: var(--color-foreground-primary);
 }
 
+/* the clique: its players on an ellipse, linked by their interactions */
+.fixlip-demo-graph {
+  position: relative;
+  height: var(--fixlip-slot);
+}
+
+.fixlip-demo-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fixlip-demo-links text {
+  font-family: var(--font-stack--monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.fixlip-demo-links rect {
+  fill: var(--shapiq-surface);
+  stroke: var(--shapiq-border);
+}
+
+.fixlip-demo-swatch.fixlip-demo-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background-color: var(--shapiq-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+
+.fixlip-demo-swatch-region.fixlip-demo-node {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--shapiq-border), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 .fixlip-demo-list {
   display: grid;
-  grid-auto-rows: 2rem;
-  gap: 0.4rem;
+  grid-auto-rows: var(--fixlip-row);
+  gap: 0.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -322,8 +368,8 @@
   align-items: center;
   justify-self: start;
   box-sizing: border-box;
-  height: 1.75rem;
-  padding: 0 0.35rem;
+  height: 2rem;
+  padding: 0 0.4rem;
   border: 1px solid var(--shapiq-border);
   border-radius: 5px;
   font-family: var(--font-stack--monospace);
@@ -332,7 +378,7 @@
 }
 
 .fixlip-demo-swatch-region {
-  width: 1.75rem;
+  width: 2rem;
   padding: 0;
   border-radius: 4px;
 }
