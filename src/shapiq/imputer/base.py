@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import Generic, TypeVar
 
 import numpy as np
 
 from shapiq.explainer import utils
 from shapiq.game import Game
 
+TModel = TypeVar("TModel")
 
-class Imputer[TModel](Game):
+
+class Imputer(Game, Generic[TModel]):
     """Base class for Imputers."""
 
     model: TModel

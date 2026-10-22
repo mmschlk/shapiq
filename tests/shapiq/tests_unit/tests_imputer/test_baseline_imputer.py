@@ -32,7 +32,7 @@ def test_baseline_init_background():
 def test_baseline_imputer_with_model(dt_reg_model, background_reg_dataset):
     """Test the baseline imputer with a real model."""
     # create a coalitions
-    data, _target = background_reg_dataset
+    data, target = background_reg_dataset
     x = data[0]
     coalitions = [
         [False for _ in range(data.shape[1])],
@@ -65,7 +65,7 @@ def test_baseline_imputer_background_computation(background_reg_dataset):
         return np.zeros(x.shape[0])
 
     # make a feature into a categorical feature
-    data, _target = background_reg_dataset
+    data, target = background_reg_dataset
     data = np.copy(data).astype(object)
     data[:, 0] = np.random.choice(["a", "b", "c"], size=data.shape[0])
     data[:, 1] = np.random.choice(["a", "b", "c"], size=data.shape[0])

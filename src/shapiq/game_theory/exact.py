@@ -819,7 +819,7 @@ class ExactComputer:
 
         regression_response = self.game_values - self.baseline_value  # normalization
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
-        kADD_shap_values, _residuals, _rank, _singular_values = np.linalg.lstsq(
+        kADD_shap_values, residuals, rank, singular_values = np.linalg.lstsq(
             coalition_matrix_weighted_sqrt,
             regression_response_weighted_sqrt,
             rcond=None,

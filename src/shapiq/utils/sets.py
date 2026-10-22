@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 from itertools import chain, combinations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 from scipy.special import binom, gammaln
@@ -25,6 +25,8 @@ __all__ = [
     "transform_array_to_coalitions",
     "transform_coalitions_to_array",
 ]
+
+T = TypeVar("T", int, str)
 
 
 def log_binom(n: int, k: int | np.ndarray) -> float | np.ndarray:
@@ -57,7 +59,7 @@ def log_binom(n: int, k: int | np.ndarray) -> float | np.ndarray:
     return result
 
 
-def powerset[T: (int, str)](
+def powerset(
     iterable: Iterable[T],
     min_size: int = 0,
     max_size: int | None = None,
@@ -234,7 +236,7 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray:
     return subset_matrix
 
 
-def generate_interaction_lookup[T: (int, str)](
+def generate_interaction_lookup(
     players: Iterable[T] | int,
     min_order: int,
     max_order: int | None = None,

@@ -114,5 +114,5 @@ class TestInputValidation:
         """Test that a ValueError is raised when instantiating the imputer with an empty background data array."""
         data = np.array([])
         x = np.array([1, 2, 3])
-        with pytest.raises(ValueError, match=r"data.*empty"):
+        with pytest.raises(ValueError, match="data.*empty"):
             model_class(model=dummy_model, data=data, x=x)

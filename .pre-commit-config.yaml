@@ -10,11 +10,10 @@ repos:
       - id: mixed-line-ending
       - id: check-merge-conflict
 
-  # the version of ruff in uv.lock, so that the hook and `uv run ruff` report the same
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.5
+    rev: v0.9.10
     hooks:
-      - id: ruff-check
+      - id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
       - id: ruff-format
 

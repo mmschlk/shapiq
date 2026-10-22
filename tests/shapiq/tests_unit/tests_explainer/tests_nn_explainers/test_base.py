@@ -27,7 +27,7 @@ class TestErrorHandling:
         model = deepcopy(sklearn_knn_model)
         model._fit_X = np.array(["Not", "an", "array", "of", "numbers"])
 
-        with pytest.raises(TypeError, match=r"dtype.+_fit_X"):
+        with pytest.raises(TypeError, match="dtype.+_fit_X"):
             KNNExplainer(model, class_index=0)
 
         # Integer features should be converted to floating
@@ -46,13 +46,13 @@ class TestErrorHandling:
         model = deepcopy(sklearn_knn_model)
         model._y = np.array(["Not", "an", "array", "of", "numbers"])
 
-        with pytest.raises(TypeError, match=r"dtype.+_y"):
+        with pytest.raises(TypeError, match="dtype.+_y"):
             KNNExplainer(model, class_index=0)
 
         model = deepcopy(sklearn_knn_model)
         model._y = np.array([[1, 2, 3], [4, 5, 6]])
 
-        with pytest.raises(ValueError, match=r"[Mm]ulti-output.+classifiers"):
+        with pytest.raises(ValueError, match="[Mm]ulti-output.+classifiers"):
             KNNExplainer(model, class_index=0)
 
     def test_sklearn_model_get_private_attribute(self, sklearn_knn_model) -> None:

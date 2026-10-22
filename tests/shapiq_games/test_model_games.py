@@ -162,10 +162,10 @@ def _line_knn(k: int) -> tuple[KNeighborsClassifier, np.ndarray]:
 def test_nn_games_check_the_class_indices_of_the_model() -> None:
     model, x = _line_knn(k=2)
     model._y = np.array(["a", "b", "c", "d"])
-    with pytest.raises(TypeError, match=r"dtype.+_y"):
+    with pytest.raises(TypeError, match="dtype.+_y"):
         KNNGame(model, x)
     model._y = np.array([[1, 0], [0, 1], [1, 1], [1, 0]])
-    with pytest.raises(ValueError, match=r"[Mm]ulti-output"):
+    with pytest.raises(ValueError, match="[Mm]ulti-output"):
         KNNGame(model, x)
 
 

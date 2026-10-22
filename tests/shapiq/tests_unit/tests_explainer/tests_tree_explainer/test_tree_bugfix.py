@@ -801,7 +801,7 @@ def test_xgb_ubjson_valid_parse():
     buf = _build_xgb_ubjson(3)
     result = parse_xgboost_ubjson(buf, -1, 0.0)
     assert len(result) == 8, "Expected 8-tuple of arrays"
-    node_ids, _feature_ids, thresholds, values, left, right, _default, _weights = result
+    node_ids, feature_ids, thresholds, values, left, right, default_, weights = result
     assert len(node_ids) == 1, "Expected 1 tree"
     assert node_ids[0].shape == (3,), "Expected 3 nodes"
     np.testing.assert_array_equal(node_ids[0], [0, 1, 2])

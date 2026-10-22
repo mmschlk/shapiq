@@ -12,5 +12,5 @@ class TestErrorHandling:
 
     def test_n_neighbors_invalid_type(self, sklearn_knn_model) -> None:
         sklearn_knn_model.n_neighbors = "Not an int"
-        with pytest.raises(TypeError, match=r"Expected .*n_neighbors to be int"):
+        with pytest.raises(TypeError, match="Expected .*n_neighbors to be int"):
             KNNExplainer(sklearn_knn_model)
