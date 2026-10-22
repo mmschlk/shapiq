@@ -661,7 +661,7 @@ Introduced with Data Banzhaf, the MSR estimator uses each sampled coalition for 
 sample either with or without that player. It generalizes Unbiased KernelSHAP; shapiq applies it to
 correct surrogate models in Regression MSR and ProxySHAP.
 """
-cite = ["Wang.2023b"]
+cite = ["Wang.2023a"]
 related = ["unbiased-kernelshap", "regression-msr", "proxyshap"]
 
 [[entries]]
