@@ -27,7 +27,7 @@ __all__ = [
 
 type DatasetKind = Literal["tabular", "synthetic", "tabarena"]
 """``"tabular"`` for real-world data, ``"synthetic"`` for seeded generators, and ``"tabarena"`` for
-the TabArena-v0.1 collection."""
+the TabArena-v0.1 collection :cite:p:`Erickson.2025`."""
 type Loader = Callable[..., tuple[pd.DataFrame, pd.Series]]
 
 _MIN_TEST_SAMPLES = 30

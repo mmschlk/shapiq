@@ -1,10 +1,11 @@
 """Imagenette: ten easily classified ImageNet classes, for the image games.
 
 `Imagenette <https://github.com/fastai/imagenette>`_ (fast.ai, Apache-2.0) is a subset of
-ImageNet with full-size photos of ten classes. Every image keeps its ImageNet class, so pretrained
-ImageNet classifiers (the vision transformer and ResNet-18 of the image games) classify them
-directly. The official archive is downloaded on first use, verified by its SHA-256 checksum,
-extracted once into the local data cache, and then deleted.
+ImageNet :cite:p:`Deng.2009` with full-size photos of ten classes. Every image keeps its ImageNet
+class, so pretrained ImageNet classifiers (the vision transformer :cite:p:`Dosovitskiy.2021` and
+ResNet-18 :cite:p:`He.2016` of the image games) classify them directly. The official archive is
+downloaded on first use, verified by its SHA-256 checksum, extracted once into the local data
+cache, and then deleted.
 """
 
 from __future__ import annotations

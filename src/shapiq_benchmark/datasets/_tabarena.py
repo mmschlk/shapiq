@@ -1,4 +1,4 @@
-"""Loaders of the 51 datasets of TabArena-v0.1 (OpenML study 457).
+"""Loaders of the 51 datasets of TabArena-v0.1 :cite:p:`Erickson.2025` (OpenML study 457).
 
 The task type and target column of every dataset are taken from TabArena's official metadata
 (``tabarena_dataset_metadata.csv`` in the TabArena dataset curation repository) instead of being
@@ -84,8 +84,9 @@ TABARENA_DATASETS: dict[str, tuple[int, Task, str]] = {
     "jm1": (46979, "classification", "defects"),
     "mic": (46980, "classification", "LET_IS"),
 }
-"""The 51 TabArena datasets: their OpenML dataset id, task, and target column by name, from
-TabArena's official metadata. They load as ``load_dataset("tabarena_<name>")``."""
+"""The 51 datasets of TabArena :cite:p:`Erickson.2025`: their OpenML dataset id, task, and target
+column by name, from TabArena's official metadata. They load as
+``load_dataset("tabarena_<name>")``."""
 
 _TARGET_COLUMN = "__target__"
 
