@@ -2,10 +2,16 @@
 TreeSHAP-IQ for LightGBM
 =========================
 
-This example demonstrates :class:`~shapiq.TreeExplainer` on a LightGBM model
-trained on the bike-sharing dataset. TreeSHAP-IQ computes exact Shapley
-interaction values in linear time for tree ensembles.
+This example demonstrates :class:`~shapiq.explainer.TreeExplainer` on a LightGBM model trained on
+the California housing dataset: exact Shapley values and interactions of a tree ensemble, without
+sampling.
+
+The explainer computes any-order Shapley interactions for tree ensembles, as introduced by
+TreeSHAP-IQ :cite:p:`Muschalik.2024a`, via the numerically exact Quadrature-TreeSHAP algorithm
+:cite:p:`Wettenstein.2026a`.
 """
+
+# sphinx_gallery_thumbnail_number = 3
 
 from __future__ import annotations
 
@@ -13,15 +19,17 @@ import lightgbm
 from sklearn.model_selection import train_test_split
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # Load Data and Train Model
 # --------------------------
 
-X, y = shapiq.load_bike_sharing()
+dataset = load_dataset("california_housing")
+X, y, feature_names = dataset.x, dataset.y, list(dataset.feature_names)
 X_train, X_test, y_train, y_test = train_test_split(
-    X.values,
-    y.values,
+    X,
+    y,
     test_size=0.25,
     random_state=42,
 )
@@ -57,7 +65,7 @@ print(interaction_values.get_n_order(1).dict_values)
 # Visualization: Network Plot
 # ----------------------------
 
-shapiq.network_plot(interaction_values=interaction_values, feature_names=list(X.columns))
+shapiq.network_plot(interaction_values=interaction_values, feature_names=feature_names)
 
 # %%
 # Stacked Bar Plot (First Order)
@@ -65,7 +73,7 @@ shapiq.network_plot(interaction_values=interaction_values, feature_names=list(X.
 
 shapiq.stacked_bar_plot(
     interaction_values=interaction_values.get_n_order(1),
-    feature_names=list(X.columns),
+    feature_names=feature_names,
 )
 
 # %%
@@ -74,14 +82,14 @@ shapiq.stacked_bar_plot(
 
 shapiq.stacked_bar_plot(
     interaction_values=interaction_values.get_n_order(2, min_order=1),
-    feature_names=list(X.columns),
+    feature_names=feature_names,
 )
 
 # %%
 # Force Plot
 # ----------
 
-interaction_values.plot_force(feature_names=list(X.columns), contribution_threshold=0.03)
+interaction_values.plot_force(feature_names=feature_names, contribution_threshold=0.03)
 
 # %%
 # Global Feature Importance
@@ -89,4 +97,4 @@ interaction_values.plot_force(feature_names=list(X.columns), contribution_thresh
 # Compute interaction values for 50 test instances and show global bar plot.
 
 list_of_ivs = explainer.explain_X(X_test[:50])
-shapiq.plot.bar_plot(list_of_ivs, feature_names=list(X.columns), max_display=20)
+shapiq.plot.bar_plot(list_of_ivs, feature_names=feature_names, max_display=20)

@@ -13,6 +13,7 @@ from shapiq.approximator import (
     RegressionFBII,
     RegressionFSII,
 )
+from shapiq.approximator.base import ValidApproximationIndices
 from shapiq.explainer.configuration import ValidApproximatorTypes
 
 
@@ -138,6 +139,31 @@ class TestSetupApproximator:
                 f"Expected {approx_class} for {approx_name} with index {index}, "
                 f"but got {type(approx_class)}."
             )
+
+    @pytest.mark.parametrize("index", list(get_args(ValidApproximationIndices)))
+    def test_setup_approximator_exact(self, index: ValidApproximationIndices):
+        """Tests that ``"exact"`` sets up the exact computation for every index."""
+        from shapiq.explainer.configuration import setup_approximator
+        from shapiq.explainer.exact import ExactSolver
+
+        solver = setup_approximator(approximator="exact", index=index, max_order=2, n_players=10)
+        assert isinstance(solver, ExactSolver)
+        assert solver.index == index
+        assert solver.max_order == 2
+
+    def test_exact_invalid_index(self):
+        """Tests that the exact computation rejects indices that are not approximation indices."""
+        from shapiq.explainer.exact import ExactSolver
+
+        with pytest.raises(ValueError, match="Invalid index"):
+            ExactSolver(n=5, max_order=2, index="Moebius")
+
+    def test_exact_warns_for_many_players(self):
+        """Tests that the exact computation warns for more than 16 players."""
+        from shapiq.explainer.exact import ExactSolver
+
+        with pytest.warns(UserWarning, match="greater than 16"):
+            ExactSolver(n=17, max_order=1, index="SV")
 
 
 class TestErrorCases:

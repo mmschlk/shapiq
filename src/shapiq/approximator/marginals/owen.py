@@ -104,11 +104,14 @@ class OwenSamplingSV(Approximator[ValidOwenSamplingSVIndices]):
                     if used_budget + 2 <= budget:
                         # draw a subset of players without player: all are inserted independently
                         # with probability q
-                        coalition = self._rng.choice(
-                            [True, False],
-                            self.n - 1,
-                            replace=True,
-                            p=[q, 1 - q],
+                        coalition = np.asarray(
+                            self._rng.choice(
+                                [True, False],
+                                self.n - 1,
+                                replace=True,
+                                p=[q, 1 - q],
+                            ),
+                            dtype=bool,
                         )
                         # add information that player is absent
                         coalition = np.insert(coalition, player, False)

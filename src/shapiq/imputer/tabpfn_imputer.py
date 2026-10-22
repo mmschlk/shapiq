@@ -23,21 +23,17 @@ if TYPE_CHECKING:
 class TabPFNImputer(Imputer[SklearnLikeModel]):
     """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
-    The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN [2]_
-    model which uses in-context learning for prediction. Instead of imputing missing features, the
-    TabPFNImputer removes feature columns missing in a coalition from training data and re-"trains"
-    re-contextualizes the model with the remaining features. The model is then used to predict the
-    data point which is also missing the features. This pardigm is described in Rundel et al.
-    (2024) [1]_.
+    The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN
+    :cite:p:`Hollmann.2025` model which uses in-context learning for prediction. Instead of
+    imputing missing features, the TabPFNImputer removes feature columns missing in a coalition
+    from training data and re-"trains" re-contextualizes the model with the remaining features. The
+    model is then used to predict the data point which is also missing the features. This paradigm
+    is described in :cite:t:`Rundel.2024`.
 
     Attributes:
         x_train: The training data to contextualize the model on.
         y_train: The training labels to contextualize the model on.
         empty_prediction: The model's average prediction on an empty data point.
-
-    References:
-        .. [1] Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Nagler, T., Rügamer, D. (2024). Interpretable Machine Learning for TabPFN. In: Longo, L., Lapuschkin, S., Seifert, C. (eds) Explainable Artificial Intelligence. xAI 2024. Communications in Computer and Information Science, vol 2154. Springer, Cham. https://doi.org/10.1007/978-3-031-63797-1_23
-        .. [2] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319-326 (2025). https://doi.org/10.1038/s41586-024-08328-6
 
     """
 

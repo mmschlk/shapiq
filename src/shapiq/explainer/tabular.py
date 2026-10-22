@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 from warnings import warn
 
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
 
-from .configuration import setup_approximator
-from .custom_types import ExplainerIndices
+from .configuration import ValidApproximatorTypes, setup_approximator
+from .custom_types import ValidApproximationExplainerIndices
 
 if TYPE_CHECKING:
     import numpy as np
@@ -20,11 +20,9 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-TabularExplainerApproximators = Literal[
-    "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
-]
+TabularExplainerApproximators = Literal[ValidApproximatorTypes, "exact"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
-TabularExplainerIndices = ExplainerIndices
+TabularExplainerIndices = ValidApproximationExplainerIndices
 
 
 class TabularExplainer(Explainer):
@@ -80,12 +78,16 @@ class TabularExplainer(Explainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation", "proxyshap", "proxyspex"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "regression",
+                "proxyshap", "proxyspex", "exact"]``. Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,
                 :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
-                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
+                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``. ``"exact"`` computes the
+                exact values with :class:`~shapiq.game_theory.exact.ExactComputer` and ignores the
+                ``budget``. It costs ``2**n_features`` coalition evaluations per explanation, so it
+                is only feasible for a small number of features.
 
             index: The index to explain the model with. Defaults to ``"SV"`` which computes the
                 Shapley value. Options: ``"SV"`` (Shapley value), ``"k-SII"``
@@ -103,7 +105,10 @@ class TabularExplainer(Explainer):
             verbose: Whether to show a progress bar during the computation. Defaults to ``False``.
 
             **kwargs: Additional keyword-only arguments passed to the imputers implemented in
-                :mod:`~shapiq.games.imputer`.
+                :mod:`~shapiq.games.imputer`. For the default ``"marginal"`` imputer,
+                ``sample_size`` sets the maximum number of background rows used for imputation
+                and for the baseline value (defaults to ``100``, ``None`` uses all rows). If
+                ``sample_size`` is not passed and ``data`` has more rows, a warning is raised.
         """
         from shapiq.imputer import (
             BaselineImputer,
@@ -132,6 +137,15 @@ class TabularExplainer(Explainer):
                 random_state=random_state,
                 **kwargs,
             )
+            n_rows, sample_size = self._data.shape[0], self._imputer.sample_size
+            if "sample_size" not in kwargs and sample_size < n_rows:
+                warn(
+                    f"The background data has {n_rows} rows, but the marginal imputer only uses a "
+                    f"random subsample of {sample_size} rows (default ``sample_size={sample_size}``"
+                    "), also to compute the baseline value. Pass ``sample_size=None`` to use all "
+                    "rows, or set ``sample_size`` explicitly to silence this warning.",
+                    stacklevel=2,
+                )
         elif imputer == "conditional":
             self._imputer = GenerativeConditionalImputer(
                 self.predict,
@@ -163,7 +177,8 @@ class TabularExplainer(Explainer):
 
         self._approximator = setup_approximator(
             approximator,
-            self.index,
+            # the constructor only accepts TabularExplainerIndices (no Moebius or Fourier)
+            cast("TabularExplainerIndices", self.index),
             self._max_order,
             self._n_features,
             random_state,
@@ -184,7 +199,7 @@ class TabularExplainer(Explainer):
 
             budget: The budget to use for the approximation. It indicates how many coalitions are
                 sampled, thus high values indicate more accurate approximations, but induce higher
-                computational costs.
+                computational costs. Ignored for ``approximator="exact"``.
 
             random_state: The random state to re-initialize Imputer and Approximator with.
                 Defaults to ``None``, which will not set a random state.

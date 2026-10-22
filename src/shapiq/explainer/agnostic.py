@@ -8,7 +8,7 @@ from shapiq.game import Game
 
 from .base import Explainer
 from .configuration import setup_approximator
-from .custom_types import ExplainerIndices
+from .custom_types import ValidApproximationExplainerIndices
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from .tabular import TabularExplainerApproximators
 
-AgnosticExplainerIndices = ExplainerIndices
+AgnosticExplainerIndices = ValidApproximationExplainerIndices
 
 
 class AgnosticExplainer(Explainer):
@@ -51,11 +51,11 @@ class AgnosticExplainer(Explainer):
 
         Args:
             game: The cooperative game to be explained. This can be an instance of
-                :class:`shapiq.games.base.Game` or a callable value function that expects a
+                :class:`~shapiq.game.Game` or a callable value function that expects a
                 one-hot matrix of coalitions as input and returns the value of the coalition.
 
             n_players: The number of players in the game. If not provided, it will be inferred from
-                the :class:`shapiq.games.base.Game`.
+                the :class:`~shapiq.game.Game`.
 
             index: The type of game-theoretic index to be used for the explanation.
                 Defaults to ``"SV"``.
@@ -65,14 +65,17 @@ class AgnosticExplainer(Explainer):
 
             approximator: The approximator to use for the game-based approach. Defaults to "auto",
                 which will automatically select the appropriate approximator based on the index and
-                max_order. Other options include "regression", "spex", "svarm", "montecarlo", and
-                "permutation". Can also be an instance of
-                :class:`shapiq.approximator._base.Approximator`.
+                max_order. Other options include "regression", "spex", "svarm", "montecarlo",
+                "permutation", "proxyshap", "proxyspex", and "exact". Can also be an instance of
+                :class:`~shapiq.approximator.Approximator`. "exact" computes the exact values with
+                :class:`~shapiq.game_theory.exact.ExactComputer` and ignores the ``budget``. It
+                costs ``2**n_players`` coalition evaluations per explanation, so it is only
+                feasible for a small number of players.
 
             random_state: The random state to use for reproducibility. Defaults to None.
 
         Raises:
-            ValueError: If the `game` is not an instance of `shapiq.games.base.Game` and `n_players`
+            ValueError: If the `game` is not an instance of :class:`~shapiq.game.Game` and `n_players`
                 is not specified.
 
         """
@@ -108,6 +111,7 @@ class AgnosticExplainer(Explainer):
 
         Args:
             budget: The budget used for the approximation / computation of interaction values.
+                Ignored for ``approximator="exact"``.
 
             x: An optional data point to explain. This is only usable if the game is a
                 :class:`~shapiq.games.imputer.base.Imputer`. If provided, the imputer will be fitted
@@ -129,4 +133,4 @@ class AgnosticExplainer(Explainer):
                 self.game.set_random_state(random_state=random_state)
         if random_state is not None:
             self.approximator.set_random_state(random_state=random_state)
-        return self.approximator.approximate(game=self.game, budget=budget)
+        return self.approximator(budget=budget, game=self.game)

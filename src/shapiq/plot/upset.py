@@ -28,10 +28,10 @@ def upset_plot(
 ) -> Figure | None:
     """Plots the upset plot.
 
-    UpSet plots [Lex14]_ can be used to visualize the interactions between features. The plot
-    consists of two parts: the upper part shows the interaction values as bars, and the lower part
-    shows the interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al.
-    (2014) [Lex14]_.
+    UpSet plots :cite:p:`Lex.2014` can be used to visualize the interactions between features.
+    The plot consists of two parts: the upper part shows the interaction values as bars, and the
+    lower part shows the interactions as a matrix. Originally, the UpSet plot was introduced by
+    :cite:t:`Lex.2014`.
     For a more detailed explanation about the plots, see the references or the original
     [documentation](https://upset.app/).
 
@@ -58,9 +58,6 @@ def upset_plot(
     Returns:
         If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple with
         the figure and the axis of the plot.
-
-    References:
-        .. [Lex14] Alexander Lex, Nils Gehlenborg, Hendrik Strobelt, Romain Vuillemot, Hanspeter Pfister. UpSet: Visualization of Intersecting Sets IEEE Transactions on Visualization and Computer Graphics (InfoVis), 20(12): 1983--1992, doi:10.1109/TVCG.2014.2346248, 2014.
 
     """
     # prepare data ---------------------------------------------------------------------------------

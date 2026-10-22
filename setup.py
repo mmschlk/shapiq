@@ -164,12 +164,13 @@ ext_modules = [
         **get_base_flags(),
     ),
     Extension(
-        "shapiq.graph.cext",
+        "shapiq.tree.quadrature.cext",
         sources=[
-            "src/shapiq/graph/cext/cext.cc",
+            "src/shapiq/tree/quadrature/cext/cext.cc",
         ],
         language="c++",
-        **get_openmp_flags(),
+        # No OpenMP: this extension contains no #pragma omp / omp_* usage.
+        **get_base_flags(),
     ),
 ]
 

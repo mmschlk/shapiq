@@ -1,6 +1,5 @@
 """Interventional Tree Shap Explainer Module."""
 
-from .explainer import InterventionalTreeSHAPIQ
-from .game import InterventionalGame
+from .computer import InterventionalTreeSHAPIQ
 
-__all__ = ["InterventionalTreeSHAPIQ", "InterventionalGame"]
+__all__ = ["InterventionalTreeSHAPIQ"]

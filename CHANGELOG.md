@@ -1,30 +1,134 @@
 # Changelog
 
-## v1.6.1 (TBD)
+## Development
 
-### Highlights of new Features
+- adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly. [#613](https://github.com/mmschlk/shapiq/pull/613)
+- fixes `bar_plot` dropping the first feature for explanations without a base value (e.g. `min_order=1`). [#636](https://github.com/mmschlk/shapiq/pull/636)
+- adds the example "Games from Machine Learning Models": a `shapiq.Game` around any model's `predict`, with SV, SII, k-SII, and FSII estimates compared against exact values. [#632](https://github.com/mmschlk/shapiq/pull/632)
+- adds `approximator="exact"` to `TabularExplainer`, `AgnosticExplainer`, `TabPFNExplainer`, and `shapiq.Explainer`, which computes the exact values with `ExactComputer` for all indices. It evaluates all `2**n_features` coalitions per explanation and ignores the `budget`, so it is meant for a small number of features. `"auto"` is unchanged. [#634](https://github.com/mmschlk/shapiq/pull/634), [#320](https://github.com/mmschlk/shapiq/issues/320)
 
-- adds a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026). Larger inputs are computed by the vectorized Woodelf algorithms, and `TreeExplainer` now supports the Banzhaf indices `"BV"` and `"BII"`. `TreeExplainer.explain_X` explains all instances in one vectorized run and returns the new `InteractionValuesBatch`: a lazy sequence of one `InteractionValues` per instance whose `.values` attribute exposes the raw vectorized arrays (`Explainer.explain_X` is now typed as returning a `Sequence[InteractionValues]`). The fast path requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`. The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing [#572](https://github.com/mmschlk/shapiq/pull/572)
-- adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533).
-- adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025) [#524](https://github.com/mmschlk/shapiq/pull/524)
-- adds `TreeExplainer` support for scikit-learn gradient boosting models: `GradientBoostingRegressor`, `GradientBoostingClassifier`, `HistGradientBoostingRegressor`, and `HistGradientBoostingClassifier` can now be converted to the internal tree format (including the constant baseline / `init_` prediction, so attributions sum to the raw model output)
-- adds **categorical split support** to the tree explainers: models trained with native categorical features — sklearn `HistGradientBoosting*` (`categorical_features`), LightGBM (`categorical_feature`), and XGBoost (`enable_categorical`) — are now converted and explained exactly on all paths (TreeSHAP-IQ, LinearTreeSHAP, and the interventional explainer). `TreeModel` stores per-node category sets in a CSR layout (`cat_values`/`cat_start`/`cat_size`) with the unified routing rule "category in set → left child, NaN → missing child". Previously, categorical LightGBM/XGBoost models were **silently mis-parsed** (bitset indices read as numeric thresholds), producing wrong explanations without any error
-- fixes missing-value (NaN) routing in the LinearTreeSHAP and interventional C++ kernels: `-ffast-math` had compiled away the `std::isnan` checks (now built with `-fno-finite-math-only`), and TreeSHAP-IQ now routes NaN values through the per-node missing direction exactly like `predict_one`
+## v1.8.0 (2026-10-20)
+
+### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)
+
+Adds the `PolySHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via interaction-informed polynomial regression (Fumagalli et al., 2026). `PolySHAP` generalizes `KernelSHAP` by fitting a *k*-additive polynomial surrogate of the game before reading off the Shapley values. The estimator can be used with a pre-defined set of interactions to estimate on. This interaction frontier can be the full *k*-additive frontier up to `max_order` (with `max_order=1` recovering `KernelSHAP`), a budget-controlled partial frontier (`max_terms`), or a user-supplied set of interaction terms (`prior_frontier`). It is registered as a Shapley value (`SV`) approximator.
+
+### Harmonized `shapiq_games` and `shapiq_benchmark` [#616](https://github.com/mmschlk/shapiq/pull/616)
+
+We made both `shapiq_games` and `shapiq_benchmark` into sub-packages and improved its usability for evaluating. Note, this is still under development and might change in the near future. The games and the benchmark need the new extras `shapiq[games]` and `shapiq[benchmark]`.
+
+1. `shapiq_games` is a tested collection of game definitions we encountered in the wild. It replaces the about 130 dataset-specific classes of `shapiq_games.benchmark`. We made the existing infrastructure for creating games more stable and added new ones, such as DINOv2 in `ImageClassifier`, CLIP in `ImageTextSimilarity` (which also explains SigLIP and SigLIP 2), and TabPFN with absent features as `+inf` (`TabularLocalExplanation(imputer="baseline", baseline=np.inf)`).
+
+2. `shapiq_benchmark` is a package for evaluating estimators. It builds games from names (`shapiq_benchmark.setups`), downloads and caches datasets on first use, and computes exact values with shapiq's algorithms (`Benchmark(game)`, `Benchmark.from_setup(setup)`, `run`). Importanlty, no data files ship in the wheel anymore (previously ~89 MB).
+
+**Note**, that moving games and datasets into separate packages also added some breaking changes in obscure places:
+
+- the ground-truth games move out of core: `shapiq.tree.InterventionalGame` is now `shapiq_games.tree.InterventionalTreeGame`, `shapiq.explainer.nn.games` is now `shapiq_games.nn`, and `shapiq.explainer.product_kernel.game.ProductKernelGame` is now `shapiq_games.kernel.ProductKernelGame`.
+- removes `shapiq.datasets` and `shapiq.load_california_housing`, `load_bike_sharing` and `load_adult_census`: load them with `shapiq_benchmark.datasets.load_dataset` (`california_housing` comes from scikit-learn; `bike_sharing` and `adult_census` come from OpenML and need `shapiq[benchmark]`) or scikit-learn's fetchers.
+
+### Better Documentation
+
+We started reworking the documentation wich makes it easier to get into the core of the library. The rework adds a new landing page, adds more examples and groups them, adds an interactive timeline of Shapley-based methods, an API reference for `shapiq_games` and `shapiq_benchmark`, and a consistent bibliography of every cited work. [#622](https://github.com/mmschlk/shapiq/pull/622)
+
+### `"Fourier"` and `"Moebius"` Support
+- adds the `"Fourier"` (Walsh-Hadamard) transform as an index `F(S) = (-1/2)^|S| BII(S)`. The index is computable by `ExactComputer` and by `TreeExplainer` in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ`). [#596](https://github.com/mmschlk/shapiq/pull/596)
+- adds `"Moebius"` index computation to `TreeExplainer` in both modes (path-dependent through `QuadratureTreeSHAP`, interventional through `InterventionalTreeSHAPIQ` and Woodelf). [#596](https://github.com/mmschlk/shapiq/pull/596)
+
+### Bugfixes
+- fixes `ProxySPEX` aggregating `index="k-SII"` twice. [#596](https://github.com/mmschlk/shapiq/pull/596)
+- fixes path-dependent `TreeExplainer`/`QuadratureTreeSHAP` dropping zero-cover subtree whenever the explained point's routing enters it, which could occur via the default paths routing. A zero-cover node now splits its (zero) mass equally among its children. [#617](https://github.com/mmschlk/shapiq/pull/617)
+- fixes `InterventionalTreeSHAPIQ(weight_fn=...)` dropping interactions sizes equal to `|E| + |R|`. [#619](https://github.com/mmschlk/shapiq/pull/619)
+- fixes `TreeExplainer` with `class_index=0` on binary gradient boosting classifiers (scikit-learn `GradientBoostingClassifier` and `HistGradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`) silently returning the class-1 explanation in both `mode="pathdependent"` and `mode="interventional"`. [#618](https://github.com/mmschlk/shapiq/pull/618)
+- fixes `TreeExplainer` with `class_index=None` on a multiclass LightGBM model explaining raw marginals, it now explains class 1, consistent with all other libraries. [#618](https://github.com/mmschlk/shapiq/pull/618)
+- fixes bias in the cross-fitted MSR residual adjustment of `ProxySHAP` and `RegressionMSR` (`k_folds > 1`), now applying the correct size-conditional scaling of held-out residuals. [#606](https://github.com/mmschlk/shapiq/pull/606)
+- fixes `MarginalImputer` having wrong `baseline_value` (computed over the whole dataset) and `v(S)` (computed on a subsample of data). Now both are based on the subsample of background rows created by `init_background` and controlled via `sample_size` (using all when `sample_size=None`). [#615](https://github.com/mmschlk/shapiq/pull/615)
+- fixes `OddSHAP` scaling not beyond 1,030 players, by switching to log space adjustment weights, as in the other regression approximators. [#621](https://github.com/mmschlk/shapiq/issues/621)
+
+### Maintenance
+- adds support for Python 3.15 (wheels built with CPython 3.15).
+- more control over the number of background datasets in `MarginalImputer` via `sample_size`. All rows of the dataset are used with `sample_size=None`, and a background with fewer rows than `sample_size` is used in full( default `sample_size=100`). The sample size must be bigger than `1`, indicated by a `ValueError` otherwise. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- vectorizes `MarginalImputer.value_function`. Imputed rows are now passed ot the model in a single call (or chunked to at most 2^20 elements), instead of one model call per background row. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- adding a warning in  `TabularExplainer` that the marginal imputer only uses a subsample of background data. Passing `sample_size` explicitly silences the warning. [#615](https://github.com/mmschlk/shapiq/pull/615)
+- exposing `ProductKernelExplainer` to be used from `shapiq.explainer`. [#622](https://github.com/mmschlk/shapiq/pull/622)
+- the documentation build runs on request only (label `build docs` or the Actions tab) [#622](https://github.com/mmschlk/shapiq/pull/622)
+- speeds up `InterventionalTreeSHAPIQ` (`TreeExplainer(mode="interventional")`) for higher-order interactions [#619](https://github.com/mmschlk/shapiq/pull/619)
+- unifies `QuadratureTreeSHAP` and `InterventionalTreeSHAPIQ` to share the C++ preprocessing. [#619](https://github.com/mmschlk/shapiq/pull/619)
+- `ProxySPEX` and `OddSHAP` read the Fourier coefficients of their tree proxies with the new interventional C++ kernel (`tree_to_fourier`) instead of Python recursions. [#596](https://github.com/mmschlk/shapiq/pull/596)
+- constructing an `InteractionValues` from an array and an `interaction_lookup` is several times faster (one vectorised gather instead of a numpy scalar lookup per interaction). [#619](https://github.com/mmschlk/shapiq/pull/619)
+
+## v1.7.0 (2026-08-27)
+
+### New and Improved Tree support.
+This release focuses on a greatly improved support of tree-based models as provided by sklearn, XGBoost, LightGBM, or CatBoost.
+
+`TreeExplainer` remains the single entry point for explaining tree-based models and routes to the fastest available algorithms.
+With this release, tree explanations are numerically stable at any tree depth and substantially faster on all kinds of trees, in both `pathdependent` and `interventional` mode.
+In `mode="pathdependent"`, explanations are now computed by the new `QuadratureTreeSHAP` algorithm, which replaces the polynomial algorithms `LinearTreeSHAP` and `TreeSHAPIQ` as the default.
+In `mode="interventional"`, smaller inputs are computed by `InterventionalTreeSHAPIQ` and larger inputs route to the new vectorized Woodelf fast path.
+All four algorithms share a common interface and can also be used directly, independently of `TreeExplainer`.
+
+#### Woodelf-IQ integration [#572](https://github.com/mmschlk/shapiq/pull/572)
+
+Together with Ron Wettenstein, we add a Woodelf fast path to `shapiq.tree.TreeExplainer` (Nadel and Wettenstein, 2026; Wettenstein et al., 2026).
+Woodelf is very fast. It computes explanations fully vectorized over all explained instances and reference rows scaling much more favorably with large explanation points or reference data than existing algorithms.
+It is also not limited to Shapley values and also computes interaction indices `"SII"` and `"k-SII"` and Banzhaf values `"BV"` `"BII"`.
+`TreeExplainer.explain_X` explains all instances in one vectorized run and returns the new `InteractionValuesBatch`: a lazy sequence of one `InteractionValues` per instance whose `.values` attribute exposes the raw vectorized arrays (`Explainer.explain_X` is now typed as returning a `Sequence[InteractionValues]`).
+The fast path requires the new optional `tree` dependency group (`pip install shapiq[tree]` — `woodelf-explainer`); without it, the explainer falls back to the shapiq implementation with a `WoodelfNotAvailableWarning`.
+The new `backend` parameter (`"auto"`, `"woodelf"`, `"shapiq"`) overrides the automatic routing, whose cut-off between the two backends was benchmarked and set to `n * m >= 100_000` (`n` explained instances × `m` reference rows) [#591](https://github.com/mmschlk/shapiq/pull/591).
+
+
+#### QuadratureSHAP [#588](https://github.com/mmschlk/shapiq/pull/588)
+
+We add `QuadratureTreeSHAP` in `shapiq.tree.quadrature` as the **default path-dependent algorithm** of `TreeExplainer`, computing all supported indices (`"SV"`, `"SII"`, `"k-SII"`, `"BV"`, `"BII"`) at **any order** natively replacing `LinearTreeSHAP` and `TreeSHAPIQ`.
+`QuadratureTreeSHAP` is a new **efficient** `pathdependent` TreeSHAP algorithm (Wettenstein et al., 2026; Li et al., 2026) computing Shapley values and **any-order** Shapley interactions (`"SV"`, `"SII"`, `"k-SII"`) as well as the Banzhaf indices (`"BV"`/`"BII"`) numerically exact in float64 at any tree depth and any number of features per decision path.
+This resolves the numerical instability of the existing polynomial algorithms which started at around 28 unique features per path [#545](https://github.com/mmschlk/shapiq/issues/545).
+`QuadratureTreeSHAP` is implemented with a C++ kernel that benchmarks substantially faster than the existing explainers at every measured setting.
+We see about 2× improvements vs `LinearTreeSHAP`, which is the fastest algorithm for Shapley values and 100×+ vs `TreeSHAPIQ` for interactions.
+We can compute order-4 interactions in milliseconds.
+Ensembles are computed in a single batched C++ kernel invocation over a shared feature space, which benchmarks at parity with XGBoost's native `pred_contribs` TreeSHAP on a single thread.
+
+
+### New LeverageSHAP Approximator [#524](https://github.com/mmschlk/shapiq/pull/524), [#583](https://github.com/mmschlk/shapiq/pull/583)
+
+Adds the `LeverageSHAP` approximator in `shapiq.approximator.regression` for Shapley value estimation via leverage score sampling (Musco and Witter, 2025).
+`LeverageSHAP` is the modernized variant of `KernelSHAP` and should be used as a direct replacement improving sample-efficiency without additional costs.
+The implementation follows the paper's released implementation: a functional `pairing_trick`, deterministic per-size sample counts (`deterministic_counts=True` by default), and exact budget accounting [#583](https://github.com/mmschlk/shapiq/pull/583).
+
+### Additional new Features
+
+- adds support of any-order `BII` and `STII` to  `ProxySHAP` (in addition to `SV`, `BV`, `SII`, `k-SII`, `FSII`, and `FBII`). `ProxySHAP` is registered for both indices wherever `setup_approximator` resolves the `"proxyshap"` string. `MoebiusConverter` gained the matching `BII` conversion, and computes `BV` through it. [#587](https://github.com/mmschlk/shapiq/pull/587)
+- adds a `k_folds` parameter to `ProxySHAP` and `RegressionMSR` for out-of-fold proxy residuals, i.e. the cross-fitting variant of Witter et al. (2025). The default `k_folds=1` fits a single proxy on all sampled coalitions, which the paper recommends in practice. [#587](https://github.com/mmschlk/shapiq/pull/587)
+- aligns `RegressionMSR` more with the theory of the paper by adding sampling weights for the `RegressionMSR` estimator which are coherent to the papers proposed sampling Witter et al. (2025). [#587](https://github.com/mmschlk/shapiq/pull/587)
+- adds `TreeExplainer` support for scikit-learn gradient boosting models: `GradientBoostingRegressor`, `GradientBoostingClassifier`, `HistGradientBoostingRegressor`, and `HistGradientBoostingClassifier` can now be converted to the internal tree format. [#577](https://github.com/mmschlk/shapiq/pull/577)
+- adds **categorical split support** to the tree explainers: models trained with native categorical features -- sklearn `HistGradientBoosting*` (`categorical_features`), LightGBM (`categorical_feature`), and XGBoost (`enable_categorical`) -- are now converted and explained exactly on all paths (TreeSHAP-IQ, LinearTreeSHAP, Interventional TreeSHAP-IQ, and QuadratureSHAP). `TreeModel` stores per-node category sets in a CSR layout (`cat_values`/`cat_start`/`cat_size`) with the unified routing rule "category in set → left child, NaN → missing child". [#577](https://github.com/mmschlk/shapiq/pull/577)
+- adds the `ConfoundingSHAP` local and global explanation game in `shapiq_games.benchmark.causal_xai` for the first causal machine learning based value functions (Brockschmidt et al., 2026) based on the [paper](https://arxiv.org/abs/2605.10533). [#551](https://github.com/mmschlk/shapiq/pull/551)
 
 ### Breaking Changes
 
-- Renames `InterventionalTreeExplainer` to `InterventionalTreeSHAPIQ` in `shapiq.tree.interventional` for consistency with `TreeSHAPIQ` and `LinearTreeSHAP`. The old name is no longer available; import `shapiq.tree.InterventionalTreeSHAPIQ` instead.
+- renames `InterventionalTreeExplainer` to `InterventionalTreeSHAPIQ` in `shapiq.tree.interventional` for consistency with `TreeSHAPIQ`, `LinearTreeSHAP`, and the newly added `QuadratureSHAP`. The old name is no longer available; import `shapiq.tree.InterventionalTreeSHAPIQ` instead. [#580](https://github.com/mmschlk/shapiq/pull/580)
+- turns `ProxySHAP`'s `adjustment` parameter into a boolean (default `False`; `RegressionMSR` always applies it). The residual correction is now a built-in closed-form MSR routine rather than a second approximator, so the `"svarm"` and `"kernel"` variants are no longer available. `random_state=None` is also no longer silently replaced by a fixed seed, which the single shared coalition sampler makes unnecessary. [#587](https://github.com/mmschlk/shapiq/pull/587)
+- changes `RegressionMSR`'s default `sampling_weights` to the closed-form kernel of Witter et al. (2025), including their separate Leverage-SHAP kernel for linear proxies with `index="SV"`. Passing `sampling_weights` explicitly still overrides the default. [#587](https://github.com/mmschlk/shapiq/pull/587)
 
 ### Bugfix
 
-- Removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` and the `TreeExplainer` in `"pathdependent"` mode now raise a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`, pointing to `mode="interventional"` which supports `STII`, `FSII`, and `FBII` [#571](https://github.com/mmschlk/shapiq/issues/571)
-- Removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571)
-- `kADDSHAP` now declares `"SV"` in its `valid_indices` (like `RegressionFSII` does): with `max_order=1` it estimates Shapley values, which makes it consistent with its listing in the `SV_APPROXIMATORS` registry; the registry consistency test now also covers `SV_APPROXIMATORS`
-- `KNNExplainer`, `WeightedKNNExplainer`, and their ground-truth games now raise a `ValueError` at construction when the model was fitted on fewer training samples than `n_neighbors`, mirroring scikit-learn's own "Expected n_neighbors <= n_samples_fit" error on `predict`. Previously, `KNNExplainer` silently returned Shapley values that disagreed with `KNNExplainerGame` in this regime
+- fixes wrong explanations for XGBoost and CatBoost models on instances whose float64 feature values round across a split threshold in float32: both libraries cast prediction inputs to float32 before routing, which the converted trees now reproduce via `TreeModel.input_precision`/`cast_input` (LightGBM compares in float64 and is untouched; sklearn's thresholds are exact midpoints of adjacent float32 values, making its internal cast unobservable). Previously all tree explainers could explain a different leaf than the model actually predicts — on measured XGBoost `hist` models roughly half the instances routed differently somewhere in the ensemble [#588](https://github.com/mmschlk/shapiq/pull/588)
+- fixes silently permuted attributions for trees whose feature-id set iterates in non-ascending order (e.g. features `{6, 14}`): `reduce_feature_complexity` assigned reduced ids in raw `set` iteration order while the returned `interaction_lookup` sorts players, pairing values with the wrong features in `TreeSHAPIQ`. [#588](https://github.com/mmschlk/shapiq/pull/588)
+- fixes a bug with categorical LightGBM/XGBoost models, which were silently mis-parsed (bitset indices read as numeric thresholds), producing wrong explanations without any error [#577](https://github.com/mmschlk/shapiq/pull/577)
+- fixes missing-value (NaN) routing in the LinearTreeSHAP and interventional C++ kernels: `-ffast-math` had compiled away the `std::isnan` checks (now built with `-fno-finite-math-only`), and TreeSHAP-IQ now routes NaN values through the per-node missing direction exactly like `predict_one` [#577](https://github.com/mmschlk/shapiq/pull/577)
+- removes the stale and broken `STII`/`FSII`/`BII` code path from the path-dependent `TreeSHAPIQ` algorithm, which crashed with broadcasting errors on wider trees. `TreeSHAPIQ` now raises a clear `ValueError` for indices other than `SV`, `SII`, and `k-SII`. [#571](https://github.com/mmschlk/shapiq/issues/571) [#575](https://github.com/mmschlk/shapiq/pull/575)
+- removes `KernelSHAPIQ` and `InconsistentKernelSHAPIQ` from the `STII_APPROXIMATORS` and `FSII_APPROXIMATORS` registries in `shapiq.approximator`, since both only support the `SV`, `SII`, and `k-SII` indices [#571](https://github.com/mmschlk/shapiq/issues/571) [#575](https://github.com/mmschlk/shapiq/pull/575)
+- fixes the `BV` index losing `estimated` and `estimation_budget` when interactions are read out of a linear proxy: `MoebiusConverter` now computes `BV` through the base-interaction routine (as it already did for `SV`) instead of the faithful-index routine, which did not carry those fields through. [#587](https://github.com/mmschlk/shapiq/pull/587)
 
 ### Maintenance
 
-- Removes the dead non-log weight computations from the approximator base classes, which were superseded by their log-space counterparts: `Regression._init_kernel_weights` (superseded by `_init_log_kernel_weights`) and the `MonteCarlo` family `_get_standard_form_weights`/`_weight`/`_sii_weight`/`_bii_weight`/`_chii_weight`/`_stii_weight`/`_fsii_weight`/`_fbii_weight` (superseded by `_get_standard_form_log_weights` and the `_log_*_weight` methods). All were private and unused by the `approximate()` code paths; `ExactComputer` in `shapiq.game_theory.exact` has its own independent `_stii_weight` and is unaffected
+- adds numerical precision guards to the polynomial tree explainers: `LinearTreeSHAP` and `TreeSHAPIQ` now emit a `TreeNumericalPrecisionWarning` from 24 distinct features per decision path (they become numerically unstable there) and raise a `TreeNumericalPrecisionError` from 30 (unreliable values), instead of silently returning wrong attributions or crashing with an unexplained `LinAlgError` [#545](https://github.com/mmschlk/shapiq/issues/545). [#588](https://github.com/mmschlk/shapiq/pull/588)
+- rewrites `ProxySHAP`'s MSR residual adjustment as a self-contained vectorized routine that estimates all interactions in a single matrix product over the coalitions already sampled, instead of re-sampling an independent `CoalitionSampler` and running a second Monte Carlo pass on a residual game. [#587](https://github.com/mmschlk/shapiq/pull/587)
+- removes the dead non-log weight computations from the approximator base classes, which were superseded by their log-space counterparts: `Regression._init_kernel_weights` (superseded by `_init_log_kernel_weights`) and the `MonteCarlo` family `_get_standard_form_weights`/`_weight`/`_sii_weight`/`_bii_weight`/`_chii_weight`/`_stii_weight`/`_fsii_weight`/`_fbii_weight` (superseded by `_get_standard_form_log_weights` and the `_log_*_weight` methods). [#578](https://github.com/mmschlk/shapiq/pull/578)
+- vectorizes the k-SII aggregation (`aggregate_base_attributions`): all subset projections and Bernoulli weightings are built as array operations and summed per subset via integer-coded `bincount`, ~12–27× faster than the previous per-subset dict loop. [#590](https://github.com/mmschlk/shapiq/pull/590)
+- `KNNExplainer`, `WeightedKNNExplainer`, and their ground-truth games now raise a `ValueError` at construction when the model was fitted on fewer training samples than `n_neighbors`, mirroring scikit-learn's own "Expected n_neighbors <= n_samples_fit" error on `predict`. Previously, `KNNExplainer` silently returned Shapley values that disagreed with `KNNExplainerGame` in this regime [#582](https://github.com/mmschlk/shapiq/pull/582)
+- moves the hot paths of `InterventionalTreeSHAPIQ` for non-boolean trees to C++, for a ~263× end-to-end speedup: a fused dense kernel (`compute_interactions_cohort`) replaces the per-explanation Python E/R preprocessing with one DFS per tree that shares the walk across all reference samples, and the interventional `baseline_value` now routes the reference data through a C++ ensemble-prediction kernel (`predict_ensemble_sum`) instead of a Python per-(row, tree) loop (up to ~500× on large backgrounds). [#590](https://github.com/mmschlk/shapiq/pull/590)
+- harmonizes the tree computation algorithms: `LinearTreeSHAP`, `TreeSHAPIQ`, `QuadratureTreeSHAP`, and `InterventionalTreeSHAPIQ` now all validate their own models, accept ensembles as well as single trees (aggregating internally), take a `class_index` argument, and expose a common `explain(x)` entry point — each algorithm can be used independently of `TreeExplainer`, which now simply instantiates one explainer per mode. Note that TreeExplainer is still the intended access points for users. Their modules are named `computer` (`shapiq.tree.linear.computer`, `shapiq.tree.quadrature.computer`, `shapiq.tree.interventional.computer`), keeping `shapiq.tree.explainer` unambiguous as the user-facing `TreeExplainer` entry point. [#588](https://github.com/mmschlk/shapiq/pull/588)
+- the interventional TreeSHAP-IQ C kernels now compute in float64 (previously float32 inputs, thresholds, and accumulation on the dense path); the three unused kernel entry points (`compute_interactions`, `compute_interactions_batched`, `compute_interactions_sparse`) were removed [#588](https://github.com/mmschlk/shapiq/pull/588)
 
 ## v1.6.0 (2026-07-06)
 
@@ -142,7 +246,7 @@ This implementation relies on C-extension routines (`compute_interactions_sparse
 
 ### Introducing LinearTreeSHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
 
-Adds [`LinearTreeSHAP`](src/shapiq/tree/linear/explainer.py) — an efficient implementation of the **Linear TreeSHAP** algorithm (Yu et al., 2022) for computing first-order Shapley values on tree-based models.
+Adds [`LinearTreeSHAP`](src/shapiq/tree/linear/computer.py) — an efficient implementation of the **Linear TreeSHAP** algorithm (Yu et al., 2022) for computing first-order Shapley values on tree-based models.
 Unlike `TreeSHAPIQ`, which supports any-order interactions, `LinearTreeSHAP` is optimized exclusively for Shapley values (`index="SV"`) and achieves higher throughput by using a dedicated C++ extension (`linear_tree_shap_iterative`).
 It is exported from `shapiq.tree.LinearTreeSHAP`. For further details we refer to the paper: Yu, S., Zheng, S., Chen, H., & Li, J. (2022). Linear TreeSHAP. _NeurIPS 2022_.
 

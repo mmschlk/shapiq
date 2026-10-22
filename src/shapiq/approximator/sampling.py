@@ -19,7 +19,7 @@ class CoalitionSampler:
     """Coalition Sampler for handling coalition sampling in approximation methods.
 
     The coalition sampler to generate a collection of subsets as a basis for approximation
-    methods. Sampling is based on a more general variant of `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+    methods. Sampling is based on a more general variant of :cite:t:`Fumagalli.2023`.
     The empty and grand coalition are always prioritized, and sampling budget is required ``>=2``.
     All variables are stored in the sampler, no objects are returned. The following variables
     are computed:
@@ -387,7 +387,7 @@ class CoalitionSampler:
 
         Moves coalition sizes from coalitions_to_sample to coalitions_to_compute, if the expected
         number of coalitions is higher than the total number of coalitions of that size. The border
-        trick is based on a more general version of `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+        trick is based on a more general version of :cite:t:`Fumagalli.2023`.
 
         Args:
             sampling_budget: The number of coalitions to sample.
@@ -426,8 +426,8 @@ class CoalitionSampler:
     def execute_pairing_trick(self, sampling_budget: int, coalition_tuple: tuple[int, ...]) -> int:
         """Executes the pairing-trick for a sampling budget and coalition sizes.
 
-        The pairing-trick is based on the idea by `Covert and Lee (2021) <https://doi.org/10.48550/arXiv.2012.01536>`_
-        and pairs each coalition with its complement.
+        The pairing-trick is based on the idea by :cite:t:`Covert.2021b` and pairs each coalition
+        with its complement.
 
         Args:
             sampling_budget: The currently remaining sampling budget.

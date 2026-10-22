@@ -2,9 +2,11 @@
 TreeSHAP-IQ for Custom Tree Models
 ===================================
 
-This example demonstrates how to use :class:`~shapiq.TreeExplainer` to explain
+This example demonstrates how to use :class:`~shapiq.explainer.TreeExplainer` to explain
 a custom tree model built from scratch using the Play Tennis dataset.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/trees.png"
 
 from __future__ import annotations
 
@@ -64,8 +66,8 @@ tree = shapiq.tree.TreeModel(
 )
 
 # %%
-# Explain with TreeSHAP-IQ
-# -------------------------
+# Explain with TreeExplainer
+# ---------------------------
 # Compute exact Shapley values for a single instance.
 
 explainer = shapiq.TreeExplainer(model=tree, index="SV", max_order=1)

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>Approximation error versus budget</title>
+  <path d="M52 80 H368" stroke="#8b93a7" stroke-width="2" stroke-opacity="0.35"/>
+  <path d="M52 130 H368" stroke="#8b93a7" stroke-width="2" stroke-opacity="0.35"/>
+  <path d="M52 180 H368" stroke="#8b93a7" stroke-width="2" stroke-opacity="0.35"/>
+  <path d="M48 28 V234 H372" stroke="#8b93a7" stroke-width="3"/>
+  <polygon points="70,54 142,101.8 214,133.8 286,151.2 358,156 358,180 286,175.2 214,157.8 142,125.8 70,78" fill="#5773e5" fill-opacity="0.14"/>
+  <polyline points="70,48 142,71.9 214,92.7 286,109.7 358,120" stroke="#79ace5" stroke-width="4"/>
+  <polygon points="70,39 78.5,54 61.5,54" fill="#79ace5" stroke="#79ace5" stroke-width="2"/>
+  <polygon points="142,62.9 150.5,77.9 133.5,77.9" fill="#79ace5" stroke="#79ace5" stroke-width="2"/>
+  <polygon points="214,83.7 222.5,98.7 205.5,98.7" fill="#79ace5" stroke="#79ace5" stroke-width="2"/>
+  <polygon points="286,100.7 294.5,115.7 277.5,115.7" fill="#79ace5" stroke="#79ace5" stroke-width="2"/>
+  <polygon points="358,111 366.5,126 349.5,126" fill="#79ace5" stroke="#79ace5" stroke-width="2"/>
+  <polyline points="70,66 142,113.8 214,145.8 286,163.2 358,168" stroke="#5773e5" stroke-width="4"/>
+  <rect x="63" y="59" width="14" height="14" rx="2" fill="#5773e5"/>
+  <rect x="135" y="106.8" width="14" height="14" rx="2" fill="#5773e5"/>
+  <rect x="207" y="138.8" width="14" height="14" rx="2" fill="#5773e5"/>
+  <rect x="279" y="156.2" width="14" height="14" rx="2" fill="#5773e5"/>
+  <rect x="351" y="161" width="14" height="14" rx="2" fill="#5773e5"/>
+  <polyline points="70,58 142,151.9 214,197 286,212.2 358,214" stroke="#e3326a" stroke-width="4"/>
+  <circle cx="70" cy="58" r="7.5" fill="#e3326a"/>
+  <circle cx="142" cy="151.9" r="7.5" fill="#e3326a"/>
+  <circle cx="214" cy="197" r="7.5" fill="#e3326a"/>
+  <circle cx="286" cy="212.2" r="7.5" fill="#e3326a"/>
+  <circle cx="358" cy="214" r="7.5" fill="#e3326a"/>
+  <path d="M70 234 V244" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M142 234 V244" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M214 234 V244" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M286 234 V244" stroke="#8b93a7" stroke-width="3"/>
+  <path d="M358 234 V244" stroke="#8b93a7" stroke-width="3"/>
+</svg>

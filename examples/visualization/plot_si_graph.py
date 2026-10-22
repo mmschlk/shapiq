@@ -7,21 +7,24 @@ interactions as a network. Players are nodes; interactions are edges whose
 color, thickness, and opacity encode strength and direction.
 """
 
+# sphinx_gallery_thumbnail_number = 7
+
 from __future__ import annotations
 
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 
 import shapiq
+from shapiq_benchmark.datasets import load_dataset
 
 # %%
 # Train a Model
 # -------------
 # We use an XGBoost regressor on the California housing dataset.
 
-x_data, y_data = shapiq.datasets.load_california_housing(to_numpy=False)
-feature_names = list(x_data.columns)
-x_data, y_data = x_data.values, y_data.values
+dataset = load_dataset("california_housing")
+x_data, y_data = dataset.x, dataset.y
+feature_names = list(dataset.feature_names)
 x_train, x_test, y_train, y_test = train_test_split(
     x_data,
     y_data,
@@ -39,6 +42,7 @@ x_explain = x_test[2]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
+    sample_size=100,  # background rows the imputer averages over
     index="FSII",
     max_order=3,
     random_state=42,

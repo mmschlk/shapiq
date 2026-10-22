@@ -8,7 +8,21 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs1" />
+     id="defs1">
+    <!-- dark mode: the hexagon is a softly lit dark tile instead of the light logo's white one -->
+    <radialGradient
+       id="hexGlow"
+       cx="50%"
+       cy="45%"
+       r="60%">
+      <stop
+         offset="0%"
+         stop-color="#2c3142" />
+      <stop
+         offset="100%"
+         stop-color="#1c1f27" />
+    </radialGradient>
+  </defs>
   <g
      id="g26"
      transform="translate(26.329912,131.32714)">
@@ -23,12 +37,11 @@
            transform="translate(-41.052437,-152.83003)">
           <path
              d="m 206.44383,44.57495 60.43749,38.955622 q 8.3025,5.350722 8.3025,15.222902 V 215.2452 q 0,9.87218 -8.3025,15.2229 l -120.8651,77.90137 q -8.30251,5.35072 -16.60501,0 L 8.5461123,230.4681 Q 0.243609,225.11738 0.243609,215.2452 V 98.753474 q 0,-9.87218 8.3025033,-15.222902 L 129.41121,5.6292005 q 8.3025,-5.35072152 16.60501,0 z"
-             fill="#ffffff"
-             stroke="#c9c9c9"
+             fill="url(#hexGlow)"
              stroke-miterlimit="10"
              pointer-events="all"
              id="path1"
-             style="stroke:#3f3f3f;stroke-width:0.987218;stroke-opacity:1" />
+             style="stroke:#b3c2e5;stroke-width:1.5;stroke-opacity:0.35" />
           <circle
              cx="-39.520393"
              cy="138.20732"
@@ -382,13 +395,6 @@
              aria-label="Q" />
         </g>
       </g>
-      <rect
-         style="fill:#006161;fill-opacity:0;stroke:none;stroke-width:1.00164;stroke-opacity:1"
-         id="rect10"
-         width="282.50397"
-         height="354.28781"
-         x="-29.329687"
-         y="-134.32713" />
     </g>
   </g>
 </svg>

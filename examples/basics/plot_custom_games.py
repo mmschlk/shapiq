@@ -5,7 +5,12 @@ Defining Custom Games
 This example demonstrates how to define custom cooperative games and use them
 with :mod:`shapiq`. We model a simple cooking game and show how to query the
 value function, precompute all coalition values, and save/load them.
+
+To build a game around a machine learning model instead, see
+:doc:`/auto_examples/basics/plot_ml_games`.
 """
+
+# sphinx_gallery_thumbnail_path = "_static/gallery/basics.png"
 
 from __future__ import annotations
 
@@ -101,6 +106,8 @@ with tempfile.TemporaryDirectory() as tmpdir:
     save_path = Path(tmpdir) / "cooking_game_values.npz"
     cooking_game.save_values(save_path)
 
-    loaded_game = shapiq.Game(n_players=3, path_to_values=save_path)
+    # an empty game of three players; the file also restores the normalization value
+    loaded_game = shapiq.Game(n_players=3, normalize=False)
+    loaded_game.load_values(save_path)
     print(loaded_game)
-    print("Stored game values:", loaded_game.game_values)
+    print("Same values as saved:", loaded_game.game_values == cooking_game.game_values)

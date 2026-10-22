@@ -10,7 +10,6 @@
 [![PyPI status](https://img.shields.io/pypi/status/shapiq.svg?color=blue)](https://pypi.org/project/shapiq)
 [![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
 
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://github.com/mmschlk/shapiq/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/mmschlk/shapiq)](https://github.com/mmschlk/shapiq/commits/main)
 
@@ -18,8 +17,16 @@
 
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
+<p align="center">
+  <img width="900px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/hero_siglip2.png" alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them">
+</p>
+<p align="center">
+Which words go with which parts of the image? <code>shapiq</code> explains how well SigLIP 2 matches a photo and its caption by the interactions of image regions and words, as in <a href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/4e7686b7b147fac3352b24ab86ff78fb-Abstract-Conference.html">FIxLIP</a> (NeurIPS 2025).
+</p>
+
 ## 🛠️ Install
-`shapiq` is intended to work with **Python 3.12 and above**.
+`shapiq` is intended to work with **Python 3.12 and above** and is tested on Python 3.12 to 3.15.
+On Python 3.15, the optional dependencies that do not yet ship Python 3.15 wheels (`torch`, `tabpfn`, `catboost`, `scikit-image`, and `sentencepiece`) are skipped, so the features relying on them (e.g. `ShaplEIG`, the `TabPFN` imputer, CatBoost models) are only available on Python 3.12 to 3.14 for now.
 Installation can be done via `uv` :
 ```sh
 uv add shapiq
@@ -31,13 +38,15 @@ or via `pip`:
 pip install shapiq
 ```
 
+The games (`shapiq_games`) and the benchmark (`shapiq_benchmark`) ship with `shapiq` and need the extras `shapiq[games]` and `shapiq[benchmark]`.
+
 ## 👀 Upcoming
 See what’s on the horizon for the library in our [GitHub Project Board](https://github.com/users/mmschlk/projects/4). We plan and track upcoming features, improvements, and maintenance tasks there including new explainers, performance optimizations, and expanded model support.
 
 ## ⭐ Quickstart
 
 You can explain your model with `shapiq.explainer` and visualize Shapley interactions with `shapiq.plot`.
-If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.games` modules.
+If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.game_theory` modules, and the games of `shapiq_games`.
 
 ### Compute any-order feature interactions
 
@@ -47,7 +56,8 @@ Just load your data and model, and then use a `shapiq.Explainer` to compute Shap
 ```python
 import shapiq
 # load data
-X, y = shapiq.load_california_housing(to_numpy=True)
+from sklearn.datasets import fetch_california_housing
+X, y = fetch_california_housing(return_X_y=True)
 # train a model
 from sklearn.ensemble import RandomForestRegressor
 model = RandomForestRegressor()
@@ -118,7 +128,7 @@ interaction_values.plot_force(feature_names=...)
 </p>
 
 ### Use ProxySPEX (Proxy SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.png" alt="spex_logo" align="right" height="75px"/>
-For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/generated/shapiq.approximator.ProxySPEX.html) approximator.
 
 ```python
 # load your data and model with large number of features
@@ -147,10 +157,7 @@ The nodes represent feature **attributions** and the edges represent the **inter
 The strength and size of the nodes and edges are proportional to the absolute value of attributions and interactions, respectively.
 
 ```python
-shapiq.network_plot(
-    first_order_values=interaction_values.get_n_order_values(1),
-    second_order_values=interaction_values.get_n_order_values(2)
-)
+shapiq.network_plot(interaction_values)
 # or use
 interaction_values.plot_network()
 ```
@@ -187,7 +194,7 @@ fsii_values.plot_force()               # plot the force plot
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
-If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/auto_examples/index.html).
+If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/examples.html).
 There is a lot of great resources available to get you started with Shapley values and interactions.
 
 ## 💬 Citation
