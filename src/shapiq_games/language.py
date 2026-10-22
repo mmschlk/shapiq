@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 __all__ = ["SENTIMENT_MODEL_ID", "SentimentAnalysis"]
 
 SENTIMENT_MODEL_ID = "lvwerra/distilbert-imdb"
-"""The default Hugging Face model: DistilBERT fine-tuned on IMDb movie reviews."""
+"""The default Hugging Face model: DistilBERT :cite:p:`Sanh.2019` fine-tuned on IMDb movie reviews
+:cite:p:`Maas.2011`."""
 
 
 class SentimentAnalysis(Game):

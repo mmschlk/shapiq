@@ -39,7 +39,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     2. Draw coalition pairs ``(z, z̄)`` without replacement (Algorithm 2). By default
        (``deterministic_counts=True``) each size's pair count is fixed to the
        expectation of the Binomial draw, largest-remainder rounded so the total is
-       exact -- stratification in the spirit of SVARM :cite:p:`Kolpaczki.2024a`; with
+       exact -- stratification in the spirit of SVARM :cite:p:`Kolpaczki.2024`; with
        ``deterministic_counts=False`` it is drawn at random as Algorithm 2 states.
        Sizes whose layer fits within ``2c`` are enumerated exhaustively.
     3. Reweight each row by the inverse of its inclusion probability. For the

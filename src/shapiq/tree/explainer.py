@@ -75,7 +75,7 @@ class TreeExplainer(Explainer):
     - In ``"pathdependent"`` mode (the default) an absent feature follows *both* children of
       its split nodes, weighted by the share of training samples that went each way — the
       background distribution is the one already stored in the tree, so no data is needed.
-      The computation uses Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` (whose first-order
+      The computation uses Quadrature-TreeSHAP :cite:p:`Wettenstein.2026` (whose first-order
       case was independently derived in TreeGrad-Ranker by :cite:t:`Li.2026`), implemented in
       :class:`~shapiq.tree.quadrature.QuadratureTreeSHAP`: values and interactions are
       Gauss-Legendre integrals of weighted Banzhaf interaction polynomials, numerically exact
@@ -93,7 +93,7 @@ class TreeExplainer(Explainer):
       additionally supports the ``"STII"``, ``"FSII"``, and ``"FBII"`` indices. The
       ``"Moebius"`` and ``"Fourier"`` transforms are available in both modes. Large
       interventional inputs are routed to the vectorized Woodelf and WOODELF-HD algorithms
-      :cite:p:`Nadel.2026,Wettenstein.2026b` when the optional
+      :cite:p:`Nadel.2026,Wettenstein.2026a` when the optional
       ``woodelf-explainer`` package is installed (``pip install shapiq[tree]``); the
       ``backend`` parameter overrides this routing.
 

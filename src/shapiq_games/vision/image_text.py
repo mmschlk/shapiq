@@ -23,12 +23,13 @@ __all__ = ["ImageTextSimilarity"]
 class ImageTextSimilarity(RegionGame):
     """The image-text similarity game: how well the visible regions of an image match a text.
 
-    CLIP, SigLIP, and SigLIP 2 embed images and texts in one space. The players are rectangular
-    regions of the image, a ``grid`` over the model's patch tokens (14 x 14 for the ViT-B/16
-    models, 7 x 7 for ``"clip_vit_b32"``). The value of a coalition is the cosine similarity
-    between the embedding of the image with only the coalition's regions and the embedding of the
-    text. SigLIP's logit is ``scale * cosine + bias``, so its Shapley values are ``scale`` times
-    the game's. Absent regions are removed
+    CLIP :cite:p:`Radford.2021`, SigLIP :cite:p:`Zhai.2023`, and SigLIP 2 :cite:p:`Tschannen.2025`
+    embed images and texts in one space. The players are rectangular regions of the image, a
+    ``grid`` over the model's patch tokens (14 x 14 for the ViT-B/16 models, 7 x 7 for
+    ``"clip_vit_b32"``). The value of a coalition is the cosine similarity between the embedding
+    of the image with only the coalition's regions and the embedding of the text. SigLIP's logit
+    is ``scale * cosine + bias``, so its Shapley values are ``scale`` times the game's. Absent
+    regions are removed
 
     - in token space (by default): their tokens are dropped from the sequence
       (``mask_strategy="remove"``, the default; the present tokens keep their position embeddings)
