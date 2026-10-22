@@ -1611,7 +1611,7 @@ contribution. Molnar et al. made conditional importance and effects model-agnost
 subgroups. In the unified framework, it is the full effect of the risk game with conditional
 removal.
 """
-cite = ["Strobl.2008", "Molnar.2023a"]
+cite = ["Strobl.2008", "Molnar.2024"]
 related = ["pfi", "conditional-removal", "conditional-subgroups"]
 
 [[entries]]
@@ -1782,7 +1782,7 @@ distribution of a feature hardly depends on the other features. Permuting the fe
 subgroup keeps the data realistic, so that permutation importance and partial dependence in the
 subgroups approximate conditional importance and effects, while the subgroups stay interpretable.
 """
-cite = ["Molnar.2023a"]
+cite = ["Molnar.2024"]
 related = ["cfi", "pfi", "pdp", "granite"]
 
 [[entries]]
