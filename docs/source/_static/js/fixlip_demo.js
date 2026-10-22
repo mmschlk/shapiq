@@ -246,7 +246,8 @@
       meta.innerHTML = "";
       const credit = image.credit;
       meta.append(
-        `${model.label} (${model.detail}): similarity ${ex.similarity.toFixed(2)}. The explanation fits held-out coalitions with R² = ${ex.r2.toFixed(2)}. Photo: `,
+        `${model.label} (${model.detail}): similarity ${ex.similarity.toFixed(2)}. Explained by ${data.method}; ` +
+          `the explanation fits held-out coalitions with R² = ${ex.r2.toFixed(2)}. Photo: `,
         Object.assign(el("a", "", credit.title), { href: credit.url }),
         credit.author ? ` by ${credit.author}, ` : ", ",
         Object.assign(el("a", "", credit.license), { href: credit.licenseUrl }),
