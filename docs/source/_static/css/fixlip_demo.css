@@ -72,6 +72,12 @@
   border-color: var(--shapiq-red);
 }
 
+.fixlip-demo-photo:disabled,
+.fixlip-demo-model:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .fixlip-demo-models {
   display: inline-flex;
   padding: 3px;

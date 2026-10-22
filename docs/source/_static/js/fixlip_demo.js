@@ -44,7 +44,16 @@
   };
 
   function start(data) {
-    const state = { image: data.images[0].id, model: data.models[0].id, size: 6, focus: null, pinned: false };
+    const has = (image, model) => `${image}/${model}` in data.explanations;
+    const first = data.images.find((image) => data.models.some((model) => has(image.id, model.id)));
+    if (!first) return;
+    const state = {
+      image: first.id,
+      model: data.models.find((model) => has(first.id, model.id)).id,
+      size: 6,
+      focus: null,
+      pinned: false,
+    };
 
     // -- the frame: photos, models, the stage with the photo and the caption, and the panel ------
     root.replaceChildren();
@@ -141,13 +150,21 @@
         : `“${ex.tokens[player - regionCount][0]}”`;
 
     function reset() {
+      // a photo without an explanation for the model switches to a model that has one
+      if (!has(state.image, state.model)) state.model = data.models.find((m) => has(state.image, m.id)).id;
       ex = data.explanations[`${state.image}/${state.model}`];
       const image = data.images.find((x) => x.id === state.image);
       const model = data.models.find((x) => x.id === state.model);
       state.focus = null;
       state.pinned = false;
       photoButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(data.images[k].id === state.image)));
-      modelButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(data.models[k].id === state.model)));
+      modelButtons.forEach((b, k) => {
+        b.setAttribute("aria-pressed", String(data.models[k].id === state.model));
+        b.disabled = !has(state.image, data.models[k].id);
+      });
+      photoButtons.forEach((b, k) => {
+        b.disabled = !data.models.some((m) => has(data.images[k].id, m.id));
+      });
       photo.src = `${root.dataset.root}${image.id}.jpg`;
       photo.alt = image.alt;
 
