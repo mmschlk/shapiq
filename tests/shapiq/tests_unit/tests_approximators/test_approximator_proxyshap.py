@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import math
+from typing import get_args
 
 import numpy as np
 import pytest
 from sklearn.linear_model import LinearRegression
 from xgboost import XGBRegressor
 
+from shapiq.approximator.base import ValidApproximationIndices
 from shapiq.approximator.proxy import ProxySHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
@@ -46,6 +48,37 @@ def test_initialization_custom(n, index, max_order):
     assert proxyshap.n == n
     assert proxyshap.max_order == (n if max_order is None else max_order)
     assert proxyshap.index == index
+
+
+@pytest.mark.parametrize(
+    "index", sorted(set(get_args(ValidApproximationIndices)) - set(ProxySHAP.valid_indices))
+)
+def test_unsupported_index_raises_at_construction(index):
+    """An index ProxySHAP cannot compute is rejected at construction, not in ``approximate``."""
+    with pytest.raises(ValueError, match="Invalid index"):
+        ProxySHAP(n=6, max_order=2, index=index)
+
+
+@pytest.mark.parametrize("adjustment", [False, True])
+@pytest.mark.parametrize("proxy_model", ["xgboost", "linear"])
+@pytest.mark.parametrize("index", ProxySHAP.valid_indices)
+def test_approximate_runs_for_every_valid_index(index, proxy_model, adjustment):
+    """Every index in ``valid_indices`` is approximated on a small game."""
+    n, max_order = 6, 1 if index in ("SV", "BV") else 2
+    game = SOUM(n=n, n_basis_games=10, max_interaction_size=3, random_state=0)
+    proxyshap = ProxySHAP(
+        n=n,
+        max_order=max_order,
+        index=index,
+        proxy_model=proxy_model,
+        adjustment=adjustment,
+        random_state=0,
+    )
+    estimates = proxyshap.approximate(32, game)
+
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.index == index
+    assert estimates.max_order == max_order
 
 
 @pytest.mark.parametrize(

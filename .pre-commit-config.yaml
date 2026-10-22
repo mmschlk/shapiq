@@ -25,3 +25,10 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+
+      # the format of the bibliography (docs/source/references.bib), on changed .bib files only
+      - id: format-bib
+        name: format-bib
+        entry: python docs/format_bib.py
+        language: python
+        files: \.bib$

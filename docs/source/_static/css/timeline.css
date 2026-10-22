@@ -19,12 +19,18 @@
 }
 
 /* -- Tokens: one color per lane (a validated categorical palette, stepped for each theme) -------- */
+/* A related lane can take the second shade of a color (-alt, see _data/timeline.toml): darker in
+   the light theme, and in the dark theme the two shades straddle the palette's lightness band. The
+   lanes in their top-to-bottom order pass the palette checks against the lanes' surface. */
 .shapiq-timeline {
   --tl-c1: #2a78d6;
   --tl-c2: #eb6834;
   --tl-c3: #1baf7a;
+  --tl-c3-alt: #01724d;
   --tl-c4: #eda100;
+  --tl-c4-alt: #9d6a06;
   --tl-c5: #e87ba4;
+  --tl-c5-alt: #ab446e;
   --tl-c6: #008300;
   --tl-c7: #6250d6;
   --tl-c8: #e34948;
@@ -47,9 +53,12 @@
 body[data-theme="dark"] .shapiq-timeline {
   --tl-c1: #3987e5;
   --tl-c2: #d95926;
-  --tl-c3: #199e70;
+  --tl-c3: #30ac7d;
+  --tl-c3-alt: #05724f;
   --tl-c4: #c98500;
-  --tl-c5: #d55181;
+  --tl-c4-alt: #885800;
+  --tl-c5: #e45f8e;
+  --tl-c5-alt: #a7245b;
   --tl-c6: #008300;
   --tl-c7: #9085e9;
   --tl-c8: #e66767;
@@ -60,9 +69,12 @@ body[data-theme="dark"] .shapiq-timeline {
   body:not([data-theme="light"]) .shapiq-timeline {
     --tl-c1: #3987e5;
     --tl-c2: #d95926;
-    --tl-c3: #199e70;
+    --tl-c3: #30ac7d;
+    --tl-c3-alt: #05724f;
     --tl-c4: #c98500;
-    --tl-c5: #d55181;
+    --tl-c4-alt: #885800;
+    --tl-c5: #e45f8e;
+    --tl-c5-alt: #a7245b;
     --tl-c6: #008300;
     --tl-c7: #9085e9;
     --tl-c8: #e66767;
@@ -79,11 +91,20 @@ body[data-theme="dark"] .shapiq-timeline {
 .shapiq-timeline [data-slot="3"] {
   --tl-lane: var(--tl-c3);
 }
+.shapiq-timeline [data-slot="3-alt"] {
+  --tl-lane: var(--tl-c3-alt);
+}
 .shapiq-timeline [data-slot="4"] {
   --tl-lane: var(--tl-c4);
 }
+.shapiq-timeline [data-slot="4-alt"] {
+  --tl-lane: var(--tl-c4-alt);
+}
 .shapiq-timeline [data-slot="5"] {
   --tl-lane: var(--tl-c5);
+}
+.shapiq-timeline [data-slot="5-alt"] {
+  --tl-lane: var(--tl-c5-alt);
 }
 .shapiq-timeline [data-slot="6"] {
   --tl-lane: var(--tl-c6);
@@ -93,6 +114,20 @@ body[data-theme="dark"] .shapiq-timeline {
 }
 .shapiq-timeline [data-slot="8"] {
   --tl-lane: var(--tl-c8);
+}
+.shapiq-timeline [data-slot="neutral"] {
+  --tl-lane: var(--tl-muted); /* a lane outside the palette's eight colors, as "Other" */
+}
+
+/* the marker of a lane is a circle, and a diamond for the second shade of a color */
+.tl-legend li[data-slot$="-alt"]::before,
+.tl-filter[data-slot$="-alt"]::before,
+.tl-card[data-slot$="-alt"] .tl-card-lane::before,
+.tl-lane[data-slot$="-alt"] .tl-lane-name::before,
+.tl-group[data-slot$="-alt"] .tl-group-name::before,
+.tl-list .tl-card[data-slot$="-alt"]::after {
+  border-radius: 1px;
+  transform: rotate(45deg) scale(0.85);
 }
 
 .shapiq-timeline [hidden] {
@@ -751,6 +786,16 @@ body[data-theme="dark"] .shapiq-timeline {
   line-height: 1.3;
   color: var(--tl-ink);
 }
+.tl-lane-name::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--tl-lane);
+  vertical-align: 0.02em;
+}
 .tl-lane-count {
   font-size: 0.72rem;
   color: var(--tl-muted);
@@ -792,13 +837,14 @@ body[data-theme="dark"] .shapiq-timeline {
   cursor: pointer;
   scroll-margin: 4rem 1rem;
   transition:
-    transform var(--shapiq-duration) var(--shapiq-ease),
     box-shadow var(--shapiq-duration) var(--shapiq-ease),
     background-color var(--shapiq-duration) var(--shapiq-ease),
     opacity var(--shapiq-duration) var(--shapiq-ease);
 }
 .tl-chip:hover {
-  transform: translateY(-1px);
+  /* no lift (transform): while a transform animates, Chromium moves every chip painted after
+     this one to a layer of its own, and their text shifts by a fraction of a pixel at the start
+     and at the end of the transition */
   background: color-mix(in srgb, var(--tl-lane) 18%, var(--tl-surface));
   box-shadow:
     inset 3px 0 0 var(--tl-lane),
