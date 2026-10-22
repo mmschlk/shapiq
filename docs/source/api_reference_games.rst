@@ -102,6 +102,15 @@ players.
    ThresholdNNGame
    ProductKernelGame
 
+.. currentmodule:: shapiq.graph
+
+.. autosummary::
+   :nosignatures:
+
+   GraphGame
+
+.. currentmodule:: shapiq_games
+
 .. _games-explanation:
 
 Explanation Games

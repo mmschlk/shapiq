@@ -103,6 +103,7 @@ games = [
     "torch; python_version < '3.15'",         # image games
     "torchvision; python_version < '3.15'",   # ResNet image games
     "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
+    "torch-geometric>=2.8; python_version < '3.15'",  # graph games
     "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [

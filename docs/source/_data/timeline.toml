@@ -1077,7 +1077,7 @@ size of the graph, which makes exact interactions of molecules and other graphs 
 shapiq, the graph explainer computes them for torch_geometric models.
 """
 cite = ["Muschalik.2025"]
-api = ["shapiq.graph.GraphExplainer", "shapiq.graph.GraphSHAPIQ"]
+api = ["shapiq.graph.GraphExplainer", "shapiq.graph.GraphSHAPIQ", "shapiq_games.GraphGame"]
 examples = ["auto_examples/graph_neural_networks/plot_graphshapiq"]
 related = ["moebius-transform", "treeshap-iq"]
 

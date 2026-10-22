@@ -88,6 +88,7 @@ Computers
    InterventionalTreeComputer
    NearestNeighborComputer
    ProductKernelComputer
+   GraphComputer
    default_computer
    UnsupportedComputationError
 
@@ -135,6 +136,7 @@ Setups of the Model-Specific Games
    WeightedKNNSetup
    ThresholdNNSetup
    ProductKernelSetup
+   GraphSetup
 
 Setups of the Machine Learning Games
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -213,6 +215,8 @@ Datasets
    IMAGENETTE_CLASSES
    ImagenetteSplit
    ImagenetteSize
+   load_graph_dataset
+   GraphDatasetName
    load_curthvds_synthetic
    CausalSetting
 

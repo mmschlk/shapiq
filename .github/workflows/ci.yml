@@ -86,7 +86,7 @@ jobs:
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
             # the tests skip a game whose dependency is missing: check that the extra installs them all
             -   name: Test import of the games' optional dependencies
-                run: uv run --no-sync python -c "import google.protobuf, sentencepiece, skimage, tabpfn, torch, torchvision, transformers, xgboost"
+                run: uv run --no-sync python -c "import google.protobuf, sentencepiece, skimage, tabpfn, torch, torch_geometric, torchvision, transformers, xgboost"
             # serial on purpose: under pytest-xdist the multi-threaded model libraries
             # oversubscribe the runner's cores (seconds serially, minutes in parallel)
             -   name: Run shapiq_games unit tests
