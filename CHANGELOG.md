@@ -1,5 +1,14 @@
 # Changelog
 
+## Development
+
+- removes `"CHII"` from `ProxySHAP` (and from `approximator="proxyshap"` of the explainers), so `ProxySHAP` and `ProxySPEX` support the same indices: those of the `MoebiusConverter`. Only tree proxies could compute it, not the linear proxy or the MSR residual adjustment. [#637](https://github.com/mmschlk/shapiq/pull/637)
+- fixes `ProxySHAP` and `ProxySPEX` accepting indices they cannot compute (e.g. `"kADD-SHAP"`) and failing only in `approximate()`. Both now declare their `valid_indices` and reject other indices at construction. [#637](https://github.com/mmschlk/shapiq/pull/637)
+- adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly. [#613](https://github.com/mmschlk/shapiq/pull/613)
+- fixes `bar_plot` dropping the first feature for explanations without a base value (e.g. `min_order=1`). [#636](https://github.com/mmschlk/shapiq/pull/636)
+- adds the example "Games from Machine Learning Models": a `shapiq.Game` around any model's `predict`, with SV, SII, k-SII, and FSII estimates compared against exact values. [#632](https://github.com/mmschlk/shapiq/pull/632)
+- adds `approximator="exact"` to `TabularExplainer`, `AgnosticExplainer`, `TabPFNExplainer`, and `shapiq.Explainer`, which computes the exact values with `ExactComputer` for all indices. It evaluates all `2**n_features` coalitions per explanation and ignores the `budget`, so it is meant for a small number of features. `"auto"` is unchanged. [#634](https://github.com/mmschlk/shapiq/pull/634), [#320](https://github.com/mmschlk/shapiq/issues/320)
+
 ## v1.8.0 (2026-10-20)
 
 ### New PolySHAP Approximator [#559](https://github.com/mmschlk/shapiq/pull/559)

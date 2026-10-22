@@ -14,14 +14,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
-
 from .beeswarm import _get_red_blue_cmap
-from .utils import abbreviate_feature_names
+from .utils import _as_batch, abbreviate_feature_names
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+
+    from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 
 
 __all__ = ["scatter_plot"]
@@ -50,21 +52,17 @@ def _resolve_feature(
 
 def _resolve_interaction(
     interaction: tuple[int, ...] | tuple[str, ...] | int | str | None,
-    interaction_values_list: list[InteractionValues],
+    batch: InteractionValuesBatch,
     name_to_idx: dict[str, int],
     n_players: int,
 ) -> tuple[int, ...]:
     """Resolves an ``interaction`` argument to a sorted tuple of feature indices."""
     if interaction is None:
-        agg = aggregate_interaction_values(
-            [abs(iv) for iv in interaction_values_list], aggregation="mean"
-        )
-        candidates = [(k, v) for k, v in agg.interactions.items() if len(k) >= 1]
-        if not candidates:
+        values = batch.values  # noqa: PD011
+        if not values:
             error_message = "No non-empty interactions available to plot."
             raise ValueError(error_message)
-        candidates.sort(key=lambda kv: kv[1], reverse=True)
-        return candidates[0][0]
+        return max(values, key=lambda k: np.mean(np.abs(values[k])))
 
     if isinstance(interaction, int | np.integer | str):
         return (_resolve_feature(interaction, name_to_idx, n_players),)
@@ -83,7 +81,7 @@ def _resolve_interaction(
 
 
 def scatter_plot(
-    interaction_values_list: list[InteractionValues],
+    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     interaction: tuple[int, ...] | tuple[str, ...] | int | str | None = None,
     *,
@@ -108,10 +106,13 @@ def scatter_plot(
     higher-order interaction value.
 
     Args:
-        interaction_values_list: A non-empty list of :class:`~shapiq.InteractionValues` objects,
-            one per sample row of ``data``.
+        interaction_values_list: The explanations of the samples in ``data``, as an
+            :class:`~shapiq.InteractionValuesBatch` (for example from
+            :meth:`~shapiq.Explainer.explain_X`) or a list of
+            :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
         data: The feature values for the samples, as a ``pandas.DataFrame`` or 2D ``numpy`` array.
-            Must have the same number of rows as ``interaction_values_list``.
+            Must have the same number of rows as ``interaction_values_list``. Only the plotted
+            columns need to be numeric.
         interaction: Identifies the interaction to plot. Accepts an ``int`` or ``str`` (treated
             as a main effect single-element tuple), a tuple of feature indices like ``(0, 2)``,
             or a tuple of feature names like ``("MedInc", "Latitude")``. If ``None``, the
@@ -142,20 +143,18 @@ def scatter_plot(
         The ``Axes`` object if ``show=False``, otherwise ``None``.
 
     Raises:
-        ValueError: If inputs are inconsistent (empty list, length mismatch, unknown feature
-            names or indices, an interaction tuple absent from every sample's lookup, an
+        ValueError: If inputs are inconsistent (no explanations, length mismatch, unknown
+            feature names or indices, an interaction tuple absent from the explanations, an
             out-of-tuple ``x_feature``, or invalid numeric parameters).
-        TypeError: If ``data`` is not a DataFrame or ndarray, or if a feature identifier has an
-            unsupported type.
+        TypeError: If ``interaction_values_list`` or ``data`` has an unsupported type, or if a
+            feature identifier has an unsupported type.
 
     """
-    if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
-        error_message = "interaction_values_list must be a non-empty list."
-        raise ValueError(error_message)
+    batch = _as_batch(interaction_values_list)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
-    if len(interaction_values_list) != len(data):
+    if len(batch) != len(data):
         error_message = "Length of interaction_values_list must match number of rows in data."
         raise ValueError(error_message)
     if alpha <= 0 or alpha > 1:
@@ -168,7 +167,7 @@ def scatter_plot(
         error_message = "jitter must be non-negative."
         raise ValueError(error_message)
 
-    n_players = interaction_values_list[0].n_players
+    n_players = batch.n_players
 
     if feature_names is None:
         feature_names_full = [f"F{i}" for i in range(n_players)]
@@ -184,10 +183,9 @@ def scatter_plot(
     name_to_idx = {n: i for i, n in enumerate(feature_names_full)}
     display_mapping = dict(enumerate(feature_names_display))
 
-    interaction_tuple = _resolve_interaction(
-        interaction, interaction_values_list, name_to_idx, n_players
-    )
-    if not any(interaction_tuple in iv.interaction_lookup for iv in interaction_values_list):
+    interaction_tuple = _resolve_interaction(interaction, batch, name_to_idx, n_players)
+    values = batch.values  # noqa: PD011
+    if interaction_tuple not in values:
         error_message = f"Interaction {interaction_tuple} not found in InteractionValues lookup."
         raise ValueError(error_message)
 
@@ -205,9 +203,9 @@ def scatter_plot(
     if color is not None:
         color_idx = _resolve_feature(color, name_to_idx, n_players)
 
-    x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
-    x_vals = x_numpy[:, x_idx]
-    y_vals = np.array([iv[interaction_tuple] for iv in interaction_values_list], dtype=float)
+    columns = data.to_numpy() if isinstance(data, pd.DataFrame) else data
+    x_vals = columns[:, x_idx].astype(float)
+    y_vals = np.asarray(values[interaction_tuple], dtype=float)
 
     if ax is None:
         _fig, ax = plt.subplots(figsize=(7, 5))
@@ -233,7 +231,7 @@ def scatter_plot(
             rasterized=n_samples > 500,
         )
     else:
-        c_vals = x_numpy[:, color_idx]
+        c_vals = columns[:, color_idx].astype(float)
         nan_mask = np.isnan(c_vals)
         valid_mask = ~nan_mask
 
@@ -302,13 +300,13 @@ def scatter_plot(
 
     ax.axhline(0, color="#999999", linestyle="-", linewidth=1, zorder=1)
     ax.set_xlabel(display_mapping[x_idx], fontsize=12)
-    index_name = interaction_values_list[0].index
+    index_name = batch.index
     feature_label = ", ".join(display_mapping[f] for f in interaction_tuple)
     ax.set_ylabel(f"{index_name}({feature_label})", fontsize=12)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     if not show:
         return ax

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from shapiq import (
     SHAPIQ,
@@ -24,7 +24,11 @@ from shapiq import (
 )
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
 from shapiq.approximator.regression.base import Regression
+from shapiq.explainer.exact import ExactSolver
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
+
+if TYPE_CHECKING:
+    from shapiq.explainer.custom_types import ApproximatorLike
 
 ValidApproximatorTypes = Literal[
     "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
@@ -78,7 +82,6 @@ APPROXIMATOR_CONFIGURATIONS: dict[
         "SV": ProxySHAP,
         "BV": ProxySHAP,
         "BII": ProxySHAP,
-        "CHII": ProxySHAP,
     },
     "proxyspex": {
         "SII": ProxySPEX,
@@ -190,24 +193,25 @@ def setup_approximator_automatically(
 
 
 def setup_approximator(
-    approximator: ValidApproximatorTypes | Approximator | Literal["auto"],
+    approximator: ValidApproximatorTypes | Approximator | Literal["auto", "exact"],
     index: ValidApproximationIndices,
     max_order: int,
     n_players: int,
     random_state: int | None = None,
-) -> Approximator:
+) -> ApproximatorLike:
     """Set up the approximator for the explainer based on the selected index and order.
 
     Args:
         approximator: The approximator to be used. If ``"auto"``, the approximator is selected based
-            on the index and max_order.
+            on the index and max_order. If ``"exact"``, the values are computed exactly by
+            evaluating all ``2**n_players`` coalitions.
         index: The index to be used for the approximator.
         max_order: The maximum order of interactions to be computed.
         n_players: The number of players in the game.
         random_state: The random state to initialize the approximator with.
 
     Returns:
-        The initialized approximator.
+        The initialized approximator, or the exact computation for ``"exact"``.
     """
     # we simply return the approximator if it is already an instance of Approximator
     if isinstance(approximator, Approximator):
@@ -219,6 +223,8 @@ def setup_approximator(
             n_players=n_players,
             random_state=random_state,
         )
+    if approximator == "exact":  # the exact computation is not an approximator configuration
+        return ExactSolver(n=n_players, max_order=max_order, index=index)
     if isinstance(approximator, str):
         # if the approx is a string and not "auto", we get it from the configurations and set it up
         if approximator in APPROXIMATOR_CONFIGURATIONS:

@@ -3,7 +3,7 @@ TreeSHAP-IQ for LightGBM
 =========================
 
 This example demonstrates :class:`~shapiq.explainer.TreeExplainer` on a LightGBM model trained on
-the bike-sharing dataset: exact Shapley values and interactions of a tree ensemble, without
+the California housing dataset: exact Shapley values and interactions of a tree ensemble, without
 sampling.
 
 The explainer computes any-order Shapley interactions for tree ensembles, as introduced by
@@ -25,7 +25,7 @@ from shapiq_benchmark.datasets import load_dataset
 # Load Data and Train Model
 # --------------------------
 
-dataset = load_dataset("bike_sharing")
+dataset = load_dataset("california_housing")
 X, y, feature_names = dataset.x, dataset.y, list(dataset.feature_names)
 X_train, X_test, y_train, y_test = train_test_split(
     X,

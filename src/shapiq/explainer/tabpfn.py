@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
     from .custom_types import ValidApproximationExplainerIndices
+    from .tabular import TabularExplainerApproximators
 
 
 class TabPFNExplainer(TabularExplainer):
@@ -43,17 +44,7 @@ class TabPFNExplainer(TabularExplainer):
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         class_index: int | None = None,
-        approximator: Approximator
-        | Literal[
-            "auto",
-            "spex",
-            "montecarlo",
-            "svarm",
-            "permutation",
-            "regression",
-            "proxyshap",
-            "proxyspex",
-        ] = "auto",
+        approximator: Approximator | Literal["auto"] | TabularExplainerApproximators = "auto",
         verbose: bool = False,
     ) -> None:
         """Initialize the TabPFNExplainer.
@@ -69,12 +60,16 @@ class TabPFNExplainer(TabularExplainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation", "proxyshap", "proxyspex"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "regression",
+                "proxyshap", "proxyspex", "exact"]``. Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,
                 :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
-                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
+                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``. ``"exact"`` computes the
+                exact values with :class:`~shapiq.game_theory.exact.ExactComputer` and ignores the
+                ``budget``. It costs ``2**n_features`` coalition evaluations per explanation, so
+                it is only feasible for a small number of features.
 
             index: The index to explain the model with. Defaults to ``"SV"`` which computes the
                 Shapley value. Options: ``"SV"`` (Shapley value), ``"k-SII"``
