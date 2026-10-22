@@ -21,7 +21,7 @@
 
 # The swimlanes of the desktop view group the years before 2017 into eras (one column each);
 # later years get a column of their own.
-eras = [[1940, 1970], [1971, 2005], [2006, 2016]]
+eras = [[1940, 1970], [1971, 2005], [2006, 2010], [2011, 2016]]
 
 [[lanes]]
 id = "foundations"
