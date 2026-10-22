@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, get_args
 
 import pytest
 
-from shapiq import InteractionValues, MarginalImputer
+from shapiq import ExactComputer, InteractionValues, MarginalImputer
 from shapiq.explainer.agnostic import AgnosticExplainer, AgnosticExplainerIndices
 from shapiq.explainer.base import Explainer
 from shapiq_games.synthetic import DummyGame, RandomTableGame
@@ -184,3 +184,23 @@ def test_raise_error_n_players_not_specified() -> None:
             max_order=2,
             n_players=None,  # n_players not specified
         )
+
+
+def test_exact_with_callable():
+    """Test that ``approximator="exact"`` computes the exact values of a callable game."""
+    game = RandomTableGame(5, random_state=42)
+
+    def callable_game(coalitions: np.ndarray) -> np.ndarray:
+        return game(coalitions)
+
+    explainer = AgnosticExplainer(
+        game=callable_game,
+        index="k-SII",
+        max_order=2,
+        approximator="exact",
+        n_players=game.n_players,
+    )
+    iv = explainer.explain(budget=10, random_state=42)
+
+    assert not iv.estimated
+    assert iv == ExactComputer(callable_game, n_players=game.n_players)("k-SII", 2)

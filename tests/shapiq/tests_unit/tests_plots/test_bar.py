@@ -51,3 +51,44 @@ def test_bar_plot(interaction_values_list: list[InteractionValues]):
     assert output is not None
     assert isinstance(output, plt.Axes)
     plt.close("all")
+
+
+def _labels(axis: plt.Axes) -> set[str]:
+    """Returns the y-tick labels of a bar plot."""
+    return {label.get_text() for label in axis.get_yticklabels()}
+
+
+def test_bar_plot_without_baseline_keeps_first_feature():
+    """Tests that explanations without the empty interaction keep the first feature's bar."""
+    lookup = {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3}
+    interaction_values_list = [
+        InteractionValues(
+            values=np.array([0.5, -0.2, 0.1, 0.3]) * scale,
+            interaction_lookup=lookup,
+            index="k-SII",
+            min_order=1,
+            max_order=2,
+            n_players=3,
+            baseline_value=1.0,
+        )
+        for scale in (1.0, 2.0)
+    ]
+
+    for global_plot in (True, False):
+        axis = bar_plot(
+            interaction_values_list, show=False, max_display=None, global_plot=global_plot
+        )
+        assert _labels(axis) == {"F0", "F1", "F2", "F0 x F1"}
+        plt.close("all")
+
+
+def test_bar_plot_base_value(interaction_values_list: list[InteractionValues]):
+    """Tests that the empty interaction is shown only with plot_base_value=True."""
+    axis = bar_plot(interaction_values_list, show=False, max_display=None)
+    assert "Base Value" not in _labels(axis)
+    assert "F0" in _labels(axis)
+    plt.close("all")
+
+    axis = bar_plot(interaction_values_list, show=False, max_display=None, plot_base_value=True)
+    assert "Base Value" in _labels(axis)
+    plt.close("all")

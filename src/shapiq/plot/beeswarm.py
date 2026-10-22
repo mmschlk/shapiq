@@ -16,15 +16,15 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 
-from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
-
-from .utils import abbreviate_feature_names
+from .utils import _as_batch, abbreviate_feature_names
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+
+    from shapiq.interaction_values import InteractionValues, InteractionValuesBatch
 
 
 __all__ = ["beeswarm_plot"]
@@ -148,7 +148,7 @@ def _calculate_range(num_sub_features: int, i: int, margin: float) -> tuple[floa
 
 
 def beeswarm_plot(
-    interaction_values_list: list[InteractionValues],
+    interaction_values_list: InteractionValuesBatch | Sequence[InteractionValues],
     data: pd.DataFrame | np.ndarray,
     *,
     max_display: int | None = 10,
@@ -166,7 +166,10 @@ def beeswarm_plot(
     revealing dependencies between the feature's value and the strength of the interaction.
 
     Args:
-        interaction_values_list: A list containing InteractionValues objects.
+        interaction_values_list: The explanations of the samples in ``data``, as an
+            :class:`~shapiq.InteractionValuesBatch` (for example from
+            :meth:`~shapiq.Explainer.explain_X`) or a list of
+            :class:`~shapiq.InteractionValues` objects, one per sample row of ``data``.
         data: The input data used to compute the interaction values.
         max_display: Maximum number of interactions to display. Defaults to 10.
         feature_names: Names of the features. If not given, feature indices will be used. Defaults to ``None``.
@@ -183,13 +186,11 @@ def beeswarm_plot(
         ``None``.
 
     """
-    if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
-        error_message = "shap_interaction_values must be a non-empty list."
-        raise ValueError(error_message)
+    batch = _as_batch(interaction_values_list)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
-    if len(interaction_values_list) != len(data):
+    if len(batch) != len(data):
         error_message = "Length of shap_interaction_values must match number of rows in data."
         raise ValueError(error_message)
     if row_height <= 0:
@@ -200,7 +201,7 @@ def beeswarm_plot(
         raise ValueError(error_message)
 
     n_samples = len(data)
-    n_players = interaction_values_list[0].n_players
+    n_players = batch.n_players
 
     if feature_names is not None:
         if abbreviate:
@@ -214,14 +215,10 @@ def beeswarm_plot(
 
     feature_mapping = dict(enumerate(feature_names))
 
-    list_of_abs_interaction_values = [abs(iv) for iv in interaction_values_list]
-    global_values: InteractionValues = aggregate_interaction_values(
-        list_of_abs_interaction_values, aggregation="mean"
-    )  # to match the order in bar plots
-
-    interaction_keys, all_global_interaction_vals = zip(
-        *[(k, v) for k, v in global_values.interactions.items() if len(k) != 0], strict=False
-    )
+    # the mean absolute values, to match the order in bar plots
+    values = batch.values  # noqa: PD011
+    interaction_keys = sorted(values, key=lambda k: (len(k), k))
+    all_global_interaction_vals = [np.mean(np.abs(values[k])) for k in interaction_keys]
 
     # Sort interactions by aggregated importance
     feature_order = np.argsort(all_global_interaction_vals)[::-1]
@@ -233,13 +230,6 @@ def beeswarm_plot(
     interactions_to_plot = [interaction_keys[i] for i in feature_order]
 
     x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
-
-    shap_values_dict = {}
-
-    for interaction in interactions_to_plot:
-        shap_values_dict[interaction] = np.array(
-            [sv.dict_values[interaction] for sv in interaction_values_list]
-        )
 
     total_sub_features = sum(len(inter) for inter in interactions_to_plot)
     if ax is None:
@@ -307,7 +297,7 @@ def beeswarm_plot(
             h_lines.append(upper_point)
             h_lines.append(lower_point)
 
-        current_shap_values = shap_values_dict[interaction]
+        current_shap_values = values[interaction]
 
         # calculate beeswarm offsets
         ys_raw = _beeswarm(current_shap_values, rng=np.random.default_rng(rng_seed))

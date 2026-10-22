@@ -20,14 +20,13 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq.approximator.base import Approximator
     from shapiq.game import Game
     from shapiq.game_theory import ExactComputer
     from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
-    from .custom_types import ExplainerIndices
+    from .custom_types import ApproximatorLike, ExplainerIndices
 
 
 def generic_to_specific_explainer(
@@ -163,7 +162,7 @@ class Explainer:
 
         # initialize private attributes
         self._imputer: Imputer | None = None
-        self._approximator: Approximator | None = None
+        self._approximator: ApproximatorLike | None = None
         self._exact_computer: ExactComputer | None = None
 
     @property
@@ -183,7 +182,7 @@ class Explainer:
         return self._exact_computer
 
     @property
-    def approximator(self) -> Approximator:
+    def approximator(self) -> ApproximatorLike:
         """The approximator used by the explainer (or None in the base class)."""
         if self._approximator is None:
             msg = "The explainer does not have an approximator. Use a specific explainer class."

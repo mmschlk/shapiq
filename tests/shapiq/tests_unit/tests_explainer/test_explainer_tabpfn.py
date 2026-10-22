@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
+from shapiq import ExactComputer, Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
+from shapiq.explainer.exact import ExactSolver
 from tests.shapiq.fixtures.data import BUDGET_NR_FEATURES_SMALL
 from tests.shapiq.markers import skip_if_no_tabpfn
 
@@ -58,6 +59,31 @@ class TestTabPFNExplainer:
         # test that bare explainer gets turned into TabPFNExplainer
         explainer = Explainer(model=model, data=data, labels=labels, x_test=x_test)
         assert isinstance(explainer, TabPFNExplainer)
+
+    def test_tabpfn_explainer_exact(self, tabpfn_regression_problem):
+        """Test that ``approximator="exact"`` computes the exact values with TabPFN."""
+        model, data, labels, x_test = tabpfn_regression_problem
+        x_explain = x_test[0]
+
+        explainer = TabPFNExplainer(
+            model=model,
+            data=data,
+            labels=labels,
+            x_test=x_test,
+            index="k-SII",
+            max_order=2,
+            approximator="exact",
+        )
+        assert isinstance(explainer.approximator, ExactSolver)
+        explanation = explainer.explain(x=x_explain, budget=1)
+        assert not explanation.estimated
+
+        # the explainer has fitted the imputer to x_explain, so this computes the same game
+        n_players = data.shape[1]
+        exact_values = ExactComputer(explainer.imputer, n_players=n_players)("k-SII", 2)
+        for interaction in exact_values.interaction_lookup:
+            if interaction:  # the empty set is overwritten with the baseline value
+                assert explanation[interaction] == pytest.approx(exact_values[interaction])
 
     def test_tabpfn_bare_explainer(self, tabpfn_classification_problem, tabpfn_regression_problem):
         """Test that the TabPFNExplainer can be initialized without data and labels."""

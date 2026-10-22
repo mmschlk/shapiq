@@ -8,14 +8,15 @@ from typing import get_args
 import numpy as np
 import pytest
 
-from shapiq import InteractionValues
+from shapiq import ExactComputer, Explainer, InteractionValues
 from shapiq.approximator import RegressionFSII
+from shapiq.explainer.exact import ExactSolver
 from shapiq.explainer.tabular import (
     TabularExplainer,
     TabularExplainerApproximators,
     TabularExplainerImputers,
 )
-from tests.shapiq.fixtures.data import BUDGET_NR_FEATURES
+from tests.shapiq.fixtures.data import BUDGET_NR_FEATURES, NR_FEATURES
 from tests.shapiq.utils import get_expected_index_or_skip
 
 MAX_ORDERS = [2, 3]
@@ -269,3 +270,81 @@ def test_marginal_subsampling_warning(dt_reg_model, background_reg_data):
         _ = TabularExplainer(model=dt_reg_model.predict, data=data, sample_size=50)
         _ = TabularExplainer(model=dt_reg_model.predict, data=background_reg_data)  # 100 rows
     assert not [r for r in records if "sample_size" in str(r.message)]
+
+
+@pytest.mark.parametrize(
+    ("index", "max_order"), [("SV", 1), ("k-SII", 2), ("FSII", 2), ("STII", 2)]
+)
+def test_exact(dt_reg_model, background_reg_data, index, max_order):
+    """Tests that ``approximator="exact"`` matches the ExactComputer and "auto" at full budget."""
+    x = background_reg_data[0]
+    explainer = TabularExplainer(
+        model=dt_reg_model,
+        data=background_reg_data,
+        index=index,
+        max_order=max_order,
+        approximator="exact",
+        random_state=42,
+    )
+    assert isinstance(explainer.approximator, ExactSolver)
+    interaction_values = explainer.explain(x, budget=BUDGET_NR_FEATURES)
+    assert not interaction_values.estimated
+
+    # the explainer has fitted the imputer to x, so the ExactComputer computes the same game
+    exact_values = ExactComputer(explainer.imputer, n_players=NR_FEATURES)(index, max_order)
+
+    explainer_auto = TabularExplainer(
+        model=dt_reg_model,
+        data=background_reg_data,
+        index=index,
+        max_order=max_order,
+        approximator="auto",
+        random_state=42,
+    )
+    interaction_values_auto = explainer_auto.explain(x, budget=BUDGET_NR_FEATURES)
+
+    # the regression approximators weight the border coalitions with a large finite constant, so
+    # they are exact only up to a small error relative to the scale of the values
+    scale = np.max(np.abs(exact_values.values))
+    # the empty set is the baseline value for some indices only, so compare the interactions
+    for interaction in exact_values.interaction_lookup:
+        if not interaction:
+            continue
+        value = interaction_values[interaction]
+        assert value == pytest.approx(exact_values[interaction], abs=1e-10)
+        assert value == pytest.approx(interaction_values_auto[interaction], abs=1e-6 * scale)
+
+
+def test_exact_ignores_budget(dt_reg_model, background_reg_data):
+    """Tests that exact values do not depend on the budget."""
+    x = background_reg_data[0]
+    explainer = TabularExplainer(
+        model=dt_reg_model,
+        data=background_reg_data,
+        index="k-SII",
+        max_order=2,
+        approximator="exact",
+    )
+    interaction_values_small = explainer.explain(x, budget=10)
+    interaction_values_large = explainer.explain(x, budget=BUDGET_NR_FEATURES)
+    assert interaction_values_small == interaction_values_large
+    assert np.array_equal(interaction_values_small.values, interaction_values_large.values)
+    assert not interaction_values_small.estimated
+
+
+def test_exact_with_explainer(dt_reg_model, background_reg_data):
+    """Tests that ``shapiq.Explainer`` passes ``approximator="exact"`` on."""
+    explainer = Explainer(
+        model=dt_reg_model.predict,
+        data=background_reg_data,
+        index="k-SII",
+        max_order=2,
+        approximator="exact",
+    )
+    assert isinstance(explainer, TabularExplainer)
+    assert isinstance(explainer.approximator, ExactSolver)
+
+    interaction_values = explainer.explain(background_reg_data[0], budget=10, random_state=42)
+    assert not interaction_values.estimated
+    interaction_values_x = explainer.explain_X(background_reg_data[:2], budget=10, random_state=42)
+    assert interaction_values_x[0] == interaction_values
