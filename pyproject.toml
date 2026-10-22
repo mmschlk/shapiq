@@ -164,6 +164,7 @@ ignore = [
     "C901",  # Too complex functions
     "PLR0911",  # too many return statements in function
     "N802",  # Function name should be lowercase
+    "PLC0415",  # imports inside functions: optional dependencies (torch, transformers, ...) and heavy modules are imported where they are used
 ]
 exclude = [
     ".bzr",
