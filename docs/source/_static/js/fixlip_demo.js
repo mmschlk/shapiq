@@ -167,6 +167,7 @@
     let players = []; // the button of every player: the regions, then the tokens
     let floor = 0; // the 99th percentile of the interactions, the least that tints scale to
     let strongest = []; // the strongest interactions, the strongest first, for the full explanation
+    let crossModal = []; // the strongest interactions between a region and a token, listed there
     const grid = 7;
     const regionCount = grid * grid;
 
@@ -190,8 +191,11 @@
       const n = ex.first.length;
       strongest = [];
       for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) strongest.push({ i, j, value: interaction(i, j) });
-      strongest = strongest.sort((x, y) => Math.abs(y.value) - Math.abs(x.value)).slice(0, STRONGEST);
-      for (const pair of strongest) pair.strength = Math.abs(pair.value) / Math.abs(strongest[0].value);
+      strongest = strongest.sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
+      crossModal = strongest.filter(({ i, j }) => i < regionCount && j >= regionCount).slice(0, TOP);
+      strongest = strongest.slice(0, STRONGEST);
+      for (const pairs of [strongest, crossModal])
+        for (const pair of pairs) pair.strength = Math.abs(pair.value) / Math.abs(pairs[0].value);
       const image = data.images.find((x) => x.id === state.image);
       const model = data.models.find((x) => x.id === state.model);
       state.focus = null;
@@ -305,7 +309,7 @@
     }
 
     // the full explanation: every player tinted by what it adds on its own, the strongest
-    // interactions drawn between them, the five strongest listed
+    // interactions drawn between them, the five strongest between a region and a token listed
     function showFull() {
       const largest = Math.max(...ex.first.map(Math.abs));
       players.forEach((button, k) => {
@@ -317,13 +321,13 @@
       });
       title.textContent = "The full explanation";
       detail.textContent =
-        "Each region and word is colored by what it adds on its own; " +
-        `lines link the ${STRONGEST} strongest interactions.`;
+        "Each region and word is colored by what it adds alone; " +
+        `lines link the ${STRONGEST} strongest interactions. Listed: the strongest image–text pairs.`;
       sizer.hidden = true;
       graph.hidden = true;
       list.hidden = false;
       list.classList.add("fixlip-demo-list-pairs");
-      for (const { i, j, value, strength } of strongest.slice(0, TOP)) {
+      for (const { i, j, value, strength } of crossModal) {
         const item = el("li");
         const pair = el("span", "fixlip-demo-pair");
         pair.append(swatchOf(i), el("span", "fixlip-demo-times", "×"), swatchOf(j));

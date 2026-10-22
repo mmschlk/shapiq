@@ -510,7 +510,7 @@
 
 /* -- small screens: the panel goes under the photo ---------------------------------------------- */
 
-@container (max-width: 38rem) {
+@container (max-width: 42rem) {
   .fixlip-demo-body {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.1rem;
