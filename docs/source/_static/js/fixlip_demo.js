@@ -5,7 +5,8 @@
 // effects and pairwise interactions (FBII, FIxLIP with p = 0.5) are precomputed per photo and
 // model in _static/fixlip/data.js, so the page only looks values up. At rest, the demo shows the
 // clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
-// the photo and as a graph of their interactions, as in FIxLIP's figures.
+// the photo and as a graph of their interactions, as in FIxLIP's figures; or the full explanation,
+// every player tinted by its main effect and the strongest interactions drawn between them.
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
@@ -18,6 +19,11 @@
   const RED = [255, 13, 87];
   const BLUE = [30, 136, 229];
   const TOP = 5; // the strongest interactions listed for a player
+  const STRONGEST = 12; // the interactions drawn in the full explanation
+  const VIEWS = [
+    ["clique", "Clique", ""],
+    ["full", "Full", " explanation"], // the second part goes on small screens
+  ];
 
   const loader = document.createElement("script");
   loader.src = `${root.dataset.root}data.js`;
@@ -32,6 +38,7 @@
   };
   const signed = (value) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(3)}`;
   const solid = (value) => `rgb(${(value >= 0 ? RED : BLUE).join(", ")})`;
+  const valued = (value) => Object.assign(el("strong", "", signed(value)), { style: `color: ${solid(value)}` });
   const tint = (value, largest, strength = 0.85) => {
     const [r, g, b] = value >= 0 ? RED : BLUE;
     const alpha = largest > 0 ? Math.min(Math.abs(value) / largest, 1) * strength : 0;
@@ -52,6 +59,7 @@
       image: first.id,
       model: data.models.find((model) => has(first.id, model.id)).id,
       size: 6,
+      view: "clique",
       focus: null,
       pinned: false,
     };
@@ -62,10 +70,15 @@
     const photos = el("div", "fixlip-demo-photos");
     photos.setAttribute("role", "group");
     photos.setAttribute("aria-label", "Photo");
-    const models = el("div", "fixlip-demo-models");
+    const views = el("div", "fixlip-demo-switch");
+    views.setAttribute("role", "group");
+    views.setAttribute("aria-label", "Explanation");
+    const models = el("div", "fixlip-demo-switch");
     models.setAttribute("role", "group");
     models.setAttribute("aria-label", "Model");
-    bar.append(photos, models);
+    const switches = el("div", "fixlip-demo-switches");
+    switches.append(views, models);
+    bar.append(photos, switches);
 
     const body = el("div", "fixlip-demo-body");
     const stage = el("div", "fixlip-demo-stage");
@@ -128,8 +141,16 @@
       photos.append(button);
       return button;
     });
+    const viewButtons = VIEWS.map(([view, label, more]) => {
+      const button = el("button", "fixlip-demo-option", label);
+      if (more) button.append(el("span", "fixlip-demo-more", more));
+      button.type = "button";
+      button.addEventListener("click", () => setView(view));
+      views.append(button);
+      return button;
+    });
     const modelButtons = data.models.map((model) => {
-      const button = el("button", "fixlip-demo-model", model.label);
+      const button = el("button", "fixlip-demo-option", model.label);
       button.type = "button";
       button.addEventListener("click", () => {
         state.model = model.id;
@@ -145,6 +166,7 @@
     let ex = null; // the explanation: tokens, main effects, interactions, cliques
     let players = []; // the button of every player: the regions, then the tokens
     let floor = 0; // the 99th percentile of the interactions, the least that tints scale to
+    let strongest = []; // the strongest interactions, the strongest first, for the full explanation
     const grid = 7;
     const regionCount = grid * grid;
 
@@ -165,6 +187,11 @@
       ex = data.explanations[`${state.image}/${state.model}`];
       const magnitudes = ex.pairs.map(Math.abs).sort((a, b) => a - b);
       floor = magnitudes[Math.floor(0.99 * (magnitudes.length - 1))];
+      const n = ex.first.length;
+      strongest = [];
+      for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) strongest.push({ i, j, value: interaction(i, j) });
+      strongest = strongest.sort((x, y) => Math.abs(y.value) - Math.abs(x.value)).slice(0, STRONGEST);
+      for (const pair of strongest) pair.strength = Math.abs(pair.value) / Math.abs(strongest[0].value);
       const image = data.images.find((x) => x.id === state.image);
       const model = data.models.find((x) => x.id === state.model);
       state.focus = null;
@@ -229,13 +256,23 @@
       if (state.focus === null) show(null);
     }
 
-    // -- the two views: the clique at rest, the interactions of a player when pointed at ---------
+    function setView(view) {
+      state.view = view;
+      state.pinned = false;
+      viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === view)));
+      root.classList.toggle("fixlip-demo-full", view === "full");
+      show(null);
+    }
+
+    // -- the views: the clique or the full explanation at rest, the interactions of a player when
+    // pointed at
     function show(player) {
       state.focus = player;
       root.classList.toggle("fixlip-demo-focused", player !== null);
       list.replaceChildren();
-      if (player === null) showClique();
-      else showPlayer(player);
+      if (player !== null) showPlayer(player);
+      else if (state.view === "full") showFull();
+      else showClique();
     }
 
     function showClique() {
@@ -250,9 +287,12 @@
       const regions = clique.filter((k) => k < regionCount).length;
       title.textContent = "The players that raise the similarity the most together";
       const tokens = clique.length - regions;
-      detail.textContent =
+      detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
-        `(FIxLIP's greedy search) that add ${signed(value)} together, linked by their interactions.`;
+          "(FIxLIP's greedy search) that add ",
+        valued(value),
+        " together, linked by their interactions.",
+      );
       sizer.hidden = false;
       graph.hidden = false;
       list.hidden = true;
@@ -260,8 +300,41 @@
       smaller.disabled = state.size <= 2;
       larger.disabled = state.size >= 10;
       live.textContent = `Clique of ${clique.length} players`;
-      drawEdges(clique);
+      drawEdges(cliquePairs(clique));
       drawGraph(clique);
+    }
+
+    // the full explanation: every player tinted by what it adds on its own, the strongest
+    // interactions drawn between them, the five strongest listed
+    function showFull() {
+      const largest = Math.max(...ex.first.map(Math.abs));
+      players.forEach((button, k) => {
+        button.classList.remove("fixlip-demo-in", "fixlip-demo-focus");
+        // on a square-root scale, so that the regions stay visible next to the words
+        const { color, alpha } = tint(Math.sign(ex.first[k]) * Math.sqrt(Math.abs(ex.first[k])), Math.sqrt(largest), 0.75);
+        button.style.setProperty("--fixlip-tint", color);
+        button.style.color = k >= regionCount && alpha > 0.55 ? "#ffffff" : "";
+      });
+      title.textContent = "The full explanation";
+      detail.textContent =
+        "Each region and word is colored by what it adds on its own; " +
+        `lines link the ${STRONGEST} strongest interactions.`;
+      sizer.hidden = true;
+      graph.hidden = true;
+      list.hidden = false;
+      list.classList.add("fixlip-demo-list-pairs");
+      for (const { i, j, value, strength } of strongest.slice(0, TOP)) {
+        const item = el("li");
+        const pair = el("span", "fixlip-demo-pair");
+        pair.append(swatchOf(i), el("span", "fixlip-demo-times", "×"), swatchOf(j));
+        const bar = el("span", "fixlip-demo-bar-value");
+        bar.style.setProperty("--fixlip-width", `${strength * 100}%`);
+        bar.style.setProperty("--fixlip-color", solid(value));
+        item.append(pair, bar, el("span", "fixlip-demo-number", signed(value)));
+        list.append(item);
+      }
+      live.textContent = "The full explanation";
+      drawEdges(strongest);
     }
 
     function showPlayer(player) {
@@ -283,12 +356,15 @@
       } else {
         title.textContent = `Interactions of ${name(player)}`;
       }
-      detail.textContent =
-        `On its own, it adds ${signed(ex.first[player])} to the similarity. ` +
-        `With the players below, it adds more (red) or less (blue) than both alone.`;
+      detail.replaceChildren(
+        "On its own, it adds ",
+        valued(ex.first[player]),
+        " to the similarity. With the players below, it adds more (red) or less (blue) than both alone.",
+      );
       sizer.hidden = true;
       graph.hidden = true;
       list.hidden = false;
+      list.classList.remove("fixlip-demo-list-pairs");
       const order = [...Array(n).keys()]
         .filter((k) => k !== player)
         .sort((a, b) => Math.abs(values[b]) - Math.abs(values[a]))
@@ -326,23 +402,37 @@
         for (let b = a + 1; b < clique.length; b += 1) pairs.push([a, b, interaction(clique[a], clique[b])]);
       const largest = Math.max(...pairs.map(([, , value]) => Math.abs(value)));
       return pairs
-        .map(([a, b, value]) => ({ a, b, value, strength: largest > 0 ? Math.abs(value) / largest : 0 }))
+        .map(([a, b, value]) => ({
+          a,
+          b,
+          i: clique[a],
+          j: clique[b],
+          value,
+          strength: largest > 0 ? Math.abs(value) / largest : 0,
+        }))
         .sort((x, y) => x.strength - y.strength);
     }
-    const line = (x1, y1, x2, y2, value, strength, width, opacity) => {
-      const node = document.createElementNS(SVG, "line");
-      const attributes = { x1, y1, x2, y2, stroke: solid(value), "stroke-linecap": "round" };
-      attributes["stroke-width"] = (width[0] + width[1] * strength).toFixed(1);
-      attributes["stroke-opacity"] = (opacity[0] + opacity[1] * strength).toFixed(2);
+    // an edge, straight or (with a bulge) arched upwards, as wide and as opaque as it is strong
+    const line = (x1, y1, x2, y2, value, strength, width, opacity, bulge = 0) => {
+      const node = document.createElementNS(SVG, "path");
+      const top = Math.min(y1, y2) - bulge;
+      const attributes = {
+        d: bulge ? `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${2 * top - (y1 + y2) / 2} ${x2} ${y2}` : `M ${x1} ${y1} L ${x2} ${y2}`,
+        fill: "none",
+        stroke: solid(value),
+        "stroke-linecap": "round",
+        "stroke-width": (width[0] + width[1] * strength).toFixed(1),
+        "stroke-opacity": (opacity[0] + opacity[1] * strength).toFixed(2),
+      };
       for (const [key, v] of Object.entries(attributes)) node.setAttribute(key, v);
       return node;
     };
 
-    // the edges of the clique on the photo: between the centers of its regions and the tops of its
-    // tokens
-    function drawEdges(clique) {
+    // interactions on the photo, the weakest under the strongest: between the centers of regions
+    // and the tops of tokens, arched between two tokens
+    function drawEdges(pairs) {
       edges.replaceChildren();
-      if (clique.length < 2) return;
+      if (!pairs.length) return;
       const box = stage.getBoundingClientRect();
       edges.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
       const anchor = (k) => {
@@ -350,9 +440,12 @@
         const y = k < regionCount ? r.top + r.height / 2 : r.top;
         return [r.left + r.width / 2 - box.left, y - box.top];
       };
-      for (const { a, b, value, strength } of cliquePairs(clique)) {
+      for (const { i, j, value, strength } of [...pairs].sort((x, y) => x.strength - y.strength)) {
         if (strength < 0.08) continue;
-        edges.append(line(...anchor(clique[a]), ...anchor(clique[b]), value, strength, [1.5, 7], [0.3, 0.6]));
+        const [x1, y1] = anchor(i);
+        const [x2, y2] = anchor(j);
+        const bulge = i >= regionCount && j >= regionCount ? 10 + 0.25 * Math.abs(x2 - x1) : 0;
+        edges.append(line(x1, y1, x2, y2, value, strength, [1.5, 7], [0.3, 0.6], bulge));
       }
     }
 
@@ -441,11 +534,12 @@
         show(null);
       }
     });
-    const redraw = new ResizeObserver(() => state.focus === null && ex && showClique());
+    const redraw = new ResizeObserver(() => state.focus === null && ex && show(null));
     redraw.observe(stage);
     redraw.observe(graph);
 
     root.classList.add("fixlip-demo-ready");
+    viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === state.view)));
     reset();
   }
 })();

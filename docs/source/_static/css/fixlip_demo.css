@@ -28,7 +28,7 @@
   color: var(--shapiq-text-muted);
 }
 
-/* -- the photos and the models ------------------------------------------------------------------ */
+/* -- the photos, the views, and the models ------------------------------------------------------ */
 
 .fixlip-demo-bar {
   display: flex;
@@ -74,12 +74,18 @@
 }
 
 .fixlip-demo-photo:disabled,
-.fixlip-demo-model:disabled {
+.fixlip-demo-option:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.fixlip-demo-models {
+.fixlip-demo-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fixlip-demo-switch {
   display: inline-flex;
   padding: 3px;
   border: 1px solid var(--shapiq-border);
@@ -87,7 +93,7 @@
   background: var(--shapiq-surface-raised);
 }
 
-.fixlip-demo-model {
+.fixlip-demo-option {
   padding: 0.35rem 0.95rem;
   border: 0;
   border-radius: 999px;
@@ -99,7 +105,7 @@
   cursor: pointer;
 }
 
-.fixlip-demo-model[aria-pressed="true"] {
+.fixlip-demo-option[aria-pressed="true"] {
   background: var(--color-foreground-primary);
   color: var(--color-background-primary);
 }
@@ -163,7 +169,7 @@
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
 }
 
-.fixlip-demo:not(.fixlip-demo-focused) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
   background: color-mix(in srgb, var(--shapiq-surface) 60%, transparent);
 }
 
@@ -200,7 +206,7 @@
   transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration);
 }
 
-.fixlip-demo:not(.fixlip-demo-focused) .fixlip-demo-token:not(.fixlip-demo-in) {
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full) .fixlip-demo-token:not(.fixlip-demo-in) {
   opacity: 0.45;
 }
 
@@ -374,6 +380,23 @@
   margin: 0;
 }
 
+/* the full explanation lists pairs of players */
+.fixlip-demo-list-pairs li {
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 4rem;
+}
+
+.fixlip-demo-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fixlip-demo-times {
+  color: var(--shapiq-text-muted);
+}
+
 /* a token or a region, of the same height either way */
 .fixlip-demo-swatch {
   display: inline-flex;
@@ -501,6 +524,15 @@
   /* under the photo, the panel moves nothing that is pointed at: no room is kept */
   .fixlip-demo-slot {
     height: auto;
+  }
+
+  .fixlip-demo-title,
+  .fixlip-demo-detail {
+    min-height: 0;
+  }
+
+  .fixlip-demo-more {
+    display: none;
   }
 }
 
