@@ -583,7 +583,7 @@ uncertainty estimates and convergence detection, and showed that paired (antithe
 which evaluates every coalition together with its complement, substantially reduces the variance.
 SHAP-IQ generalizes the estimator to interactions.
 """
-cite = ["Covert.2021b"]
+cite = ["Covert.2021a"]
 api = ["shapiq.approximator.UnbiasedKernelSHAP"]
 examples = ["auto_examples/approximators/shapley_values/plot_unbiased_kernelshap"]
 related = ["kernelshap", "shap-iq", "msr"]
@@ -1081,7 +1081,7 @@ description = """
 Wang et al. computed the data Shapley values of weighted K-nearest-neighbor classifiers exactly by
 counting the coalitions that change the prediction, in quadratic time.
 """
-cite = ["Wang.2024a"]
+cite = ["Wang.2024"]
 api = ["shapiq.explainer.WeightedKNNExplainer", "shapiq_games.WeightedKNNGame"]
 examples = ["auto_examples/nearest_neighbors/plot_nn_data_valuation", "auto_examples/nearest_neighbors/plot_nn_explainers_exact"]
 related = ["knn-shapley"]
@@ -1534,7 +1534,7 @@ other features. Fisher et al. defined this model reliance for any model, and Au 
 groups of features. In the unified framework, it is the full effect of the risk game with marginal
 removal.
 """
-cite = ["Breiman.2001a", "Fisher.2019", "Au.2022"]
+cite = ["Breiman.2001", "Fisher.2019", "Au.2022"]
 related = ["cfi", "sage"]
 
 [[entries]]
@@ -2019,7 +2019,7 @@ Chau et al. estimated the interventional and observational value functions of ke
 non-parametrically with kernel mean embeddings, without sampling background data for every
 coalition.
 """
-cite = ["Chau.2022b"]
+cite = ["Chau.2022"]
 related = ["product-kernel", "gp-shap"]
 
 [[entries]]
@@ -2048,7 +2048,7 @@ iSAGE updates SAGE feature importance alongside an incrementally trained model: 
 used once, and the explanation is smoothed over time, with interventional or conditional feature
 removal. It keeps global explanations faithful under concept drift without storing past data.
 """
-cite = ["Muschalik.2023a"]
+cite = ["Muschalik.2023"]
 related = ["sage"]
 
 [[entries]]

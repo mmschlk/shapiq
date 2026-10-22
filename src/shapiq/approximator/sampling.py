@@ -426,7 +426,7 @@ class CoalitionSampler:
     def execute_pairing_trick(self, sampling_budget: int, coalition_tuple: tuple[int, ...]) -> int:
         """Executes the pairing-trick for a sampling budget and coalition sizes.
 
-        The pairing-trick is based on the idea by :cite:t:`Covert.2021b` and pairs each coalition
+        The pairing-trick is based on the idea by :cite:t:`Covert.2021a` and pairs each coalition
         with its complement.
 
         Args:
