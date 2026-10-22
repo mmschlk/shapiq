@@ -125,7 +125,8 @@ in your browser to see the rendered documentation.
 
 #### Citing Papers
 Cite papers in docstrings and documentation pages with `:cite:` and their key, and add their BibTeX
-entries to `docs/source/references.bib`, preferably with a doi or a url. The pre-commit hook
+entries to `docs/source/references.bib`, preferably with a doi or a url. The file holds only cited
+works, so remove an entry together with its last citation. The pre-commit hook
 `format-bib` formats the file whenever it changes (`docs/format_bib.py`, described at the top of
 the file): it sorts the entries and writes their fields in one style. You can run it on its own:
 
