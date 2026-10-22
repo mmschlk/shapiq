@@ -230,7 +230,10 @@
   color: var(--color-foreground-secondary);
 }
 
+/* the title, the description, and the slot keep their heights in both views, so that pointing
+   at players does not move the panel */
 .fixlip-demo-title {
+  min-height: calc(2 * 1.35em);
   margin: 0 0 0.4rem;
   font-size: 1.05rem;
   font-weight: 700;
@@ -239,15 +242,33 @@
 }
 
 .fixlip-demo-detail {
+  min-height: calc(3 * 1.55em);
   margin: 0 0 0.85rem;
   line-height: 1.55;
+}
+
+.fixlip-demo-slot {
+  height: calc(5 * 2rem + 4 * 0.4rem);
+  margin-bottom: 0.9rem;
+}
+
+.fixlip-demo-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.4rem;
+}
+
+.fixlip-demo-members[hidden],
+.fixlip-demo-list[hidden] {
+  display: none;
 }
 
 .fixlip-demo-size {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.75rem;
 }
 
 .fixlip-demo-size[hidden] {
@@ -280,8 +301,9 @@
 
 .fixlip-demo-list {
   display: grid;
+  grid-auto-rows: 2rem;
   gap: 0.4rem;
-  margin: 0 0 0.9rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -294,9 +316,14 @@
   margin: 0;
 }
 
+/* a token or a region, of the same height either way */
 .fixlip-demo-swatch {
+  display: inline-flex;
+  align-items: center;
   justify-self: start;
-  padding: 0.05rem 0.3rem;
+  box-sizing: border-box;
+  height: 1.75rem;
+  padding: 0 0.35rem;
   border: 1px solid var(--shapiq-border);
   border-radius: 5px;
   font-family: var(--font-stack--monospace);
@@ -306,7 +333,6 @@
 
 .fixlip-demo-swatch-region {
   width: 1.75rem;
-  height: 1.75rem;
   padding: 0;
   border-radius: 4px;
 }
@@ -395,5 +421,10 @@
   .fixlip-demo-photo {
     width: 2.9rem;
     height: 2.9rem;
+  }
+
+  /* under the photo, the panel moves nothing that is pointed at: no room is kept */
+  .fixlip-demo-slot {
+    height: auto;
   }
 }

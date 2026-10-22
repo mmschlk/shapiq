@@ -16,7 +16,7 @@
   const SVG = "http://www.w3.org/2000/svg";
   const RED = [255, 13, 87];
   const BLUE = [30, 136, 229];
-  const TOP = 6; // the strongest interactions listed for a player
+  const TOP = 5; // the strongest interactions listed for a player
 
   const loader = document.createElement("script");
   loader.src = `${root.dataset.root}data.js`;
@@ -82,7 +82,11 @@
     const panel = el("div", "fixlip-demo-panel");
     const title = el("p", "fixlip-demo-title");
     const detail = el("p", "fixlip-demo-detail");
+    // one slot of a fixed height for both views, so that the panel keeps its size: the clique's
+    // size and players at rest, the strongest interactions of a player when pointed at
+    const slot = el("div", "fixlip-demo-slot");
     const list = el("ol", "fixlip-demo-list");
+    const members = el("div", "fixlip-demo-members");
     const sizer = el("div", "fixlip-demo-size");
     const smaller = el("button", "fixlip-demo-step", "−");
     const larger = el("button", "fixlip-demo-step", "+");
@@ -98,7 +102,8 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
-    panel.append(title, detail, sizer, list, legend, meta, live);
+    slot.append(sizer, members, list);
+    panel.append(title, detail, slot, legend, meta, live);
     body.append(stage, panel);
     root.append(bar, body);
 
@@ -135,6 +140,7 @@
     // -- the players of the current photo and model --------------------------------------------
     let ex = null; // the explanation: tokens, main effects, interactions, cliques
     let players = []; // the button of every player: the regions, then the tokens
+    let floor = 0; // the 99th percentile of the interactions, the least that tints scale to
     const grid = 7;
     const regionCount = grid * grid;
 
@@ -153,6 +159,8 @@
       // a photo without an explanation for the model switches to a model that has one
       if (!has(state.image, state.model)) state.model = data.models.find((m) => has(state.image, m.id)).id;
       ex = data.explanations[`${state.image}/${state.model}`];
+      const magnitudes = ex.pairs.map(Math.abs).sort((a, b) => a - b);
+      floor = magnitudes[Math.floor(0.99 * (magnitudes.length - 1))];
       const image = data.images.find((x) => x.id === state.image);
       const model = data.models.find((x) => x.id === state.model);
       state.focus = null;
@@ -227,32 +235,37 @@
     }
 
     function showClique() {
-      const [members, value] = ex.cliques[state.size];
-      const inside = new Set(members);
+      const [clique, value] = ex.cliques[state.size];
+      const inside = new Set(clique);
       players.forEach((button, k) => {
         button.classList.toggle("fixlip-demo-in", inside.has(k));
         button.classList.remove("fixlip-demo-focus");
         button.style.setProperty("--fixlip-tint", "transparent");
         button.style.removeProperty("color");
       });
-      const regions = members.filter((k) => k < regionCount).length;
-      title.textContent = `The ${members.length} players that raise the similarity the most together`;
+      const regions = clique.filter((k) => k < regionCount).length;
+      title.textContent = `The ${clique.length} players that raise the similarity the most together`;
+      const tokens = clique.length - regions;
       detail.textContent =
-        `${regions} ${regions === 1 ? "region" : "regions"} and ${members.length - regions} ` +
-        `${members.length - regions === 1 ? "token" : "tokens"}, found by FIxLIP's greedy search: ` +
-        `together they add ${signed(value)}. Point at a region or a word to see all its interactions.`;
+        `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
+        `(FIxLIP's greedy search) that add ${signed(value)} together. ` +
+        `Point at a region or a word to see all its interactions.`;
       sizer.hidden = false;
+      members.hidden = false;
+      list.hidden = true;
+      members.replaceChildren(...[...inside].sort((a, b) => a - b).map(swatchOf));
       sizeLabel.textContent = `${state.size} players`;
       smaller.disabled = state.size <= 2;
       larger.disabled = state.size >= 10;
-      live.textContent = `Clique of ${members.length} players`;
-      drawEdges(members);
+      live.textContent = `Clique of ${clique.length} players`;
+      drawEdges(clique);
     }
 
     function showPlayer(player) {
       const n = ex.first.length;
       const values = players.map((_, k) => interaction(player, k));
-      const largest = Math.max(...values.map(Math.abs));
+      // a player's strongest interaction is in full color, unless it is weak: then all stay faint
+      const largest = Math.max(floor, ...values.map(Math.abs));
       players.forEach((button, k) => {
         button.classList.remove("fixlip-demo-in");
         button.classList.toggle("fixlip-demo-focus", k === player);
@@ -271,19 +284,15 @@
         `On its own, it adds ${signed(ex.first[player])} to the similarity. ` +
         `With the players below, it adds more (red) or less (blue) than both alone.`;
       sizer.hidden = true;
+      members.hidden = true;
+      list.hidden = false;
       const order = [...Array(n).keys()]
         .filter((k) => k !== player)
         .sort((a, b) => Math.abs(values[b]) - Math.abs(values[a]))
         .slice(0, TOP);
       for (const k of order) {
         const item = el("li");
-        const swatch = el("span", "fixlip-demo-swatch");
-        if (k < regionCount) {
-          swatch.classList.add("fixlip-demo-swatch-region");
-          region(swatch, photo.src, k, grid);
-        } else {
-          swatch.textContent = ex.tokens[k - regionCount][0];
-        }
+        const swatch = swatchOf(k);
         const bar = el("span", "fixlip-demo-bar-value");
         bar.style.setProperty("--fixlip-width", `${(Math.abs(values[k]) / largest) * 100}%`);
         bar.style.setProperty("--fixlip-color", solid(values[k]));
@@ -294,10 +303,22 @@
       drawEdges([]);
     }
 
+    // a player in the panel: a thumbnail of a region, or the text of a token
+    function swatchOf(k) {
+      const swatch = el("span", "fixlip-demo-swatch");
+      if (k < regionCount) {
+        swatch.classList.add("fixlip-demo-swatch-region");
+        swatch.title = `Row ${Math.floor(k / grid) + 1}, column ${(k % grid) + 1}`;
+        region(swatch, photo.src, k, grid);
+      } else {
+        swatch.textContent = ex.tokens[k - regionCount][0];
+      }
+      return swatch;
+    }
     // the edges of the clique: between the centers of its regions and the tops of its tokens
-    function drawEdges(members) {
+    function drawEdges(clique) {
       edges.replaceChildren();
-      if (members.length < 2) return;
+      if (clique.length < 2) return;
       const box = stage.getBoundingClientRect();
       edges.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
       const anchor = (k) => {
@@ -306,8 +327,8 @@
         return [r.left + r.width / 2 - box.left, y - box.top];
       };
       const pairs = [];
-      for (let a = 0; a < members.length; a += 1)
-        for (let b = a + 1; b < members.length; b += 1) pairs.push([members[a], members[b]]);
+      for (let a = 0; a < clique.length; a += 1)
+        for (let b = a + 1; b < clique.length; b += 1) pairs.push([clique[a], clique[b]]);
       const values = pairs.map(([i, j]) => interaction(i, j));
       const largest = Math.max(...values.map(Math.abs));
       pairs
