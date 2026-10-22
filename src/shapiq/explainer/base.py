@@ -117,19 +117,20 @@ class Explainer:
         """Initialize the Explainer class.
 
         Args:
-            model: The model object to be explained.
+            model: The model object or :class:`~shapiq.game.Game` to be explained.
 
             data: A background dataset to be used for imputation in
                 :class:`~shapiq.explainer.tabular.TabularExplainer` or
                 :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. This is a 2-dimensional
                 NumPy array with shape ``(n_samples, n_features)``. Can be empty for the
                 :class:`~shapiq.tree.TreeExplainer`, which does not require background
-                data.
+                data. Ignored with a warning for a :class:`~shapiq.game.Game`.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
                 for regression models. Note, it is important to specify the class index for your
-                classification model.
+                classification model. Ignored with a warning for a :class:`~shapiq.game.Game`,
+                which defines its own explained class.
 
             index: The type of Shapley interaction index to use. Defaults to ``"SV"``, which
                 computes the Shapley value. To compute interactions, pass an interaction index

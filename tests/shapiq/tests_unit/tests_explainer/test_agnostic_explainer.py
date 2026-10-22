@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, get_args
 
 import numpy as np
@@ -206,8 +207,8 @@ def test_exact_with_callable():
     assert iv == ExactComputer(callable_game, n_players=game.n_players)("k-SII", 2)
 
 
-def test_index_and_max_order_with_positional_game() -> None:
-    """Test that a positional game works and the explainer reports its index and max_order."""
+def test_reports_index_and_max_order() -> None:
+    """Test that the explainer reports its index and max_order (with a positional game)."""
     explainer = AgnosticExplainer(DummyGame(n=5, interaction=(1, 2)), index="k-SII", max_order=2)
 
     assert explainer.index == "k-SII"
@@ -218,7 +219,9 @@ def test_explainer_dispatches_game() -> None:
     """Test that ``shapiq.Explainer`` explains a game with the AgnosticExplainer."""
     game = DummyGame(n=5, interaction=(1, 2))
 
-    explainer = Explainer(game, index="k-SII", max_order=2)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        explainer = Explainer(game, index="k-SII", max_order=2)
 
     assert isinstance(explainer, AgnosticExplainer)
     assert explainer.game is game
