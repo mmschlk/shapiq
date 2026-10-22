@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, get_args
 
+import numpy as np
 import pytest
 
 from shapiq import ExactComputer, InteractionValues, MarginalImputer
 from shapiq.explainer.agnostic import AgnosticExplainer, AgnosticExplainerIndices
 from shapiq.explainer.base import Explainer
 from shapiq_games.synthetic import DummyGame, RandomTableGame
+from shapiq_games.vision import ImageClassifier, grid_regions
 
 if TYPE_CHECKING:
-    import numpy as np
-
     from shapiq.typing import IndexType
 
 
@@ -204,3 +204,72 @@ def test_exact_with_callable():
 
     assert not iv.estimated
     assert iv == ExactComputer(callable_game, n_players=game.n_players)("k-SII", 2)
+
+
+def test_index_and_max_order_with_positional_game() -> None:
+    """Test that a positional game works and the explainer reports its index and max_order."""
+    explainer = AgnosticExplainer(DummyGame(n=5, interaction=(1, 2)), index="k-SII", max_order=2)
+
+    assert explainer.index == "k-SII"
+    assert explainer.max_order == 2
+
+
+def test_explainer_dispatches_game() -> None:
+    """Test that ``shapiq.Explainer`` explains a game with the AgnosticExplainer."""
+    game = DummyGame(n=5, interaction=(1, 2))
+
+    explainer = Explainer(game, index="k-SII", max_order=2)
+
+    assert isinstance(explainer, AgnosticExplainer)
+    assert explainer.game is game
+    assert explainer.index == "k-SII"
+    assert explainer.max_order == 2
+
+    iv = explainer.explain(budget=2**game.n_players)
+
+    assert isinstance(iv, InteractionValues)
+    assert iv.index == "k-SII"
+    assert iv.max_order == 2
+
+
+def test_explainer_dispatches_game_with_approximator() -> None:
+    """Test that ``shapiq.Explainer`` passes further arguments on to the AgnosticExplainer."""
+    game = DummyGame(n=5, interaction=(1, 2))
+
+    explainer = Explainer(game, index="k-SII", max_order=2, approximator="exact")
+    iv = explainer.explain(budget=1)
+
+    assert not iv.estimated
+    assert iv == ExactComputer(game)("k-SII", 2)
+
+
+def test_explainer_dispatches_game_ignores_data_and_class_index() -> None:
+    """Test that ``shapiq.Explainer`` warns that a game ignores ``data`` and ``class_index``."""
+    game = DummyGame(n=5, interaction=(1, 2))
+
+    with pytest.warns(UserWarning, match="ignored when explaining a game"):
+        explainer = Explainer(game, data=np.zeros((2, game.n_players)), class_index=0)
+
+    assert isinstance(explainer, AgnosticExplainer)
+
+
+def test_explainer_dispatches_image_classifier() -> None:
+    """Test that ``shapiq.Explainer`` explains an image game with a custom classifier."""
+
+    def brightness_classifier(images: np.ndarray) -> np.ndarray:
+        brightness = images.mean(axis=(1, 2, 3)) / 255
+        return np.stack([brightness, 1 - brightness], axis=1)
+
+    image = np.random.default_rng(0).integers(0, 255, (16, 16, 3), dtype=np.uint8)
+    game = ImageClassifier(image, brightness_classifier, regions=grid_regions(16, 16, 2, 2))
+
+    explainer = Explainer(game, index="k-SII", max_order=2)
+
+    assert isinstance(explainer, AgnosticExplainer)
+
+    iv = explainer.explain(budget=2**game.n_players)
+
+    assert isinstance(iv, InteractionValues)
+    assert iv.index == "k-SII"
+    assert iv.max_order == 2
+    assert iv.n_players == game.n_players == 4

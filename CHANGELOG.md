@@ -4,6 +4,7 @@
 
 - adds `scatter_2d_plot` for pairwise interactions, and `beeswarm_plot`, `scatter_plot`, and `scatter_2d_plot` now take an `InteractionValuesBatch` directly. [#613](https://github.com/mmschlk/shapiq/pull/613)
 - fixes `bar_plot` dropping the first feature for explanations without a base value (e.g. `min_order=1`). [#636](https://github.com/mmschlk/shapiq/pull/636)
+- fixes `shapiq.Explainer` crashing with a `TypeError` for every `shapiq.Game` (e.g. `DummyGame` or `ImageClassifier`): it now passes the game on to `AgnosticExplainer` and warns that `data` and `class_index` are ignored for games. `AgnosticExplainer.index` and `.max_order` now report the requested index and order instead of `"SV"` and `1`.
 - adds the example "Games from Machine Learning Models": a `shapiq.Game` around any model's `predict`, with SV, SII, k-SII, and FSII estimates compared against exact values. [#632](https://github.com/mmschlk/shapiq/pull/632)
 - adds `approximator="exact"` to `TabularExplainer`, `AgnosticExplainer`, `TabPFNExplainer`, and `shapiq.Explainer`, which computes the exact values with `ExactComputer` for all indices. It evaluates all `2**n_features` coalitions per explanation and ignores the `budget`, so it is meant for a small number of features. `"auto"` is unchanged. [#634](https://github.com/mmschlk/shapiq/pull/634), [#320](https://github.com/mmschlk/shapiq/issues/320)
 
