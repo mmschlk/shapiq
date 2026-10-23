@@ -152,8 +152,8 @@ class GraphSHAPIQ:
 
     The players of the game are the nodes of a :class:`~shapiq.graph.GraphModel`. The game is local
     if its Möbius transform vanishes on every coalition that is not contained in the receptive
-    field of a single node, the nodes within ``n_hops`` hops. The output of a graph neural network with ``n_hops`` message
-    passing layers, a linear global pooling, and a linear readout is local
+    field of a single node, the nodes within ``n_hops`` hops. The output of a graph neural network
+    with ``n_hops`` message passing layers, a linear global pooling, and a linear readout is local
     :cite:p:`Muschalik.2025`: the embedding of a node depends only on its receptive field.
 
     GraphSHAP-IQ evaluates the game on the subsets of the receptive fields only, computes their

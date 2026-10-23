@@ -65,14 +65,22 @@ def resolve_n_hops(model: object, n_hops: int | None) -> int:
     return int(n_hops)
 
 
-def convert_graph(graph: Any, *, n_hops: int | None = None) -> GraphModel:  # noqa: ANN401
+def convert_graph(
+    graph: Any,  # noqa: ANN401
+    *,
+    n_hops: int | None = None,
+    model: object = None,
+) -> GraphModel:
     """Convert a graph into a :class:`~shapiq.graph.GraphModel`.
 
     Args:
         graph: A :class:`~shapiq.graph.GraphModel` or a ``torch_geometric.data.Data`` graph with
             node features ``x`` and edges ``edge_index``.
-        n_hops: The radius of the receptive fields. Required for a ``torch_geometric`` graph;
-            replaces the one of a :class:`~shapiq.graph.GraphModel` if given.
+        n_hops: The radius of the receptive fields. Replaces the one of a
+            :class:`~shapiq.graph.GraphModel` if given. Defaults to ``None``, which takes the
+            ``num_layers`` of ``model`` for a ``torch_geometric`` graph.
+        model: The model whose ``num_layers`` is the radius of the receptive fields of a
+            ``torch_geometric`` graph without ``n_hops``.
 
     Returns:
         The graph.
@@ -86,18 +94,9 @@ def convert_graph(graph: Any, *, n_hops: int | None = None) -> GraphModel:  # no
             return graph
         return dataclasses.replace(graph, n_hops=n_hops)
     if safe_isinstance(graph, "torch_geometric.data.Data"):
-        if n_hops is None:
-            msg = "Pass n_hops, the number of message passing layers, for a torch_geometric graph."
-            raise ValueError(msg)
-        if graph.x is None or graph.edge_index is None:
-            msg = "The graph needs node features (graph.x) and edges (graph.edge_index)."
-            raise ValueError(msg)
-        return GraphModel(
-            edge_index=graph.edge_index.detach().cpu().numpy(),
-            n_hops=n_hops,
-            x=graph.x.detach().cpu().numpy(),
-            n_nodes=int(graph.num_nodes),
-        )
+        from .torch_geometric import convert_data
+
+        return convert_data(graph, resolve_n_hops(model, n_hops))
     msg = f"Graphs of type {type(graph).__name__} are not supported."
     raise TypeError(msg)
 

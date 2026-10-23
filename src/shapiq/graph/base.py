@@ -11,7 +11,7 @@ from scipy import sparse
 __all__ = ["GraphModel"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class GraphModel:
     """A graph as a graph neural network with ``n_hops`` message passing layers sees it.
 
@@ -30,6 +30,8 @@ class GraphModel:
         n_nodes: The number of nodes. Defaults to the number of rows of ``x``, else to one more
             than the largest node of the edges.
 
+    The arrays are copied, so the graph does not change with the arrays it was built from.
+
     Examples:
         >>> import numpy as np
         >>> graph = GraphModel(edge_index=np.array([[0, 1, 2], [1, 2, 3]]), n_hops=1)
@@ -46,25 +48,32 @@ class GraphModel:
         """Check the graph and store its arrays as numpy arrays.
 
         Raises:
-            ValueError: If the edges are not of shape ``(2, n_edges)``, refer to other nodes, or
-                ``n_hops`` is negative, or the node features are not of shape
-                ``(n_nodes, n_features)``.
+            ValueError: If the edges are not integers of shape ``(2, n_edges)`` or refer to other
+                nodes, ``n_hops`` or ``n_nodes`` is negative, or the node features are not of
+                shape ``(n_nodes, n_features)``.
         """
-        edges = np.asarray(self.edge_index).astype(np.int64)
+        edges = np.array(self.edge_index)
         if edges.ndim != 2 or edges.shape[0] != 2:
             msg = f"edge_index must be of shape (2, n_edges), got {edges.shape}."
             raise ValueError(msg)
+        if edges.size and not np.issubdtype(edges.dtype, np.integer):
+            msg = f"edge_index must hold integer node indices, got {edges.dtype}."
+            raise ValueError(msg)
+        edges = edges.astype(np.int64)
         n_hops = self.n_hops
         if isinstance(n_hops, bool) or not isinstance(n_hops, int | np.integer) or n_hops < 0:
             msg = f"n_hops must be a non-negative integer, got {n_hops!r}."
             raise ValueError(msg)
-        x = None if self.x is None else np.asarray(self.x)
+        x = None if self.x is None else np.array(self.x)
         if x is not None and x.ndim != 2:
             msg = f"x must be of shape (n_nodes, n_features), got {x.shape}."
             raise ValueError(msg)
         n_nodes = self.n_nodes
         if n_nodes is None:
             n_nodes = x.shape[0] if x is not None else int(edges.max(initial=-1)) + 1
+        if n_nodes < 0:
+            msg = f"n_nodes must be non-negative, got {n_nodes}."
+            raise ValueError(msg)
         if x is not None and x.shape[0] != n_nodes:
             msg = f"x has {x.shape[0]} rows for {n_nodes} nodes."
             raise ValueError(msg)

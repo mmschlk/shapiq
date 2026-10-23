@@ -145,3 +145,58 @@ def test_explainer_explains_several_graphs():
         [explanations[1][key] for key in expected.interaction_lookup if key],
         [expected[key] for key in expected.interaction_lookup if key],
     )
+
+
+def test_graph_model_copies_and_compares_by_identity():
+    edges, x = path(3), np.ones((3, 2))
+    graph = GraphModel(edge_index=edges, n_hops=1, x=x)
+    x[0, 0], edges[0, 0] = 5.0, 2
+    assert graph.x[0, 0] == 1.0
+    assert graph.edge_index[0, 0] == 0
+    same = graph
+    assert graph == same
+    assert graph != GraphModel(edge_index=path(3), n_hops=1, x=np.ones((3, 2)))
+    assert hash(graph) == hash(graph)
+    with pytest.raises(ValueError, match="integer"):
+        GraphModel(edge_index=np.array([[0.7, 1.2], [1.9, 2.0]]), n_hops=1)
+    with pytest.raises(ValueError, match="n_nodes"):
+        GraphModel(edge_index=np.zeros((2, 0), dtype=int), n_hops=1, n_nodes=-1)
+
+
+def test_imputer_refits_only_to_graphs_of_the_same_structure():
+    graph = path_graph(4)
+    model = get_graph_predict_function(OneHopModel(4), graph)
+    imputer = GraphBaselineImputer(model, data=np.zeros(2), x=graph)
+    other_features = path_graph(4, seed=5)
+    imputer.fit(other_features)
+    np.testing.assert_allclose(imputer.x, other_features.x)
+    rewired = GraphModel(edge_index=np.array([[0, 0, 0], [1, 2, 3]]), n_hops=1, x=graph.x)
+    with pytest.raises(ValueError, match="other nodes or edges"):
+        imputer.fit(rewired)
+    with pytest.raises(ValueError, match="other nodes or edges"):
+        GraphBaselineImputer(model, data=np.zeros(2), x=rewired)
+
+
+def test_large_evaluations_are_chunked(monkeypatch):
+    import shapiq.graph.graphshapiq as graphshapiq_module
+    import shapiq.graph.imputer as imputer_module
+
+    graph, model = path_graph(8), OneHopModel(8)
+    expected = GraphExplainer(model, index="k-SII", max_order=2).explain(graph)
+    monkeypatch.setattr(graphshapiq_module, "_CHUNK_SIZE", 7)
+    monkeypatch.setattr(imputer_module, "_MAX_VALUES", 3 * graph.x.size)
+    chunked = GraphExplainer(model, index="k-SII", max_order=2).explain(graph)
+    for interaction in expected.interaction_lookup:
+        assert chunked[interaction] == pytest.approx(expected[interaction], abs=1e-12)
+
+
+def test_integer_node_features_take_the_mode_as_baseline():
+    x = np.array([[0, 1], [2, 1], [2, 0]])
+    graph = GraphModel(edge_index=path(3), n_hops=1, x=x)
+    imputer = GraphBaselineImputer(lambda f: f.sum(axis=(1, 2)), data=x, x=graph)
+    np.testing.assert_array_equal(imputer.baseline_values.astype(int), [[2, 1]])
+
+
+def test_unsupported_graphs_are_reported_as_such():
+    with pytest.raises(TypeError, match="not supported"):
+        GraphExplainer(OneHopModel(3)).explain([(0, 1), (1, 2)])

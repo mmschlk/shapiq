@@ -96,7 +96,7 @@ class Imputer[TModel](Game):
         super().__init__(n_players=self._n_players(), normalize=False, verbose=verbose)
 
     def _n_players(self) -> int:
-        """Return the number of players: one per feature, unless a subclass removes other parts."""
+        """Return the number of players: one per feature, unless a subclass defines others."""
         return self.n_features
 
     @property

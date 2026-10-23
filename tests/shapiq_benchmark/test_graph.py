@@ -41,7 +41,13 @@ def _graph(edges: list[tuple[int, int]], n_nodes: int, seed: int = 0, label: int
 
 def _network(layer: str, *, seed: int = 0) -> GraphNeuralNetwork:
     torch.manual_seed(seed)
-    return GraphNeuralNetwork(layer, n_features=3, n_outputs=2, num_layers=2, hidden=8)  # ty: ignore[invalid-argument-type]
+    return GraphNeuralNetwork(
+        layer,  # ty: ignore[invalid-argument-type]
+        n_features=3,
+        n_outputs=2,
+        num_layers=2,
+        hidden=8,
+    )
 
 
 # receptive fields of two hops are smaller than these graphs
@@ -55,7 +61,11 @@ _GRAPHS = {
 @pytest.mark.parametrize("normalize", [False, True])
 @pytest.mark.parametrize("graph", sorted(_GRAPHS))
 @pytest.mark.parametrize("layer", ["gcn", "gin", "gat"])
-def test_graph_computer_agrees_with_brute_force(layer: str, graph: str, normalize: bool) -> None:  # noqa: FBT001
+def test_graph_computer_agrees_with_brute_force(
+    layer: str,
+    graph: str,
+    normalize: bool,  # noqa: FBT001
+) -> None:
     game = GraphGame(_network(layer), _GRAPHS[graph], normalize=normalize)
     computer = default_computer(game)
     assert isinstance(computer, GraphComputer)

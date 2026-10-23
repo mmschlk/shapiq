@@ -9,8 +9,7 @@ from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
 
-from .base import GraphModel
-from .conversion import convert_graph, get_graph_predict_function, resolve_n_hops
+from .conversion import convert_graph, get_graph_predict_function
 from .graphshapiq import GraphSHAPIQ, GraphSHAPIQIndices
 from .imputer import GraphBaselineImputer
 
@@ -20,6 +19,8 @@ if TYPE_CHECKING:
     from torch_geometric.data import Data
 
     from shapiq.interaction_values import InteractionValues
+
+    from .base import GraphModel
 
 __all__ = ["GraphExplainer"]
 
@@ -106,7 +107,8 @@ class GraphExplainer(Explainer):
             ValueError: If the index is not supported by GraphSHAP-IQ.
         """
         if index not in get_args(GraphSHAPIQIndices):
-            msg = f"GraphExplainer supports the indices {get_args(GraphSHAPIQIndices)}, got {index!r}."
+            supported = get_args(GraphSHAPIQIndices)
+            msg = f"GraphExplainer supports the indices {supported}, got {index!r}."
             raise ValueError(msg)
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._background = None if data is None else np.asarray(data)
@@ -131,10 +133,7 @@ class GraphExplainer(Explainer):
         Returns:
             The interaction values, with the output for the graph without nodes as baseline.
         """
-        if isinstance(x, GraphModel):
-            graph = convert_graph(x, n_hops=self.n_hops)
-        else:
-            graph = convert_graph(x, n_hops=resolve_n_hops(self.model, self.n_hops))
+        graph = convert_graph(x, n_hops=self.n_hops, model=self.model)
         predict = get_graph_predict_function(
             self.model, graph, class_index=self.class_index, batch_size=self.batch_size
         )

@@ -1,4 +1,4 @@
-"""Graphs and graph neural networks of torch_geometric, explained and checked against brute force."""
+"""Graphs and graph neural networks of torch_geometric, checked against brute force."""
 
 from __future__ import annotations
 
@@ -150,3 +150,47 @@ def test_explain_x():
 def test_rejects_unsupported_indices():
     with pytest.raises(ValueError, match="supports the indices"):
         GraphExplainer(GNN(), index="Fourier", max_order=2)  # ty: ignore[invalid-argument-type]
+
+
+class EmbeddingGCN(torch.nn.Module):
+    """A graph convolution on embedded integer atom types, as for molecules."""
+
+    num_layers = 1
+
+    def __init__(self) -> None:
+        super().__init__()
+        from torch_geometric.nn import GCNConv
+
+        torch.manual_seed(0)
+        self.embedding = torch.nn.Embedding(4, 8)
+        self.conv = GCNConv(8, 8)
+        self.readout = torch.nn.Linear(8, 1)
+
+    def forward(self, x, edge_index, batch):
+        from torch_geometric.nn import global_add_pool
+
+        hidden = self.conv(self.embedding(x[:, 0]), edge_index).relu()
+        return self.readout(global_add_pool(hidden, batch))
+
+
+def test_integer_node_features_stay_integers():
+    from torch_geometric.data import Data
+
+    data = Data(x=torch.tensor([[1], [2], [3], [1], [2]]), edge_index=path_graph(5).edge_index)
+    model = EmbeddingGCN()
+    values = GraphExplainer(model, index="k-SII", max_order=2).explain(data)
+    graph = convert_graph(data, model=model)
+    game = GraphBaselineImputer(model, data=np.zeros(1, dtype=int), x=graph, normalize=False)
+    expected = ExactComputer(game=game, n_players=5)("k-SII", 2)
+    for interaction in expected.interaction_lookup:
+        if interaction:
+            assert values[interaction] == pytest.approx(expected[interaction], abs=1e-5)
+
+
+def test_imputer_takes_a_torch_model():
+    model, data = GNN(), path_graph(4)
+    graph = convert_graph(data, model=model)
+    imputer = GraphBaselineImputer(model, data=np.zeros(3), x=graph, normalize=False)
+    assert imputer.empty_prediction == pytest.approx(
+        forward(model, torch.zeros(4, 3), data.edge_index).item(), rel=1e-5
+    )

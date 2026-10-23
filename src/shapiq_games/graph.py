@@ -7,18 +7,13 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.graph import (
-    GraphBaselineImputer,
-    GraphModel,
-    convert_graph,
-    get_graph_predict_function,
-)
-from shapiq.graph.conversion import resolve_n_hops
+from shapiq.graph import GraphBaselineImputer, convert_graph, get_graph_predict_function
 from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
     from torch_geometric.data import Data
 
+    from shapiq.graph import GraphModel
     from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["GraphGame"]
@@ -39,7 +34,8 @@ class GraphGame(Game):
     readout after the pooling makes the game non-local, so explain logits. A ``torch`` model is
     evaluated on padded batches of ``batch_size`` imputed graphs (see
     :func:`~shapiq.graph.get_graph_predict_function`), so the value of a coalition does not depend
-    on which coalitions are evaluated with it.
+    on which coalitions are evaluated with it. A function of node features is called on many
+    imputed graphs at once, so its outputs must not depend on the other graphs of a call.
 
     Attributes:
         model: The graph neural network.
@@ -103,10 +99,8 @@ class GraphGame(Game):
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
         """
-        if not isinstance(graph, GraphModel):
-            n_hops = resolve_n_hops(model, n_hops)
         self.model = model
-        self.graph = convert_graph(graph, n_hops=n_hops)
+        self.graph = convert_graph(graph, n_hops=n_hops, model=model)
         predict = get_graph_predict_function(
             model, self.graph, class_index=class_index, batch_size=batch_size
         )
