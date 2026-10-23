@@ -37,7 +37,8 @@ logger = logging.getLogger(__name__)
 _REQUIRED = {"id", "name", "year", "lane", "summary", "description"}
 _OPTIONAL = {"cite", "api", "examples", "links", "related"}
 _ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-_MAX_LANES = 8  # the colors of the categorical palette in timeline.css
+# the colors of timeline.css: a slot of the categorical palette, its second shade, or neutral gray
+_COLOR = re.compile(r"[1-8](-alt)?|neutral")
 
 
 class TimelineNode(nodes.General, nodes.Element):
@@ -139,9 +140,14 @@ class TimelineDirective(SphinxDirective):
             msg = f"cannot read the timeline {rel_path}: {error}"
             raise self.error(msg) from error
 
-        lanes = {lane["id"]: {**lane, "slot": slot} for slot, lane in enumerate(data["lanes"], 1)}
-        if len(lanes) > _MAX_LANES:
-            logger.warning("the timeline has more than %d lanes", _MAX_LANES, location=f"{path}:1")
+        lanes = {lane["id"]: {**lane, "slot": str(lane.get("color", ""))} for lane in data["lanes"]}
+        slots = [lane["slot"] for lane in lanes.values()]
+        for lane in lanes.values():
+            if not _COLOR.fullmatch(lane["slot"]):
+                msg = "lane %r has no color: a slot of the palette (1 to 8), its -alt shade or neutral"
+                logger.warning(msg, lane["id"], location=f"{path}:1")
+            elif lane["slot"] != "neutral" and slots.count(lane["slot"]) > 1:
+                logger.warning("lanes share the color %r", lane["slot"], location=f"{path}:1")
         lines, entries, seen = _entry_lines(text), [], set()
         for entry in data["entries"]:
             problems = _problems(entry, lanes, seen)

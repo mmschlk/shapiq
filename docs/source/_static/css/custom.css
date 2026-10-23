@@ -368,6 +368,58 @@ figure.shapiq-figure figcaption {
   white-space: pre-wrap;
 }
 
+/* -- Bibliography ------------------------------------------------------------------------------- */
+
+/* the download of references.bib, styled like the outline buttons of the landing page */
+.shapiq-bib-download {
+  margin: 1.25rem 0 1.75rem;
+}
+
+.shapiq-bib-download > p {
+  margin: 0;
+}
+
+.shapiq-bib-download a.download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.15rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface);
+  color: var(--color-foreground-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    border-color var(--shapiq-duration) var(--shapiq-ease),
+    background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-bib-download a.download:hover,
+.shapiq-bib-download a.download:focus-visible {
+  border-color: var(--color-brand-primary);
+  background: var(--shapiq-surface-raised);
+}
+
+.shapiq-bib-download a.download::before {
+  /* a download arrow in the color of the text */
+  content: "";
+  width: 1.05em;
+  height: 1.05em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11m-5-5 5 5 5-5M5 20h14'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* the role sets the label as code: the font of the button instead */
+.shapiq-bib-download a.download code.literal {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
 /* -- Small screens ------------------------------------------------------------------------------ */
 
 @media (max-width: 46em) {

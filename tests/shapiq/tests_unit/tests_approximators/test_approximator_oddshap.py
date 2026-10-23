@@ -581,7 +581,7 @@ def test_select_active_terms_computes_fourier_spectrum_once(monkeypatch):
 
     # budget large enough that both screening steps run (all n individuals, then
     # a non-empty remaining budget for higher-order odd interactions).
-    individuals, interactions = approx._select_active_terms(
+    individuals, _interactions = approx._select_active_terms(
         n_candidate_terms=n + 3,
         surrogate_model=surrogate,
     )

@@ -60,7 +60,7 @@ def compute_product_kernel_explanations(
     save_path: Path | None = None,
 ) -> dict[str, InteractionValues]:
     """Compute explanations for the California Housing dataset using the ProductKernel Explainer."""
-    x_train, y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
+    _x_train, _y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
     model = get_california_housing_svr()
     converted_model = convert_svm(model)
     print(f"Model score: {model.score(x_test, y_test)}")  # noqa: T201

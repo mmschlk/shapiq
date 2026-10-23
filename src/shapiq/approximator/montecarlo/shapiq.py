@@ -25,7 +25,7 @@ class SHAPIQ(MonteCarlo[TIndices]):
     The SHAP-IQ estimator :cite:p:`Fumagalli.2023` is a MonteCarlo approximation algorithm
     that estimates Shapley interactions. It is the default method from MonteCarlo approximator with
     no stratification. For details, see the original paper by :cite:t:`Fumagalli.2023`. SHAP-IQ
-    can be seen as a generalization of the Unbiased KernelSHAP method :cite:p:`Covert.2021b` for
+    can be seen as a generalization of the Unbiased KernelSHAP method :cite:p:`Covert.2021a` for
     any-order Shapley interactions.
 
     Examples:
@@ -100,9 +100,9 @@ ValidUnbiasedKernelSHAPIndices = Literal["SV"]
 class UnbiasedKernelSHAP(SHAPIQ[ValidUnbiasedKernelSHAPIndices]):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
-    The Unbiased KernelSHAP estimator :cite:p:`Covert.2021b` is a variant of the KernelSHAP
+    The Unbiased KernelSHAP estimator :cite:p:`Covert.2021a` is a variant of the KernelSHAP
     estimator (though deeply different). Unbiased KernelSHAP was proposed by
-    :cite:t:`Covert.2021b` as an unbiased version of KernelSHAP. In :cite:t:`Fumagalli.2023` it
+    :cite:t:`Covert.2021a` as an unbiased version of KernelSHAP. In :cite:t:`Fumagalli.2023` it
     was shown that Unbiased KernelSHAP is a more specific variant of the SHAP-IQ approximation
     method (Theorem 4.5).
 

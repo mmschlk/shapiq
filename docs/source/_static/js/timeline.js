@@ -3,9 +3,9 @@
  *
  * _ext/shapiq_timeline.py renders every entry as a card in a list grouped by year: the page
  * without JavaScript and the view on phones. This script adds filters (lanes, "in shapiq only",
- * search), collapsible cards, a swimlane view for wide screens that shows the open card in a
- * drawer below its lane, a table grouped by lane, deep links (timeline.html#kernelshap) and a
- * scroll-reveal animation.
+ * search), collapsible cards, a swimlane view for wide screens that opens at the latest years and
+ * shows the open card in a drawer below its lane, a table grouped by lane, deep links
+ * (timeline.html#kernelshap) and a scroll-reveal animation.
  */
 (() => {
   "use strict";
@@ -388,16 +388,24 @@
 
   function updateScroll() {
     const max = scroller.scrollWidth - scroller.clientWidth;
+    const atEnd = scroller.scrollLeft >= max - 2;
     scrollWrap.classList.toggle("can-scroll-left", scroller.scrollLeft > 2);
-    scrollWrap.classList.toggle("can-scroll-right", scroller.scrollLeft < max - 2);
+    scrollWrap.classList.toggle("can-scroll-right", !atEnd);
     previous.disabled = scroller.scrollLeft <= 2;
-    next.disabled = scroller.scrollLeft >= max - 2;
+    next.disabled = atEnd;
     previous.hidden = next.hidden = max <= 2;
-    hint.textContent =
-      max > 2
-        ? "Click a card for details. Scroll sideways for more years."
-        : "Click a card for details.";
+    let text = "Click a card for details.";
+    if (max > 2) text += atEnd ? " Scroll back for earlier years." : " Scroll sideways for more years.";
+    if (hint.textContent !== text) hint.textContent = text;
     grid.style.setProperty("--tl-view-width", `${scroller.clientWidth}px`);
+  }
+
+  // the swimlanes open at the latest years, and stay there while their width settles (the view is
+  // shown, the window resized) until the reader scrolls or a link opens a card
+  let pinnedToEnd = true;
+
+  function pinToEnd() {
+    if (pinnedToEnd) scroller.scrollTo({ left: scroller.scrollWidth, behavior: "instant" });
   }
 
   function scrollByPage(direction) {
@@ -406,10 +414,22 @@
     scroller.scrollBy({ left: direction * page, behavior: scrollBehavior() });
   }
 
-  scroller.addEventListener("scroll", updateScroll, { passive: true });
+  scroller.addEventListener(
+    "scroll",
+    () => {
+      if (scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth - 2) pinnedToEnd = false;
+      updateScroll();
+    },
+    { passive: true },
+  );
   previous.addEventListener("click", () => scrollByPage(-1));
   next.addEventListener("click", () => scrollByPage(1));
-  if ("ResizeObserver" in window) new ResizeObserver(updateScroll).observe(scroller);
+  if ("ResizeObserver" in window) {
+    new ResizeObserver(() => {
+      pinToEnd();
+      updateScroll();
+    }).observe(scroller);
+  }
 
   // -- table view -------------------------------------------------------------------------------
 
@@ -763,6 +783,7 @@
     const scrollerBox = scroller.getBoundingClientRect();
     const free = scroller.clientWidth - labelWidth - chipBox.width;
     const left = scroller.scrollLeft + chipBox.left - scrollerBox.left - labelWidth - free / 2;
+    pinnedToEnd = false;
     scroller.scrollTo({ left, behavior });
     const top = window.scrollY + chipBox.top - Math.min(140, window.innerHeight * 0.2);
     window.scrollTo({ top, behavior });
