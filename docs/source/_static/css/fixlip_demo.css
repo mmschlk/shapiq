@@ -214,6 +214,10 @@ body[data-theme="dark"] .fixlip-demo {
   color: var(--color-background-primary);
 }
 
+.fixlip-demo-short {
+  display: none;
+}
+
 /* -- the stage: the photo with its regions, the caption with its tokens, the clique's edges ---- */
 
 .fixlip-demo-body {
@@ -225,6 +229,7 @@ body[data-theme="dark"] .fixlip-demo {
 
 .fixlip-demo-stage {
   position: relative;
+  z-index: 1; /* over the panel while it slides */
   transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -267,6 +272,11 @@ body[data-theme="dark"] .fixlip-demo {
   transition: none;
 }
 
+.fixlip-demo-caption.fixlip-demo-fresh {
+  opacity: 0;
+  transition: none;
+}
+
 .fixlip-demo-ghost {
   pointer-events: none;
 }
@@ -300,6 +310,16 @@ body[data-theme="dark"] .fixlip-demo {
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
 }
 
+body[data-theme="dark"] .fixlip-demo-cell::after {
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo-cell::after {
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+  }
+}
+
 .fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
   background: color-mix(in srgb, var(--shapiq-surface) 60%, transparent);
 }
@@ -318,7 +338,11 @@ body[data-theme="dark"] .fixlip-demo {
   outline: none;
 }
 
+/* the caption over the edges, whose lines end at the tops of its tokens */
 .fixlip-demo-caption {
+  position: relative;
+  z-index: 1;
+  transition: opacity 450ms ease;
   margin: 0.9rem 0 0;
   text-align: center;
   font-family: var(--font-stack--monospace);
@@ -326,16 +350,34 @@ body[data-theme="dark"] .fixlip-demo {
   line-height: 2.2;
 }
 
+/* a token is opaque (the card's color under its tint), so that edges pass behind it */
 .fixlip-demo-token {
+  position: relative;
+  isolation: isolate;
   padding: 0.12rem 0.32rem;
   border: 1px solid var(--shapiq-border);
   border-radius: 6px;
-  background: var(--fixlip-tint, transparent);
+  background: var(--shapiq-surface);
   color: var(--color-foreground-primary);
   font: inherit;
   cursor: pointer;
-  transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration),
-    border-color var(--shapiq-duration), transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration),
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fixlip-demo-token::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--fixlip-tint, transparent);
+  transition: background-color var(--shapiq-duration);
+}
+
+/* a word and the punctuation after it */
+.fixlip-demo-word {
+  white-space: nowrap;
 }
 
 /* without an explanation, the caption is an excerpt of a longer text (see placeExcerpt in the
@@ -353,7 +395,7 @@ body[data-theme="dark"] .fixlip-demo {
   height: var(--fixlip-caption-height, auto);
   overflow: hidden;
   line-height: 1.75;
-  text-align: justify;
+  text-align: start;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
 }
@@ -380,7 +422,11 @@ body[data-theme="dark"] .fixlip-demo {
 /* into an explanation, the tokens glide to their line and then get their outlines */
 .fixlip-demo-gliding .fixlip-demo-token {
   transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), border-color 400ms ease 350ms,
-    background-color 400ms ease 350ms, opacity 400ms ease 350ms;
+    opacity 400ms ease 350ms;
+}
+
+.fixlip-demo-gliding .fixlip-demo-token::before {
+  transition: background-color 400ms ease 350ms;
 }
 
 /* out of the excerpt, its text fades in a copy (whose tokens are hidden: they glide away) */
@@ -410,6 +456,10 @@ body[data-theme="dark"] .fixlip-demo {
 
 .fixlip-demo-none .fixlip-demo-cell::after {
   box-shadow: none;
+}
+
+.fixlip-demo-none .fixlip-demo-edges {
+  opacity: 0;
 }
 
 .fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
@@ -457,14 +507,16 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   color: var(--color-foreground-secondary);
 }
 
-/* the explanation fades out without one (and keeps its room), the prediction fades in */
+/* the explanation fades out without one (and keeps its room), the prediction fades in after it;
+   back, the prediction fades out first, then the explanation in */
 .fixlip-demo-panel > :not(.fixlip-demo-live) {
-  transition: opacity 250ms, visibility 250ms;
+  transition: opacity 250ms 150ms, visibility 250ms 150ms;
 }
 
 .fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
   opacity: 0;
   visibility: hidden;
+  transition-delay: 0s;
 }
 
 .fixlip-demo-panel > .fixlip-demo-prediction {
@@ -474,13 +526,13 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   flex-direction: column;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 350ms, visibility 350ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 150ms, visibility 150ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
   opacity: 1;
   visibility: visible;
-  transition-delay: 300ms;
+  transition: opacity 350ms 300ms, visibility 350ms 300ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .fixlip-demo-prediction-main {
@@ -648,6 +700,19 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   box-shadow: 0 0 0 1px var(--shapiq-border), 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
+/* a large clique in a narrow panel: smaller nodes */
+.fixlip-demo-crowded .fixlip-demo-swatch.fixlip-demo-node {
+  height: 1.6rem;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+}
+
+.fixlip-demo-crowded .fixlip-demo-swatch-region.fixlip-demo-node {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+}
+
 .fixlip-demo-list {
   display: grid;
   grid-auto-rows: var(--fixlip-row);
@@ -659,7 +724,7 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 
 .fixlip-demo-list li {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr) 4rem;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 4.75rem;
   align-items: center;
   gap: 0.6rem;
   margin: 0;
@@ -667,7 +732,7 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 
 /* the full explanation lists pairs of players */
 .fixlip-demo-list-pairs li {
-  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 4rem;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 4.75rem;
 }
 
 .fixlip-demo-pair {
@@ -807,18 +872,31 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
     height: 2.9rem;
   }
 
-  /* under the photo, the panel moves nothing that is pointed at: no room is kept */
-  .fixlip-demo-slot {
-    height: auto;
+  /* the photo no wider than it needs to be, so that the panel under it stays in view */
+  .fixlip-demo-stage {
+    justify-self: center;
+    width: 100%;
+    max-width: 26rem;
   }
 
-  .fixlip-demo-title,
+  .fixlip-demo-panel {
+    --fixlip-row: 2.6rem;
+  }
+
+  .fixlip-demo-title {
+    min-height: calc(2 * 1.35em);
+  }
+
   .fixlip-demo-detail {
-    min-height: 0;
+    min-height: calc(4 * 1.55em);
   }
 
-  .fixlip-demo-more {
+  .fixlip-demo-long {
     display: none;
+  }
+
+  .fixlip-demo-short {
+    display: inline;
   }
 
   /* under the photo, the prediction takes the panel's place: nothing moves, nothing is kept */
@@ -845,7 +923,9 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   .fixlip-demo-stage,
   .fixlip-demo-cells,
   .fixlip-demo-edges,
+  .fixlip-demo-caption,
   .fixlip-demo-token,
+  .fixlip-demo-token::before,
   .fixlip-demo-panel > :not(.fixlip-demo-live),
   .fixlip-demo-panel > .fixlip-demo-prediction,
   .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {

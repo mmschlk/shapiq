@@ -33,9 +33,10 @@
   const TOP = 5; // the strongest interactions listed for a player
   const STRONGEST = 12; // the interactions drawn in the full explanation
   const VIEWS = [
-    ["none", "None", ""],
-    ["clique", "Clique", ""],
-    ["full", "Full", " explanation"], // the second part goes on small screens
+    // the view, its label, and the label on small screens
+    ["none", "No explanation", "None"],
+    ["clique", "Clique", "Clique"],
+    ["full", "Full explanation", "Full"],
   ];
 
   const loader = document.createElement("script");
@@ -57,7 +58,12 @@
     if (text !== undefined) node.textContent = text;
     return node;
   };
-  const signed = (value) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(3)}`;
+  const signed = (value) => {
+    const size = Math.abs(value);
+    if (size < 5e-6) return "0.000";
+    const decimals = Math.max(3, Math.min(5, 1 - Math.floor(Math.log10(size))));
+    return `${value >= 0 ? "+" : "−"}${size.toFixed(decimals)}`;
+  };
   const solid = (value) => `rgb(${(value >= 0 ? RED : BLUE).join(", ")})`;
   // a value in a text: red or blue by its sign, in shades that read well as text in either theme
   const sign = (value) => (value >= 0 ? "fixlip-demo-up" : "fixlip-demo-down");
@@ -119,10 +125,13 @@
       "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
       "pieces of them, and look at all of them at once.</p>" +
       "<p>They learned from millions of photos with their captions from the web which go together, " +
-      "but were never told where in a photo a giraffe is. That is why they can find one in a dead " +
-      "tree.</p>" +
+      "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +
+      "at the pond, they also see one in the dead tree behind it.</p>" +
       "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
-      "and watches how the similarity changes.</p>";
+      "and watches how the similarity changes. The patches and words are the <strong>players</strong>: " +
+      "what each adds on its own, and what pairs of them add together (their " +
+      "<strong>interactions</strong>). A <strong>clique</strong> is a group of players that raise " +
+      "the similarity the most together.</p>";
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Close");
@@ -132,6 +141,9 @@
       info.setAttribute("aria-expanded", String(open));
     };
     info.addEventListener("click", () => setAbout(about.hidden));
+    about.addEventListener("focusout", (event) => {
+      if (!about.contains(event.relatedTarget) && event.relatedTarget !== info) setAbout(false);
+    });
     close.addEventListener("click", () => {
       setAbout(false);
       info.focus();
@@ -218,16 +230,19 @@
       thumb.alt = "";
       thumb.loading = "lazy";
       button.append(thumb);
-      button.addEventListener("click", () => {
-        state.image = image.id;
-        reset();
-      });
+      button.addEventListener("click", () =>
+        crossFade(() => {
+          state.image = image.id;
+          reset();
+        }, true),
+      );
       photos.append(button);
       return button;
     });
-    const viewButtons = VIEWS.map(([view, label, more]) => {
-      const button = el("button", "fixlip-demo-option", label);
-      if (more) button.append(el("span", "fixlip-demo-more", more));
+    const viewButtons = VIEWS.map(([view, label, short]) => {
+      const button = el("button", "fixlip-demo-option");
+      button.append(el("span", "fixlip-demo-long", label), el("span", "fixlip-demo-short", short));
+      button.setAttribute("aria-label", label);
       button.type = "button";
       button.addEventListener("click", () => setView(view));
       views.append(button);
@@ -262,6 +277,7 @@
     let regionCount = grid * grid;
     let sizes = [2, 10]; // the smallest and the largest clique of the explanation
     let roving = 0; // the region in the tab order; the arrow keys move within the grid
+    let rovingToken = 0; // the same for the caption's tokens
     let glideTimer = 0;
     let started = false; // nothing is announced while the demo builds itself
 
@@ -288,6 +304,7 @@
       sizes = [Math.min(...known), Math.max(...known)];
       state.size = Math.max(sizes[0], Math.min(sizes[1], state.size));
       roving = 0;
+      rovingToken = 0;
       const magnitudes = ex.pairs.map(Math.abs).sort((a, b) => a - b);
       floor = magnitudes[Math.floor(0.99 * (magnitudes.length - 1))];
       const n = ex.first.length;
@@ -332,7 +349,7 @@
           if (event.pointerType !== "touch" && !state.pinned && state.view !== "none") show(player);
         });
         button.addEventListener("focus", () => {
-          if (player < regionCount) setRoving(player);
+          setRoving(player);
           if (!state.pinned && state.view !== "none") show(player, true);
         });
         button.addEventListener("click", () => {
@@ -381,7 +398,7 @@
         words.forEach((word, k) => {
           const distance = side === "before" ? words.length - k : k + 1;
           const fading = el("span", "", word);
-          fading.style.opacity = (0.65 * Math.max(0, 1 - (distance - 1) / 18)).toFixed(2);
+          fading.style.opacity = (0.8 * Math.max(0, 1 - (distance - 1) / 18)).toFixed(2);
           span.append(...(side === "before" ? [fading, " "] : [" ", fading]));
         });
         return span;
@@ -392,7 +409,16 @@
         return token;
       });
       inner.append(around(before, "before"));
-      spaced(e).forEach(([space], k) => inner.append(...(space ? [space] : []), tokens[k]));
+      let word = null; // a word with the punctuation after it, kept on one line
+      spaced(e).forEach(([space, text], k) => {
+        if (word && !space && /^[.,;:!?]/.test(text)) {
+          word.append(tokens[k]);
+          return;
+        }
+        word = el("span", "fixlip-demo-word");
+        word.append(tokens[k]);
+        inner.append(...(space ? [space] : []), word);
+      });
       inner.append(around(after, "after"));
       return { inner, tokens };
     }
@@ -403,11 +429,12 @@
       if (!inner) return;
       inner.style.transform = "";
       if (state.view !== "none") return;
-      // offsets ignore the tokens' transforms while they glide
+      // offsets (from the caption, the tokens' positioned parent) ignore the tokens' transforms
+      // while they glide
       const tokens = players.slice(regionCount);
       const top = Math.min(...tokens.map((t) => t.offsetTop));
       const bottom = Math.max(...tokens.map((t) => t.offsetTop + t.offsetHeight));
-      const middle = caption.offsetTop + caption.offsetHeight / 2;
+      const middle = caption.clientHeight / 2;
       inner.style.transform = `translateY(${Math.round(middle - (top + bottom) / 2)}px)`;
     }
 
@@ -423,32 +450,35 @@
       reserve(predictionCredit, data.images.map(creditText));
     }
 
-    // the caption's room: that of its tallest line of tokens, or of its tallest excerpt (the
-    // caption's lines and three quarters of a line of the text around it above and below)
+    // the caption's room: that of its tallest line of tokens, and of its tallest excerpt (the
+    // caption's lines and half a line of the text around it above and below), which next to the
+    // panel keeps the card's height in all views (under the photo, the views differ anyway)
     function reserveCaption(all) {
       const width = caption.getBoundingClientRect().width;
       if (!width) return;
       const probe = caption.cloneNode(false);
       Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, minHeight: "0", height: "auto" });
       caption.after(probe);
-      let tallest = 0;
+      let tokens = 0;
+      let excerpt = 0;
       for (const [image, , e] of all) {
-        for (const excerpt of [false, true]) {
-          probe.classList.toggle("fixlip-demo-excerpt", excerpt);
-          const { inner, tokens } = captionContent(image, e);
-          probe.replaceChildren(inner);
-          if (!excerpt) {
-            tallest = Math.max(tallest, probe.getBoundingClientRect().height);
+        for (const asExcerpt of [false, true]) {
+          probe.classList.toggle("fixlip-demo-excerpt", asExcerpt);
+          const content = captionContent(image, e);
+          probe.replaceChildren(content.inner);
+          if (!asExcerpt) {
+            tokens = Math.max(tokens, probe.getBoundingClientRect().height);
             continue;
           }
-          const boxes = tokens.map((t) => t.getBoundingClientRect());
+          const boxes = content.tokens.map((t) => t.getBoundingClientRect());
           const lines = Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top));
-          tallest = Math.max(tallest, lines + 1.5 * parseFloat(getComputedStyle(probe).lineHeight));
+          excerpt = Math.max(excerpt, lines + parseFloat(getComputedStyle(probe).lineHeight));
         }
       }
       probe.remove();
-      caption.style.minHeight = `${Math.ceil(tallest)}px`;
-      caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(tallest)}px`);
+      const room = beside() ? Math.max(tokens, excerpt) : tokens;
+      caption.style.minHeight = `${Math.ceil(room)}px`;
+      caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(Math.max(tokens, excerpt))}px`);
     }
 
     // the least height of a node: that of the tallest of the contents, in a hidden copy of it
@@ -467,27 +497,32 @@
       node.style.minHeight = `${Math.ceil(tallest)}px`;
     }
 
-    // another model has another grid of patches (CLIP 7 x 7, SigLIP 2 8 x 8, as in FIxLIP): the old
-    // patches and edges fade out over the new ones, which fade in
-    function crossFade(change) {
+    // another model has another grid of patches (CLIP 7 x 7, SigLIP 2 8 x 8, as in FIxLIP), another
+    // photo another photo too: the old ones fade out over the new ones, which fade in (a new caption
+    // fades in)
+    function crossFade(change, newPhoto = false) {
       for (const ghost of stage.querySelectorAll(".fixlip-demo-ghost")) ghost.remove();
       if (reducedMotion()) {
         change();
         return;
       }
-      const ghosts = [cells, edges].map((node) => {
+      const old = newPhoto ? [frame, edges] : [cells, edges];
+      const ghosts = old.map((node) => {
         const ghost = node.cloneNode(true);
         ghost.classList.add("fixlip-demo-ghost");
         ghost.setAttribute("aria-hidden", "true");
         ghost.setAttribute("inert", "");
+        if (node === frame)
+          Object.assign(ghost.style, { position: "absolute", top: "0", left: "0", width: `${frame.offsetWidth}px` });
         node.after(ghost);
         return ghost;
       });
       change();
-      for (const node of [cells, edges]) node.classList.add("fixlip-demo-fresh");
+      const fresh = newPhoto ? [cells, edges, caption] : [cells, edges];
+      for (const node of fresh) node.classList.add("fixlip-demo-fresh");
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          for (const node of [cells, edges]) node.classList.remove("fixlip-demo-fresh");
+          for (const node of fresh) node.classList.remove("fixlip-demo-fresh");
           for (const ghost of ghosts) {
             ghost.classList.add("fixlip-demo-gone");
             setTimeout(() => ghost.remove(), 600);
@@ -503,24 +538,37 @@
       cells.inert = none;
       players.forEach((button, k) => {
         if (k >= regionCount) button.inert = none;
-        button.tabIndex = k >= regionCount || k === roving ? 0 : -1;
+        button.tabIndex = k === roving || k === regionCount + rovingToken ? 0 : -1;
       });
     }
 
     function setRoving(k) {
-      players[roving].tabIndex = -1;
-      roving = k;
-      players[roving].tabIndex = 0;
+      if (k < regionCount) {
+        players[roving].tabIndex = -1;
+        roving = k;
+      } else {
+        players[regionCount + rovingToken].tabIndex = -1;
+        rovingToken = k - regionCount;
+      }
+      players[k].tabIndex = 0;
     }
 
-    // how far the photo moves towards the middle without an explanation: by 30% of the panel's
-    // width, into the panel, whose prediction moves aside (none when the panel is under the photo)
+    // how far the photo moves towards the middle without an explanation: so far that the photo and
+    // the prediction next to it are centered together (not at all when the panel is under the photo)
+    const PREDICTION_GAP = 24; // px between the photo and the prediction
+    const beside = () => panel.offsetTop < stage.offsetTop + stage.offsetHeight / 2;
     function setShift() {
       const gap = panel.offsetLeft - (stage.offsetLeft + stage.offsetWidth);
-      const beside = panel.offsetTop < stage.offsetTop + stage.offsetHeight / 2;
-      const shift = beside ? Math.round(0.3 * panel.offsetWidth) : 0;
+      let shift = 0;
+      if (beside()) {
+        predictionMain.style.width = "max-content"; // its widest line, unwrapped
+        const text = Math.min(predictionMain.offsetWidth, panel.offsetWidth - PREDICTION_GAP);
+        predictionMain.style.width = "";
+        const group = stage.offsetWidth + PREDICTION_GAP + text;
+        shift = Math.max(0, Math.round((body.clientWidth - group) / 2 - (stage.offsetLeft - body.offsetLeft)));
+      }
       root.style.setProperty("--fixlip-shift", `${shift}px`);
-      root.style.setProperty("--fixlip-overlap", `${beside ? Math.max(0, shift - gap) : 0}px`);
+      root.style.setProperty("--fixlip-overlap", `${Math.max(0, shift - gap)}px`);
     }
 
     function setSize(size) {
@@ -598,7 +646,7 @@
     function show(player, announce = false) {
       state.focus = player;
       root.classList.toggle("fixlip-demo-focused", player !== null);
-      list.replaceChildren();
+      if (player !== null || state.view !== "none") list.replaceChildren(); // (it fades out otherwise)
       let message;
       if (player !== null) message = showPlayer(player);
       else if (state.view === "full") message = showFull();
@@ -614,7 +662,6 @@
         button.style.setProperty("--fixlip-tint", "transparent");
         button.style.removeProperty("color");
       });
-      drawEdges([]);
       return `No explanation. ${predictionModel.textContent} a similarity of ${ex.similarity.toFixed(2)}.`;
     }
 
@@ -633,9 +680,9 @@
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
-          "(FIxLIP's greedy search) that add ",
+          "(FIxLIP's greedy search) that together raise the similarity by ",
         valued(value),
-        " together, linked by their interactions.",
+        ", linked by their interactions.",
       );
       sizer.hidden = false;
       graph.hidden = false;
@@ -709,7 +756,7 @@
       detail.replaceChildren(
         "On its own, it adds ",
         valued(ex.first[player]),
-        " to the similarity. With the players below, it adds more (red) or less (blue) than both alone.",
+        " to the similarity. Together with each player below, it adds more (red) or less (blue) than the two do alone.",
       );
       sizer.hidden = true;
       graph.hidden = true;
@@ -807,7 +854,8 @@
 
     // the clique as a graph in the panel: its players on an ellipse, the regions first, linked by
     // their interactions as thick as they are strong, the strongest ones labeled
-    function drawGraph(clique) {
+    function drawGraph(clique, crowded = false) {
+      graph.classList.toggle("fixlip-demo-crowded", crowded); // smaller nodes when they would overlap
       const nodes = clique.map((k) => {
         const node = swatchOf(k);
         node.classList.add("fixlip-demo-node");
@@ -822,11 +870,29 @@
       const halfWidth = Math.max(...nodes.map((node) => node.offsetWidth / 2));
       const halfHeight = Math.max(...nodes.map((node) => node.offsetHeight / 2));
       const ry = height / 2 - halfHeight - 2;
-      const rx = Math.min(width / 2 - halfWidth - 2, 1.9 * ry);
-      const at = clique.map((_, k) => {
-        const angle = Math.PI + (2 * Math.PI * k) / clique.length; // from the left, clockwise
-        return [width / 2 + rx * Math.cos(angle), height / 2 + ry * Math.sin(angle)];
-      });
+      const rx = Math.min(width / 2 - halfWidth - 2, 2.6 * ry);
+      // the players on the ellipse from the left, clockwise, turned so that the fewest overlap
+      const around = (turn) =>
+        clique.map((_, k) => {
+          const angle = Math.PI + (2 * Math.PI * (k + turn)) / clique.length;
+          return [width / 2 + rx * Math.cos(angle), height / 2 + ry * Math.sin(angle)];
+        });
+      const overlaps = (points) => {
+        let count = 0;
+        for (let a = 0; a < points.length; a += 1)
+          for (let b = a + 1; b < points.length; b += 1)
+            count +=
+              Math.abs(points[a][0] - points[b][0]) < (nodes[a].offsetWidth + nodes[b].offsetWidth) / 2 + 4 &&
+              Math.abs(points[a][1] - points[b][1]) < (nodes[a].offsetHeight + nodes[b].offsetHeight) / 2 + 4;
+        return count;
+      };
+      const at = [0, 0.5, 0.25, 0.75]
+        .map(around)
+        .reduce((best, points) => (overlaps(points) < overlaps(best) ? points : best));
+      if (!crowded && overlaps(at) > 0) {
+        drawGraph(clique, true);
+        return;
+      }
       nodes.forEach((node, k) => {
         node.style.left = `${at[k][0]}px`;
         node.style.top = `${at[k][1]}px`;
@@ -836,13 +902,19 @@
       for (const { a, b, value, strength } of pairs) {
         links.append(line(...at[a], ...at[b], value, strength, [0.75, 9], [0.1, 0.8]));
       }
-      // the labels of the strongest interactions, along their edges where they do not overlap
+      // the labels of the strongest interactions, along their edges where they overlap neither each
+      // other nor a node
       const placed = [];
+      const free = ([x, y]) =>
+        placed.every(([u, v]) => Math.abs(x - u) > 46 || Math.abs(y - v) > 16) &&
+        nodes.every((node, k) =>
+          Math.abs(x - at[k][0]) > node.offsetWidth / 2 + 24 || Math.abs(y - at[k][1]) > node.offsetHeight / 2 + 9,
+        );
       for (const { a, b, value, strength } of pairs.slice(-4).reverse()) {
         if (strength < 0.3) break;
-        const spot = [0.5, 0.35, 0.65]
+        const spot = [0.5, 0.4, 0.6, 0.3, 0.7]
           .map((t) => [at[a][0] + t * (at[b][0] - at[a][0]), at[a][1] + t * (at[b][1] - at[a][1])])
-          .find(([x, y]) => placed.every(([u, v]) => Math.abs(x - u) > 46 || Math.abs(y - v) > 16));
+          .find(free);
         if (!spot) continue;
         placed.push(spot);
         const label = document.createElementNS(SVG, "text");
@@ -859,6 +931,14 @@
       }
     }
 
+    caption.addEventListener("keydown", (event) => {
+      const moves = { ArrowLeft: -1, ArrowRight: 1, Home: -Infinity, End: Infinity };
+      const k = players.indexOf(event.target);
+      if (!(event.key in moves) || k < regionCount) return;
+      const next = Math.max(regionCount, Math.min(players.length - 1, k + moves[event.key]));
+      event.preventDefault();
+      players[next].focus();
+    });
     cells.addEventListener("keydown", (event) => {
       const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -grid, ArrowDown: grid };
       const k = players.indexOf(event.target);
