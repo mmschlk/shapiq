@@ -1,7 +1,8 @@
 // The interactive explanation of the landing page: which words of a caption go with which regions
 // of a photo, for SigLIP 2 and CLIP, explained as in FIxLIP (Baniecki et al., NeurIPS 2025).
 //
-// The players are the 7 x 7 regions of the photo and the tokens of the caption. Their main
+// The players are the image patches of the photo (7 x 7 for CLIP, 8 x 8 for SigLIP 2, both
+// ViT-B/32 as in FIxLIP's figures) and the tokens of the caption. Their main
 // effects and pairwise interactions (FBII, FIxLIP with p = 0.5) are precomputed per photo and
 // model in _static/fixlip/data.js, so the page only looks values up. At rest, the demo shows the
 // clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
@@ -168,8 +169,8 @@
     let floor = 0; // the 99th percentile of the interactions, the least that tints scale to
     let strongest = []; // the strongest interactions, the strongest first, for the full explanation
     let crossModal = []; // the strongest interactions between a region and a token, listed there
-    const grid = 7;
-    const regionCount = grid * grid;
+    let grid = 7; // the photo's regions are grid x grid patches, by the model
+    let regionCount = grid * grid;
 
     const interaction = (i, j) => {
       if (i === j) return 0;
@@ -186,6 +187,9 @@
       // a photo without an explanation for the model switches to a model that has one
       if (!has(state.image, state.model)) state.model = data.models.find((m) => has(state.image, m.id)).id;
       ex = data.explanations[`${state.image}/${state.model}`];
+      grid = ex.grid ?? 7;
+      regionCount = grid * grid;
+      cells.style.setProperty("--fixlip-grid", grid);
       const magnitudes = ex.pairs.map(Math.abs).sort((a, b) => a - b);
       floor = magnitudes[Math.floor(0.99 * (magnitudes.length - 1))];
       const n = ex.first.length;
