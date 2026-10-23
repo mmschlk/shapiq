@@ -550,12 +550,90 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   color: var(--color-foreground-primary);
 }
 
+/* the similarity, and a word for how it compares */
+.fixlip-demo-prediction-main .fixlip-demo-prediction-number {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
 .fixlip-demo-prediction-value {
   font-size: 3.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
   color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-verdict {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shapiq-lavender) 40%, transparent);
+  color: var(--color-foreground-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fixlip-demo-verdict[hidden] {
+  display: none;
+}
+
+/* where the similarity is: among unrelated captions (grey), among own captions (lavender) */
+.fixlip-demo-scale {
+  position: relative;
+  max-width: 17rem;
+  height: 2.5rem;
+  margin: 0.65rem 0 0.1rem;
+}
+
+.fixlip-demo-scale::before,
+.fixlip-demo-scale-band {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.fixlip-demo-scale::before {
+  inset-inline: 0;
+  background: var(--shapiq-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--shapiq-border);
+}
+
+.fixlip-demo-scale-unrelated {
+  background: color-mix(in srgb, var(--color-foreground-secondary) 35%, transparent);
+}
+
+.fixlip-demo-scale-matching {
+  background: var(--shapiq-lavender);
+}
+
+.fixlip-demo-scale-mark {
+  position: absolute;
+  top: calc(0.5rem - 4px);
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 3px solid var(--shapiq-surface);
+  border-radius: 999px;
+  background: var(--color-foreground-primary);
+  transform: translateX(-50%);
+}
+
+.fixlip-demo-scale-label {
+  position: absolute;
+  top: 1.15rem;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  color: var(--shapiq-text-muted);
+}
+
+.fixlip-demo-prediction-main .fixlip-demo-prediction-compare {
+  font-size: 0.85rem;
+  color: var(--shapiq-text-muted);
 }
 
 .fixlip-demo-prediction-main .fixlip-demo-prediction-why {

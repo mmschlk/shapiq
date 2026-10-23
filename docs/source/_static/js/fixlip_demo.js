@@ -74,6 +74,23 @@
     const alpha = largest > 0 ? Math.min(Math.abs(value) / largest, 1) * strength : 0;
     return { color: `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`, alpha };
   };
+  // how a similarity compares with the model's on COCO photos with their own captions and with
+  // unrelated ones (model.norms: the 0th, 5th, ..., 100th percentiles of both): the share of photos
+  // with their own caption below it, and a word for it
+  const share = (value, quantiles) => {
+    const k = quantiles.findIndex((q) => q > value);
+    if (k === 0) return 0;
+    if (k < 0) return 1;
+    const [low, high] = [quantiles[k - 1], quantiles[k]];
+    return (k - 1 + (value - low) / (high - low)) / (quantiles.length - 1);
+  };
+  const verdict = (value, norms) => {
+    const below = share(value, norms.matching);
+    if (below >= 0.95) return "very high";
+    if (below >= 0.75) return "high";
+    if (below >= 0.25) return "typical";
+    return value > norms.unrelated[19] ? "low" : "like unrelated";
+  };
   // a region of the photo as a background: the photo at grid times its size, moved to the region
   const region = (node, url, k, grid) => {
     node.style.backgroundImage = `url("${url}")`;
@@ -108,6 +125,17 @@
     models.setAttribute("aria-label", "Model");
     const switches = el("div", "fixlip-demo-switches");
     // what the models are, for readers who have not met them, behind a small "i"
+    function normsSentence() {
+      const known = data.models.filter((m) => m.norms);
+      if (!known.length) return "";
+      const median = (m, kind) => m.norms[kind][10].toFixed(2).replace("-", "−");
+      const own = known.map((m) => `${median(m, "matching")} (${m.label})`).join(" and ");
+      const unrelated = known.map((m) => median(m, "unrelated")).join(" and ");
+      return (
+        "<p>Similarities are small numbers: COCO photos score about " +
+        `${own} with their own captions, and ${unrelated} with unrelated ones.</p>`
+      );
+    }
     const info = el("button", "fixlip-demo-info", "i");
     info.type = "button";
     info.setAttribute("aria-label", "What are CLIP and SigLIP 2?");
@@ -121,6 +149,7 @@
       "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
       "When both say the same thing, the two lists point the same way, and their " +
       "<strong>similarity</strong> is high.</p>" +
+      normsSentence() +
       "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each: " +
       "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
       "pieces of them, and look at all of them at once.</p>" +
@@ -195,7 +224,19 @@
     const prediction = el("div", "fixlip-demo-prediction");
     const predictionMain = el("div", "fixlip-demo-prediction-main");
     const predictionModel = el("p", "fixlip-demo-prediction-model");
-    const predictionValue = el("p", "fixlip-demo-prediction-value");
+    const predictionNumber = el("p", "fixlip-demo-prediction-number");
+    const predictionValue = el("span", "fixlip-demo-prediction-value");
+    const predictionVerdict = el("span", "fixlip-demo-verdict");
+    predictionNumber.append(predictionValue, predictionVerdict);
+    // where the similarity is among those of unrelated pairs and of photos with their own caption
+    const scale = el("div", "fixlip-demo-scale");
+    scale.setAttribute("aria-hidden", "true"); // the sentence under it says the same
+    const scaleUnrelated = el("span", "fixlip-demo-scale-band fixlip-demo-scale-unrelated");
+    const scaleMatching = el("span", "fixlip-demo-scale-band fixlip-demo-scale-matching");
+    const scaleMark = el("span", "fixlip-demo-scale-mark");
+    const scaleLabels = [el("span", "fixlip-demo-scale-label", "unrelated captions"), el("span", "fixlip-demo-scale-label", "own captions")];
+    scale.append(scaleUnrelated, scaleMatching, scaleMark, ...scaleLabels);
+    const predictionCompare = el("p", "fixlip-demo-prediction-compare");
     const predictionWhy = el("p", "fixlip-demo-prediction-why");
     const predictionCredit = el("p", "fixlip-demo-meta");
     const toView = (view, label) => {
@@ -209,8 +250,10 @@
     };
     predictionMain.append(
       predictionModel,
-      predictionValue,
+      predictionNumber,
       el("p", "fixlip-demo-prediction-label", "similarity of the photo and its caption"),
+      scale,
+      predictionCompare,
       predictionWhy,
     );
     predictionWhy.append("But why? See the ", toView("clique", "clique"), " or the ", toView("full", "full explanation"), ".");
@@ -362,6 +405,7 @@
       meta.replaceChildren(...metaText(image, model, ex));
       predictionModel.textContent = `${model.label} (${model.detail}) predicts`;
       predictionValue.textContent = ex.similarity.toFixed(2);
+      setScale(model.norms, ex.similarity);
       predictionCredit.replaceChildren(...creditText(image));
       setInteractive();
       placeExcerpt();
@@ -376,10 +420,37 @@
       ", cropped.",
     ];
     const metaText = (image, model, e) => [
-      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}. Explained by ${data.method}` +
+      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}` +
+        (model.norms ? `, ${verdict(e.similarity, model.norms)}` : "") +
+        `. Explained by ${data.method}` +
         (e.r2 === undefined ? ". " : `; the explanation fits held-out coalitions with R² = ${e.r2.toFixed(2)}. `),
       ...creditText(image),
     ];
+    // the word for the similarity, its place on the scale (the middle 90% of unrelated pairs and of
+    // photos with their own caption), and the share of photos with their own caption below it
+    function setScale(norms, value) {
+      for (const node of [predictionVerdict, scale, predictionCompare]) node.hidden = !norms;
+      if (!norms) return;
+      const word = verdict(value, norms);
+      predictionVerdict.textContent = word;
+      predictionVerdict.dataset.verdict = word.replace(" ", "-");
+      const low = Math.min(norms.unrelated[1], value) - 0.03;
+      const high = Math.max(norms.matching[19], value) + 0.03;
+      const at = (x) => `${((100 * (x - low)) / (high - low)).toFixed(1)}%`;
+      const band = (node, quantiles) =>
+        Object.assign(node.style, { left: at(quantiles[1]), width: `calc(${at(quantiles[19])} - ${at(quantiles[1])})` });
+      band(scaleUnrelated, norms.unrelated);
+      band(scaleMatching, norms.matching);
+      scaleMark.style.left = at(value);
+      scaleLabels[0].style.left = at(norms.unrelated[10]);
+      scaleLabels[1].style.left = at(norms.matching[10]);
+      const below = Math.round(100 * share(value, norms.matching));
+      predictionCompare.textContent =
+        below >= 50
+          ? `Higher than for ${below}% of COCO photos with their own caption.`
+          : `Lower than for ${100 - below}% of COCO photos with their own caption.`;
+    }
+
     // the caption's tokens with spaces where the text has them (not before punctuation, which CLIP's
     // tokenizer marks as a word of its own)
     const spaced = (e) =>
@@ -662,7 +733,8 @@
         button.style.setProperty("--fixlip-tint", "transparent");
         button.style.removeProperty("color");
       });
-      return `No explanation. ${predictionModel.textContent} a similarity of ${ex.similarity.toFixed(2)}.`;
+      const note = predictionCompare.hidden ? "" : ` ${predictionVerdict.textContent}. ${predictionCompare.textContent}`;
+      return `No explanation. ${predictionModel.textContent} a similarity of ${ex.similarity.toFixed(2)},${note}`;
     }
 
     function showClique() {
