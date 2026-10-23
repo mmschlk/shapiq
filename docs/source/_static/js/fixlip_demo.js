@@ -14,10 +14,18 @@
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
-// Without JavaScript, or when the data does not load, the static figure stays in place.
+// Without JavaScript, the static figure in the <noscript> shows; when the data does not load or
+// does not fit, the script shows that figure itself.
 (() => {
   const root = document.querySelector(".fixlip-demo");
   if (!root) return;
+  // with scripts on, a <noscript>'s content is its HTML as text
+  const fallback = root.querySelector("noscript")?.textContent ?? "";
+  const showFallback = () => {
+    root.classList.remove("fixlip-demo-ready");
+    root.classList.add("fixlip-demo-failed");
+    root.innerHTML = fallback;
+  };
 
   const SVG = "http://www.w3.org/2000/svg";
   const RED = [255, 13, 87];
@@ -32,7 +40,15 @@
 
   const loader = document.createElement("script");
   loader.src = `${root.dataset.root}data.js`;
-  loader.onload = () => window.SHAPIQ_FIXLIP && start(window.SHAPIQ_FIXLIP);
+  loader.onload = () => {
+    try {
+      start(window.SHAPIQ_FIXLIP);
+    } catch (error) {
+      console.error("The interactive explanation could not start:", error);
+      showFallback();
+    }
+  };
+  loader.onerror = showFallback;
   document.head.appendChild(loader);
 
   const el = (tag, className, text) => {
@@ -43,13 +59,16 @@
   };
   const signed = (value) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(3)}`;
   const solid = (value) => `rgb(${(value >= 0 ? RED : BLUE).join(", ")})`;
-  const valued = (value) => Object.assign(el("strong", "", signed(value)), { style: `color: ${solid(value)}` });
+  // a value in a text: red or blue by its sign, in shades that read well as text in either theme
+  const sign = (value) => (value >= 0 ? "fixlip-demo-up" : "fixlip-demo-down");
+  const valued = (value) => el("strong", sign(value), signed(value));
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const tint = (value, largest, strength = 0.85) => {
     const [r, g, b] = value >= 0 ? RED : BLUE;
     const alpha = largest > 0 ? Math.min(Math.abs(value) / largest, 1) * strength : 0;
     return { color: `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`, alpha };
   };
-  // a region of the photo as a background: the photo at 7 times its size, moved to the region
+  // a region of the photo as a background: the photo at grid times its size, moved to the region
   const region = (node, url, k, grid) => {
     node.style.backgroundImage = `url("${url}")`;
     node.style.backgroundSize = `${grid * 100}%`;
@@ -59,11 +78,11 @@
   function start(data) {
     const has = (image, model) => `${image}/${model}` in data.explanations;
     const first = data.images.find((image) => data.models.some((model) => has(image.id, model.id)));
-    if (!first) return;
+    if (!first) throw new Error("no photo has an explanation");
     const state = {
       image: first.id,
       model: data.models.find((model) => has(first.id, model.id)).id,
-      size: 6,
+      size: 6, // the clique's, kept within the sizes of the explanation's cliques
       view: "clique",
       focus: null,
       pinned: false,
@@ -128,10 +147,11 @@
     const cells = el("div", "fixlip-demo-cells");
     frame.append(photo, cells);
     const caption = el("p", "fixlip-demo-caption");
+    const spoken = el("p", "fixlip-demo-sr"); // the caption as one sentence, for screen readers
     const edges = document.createElementNS(SVG, "svg");
     edges.setAttribute("class", "fixlip-demo-edges");
     edges.setAttribute("aria-hidden", "true");
-    stage.append(frame, caption, edges);
+    stage.append(frame, spoken, caption, edges);
 
     const panel = el("div", "fixlip-demo-panel");
     const title = el("p", "fixlip-demo-title");
@@ -169,7 +189,10 @@
     const toView = (view, label) => {
       const button = el("button", "fixlip-demo-link", label);
       button.type = "button";
-      button.addEventListener("click", () => setView(view));
+      button.addEventListener("click", () => {
+        setView(view);
+        viewButtons[VIEWS.findIndex(([v]) => v === view)].focus(); // the link itself goes away
+      });
       return button;
     };
     predictionMain.append(
@@ -188,8 +211,8 @@
     const photoButtons = data.images.map((image) => {
       const button = el("button", "fixlip-demo-photo");
       button.type = "button";
-      button.setAttribute("aria-label", image.title);
-      button.title = image.title;
+      button.setAttribute("aria-label", image.title ?? image.id);
+      button.title = image.title ?? "";
       const thumb = el("img");
       thumb.src = `${root.dataset.root}${image.id}.jpg`;
       thumb.alt = "";
@@ -222,8 +245,12 @@
       models.append(button);
       return button;
     });
-    smaller.addEventListener("click", () => setSize(state.size - 1));
-    larger.addEventListener("click", () => setSize(state.size + 1));
+    const step = (button, by) =>
+      button.addEventListener("click", () => {
+        if (button.getAttribute("aria-disabled") !== "true") setSize(state.size + by);
+      });
+    step(smaller, -1);
+    step(larger, 1);
 
     // -- the players of the current photo and model --------------------------------------------
     let ex = null; // the explanation: tokens, main effects, interactions, cliques
@@ -233,6 +260,10 @@
     let crossModal = []; // the strongest interactions between a region and a token, listed there
     let grid = 7; // the photo's regions are grid x grid patches, by the model
     let regionCount = grid * grid;
+    let sizes = [2, 10]; // the smallest and the largest clique of the explanation
+    let roving = 0; // the region in the tab order; the arrow keys move within the grid
+    let glideTimer = 0;
+    let started = false; // nothing is announced while the demo builds itself
 
     const interaction = (i, j) => {
       if (i === j) return 0;
@@ -240,10 +271,11 @@
       const n = ex.first.length;
       return ex.pairs[a * n - (a * (a + 1)) / 2 + (b - a - 1)]; // the upper triangle, row by row
     };
+    const place = (k) => `row ${Math.floor(k / grid) + 1}, column ${(k % grid) + 1}`;
     const name = (player) =>
-      player < regionCount
-        ? `the region in row ${Math.floor(player / grid) + 1}, column ${(player % grid) + 1}`
-        : `“${ex.tokens[player - regionCount][0]}”`;
+      player < regionCount ? `the region in ${place(player)}` : `“${ex.tokens[player - regionCount][0]}”`;
+    const describe = (player, note = "") =>
+      players[player].setAttribute("aria-label", `Interactions of ${name(player)}${note}`);
 
     function reset() {
       // a photo without an explanation for the model switches to a model that has one
@@ -252,6 +284,10 @@
       grid = ex.grid ?? 7;
       regionCount = grid * grid;
       cells.style.setProperty("--fixlip-grid", grid);
+      const known = Object.keys(ex.cliques).map(Number);
+      sizes = [Math.min(...known), Math.max(...known)];
+      state.size = Math.max(sizes[0], Math.min(sizes[1], state.size));
+      roving = 0;
       const magnitudes = ex.pairs.map(Math.abs).sort((a, b) => a - b);
       floor = magnitudes[Math.floor(0.99 * (magnitudes.length - 1))];
       const n = ex.first.length;
@@ -266,16 +302,16 @@
       const model = data.models.find((x) => x.id === state.model);
       state.focus = null;
       state.pinned = false;
-      photoButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(data.images[k].id === state.image)));
+      photoButtons.forEach((b, k) => {
+        b.setAttribute("aria-pressed", String(data.images[k].id === state.image));
+        b.disabled = !data.models.some((m) => has(data.images[k].id, m.id));
+      });
       modelButtons.forEach((b, k) => {
         b.setAttribute("aria-pressed", String(data.models[k].id === state.model));
         b.disabled = !has(state.image, data.models[k].id);
       });
-      photoButtons.forEach((b, k) => {
-        b.disabled = !data.models.some((m) => has(data.images[k].id, m.id));
-      });
       photo.src = `${root.dataset.root}${image.id}.jpg`;
-      photo.alt = image.alt;
+      photo.alt = image.alt ?? "";
 
       cells.replaceChildren();
       caption.replaceChildren();
@@ -283,26 +319,27 @@
       for (let k = 0; k < regionCount; k += 1) {
         const cell = el("button", "fixlip-demo-cell");
         cell.type = "button";
-        cell.tabIndex = k === 0 ? 0 : -1; // one stop for the grid; the arrow keys move within it
-        cell.setAttribute("aria-label", `Interactions of ${name(k)}`);
         cells.append(cell);
         players.push(cell);
       }
       const { inner, tokens } = captionContent(image, ex);
       caption.append(inner);
       players.push(...tokens);
+      spoken.textContent = `Caption: ${captionString(ex)}`;
       players.forEach((button, player) => {
+        describe(player);
         button.addEventListener("pointerenter", (event) => {
           if (event.pointerType !== "touch" && !state.pinned && state.view !== "none") show(player);
         });
         button.addEventListener("focus", () => {
-          if (!state.pinned && state.view !== "none") show(player);
+          if (player < regionCount) setRoving(player);
+          if (!state.pinned && state.view !== "none") show(player, true);
         });
         button.addEventListener("click", () => {
           if (state.view === "none") return;
           const again = state.pinned && state.focus === player;
           state.pinned = !again;
-          show(again ? null : player);
+          show(again ? null : player, true);
         });
       });
       meta.replaceChildren(...metaText(image, model, ex));
@@ -311,28 +348,35 @@
       predictionCredit.replaceChildren(...creditText(image));
       setInteractive();
       placeExcerpt();
-      show(null);
+      show(null, true);
     }
 
     const creditText = (image) => [
       "Photo: ",
-      Object.assign(el("a", "", image.credit.title), { href: image.credit.url }),
-      image.credit.author ? ` by ${image.credit.author}, ` : ", ",
-      Object.assign(el("a", "", image.credit.license), { href: image.credit.licenseUrl }),
+      Object.assign(el("a", "", image.credit?.title ?? "source"), { href: image.credit?.url ?? "" }),
+      image.credit?.author ? ` by ${image.credit.author}, ` : ", ",
+      Object.assign(el("a", "", image.credit?.license ?? ""), { href: image.credit?.licenseUrl ?? "" }),
       ", cropped.",
     ];
     const metaText = (image, model, e) => [
-      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}. Explained by ${data.method}; ` +
-        `the explanation fits held-out coalitions with R² = ${e.r2.toFixed(2)}. `,
+      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}. Explained by ${data.method}` +
+        (e.r2 === undefined ? ". " : `; the explanation fits held-out coalitions with R² = ${e.r2.toFixed(2)}. `),
       ...creditText(image),
     ];
+    // the caption's tokens with spaces where the text has them (not before punctuation, which CLIP's
+    // tokenizer marks as a word of its own)
+    const spaced = (e) =>
+      e.tokens.map(([text, space], k) => [k > 0 && space && !/^[.,;:!?]/.test(text) ? " " : "", text]);
+    const captionString = (e) => spaced(e).flat().join("");
+
     // the caption: its tokens within the text around it, whose words fade with their distance to
-    // the caption (the text shows only without an explanation)
+    // the caption (the text shows only without an explanation, and is not read out)
     function captionContent(image, e) {
       const inner = el("span", "fixlip-demo-caption-inner");
       const [before, after] = image.excerpt ?? ["", ""];
       const around = (text, side) => {
         const span = el("span", "fixlip-demo-context");
+        span.setAttribute("aria-hidden", "true");
         const words = text ? text.split(" ") : [];
         words.forEach((word, k) => {
           const distance = side === "before" ? words.length - k : k + 1;
@@ -342,14 +386,13 @@
         });
         return span;
       };
-      const tokens = e.tokens.map(([text], k) => {
+      const tokens = e.tokens.map(([text]) => {
         const token = el("button", "fixlip-demo-token", text);
         token.type = "button";
-        token.setAttribute("aria-label", `Interactions of “${text}”`);
         return token;
       });
       inner.append(around(before, "before"));
-      e.tokens.forEach(([, space], k) => inner.append(...(space && k > 0 ? [" "] : []), tokens[k]));
+      spaced(e).forEach(([space], k) => inner.append(...(space ? [space] : []), tokens[k]));
       inner.append(around(after, "after"));
       return { inner, tokens };
     }
@@ -381,7 +424,7 @@
     }
 
     // the caption's room: that of its tallest line of tokens, or of its tallest excerpt (the
-    // caption's lines and half a line of the text around it above and below)
+    // caption's lines and three quarters of a line of the text around it above and below)
     function reserveCaption(all) {
       const width = caption.getBoundingClientRect().width;
       if (!width) return;
@@ -428,7 +471,7 @@
     // patches and edges fade out over the new ones, which fade in
     function crossFade(change) {
       for (const ghost of stage.querySelectorAll(".fixlip-demo-ghost")) ghost.remove();
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (reducedMotion()) {
         change();
         return;
       }
@@ -453,11 +496,21 @@
       );
     }
 
-    // the players can be pointed at, unless there is no explanation to show
+    // the players can be pointed at, unless there is no explanation to show (then they are inert);
+    // the grid has one stop in the tab order, the region last pointed at
     function setInteractive() {
+      const none = state.view === "none";
+      cells.inert = none;
       players.forEach((button, k) => {
-        button.tabIndex = state.view === "none" || (k < regionCount && k > 0) ? -1 : 0;
+        if (k >= regionCount) button.inert = none;
+        button.tabIndex = k >= regionCount || k === roving ? 0 : -1;
       });
+    }
+
+    function setRoving(k) {
+      players[roving].tabIndex = -1;
+      roving = k;
+      players[roving].tabIndex = 0;
     }
 
     // how far the photo moves towards the middle without an explanation: by 30% of the panel's
@@ -471,8 +524,8 @@
     }
 
     function setSize(size) {
-      state.size = Math.max(2, Math.min(10, size));
-      if (state.focus === null) show(null);
+      state.size = Math.max(sizes[0], Math.min(sizes[1], size));
+      if (state.focus === null) show(null, true);
     }
 
     function setView(view) {
@@ -491,14 +544,14 @@
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
       caption.classList.toggle("fixlip-demo-excerpt", view === "none");
-      reserveRoom(); // the credit under the prediction is laid out only now on small screens
+      reserve(predictionCredit, data.images.map(creditText)); // laid out only now on small screens
       setInteractive();
       for (const t of tokens) {
         t.style.transition = "none";
         t.style.transform = "";
       }
       placeExcerpt();
-      show(null);
+      show(null, true);
       if (!glide) {
         for (const t of tokens) t.style.transition = "";
         return;
@@ -516,14 +569,12 @@
           t.style.transform = "";
         }
       });
-      clearTimeout(setView.timer);
-      setView.timer = setTimeout(() => {
+      clearTimeout(glideTimer);
+      glideTimer = setTimeout(() => {
         caption.classList.remove("fixlip-demo-gliding");
         edges.classList.remove("fixlip-demo-fresh");
       }, 500);
     }
-
-    const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // the excerpt's text fades out in a copy over the caption (its tokens hidden: they glide away)
     function fadeExcerpt() {
@@ -542,15 +593,18 @@
     }
 
     // -- the views: the clique or the full explanation at rest, the interactions of a player when
-    // pointed at
-    function show(player) {
+    // pointed at; screen readers hear what changed when it was asked for (a click, the keyboard, a
+    // switch), not on every hover
+    function show(player, announce = false) {
       state.focus = player;
       root.classList.toggle("fixlip-demo-focused", player !== null);
       list.replaceChildren();
-      if (player !== null) showPlayer(player);
-      else if (state.view === "full") showFull();
-      else if (state.view === "none") showNone();
-      else showClique();
+      let message;
+      if (player !== null) message = showPlayer(player);
+      else if (state.view === "full") message = showFull();
+      else if (state.view === "none") message = showNone();
+      else message = showClique();
+      if (announce && started) live.textContent = message;
     }
 
     // no explanation: the photo and the caption as they are, and the model's similarity
@@ -560,14 +614,15 @@
         button.style.setProperty("--fixlip-tint", "transparent");
         button.style.removeProperty("color");
       });
-      live.textContent = `No explanation: similarity ${ex.similarity.toFixed(2)}`;
       drawEdges([]);
+      return `No explanation. ${predictionModel.textContent} a similarity of ${ex.similarity.toFixed(2)}.`;
     }
 
     function showClique() {
       const [clique, value] = ex.cliques[state.size];
       const inside = new Set(clique);
       players.forEach((button, k) => {
+        describe(k, inside.has(k) ? ", in the clique" : "");
         button.classList.toggle("fixlip-demo-in", inside.has(k));
         button.classList.remove("fixlip-demo-focus");
         button.style.setProperty("--fixlip-tint", "transparent");
@@ -586,11 +641,11 @@
       graph.hidden = false;
       list.hidden = true;
       sizeLabel.textContent = `${state.size} players`;
-      smaller.disabled = state.size <= 2;
-      larger.disabled = state.size >= 10;
-      live.textContent = `Clique of ${clique.length} players`;
+      smaller.setAttribute("aria-disabled", String(state.size <= sizes[0]));
+      larger.setAttribute("aria-disabled", String(state.size >= sizes[1]));
       drawEdges(cliquePairs(clique));
       drawGraph(clique);
+      return `Clique of ${clique.length} players, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
     }
 
     // the full explanation: every player tinted by what it adds on its own, the strongest
@@ -598,11 +653,12 @@
     function showFull() {
       const largest = Math.max(...ex.first.map(Math.abs));
       players.forEach((button, k) => {
+        describe(k);
         button.classList.remove("fixlip-demo-in", "fixlip-demo-focus");
         // on a square-root scale, so that the regions stay visible next to the words
         const { color, alpha } = tint(Math.sign(ex.first[k]) * Math.sqrt(Math.abs(ex.first[k])), Math.sqrt(largest), 0.75);
         button.style.setProperty("--fixlip-tint", color);
-        button.style.color = k >= regionCount && alpha > 0.55 ? "#ffffff" : "";
+        button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
       title.textContent = "The full explanation";
       detail.textContent =
@@ -622,8 +678,11 @@
         item.append(pair, bar, el("span", "fixlip-demo-number", signed(value)));
         list.append(item);
       }
-      live.textContent = "The full explanation";
       drawEdges(strongest);
+      const [top] = crossModal;
+      return top
+        ? `The full explanation. The strongest image–text pair: ${name(top.i)} and ${name(top.j)}, ${signed(top.value)}.`
+        : "The full explanation.";
     }
 
     function showPlayer(player) {
@@ -632,16 +691,18 @@
       // a player's strongest interaction is in full color, unless it is weak: then all stay faint
       const largest = Math.max(floor, ...values.map(Math.abs));
       players.forEach((button, k) => {
+        describe(k);
         button.classList.remove("fixlip-demo-in");
         button.classList.toggle("fixlip-demo-focus", k === player);
         const { color, alpha } = k === player ? { color: "transparent", alpha: 0 } : tint(values[k], largest);
         button.style.setProperty("--fixlip-tint", color);
-        if (k >= regionCount) button.style.color = alpha > 0.55 ? "#ffffff" : "";
+        button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
       if (player < regionCount) {
         const swatch = el("span", "fixlip-demo-swatch fixlip-demo-swatch-region fixlip-demo-swatch-title");
+        swatch.setAttribute("aria-hidden", "true");
         region(swatch, photo.src, player, grid);
-        title.replaceChildren("Interactions of ", swatch, ` row ${Math.floor(player / grid) + 1}, column ${(player % grid) + 1}`);
+        title.replaceChildren("Interactions of ", swatch, ` ${place(player)}`);
       } else {
         title.textContent = `Interactions of ${name(player)}`;
       }
@@ -667,8 +728,12 @@
         item.append(swatch, bar, el("span", "fixlip-demo-number", signed(values[k])));
         list.append(item);
       }
-      live.textContent = `Interactions of ${name(player)}`;
       drawEdges([]);
+      const [best] = order;
+      return (
+        `Interactions of ${name(player)}: on its own, it adds ${signed(ex.first[player])}; ` +
+        `most with ${name(best)}, ${signed(values[best])}.`
+      );
     }
 
     // a player in the panel: a thumbnail of a region, or the text of a token
@@ -677,6 +742,8 @@
       if (k < regionCount) {
         swatch.classList.add("fixlip-demo-swatch-region");
         swatch.title = `Row ${Math.floor(k / grid) + 1}, column ${(k % grid) + 1}`;
+        swatch.setAttribute("role", "img");
+        swatch.setAttribute("aria-label", place(k));
         region(swatch, photo.src, k, grid);
       } else {
         swatch.textContent = ex.tokens[k - regionCount][0];
@@ -781,7 +848,7 @@
         const label = document.createElementNS(SVG, "text");
         label.setAttribute("x", spot[0]);
         label.setAttribute("y", spot[1]);
-        label.setAttribute("fill", solid(value));
+        label.setAttribute("class", sign(value));
         label.textContent = signed(value);
         links.append(label);
         const box = label.getBBox();
@@ -805,13 +872,21 @@
       players[next].focus();
     });
 
+    stage.addEventListener("keydown", (event) => {
+      // back to the view at rest before the browser picks the next stop, so that the size control
+      // (hidden while a player is shown) is in the tab order
+      if (event.key === "Tab" && state.focus !== null) {
+        state.pinned = false;
+        show(null);
+      }
+    });
     stage.addEventListener("pointerleave", () => {
       if (!state.pinned && state.focus !== null) show(null);
     });
     stage.addEventListener("focusout", (event) => {
       if (!state.pinned && !stage.contains(event.relatedTarget)) show(null);
     });
-    document.addEventListener("click", (event) => {
+    document.addEventListener("pointerdown", (event) => {
       if (!about.hidden && !about.contains(event.target) && !info.contains(event.target)) setAbout(false);
       if (state.pinned && !stage.contains(event.target)) {
         state.pinned = false;
@@ -827,18 +902,23 @@
         show(null);
       }
     });
-    const redraw = new ResizeObserver(() => {
-      setShift();
-      reserveRoom();
-      placeExcerpt();
-      if (state.focus === null && ex) show(null);
-    });
-    redraw.observe(stage);
-    redraw.observe(graph);
+    // a new width lays the demo out again (in the next frame, outside the observer's callback)
+    let width = -1;
+    new ResizeObserver(([entry]) => {
+      const now = Math.round(entry.contentRect.width);
+      if (now === width) return;
+      width = now;
+      requestAnimationFrame(() => {
+        setShift();
+        reserveRoom();
+        placeExcerpt();
+        if (state.focus === null) show(null);
+      });
+    }).observe(root);
 
     root.classList.add("fixlip-demo-ready");
-    document.fonts?.ready.then(reserveRoom); // the room depends on the fonts
-    viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === state.view)));
     reset();
+    setView(state.view);
+    started = true;
   }
 })();

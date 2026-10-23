@@ -61,13 +61,13 @@ Shapley Interactions for Machine Learning
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
 .. the interactive explanation of _static/js/fixlip_demo.js, with the data of _static/fixlip;
-   the static figure stays without JavaScript
+   the static figure shows without JavaScript (and when the demo cannot start)
 
 .. raw:: html
 
    <div class="fixlip-demo" data-root="_static/fixlip/">
-     <img class="fixlip-demo-fallback" src="_static/images/hero_siglip2.png"
-          alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.">
+     <noscript><img class="fixlip-demo-fallback" src="_static/images/hero_siglip2.png"
+          alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them."></noscript>
    </div>
 
 .. container:: fixlip-demo-caption-text

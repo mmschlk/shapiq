@@ -10,6 +10,42 @@
   background: var(--shapiq-surface);
   box-shadow: var(--shapiq-shadow);
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  /* red and blue for values in text, darker than the tints so that they read well as text */
+  --fixlip-red-text: #d6003f;
+  --fixlip-blue-text: #1565c0;
+}
+
+body[data-theme="dark"] .fixlip-demo {
+  --fixlip-red-text: #ff3d74;
+  --fixlip-blue-text: #4ba3f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo {
+    --fixlip-red-text: #ff3d74;
+    --fixlip-blue-text: #4ba3f0;
+  }
+}
+
+.fixlip-demo-up {
+  color: var(--fixlip-red-text);
+}
+
+.fixlip-demo-down {
+  color: var(--fixlip-blue-text);
+}
+
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
+@media (scripting: enabled) {
+  .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
+    min-height: 37rem;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 45em) {
+  .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
+    min-height: 72rem;
+  }
 }
 
 /* the static figure, until the demo has loaded (and without JavaScript) */
@@ -125,10 +161,6 @@
   font-size: 0.88rem;
   line-height: 1.5;
   color: var(--color-foreground-secondary);
-}
-
-.fixlip-demo-about[hidden] {
-  display: none;
 }
 
 .fixlip-demo-about p {
@@ -362,6 +394,10 @@
   visibility: hidden;
 }
 
+.fixlip-demo-ghost .fixlip-demo-context {
+  animation: none;
+}
+
 /* without an explanation, the photo and the caption are plain: no grid, no chips */
 .fixlip-demo-none .fixlip-demo-token {
   border-color: transparent;
@@ -377,7 +413,18 @@
 }
 
 .fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
-  opacity: 0.45;
+  opacity: 0.6;
+}
+
+/* a word on a strong tint: white on the dark theme (on the light one, the dark text reads best) */
+body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo-token.fixlip-demo-strong {
+    color: #ffffff;
+  }
 }
 
 .fixlip-demo-token.fixlip-demo-in {
@@ -498,7 +545,6 @@
   margin-bottom: 0.9rem;
 }
 
-.fixlip-demo-graph[hidden],
 .fixlip-demo-list[hidden] {
   display: none;
 }
@@ -540,7 +586,7 @@
   opacity: 0.8;
 }
 
-.fixlip-demo-step:disabled {
+.fixlip-demo-step[aria-disabled="true"] {
   opacity: 0.25;
   cursor: default;
 }
@@ -569,11 +615,16 @@
 }
 
 .fixlip-demo-links text {
+  fill: var(--fixlip-red-text);
   font-family: var(--font-stack--monospace);
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
+}
+
+.fixlip-demo-links text.fixlip-demo-down {
+  fill: var(--fixlip-blue-text);
 }
 
 .fixlip-demo-links rect {
@@ -712,7 +763,8 @@
   color: var(--shapiq-text-muted);
 }
 
-.fixlip-demo-live {
+.fixlip-demo-live,
+.fixlip-demo-sr {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -789,11 +841,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* as specific as the rules with transitions */
   .fixlip-demo-stage,
   .fixlip-demo-cells,
   .fixlip-demo-edges,
   .fixlip-demo-token,
-  .fixlip-demo-panel > * {
+  .fixlip-demo-panel > :not(.fixlip-demo-live),
+  .fixlip-demo-panel > .fixlip-demo-prediction,
+  .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
     transition: none;
   }
 
