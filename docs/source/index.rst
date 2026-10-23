@@ -66,9 +66,9 @@ Shapley Interactions for Machine Learning
          river", explained by a network of image regions and words, linked by the interactions
          that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
 
-   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2 matches a
-   photo and its caption by the interactions of image regions and words, as in FIxLIP
-   :cite:p:`Baniecki.2025`.
+   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2
+   :cite:p:`Tschannen.2025` matches a photo and its caption by the interactions of image regions
+   and words, as in FIxLIP :cite:p:`Baniecki.2025`.
 
 
 Install

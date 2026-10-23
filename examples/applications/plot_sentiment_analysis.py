@@ -8,7 +8,7 @@ Shapley values quantify each token's contribution to the predicted sentiment.
 
 We use the :class:`~shapiq_games.SentimentAnalysis` game
 from the ``shapiq_games`` package, which wraps a pretrained DistilBERT model
-fine-tuned on IMDb reviews.
+:cite:p:`Sanh.2019` fine-tuned on IMDb reviews :cite:p:`Maas.2011`.
 """
 
 # sphinx_gallery_thumbnail_number = 2

@@ -147,7 +147,7 @@ class GraphGame(Game):
         self.batch_size = batch_size
         self.edge_index = graph.edge_index.detach().cpu().numpy().astype(np.int64)
         self._x: torch.Tensor = graph.x.detach()
-        n_nodes, n_features = self._x.shape
+        n_nodes = self._x.shape[0]
         self.baseline: torch.Tensor = _resolve_baseline(baseline, self._x)
 
         device = self._x.device
@@ -173,7 +173,7 @@ class GraphGame(Game):
         """Return the model outputs of shape ``(n_coalitions, n_outputs)`` for the masked graphs."""
         import torch
 
-        n_nodes, n_features = self._x.shape
+        n_features = self._x.shape[1]
         outputs = []
         for start in range(0, len(coalitions), self.batch_size):
             chunk = coalitions[start : start + self.batch_size]

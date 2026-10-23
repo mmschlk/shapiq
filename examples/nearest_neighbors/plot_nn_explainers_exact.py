@@ -16,7 +16,7 @@ datasets.
 - :class:`~shapiq.explainer.KNNExplainer` for :class:`~sklearn.neighbors.KNeighborsClassifier`
   with ``weights="uniform"`` :cite:p:`Jia.2019a`,
 - :class:`~shapiq.explainer.WeightedKNNExplainer` for ``weights="distance"``
-  :cite:p:`Wang.2024a`,
+  :cite:p:`Wang.2024`,
 - :class:`~shapiq.explainer.ThresholdNNExplainer` for
   :class:`~sklearn.neighbors.RadiusNeighborsClassifier` :cite:p:`Wang.2023`.
 
@@ -71,7 +71,7 @@ for name, model in models.items():
 #
 # The weighted explainer rounds the weights of the neighbors to multiples of
 # :math:`2^{-b}` with ``n_bits`` :math:`= b` (``3`` by default), which keeps its runtime
-# polynomial :cite:p:`Wang.2024a`. Its values are exact for these rounded weights, so the
+# polynomial :cite:p:`Wang.2024`. Its values are exact for these rounded weights, so the
 # game it is checked against uses the same rounding.
 
 explainers = {

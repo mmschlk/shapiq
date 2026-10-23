@@ -27,7 +27,7 @@ class WeightedKNNExplainer(NNExplainerBase):
     r"""Explainer for weighted KNN models.
 
     Implements the algorithm for efficiently computing exact Shapley values for weighted KNN models proposed by
-    :cite:t:`Wang.2024a`.
+    :cite:t:`Wang.2024`.
     The algorithm achieves a runtime complexity of :math:`O\bigl(\frac{k^2 N^2 W}{C}\bigr)`, where
 
     * :math:`k` is the defining hyperparameter of the :math:`k`-nearest neighbors model,
@@ -77,9 +77,7 @@ class WeightedKNNExplainer(NNExplainerBase):
         self.n_train = self.X_train.shape[0]
 
     @override
-    def explain_function(
-        self, x: npt.NDArray[np.floating]
-    ) -> InteractionValues:  # ty: ignore[invalid-method-override]
+    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:  # ty: ignore[invalid-method-override]
         n_players = self.X_train.shape[0]
 
         n_classes = len(self.y_train_classes)

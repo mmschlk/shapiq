@@ -41,9 +41,7 @@ def _graph(edges: list[tuple[int, int]], n_nodes: int, seed: int = 0, label: int
 
 def _network(layer: str, *, seed: int = 0) -> GraphNeuralNetwork:
     torch.manual_seed(seed)
-    return GraphNeuralNetwork(
-        layer, n_features=3, n_outputs=2, num_layers=2, hidden=8
-    )  # ty: ignore[invalid-argument-type]
+    return GraphNeuralNetwork(layer, n_features=3, n_outputs=2, num_layers=2, hidden=8)  # ty: ignore[invalid-argument-type]
 
 
 # receptive fields of two hops are smaller than these graphs

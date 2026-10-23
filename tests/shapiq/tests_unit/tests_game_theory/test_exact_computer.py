@@ -69,7 +69,7 @@ def test_exact_no_n_players_error():
         return np.sum(x, axis=1)
 
     with pytest.raises(
-        ValueError, match="n_players must be specified if game is not a Game object."
+        ValueError, match=r"n_players must be specified if game is not a Game object\."
     ):
         ExactComputer(game=_callable_function)
 
@@ -495,7 +495,7 @@ class TestWrongIndices:
 
     def test_call(self):
         """Tests that calling with a wrong index raises an error."""
-        with pytest.raises(ValueError, match="Index or value not supported."):
+        with pytest.raises(ValueError, match=r"Index or value not supported\."):
             self.exact_computer(self.wrong_index, 2)  # type: ignore[reportArgumentType]
 
     def test_fii(self):

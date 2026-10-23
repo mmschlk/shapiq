@@ -10,7 +10,7 @@ Both modes go back to TreeSHAP :cite:p:`Lundberg.2020`:
 - ``mode="pathdependent"`` (the default): at a split on an absent feature, the explanation follows
   both children, weighted by the share of training samples that went each way. The distribution
   of the data is the one stored in the trees, so no data is needed. The values are computed with
-  Quadrature-TreeSHAP :cite:p:`Wettenstein.2026a` (:class:`~shapiq.tree.QuadratureTreeSHAP`),
+  Quadrature-TreeSHAP :cite:p:`Wettenstein.2026` (:class:`~shapiq.tree.QuadratureTreeSHAP`),
   which yields any-order interactions as introduced by TreeSHAP-IQ :cite:p:`Muschalik.2024a`.
 - ``mode="interventional"``: an absent feature takes its values from the rows of a
   ``reference_dataset``, and the prediction is averaged over them

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from tqdm.auto import tqdm
 
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
+    from .agnostic import AgnosticExplainerIndices
     from .custom_types import ApproximatorLike, ExplainerIndices
 
 
@@ -54,7 +56,27 @@ def generic_to_specific_explainer(
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
         **kwargs: Additional keyword-only arguments passed to the specific explainer class.
     """
+    from .agnostic import AgnosticExplainer
+
     generic_explainer.__class__ = explainer_cls
+    if issubclass(explainer_cls, AgnosticExplainer):
+        # a game is passed as ``game`` and defines its own value function, so it takes no
+        # background data or class index
+        if data is not None or class_index is not None:
+            msg = (
+                "`data` and `class_index` are ignored when explaining a game. The game defines "
+                "its own value function (e.g. the explained class)."
+            )
+            warnings.warn(msg, stacklevel=3)
+        explainer_cls.__init__(
+            cast("AgnosticExplainer", generic_explainer),
+            game=model,
+            # an index the AgnosticExplainer does not support is rejected by its approximator
+            index=cast("AgnosticExplainerIndices", index),
+            max_order=max_order,
+            **kwargs,
+        )
+        return
     explainer_cls.__init__(
         generic_explainer,
         model=model,
@@ -72,8 +94,9 @@ class Explainer:
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
     :class:`~shapiq.explainer.tabular.TabularExplainer`,
     :class:`~shapiq.tree.TreeExplainer`,
-    and :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. For a detailed description of the
-    different explainers, see the respective classes.
+    :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`, and
+    :class:`~shapiq.explainer.agnostic.AgnosticExplainer` (for a :class:`~shapiq.game.Game`).
+    For a detailed description of the different explainers, see the respective classes.
     """
 
     model: Model | Game | Callable[[np.ndarray], np.ndarray]
@@ -94,19 +117,20 @@ class Explainer:
         """Initialize the Explainer class.
 
         Args:
-            model: The model object to be explained.
+            model: The model object or :class:`~shapiq.game.Game` to be explained.
 
             data: A background dataset to be used for imputation in
                 :class:`~shapiq.explainer.tabular.TabularExplainer` or
                 :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. This is a 2-dimensional
                 NumPy array with shape ``(n_samples, n_features)``. Can be empty for the
                 :class:`~shapiq.tree.TreeExplainer`, which does not require background
-                data.
+                data. Ignored with a warning for a :class:`~shapiq.game.Game`.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
                 for regression models. Note, it is important to specify the class index for your
-                classification model.
+                classification model. Ignored with a warning for a :class:`~shapiq.game.Game`,
+                which defines its own explained class.
 
             index: The type of Shapley interaction index to use. Defaults to ``"SV"``, which
                 computes the Shapley value. To compute interactions, pass an interaction index

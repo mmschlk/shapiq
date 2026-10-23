@@ -32,11 +32,14 @@ class ImageClassifier(RegionGame):
 
     The players are regions of the image, given by :attr:`regions` for every model:
 
-    - for the vision transformers (``"vit_9_patches"``, ``"vit_16_patches"``, ``"vit_36_patches"``,
-      ``"vit_144_patches"``), square groups of the model's 12 x 12 patches;
-    - for DINOv2 (``"dinov2_16_patches"``, ``"dinov2_20_patches"``, ``"dinov2_25_patches"``: a
-      4 x 4, 5 x 4, or 5 x 5 grid), rectangular groups of the model's 16 x 16 patch tokens;
-    - for ``"resnet_18"`` or a custom classifier, SLIC superpixels or your own ``regions``.
+    - for the vision transformers :cite:p:`Dosovitskiy.2021` (``"vit_9_patches"``,
+      ``"vit_16_patches"``, ``"vit_36_patches"``, ``"vit_144_patches"``), square groups of the
+      model's 12 x 12 patches;
+    - for DINOv2 :cite:p:`Oquab.2024` (``"dinov2_16_patches"``, ``"dinov2_20_patches"``,
+      ``"dinov2_25_patches"``: a 4 x 4, 5 x 4, or 5 x 5 grid), rectangular groups of the model's
+      16 x 16 patch tokens;
+    - for ResNet-18 :cite:p:`He.2016` (``"resnet_18"``) or a custom classifier, SLIC superpixels
+      :cite:p:`Achanta.2012` or your own ``regions``.
 
     How absent players are removed:
 

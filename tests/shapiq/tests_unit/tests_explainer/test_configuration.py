@@ -173,7 +173,7 @@ class TestErrorCases:
         """Tests that an error is raised when an invalid approximator is passed."""
         from shapiq.explainer.configuration import setup_approximator
 
-        with pytest.raises(ValueError, match="Invalid approximator `invalid`."):
+        with pytest.raises(ValueError, match=r"Invalid approximator `invalid`\."):
             setup_approximator(approximator="invalid", index="SV", max_order=1, n_players=10)
 
     def test_setup_approximator_with_invalid_class_as_approx(self):
