@@ -65,7 +65,7 @@ Shapley Interactions for Machine Learning
 
 .. raw:: html
 
-   <div class="fixlip-demo" data-root="_static/fixlip/">
+   <div class="fixlip-demo" id="interactive-demo" data-root="_static/fixlip/">
      <noscript><img class="fixlip-demo-fallback" src="_static/images/hero_siglip2.png"
           alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them."></noscript>
    </div>
