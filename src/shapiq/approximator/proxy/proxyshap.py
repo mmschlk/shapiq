@@ -165,6 +165,7 @@ class ProxySHAP(Approximator[ValidMoebiusConverterIndices]):
     (true game values minus proxy predictions) are estimated with a self-contained, fully
     vectorized MSR (maximum sample reuse) Monte Carlo routine (unstratified SHAP-IQ :cite:p:`Fumagalli.2023`).
     Depending on ``k_folds`` the adjustment is computed in-sample (``k_folds=1``) or out-of-fold (``k_folds>1``) on the same sampled coalitions, and added to the proxy's interactions.
+    The method is described by :cite:t:`Thies.2026`.
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame

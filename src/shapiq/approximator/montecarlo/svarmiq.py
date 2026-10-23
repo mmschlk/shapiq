@@ -17,9 +17,9 @@ class SVARMIQ(MonteCarlo[ValidMonteCarloIndices]):
     """The SVARM-IQ approximator for Shapley interactions.
 
     SVARM-IQ utilizes MonteCarlo approximation with two stratification strategies. SVARM-IQ is a
-    generalization of the SVARM algorithm :cite:p:`Kolpaczki.2024a` and can approximate
+    generalization of the SVARM algorithm :cite:p:`Kolpaczki.2024` and can approximate
     any-order Shapley interactions efficiently. For details about the algorithm see the original
-    paper by :cite:t:`Kolpaczki.2024b`.
+    paper by :cite:t:`Kolpaczki.2024a`.
 
     """
 
@@ -76,7 +76,7 @@ class SVARM(MonteCarlo[ValidIndicesSVARM]):
     """The SVARM approximator for estimating the Shapley value (SV).
 
     SVARM is a MonteCarlo approximation algorithm that estimates the Shapley value. For details
-    about the algorithm see the original paper by :cite:t:`Kolpaczki.2024a`.
+    about the algorithm see the original paper by :cite:t:`Kolpaczki.2024`.
 
     """
 

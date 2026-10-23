@@ -317,7 +317,7 @@ class MonteCarlo(Approximator[TIndices]):
     def _log_svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
         """Log of the SVARM-IQ sampling adjustment weights, stable for large n.
 
-        Log-space counterpart of the SVARM-IQ routine of :cite:t:`Kolpaczki.2024b`, deploying both
+        Log-space counterpart of the SVARM-IQ routine of :cite:t:`Kolpaczki.2024a`, deploying both
         intersection and coalition-size stratification. The stratum probability
         ``binom(n - m, size - i)`` is kept in log-space (``log_binom``) so it does not overflow.
 
