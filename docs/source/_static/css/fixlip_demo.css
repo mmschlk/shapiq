@@ -303,7 +303,63 @@
   font: inherit;
   cursor: pointer;
   transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration),
-    border-color var(--shapiq-duration);
+    border-color var(--shapiq-duration), transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* without an explanation, the caption is an excerpt of a longer text (see placeExcerpt in the
+   script): the text around it, fading with the distance, in a box that keeps the caption's room
+   and dissolves at its top and bottom */
+.fixlip-demo-caption-inner {
+  display: block;
+}
+
+.fixlip-demo-caption:not(.fixlip-demo-excerpt) .fixlip-demo-context {
+  display: none;
+}
+
+.fixlip-demo-caption.fixlip-demo-excerpt {
+  height: var(--fixlip-caption-height, auto);
+  overflow: hidden;
+  line-height: 1.75;
+  text-align: justify;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+}
+
+.fixlip-demo-excerpt .fixlip-demo-token {
+  padding-inline: 0;
+  border-color: transparent;
+}
+
+.fixlip-demo-context {
+  color: var(--color-foreground-secondary);
+}
+
+.fixlip-demo-excerpt .fixlip-demo-context {
+  animation: fixlip-demo-fade-in 600ms ease 300ms both;
+}
+
+@keyframes fixlip-demo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* into an explanation, the tokens glide to their line and then get their outlines */
+.fixlip-demo-gliding .fixlip-demo-token {
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), border-color 400ms ease 350ms,
+    background-color 400ms ease 350ms, opacity 400ms ease 350ms;
+}
+
+/* out of the excerpt, its text fades in a copy (whose tokens are hidden: they glide away) */
+.fixlip-demo-caption.fixlip-demo-ghost {
+  position: absolute;
+  margin: 0;
+  transition: opacity 400ms ease;
+}
+
+.fixlip-demo-caption.fixlip-demo-ghost .fixlip-demo-token {
+  visibility: hidden;
 }
 
 /* without an explanation, the photo and the caption are plain: no grid, no chips */
@@ -736,8 +792,13 @@
   .fixlip-demo-stage,
   .fixlip-demo-cells,
   .fixlip-demo-edges,
+  .fixlip-demo-token,
   .fixlip-demo-panel > * {
     transition: none;
+  }
+
+  .fixlip-demo-excerpt .fixlip-demo-context {
+    animation: none;
   }
 }
 
