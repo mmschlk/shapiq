@@ -10,8 +10,8 @@ Games and Benchmarks
    .. container:: shapiq-gallery-hero-text
 
       ``shapiq_games`` collects cooperative games to test methods on: synthetic games with known
-      values, games of tree, nearest-neighbor, and kernel models with exact values for many
-      players, and explanation, data valuation, feature selection, vision, and language games.
+      values, games of tree, nearest-neighbor, kernel, and graph neural network models with exact
+      values for many players, and explanation, data valuation, feature selection, vision, and language games.
       ``shapiq_benchmark`` pairs a game with a computer of its exact values, runs approximators
       over budgets and seeds, and scores them with error, ranking, and faithfulness metrics.
 

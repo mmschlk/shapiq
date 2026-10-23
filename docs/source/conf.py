@@ -93,6 +93,7 @@ EXAMPLE_GROUPS = (
     "exact_computation",
     "approximators",
     "trees",
+    "graph_neural_networks",
     "nearest_neighbors",
     "kernel_methods",
     "visualization",
@@ -150,6 +151,7 @@ EXAMPLE_ORDER = {
         "plot_tree_pathdependent_vs_interventional.py",
         "plot_treeshapiq_custom_tree.py",
     ),
+    "graph_neural_networks": ("plot_graphshapiq.py",),
     "nearest_neighbors": (
         "plot_nn_explainers_exact.py",
         "plot_nn_data_valuation.py",

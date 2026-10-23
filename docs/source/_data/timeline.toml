@@ -1140,9 +1140,12 @@ description = """
 GraphSHAP-IQ exploits that a message-passing graph neural network with a linear readout depends on
 each node only through its receptive field, so that the graph game has nonzero Möbius coefficients
 only on subsets of the receptive fields. Its cost depends on the receptive fields instead of the
-size of the graph, which makes exact interactions of molecules and other graphs feasible.
+size of the graph, which makes exact interactions of molecules and other graphs feasible. In
+shapiq, the graph explainer computes them for torch_geometric models.
 """
 cite = ["Muschalik.2025"]
+api = ["shapiq.explainer.GraphExplainer", "shapiq.graph.GraphSHAPIQ", "shapiq_games.GraphGame"]
+examples = ["auto_examples/graph_neural_networks/plot_graphshapiq"]
 related = ["moebius-transform", "treeshap-iq"]
 
 [[entries]]

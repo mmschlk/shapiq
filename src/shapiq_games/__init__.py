@@ -26,7 +26,8 @@ Game families:
   :class:`SOUM`, :class:`RandomTableGame`
 - model-specific games with exact explainers: :class:`PathDependentTreeGame`,
   :class:`InterventionalTreeGame`, :class:`KNNGame`, :class:`WeightedKNNGame`,
-  :class:`ThresholdNNGame`, :class:`ProductKernelGame`
+  :class:`ThresholdNNGame`, :class:`ProductKernelGame`, :class:`GraphGame` (whose players are
+  the nodes of a graph)
 - machine learning games: :class:`TabularLocalExplanation`, :class:`TabularGlobalExplanation`,
   :class:`FeatureSelection`, :class:`DataValuation`, :class:`DatasetValuation`,
   :class:`EnsembleSelection`, :class:`RandomForestEnsembleSelection`,
@@ -40,6 +41,7 @@ from .clustering import ClusterExplanation
 from .ensemble_selection import EnsembleSelection, RandomForestEnsembleSelection
 from .feature_selection import FeatureSelection
 from .global_xai import TabularGlobalExplanation
+from .graph import GraphGame
 from .kernel import ProductKernelGame
 from .language import SentimentAnalysis
 from .local_xai import TabularLocalExplanation
@@ -58,6 +60,7 @@ __all__ = [
     "SOUM",
     "UnanimityGame",
     # model-specific
+    "GraphGame",
     "InterventionalTreeGame",
     "KNNGame",
     "PathDependentTreeGame",

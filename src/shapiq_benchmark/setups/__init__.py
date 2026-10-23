@@ -20,9 +20,9 @@ Examples:
 
 Setups by kind of game:
 
-- tree, nearest-neighbor, and kernel games: :class:`PathDependentTreeSetup`,
+- tree, nearest-neighbor, kernel, and graph games: :class:`PathDependentTreeSetup`,
   :class:`InterventionalTreeSetup`, :class:`KNNSetup`, :class:`WeightedKNNSetup`,
-  :class:`ThresholdNNSetup`, :class:`ProductKernelSetup`
+  :class:`ThresholdNNSetup`, :class:`ProductKernelSetup`, :class:`GraphSetup`
 - machine learning games on tabular data: :class:`TabularLocalExplanationSetup`,
   :class:`TabularGlobalExplanationSetup`, :class:`FeatureSelectionSetup`, :class:`DataValuationSetup`,
   :class:`DatasetValuationSetup`, :class:`EnsembleSelectionSetup`,
@@ -46,6 +46,7 @@ from ._base import (
     setup_from_dict,
 )
 from ._causal import GlobalConfoundingSetup, LocalConfoundingSetup
+from ._graph import GraphSetup
 from ._language import SentimentAnalysisSetup
 from ._ml_games import (
     DEFAULT_MEMBER_POOL,
@@ -82,6 +83,7 @@ __all__ = [
     "EnsembleSelectionSetup",
     "FeatureSelectionSetup",
     "GlobalConfoundingSetup",
+    "GraphSetup",
     "ImageClassifierSetup",
     "ImageTextSimilaritySetup",
     "InterventionalTreeSetup",

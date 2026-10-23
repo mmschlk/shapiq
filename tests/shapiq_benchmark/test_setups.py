@@ -127,10 +127,11 @@ def test_every_game_but_the_synthetic_ones_has_one_setup() -> None:
         "ImageClassifier",  # tested below with a stand-in model
         "ImageTextSimilarity",
         "SentimentAnalysis",
+        "GraphGame",  # tested in test_graph.py with a stand-in dataset
     }
     assert built == games
     assert len(SETUPS) == len(games)
-    stand_ins = {"image_classifier", "image_text_similarity", "sentiment_analysis"}
+    stand_ins = {"image_classifier", "image_text_similarity", "sentiment_analysis", "graph"}
     assert set(OFFLINE) | stand_ins == set(SETUPS)
 
 

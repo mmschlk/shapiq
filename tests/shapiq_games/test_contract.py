@@ -22,6 +22,7 @@ import shapiq_games as sg
 from shapiq.imputer import GaussianImputer
 from tests.shapiq_games.helpers import (
     FakeSentimentPipeline,
+    graph_game,
     is_installed,
     mean_brightness_classifier,
 )
@@ -214,8 +215,10 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         True,
     ),
     "image_callable": (_image_game, True),
+    "graph": (graph_game, True),
 }
-_NEEDS = {"image_callable": "skimage"}  # games with an optional dependency (superpixels)
+# games with an optional dependency (superpixels, graph neural networks)
+_NEEDS = {"image_callable": "skimage", "graph": "torch_geometric"}
 
 
 def _game_param(name: str) -> object:
