@@ -306,23 +306,55 @@
           show(again ? null : player);
         });
       });
-      const credit = image.credit;
-      const photoCredit = () => [
-        Object.assign(el("a", "", credit.title), { href: credit.url }),
-        credit.author ? ` by ${credit.author}, ` : ", ",
-        Object.assign(el("a", "", credit.license), { href: credit.licenseUrl }),
-        ", cropped.",
-      ];
-      meta.replaceChildren(
-        `${model.label} (${model.detail}): similarity ${ex.similarity.toFixed(2)}. Explained by ${data.method}; ` +
-          `the explanation fits held-out coalitions with R² = ${ex.r2.toFixed(2)}. Photo: `,
-        ...photoCredit(),
-      );
+      meta.replaceChildren(...metaText(image, model, ex));
       predictionModel.textContent = `${model.label} (${model.detail}) predicts`;
       predictionValue.textContent = ex.similarity.toFixed(2);
-      predictionCredit.replaceChildren("Photo: ", ...photoCredit());
+      predictionCredit.replaceChildren(...creditText(image));
       setInteractive();
       show(null);
+    }
+
+    const creditText = (image) => [
+      "Photo: ",
+      Object.assign(el("a", "", image.credit.title), { href: image.credit.url }),
+      image.credit.author ? ` by ${image.credit.author}, ` : ", ",
+      Object.assign(el("a", "", image.credit.license), { href: image.credit.licenseUrl }),
+      ", cropped.",
+    ];
+    const metaText = (image, model, e) => [
+      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}. Explained by ${data.method}; ` +
+        `the explanation fits held-out coalitions with R² = ${e.r2.toFixed(2)}. `,
+      ...creditText(image),
+    ];
+    const captionText = (e) =>
+      e.tokens.flatMap(([text, space], k) => [...(space && k > 0 ? [" "] : []), el("button", "fixlip-demo-token", text)]);
+
+    // the caption, the model's line, and the credit keep the room of the longest of all photos and
+    // models, so that switching between them moves nothing
+    function reserveRoom() {
+      const all = Object.entries(data.explanations).map(([key, e]) => {
+        const [image, model] = key.split("/");
+        return [data.images.find((x) => x.id === image), data.models.find((x) => x.id === model), e];
+      });
+      reserve(caption, all.map(([, , e]) => captionText(e)));
+      reserve(meta, all.map(([image, model, e]) => metaText(image, model, e)));
+      reserve(predictionCredit, data.images.map(creditText));
+    }
+
+    // the least height of a node: that of the tallest of the contents, in a hidden copy of it
+    function reserve(node, contents) {
+      const width = node.getBoundingClientRect().width;
+      if (!width) return; // not laid out (hidden on small screens): keep what it has
+      const probe = node.cloneNode(false);
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, minHeight: "0" });
+      node.after(probe);
+      let tallest = 0;
+      for (const content of contents) {
+        probe.replaceChildren(...content);
+        tallest = Math.max(tallest, probe.getBoundingClientRect().height);
+      }
+      probe.remove();
+      node.style.minHeight = `${Math.ceil(tallest)}px`;
     }
 
     // the players can be pointed at, unless there is no explanation to show
@@ -354,6 +386,7 @@
       setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
+      reserveRoom(); // the credit under the prediction is laid out only now on small screens
       setInteractive();
       show(null);
     }
@@ -646,12 +679,14 @@
     });
     const redraw = new ResizeObserver(() => {
       setShift();
+      reserveRoom();
       if (state.focus === null && ex) show(null);
     });
     redraw.observe(stage);
     redraw.observe(graph);
 
     root.classList.add("fixlip-demo-ready");
+    document.fonts?.ready.then(reserveRoom); // the room depends on the fonts
     viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === state.view)));
     reset();
   }
