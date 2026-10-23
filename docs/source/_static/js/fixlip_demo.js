@@ -80,8 +80,43 @@
     models.setAttribute("role", "group");
     models.setAttribute("aria-label", "Model");
     const switches = el("div", "fixlip-demo-switches");
-    switches.append(views, models);
-    bar.append(photos, switches);
+    // what the models are, for readers who have not met them, behind a small "i"
+    const info = el("button", "fixlip-demo-info", "i");
+    info.type = "button";
+    info.setAttribute("aria-label", "What are CLIP and SigLIP 2?");
+    info.setAttribute("aria-expanded", "false");
+    info.setAttribute("aria-controls", "fixlip-demo-about");
+    const about = el("div", "fixlip-demo-about");
+    about.id = "fixlip-demo-about";
+    about.hidden = true;
+    about.innerHTML =
+      '<p class="fixlip-demo-about-title">What are CLIP and SigLIP 2?</p>' +
+      "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
+      "When both say the same thing, the two lists point the same way, and their " +
+      "<strong>similarity</strong> is high.</p>" +
+      "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each: " +
+      "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
+      "pieces of them, and look at all of them at once.</p>" +
+      "<p>They learned from millions of photos with their captions from the web which go together, " +
+      "but were never told where in a photo a giraffe is. That is why they can find one in a dead " +
+      "tree.</p>" +
+      "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
+      "and watches how the similarity changes.</p>";
+    const close = el("button", "fixlip-demo-about-close", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    about.prepend(close);
+    const setAbout = (open) => {
+      about.hidden = !open;
+      info.setAttribute("aria-expanded", String(open));
+    };
+    info.addEventListener("click", () => setAbout(about.hidden));
+    close.addEventListener("click", () => {
+      setAbout(false);
+      info.focus();
+    });
+    switches.append(views, models, info);
+    bar.append(photos, switches, about);
 
     const body = el("div", "fixlip-demo-body");
     const stage = el("div", "fixlip-demo-stage");
@@ -594,13 +629,17 @@
       if (!state.pinned && !stage.contains(event.relatedTarget)) show(null);
     });
     document.addEventListener("click", (event) => {
+      if (!about.hidden && !about.contains(event.target) && !info.contains(event.target)) setAbout(false);
       if (state.pinned && !stage.contains(event.target)) {
         state.pinned = false;
         show(null);
       }
     });
     root.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && state.focus !== null) {
+      if (event.key === "Escape" && !about.hidden) {
+        setAbout(false);
+        info.focus();
+      } else if (event.key === "Escape" && state.focus !== null) {
         state.pinned = false;
         show(null);
       }

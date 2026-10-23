@@ -31,6 +31,7 @@
 /* -- the photos, the views, and the models ------------------------------------------------------ */
 
 .fixlip-demo-bar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -82,7 +83,78 @@
 .fixlip-demo-switches {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
+}
+
+/* the "i" that tells what the models are, and its note */
+.fixlip-demo-info {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-secondary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fixlip-demo-info:hover,
+.fixlip-demo-info[aria-expanded="true"] {
+  border-color: var(--color-foreground-primary);
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-about {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  width: min(26rem, 100%);
+  padding: 0.9rem 1.1rem 0.4rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-foreground-secondary);
+}
+
+.fixlip-demo-about[hidden] {
+  display: none;
+}
+
+.fixlip-demo-about p {
+  margin: 0 0 0.6rem;
+}
+
+.fixlip-demo-about strong,
+.fixlip-demo-about .fixlip-demo-about-title {
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-about-title {
+  padding-right: 1.5rem;
+  font-weight: 700;
+}
+
+.fixlip-demo-about-close {
+  float: right;
+  margin: -0.35rem -0.5rem 0 0;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: var(--color-foreground-secondary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .fixlip-demo-switch {
