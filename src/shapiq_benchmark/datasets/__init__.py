@@ -2,7 +2,7 @@
 
 No data ships with the package. Real-world data is downloaded on first use from pinned sources,
 verified by checksum, and cached locally (see :func:`get_data_dir`). Synthetic data is generated
-from a seed. The image games use Imagenette, a ten-class subset of ImageNet
+from a seed. The image games use Imagenette, a ten-class subset of ImageNet :cite:p:`Deng.2009`
 (:func:`load_imagenette`).
 
 Examples:

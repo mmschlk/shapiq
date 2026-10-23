@@ -164,6 +164,7 @@ ignore = [
     "C901",  # Too complex functions
     "PLR0911",  # too many return statements in function
     "N802",  # Function name should be lowercase
+    "PLC0415",  # imports inside functions: optional dependencies (torch, transformers, ...) and heavy modules are imported where they are used
 ]
 exclude = [
     ".bzr",
@@ -250,6 +251,10 @@ exclude = [
     "ANN001",  # some magic functions I don't want to annotate
     "INP",  # docs can be an implicit package (does not need to be imported)
     "I002",  # benchmark code does not have to import required modules
+]
+"docs/*.py" = [
+    "INP",  # tools of the docs, e.g. format_bib.py, are scripts and not imported
+    "T201",  # they report on the console
 ]
 "benchmark/*.py" = [
     "INP", # imports can be different here

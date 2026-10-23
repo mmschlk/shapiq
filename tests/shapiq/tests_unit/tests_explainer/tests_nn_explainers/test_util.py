@@ -41,10 +41,10 @@ def test_invalid_index_and_order():
     for index in get_args(ExplainerIndices):
         if index == "SV":
             continue
-        with pytest.raises(ValueError, match="Explainer index .* is invalid"):
+        with pytest.raises(ValueError, match=r"Explainer index .* is invalid"):
             assert_valid_index_and_order(index, 1)
 
-    expected_exception = pytest.raises(ValueError, match="Explanation order .* is invalid")
+    expected_exception = pytest.raises(ValueError, match=r"Explanation order .* is invalid")
     with expected_exception:
         assert_valid_index_and_order("SV", 0)
     with expected_exception:

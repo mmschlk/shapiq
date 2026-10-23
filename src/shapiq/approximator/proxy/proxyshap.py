@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from functools import cached_property, reduce
 from operator import add
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import numpy as np
 from scipy.special import gammaln
@@ -19,11 +19,11 @@ from shapiq.approximator.proxy._models import (
     _wrap_in_default_hpo,
 )
 from shapiq.approximator.proxy._routes import (
-    ValidProxySHAPIndices,
     _extract_proxy_interactions,
     fit_proxy,
     predict_proxy,
 )
+from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, log_binom
 
@@ -157,7 +157,7 @@ def _interaction_members(
     return sizes, binary
 
 
-class ProxySHAP(Approximator[ValidProxySHAPIndices]):
+class ProxySHAP(Approximator[ValidMoebiusConverterIndices]):
     """ProxySHAP is a proxy-based approximator that uses a regression model to approximate the value function and can correct the proxy's error with an MSR residual adjustment.
 
     The regression proxy is trained on the sampled coalitions, and interaction values are read out
@@ -165,6 +165,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
     (true game values minus proxy predictions) are estimated with a self-contained, fully
     vectorized MSR (maximum sample reuse) Monte Carlo routine (unstratified SHAP-IQ :cite:p:`Fumagalli.2023`).
     Depending on ``k_folds`` the adjustment is computed in-sample (``k_folds=1``) or out-of-fold (``k_folds>1``) on the same sampled coalitions, and added to the proxy's interactions.
+    The method is described by :cite:t:`Thies.2026`.
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame
@@ -178,12 +179,17 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         )
     """
 
+    valid_indices: tuple[ValidMoebiusConverterIndices, ...] = tuple(
+        get_args(ValidMoebiusConverterIndices)
+    )
+    """The valid indices for the ProxySHAP approximator."""
+
     def __init__(
         self,
         n: int,
         *,
         max_order: int = 2,
-        index: ValidProxySHAPIndices = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
         proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         hpo: bool = False,
         adjustment: bool = False,
@@ -197,7 +203,8 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         Args:
             n: Number of features (players).
             max_order: Maximum order of interactions to consider.
-            index: Index of the instance to explain.
+            index: The interaction index to approximate, one of :attr:`valid_indices`. Defaults to
+                ``"k-SII"``.
             proxy_model: Optional proxy model to use for approximating the value function. If None, a default XGBoost regressor will be used.
                 We support HPO of tree-models, via sklearn's GridSearchCV, RandomizedSearchCV, and HalvingGridSearchCV. In this case, the ``.best_estimator_`` will be used as the proxy model for interaction extraction and residual adjustment.
             hpo: If ``True``, wrap a string-resolved gradient-boosting proxy (``"xgboost"`` /

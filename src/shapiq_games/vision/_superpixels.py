@@ -16,9 +16,10 @@ _MAX_RETRIES = 20
 def get_superpixels(image: np.ndarray, n_segments: int) -> np.ndarray:
     """Segment an RGB image into (at most) ``n_segments`` SLIC superpixels.
 
-    SLIC may return fewer segments than requested; the request is then increased (up to 20 times)
-    until enough segments are found. Segments beyond ``n_segments`` are merged into the last one,
-    so the labels are exactly ``1, ..., n_segments`` whenever enough segments exist.
+    SLIC :cite:p:`Achanta.2012` clusters the pixels by color and position. It may return fewer
+    segments than requested; the request is then increased (up to 20 times) until enough segments
+    are found. Segments beyond ``n_segments`` are merged into the last one, so the labels are
+    exactly ``1, ..., n_segments`` whenever enough segments exist.
 
     Args:
         image: The image as an array of shape ``(height, width, 3)``.

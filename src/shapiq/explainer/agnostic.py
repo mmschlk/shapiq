@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from shapiq.game import Game
 
@@ -88,13 +88,14 @@ class AgnosticExplainer(Explainer):
                 raise ValueError(msg)
             n_players = game.n_players
 
-        super().__init__(model=game, class_index=None)
+        super().__init__(model=game, class_index=None, index=index, max_order=max_order)
 
         self.game = game
         self._approximator = setup_approximator(
             approximator=approximator,
-            max_order=max_order,
-            index=index,
+            max_order=self._max_order,
+            # the constructor only accepts AgnosticExplainerIndices (no Moebius or Fourier)
+            index=cast("AgnosticExplainerIndices", self.index),
             n_players=n_players,
             random_state=random_state,
         )

@@ -60,7 +60,7 @@ def test_masked_image_is_what_the_classifier_sees() -> None:
 @pytest.mark.parametrize(
     ("fill", "expected"),
     [
-        ("black", lambda image: np.zeros_like(image)),
+        ("black", np.zeros_like),
         ("gray", lambda image: np.full_like(image, 128)),
         (
             "mean",
@@ -81,7 +81,7 @@ def test_blur_fill_and_invalid_fills() -> None:
     assert empty.std() < _IMAGE.astype(float).std()  # blurring removes the noise
     with pytest.raises(ValueError, match="fill must be"):
         ImageClassifier(_IMAGE, mean_brightness_classifier, regions=_GRID, fill="noise")  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="same shape|image's shape"):
+    with pytest.raises(ValueError, match=r"same shape|image's shape"):
         ImageClassifier(_IMAGE, mean_brightness_classifier, regions=_GRID, fill=_IMAGE[:10])
 
 

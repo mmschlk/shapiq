@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import numpy as np
 from sklearn.linear_model import RidgeCV
@@ -29,22 +29,24 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-ValidProxySPEXIndices = ValidMoebiusConverterIndices
-
-
-class ProxySPEX(Approximator[ValidProxySPEXIndices]):
+class ProxySPEX(Approximator[ValidMoebiusConverterIndices]):
     """ProxySPEX (SParse EXplainer) via Fourier transform sampling.
 
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
     compute sparse higher-order interactions. ProxySPEX is presented in :cite:t:`Butler.2025`.
     """
 
+    valid_indices: tuple[ValidMoebiusConverterIndices, ...] = tuple(
+        get_args(ValidMoebiusConverterIndices)
+    )
+    """The valid indices for the ProxySPEX approximator."""
+
     def __init__(
         self,
         *,
         n: int,
         max_order: int = 2,
-        index: ValidProxySPEXIndices = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
         proxy_model: Model | ProxyLiteral | ProxyModelWithHPO = "lightgbm",
         hpo: bool = True,
         sampling_weights: np.ndarray | None = None,

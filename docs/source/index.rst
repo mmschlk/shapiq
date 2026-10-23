@@ -72,9 +72,10 @@ Shapley Interactions for Machine Learning
 
 .. container:: fixlip-demo-caption-text
 
-   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2 and CLIP
-   match a photo and its caption by the interactions of image regions and words, as in FIxLIP
-   :cite:p:`Baniecki.2025`, approximated with ProxySHAP :cite:p:`Thies.2026`.
+   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2
+   :cite:p:`Tschannen.2025` and CLIP :cite:p:`Radford.2021` match a photo and its caption by the
+   interactions of image regions and words, as in FIxLIP :cite:p:`Baniecki.2025`, approximated
+   with ProxySHAP :cite:p:`Thies.2026`.
 
 
 Install

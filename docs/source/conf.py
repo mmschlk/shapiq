@@ -333,7 +333,7 @@ def _year_letters(bibfile: Path) -> dict[str, str]:
 
     The text cites by author and year ("Kolpaczki et al., 2024"); works with the same first author,
     the same second author or "et al.", and the same year get "a", "b", ... in the order of their
-    keys, so that ``Kolpaczki.2024a`` to ``Kolpaczki.2024c`` read as 2024a to 2024c.
+    keys, so that ``Kolpaczki.2024`` to ``Kolpaczki.2024b`` read as 2024a to 2024c.
     """
     works = defaultdict(list)
     for entry in parse_file(bibfile).entries.values():
