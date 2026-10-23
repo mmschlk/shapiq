@@ -7,7 +7,8 @@
 // model in _static/fixlip/data.js, so the page only looks values up. At rest, the demo shows the
 // clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
 // the photo and as a graph of their interactions, as in FIxLIP's figures; or the full explanation,
-// every player tinted by its main effect and the strongest interactions drawn between them.
+// every player tinted by its main effect and the strongest interactions drawn between them; or no
+// explanation at all, only the photo, the caption, and the model's similarity, for contrast.
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
@@ -22,6 +23,7 @@
   const TOP = 5; // the strongest interactions listed for a player
   const STRONGEST = 12; // the interactions drawn in the full explanation
   const VIEWS = [
+    ["none", "None", ""],
     ["clique", "Clique", ""],
     ["full", "Full", " explanation"], // the second part goes on small screens
   ];
@@ -120,8 +122,29 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
+    // without an explanation: only the model's prediction, and the photo's credit
+    const prediction = el("div", "fixlip-demo-prediction");
+    const predictionMain = el("div", "fixlip-demo-prediction-main");
+    const predictionModel = el("p", "fixlip-demo-prediction-model");
+    const predictionValue = el("p", "fixlip-demo-prediction-value");
+    const predictionWhy = el("p", "fixlip-demo-prediction-why");
+    const predictionCredit = el("p", "fixlip-demo-meta");
+    const toView = (view, label) => {
+      const button = el("button", "fixlip-demo-link", label);
+      button.type = "button";
+      button.addEventListener("click", () => setView(view));
+      return button;
+    };
+    predictionMain.append(
+      predictionModel,
+      predictionValue,
+      el("p", "fixlip-demo-prediction-label", "similarity of the photo and its caption"),
+      predictionWhy,
+    );
+    predictionWhy.append("But why? See the ", toView("clique", "clique"), " or the ", toView("full", "full explanation"), ".");
+    prediction.append(predictionMain, predictionCredit);
     slot.append(sizer, graph, list);
-    panel.append(title, detail, slot, legend, meta, live);
+    panel.append(title, detail, slot, legend, meta, prediction, live);
     body.append(stage, panel);
     root.append(bar, body);
 
@@ -236,28 +259,52 @@
       });
       players.forEach((button, player) => {
         button.addEventListener("pointerenter", (event) => {
-          if (event.pointerType !== "touch" && !state.pinned) show(player);
+          if (event.pointerType !== "touch" && !state.pinned && state.view !== "none") show(player);
         });
         button.addEventListener("focus", () => {
-          if (!state.pinned) show(player);
+          if (!state.pinned && state.view !== "none") show(player);
         });
         button.addEventListener("click", () => {
+          if (state.view === "none") return;
           const again = state.pinned && state.focus === player;
           state.pinned = !again;
           show(again ? null : player);
         });
       });
-      meta.innerHTML = "";
       const credit = image.credit;
-      meta.append(
-        `${model.label} (${model.detail}): similarity ${ex.similarity.toFixed(2)}. Explained by ${data.method}; ` +
-          `the explanation fits held-out coalitions with R² = ${ex.r2.toFixed(2)}. Photo: `,
+      const photoCredit = () => [
         Object.assign(el("a", "", credit.title), { href: credit.url }),
         credit.author ? ` by ${credit.author}, ` : ", ",
         Object.assign(el("a", "", credit.license), { href: credit.licenseUrl }),
         ", cropped.",
+      ];
+      meta.replaceChildren(
+        `${model.label} (${model.detail}): similarity ${ex.similarity.toFixed(2)}. Explained by ${data.method}; ` +
+          `the explanation fits held-out coalitions with R² = ${ex.r2.toFixed(2)}. Photo: `,
+        ...photoCredit(),
       );
+      predictionModel.textContent = `${model.label} (${model.detail}) predicts`;
+      predictionValue.textContent = ex.similarity.toFixed(2);
+      predictionCredit.replaceChildren("Photo: ", ...photoCredit());
+      setInteractive();
       show(null);
+    }
+
+    // the players can be pointed at, unless there is no explanation to show
+    function setInteractive() {
+      players.forEach((button, k) => {
+        button.tabIndex = state.view === "none" || (k < regionCount && k > 0) ? -1 : 0;
+      });
+    }
+
+    // how far the photo moves towards the middle without an explanation: by 30% of the panel's
+    // width, into the panel, whose prediction moves aside (none when the panel is under the photo)
+    function setShift() {
+      const gap = panel.offsetLeft - (stage.offsetLeft + stage.offsetWidth);
+      const beside = panel.offsetTop < stage.offsetTop + stage.offsetHeight / 2;
+      const shift = beside ? Math.round(0.3 * panel.offsetWidth) : 0;
+      root.style.setProperty("--fixlip-shift", `${shift}px`);
+      root.style.setProperty("--fixlip-overlap", `${beside ? Math.max(0, shift - gap) : 0}px`);
     }
 
     function setSize(size) {
@@ -269,7 +316,10 @@
       state.view = view;
       state.pinned = false;
       viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === view)));
+      setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
+      root.classList.toggle("fixlip-demo-none", view === "none");
+      setInteractive();
       show(null);
     }
 
@@ -281,7 +331,19 @@
       list.replaceChildren();
       if (player !== null) showPlayer(player);
       else if (state.view === "full") showFull();
+      else if (state.view === "none") showNone();
       else showClique();
+    }
+
+    // no explanation: the photo and the caption as they are, and the model's similarity
+    function showNone() {
+      players.forEach((button) => {
+        button.classList.remove("fixlip-demo-in", "fixlip-demo-focus");
+        button.style.setProperty("--fixlip-tint", "transparent");
+        button.style.removeProperty("color");
+      });
+      live.textContent = `No explanation: similarity ${ex.similarity.toFixed(2)}`;
+      drawEdges([]);
     }
 
     function showClique() {
@@ -543,7 +605,10 @@
         show(null);
       }
     });
-    const redraw = new ResizeObserver(() => state.focus === null && ex && show(null));
+    const redraw = new ResizeObserver(() => {
+      setShift();
+      if (state.focus === null && ex) show(null);
+    });
     redraw.observe(stage);
     redraw.observe(graph);
 

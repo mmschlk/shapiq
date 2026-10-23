@@ -121,6 +121,12 @@
 
 .fixlip-demo-stage {
   position: relative;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* without an explanation, the photo moves towards the middle, into the emptied panel */
+.fixlip-demo-none .fixlip-demo-stage {
+  transform: translateX(var(--fixlip-shift, 0px));
 }
 
 .fixlip-demo-image {
@@ -169,7 +175,7 @@
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
 }
 
-.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
   background: color-mix(in srgb, var(--shapiq-surface) 60%, transparent);
 }
 
@@ -203,10 +209,25 @@
   color: var(--color-foreground-primary);
   font: inherit;
   cursor: pointer;
-  transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration);
+  transition: background-color var(--shapiq-duration), opacity var(--shapiq-duration),
+    border-color var(--shapiq-duration);
 }
 
-.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full) .fixlip-demo-token:not(.fixlip-demo-in) {
+/* without an explanation, the photo and the caption are plain: no grid, no chips */
+.fixlip-demo-none .fixlip-demo-token {
+  border-color: transparent;
+  cursor: default;
+}
+
+.fixlip-demo-none .fixlip-demo-cell {
+  cursor: default;
+}
+
+.fixlip-demo-none .fixlip-demo-cell::after {
+  box-shadow: none;
+}
+
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
   opacity: 0.45;
 }
 
@@ -235,8 +256,72 @@
 .fixlip-demo-panel {
   --fixlip-row: 2.9rem;
   --fixlip-slot: calc(5 * var(--fixlip-row) + 4 * 0.5rem);
+  position: relative;
   font-size: 0.92rem;
   color: var(--color-foreground-secondary);
+}
+
+/* the explanation fades out without one (and keeps its room), the prediction fades in */
+.fixlip-demo-panel > :not(.fixlip-demo-live) {
+  transition: opacity 250ms, visibility 250ms;
+}
+
+.fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.fixlip-demo-panel > .fixlip-demo-prediction {
+  position: absolute;
+  inset: 0 0 0 calc(var(--fixlip-overlap, 0px) + 1.5rem);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 350ms, visibility 350ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 300ms;
+}
+
+.fixlip-demo-prediction-main {
+  margin: auto 0;
+}
+
+.fixlip-demo-prediction-main p {
+  margin: 0;
+}
+
+.fixlip-demo-prediction-model {
+  font-weight: 600;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-prediction-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-prediction-main .fixlip-demo-prediction-why {
+  margin-top: 1rem;
+}
+
+/* the views named in the prediction's text, as links */
+.fixlip-demo-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-brand-content, #2962ff);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 /* the title, the description, and the slot keep their heights in both views, so that pointing
@@ -533,6 +618,31 @@
 
   .fixlip-demo-more {
     display: none;
+  }
+
+  /* under the photo, the prediction takes the panel's place: nothing moves, nothing is kept */
+  .fixlip-demo-panel > .fixlip-demo-prediction {
+    position: static;
+    display: none;
+  }
+
+  .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
+    display: flex;
+  }
+
+  .fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
+    display: none;
+  }
+
+  .fixlip-demo-prediction .fixlip-demo-meta {
+    margin-top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fixlip-demo-stage,
+  .fixlip-demo-panel > * {
+    transition: none;
   }
 }
 
