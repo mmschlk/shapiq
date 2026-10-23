@@ -12,9 +12,10 @@ on:
         branches: [main]
     workflow_dispatch:
     workflow_call:
+# a new push cancels a pull request's run, but every commit on main gets its own full run
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
     # ----------------------------------------------------------------------------------------------
     # Decide which jobs a pull request needs
@@ -46,7 +47,8 @@ jobs:
                         echo "full=true" >> "$GITHUB_OUTPUT"
                         exit 0
                     fi
-                    files=$(git diff --name-only HEAD^1 HEAD)
+                    # without renames: a file moved out of src/ also lists its old path
+                    files=$(git diff --name-only --no-renames HEAD^1 HEAD)
                     echo "Changed files:"
                     echo "$files"
                     if grep -qvE "$DOCS_ONLY" <<< "$files"; then code=true; else code=false; fi
