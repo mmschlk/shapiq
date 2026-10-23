@@ -400,6 +400,13 @@ html_js_files = [
 ]
 
 
+def _add_demo_assets(app, pagename, templatename, context, doctree) -> None:  # noqa: ARG001
+    """Load the landing page's interactive explanation (_static/js/fixlip_demo.js) there only."""
+    if pagename == "index":
+        app.add_css_file("css/fixlip_demo.css")
+        app.add_js_file("js/fixlip_demo.js", defer="defer")
+
+
 def _inline_logo(theme: str) -> str:
     """Return the logo of a theme as inline SVG markup for ``_templates/sidebar/brand.html``.
 
@@ -759,6 +766,7 @@ def setup(app) -> None:
     app.connect("missing-reference", _link_reexported_names)
     app.connect("build-finished", _write_redirects)
     app.connect("doctree-read", _short_navigation_titles, priority=900)  # after the title collector
+    app.connect("html-page-context", _add_demo_assets)
 
 
 # -- Suppress warnings -----------------------------------------------------------------------------
