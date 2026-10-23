@@ -462,8 +462,10 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   opacity: 0;
 }
 
+/* the words outside the clique recede: muted text, the token still opaque over the edges */
 .fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
-  opacity: 0.6;
+  border-color: color-mix(in srgb, var(--shapiq-border) 60%, transparent);
+  color: var(--shapiq-text-muted);
 }
 
 /* a word on a strong tint: white on the dark theme (on the light one, the dark text reads best) */
