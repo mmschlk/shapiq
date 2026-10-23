@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
@@ -28,10 +28,8 @@ ValidApproximationIndices = Literal[
     "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
 ]
 
-TIndices = TypeVar("TIndices", bound=ValidApproximationIndices)
 
-
-class Approximator(ABC, Generic[TIndices]):
+class Approximator[TIndices: ValidApproximationIndices](ABC):
     """This class is the base class for all approximators.
 
     Approximators are used to estimate the interaction values of a model or any value function.
@@ -215,7 +213,7 @@ class Approximator(ABC, Generic[TIndices]):
 
         """
         weight_vector = np.zeros(shape=self.n + 1)
-        if self.index in ["FBII"]:
+        if self.index == "FBII":
             try:
                 for coalition_size in range(self.n + 1):
                     weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
