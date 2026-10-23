@@ -18,6 +18,7 @@ structured computers used as ground truth for large games.
 
 from __future__ import annotations
 
+import dataclasses
 import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, cast, get_args
@@ -30,13 +31,14 @@ from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNE
 from shapiq.explainer.product_kernel import ProductKernelComputer as CoreProductKernelComputer
 from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
-from shapiq.graph import GraphGame, GraphSHAPIQ, GraphSHAPIQIndices, receptive_fields
+from shapiq.graph import GraphSHAPIQ, GraphSHAPIQIndices
 from shapiq.tree.base import predict_ensemble
 from shapiq.tree.explainer import TreeExplainer
 from shapiq.tree.interventional import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
 from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
 from shapiq.tree.validation import validate_tree_model
+from shapiq_games.graph import GraphGame
 from shapiq_games.kernel import ProductKernelGame
 from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from shapiq_games.nn._base import NNGameBase
@@ -448,7 +450,8 @@ class GraphComputer(Computer[GraphGame]):
         if not isinstance(game, GraphGame):
             return False
         n_players = game.n_players
-        within = receptive_fields(game.edge_index, n_players, 2 * game.n_hops)
+        graph = game.graph
+        within = dataclasses.replace(graph, n_hops=2 * graph.n_hops).receptive_fields
         pair = next(
             (
                 (node, int(far[0]))
@@ -474,10 +477,7 @@ class GraphComputer(Computer[GraphGame]):
     def _compute(self, index: IndexType, order: int) -> InteractionValues:
         if self._graphshapiq is None:
             game = self.game
-            fields = {
-                tuple(field.tolist())
-                for field in receptive_fields(game.edge_index, game.n_players, game.n_hops)
-            }
+            fields = {tuple(field.tolist()) for field in game.graph.receptive_fields}
             if sum(2 ** len(field) for field in fields) > self.max_budget:
                 msg = (
                     f"The receptive fields of the {game.n_players}-node graph have more than "
@@ -485,7 +485,7 @@ class GraphComputer(Computer[GraphGame]):
                     "and need a lot of memory."
                 )
                 warnings.warn(msg, stacklevel=3)  # the caller of exact_values
-            self._graphshapiq = GraphSHAPIQ(game, game.edge_index, game.n_hops)
+            self._graphshapiq = GraphSHAPIQ(game, game.graph)
         # supports() checked the index against GraphSHAP-IQ's declaration
         return self._graphshapiq(cast("GraphSHAPIQIndices", index), order)
 

@@ -13,11 +13,11 @@ from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusC
 from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-
     from shapiq.game import Game
 
-__all__ = ["GraphSHAPIQ", "GraphSHAPIQIndices", "receptive_fields"]
+    from .base import GraphModel
+
+__all__ = ["GraphSHAPIQ", "GraphSHAPIQIndices"]
 
 GraphSHAPIQIndices = Literal["Moebius", ValidMoebiusConverterIndices]
 """The indices GraphSHAP-IQ computes: the Möbius transform and the indices of
@@ -27,6 +27,7 @@ MAX_RECEPTIVE_FIELD_SIZE = 62
 """The largest receptive field GraphSHAP-IQ enumerates (its subsets are 64-bit masks)."""
 
 _CHUNK_SIZE = 2**16
+"""The number of coalitions packed, or evaluated by the game, at once."""
 
 
 class _Block(NamedTuple):
@@ -51,47 +52,6 @@ class _Gap(NamedTuple):
     """The coalition as a bitmask over the nodes of the block."""
     smaller: list[int]
     """The positions of the smaller gaps contained in the coalition."""
-
-
-def receptive_fields(edge_index: ArrayLike, n_nodes: int, n_hops: int) -> tuple[np.ndarray, ...]:
-    """Return the ``n_hops``-hop neighborhood of every node of a graph.
-
-    The edges are treated as undirected, which contains the receptive field of a message passing
-    layer for either direction of message flow.
-
-    Args:
-        edge_index: The edges as an integer array of shape ``(2, n_edges)``.
-        n_nodes: The number of nodes.
-        n_hops: The radius of the neighborhoods, e.g. the number of message passing layers.
-
-    Returns:
-        For every node, the sorted nodes within ``n_hops`` hops, including the node itself.
-
-    Raises:
-        ValueError: If ``edge_index`` is not of shape ``(2, n_edges)`` or refers to other nodes.
-    """
-    edges = np.asarray(edge_index)
-    if edges.ndim != 2 or edges.shape[0] != 2:
-        msg = f"edge_index must be of shape (2, n_edges), got {edges.shape}."
-        raise ValueError(msg)
-    edges = edges.astype(np.int64)
-    if edges.size and (edges.min() < 0 or edges.max() >= n_nodes):
-        msg = f"edge_index refers to nodes outside of 0, ..., {n_nodes - 1}."
-        raise ValueError(msg)
-    identity = sparse.eye_array(n_nodes, dtype=bool, format="csr")
-    adjacency = sparse.csr_array(
-        (np.ones(edges.shape[1], dtype=bool), (edges[0], edges[1])), shape=(n_nodes, n_nodes)
-    )
-    adjacency = adjacency + adjacency.T + identity
-    reach = identity
-    for _ in range(n_hops):
-        reach = reach @ adjacency
-    reach = sparse.csr_array(reach)
-    reach.sort_indices()
-    return tuple(
-        reach.indices[reach.indptr[node] : reach.indptr[node + 1]].astype(np.int64)
-        for node in range(n_nodes)
-    )
 
 
 def _subset_masks(n_bits: int, max_size: int) -> np.ndarray:
@@ -190,9 +150,9 @@ def _moebius_transform(values: np.ndarray, masks: np.ndarray, n_bits: int) -> No
 class GraphSHAPIQ:
     r"""GraphSHAP-IQ computes the exact Shapley interactions of games that are local on a graph.
 
-    The players of the game are the nodes of a graph. The game is local if its Möbius transform
-    vanishes on every coalition that is not contained in the receptive field of a single node, the
-    nodes within ``n_hops`` hops. The output of a graph neural network with ``n_hops`` message
+    The players of the game are the nodes of a :class:`~shapiq.graph.GraphModel`. The game is local
+    if its Möbius transform vanishes on every coalition that is not contained in the receptive
+    field of a single node, the nodes within ``n_hops`` hops. The output of a graph neural network with ``n_hops`` message
     passing layers, a linear global pooling, and a linear readout is local
     :cite:p:`Muschalik.2025`: the embedding of a node depends only on its receptive field.
 
@@ -212,8 +172,7 @@ class GraphSHAPIQ:
 
     Attributes:
         game: The game, whose players are the nodes.
-        n_hops: The radius of the receptive fields.
-        receptive_fields: The receptive field of every node.
+        graph: The graph, which defines the receptive fields.
         max_interaction_size: The largest coalitions whose Möbius coefficients are computed.
         efficiency_routine: Whether the receptive fields beyond ``max_interaction_size`` are
             evaluated to keep the values efficient.
@@ -221,11 +180,12 @@ class GraphSHAPIQ:
     Examples:
         >>> import numpy as np
         >>> from shapiq import Game
+        >>> from shapiq.graph import GraphModel
         >>> class EdgeGame(Game):  # the number of edges with both of their nodes present
         ...     def value_function(self, coalitions):
         ...         return (coalitions[:, :-1] & coalitions[:, 1:]).sum(axis=1).astype(float)
-        >>> edge_index = np.array([[0, 1, 2], [1, 2, 3]])  # the path 0 - 1 - 2 - 3
-        >>> graphshapiq = GraphSHAPIQ(EdgeGame(n_players=4, normalize=False), edge_index, n_hops=1)
+        >>> graph = GraphModel(edge_index=np.array([[0, 1, 2], [1, 2, 3]]), n_hops=1)  # 0-1-2-3
+        >>> graphshapiq = GraphSHAPIQ(EdgeGame(n_players=4, normalize=False), graph)
         >>> graphshapiq.budget  # the subsets of {0, 1, 2} and {1, 2, 3}, instead of 2**4
         12
         >>> shapley_values = graphshapiq("SV", order=1)
@@ -236,8 +196,7 @@ class GraphSHAPIQ:
     def __init__(
         self,
         game: Game,
-        edge_index: ArrayLike,
-        n_hops: int,
+        graph: GraphModel,
         *,
         max_interaction_size: int | None = None,
         efficiency_routine: bool = True,
@@ -246,26 +205,24 @@ class GraphSHAPIQ:
 
         Args:
             game: A game whose players are the nodes of the graph.
-            edge_index: The edges of the graph as an integer array of shape ``(2, n_edges)``.
-            n_hops: The radius of the receptive fields, e.g. the number of message passing layers
-                of a graph neural network.
+            graph: The graph, whose edges and ``n_hops`` define the receptive fields.
             max_interaction_size: The largest coalitions whose Möbius coefficients are computed.
                 Defaults to ``None``, the largest receptive field, which computes exact values.
             efficiency_routine: Whether to evaluate the receptive fields larger than
                 ``max_interaction_size`` to keep the values efficient. Defaults to ``True``.
 
         Raises:
-            ValueError: If ``n_hops`` is negative or ``max_interaction_size`` is not positive.
+            ValueError: If the graph has other nodes than the game has players, or
+                ``max_interaction_size`` is not positive.
         """
-        if isinstance(n_hops, bool) or not isinstance(n_hops, int | np.integer) or n_hops < 0:
-            msg = f"n_hops must be a non-negative integer, got {n_hops!r}."
+        if graph.n_nodes != game.n_players:
+            msg = f"The graph has {graph.n_nodes} nodes, the game {game.n_players} players."
             raise ValueError(msg)
         if max_interaction_size is not None and max_interaction_size < 1:
             msg = f"max_interaction_size must be positive or None, got {max_interaction_size}."
             raise ValueError(msg)
         self.game = game
-        self.n_hops = int(n_hops)
-        self.receptive_fields = receptive_fields(edge_index, game.n_players, self.n_hops)
+        self.graph = graph
         self.max_interaction_size = max_interaction_size
         self.efficiency_routine = efficiency_routine
 
@@ -277,7 +234,7 @@ class GraphSHAPIQ:
     @property
     def max_receptive_field_size(self) -> int:
         """The number of nodes of the largest receptive field."""
-        return max((len(field) for field in self.receptive_fields), default=0)
+        return self.graph.max_receptive_field_size
 
     @property
     def interaction_size(self) -> int:
@@ -307,7 +264,7 @@ class GraphSHAPIQ:
             the gaps of the efficiency routine, smallest first.
         """
         n_players, size = self.n_players, self.interaction_size
-        distinct = {tuple(field.tolist()) for field in self.receptive_fields}
+        distinct = {tuple(field.tolist()) for field in self.graph.receptive_fields}
         fields = sorted(distinct, key=lambda field: (len(field), field))
         contained, _ = _subset_pairs(fields, n_players)
         maximal = [fields[i] for i in sorted(set(range(len(fields))) - set(contained.tolist()))]
@@ -368,7 +325,12 @@ class GraphSHAPIQ:
         The game is evaluated on first access.
         """
         coalitions, blocks, gaps = self._plan
-        values = np.asarray(self.game(coalitions), dtype=float).reshape(-1)
+        values = np.concatenate(
+            [
+                np.asarray(self.game(coalitions[start : start + _CHUNK_SIZE]), dtype=float)
+                for start in range(0, len(coalitions), _CHUNK_SIZE)
+            ]
+        ).reshape(-1)
         moebius = np.zeros(len(coalitions))
         for block in blocks:
             coefficients = values[block.rows]

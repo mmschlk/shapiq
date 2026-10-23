@@ -12,7 +12,7 @@ linearly, every interaction of nodes that do not share a receptive field is zero
 :cite:p:`Muschalik.2025` therefore evaluates the GNN only on subsets of receptive fields, and still
 computes Shapley values and interactions of any order exactly.
 
-This example explains a small molecule with :class:`~shapiq.graph.GraphExplainer`, checks the
+This example explains a small molecule with :class:`~shapiq.explainer.GraphExplainer`, checks the
 values against all :math:`2^n` coalitions, and approximates them with fewer evaluations.
 """
 
@@ -23,12 +23,19 @@ from __future__ import annotations
 import time
 from itertools import pairwise
 
+import numpy as np
 import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv, global_add_pool
 
 import shapiq
-from shapiq.graph import GraphExplainer, GraphGame, GraphSHAPIQ
+from shapiq.explainer import GraphExplainer
+from shapiq.graph import (
+    GraphBaselineImputer,
+    GraphSHAPIQ,
+    convert_graph,
+    get_graph_predict_function,
+)
 
 # %%
 # A Molecule and a GNN
@@ -70,7 +77,7 @@ model = GCN()
 # %%
 # Explaining the Molecule
 # -----------------------
-# :class:`~shapiq.graph.GraphExplainer` explains the logit of class ``1`` by default. The
+# :class:`~shapiq.explainer.GraphExplainer` explains the logit of class ``1`` by default. The
 # pairwise k-SII interactions show which atoms the GNN considers together; the SI graph draws
 # them on the bonds of the molecule.
 
@@ -84,14 +91,21 @@ shapiq.si_graph_plot(interactions, graph=bonds, feature_names=names, show=True)
 # %%
 # The Receptive Fields Save Evaluations
 # -------------------------------------
-# With two layers, the receptive field of an atom are the atoms within two bonds. GraphSHAP-IQ
-# evaluates the GNN on the subsets of the largest receptive fields only, instead of on all
-# :math:`2^{10}` coalitions. The values are the same as those of brute force, which evaluates all
-# of them with :class:`~shapiq.game_theory.ExactComputer`.
+# The explainer builds its game from three parts, which can be used on their own. The molecule is
+# converted into a :class:`~shapiq.graph.GraphModel`, which holds its bonds, its atoms' features,
+# and the receptive fields: with two layers, the atoms within two bonds. The model becomes a
+# function of the atoms' features of masked copies of the molecule, and the
+# :class:`~shapiq.graph.GraphBaselineImputer` sets the features of absent atoms to the baseline.
+#
+# GraphSHAP-IQ evaluates the game on the subsets of the largest receptive fields only, instead of
+# on all :math:`2^{10}` coalitions. The values are the same as those of brute force, which
+# evaluates all of them with :class:`~shapiq.game_theory.ExactComputer`.
 
-game = GraphGame(model, molecule, normalize=False)
-graphshapiq = GraphSHAPIQ(game, game.edge_index, n_hops=game.n_hops)
-print(f"largest receptive field: {graphshapiq.max_receptive_field_size} atoms")
+graph = convert_graph(molecule, n_hops=model.num_layers)
+predict = get_graph_predict_function(model, graph)
+game = GraphBaselineImputer(predict, data=np.zeros(3), x=graph, normalize=False)
+graphshapiq = GraphSHAPIQ(game, graph)
+print(f"largest receptive field: {graph.max_receptive_field_size} atoms")
 print(f"evaluations: {graphshapiq.budget} instead of {2**game.n_players}")
 
 start = time.perf_counter()
@@ -111,7 +125,7 @@ print(f"largest difference to brute force: {difference:.1e}")
 # to the prediction, and are exact again for one atom less than the largest receptive field.
 
 exact = GraphExplainer(model).explain(molecule)
-for size in range(1, graphshapiq.max_receptive_field_size):
+for size in range(1, graph.max_receptive_field_size):
     approximation = GraphExplainer(model, max_interaction_size=size).explain(molecule)
     error = max(abs(approximation[(node,)] - exact[(node,)]) for node in range(len(atoms)))
     print(

@@ -130,7 +130,7 @@ Where to Start
    * - explain a tree ensemble exactly
      - :class:`~shapiq.explainer.TreeExplainer`
    * - explain a graph neural network exactly
-     - :class:`~shapiq.graph.GraphExplainer`
+     - :class:`~shapiq.explainer.GraphExplainer`
    * - explain any model on tabular data
      - :class:`~shapiq.explainer.TabularExplainer`, with an imputer such as
        :class:`~shapiq.imputer.MarginalImputer`

@@ -5,23 +5,33 @@ hops, its receptive field. :class:`GraphSHAPIQ` exploits this for any game whose
 nodes of a graph: it evaluates the game only on subsets of the receptive fields and computes the
 exact interactions from their Möbius coefficients :cite:p:`Muschalik.2025`.
 
-- :class:`GraphExplainer` explains the graph-level output of a graph neural network.
-- :class:`GraphGame` is the game of a graph neural network's output for one graph, with the node
-  features of absent nodes replaced by a baseline.
+- :class:`GraphModel` is the internal representation of a graph: its edges, nodes, node features,
+  and the radius of the receptive fields. :func:`convert_graph` builds it from a graph of
+  ``torch_geometric``.
+- :class:`GraphBaselineImputer` is the :class:`~shapiq.imputer.BaselineImputer` of a graph: its
+  players are the nodes, and absent nodes take the baseline node features. It calls the model as
+  a function of node features, which :func:`get_graph_predict_function` makes of a ``torch``
+  model.
 - :class:`GraphSHAPIQ` computes the interactions of a game that is local on a graph.
+- :class:`~shapiq.explainer.GraphExplainer` explains the graph-level output of a graph neural
+  network with them.
 
-:class:`GraphGame` and :class:`GraphExplainer` require ``torch`` and ``torch_geometric``, which
-the ``graph`` extra installs: ``pip install 'shapiq[graph]'``. :class:`GraphSHAPIQ` does not.
+Graphs and models of ``torch_geometric`` require ``torch`` and ``torch_geometric``, which the
+``graph`` extra installs: ``pip install 'shapiq[graph]'``. The rest needs neither.
 """
 
+from .base import GraphModel
+from .conversion import GraphPredictFunction, convert_graph, get_graph_predict_function
 from .explainer import GraphExplainer  # noqa: F401  (documented in shapiq.explainer)
-from .game import GraphBaseline, GraphGame
-from .graphshapiq import GraphSHAPIQ, GraphSHAPIQIndices, receptive_fields
+from .graphshapiq import GraphSHAPIQ, GraphSHAPIQIndices
+from .imputer import GraphBaselineImputer
 
 __all__ = [
-    "GraphBaseline",
-    "GraphGame",
+    "GraphBaselineImputer",
+    "GraphModel",
+    "GraphPredictFunction",
     "GraphSHAPIQ",
     "GraphSHAPIQIndices",
-    "receptive_fields",
+    "convert_graph",
+    "get_graph_predict_function",
 ]

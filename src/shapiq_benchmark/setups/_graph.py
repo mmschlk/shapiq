@@ -8,8 +8,8 @@ from typing import Literal
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from shapiq.graph import GraphBaseline, GraphGame
 from shapiq_benchmark.datasets import GraphDatasetName, load_graph_dataset
+from shapiq_games import GraphGame
 
 from ._base import Setup, runtime_field
 
@@ -17,6 +17,9 @@ __all__ = ["GraphSetup"]
 
 GraphModelName = Literal["gcn", "gin", "gat"]
 """The message passing layers of the graph neural networks of :class:`GraphSetup`."""
+
+GraphSetupBaseline = Literal["zeros", "mean"]
+"""The node features of absent nodes: zeros, or the mean node features of the training graphs."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -40,8 +43,8 @@ class GraphSetup(Setup, name="graph"):
         learning_rate: The learning rate of Adam. Defaults to ``0.01``.
         x: The index of the explained graph in the test split. Defaults to ``0``.
         class_index: The explained class (``None`` means class ``1``).
-        baseline: The node features of absent nodes (see :class:`~shapiq_games.GraphGame`).
-            Defaults to ``"zeros"``.
+        baseline: The node features of absent nodes, ``"zeros"`` (default) or the ``"mean"``
+            node features of the training graphs.
         test_size: The fraction of the graphs in the test split. Defaults to ``0.2``.
         random_state: The seed of the split, the initialization, and the training.
         normalize: Whether to center the game. Defaults to ``True``.
@@ -60,7 +63,7 @@ class GraphSetup(Setup, name="graph"):
     learning_rate: float = 0.01
     x: int = 0
     class_index: int | None = None
-    baseline: GraphBaseline | float = "zeros"
+    baseline: GraphSetupBaseline = "zeros"
     test_size: float = 0.2
     random_state: int = 42
     normalize: bool = True
@@ -78,8 +81,9 @@ class GraphSetup(Setup, name="graph"):
             random_state=self.random_state,
             stratify=labels,
         )
+        train_graphs = [graphs[i] for i in train_rows]
         model = train(
-            [graphs[i] for i in train_rows],
+            train_graphs,
             self.model,
             n_classes=int(labels.max()) + 1,
             num_layers=self.n_layers,
@@ -88,11 +92,14 @@ class GraphSetup(Setup, name="graph"):
             learning_rate=self.learning_rate,
             random_state=self.random_state,
         )
+        background = None
+        if self.baseline == "mean":
+            background = np.concatenate([np.asarray(graph.x) for graph in train_graphs])
         return GraphGame(
             model,
             graphs[int(np.sort(test_rows)[self.x])],
+            data=background,
             class_index=self.class_index,
-            baseline=self.baseline,
             batch_size=self.batch_size,
             normalize=self.normalize,
         )

@@ -107,11 +107,13 @@ def test_graph_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     setup = GraphSetup(dataset="MUTAG", model="gin", n_epochs=3, hidden_size=8, x=2)
     game, again = setup.build(), setup.build()
     assert isinstance(game, GraphGame)
-    assert game.n_hops == setup.n_layers
+    assert game.graph.n_hops == setup.n_layers
     assert game.class_index == 1
     coalitions = np.random.default_rng(0).random((6, game.n_players)) < 0.5
     np.testing.assert_array_equal(game(coalitions), again(coalitions))  # trained reproducibly
     assert isinstance(default_computer(game), GraphComputer)
+    mean = GraphSetup(dataset="MUTAG", n_epochs=3, hidden_size=8, x=2, baseline="mean").build()
+    assert np.all(mean.imputer.baseline_values.astype(float) > 0)  # one-hot atoms of training
 
     assert setup_from_dict(setup.to_dict()) == setup
     assert GraphSetup(dataset="MUTAG", batch_size=16).key == GraphSetup(dataset="MUTAG").key

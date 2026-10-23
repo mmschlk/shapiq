@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from shapiq import ExactComputer, Game
-from shapiq.graph import GraphSHAPIQ, receptive_fields
+from shapiq.graph import GraphModel, GraphSHAPIQ
 from shapiq.graph.graphshapiq import MAX_RECEPTIVE_FIELD_SIZE
 
 
@@ -15,7 +15,8 @@ class LocalGame(Game):
 
     def __init__(self, edge_index: np.ndarray, n_nodes: int, n_hops: int, seed: int) -> None:
         rng = np.random.default_rng(seed)
-        self.fields = receptive_fields(edge_index, n_nodes, n_hops)
+        self.graph = GraphModel(edge_index=edge_index, n_hops=n_hops, n_nodes=n_nodes)
+        self.fields = self.graph.receptive_fields
         self.tables = [rng.normal(size=2 ** len(field)) for field in self.fields]
         self.n_evaluations = 0
         super().__init__(n_nodes, normalize=False)
@@ -55,14 +56,14 @@ def test_exact_values_match_brute_force(seed, index, order):
     edge_index, n_nodes, n_hops = random_graph(seed)
     game = LocalGame(edge_index, n_nodes, n_hops, seed)
     order = min(order, n_nodes)
-    computed = GraphSHAPIQ(game, edge_index, n_hops)(index, order)
+    computed = GraphSHAPIQ(game, game.graph)(index, order)
     assert not computed.estimated
     assert_values_equal(computed, ExactComputer(game=game, n_players=n_nodes)(index, order))
 
 
 def test_fsii_matches_brute_force():
     game = LocalGame(path(7), 7, 1, seed=0)
-    computed = GraphSHAPIQ(game, path(7), 1)("FSII", 2)
+    computed = GraphSHAPIQ(game, game.graph)("FSII", 2)
     assert_values_equal(computed, ExactComputer(game=game, n_players=7)("FSII", 2), atol=1e-6)
 
 
@@ -73,13 +74,13 @@ def test_one_below_the_largest_receptive_field_is_exact_with_the_efficiency_rout
     largest = max(len(field) for field in game.fields)
     if largest < 2:
         pytest.skip("only singleton receptive fields")
-    graphshapiq = GraphSHAPIQ(game, edge_index, n_hops, max_interaction_size=largest - 1)
+    graphshapiq = GraphSHAPIQ(game, game.graph, max_interaction_size=largest - 1)
     assert graphshapiq.exact
     exact = ExactComputer(game=game, n_players=n_nodes)
     assert_values_equal(graphshapiq("k-SII", 2), exact("k-SII", 2))
 
     without = GraphSHAPIQ(
-        game, edge_index, n_hops, max_interaction_size=largest - 1, efficiency_routine=False
+        game, game.graph, max_interaction_size=largest - 1, efficiency_routine=False
     )
     assert not without.exact
     assert without.budget < graphshapiq.budget
@@ -93,7 +94,7 @@ def test_approximated_values_are_efficient(max_interaction_size):
     edges += [(r * side + c, (r + 1) * side + c) for r in range(side - 1) for c in range(side)]
     edge_index = np.array(edges).T
     game = LocalGame(edge_index, side * side, 2, seed=0)
-    graphshapiq = GraphSHAPIQ(game, edge_index, 2, max_interaction_size=max_interaction_size)
+    graphshapiq = GraphSHAPIQ(game, game.graph, max_interaction_size=max_interaction_size)
     shapley_values = graphshapiq("SV", 1)
     assert shapley_values.estimated
     assert shapley_values.estimation_budget == graphshapiq.budget
@@ -103,7 +104,7 @@ def test_approximated_values_are_efficient(max_interaction_size):
 
 def test_evaluates_exactly_the_budget():
     game = LocalGame(path(6), 6, 1, seed=0)
-    graphshapiq = GraphSHAPIQ(game, path(6), 1)
+    graphshapiq = GraphSHAPIQ(game, game.graph)
     # the maximal receptive fields {i - 1, i, i + 1} share the subsets of {i, i + 1}
     assert graphshapiq.budget == 4 * 8 - 3 * 4
     graphshapiq("k-SII", 2)
@@ -114,7 +115,7 @@ def test_evaluates_exactly_the_budget():
 def test_disconnected_graph_and_isolated_nodes_are_additive():
     edge_index = np.array([[0, 2], [1, 3]])  # 0 - 1, 2 - 3, and the isolated node 4
     game = LocalGame(edge_index, 5, 2, seed=1)
-    computed = GraphSHAPIQ(game, edge_index, 2)("Moebius", 5)
+    computed = GraphSHAPIQ(game, game.graph)("Moebius", 5)
     assert set(computed.interaction_lookup) == {
         (),
         *((node,) for node in range(5)),
@@ -126,7 +127,7 @@ def test_disconnected_graph_and_isolated_nodes_are_additive():
 
 def test_no_hops_is_additive():
     game = LocalGame(path(4), 4, 0, seed=2)
-    shapley_values = GraphSHAPIQ(game, path(4), 0)("SV", 1)
+    shapley_values = GraphSHAPIQ(game, game.graph)("SV", 1)
     empty = game(np.zeros(4, dtype=bool))[0]
     for node in range(4):
         alone = game(np.eye(4, dtype=bool)[node])[0]
@@ -135,36 +136,34 @@ def test_no_hops_is_additive():
 
 def test_moebius_up_to_order():
     game = LocalGame(path(5), 5, 1, seed=3)
-    moebius = GraphSHAPIQ(game, path(5), 1)("Moebius", 2)
+    moebius = GraphSHAPIQ(game, game.graph)("Moebius", 2)
     assert max(len(interaction) for interaction in moebius.interaction_lookup) == 2
     assert moebius.baseline_value == pytest.approx(game(np.zeros(5, dtype=bool))[0])
 
 
 def test_receptive_fields_ignore_edge_direction():
-    fields = receptive_fields(np.array([[1, 2], [0, 1]]), 4, 1)  # 1 -> 0, 2 -> 1, node 3 alone
-    assert [field.tolist() for field in fields] == [[0, 1], [0, 1, 2], [1, 2], [3]]
-    assert receptive_fields(np.array([[1, 2], [0, 1]]), 4, 2)[0].tolist() == [0, 1, 2]
+    graph = GraphModel(edge_index=np.array([[1, 2], [0, 1]]), n_hops=1, n_nodes=4)  # node 3 alone
+    assert [field.tolist() for field in graph.receptive_fields] == [[0, 1], [0, 1, 2], [1, 2], [3]]
+    two_hops = GraphModel(edge_index=np.array([[1, 2], [0, 1]]), n_hops=2, n_nodes=4)
+    assert two_hops.receptive_fields[0].tolist() == [0, 1, 2]
 
 
 def test_rejects_invalid_arguments():
     game = LocalGame(path(3), 3, 1, seed=0)
-    with pytest.raises(ValueError, match="n_hops"):
-        GraphSHAPIQ(game, path(3), -1)
     with pytest.raises(ValueError, match="max_interaction_size"):
-        GraphSHAPIQ(game, path(3), 1, max_interaction_size=0)
-    with pytest.raises(ValueError, match="shape"):
-        GraphSHAPIQ(game, np.zeros((3, 2), dtype=int), 1)
-    with pytest.raises(ValueError, match="outside"):
-        GraphSHAPIQ(game, np.array([[0], [3]]), 1)
+        GraphSHAPIQ(game, game.graph, max_interaction_size=0)
+    with pytest.raises(ValueError, match="nodes"):
+        GraphSHAPIQ(game, GraphModel(edge_index=path(4), n_hops=1))
     with pytest.raises(ValueError, match="indices"):
-        GraphSHAPIQ(game, path(3), 1)("CHII", 2)  # ty: ignore[invalid-argument-type]
+        GraphSHAPIQ(game, game.graph)("CHII", 2)  # ty: ignore[invalid-argument-type]
     with pytest.raises(ValueError, match="order"):
-        GraphSHAPIQ(game, path(3), 1)("SII", 0)
+        GraphSHAPIQ(game, game.graph)("SII", 0)
 
 
 def test_rejects_too_large_receptive_fields():
     n_nodes = MAX_RECEPTIVE_FIELD_SIZE + 1  # a star: the center sees every node
     edge_index = np.array([np.zeros(n_nodes - 1, dtype=int), np.arange(1, n_nodes)])
-    graphshapiq = GraphSHAPIQ(Game(n_nodes, normalize=False), edge_index, 1)
+    graph = GraphModel(edge_index=edge_index, n_hops=1)
+    graphshapiq = GraphSHAPIQ(Game(n_nodes, normalize=False), graph)
     with pytest.raises(ValueError, match="receptive fields"):
         _ = graphshapiq.budget

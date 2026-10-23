@@ -93,7 +93,11 @@ class Imputer[TModel](Game):
 
         # init the game
         # developer note: the normalization_value needs to be set in the subclass
-        super().__init__(n_players=self.n_features, normalize=False, verbose=verbose)
+        super().__init__(n_players=self._n_players(), normalize=False, verbose=verbose)
+
+    def _n_players(self) -> int:
+        """Return the number of players: one per feature, unless a subclass removes other parts."""
+        return self.n_features
 
     @property
     def x(self) -> np.ndarray:

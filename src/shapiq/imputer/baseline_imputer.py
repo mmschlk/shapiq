@@ -135,6 +135,7 @@ class BaselineImputer(Imputer):
         """
         if data.ndim == 1 or data.shape[0] == 1:  # data is a vector -> use as baseline values
             self.baseline_values = data.reshape(1, self.n_features)
+            self.calc_empty_prediction()
             return self
         # data is a matrix -> calculate baseline values as mean or mode
         self.baseline_values = np.zeros((1, self.n_features), dtype=object)
