@@ -211,10 +211,12 @@
     const modelButtons = data.models.map((model) => {
       const button = el("button", "fixlip-demo-option", model.label);
       button.type = "button";
-      button.addEventListener("click", () => {
-        state.model = model.id;
-        reset();
-      });
+      button.addEventListener("click", () =>
+        crossFade(() => {
+          state.model = model.id;
+          reset();
+        }),
+      );
       models.append(button);
       return button;
     });
@@ -355,6 +357,35 @@
       }
       probe.remove();
       node.style.minHeight = `${Math.ceil(tallest)}px`;
+    }
+
+    // another model has another grid of patches (CLIP 7 x 7, SigLIP 2 8 x 8, as in FIxLIP): the old
+    // patches and edges fade out over the new ones, which fade in
+    function crossFade(change) {
+      for (const ghost of stage.querySelectorAll(".fixlip-demo-ghost")) ghost.remove();
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        change();
+        return;
+      }
+      const ghosts = [cells, edges].map((node) => {
+        const ghost = node.cloneNode(true);
+        ghost.classList.add("fixlip-demo-ghost");
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.setAttribute("inert", "");
+        node.after(ghost);
+        return ghost;
+      });
+      change();
+      for (const node of [cells, edges]) node.classList.add("fixlip-demo-fresh");
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          for (const node of [cells, edges]) node.classList.remove("fixlip-demo-fresh");
+          for (const ghost of ghosts) {
+            ghost.classList.add("fixlip-demo-gone");
+            setTimeout(() => ghost.remove(), 600);
+          }
+        }),
+      );
     }
 
     // the players can be pointed at, unless there is no explanation to show

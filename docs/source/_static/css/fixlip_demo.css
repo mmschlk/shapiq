@@ -222,6 +222,27 @@
   grid-template-rows: repeat(var(--fixlip-grid, 7), 1fr);
 }
 
+/* switching models cross-fades their grids of patches: the old ones (copies) fade out, the new
+   ones fade in */
+.fixlip-demo-cells,
+.fixlip-demo-edges {
+  transition: opacity 450ms ease;
+}
+
+.fixlip-demo-cells.fixlip-demo-fresh,
+.fixlip-demo-edges.fixlip-demo-fresh {
+  opacity: 0;
+  transition: none;
+}
+
+.fixlip-demo-ghost {
+  pointer-events: none;
+}
+
+.fixlip-demo-ghost.fixlip-demo-gone {
+  opacity: 0;
+}
+
 .fixlip-demo-cell {
   position: relative;
   padding: 0;
@@ -713,6 +734,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fixlip-demo-stage,
+  .fixlip-demo-cells,
+  .fixlip-demo-edges,
   .fixlip-demo-panel > * {
     transition: none;
   }
