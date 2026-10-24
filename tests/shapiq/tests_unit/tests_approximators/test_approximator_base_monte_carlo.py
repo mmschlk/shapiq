@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo
+from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
-from shapiq_games.synthetic import DummyGame
+from shapiq.utils.sets import powerset
+from shapiq_games.synthetic import SOUM, DummyGame
 
 
 @pytest.mark.parametrize(
@@ -105,3 +107,17 @@ def test_approximate(n, index, max_order, budget, stratify_intersection, stratif
     interaction_estimate = estimates[interaction[0],] if index == "SV" else estimates[interaction]
 
     assert interaction_estimate != 0
+
+
+@pytest.mark.parametrize("index", ["SII", "BII", "STII", "CHII"])
+@pytest.mark.parametrize("max_order", [1, 2, 3])
+def test_full_budget_matches_exact(index, max_order):
+    """With a budget of all 2**n coalitions the estimate of a cardinal interaction index is exact."""
+    n = 6
+    game = SOUM(n=n, n_basis_games=20, max_interaction_size=3, random_state=42)
+    approximator = MonteCarlo(n, max_order, index=index, random_state=42)
+    estimates = approximator.approximate(2**n, game)
+
+    exact = ExactComputer(game, n_players=n)(estimates.index, max_order)
+    for interaction in powerset(range(n), min_size=1, max_size=max_order):
+        assert estimates[interaction] == pytest.approx(exact[interaction], abs=1e-10)

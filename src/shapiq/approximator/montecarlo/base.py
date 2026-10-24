@@ -459,12 +459,17 @@ class MonteCarlo(Approximator[TIndices]):
     def _log_chii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Log of the CHII discrete derivative weight.
 
-        The weight is ``s / t`` for interaction size ``s`` and coalition size ``t`` (``0``,
-        i.e. ``-inf`` in log-space, for empty coalitions).
+        The weight is ``s * (s + t - 1)! * (n - s - t)! / n!`` for interaction size ``s`` and
+        coalition size ``t``, the chaining interaction index (Marichal and Roubens, 1999) as a
+        cardinal interaction index. Summed over coalitions it recovers the Moebius representation
+        ``sum_{T >= S} s / |T| * m(T)``, whose coefficient ``s / |T|`` is not itself the weight.
         """
-        if coalition_size == 0:
-            return -np.inf
-        return float(np.log(interaction_size) - np.log(coalition_size))
+        return float(
+            np.log(interaction_size)
+            + gammaln(interaction_size + coalition_size)
+            + gammaln(self.n - interaction_size - coalition_size + 1)
+            - gammaln(self.n + 1)
+        )
 
     def _log_stii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Log of the STII discrete derivative weight.
