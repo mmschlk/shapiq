@@ -322,6 +322,7 @@
     let roving = 0; // the region in the tab order; the arrow keys move within the grid
     let rovingToken = 0; // the same for the caption's tokens
     let glideTimer = 0;
+    let arriveTimer = 0;
     let started = false; // nothing is announced while the demo builds itself
 
     const interaction = (i, j) => {
@@ -375,6 +376,7 @@
 
       cells.replaceChildren();
       caption.replaceChildren();
+      caption.classList.remove("fixlip-demo-arriving"); // a new caption fades in as a whole
       players = [];
       for (let k = 0; k < regionCount; k += 1) {
         const cell = el("button", "fixlip-demo-cell");
@@ -654,6 +656,8 @@
       const glide = (view === "none") !== (state.view === "none") && !reducedMotion();
       const first = glide ? tokens.map((t) => t.getBoundingClientRect()) : [];
       for (const ghost of stage.querySelectorAll(".fixlip-demo-caption.fixlip-demo-ghost")) ghost.remove();
+      clearTimeout(arriveTimer);
+      caption.classList.remove("fixlip-demo-arriving");
       if (glide && state.view === "none") fadeExcerpt();
 
       state.view = view;
@@ -676,6 +680,11 @@
         return;
       }
       caption.classList.add("fixlip-demo-gliding");
+      // the text around the caption fades in only when the excerpt arrives (not with each photo)
+      if (view === "none") {
+        caption.classList.add("fixlip-demo-arriving");
+        arriveTimer = setTimeout(() => caption.classList.remove("fixlip-demo-arriving"), 1000);
+      }
       tokens.forEach((t, k) => {
         const last = t.getBoundingClientRect();
         t.style.transform = `translate(${first[k].left - last.left}px, ${first[k].top - last.top}px)`;

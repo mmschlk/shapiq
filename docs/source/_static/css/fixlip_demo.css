@@ -409,7 +409,9 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   color: var(--color-foreground-secondary);
 }
 
-.fixlip-demo-excerpt .fixlip-demo-context {
+/* into the excerpt, its text fades in after the tokens have glided into it (on a new photo, the
+   whole caption fades in with the photo instead) */
+.fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context {
   animation: fixlip-demo-fade-in 600ms ease 300ms both;
 }
 
@@ -1012,7 +1014,7 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
     transition: none;
   }
 
-  .fixlip-demo-excerpt .fixlip-demo-context {
+  .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context {
     animation: none;
   }
 }
