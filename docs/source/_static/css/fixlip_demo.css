@@ -277,6 +277,24 @@ body[data-theme="dark"] .fixlip-demo {
   transition: none;
 }
 
+/* next to the edges, a new caption fades in by its tokens' words and chips: as a whole, it would be
+   a layer of its own while it fades, with its chips over the edges */
+.fixlip-demo-renewed .fixlip-demo-token {
+  animation: fixlip-demo-token-in 450ms ease backwards;
+}
+
+.fixlip-demo-renewed .fixlip-demo-token::before,
+.fixlip-demo-renewed .fixlip-demo-token::after {
+  animation: fixlip-demo-fade-in 450ms ease backwards;
+}
+
+@keyframes fixlip-demo-token-in {
+  from {
+    border-color: transparent;
+    color: transparent;
+  }
+}
+
 .fixlip-demo-ghost {
   pointer-events: none;
 }
@@ -338,10 +356,9 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   outline: none;
 }
 
-/* the caption over the edges, whose lines end at the tops of its tokens */
+/* the caption, whose tokens the edges end at the tops of */
 .fixlip-demo-caption {
   position: relative;
-  z-index: 1;
   transition: opacity 450ms ease;
   margin: 0.9rem 0 0;
   text-align: center;
@@ -350,14 +367,16 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   line-height: 2.2;
 }
 
-/* a token is opaque (the card's color under its tint), so that edges pass behind it */
+/* a token's chip (the card's color under its tint) lies under the edges, its word over them: the
+   chip is painted first in the stage (z-index -1), the edges before the caption that holds the word
+   (the stage's order); so the edges to a token on the caption's second line stay in view over the
+   first */
 .fixlip-demo-token {
   position: relative;
-  isolation: isolate;
   padding: 0.12rem 0.32rem;
   border: 1px solid var(--shapiq-border);
   border-radius: 6px;
-  background: var(--shapiq-surface);
+  background: transparent;
   color: var(--color-foreground-primary);
   font: inherit;
   cursor: pointer;
@@ -365,12 +384,17 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
     transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.fixlip-demo-token::before {
+.fixlip-demo-token::before,
+.fixlip-demo-token::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: inherit;
+  background: var(--shapiq-surface);
+}
+
+.fixlip-demo-token::after {
   background: var(--fixlip-tint, transparent);
   transition: background-color var(--shapiq-duration);
 }
@@ -427,7 +451,7 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
     opacity 400ms ease 350ms;
 }
 
-.fixlip-demo-gliding .fixlip-demo-token::before {
+.fixlip-demo-gliding .fixlip-demo-token::after {
   transition: background-color 400ms ease 350ms;
 }
 
@@ -464,7 +488,7 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   opacity: 0;
 }
 
-/* the words outside the clique recede: muted text, the token still opaque over the edges */
+/* the words outside the clique recede: muted text and outline */
 .fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
   border-color: color-mix(in srgb, var(--shapiq-border) 60%, transparent);
   color: var(--shapiq-text-muted);
@@ -1007,14 +1031,17 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   .fixlip-demo-edges,
   .fixlip-demo-caption,
   .fixlip-demo-token,
-  .fixlip-demo-token::before,
+  .fixlip-demo-token::after,
   .fixlip-demo-panel > :not(.fixlip-demo-live),
   .fixlip-demo-panel > .fixlip-demo-prediction,
   .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
     transition: none;
   }
 
-  .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context {
+  .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context,
+  .fixlip-demo-renewed .fixlip-demo-token,
+  .fixlip-demo-renewed .fixlip-demo-token::before,
+  .fixlip-demo-renewed .fixlip-demo-token::after {
     animation: none;
   }
 }

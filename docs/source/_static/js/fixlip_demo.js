@@ -192,7 +192,8 @@
     const edges = document.createElementNS(SVG, "svg");
     edges.setAttribute("class", "fixlip-demo-edges");
     edges.setAttribute("aria-hidden", "true");
-    stage.append(frame, spoken, caption, edges);
+    // the edges before the caption: over its tokens' chips (see the CSS), under their words
+    stage.append(frame, spoken, edges, caption);
 
     const panel = el("div", "fixlip-demo-panel");
     const title = el("p", "fixlip-demo-title");
@@ -376,7 +377,7 @@
 
       cells.replaceChildren();
       caption.replaceChildren();
-      caption.classList.remove("fixlip-demo-arriving"); // a new caption fades in as a whole
+      caption.classList.remove("fixlip-demo-arriving", "fixlip-demo-renewed"); // see crossFade
       players = [];
       for (let k = 0; k < regionCount; k += 1) {
         const cell = el("button", "fixlip-demo-cell");
@@ -603,7 +604,10 @@
         return ghost;
       });
       change();
-      const fresh = newPhoto ? [cells, edges, caption] : [cells, edges];
+      // a new caption fades in: as a whole as an excerpt, and else by its tokens' words and chips
+      // (a fading caption would lift its chips over the edges, see the CSS)
+      const fresh = newPhoto && state.view === "none" ? [cells, edges, caption] : [cells, edges];
+      caption.classList.toggle("fixlip-demo-renewed", newPhoto && state.view !== "none");
       for (const node of fresh) node.classList.add("fixlip-demo-fresh");
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -703,17 +707,20 @@
       });
       caption.getBoundingClientRect(); // the tokens start where they were
       if (view !== "none") edges.classList.add("fixlip-demo-fresh"); // the edges follow the tokens
+      clearTimeout(glideTimer);
       requestAnimationFrame(() => {
         for (const t of tokens) {
           t.style.transition = "";
           t.style.transform = "";
         }
+        // the edges once the tokens are in place (their glide takes 650 ms): a gliding token is a
+        // layer of its own, with its chip over the edges
+        clearTimeout(glideTimer);
+        glideTimer = setTimeout(() => {
+          caption.classList.remove("fixlip-demo-gliding");
+          edges.classList.remove("fixlip-demo-fresh");
+        }, 700);
       });
-      clearTimeout(glideTimer);
-      glideTimer = setTimeout(() => {
-        caption.classList.remove("fixlip-demo-gliding");
-        edges.classList.remove("fixlip-demo-fresh");
-      }, 500);
     }
 
     // the excerpt's text fades out in a copy over the caption (its tokens hidden: they glide away)
