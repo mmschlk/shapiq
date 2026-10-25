@@ -453,10 +453,22 @@
           : `Lower than for ${100 - below}% of COCO photos with their own caption.`;
     }
 
-    // the caption's tokens with spaces where the text has them (not before punctuation, which CLIP's
-    // tokenizer marks as a word of its own)
-    const spaced = (e) =>
-      e.tokens.map(([text, space], k) => [k > 0 && space && !/^[.,;:!?]/.test(text) ? " " : "", text]);
+    // the caption's tokens with spaces where the text has them: not before punctuation, nor inside
+    // quotes, which CLIP's tokenizer marks as words of their own
+    const spaced = (e) => {
+      let quoted = false;
+      let opened = false; // after an opening quote
+      return e.tokens.map(([text, space], k) => {
+        let gap = k > 0 && space && !opened && !/^[.,;:!?]/.test(text);
+        opened = false;
+        if (text === '"') {
+          gap &&= !quoted;
+          opened = !quoted;
+          quoted = !quoted;
+        }
+        return [gap ? " " : "", text];
+      });
+    };
     const captionString = (e) => spaced(e).flat().join("");
 
     // the caption: its tokens within the text around it, whose words fade with their distance to
@@ -482,9 +494,9 @@
         return token;
       });
       inner.append(around(before, "before"));
-      let word = null; // a word with the punctuation after it, kept on one line
-      spaced(e).forEach(([space, text], k) => {
-        if (word && !space && /^[.,;:!?]/.test(text)) {
+      let word = null; // a word with the punctuation and quotes around it, kept on one line
+      spaced(e).forEach(([space], k) => {
+        if (word && !space) {
           word.append(tokens[k]);
           return;
         }
