@@ -1,10 +1,11 @@
-// The interactive explanation of the landing page: which words of a caption go with which regions
-// of a photo, for SigLIP 2 and CLIP, explained as in FIxLIP (Baniecki et al., NeurIPS 2025).
+// The FIxLIP demo (demos/fixlip/index.rst, also on the landing page): which words of a caption go
+// with which regions of a photo, for SigLIP 2 and CLIP, explained as in FIxLIP (Baniecki et al.,
+// NeurIPS 2025).
 //
 // The players are the image patches of the photo (7 x 7 for CLIP, 8 x 8 for SigLIP 2, both
-// ViT-B/32 as in FIxLIP's figures) and the tokens of the caption. Their main
-// effects and pairwise interactions (FBII, FIxLIP with p = 0.5) are precomputed per photo and
-// model in _static/fixlip/data.js, so the page only looks values up. At rest, the demo shows the
+// ViT-B/32 as in FIxLIP's figures) and the tokens of the caption. Their main effects and pairwise
+// interactions (FBII, FIxLIP with p = 0.5) are precomputed per photo and model in data.js (by the
+// scripts in ../compute), so the page only looks values up. At rest, the demo shows the
 // clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
 // the photo and as a graph of their interactions, as in FIxLIP's figures; or the full explanation,
 // every player tinted by its main effect and the strongest interactions drawn between them; or no

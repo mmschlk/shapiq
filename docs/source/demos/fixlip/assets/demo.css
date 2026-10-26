@@ -1,5 +1,5 @@
-/* The interactive FIxLIP explanation of the landing page (_static/js/fixlip_demo.js): a photo and
-   its caption, whose regions and tokens show their interactions when pointed at. */
+/* The interactive FIxLIP explanation (demo.js; see demos/fixlip/index.rst): a photo and its
+   caption, whose regions and tokens show their interactions when pointed at. */
 
 .fixlip-demo {
   clear: both;

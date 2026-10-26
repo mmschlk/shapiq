@@ -85,6 +85,12 @@ extensions = [
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_ext"))
 extensions.append("shapiq_timeline")
 
+# -- Demos (demos/) --------------------------------------------------------------------------------
+# One folder per demo: its page, its assets (copied to ``_static/demos/<name>/``) and the scripts
+# that computed its data. The ``shapiq-demo`` directive of ``_ext/shapiq_demos.py`` embeds a demo in
+# a page and adds its stylesheet and script there; see ``demos/README.md``.
+extensions.append("shapiq_demos")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
@@ -237,6 +243,10 @@ exclude_patterns = [
     "auto_examples/**.ipynb",
     # stale sphinx-gallery artifact at source root (real copy lives in auto_examples/)
     "sg_execution_times.rst",
+    # the demos' notes for maintainers, assets and scripts, which are not pages
+    "demos/README.md",
+    "demos/*/assets",
+    "demos/*/compute",
 ]
 bibtex_bibfiles = ["references.bib"]
 
@@ -398,13 +408,6 @@ html_js_files = [
     ("js/sidebar.js", {"defer": "defer"}),  # keeps the place in the sidebar
     ("js/logo.js", {"defer": "defer"}),  # the players of the landing page's logo are springs
 ]
-
-
-def _add_demo_assets(app, pagename, templatename, context, doctree) -> None:  # noqa: ARG001
-    """Load the landing page's interactive explanation (_static/js/fixlip_demo.js) there only."""
-    if pagename == "index":
-        app.add_css_file("css/fixlip_demo.css")
-        app.add_js_file("js/fixlip_demo.js", defer="defer")
 
 
 def _inline_logo(theme: str) -> str:
@@ -766,7 +769,6 @@ def setup(app) -> None:
     app.connect("missing-reference", _link_reexported_names)
     app.connect("build-finished", _write_redirects)
     app.connect("doctree-read", _short_navigation_titles, priority=900)  # after the title collector
-    app.connect("html-page-context", _add_demo_assets)
 
 
 # -- Suppress warnings -----------------------------------------------------------------------------

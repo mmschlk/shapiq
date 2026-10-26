@@ -60,22 +60,20 @@ Shapley Interactions for Machine Learning
 
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
-.. the interactive explanation of _static/js/fixlip_demo.js, with the data of _static/fixlip;
-   the static figure shows without JavaScript (and when the demo cannot start)
+.. the FIxLIP demo of demos/fixlip (README.md links to its anchor); the static figure shows without
+   JavaScript (and when the demo cannot start)
 
-.. raw:: html
-
-   <div class="fixlip-demo" id="interactive-demo" data-root="_static/fixlip/">
-     <noscript><img class="fixlip-demo-fallback" src="_static/images/hero_siglip2.png"
-          alt="A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them."></noscript>
-   </div>
+.. shapiq-demo:: fixlip
+   :anchor: interactive-demo
+   :fallback: images/hero_siglip2.png
+   :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
 
 .. container:: fixlip-demo-caption-text
 
    Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2
    :cite:p:`Tschannen.2025` and CLIP :cite:p:`Radford.2021` match a photo and its caption by the
    interactions of image regions and words, as in FIxLIP :cite:p:`Baniecki.2025`, approximated
-   with ProxySHAP :cite:p:`Thies.2026`.
+   with ProxySHAP :cite:p:`Thies.2026`. :doc:`More about this demo <demos/fixlip/index>`.
 
 
 Install
@@ -346,6 +344,7 @@ If you enjoy using ``shapiq``, please consider citing our NeurIPS paper :cite:p:
    :maxdepth: 2
    :caption: User Guide
 
+   demos/index
    examples
    timeline
 
