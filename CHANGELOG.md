@@ -2,6 +2,7 @@
 
 ## Development
 
+- fixes `SPEX` and `Sparse` ignoring `random_state`: the sparse transform drew its random queries from numpy's global random state, so the same `random_state` gave different results. The global state is now seeded from `random_state` for the transform and restored afterwards. [#645](https://github.com/mmschlk/shapiq/pull/645)
 - extends the timeline of Shapley-based methods to 12 lanes and 142 cards: the papers of [#631](https://github.com/mmschlk/shapiq/issues/631), lanes for the functional ANOVA, gradient-based attribution, and regional explanations, and swimlanes that open at the latest years. The bibliography (`references.bib`) now holds only the cited works in one format, which the pre-commit hook `format-bib` applies, and can be downloaded from its page. [#639](https://github.com/mmschlk/shapiq/pull/639)
 - removes `"CHII"` from `ProxySHAP` (and from `approximator="proxyshap"` of the explainers), so `ProxySHAP` and `ProxySPEX` support the same indices: those of the `MoebiusConverter`. Only tree proxies could compute it, not the linear proxy or the MSR residual adjustment. [#637](https://github.com/mmschlk/shapiq/pull/637)
 - fixes `ProxySHAP` and `ProxySPEX` accepting indices they cannot compute (e.g. `"kADD-SHAP"`) and failing only in `approximate()`. Both now declare their `valid_indices` and reject other indices at construction. [#637](https://github.com/mmschlk/shapiq/pull/637)
