@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
+from shapiq.utils.modules import safe_isinstance
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
@@ -24,7 +26,7 @@ WARNING_NO_CLASS_INDEX = (
 )
 
 ExplainerTypes = Literal[
-    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn"
+    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn", "graph"
 ]
 
 KNN_WEIGHTS_TO_EXPLAINER = {
@@ -44,6 +46,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
+    import shapiq.graph.explainer as gr
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
 
@@ -56,6 +59,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "knn": nn.KNNExplainer,
         "wknn": nn.WeightedKNNExplainer,
         "tnn": nn.ThresholdNNExplainer,
+        "graph": gr.GraphExplainer,
     }
 
 
@@ -102,6 +106,13 @@ def get_predict_function_and_model_type(
 
     if callable(model):
         _predict_function = predict_callable
+
+    if is_graph_neural_network(model):
+        _predict_function = RuntimeError(
+            "Graph neural networks are explained on torch_geometric.data.Data graphs with "
+            "GraphExplainer.explain."
+        )
+        return _predict_function, "graph"
 
     # sklearn
     if model_class in [
@@ -360,3 +371,14 @@ def print_class(obj: object) -> str:
     if not search:
         raise ValueError(msg)
     return search[0]
+
+
+def is_graph_neural_network(model: object) -> bool:
+    """Return whether the model is a torch module with message passing layers of torch_geometric.
+
+    Does not import torch: a model of a library that was never imported is none of its types.
+    """
+    if not safe_isinstance(model, "torch.nn.Module"):
+        return False
+    modules = cast("Any", model).modules()
+    return any(safe_isinstance(module, "torch_geometric.nn.MessagePassing") for module in modules)

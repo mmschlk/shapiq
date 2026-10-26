@@ -15,6 +15,8 @@ import pytest
 if TYPE_CHECKING:
     from types import ModuleType
 
+    from shapiq import Game
+
 
 def is_installed(package: str) -> bool:
     """Return whether ``package`` can be imported."""
@@ -135,6 +137,36 @@ class FakeSentimentPipeline:
             )
             outputs.append(scores if top_k is None else scores[0])
         return outputs
+
+
+def graph_game(n_nodes: int = 7, *, normalize: bool = True) -> Game:
+    """A two-layer GCN with a sum pooling and a linear readout on a path with a branch."""
+    import torch
+    from torch_geometric.data import Data
+    from torch_geometric.nn import GCNConv, global_add_pool
+
+    from shapiq_games import GraphGame
+
+    class GCN(torch.nn.Module):
+        num_layers = 2
+
+        def __init__(self) -> None:
+            super().__init__()
+            torch.manual_seed(0)
+            self.convs = torch.nn.ModuleList([GCNConv(3, 8), GCNConv(8, 8)])
+            self.readout = torch.nn.Linear(8, 2)
+
+        def forward(
+            self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor
+        ) -> torch.Tensor:
+            for conv in self.convs:
+                x = conv(x, edge_index).relu()
+            return self.readout(global_add_pool(x, batch))
+
+    edges = [(i, i + 1) for i in range(n_nodes - 2)] + [(1, n_nodes - 1)]
+    edge_index = torch.tensor(edges + [(j, i) for i, j in edges]).T
+    x = torch.rand(n_nodes, 3, generator=torch.Generator().manual_seed(0))
+    return GraphGame(GCN(), Data(x=x, edge_index=edge_index), normalize=normalize)
 
 
 def mean_brightness_classifier(images: np.ndarray) -> np.ndarray:
