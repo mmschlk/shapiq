@@ -243,6 +243,15 @@ jobs:
                     key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
+            # some Windows runners crash the tests with an illegal instruction (0xc000001d) in
+            # TabPFN: log the CPU and the instruction sets numpy and torch detect on each runner
+            -   if: matrix.os == 'windows-latest'
+                name: Show the CPU and its instruction sets
+                continue-on-error: true
+                run: |
+                    Get-CimInstance Win32_Processor | Select-Object Name, Manufacturer, NumberOfCores
+                    uv run --no-sync python -c "import numpy; numpy.show_runtime()"
+                    uv run --no-sync python -c "import torch; print('torch', torch.__version__, 'CPU capability:', torch.backends.cpu.get_cpu_capability())"
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------

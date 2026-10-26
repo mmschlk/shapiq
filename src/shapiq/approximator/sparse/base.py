@@ -169,17 +169,27 @@ class Sparse(Approximator[ValidSparseIndices]):
         """
         # Find the max value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
-        signal = SubsampledSignalFourier(
-            func=lambda inputs: game(inputs.astype(bool)),
-            n=self.n,
-            q=2,
-            query_args=self.query_args,
-        )
-        # Extract the coefficients of the original transform
-        initial_transform = {
-            tuple(np.nonzero(key)[0]): np.real(value)
-            for key, value in sparse_fourier_transform(signal, **self.decoder_args).items()
-        }
+        # sparse_transform draws its random queries from numpy's global random state: seed it from
+        # this approximator's generator so that random_state applies, and restore it afterwards
+        global_state = None
+        if self._random_state is not None:
+            global_state = np.random.get_state()  # noqa: NPY002
+            np.random.seed(self._rng.integers(2**32))  # noqa: NPY002
+        try:
+            signal = SubsampledSignalFourier(
+                func=lambda inputs: game(inputs.astype(bool)),
+                n=self.n,
+                q=2,
+                query_args=self.query_args,
+            )
+            # Extract the coefficients of the original transform
+            initial_transform = {
+                tuple(np.nonzero(key)[0]): np.real(value)
+                for key, value in sparse_fourier_transform(signal, **self.decoder_args).items()
+            }
+        finally:
+            if global_state is not None:
+                np.random.set_state(global_state)  # noqa: NPY002
         # Convert the Fourier transform to a Moebius transform
         moebius_transform = fourier_to_moebius(initial_transform)
         # Convert the Moebius transform to the desired index
