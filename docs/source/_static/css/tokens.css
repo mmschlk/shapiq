@@ -1,12 +1,14 @@
 /* Design tokens shared by the landing, gallery and timeline pages (colors of the shapiq logo).
    Furo switches themes with body[data-theme]; "auto" follows the system setting. */
 :root {
-  --shapiq-red: #e3326a;
-  --shapiq-red-strong: #ff0d57;
-  --shapiq-blue: #5773e5;
-  --shapiq-blue-light: #79ace5;
+  --shapiq-red: #f12d67;
+  --shapiq-red-strong: #ff2763;
+  --shapiq-blue: #4567f2;
+  --shapiq-blue-light: #82a9e7;
   --shapiq-lavender: #b3c2e5;
-  --shapiq-gradient: linear-gradient(135deg, #ff0d57 0%, #e3326a 30%, #628ae5 70%, #79ace5 100%);
+  --brand-ink-red: #ff2763;   /* probly × shapiq family red  */
+  --brand-ink-blue: #285bff;  /* probly × shapiq family blue */
+  --shapiq-gradient: linear-gradient(135deg, #ff2763 0%, #f12d67 30%, #6489e5 70%, #82a9e7 100%);
   --shapiq-surface: #ffffff;
   --shapiq-surface-raised: #f7f8fc;
   --shapiq-border: #e2e6f3;

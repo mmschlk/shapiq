@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <title>A query point and its nearest neighbors</title>
-  <circle cx="200" cy="142" r="74" fill="#e3326a" fill-opacity="0.08" stroke="#e3326a" stroke-width="3" stroke-dasharray="8 8"/>
-  <line x1="188.9" y1="131.9" x2="167.6" y2="112.7" stroke="#e3326a" stroke-width="3"/>
-  <line x1="213.3" y1="135.1" x2="238.5" y2="122" stroke="#e3326a" stroke-width="3"/>
-  <line x1="203.8" y1="156.5" x2="210.7" y2="183.4" stroke="#e3326a" stroke-width="3"/>
-  <circle cx="158" cy="104" r="10" fill="#5773e5"/>
-  <circle cx="250" cy="116" r="10" fill="#5773e5"/>
-  <rect x="205" y="187" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 214 196)"/>
-  <circle cx="70" cy="64" r="10" fill="#5773e5"/>
-  <rect x="119" y="31" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 128 40)"/>
-  <rect x="51" y="141" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 60 150)"/>
-  <circle cx="104" cy="214" r="10" fill="#5773e5"/>
-  <rect x="43" y="231" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 52 240)"/>
-  <rect x="291" y="43" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 300 52)"/>
-  <circle cx="356" cy="96" r="10" fill="#5773e5"/>
-  <circle cx="330" cy="166" r="10" fill="#5773e5"/>
-  <rect x="293" y="227" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 302 236)"/>
-  <circle cx="156" cy="256" r="10" fill="#5773e5"/>
-  <rect x="363" y="211" width="18" height="18" rx="4" fill="#79ace5" transform="rotate(45 372 220)"/>
-  <circle cx="250" cy="30" r="10" fill="#5773e5"/>
-  <polygon points="200,127 203.8,136.7 214.3,137.4 206.2,144 208.8,154.1 200,148.5 191.2,154.1 193.8,144 185.7,137.4 196.2,136.7" fill="#e3326a" stroke="#e3326a" stroke-width="2"/>
+  <circle cx="200" cy="142" r="74" fill="#f12d67" fill-opacity="0.08" stroke="#f12d67" stroke-width="3" stroke-dasharray="8 8"/>
+  <line x1="188.9" y1="131.9" x2="167.6" y2="112.7" stroke="#f12d67" stroke-width="3"/>
+  <line x1="213.3" y1="135.1" x2="238.5" y2="122" stroke="#f12d67" stroke-width="3"/>
+  <line x1="203.8" y1="156.5" x2="210.7" y2="183.4" stroke="#f12d67" stroke-width="3"/>
+  <circle cx="158" cy="104" r="10" fill="#4567f2"/>
+  <circle cx="250" cy="116" r="10" fill="#4567f2"/>
+  <rect x="205" y="187" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 214 196)"/>
+  <circle cx="70" cy="64" r="10" fill="#4567f2"/>
+  <rect x="119" y="31" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 128 40)"/>
+  <rect x="51" y="141" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 60 150)"/>
+  <circle cx="104" cy="214" r="10" fill="#4567f2"/>
+  <rect x="43" y="231" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 52 240)"/>
+  <rect x="291" y="43" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 300 52)"/>
+  <circle cx="356" cy="96" r="10" fill="#4567f2"/>
+  <circle cx="330" cy="166" r="10" fill="#4567f2"/>
+  <rect x="293" y="227" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 302 236)"/>
+  <circle cx="156" cy="256" r="10" fill="#4567f2"/>
+  <rect x="363" y="211" width="18" height="18" rx="4" fill="#82a9e7" transform="rotate(45 372 220)"/>
+  <circle cx="250" cy="30" r="10" fill="#4567f2"/>
+  <polygon points="200,127 203.8,136.7 214.3,137.4 206.2,144 208.8,154.1 200,148.5 191.2,154.1 193.8,144 185.7,137.4 196.2,136.7" fill="#f12d67" stroke="#f12d67" stroke-width="2"/>
 </svg>

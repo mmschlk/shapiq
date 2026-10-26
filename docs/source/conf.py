@@ -470,22 +470,23 @@ html_theme_options = {
         {"name": "GitHub", "url": "https://github.com/mmschlk/shapiq", "html": _GITHUB_ICON},
         {"name": "PyPI", "url": "https://pypi.org/project/shapiq/", "html": _PYPI_ICON},
     ],
-    # brand colors of the logo (see _static/css/tokens.css), darkened or lightened for contrast
+    # brand colors of the probly and shapiq family (see _static/css/tokens.css), darkened or
+    # lightened for contrast
     "light_css_variables": {
-        "color-brand-primary": "#d0245c",
-        "color-brand-content": "#3a57cf",
-        "color-brand-visited": "#3a57cf",
+        "color-brand-primary": "#d9004e",
+        "color-brand-content": "#285bff",
+        "color-brand-visited": "#285bff",
         "color-sidebar-link-text--top-level": "var(--color-foreground-primary)",
-        "color-highlighted-background": "#fde7ef",
+        "color-highlighted-background": "#ffe9ef",
         "color-inline-code-background": "#f3f4f9",
         "color-code-background": "var(--shapiq-surface-raised)",
     },
     "dark_css_variables": {
-        "color-brand-primary": "#ff6b95",
-        "color-brand-content": "#8fb3ff",
-        "color-brand-visited": "#8fb3ff",
+        "color-brand-primary": "#ff426d",
+        "color-brand-content": "#608fff",
+        "color-brand-visited": "#608fff",
         "color-sidebar-link-text--top-level": "var(--color-foreground-primary)",
-        "color-highlighted-background": "#3b1d2a",
+        "color-highlighted-background": "#3d1724",
         "color-inline-code-background": "#1d2027",
         "color-code-background": "var(--shapiq-surface-raised)",
     },

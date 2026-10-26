@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <title>Estimates converging to the true value</title>
   <path d="M44 30 V244 H372" stroke="#8b93a7" stroke-width="3"/>
-  <path d="M56 48 C120 98, 220 120, 362 125 L362 137 C220 142, 120 164, 56 214 Z" fill="#5773e5" fill-opacity="0.16"/>
-  <path d="M56 131 H366" stroke="#e3326a" stroke-width="3" stroke-dasharray="9 8"/>
-  <polyline points="60,74 86,186 112,96 138,170 164,112 192,155 222,120 254,145 288,125 322,137 356,131" stroke="#5773e5" stroke-width="4"/>
-  <circle cx="60" cy="74" r="5.5" fill="#5773e5"/>
-  <circle cx="86" cy="186" r="5.5" fill="#5773e5"/>
-  <circle cx="112" cy="96" r="5.5" fill="#5773e5"/>
-  <circle cx="138" cy="170" r="5.5" fill="#5773e5"/>
-  <circle cx="164" cy="112" r="5.5" fill="#5773e5"/>
-  <circle cx="192" cy="155" r="5.5" fill="#5773e5"/>
-  <circle cx="222" cy="120" r="5.5" fill="#5773e5"/>
-  <circle cx="254" cy="145" r="5.5" fill="#5773e5"/>
-  <circle cx="288" cy="125" r="5.5" fill="#5773e5"/>
-  <circle cx="322" cy="137" r="5.5" fill="#5773e5"/>
-  <circle cx="356" cy="131" r="9" fill="#e3326a"/>
+  <path d="M56 48 C120 98, 220 120, 362 125 L362 137 C220 142, 120 164, 56 214 Z" fill="#4567f2" fill-opacity="0.16"/>
+  <path d="M56 131 H366" stroke="#f12d67" stroke-width="3" stroke-dasharray="9 8"/>
+  <polyline points="60,74 86,186 112,96 138,170 164,112 192,155 222,120 254,145 288,125 322,137 356,131" stroke="#4567f2" stroke-width="4"/>
+  <circle cx="60" cy="74" r="5.5" fill="#4567f2"/>
+  <circle cx="86" cy="186" r="5.5" fill="#4567f2"/>
+  <circle cx="112" cy="96" r="5.5" fill="#4567f2"/>
+  <circle cx="138" cy="170" r="5.5" fill="#4567f2"/>
+  <circle cx="164" cy="112" r="5.5" fill="#4567f2"/>
+  <circle cx="192" cy="155" r="5.5" fill="#4567f2"/>
+  <circle cx="222" cy="120" r="5.5" fill="#4567f2"/>
+  <circle cx="254" cy="145" r="5.5" fill="#4567f2"/>
+  <circle cx="288" cy="125" r="5.5" fill="#4567f2"/>
+  <circle cx="322" cy="137" r="5.5" fill="#4567f2"/>
+  <circle cx="356" cy="131" r="9" fill="#f12d67"/>
 </svg>
