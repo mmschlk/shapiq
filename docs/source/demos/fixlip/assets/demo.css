@@ -1,0 +1,1053 @@
+/* The interactive FIxLIP explanation (demo.js; see demos/fixlip/index.rst): a photo and its
+   caption, whose regions and tokens show their interactions when pointed at. */
+
+.fixlip-demo {
+  clear: both;
+  margin: 2rem 0 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  /* red and blue for values in text, darker than the tints so that they read well as text */
+  --fixlip-red-text: #d6003f;
+  --fixlip-blue-text: #1565c0;
+}
+
+body[data-theme="dark"] .fixlip-demo {
+  --fixlip-red-text: #ff3d74;
+  --fixlip-blue-text: #4ba3f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo {
+    --fixlip-red-text: #ff3d74;
+    --fixlip-blue-text: #4ba3f0;
+  }
+}
+
+.fixlip-demo-up {
+  color: var(--fixlip-red-text);
+}
+
+.fixlip-demo-down {
+  color: var(--fixlip-blue-text);
+}
+
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
+@media (scripting: enabled) {
+  .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
+    min-height: 37rem;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 45em) {
+  .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
+    min-height: 72rem;
+  }
+}
+
+/* the static figure, until the demo has loaded (and without JavaScript) */
+.fixlip-demo-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--shapiq-radius-small);
+  background: #ffffff;
+}
+
+.fixlip-demo-caption-text p {
+  margin: 0 0 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--shapiq-text-muted);
+}
+
+/* -- the photos, the views, and the models ------------------------------------------------------ */
+
+.fixlip-demo-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.fixlip-demo-photos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fixlip-demo-photo {
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: var(--shapiq-radius-small);
+  background: none;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration);
+}
+
+.fixlip-demo-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-demo-photo:hover,
+.fixlip-demo-photo[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.fixlip-demo-photo[aria-pressed="true"] {
+  border-color: var(--shapiq-red);
+}
+
+.fixlip-demo-photo:disabled,
+.fixlip-demo-option:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.fixlip-demo-switches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* the "i" that tells what the models are, and its note */
+.fixlip-demo-info {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-secondary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fixlip-demo-info:hover,
+.fixlip-demo-info[aria-expanded="true"] {
+  border-color: var(--color-foreground-primary);
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-about {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  width: min(26rem, 100%);
+  padding: 0.9rem 1.1rem 0.4rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-foreground-secondary);
+}
+
+.fixlip-demo-about p {
+  margin: 0 0 0.6rem;
+}
+
+.fixlip-demo-about strong,
+.fixlip-demo-about .fixlip-demo-about-title {
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-about-title {
+  padding-right: 1.5rem;
+  font-weight: 700;
+}
+
+.fixlip-demo-about-close {
+  float: right;
+  margin: -0.35rem -0.5rem 0 0;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: var(--color-foreground-secondary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fixlip-demo-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.fixlip-demo-option {
+  padding: 0.35rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-foreground-secondary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fixlip-demo-option[aria-pressed="true"] {
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+}
+
+.fixlip-demo-short {
+  display: none;
+}
+
+/* -- the stage: the photo with its regions, the caption with its tokens, the clique's edges ---- */
+
+.fixlip-demo-body {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.fixlip-demo-stage {
+  position: relative;
+  z-index: 1; /* over the panel while it slides */
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* without an explanation, the photo moves towards the middle, into the emptied panel */
+.fixlip-demo-none .fixlip-demo-stage {
+  transform: translateX(var(--fixlip-shift, 0px));
+}
+
+.fixlip-demo-image {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--shapiq-radius-small);
+}
+
+.fixlip-demo-image > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.fixlip-demo-cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--fixlip-grid, 7), 1fr);
+  grid-template-rows: repeat(var(--fixlip-grid, 7), 1fr);
+}
+
+/* switching models cross-fades their grids of patches: the old ones (copies) fade out, the new
+   ones fade in */
+.fixlip-demo-cells,
+.fixlip-demo-edges {
+  transition: opacity 450ms ease;
+}
+
+.fixlip-demo-cells.fixlip-demo-fresh,
+.fixlip-demo-edges.fixlip-demo-fresh {
+  opacity: 0;
+  transition: none;
+}
+
+.fixlip-demo-caption.fixlip-demo-fresh {
+  opacity: 0;
+  transition: none;
+}
+
+/* next to the edges, a new caption fades in by its tokens' words and chips: as a whole, it would be
+   a layer of its own while it fades, with its chips over the edges */
+.fixlip-demo-renewed .fixlip-demo-token {
+  animation: fixlip-demo-token-in 450ms ease backwards;
+}
+
+.fixlip-demo-renewed .fixlip-demo-token::before,
+.fixlip-demo-renewed .fixlip-demo-token::after {
+  animation: fixlip-demo-fade-in 450ms ease backwards;
+}
+
+@keyframes fixlip-demo-token-in {
+  from {
+    border-color: transparent;
+    color: transparent;
+  }
+}
+
+.fixlip-demo-ghost {
+  pointer-events: none;
+}
+
+.fixlip-demo-ghost.fixlip-demo-gone {
+  opacity: 0;
+}
+
+.fixlip-demo-cell {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* the tint of an interaction, and the veil over the regions outside the clique */
+.fixlip-demo-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fixlip-tint, transparent);
+  transition: background-color var(--shapiq-duration);
+}
+
+/* the grid of the regions, and the outline of a region in the clique or pointed at */
+.fixlip-demo-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
+}
+
+body[data-theme="dark"] .fixlip-demo-cell::after {
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo-cell::after {
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+  }
+}
+
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-cell:not(.fixlip-demo-in)::before {
+  background: color-mix(in srgb, var(--shapiq-surface) 60%, transparent);
+}
+
+.fixlip-demo-cell.fixlip-demo-in::after {
+  box-shadow: inset 0 0 0 2px #ffffff, inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+.fixlip-demo-cell.fixlip-demo-focus::after {
+  outline: 2px dashed #ffffff;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.45);
+}
+
+.fixlip-demo-cell:focus-visible {
+  outline: none;
+}
+
+/* the caption, whose tokens the edges end at the tops of */
+.fixlip-demo-caption {
+  position: relative;
+  transition: opacity 450ms ease;
+  margin: 0.9rem 0 0;
+  text-align: center;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.92rem;
+  line-height: 2.2;
+}
+
+/* a token's chip (the card's color under its tint) lies under the edges, its word over them: the
+   chip is painted first in the stage (z-index -1), the edges before the caption that holds the word
+   (the stage's order); so the edges to a token on the caption's second line stay in view over the
+   first */
+.fixlip-demo-token {
+  position: relative;
+  padding: 0.12rem 0.32rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-foreground-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration),
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fixlip-demo-token::before,
+.fixlip-demo-token::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--shapiq-surface);
+}
+
+.fixlip-demo-token::after {
+  background: var(--fixlip-tint, transparent);
+  transition: background-color var(--shapiq-duration);
+}
+
+/* a word and the punctuation after it */
+.fixlip-demo-word {
+  white-space: nowrap;
+}
+
+/* without an explanation, the caption is an excerpt of a longer text (see placeExcerpt in the
+   script): the text around it, fading with the distance, in a box that keeps the caption's room
+   and dissolves at its top and bottom */
+.fixlip-demo-caption-inner {
+  display: block;
+}
+
+.fixlip-demo-caption:not(.fixlip-demo-excerpt) .fixlip-demo-context {
+  display: none;
+}
+
+.fixlip-demo-caption.fixlip-demo-excerpt {
+  height: var(--fixlip-caption-height, auto);
+  overflow: hidden;
+  line-height: 1.75;
+  text-align: start;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+}
+
+.fixlip-demo-excerpt .fixlip-demo-token {
+  padding-inline: 0;
+  border-color: transparent;
+}
+
+.fixlip-demo-context {
+  color: var(--color-foreground-secondary);
+}
+
+/* into the excerpt, its text fades in after the tokens have glided into it (on a new photo, the
+   whole caption fades in with the photo instead) */
+.fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context {
+  animation: fixlip-demo-fade-in 600ms ease 300ms both;
+}
+
+@keyframes fixlip-demo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* into an explanation, the tokens glide to their line and then get their outlines */
+.fixlip-demo-gliding .fixlip-demo-token {
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), border-color 400ms ease 350ms,
+    opacity 400ms ease 350ms;
+}
+
+.fixlip-demo-gliding .fixlip-demo-token::after {
+  transition: background-color 400ms ease 350ms;
+}
+
+/* out of the excerpt, its text fades in a copy (whose tokens are hidden: they glide away) */
+.fixlip-demo-caption.fixlip-demo-ghost {
+  position: absolute;
+  margin: 0;
+  transition: opacity 400ms ease;
+}
+
+.fixlip-demo-caption.fixlip-demo-ghost .fixlip-demo-token {
+  visibility: hidden;
+}
+
+.fixlip-demo-ghost .fixlip-demo-context {
+  animation: none;
+}
+
+/* without an explanation, the photo and the caption are plain: no grid, no chips */
+.fixlip-demo-none .fixlip-demo-token {
+  border-color: transparent;
+  cursor: default;
+}
+
+.fixlip-demo-none .fixlip-demo-cell {
+  cursor: default;
+}
+
+.fixlip-demo-none .fixlip-demo-cell::after {
+  box-shadow: none;
+}
+
+.fixlip-demo-none .fixlip-demo-edges {
+  opacity: 0;
+}
+
+/* the words outside the clique recede: muted text and outline */
+.fixlip-demo:not(.fixlip-demo-focused, .fixlip-demo-full, .fixlip-demo-none) .fixlip-demo-token:not(.fixlip-demo-in) {
+  border-color: color-mix(in srgb, var(--shapiq-border) 60%, transparent);
+  color: var(--shapiq-text-muted);
+}
+
+/* a word on a strong tint: white on the dark theme (on the light one, the dark text reads best) */
+body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-demo-token.fixlip-demo-strong {
+    color: #ffffff;
+  }
+}
+
+.fixlip-demo-token.fixlip-demo-in {
+  border-color: var(--color-foreground-primary);
+  font-weight: 700;
+}
+
+.fixlip-demo-token.fixlip-demo-focus,
+.fixlip-demo-token:focus-visible {
+  outline: 2px dashed var(--color-foreground-primary);
+  outline-offset: 2px;
+}
+
+.fixlip-demo-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* -- the panel: what is shown, the strongest interactions, the legend, the model and photo ----- */
+
+.fixlip-demo-panel {
+  --fixlip-row: 2.9rem;
+  --fixlip-slot: calc(5 * var(--fixlip-row) + 4 * 0.5rem);
+  position: relative;
+  font-size: 0.92rem;
+  color: var(--color-foreground-secondary);
+}
+
+/* the explanation fades out without one (and keeps its room), the prediction fades in after it;
+   back, the prediction fades out first, then the explanation in */
+.fixlip-demo-panel > :not(.fixlip-demo-live) {
+  transition: opacity 250ms 150ms, visibility 250ms 150ms;
+}
+
+.fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s;
+}
+
+.fixlip-demo-panel > .fixlip-demo-prediction {
+  position: absolute;
+  inset: 0 0 0 calc(var(--fixlip-overlap, 0px) + 1.5rem);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms, visibility 150ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 350ms 300ms, visibility 350ms 300ms, left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fixlip-demo-prediction-main {
+  margin: auto 0;
+}
+
+.fixlip-demo-prediction-main p {
+  margin: 0;
+}
+
+.fixlip-demo-prediction-model {
+  font-weight: 600;
+  color: var(--color-foreground-primary);
+}
+
+/* the similarity, and a word for how it compares */
+.fixlip-demo-prediction-main .fixlip-demo-prediction-number {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.fixlip-demo-prediction-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-verdict {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shapiq-lavender) 40%, transparent);
+  color: var(--color-foreground-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fixlip-demo-verdict[hidden] {
+  display: none;
+}
+
+/* where the similarity is: among unrelated captions (grey), among own captions (lavender) */
+.fixlip-demo-scale {
+  position: relative;
+  max-width: 17rem;
+  height: 2.5rem;
+  margin: 0.65rem 0 0.1rem;
+}
+
+.fixlip-demo-scale::before,
+.fixlip-demo-scale-band {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.fixlip-demo-scale::before {
+  inset-inline: 0;
+  background: var(--shapiq-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--shapiq-border);
+}
+
+.fixlip-demo-scale-unrelated {
+  background: color-mix(in srgb, var(--color-foreground-secondary) 35%, transparent);
+}
+
+.fixlip-demo-scale-matching {
+  background: var(--shapiq-lavender);
+}
+
+.fixlip-demo-scale-mark {
+  position: absolute;
+  top: calc(0.5rem - 4px);
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 3px solid var(--shapiq-surface);
+  border-radius: 999px;
+  background: var(--color-foreground-primary);
+  transform: translateX(-50%);
+}
+
+.fixlip-demo-scale-label {
+  position: absolute;
+  top: 1.15rem;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  color: var(--shapiq-text-muted);
+}
+
+.fixlip-demo-prediction-main .fixlip-demo-prediction-compare {
+  font-size: 0.85rem;
+  color: var(--shapiq-text-muted);
+}
+
+.fixlip-demo-prediction-main .fixlip-demo-prediction-why {
+  margin-top: 1rem;
+}
+
+/* the views named in the prediction's text, as links */
+.fixlip-demo-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-brand-content, #2962ff);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* the title, the description, and the slot keep their heights in both views, so that pointing
+   at players does not move the panel */
+.fixlip-demo-title {
+  min-height: 1.35em;
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-detail {
+  min-height: calc(2 * 1.55em);
+  margin: 0 0 0.85rem;
+  line-height: 1.55;
+}
+
+.fixlip-demo-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: var(--fixlip-slot);
+  margin-bottom: 0.9rem;
+}
+
+.fixlip-demo-list[hidden] {
+  display: none;
+}
+
+/* the clique's size: a control that stands out above its graph */
+.fixlip-demo-size {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 3px;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.fixlip-demo-size[hidden] {
+  display: none;
+}
+
+.fixlip-demo-step {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity var(--shapiq-duration);
+}
+
+.fixlip-demo-step:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.fixlip-demo-step[aria-disabled="true"] {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.fixlip-demo-size-label {
+  min-width: 5.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground-primary);
+}
+
+/* the clique: its players on an ellipse, linked by their interactions */
+.fixlip-demo-graph {
+  position: relative;
+  flex: 1;
+  min-height: 12rem;
+}
+
+.fixlip-demo-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fixlip-demo-links text {
+  fill: var(--fixlip-red-text);
+  font-family: var(--font-stack--monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.fixlip-demo-links text.fixlip-demo-down {
+  fill: var(--fixlip-blue-text);
+}
+
+.fixlip-demo-links rect {
+  fill: var(--shapiq-surface);
+  stroke: var(--shapiq-border);
+}
+
+.fixlip-demo-swatch.fixlip-demo-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background-color: var(--shapiq-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+
+.fixlip-demo-swatch-region.fixlip-demo-node {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--shapiq-border), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* a large clique in a narrow panel: smaller nodes */
+.fixlip-demo-crowded .fixlip-demo-swatch.fixlip-demo-node {
+  height: 1.6rem;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+}
+
+.fixlip-demo-crowded .fixlip-demo-swatch-region.fixlip-demo-node {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+}
+
+.fixlip-demo-list {
+  display: grid;
+  grid-auto-rows: var(--fixlip-row);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fixlip-demo-list li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 4.75rem;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+/* the full explanation lists pairs of players */
+.fixlip-demo-list-pairs li {
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 4.75rem;
+}
+
+.fixlip-demo-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fixlip-demo-times {
+  color: var(--shapiq-text-muted);
+}
+
+/* a token or a region, of the same height either way */
+.fixlip-demo-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  box-sizing: border-box;
+  height: 2rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 5px;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-swatch-region {
+  width: 2rem;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.fixlip-demo-swatch-title {
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0 0.15rem;
+  vertical-align: -0.3rem;
+}
+
+.fixlip-demo-cell:focus-visible::after {
+  outline: 2px solid var(--color-foreground-primary);
+  outline-offset: -2px;
+}
+
+.fixlip-demo-bar-value {
+  height: 0.55rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--fixlip-color), var(--fixlip-color)) left / var(--fixlip-width) 100% no-repeat,
+    var(--shapiq-surface-raised);
+}
+
+.fixlip-demo-number {
+  text-align: right;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+.fixlip-demo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.fixlip-demo-key {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+}
+
+.fixlip-demo-key-red {
+  background: #ff0d57;
+}
+
+.fixlip-demo-key-blue {
+  margin-left: 0.6rem;
+  background: #1e88e5;
+}
+
+.fixlip-demo-meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--shapiq-text-muted);
+}
+
+.fixlip-demo-live,
+.fixlip-demo-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* -- narrower demos: a smaller photo next to a panel that keeps more room for its text --------- */
+
+@container (max-width: 50rem) {
+  .fixlip-demo-body {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .fixlip-demo-panel {
+    --fixlip-row: 2.6rem;
+  }
+
+  .fixlip-demo-title {
+    min-height: calc(2 * 1.35em);
+  }
+
+  .fixlip-demo-detail {
+    min-height: calc(3 * 1.55em);
+  }
+}
+
+/* -- small screens: the panel goes under the photo ---------------------------------------------- */
+
+@container (max-width: 42rem) {
+  .fixlip-demo-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .fixlip-demo-photo {
+    width: 2.9rem;
+    height: 2.9rem;
+  }
+
+  /* the photo no wider than it needs to be, so that the panel under it stays in view */
+  .fixlip-demo-stage {
+    justify-self: center;
+    width: 100%;
+    max-width: 26rem;
+  }
+
+  .fixlip-demo-panel {
+    --fixlip-row: 2.6rem;
+  }
+
+  .fixlip-demo-title {
+    min-height: calc(2 * 1.35em);
+  }
+
+  .fixlip-demo-detail {
+    min-height: calc(4 * 1.55em);
+  }
+
+  .fixlip-demo-long {
+    display: none;
+  }
+
+  .fixlip-demo-short {
+    display: inline;
+  }
+
+  /* under the photo, the prediction takes the panel's place: nothing moves, nothing is kept */
+  .fixlip-demo-panel > .fixlip-demo-prediction {
+    position: static;
+    display: none;
+  }
+
+  .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
+    display: flex;
+  }
+
+  .fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
+    display: none;
+  }
+
+  .fixlip-demo-prediction .fixlip-demo-meta {
+    margin-top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* as specific as the rules with transitions */
+  .fixlip-demo-stage,
+  .fixlip-demo-cells,
+  .fixlip-demo-edges,
+  .fixlip-demo-caption,
+  .fixlip-demo-token,
+  .fixlip-demo-token::after,
+  .fixlip-demo-panel > :not(.fixlip-demo-live),
+  .fixlip-demo-panel > .fixlip-demo-prediction,
+  .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
+    transition: none;
+  }
+
+  .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context,
+  .fixlip-demo-renewed .fixlip-demo-token,
+  .fixlip-demo-renewed .fixlip-demo-token::before,
+  .fixlip-demo-renewed .fixlip-demo-token::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 46em) {
+  .fixlip-demo {
+    padding: 0.85rem;
+  }
+}
