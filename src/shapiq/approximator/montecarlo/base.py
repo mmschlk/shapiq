@@ -460,11 +460,8 @@ class MonteCarlo(Approximator[TIndices]):
         """Log of the CHII discrete derivative weight.
 
         The weight is ``s * (s + t - 1)! * (n - s - t)! / n!`` for interaction size ``s`` and
-        coalition size ``t``, the chaining interaction index :cite:p:`Marichal.1999` as a
-        cardinal interaction index. Summed over coalitions it recovers the Moebius representation
-        ``sum_{T >= S} s / |T| * m(T)``, whose coefficient ``s / |T|`` is not itself the weight.
-        CHII is not defined for the empty interaction, whose weight is ``0`` (``-inf`` in
-        log-space) instead of ``log(0) + gammaln(0) = nan``.
+        coalition size ``t``.
+        For details, refer to :cite:p:`Marichal.1999`.
         """
         if interaction_size == 0:
             return -np.inf
