@@ -85,6 +85,12 @@ extensions = [
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_ext"))
 extensions.append("shapiq_timeline")
 
+# -- Demos (demos/) --------------------------------------------------------------------------------
+# One folder per demo: its page, its assets (copied to ``_static/demos/<name>/``) and the scripts
+# that computed its data. The ``shapiq-demo`` directive of ``_ext/shapiq_demos.py`` embeds a demo in
+# a page and adds its stylesheet and script there; see ``demos/README.md``.
+extensions.append("shapiq_demos")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
@@ -237,6 +243,10 @@ exclude_patterns = [
     "auto_examples/**.ipynb",
     # stale sphinx-gallery artifact at source root (real copy lives in auto_examples/)
     "sg_execution_times.rst",
+    # the demos' notes for maintainers, assets and scripts, which are not pages
+    "demos/README.md",
+    "demos/*/assets",
+    "demos/*/compute",
 ]
 bibtex_bibfiles = ["references.bib"]
 
