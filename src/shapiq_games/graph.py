@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from shapiq.game import Game
 from shapiq.graph import GraphBaselineImputer, convert_graph, get_graph_predict_function
+from shapiq.graph.conversion import check_graph_neural_network
 from shapiq_games._base import as_bool_coalitions
 
 if TYPE_CHECKING:
+    import torch
     from torch_geometric.data import Data
 
-    from shapiq.graph import GraphModel
     from shapiq.typing import CoalitionMatrix, GameValues
 
 __all__ = ["GraphGame"]
@@ -28,14 +29,13 @@ class GraphGame(Game):
     value of a coalition is the graph-level output of the model for the imputed graph: the
     explained class's logit for a model with several outputs, else its single output.
 
-    The game is local on the graph if the model consists of ``n_hops`` message passing layers
-    followed by a linear global pooling (e.g. a sum or mean over the nodes) and a linear readout,
-    and :class:`~shapiq.graph.GraphSHAPIQ` computes its values exactly. A softmax or a nonlinear
-    readout after the pooling makes the game non-local, so explain logits. A ``torch`` model is
+    The game is local on the graph if the model consists of ``model.num_layers`` message passing
+    layers followed by a linear global pooling (e.g. a sum or mean over the nodes) and a linear
+    readout, and :class:`~shapiq.graph.GraphSHAPIQ` computes its values exactly. A softmax or a
+    nonlinear readout after the pooling makes the game non-local, so explain logits. The model is
     evaluated on padded batches of ``batch_size`` imputed graphs (see
     :func:`~shapiq.graph.get_graph_predict_function`), so the value of a coalition does not depend
-    on which coalitions are evaluated with it. A function of node features is called on many
-    imputed graphs at once, so its outputs must not depend on the other graphs of a call.
+    on which coalitions are evaluated with it.
 
     Attributes:
         model: The graph neural network.
@@ -65,12 +65,11 @@ class GraphGame(Game):
 
     def __init__(
         self,
-        model: Any,  # noqa: ANN401
-        graph: Data | GraphModel,
+        model: torch.nn.Module,
+        graph: Data,
         *,
         data: np.ndarray | None = None,
         class_index: int | None = None,
-        n_hops: int | None = None,
         batch_size: int = 128,
         normalize: bool = True,
         verbose: bool = False,
@@ -78,29 +77,31 @@ class GraphGame(Game):
         """Initialize the game.
 
         Args:
-            model: A graph neural network with a graph-level output, called as
-                ``model(x=x, edge_index=edge_index, batch=batch)``, or a function of node features
-                of shape ``(n_graphs, n_nodes, n_features)`` for a graph given as
-                :class:`~shapiq.graph.GraphModel`.
-            graph: The explained graph with node features, a ``torch_geometric.data.Data`` graph
-                or a :class:`~shapiq.graph.GraphModel`.
+            model: A graph neural network of ``torch`` with a graph-level output, called as
+                ``model(x=x, edge_index=edge_index, batch=batch)``, whose ``num_layers`` attribute
+                is its number of message passing layers (the models of ``torch_geometric.nn`` set
+                it).
+            graph: The explained graph, a ``torch_geometric.data.Data`` graph with node features.
             data: The background node features of shape ``(n_samples, n_features)``, whose mean is
                 the baseline of absent nodes, or the baseline node features of shape
                 ``(n_features,)``. Defaults to ``None``, which means zeros.
             class_index: The explained output of a model with several outputs. Defaults to
                 ``None``, which means output ``1`` for models with several outputs (the convention
                 of the shapiq explainers) and the output of models with one output.
-            n_hops: The number of message passing layers of the model. Defaults to ``None``,
-                which takes ``model.num_layers`` (or ``n_hops`` of a
-                :class:`~shapiq.graph.GraphModel`).
-            batch_size: The number of graphs per forward pass of a ``torch`` model. Defaults to
-                ``128``.
+            batch_size: The number of graphs per forward pass of the model. Defaults to ``128``.
             normalize: Whether to center the game such that the value of the empty coalition is
                 zero. Defaults to ``True``.
             verbose: Whether to show a progress bar when evaluating the game.
+
+        Raises:
+            ImportError: If torch or torch_geometric is not installed.
+            TypeError: If the model is not a ``torch`` model or the graph not a ``torch_geometric``
+                graph.
+            ValueError: If the model has no integer ``num_layers``.
         """
+        check_graph_neural_network(model, graph)
         self.model = model
-        self.graph = convert_graph(graph, n_hops=n_hops, model=model)
+        self.graph = convert_graph(graph, model=model)
         predict = get_graph_predict_function(
             model, self.graph, class_index=class_index, batch_size=batch_size
         )

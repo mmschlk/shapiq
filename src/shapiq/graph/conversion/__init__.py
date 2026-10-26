@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "GraphPredictFunction",
+    "check_graph_neural_network",
     "convert_graph",
     "get_graph_predict_function",
     "require_torch_geometric",
@@ -63,6 +64,36 @@ def resolve_n_hops(model: object, n_hops: int | None) -> int:
         )
         raise ValueError(msg)
     return int(n_hops)
+
+
+def check_graph_neural_network(model: object, graph: object = None) -> None:
+    """Check that the model is a graph neural network of torch and the graph of torch_geometric.
+
+    Args:
+        model: The model, called as ``model(x=x, edge_index=edge_index, batch=batch)``, with an
+            integer ``num_layers`` attribute: its number of message passing layers.
+        graph: The graph, a ``torch_geometric.data.Data`` graph, if given.
+
+    Raises:
+        ImportError: If torch or torch_geometric is not installed.
+        TypeError: If the model is not a ``torch`` model or the graph not a ``torch_geometric``
+            graph.
+        ValueError: If the model has no non-negative integer ``num_layers``.
+    """
+    require_torch_geometric()
+    if not safe_isinstance(model, "torch.nn.Module"):
+        msg = f"The model must be a torch model of graphs, got {type(model).__name__}."
+        raise TypeError(msg)
+    if graph is not None and not safe_isinstance(graph, "torch_geometric.data.Data"):
+        msg = f"The graph must be a torch_geometric.data.Data graph, got {type(graph).__name__}."
+        raise TypeError(msg)
+    n_hops = getattr(model, "num_layers", None)
+    if isinstance(n_hops, bool) or not isinstance(n_hops, int | np.integer) or n_hops < 0:
+        msg = (
+            "The model needs a non-negative integer num_layers attribute, the number of its "
+            f"message passing layers (the models of torch_geometric.nn set it), got {n_hops!r}."
+        )
+        raise ValueError(msg)
 
 
 def convert_graph(

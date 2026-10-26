@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from shapiq import ExactComputer
-from shapiq.explainer import GraphExplainer
 from shapiq.graph import (
     GraphBaselineImputer,
     GraphModel,
@@ -115,36 +114,22 @@ def test_imputer_needs_node_features_of_the_background():
         GraphBaselineImputer(OneHopModel(4), data=np.zeros(2), x=structure)
 
 
-@pytest.mark.parametrize(("index", "order"), [("SV", 1), ("k-SII", 2), ("STII", 3), ("Moebius", 6)])
-def test_explainer_of_a_function_matches_brute_force(index, order):
-    graph, model = path_graph(6), OneHopModel(6)
-    background = np.random.default_rng(4).normal(size=(10, 2))
-    values = GraphExplainer(model, data=background, index=index, max_order=order).explain(graph)
-    assert not values.estimated
+def _game(graph: GraphModel, model: OneHopModel, background: np.ndarray) -> GraphBaselineImputer:
+    predict = get_graph_predict_function(model, graph)
+    return GraphBaselineImputer(predict, data=background, x=graph, normalize=False)
 
-    game = GraphBaselineImputer(
-        get_graph_predict_function(model, graph), data=background, x=graph, normalize=False
-    )
+
+@pytest.mark.parametrize(("index", "order"), [("SV", 1), ("k-SII", 2), ("STII", 3), ("Moebius", 6)])
+def test_graphshapiq_of_a_function_matches_brute_force(index, order):
+    graph = path_graph(6)
+    game = _game(graph, OneHopModel(6), np.random.default_rng(4).normal(size=(10, 2)))
+    values = GraphSHAPIQ(game, graph)(index, order)
+    assert not values.estimated
     expected = ExactComputer(game=game, n_players=6)(index, order)
     for interaction in set(values.interaction_lookup) | set(expected.interaction_lookup):
         if interaction:
             assert values[interaction] == pytest.approx(expected[interaction], abs=1e-10)
     assert values.baseline_value == pytest.approx(game.empty_prediction)
-
-
-def test_explainer_explains_several_graphs():
-    model = OneHopModel(5)
-    graphs = [path_graph(5, seed=0), path_graph(5, seed=1)]
-    explanations = GraphExplainer(model, index="k-SII", max_order=2).explain_X(graphs)
-    assert [values.n_players for values in explanations] == [5, 5]
-    game = GraphBaselineImputer(
-        get_graph_predict_function(model, graphs[1]), data=np.zeros(2), x=graphs[1]
-    )
-    expected = GraphSHAPIQ(game, graphs[1])("k-SII", 2)
-    np.testing.assert_allclose(
-        [explanations[1][key] for key in expected.interaction_lookup if key],
-        [expected[key] for key in expected.interaction_lookup if key],
-    )
 
 
 def test_graph_model_copies_and_compares_by_identity():
@@ -181,11 +166,12 @@ def test_large_evaluations_are_chunked(monkeypatch):
     import shapiq.graph.graphshapiq as graphshapiq_module
     import shapiq.graph.imputer as imputer_module
 
-    graph, model = path_graph(8), OneHopModel(8)
-    expected = GraphExplainer(model, index="k-SII", max_order=2).explain(graph)
+    graph = path_graph(8)
+    game = _game(graph, OneHopModel(8), np.zeros(2))
+    expected = GraphSHAPIQ(game, graph)("k-SII", 2)
     monkeypatch.setattr(graphshapiq_module, "_CHUNK_SIZE", 7)
     monkeypatch.setattr(imputer_module, "_MAX_VALUES", 3 * graph.x.size)
-    chunked = GraphExplainer(model, index="k-SII", max_order=2).explain(graph)
+    chunked = GraphSHAPIQ(_game(graph, OneHopModel(8), np.zeros(2)), graph)("k-SII", 2)
     for interaction in expected.interaction_lookup:
         assert chunked[interaction] == pytest.approx(expected[interaction], abs=1e-12)
 
@@ -195,8 +181,3 @@ def test_integer_node_features_take_the_mode_as_baseline():
     graph = GraphModel(edge_index=path(3), n_hops=1, x=x)
     imputer = GraphBaselineImputer(lambda f: f.sum(axis=(1, 2)), data=x, x=graph)
     np.testing.assert_array_equal(imputer.baseline_values.astype(int), [[2, 1]])
-
-
-def test_unsupported_graphs_are_reported_as_such():
-    with pytest.raises(TypeError, match="not supported"):
-        GraphExplainer(OneHopModel(3)).explain([(0, 1), (1, 2)])

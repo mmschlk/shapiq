@@ -13,6 +13,7 @@ from shapiq import ExactComputer  # noqa: E402
 from shapiq.explainer import GraphExplainer  # noqa: E402
 from shapiq.graph import (  # noqa: E402
     GraphBaselineImputer,
+    GraphSHAPIQ,
     convert_graph,
     get_graph_predict_function,
 )
@@ -124,13 +125,33 @@ def test_shapley_values_add_up_to_the_prediction():
 
 def test_approximation_is_flagged_and_efficient():
     model, data = GNN(num_layers=3), path_graph(9)
-    exact = GraphExplainer(model).explain(data)
-    approximated = GraphExplainer(model, max_interaction_size=2).explain(data)
+    graph = convert_graph(data, model=model)
+    game = GraphBaselineImputer(model, data=np.zeros(3), x=graph, normalize=False)
+    exact = GraphSHAPIQ(game, graph)("SV", 1)
+    approximated = GraphSHAPIQ(game, graph, max_interaction_size=2)("SV", 1)
     assert approximated.estimated
     assert approximated.estimation_budget < exact.estimation_budget
     assert sum(approximated[(node,)] for node in range(9)) == pytest.approx(
         sum(exact[(node,)] for node in range(9)), abs=1e-5
     )
+
+
+def test_explainer_takes_only_graph_neural_networks_on_torch_geometric_graphs():
+    with pytest.raises(TypeError, match="torch model"):
+        GraphExplainer(lambda node_features: node_features.sum(axis=(1, 2)))
+    model = GNN()
+    del model.num_layers
+    with pytest.raises(ValueError, match="num_layers"):
+        GraphExplainer(model)
+    graph = convert_graph(path_graph(4), n_hops=2)
+    with pytest.raises(TypeError, match="torch_geometric"):
+        GraphExplainer(GNN()).explain(graph)
+
+
+def test_explainer_warns_for_large_receptive_fields(monkeypatch):
+    monkeypatch.setattr(GraphExplainer, "max_budget", 4)
+    with pytest.warns(UserWarning, match="max_budget"):
+        GraphExplainer(GNN()).explain(path_graph(4))
 
 
 def test_explainer_dispatches_graph_neural_networks():

@@ -119,14 +119,16 @@ print(f"largest difference to brute force: {difference:.1e}")
 # %%
 # Approximating with Smaller Interactions
 # ---------------------------------------
-# Large receptive fields make the exact computation expensive. With ``max_interaction_size``,
-# GraphSHAP-IQ evaluates only the coalitions of up to that many atoms, plus, for the efficiency
-# routine, the larger receptive fields and their intersections. The Shapley values still add up
-# to the prediction, and are exact again for one atom less than the largest receptive field.
+# Large receptive fields make the exact computation expensive, and the explainer warns when it
+# becomes very large. :class:`~shapiq.graph.GraphSHAPIQ` approximates the values with
+# ``max_interaction_size``: it evaluates only the coalitions of up to that many atoms, plus, for
+# the efficiency routine, the larger receptive fields and their intersections. The Shapley values
+# still add up to the prediction, and are exact again for one atom less than the largest receptive
+# field.
 
-exact = GraphExplainer(model).explain(molecule)
+exact = graphshapiq("SV", order=1)
 for size in range(1, graph.max_receptive_field_size):
-    approximation = GraphExplainer(model, max_interaction_size=size).explain(molecule)
+    approximation = GraphSHAPIQ(game, graph, max_interaction_size=size)("SV", order=1)
     error = max(abs(approximation[(node,)] - exact[(node,)]) for node in range(len(atoms)))
     print(
         f"max_interaction_size={size}: {approximation.estimation_budget:4d} evaluations, "

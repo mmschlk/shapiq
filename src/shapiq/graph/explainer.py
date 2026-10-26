@@ -2,43 +2,44 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, get_args
+import warnings
+from typing import TYPE_CHECKING, Any, ClassVar, get_args
 
 import numpy as np
 from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
 
-from .conversion import convert_graph, get_graph_predict_function
+from .conversion import check_graph_neural_network, convert_graph, get_graph_predict_function
 from .graphshapiq import GraphSHAPIQ, GraphSHAPIQIndices
 from .imputer import GraphBaselineImputer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import torch
     from torch_geometric.data import Data
 
     from shapiq.interaction_values import InteractionValues
-
-    from .base import GraphModel
 
 __all__ = ["GraphExplainer"]
 
 
 class GraphExplainer(Explainer):
-    """The GraphExplainer explains graph neural networks with GraphSHAP-IQ.
+    """The GraphExplainer explains graph neural networks exactly with GraphSHAP-IQ.
 
     The players are the nodes of the explained graph. For every graph, the explainer converts it
     into a :class:`~shapiq.graph.GraphModel`, imputes absent nodes with the
     :class:`~shapiq.graph.GraphBaselineImputer`, and computes the interactions of the resulting game
     with :class:`~shapiq.graph.GraphSHAPIQ` :cite:p:`Muschalik.2025`. GraphSHAP-IQ evaluates the
-    model only on the subsets of the receptive fields of the nodes, which makes the computation
-    feasible for graphs far beyond the reach of evaluating all coalitions.
+    model only on the subsets of the receptive fields of the nodes, the nodes within
+    ``model.num_layers`` hops, which makes the computation feasible for graphs far beyond the
+    reach of evaluating all coalitions.
 
     The values are exact for models of message passing layers followed by a linear global pooling
-    (e.g. a sum or mean over the nodes) and a linear readout, explained on their logits. With
-    ``max_interaction_size``, GraphSHAP-IQ evaluates fewer coalitions and approximates the values;
-    the returned values are then flagged as ``estimated``.
+    (e.g. a sum or mean over the nodes) and a linear readout, explained on their logits. Computing
+    the values of a graph whose receptive fields have more than :attr:`max_budget` subsets warns;
+    :class:`~shapiq.graph.GraphSHAPIQ` approximates such values with fewer evaluations.
 
     Examples:
         >>> import torch
@@ -58,28 +59,27 @@ class GraphExplainer(Explainer):
         False
     """
 
+    max_budget: ClassVar[int] = 2**25
+    """The number of subsets of the receptive fields above which explaining a graph warns."""
+
     def __init__(
         self,
-        model: Any,  # noqa: ANN401
+        model: torch.nn.Module,
         data: np.ndarray | None = None,
         *,
         index: GraphSHAPIQIndices = "SV",
         max_order: int = 1,
         class_index: int | None = None,
-        n_hops: int | None = None,
-        max_interaction_size: int | None = None,
-        efficiency_routine: bool = True,
         batch_size: int = 128,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the GraphExplainer.
 
         Args:
-            model: A graph neural network with a graph-level output, called as
-                ``model(x=x, edge_index=edge_index, batch=batch)``, or a function of node features
-                of shape ``(n_graphs, n_nodes, n_features)`` for graphs given as
-                :class:`~shapiq.graph.GraphModel` (see
-                :func:`~shapiq.graph.get_graph_predict_function`).
+            model: A graph neural network of ``torch`` with a graph-level output, called as
+                ``model(x=x, edge_index=edge_index, batch=batch)``, whose ``num_layers`` attribute
+                is its number of message passing layers (the models of ``torch_geometric.nn`` set
+                it).
             data: The background node features of shape ``(n_samples, n_features)``, whose mean is
                 the baseline of absent nodes, or the baseline node features of shape
                 ``(n_features,)`` (see :class:`~shapiq.graph.GraphBaselineImputer`). Defaults to
@@ -91,21 +91,16 @@ class GraphExplainer(Explainer):
             class_index: The explained output of a model with several outputs. Defaults to
                 ``None``, which means output ``1`` for models with several outputs and the output
                 of models with one output.
-            n_hops: The number of message passing layers of the model. Defaults to ``None``,
-                which takes ``model.num_layers`` (or ``n_hops`` of a
-                :class:`~shapiq.graph.GraphModel`).
-            max_interaction_size: The largest coalitions whose Möbius coefficients GraphSHAP-IQ
-                computes. Defaults to ``None``, the largest receptive field, which computes exact
-                values.
-            efficiency_routine: Whether GraphSHAP-IQ keeps approximated values efficient. Defaults
-                to ``True``.
-            batch_size: The number of graphs per forward pass of a ``torch`` model. Defaults to
-                ``128``.
+            batch_size: The number of graphs per forward pass of the model. Defaults to ``128``.
             **kwargs: Additional keyword arguments are ignored.
 
         Raises:
-            ValueError: If the index is not supported by GraphSHAP-IQ.
+            ImportError: If torch or torch_geometric is not installed.
+            TypeError: If the model is not a ``torch`` model.
+            ValueError: If the model has no integer ``num_layers`` or the index is not supported
+                by GraphSHAP-IQ.
         """
+        check_graph_neural_network(model)
         if index not in get_args(GraphSHAPIQIndices):
             supported = get_args(GraphSHAPIQIndices)
             msg = f"GraphExplainer supports the indices {supported}, got {index!r}."
@@ -113,43 +108,47 @@ class GraphExplainer(Explainer):
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)
         self._background = None if data is None else np.asarray(data)
         self.class_index = class_index
-        self.n_hops = n_hops
-        self.max_interaction_size = max_interaction_size
-        self.efficiency_routine = efficiency_routine
         self.batch_size = batch_size
 
     def explain_function(  # type: ignore[override]
         self,
-        x: Data | GraphModel,
+        x: Data,
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Compute the interaction values of the nodes of a graph.
+        """Compute the exact interaction values of the nodes of a graph.
 
         Args:
-            x: The explained graph, a ``torch_geometric.data.Data`` graph or a
-                :class:`~shapiq.graph.GraphModel` with node features.
+            x: The explained graph, a ``torch_geometric.data.Data`` graph with node features.
             **kwargs: Additional keyword arguments are ignored.
 
         Returns:
             The interaction values, with the output for the graph without nodes as baseline.
+
+        Raises:
+            TypeError: If the graph is not a ``torch_geometric`` graph.
         """
-        graph = convert_graph(x, n_hops=self.n_hops, model=self.model)
+        check_graph_neural_network(self.model, x)
+        graph = convert_graph(x, model=self.model)
+        fields = {tuple(field.tolist()) for field in graph.receptive_fields}
+        if sum(2 ** len(field) for field in fields) > self.max_budget:
+            msg = (
+                f"The receptive fields of the {graph.n_nodes}-node graph have more than "
+                f"GraphExplainer.max_budget={self.max_budget} subsets: computing the exact values "
+                "can take very long and need a lot of memory. GraphSHAPIQ with "
+                "max_interaction_size approximates them with fewer evaluations."
+            )
+            warnings.warn(msg, stacklevel=3)  # the caller of explain
         predict = get_graph_predict_function(
             self.model, graph, class_index=self.class_index, batch_size=self.batch_size
         )
         background = np.zeros(graph.n_features) if self._background is None else self._background
         imputer = GraphBaselineImputer(predict, background, x=graph, normalize=False)
-        graphshapiq = GraphSHAPIQ(
-            imputer,
-            graph,
-            max_interaction_size=self.max_interaction_size,
-            efficiency_routine=self.efficiency_routine,
-        )
+        graphshapiq = GraphSHAPIQ(imputer, graph)
         return graphshapiq(self._index, self._max_order)  # ty: ignore[invalid-argument-type]
 
     def explain_X(  # type: ignore[override]
         self,
-        X: Sequence[Data | GraphModel],
+        X: Sequence[Data],
         *,
         n_jobs: int | None = None,
         random_state: int | None = None,  # noqa: ARG002
