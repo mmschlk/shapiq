@@ -244,6 +244,13 @@ Explore the Examples
 
       Exact values and interactions of scikit-learn, XGBoost, LightGBM, and CatBoost trees.
 
+   .. grid-item-card:: :octicon:`share-android` Graph Neural Networks
+      :link: auto_examples/graph_neural_networks/index
+      :link-type: doc
+      :class-card: shapiq-card
+
+      Exact values and interactions of the nodes of graph neural networks with GraphSHAP-IQ.
+
    .. grid-item-card:: :octicon:`people` Nearest Neighbors
       :link: auto_examples/nearest_neighbors/index
       :link-type: doc

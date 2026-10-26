@@ -18,6 +18,7 @@ structured computers used as ground truth for large games.
 
 from __future__ import annotations
 
+import dataclasses
 import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, cast, get_args
@@ -30,12 +31,14 @@ from shapiq.explainer.nn import KNNExplainer, ThresholdNNExplainer, WeightedKNNE
 from shapiq.explainer.product_kernel import ProductKernelComputer as CoreProductKernelComputer
 from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
+from shapiq.graph import GraphSHAPIQ, GraphSHAPIQIndices
 from shapiq.tree.base import predict_ensemble
 from shapiq.tree.explainer import TreeExplainer
 from shapiq.tree.interventional import InterventionalTreeSHAPIQ
 from shapiq.tree.interventional.computer import InterventionalTreeSHAPIQIndices
 from shapiq.tree.quadrature.computer import QuadratureTreeSHAPIndices
 from shapiq.tree.validation import validate_tree_model
+from shapiq_games.graph import GraphGame
 from shapiq_games.kernel import ProductKernelGame
 from shapiq_games.nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from shapiq_games.nn._base import NNGameBase
@@ -49,6 +52,7 @@ if TYPE_CHECKING:
 __all__ = [
     "BruteForceComputer",
     "Computer",
+    "GraphComputer",
     "InterventionalTreeComputer",
     "MoebiusComputer",
     "NearestNeighborComputer",
@@ -411,12 +415,88 @@ class ProductKernelComputer(Computer[ProductKernelGame]):
         )  # Computer.exact_values sets the game's empty value as the baseline
 
 
+class GraphComputer(Computer[GraphGame]):
+    """Graph games via :class:`~shapiq.graph.GraphSHAPIQ`.
+
+    GraphSHAP-IQ evaluates the game only on the subsets of the receptive fields of the nodes, so
+    it computes the values of graphs with many more nodes than brute force, as long as their
+    receptive fields are small. The game is evaluated once and reused for every index and order;
+    computing the values of a game whose receptive fields have more than :attr:`max_budget`
+    subsets warns.
+    """
+
+    name = "graph"
+
+    max_budget: ClassVar[int] = 2**25
+    """The number of subsets of the receptive fields above which computing warns."""
+
+    def __init__(self, game: GraphGame) -> None:
+        """Bind the computer to a graph game.
+
+        Args:
+            game: The game.
+        """
+        super().__init__(game)
+        self._graphshapiq: GraphSHAPIQ | None = None
+
+    @classmethod
+    def supports_game(cls, game: Game) -> bool:
+        """:class:`~shapiq_games.GraphGame` games that are local on the graph.
+
+        GraphSHAP-IQ is exact for models with a linear pooling and readout; a nonlinear readout
+        makes nodes interact that share no receptive field. Two such nodes, if the graph has any,
+        are checked to not interact, without and with all other nodes present.
+        """
+        if not isinstance(game, GraphGame):
+            return False
+        n_players = game.n_players
+        graph = game.graph
+        within = dataclasses.replace(graph, n_hops=2 * graph.n_hops).receptive_fields
+        pair = next(
+            (
+                (node, int(far[0]))
+                for node in range(n_players)
+                if (far := np.setdiff1d(np.arange(n_players), within[node])).size
+            ),
+            None,
+        )
+        if pair is None:  # every two nodes share a receptive field
+            return True
+        coalitions = np.zeros((2, 4, n_players), dtype=bool)
+        coalitions[1] = True
+        coalitions[:, :, list(pair)] = [[False, False], [True, False], [False, True], [True, True]]
+        values = game(coalitions.reshape(-1, n_players)).reshape(2, 4)
+        interaction = values[:, 3] - values[:, 1] - values[:, 2] + values[:, 0]
+        return bool(np.all(np.abs(interaction) <= 1e-5 * (1 + np.abs(values).max())))
+
+    @classmethod
+    def supported_indices(cls) -> tuple[IndexType, ...]:
+        """The indices of GraphSHAP-IQ (``GraphSHAPIQIndices``)."""
+        return get_args(GraphSHAPIQIndices)
+
+    def _compute(self, index: IndexType, order: int) -> InteractionValues:
+        if self._graphshapiq is None:
+            game = self.game
+            fields = {tuple(field.tolist()) for field in game.graph.receptive_fields}
+            if sum(2 ** len(field) for field in fields) > self.max_budget:
+                msg = (
+                    f"The receptive fields of the {game.n_players}-node graph have more than "
+                    f"GraphComputer.max_budget={self.max_budget} subsets. This can take very long "
+                    "and need a lot of memory."
+                )
+                warnings.warn(msg, stacklevel=3)  # the caller of exact_values
+            self._graphshapiq = GraphSHAPIQ(game, game.graph)
+        # supports() checked the index against GraphSHAP-IQ's declaration
+        return self._graphshapiq(cast("GraphSHAPIQIndices", index), order)
+
+
 _STRUCTURED_COMPUTERS: tuple[type[Computer[Any]], ...] = (
     MoebiusComputer,
     PathDependentTreeComputer,
     InterventionalTreeComputer,
     NearestNeighborComputer,
     ProductKernelComputer,
+    GraphComputer,
 )
 
 

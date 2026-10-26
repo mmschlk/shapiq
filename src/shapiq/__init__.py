@@ -51,6 +51,7 @@ from .game import Game
 
 # exact computer classes
 from .game_theory.exact import ExactComputer
+from .graph import GraphExplainer
 
 # imputer classes
 from .imputer import (
@@ -125,6 +126,7 @@ __all__ = [
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
+    "GraphExplainer",
     "TabPFNExplainer",
     "AgnosticExplainer",
     # imputers
